@@ -77,6 +77,18 @@ export function SettingsPage() {
 
   const [active, setActive] = useState<string | null>(urlSection);
 
+  // DEC-728 amendment (wave 49): a settings section URL carrying `edit=1`
+  // (SummarySection's openEdit) is a SCREEN, not a scroll target -- only
+  // that one panel mounts inside .chq-settings-content, the page's own
+  // title becomes that section's label, and the tertiary back control
+  // (already wired to clearSection below) becomes reachable at desktop
+  // too. Read mode (no edit param) is unchanged: all seven panels, one
+  // static document, rail click scrolls and never hides.
+  const editing = urlSection !== null && searchParams.get('edit') === '1';
+  const editingSection = editing ? SECTIONS.find((section) => section.key === urlSection) : undefined;
+  const sectionsToRender = editingSection ? [editingSection] : SECTIONS;
+  const pageTitle = editingSection ? editingSection.label : 'Settings';
+
   // Keep `active` in sync whenever the URL's `section` param CHANGES (e.g.
   // navigating directly to /settings?section=cfp, or Back/Forward) without
   // clobbering the IntersectionObserver's own local setActive calls on
@@ -131,6 +143,10 @@ export function SettingsPage() {
   // check since jsdom (test env) has no IntersectionObserver; render
   // tests exercise click-driven highlighting only, unaffected.
   useEffect(() => {
+    // Only one section is mounted while editing -- there is nothing for a
+    // scroll-driven highlight to observe, and the panel being edited must
+    // not lose `active` to an observer racing against a single element.
+    if (editingSection) return undefined;
     if (typeof IntersectionObserver === 'undefined') return undefined;
     const elements = SECTIONS.map((section) => document.getElementById(`chq-settings-section-${section.key}`)).filter(
       (el): el is HTMLElement => el !== null,
@@ -159,12 +175,12 @@ export function SettingsPage() {
     );
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+  }, [editingSection]);
 
   return (
     <div className="chq-page chq-settings-page">
-      <h1 className="chq-page-title">Settings</h1>
-      <div className="chq-settings-layout" data-drilled={active !== null}>
+      <h1 className="chq-page-title">{pageTitle}</h1>
+      <div className="chq-settings-layout" data-drilled={active !== null} data-editing={editing}>
         <nav className="chq-rail chq-settings-rail" aria-label="Settings sections">
           {SECTIONS.map((section) => (
             <button
@@ -190,7 +206,7 @@ export function SettingsPage() {
           >
             &lsaquo; Settings
           </button>
-          {SECTIONS.map((section) => {
+          {sectionsToRender.map((section) => {
             const Panel = section.Panel;
             return (
               <div

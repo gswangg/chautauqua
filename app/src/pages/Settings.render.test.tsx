@@ -441,6 +441,101 @@ describe('SettingsPage render smoke', () => {
     expect(layout).toHaveAttribute('data-drilled', 'false');
   });
 
+  // w49-g/DEC-728 amendment: a settings section opened via ?section=&edit=1
+  // is a SCREEN -- only that one panel mounts, and the page's own h1 takes
+  // the section's label instead of the fixed 'Settings' string.
+  it('renders only the drilled panel and the section label as the page title at ?section=cfp&edit=1', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=cfp&edit=1']}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Call for papers' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).not.toBeInTheDocument();
+
+    expect(screen.queryByRole('region', { name: 'Event' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Tracks and rooms' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Public pages' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Speaker portal' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'People and roles' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Your data' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Call for papers' })).toBeInTheDocument();
+
+    const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
+    expect(layout).toHaveAttribute('data-editing', 'true');
+  });
+
+  // Clicking the '‹ Settings' tertiary control clears both `section` and
+  // `edit`, restoring the full read document and the fixed page title.
+  it('clears both params and restores all seven sections when the top-level back control is clicked', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=cfp&edit=1']}>
+        <LocationProbe />
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Call for papers' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '‹ Settings' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('location-search').textContent).not.toContain('section=');
+    expect(screen.getByTestId('location-search').textContent).not.toContain('edit=');
+
+    expect(screen.getByRole('region', { name: 'Event' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Call for papers' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Tracks and rooms' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Public pages' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Speaker portal' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'People and roles' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Your data' })).toBeInTheDocument();
+
+    const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
+    expect(layout).toHaveAttribute('data-editing', 'false');
+  });
+
+  // With no `edit` param the page stays the static one-document read view --
+  // `?section=` alone still just scroll-highlights, never hides a section.
+  it('leaves the read scroll unaffected with no edit param', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=cfp']}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Event' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Call for papers' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Tracks and rooms' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Public pages' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Speaker portal' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'People and roles' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Your data' })).toBeInTheDocument();
+
+    const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
+    expect(layout).toHaveAttribute('data-drilled', 'true');
+    expect(layout).toHaveAttribute('data-editing', 'false');
+    expect(document.getElementById('chq-settings-section-cfp')).toHaveClass('chq-settings-section-active');
+  });
+
   it('preserves an unrelated existing param when a rail click writes ?section=', async () => {
     mockAllSections();
 
