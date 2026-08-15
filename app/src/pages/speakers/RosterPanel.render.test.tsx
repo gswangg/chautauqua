@@ -117,6 +117,51 @@ describe('RosterPanel', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  // DEC-958 amendment (wave 58): a fields-map 400 renders the ErrorSummary
+  // (heading + one anchor per problem, each pointing at the offending
+  // input's own id), marks every offending control chq-field-invalid, and
+  // never resets the user's typed values.
+  describe('field-scoped 400 (DEC-958 amendment, wave 58)', () => {
+    it('renders the summary heading, per-field anchors, invalid controls, and keeps typed values', async () => {
+      apiPostMock.mockRejectedValueOnce(
+        new ApiError(400, 'invalid', 'Validation failed', {
+          firstName: 'required',
+          email: 'must be a valid email address',
+        }),
+      );
+
+      renderPanel({ mode: 'add', onClose: vi.fn(), onChanged: vi.fn() });
+      fillAddForm();
+      fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
+
+      // Heading counts exactly two problems.
+      expect(await screen.findByText('Two things need fixing before this speaker can be added')).toBeInTheDocument();
+
+      // One anchor per problem, each pointing at the offending input's own id.
+      const firstNameAnchor = screen.getByRole('link', { name: 'First name' });
+      expect(firstNameAnchor).toHaveAttribute('href', '#roster-first-name');
+      const emailAnchor = screen.getByRole('link', { name: 'Email' });
+      expect(emailAnchor).toHaveAttribute('href', '#roster-email');
+
+      // Both offending inputs carry chq-field-invalid + aria-invalid.
+      const firstNameInput = screen.getByLabelText('First name');
+      const emailInput = screen.getByLabelText('Email');
+      expect(firstNameInput).toHaveClass('chq-field-invalid');
+      expect(firstNameInput).toHaveAttribute('aria-invalid', 'true');
+      expect(emailInput).toHaveClass('chq-field-invalid');
+      expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+
+      // A field that was NOT named in err.fields stays untouched.
+      const lastNameInput = screen.getByLabelText('Last name');
+      expect(lastNameInput).not.toHaveClass('chq-field-invalid');
+
+      // Nothing was reset: the user's typed values survive the refusal.
+      expect((firstNameInput as HTMLInputElement).value).toBe('Ada');
+      expect((emailInput as HTMLInputElement).value).toBe('ada@example.com');
+      expect((lastNameInput as HTMLInputElement).value).toBe('Lovelace');
+    });
+  });
+
   // DEC-788 amendment (wave 8): the shared DuplicateEmailNotice forward path.
   describe('duplicate-email 409 forward path (DEC-788 amendment, wave 8)', () => {
     it('renders the existing person + open link + add-to-event affordance', async () => {

@@ -12,6 +12,37 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ImportWizard } from '../contacts/ImportWizard';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { DuplicateEmailNotice } from '../contacts/DuplicateEmailNotice';
+import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
+
+// DEC-958 (wave 58): every wire key POST /contacts's crud.ts validator can
+// name on this form's own submitted body (src/routes/api/contacts/crud.ts
+// firstName/lastName/email/company/title/bio + the eventId-scoped
+// sessionTitle field, src/domain/contacts.ts) gets a stable id, a display
+// label for the ErrorSummary anchor list, and its own entry in the field
+// order below (form layout order, so the summary's problem list reads
+// top-to-bottom the same way the form does).
+const FIELD_ORDER = ['firstName', 'lastName', 'sessionTitle', 'email', 'title', 'company', 'bio'] as const;
+type SpeakerField = (typeof FIELD_ORDER)[number];
+
+const FIELD_IDS: Record<SpeakerField, string> = {
+  firstName: 'roster-first-name',
+  lastName: 'roster-last-name',
+  sessionTitle: 'roster-session-title',
+  email: 'roster-email',
+  title: 'roster-title',
+  company: 'roster-company',
+  bio: 'roster-bio',
+};
+
+const FIELD_LABELS: Record<SpeakerField, string> = {
+  firstName: 'First name',
+  lastName: 'Last name',
+  sessionTitle: 'Session title',
+  email: 'Email',
+  title: 'Title',
+  company: 'Company',
+  bio: 'Bio',
+};
 
 interface DuplicateCandidateMatch {
   id: string;
@@ -62,6 +93,12 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
   const [form, setForm] = useState<NewSpeakerForm>(EMPTY_FORM);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // DEC-958: the WHOLE err.fields map, keyed by the server's own wire keys
+  // -- never just the values (a values-only join discards which control
+  // to blame). Seeded fresh on every refusal; never cleared by a refetch,
+  // so the user's typed values in `form` are the only source of truth and
+  // are never reset here.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [conflict, setConflict] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [duplicateMatch, setDuplicateMatch] = useState<DuplicateCandidateMatch | null>(null);
@@ -106,6 +143,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
     setAdding(true);
     setError(null);
     setConflict(false);
+    setFieldErrors({});
     try {
       await apiPost('/contacts', {
         firstName: form.firstName,
@@ -125,10 +163,18 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
       onClose();
     } catch (err) {
       if (err instanceof ApiError) {
-        const fieldDetail = err.fields ? Object.values(err.fields).join(' · ') : '';
-        setError(fieldDetail ? `${err.message} — ${fieldDetail}` : err.message);
+        // DEC-788/DEC-958: the conflict path forwards to
+        // DuplicateEmailNotice below (which already carries the email
+        // detail) -- it stays a single top-of-form line, never the field
+        // summary, even though the server's conflict body also sets
+        // fields.email.
         if (err.code === 'conflict') {
           setConflict(true);
+          setError(err.message);
+        } else if (err.fields && Object.keys(err.fields).length > 0) {
+          setFieldErrors(err.fields);
+        } else {
+          setError(err.message);
         }
       } else {
         setError('Failed to add speaker');
@@ -137,6 +183,19 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
       setAdding(false);
     }
   }
+
+  function fieldClassName(key: SpeakerField, base: string) {
+    return fieldErrors[key] ? `${base} chq-field-invalid` : base;
+  }
+
+  function fieldAriaInvalid(key: SpeakerField): 'true' | undefined {
+    return fieldErrors[key] ? 'true' : undefined;
+  }
+
+  const errorSummaryProblems = FIELD_ORDER.filter((key) => fieldErrors[key] !== undefined).map((key) => ({
+    anchorId: FIELD_IDS[key],
+    label: FIELD_LABELS[key],
+  }));
 
   if (eventLoading) {
     return null;
@@ -188,6 +247,13 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
           }
         >
           {error && <div className="chq-error">{error}</div>}
+          {errorSummaryProblems.length > 0 && (
+            <ErrorSummary
+              heading={countHeading(errorSummaryProblems.length, 'before this speaker can be added')}
+              kept="Nothing was lost. Your typed values are still below."
+              problems={errorSummaryProblems}
+            />
+          )}
           {conflict && (
             <DuplicateEmailNotice
               email={form.email}
@@ -202,22 +268,24 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               }}
             />
           )}
-          <FormRow label="First name" htmlFor="roster-first-name">
+          <FormRow label="First name" htmlFor="roster-first-name" error={fieldErrors.firstName}>
             <input
               id="roster-first-name"
-              className="chq-input"
+              className={fieldClassName('firstName', 'chq-input')}
               type="text"
               required
+              aria-invalid={fieldAriaInvalid('firstName')}
               value={form.firstName}
               onChange={(e) => updateField('firstName', e.target.value)}
             />
           </FormRow>
-          <FormRow label="Last name" htmlFor="roster-last-name">
+          <FormRow label="Last name" htmlFor="roster-last-name" error={fieldErrors.lastName}>
             <input
               id="roster-last-name"
-              className="chq-input"
+              className={fieldClassName('lastName', 'chq-input')}
               type="text"
               required
+              aria-invalid={fieldAriaInvalid('lastName')}
               value={form.lastName}
               onChange={(e) => updateField('lastName', e.target.value)}
             />
@@ -226,49 +294,55 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
             label="Session title"
             htmlFor="roster-session-title"
             help="Added as an accepted session on this event. No email is sent."
+            error={fieldErrors.sessionTitle}
           >
             <input
               id="roster-session-title"
-              className="chq-input"
+              className={fieldClassName('sessionTitle', 'chq-input')}
               type="text"
               required
               placeholder="e.g. Scaling Kubernetes at 2am"
+              aria-invalid={fieldAriaInvalid('sessionTitle')}
               value={form.sessionTitle}
               onChange={(e) => updateField('sessionTitle', e.target.value)}
             />
           </FormRow>
-          <FormRow label="Email" htmlFor="roster-email">
+          <FormRow label="Email" htmlFor="roster-email" error={fieldErrors.email}>
             <input
               id="roster-email"
-              className="chq-input"
+              className={fieldClassName('email', 'chq-input')}
               type="email"
               required
+              aria-invalid={fieldAriaInvalid('email')}
               value={form.email}
               onChange={(e) => updateField('email', e.target.value)}
             />
           </FormRow>
-          <FormRow label="Title" htmlFor="roster-title" optional>
+          <FormRow label="Title" htmlFor="roster-title" optional error={fieldErrors.title}>
             <input
               id="roster-title"
-              className="chq-input"
+              className={fieldClassName('title', 'chq-input')}
               type="text"
+              aria-invalid={fieldAriaInvalid('title')}
               value={form.title}
               onChange={(e) => updateField('title', e.target.value)}
             />
           </FormRow>
-          <FormRow label="Company" htmlFor="roster-company" optional>
+          <FormRow label="Company" htmlFor="roster-company" optional error={fieldErrors.company}>
             <input
               id="roster-company"
-              className="chq-input"
+              className={fieldClassName('company', 'chq-input')}
               type="text"
+              aria-invalid={fieldAriaInvalid('company')}
               value={form.company}
               onChange={(e) => updateField('company', e.target.value)}
             />
           </FormRow>
-          <FormRow label="Bio" htmlFor="roster-bio" optional>
+          <FormRow label="Bio" htmlFor="roster-bio" optional error={fieldErrors.bio}>
             <textarea
               id="roster-bio"
-              className="chq-textarea"
+              className={fieldClassName('bio', 'chq-textarea')}
+              aria-invalid={fieldAriaInvalid('bio')}
               value={form.bio}
               onChange={(e) => updateField('bio', e.target.value)}
             />
