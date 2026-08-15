@@ -156,52 +156,37 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   }
 
   const scopedIds = scoped.map((s) => s.id);
-  // DEC-338 (wave-31 amendment): wave 2 -- the id-scoped batches, every one
-  // of which depends only on `scoped`'s resolved id set (wave 1 above), so
-  // they issue as one further Promise.all wave rather than four (or five,
-  // when anonymized) sequential round trips.
-  const [countsBySubmission, formatBySubmission, audienceLevelBySubmission, identitiesBySubmission] = await Promise.all([
-    // DEC-082/DEC-346/DEC-439/DEC-829 (wave-29 amendment, task w29-e): queue
-    // counts/marks only the plan's current round -- earlier rounds'
-    // evaluations don't count toward this round's cap or "already rated"
-    // state. SQL aggregates replace the whole-round evaluation load + JS
-    // reduce, and the GROUP BY is itself scoped to THIS reviewer's own
-    // already-resolved submission ids (`scopedIds`, from wave 1's
-    // resolveReviewerSubmissions) rather than the plan's whole population --
-    // the driving relation is the reviewer's own scope, never a wider table
-    // (DEC-829's ruling, applied here). A reviewer scoped to one track of a
-    // large plan no longer pays for every OTHER reviewer's/track's
-    // evaluations to compute their own counts. That id dependency is exactly
-    // why this call rides wave 2 and not wave 1.
-    repo.countEvaluationsBySubmission(c.var.db, plan.id, plan.currentRound, scopedIds),
-    // DEC-857: the queue row's own format meta -- batched over the scoped
-    // submission ids, chunked exactly like loadDurationMinBySubmission
-    // (src/server/repo/agenda.ts:316-330). Not stripped for an anonymized
-    // plan: format is a session-shape fact, not identity.
-    repo.listFormatLabelsBySubmission(c.var.db, scopedIds),
-    // DEC-857/DEC-986: the queue row's audience-level meta -- same batching as
-    // formatBySubmission above, over the same scoped id set. A session-shape
-    // fact (the field lives on the CFP's session section), so it is never
-    // stripped for an anonymized plan, exactly like format.
-    repo.listAudienceLevelLabelsBySubmission(c.var.db, scopedIds),
-    // DEC-018 (wave-57 amendment): the queue's own title field leaks speaker
-    // identity the same way the submission detail's title/description do
-    // (line ~318 below) -- loaded once for the full scoped id set, alongside
-    // the batches above, and used to mask both the actionable queueItems'
-    // titles and the recusedOut rows' titles when the plan is anonymized.
-    // listSpeakerIdentitiesForSubmissions carries NO inviteStatus filter, so
-    // it is a superset of the display-scoped speaker lists used elsewhere on
-    // this route.
-    plan.anonymized
-      ? repo.listSpeakerIdentitiesForSubmissions(c.var.db, scopedIds)
-      : Promise.resolve(new Map<string, repo.SpeakerIdentity[]>()),
-  ]);
-  const identitiesFor = (submissionId: string): string[] =>
-    (identitiesBySubmission.get(submissionId) ?? []).flatMap((s) =>
-      [s.name, s.email, s.company].filter((v): v is string => !!v && v.trim().length > 0),
-    );
-  const maybeRedactTitle = (submissionId: string, title: string): string =>
-    plan.anonymized ? (redactIdentity(title, identitiesFor(submissionId)) as string) : title;
+  // DEC-338 (wave-31 amendment): wave 2 -- the id-scoped batches this wave
+  // still holds are exactly the ones ordering/counting genuinely need over
+  // the WHOLE scope: countEvaluationsBySubmission drives needsMoreRatings'
+  // cap check and ratingsCount for every scoped row, so it can't be deferred
+  // to the post-slice hydration wave below.
+  // DEC-829 (wave-32 amendment, task w32-b): format/audienceLevel/identities
+  // are display-only -- verified below that none of needsMoreRatings,
+  // buildReviewerQueue, or unscoredTotal reads any of the three. They used
+  // to ride this wave over the full scoped id set (every submission in the
+  // reviewer's scope, which can run into the thousands); now they're fetched
+  // in a SECOND Promise.all, issued after ordering + the page slice, over
+  // only `pagedIds UNION recusedIds` -- the rows actually emitted on the
+  // wire. This is the fix for the reviewer-queue perf FAIL (adj p95 ~70ms vs
+  // a 50ms read budget): the display batches no longer scale with scope
+  // size, only with perPage + recused.length.
+  // DEC-082/DEC-346/DEC-439/DEC-829 (wave-29 amendment, task w29-e): queue
+  // counts/marks only the plan's current round -- earlier rounds'
+  // evaluations don't count toward this round's cap or "already rated"
+  // state. SQL aggregates replace the whole-round evaluation load + JS
+  // reduce, and the GROUP BY is itself scoped to THIS reviewer's own
+  // already-resolved submission ids (`scopedIds`, from wave 1's
+  // resolveReviewerSubmissions) rather than the plan's whole population --
+  // the driving relation is the reviewer's own scope, never a wider table
+  // (DEC-829's ruling, applied here). A reviewer scoped to one track of a
+  // large plan no longer pays for every OTHER reviewer's/track's
+  // evaluations to compute their own counts. That id dependency is exactly
+  // why this call rides wave 2 and not wave 1. It's the only read left in
+  // this wave now that format/audienceLevel/identities have moved to the
+  // post-slice hydration wave below, so it no longer needs a Promise.all
+  // wrapper of its own.
+  const countsBySubmission = await repo.countEvaluationsBySubmission(c.var.db, plan.id, plan.currentRound, scopedIds);
   // DEC-147: blend through the round's resolved criteria, restricted to
   // 'rating' criteria -- computeWeightedScore (src/domain/evaluation.ts) is
   // the single blended-score formula; a plan with no rating criteria has
@@ -225,10 +210,79 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     scoped.map((s) => ({ ...s, submissionId: s.id })),
     new Set(recusals.map((r) => r.submissionId)),
   );
+
+  // DEC-829 (wave-32 amendment): queueItems is built WITHOUT format/
+  // audienceLevel -- neither needsMoreRatings nor buildReviewerQueue's
+  // fewest-ratings-first ordering reads either field, so they're deferred to
+  // the hydration wave below, after ordering and the page slice have fixed
+  // exactly which rows are on the wire.
+  const queueItems = scopedActionable
+    .map((s) => ({
+      submissionId: s.id,
+      ratingsCount: countsBySubmission.get(s.id) ?? 0,
+      alreadyRatedByMe: ratedByMe.has(s.id),
+      myScore: myScoreFor(s.id),
+    }))
+    .filter((item) => item.alreadyRatedByMe || needsMoreRatings(item, plan.maxEvaluations ?? undefined));
+
+  const ordered = buildReviewerQueue(queueItems);
+  const byId = new Map(scopedActionable.map((s) => [s.id, s]));
+
+  // DEC-466/DEC-461(e): blessed JS-slice -- ordered is already assembled from
+  // a materialized array (buildReviewerQueue's fewest-ratings-first order),
+  // so clamp with a slice and report the FULL array length as `total`, not
+  // the slice's.
+  const total = ordered.length;
+  // DEC-845 amendment (wave 38): unscoredTotal is computed from the FULL
+  // ordered array, before the slice below -- it must stay true past row 200.
+  const unscoredTotal = ordered.filter((item) => !ratedByMe.has(item.submissionId)).length;
+  const start = (page - 1) * perPage;
+  const pagedOrdered = ordered.slice(start, start + perPage);
+
+  // DEC-829 (wave-32 amendment, task w32-b): hydration wave -- issued AFTER
+  // ordering + the page slice, over exactly the ids that will actually be
+  // emitted: the page's own rows plus the recused rows (recused rows carry
+  // format/audienceLevel per DEC-874 and redacted titles per DEC-018, so they
+  // must be in the hydration set too). No longer scales with the reviewer's
+  // whole scope -- bounded by perPage + recused.length.
+  const pagedIds = pagedOrdered.map((item) => item.submissionId);
+  const recusedIds = recusedScoped.map((s) => s.id);
+  const hydrateIds = [...new Set([...pagedIds, ...recusedIds])];
+  const [formatBySubmission, audienceLevelBySubmission, identitiesBySubmission] = await Promise.all([
+    // DEC-857: the queue row's own format meta -- batched over the emitted
+    // ids only, chunked exactly like loadDurationMinBySubmission
+    // (src/server/repo/agenda.ts:316-330). Not stripped for an anonymized
+    // plan: format is a session-shape fact, not identity.
+    repo.listFormatLabelsBySubmission(c.var.db, hydrateIds),
+    // DEC-857/DEC-986: the queue row's audience-level meta -- same batching as
+    // formatBySubmission above, over the same emitted id set. A session-shape
+    // fact (the field lives on the CFP's session section), so it is never
+    // stripped for an anonymized plan, exactly like format.
+    repo.listAudienceLevelLabelsBySubmission(c.var.db, hydrateIds),
+    // DEC-018 (wave-57 amendment): the queue's own title field leaks speaker
+    // identity the same way the submission detail's title/description do
+    // (line ~318 below) -- loaded once for the emitted id set, alongside the
+    // batches above, and used to mask both the actionable items' titles and
+    // the recusedOut rows' titles when the plan is anonymized.
+    // listSpeakerIdentitiesForSubmissions carries NO inviteStatus filter, so
+    // it is a superset of the display-scoped speaker lists used elsewhere on
+    // this route.
+    plan.anonymized
+      ? repo.listSpeakerIdentitiesForSubmissions(c.var.db, hydrateIds)
+      : Promise.resolve(new Map<string, repo.SpeakerIdentity[]>()),
+  ]);
+  const identitiesFor = (submissionId: string): string[] =>
+    (identitiesBySubmission.get(submissionId) ?? []).flatMap((s) =>
+      [s.name, s.email, s.company].filter((v): v is string => !!v && v.trim().length > 0),
+    );
+  const maybeRedactTitle = (submissionId: string, title: string): string =>
+    plan.anonymized ? (redactIdentity(title, identitiesFor(submissionId)) as string) : title;
+
   // DEC-874 (wave 72 amendment): a recused row keeps the same meta line an
-  // actionable row shows -- formatBySubmission is already computed over
-  // EVERY scoped id (above), so carrying it onto the recused half costs no
-  // extra query. A projection must carry its source's vocabulary.
+  // actionable row shows -- formatBySubmission is now hydrated over
+  // `hydrateIds`, which includes every recused id, so carrying it onto the
+  // recused half still costs no extra query. A projection must carry its
+  // source's vocabulary.
   const recusedOut = recusedScoped.map((s) => ({
     submissionId: s.id,
     ref: s.ref,
@@ -238,25 +292,12 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     audienceLevel: audienceLevelBySubmission.get(s.id) ?? null,
   }));
 
-  const queueItems = scopedActionable
-    .map((s) => ({
-      submissionId: s.id,
-      ratingsCount: countsBySubmission.get(s.id) ?? 0,
-      alreadyRatedByMe: ratedByMe.has(s.id),
-      myScore: myScoreFor(s.id),
-      format: formatBySubmission.get(s.id) ?? null,
-      audienceLevel: audienceLevelBySubmission.get(s.id) ?? null,
-    }))
-    .filter((item) => item.alreadyRatedByMe || needsMoreRatings(item, plan.maxEvaluations ?? undefined));
-
-  const ordered = buildReviewerQueue(queueItems);
-  const byId = new Map(scopedActionable.map((s) => [s.id, s]));
   // DEC-239/DEC-831/DEC-845/DEC-857: the SPA reads submissionId/ref/title/
-  // ratingsCount/alreadyRatedByMe/myScore/format by exact key -- emit the shaped
-  // item, not the raw SubmissionSummary row (which has `id`, not
+  // ratingsCount/alreadyRatedByMe/myScore/format by exact key -- emit the
+  // shaped item, not the raw SubmissionSummary row (which has `id`, not
   // `submissionId`); myScore comes straight off buildReviewerQueue's own
-  // ordered item now, not a second lookup.
-  const items = ordered
+  // ordered item, not a second lookup.
+  const pagedItems = pagedOrdered
     .map(({ submissionId: id, myScore }) => {
       const summary = byId.get(id);
       if (!summary) return undefined;
@@ -273,17 +314,6 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     })
     .filter((item): item is NonNullable<typeof item> => item !== undefined);
 
-  // DEC-466/DEC-461(e): blessed JS-slice -- items is already assembled from a
-  // materialized array (buildReviewerQueue's fewest-ratings-first order),
-  // so clamp with a slice and report the FULL array length as `total`, not
-  // the slice's. `recused` stays unpaged below: it's the reviewer's own
-  // recusal set, not a list envelope.
-  const total = items.length;
-  // DEC-845 amendment (wave 38): unscoredTotal is computed from the FULL
-  // items array, before the slice below -- it must stay true past row 200.
-  const unscoredTotal = items.filter((item) => !item.alreadyRatedByMe).length;
-  const start = (page - 1) * perPage;
-  const pagedItems = items.slice(start, start + perPage);
   return shapeQueueEnvelope({ items: pagedItems, total, unscoredTotal, open: true, recused: recusedOut });
 });
 
