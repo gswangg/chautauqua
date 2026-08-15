@@ -4,6 +4,7 @@
 // dueDate/now/lastRemindedAt, never to a status transition event.
 
 import { formatCalendarDate } from "../lib/event-time";
+import { dayLabelEndInstant } from "../lib/timezone";
 
 // DEC-319 amendment (wave 38): exported so the cron's SQL bounding
 // pre-filter (listDueReminderContactIds, repo/tasks/reminders.ts) derives
@@ -41,6 +42,7 @@ export interface PlanRemindersInput {
   assignments: ReminderAssignment[];
   now: number;
   eventEndsAt: number | null;
+  timeZone: string;
 }
 
 export interface ReminderGroup {
@@ -84,15 +86,29 @@ export interface PlanRemindersResult {
  * terminal: never fires once the owning event has ended, or once the
  * assignment is more than REMINDER_OVERDUE_TAIL_MS past its due date --
  * wave-58 amendment, stops the forever drip on an incomplete task nobody
- * ever completes. */
-export function isReminderDue(a: ReminderAssignment, now: number, eventEndsAt: number | null): boolean {
+ * ever completes.
+ *
+ * DEC-023 (wave-61 amendment): a.dueDate is a DAY LABEL (DEC-522), not an
+ * instant. Both the terminal tail and the due window are expanded through
+ * dayLabelEndInstant(a.dueDate, timeZone) — the event's own timezone — before
+ * comparison, so a task due "today" in the event's zone is not treated as
+ * already past its 7-day tail, and the 72h window opens/closes at the
+ * event-local end of the due day, not at UTC midnight. */
+export function isReminderDue(
+  a: ReminderAssignment,
+  now: number,
+  eventEndsAt: number | null,
+  timeZone: string,
+): boolean {
   if (a.status === "complete") return false;
   if (a.dueDate === null) return false;
 
   if (eventEndsAt !== null && now > eventEndsAt) return false;
-  if (now > a.dueDate + REMINDER_OVERDUE_TAIL_MS) return false;
 
-  const isOverdueOrSoon = a.dueDate <= now + DUE_WINDOW_MS;
+  const dueEnd = dayLabelEndInstant(a.dueDate, timeZone);
+  if (now > dueEnd + REMINDER_OVERDUE_TAIL_MS) return false;
+
+  const isOverdueOrSoon = dueEnd <= now + DUE_WINDOW_MS;
   if (!isOverdueOrSoon) return false;
 
   if (a.lastRemindedAt === null) return true;
@@ -106,7 +122,7 @@ export function isReminderDue(a: ReminderAssignment, now: number, eventEndsAt: n
 export function planReminders(input: PlanRemindersInput): PlanRemindersResult {
   const byContact = new Map<string, ReminderAssignment[]>();
   for (const a of input.assignments) {
-    if (!isReminderDue(a, input.now, input.eventEndsAt)) continue;
+    if (!isReminderDue(a, input.now, input.eventEndsAt, input.timeZone)) continue;
     const arr = byContact.get(a.contactId) ?? [];
     arr.push(a);
     byContact.set(a.contactId, arr);

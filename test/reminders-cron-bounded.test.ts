@@ -303,12 +303,19 @@ describe("DEC-319 amendment (wave 38): cron bounds its read instead of refusing 
     insertTask(sqlite, "task-eligible", DUE_SOON);
     seedChaseableContact(sqlite, "contact-eligible", "task-eligible");
 
-    // beyond DUE_WINDOW_MS (due far in the future, not yet due/overdue)
-    insertTask(sqlite, "task-far-future", NOW_MS + DUE_WINDOW_MS + 60 * 60 * 1000);
+    // beyond DUE_WINDOW_MS (due far in the future, not yet due/overdue).
+    // wave-61 amendment (DEC-023): listDueReminderContactIds widens its
+    // pre-filter by TWO_DAY_MS on each side (the coarse-superset bound now
+    // has to cover isReminderDue's zone-expanded dueEnd, which can land up
+    // to ~2 days past the raw day label) — so this must clear the window by
+    // more than that slack, not just DUE_WINDOW_MS + 1h.
+    const TWO_DAY_MS_PLUS_SLOP = 2 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000;
+    insertTask(sqlite, "task-far-future", NOW_MS + DUE_WINDOW_MS + TWO_DAY_MS_PLUS_SLOP);
     seedChaseableContact(sqlite, "contact-far-future", "task-far-future");
 
-    // beyond REMINDER_OVERDUE_TAIL_MS (long overdue, past the terminal tail)
-    insertTask(sqlite, "task-too-old", NOW_MS - REMINDER_OVERDUE_TAIL_MS - 60 * 60 * 1000);
+    // beyond REMINDER_OVERDUE_TAIL_MS (long overdue, past the terminal tail
+    // and past the widened pre-filter's slack).
+    insertTask(sqlite, "task-too-old", NOW_MS - REMINDER_OVERDUE_TAIL_MS - TWO_DAY_MS_PLUS_SLOP);
     seedChaseableContact(sqlite, "contact-too-old", "task-too-old");
 
     // reminded inside DEDUPE_WINDOW_MS
