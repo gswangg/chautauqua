@@ -255,10 +255,11 @@ describe('EmbedsPanel', () => {
     expect(screen.queryByLabelText('Day')).not.toBeInTheDocument();
   });
 
-  // DEC-851: agenda honors trackId as a real SQL predicate now (the server
-  // no longer silently ignores it), so its knob table keeps the Track
-  // control alongside Day rather than hiding it.
-  it('keeps the Track control for the agenda surface, alongside Day', async () => {
+  // DEC-489 (wave-12 amendment): agenda keeps a track control alongside Day,
+  // but it's a HIGHLIGHT (DEC-851, never a SQL filter) — the corrected knob
+  // table labels it "Highlight track" rather than "Track" so the control
+  // never implies a narrowing the surface doesn't perform.
+  it('keeps the Track control for the agenda surface, alongside Day, labeled as a highlight', async () => {
     mockEvent();
     renderPanel();
 
@@ -271,7 +272,7 @@ describe('EmbedsPanel', () => {
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/agenda/).length).toBeGreaterThan(0);
     });
-    expect(screen.getByRole('combobox', { name: 'Track' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Highlight track' })).toBeInTheDocument();
     expect(screen.getByLabelText('Day')).toBeInTheDocument();
   });
 

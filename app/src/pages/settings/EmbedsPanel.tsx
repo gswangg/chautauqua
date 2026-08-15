@@ -19,6 +19,7 @@ import {
   EMBED_FORMATS,
   EMBED_KNOBS_BY_SURFACE,
   EMBED_SURFACES,
+  trackKnobMode,
   type EmbedField,
   type EmbedFormat,
   type EmbedSurface,
@@ -364,7 +365,7 @@ export function EmbedsPanel() {
             {knobs.includes('trackId') ? (
               <>
                 <label>
-                  Track
+                  {trackKnobMode(surface) === 'highlight' ? 'Highlight track' : 'Track'}
                   <select
                     className="chq-select"
                     value={trackId}
@@ -378,6 +379,11 @@ export function EmbedsPanel() {
                     ))}
                   </select>
                 </label>
+                {trackKnobMode(surface) === 'highlight' ? (
+                  <p className="chq-embeds-note">
+                    This calls out the track's sessions — every session still shows, none are filtered out.
+                  </p>
+                ) : null}
                 {saveFieldErrors.trackId ? (
                   <span role="alert" className="chq-field-error">
                     {saveFieldErrors.trackId}

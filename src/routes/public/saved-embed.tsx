@@ -24,11 +24,13 @@ import { parseTrackId, parseNameQuery, parseDay, parseLimit, parseCardFields, pa
 import { renderSurfaceContent } from "./dispatch";
 import { publicNotFound } from "./not-found";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
-import { DEC_822, DEC_839, DEC_850 } from "../../decisions";
+import { knobsForSurface, type EmbedSurface } from "../../lib/embed-knobs";
+import { DEC_822, DEC_839, DEC_850, DEC_489 } from "../../decisions";
 
 void DEC_822;
 void DEC_839;
 void DEC_850;
+void DEC_489;
 
 export const savedEmbedRoutes = new Hono<AppEnv>();
 
@@ -74,15 +76,21 @@ savedEmbedRoutes.get("/embed/e/:embedId", async (c) => {
   // options_json once, in src/server/repo/embeds.ts) -- no local re-parse.
   const opts = embed.options;
   if (embed.format === "json" || embed.format === "xml") {
+    // DEC-489 (wave-12 amendment): only serialize knobs the surface's table
+    // lists into the redirect — same gate buildEmbedUrl applies
+    // (embedSnippet.ts), so a saved recipe can never carry forward a knob
+    // the .json/.xml feed twin (getSurfaceFeedPage, src/routes/public/
+    // index.tsx) ignores for this surface.
+    const surfaceKnobs = knobsForSurface(embed.surface as EmbedSurface);
     const params = new URLSearchParams();
-    if (opts.trackId) params.set("trackId", opts.trackId);
-    if (opts.sessionFormat) params.set("format", opts.sessionFormat);
-    if (opts.roomId) params.set("roomId", opts.roomId);
-    if (opts.day) params.set("day", opts.day);
-    if (opts.q) params.set("q", opts.q);
-    if (opts.limit !== undefined) params.set("limit", String(opts.limit));
-    if (opts.fields && opts.fields.length > 0) params.set("fields", opts.fields.join(","));
-    if (opts.accent) params.set("accent", opts.accent.replace(/^#/, ""));
+    if (surfaceKnobs.includes("trackId") && opts.trackId) params.set("trackId", opts.trackId);
+    if (surfaceKnobs.includes("format") && opts.sessionFormat) params.set("format", opts.sessionFormat);
+    if (surfaceKnobs.includes("roomId") && opts.roomId) params.set("roomId", opts.roomId);
+    if (surfaceKnobs.includes("day") && opts.day) params.set("day", opts.day);
+    if (surfaceKnobs.includes("q") && opts.q) params.set("q", opts.q);
+    if (surfaceKnobs.includes("limit") && opts.limit !== undefined) params.set("limit", String(opts.limit));
+    if (surfaceKnobs.includes("fields") && opts.fields && opts.fields.length > 0) params.set("fields", opts.fields.join(","));
+    if (surfaceKnobs.includes("accent") && opts.accent) params.set("accent", opts.accent.replace(/^#/, ""));
     const qs = params.toString();
     return c.redirect(`/embed/${event.slug}/${embed.surface}.${embed.format}${qs ? `?${qs}` : ""}`, 302);
   }

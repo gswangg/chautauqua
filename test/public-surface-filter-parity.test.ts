@@ -1,15 +1,17 @@
-// DEC-851: one filter contract for the public agenda/schedule surfaces — the
-// HTML page, its .json twin, its .xml twin and the embed builder's knob
-// table must all read the same enumerated knob set: ['trackId','format',
-// 'day','q','limit','accent'] (no roomId, no fields).
+// DEC-851 / DEC-489 (wave-12 amendment): one filter contract for the public
+// agenda/schedule surfaces — the HTML page (dispatch.tsx, NORMATIVE) and its
+// .json/.xml twins must all read the same enumerated knob set:
+// ['trackId','day','q','accent'] (no format, no roomId, no limit, no
+// fields).
 //
-// DEC-851's wave-64 amendment narrows the ROW-SET half of that claim for the
-// two itinerary surfaces: /agenda and /schedule now HIGHLIGHT by track and
-// ignore ?format= entirely, so their HTML pages render every scheduled row
-// while their .json/.xml twins keep the DEC-851 predicate. The amendment
-// speaks only about the two rendered surfaces, so the feeds are left exactly
-// as DEC-851 ruled and the knob table is unchanged; day/q parity between the
-// page and its twin is unaffected and still asserted below.
+// DEC-851's wave-64 amendment narrowed the ROW-SET half of that claim for the
+// two itinerary surfaces: /agenda and /schedule HIGHLIGHT by track and
+// ignore ?format= entirely on the HTML page. DEC-489's wave-12 amendment
+// found the .json/.xml twins had drifted from that same HTML page (still
+// applying trackId/format as SQL-level predicates it never threads) and
+// re-declared the twins to match the HTML page exactly, since the HTML
+// reader is normative: trackId is a highlight (never filters `items`/
+// `total`), and `format` isn't an agenda facet on either reader.
 //
 // DEC-768's wave-67 amendment further narrows the /agenda HTML page's own
 // default: it now renders ONE day at a time (the first day with scheduled
@@ -284,28 +286,21 @@ describe("DEC-768 (wave 67 amendment): /agenda's single-day default vs the .json
   });
 });
 
-describe("DEC-851: /embed/:slug/agenda.json?trackId= no longer returns the unfiltered agenda", () => {
-  it("a trackId-filtered .json total is strictly less than the unfiltered total", async () => {
+describe("DEC-489 (wave-12 amendment): /embed/:slug/agenda.json?trackId= no longer filters — it matches the HTML page's highlight", () => {
+  it("a trackId-'filtered' .json total EQUALS the unfiltered total (highlight, not filter, on both readers)", async () => {
     installFakeCaches();
     const app = buildApp();
     const unfilteredTotal = await jsonTotal(app, "/embed/conf/agenda.json");
     installFakeCaches();
-    const filteredTotal = await jsonTotal(app, "/embed/conf/agenda.json?trackId=trk-a");
-    expect(filteredTotal).toBeLessThan(unfilteredTotal);
-    expect(filteredTotal).toBe(RAW_SESSIONS.filter((r) => r.trackId === "trk-a").length);
+    const withTrackIdTotal = await jsonTotal(app, "/embed/conf/agenda.json?trackId=trk-a");
+    expect(withTrackIdTotal).toBe(unfilteredTotal);
   });
 
-  // DEC-851 wave-64 amendment: the HTML page at the SAME query no longer
-  // matches that filtered total — on a schedule, track highlights and never
-  // filters, so every session stays on screen (an attendee following one
-  // track still needs to see what they are giving up at 10:00). The feed is
-  // a data export, not a schedule rendering, and keeps DEC-851's predicate.
-  // DEC-768 wave-67 amendment: /agenda now renders one DAY at a time, so
-  // "every row" means every row of the day in view, not the whole event —
-  // this case pins an explicit ?day= (rather than relying on the default-day
-  // pick) so the highlight-vs-filter claim stays legible regardless of which
-  // day the mocked getPublicScheduleDayCounts would otherwise pick first.
-  it("the HTML page at the identical query renders EVERY row of the day in view (highlight, not filter) while the .json twin stays filtered", async () => {
+  // DEC-851 wave-64 amendment established the HTML page's own highlight
+  // behavior; DEC-489's wave-12 amendment re-declared the .json/.xml twins
+  // to mirror it exactly, since the HTML reader is normative. Both readers
+  // now render every row of the day in view regardless of ?trackId=.
+  it("the HTML page and the .json twin render the SAME row count at the identical query — trackId highlights on both, filters neither", async () => {
     installFakeCaches();
     const app = buildApp();
     const htmlRes = await app.request("/e/conf/agenda?day=2026-08-10&trackId=trk-a", {}, TEST_ENV);
@@ -313,13 +308,11 @@ describe("DEC-851: /embed/:slug/agenda.json?trackId= no longer returns the unfil
     installFakeCaches();
     const jsonTotalValue = await jsonTotal(app, "/embed/conf/agenda.json?day=2026-08-10&trackId=trk-a");
     const day10Count = RAW_SESSIONS.filter((r) => r.day === "2026-08-10").length;
-    const day10TrackACount = RAW_SESSIONS.filter((r) => r.day === "2026-08-10" && r.trackId === "trk-a").length;
     expect(countHtmlRows(html, "agenda")).toBe(day10Count);
-    expect(jsonTotalValue).toBe(day10TrackACount);
-    expect(jsonTotalValue).toBeLessThan(day10Count);
+    expect(jsonTotalValue).toBe(day10Count);
   });
 
-  it("the HTML page ignores ?format= entirely (not an agenda facet) on both itinerary surfaces", async () => {
+  it("neither reader honors ?format= at all (not an agenda facet) on both itinerary surfaces", async () => {
     // DEC-768 wave-67 amendment: /agenda's default view is scoped to the
     // first day with sessions (2 of the 3 RAW_SESSIONS, both on
     // 2026-08-10); /schedule is untouched and still lists every day.
@@ -330,45 +323,56 @@ describe("DEC-851: /embed/:slug/agenda.json?trackId= no longer returns the unfil
       const htmlRes = await app.request(`/e/conf/${surface}?format=talk`, {}, TEST_ENV);
       const html = await htmlRes.text();
       expect(countHtmlRows(html, surface)).toBe(expectedBySurface[surface]);
+
+      // The .json twin is unpaged and unscoped to a single day (DEC-768's
+      // amendment only touched the HTML /agenda default) -- ?format= is
+      // ignored there too, so its total stays the whole-event count.
+      installFakeCaches();
+      const jsonTotalValue = await jsonTotal(app, `/embed/conf/${surface}.json?format=talk`);
+      expect(jsonTotalValue).toBe(RAW_SESSIONS.length);
     }
   });
 });
 
-describe("DEC-851: the .xml route applies ?format= exactly like the .json route", () => {
-  it("threads format into the getPublicAgenda call the same way .json does", async () => {
+describe("DEC-489 (wave-12 amendment): the .json/.xml feed twins never thread trackId or format into getPublicAgenda for agenda/schedule", () => {
+  it("agenda.json/.xml call getPublicAgenda with day/q only, mirroring dispatch.tsx exactly", async () => {
     installFakeCaches();
     const app = buildApp();
     getPublicAgendaMock.mockClear();
-    await app.request("/embed/conf/agenda.json?format=talk", {}, TEST_ENV);
+    await app.request("/embed/conf/agenda.json?trackId=trk-a&format=talk&q=talk", {}, TEST_ENV);
     const jsonCallParams = getPublicAgendaMock.mock.calls.at(-1)?.[2];
-    expect(jsonCallParams).toMatchObject({ format: "talk" });
+    expect(jsonCallParams).toEqual({ day: null, q: "talk" });
 
     installFakeCaches();
     getPublicAgendaMock.mockClear();
-    await app.request("/embed/conf/agenda.xml?format=talk", {}, TEST_ENV);
+    await app.request("/embed/conf/agenda.xml?trackId=trk-a&format=talk&q=talk", {}, TEST_ENV);
     const xmlCallParams = getPublicAgendaMock.mock.calls.at(-1)?.[2];
-    expect(xmlCallParams).toMatchObject({ format: "talk" });
+    expect(xmlCallParams).toEqual({ day: null, q: "talk" });
   });
 
-  it("schedule.xml also threads format", async () => {
+  it("schedule.xml also drops trackId and format", async () => {
     installFakeCaches();
     const app = buildApp();
     getPublicAgendaMock.mockClear();
-    await app.request("/embed/conf/schedule.xml?format=workshop", {}, TEST_ENV);
+    await app.request("/embed/conf/schedule.xml?trackId=trk-a&format=workshop", {}, TEST_ENV);
     const xmlCallParams = getPublicAgendaMock.mock.calls.at(-1)?.[2];
-    expect(xmlCallParams).toMatchObject({ format: "workshop" });
+    expect(xmlCallParams).toEqual({ day: null, q: null });
   });
 });
 
-describe("DEC-851: EMBED_KNOBS_BY_SURFACE pins the same set for agenda/schedule", () => {
-  it("agenda and schedule both list trackId, format and q alongside day/limit/accent", async () => {
-    const { EMBED_KNOBS_BY_SURFACE } = await import("../app/src/pages/settings/embedSnippet");
-    const expected = ["trackId", "format", "day", "q", "limit", "accent"];
+describe("DEC-489 (wave-12 amendment): EMBED_KNOBS_BY_SURFACE pins the corrected set for agenda/schedule", () => {
+  it("agenda and schedule both list trackId(highlight), day, q, accent — never format, roomId, limit or fields", async () => {
+    const { EMBED_KNOBS_BY_SURFACE, trackKnobMode } = await import("../app/src/pages/settings/embedSnippet");
+    const expected = ["trackId", "day", "q", "accent"];
     expect([...EMBED_KNOBS_BY_SURFACE.agenda].sort()).toEqual([...expected].sort());
     expect([...EMBED_KNOBS_BY_SURFACE.schedule].sort()).toEqual([...expected].sort());
     expect(EMBED_KNOBS_BY_SURFACE.agenda).not.toContain("roomId");
     expect(EMBED_KNOBS_BY_SURFACE.agenda).not.toContain("fields");
+    expect(EMBED_KNOBS_BY_SURFACE.agenda).not.toContain("format");
+    expect(EMBED_KNOBS_BY_SURFACE.agenda).not.toContain("limit");
     expect(EMBED_KNOBS_BY_SURFACE.schedule).not.toContain("roomId");
     expect(EMBED_KNOBS_BY_SURFACE.schedule).not.toContain("fields");
+    expect(trackKnobMode("agenda")).toBe("highlight");
+    expect(trackKnobMode("schedule")).toBe("highlight");
   });
 });

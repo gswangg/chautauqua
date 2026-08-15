@@ -11,8 +11,21 @@
 // embed's own output format — iframe/json/etc, a PATH suffix, never this
 // query param).
 
-export const EMBED_SURFACES = ['sessions', 'speakers', 'agenda', 'schedule', 'gallery'] as const;
-export type EmbedSurface = (typeof EMBED_SURFACES)[number];
+// DEC-489 (wave-12 amendment): the surface list and knob table both moved to
+// a pure-core home (src/lib/embed-knobs.ts) via the ONE named app/->src/
+// boundary crossing, same pattern as embed-formats.ts/embed-fields.ts above,
+// so this SPA module and the saved-embeds API (src/routes/api/embeds.ts)
+// share the exact same table instead of a hand-copied list that can drift.
+import {
+  EMBED_SURFACES,
+  type EmbedSurface,
+  type EmbedKnob,
+  type TrackKnobMode,
+  knobsForSurface,
+  trackKnobMode,
+  EMBED_KNOBS_BY_SURFACE,
+} from '../../lib/embed-knobs';
+export { EMBED_SURFACES, type EmbedSurface, type EmbedKnob, type TrackKnobMode, knobsForSurface, trackKnobMode, EMBED_KNOBS_BY_SURFACE };
 
 // DEC-617: 'element' is the hardened <chq-embed> custom-element upgrade —
 // same URL/path rules as 'iframe', a different copyable snippet. The plain
@@ -54,31 +67,6 @@ export interface EmbedOptions {
   fields?: EmbedField[];
   accent?: string;
 }
-
-// DEC-490 / DEC-489 / DEC-673: the knobs a given public surface actually
-// honors, per DEC-489's fixed surface->knob table (DEC-634 added `day` as a
-// real SQL predicate on sessions; DEC-673 added the `q` keyword/name search
-// to sessions, speakers and gallery). buildEmbedUrl consults this so it
-// never serializes a param the surface ignores, and EmbedsPanel.tsx consults
-// it so it never renders a control for a knob the surface ignores.
-export type EmbedKnob = 'trackId' | 'format' | 'roomId' | 'day' | 'q' | 'limit' | 'fields' | 'accent';
-
-export const EMBED_KNOBS_BY_SURFACE: Record<EmbedSurface, readonly EmbedKnob[]> = {
-  // DEC-774: format/roomId join trackId as sessions-only filter knobs.
-  sessions: ['trackId', 'format', 'roomId', 'day', 'q', 'limit', 'fields', 'accent'],
-  // DEC-990 (wave-67 amendment): trackId joins q/limit/accent as a real
-  // SQL-level predicate on getPublicSpeakers (mirrors dispatch.tsx's HTML
-  // case) — track is not sessions-only.
-  speakers: ['trackId', 'q', 'limit', 'accent'],
-  gallery: ['trackId', 'q', 'limit', 'accent'],
-  // DEC-851: agenda/schedule honour trackId/format/day/q/limit/accent as
-  // real SQL-level predicates on getPublicAgenda — no roomId (the grid
-  // renders rooms as columns) and no fields (no card-field allowlist on a
-  // time grid). This hand-listed pair had desynced from what the server
-  // actually honoured (DEC-783/DEC-804 taught it trackId and q).
-  agenda: ['trackId', 'format', 'day', 'q', 'limit', 'accent'],
-  schedule: ['trackId', 'format', 'day', 'q', 'limit', 'accent'],
-};
 
 /** Builds the public embed URL for a surface + format + filter/branding
  * options, per DEC-289. `origin` is expected to be `window.location.origin`

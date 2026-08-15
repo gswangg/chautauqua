@@ -139,7 +139,7 @@ describe("PATCH /api/v1/embeds/:id at the cap (DEC-822)", () => {
       updatedAt: new Date(1000),
     };
     const repo = await import("../src/server/repo/embeds");
-    vi.spyOn(repo, "getEmbedOwnership").mockResolvedValue({ orgId: ORG_A, eventId: EVENT_ID });
+    vi.spyOn(repo, "getEmbedOwnership").mockResolvedValue({ orgId: ORG_A, eventId: EVENT_ID, surface: "sessions", options: {} });
     vi.spyOn(repo, "updateEmbed").mockResolvedValue({ ...EMBED_ROW, name: "Renamed" } as any);
 
     app.use("*", async (c, next) => {

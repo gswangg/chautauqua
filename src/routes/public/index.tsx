@@ -493,15 +493,16 @@ async function getSurfaceFeedPage(
     }
     case "agenda":
     case "schedule": {
-      // DEC-851: trackId/q/format are SQL-level predicates on getPublicAgenda
-      // (mirrors dispatch.tsx's HTML case) — without them this .json/.xml
-      // twin silently ignored ?trackId=/?q=/?format= and returned the
-      // unfiltered agenda while the HTML page at the same query string
-      // returned the filtered one.
-      const trackId = parseTrackId(query.trackId);
+      // DEC-489 (wave-12 amendment): the HTML reader (dispatch.tsx) is
+      // NORMATIVE and is not changed -- it never threads trackId or format
+      // into getPublicAgenda for these two surfaces (trackId is a
+      // render-level HIGHLIGHT per DEC-851, every session still renders;
+      // `?format=` "is not an agenda facet at all"), and it fetches no
+      // perPage (so ?limit= is not a knob here either). This feed twin
+      // mirrors exactly that call -- day/q only -- rather than the wider,
+      // now-defect'd SQL predicate set the previous version applied.
       const q = parseNameQuery(query.q);
-      const format = parseFormat(query.format);
-      const { items, total } = await getPublicAgenda(db, event, { day: query.day, trackId, q, format });
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day, q });
       return { items, total, page: 1, perPage: items.length };
     }
     default: {

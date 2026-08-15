@@ -71,7 +71,7 @@ vi.mock("../src/server/repo/embeds", async () => {
     ),
     getEmbedOwnership: vi.fn(async (_db: unknown, id: string) => {
       const row = store.get(id);
-      return row ? { orgId: row.orgId, eventId: row.eventId } : null;
+      return row ? { orgId: row.orgId, eventId: row.eventId, surface: row.surface, options: JSON.parse(row.optionsJson) } : null;
     }),
     trackBelongsToEvent: vi.fn(async (_db: unknown, trackId: string, eventId: string) => trackId === "track-1" && eventId === EVENT_ID),
     roomBelongsToEvent: vi.fn(async () => true),
