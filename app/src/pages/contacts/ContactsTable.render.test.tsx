@@ -7,8 +7,11 @@
 // derived participation-role chips), and the row action becomes a quiet
 // 'Open' tertiary link.
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ContactsTable } from './ContactsTable';
 import { EMPTY_SELECTION } from './selection';
 import type { ContactListItem } from './types';
@@ -155,5 +158,66 @@ describe('ContactsTable empty states (B7 rule 6, DEC-678)', () => {
     renderTable({ items: [], total: 0, loading: true, empty: { variant: 'fresh' } });
     expect(screen.getByText('Loading contacts…')).toBeInTheDocument();
     expect(screen.queryByText('No contacts yet.')).not.toBeInTheDocument();
+  });
+});
+
+// w20-c (DEC-902 amendment): docs/design/Chautauqua Contacts.dc.html:97/101
+// give the directory table an exact track list -- 26px 1fr 130px 118px
+// auto -- but table-layout:auto left every column unwidthed. Pin the width
+// class on each <th> and the table-layout:fixed + widths in styles.css.
+describe('ContactsTable column allocation (w20-c, DEC-902)', () => {
+  it('marks the select, company, labels and actions headers with their width-hook classes, leaving Name and email the sole unwidthed column', () => {
+    renderTable();
+    const table = screen.getByRole('table');
+    const headers = within(table).getAllByRole('columnheader');
+    expect(headers).toHaveLength(5);
+    expect(headers[0]).toHaveClass('chq-contacts-col-select');
+    expect(headers[1]).toHaveTextContent('Name and email');
+    expect(headers[1]!.className).toBe('');
+    expect(headers[2]).toHaveClass('chq-contacts-col-company');
+    expect(headers[3]).toHaveClass('chq-contacts-col-labels');
+    expect(headers[4]).toHaveClass('chq-contacts-col-actions');
+  });
+
+  it('declares table-layout:fixed and the four column widths inside a min-width:701px block, leaving the phone reflow untouched', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../styles.css'), 'utf-8');
+
+    const desktopBlockMatch = css.match(/@media \(min-width: 701px\) \{([\s\S]*?)\n\}\n/);
+    expect(desktopBlockMatch).not.toBeNull();
+    const desktopBlock = desktopBlockMatch![1]!;
+
+    expect(desktopBlock).toMatch(/\.chq-contacts-table\s*\{\s*table-layout:\s*fixed;\s*\}/);
+    expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-select\s*\{\s*width:\s*26px;\s*\}/);
+    expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-company\s*\{\s*width:\s*130px;\s*\}/);
+    expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-labels\s*\{\s*width:\s*118px;\s*\}/);
+    expect(desktopBlock).toMatch(
+      /\.chq-contacts-table \.chq-contacts-col-actions\s*\{\s*width:\s*1px;\s*white-space:\s*nowrap;\s*\}/,
+    );
+
+    // No column class carries a width; Name and email is the sole remainder.
+    expect(css).not.toMatch(/chq-contacts-col-name/);
+
+    // The phone reflow block (contacts.css) is a separate file/selector
+    // that this change never touches -- table-layout only governs the
+    // desktop <table> display mode, and the phone block overrides display
+    // to block/flex on the same selectors regardless.
+    const contactsCss = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'contacts.css'),
+      'utf-8',
+    );
+    expect(contactsCss).toMatch(/@media \(max-width: 700px\) \{/);
+    expect(contactsCss).not.toMatch(/table-layout/);
+  });
+
+  it('does not re-declare .chq-contacts-table as a second top-level selector', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../styles.css'), 'utf-8');
+    const topLevelMatches = css.match(/^\.chq-contacts-table\s*\{/gm) ?? [];
+    expect(topLevelMatches).toHaveLength(1);
+
+    const contactsCss = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'contacts.css'),
+      'utf-8',
+    );
+    expect(contactsCss).not.toMatch(/^\.chq-contacts-table\s*\{/m);
   });
 });
