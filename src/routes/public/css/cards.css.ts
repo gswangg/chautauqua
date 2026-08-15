@@ -140,25 +140,26 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   }
 
   /* List view (SpeakersContent/SpeakerListRow): a ruled list, not a grid --
-     ~80px rounded headshot | name + role/company | that speaker's session
-     titles in a right-hand column, one hairline rule per row. */
+     76px square headshot (card-radius, matching the grid tile) | name +
+     role/company | that speaker's session titles pinned to a 280px
+     right-hand column, one hairline rule per row. */
   .chq-pub-speaker-list { list-style: none; margin: 0; padding: 0; }
   .chq-pub-speaker-list-row {
     display: grid;
-    grid-template-columns: 80px 1fr 1fr;
+    grid-template-columns: 76px 1fr 280px;
     gap: 20px;
     align-items: center;
     padding: 16px 0;
     border-bottom: 1px solid var(--chq-hairline);
   }
-  .chq-pub-speaker-list-photo { width: 80px; }
+  .chq-pub-speaker-list-photo { width: 76px; }
   .chq-pub-speaker-list-photo img,
   .chq-pub-speaker-list-photo .chq-pub-headshot-fallback {
-    width: 80px;
-    height: 80px;
+    width: 76px;
+    height: 76px;
     aspect-ratio: 1/1;
     object-fit: cover;
-    border-radius: 50%;
+    border-radius: var(--chq-r-card);
     background: var(--chq-surface-sunk);
   }
   .chq-pub-speaker-list-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
