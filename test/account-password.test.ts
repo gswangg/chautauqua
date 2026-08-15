@@ -807,7 +807,7 @@ describe("POST /api/v1/users welcome email no longer carries the password", () =
       const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
       return {
         ...actual,
-        listEventsForOrg: vi.fn(async () => [{ id: "event-1", orgId: "org-a" }]),
+        getAnchorEventForOrg: vi.fn(async () => ({ id: "event-1", orgId: "org-a" })),
       };
     });
     vi.doMock("../src/server/context", async () => {

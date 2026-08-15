@@ -78,6 +78,29 @@ export async function listEventsForOrg(db: Db, orgId: string, page?: RepoPage): 
   return rows.map(toEventRecord);
 }
 
+/**
+ * DEC-013 (wave-26 amendment): the "anchor event" for an org — used
+ * wherever a caller is not event-scoped but a row still requires a
+ * non-null event_id (e.g. email_log.event_id is NOT NULL, and org user
+ * accounts themselves are not event-scoped, so password-reset mail and
+ * account-creation mail must pick *some* event to attribute the row to).
+ *
+ * Ordering contract: the anchor is the same row that would sort first
+ * from listEventsForOrg's default ordering — most recent startDate desc,
+ * ties broken by id asc — but selected with LIMIT 1 so this never
+ * materialises more than one row. Do not change listEventsForOrg's
+ * ordering without updating this comment and the contract test.
+ */
+export async function getAnchorEventForOrg(db: Db, orgId: string): Promise<EventRecord | undefined> {
+  const rows = await db
+    .select()
+    .from(schema.event)
+    .where(eq(schema.event.orgId, orgId))
+    .orderBy(desc(schema.event.startDate), asc(schema.event.id))
+    .limit(1);
+  return rows[0] ? toEventRecord(rows[0]) : undefined;
+}
+
 export async function countEventsForOrg(db: Db, orgId: string): Promise<number> {
   const rows = await db
     .select({ count: sql<number>`count(*)` })
