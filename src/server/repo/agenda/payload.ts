@@ -14,7 +14,7 @@ import { ApiError } from "../../http";
 import { findConflicts, scheduleSummary, type PlacedSession } from "../../../domain/schedule";
 import { computeDays, dayOutsideEventRangeCondition, isDayWithinEventRange } from "./days";
 import { buildConflictLabels, describeConflicts } from "./labels";
-import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
+import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
 import {
   MAX_AGENDA_SCAN,
   loadAcceptedSessions,
@@ -239,10 +239,12 @@ export async function getConflictsAndSummary(
       .where(
         and(
           inArray(schema.participant.submissionId, batch),
-          // DEC-974: same active-participant rule as loadAcceptedSessions —
-          // a speaker hidden from the public programme still can't be
-          // double-booked, so ACTIVE_INVITE_STATUSES (not `visible`).
-          inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+          // DEC-974: same not-declined participant rule as loadAcceptedSessions
+          // — a speaker hidden from the public programme, or still pending
+          // their invite, still can't be double-booked, so
+          // SCHEDULING_PARTICIPANT_STATUSES (not ACTIVE_INVITE_STATUSES, not
+          // `visible`).
+          inArray(schema.participant.inviteStatus, [...SCHEDULING_PARTICIPANT_STATUSES]),
         ),
       );
     participantRows.push(...batchRows);

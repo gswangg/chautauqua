@@ -8,7 +8,7 @@ import * as schema from "../../../db/schema";
 import { formatRef, parseRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { SESSION_FORMAT_FIELD_ID, AUDIENCE_LEVEL_FIELD_ID } from "../../../forms/types";
-import { visibleParticipantConditions } from "../public/gates";
+import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
 import type { PlanRecord } from "./plans";
 import { MAX_REVIEWER_SCOPE_ROWS } from "./reviewers";
@@ -619,12 +619,15 @@ export async function listSpeakersForSubmission(db: Db, submissionId: string): P
   }));
 }
 
-/** DEC-703: batched speaker-name lookup for a results page/export -- ONE
- * query (per chunkIds batch, DEC-078) keyed to the caller's own submission
- * id set, never a per-submission read and never an unscoped scan of
- * participant/contact. Visible-participant order only (DEC-561/DEC-562:
- * participant.order asc, contact.id asc), mirroring listSpeakersForSubmission
- * but for many submissions at once. */
+/** DEC-703/DEC-974: batched speaker-name lookup for an ORGANISER-ONLY results
+ * page/export -- ONE query (per chunkIds batch, DEC-078) keyed to the
+ * caller's own submission id set, never a per-submission read and never an
+ * unscoped scan of participant/contact. Not-declined participant order only
+ * (SCHEDULING_PARTICIPANT_STATUSES -- 'none'/'invited'/'accepted', the same
+ * organiser-surface population the conflict engine and agenda card use, NOT
+ * the public-facing visibleParticipantConditions()) ordered
+ * (participant.order asc, contact.id asc -- DEC-561/DEC-562), mirroring
+ * listSpeakersForSubmission but for many submissions at once. */
 export async function listSpeakerNamesForSubmissions(db: Db, submissionIds: string[]): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>();
   if (submissionIds.length === 0) return map;
@@ -637,7 +640,12 @@ export async function listSpeakerNamesForSubmissions(db: Db, submissionIds: stri
       })
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .where(and(inArray(schema.participant.submissionId, batch), visibleParticipantConditions()))
+      .where(
+        and(
+          inArray(schema.participant.submissionId, batch),
+          inArray(schema.participant.inviteStatus, [...SCHEDULING_PARTICIPANT_STATUSES]),
+        ),
+      )
       .orderBy(asc(schema.participant.order), asc(schema.contact.id));
     for (const row of rows) {
       const list = map.get(row.submissionId) ?? [];

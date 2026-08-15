@@ -129,6 +129,21 @@ export function isActiveParticipant(inviteStatus: string): boolean {
 }
 
 /**
+ * DEC-974 amendment: the NOT-DECLINED population an ORGANISER surface (the
+ * conflict engine's speaker set, the admin agenda card, the results
+ * page/export) uses — 'none' or 'invited' or 'accepted', excluding only
+ * 'declined'. An organiser-added co-presenter is minted at inviteStatus
+ * 'invited' (participants.ts) and must still be visible for scheduling and
+ * results purposes: an invited-but-not-yet-accepted person still cannot be
+ * in two rooms at once, and still spoke on the session for results purposes.
+ * Deliberately distinct from ACTIVE_INVITE_STATUSES, which gates WRITE
+ * access (portal editing, file uploads, task planning, compose recipients)
+ * and public-facing visibility — those surfaces must NOT show or act on an
+ * invite that hasn't been accepted yet.
+ */
+export const SCHEDULING_PARTICIPANT_STATUSES = ["none", "invited", "accepted"] as const;
+
+/**
  * DEC-317: participant invite state gates portal and file access on two
  * levels — read=not-declined (a participant may still SEE their submission
  * while an invite is outstanding), write=active (only ACTIVE_INVITE_STATUSES
