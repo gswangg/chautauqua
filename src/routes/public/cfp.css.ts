@@ -79,7 +79,7 @@ export const CFP_CSS = `
      options out in a row instead of TrackChoices'/FormatChoices' column,
      each pill sized to its own content rather than stretching full width. */
   .chq-cfp-segment { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
-  .chq-cfp-option.chq-cfp-pill { width: auto; border-radius: 99px; min-height: 44px; }
+  .chq-cfp-option.chq-cfp-pill { width: auto; border-radius: 99px; }
 
   /* form-render.tsx's shared FormField output (used by both this CFP page
      and the portal edit forms): .chq-field wraps each labeled control,
@@ -185,6 +185,10 @@ export const CFP_CSS = `
     .chq-cfp-header, .chq-cfp-body { padding-left: 16px; padding-right: 16px; }
     .chq-cfp-track-format-row,
     .chq-cfp-you-grid.chq-cfp-fields { grid-template-columns: 1fr; }
+    /* DEC-367 (wave 50 amendment): the phone tap floor -- the Audience-level
+       pill sizes to padding on desktop, per docs/design/README.md
+       §Controls. */
+    .chq-cfp-option.chq-cfp-pill { min-height: 44px; }
 
     /* CfpStepsScript is the only thing that ever changes
        data-chq-cfp-step away from its markup default of "all" (server-

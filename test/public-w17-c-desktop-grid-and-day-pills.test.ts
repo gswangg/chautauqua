@@ -64,9 +64,16 @@ describe("DEC-885/DEC-385: desktop speaker grid is three-up (single-direction, m
     // has its own earlier @media (max-width: 700px) block for
     // .chq-pub-filter-row, so cutting PUBLIC_CSS at the FIRST "@media"
     // literal would land inside CHROME_CSS, before .chq-pub-speaker-grid's
-    // own rule in CARDS_CSS is ever reached). CARDS_CSS carries no @media
-    // block of its own, so the whole fragment is unprefixed.
-    expect(CARDS_CSS).not.toMatch(/@media/);
+    // own rule in CARDS_CSS is ever reached). CARDS_CSS's own
+    // .chq-pub-speaker-grid rule itself carries no @media prefix -- DEC-367
+    // (wave 50 amendment) since added CARDS_CSS's own phone-scoped 700px
+    // block AFTER it (for .chq-pub-view-toggle-option's tap floor only),
+    // so the grid rule stays unprefixed/desktop.
+    const speakerGridIdx = CARDS_CSS.indexOf(".chq-pub-speaker-grid {");
+    const cardsMediaIdx = CARDS_CSS.indexOf("@media");
+    expect(speakerGridIdx).toBeGreaterThan(-1);
+    expect(cardsMediaIdx).toBeGreaterThan(-1);
+    expect(speakerGridIdx).toBeLessThan(cardsMediaIdx);
     expect(CARDS_CSS).toMatch(
       /\.chq-pub-speaker-grid\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*repeat\(3,\s*1fr\);/,
     );
