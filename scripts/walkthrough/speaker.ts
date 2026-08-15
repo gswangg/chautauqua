@@ -457,9 +457,13 @@ async function main(): Promise<void> {
     assert(res.status === 302, `POST task complete expected 302, got ${res.status}`);
 
     const tasksPage = await speaker1.getText("/portal/tasks");
+    // DEC-366: on-screen wording is frozen as "Done"/"To do" (never
+    // "Completed"/"Pending") — the underlying status value stays
+    // pending|complete, but only the .chq-flag label text renders.
     // src/routes/portal/tasks/views.tsx:237-238 renders a completed
     // assignment's status flag as "Done" (chq-portal-flag-done), not
     // "Completed" — this walkthrough previously asserted the wrong label.
+    // Probe the class, not the bare word "Done", which appears elsewhere.
     assert(tasksPage.body.includes("chq-portal-flag-done"), "task list does not show the task as Done after marking it");
   });
 
@@ -558,6 +562,7 @@ async function main(): Promise<void> {
         !tasksPage.body.includes(`/portal/tasks/${assignmentId}/form`),
         `'${taskTitle}' still shows a 'Fill out form' link after completion`,
       );
+      // DEC-366: on-screen wording is frozen as "Done"/"To do".
       // src/routes/portal/tasks/views.tsx:237-238 renders "Done"/"To do"
       // (never "Completed"/"Pending") behind the chq-flag / chq-portal-
       // flag-done classes.
@@ -791,7 +796,13 @@ async function main(): Promise<void> {
       // stable aria-label token rather than the full opening tag.
       assert(row.includes('aria-label="Uploaded file"'), "row is missing the Uploaded file section");
       assert(row.includes("walkthrough-bio-photo.jpg"), "row is missing the uploaded filename");
-      assert(row.includes("version 1"), "row is missing 'version 1'");
+      // scripts/seed.ts's DEC-739 loop pre-completes this task (with a real
+      // minted file at version_no=1) for every contactIdx % 3 === 0 speaker,
+      // which includes the DEC-172-pinned primary seeded speaker (Priya,
+      // contactIdx 0) this walkthrough logs in as — so our upload above is a
+      // REPLACE onto an already-complete assignment and lands at version 2,
+      // not version 1.
+      assert(row.includes("version 2"), "row is missing 'version 2'");
       assert(
         new RegExp(`href="\\/portal\\/tasks\\/${escapeRegex(bioAssignmentId)}\\/file"`).test(row),
         "row is missing a download link to /portal/tasks/:assignmentId/file",

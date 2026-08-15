@@ -390,11 +390,13 @@ async function reAcceptIsExactlyOnce(
 // (DEC-009: status changes never auto-email)
 // ---------------------------------------------------------------------------
 
-// /dev/mailbox is org-scoped (src/routes/dev/mailbox.tsx reads
-// c.var.auth!.orgId) — it requires an authenticated organizer session, not
-// just DEV_MODE. An unauthenticated fetch() here previously 302-redirected
-// to /login and failed the "reports a message count" assertion; thread the
-// organizer's cookie jar through instead.
+// /dev/mailbox is org-scoped (DEC-546 guardDevMailbox; src/routes/dev/
+// mailbox.tsx reads c.var.auth!.orgId) — it requires an authenticated
+// organizer session, not just DEV_MODE. An unauthenticated fetch() here
+// previously 302-redirected to /login and (following that redirect, the
+// default fetch behavior) yielded a 200 login page with no message count,
+// failing the "reports a message count" assertion; thread the organizer's
+// cookie jar through instead.
 async function readMailboxCount(organizerJar: CookieJar): Promise<number> {
   const res = await jarFetch(organizerJar, `${BASE_URL}/dev/mailbox`);
   const body = await res.text();
@@ -480,7 +482,6 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
   assertTrue("step6: GET /submit sets chq_csrf cookie", Boolean(csrf), "no chq_csrf cookie");
 
   const dropdownValues = parseSelectFirstOptions(getBody);
-  const trackMatch = getBody.match(/name="trackIds" value="([^"]+)"/);
 
   const fullForm = new FormData();
   fullForm.set("chq_csrf", csrf!);
@@ -494,13 +495,15 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
   fullForm.set("speaker_name", "Scale Prober");
   fullForm.set("field__email", email);
   for (const [name, value] of dropdownValues) fullForm.set(name, value);
-  // Dropdown-kind custom fields (e.g. session format) render as RADIO
-  // GROUPS on the public form (DEC-489 family single-track radio idiom),
-  // not <select> — fill each required group's first value too.
+  // Dropdown-kind custom fields (e.g. session format, audience level) render
+  // as RADIO GROUPS on the public form (DEC-489 family single-track radio
+  // idiom), not <select> — fill each required group's first value where the
+  // select scan above found nothing, same as producer.ts.
   for (const match of getBody.matchAll(/<input type="radio" name="(field__field_[a-zA-Z0-9_]+)"[^>]*value="([^"]+)"/g)) {
     const [, name, value] = match;
     if (name && value && !fullForm.has(name)) fullForm.set(name, value);
   }
+  const trackMatch = getBody.match(/name="trackIds" value="([^"]+)"/);
   if (trackMatch) fullForm.set("trackIds", trackMatch[1]!);
 
   const submitRes = await jarFetch(publicJar, `${BASE_URL}/submit/${SEEDED_EVENT_SLUG}`, {
@@ -591,7 +594,8 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
   // (e.g. session format) as real <select> elements, unlike the public
   // /submit page's radio idiom for the same field — reuse
   // parseSelectFirstOptions, but against editGetBody, not the submit page's
-  // getBody, or a required select-kind field is left unset and 400s.
+  // (empty) dropdownValues map, or a required select-kind field is left
+  // unset and 400s.
   const editDropdownValues = parseSelectFirstOptions(editGetBody);
 
   const markerTitle = `Scale purge marker ${stamp}`;

@@ -33,10 +33,23 @@ interface FixtureData {
   identities: {
     organizer: { email: string; password: string };
     speaker: { email: string; password: string };
+    speaker2?: { email: string; password: string };
+    reviewer?: { email: string; password: string };
   };
 }
 
 const fixture: FixtureData = JSON.parse(readFileSync(FIXTURE_PATH, "utf-8"));
+
+// Load-bearing walkthrough identities (organizer/speaker/speaker2/reviewer
+// login accounts) must never be picked as the merge-test's throwaway
+// "seeded contact with history" subject below — merging one away deletes
+// its user row (contact.id is the user's FK) and 401s every later login
+// as that identity, in this module and any that run after it.
+const PROTECTED_IDENTITY_EMAILS = new Set(
+  Object.values(fixture.identities)
+    .filter((identity): identity is { email: string; password: string } => Boolean(identity))
+    .map((identity) => identity.email.toLowerCase()),
+);
 
 // ---------------------------------------------------------------------------
 // Cookie jar + auth helpers (DEC-053 conventions)
@@ -234,7 +247,7 @@ async function main(): Promise<void> {
     headers: orgHeaders(orgCookies, false),
   });
   assertStatus(listRes, 200, "GET /api/v1/contacts?perPage=100");
-  const listBody = (await asJson(listRes)) as { items: { id: string }[] };
+  const listBody = (await asJson(listRes)) as { items: { id: string; email: string }[] };
 
   // The very next check merges this contact away (as the duplicate's
   // history-bearing source) — by the time this module runs, the seeded
@@ -245,21 +258,17 @@ async function main(): Promise<void> {
   // unfiltered pick here previously merged that contact away and deleted
   // its user row, breaking the speaker login later in THIS module (J12's
   // 'speaker-role session hitting an organizer endpoint gets 403' check).
-  // Exclude the fixture identities' own emails so the merge always lands
-  // on a disposable contact instead.
-  const protectedEmails = new Set(
-    Object.values(fixture.identities).map((identity) => identity.email.toLowerCase()),
-  );
+  // Exclude the fixture identities' own emails (PROTECTED_IDENTITY_EMAILS)
+  // so the merge always lands on a disposable contact instead.
   let historyContactId: string | null = null;
   let historyPayload: { history: { submissions: unknown[]; emails: unknown[]; events: string[] } } | null = null;
   for (const c of listBody.items) {
+    if (PROTECTED_IDENTITY_EMAILS.has(c.email.toLowerCase())) continue;
     const detailRes = await fetch(`${BASE_URL}/api/v1/contacts/${c.id}`, { headers: orgHeaders(orgCookies, false) });
     assertStatus(detailRes, 200, `GET /api/v1/contacts/${c.id}`);
     const detail = (await asJson(detailRes)) as {
       history: { submissions: unknown[]; emails: unknown[]; events: string[] };
-      email?: string;
     };
-    if (detail.email && protectedEmails.has(detail.email.toLowerCase())) continue;
     if (detail.history.submissions.length > 0 && detail.history.emails.length > 0) {
       historyContactId = c.id;
       historyPayload = detail;
@@ -479,10 +488,12 @@ async function main(): Promise<void> {
   const showflowText = await showflowRes.text();
   const showflowHeaderLine = showflowText.split("\n")[0]?.trim() ?? "";
   // DEC-022 amendment (wave 66): schedule_break rows now interleave with
-  // sessions on the show-flow, distinguished by a trailing "kind" column
+  // sessions on the show-flow as clearly-typed non-session rows, distinguished
+  // by a trailing "kind" marker column appended last
   // (src/server/repo/exports/showflow.ts SHOWFLOW_HEADER) — this walkthrough
   // predates that amendment and asserted the pre-wave-66 header.
-  const expectedShowflowHeader = "ref,title,description,day,start,end,room,tracks,speakers,deck_file,deck_url,kind";
+  const expectedShowflowHeader =
+    "ref,title,description,day,start,end,room,tracks,speakers,deck_file,deck_url,kind";
   if (showflowHeaderLine !== expectedShowflowHeader) {
     fail(`showflow.csv header mismatch:\n  expected: ${expectedShowflowHeader}\n  actual:   ${showflowHeaderLine}`);
   }

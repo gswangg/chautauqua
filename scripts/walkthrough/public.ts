@@ -433,11 +433,14 @@ async function main(): Promise<void> {
     // redesign renamed the class to 'chq-pub-session-row'
     // (src/routes/public/cards.tsx SessionCard) — behavior unchanged.
     assert(sessionsHtml.includes('class="chq-pub-session-row"'), "no session cards found");
-    // DEC-919 v7 filter bar repair: the old pill-nav labelled "Track
-    // filters" was replaced by PublicFilterSelectForm, a single auto-
+    // DEC-919 (wave 40 amendment, "v7 filter bar"): the pill-row nav labelled
+    // "Track filters" was replaced by PublicFilterSelectForm, a single auto-
     // submitting <select id="chq-pub-filter-trackId"> beside the search box
     // (src/routes/public/filters.tsx PublicFilterSelectForm,
-    // src/routes/public/sessions.tsx:285-292) — behavior unchanged.
+    // src/routes/public/sessions.tsx:285-292) — behavior unchanged. Probe the
+    // select's id, NOT name="trackId": hidden trackId inputs elsewhere on the
+    // page (sessions.tsx:212,265) would satisfy a name-only probe even if the
+    // select itself were gone.
     assert(sessionsHtml.includes('id="chq-pub-filter-trackId"'), "no track filter select found");
   });
 
@@ -601,8 +604,9 @@ async function main(): Promise<void> {
     // Public Pages panel as an inline builder toggled by an "Embed code"
     // button per saved view (app/src/pages/settings/PublicPagesPanel.tsx:
     // 35 imports EmbedsPanel, :161-163 the toggle button, :176-180 the
-    // conditional `<EmbedsPanel />` mount under embedOpen state). Re-pinned
-    // to that file instead of the now-gone Settings.tsx SECTIONS wiring.
+    // conditional `<EmbedsPanel />` mount under embedOpen state), alongside
+    // SavedEmbedsPanel. Re-pinned to that current wiring location instead of
+    // the now-gone Settings.tsx SECTIONS wiring.
     const publicPagesSrc = readFileSync(
       join(REPO_ROOT, "app", "src", "pages", "settings", "PublicPagesPanel.tsx"),
       "utf-8",
