@@ -67,9 +67,15 @@ export interface EditableSubmissionData {
  * submissions. Returns null when the submission doesn't exist, belongs to a
  * different org, or the requesting contact is not among its participants —
  * every case renders as a 404 to the caller (no IDOR).
+ *
+ * DEC-317 (wave-50 amendment) + DEC-962: the org gate is enforced IN the
+ * query via `eq(schema.event.orgId, orgId)`, never as an app-code
+ * post-filter — a same-contactId participant row on a submission belonging
+ * to a foreign org must contribute no row, by construction.
  */
 export async function loadEditableSubmission(
   db: Db,
+  orgId: string,
   contactId: string,
   submissionId: string,
 ): Promise<EditableSubmissionData | null> {
@@ -94,6 +100,7 @@ export async function loadEditableSubmission(
       and(
         eq(schema.submission.id, submissionId),
         eq(schema.participant.contactId, contactId),
+        eq(schema.event.orgId, orgId),
         inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
       ),
     );
