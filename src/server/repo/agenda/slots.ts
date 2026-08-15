@@ -12,6 +12,12 @@ export interface SlotInput {
   day: string;
   startMin: number;
   endMin: number;
+  /** Tri-state (DEC-021 wave-66 amendment): key ABSENT means "leave the
+   * stored roomId untouched" (a time-only reschedule preserves the room);
+   * key present with `null` means an explicit unassign to TBD (a real value
+   * per A25); key present with a string replaces the room. upsertSlot must
+   * decide by `"roomId" in input`, not by the resolved value, so callers
+   * that omit the key never silently clear a room assignment. */
   roomId?: string | null;
 }
 
@@ -40,6 +46,12 @@ export async function upsertSlot(db: Db, submissionId: string, input: SlotInput)
   const now = new Date();
   // DEC-552: one atomic statement -- no read-then-write over the
   // schedule_slot_submission_id_idx uniqueIndex.
+  // Tri-state roomId (DEC-021 wave-66 amendment): decide by key presence,
+  // not resolved value, so an absent key on the UPDATE branch leaves the
+  // stored room untouched (house idiom: portal-edit.ts, pipeline.ts's
+  // `if ("fitScore" in fit)`). The INSERT branch has nothing to preserve,
+  // so it keeps the `?? null` default.
+  const roomIdKeyPresent = "roomId" in input;
   await db
     .insert(schema.scheduleSlot)
     .values({
@@ -55,7 +67,7 @@ export async function upsertSlot(db: Db, submissionId: string, input: SlotInput)
     .onConflictDoUpdate({
       target: schema.scheduleSlot.submissionId,
       set: {
-        roomId: input.roomId ?? null,
+        ...(roomIdKeyPresent ? { roomId: input.roomId ?? null } : {}),
         day: input.day,
         startMin: input.startMin,
         endMin: input.endMin,
