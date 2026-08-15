@@ -17,44 +17,44 @@ hard 60-line budget, compacting old entries. Injected into every agent.
 - FINDINGS w31-42 (compacted): loose ref beats stale packed-refs; A GATE
   INSIDE A CODE WAVE CAN NEVER QUALIFY, A CODE WAVE VOIDS THE BATTERY / A
   PASSING SLOT TOO (DEC-069); RECEIPT via `scripts/ref-state.ts`, ONE
-  MACHINE ONE HEAVY GATE share `/tmp/chq-test.lock`, `CHQ_TEST_LOCK_HELD`
-  guards nesting (DEC-644); A UNIVERSAL NEEDS A NEGATIVE CONTROL, RATCHET
-  not allowlist, RESULT TOKEN IS PART OF THE CONTRACT —
-  `startsWith("PASS")` em-dash not hyphen, A SCOPE WORD IS A SLOT CLAIM
-  via `classifyScope` (DEC-099); ASSEMBLER/PLANNER MINTS COLLIDING SEQS ->
-  take NEITHER side, re-run, `--next-seq` collides (DEC-068); A BRANCH
-  MINUTES OLD AT BASE IS RUNNING NOT DEAD (DEC-069); verif-log sections
-  are NEW files, never hand-edit the monolith; A BUDGET KEYED ON A VICTIM
-  IS A WEAPON (DEC-072); CSRF-EXEMPT WITHOUT `requireCookieSession` IS
+  MACHINE ONE HEAVY GATE share `/tmp/chq-test.lock` (DEC-644); RESULT
+  TOKEN IS PART OF THE CONTRACT — `startsWith("PASS")` em-dash not hyphen
+  (DEC-099); verif-log sections are NEW files, never hand-edit the
+  monolith; CSRF-EXEMPT WITHOUT `requireCookieSession` IS
   BEARER-REACHABLE (DEC-027); LOCAL-D1 FIXUP IS A MEASUREMENT, COMMITTED
   ONE IS A FIX (DEC-453); LAND LAST OFFENDER THEN FREEZE, CONTRACT NEEDS
-  AN INSTRUMENT NOT A MEMO -> exit-predicate-corpus.test.ts (DEC-069/099);
-  clarifications.md got its first derived test (DEC-518); ONE FILE ONE
-  OWNER PER WAVE (DEC-358); THE BATTERY LANDED, THE SLOT DID NOT — 4/5
-  gate PASS is not 5/5, missing triage-closure VOIDS predicate (DEC-069
-  w42). Fixed in-tree by w42: review-lens alarms, task-w17-i's DEC-716
-  scope, plans-progress `total`.
-- FINDINGS w43 (main `824aac9b` = scribe w42 + 2 merge-train fixes; packed
-  `refs/heads/main` `42074604` still stale). THE FOURTH FREEZE IS THE TRAP
-  (DEC-069 w43): waves 41/42/43 each planned while prior lanes still
-  RUNNING, inheriting "freeze, battery in flight" — that loop never
-  converges, the ledger reads only after lanes land, always after the
-  next planner runs. NO w42 lane merged (`task-w42-b` has no ref, its
-  verdict never published). A PLANNER'S OWN READ ENDS THE FREEZE, NOT A
-  LEDGER: 3 defects confirmed at file:line make `OPEN ITEMS: 0`
-  impossible, so w43 is a CODE wave, w44 is the FROZEN battery wave. TWO
-  READERS ONE RULE THREE SPELLINGS (DEC-615): `auto-schedule.ts:58`
-  splits on `slot !== null`, `payload.ts:59` on `isDayWithinEventRange` —
-  that gap IS ledger 0195's 298-vs-237; a count and its itemized list
+  AN INSTRUMENT NOT A MEMO (DEC-069/099); ONE FILE ONE OWNER PER WAVE
+  (DEC-358, REVERSED w44 — see below); THE BATTERY LANDED, THE SLOT DID
+  NOT — 4/5 gate PASS is not 5/5 (DEC-069 w42).
+- FINDINGS w43 (compacted): THE FOURTH FREEZE IS THE TRAP (DEC-069 w43):
+  inheriting "freeze, battery in flight" from a still-running prior wave
+  never converges — A PLANNER'S OWN READ ENDS THE FREEZE, NOT A LEDGER.
+  TWO READERS ONE RULE THREE SPELLINGS (DEC-615): count and itemized list
   must share ONE population. MERGE MAINTAINS IT, DELETE MUST TOO
-  (DEC-979): `deleteContact` ignored `email_log`/`file`/`file_comment` in
-  `CONTACT_FK_TABLES`; no D1 FK constraints means nothing catches it —
-  NULL the nullable ref, never delete an audit row. A PER-PAIR GUARANTEE
-  IS NOT AN OPERATION GUARANTEE (DEC-026): `mergeContacts` commits per
-  pair, so a 409 on pair k ships 1..k-1 destroyed; hoist every refusal
-  over the WHOLE id list before any write (logins as a set; merged email
-  changes each step). ADJUDICATE, DON'T ACCRETE: DEC-932 back-fill and
-  DEC-020 reopen ruled DELIBERATE with pinning tests; 0197's base-URL gap
-  CLOSED by `hostHeaderLoopbackOrigin` (`origin.ts:158-163`) — all three
-  need falsifying checks, not more filings. ALREADY FIXED, DO NOT RE-FILE:
-  review-lens alarms `users.ts:67,138,168`, `reminders.ts:148`, `rule-match.ts:145`, plans-progress `total`.
+  (DEC-979): `deleteContact` must NULL FK refs, never delete an audit
+  row. A PER-PAIR GUARANTEE IS NOT AN OPERATION GUARANTEE (DEC-026):
+  hoist every refusal over the WHOLE id list before any write. ADJUDICATE,
+  DON'T ACCRETE. ALREADY FIXED, DO NOT RE-FILE: review-lens alarms,
+  plans-progress `total`.
+- FINDINGS w44 (main moved `dd70b0f0` -> `e1c6a4a3` = "merge task-w42-b"
+  DURING planning; packed `refs/heads/main` `42074604` still the stale
+  trap). THE LEDGER LANDED ONE MINUTE LATE: w43 planned on "task-w42-b
+  has no ref"; it committed `5e4a342a` seconds after w43's branches were
+  cut, then merged — READ REFS TWICE, ONCE AT PLAN END. w44 is the
+  FROZEN battery wave and the freeze is earned, not inherited: both
+  non-product blockers `0216` lists are FALSE on re-derivation —
+  `docs/design/README.md:343-350` is the PUBLIC bar (`:345`), so the
+  `[List | Grid]` row is VOID (ships at `public/speakers.tsx:20,235,314`),
+  and `grep -c PERF_SPEAKER scripts/perf-seed.ts` = 13 with inserts at
+  `:608,627,643,659`, so `0213`'s perf-seed row is FALSE. A SPLIT
+  POPULATION HAS NO OWNER FOR THE CONTRADICTION (DEC-358 w44): `0210`
+  called perf-seed CLOSED while `0213` called it CONFIRMED-DEFECT and no
+  lane owned the clash — w44 takes the whole 0174..newest population, no
+  exclusion clause. SLOTS ARE GRADED INDEPENDENTLY (DEC-069 w44):
+  `gradePredicate` needs only each section's own sha vs the product sha,
+  so a triage-closure lane never waits on its sibling gates — w40-g
+  waited, gave up, and its stale `0215` then DECIDED the slot. LAST
+  APPENDED IS NOT NEWEST (DEC-099 w44): rank slot candidates by newest
+  MEASURED TREE (drop any sha that is a proper ancestor of another
+  candidate's), append order only among unrelated shas. Seq pre-allocated
+  0220-0226 (DEC-068 w44).
