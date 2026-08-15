@@ -469,6 +469,14 @@
   margin: 0 0 16px;
 }
 
+/* task-w63-d: CSV size-limit hint above the upload row, same note tier as the
+   sessionboard notes above it (DEC-379 keeps the class vocabulary closed). */
+.chq-settings-sessionboard-size-hint {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  margin: 0 0 16px;
+}
+
 .chq-settings-sessionboard-field {
   display: flex;
   flex-direction: column;
