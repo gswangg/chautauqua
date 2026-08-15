@@ -20,6 +20,7 @@ import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { SessionsContent } from "./sessions";
 import { SpeakersContent, GalleryContent } from "./speakers";
 import { AgendaContent, ScheduleContent } from "./agenda";
+import { eventDays } from "../../domain/event-days";
 import { DEC_851 } from "../../decisions";
 
 void DEC_851;
@@ -185,15 +186,20 @@ export async function renderSurfaceContent(
       const tracks = await getPublicTracks(db, event.id);
       // DEC-768 (wave 67 amendment): /agenda is single-day by default -- the
       // day-count list is fetched on EVERY request (not only when ?day= is
-      // set) so `allDays` always has the full switcher set AND so the
-      // default day can be derived from it: the FIRST day with scheduled
-      // sessions, deterministic (never a "today" comparison) so the
-      // version-salted cached copy stays correct for any visitor on any
+      // set) so the default day can be derived from it: the FIRST day with
+      // scheduled sessions, deterministic (never a "today" comparison) so
+      // the version-salted cached copy stays correct for any visitor on any
       // date. `effectiveDay` is null only when the event has nothing
       // scheduled at all.
+      // DEC-277 (wave 60 amendment): the switcher's day set is the event's
+      // FULL calendar range (src/domain/event-days.ts's eventDays), same
+      // owner /sessions' rail reads -- an unscheduled day stays selectable
+      // instead of vanishing from the switcher. The DEFAULT active day is
+      // unaffected: it still comes from dayCounts, the first day that
+      // actually has sessions, never from the full range.
       const dayCounts = await getPublicScheduleDayCounts(db, event);
-      const allDays = dayCounts.map((d) => d.day);
-      const firstDayWithSessions = allDays[0] ?? null;
+      const allDays = eventDays(event.startDate, event.endDate);
+      const firstDayWithSessions = dayCounts[0]?.day ?? null;
       const effectiveDay = query.day ?? firstDayWithSessions;
       const { items, total } = await getPublicAgenda(db, event, { day: effectiveDay, q });
       // DEC-022 amendment: breaks read through server/repo/public's ONE

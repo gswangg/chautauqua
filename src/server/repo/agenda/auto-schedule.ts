@@ -14,7 +14,7 @@ import {
   type UnplacedLabels,
   type UnplacedSession,
 } from "../../../domain/schedule";
-import { computeDays } from "./days";
+import { eventDays } from "../../../domain/event-days";
 import { listBreaksForEvent } from "../breaks";
 import { loadAcceptedSessions, loadDurationMinBySubmission, type AcceptedSessionRow, type EventInfo } from "./rows";
 import { getAgendaPayload } from "./payload";
@@ -42,7 +42,7 @@ export async function runAutoSchedule(
   event: EventInfo,
   params: AutoScheduleParams,
 ): Promise<AgendaPayload> {
-  const days = computeDays(event.startDate, event.endDate);
+  const days = eventDays(event.startDate, event.endDate);
   const roomRows = await db
     .select({ id: schema.room.id })
     .from(schema.room)
