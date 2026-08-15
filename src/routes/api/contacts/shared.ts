@@ -9,6 +9,7 @@ import * as schema from "../../../db/schema";
 import type { Db } from "../../../server/context";
 import type { SegmentRule } from "../../../domain/contacts";
 import { chunkIds } from "../../../lib/chunk";
+import { overBudgetBy } from "../../../domain/count-copy";
 
 export function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;
@@ -27,9 +28,12 @@ export function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-// DEC-417
+// DEC-417 (amendment DEC-422): the fields-map value names the overage the
+// same way the portal's refusal sentence does (overBudgetBy, src/domain/
+// count-copy.ts), so the CRM drawer marks the field AND states how far over
+// it is, not just a bare "Max N".
 export function checkLen(value: string, field: string, max: number, fields: Record<string, string>): void {
-  if (value.length > max) fields[field] = `Max ${max}`;
+  if (value.length > max) fields[field] = overBudgetBy(value.length, max);
 }
 
 export function serializeContact(row: repo.ContactRow) {
