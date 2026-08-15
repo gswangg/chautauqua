@@ -250,7 +250,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
           <thead>
             <tr>
               <th>File</th>
-              <th>Session</th>
+              <th className="chq-content-files-col-session">Session</th>
               <th className="chq-content-files-col-version">Version</th>
               <th className="chq-content-files-col-size">Size</th>
               <th></th>
@@ -296,7 +296,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
           <thead>
             <tr>
               <th>File</th>
-              <th>Session</th>
+              <th className="chq-content-files-col-session">Session</th>
               <th className="chq-content-files-col-version">Version</th>
               <th className="chq-content-files-col-size">Size</th>
               <th></th>

@@ -806,13 +806,22 @@
 
 /* Fixed-width size column so numerals align (DEC-902). */
 .chq-content-files-table .chq-content-files-col-size {
-  width: 90px;
+  width: 92px;
   text-align: right;
 }
 
 .chq-content-files-table .chq-content-files-col-version {
-  width: 64px;
+  width: 108px;
   white-space: nowrap;
+}
+
+/* w4-c (DEC-902 amendment): Session gets a fixed share of the grid
+   (docs/design/Chautauqua Content.dc.html:311 -- 1fr 190px 108px 92px auto)
+   so auto table layout stops handing it the File column's room, which was
+   wrapping filenames mid-token. File carries no width class -- it takes
+   the remainder (the `1fr`). */
+.chq-content-files-table .chq-content-files-col-session {
+  width: 190px;
 }
 
 /* w5-i: bold accent caps -- "v3" reads as "V3" in the brand ink, matching
