@@ -349,16 +349,37 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
       (entry): entry is { fieldId: string; file: File; validated: ValidUpload } =>
         entry.file !== undefined && entry.validated !== undefined,
     );
-  // DEC-530: R2 puts fan out in parallel (Promise.all), not one await per
-  // field in a loop — order is preserved via .map so preparedFiles still
-  // lines up 1:1 with toUpload regardless of which put settles first.
-  const preparedFiles: { fieldId: string; file: File; r2Key: string; validated: ValidUpload }[] = await Promise.all(
-    toUpload.map(async ({ fieldId, file, validated }) => {
-      const r2Key = `sub/pending/${newId()}-${sanitizeFilenameForKey(file.name)}`;
-      await fileStore.put(r2Key, file.stream(), validated.servedContentType);
-      return { fieldId, file, r2Key, validated };
-    }),
+  // DEC-530 (amended wave 26): R2 puts fan out in parallel, not one await
+  // per field in a loop — order is preserved via .map so preparedFiles
+  // still lines up 1:1 with toUpload regardless of which put settles
+  // first. The fan-out owns its own cleanup: every r2Key is minted up
+  // front (before any put is issued) so the full key set is known
+  // regardless of which promises settle, puts run via Promise.allSettled
+  // (never short-circuiting on the first rejection like Promise.all
+  // would), and on any rejection every minted key is best-effort deleted
+  // here before the first rejection is rethrown unmodified — a partial
+  // failure must never leave sibling puts' objects orphaned.
+  const minted = toUpload.map(({ fieldId, file, validated }) => ({
+    fieldId,
+    file,
+    validated,
+    r2Key: `sub/pending/${newId()}-${sanitizeFilenameForKey(file.name)}`,
+  }));
+  const putResults = await Promise.allSettled(
+    minted.map(({ r2Key, file, validated }) => fileStore.put(r2Key, file.stream(), validated.servedContentType)),
   );
+  const firstRejection = putResults.find(
+    (r): r is PromiseRejectedResult => r.status === "rejected",
+  );
+  if (firstRejection !== undefined) {
+    try {
+      await Promise.all(minted.map((m) => fileStore.delete(m.r2Key)));
+    } catch (cleanupErr) {
+      console.error("submit upload: R2 cleanup failed", cleanupErr);
+    }
+    throw firstRejection.reason;
+  }
+  const preparedFiles: { fieldId: string; file: File; r2Key: string; validated: ValidUpload }[] = minted;
 
   // The DB write phase is one committed unit: any failure past this point
   // (including a thrown error from any of these repo calls) deletes every
