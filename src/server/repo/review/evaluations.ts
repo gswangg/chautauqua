@@ -8,6 +8,7 @@ import { newId } from "../../../domain/ids";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
 import type { EvaluationCriterionDef } from "../../../domain/evaluation";
 import { ApiError } from "../../http";
+import { MAX_PLAN_SUBMISSION_SCAN } from "./submissions";
 
 // DEC-346 amendment (wave 62): the ceiling listEvaluationScoresForPlan's
 // scan refuses past -- mirrors MAX_PLAN_SUBMISSION_SCAN
@@ -164,7 +165,15 @@ export async function countEvaluationsForSubmission(
  * .get(id) for ids in its own already-scoped set, so this leaks nothing
  * while eliminating the DEC-078 chunking overhead entirely). This is a
  * COUNT, not a score aggregation -- DEC-440 governs aggregateSubmission/
- * aggregateDropdownCriterion only and is unaffected. */
+ * aggregateDropdownCriterion only and is unaffected.
+ *
+ * The `GROUP BY submission_id` means each returned row is one SUBMISSION,
+ * not one evaluation row, so this scan is bounded by
+ * MAX_PLAN_SUBMISSION_SCAN (mirroring listSubmissionsForPlan's cap on the
+ * same population), not MAX_PLAN_EVALUATION_SCAN -- that constant bounds
+ * ungrouped evaluation-row scans elsewhere in this file (evaluations are
+ * submissions x reviewers, so it is deliberately set higher and would never
+ * fire here, silently disabling the guard). */
 export async function countEvaluationsBySubmission(
   db: Db,
   planId: string,
@@ -184,11 +193,11 @@ export async function countEvaluationsBySubmission(
       ),
     )
     .groupBy(schema.evaluation.submissionId)
-    .limit(MAX_PLAN_EVALUATION_SCAN + 1);
-  if (rows.length > MAX_PLAN_EVALUATION_SCAN) {
+    .limit(MAX_PLAN_SUBMISSION_SCAN + 1);
+  if (rows.length > MAX_PLAN_SUBMISSION_SCAN) {
     throw new ApiError(
       "invalid",
-      `This plan would scan more than ${MAX_PLAN_EVALUATION_SCAN} evaluations -- narrow the plan's track filter first`,
+      `This plan would scan more than ${MAX_PLAN_SUBMISSION_SCAN} submissions -- narrow the plan's track filter first`,
     );
   }
   const result = new Map<string, number>();

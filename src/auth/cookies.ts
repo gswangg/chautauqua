@@ -29,7 +29,7 @@ export function buildSessionCookie(token: string, options: SessionCookieOptions)
   return attributes.join("; ");
 }
 
-export function clearSessionCookie(): string {
+export function clearSessionCookie(options: SessionCookieOptions): string {
   const attributes = [
     `${SESSION_COOKIE_NAME}=`,
     "HttpOnly",
@@ -37,6 +37,9 @@ export function clearSessionCookie(): string {
     "Path=/",
     "Max-Age=0",
   ];
+  if (options.secure) {
+    attributes.push("Secure");
+  }
   return attributes.join("; ");
 }
 
