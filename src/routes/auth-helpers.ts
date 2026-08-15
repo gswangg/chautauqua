@@ -42,21 +42,28 @@ export const LOGIN_REJECTED: AuthBandCopy = {
 // amendment removes.
 export const RATE_LIMIT_BAND: AuthBandCopy = { headline: RATE_LIMIT_ERROR };
 
-// DEC-072 wave-66 amendment: the account-wide login budget, keyed on the
-// bare normalised email with NO ip component. This is the ONLY login
-// bucket that satisfies src/lib/rate-limit.ts:52-55's own doc-comment --
-// "callers that need real correctness MUST also key a scoped limiter by a
-// stable identity value ... rather than relying on IP alone". Both other
-// login buckets (loginIdentityKey below and the bare `ip` flood guard) are
-// keyed on a value the client can rotate at will (x-forwarded-for, absent
-// any trusted edge in stage 1), so a spoofed header alone buys unlimited
-// admission to those two. Deliberately looser than the pair budget below
-// (50 vs 20) so a legitimate owner mistyping their password from their own
-// IP cannot reach it, while an attacker rotating the header is still
-// capped at 50 guesses/15min against one address rather than infinity.
-// This is the ONE assembler of the "login-account" scope key -- every
-// touch of that bucket (admission, refund on a later deny, reset on
-// success) must call this rather than hand-assembling the key string.
+// DEC-072 wave-66 amendment, superseded in behavior by the wave-38
+// amendment: the account-wide login budget, keyed on the bare normalised
+// email with NO ip component. This is the ONLY login bucket that satisfies
+// src/lib/rate-limit.ts:52-55's own doc-comment -- "callers that need real
+// correctness MUST also key a scoped limiter by a stable identity value
+// ... rather than relying on IP alone". Both other login buckets
+// (loginIdentityKey below and the bare `ip` flood guard) are keyed on a
+// value the client can rotate at will (x-forwarded-for, absent any trusted
+// edge in stage 1), so a spoofed header alone buys unlimited admission to
+// those two.
+//
+// DEC-072 wave-38 amendment: because this key is attacker-rotatable (any
+// stranger who knows the address can drive it from anywhere, with no
+// unlock path for the real owner), this bucket is now a FAILURE budget,
+// not an admission gate -- see src/routes/auth-login.tsx's POST /login
+// handler and decisions/DEC-072.md. It is still checked-and-incremented
+// atomically FIRST, before password verification (DEC-948), but exhausting
+// it no longer 429s the request outright; it only forces a WRONG password
+// to 429 instead of 401, while a CORRECT password still succeeds. This is
+// the ONE assembler of the "login-account" scope key -- every touch of
+// that bucket (admission, refund on a later hard deny, reset on success)
+// must call this rather than hand-assembling the key string.
 export const AUTH_ACCOUNT_RATE_LIMIT_MAX = 50;
 
 export function loginAccountKey(email: string): string {

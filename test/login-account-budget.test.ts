@@ -1,14 +1,28 @@
-// DEC-072 wave-66 amendment: POST /login now spends THREE budgets in
-// order -- "login-account" (bare email, AUTH_ACCOUNT_RATE_LIMIT_MAX=50),
+// DEC-072 wave-66 amendment: POST /login spends THREE budgets in order --
+// "login-account" (bare email, AUTH_ACCOUNT_RATE_LIMIT_MAX=50),
 // "login-user" (email|ip pair, AUTH_RATE_LIMIT_MAX=20, unchanged since
-// wave-54), and "login-ip" (bare ip, 100, unchanged). Before this
-// amendment there was NO bucket keyed on a stable identity value alone --
-// both remaining buckets are functions of a header the client controls
-// (x-forwarded-for, which is all stage-1 has -- no trusted edge sets
-// cf-connecting-ip), so rotating that header per request bought unlimited
-// password guesses against one known address. These tests use
-// x-forwarded-for exclusively (never cf-connecting-ip) so requestIpFromHeaders
-// resolves the SPOOFABLE fallback path, mirroring a real attacker.
+// wave-54), and "login-ip" (bare ip, 100, unchanged). Before wave-66 there
+// was NO bucket keyed on a stable identity value alone -- both remaining
+// buckets are functions of a header the client controls (x-forwarded-for,
+// which is all stage-1 has -- no trusted edge sets cf-connecting-ip), so
+// rotating that header per request bought unlimited password guesses
+// against one known address.
+//
+// DEC-072 wave-38 amendment: because the account key is bare-email (no ip
+// component), it is also the ONE bucket a stranger can drive to its cap
+// against a VICTIM'S address from anywhere -- and unlike the pair/ip
+// buckets there is no unlock path, since the victim's own correct password
+// never gets a chance to run before the pre-verification 429 fired. So
+// "login-account" is now a FAILURE budget, not an admission gate: it is
+// still checked-and-incremented atomically first (DEC-948), but exhausting
+// it only turns a WRONG password's 401 into a 429 -- the owner's CORRECT
+// password still succeeds regardless of the account bucket's state. The
+// pair (login-user) and ip (login-ip) buckets are unchanged HARD
+// pre-verification 429s.
+//
+// These tests use x-forwarded-for exclusively (never cf-connecting-ip) so
+// requestIpFromHeaders resolves the SPOOFABLE fallback path, mirroring a
+// real attacker.
 //
 // Same in-memory node:sqlite + drizzle sqlite-proxy technique as
 // test/auth-login-lockout.test.ts.
@@ -184,7 +198,7 @@ describe("DEC-072 wave-66: login-account restores a spoof-proof per-account budg
     await seedUser(sqlite);
   });
 
-  it(`${AUTH_ACCOUNT_RATE_LIMIT_MAX + 1} failed logins for one email, each from a DIFFERENT spoofed x-forwarded-for, now 429s (today it never does)`, async () => {
+  it(`a WRONG password against the account-exhausted budget still 429s -- ${AUTH_ACCOUNT_RATE_LIMIT_MAX + 1} failed logins for one email, each from a DIFFERENT spoofed x-forwarded-for`, async () => {
     const { app, env } = buildApp(db);
 
     for (let i = 0; i < AUTH_ACCOUNT_RATE_LIMIT_MAX; i++) {
@@ -192,11 +206,56 @@ describe("DEC-072 wave-66: login-account restores a spoof-proof per-account budg
       expect(res.status).toBe(401);
     }
     // The (AUTH_ACCOUNT_RATE_LIMIT_MAX + 1)th attempt, from yet another
-    // fresh spoofed IP, is refused by the account-wide budget even though
-    // this exact (email, ip) pair and this exact ip have never been seen
-    // before -- proof the block is keyed on identity alone.
+    // fresh spoofed IP, is a WRONG password -- the account budget is
+    // exhausted so it still 429s, even though this exact (email, ip) pair
+    // and this exact ip have never been seen before -- proof the throttle
+    // is keyed on identity alone.
     const overCap = await postLogin(app, env, "10.0.0.999", { email: VICTIM_EMAIL, password: "wrong-password" });
     expect(overCap.status).toBe(429);
+  });
+
+  it(`DEC-072 wave-38 REGRESSION: an exhausted account budget never blocks the OWNER'S correct password -- ${AUTH_ACCOUNT_RATE_LIMIT_MAX + 5} wrong-password POSTs from rotating spoofed IPs, then the real owner's correct password from a FRESH IP succeeds`, async () => {
+    const { app, env } = buildApp(db);
+
+    // An unauthenticated stranger drives the account-wide budget well past
+    // its cap using a different spoofed x-forwarded-for on every request --
+    // the pair (login-user) and ip (login-ip) buckets never see repeats, so
+    // only the account-wide bucket is ever exhausted here.
+    for (let i = 0; i < AUTH_ACCOUNT_RATE_LIMIT_MAX + 5; i++) {
+      const res = await postLogin(app, env, `10.1.0.${i}`, { email: VICTIM_EMAIL, password: "wrong-password" });
+      expect([401, 429]).toContain(res.status);
+    }
+
+    // The real owner, from a brand new IP the attacker never used, presents
+    // their CORRECT password. Before the wave-38 amendment the exhausted
+    // account bucket would have 429'd this unconditionally -- there is no
+    // unlock path for a pre-verification denial keyed on bare email. After
+    // the amendment, the correct password is the unlock path: this must
+    // succeed.
+    const ownerLogin = await postLogin(app, env, "192.0.2.200", { email: VICTIM_EMAIL, password: PASSWORD });
+    expect(ownerLogin.status).toBe(302);
+    expect(ownerLogin.headers.get("set-cookie")).toBeTruthy();
+  });
+
+  it("DEC-072 wave-38: with the account budget exhausted, a WRONG password from a fresh IP still 429s (the budget still throttles brute force)", async () => {
+    const { app, env } = buildApp(db);
+
+    for (let i = 0; i < AUTH_ACCOUNT_RATE_LIMIT_MAX; i++) {
+      const res = await postLogin(app, env, `10.2.0.${i}`, { email: VICTIM_EMAIL, password: "wrong-password" });
+      expect(res.status).toBe(401);
+    }
+    const wrongFromFreshIp = await postLogin(app, env, "192.0.2.201", {
+      email: VICTIM_EMAIL,
+      password: "wrong-password",
+    });
+    expect(wrongFromFreshIp.status).toBe(429);
+  });
+
+  it("DEC-072 wave-38: a normal wrong password with the account budget unexhausted returns 401, not 429", async () => {
+    const { app, env } = buildApp(db);
+
+    const res = await postLogin(app, env, "10.3.0.1", { email: VICTIM_EMAIL, password: "wrong-password" });
+    expect(res.status).toBe(401);
   });
 
   it(`the per-(email,ip) pair budget still 429s at ${AUTH_RATE_LIMIT_MAX} from one IP (unchanged)`, async () => {
