@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { countOf, plural } from "../src/domain/count-copy";
+import { capitalizeFirst, countOf, plural } from "../src/domain/count-copy";
 
 const REPO_ROOT = join(__dirname, "..");
 
@@ -87,5 +87,17 @@ describe("one count grammar across the app/ boundary (DEC-957)", () => {
     expect(countOf(1, "person", "people")).toBe("1 person");
     expect(plural(1, "person", "people")).toBe("person");
     expect(plural(2, "person", "people")).toBe("people");
+  });
+
+  // w59-b: moved from app/src/pages/overview/rows.test.ts when its local
+  // capitalizeFirst declaration was deleted in favor of this, the ONE owner
+  // (DEC-957 amendment, wave 56).
+  it("capitalizeFirst upper-cases the first letter and leaves the rest alone", () => {
+    expect(capitalizeFirst("four")).toBe("Four");
+    expect(capitalizeFirst("one")).toBe("One");
+  });
+
+  it("capitalizeFirst is a no-op on an empty string", () => {
+    expect(capitalizeFirst("")).toBe("");
   });
 });

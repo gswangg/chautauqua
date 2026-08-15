@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDeadlineCells,
   buildNoActionRows,
-  capitalizeFirst,
   daysLateLabel,
   formatDeadlineValue,
   headlineCount,
@@ -231,17 +230,6 @@ describe('buildNoActionRows', () => {
     const rows = buildNoActionRows(p, NOW);
     expect(rows[0]!.detail).toBe('5 of 5 evaluations in');
     expect(p.review.evaluationsSubmitted).toBeLessThanOrEqual(p.review.evaluationsExpected);
-  });
-});
-
-describe('capitalizeFirst', () => {
-  it('upper-cases the first letter and leaves the rest alone', () => {
-    expect(capitalizeFirst('four')).toBe('Four');
-    expect(capitalizeFirst('one')).toBe('One');
-  });
-
-  it('is a no-op on an empty string', () => {
-    expect(capitalizeFirst('')).toBe('');
   });
 });
 
