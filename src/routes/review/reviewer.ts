@@ -307,8 +307,8 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   const rawAnswers = await repo.listAnswersForSubmission(c.var.db, submissionId);
   const answers = rawAnswers.filter((a) => lockedFieldName(a.fieldId) === null);
   const speakers = await repo.listSpeakersForSubmission(c.var.db, submissionId);
-  // frame 03--01: the scorecard head's meta line needs the same
-  // SESSION_FORMAT_FIELD_ID reading the queue row already carries (DEC-857)
+  // frame 03--01: the scorecard head's meta line needs the same role-keyed
+  // (session_format) reading the queue row already carries (DEC-857)
   // -- reuse listFormatLabelsBySubmission (single-id call) rather than a
   // second lookup. audienceLevel is wired the same way (single-id call to
   // listAudienceLevelLabelsBySubmission) and, like format, is NOT stripped

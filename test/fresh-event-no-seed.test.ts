@@ -1,8 +1,9 @@
 // w10-f (DEC-008 amendment, wave 10): a standing no-seed conformance guard.
-// The session-format defect (w10-a/w10-b's SESSION_FORMAT_FIELD_ID /
-// AUDIENCE_LEVEL_FIELD_ID literals, only ever minted by scripts/seed.ts)
-// survived many green suites because every CFP test reached for the seeded
-// demo event, where those literal field ids happen to already exist. This
+// The session-format defect (w10-a/w10-b's retired global-PK literal field
+// ids, only ever minted by scripts/seed.ts, since replaced by the role
+// column resolved via src/server/repo/form-roles.ts) survived many green
+// suites because every CFP test reached for the seeded demo event, where
+// those literal field ids happened to already exist. This
 // file never imports scripts/seed.ts, never reads docs/fixtures, and never
 // uses a fixture persona name or a seed_* id -- every id here is minted at
 // runtime (newId()) exactly the way a brand-new customer's first event
@@ -22,8 +23,8 @@
 //      fields exist, each with a per-form-prefixed id (lockedFieldId,
 //      DEC-050: `${formId}:${name}`), and that lockedFieldName resolves
 //      each id back to its short name. This is exactly the invariant that
-//      silently failed to generalize for SESSION_FORMAT_FIELD_ID/
-//      AUDIENCE_LEVEL_FIELD_ID -- those are NOT locked fields (DEC-592/
+//      silently failed to generalize for the role-tagged session_format/
+//      audience_level fields -- those are NOT locked fields (DEC-592/
 //      DEC-986 name them as seed-only globals), and this test does not
 //      touch them; see OUT OF SCOPE below.
 //   3) GET the public CFP page (/submit/:eventSlug) for the fresh event's
@@ -45,8 +46,8 @@
 //      test, so it is driven directly rather than through a route.)
 //
 // OUT OF SCOPE THIS WAVE: this file deliberately does NOT assert session
-// format or audience level (SESSION_FORMAT_FIELD_ID / AUDIENCE_LEVEL_
-// FIELD_ID) -- w10-a/w10-b own that surface and land their own no-seed
+// format or audience level (the role-tagged session_format /
+// audience_level fields) -- w10-a/w10-b own that surface and land their own no-seed
 // assertions in test/session-format-any-event.test.ts. A future wave
 // extending no-seed coverage of the format/audience-level surface should
 // add to that file, not duplicate this harness.

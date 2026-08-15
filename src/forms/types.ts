@@ -16,8 +16,8 @@ export type FormFieldRuleOp = "eq" | "ne" | "in";
 // DEC-592/DEC-755 (wave 10, task w10-b): the role tag a form_field row can
 // carry so the two well-known CFP fields (session format, audience level)
 // are resolved by role via src/server/repo/form-roles.ts, not a global-PK
-// literal id. The literal ids (SESSION_FORMAT_FIELD_ID / AUDIENCE_LEVEL_
-// FIELD_ID) have been deleted -- role is the ONE matcher.
+// literal id. The retired global-PK literal ids have been deleted -- role
+// is the ONE matcher.
 export const FORM_FIELD_ROLES = ["session_format", "audience_level"] as const;
 export type FormFieldRole = (typeof FORM_FIELD_ROLES)[number];
 

@@ -23,7 +23,7 @@ import * as schema from "../src/db/schema";
 
 // Seed-local literal (DEC-592/DEC-755, wave 10 task w10-b) -- role is the
 // ONE matcher; the id itself is never a shared constant.
-const SESSION_FORMAT_FIELD_ID = "field_session_format";
+const FORMAT_ROLE_FIELD_ID = "field_session_format";
 
 function makeChain(rows: unknown[]) {
   const chain: any = {
@@ -117,7 +117,7 @@ const FORMAT_OPTIONS_ROW = { optionsJson: JSON.stringify(["Talk", "Workshop"]) }
 
 // getEventFieldIdByRole (form-roles.ts) — the write-time resolver that
 // turns the role into the actual form_field id to upsert/delete against.
-const FORMAT_FIELD_ID_ROW = { id: SESSION_FORMAT_FIELD_ID };
+const FORMAT_FIELD_ID_ROW = { id: FORMAT_ROLE_FIELD_ID };
 
 function detailRow(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -151,14 +151,14 @@ describe("POST /api/v1/events/:eventId/submissions — trackIds + format (DEC-75
       [detailRow()], // getSubmissionDetail: submission+event
       [], // participants
       [{ trackId: "t1" }, { trackId: "t2" }], // tracks
-      [{ formFieldId: SESSION_FORMAT_FIELD_ID, valueJson: JSON.stringify("Workshop") }], // answers
+      [{ formFieldId: FORMAT_ROLE_FIELD_ID, valueJson: JSON.stringify("Workshop") }], // answers
       [], // answer files (DEC-920)
       // --- reload GET ---
       [{ eventId: "event-1", orgId: ORG_A }], // getSubmissionOwnership
       [detailRow()], // getSubmissionDetail: submission+event
       [], // participants
       [{ trackId: "t1" }, { trackId: "t2" }], // tracks
-      [{ formFieldId: SESSION_FORMAT_FIELD_ID, valueJson: JSON.stringify("Workshop") }], // answers
+      [{ formFieldId: FORMAT_ROLE_FIELD_ID, valueJson: JSON.stringify("Workshop") }], // answers
       [], // answer files (DEC-920)
     ]);
 
@@ -174,7 +174,7 @@ describe("POST /api/v1/events/:eventId/submissions — trackIds + format (DEC-75
     expect(res.status).toBe(201);
     const created = (await res.json()) as any;
     expect(created.trackIds).toEqual(["t1", "t2"]);
-    expect(created.answers[SESSION_FORMAT_FIELD_ID]).toBe("Workshop");
+    expect(created.answers[FORMAT_ROLE_FIELD_ID]).toBe("Workshop");
 
     // ONE writer each: replaceSubmissionTracks does a delete+insert,
     // upsertSubmissionAnswers does one more insert — no second ad hoc
@@ -192,7 +192,7 @@ describe("POST /api/v1/events/:eventId/submissions — trackIds + format (DEC-75
     expect(reload.status).toBe(200);
     const reloaded = (await reload.json()) as any;
     expect(reloaded.trackIds).toEqual(["t1", "t2"]);
-    expect(reloaded.answers[SESSION_FORMAT_FIELD_ID]).toBe("Workshop");
+    expect(reloaded.answers[FORMAT_ROLE_FIELD_ID]).toBe("Workshop");
   });
 
   it("400s an unknown track id with a fields.trackIds entry, never creating the submission", async () => {

@@ -54,9 +54,10 @@ export function TrackChips(props: { tracks: PublicTrack[]; highlightTrackId?: st
   );
 }
 
-// EMB-01/EMB-08: format is a session's answer to the SESSION_FORMAT_FIELD_ID
-// dropdown (see PublicSession.format). null (no field on this event's form,
-// or no answer given) renders NOTHING — never a labelled blank chip.
+// EMB-01/EMB-08: format is a session's answer to the role-tagged
+// session_format dropdown (see PublicSession.format, resolved via
+// src/server/repo/form-roles.ts). null (no field on this event's form, or
+// no answer given) renders NOTHING — never a labelled blank chip.
 export function FormatChip(props: { format: string | null }) {
   if (!props.format) return null;
   return <span class="chq-pub-format-chip">{sessionFormatLabel(props.format)}</span>;

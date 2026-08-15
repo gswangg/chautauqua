@@ -116,9 +116,9 @@ describe("GET /api/v1/review/submissions/:id form answers (DEC-908 amendment, wa
     expect(body.speakerAnswers.map((a) => a.fieldId)).toEqual(["custom-speaker-1"]);
     expect(body.speakerAnswers[0]?.label).toBe("Twitter handle");
 
-    // format/audienceLevel resolve through SESSION_FORMAT_FIELD_ID /
-    // AUDIENCE_LEVEL_FIELD_ID, which are not locked names, and must keep
-    // working unaffected by this filter.
+    // format/audienceLevel resolve through the role-tagged session_format /
+    // audience_level fields (src/server/repo/form-roles.ts), which are not
+    // locked names, and must keep working unaffected by this filter.
     expect(body.format).toBe("Workshop");
     expect(body.audienceLevel).toBe("Intermediate");
   });
