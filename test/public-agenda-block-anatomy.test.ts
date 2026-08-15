@@ -74,6 +74,6 @@ describe("AgendaDayGrid: chips render inline in one meta row, trailing the block
     expect(metaHtml).toContain("chq-pub-format-chip");
     // the time is no longer repeated per block -- it lives once in the
     // row's own time cell (chq-pub-agenda-day-time).
-    expect(html).toContain('<div class="chq-pub-agenda-day-time">9:00 AM</div>');
+    expect(html).toContain('<div class="chq-pub-agenda-day-time">9:00</div>');
   });
 });

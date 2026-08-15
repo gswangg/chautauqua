@@ -77,8 +77,8 @@ describe("DEC-584: public agenda phone list + desktop grid dual markup", () => {
     const listHtml = listMatch![1]!;
     // start-time order: Early Bird (480) before Opening Talk (540)
     expect(listHtml.indexOf("Early Bird")).toBeLessThan(listHtml.indexOf("Opening Talk"));
-    expect(listHtml).toContain("8:00 AM");
-    expect(listHtml).toContain("9:00 AM");
+    expect(listHtml).toContain("8:00");
+    expect(listHtml).toContain("9:00");
     expect(listHtml).toContain("Beta Hall");
     expect(listHtml).toContain("Alpha Hall");
     expect(listHtml).toContain("Grace");

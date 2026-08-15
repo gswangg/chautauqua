@@ -12,14 +12,15 @@ import type { ScheduleBreak } from "../../server/repo/breaks";
 import { ThemeStyles } from "../../views/theme";
 import { PROGRAMME_CSS } from "./programme.css";
 import { eventDatesLine, setCacheHeaders } from "./shell";
-import { formatDay, formatMinutes, SpeakerNames } from "./cards";
+import { formatDay, formatStartTime24, SpeakerNames } from "./cards";
 import { publicNotFound } from "./not-found";
 import { publicRoomLabel } from "../../domain/schedule";
-import { DEC_683 } from "../../decisions";
+import { DEC_683, DEC_768 } from "../../decisions";
 import type { Context } from "hono";
 import type { AppEnv } from "../../server/env";
 
 void DEC_683;
+void DEC_768;
 
 /** Groups agenda items by their 'YYYY-MM-DD' day field -- re-derived here
  * (not imported from ./agenda, which is being rewritten in a concurrent
@@ -67,13 +68,13 @@ function ProgrammeDay(props: { day: string; items: PublicAgendaItem[]; breaks: S
       {rows.map((row) =>
         row.kind === "break" ? (
           <div class="chq-prog-row chq-prog-break">
-            <div class="chq-prog-row-time">{formatMinutes(row.brk.startMin)}</div>
+            <div class="chq-prog-row-time">{formatStartTime24(row.brk.startMin)}</div>
             <div class="chq-prog-row-body">{formatBreakLabel(row.brk)}</div>
           </div>
         ) : (
           <div class="chq-prog-row">
             <div class="chq-prog-row-time">
-              {formatMinutes(row.item.startMin)}–{formatMinutes(row.item.endMin)}
+              {formatStartTime24(row.item.startMin)}–{formatStartTime24(row.item.endMin)}
             </div>
             <div class="chq-prog-row-body">
               <div class="chq-prog-row-title">{row.item.title}</div>

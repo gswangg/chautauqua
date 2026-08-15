@@ -6,11 +6,12 @@ import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
 import type { ScheduleBreak } from "../../server/repo/breaks"; // type-only; the public barrel re-exports the read path (getPublicBreaksByDay)
 import { publicRoomLabel } from "../../domain/schedule";
 import { sessionDetailPath, type Surface, type SurfaceBase } from "./shell";
-import { TrackChips, FormatChip, SpeakerNames, ItineraryToggle, formatDay, formatMinutes } from "./cards";
-import { DEC_851, DEC_999 } from "../../decisions";
+import { TrackChips, FormatChip, SpeakerNames, ItineraryToggle, formatDay, formatStartTime24 } from "./cards";
+import { DEC_768, DEC_851, DEC_999 } from "../../decisions";
 
 void DEC_999;
 void DEC_851;
+void DEC_768;
 
 // DEC-022 amendment (wave 63): the ONE break copy formatter, shared by the
 // desktop grid row and the phone list row so the two surfaces can never
@@ -144,12 +145,12 @@ export function AgendaDayGrid(props: {
               // convention). A break carries no id/href/interactive control:
               // it is not a submission and has no detail page to link to.
               <div class="chq-pub-agenda-day-row chq-pub-agenda-break-row">
-                <div class="chq-pub-agenda-day-time">{formatMinutes(row.brk.startMin)}</div>
+                <div class="chq-pub-agenda-day-time">{formatStartTime24(row.brk.startMin)}</div>
                 <div class="chq-pub-agenda-break">{formatBreakLabel(row.brk)}</div>
               </div>
             ) : (
               <div class="chq-pub-agenda-day-row">
-                <div class="chq-pub-agenda-day-time">{formatMinutes(row.startMin)}</div>
+                <div class="chq-pub-agenda-day-time">{formatStartTime24(row.startMin)}</div>
                 <div class="chq-pub-agenda-day-blocks">
                   {row.items.map((item) => {
                     // DEC-851 amendment (wave 5): a block whose session

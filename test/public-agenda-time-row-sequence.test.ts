@@ -54,7 +54,7 @@ describe("DEC-584 (wave 64): AgendaDayGrid is a time-row sequence", () => {
     expect(rows).toHaveLength(2);
 
     const times = [...html.matchAll(/<div class="chq-pub-agenda-day-time">([^<]+)<\/div>/g)].map((m) => m[1]);
-    expect(times).toEqual(["9:00 AM", "10:00 AM"]);
+    expect(times).toEqual(["9:00", "10:00"]);
 
     // both same-start-time sessions render inside the first row's blocks
     // container, not a duplicated row.
