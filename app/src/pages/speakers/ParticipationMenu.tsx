@@ -109,55 +109,58 @@ export function ParticipationMenu({
           <p className="chq-participation-menu-identity-sub">
             {company ?? '—'} &middot; {hasAccount ? 'has account' : 'no portal account'}
           </p>
-          {(status === 'invited'
-            ? // DEC-869: 'invited' is never a SELECTABLE choice, but when it
-              // is the current state that row still renders -- same
-              // anatomy, aria-checked, NOW marker, .is-current -- so the
-              // organiser can see where they are. It is disabled/
-              // non-activatable: the "Send portal invite" action beneath it
-              // is the only way to act on this state.
-              [...SELECTABLE_PARTICIPATION_STATUSES.slice(0, 1), 'invited' as InviteStatus, ...SELECTABLE_PARTICIPATION_STATUSES.slice(1)]
-            : SELECTABLE_PARTICIPATION_STATUSES
-          ).map((candidate) => {
-            const disabledRow = candidate === 'invited';
-            return (
-              <button
-                key={candidate}
-                type="button"
-                role="menuitemradio"
-                aria-checked={candidate === status}
-                aria-disabled={disabledRow || undefined}
-                disabled={disabledRow}
-                className={`chq-participation-menu-item${candidate === status ? ' is-current' : ''}`}
-                onClick={
-                  disabledRow
-                    ? undefined
-                    : () => {
-                        close();
-                        onSelectStatus(candidate);
-                      }
-                }
-              >
-                <span className="chq-participation-menu-item-label">
-                  {INVITE_STATUS_LABELS[candidate]}
-                  {candidate === status && <span className="chq-participation-menu-now">NOW</span>}
-                </span>
-                <span className="chq-participation-menu-item-caption">{PARTICIPATION_STATE_CAPTIONS[candidate]}</span>
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            role="menuitem"
-            className="chq-participation-menu-item chq-participation-menu-action"
-            onClick={() => {
-              close();
-              onSendInvite();
-            }}
-            disabled={sendInviteDisabled}
-          >
-            Send portal invite
-          </button>
+          <div className="chq-participation-menu-body">
+            {(status === 'invited'
+              ? // DEC-869: 'invited' is never a SELECTABLE choice, but when it
+                // is the current state that row still renders -- same
+                // anatomy, aria-checked, NOW marker, .is-current -- so the
+                // organiser can see where they are. It is disabled/
+                // non-activatable: the "Send portal invite" action beneath it
+                // is the only way to act on this state.
+                [...SELECTABLE_PARTICIPATION_STATUSES.slice(0, 1), 'invited' as InviteStatus, ...SELECTABLE_PARTICIPATION_STATUSES.slice(1)]
+              : SELECTABLE_PARTICIPATION_STATUSES
+            ).map((candidate) => {
+              const disabledRow = candidate === 'invited';
+              return (
+                <button
+                  key={candidate}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={candidate === status}
+                  aria-disabled={disabledRow || undefined}
+                  disabled={disabledRow}
+                  className={`chq-participation-menu-item${candidate === status ? ' is-current' : ''}`}
+                  onClick={
+                    disabledRow
+                      ? undefined
+                      : () => {
+                          close();
+                          onSelectStatus(candidate);
+                        }
+                  }
+                >
+                  <span className="chq-participation-menu-item-label">
+                    {INVITE_STATUS_LABELS[candidate]}
+                    {candidate === status && <span className="chq-participation-menu-now">NOW</span>}
+                  </span>
+                  <span className="chq-participation-menu-item-caption">{PARTICIPATION_STATE_CAPTIONS[candidate]}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              role="menuitem"
+              className="chq-participation-menu-item chq-participation-menu-action"
+              onClick={() => {
+                close();
+                onSendInvite();
+              }}
+              disabled={sendInviteDisabled}
+            >
+              <span className="chq-participation-menu-item-label">Send portal invite</span>
+              <span className="chq-participation-menu-item-caption">Emails a claim link and sets this to Invited</span>
+            </button>
+          </div>
           <p className="chq-participation-menu-footer">{PARTICIPATION_FOOTER_CAPTION}</p>
         </div>
       )}
