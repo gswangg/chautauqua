@@ -316,6 +316,19 @@ describe('AgendaWorkSection (DEC-652)', () => {
     expect(document.querySelector('.chq-overview-overflow')).not.toBeInTheDocument();
   });
 
+  // DEC-370: agendaWork.conflicts[].roomName is nullable on the wire (the
+  // conflicting assignment may carry no roomId). The absent case renders
+  // through the shared room-absence vocabulary (ROOM_TBA_LABEL), never a
+  // raw null/empty node.
+  it('renders the shared "To be announced" room label when a conflict row has a null roomName', () => {
+    mockApi({});
+    const payload = basePayload();
+    payload.agendaWork.conflicts[0]!.roomName = null;
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    expect(screen.getByText('To be announced')).toBeInTheDocument();
+  });
+
   it('loudly refetches (never a silent rollback) when the placement PUT fails', async () => {
     mockApi({
       'PUT /api/v1/submissions/sub-c/slot': {
