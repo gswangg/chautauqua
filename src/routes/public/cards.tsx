@@ -165,9 +165,10 @@ export function SessionDescription(props: { description: string | null }) {
   );
 }
 
-/** EMB-01/DEC-698/DEC-534 (w1-c): start-time + room cell. When the `time`
- * field is enabled the row ALWAYS has this gutter cell (grid-template-
- * columns: ~268px 1fr auto in cards.css.ts depends on it) — an unscheduled
+/** EMB-01/DEC-698/DEC-534 (w4-g amendment): start-time + room cell. When the
+ * `time` field is enabled the row ALWAYS has this gutter cell (grid-
+ * template-columns: var(--chq-pub-when-gutter) 1fr auto in cards.css.ts
+ * depends on it) — an unscheduled
  * session renders an EMPTY .chq-pub-session-when (no dash pile, no
  * placeholder prose per DEC-666) rather than omitting the cell and
  * collapsing the body into the gutter column. Only when the `time` field is
