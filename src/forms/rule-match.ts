@@ -6,8 +6,12 @@
 // true — `===` never matched, so a checkbox-gated rule could NEVER show its
 // dependent field. Both the server (ruleMatches) and the browser toggler
 // (RULE_MATCH_JS, embedded verbatim into the rendered page) canonicalize
-// through the same rules, proven identical by a shared case table
-// (RULE_MATCH_CASES) exercised against both in test/form-render-rules.test.ts.
+// through the same rules. The twins are proven identical on VALUE outcomes
+// by a shared case table (RULE_MATCH_CASES) and on REFUSAL outcomes
+// (unknown rule op, unknown field kind) by a second table
+// (RULE_MATCH_THROW_CASES) — both exercised against both implementations
+// in test/form-render-rules.test.ts. Neither table claims more than the
+// cases it contains (DEC-681 wave-38 amendment).
 // DEC-867: an unanswered field canonicalizes to undefined for EVERY kind
 // (number '' / null / boolean-typed strings, text/long_text/dropdown/file
 // blank strings) and undefined satisfies NO operator — eq, ne, and in all
@@ -96,8 +100,11 @@ export function ruleMatches(
 // Browser twin of canonicalizeOperand/ruleMatches above, embedded verbatim
 // as inline JS (no TS syntax, no imports) into the rendered form page by
 // src/views/form-render.tsx's FieldRulesScript. Kept semantically identical
-// to the TS implementation by a shared case table (RULE_MATCH_CASES),
-// exercised against both via `new Function` in test/form-render-rules.test.ts.
+// to the TS implementation by two shared case tables: RULE_MATCH_CASES
+// proves parity on VALUE outcomes, RULE_MATCH_THROW_CASES proves parity on
+// REFUSAL (unknown op / unknown field kind) outcomes — both exercised
+// against both implementations via `new Function` in
+// test/form-render-rules.test.ts.
 export const RULE_MATCH_JS = `function chqCanonicalize(kind, value) {
   if (kind === 'checkbox') {
     if (value === undefined || value === null) return false;
@@ -112,9 +119,12 @@ export const RULE_MATCH_JS = `function chqCanonicalize(kind, value) {
     var num = Number(value);
     return isFinite(num) ? num : undefined;
   }
-  if (value === undefined || value === null) return undefined;
-  var str = String(value).trim();
-  return str === '' ? undefined : str;
+  if (kind === 'text' || kind === 'long_text' || kind === 'dropdown' || kind === 'file') {
+    if (value === undefined || value === null) return undefined;
+    var str = String(value).trim();
+    return str === '' ? undefined : str;
+  }
+  throw new Error('unknown field kind: ' + kind);
 }
 function chqRuleMatches(rule, value, kind) {
   var actual = chqCanonicalize(kind, value);
@@ -132,7 +142,7 @@ function chqRuleMatches(rule, value, kind) {
     if (!Array.isArray(rule.value)) return false;
     return rule.value.some(function (candidate) { return chqCanonicalize(kind, candidate) === actual; });
   }
-  return true;
+  throw new Error('unknown rule op: ' + rule.op);
 }`;
 
 export const RULE_MATCH_CASES: {
@@ -230,5 +240,26 @@ export const RULE_MATCH_CASES: {
     answer: "",
     rule: { fieldId: "trigger", op: "ne", value: "Workshop" },
     expected: false,
+  },
+];
+
+// DEC-681 wave-38 amendment: cases where both implementations must REFUSE
+// (throw) rather than silently disagree — an unrecognised rule op or field
+// kind. Proof for these two cases only; not a claim about every possible
+// unknown value.
+export const RULE_MATCH_THROW_CASES: {
+  kind: string;
+  answer: unknown;
+  rule: { fieldId: string; op: string; value: unknown };
+}[] = [
+  {
+    kind: "dropdown",
+    answer: "Workshop",
+    rule: { fieldId: "trigger", op: "gt", value: "Workshop" },
+  },
+  {
+    kind: "rating",
+    answer: 5,
+    rule: { fieldId: "trigger", op: "eq", value: 5 },
   },
 ];

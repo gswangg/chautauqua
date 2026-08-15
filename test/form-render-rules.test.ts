@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "../src/forms/types";
 import { FieldRulesScript, FormField, FormFieldsSection } from "../src/views/form-render";
-import { RULE_MATCH_JS, RULE_MATCH_CASES, ruleMatches } from "../src/forms/rule-match";
+import {
+  RULE_MATCH_JS,
+  RULE_MATCH_CASES,
+  RULE_MATCH_THROW_CASES,
+  ruleMatches,
+} from "../src/forms/rule-match";
 
 const formatField: FormFieldDef = {
   id: "format",
@@ -135,6 +140,20 @@ describe("RULE_MATCH_JS parity with ruleMatches (DEC-681)", () => {
     for (const { kind, answer, rule, expected } of RULE_MATCH_CASES) {
       expect(chqRuleMatches(rule, answer, kind)).toBe(expected);
       expect(ruleMatches(rule, answer, kind)).toBe(expected);
+    }
+  });
+
+  it("chqRuleMatches and ruleMatches BOTH throw on every refusal case (DEC-681 wave-38 amendment)", () => {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const chqRuleMatches = new Function(
+      `${RULE_MATCH_JS}\nreturn chqRuleMatches;`,
+    )() as (rule: unknown, value: unknown, kind: string) => boolean;
+
+    expect(RULE_MATCH_THROW_CASES.length).toBeGreaterThan(0);
+    for (const { kind, answer, rule } of RULE_MATCH_THROW_CASES) {
+      expect(() => chqRuleMatches(rule, answer, kind)).toThrow();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(() => ruleMatches(rule as any, answer, kind as any)).toThrow();
     }
   });
 });
