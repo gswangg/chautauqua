@@ -386,8 +386,11 @@ async function main(): Promise<void> {
   const speakerHeaders = { cookie: cookieHeader(await login(PERF_SPEAKER_EMAIL, PERF_SPEAKER_PASSWORD)) };
   // DEC-338 (wave-35 amendment) / DEC-644 wave-31 amendment: the profile-
   // resolved accepted-submission id the perf speaker fixture is seeded to
-  // own (perfSpeakerAcceptedIndexes always includes index 0) — the same
-  // id icsIds[0]/ratingSubmissionId above resolves, never a hardcoded id.
+  // own. wave-39 correction: fetchAcceptedSubmissionIds/icsIds uses the
+  // default "newest" sort (createdAt desc, seq desc), so icsIds[0] is the
+  // HIGHEST-seq accepted submission — perfSpeakerAcceptedIndexes' returned
+  // array is ordered to put that same highest-seq submission at its own
+  // index 0, so this is never a hardcoded id and the two always agree.
   const portalSubmissionId = icsIds[0]!;
 
   // DEC-644 amendment (wave 46): a real recipient set drawn from the perf

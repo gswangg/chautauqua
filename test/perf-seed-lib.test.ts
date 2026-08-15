@@ -159,13 +159,22 @@ describe("perf speaker fixture (DEC-338 wave-35 amendment)", () => {
     expect(perfSpeakerAcceptedIndexes(300).length).toBeLessThanOrEqual(300);
     // A profile seeded with fewer accepted submissions than the requested
     // count must never overrun acceptedCount.
-    expect(perfSpeakerAcceptedIndexes(2)).toEqual([0, 1]);
     expect(perfSpeakerAcceptedIndexes(0)).toEqual([]);
   });
 
-  it("perfSpeakerAcceptedIndexes always includes index 0 whenever acceptedCount > 0 (so GET /portal/submissions/:id has a resolvable id)", () => {
-    expect(perfSpeakerAcceptedIndexes(1)).toContain(0);
-    expect(perfSpeakerAcceptedIndexes(300)).toContain(0);
+  // wave-39 correction: GET /api/v1/events/:id/submissions?status=accepted's
+  // default "newest" sort returns createdAt desc, seq desc (highest-seq
+  // first) — acceptedSubmissionIds is built in ASCENDING seed order, so the
+  // returned index list must walk DOWN from acceptedCount-1, not up from 0,
+  // for its own index 0 to line up with what page 1 actually returns first.
+  it("perfSpeakerAcceptedIndexes returns descending indexes (highest-seq accepted submission first), pinning the page-1 'newest' sort contract", () => {
+    expect(perfSpeakerAcceptedIndexes(2)).toEqual([1, 0]);
+    expect(perfSpeakerAcceptedIndexes(300).slice(0, 3)).toEqual([299, 298, 297]);
+  });
+
+  it("perfSpeakerAcceptedIndexes always includes acceptedCount-1 (the highest-seq accepted submission) at its own index 0, whenever acceptedCount > 0 (so GET /portal/submissions/:id has a resolvable id matching icsIds[0])", () => {
+    expect(perfSpeakerAcceptedIndexes(1)[0]).toBe(0);
+    expect(perfSpeakerAcceptedIndexes(300)[0]).toBe(299);
   });
 
   it("perfSpeakerAcceptedIndexes rejects a non-integer or negative acceptedCount/count", () => {

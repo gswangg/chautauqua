@@ -28,12 +28,17 @@ import {
   PERF_PIPELINE_ENTRY_COUNT,
   PERF_PIPELINE_STAGES,
   PERF_PROFILES,
+  PERF_SPEAKER_CONTACT_ID,
+  PERF_SPEAKER_EMAIL,
+  PERF_SPEAKER_PASSWORD,
+  PERF_SPEAKER_USER_ID,
   PERF_TASK_COUNT,
   PERF_TASKS,
   contactIndexForSubmission,
   contactsPerTask,
   coSpeakerContactIndexesForAccepted,
   isDeliberatelyOverdueAssignment,
+  isPerfSpeakerTaskAssignmentComplete,
   isTaskAssignmentComplete,
   overdueAssignmentCount,
   perfFileSpecs,
@@ -41,6 +46,9 @@ import {
   perfOrgUserRole,
   perfPlanId,
   perfReviewerEmail,
+  perfSpeakerAcceptedIndexes,
+  perfSpeakerParticipantId,
+  perfSpeakerTaskAssignmentId,
   perfSubmissionStatuses,
   pipelineStageIndexForEntry,
   sentAtForEmailLogRow,
@@ -580,6 +588,85 @@ async function main(): Promise<void> {
         }),
       );
     }
+  }
+
+  // --- DEC-338 (wave-39): singleton perf speaker `user` + `contact` rows,
+  // PERF_SPEAKER_SUBMISSION_COUNT extra visible-speaker `participant` rows
+  // on the highest-seq accepted submissions (matching what
+  // GET /api/v1/events/:id/submissions?status=accepted page 1 actually
+  // returns, see perfSpeakerAcceptedIndexes' doc comment), and one
+  // task_assignment per existing PERF_TASK_COUNT onboarding task (reusing
+  // taskIds minted above, never a new task row) — so scripts/perf-smoke.ts's
+  // second login() and the /portal/* checks are measurable end to end.
+  // Both `user.id` and `contact.id` fall under the 'seed_perf_' id
+  // namespace, so the idempotent DELETE prologue above (which already
+  // matches `user`/`contact`/`participant`/`task_assignment` by that
+  // prefix or by their perf-scoped parent id) cleans these rows too,
+  // without any additional DELETE statement.
+  statements.push(
+    insertStmt("contact", {
+      id: PERF_SPEAKER_CONTACT_ID,
+      org_id: ORG_ID,
+      first_name: "Perf",
+      last_name: "Speaker",
+      email: PERF_SPEAKER_EMAIL,
+      phone: null,
+      company: "Perf Test Co",
+      title: "Speaker",
+      bio: null,
+      headshot_url: null,
+      social_links_json: null,
+      notes: null,
+      custom_fields_json: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("user", {
+      id: PERF_SPEAKER_USER_ID,
+      org_id: ORG_ID,
+      email: PERF_SPEAKER_EMAIL,
+      password_hash: await hashPassword(PERF_SPEAKER_PASSWORD),
+      role: "speaker",
+      contact_id: PERF_SPEAKER_CONTACT_ID,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  const perfSpeakerAcceptedIndexList = perfSpeakerAcceptedIndexes(acceptedSubmissionIds.length);
+  perfSpeakerAcceptedIndexList.forEach((acceptedIndex, k) => {
+    statements.push(
+      insertStmt("participant", {
+        id: perfSpeakerParticipantId(k + 1),
+        submission_id: acceptedSubmissionIds[acceptedIndex]!,
+        contact_id: PERF_SPEAKER_CONTACT_ID,
+        role: "speaker",
+        order: 99,
+        visible: true,
+        invite_status: "accepted",
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  });
+  for (let taskIdx = 0; taskIdx < PERF_TASK_COUNT; taskIdx++) {
+    const isComplete = isPerfSpeakerTaskAssignmentComplete(taskIdx);
+    statements.push(
+      insertStmt("task_assignment", {
+        id: perfSpeakerTaskAssignmentId(taskIdx),
+        task_id: taskIds[taskIdx]!,
+        contact_id: PERF_SPEAKER_CONTACT_ID,
+        status: isComplete ? "complete" : "pending",
+        completed_at: isComplete ? nextTs() : null,
+        completed_by: null,
+        response_json: null,
+        file_id: null,
+        last_reminded_at: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
   }
 
   // --- DEC-338: 5,000 email_log rows for the perf event, sent_at spread
