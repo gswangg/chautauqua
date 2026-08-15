@@ -42,7 +42,7 @@ import {
   type UpdateTaskInput,
 } from "../server/repo/tasks";
 import { findContactsForOrg } from "../server/repo/contacts";
-import { clampPage, clampPerPage, DEFAULT_PER_PAGE } from "../lib/pagination";
+import { clampPage, clampPerPage } from "../lib/pagination";
 import { resolveBaseUrl, resolveBaseUrlForCron } from "../server/origin";
 import type { KVStore } from "../auth/claim";
 import { countOf } from "../domain/count-copy";
@@ -495,15 +495,10 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   }
 
   await assignTask(c.var.db, taskId, dedupedContactIds);
-  const grid = await getOnboardingGrid(c.var.db, ownership.eventId, {
-    page: 1,
-    perPage: DEFAULT_PER_PAGE,
-    q: null,
-    taskId: null,
-    status: null,
-    overdueOnly: false,
-    now: Date.now(),
-  });
+  // DEC-340 (wave 46 amendment): echo the CALLER's grid query back, not a
+  // hand-written literal -- see GET .../onboarding above for the same parse.
+  const params = parseOnboardingGridQuery(c.req.query(), Date.now());
+  const grid = await getOnboardingGrid(c.var.db, ownership.eventId, params);
   return c.json(grid);
 });
 
