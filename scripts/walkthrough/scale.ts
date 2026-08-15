@@ -390,11 +390,19 @@ async function reAcceptIsExactlyOnce(
 // (DEC-009: status changes never auto-email)
 // ---------------------------------------------------------------------------
 
-async function readMailboxCount(): Promise<number> {
-  const res = await fetch(`${BASE_URL}/dev/mailbox`);
+// /dev/mailbox is org-scoped (src/routes/dev/mailbox.tsx reads
+// c.var.auth!.orgId) — it requires an authenticated organizer session, not
+// just DEV_MODE. An unauthenticated fetch() here previously 302-redirected
+// to /login and failed the "reports a message count" assertion; thread the
+// organizer's cookie jar through instead.
+async function readMailboxCount(organizerJar: CookieJar): Promise<number> {
+  const res = await jarFetch(organizerJar, `${BASE_URL}/dev/mailbox`);
   const body = await res.text();
   assertStatus("step5: GET /dev/mailbox", res, 200, body);
-  const match = body.match(/(\d+) message\(s\)/);
+  // DEC-925 countOf pluralizes as "1 message" / "N messages", not the
+  // literal "(s)" this walkthrough previously matched
+  // (src/domain/count-copy.ts, src/routes/dev/mailbox.tsx:67).
+  const match = body.match(/(\d+) messages?\b/);
   assertTrue("step5: mailbox page reports a message count", Boolean(match), body.slice(0, 300));
   return Number(match![1]);
 }
@@ -422,7 +430,7 @@ async function assertNoAutoEmailOnAccept(organizerJar: CookieJar, eventId: strin
   });
   assertStatus("step5: invite probe participant", participantRes.res, 201, participantRes.text);
 
-  const before = await readMailboxCount();
+  const before = await readMailboxCount(organizerJar);
 
   const bulkRes = await api(organizerJar, "POST", `/api/v1/events/${eventId}/submissions/status`, {
     ids: [submissionId],
@@ -431,7 +439,7 @@ async function assertNoAutoEmailOnAccept(organizerJar: CookieJar, eventId: strin
   assertStatus("step5: accept the probe submission", bulkRes.res, 200, bulkRes.text);
   assertTrue("step5: probe accept reports updated=1", bulkRes.json.updated === 1, bulkRes.text);
 
-  const after = await readMailboxCount();
+  const after = await readMailboxCount(organizerJar);
   assertTrue(
     "step5: dev mailbox count unchanged by status change (never auto-emails)",
     after === before,
@@ -478,10 +486,21 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
   fullForm.set("chq_csrf", csrf!);
   fullForm.set("field__title", originalTitle);
   fullForm.set("field__description", "Fresh public submission used to probe DEC-083 purge-on-publish.");
-  fullForm.set("field__first_name", "Scale");
-  fullForm.set("field__last_name", "Prober");
+  // The public form renders ONE Name control (speaker_name); the POST
+  // handler splits it back into the locked first_name/last_name answers
+  // (src/routes/public/submit-body.ts SPEAKER_NAME_FIELD) — first_name/
+  // last_name never render as their own inputs (see producer.ts's J2 for
+  // the same idiom).
+  fullForm.set("speaker_name", "Scale Prober");
   fullForm.set("field__email", email);
   for (const [name, value] of dropdownValues) fullForm.set(name, value);
+  // Dropdown-kind custom fields (e.g. session format) render as RADIO
+  // GROUPS on the public form (DEC-489 family single-track radio idiom),
+  // not <select> — fill each required group's first value too.
+  for (const match of getBody.matchAll(/<input type="radio" name="(field__field_[a-zA-Z0-9_]+)"[^>]*value="([^"]+)"/g)) {
+    const [, name, value] = match;
+    if (name && value && !fullForm.has(name)) fullForm.set(name, value);
+  }
   if (trackMatch) fullForm.set("trackIds", trackMatch[1]!);
 
   const submitRes = await jarFetch(publicJar, `${BASE_URL}/submit/${SEEDED_EVENT_SLUG}`, {
@@ -568,6 +587,13 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
     fail("step6: portal edit page trackIds", "no checked trackIds checkbox found on edit page and no fallback trackMatch from submit page");
   }
 
+  // The speaker portal edit form renders required custom dropdown fields
+  // (e.g. session format) as real <select> elements, unlike the public
+  // /submit page's radio idiom for the same field — reuse
+  // parseSelectFirstOptions, but against editGetBody, not the submit page's
+  // getBody, or a required select-kind field is left unset and 400s.
+  const editDropdownValues = parseSelectFirstOptions(editGetBody);
+
   const markerTitle = `Scale purge marker ${stamp}`;
   const editForm = new FormData();
   editForm.set("chq_csrf", editCsrf!);
@@ -576,7 +602,7 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
   editForm.set("field__first_name", "Scale");
   editForm.set("field__last_name", "Prober");
   editForm.set("field__email", email);
-  for (const [name, value] of dropdownValues) editForm.set(name, value);
+  for (const [name, value] of editDropdownValues) editForm.set(name, value);
   editForm.set("trackIds", editTrackId);
 
   const editPostRes = await jarFetch(speakerJar, `${BASE_URL}/portal/submissions/${submissionId}/edit`, {
