@@ -103,6 +103,16 @@ describe('buildAnswerRows', () => {
     ]);
   });
 
+  // DEC-561 (Amendment, wave 60): an object-shaped answer (malformed/legacy
+  // CFP data) renders as JSON through the single answerDisplayText owner --
+  // never String(value)'s '[object Object]'.
+  it('renders an object answer as JSON, never [object Object]', () => {
+    const answers = { f1: { nested: true } };
+    const rows = buildAnswerRows(answers, fields);
+    expect(rows[0]).toEqual({ fieldId: 'f1', label: 'Level', displayValue: JSON.stringify({ nested: true }) });
+    expect(rows[0]!.displayValue).not.toBe('[object Object]');
+  });
+
   it('sorts an orphan answer key (no matching field) last, in raw key order', () => {
     const answers = { f1: 'Advanced', zeta: 'z', alpha: 'a' };
     const rows = buildAnswerRows(answers, fields);

@@ -7,7 +7,8 @@ import { formatDate } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
 import { chunkSelection } from './bulk';
-import { deriveColumnsFromFormFields, findFormatField, formatAnswerValue, visibleColumns, type ColumnDef } from './columns';
+import { deriveColumnsFromFormFields, findFormatField, visibleColumns, type ColumnDef } from './columns';
+import { answerDisplayText } from '../../../../src/domain/answer-text';
 import { formatFormatLabel } from '../../lib/formatLabel';
 import { FilterBar, FilterBarSearchSort } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
@@ -428,8 +429,8 @@ export function SubmissionsTable() {
                   {shownColumns.map((col) => (
                     <td key={col.fieldId} className="chq-submissions-table-custom">
                       {col.fieldId === formatFieldId
-                        ? formatFormatLabel(formatAnswerValue(item.answers?.[col.fieldId]), { abbreviate: true })
-                        : formatAnswerValue(item.answers?.[col.fieldId])}
+                        ? formatFormatLabel(answerDisplayText(item.answers?.[col.fieldId]), { abbreviate: true })
+                        : answerDisplayText(item.answers?.[col.fieldId])}
                     </td>
                   ))}
                   <td className="chq-submissions-table-clone-cell">

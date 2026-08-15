@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib/api';
 import './review.css';
 import './scorecard.css';
-import { formatAnswerValue } from './answerText';
+import { answerDisplayText } from '../../../../src/domain/answer-text';
 import { incompleteCriteria, isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { planTrackScope } from './PlanList';
@@ -443,7 +443,7 @@ export function Scorecard() {
                 {formAnswers.map((a) => (
                   <div key={a.fieldId} className="chq-review-answer-row">
                     <dt>{a.label}</dt>
-                    <dd>{formatAnswerValue(a.value)}</dd>
+                    <dd>{answerDisplayText(a.value, { empty: '—' })}</dd>
                   </div>
                 ))}
               </dl>

@@ -51,11 +51,3 @@ const FORMAT_LABELS = new Set(['format', 'session format']);
 export function findFormatField(fields: FormField[]): FormField | undefined {
   return fields.find((field) => field.kind === 'dropdown' && FORMAT_LABELS.has(field.label.trim().toLowerCase()));
 }
-
-/** Format an answer value for display in a dynamic column cell. */
-export function formatAnswerValue(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  if (Array.isArray(value)) return value.map((v) => formatAnswerValue(v)).join(', ');
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  return String(value);
-}
