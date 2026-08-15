@@ -4,6 +4,7 @@ import { apiList, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { EmptyState } from '../../components/EmptyState';
 import { RecentSends } from './RecentSends';
+import type { SendRhythm } from './sendRhythm';
 import type { EmailBatchRow } from './types';
 
 // DEC-751: the batch-row + recipients-disclosure list moved into the shared
@@ -15,7 +16,21 @@ import type { EmailBatchRow } from './types';
 // passed to both RecentSends mounts (History and Compose) -- History no
 // longer fetches its own copy, so the same batch renders the same template
 // name under either tab.
-export function HistoryTab({ eventId, templatesById }: { eventId: string; templatesById: Record<string, string> }) {
+// DEC-905 (wave-59 amendment): `rhythm` is the send-rhythm figure Comms.tsx
+// derives once from its own envelope totals -- passed straight through to
+// RecentSends so History's mount states the same sentence as the head and
+// the compose mount, never re-deriving it from `items`. Optional so this
+// component doesn't need a fetch of its own to render before Comms.tsx's
+// rhythm request settles.
+export function HistoryTab({
+  eventId,
+  templatesById,
+  rhythm,
+}: {
+  eventId: string;
+  templatesById: Record<string, string>;
+  rhythm?: SendRhythm | null;
+}) {
   const [q, setQ] = useState('');
   const [items, setItems] = useState<EmailBatchRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -104,6 +119,7 @@ export function HistoryTab({ eventId, templatesById }: { eventId: string; templa
           batchesLoaded
           templatesById={templatesById}
           expandBatchKey={expandBatchKey}
+          rhythm={rhythm ?? null}
         />
       )}
 

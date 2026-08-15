@@ -11,8 +11,9 @@ import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { RecentSends } from './RecentSends';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
-import { formatDateTime, formatDateTimeWeekday } from '../../lib/dates';
+import { formatDateTime, formatDate } from '../../lib/dates';
 import type { EmailBatchRow } from './types';
+import type { SendRhythm } from './sendRhythm';
 
 const EVENT_ID = 'evt-recent-sends';
 
@@ -160,17 +161,55 @@ describe('RecentSends', () => {
     expect(screen.getByText('Send #5')).toBeInTheDocument();
   });
 
-  it('states the section-head subtitle from the FULL batches prop (not the limit-sliced rows)', () => {
-    const now = Date.now();
-    const batches = [
-      batch({ batchKey: 'recent-1', subject: 'Recent A', sentAt: now - 1000, statusCounts: { sent: 4 } }),
-      batch({ batchKey: 'recent-2', subject: 'Recent B', sentAt: now - 2000, statusCounts: { sent: 3 } }),
-      // Older than the limit cap would show, and older than 7 days -- must
-      // not count toward the "N sent in 7 days" figure.
-      batch({ batchKey: 'old', subject: 'Old', sentAt: now - 30 * 24 * 60 * 60 * 1000, statusCounts: { sent: 9 } }),
+  // DEC-905 (wave-59 amendment): RecentSends renders no aggregate of its
+  // own -- the subtitle is the caller-supplied `rhythm`, formatted via the
+  // shared formatSendRhythm, never re-derived from `batches`.
+  it('withholds the subtitle when rhythm is not supplied, even with batches present', () => {
+    render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={[batch()]} templatesById={{}} />);
+    expect(document.querySelector('.chq-comms-recent-sends-subtitle')).not.toBeInTheDocument();
+  });
+
+  it('renders the exact rhythm sentence it is given on the compose mount (limit=4, onSeeAll present)', () => {
+    const rhythm: SendRhythm = { sentLast7Days: 7, failedLast7Days: 0, lastSentAt: 1700000000000 };
+    render(
+      <RecentSends
+        eventId={EVENT_ID}
+        batchesLoaded
+        batches={[batch()]}
+        limit={4}
+        onSeeAll={() => undefined}
+        templatesById={{}}
+        rhythm={rhythm}
+      />,
+    );
+    expect(screen.getByText(`7 sent in the last 7 days · last ${formatDate(1700000000000)}`)).toBeInTheDocument();
+  });
+
+  it('renders the exact rhythm sentence it is given on the history mount (no limit, no onSeeAll)', () => {
+    const rhythm: SendRhythm = { sentLast7Days: 2, failedLast7Days: 1, lastSentAt: 1700000000000 };
+    render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={[batch()]} templatesById={{}} rhythm={rhythm} />);
+    expect(
+      screen.getByText(`2 sent in the last 7 days · 1 failed · last ${formatDate(1700000000000)}`),
+    ).toBeInTheDocument();
+  });
+
+  it('the rhythm figure is unchanged by a batches array missing older batches -- it never re-derives from batches', () => {
+    const rhythm: SendRhythm = { sentLast7Days: 9, failedLast7Days: 0, lastSentAt: 1700000000000 };
+    const fullBatches = [
+      batch({ batchKey: 'recent-1', subject: 'Recent A', sentAt: 1700000000000, statusCounts: { sent: 4 } }),
+      batch({ batchKey: 'old', subject: 'Old', sentAt: 1600000000000, statusCounts: { sent: 5 } }),
     ];
-    render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={batches} limit={1} onSeeAll={() => undefined} templatesById={{}} />);
-    expect(screen.getByText(`7 sent in 7 days · last ${formatDateTimeWeekday(now - 1000)}`)).toBeInTheDocument();
+    const { rerender } = render(
+      <RecentSends eventId={EVENT_ID} batchesLoaded batches={fullBatches} templatesById={{}} rhythm={rhythm} />,
+    );
+    expect(screen.getByText(`9 sent in the last 7 days · last ${formatDate(1700000000000)}`)).toBeInTheDocument();
+
+    // Missing the older batch entirely -- the same rhythm prop still renders
+    // the same sentence, because RecentSends never sums or filters `batches`
+    // to produce it.
+    const trimmedBatches = [fullBatches[0]!];
+    rerender(<RecentSends eventId={EVENT_ID} batchesLoaded batches={trimmedBatches} templatesById={{}} rhythm={rhythm} />);
+    expect(screen.getByText(`9 sent in the last 7 days · last ${formatDate(1700000000000)}`)).toBeInTheDocument();
   });
 
   // w1-g: History's "Open" handoff carries the batch's key -- landing on

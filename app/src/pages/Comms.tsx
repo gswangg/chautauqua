@@ -4,11 +4,11 @@ import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { apiList, ApiError } from '../lib/api';
 import { useMutationVersion } from '../lib/mutationSignal';
-import { formatDate } from '../lib/dates';
 import { TemplatesTab } from './comms/TemplatesTab';
 import { ComposeWizard } from './comms/ComposeWizard';
 import { HistoryTab } from './comms/HistoryTab';
 import { RecentSends } from './comms/RecentSends';
+import { formatSendRhythm } from './comms/sendRhythm';
 import type { EmailBatchRow, EmailLogRow, EmailTemplate } from './comms/types';
 import './comms/comms.css';
 
@@ -195,6 +195,15 @@ export function CommsPage() {
   // previous attempt's mistake, filed three times over).
   const pageMeasureClass = tab === 'templates' ? 'chq-measure' : 'chq-measure-table';
 
+  // DEC-905 (wave-59 amendment): the send rhythm has ONE producer -- built
+  // here from the envelope-derived totals plus the latest all-time batch's
+  // date, and handed (never re-derived) to both the head and BOTH RecentSends
+  // mounts, so all three agree by construction rather than by convention.
+  const rhythm =
+    sentLast7DaysLoaded && batchesLoaded
+      ? { sentLast7Days, failedLast7Days, lastSentAt: recentBatches[0]?.sentAt ?? null }
+      : null;
+
   return (
     <div className={`chq-page chq-comms-page ${pageMeasureClass}`}>
       <div className={phoneEntered ? 'chq-comms-main' : 'chq-comms-main chq-comms-main-landing'}>
@@ -213,13 +222,7 @@ export function CommsPage() {
                 wall-clock (never a sum over a page of batches) plus the most
                 recent send's date, taken from the same all-time batch list
                 Recent Sends renders. */}
-            {sentLast7DaysLoaded && batchesLoaded && (
-              <p className="chq-comms-head-subtitle">
-                {sentLast7Days} sent in the last 7 days
-                {failedLast7Days > 0 ? ` · ${failedLast7Days} failed` : ''}
-                {recentBatches[0] ? ` · last ${formatDate(recentBatches[0].sentAt)}` : ''}
-              </p>
-            )}
+            {rhythm && <p className="chq-comms-head-subtitle">{formatSendRhythm(rhythm)}</p>}
           </div>
           <div className="chq-comms-head-actions" role="tablist">
             {/* w4-g (DEC-890 amendment): Templates is its own page (a
@@ -253,11 +256,12 @@ export function CommsPage() {
               limit={COMPOSE_RECENT_SENDS_LIMIT}
               onSeeAll={goToHistory}
               templatesById={templatesById}
+              rhythm={rhythm}
             />
           </>
         )}
         {tab === 'templates' && <TemplatesTab eventId={eventId} />}
-        {tab === 'history' && <HistoryTab eventId={eventId} templatesById={templatesById} />}
+        {tab === 'history' && <HistoryTab eventId={eventId} templatesById={templatesById} rhythm={rhythm} />}
       </div>
 
       {/* DEC-621: phone-only landing. Hidden by default (top-level
