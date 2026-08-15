@@ -14,12 +14,14 @@
 // exactly the interpolation idiom public.css.ts's PUBLIC_CSS already uses to
 // compose CHROME_CSS/CARDS_CSS/AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374, DEC_657 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_657, DEC_945 } from "../../decisions";
 import { ERROR_STATES_CSS } from "../../views/error-states.css";
+import { BARE_PAGE_CSS } from "../../views/bare-page.css";
 
 void DEC_373;
 void DEC_374;
 void DEC_657;
+void DEC_945;
 
 export const CFP_CSS = `
   /* DEC-986 (wave 40 amendment): chrome is never constrained -- the header
@@ -137,7 +139,9 @@ export const CFP_CSS = `
   .chq-cfp-confirm-body { font-size: 15px; line-height: 1.65; color: var(--chq-ink-2); }
   .chq-cfp-confirm-actions { border-top: 1px solid var(--chq-hairline); padding-top: 16px; display: flex; flex-direction: column; gap: 11px; }
 
-  .chq-cfp-closed { max-width: 520px; margin: 0 auto; background: var(--chq-surface); border: 1px solid var(--chq-rule); border-radius: 6px; padding: 34px 34px 30px; display: flex; flex-direction: column; gap: 14px; }
+  /* DEC-945 (wave 48 amendment): .chq-cfp-closed no longer draws its own
+     card frame -- it inherits .chq-bare-page's 820px reading-column shell
+     (no border, no fill, no radius) and keeps only its own type rules. */
   .chq-cfp-closed h1 { font-family: var(--chq-font-display); font-size: 29px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; margin: 0; }
   .chq-cfp-closed-body { font-size: 15px; line-height: 1.65; color: var(--chq-ink-2); }
 
@@ -185,4 +189,4 @@ export const CFP_CSS = `
     [data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"] { display: none; }
     [data-chq-cfp-step="2"] .chq-cfp-step-next { display: none; }
   }
-${ERROR_STATES_CSS}`;
+${ERROR_STATES_CSS}${BARE_PAGE_CSS}`;

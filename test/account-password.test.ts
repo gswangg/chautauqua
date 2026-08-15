@@ -405,6 +405,15 @@ describe("GET /account/password — role-aware '‹ Back' link", () => {
     const html = await res.text();
     expect(html).toContain('href="/admin"');
     expect(html).not.toContain('href="/portal"');
+    // DEC-945 (wave-48 amendment): /account/password is a non-credential
+    // dead-end -- it now sits in the bare 820px reading-page shell, not
+    // the small bordered credential card.
+    expect(html).toContain('class="chq-bare-page"');
+    // The embedded AUTH_CSS <style> block still legitimately mentions
+    // .chq-auth-card (it styles /login) -- scope this check to the
+    // rendered <main> landmark's own class attribute.
+    expect(html).toMatch(/<main class="chq-bare-page">/);
+    expect(html).not.toMatch(/<main class="chq-auth-card/);
   });
 
   it("speaker sees a back link to /portal, not /admin", async () => {

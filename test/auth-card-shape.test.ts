@@ -94,22 +94,40 @@ describe("auth surface card shape (DEC-944)", () => {
     expect(res.status).toBe(404);
     assertOneMainOneH1(await res.text());
   });
+
+  // DEC-945 (wave-48 amendment): the admin/app not-found page is a
+  // non-credential dead-end -- it wears the bare 820px reading-page shell,
+  // never the small bordered credential card.
+  it("app 404 carries chq-bare-page, not chq-auth-card", async () => {
+    const { app, env } = buildApp();
+    const res = await app.request("/definitely-not-a-page", {}, env);
+    const html = await res.text();
+    expect(html).toContain("chq-bare-page");
+    // chq-auth-card-notice is expected here (states its own tighter
+    // rhythm); the bordered credential card class itself must be absent.
+    expect(html).not.toMatch(/class="chq-auth-card[" ]/);
+  });
 });
 
 describe("AUTH_CSS card metrics (DEC-944/DEC-945 V8 amendment, wave 25)", () => {
-  it("declares the frames' card, narrow-card, title and input numbers", () => {
+  it("declares the frame's card, title and input numbers", () => {
     // DEC-945 wave-25 amendment: the V8 intake ("a card, not a stretched
     // phone") supersedes the pair-6 box-math ruling -- .chq-auth-card is
-    // 460, .chq-auth-card-narrow is 520.
+    // 460.
     expect(AUTH_CSS).toMatch(/\.chq-auth-card\s*\{[^}]*max-width:\s*460px/);
-    expect(AUTH_CSS).toMatch(
-      /\.chq-auth-card\.chq-auth-card-narrow\s*\{[^}]*max-width:\s*520px/,
-    );
     expect(AUTH_CSS).not.toContain("max-width: 450px");
-    expect(AUTH_CSS).not.toContain("max-width: 820px");
     expect(AUTH_CSS).not.toContain("max-width: 888px");
     expect(AUTH_CSS).toMatch(/\.chq-auth-title\s*\{[^}]*font-size:\s*28px/);
     expect(AUTH_CSS).toMatch(/input\[type=password\]\s*\{[^}]*min-height:\s*48px/);
+  });
+
+  // DEC-945 wave-48 amendment: .chq-auth-card-narrow is deleted -- the
+  // three non-credential dead-ends that wore it now use the bare 820px
+  // reading-page shell (.chq-bare-page), which carries no border,
+  // background or radius.
+  it("no longer declares .chq-auth-card-narrow and composes the borderless bare-page shell", () => {
+    expect(AUTH_CSS).not.toContain("chq-auth-card-narrow");
+    expect(AUTH_CSS).toMatch(/\.chq-bare-page\s*\{[^}]*max-width:\s*820px/);
   });
 });
 

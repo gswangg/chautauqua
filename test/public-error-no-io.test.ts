@@ -115,7 +115,7 @@ describe("DEC-635 (wave 17 amendment): the public error card renders with zero d
     expect(body).toContain('role="alert"');
     expect(body).toContain("Something went wrong");
     const mainMatches =
-      body.match(/<main class="chq-auth-card chq-auth-card-narrow chq-auth-card-notice">/g) ?? [];
+      body.match(/<main class="chq-bare-page chq-auth-card-notice">/g) ?? [];
     expect(mainMatches).toHaveLength(1);
     expect(body).toContain('href="/e/conf/sessions">Back to the event');
     expect(body).toContain('href="/">Go to the homepage');

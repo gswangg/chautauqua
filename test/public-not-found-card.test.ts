@@ -2,8 +2,9 @@
 // surfaces -- the app.notFound() catch-all (src/server/not-found.tsx) and
 // the public routes' publicNotFound (src/routes/public/not-found.tsx) --
 // render the exact same NotFoundDocument: same title, same noindex meta,
-// exactly one <main class="chq-auth-card chq-auth-card-narrow"> with no
-// wrapping <div class="chq-auth-card">, and both footer links. Mirrors the
+// exactly one <main class="chq-bare-page chq-auth-card-notice"> (DEC-945
+// wave-48 amendment: the bare 820px reading-page shell, no card border)
+// with no wrapping <div class="chq-auth-card">, and both footer links. Mirrors the
 // vi.mock(../src/server/repo/public) pattern from
 // test/public-404-no-store.test.ts so route handlers, including
 // publicNotFound's header override, run for real.
@@ -106,8 +107,7 @@ function expectSharedCardMarkup(body: string) {
   expect(body).toContain("<title>Not found - Chautauqua</title>");
   expect(body).toContain('<meta name="robots" content="noindex"');
   expect(body).not.toContain('<div class="chq-auth-card"');
-  const mainMatches =
-    body.match(/<main class="chq-auth-card chq-auth-card-narrow chq-auth-card-notice">/g) ?? [];
+  const mainMatches = body.match(/<main class="chq-bare-page chq-auth-card-notice">/g) ?? [];
   expect(mainMatches).toHaveLength(1);
   expect(body).toContain('href="/">Go to the homepage');
   expect(body).toContain('href="/login">Log in');

@@ -97,7 +97,7 @@ function buildApp() {
 function expectPublicChrome(body: string) {
   expect(body).not.toContain('<div class="chq-auth-card"');
   const mainMatches =
-    body.match(/<main class="chq-auth-card chq-auth-card-narrow chq-auth-card-notice">/g) ?? [];
+    body.match(/<main class="chq-bare-page chq-auth-card-notice">/g) ?? [];
   expect(mainMatches).toHaveLength(1);
   expect(body).toContain('href="/">Go to the homepage');
   expect(body).toContain('href="/login">Log in');

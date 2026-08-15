@@ -82,7 +82,7 @@ function PasswordPage(props: {
         <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
       </head>
       <body>
-        <main className="chq-auth-card chq-auth-card-narrow">
+        <main className="chq-bare-page">
           <div className="chq-auth-titlerow">
             <a className="chq-auth-back" href={props.backHref}>
               &lsaquo; Back
