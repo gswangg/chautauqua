@@ -783,6 +783,15 @@
   text-align: right;
 }
 
+/* DEC-160 (wave-65 amendment): when the filtered set is narrower than the
+   library, the button counts only what it will actually zip and this line
+   names what is being left out. Same muted helper column as the cap reason
+   it sits beside -- one of the two ever renders, never both. */
+.chq-content-files-download-all-scope {
+  max-width: 34ch;
+  text-align: right;
+}
+
 /* Search box sits to the LEFT of the chip strip it narrows. */
 .chq-content-files-toolbar {
   flex-wrap: wrap;

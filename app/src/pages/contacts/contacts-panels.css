@@ -171,6 +171,26 @@
   font-style: italic;
 }
 
+/* DEC-856 (wave-65 amendment): a refused move attaches to the card it came
+   from -- the optimistic move is already rolled back, so this names why. The
+   messages themselves are the frozen .chq-field-error face (13px/600 ink);
+   these wrappers only stack them and carry the recorded refusal mark (3px
+   ink left edge, never red). */
+.chq-contacts-pipeline-card-move-error,
+.chq-contacts-pipeline-move-error {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 3px solid var(--chq-ink);
+  padding-left: 8px;
+}
+
+/* In the detail panel the stack sits directly under the stage select it
+   refuses, so it owns the gap the card's own flex column supplies. */
+.chq-contacts-pipeline-move-error {
+  margin-top: 6px;
+}
+
 /* DEC-821: fit is a visible state, never blank. A rated card gets the
    product's standard solid pill; an unrated one gets a dashed outline of
    the same shape, so its absence reads as a deliberate state, not a
