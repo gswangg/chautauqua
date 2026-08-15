@@ -490,15 +490,9 @@ describe('CSS token + button-face contract (DEC-937)', () => {
       while ((m = re.exec(src)) !== null) used.add(m[0]);
     }
 
-    // app/src/pages/contacts/** is a task-boundary exclusion, not a scan
-    // carve-out: another lane owns that directory this wave (a concurrent
-    // rebuild), so its CSS is enumerated by (C) above but left out of this
-    // rule's delete-fix scope. This is dated to the current wave's task
-    // split, not a standing exemption — a future wave should re-probe it.
     const offenders: string[] = [];
     for (const path of CSS_FILES) {
       const label = relative(HERE, path);
-      if (label.startsWith(join('pages', 'contacts'))) continue;
       const css = readFileSync(path, 'utf-8');
       for (const { selector } of allRulesIncludingMedia(css)) {
         const tokens = selectorClassTokens(selector).filter((t) => !PHONE_TOKEN.test(t));

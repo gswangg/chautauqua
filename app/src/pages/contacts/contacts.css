@@ -151,16 +151,6 @@
   gap: 10px;
 }
 
-.chq-contacts-segment-select {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--chq-ink-2);
-  margin-left: auto;
-}
-
 /* ---------------------------------------------------------------------- */
 /* Directory right rail (DirectoryRail.tsx)                               */
 /* ---------------------------------------------------------------------- */
@@ -342,26 +332,6 @@
 /* Modals (Bulk email / Add to event)                                     */
 /* ---------------------------------------------------------------------- */
 
-.chq-contacts-modal-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.chq-contacts-modal-heading h2 {
-  margin: 0;
-  font-family: var(--chq-font-display);
-  font-size: 23px;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-}
-
-.chq-contacts-modal-actions {
-  display: flex;
-  gap: 9px;
-}
-
 /* DEC-856 (wave-1 amendment): templates whose merge fields the bulk-email
    context cannot resolve are disabled in the picker; this list names the
    blocking token and the one forward path (Comms compose). A note, not a
@@ -481,20 +451,6 @@
   }
 
   .chq-contacts-segment-summary .chq-select {
-    flex: 1;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  .chq-contacts-segment-select {
-    margin-left: 0;
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .chq-contacts-segment-select .chq-select {
     flex: 1;
     min-height: 44px;
     display: flex;
@@ -788,15 +744,3 @@
   white-space: nowrap;
 }
 
-/* DEC-992: the merge page's combine-rules block, grouped as ONE unit
-   directly above the action row (rather than trailing footnotes after the
-   preview rows) -- MergePage.tsx, not restyled in lane 2's
-   contacts-panels.css since that file is owned by another in-flight task
-   this wave. */
-.chq-contacts-merge-rules {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 0;
-  border-top: 1px solid var(--chq-hairline);
-}
