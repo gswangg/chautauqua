@@ -36,7 +36,17 @@ export const PARTICIPATION_STATE_CAPTIONS: Record<InviteStatus, string> = {
 };
 
 export const PARTICIPATION_FOOTER_CAPTION =
-  'Only Send portal invite sends anything — the other three record what you already know';
+  'Only Send portal invite sends anything — the other two record what you already know';
+
+// DEC-869 (wave-50 amendment): the vendored handoff's menu names exactly
+// three SELECTABLE states -- Not invited / Confirmed / Declined -- with
+// Send portal invite occupying the Invited slot as an action, not a
+// fourth radio. 'invited' is never one of the choices an organiser can
+// pick from this menu; the PATCH API still accepts it (minted only by the
+// portal-invite send itself).
+const SELECTABLE_PARTICIPATION_STATUSES: readonly InviteStatus[] = INVITE_STATUSES.filter(
+  (candidate) => candidate !== 'invited',
+);
 
 interface ParticipationMenuProps {
   contactName: string;
@@ -99,25 +109,43 @@ export function ParticipationMenu({
           <p className="chq-participation-menu-identity-sub">
             {company ?? '—'} &middot; {hasAccount ? 'has account' : 'no portal account'}
           </p>
-          {INVITE_STATUSES.map((candidate) => (
-            <button
-              key={candidate}
-              type="button"
-              role="menuitemradio"
-              aria-checked={candidate === status}
-              className={`chq-participation-menu-item${candidate === status ? ' is-current' : ''}`}
-              onClick={() => {
-                close();
-                onSelectStatus(candidate);
-              }}
-            >
-              <span className="chq-participation-menu-item-label">
-                {INVITE_STATUS_LABELS[candidate]}
-                {candidate === status && <span className="chq-participation-menu-now">NOW</span>}
-              </span>
-              <span className="chq-participation-menu-item-caption">{PARTICIPATION_STATE_CAPTIONS[candidate]}</span>
-            </button>
-          ))}
+          {(status === 'invited'
+            ? // DEC-869: 'invited' is never a SELECTABLE choice, but when it
+              // is the current state that row still renders -- same
+              // anatomy, aria-checked, NOW marker, .is-current -- so the
+              // organiser can see where they are. It is disabled/
+              // non-activatable: the "Send portal invite" action beneath it
+              // is the only way to act on this state.
+              [...SELECTABLE_PARTICIPATION_STATUSES.slice(0, 1), 'invited' as InviteStatus, ...SELECTABLE_PARTICIPATION_STATUSES.slice(1)]
+            : SELECTABLE_PARTICIPATION_STATUSES
+          ).map((candidate) => {
+            const disabledRow = candidate === 'invited';
+            return (
+              <button
+                key={candidate}
+                type="button"
+                role="menuitemradio"
+                aria-checked={candidate === status}
+                aria-disabled={disabledRow || undefined}
+                disabled={disabledRow}
+                className={`chq-participation-menu-item${candidate === status ? ' is-current' : ''}`}
+                onClick={
+                  disabledRow
+                    ? undefined
+                    : () => {
+                        close();
+                        onSelectStatus(candidate);
+                      }
+                }
+              >
+                <span className="chq-participation-menu-item-label">
+                  {INVITE_STATUS_LABELS[candidate]}
+                  {candidate === status && <span className="chq-participation-menu-now">NOW</span>}
+                </span>
+                <span className="chq-participation-menu-item-caption">{PARTICIPATION_STATE_CAPTIONS[candidate]}</span>
+              </button>
+            );
+          })}
           <button
             type="button"
             role="menuitem"
