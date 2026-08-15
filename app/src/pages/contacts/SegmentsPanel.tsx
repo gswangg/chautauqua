@@ -162,7 +162,6 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
           title="Delete this segment"
           body={`Delete "${pendingDelete.name}"? This cannot be undone.`}
           confirmLabel="Delete"
-          destructive
           pending={busy}
           onConfirm={() => remove(pendingDelete.id)}
           onCancel={() => setPendingDelete(null)}

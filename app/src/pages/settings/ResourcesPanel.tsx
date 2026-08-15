@@ -375,7 +375,6 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
           title="Delete this resource?"
           body={`Speakers lose the download from their portal. "${pendingDelete.title}" cannot be recovered.`}
           confirmLabel="Delete"
-          destructive
           pending={deleting}
           onConfirm={() => void confirmDeleteResource()}
           onCancel={() => setPendingDelete(null)}

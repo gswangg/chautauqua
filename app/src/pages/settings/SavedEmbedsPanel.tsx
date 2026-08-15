@@ -256,7 +256,6 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
           title={`Delete "${pendingDelete.name}"`}
           body="Anywhere this embed is pasted will break, and this cannot be undone."
           confirmLabel="Delete"
-          destructive
           pending={deleting}
           onConfirm={() => void handleDelete(pendingDelete)}
           onCancel={() => setPendingDelete(null)}

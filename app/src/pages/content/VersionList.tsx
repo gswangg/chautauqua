@@ -146,7 +146,6 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
           title="Delete this version?"
           body={`"${pendingDelete.filename}" will be removed. This can't be undone.`}
           confirmLabel="Delete"
-          destructive
           pending={deleting}
           onConfirm={() => void confirmDelete()}
           onCancel={() => setPendingDelete(null)}

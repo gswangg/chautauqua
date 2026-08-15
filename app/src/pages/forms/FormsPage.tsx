@@ -401,7 +401,6 @@ export function FormsPage() {
           title="Delete field"
           body={`Delete the "${deleteConfirm.field.label}" field? This cannot be undone.`}
           confirmLabel="Delete"
-          destructive
           pending={busy}
           onConfirm={confirmDeleteField}
           onCancel={() => setDeleteConfirm(null)}
@@ -412,7 +411,6 @@ export function FormsPage() {
           title="Delete field"
           body={deleteConfirm.conflictMessage}
           confirmLabel="Delete anyway"
-          destructive
           pending={busy}
           onConfirm={confirmDeleteField}
           onCancel={() => setDeleteConfirm(null)}

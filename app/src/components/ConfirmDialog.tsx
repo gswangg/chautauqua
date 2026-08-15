@@ -7,7 +7,6 @@ interface ConfirmDialogProps {
   body?: ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
-  destructive?: boolean;
   pending?: boolean;
   // Disables only the confirm control (e.g. a still-loading or failed
   // preview) without also disabling Cancel/Close -- unlike `pending`, which
@@ -26,7 +25,6 @@ export function ConfirmDialog({
   body,
   confirmLabel,
   cancelLabel = 'Cancel',
-  destructive = false,
   pending = false,
   confirmDisabled = false,
   onConfirm,
@@ -42,7 +40,7 @@ export function ConfirmDialog({
         <>
           <button
             type="button"
-            className={destructive ? 'chq-btn chq-confirm-btn-danger' : 'chq-btn chq-btn-primary'}
+            className="chq-btn chq-btn-primary"
             onClick={onConfirm}
             disabled={pending || confirmDisabled}
           >

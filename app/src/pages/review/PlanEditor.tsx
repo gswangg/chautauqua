@@ -2232,7 +2232,6 @@ export function PlanEditor() {
           title="Delete evaluation plan"
           body={`This will permanently delete ${countOf(deletePreview.evaluationsSubmitted, 'submitted evaluation')} and ${countOf(deletePreview.evaluationsDraft, 'draft evaluation')}, ${countOf(deletePreview.reviewers, 'reviewer assignment')}, and ${countOf(deletePreview.recusals, 'recusal')}. This plan's results table and CSV export go with it.`}
           confirmLabel="Delete plan"
-          destructive
           pending={saving}
           onConfirm={confirmRemovePlan}
           onCancel={() => setDeletePlanConfirmOpen(false)}
@@ -2245,7 +2244,6 @@ export function PlanEditor() {
           body={`${joinWithAnd(dirtyFieldLabels())} ${plural(dirtyFieldLabels().length, 'is', 'are')} not saved yet.`}
           confirmLabel="Leave"
           cancelLabel="Keep editing"
-          destructive
           onConfirm={confirmLeave}
           onCancel={cancelLeave}
         />
@@ -2256,7 +2254,6 @@ export function PlanEditor() {
           title="Turn off anonymity?"
           body="Anyone who already reviewed under anonymity keeps that promise — it cannot be revoked for evaluations already submitted. Turning this off only changes what happens from here on."
           confirmLabel="Turn off anonymity"
-          destructive
           pending={saving}
           onConfirm={confirmAnonymizeRatchet}
           onCancel={cancelAnonymizeRatchet}
@@ -2268,7 +2265,6 @@ export function PlanEditor() {
           title="Remove this reviewer?"
           body={`${pendingUnassignReviewer.displayName} loses their queue on this plan. Scores they have already submitted stay.`}
           confirmLabel="Remove"
-          destructive
           pending={unassigningReviewer}
           onConfirm={() => void confirmUnassignReviewer()}
           onCancel={() => setPendingUnassignReviewer(null)}

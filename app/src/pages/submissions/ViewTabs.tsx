@@ -313,7 +313,6 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, formFields
           title="Delete this view?"
           body={`Only the saved filter "${pendingDelete.name}" goes — no submissions are affected.`}
           confirmLabel="Delete"
-          destructive
           pending={deleting}
           onConfirm={() => void confirmDeleteView()}
           onCancel={() => setPendingDelete(null)}
