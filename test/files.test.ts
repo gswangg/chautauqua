@@ -5,7 +5,7 @@ import {
   extname,
   FILE_KINDS,
   formatBytes,
-  HEADSHOT_MAX_BYTES_FOR_TEST,
+  HEADSHOT_MAX_BYTES,
   IMAGE_MAX_BYTES_FOR_TEST,
   isImageContentType,
   isValidFileKind,
@@ -60,7 +60,7 @@ describe("VIDEO_MAX_BYTES derivation", () => {
       IMAGE_MAX_BYTES_FOR_TEST,
       TEXT_MAX_BYTES_FOR_TEST,
       VIDEO_MAX_BYTES,
-      HEADSHOT_MAX_BYTES_FOR_TEST,
+      HEADSHOT_MAX_BYTES,
     ]) {
       expect(tierBytes).toBeLessThan(WORKERS_REQUEST_BODY_MAX_BYTES);
     }
