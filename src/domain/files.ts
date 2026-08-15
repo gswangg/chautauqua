@@ -246,6 +246,35 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
   };
 }
 
+// -----------------------------------------------------------------------
+// DEC-160/DEC-353: bulk ZIP archive caps — declared once here (wave-53
+// amendment) so src/routes/files.ts and the SPA's FilesLibrary both cross
+// the app/ -> src/ boundary at this one module rather than hand-copying the
+// literal.
+// -----------------------------------------------------------------------
+export const ARCHIVE_MAX_FILES = 50;
+// DEC-353 (wave-46 amendment): bound the memory the archive materialises
+// in-worker — the sum of the resolved latest versions' sizeBytes must fit
+// under this before any R2 get is issued (fail loudly, no truncation/partial
+// archive/silent skip). The cap is derived, not guessed: peak in-worker
+// memory during archive build is the entry buffers (fetched, held in
+// `entries`) plus the ByteWriter's transient growth while it assembles the
+// body/central/eocd chunks and materialises the final Uint8Array — call that
+// ARCHIVE_PEAK_MULTIPLIER x the total resolved bytes. That peak must stay
+// well under the isolate's memory budget (with headroom for everything else
+// running in the isolate), so ARCHIVE_MAX_TOTAL_BYTES is chosen such that
+// ARCHIVE_MAX_TOTAL_BYTES * ARCHIVE_PEAK_MULTIPLIER <= 0.75 *
+// ISOLATE_MEMORY_BUDGET_BYTES (see test/files-archive-budget.test.ts).
+export const ISOLATE_MEMORY_BUDGET_BYTES = 128 * 1024 * 1024;
+export const ARCHIVE_PEAK_MULTIPLIER = 4;
+export const ARCHIVE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+
+/** DEC-160/DEC-353 wave-53: the ONE sentence describing the archive's two
+ * caps, so a client surface never hand-assembles its own copy. */
+export function archiveCapMessage(): string {
+  return `${ARCHIVE_MAX_FILES} files or ${ARCHIVE_MAX_TOTAL_BYTES / 1024 / 1024} MB at a time — narrow the filter`;
+}
+
 /** Whether a served content type should be presented as an inline image
  * (vs. a Content-Disposition: attachment download). */
 export function isImageContentType(contentType: string): boolean {

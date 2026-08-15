@@ -13,7 +13,7 @@ import type { SendResult } from '../../lib/sendResult';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { FormRow } from '../../components/ModalFrame';
-import { COMPOSE_MERGE_FIELDS, type MergeField } from '../../lib/merge-fields';
+import { COMPOSE_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
 import { countOf } from '../../lib/plural';
 import { formatDateTime } from '../../lib/dates';
@@ -32,7 +32,6 @@ void DEC_993;
 const DECIDED_STATUSES: SubmissionStatus[] = ['accepted', 'declined'];
 
 const PER_PAGE = 50;
-const RECIPIENT_CAP = 100;
 const RECIPIENT_PREVIEW_ROWS = 5;
 
 type Step = 'select' | 'template' | 'preview' | 'sent';
@@ -444,7 +443,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       )}
       {capMessage && (
         <div className="chq-error-banner" role="alert">
-          {capMessage} Narrow your submission selection to {RECIPIENT_CAP} or fewer recipients and try again.
+          {capMessage} Narrow your submission selection to {MAX_COMPOSE_RECIPIENTS} or fewer recipients and try again.
         </div>
       )}
 
@@ -503,7 +502,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               <span className="chq-bulkbar-count">{countOf(selection.selectedIds.size, 'submission')} selected</span>
               <span className="chq-bulkbar-note">
                 Kept as you change filters &middot; {selection.selectedIds.size} is{' '}
-                {selection.selectedIds.size > RECIPIENT_CAP ? 'over' : 'under'} the {RECIPIENT_CAP}-recipient cap
+                {selection.selectedIds.size > MAX_COMPOSE_RECIPIENTS ? 'over' : 'under'} the {MAX_COMPOSE_RECIPIENTS}-recipient cap
               </span>
               <div className="chq-bulkbar-actions">
                 <button
@@ -752,7 +751,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             {preview.length > 0 && (
               <div className="chq-comms-overflow">
                 {overflowCount > 0 && <>{overflowCount} more &middot; </>}
-                {preview.length} is {preview.length >= RECIPIENT_CAP ? 'at' : 'under'} the {RECIPIENT_CAP}-recipient
+                {preview.length} is {preview.length >= MAX_COMPOSE_RECIPIENTS ? 'at' : 'under'} the {MAX_COMPOSE_RECIPIENTS}-recipient
                 cap
               </div>
             )}

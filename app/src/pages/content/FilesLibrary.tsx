@@ -13,6 +13,7 @@ import {
 import { formatDateTime } from '../../lib/dates';
 import { formatBytes } from './format';
 import { countOf } from '../../lib/plural';
+import { ARCHIVE_MAX_FILES, ARCHIVE_MAX_TOTAL_BYTES, archiveCapMessage } from '../../../../src/domain/files';
 
 interface FilesLibraryProps {
   eventId: string;
@@ -26,13 +27,11 @@ interface FilesLibraryProps {
 const PER_PAGE = 50;
 
 // DEC-160 (wave-26 amendment, CNT-14): the header's scoped "Download all"
-// mirrors the archive endpoint's own caps (src/routes/files.ts
-// MAX_ARCHIVE_FILES / ARCHIVE_MAX_TOTAL_BYTES) so the control can disable
-// itself with a true reason before ever posting, rather than always
-// firing and letting the server bounce it.
-const ARCHIVE_MAX_FILES = 50;
-const ARCHIVE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
-const ARCHIVE_CAP_MESSAGE = '50 files or 20 MB at a time — narrow the filter';
+// mirrors the archive endpoint's own caps (src/domain/files.ts
+// ARCHIVE_MAX_FILES / ARCHIVE_MAX_TOTAL_BYTES, wave-53 amendment: imported
+// from pure core, not hand-copied) so the control can disable itself with a
+// true reason before ever posting, rather than always firing and letting
+// the server bounce it.
 
 // DEC-678 amendment (B7): names each exact facet narrowing an empty
 // result set — search text and/or the active kind chip — so the reason
@@ -51,9 +50,11 @@ function filesFilterReason(q: string, kind: LibraryKind | ''): string {
  * headshot row has no submission to drill into.
  *
  * Amendment (wave 41): five columns — FILE / SESSION / VERSION / SIZE /
- * Download. There is no selection column and no bulk ZIP control here — the
- * archive endpoint (POST /events/:eventId/files/archive) keeps exactly one
- * caller, the deliverable detail's own 'Download all' (DEC-901 amendment).
+ * Download. There is no per-row selection column here — the archive
+ * endpoint (POST /events/:eventId/files/archive) has exactly one caller,
+ * this header's own scoped 'Download all N (.zip)' control (DEC-901
+ * amendment, wave-53 correction: this comment previously claimed there was
+ * no bulk ZIP control at all, which contradicted the button below).
  *
  * DEC-902: the kind-chip counts and the total/size stat all come from the
  * SAME GET /events/:eventId/files response the table itself renders from —
@@ -184,7 +185,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
                   ? 'Downloading…'
                   : `Download all ${items.length} (.zip)`}
               </button>
-              {overCap && <span className="chq-meta chq-content-files-download-all-cap">{ARCHIVE_CAP_MESSAGE}</span>}
+              {overCap && <span className="chq-meta chq-content-files-download-all-cap">{archiveCapMessage()}</span>}
             </span>
           )}
         </div>

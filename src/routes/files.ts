@@ -25,6 +25,10 @@ void DEC_471;
 void DEC_713;
 void DEC_965;
 import {
+  ARCHIVE_MAX_FILES,
+  ARCHIVE_MAX_TOTAL_BYTES,
+  ARCHIVE_PEAK_MULTIPLIER,
+  ISOLATE_MEMORY_BUDGET_BYTES,
   FILE_KINDS,
   assertServedContentTypeHeader,
   contentDispositionAttachment,
@@ -354,22 +358,9 @@ fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
 // -----------------------------------------------------------------------
 // POST /api/v1/events/:eventId/files/archive — DEC-160 bulk ZIP download
 // -----------------------------------------------------------------------
-const MAX_ARCHIVE_FILES = 50;
-// DEC-353 (wave-46 amendment): bound the memory the archive materialises
-// in-worker — the sum of the resolved latest versions' sizeBytes must fit
-// under this before any R2 get is issued (fail loudly, no truncation/partial
-// archive/silent skip). The cap is derived, not guessed: peak in-worker
-// memory during archive build is the entry buffers (fetched, held in
-// `entries`) plus the ByteWriter's transient growth while it assembles the
-// body/central/eocd chunks and materialises the final Uint8Array — call that
-// ARCHIVE_PEAK_MULTIPLIER x the total resolved bytes. That peak must stay
-// well under the isolate's memory budget (with headroom for everything else
-// running in the isolate), so ARCHIVE_MAX_TOTAL_BYTES is chosen such that
-// ARCHIVE_MAX_TOTAL_BYTES * ARCHIVE_PEAK_MULTIPLIER <= 0.75 *
-// ISOLATE_MEMORY_BUDGET_BYTES (see test/files-archive-budget.test.ts).
-export const ISOLATE_MEMORY_BUDGET_BYTES = 128 * 1024 * 1024;
-export const ARCHIVE_PEAK_MULTIPLIER = 4;
-export const ARCHIVE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+// DEC-160/DEC-353 wave-53: ARCHIVE_MAX_FILES/ARCHIVE_MAX_TOTAL_BYTES/
+// ARCHIVE_PEAK_MULTIPLIER/ISOLATE_MEMORY_BUDGET_BYTES now live in pure core
+// (src/domain/files.ts) — imported above, not re-declared here.
 
 fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson, async (c) => {
   const auth = requireAuth(c);
@@ -379,7 +370,7 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as { fileIds?: unknown };
-  const fileIds = parseBoundedIdArray(body.fileIds, "fileIds", { maxCount: MAX_ARCHIVE_FILES }); // DEC-182
+  const fileIds = parseBoundedIdArray(body.fileIds, "fileIds", { maxCount: ARCHIVE_MAX_FILES }); // DEC-182
 
   // Loud 404 on any unknown/non-deliverable id — no silent skips (DEC-160).
   // DEC-344: resolved already carries submissionTitle — no second

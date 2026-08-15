@@ -15,7 +15,7 @@ import {
   ARCHIVE_MAX_TOTAL_BYTES,
   ARCHIVE_PEAK_MULTIPLIER,
   ISOLATE_MEMORY_BUDGET_BYTES,
-} from "../src/routes/files";
+} from "../src/domain/files";
 import { buildZip } from "../src/lib/zip";
 
 interface ResolvedEntry {
