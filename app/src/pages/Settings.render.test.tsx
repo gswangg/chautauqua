@@ -470,6 +470,32 @@ describe('SettingsPage render smoke', () => {
     expect(layout).toHaveAttribute('data-editing', 'true');
   });
 
+  // w3-a: the rail's SECTIONS key for Tracks and rooms must match
+  // TracksRoomsPanel's own SECTION_KEY ('tracks-rooms', not the shorter
+  // 'tracks') so a URL minted by FieldList.tsx/FormsPage.tsx
+  // (?section=tracks-rooms&edit=1) actually drills into the single-panel
+  // B10 screen instead of leaving urlSection null and silently falling
+  // back to the full read scroll.
+  it('drills into the Tracks and rooms edit form at ?section=tracks-rooms&edit=1', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=tracks-rooms&edit=1']}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Tracks and rooms' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).not.toBeInTheDocument();
+
+    expect(document.querySelectorAll('.chq-settings-section').length).toBe(1);
+
+    const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
+    expect(layout).toHaveAttribute('data-editing', 'true');
+  });
+
   // Clicking the '‹ Settings' tertiary control clears both `section` and
   // `edit`, restoring the full read document and the fixed page title.
   it('clears both params and restores all seven sections when the top-level back control is clicked', async () => {

@@ -296,21 +296,14 @@ describe('DEC-781: every one of the seven sections carries its action on the eye
 // panel's own render test.
 describe('DEC-896/B10 scan: no settings edit view renders a full-width primary', () => {
   const SHELL_SECTIONS = SECTIONS.filter((s) => s.key !== 'public-pages' && s.key !== 'your-data');
-  // Settings.tsx's rail key drives ONLY the scroll-highlight nav; each
-  // panel owns its own SummarySection drill key independently (DEC-728),
-  // and TracksRoomsPanel's is 'tracks-rooms', not the rail's 'tracks' --
-  // matching FieldList.tsx/FormsPage.tsx's existing '?section=tracks-rooms'
-  // links.
-  const DRILL_KEY: Record<string, string> = { tracks: 'tracks-rooms' };
 
   SHELL_SECTIONS.forEach((section) => {
     it(`${section.key}: the edit footer's buttons carry only the shared .chq-btn-* classes, never full-width`, async () => {
       mockEverySettingsRoute();
       const Panel = section.Panel;
-      const drillKey = DRILL_KEY[section.key] ?? section.key;
 
       render(
-        <MemoryRouter initialEntries={[`/settings?section=${drillKey}&edit=1`]}>
+        <MemoryRouter initialEntries={[`/settings?section=${section.key}&edit=1`]}>
           <Panel />
         </MemoryRouter>,
       );
