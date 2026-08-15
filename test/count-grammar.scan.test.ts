@@ -23,13 +23,13 @@ const APP_SRC_ROOT = join(ROOT, "app", "src");
 // The ONE legitimate home for the word list.
 const OWNER = "src/domain/count-copy.ts";
 
-// TEMPORARY: app/src/pages/overview/rows.ts's own spellSmallNumber (0-10,
-// lowercase) is owned by the in-flight w51-e branch, which is mid-rewrite
-// of this same file's headlineText -- touching it here would collide with
-// that unmerged work (this task's own instructions say "do NOT touch
-// rows.ts at all"). Remove this entry, and rows.ts's private word list,
-// next wave once w51-e lands and rows.ts can be repointed at spellCount.
-const ALLOWLIST = new Set<string>(["app/src/pages/overview/rows.ts"]);
+// w51-e has landed: app/src/pages/overview/rows.ts no longer declares its
+// own spellSmallNumber word list -- it imports spellCount from
+// app/src/lib/plural.ts like everything else. No module besides
+// count-copy.ts is allowed to declare a spelled-number word list, so this
+// allowlist is empty (kept as a Set, not deleted, so a future exception has
+// one obvious place to land with its own dated justification).
+const ALLOWLIST = new Set<string>([]);
 
 function isTestFile(path: string): boolean {
   return /\.(test|spec)\.(ts|tsx)$/.test(path);

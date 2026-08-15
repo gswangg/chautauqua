@@ -3,15 +3,13 @@
 // and every call site renders it through describeSendResult rather than
 // hand-building a message from a subset of the fields — a message that
 // reads only `sent` can render "sent to 0" after every recipient failed.
+import { plural } from './plural';
+
 export interface SendResult {
   sent: number;
   failed?: { email: string; message: string }[];
   skipped?: number;
   remaining?: number;
-}
-
-function plural(n: number, noun: { one: string; many: string }): string {
-  return n === 1 ? noun.one : noun.many;
 }
 
 /** Renders a SendResult into one sentence that always states how many were
@@ -25,7 +23,7 @@ export function describeSendResult(result: SendResult, noun: { one: string; many
   const parts: string[] = [];
 
   if (result.sent > 0) {
-    parts.push(`Sent to ${result.sent} ${plural(result.sent, noun)}.`);
+    parts.push(`Sent to ${result.sent} ${plural(result.sent, noun.one, noun.many)}.`);
   } else if (failedCount === 0 && skipped === 0 && remaining === 0) {
     parts.push('Nothing was outstanding.');
   } else {
@@ -33,7 +31,7 @@ export function describeSendResult(result: SendResult, noun: { one: string; many
   }
 
   if (failedCount > 0) {
-    parts.push(`${failedCount} ${plural(failedCount, { one: 'failure', many: 'failures' })}.`);
+    parts.push(`${failedCount} ${plural(failedCount, 'failure', 'failures')}.`);
   }
 
   if (skipped > 0) {

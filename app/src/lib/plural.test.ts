@@ -52,13 +52,11 @@ describe('no hand-copied pluralization ternaries outside plural.ts', () => {
   const APP_SRC = join(__dirname, '..');
 
   // plural.ts/plural.test.ts document and verify the pattern -- the one
-  // allowed home for it. pages/overview/rows.ts is a SEPARATE, temporary
-  // exclusion: it carries its own local `pluralize` helper and a
-  // `need${count === 1 ? 's' : ''}` ternary at headlineText, and is owned
-  // by the in-flight w51-e branch which is already rewriting that
-  // function (headlineText's bare numeral). Remove this line once w51-e
-  // lands and rows.ts goes through lib/plural like everything else.
-  const ALLOWLIST = new Set(['lib/plural.ts', 'lib/plural.test.ts', 'pages/overview/rows.ts']);
+  // allowed home for it. w51-e landed: pages/overview/rows.ts now imports
+  // plural/spellCount from lib/plural.ts like every other consumer instead
+  // of declaring its own `pluralize` helper and word list, so its
+  // temporary exclusion is removed.
+  const ALLOWLIST = new Set(['lib/plural.ts', 'lib/plural.test.ts']);
 
   function walk(dir: string): string[] {
     const out: string[] = [];
@@ -168,6 +166,76 @@ describe('no hand-copied pluralization ternaries outside plural.ts', () => {
       const contents = readFileSync(full, 'utf8');
       const matches = findOffenses(contents);
       if (matches.length > 0) offenders.push({ file: rel, matches });
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
+// DEC-925 (wave 55 amendment): lib/plural.ts is the ONE module allowed to
+// declare the count-phrase vocabulary (plural/pluralize/spellCount/
+// spellSmallNumber) -- every other module imports it. A third private
+// pluralizer (app/src/lib/sendResult.ts's own `function plural(n, noun)`)
+// had drifted in unnoticed because the earlier ternary scan only matched
+// bare-quoted-literal ternaries, not an identifier-armed helper declared
+// under one of these names. This scan matches the DECLARATION itself
+// (`function <name>(` or `const <name> =`), not a call site or an import.
+describe('no module other than lib/plural.ts declares plural/pluralize/spellCount/spellSmallNumber', () => {
+  const APP_SRC = join(__dirname, '..');
+  const OWNER = 'lib/plural.ts';
+
+  const DECLARATION_RE = /\b(?:function|const)\s+(plural|pluralize|spellCount|spellSmallNumber)\b/g;
+
+  function walk(dir: string): string[] {
+    const out: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      const st = statSync(full);
+      if (st.isDirectory()) out.push(...walk(full));
+      else if (/\.(ts|tsx)$/.test(entry)) out.push(full);
+    }
+    return out;
+  }
+
+  function findDeclarations(contents: string): string[] {
+    return [...contents.matchAll(DECLARATION_RE)].map((m) => m[1]!);
+  }
+
+  function isTestFile(rel: string): boolean {
+    return /\.test\.tsx?$/.test(rel) || /\.render\.test\.tsx?$/.test(rel);
+  }
+
+  const files = walk(APP_SRC).map((f) => ({ full: f, rel: relative(APP_SRC, f) }));
+
+  it('positive control: a synthetic private `function plural(...)` declaration IS detected', () => {
+    expect(findDeclarations('function plural(n, noun) { return n === 1 ? noun.one : noun.many; }')).toEqual(['plural']);
+  });
+
+  it('positive control: a synthetic private `const spellCount = ...` declaration IS detected', () => {
+    expect(findDeclarations('const spellCount = (n) => String(n);')).toEqual(['spellCount']);
+  });
+
+  it('negative control: calling the imported helper is NOT detected', () => {
+    expect(findDeclarations("plural(n, 'day')")).toEqual([]);
+    expect(findDeclarations("spellCount(n)")).toEqual([]);
+  });
+
+  it('negative control: importing the helper is NOT detected', () => {
+    expect(findDeclarations("import { plural, spellCount } from '../../lib/plural';")).toEqual([]);
+  });
+
+  it('lib/plural.ts itself is excluded from the scan (it is the one legitimate home)', () => {
+    const rel = files.find(({ rel }) => rel === OWNER);
+    expect(rel).toBeDefined();
+  });
+
+  it('no module other than lib/plural.ts declares the vocabulary', () => {
+    const offenders: Array<{ file: string; names: string[] }> = [];
+    for (const { full, rel } of files) {
+      if (rel === OWNER) continue;
+      if (isTestFile(rel)) continue;
+      const contents = readFileSync(full, 'utf8');
+      const names = findDeclarations(contents);
+      if (names.length > 0) offenders.push({ file: rel, names });
     }
     expect(offenders).toEqual([]);
   });
