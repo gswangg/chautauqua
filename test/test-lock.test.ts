@@ -14,11 +14,22 @@ import { fileURLToPath } from "node:url";
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const wrapperPath = join(repoRoot, "scripts", "with-test-lock.sh");
 
+// Merge-train (wave 41): the wrapper grew a DEC-644 wave-41 re-entrancy guard
+// -- it exports CHQ_TEST_LOCK_HELD=1 once it holds the lock, and a nested
+// invocation that finds the marker runs INLINE without acquiring. This suite's
+// subject is the ACQUISITION path, and the full suite itself runs under the
+// wrapper (`npm test` IS `sh scripts/with-test-lock.sh vitest run`,
+// package.json:27), so every child spawned here would otherwise inherit the
+// marker, take the inline branch, and never serialize. Strip the marker so
+// each spawned wrapper is a fresh, un-nested acquisition -- the nested/inline
+// branch is covered separately in test/with-test-lock.test.ts.
 function runWrapper(args: string[], env: NodeJS.ProcessEnv): Promise<number> {
+  const childEnv = { ...env };
+  delete childEnv.CHQ_TEST_LOCK_HELD;
   return new Promise((resolve, reject) => {
     const child = spawn("sh", [wrapperPath, ...args], {
       cwd: repoRoot,
-      env,
+      env: childEnv,
     });
     child.on("error", reject);
     child.on("close", (code) => resolve(code ?? -1));

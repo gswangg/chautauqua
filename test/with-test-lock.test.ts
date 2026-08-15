@@ -21,12 +21,25 @@ function freshLockDir(prefix: string): string {
   return join(dir, "lock");
 }
 
+// The full suite itself runs under the wrapper (`npm test` IS `sh
+// scripts/with-test-lock.sh vitest run`, package.json:27), so vitest's own
+// process.env already carries CHQ_TEST_LOCK_HELD=1. Inheriting it would make
+// the OUTERMOST wrapper spawned by these tests take the inline branch too,
+// which silently voids every assertion below about acquiring and releasing the
+// lock directory. Strip it, so each test starts from an un-nested process tree
+// and the nesting under test is the one the test itself creates.
+function outerEnv(lockDir: string): NodeJS.ProcessEnv {
+  const env = { ...process.env, CHQ_TEST_LOCK_DIR: lockDir };
+  delete env.CHQ_TEST_LOCK_HELD;
+  return env;
+}
+
 describe("scripts/with-test-lock.sh re-entrancy guard", () => {
   it("(a) a plain run acquires, runs the command, and releases the lock directory", () => {
     const lockDir = freshLockDir("plain");
     const out = execFileSync("sh", [wrapperPath, "sh", "-c", "echo ran"], {
       cwd: repoRoot,
-      env: { ...process.env, CHQ_TEST_LOCK_DIR: lockDir },
+      env: outerEnv(lockDir),
       timeout: 10_000,
       encoding: "utf8",
     });
@@ -47,7 +60,7 @@ describe("scripts/with-test-lock.sh re-entrancy guard", () => {
       ],
       {
         cwd: repoRoot,
-        env: { ...process.env, CHQ_TEST_LOCK_DIR: lockDir },
+        env: outerEnv(lockDir),
         timeout: 10_000,
         encoding: "utf8",
       },
@@ -72,7 +85,7 @@ describe("scripts/with-test-lock.sh re-entrancy guard", () => {
     try {
       execFileSync("sh", [wrapperPath, "sh", "-c", "exit 17"], {
         cwd: repoRoot,
-        env: { ...process.env, CHQ_TEST_LOCK_DIR: lockDir },
+        env: outerEnv(lockDir),
         timeout: 10_000,
       });
     } catch (err: unknown) {
@@ -89,7 +102,7 @@ describe("scripts/with-test-lock.sh re-entrancy guard", () => {
     try {
       execFileSync("sh", [wrapperPath], {
         cwd: repoRoot,
-        env: { ...process.env, CHQ_TEST_LOCK_DIR: lockDir },
+        env: outerEnv(lockDir),
         timeout: 10_000,
         encoding: "utf8",
       });
@@ -112,7 +125,7 @@ describe("scripts/with-test-lock.sh re-entrancy guard", () => {
       ["-c", `sh ${JSON.stringify(wrapperPath)} sh -c 'sh ${JSON.stringify(wrapperPath)} true' 2>&1`],
       {
         cwd: repoRoot,
-        env: { ...process.env, CHQ_TEST_LOCK_DIR: lockDir },
+        env: outerEnv(lockDir),
         timeout: 10_000,
         encoding: "utf8",
       },
