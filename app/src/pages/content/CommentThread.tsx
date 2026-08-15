@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { formatRelative } from '../../lib/dates';
 import { useMe } from '../../lib/useMe';
 import { countOf } from '../../lib/plural';
+import { EmptyState } from '../../components/EmptyState';
 import type { FileComment } from './types';
 
 interface SendResult {
@@ -48,21 +49,24 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
 
   return (
     <div className="chq-comment-thread">
-      <ul className="chq-comment-list chq-content-comment-list">
-        {comments.map((c) => (
-          <li key={c.id} className="chq-comment-item chq-content-comment-item">
-            <div className="chq-content-comment-head">
-              <span className="chq-comment-author chq-content-comment-author">
-                {me && c.authorUserId === me.userId ? 'You' : c.authorName}
-              </span>
-              <span className="chq-comment-version chq-meta">v{c.versionNumber}</span>
-              <span className="chq-comment-date chq-meta"> · {formatRelative(c.createdAt, now)}</span>
-            </div>
-            <span className="chq-comment-body chq-content-comment-body">{c.body}</span>
-          </li>
-        ))}
-        {comments.length === 0 && <li className="chq-empty">No comments yet.</li>}
-      </ul>
+      {comments.length === 0 ? (
+        <EmptyState variant="fresh" what="No comments yet." action={null} />
+      ) : (
+        <ul className="chq-comment-list chq-content-comment-list">
+          {comments.map((c) => (
+            <li key={c.id} className="chq-comment-item chq-content-comment-item">
+              <div className="chq-content-comment-head">
+                <span className="chq-comment-author chq-content-comment-author">
+                  {me && c.authorUserId === me.userId ? 'You' : c.authorName}
+                </span>
+                <span className="chq-comment-version chq-meta">v{c.versionNumber}</span>
+                <span className="chq-comment-date chq-meta"> · {formatRelative(c.createdAt, now)}</span>
+              </div>
+              <span className="chq-comment-body chq-content-comment-body">{c.body}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="chq-comment-composer chq-content-comment-composer">
         <textarea
           className="chq-textarea"

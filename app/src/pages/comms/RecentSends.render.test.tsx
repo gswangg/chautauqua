@@ -47,10 +47,12 @@ function batchRowCells(row: HTMLElement): HTMLElement[] {
 }
 
 describe('RecentSends', () => {
-  it('renders an empty state when there are no batches, and withholds the subtitle', () => {
+  it('renders the shared EmptyState fresh block when there are no batches, and withholds the subtitle', () => {
     render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={[]} templatesById={{}} />);
     expect(screen.getByText('Recent sends')).toBeInTheDocument();
     expect(screen.getByText('No emails sent yet.')).toBeInTheDocument();
+    expect(document.querySelector('.chq-empty-block-fresh')).toBeInTheDocument();
+    expect(document.querySelector('.chq-empty-actions')).not.toBeInTheDocument();
     expect(document.querySelector('.chq-comms-recent-sends-subtitle')).not.toBeInTheDocument();
   });
 

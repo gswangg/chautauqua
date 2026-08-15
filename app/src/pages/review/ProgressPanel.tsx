@@ -9,6 +9,7 @@ import { reviewerProgressState } from '../../../../src/domain/evaluation';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { EmptyState } from '../../components/EmptyState';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
@@ -203,7 +204,9 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
               </div>
             );
           })}
-          {rows.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
+          {rows.length === 0 && (
+            <EmptyState variant="fresh" what="No reviewers assigned yet." action={null} />
+          )}
         </div>
       </section>
 

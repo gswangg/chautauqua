@@ -577,6 +577,11 @@ describe('ReviewPage render smoke: reviewer', () => {
     );
 
     expect(await screen.findByText('You have no assigned evaluation plans yet.')).toBeInTheDocument();
+    // w52-d (DEC-678 amendment): through the shared EmptyState 'fresh'
+    // block, never the bare `.chq-empty` line -- a reviewer cannot create a
+    // plan themselves, so no action.
+    expect(document.querySelector('.chq-empty-block-fresh')).toBeInTheDocument();
+    expect(document.querySelector('.chq-empty-actions')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Your plans/ })).not.toBeInTheDocument();
   });
 
