@@ -166,4 +166,52 @@ describe("resolveBaseUrl (DEC-252)", () => {
     });
     expect(resolveBaseUrl(c)).toBe("http://127.0.0.1:8788");
   });
+
+  it("DEC-296 (wave 43, ledger 0197 closure): THE GAP CASE restated exactly as filed — DEV_MODE=1, a loopback default PUBLIC_BASE_URL, a route-shadowed non-loopback request URL, no Origin/Referer, only a Host header naming the actual dev port", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      devMode: "1",
+      publicBaseUrl: "http://localhost:8787",
+      headers: { Host: "localhost:8973" },
+    });
+    expect(resolveBaseUrl(c)).toBe("http://localhost:8973");
+  });
+
+  it("DEC-296 (wave 43): same request with the Host header absent falls back to the loopback default PUBLIC_BASE_URL, not the request URL origin", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      devMode: "1",
+      publicBaseUrl: "http://localhost:8787",
+    });
+    expect(resolveBaseUrl(c)).toBe("http://localhost:8787");
+  });
+
+  it("DEC-296 (wave 43): NEGATIVE CONTROL, the security half — outside dev (DEV_MODE unset), a NON-loopback PUBLIC_BASE_URL wins outright over an attacker-supplied Host: localhost; header sniffing pinned only in the direction that helps dev must never leak into production", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      publicBaseUrl: "https://events.example.com",
+      headers: { Host: "localhost" },
+    });
+    expect(resolveBaseUrl(c)).toBe("https://events.example.com");
+  });
+
+  it("DEC-296 (wave 43): NEGATIVE CONTROL — same as above with DEV_MODE explicitly '0'", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      devMode: "0",
+      publicBaseUrl: "https://events.example.com",
+      headers: { Host: "localhost" },
+    });
+    expect(resolveBaseUrl(c)).toBe("https://events.example.com");
+  });
+
+  it("DEC-296 (wave 43): a Host header naming an attacker-controlled non-loopback hostname is never accepted even in dev, and never overrides a non-loopback PUBLIC_BASE_URL", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      devMode: "1",
+      publicBaseUrl: "https://events.example.com",
+      headers: { Host: "evil.example" },
+    });
+    expect(resolveBaseUrl(c)).toBe("https://events.example.com");
+  });
 });
