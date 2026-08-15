@@ -8,6 +8,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { SessionboardImportPanel } from './SessionboardImportPanel';
 import { mockApi } from '../../test-utils/mockApi';
 import { MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
@@ -197,5 +199,66 @@ describe('SessionboardImportPanel', () => {
     expect(screen.queryByText('Created 1, updated 0, skipped 0.')).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SessionboardImportPanel mapping table CSS (w23-c, DEC-902 amendment)', () => {
+  const css = readFileSync(join(__dirname, 'settings.css'), 'utf8');
+
+  function extractRule(selector: string): string {
+    const idx = css.indexOf(selector);
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const close = css.indexOf('}', idx);
+    return css.slice(idx, close + 1);
+  }
+
+  it('declares table-layout: fixed on the mapping table with exactly one unwidthed column', () => {
+    const tableRule = extractRule('.chq-settings-sessionboard-mapping {');
+    expect(tableRule).toContain('table-layout: fixed;');
+
+    const widthedCols = ['column', 'sample', 'arrow'];
+    for (const col of widthedCols) {
+      const rule = extractRule(`.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-${col} {`);
+      expect(rule).toMatch(/width:\s*1px;/);
+      expect(rule).toMatch(/white-space:\s*nowrap;/);
+    }
+    expect(css).not.toContain('.chq-settings-sessionboard-mapping-col-target {');
+  });
+
+  it('declares no table-layout for the mapping table inside the phone reflow media block', () => {
+    const mediaStart = css.indexOf('@media (max-width: 700px) {');
+    expect(mediaStart).toBeGreaterThanOrEqual(0);
+    let depth = 0;
+    let i = mediaStart;
+    let mediaEnd = -1;
+    for (; i < css.length; i++) {
+      if (css[i] === '{') depth++;
+      else if (css[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          mediaEnd = i;
+          break;
+        }
+      }
+    }
+    expect(mediaEnd).toBeGreaterThan(mediaStart);
+    const mediaBlock = css.slice(mediaStart, mediaEnd + 1);
+    expect(mediaBlock).not.toContain('chq-settings-sessionboard-mapping-col');
+  });
+
+  it('gives the mapping headers the expected class hooks in the DOM', () => {
+    render(<SessionboardImportPanel />);
+
+    fireEvent.change(screen.getByLabelText(/Or paste the exported CSV text/), {
+      target: { value: 'Full Name,Work Email\nAda Lovelace,ada@example.com' },
+    });
+
+    const columnHeader = screen.getByRole('columnheader', { name: 'Column' });
+    const sampleHeader = screen.getByRole('columnheader', { name: 'Sample value' });
+    const targetHeader = screen.getByRole('columnheader', { name: 'Target field' });
+
+    expect(columnHeader).toHaveClass('chq-settings-sessionboard-mapping-col-column');
+    expect(sampleHeader).toHaveClass('chq-settings-sessionboard-mapping-col-sample');
+    expect(targetHeader.className).toBe('');
   });
 });
