@@ -34,7 +34,7 @@ import { isEpochMs, isEpochOrderValid } from "../api/validators"; // DEC-517
 import { DEC_676, DEC_703 } from "../../decisions";
 
 void DEC_676; // parseCriteriaList's guidance passthrough below
-void DEC_703; // buildResults' speakers/trackNames columns below
+void DEC_703; // hydrateResultsRows' speakers/trackNames columns below
 
 export function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -422,16 +422,43 @@ export interface ResultsRow {
   recusals: number;
 }
 
-export async function buildResults(
+/** Ranked-only shape (DEC-829 w32 amendment): everything `sortValueForColumn`
+ * (src/domain/evaluation/results.ts:62-79) and `SortableResultsRow` (:35-44)
+ * can read -- ref/title/average/count/perCriterion/perDropdown -- plus
+ * `status` (part of the CSV/JSON row but never a sort input) and
+ * `submissionId` (the join key hydration slices on). Ranking and ?sort=
+ * never touch speakers/trackNames/recusals, so hydrating AFTER the page
+ * slice cannot change any order. */
+export interface RankedResultsRow {
+  submissionId: string;
+  ref: string;
+  title: string;
+  count: number;
+  average: number;
+  perCriterion: Record<string, number>;
+  perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }>;
+  status: string;
+}
+
+/** RANK the whole population (DEC-829/DEC-338 w32): the two independent
+ * plan-scoped reads issue as one Promise.all, then the existing DEC-345/
+ * DEC-440 aggregation runs verbatim -- no speakers/trackNames/recusals read
+ * here, since sorting never touches them. */
+export async function rankPlanResults(
   c: { var: { db: import("../../server/context").Db } },
   plan: PlanRecord,
   round: number,
-): Promise<ResultsRow[]> {
+): Promise<RankedResultsRow[]> {
   // DEC-439: buildResults never reads trackIds, so skip the second
   // whole-event submission_track scan; DEC-440: only submission_id +
   // scores_json are read from evaluation, not whole rows.
-  const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: false });
-  const evaluations = await repo.listEvaluationScoresForPlan(c.var.db, plan.id, round);
+  // DEC-338 (w32 amendment): the two reads below are independent (neither
+  // depends on the other's result), so they issue as one Promise.all wave
+  // instead of two sequential round trips.
+  const [submissions, evaluations] = await Promise.all([
+    repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: false }),
+    repo.listEvaluationScoresForPlan(c.var.db, plan.id, round),
+  ]);
   // DEC-147: results aggregate against THIS round's full criteria list -- a
   // round override can drop/add/reweight criteria relative to the base plan.
   const roundCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round);
@@ -448,22 +475,7 @@ export async function buildResults(
     evalsBySubmission.set(e.submissionId, list);
   }
 
-  // DEC-703: SPEAKER and TRACK for the results row -- ONE batched query
-  // each, keyed to this call's own submission id set (never a per-row read,
-  // never an unscoped full-table scan). Shared by both the paginated JSON
-  // response and the CSV export, so the two never disagree.
-  const submissionIds = submissions.map((sub) => sub.id);
-  const speakersBySubmission = await repo.listSpeakerNamesForSubmissions(c.var.db, submissionIds);
-  const trackNamesBySubmission = await repo.listTrackNamesForSubmissions(c.var.db, submissionIds);
-  // w42-h/DEC-366 amendment: one plan-scoped recusal read, indexed by
-  // submissionId -- never a per-row query.
-  const planRecusals = await repo.listRecusalsForPlan(c.var.db, plan.id);
-  const recusalCountsBySubmission = new Map<string, number>();
-  for (const r of planRecusals) {
-    recusalCountsBySubmission.set(r.submissionId, (recusalCountsBySubmission.get(r.submissionId) ?? 0) + 1);
-  }
-
-  const rows: ResultsRow[] = submissions.map((sub) => {
+  const rows: RankedResultsRow[] = submissions.map((sub) => {
     const subEvals = evalsBySubmission.get(sub.id) ?? [];
     const evals = subEvals.map((e) => ({ scores: e.scores as unknown as EvaluationScores }));
     const agg = aggregateSubmission(evals, criteria);
@@ -481,12 +493,43 @@ export async function buildResults(
       perCriterion: agg.perCriterion,
       perDropdown,
       status: sub.status,
-      speakers: speakersBySubmission.get(sub.id) ?? [],
-      trackNames: trackNamesBySubmission.get(sub.id) ?? [],
-      recusals: recusalCountsBySubmission.get(sub.id) ?? 0,
     };
   });
   return buildResultsRows(rows);
+}
+
+/** HYDRATE an already-sliced/sorted set of ranked rows with the
+ * DEC-703/DEC-366 display-only columns (speakers, trackNames, recusals).
+ * The caller controls how much of the ranked population this runs over: the
+ * JSON page route passes only the current page's slice, the CSV export
+ * passes every row (DEC-829 w32 amendment -- HYDRATION IS PER-PAGE). */
+export async function hydrateResultsRows(
+  c: { var: { db: import("../../server/context").Db } },
+  plan: PlanRecord,
+  rows: RankedResultsRow[],
+): Promise<ResultsRow[]> {
+  // DEC-703: SPEAKER and TRACK for the results row -- ONE batched query
+  // each, keyed to THIS CALL's own (possibly sliced) submission id set
+  // (never a per-row read, never an unscoped full-table scan).
+  const submissionIds = rows.map((r) => r.submissionId);
+  const [speakersBySubmission, trackNamesBySubmission, planRecusals] = await Promise.all([
+    repo.listSpeakerNamesForSubmissions(c.var.db, submissionIds),
+    repo.listTrackNamesForSubmissions(c.var.db, submissionIds),
+    // w42-h/DEC-366 amendment: one plan-scoped recusal read, indexed by
+    // submissionId -- never a per-row query.
+    repo.listRecusalsForPlan(c.var.db, plan.id),
+  ]);
+  const recusalCountsBySubmission = new Map<string, number>();
+  for (const r of planRecusals) {
+    recusalCountsBySubmission.set(r.submissionId, (recusalCountsBySubmission.get(r.submissionId) ?? 0) + 1);
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    speakers: speakersBySubmission.get(row.submissionId) ?? [],
+    trackNames: trackNamesBySubmission.get(row.submissionId) ?? [],
+    recusals: recusalCountsBySubmission.get(row.submissionId) ?? 0,
+  }));
 }
 
 /** DEC-345: parses the results endpoint's optional ?sort=/&criterionId=/

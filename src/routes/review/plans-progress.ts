@@ -36,7 +36,8 @@ import {
   ratingCriteria,
   dropdownCriteria,
   requireOwnedPlan,
-  buildResults,
+  rankPlanResults,
+  hydrateResultsRows,
   parseResultsSort,
 } from "./shared";
 
@@ -53,27 +54,31 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
   const round = parseRoundQuery(c, plan);
   const page = clampPage(c.req.query("page"));
   const perPage = listPerPage(c.req.query("perPage"));
-  const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
+  // DEC-338 (w32 amendment): the four reads below depend only on `plan`
+  // (none reads another's result), so they issue as one Promise.all wave
+  // instead of four sequential round trips.
+  const [reviewerRows, evaluatedPairs, submissions, planRecusals] = await Promise.all([
+    repo.listReviewerRowsForPlan(c.var.db, plan.id),
+    // DEC-707 (wave-3 amendment): every evaluated pair, folded per reviewer
+    // against THEIR OWN resolved-assigned set below -- never a raw per-plan
+    // count, which is how 'completed' could exceed 'assigned'.
+    repo.listEvaluatedPairsForPlan(c.var.db, plan.id, round),
+    // One plan-filtered load + pure assignment resolution (DEC-081): no
+    // per-reviewer awaits.
+    repo.listPlanFilteredSubmissions(c.var.db, plan),
+    // DEC-271: a recused submission never counts toward a reviewer's assigned
+    // total -- an honest progress bar excludes it entirely rather than
+    // stranding it as permanently "incomplete".
+    repo.listRecusalsForPlan(c.var.db, plan.id),
+  ]);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
-  const users = await repo.getUsersByIds(c.var.db, userIds);
-  // DEC-707 (wave-3 amendment): every evaluated pair, folded per reviewer
-  // against THEIR OWN resolved-assigned set below -- never a raw per-plan
-  // count, which is how 'completed' could exceed 'assigned'.
-  const evaluatedPairs = await repo.listEvaluatedPairsForPlan(c.var.db, plan.id, round);
   const evaluatedByReviewer = new Map<string, Set<string>>();
   for (const p of evaluatedPairs) {
     const set = evaluatedByReviewer.get(p.reviewerId) ?? new Set<string>();
     set.add(p.submissionId);
     evaluatedByReviewer.set(p.reviewerId, set);
   }
-  // One plan-filtered load + pure assignment resolution (DEC-081): no
-  // per-reviewer awaits.
-  const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
   const assignments = resolveAssignments(submissions, reviewerRows);
-  // DEC-271: a recused submission never counts toward a reviewer's assigned
-  // total -- an honest progress bar excludes it entirely rather than
-  // stranding it as permanently "incomplete".
-  const planRecusals = await repo.listRecusalsForPlan(c.var.db, plan.id);
   const recusedByUser = new Map<string, Set<string>>();
   for (const r of planRecusals) {
     const set = recusedByUser.get(r.userId) ?? new Set<string>();
@@ -81,14 +86,12 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
     recusedByUser.set(r.userId, set);
   }
 
-  // DEC-708: one batched account->contact resolution for the whole page's
-  // reviewer set, never a query per row.
-  const nameByUserId = await repo.batchUserDisplayNames(c.var.db, users.map((u) => u.userId));
-
   // w5-f/DEC-845 (reuse): the mock's reviewer-progress row carries this
   // reviewer's OWN track scope (e.g. "AI Engineering"), not the plan-wide
   // filter -- resolved from the reviewerRows already loaded above (grouped
-  // per user), never a query per reviewer.
+  // per user), never a query per reviewer. This grouping only needs
+  // `reviewerRows`/`userIds` (wave 1's output), so it can run before the
+  // getTrackNamesByIds read it feeds.
   const reviewerRowsByUser = new Map<string, { trackId: string | null; submissionId: string | null }[]>();
   for (const r of reviewerRows) {
     const list = reviewerRowsByUser.get(r.userId) ?? [];
@@ -100,7 +103,21 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
     scopeTrackIdsByUser.set(userId, resolveReviewerScopeTrackIds(reviewerRowsByUser.get(userId) ?? []));
   }
   const allScopeTrackIds = [...new Set([...scopeTrackIdsByUser.values()].flat())];
-  const trackNameById = await repo.getTrackNamesByIds(c.var.db, allScopeTrackIds);
+
+  // DEC-338 (w32 amendment): second wave -- getUsersByIds and
+  // getTrackNamesByIds both depend only on ids resolved from wave 1
+  // (userIds, allScopeTrackIds) and neither reads the other's result, so
+  // they issue as one Promise.all instead of two sequential round trips.
+  const [users, trackNameById] = await Promise.all([
+    repo.getUsersByIds(c.var.db, userIds),
+    repo.getTrackNamesByIds(c.var.db, allScopeTrackIds),
+  ]);
+
+  // DEC-338 (w32 amendment): third wave -- batchUserDisplayNames depends on
+  // `users` (wave 2's output), so it cannot join that Promise.all.
+  // DEC-708: one batched account->contact resolution for the whole page's
+  // reviewer set, never a query per row.
+  const nameByUserId = await repo.batchUserDisplayNames(c.var.db, users.map((u) => u.userId));
 
   const items = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
@@ -145,15 +162,18 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
 reviewPlansProgressRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
   const round = parseRoundQuery(c, plan);
-  // DEC-345: buildResults already ranks (average desc, count desc); an
+  // DEC-345: rankPlanResults already ranks (average desc, count desc); an
   // explicit ?sort= re-sorts that WHOLE ranked set before paging/CSV --
   // paging without moving the sort first would sort one page and mis-rank
   // the rest (DEC-341's worklist bug class).
-  const rankedRows = await buildResults(c, plan, round);
+  const rankedRows = await rankPlanResults(c, plan, round);
   const sortSpec = parseResultsSort(c);
   const sortedRows = sortSpec ? sortResultsRows(rankedRows, sortSpec.key, sortSpec.direction) : rankedRows;
 
   if (c.req.query("format") === "csv") {
+    // DEC-829 (w32 amendment): CSV semantics are unchanged -- every ranked
+    // row, in sort order -- so hydration runs over the FULL sorted array.
+    const csvRows = await hydrateResultsRows(c, plan, sortedRows);
     const roundCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round);
     const criteria = ratingCriteria(roundCriteria);
     const dropdowns = dropdownCriteria(roundCriteria);
@@ -173,7 +193,7 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/results", requireOrganizer, asy
       ...dropdownColumns.map(({ dc, option }) => `${dc.label}: ${option}`),
     ];
     // ?format=csv ignores page/perPage (DEC-345): every row, in sort order.
-    const dataRows = sortedRows.map((r) => [
+    const dataRows = csvRows.map((r) => [
       r.ref,
       r.title,
       r.speakers.join("; "),
@@ -198,7 +218,11 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/results", requireOrganizer, asy
   const page = clampPage(c.req.query("page"));
   const perPage = clampPerPage(c.req.query("perPage"));
   const start = (page - 1) * perPage;
-  const items = sortedRows.slice(start, start + perPage);
+  // DEC-829 (w32 amendment): HYDRATION IS PER-PAGE -- slice the ranked/sorted
+  // population BEFORE hydrating, so speakers/trackNames/recusals are only
+  // ever fetched for the page's own row set, never the whole population.
+  const pageRows = sortedRows.slice(start, start + perPage);
+  const items = await hydrateResultsRows(c, plan, pageRows);
   return c.json({ items, total: sortedRows.length, page, perPage, round });
 });
 

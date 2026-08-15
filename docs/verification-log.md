@@ -4425,33 +4425,48 @@ read budget, with high run-to-run variance on this machine noted honestly.
 RESULT: FAIL (both checks, improved) — LOGGED PRODUCT FINDING: further
 reduction on plan results would require revisiting DEC-440's foreclosure of
 SQL-aggregate scoring math, not a call this task makes unilaterally.
+## 2026-08-15 task-w32-a — plan results (page 1): rank the population, hydrate the page @ 904dd3d8
 
-## task-w31-d: perf-smoke profile-resolved plan/reviewer fixtures (DEC-644 w31, DEC-645)
-Tip `9119a01a`. PERF_PLAN_ID/PERF_REVIEWER_EMAIL/PERF_REVIEWER_PASSWORD now
-resolve from PERF_PROFILE via perf-seed-lib's perfPlanId/perfReviewerEmail
-(default byte-identical, asserted by test); deleted isDefaultProfile/
-DEFAULT_ONLY_CHECK_NAMES/skippedChecks outright — every check runs on
-every profile. vitest test/perf-smoke.test.ts 80/80 green; build green.
-Live proof port 8897, `--profile=aie`: "rating PUT" PASS; "reviewer queue"
-and "plan results (page 1)" newly FAIL at aie scale — logged findings per
-DEC-347(3), owned by w31-b (src/routes/review/reviewer.ts) / w31-c
-(src/routes/review/shared.ts), not this lane's scope. SOLE OWNER of both
-touched files (no overlap declared). Detail:
-docs/verification-log/task-w31-d-perf-profile-fixtures-9119a01a.md.
+INVALIDATED BY: src/routes/review/shared.ts, src/routes/review/plans-progress.ts
 
-INVALIDATED BY: scripts/perf-smoke.ts, test/perf-smoke.test.ts, scripts/perf-seed-lib.ts
+Owned `src/routes/review/shared.ts` and `src/routes/review/plans-progress.ts`.
+Closed the `plan results (page 1)` perf FAIL logged at
+docs/verification-log/task-w29-e-review-perf-b7060152.md:92-95 (adj p95
+60.6/74.8/61.6ms across three runs vs the 50ms read budget). Split the old
+`buildResults` (DEC-829 w32 amendment) into `rankPlanResults` (issues
+`listPlanFilteredSubmissions`/`listEvaluationScoresForPlan` as one
+`Promise.all`, DEC-338; keeps DEC-440's JS aggregation verbatim; returns a
+narrower `RankedResultsRow[]` — ref/title/count/average/perCriterion/
+perDropdown/status/submissionId, everything `sortValueForColumn` can read)
+and `hydrateResultsRows` (takes an already-sliced array, issues
+`listSpeakerNamesForSubmissions`/`listTrackNamesForSubmissions`/
+`listRecusalsForPlan` as one `Promise.all` over ONLY those rows' ids).
+Rewired `GET /api/v1/plans/:id/results`: rank -> sort -> CSV branch
+hydrates the FULL sorted array (byte-identical CSV semantics), JSON branch
+slices the page first and hydrates only that slice. Also collapsed `GET
+/api/v1/plans/:id/progress`'s four plan-scoped reads into one `Promise.all`
+wave, then `getUsersByIds`/`getTrackNamesByIds` into a second wave, keeping
+`batchUserDisplayNames` (depends on `users`) as a third — no envelope
+change to either route.
 
-## task-w31-b: reviewer queue TIER-0 perf (DEC-338/DEC-347 wave-31 amendments)
+TESTS: `npx vitest related src/routes/review/shared.ts
+src/routes/review/plans-progress.ts` (56 files/450 tests) all PASS after
+updating test/review-results-payload.test.ts's `buildResults` call sites to
+`rankPlanResults`/`hydrateResultsRows`. Added
+test/review-results-hydration-scope.test.ts: an instrumented repo mock
+recording the id-array length each hydration reader receives — asserts the
+JSON page path never hands hydration more than `perPage` ids and the CSV
+path hands it every ranked row. `npm run build` green.
 
-Full receipt: docs/verification-log/task-w31-b-reviewer-queue-perf-66123630.md.
-Boundary `66123630` off `main` `87c545f6`. Collapsed the queue's 11
-sequential D1 reads into 2 dependency-ordered `Promise.all` waves
-(DEC-338); added migrations/0041_evaluation_plan_round_submission_idx.sql
-(number pre-assigned by DEC-347). Envelope/order/numbers pinned unchanged;
-concurrency proven behaviourally (instrumented fake Db, max in-flight >
-1), never a grep. One-session before/after: adjusted p95 78.0ms -> 56.3ms
-(28% reduction, still over the 50ms budget at this noisy-machine
-measurement) — DELTA is this lane's grade per DEC-347. DECLARED OVERLAP
-with lanes a/c/d and w31-c (src/db/schema/review.ts, additive index only).
-
-INVALIDATED BY: src/routes/review/reviewer.ts, src/server/repo/review/**, migrations/**
+MEASURED (one session: `npm run seed` -> `npm run perf:seed` -> `npx
+wrangler dev --port 8901 --local` -> `PERF_URL=... npm run perf:smoke`,
+BEFORE run against this branch's diff stashed out (pre-change code), AFTER
+run with the diff popped back in, same seeded D1 state, server killed after
+each run): `plan results (page 1)` raw=69.8ms adjusted=67.1ms FAIL (BEFORE)
+-> raw=44.8ms adjusted=39.0ms PASS (AFTER), under the 50ms read-class
+budget. `reviewer queue` FAILs in both runs (out of this task's scope,
+owned by a different lane; this task never touches
+src/routes/review/reviewer.ts). Full detail:
+docs/verification-log/task-w32-a-plan-results-perf-69e419ad.md.
+RESULT: PASS (plan results, this task's scope) — reviewer queue's own FAIL
+is unrelated and unowned by this lane.

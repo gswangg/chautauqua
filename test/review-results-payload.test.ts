@@ -21,7 +21,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
-import { buildResults } from "../src/routes/review/shared";
+import { rankPlanResults, hydrateResultsRows } from "../src/routes/review/shared";
 import type { PlanRecord } from "../src/server/repo/review";
 import type { Db } from "../src/server/context";
 
@@ -129,7 +129,7 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
       submissionTrack: [{ submissionId: "sub-1", trackId: "track-1" }],
     });
 
-    await buildResults({ var: { db } }, plan, 1);
+    await rankPlanResults({ var: { db } }, plan, 1);
 
     // DEC-703's own page-scoped track-name lookup selects {submissionId,
     // name} from schema.submissionTrack (joined to track) -- distinct from
@@ -152,7 +152,7 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
       submissionTrack: [],
     });
 
-    await buildResults({ var: { db } }, plan, 1);
+    await rankPlanResults({ var: { db } }, plan, 1);
 
     const evalTouch = touched.find((t) => t.table === schema.evaluation);
     expect(evalTouch).toBeDefined();
@@ -187,7 +187,8 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
       submissionTrack: [],
     });
 
-    const rows = await buildResults({ var: { db } }, plan, 1);
+    const rankedRows = await rankPlanResults({ var: { db } }, plan, 1);
+    const rows = await hydrateResultsRows({ var: { db } }, plan, rankedRows);
 
     expect(rows).toEqual([
       {
@@ -238,10 +239,11 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
       ],
     });
 
-    const rows = await buildResults({ var: { db } }, plan, 1);
+    const rankedRows = await rankPlanResults({ var: { db } }, plan, 1);
+    const rows = await hydrateResultsRows({ var: { db } }, plan, rankedRows);
 
-    const rowA = rows.find((r) => r.submissionId === "sub-1");
-    const rowB = rows.find((r) => r.submissionId === "sub-2");
+    const rowA = rows.find((r: { submissionId: string }) => r.submissionId === "sub-1");
+    const rowB = rows.find((r: { submissionId: string }) => r.submissionId === "sub-2");
     expect(rowA?.speakers).toEqual(["Ada Lovelace", "Grace Hopper"]);
     expect(rowA?.trackNames).toEqual(["Engineering", "Leadership"]);
     // A submission with no participant/track rows gets empty arrays, never
