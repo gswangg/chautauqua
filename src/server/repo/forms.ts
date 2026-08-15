@@ -415,6 +415,30 @@ export async function describeFieldDependents(
   return { dependentLabels, answerCount };
 }
 
+/** DEC-505: how many collected answers reference each stored option value of
+ * `fieldId` — a single-select answer contributes one count against its
+ * stored string value; a multi-select answer (stored as an array) contributes
+ * one count against every element. Used to refuse removing an option that
+ * submissions have already answered. Non-string values (and non-string array
+ * elements) are ignored — they're not option-value answers. */
+export async function countAnswersByOptionValue(db: Db, fieldId: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ valueJson: schema.submissionAnswer.valueJson })
+    .from(schema.submissionAnswer)
+    .where(eq(schema.submissionAnswer.formFieldId, fieldId));
+
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const value: unknown = JSON.parse(row.valueJson); // fail loudly: stored value_json must be valid JSON
+    const values = Array.isArray(value) ? value : [value];
+    for (const v of values) {
+      if (typeof v !== "string") continue;
+      counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
 /** DEC-300: declared cascade — clears dependent siblings' rules (they become
  * unconditional/always-visible rather than referencing a field that no
  * longer exists), deletes the field's collected answers, then the field

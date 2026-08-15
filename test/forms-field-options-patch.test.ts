@@ -65,6 +65,9 @@ vi.mock("../src/server/repo/forms", async () => {
     listFields: vi.fn(async (_db: unknown, formId: string) =>
       Object.values(FIELDS).filter((f) => f.formId === formId),
     ),
+    // DEC-505: no answers recorded against any option in these fixtures —
+    // every removal in this file is answer-free.
+    countAnswersByOptionValue: vi.fn(async () => new Map()),
     patchField: vi.fn(async (_db: unknown, fieldId: string, patch: { label?: string; options?: string[] | null }) => {
       const current = FIELDS[fieldId];
       if (!current) throw new Error("not found");
