@@ -11,7 +11,7 @@ import { ResponseModal } from './ResponseModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
-import { describeSendResult, type SendResult } from '../../lib/sendResult';
+import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
 import { ParticipationMenu } from './ParticipationMenu';
 import { countOf } from '../../lib/plural';
 import { paginationSummary } from '../../lib/pagination-summary';
@@ -539,7 +539,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     setError(null);
     try {
       const res = await apiPost<SendResult>(`/events/${eventId}/portal-invites`, { contactIds: [contactId] });
-      const failedNames = res.failed && res.failed.length > 0 ? ` ${res.failed.map((f) => f.message).join('; ')}.` : '';
+      const lines = failureLines(res);
+      const failedNames = lines ? ` ${lines}.` : '';
       setToast(`${describeSendResult(res, { one: 'portal invite', many: 'portal invites' })}${failedNames}`);
     } catch (err) {
       setError(err instanceof ApiError ? `Portal invite failed: ${err.message}` : 'Portal invite failed');

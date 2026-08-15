@@ -8,6 +8,7 @@ import {
   missingMergeFields,
 } from '../../lib/merge-fields';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
+import { SendFailures } from '../../components/SendFailures';
 import { countOf, plural } from '../../lib/plural';
 import { DEC_793, DEC_856, DEC_967 } from '../../../../src/decisions';
 
@@ -320,13 +321,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
       {step === 'sent' && sendResult && (
         <div className="chq-bulk-email-result">
           <p>{describeSendResult(sendResult, { one: 'email', many: 'emails' })}</p>
-          {sendResult.failed && sendResult.failed.length > 0 && (
-            <ul>
-              {sendResult.failed.map((f) => (
-                <li key={f.email}>{f.email}</li>
-              ))}
-            </ul>
-          )}
+          <SendFailures failed={sendResult.failed ?? []} />
           <a href="/admin/comms?tab=history">View in Comms history</a>
         </div>
       )}

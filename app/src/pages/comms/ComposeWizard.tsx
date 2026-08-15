@@ -12,6 +12,7 @@ import { PreviewPane } from './PreviewPane';
 import type { SendResult } from '../../lib/sendResult';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
+import { SendFailures } from '../../components/SendFailures';
 import { FormRow } from '../../components/ModalFrame';
 import { COMPOSE_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
@@ -1023,16 +1024,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               </ul>
             </div>
           )}
-          {sentFailedCount > 0 && (
-            <div>
-              {(sendResult.failed ?? []).map((f) => (
-                <div key={f.email} className="chq-comms-recipient-row">
-                  <span className="chq-comms-recipient-name">{f.email}</span>
-                  <span className="chq-comms-recipient-meta">{f.message}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          {sentFailedCount > 0 && <SendFailures failed={sendResult.failed ?? []} />}
           <button type="button" className="chq-btn chq-btn-primary" onClick={reset}>
             Compose another
           </button>
