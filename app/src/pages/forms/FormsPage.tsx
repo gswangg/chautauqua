@@ -11,6 +11,7 @@ import { FieldList } from './FieldList';
 import { FieldModal, type FieldModalInput } from './FieldModal';
 import { guardEditableField, moveId } from './logic';
 import type { CfpForm, EventTrack, FormField } from './types';
+import { MAX_FORM_FIELDS } from '../../lib/batch-caps';
 import './forms.css';
 
 interface EventSummary {
@@ -335,6 +336,9 @@ export function FormsPage() {
             >
               Add a question
             </button>
+            <span className="chq-forms-field-cap-hint">
+              {form.fields.length} of {MAX_FORM_FIELDS} questions
+            </span>
           </div>
           <div className="chq-forms-section-body">
             <FieldList

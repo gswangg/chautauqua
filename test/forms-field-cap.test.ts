@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
-import { MAX_FORM_FIELDS, type FormFieldRow, type FormRow } from "../src/server/repo/forms";
+import { type FormFieldRow, type FormRow } from "../src/server/repo/forms";
+import { MAX_FORM_FIELDS } from "../src/domain/form-copy";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS } from "../src/forms/types";
 
 // DEC-488: MAX_FORM_FIELDS is both the per-form question ceiling and the

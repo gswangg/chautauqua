@@ -9,8 +9,12 @@
 // otherwise shadow the real addCoPresenter this file exercises directly.
 
 import { describe, expect, it } from "vitest";
-import { addCoPresenter, getPortalParticipants, MAX_PARTICIPANTS_PER_SUBMISSION } from "../src/server/repo/portal-edit";
-import { participantRoleLabel, PARTICIPANT_ROLE_OPTIONS } from "../src/domain/participant-roles";
+import { addCoPresenter, getPortalParticipants } from "../src/server/repo/portal-edit";
+import {
+  participantRoleLabel,
+  PARTICIPANT_ROLE_OPTIONS,
+  MAX_PARTICIPANTS_PER_SUBMISSION,
+} from "../src/domain/participant-roles";
 import * as schema from "../src/db/schema";
 import type { AppEnv } from "../src/server/env";
 

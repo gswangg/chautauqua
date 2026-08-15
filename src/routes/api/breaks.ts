@@ -9,7 +9,7 @@ import type { AppEnv, AuthInfo } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError, parseBoundedText, parseBoundedOptionalText, readOptionalJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
-import { MINUTES_PER_DAY } from "../../domain/schedule";
+import { MAX_BREAKS_PER_EVENT, MINUTES_PER_DAY } from "../../domain/schedule";
 import { getEventInfo, isDayWithinEventRange, isIsoDay } from "../../server/repo/agenda"; // DEC-318
 import {
   countBreaksForEvent,
@@ -18,7 +18,6 @@ import {
   getBreakById,
   getBreakForEvent,
   listBreaksForEvent,
-  MAX_BREAKS_PER_EVENT,
   updateBreak,
   type ScheduleBreak,
 } from "../../server/repo/breaks";

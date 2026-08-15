@@ -39,3 +39,11 @@ export function participantRoleLabel(role: string): string {
   const found = PARTICIPANT_ROLE_OPTIONS.find((o) => o.value === role);
   return found ? found.label : role;
 }
+
+// DEC-422 (wave-67 amendment) / DEC-604: 1 original submitter + up to 5
+// self-added co-presenters -- a submission may never carry more than this
+// many participant rows added through the speaker's own add-co-presenter
+// path. Moved out of src/server/repo/portal-edit.ts (a drizzle-importing
+// repo module the SPA cannot import) so the add-co-presenter form can
+// disclose the real remaining headroom.
+export const MAX_PARTICIPANTS_PER_SUBMISSION = 6;

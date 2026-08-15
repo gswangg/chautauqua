@@ -22,7 +22,7 @@ import { ACTIVE_INVITE_STATUSES, PORTAL_VISIBLE_INVITE_STATUSES } from "../../do
 import { chunkIds } from "../../lib/chunk";
 import { newId } from "../../domain/ids";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
-import { isCoPresenterRoleValue, participantRoleLabel } from "../../domain/participant-roles";
+import { isCoPresenterRoleValue, participantRoleLabel, MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
 import { MAX_TEXT_LENGTH } from "../../forms/validate";
 import { DEC_604, DEC_656, DEC_842, DEC_866, DEC_997 } from "../../decisions";
 import { touchSubmissions, touchSubmissionsForContacts } from "./submissions/touch";
@@ -424,15 +424,16 @@ export async function getPortalParticipants(db: Db, submissionId: string): Promi
   }));
 }
 
-// DEC-604: 1 original submitter + up to 5 self-added co-presenters. The
-// spec text is "cap at 5 co-presenters per submission" — read narrowly as a
-// cap of 5 participant rows ADDED THROUGH THIS ENDPOINT, so the submission
-// (which starts with exactly one participant: the CFP submitter) may never
-// exceed 6 participant rows via this path. Organizer-side invites
-// (POST /api/v1/submissions/:id/participants) are a separate, uncapped
-// path and are not counted differently here — this cap is a simple total
-// row-count check against the submission's existing participant rows.
-export const MAX_PARTICIPANTS_PER_SUBMISSION = 6;
+// DEC-604 (MAX_PARTICIPANTS_PER_SUBMISSION now lives in
+// src/domain/participant-roles.ts, DEC-422 wave-67 amendment): 1 original
+// submitter + up to 5 self-added co-presenters. The spec text is "cap at 5
+// co-presenters per submission" — read narrowly as a cap of 5 participant
+// rows ADDED THROUGH THIS ENDPOINT, so the submission (which starts with
+// exactly one participant: the CFP submitter) may never exceed 6
+// participant rows via this path. Organizer-side invites (POST
+// /api/v1/submissions/:id/participants) are a separate, uncapped path and
+// are not counted differently here — this cap is a simple total row-count
+// check against the submission's existing participant rows.
 
 export interface AddCoPresenterInput {
   submissionId: string;
@@ -483,9 +484,15 @@ export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promis
     .where(eq(schema.participant.submissionId, input.submissionId));
   const count = countRows[0]?.count ?? 0;
   if (count >= MAX_PARTICIPANTS_PER_SUBMISSION) {
+    // Names the real total (MAX_PARTICIPANTS_PER_SUBMISSION) and the row
+    // count already read, never a hard-typed "(5)" -- an organizer-invited
+    // participant already counts toward this submission's total, so the
+    // true remaining co-presenter headroom can be less than 5.
     return {
       ok: false,
-      errors: { role: "This submission already has the maximum number of co-presenters (5)" },
+      errors: {
+        role: `This submission already has ${count} of the maximum ${MAX_PARTICIPANTS_PER_SUBMISSION} participants allowed -- no more co-presenters can be added`,
+      },
     };
   }
 
