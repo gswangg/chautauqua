@@ -774,16 +774,23 @@ export function perfSpeakerParticipantId(i: number): string {
 
 /**
  * Deterministic, bounded 0-based indexes (into a profile's own
- * acceptedSubmissionIds array, in seed order) of the accepted submissions
- * the perf speaker is attached to as an extra participant: the first
- * `count` (default PERF_SPEAKER_SUBMISSION_COUNT) accepted submissions,
- * capped at `acceptedCount` so this never overruns a profile seeded with
- * fewer accepted submissions than requested. Index 0 is always included
- * whenever acceptedCount > 0, so the profile's first accepted submission id
- * (the same id every existing "accepted submission" perf-smoke check
- * resolves first, via fetchAcceptedSubmissionIds) is always one the perf
- * speaker can view — no separate id resolution needed for
- * GET /portal/submissions/:id.
+ * acceptedSubmissionIds array, in ASCENDING seed order — index 0 is the
+ * lowest-seq accepted submission) of the accepted submissions the perf
+ * speaker is attached to as an extra participant: the `count` (default
+ * PERF_SPEAKER_SUBMISSION_COUNT) HIGHEST-seq accepted submissions, capped
+ * at `acceptedCount` so this never overruns a profile seeded with fewer
+ * accepted submissions than requested.
+ *
+ * wave-39 correction: GET /api/v1/events/:id/submissions?status=accepted's
+ * default (and only, per perf-smoke.ts) sort is "newest"
+ * (src/server/repo/submissions/list.ts's orderByForSort: createdAt desc,
+ * seq desc) — page 1 returns the HIGHEST-seq accepted submissions first,
+ * not the lowest. This function's returned array is therefore ordered
+ * acceptedCount-1, acceptedCount-2, ... so index 0 of the RETURNED array
+ * is always the highest-seq accepted submission — the same id
+ * fetchAcceptedSubmissionIds/icsIds[0] resolves first in perf-smoke.ts —
+ * so the perf speaker can always view it via GET /portal/submissions/:id
+ * with no separate id resolution.
  */
 export function perfSpeakerAcceptedIndexes(
   acceptedCount: number,
@@ -796,7 +803,7 @@ export function perfSpeakerAcceptedIndexes(
     throw new Error(`perfSpeakerAcceptedIndexes: count must be a non-negative integer, got ${count}`);
   }
   const bounded = Math.min(count, acceptedCount);
-  return Array.from({ length: bounded }, (_, i) => i);
+  return Array.from({ length: bounded }, (_, i) => acceptedCount - 1 - i);
 }
 
 /**

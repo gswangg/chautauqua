@@ -705,7 +705,14 @@ describe("perf-seed.ts --profile=aie output (DEC-645)", () => {
   it("seeds exactly aie.taskCount task_assignment rows, with exactly overdueAssignmentCount(aie) rows " +
     "deliberately pending against task index 0's past due_date", () => {
     const taskLines = lines.filter((l) => l.startsWith("INSERT INTO task "));
-    const assignmentLines = lines.filter((l) => l.startsWith("INSERT INTO task_assignment "));
+    // wave-39: exclude the singleton perf speaker's own PERF_TASK_COUNT
+    // task_assignment rows (scripts/perf-seed-lib.ts's
+    // perfSpeakerTaskAssignmentId, id namespace
+    // 'seed_perf_speaker_task_assignment_') — those are additional to,
+    // never counted against, a profile's own aie.taskCount grid.
+    const assignmentLines = lines
+      .filter((l) => l.startsWith("INSERT INTO task_assignment "))
+      .filter((l) => !l.includes("'seed_perf_speaker_task_assignment_"));
     expect(assignmentLines).toHaveLength(aie.taskCount);
     expect(aie.taskCount).toBe(400);
 
