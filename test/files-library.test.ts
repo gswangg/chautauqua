@@ -216,14 +216,24 @@ function resolveJoinOperand(col: unknown, sRow: Record<string, unknown>, jRow: R
   return key in jRow ? jRow[key] : sRow[key];
 }
 
-/** The headshot join's `${contact.headshotUrl} = '/headshots/' || ${file.id}`
- * predicate — the only sql`` join condition this module ever emits. */
+/** The headshot join's predicate (DEC-773 wave-31 amendment, option 3b):
+ * `file.id = substr(contact.headshot_url, 12) and substr(contact.headshot_url,
+ * 1, 11) = '/headshots/'` — file.id referenced once, contact.headshotUrl
+ * referenced twice (once per substr call). Evaluated semantically rather
+ * than by literal substr math: the first 11 chars must be '/headshots/'
+ * (11 === "'/headshots/'".length - 2) and the remainder must equal file.id
+ * — the only sql`` join condition this module ever emits. */
 function evalJoinSqlNode(node: { queryChunks: unknown[] }, sRow: Record<string, unknown>, jRow: Record<string, unknown>): boolean {
   const colChunks = node.queryChunks.filter((c) => isColumnRef(c));
-  if (colChunks.length !== 2) throw new Error("fake db: unsupported join sql node");
-  const left = resolveJoinOperand(colChunks[0], sRow, jRow);
-  const right = resolveJoinOperand(colChunks[1], sRow, jRow);
-  return left === `/headshots/${String(right)}`;
+  const fileIdChunk = colChunks.find((c) => colKey(c) === "id");
+  const headshotChunk = colChunks.find((c) => colKey(c) === "headshotUrl");
+  if (!fileIdChunk || !headshotChunk || colChunks.length !== 3) {
+    throw new Error("fake db: unsupported join sql node");
+  }
+  const fileId = resolveJoinOperand(fileIdChunk, sRow, jRow);
+  const headshotUrl = resolveJoinOperand(headshotChunk, sRow, jRow);
+  if (typeof headshotUrl !== "string") return false;
+  return headshotUrl.slice(0, 11) === "/headshots/" && headshotUrl.slice(11) === String(fileId);
 }
 
 function evalJoinCond(cond: unknown, sRow: Record<string, unknown>, jRow: Record<string, unknown>): boolean {

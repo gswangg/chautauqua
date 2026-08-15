@@ -212,7 +212,19 @@ function buildDeliverableWhere(eventId: string, deliverableKinds: string[], q: s
   return and(...conditions)!;
 }
 
-const HEADSHOT_JOIN = sql`${schema.contact.headshotUrl} = '/headshots/' || ${schema.file.id}`;
+// DEC-773 wave-31 amendment (option 3b): the predicate used to concatenate
+// the file id onto a literal headshot-path prefix on the right-hand side of
+// the equals sign — file.id sitting inside that concatenation means no
+// planner can drive `file` by its primary key, so this ran as a full
+// nested-loop scan of `file` per outer row (computeKindCounts,
+// listEventDeliverableFiles's headshot branch, resolveHeadshotVersions — all
+// three call sites, twice per page-1 request via counts+list). Moving the
+// indexed column to stand alone — `file.id = substr(contact.headshot_url, 12)`
+// — lets the planner drive `file` by id instead. The explicit prefix guard
+// (`/headshots/` is 11 chars, so substr(...,1,11)) restores exact equivalence
+// with the old concatenated form: without it, a headshot_url shaped like
+// `<11 arbitrary chars><real file id>` would newly (and wrongly) match.
+const HEADSHOT_JOIN = sql`${schema.file.id} = substr(${schema.contact.headshotUrl}, 12) and substr(${schema.contact.headshotUrl}, 1, 11) = '/headshots/'`;
 
 function buildHeadshotWhere(eventId: string, q: string | null): SQL {
   const conditions = [acceptedSpeakerConditions(eventId), isNotNull(schema.contact.headshotUrl)];

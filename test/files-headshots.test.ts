@@ -135,12 +135,18 @@ function renderSql(node: { queryChunks: unknown[] }): { text: string; cols: unkn
 
 function evalSqlNode(node: { queryChunks: unknown[] }, row: JoinedRow): boolean {
   const { text, cols, params } = renderSql(node);
-  if (text.includes(" || ") && text.includes(" = ")) {
-    // The headshot join predicate: contact.headshot_url = '/headshots/' || file.id
-    const [leftCol, rightCol] = cols;
-    const leftVal = resolveVal(leftCol, row);
-    const rightVal = resolveVal(rightCol, row);
-    return leftVal === `/headshots/${String(rightVal)}`;
+  if (text.includes("substr(")) {
+    // DEC-773 wave-31 amendment (option 3b): the headshot join predicate is
+    // now `file.id = substr(contact.headshot_url, 12) and
+    // substr(contact.headshot_url, 1, 11) = '/headshots/'` — file.id
+    // referenced once, contact.headshotUrl referenced twice.
+    const fileIdCol = cols.find((c) => colInfo(c).prop === "id");
+    const headshotCol = cols.find((c) => colInfo(c).prop === "headshotUrl");
+    if (!fileIdCol || !headshotCol) throw new Error(`fake db: unsupported join sql node: ${text}`);
+    const fileId = resolveVal(fileIdCol, row);
+    const headshotUrl = resolveVal(headshotCol, row);
+    if (typeof headshotUrl !== "string") return false;
+    return headshotUrl.slice(0, 11) === "/headshots/" && headshotUrl.slice(11) === String(fileId);
   }
   if (text.includes(" like ")) {
     const like = params[0] as string;
