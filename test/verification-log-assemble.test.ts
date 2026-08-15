@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { duplicateSequences } from "../scripts/assemble-verification-log";
+import { duplicateSequences, planRenumber } from "../scripts/assemble-verification-log";
 
 const ROOT = join(__dirname, "..");
 const INDEX_DIR = join(ROOT, "docs", "verification-log", "index");
@@ -105,5 +105,61 @@ describe("docs/verification-log.md assembly (contention decomposition)", () => {
         }
       }
     }
+  });
+});
+
+describe("planRenumber (DEC-068 wave-39 collision remedy)", () => {
+  it("returns an empty plan when there are no collisions", () => {
+    expect(planRenumber(["0001-2026-08-10-task-w1-a-build-test-abc1234.md", "0002-2026-08-10-task-w1-b-walkthrough-abc1234.md"])).toEqual([]);
+  });
+
+  it("resolves a two-file collision, keeping the (date, branch)-first file at the shared sequence", () => {
+    const files = [
+      "0001-2026-08-10-task-w1-a-build-test-abc1234.md",
+      "0002-2026-08-11-task-w2-b-walkthrough-def5678.md",
+      "0002-2026-08-10-task-w2-a-build-test-def5678.md",
+    ];
+    // "2026-08-10-task-w2-a-..." sorts before "2026-08-11-task-w2-b-..." so the
+    // 08-10 file keeps 0002 and the 08-11 file is reassigned.
+    expect(planRenumber(files)).toEqual([
+      { from: "0002-2026-08-11-task-w2-b-walkthrough-def5678.md", to: "0003-2026-08-11-task-w2-b-walkthrough-def5678.md" },
+    ]);
+  });
+
+  it("resolves a three-file collision, reassigning all but the earliest-sorting file in order", () => {
+    const files = [
+      "0001-2026-08-10-task-w1-a-build-test-abc1234.md",
+      "0004-2026-08-10-task-w4-c-perf-smoke-fff0000.md",
+      "0004-2026-08-10-task-w4-a-build-test-fff0000.md",
+      "0004-2026-08-10-task-w4-b-walkthrough-fff0000.md",
+    ];
+    expect(planRenumber(files)).toEqual([
+      { from: "0004-2026-08-10-task-w4-b-walkthrough-fff0000.md", to: "0005-2026-08-10-task-w4-b-walkthrough-fff0000.md" },
+      { from: "0004-2026-08-10-task-w4-c-perf-smoke-fff0000.md", to: "0006-2026-08-10-task-w4-c-perf-smoke-fff0000.md" },
+    ]);
+  });
+
+  it("skips a next sequence that is itself already taken by another file", () => {
+    const files = [
+      "0001-2026-08-10-task-w1-a-build-test-abc1234.md",
+      "0002-2026-08-10-task-w2-a-build-test-def5678.md",
+      "0002-2026-08-11-task-w2-b-walkthrough-def5678.md",
+      "0003-2026-08-10-task-w3-a-build-test-1234567.md",
+    ];
+    // Naive prefix+1 would try 0003 for the losing 0002 file, but 0003 is
+    // already taken -- and 0004 is one past the highest overall prefix, so
+    // the planner must land there, not on the taken 0003.
+    expect(planRenumber(files)).toEqual([
+      { from: "0002-2026-08-11-task-w2-b-walkthrough-def5678.md", to: "0004-2026-08-11-task-w2-b-walkthrough-def5678.md" },
+    ]);
+  });
+
+  it("never touches non-colliding files", () => {
+    const files = [
+      "0001-2026-08-10-task-w1-a-build-test-abc1234.md",
+      "0002-2026-08-10-task-w2-a-build-test-def5678.md",
+      "0003-2026-08-10-task-w3-a-build-test-1234567.md",
+    ];
+    expect(planRenumber(files)).toEqual([]);
   });
 });

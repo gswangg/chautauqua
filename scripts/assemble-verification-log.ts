@@ -6,12 +6,16 @@
 // tail -- see docs/verification-log/index/README.md for why (contention
 // decomposition, no DEC yet).
 //
-// Usage:
-//   tsx scripts/assemble-verification-log.ts            # rewrite docs/verification-log.md
-//   tsx scripts/assemble-verification-log.ts --check     # exit 1 if out of date (CI use)
-//   tsx scripts/assemble-verification-log.ts --next-seq  # print next 4-digit sequence prefix
+// Usage (npm entry points: verification-log:assemble / :check / :renumber):
+//   tsx scripts/assemble-verification-log.ts             # rewrite docs/verification-log.md
+//   tsx scripts/assemble-verification-log.ts --check      # exit 1 if out of date (CI use)
+//   tsx scripts/assemble-verification-log.ts --next-seq   # print next 4-digit sequence prefix
+//   tsx scripts/assemble-verification-log.ts --renumber   # DEC-068 wave-39: mechanically
+//                                                          # resolve colliding 4-digit prefixes
+//                                                          # by renaming files on disk, then
+//                                                          # re-assemble.
 
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(import.meta.dirname, "..");
@@ -79,6 +83,70 @@ function assertNoDuplicateSequences(files: readonly string[]): void {
   }
 }
 
+// DEC-068 wave-39: pure planner for the collision remedy. nextSeq() mints one
+// past the highest existing prefix, so every concurrent lane in a wave gets
+// the same number by construction (see assertNoDuplicateSequences above) --
+// wave 39's own tip commit was a merge-train HAND-renumber of a 0191
+// collision. This function replaces the hand-edit with a deterministic,
+// unit-tested plan: within each colliding 4-digit group, the file whose
+// (date, branch, ...) substring -- i.e. everything after the "NNNN-" prefix,
+// which starts with the date then the branch name -- sorts first KEEPS the
+// existing sequence; every other file in the group is reassigned, in that
+// same sorted order, to the next FREE sequence (never a sequence already in
+// use by any file, colliding or not, and never one just claimed by this same
+// renumber pass). Non-colliding files are never touched, file content is
+// never touched, and files sharing a sequence with no other file are left
+// alone. Returns an empty plan when there are no collisions.
+export function planRenumber(files: readonly string[]): Array<{ from: string; to: string }> {
+  const groups = new Map<string, string[]>();
+  for (const f of files) {
+    const prefix = f.slice(0, 4);
+    const existing = groups.get(prefix);
+    if (existing) {
+      existing.push(f);
+    } else {
+      groups.set(prefix, [f]);
+    }
+  }
+
+  const usedPrefixes = new Set(groups.keys());
+  let maxNum = 0;
+  for (const prefix of usedPrefixes) {
+    const n = Number.parseInt(prefix, 10);
+    if (n > maxNum) maxNum = n;
+  }
+  let candidate = maxNum + 1;
+  const claimNextFreeSeq = (): string => {
+    let seq = String(candidate).padStart(4, "0");
+    while (usedPrefixes.has(seq)) {
+      candidate += 1;
+      seq = String(candidate).padStart(4, "0");
+    }
+    usedPrefixes.add(seq);
+    candidate += 1;
+    return seq;
+  };
+
+  const collidingPrefixes = [...groups.entries()]
+    .filter(([, group]) => group.length > 1)
+    .map(([prefix]) => prefix)
+    .sort();
+
+  const plan: Array<{ from: string; to: string }> = [];
+  for (const prefix of collidingPrefixes) {
+    const group = groups.get(prefix);
+    if (!group) continue;
+    const sorted = [...group].sort((a, b) => a.slice(5).localeCompare(b.slice(5)));
+    // sorted[0] keeps the existing sequence; the rest are renumbered in
+    // sorted order.
+    for (const f of sorted.slice(1)) {
+      const seq = claimNextFreeSeq();
+      plan.push({ from: f, to: seq + f.slice(4) });
+    }
+  }
+  return plan;
+}
+
 function assemble(): string {
   const files = entryFiles();
   assertNoDuplicateSequences(files);
@@ -105,6 +173,29 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   if (mode === "--next-seq") {
     process.stdout.write(nextSeq() + "\n");
+  } else if (mode === "--renumber") {
+    const files = entryFiles();
+    const plan = planRenumber(files);
+    if (plan.length === 0) {
+      console.log("No colliding sequence prefixes -- nothing to renumber.");
+    } else {
+      const existing = new Set(files);
+      for (const { from, to } of plan) {
+        if (existing.has(to)) {
+          throw new Error(
+            `assemble-verification-log --renumber: refusing to rename ${from} -> ${to}, target already exists`,
+          );
+        }
+        existing.delete(from);
+        existing.add(to);
+      }
+      for (const { from, to } of plan) {
+        renameSync(join(INDEX_DIR, from), join(INDEX_DIR, to));
+        console.log(`Renamed ${from} -> ${to}`);
+      }
+    }
+    writeFileSync(OUTPUT_FILE, assemble());
+    console.log(`Wrote ${OUTPUT_FILE} from ${entryFiles().length} entries.`);
   } else if (mode === "--check") {
     const current = readFileSync(OUTPUT_FILE, "utf8");
     const expected = assemble();
