@@ -15,6 +15,8 @@ import { EMBED_FORMATS } from "../../lib/embed-formats";
 import { ALL_CARD_FIELDS } from "../../lib/card-fields";
 import { parseTrackId, parseDay, parseNameQuery, parseLimit, parseCardFields, parseAccent, parseFormat, parseRoomId } from "../public/query";
 import { DEC_785, DEC_822, DEC_839 } from "../../decisions";
+import { MAX_SAVED_EMBEDS_PER_EVENT } from "../../domain/embeds";
+import { overCapCountMessage } from "../../domain/cap-copy";
 import {
   countEmbeds,
   createEmbed,
@@ -172,6 +174,18 @@ embedsRoutes.post("/events/:eventId/embeds", requireOrganizer, csrfJson, async (
     throw new ApiError("invalid", "format must be a known embed format", { format: "Unknown format" });
   }
   const options = await parseEmbedOptionsInput(c.var.db, eventId, body.options);
+
+  // DEC-822: event-wide cap (see src/domain/embeds.ts's scoping contract --
+  // an embed has no per-organiser ownership, so this counts every embed on
+  // the event, not just the caller's own).
+  const existingCount = await countEmbeds(c.var.db, eventId);
+  if (existingCount >= MAX_SAVED_EMBEDS_PER_EVENT) {
+    throw new ApiError(
+      "invalid",
+      `This event already has the maximum of ${MAX_SAVED_EMBEDS_PER_EVENT} saved embeds. Delete an embed, or turn off one you no longer paste anywhere, before creating another.`,
+      { name: overCapCountMessage(existingCount + 1, MAX_SAVED_EMBEDS_PER_EVENT, "saved embed") },
+    );
+  }
 
   const embed = await createEmbed(
     c.var.db,
