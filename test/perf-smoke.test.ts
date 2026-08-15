@@ -10,6 +10,7 @@ import {
   assertContainsVevent,
   assertMinChqProgDaySections,
   assertMinCsvLines,
+  assertNonEmptyItems,
   computeP95,
   computePercentile,
   gradePerfCheck,
@@ -328,6 +329,58 @@ describe("assertMinCsvLines", () => {
     expect(() => assertMinCsvLines("export.csv", body, 6)).toThrow(
       /export\.csv: expected >= 6 CSV lines, got 5/,
     );
+  });
+});
+
+describe("assertNonEmptyItems", () => {
+  it("does not throw on a non-empty items array", () => {
+    expect(() => assertNonEmptyItems("plan progress (page 1)", { items: [{ userId: "u1" }] })).not.toThrow();
+  });
+
+  it("throws on an empty items array", () => {
+    expect(() => assertNonEmptyItems("plan progress (page 1)", { items: [] })).toThrow(
+      "plan progress (page 1): expected a non-empty items array, got []",
+    );
+  });
+
+  it("throws when items is missing", () => {
+    expect(() => assertNonEmptyItems("plan reviewers (page 1)", {})).toThrow(
+      "plan reviewers (page 1): expected a non-empty items array",
+    );
+  });
+
+  it("throws when items is not an array", () => {
+    expect(() => assertNonEmptyItems("plan reviewers (page 1)", { items: "nope" as unknown as unknown[] })).toThrow();
+  });
+});
+
+// task-w32-c: DEC-644 wave-32 amendment — the two organizer-facing plan
+// tabs (progress, reviewers) never previously measured by this harness.
+// Same source-scan technique as the write-class/public-GET coverage blocks
+// above (a running server + perf seed is needed to actually execute these
+// checks, out of scope for this suite per the task's TESTS note).
+describe("perf-smoke.ts plan progress/reviewers coverage (DEC-644 wave-32 amendment)", () => {
+  const PERF_SMOKE_PATH = resolve(fileURLToPath(import.meta.url), "../../scripts/perf-smoke.ts");
+  const source = readFileSync(PERF_SMOKE_PATH, "utf-8");
+
+  it('names the "plan progress (page 1)" check with the read class, PERF_PLAN_ID, and a non-empty-items assertion', () => {
+    const idx = source.indexOf('name: "plan progress (page 1)"');
+    expect(idx).toBeGreaterThan(-1);
+    const nextCheckIdx = source.indexOf("name:", idx + 1);
+    const block = source.slice(idx, nextCheckIdx === -1 ? source.length : nextCheckIdx);
+    expect(block).toContain('cls: "read"');
+    expect(block).toContain("/api/v1/plans/${PERF_PLAN_ID}/progress?page=1");
+    expect(block).toContain("assertNonEmptyItems(");
+  });
+
+  it('names the "plan reviewers (page 1)" check with the read class, PERF_PLAN_ID, and a non-empty-items assertion', () => {
+    const idx = source.indexOf('name: "plan reviewers (page 1)"');
+    expect(idx).toBeGreaterThan(-1);
+    const nextCheckIdx = source.indexOf("name:", idx + 1);
+    const block = source.slice(idx, nextCheckIdx === -1 ? source.length : nextCheckIdx);
+    expect(block).toContain('cls: "read"');
+    expect(block).toContain("/api/v1/plans/${PERF_PLAN_ID}/reviewers?page=1");
+    expect(block).toContain("assertNonEmptyItems(");
   });
 });
 

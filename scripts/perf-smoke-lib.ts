@@ -193,6 +193,20 @@ export function assertMinCsvLines(name: string, body: string, minLines: number):
   }
 }
 
+/**
+ * Asserts a paged JSON list response body has a non-empty `items` array —
+ * a 200 with an empty/missing `items` would otherwise pass the timing loop
+ * silently (a silently-empty response is not a valid "fast" reading). Used
+ * by the "plan progress (page 1)" / "plan reviewers (page 1)" checks
+ * (task-w32-c, DEC-644 wave-32 amendment). Throws with the offending name
+ * on failure (fail loudly).
+ */
+export function assertNonEmptyItems(name: string, body: { items?: unknown }): void {
+  if (!Array.isArray(body.items) || body.items.length === 0) {
+    throw new Error(`${name}: expected a non-empty items array, got ${JSON.stringify(body.items)}`);
+  }
+}
+
 /** The known perf profile names — kept as a local literal union rather than
  * importing PERF_PROFILES's keys here, matching this file's existing
  * dependency-free/DOM-IO-free contract (no scripts/perf-seed-lib import). */

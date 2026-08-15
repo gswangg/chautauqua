@@ -4525,3 +4525,28 @@ fixed one defect by two routes and reached equivalent numbers (17.7ms vs
 17.3ms adjusted); the FK route is the one in force. No perf regression: the
 row is fixed on main by w29-b.
 
+## task-w32-c: perf-smoke coverage — plan progress + plan reviewers (DEC-644 w32 amendment)
+
+Full receipt: docs/verification-log/task-w32-c-perf-coverage-e5774e56.md.
+Boundary `e5774e56` off `main`. Added two `read`-class checks to
+`scripts/perf-smoke.ts`, next to the existing `reviewer queue`/`plan
+results (page 1)` rows: `plan progress (page 1)` (GET
+`/api/v1/plans/:id/progress?page=1`, src/routes/review/plans-progress.ts:51)
+and `plan reviewers (page 1)` (GET `/api/v1/plans/:id/reviewers?page=1`,
+src/routes/review/plans-reviewers.ts:188), the two tabs an organizer works
+a review round from and previously unmeasured. Both use the profile-
+resolved PERF_PLAN_ID fixture and a new `assertNonEmptyItems` helper
+(scripts/perf-smoke-lib.ts) asserting HTTP 200 + non-empty `items`. Live
+proof port 8903, `default` profile: `plan progress (page 1)` raw 51.3ms /
+adjusted 48.0ms PASS (close to budget); `plan reviewers (page 1)` raw
+8.0ms / adjusted 4.6ms PASS. Neither new row is over budget, so per the
+task's DEC-644 wave-32 amendment no new finding is logged and no
+`src/routes/review/**` file was touched. Pre-existing `reviewer queue`
+(67.9ms adj) and `plan results (page 1)` (62.6ms adj) FAILs reproduced
+verbatim for completeness — out of this lane's scope. vitest
+test/perf-smoke.test.ts 86/86 green (10 new: 4 assertNonEmptyItems + 6
+source-scan coverage assertions for the two new rows); build green. NO
+`src/**`/`app/src/**` edits.
+
+INVALIDATED BY: scripts/perf-smoke.ts, scripts/perf-smoke-lib.ts, test/perf-smoke.test.ts
+

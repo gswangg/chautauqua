@@ -37,6 +37,7 @@ import {
   assertContainsVevent,
   assertMinChqProgDaySections,
   assertMinCsvLines,
+  assertNonEmptyItems,
   computeP95,
   computePercentile,
   gradePerfCheck,
@@ -745,6 +746,40 @@ async function main(): Promise<void> {
       name: "reviewer queue",
       cls: "read",
       run: () => fetch(`${PERF_URL}/api/v1/review/plans/${PERF_PLAN_ID}/queue`, { headers: reviewerHeaders }),
+    },
+    {
+      // task-w32-c: DEC-644 wave-32 amendment — the review-round progress
+      // tab (src/routes/review/plans-progress.ts, GET /plans/:id/progress),
+      // one of the two organizer-facing plan tabs never previously measured
+      // by this harness. Profile-resolved PERF_PLAN_ID, same as the
+      // neighbouring "reviewer queue" / "plan results" checks.
+      name: "plan progress (page 1)",
+      cls: "read",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/api/v1/plans/${PERF_PLAN_ID}/progress?page=1`, { headers });
+        if (res.ok) {
+          const body = (await res.clone().json()) as { items?: unknown };
+          assertNonEmptyItems("plan progress (page 1)", body);
+        }
+        return res;
+      },
+    },
+    {
+      // task-w32-c: DEC-644 wave-32 amendment — the review-round reviewers
+      // tab (src/routes/review/plans-reviewers.ts, GET /plans/:id/reviewers),
+      // the other organizer-facing plan tab never previously measured by
+      // this harness. Profile-resolved PERF_PLAN_ID, same as the
+      // neighbouring "reviewer queue" / "plan results" checks.
+      name: "plan reviewers (page 1)",
+      cls: "read",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/api/v1/plans/${PERF_PLAN_ID}/reviewers?page=1`, { headers });
+        if (res.ok) {
+          const body = (await res.clone().json()) as { items?: unknown };
+          assertNonEmptyItems("plan reviewers (page 1)", body);
+        }
+        return res;
+      },
     },
     {
       // task-w18-d: DEC-338 — email log list at perf scale (5,000 rows).
