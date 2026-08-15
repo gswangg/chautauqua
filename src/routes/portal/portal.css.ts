@@ -414,9 +414,20 @@ export const PORTAL_CSS = `
       flex-direction: column;
     }
     .chq-portal-shell > .chq-header { flex-shrink: 0; }
+    /* DEC-253 wave-25 amendment: the desktop max-width: var(--chq-portal-
+       measure) rule above (560px) applies unconditionally, and .chq-measure
+       is a flex item whose stretched cross size can still be pushed wider
+       than the viewport by its own content's intrinsic (min-content) width
+       -- the classic flex-item overflow trap. At phone width the column
+       itself must be capped to the viewport regardless of that 560px token,
+       and min-width: 0 stops it (and every constrained descendant below)
+       from falling back to its content's auto minimum. */
     .chq-portal-shell > .chq-measure {
       flex: 1;
       min-height: 0;
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
       overflow-y: auto;
     }
     .chq-portal-shell > .chq-portal-footer {
@@ -424,6 +435,28 @@ export const PORTAL_CSS = `
       border-top: 1px solid var(--chq-ink);
       background: var(--chq-surface-sunk);
       padding: 12px 16px 16px;
+    }
+    /* Descendant containers that can otherwise impose an intrinsic width
+       past the now-capped .chq-measure column -- rows/fields never need a
+       min-content floor wider than the phone viewport, and a table or
+       pre/code block gets its own scroll container instead of the page. */
+    .chq-portal-row,
+    .chq-portal-row-head,
+    .chq-portal-field,
+    .chq-field,
+    table,
+    pre,
+    code {
+      min-width: 0;
+    }
+    table {
+      display: block;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    pre {
+      max-width: 100%;
+      overflow-x: auto;
     }
 
     .chq-portal-footer-band {
