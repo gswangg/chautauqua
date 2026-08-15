@@ -54,6 +54,21 @@ export function validateRationale(value: unknown): string | null {
   return trimmed;
 }
 
+// DEC-803 (wave-55 amendment): a move into 'declined' -- whether via the
+// PATCH move path or a POST enroll straight into 'declined' -- must carry a
+// reason. One predicate, two callers (POST /pipeline and PATCH /pipeline/:id)
+// so the two paths can never drift apart.
+function validateDeclineReason(body: Record<string, unknown>, requiresReason: boolean): string {
+  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+  if (requiresReason && reason === "") {
+    throw new ApiError("invalid", "Validation failed", { reason: "required when declining" });
+  }
+  if (reason.length > MAX_TEXT_LENGTH) {
+    throw new ApiError("invalid", "Validation failed", { reason: `Max ${MAX_TEXT_LENGTH}` }); // DEC-417
+  }
+  return reason;
+}
+
 function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
     throw new ApiError("invalid", "Request body must be a JSON object");
@@ -126,12 +141,20 @@ pipelineRoutes.post("/pipeline", csrfJson, async (c) => {
 
   const fitScore = validateFitScore(body.fitScore);
   const rationale = validateRationale(body.rationale);
+  const reason = validateDeclineReason(body, stage === "declined");
 
   const contact = await findContactForOrg(c.var.db, body.contactId, orgId);
   if (!contact) throw new ApiError("not_found", "Contact not found");
 
   const authorName = await repo.resolveAuthorName(c.var.db, auth.userId);
-  const entry = await repo.enrollContact(c.var.db, orgId, contact.id, stage, { userId: auth.userId, name: authorName }, { fitScore, rationale });
+  const entry = await repo.enrollContact(
+    c.var.db,
+    orgId,
+    contact.id,
+    stage,
+    { userId: auth.userId, name: authorName },
+    { fitScore, rationale, reason: stage === "declined" ? reason : null },
+  );
 
   return c.json(
     serializeEntry({
@@ -144,7 +167,7 @@ pipelineRoutes.post("/pipeline", csrfJson, async (c) => {
       stage: entry.stage,
       updatedAt: entry.updatedAt,
       stageSince: entry.updatedAt,
-      declineReason: null,
+      declineReason: stage === "declined" ? reason : null,
       fitScore: entry.fitScore,
       rationale: entry.rationale,
     }),
@@ -219,13 +242,7 @@ pipelineRoutes.patch("/pipeline/:id", csrfJson, async (c) => {
   // DEC-803: a move into 'declined' must carry a reason -- rejected here,
   // before any write, not left to the UI to enforce alone. This rule only
   // applies to an actual move into 'declined', never a same-stage PATCH.
-  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
-  if (isMove && body.stage === "declined" && reason === "") {
-    throw new ApiError("invalid", "Validation failed", { reason: "required when declining" });
-  }
-  if (reason.length > MAX_TEXT_LENGTH) {
-    throw new ApiError("invalid", "Validation failed", { reason: `Max ${MAX_TEXT_LENGTH}` }); // DEC-417
-  }
+  const reason = validateDeclineReason(body, isMove && body.stage === "declined");
 
   let current = entry;
   if (isMove) {

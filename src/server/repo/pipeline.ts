@@ -257,7 +257,7 @@ export async function enrollContact(
   contactId: string,
   stage: PipelineStage,
   actor: { userId: string; name: string },
-  options?: { fitScore?: number | null; rationale?: string | null },
+  options?: { fitScore?: number | null; rationale?: string | null; reason?: string | null },
 ): Promise<PipelineEntryRow> {
   const id = newId();
   const now = new Date();
@@ -284,7 +284,10 @@ export async function enrollContact(
     id: newId(),
     entryId: id,
     kind: "move",
-    body: null,
+    // DEC-803: an enroll straight into 'declined' writes its reason onto
+    // this initial move activity row, in exactly the shape
+    // declineReasonForEntry already reads (newest move-to-declined body).
+    body: stage === "declined" ? (options?.reason ?? null) : null,
     fromStage: null,
     toStage: stage,
     authorUserId: actor.userId,
