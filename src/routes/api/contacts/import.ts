@@ -10,7 +10,11 @@ import * as repo from "../../../server/repo/contacts";
 import { getEventForOrg } from "../../../server/repo/events";
 import { listAcceptedContactIds } from "../../../server/repo/tasks";
 import { parseCsv } from "../../../lib/csv";
-import { mapImportRow, MAX_IMPORT_CSV_BYTES as DOMAIN_MAX_IMPORT_CSV_BYTES } from "../../../domain/contacts"; // DEC-422 (amendment, wave 59)
+import {
+  mapImportRow,
+  importFieldCapViolations,
+  MAX_IMPORT_CSV_BYTES as DOMAIN_MAX_IMPORT_CSV_BYTES,
+} from "../../../domain/contacts"; // DEC-422 (amendment, wave 59)
 import { DEC_290, DEC_810 } from "../../../decisions";
 import { currentOrgId, asRecord, isPlainObject } from "./shared";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
@@ -133,12 +137,21 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
     // mapImportRow's thrown Error surface as an unhandled 500 mid-batch — a
     // client/server mapping mismatch should be visible, not a silent/opaque
     // failure of the whole import (P1 fix, w1-f).
-    let rows: { line: number; parsed: Record<string, unknown> }[];
+    // DEC-417 (amendment): the row's per-column cap check runs here, at
+    // parse time -- BEFORE planImportRows/applyImportRows so a capped row
+    // surfaces on the dry-run plan (not only as a 500/refusal at apply)
+    // and applyImportRows refuses the exact same rows the plan flagged.
+    let rows: { line: number; parsed: Record<string, unknown>; capViolations?: Record<string, string> }[];
     try {
-      rows = dataRows.map((row, idx) => ({
-        line: idx + 2,
-        parsed: mapImportRow(mapping, header, row) as Record<string, unknown>,
-      }));
+      rows = dataRows.map((row, idx) => {
+        const parsed = mapImportRow(mapping, header, row);
+        const capViolations = importFieldCapViolations(parsed);
+        return {
+          line: idx + 2,
+          parsed: parsed as Record<string, unknown>,
+          ...(Object.keys(capViolations).length > 0 ? { capViolations } : {}),
+        };
+      });
     } catch (err) {
       throw new ApiError("invalid", err instanceof Error ? err.message : "Invalid column mapping", {
         mapping: err instanceof Error ? err.message : "invalid",

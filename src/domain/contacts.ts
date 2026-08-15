@@ -7,6 +7,8 @@
 import { normalizeEmail } from "./email";
 import { ACTIVE_INVITE_STATUSES } from "./acceptance";
 import { contactLabels, TRAVEL_KEY } from "./contact-labels";
+import { overBudgetBy } from "./count-copy";
+import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH, MAX_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { DEC_800 } from "../decisions";
 
 void DEC_800;
@@ -767,4 +769,33 @@ export function mapImportRow(
   }
 
   return result;
+}
+
+/** DEC-417 (amendment): the per-column caps every hand-typed contact editor
+ * enforces (src/routes/api/contacts/crud.ts's checkLen, portal-edit.ts) —
+ * applied to an already-mapped import row, so a CSV import can never mint
+ * (or update) a contact its own drawer would then refuse to re-save.
+ * NEVER truncates: a value over cap is reported by target name, and the
+ * caller (planImportRows/applyImportRows) refuses the whole row instead of
+ * silently shortening it (fail loudly). custom.<key> values are capped at
+ * MAX_TEXT_LENGTH, matching checkLen's own customFields.<key> cap in
+ * crud.ts. Returns {} when the row is within every cap. */
+export function importFieldCapViolations(parsed: Partial<ContactRecord>): Record<string, string> {
+  const violations: Record<string, string> = {};
+  const check = (value: string | undefined, field: string, max: number) => {
+    if (value !== undefined && value.length > max) violations[field] = overBudgetBy(value.length, max);
+  };
+  check(parsed.email, "email", MAX_NAME_LENGTH);
+  check(parsed.firstName, "firstName", MAX_NAME_LENGTH);
+  check(parsed.lastName, "lastName", MAX_NAME_LENGTH);
+  check(parsed.company, "company", MAX_NAME_LENGTH);
+  check(parsed.title, "title", MAX_NAME_LENGTH);
+  check(parsed.phone, "phone", MAX_NAME_LENGTH);
+  check(parsed.bio, "bio", MAX_LONG_TEXT_LENGTH);
+  if (parsed.customFields) {
+    for (const [key, value] of Object.entries(parsed.customFields)) {
+      check(value, `custom.${key}`, MAX_TEXT_LENGTH);
+    }
+  }
+  return violations;
 }
