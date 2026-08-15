@@ -5,6 +5,7 @@
 
 import type { OverviewPayload } from './types';
 import { daysUntil, daysAgo } from '../../lib/dates';
+import { spellCount, plural, countOf } from '../../lib/plural';
 
 // DEC-779: every dot-joined caption on the Overview page (triage row,
 // content-approval row, §04 unplaced/conflict captions, the "no action
@@ -18,23 +19,6 @@ export function joinSegments(parts: Array<string | number | null | undefined>): 
     .join(' · ');
 }
 
-/** "1 thing" / "4 things" — used by the headline and section captions. */
-export function pluralize(count: number, singular: string, plural: string = `${singular}s`): string {
-  return count === 1 ? singular : plural;
-}
-
-const SMALL_NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-
-/** DEC-370 amendment (wave 5): a count from 0-10 is spelled out in a UI
- * label ("Remind all three"), never a bare numeral — matches the frame's
- * copy voice. A count above ten falls back to the numeral. */
-export function spellSmallNumber(count: number): string {
-  if (count < 0 || !Number.isInteger(count)) {
-    throw new Error(`spellSmallNumber: expected a non-negative integer, got ${count}`);
-  }
-  return SMALL_NUMBER_WORDS[count] ?? String(count);
-}
-
 /** Section 01 row caption, e.g. "4 days late" / "1 day late". Fails loudly
  * on a negative input — a row that isn't actually late should never reach
  * this helper. */
@@ -43,7 +27,7 @@ export function daysLateLabel(daysLate: number): string {
     throw new Error(`daysLateLabel: expected a non-negative daysLate, got ${daysLate}`);
   }
   if (daysLate === 0) return 'Due today';
-  return `${daysLate} ${pluralize(daysLate, 'day')} late`;
+  return `${countOf(daysLate, 'day')} late`;
 }
 
 /** The h1: "N things need your attention" — no subtext, no time estimate
@@ -60,7 +44,7 @@ export function headlineCount(payload: OverviewPayload): number {
 }
 
 /** Capitalizes the first letter of a word — no second word list, just a
- * sentence-case transform for spellSmallNumber's output. */
+ * sentence-case transform for spellCount's output. */
 export function capitalizeFirst(word: string): string {
   if (word.length === 0) return word;
   return word[0]!.toUpperCase() + word.slice(1);
@@ -68,14 +52,14 @@ export function capitalizeFirst(word: string): string {
 
 export function headlineText(payload: OverviewPayload): string {
   const count = headlineCount(payload);
-  const verb = `need${count === 1 ? 's' : ''}`;
+  const verb = plural(count, 'needs', 'need');
   // DEC-370 amendment (wave 51): the headline spells counts 1-10 out
   // ("One thing…", "Four things…"), sentence-capitalized, matching the
   // frame's copy voice — the fresh-event 0 case is owned by a different
   // screen block and stays a bare numeral; counts above ten keep the
-  // numeral too (spellSmallNumber's own documented fallback).
-  const countText = count === 0 ? String(count) : capitalizeFirst(spellSmallNumber(count));
-  return `${countText} ${pluralize(count, 'thing')} ${verb} your attention`;
+  // numeral too (spellCount's own documented fallback).
+  const countText = count === 0 ? String(count) : capitalizeFirst(spellCount(count));
+  return `${countText} ${plural(count, 'thing')} ${verb} your attention`;
 }
 
 export interface DeadlineCell {
@@ -102,7 +86,7 @@ export function formatDeadlineValue(value: number | null, now: number, timezone:
   if (value === null) return '—';
   const diffDays = daysUntil(value, timezone, now);
   if (diffDays <= 0) return 'Today';
-  return `${diffDays} ${pluralize(diffDays, 'day')}`;
+  return countOf(diffDays, 'day');
 }
 
 /** Builds the four deadline cells in a FIXED order (CFP close, next task
@@ -193,7 +177,7 @@ export function buildNoActionRows(payload: OverviewPayload, now: number): NoActi
         ? 'No evaluation plans set up yet.'
         : payload.review.evaluationsExpected === 0
           ? 'No evaluations assigned yet.'
-          : joinSegments([`${payload.review.evaluationsSubmitted} of ${payload.review.evaluationsExpected} ${pluralize(payload.review.evaluationsExpected, 'evaluation')} in`]),
+          : joinSegments([`${payload.review.evaluationsSubmitted} of ${countOf(payload.review.evaluationsExpected, 'evaluation')} in`]),
   });
 
   const daysSinceSend = payload.comms.lastSentAt !== null ? daysAgo(payload.comms.lastSentAt, now) : null;
@@ -204,7 +188,7 @@ export function buildNoActionRows(payload: OverviewPayload, now: number): NoActi
       payload.comms.sentLast7Days > 0
         ? joinSegments([
             `${payload.comms.sentLast7Days} sent in 7 days`,
-            daysSinceSend !== null ? `last ${daysSinceSend === 0 ? 'today' : `${daysSinceSend} ${pluralize(daysSinceSend, 'day')} ago`}` : null,
+            daysSinceSend !== null ? `last ${daysSinceSend === 0 ? 'today' : `${countOf(daysSinceSend, 'day')} ago`}` : null,
           ])
         : 'No messages sent in the last 7 days.',
   });

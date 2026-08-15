@@ -10,7 +10,8 @@ import { Link } from 'react-router-dom';
 import { apiPut, ApiError } from '../../lib/api';
 import { formatDayLabel } from '../../lib/dates';
 import { conflictKindLabel } from '../agenda/ConflictChip';
-import { joinSegments, pluralize } from './rows';
+import { joinSegments } from './rows';
+import { plural } from '../../lib/plural';
 import type { OverviewPayload } from './types';
 // DEC-908 (wave-9 amendment): the ONE session-shape display vocabulary --
 // format's trailing-parenthetical reshaping ('Talk (30 min)' -> 'Talk, 30
@@ -37,7 +38,7 @@ function agendaOverflowLine(payload: OverviewPayload): string {
   const extraConflicts = payload.agendaWork.conflictTotal - payload.agendaWork.conflicts.length;
   return joinSegments([
     extraUnplaced > 0 ? `${extraUnplaced} more unplaced` : null,
-    extraConflicts > 0 ? `${extraConflicts} more ${pluralize(extraConflicts, 'conflict')}` : null,
+    extraConflicts > 0 ? `${extraConflicts} more ${plural(extraConflicts, 'conflict')}` : null,
   ]);
 }
 

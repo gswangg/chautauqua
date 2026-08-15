@@ -16,7 +16,8 @@ import type {
   OverviewPayload,
   TriageRow,
 } from './overview/types';
-import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, joinSegments, pluralize, spellSmallNumber } from './overview/rows';
+import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, joinSegments } from './overview/rows';
+import { plural, spellCount } from '../lib/plural';
 import { AgendaWorkSection } from './overview/AgendaWorkSection';
 import { daysAgo } from '../lib/dates';
 import './overview/overview.css';
@@ -60,7 +61,7 @@ function isBrandNewEvent(payload: OverviewPayload): boolean {
 // sends — see AgendaWorkSection.tsx).
 function waitingDaysLabel(submittedAt: number, now: number): string {
   const days = daysAgo(submittedAt, now);
-  return `waiting ${days} ${pluralize(days, 'day')}`;
+  return `waiting ${days} ${plural(days, 'day')}`;
 }
 
 // DEC-370 amendment (wave 5): §03's meta clause always carries a relative
@@ -68,7 +69,7 @@ function waitingDaysLabel(submittedAt: number, now: number): string {
 // left dangling with nothing dating it.
 function uploadedAgoLabel(uploadedAt: number, now: number): string {
   const days = daysAgo(uploadedAt, now);
-  return days === 0 ? 'uploaded today' : `uploaded ${days} ${pluralize(days, 'day')} ago`;
+  return days === 0 ? 'uploaded today' : `uploaded ${days} ${plural(days, 'day')} ago`;
 }
 
 export function OverviewPage() {
@@ -315,7 +316,7 @@ export function OverviewPage() {
               className="chq-overview-section-action chq-overview-remind-all"
               onClick={() => handleRemind(payload.overdueTasks.rows)}
             >
-              Remind all {spellSmallNumber(new Set(payload.overdueTasks.rows.map((r) => r.contactId)).size)}
+              Remind all {spellCount(new Set(payload.overdueTasks.rows.map((r) => r.contactId)).size)}
             </button>
           )}
         </div>
@@ -364,7 +365,7 @@ export function OverviewPage() {
           {payload.triage.total > 0 && (
             <Link to="/submissions?status=pending" className="chq-overview-section-action">
               All {payload.triage.total}
-              {oldestTriageDays !== null ? ` · oldest ${oldestTriageDays} ${pluralize(oldestTriageDays, 'day')}` : ''}
+              {oldestTriageDays !== null ? ` · oldest ${oldestTriageDays} ${plural(oldestTriageDays, 'day')}` : ''}
             </Link>
           )}
         </div>
@@ -468,7 +469,7 @@ export function OverviewPage() {
           <span className="chq-overview-row-title chq-overview-row-title-sm">Public pages</span>
           {eventSlug ? (
             <span className="chq-overview-row-meta chq-overview-row-meta-sm">
-              {payload.publishedSessionCount} {pluralize(payload.publishedSessionCount, 'session')} live, with speakers and schedule at{' '}
+              {payload.publishedSessionCount} {plural(payload.publishedSessionCount, 'session')} live, with speakers and schedule at{' '}
               <a href={`/e/${eventSlug}`} target="_blank" rel="noreferrer" className="chq-overview-link-btn">
                 /e/{eventSlug}
               </a>

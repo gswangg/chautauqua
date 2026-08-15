@@ -8,8 +8,6 @@ import {
   headlineCount,
   headlineText,
   joinSegments,
-  pluralize,
-  spellSmallNumber,
 } from './rows';
 import type { OverviewPayload } from './types';
 
@@ -71,14 +69,6 @@ describe('joinSegments', () => {
 
   it('returns an empty string when every segment is absent', () => {
     expect(joinSegments([null, undefined, ''])).toBe('');
-  });
-});
-
-describe('pluralize', () => {
-  it('singular for 1, plural otherwise', () => {
-    expect(pluralize(1, 'thing')).toBe('thing');
-    expect(pluralize(0, 'thing')).toBe('things');
-    expect(pluralize(4, 'thing')).toBe('things');
   });
 });
 
@@ -241,21 +231,6 @@ describe('buildNoActionRows', () => {
     const rows = buildNoActionRows(p, NOW);
     expect(rows[0]!.detail).toBe('5 of 5 evaluations in');
     expect(p.review.evaluationsSubmitted).toBeLessThanOrEqual(p.review.evaluationsExpected);
-  });
-});
-
-describe('spellSmallNumber', () => {
-  it('spells 0-10, falling back to the numeral above that', () => {
-    expect(spellSmallNumber(0)).toBe('zero');
-    expect(spellSmallNumber(1)).toBe('one');
-    expect(spellSmallNumber(3)).toBe('three');
-    expect(spellSmallNumber(10)).toBe('ten');
-    expect(spellSmallNumber(11)).toBe('11');
-  });
-
-  it('pins the ten/eleven word-table boundary', () => {
-    expect(spellSmallNumber(10)).toBe('ten');
-    expect(spellSmallNumber(11)).toBe('11');
   });
 });
 
