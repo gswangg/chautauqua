@@ -563,6 +563,7 @@ a:hover {
 .chq-btn-tertiary {
   font-family: inherit;
   background: none;
+  border: none;
   color: var(--chq-brand);
   font-weight: 700;
   padding: 4px 0;
