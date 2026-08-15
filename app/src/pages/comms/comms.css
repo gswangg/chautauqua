@@ -1105,3 +1105,11 @@
 .chq-comms-history-breadcrumb {
   font-size: 13px;
 }
+
+/* The Export CSV anchor sits opposite .chq-comms-history-titles in the
+   space-between head above. It must keep its intrinsic width when that head
+   wraps (flex-wrap: wrap) instead of being squeezed by the flexible titles
+   block. .chq-btn already zeroes text-decoration for anchor-as-button. */
+.chq-comms-history-export {
+  flex: 0 0 auto;
+}

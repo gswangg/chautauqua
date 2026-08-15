@@ -5,6 +5,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { EmptyState } from '../../components/EmptyState';
 import { RecentSends } from './RecentSends';
 import { paginationSummary } from '../../lib/pagination-summary';
+import { countOf } from '../../lib/plural';
 import { formatSendRhythm, type SendRhythm } from './sendRhythm';
 import type { EmailBatchRow } from './types';
 
@@ -92,8 +93,8 @@ export function HistoryTab({
   // there is no single-h1 rule on this page to reconcile with, so History
   // follows the same two-h1 precedent rather than inventing a third pattern.
   const countLine = rhythm
-    ? `${total} send${total === 1 ? '' : 's'} · ${formatSendRhythm(rhythm)}`
-    : `${total} send${total === 1 ? '' : 's'}`;
+    ? `${countOf(total, 'send')} · ${formatSendRhythm(rhythm)}`
+    : countOf(total, 'send');
   const exportParams = new URLSearchParams();
   exportParams.set('format', 'csv');
   if (q.trim()) exportParams.set('q', q.trim());
