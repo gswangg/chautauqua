@@ -7,7 +7,7 @@ import * as schema from "../../../db/schema";
 import { formatRef, newId } from "../../../domain/ids";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ApiError } from "../../http";
-import { resolveReviewerScopeTrackId } from "../../../domain/evaluation";
+import { resolveReviewerScopeTrackIds } from "../../../domain/evaluation";
 
 // DEC-439 amendment (wave 62): the ceiling every unbounded plan_reviewer read
 // in this module refuses past -- mirrors MAX_PLAN_SUBMISSION_SCAN
@@ -160,12 +160,12 @@ export async function getSubmissionLabelsByIds(db: Db, submissionIds: string[]):
   return map;
 }
 
-/** DEC-845: the reviewer queue header names the caller's OWN scope track (or
- * "all tracks"), not the plan-wide filters.trackIds. Returns null when the
- * caller has no rows, has any unrestricted row (trackId+submissionId both
- * null), or scopes across more than one distinct track -- all read as "All
- * tracks" rather than naming a single one. */
-export async function getReviewerScopeTrackId(db: Db, planId: string, userId: string): Promise<string | null> {
+/** DEC-845 amendment: the reviewer queue header names the caller's OWN
+ * scope track or tracks, not the plan-wide filters.trackIds. Returns [] when the
+ * caller has no rows or has any unrestricted row (trackId+submissionId both
+ * null) -- reads as "All tracks" downstream -- otherwise every distinct
+ * track the reviewer scopes to (one or many, named in full). */
+export async function getReviewerScopeTrackIds(db: Db, planId: string, userId: string): Promise<string[]> {
   const rows = await db
     .select({ trackId: schema.planReviewer.trackId, submissionId: schema.planReviewer.submissionId })
     .from(schema.planReviewer)
@@ -178,7 +178,7 @@ export async function getReviewerScopeTrackId(db: Db, planId: string, userId: st
       `This reviewer's scope would scan more than ${MAX_REVIEWER_SCOPE_ROWS} plan_reviewer rows -- narrow the reviewer's assignment scope first`,
     );
   }
-  return resolveReviewerScopeTrackId(rows);
+  return resolveReviewerScopeTrackIds(rows);
 }
 
 export async function listPlanIdsForReviewer(db: Db, userId: string): Promise<string[]> {

@@ -16,7 +16,8 @@ import {
   criteriaForRound,
   partitionRecused,
   assignedExcludingRecused,
-  resolveReviewerScopeTrackId,
+  resolveReviewerScopeTrackIds,
+  formatReviewerScopeLabel,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type DropdownCriterionDef,
@@ -685,24 +686,38 @@ describe("selectRemindTargets (DEC-707)", () => {
   });
 });
 
-describe("resolveReviewerScopeTrackId (DEC-845, w5-f)", () => {
-  it("returns null for no rows", () => {
-    expect(resolveReviewerScopeTrackId([])).toBeNull();
+describe("resolveReviewerScopeTrackIds (DEC-845 amendment)", () => {
+  it("returns [] for no rows", () => {
+    expect(resolveReviewerScopeTrackIds([])).toEqual([]);
   });
 
-  it("returns null when any row is unrestricted (trackId + submissionId both null)", () => {
-    expect(resolveReviewerScopeTrackId([{ trackId: "t-1", submissionId: null }, { trackId: null, submissionId: null }])).toBeNull();
+  it("returns [] when any row is unrestricted (trackId + submissionId both null)", () => {
+    expect(resolveReviewerScopeTrackIds([{ trackId: "t-1", submissionId: null }, { trackId: null, submissionId: null }])).toEqual([]);
   });
 
   it("returns the track id when every row agrees on exactly one track", () => {
-    expect(resolveReviewerScopeTrackId([{ trackId: "t-1", submissionId: null }, { trackId: "t-1", submissionId: null }])).toBe("t-1");
+    expect(resolveReviewerScopeTrackIds([{ trackId: "t-1", submissionId: null }, { trackId: "t-1", submissionId: null }])).toEqual(["t-1"]);
   });
 
-  it("returns null when rows span more than one distinct track", () => {
-    expect(resolveReviewerScopeTrackId([{ trackId: "t-1", submissionId: null }, { trackId: "t-2", submissionId: null }])).toBeNull();
+  it("returns every distinct track id when rows span more than one track", () => {
+    expect(resolveReviewerScopeTrackIds([{ trackId: "t-1", submissionId: null }, { trackId: "t-2", submissionId: null }])).toEqual(["t-1", "t-2"]);
   });
 
   it("ignores a submission-scoped row's null trackId when a track-scoped row is also present", () => {
-    expect(resolveReviewerScopeTrackId([{ trackId: "t-1", submissionId: null }, { trackId: null, submissionId: "sub-1" }])).toBe("t-1");
+    expect(resolveReviewerScopeTrackIds([{ trackId: "t-1", submissionId: null }, { trackId: null, submissionId: "sub-1" }])).toEqual(["t-1"]);
+  });
+});
+
+describe("formatReviewerScopeLabel (DEC-845 amendment)", () => {
+  it("returns null for an empty track list", () => {
+    expect(formatReviewerScopeLabel([])).toBeNull();
+  });
+
+  it("returns the single name for one track", () => {
+    expect(formatReviewerScopeLabel(["AI Engineering"])).toBe("AI Engineering");
+  });
+
+  it("sorts ascending and joins two or more names with ' · ', no truncation", () => {
+    expect(formatReviewerScopeLabel(["Zebras", "AI Engineering", "Music"])).toBe("AI Engineering · Music · Zebras");
   });
 });

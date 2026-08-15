@@ -34,7 +34,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
 const { listPlanFilteredSubmissions, resolveReviewerSubmissions, MAX_PLAN_SUBMISSION_SCAN } = await import(
   "../src/server/repo/review/submissions"
 );
-const { getReviewerScopeTrackId, listPlanIdsForReviewer, MAX_REVIEWER_SCOPE_ROWS } = await import(
+const { getReviewerScopeTrackIds, listPlanIdsForReviewer, MAX_REVIEWER_SCOPE_ROWS } = await import(
   "../src/server/repo/review/reviewers"
 );
 
@@ -472,18 +472,18 @@ describe("resolveReviewerSubmissions (DEC-439 amendment, wave 62)", () => {
   }, 30_000);
 });
 
-describe("getReviewerScopeTrackId / listPlanIdsForReviewer (DEC-439 amendment, wave 62)", () => {
+describe("getReviewerScopeTrackIds / listPlanIdsForReviewer (DEC-439 amendment, wave 62)", () => {
   const PLAN_ID = "plan-1";
   const USER_ID = "user-1";
 
-  it("getReviewerScopeTrackId: under-cap read carries both limit and order-by, returns the single scoped track", async () => {
+  it("getReviewerScopeTrackIds: under-cap read carries both limit and order-by, returns the single scoped track", async () => {
     const reviewers: FixtureReviewer[] = [
       { id: "pr-1", planId: PLAN_ID, userId: USER_ID, trackId: "trk-a", submissionId: null, createdAt: 1 },
     ];
     const { db, calls } = makeFakeDb({ events: [EVENT], submissions: [], tracks: [], reviewers });
 
-    const trackId = await getReviewerScopeTrackId(db, PLAN_ID, USER_ID);
-    expect(trackId).toBe("trk-a");
+    const trackIds = await getReviewerScopeTrackIds(db, PLAN_ID, USER_ID);
+    expect(trackIds).toEqual(["trk-a"]);
 
     const reviewerCall = calls.find((c) => c.table === "planReviewer");
     expect(reviewerCall).toBeDefined();
@@ -491,11 +491,11 @@ describe("getReviewerScopeTrackId / listPlanIdsForReviewer (DEC-439 amendment, w
     expect(reviewerCall!.limitN).toBe(MAX_REVIEWER_SCOPE_ROWS + 1);
   });
 
-  it("getReviewerScopeTrackId: over-cap rows refuse loudly naming the cap", async () => {
+  it("getReviewerScopeTrackIds: over-cap rows refuse loudly naming the cap", async () => {
     const reviewers = makeUnrestrictedReviewers(PLAN_ID, USER_ID, MAX_REVIEWER_SCOPE_ROWS + 1);
     const { db } = makeFakeDb({ events: [EVENT], submissions: [], tracks: [], reviewers });
 
-    await expect(getReviewerScopeTrackId(db, PLAN_ID, USER_ID)).rejects.toMatchObject({
+    await expect(getReviewerScopeTrackIds(db, PLAN_ID, USER_ID)).rejects.toMatchObject({
       code: "invalid",
       message: expect.stringContaining(String(MAX_REVIEWER_SCOPE_ROWS)),
     });
