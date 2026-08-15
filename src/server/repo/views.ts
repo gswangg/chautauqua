@@ -10,6 +10,8 @@ import { newId } from "../../domain/ids";
 import { DEC_031, DEC_904 } from "../../decisions";
 import { SUBMISSION_STATUSES } from "../../domain/status";
 import { SORT_ORDERS } from "./submissions/query";
+import { MAX_SAVED_VIEW_COLUMNS } from "../../domain/saved-views";
+import { MAX_TEXT_LENGTH, MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417/DEC-422
 
 // Compile-checked dependency marker per the field guide: this module
 // implements DEC_031 (saved views as server rows scoped to the event) and
@@ -37,13 +39,19 @@ export function isValidSavedViewConfig(value: unknown): value is SavedViewConfig
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
 
-  if (typeof v.q !== "string") return false;
+  if (typeof v.q !== "string" || v.q.length > MAX_TEXT_LENGTH) return false;
   if (!Array.isArray(v.status) || !v.status.every((token) => typeof token === "string" && (SUBMISSION_STATUSES as readonly string[]).includes(token))) {
     return false;
   }
-  if (v.trackId !== null && typeof v.trackId !== "string") return false;
+  if (v.trackId !== null && (typeof v.trackId !== "string" || v.trackId.length > MAX_NAME_LENGTH)) return false;
   if (typeof v.sort !== "string" || !(SORT_ORDERS as readonly string[]).includes(v.sort)) return false;
-  if (!Array.isArray(v.columns) || !v.columns.every((c) => typeof c === "string")) return false;
+  if (
+    !Array.isArray(v.columns) ||
+    v.columns.length > MAX_SAVED_VIEW_COLUMNS ||
+    !v.columns.every((c) => typeof c === "string" && c.length <= MAX_NAME_LENGTH)
+  ) {
+    return false;
+  }
 
   return true;
 }

@@ -11,6 +11,8 @@ import {
   listSavedViews,
   type SavedViewConfig,
 } from "../src/server/repo/views";
+import { MAX_TEXT_LENGTH, MAX_NAME_LENGTH } from "../src/forms/validate";
+import { MAX_SAVED_VIEW_COLUMNS } from "../src/domain/saved-views";
 
 describe("isValidSavedViewConfig (DEC-031 config_json shape validation)", () => {
   it("accepts a well-formed config", () => {
@@ -67,6 +69,43 @@ describe("isValidSavedViewConfig (DEC-031 config_json shape validation)", () => 
     expect(isValidSavedViewConfig({ q: "", status: [], trackId: null, sort: "newest", columns: [1, 2] })).toBe(
       false,
     );
+  });
+
+  // DEC-422/w2-f: q/trackId/columns were previously unbounded.
+  it("accepts q at MAX_TEXT_LENGTH, rejects one over", () => {
+    const atMax = "a".repeat(MAX_TEXT_LENGTH);
+    const overMax = "a".repeat(MAX_TEXT_LENGTH + 1);
+    expect(isValidSavedViewConfig({ q: atMax, status: [], trackId: null, sort: "newest", columns: [] })).toBe(true);
+    expect(isValidSavedViewConfig({ q: overMax, status: [], trackId: null, sort: "newest", columns: [] })).toBe(
+      false,
+    );
+  });
+
+  it("accepts trackId at MAX_NAME_LENGTH, rejects one over", () => {
+    const atMax = "t".repeat(MAX_NAME_LENGTH);
+    const overMax = "t".repeat(MAX_NAME_LENGTH + 1);
+    expect(isValidSavedViewConfig({ q: "", status: [], trackId: atMax, sort: "newest", columns: [] })).toBe(true);
+    expect(isValidSavedViewConfig({ q: "", status: [], trackId: overMax, sort: "newest", columns: [] })).toBe(
+      false,
+    );
+  });
+
+  it("accepts columns.length at MAX_SAVED_VIEW_COLUMNS, rejects one over", () => {
+    const atMax = Array.from({ length: MAX_SAVED_VIEW_COLUMNS }, (_, i) => `col${i}`);
+    const overMax = Array.from({ length: MAX_SAVED_VIEW_COLUMNS + 1 }, (_, i) => `col${i}`);
+    expect(isValidSavedViewConfig({ q: "", status: [], trackId: null, sort: "newest", columns: atMax })).toBe(
+      true,
+    );
+    expect(isValidSavedViewConfig({ q: "", status: [], trackId: null, sort: "newest", columns: overMax })).toBe(
+      false,
+    );
+  });
+
+  it("rejects a single column over MAX_NAME_LENGTH", () => {
+    const longColumn = "c".repeat(MAX_NAME_LENGTH + 1);
+    expect(
+      isValidSavedViewConfig({ q: "", status: [], trackId: null, sort: "newest", columns: [longColumn] }),
+    ).toBe(false);
   });
 });
 

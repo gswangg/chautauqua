@@ -14,6 +14,7 @@ import { serializeView, type SavedView, type SavedViewConfig } from './views';
 import { findFormatField } from './columns';
 import { STATUS_LABELS, type FormField, type SubmissionsFilterState, type Track } from './types';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
+import { MAX_SAVED_VIEWS_PER_EVENT } from '../../lib/batch-caps';
 
 export interface BuiltInView {
   key: string;
@@ -108,6 +109,7 @@ interface SaveViewDialogProps {
   filters: SubmissionsFilterState;
   tracks: readonly Track[];
   pending: boolean;
+  count: number;
   onCancel: () => void;
   onSave: (name: string, shared: boolean) => Promise<void>;
 }
@@ -116,13 +118,22 @@ interface SaveViewDialogProps {
 // bottom-left (modal-frame.css). A real checkbox, unchecked by default,
 // replaces the old static "everyone sees it" caption -- saved_view now has
 // an owner column and the checkbox's value is what the store persists.
-function SaveViewDialog({ filters, tracks, pending, onCancel, onSave }: SaveViewDialogProps) {
+// DEC-422: the dialog discloses the per-event view count against
+// MAX_SAVED_VIEWS_PER_EVENT and disables Save at the cap -- the count is
+// the FULL list length (any visibility), matching what the POST handler's
+// countSavedViews-based refusal counts.
+function SaveViewDialog({ filters, tracks, pending, count, onCancel, onSave }: SaveViewDialogProps) {
   const [name, setName] = useState('');
   const [shared, setShared] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const atCap = count >= MAX_SAVED_VIEWS_PER_EVENT;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (atCap) {
+      setError(`Max ${MAX_SAVED_VIEWS_PER_EVENT} saved views`);
+      return;
+    }
     const trimmed = name.trim();
     if (!trimmed) {
       setError('Name is required');
@@ -146,7 +157,7 @@ function SaveViewDialog({ filters, tracks, pending, onCancel, onSave }: SaveView
       closeDisabled={pending}
       actions={
         <>
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={pending || atCap}>
             Save the view
           </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={pending}>
@@ -156,6 +167,9 @@ function SaveViewDialog({ filters, tracks, pending, onCancel, onSave }: SaveView
       }
     >
       {error && <div className="chq-error">{error}</div>}
+      <div className="chq-submissions-viewtabs-count">
+        {count} of {MAX_SAVED_VIEWS_PER_EVENT}
+      </div>
       <FormRow label="Name it" htmlFor="save-view-name">
         <input
           id="save-view-name"
@@ -285,6 +299,7 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, formFields
           filters={filters}
           tracks={tracks}
           pending={saving}
+          count={views.length}
           onCancel={() => setShowSaveDialog(false)}
           onSave={saveCurrentAsView}
         />

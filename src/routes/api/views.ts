@@ -8,6 +8,7 @@ import type { Db } from "../../server/context";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError, parseBoundedText, readOptionalJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
+import { MAX_SAVED_VIEWS_PER_EVENT } from "../../domain/saved-views"; // DEC-422
 import { getEventOrgId } from "../../server/repo/submissions";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import {
@@ -73,6 +74,16 @@ viewsRoutes.post("/events/:eventId/views", requireOrganizer, csrfJson, async (c)
   if (typeof body.shared !== "boolean") {
     throw new ApiError("invalid", "shared must be a boolean", {
       shared: "Invalid saved view configuration",
+    });
+  }
+
+  // DEC-422: refuse at the cap before creating -- the per-event saved view
+  // collection was previously unbounded and every row is read back into an
+  // unpaged tab strip (ViewTabs.tsx).
+  const existingCount = await countSavedViews(c.var.db, eventId, auth.userId);
+  if (existingCount >= MAX_SAVED_VIEWS_PER_EVENT) {
+    throw new ApiError("invalid", `Max ${MAX_SAVED_VIEWS_PER_EVENT} saved views`, {
+      name: `Max ${MAX_SAVED_VIEWS_PER_EVENT} saved views`,
     });
   }
 
