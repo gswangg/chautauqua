@@ -1,5 +1,5 @@
 import type { AgendaConflict } from './types';
-import { plural } from '../../lib/plural';
+import { plural, spellCount } from '../../lib/plural';
 
 interface ConflictChipProps {
   conflicts: AgendaConflict[];
@@ -24,10 +24,13 @@ export function conflictKindLabel(kind: 'room_overlap' | 'speaker_overlap' | 'br
   return `${numberWord(count)} ${plural(count, 'session')} in one room`;
 }
 
-const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-
+// DEC-925 (amendment, wave 52): spells its count via the shared
+// src/domain/count-copy.ts spellCount (0-10 word, numeral above), then
+// capitalizes for the chip's sentence-head position -- the same
+// capitalize-the-result pattern root.tsx and ErrorSummary.tsx use.
 function numberWord(n: number): string {
-  return NUMBER_WORDS[n] ?? String(n);
+  const word = spellCount(n);
+  return word.length === 0 ? word : `${word.charAt(0).toUpperCase()}${word.slice(1)}`;
 }
 
 /** DEC-557 amendment (wave 48): the caption logic for a SET of conflicts

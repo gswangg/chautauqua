@@ -19,19 +19,20 @@ import { surfacePath } from "./shell";
 import { PublicSearchBox, PublicFilterSelectForm, PublicActiveFilters } from "./filters";
 import { PublicEmptyState } from "./empty-state";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
-import { countOf, plural } from "../../domain/count-copy";
+import { countOf, plural, spellCount } from "../../domain/count-copy";
 import { DEC_919 } from "../../decisions";
 
 void DEC_919;
 
 // DEC-919 (wave 44 amendment): the day rail heading spells its own count
 // ("Three days") instead of the bare noun the mock's <sc-for> placeholder
-// implied -- see docs/design/Chautauqua Public and Portal.dc.html:91. Only
-// events spanning this many days or fewer get a spelled-out word; anything
-// longer falls back to the numeral rather than growing this table forever.
-const DAY_COUNT_WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+// implied -- see docs/design/Chautauqua Public and Portal.dc.html:91. Zero
+// through ten get a spelled-out word (DEC-925: the shared
+// src/domain/count-copy.ts spellCount, capitalized for a sentence head);
+// anything longer falls back to the numeral.
 function dayCountWord(n: number): string {
-  return DAY_COUNT_WORDS[n] ?? String(n);
+  const word = spellCount(n);
+  return word.length === 0 ? word : `${word.charAt(0).toUpperCase()}${word.slice(1)}`;
 }
 
 /** Every calendar day between event.startDate and event.endDate inclusive,

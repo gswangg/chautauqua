@@ -588,7 +588,7 @@ describe("GET / — hero summary spells counts one through nine (mandate item 31
     expect(body).toContain("Nine calls for papers are open.");
   });
 
-  it("renders ten open CFPs as the numeral '10'", async () => {
+  it("renders ten open CFPs spelled out (DEC-925: the shared spellCount spells 0-10, not just 1-9)", async () => {
     const events = Array.from({ length: 10 }, (_, i) =>
       eventRow({
         id: `e${i}`,
@@ -602,7 +602,24 @@ describe("GET / — hero summary spells counts one through nine (mandate item 31
     const app = buildApp({ queue: buildQueue({ events }) });
     const res = await app.request("/", {}, { ASSETS: fakeAssets() });
     const body = await res.text();
-    expect(body).toContain("10 calls for papers are open.");
+    expect(body).toContain("Ten calls for papers are open.");
+  });
+
+  it("renders eleven open CFPs as the numeral '11' (falls back above ten)", async () => {
+    const events = Array.from({ length: 11 }, (_, i) =>
+      eventRow({
+        id: `e${i}`,
+        slug: `event-${i}`,
+        startDate: "2027-05-12",
+        endDate: "2027-05-14",
+        openMs: null,
+        closeMs: NOW + 6 * DAY,
+      }),
+    );
+    const app = buildApp({ queue: buildQueue({ events }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    const body = await res.text();
+    expect(body).toContain("11 calls for papers are open.");
   });
 });
 

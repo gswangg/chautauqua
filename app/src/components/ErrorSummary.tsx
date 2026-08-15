@@ -4,31 +4,22 @@
 // ./error-states.css, mirroring src/routes/public/cfp.css.ts's block so
 // the public CFP builder and the admin SPA share one visual contract.
 
-import { plural } from '../lib/plural';
+import { plural, spellCount } from '../lib/plural';
 
-const ONES = [
-  'Zero',
-  'One',
-  'Two',
-  'Three',
-  'Four',
-  'Five',
-  'Six',
-  'Seven',
-  'Eight',
-  'Nine',
-  'Ten',
-];
+function capitalizeFirst(s: string): string {
+  return s.length === 0 ? s : `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+}
 
 /**
- * Spells 1-10 ('One' .. 'Ten'), falls back to digits above 10. Pairs the
- * count with the correct singular/plural verb+noun -- 'One thing needs
- * fixing', 'Three things need fixing' -- and appends `tail` (e.g. 'before
- * this can be sent').
+ * Spells 0-10 ('Zero' .. 'Ten'), falls back to digits above 10 (DEC-925: the
+ * shared src/domain/count-copy.ts spellCount, capitalized for a sentence
+ * head). Pairs the count with the correct singular/plural verb+noun -- 'One
+ * thing needs fixing', 'Three things need fixing' -- and appends `tail`
+ * (e.g. 'before this can be sent').
  */
 export function countHeading(n: number, tail: string): string {
-  const word = n >= 1 && n <= 10 ? ONES[n] : String(n);
-  const noun = plural(n, 'thing needs', 'things need');
+  const word = capitalizeFirst(spellCount(n));
+  const noun = `${plural(n, 'thing')} ${plural(n, 'needs', 'need')}`;
   return `${word} ${noun} fixing ${tail}`;
 }
 
