@@ -7,6 +7,7 @@ import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856 } from '../../../../src/dec
 import { countOf, plural, thingsNeedFixingHeading } from '../../lib/plural';
 import { MAX_IMPORT_ROWS, MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
 import { formatBytes } from '../../../../src/domain/files';
+import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 import './contacts-panels.css';
 
 // Compile-checked dependency marker: when `eventId` is set, this wizard
@@ -611,6 +612,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
               <input
                 id="import-session-title"
                 className="chq-input"
+                maxLength={MAX_NAME_LENGTH}
                 value={sessionTitle}
                 onChange={(e) => {
                   setSessionTitle(e.target.value);

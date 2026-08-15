@@ -22,6 +22,7 @@ import { paginationSummary } from '../../lib/pagination-summary';
 import type { EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
 import { DEC_793, DEC_967, DEC_993 } from '../../../../src/decisions';
+import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
 
 void DEC_793;
 void DEC_967;
@@ -714,7 +715,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </select>
           </FormRow>
           <FormRow label="Subject" htmlFor="compose-subject">
-            <input id="compose-subject" className="chq-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <input id="compose-subject" className="chq-input" maxLength={MAX_TEXT_LENGTH} value={subject} onChange={(e) => setSubject(e.target.value)} />
           </FormRow>
           <FormRow label="Body" htmlFor="compose-body">
             <textarea
@@ -722,6 +723,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               className="chq-textarea"
               rows={8}
               ref={bodyRef}
+              maxLength={MAX_RICH_TEXT_LENGTH}
               value={bodyText}
               onChange={(e) => setBodyText(e.target.value)}
             />

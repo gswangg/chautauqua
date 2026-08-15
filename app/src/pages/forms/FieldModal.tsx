@@ -17,6 +17,7 @@ import {
   type FormFieldSection,
 } from './types';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../../lib/text-caps';
 
 export interface FieldModalInput {
   section: FormFieldSection;
@@ -167,6 +168,7 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
             id="field-label"
             className="chq-input"
             type="text"
+            maxLength={MAX_NAME_LENGTH}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="Talk abstract"
@@ -178,6 +180,7 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
           <textarea
             id="field-help-text"
             className="chq-textarea"
+            maxLength={MAX_TEXT_LENGTH}
             value={helpText}
             onChange={(e) => setHelpText(e.target.value)}
             placeholder="Shown beneath the field, e.g. 300 words max"

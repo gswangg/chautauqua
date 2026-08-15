@@ -18,6 +18,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ModalFrame } from '../../components/ModalFrame';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
 
 interface Props {
   contactId: string;
@@ -372,7 +373,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     label: string,
     value: string,
     setValue: (v: string) => void,
-    opts: { multiline?: boolean; type?: string; placeholder?: string } = {},
+    opts: { multiline?: boolean; type?: string; placeholder?: string; maxLength: number },
   ) {
     const editing = editingField === key;
     const placeholder = opts.placeholder ?? 'Not set';
@@ -392,6 +393,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               autoFocus
               rows={4}
               value={value}
+              maxLength={opts.maxLength}
               onChange={(e) => setValue(e.target.value)}
               onBlur={() => setEditingField(null)}
               placeholder={placeholder}
@@ -402,6 +404,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               autoFocus
               type={opts.type ?? 'text'}
               value={value}
+              maxLength={opts.maxLength}
               onChange={(e) => setValue(e.target.value)}
               onBlur={() => setEditingField(null)}
               placeholder={placeholder}
@@ -519,20 +522,21 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         <div className="chq-contacts-record-editor chq-contacts-links-editor">
           <label className="chq-contacts-links-field">
             <span className="chq-contacts-links-field-label">Twitter</span>
-            <input className="chq-input" autoFocus value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="@handle" />
+            <input className="chq-input" autoFocus maxLength={MAX_TEXT_LENGTH} value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="@handle" />
           </label>
           <label className="chq-contacts-links-field">
             <span className="chq-contacts-links-field-label">LinkedIn</span>
-            <input className="chq-input" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="in/handle" />
+            <input className="chq-input" maxLength={MAX_TEXT_LENGTH} value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="in/handle" />
           </label>
           <label className="chq-contacts-links-field">
             <span className="chq-contacts-links-field-label">GitHub</span>
-            <input className="chq-input" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="handle" />
+            <input className="chq-input" maxLength={MAX_TEXT_LENGTH} value={github} onChange={(e) => setGithub(e.target.value)} placeholder="handle" />
           </label>
           <label className="chq-contacts-links-field">
             <span className="chq-contacts-links-field-label">Website</span>
             <input
               className="chq-input"
+              maxLength={MAX_TEXT_LENGTH}
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               onBlur={() => setEditingField(null)}
@@ -592,6 +596,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             <input
               className="chq-input"
               aria-label={`Custom field ${index + 1} value`}
+              maxLength={MAX_TEXT_LENGTH}
               value={row.value}
               onChange={(e) => updateRow(index, { value: e.target.value })}
               onBlur={() => setEditingField(null)}
@@ -646,16 +651,16 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                   hide-when-empty disclosure): a blank field prints "Nothing
                   recorded" so blank is distinguishable from missing. */}
               <FieldGroup title="Contact">
-                {textField('firstName', 'First name', firstName, setFirstName, { placeholder: 'Priya' })}
-                {textField('lastName', 'Last name', lastName, setLastName, { placeholder: 'Raman' })}
-                {textField('email', 'Email', email, setEmail, { type: 'email', placeholder: 'priya.raman@example.com' })}
-                {textField('phone', 'Phone', phone, setPhone, { placeholder: '+1 555 010 1234' })}
-                {textField('company', 'Company', company, setCompany, { placeholder: 'Latticework Systems' })}
-                {textField('title', 'Title', title, setTitle, { placeholder: 'Principal Engineer' })}
+                {textField('firstName', 'First name', firstName, setFirstName, { placeholder: 'Priya', maxLength: MAX_NAME_LENGTH })}
+                {textField('lastName', 'Last name', lastName, setLastName, { placeholder: 'Raman', maxLength: MAX_NAME_LENGTH })}
+                {textField('email', 'Email', email, setEmail, { type: 'email', placeholder: 'priya.raman@example.com', maxLength: MAX_NAME_LENGTH })}
+                {textField('phone', 'Phone', phone, setPhone, { placeholder: '+1 555 010 1234', maxLength: MAX_NAME_LENGTH })}
+                {textField('company', 'Company', company, setCompany, { placeholder: 'Latticework Systems', maxLength: MAX_NAME_LENGTH })}
+                {textField('title', 'Title', title, setTitle, { placeholder: 'Principal Engineer', maxLength: MAX_NAME_LENGTH })}
               </FieldGroup>
 
               <FieldGroup title="Profile">
-                {textField('bio', 'Bio', bio, setBio, { multiline: true, placeholder: 'A short speaker bio' })}
+                {textField('bio', 'Bio', bio, setBio, { multiline: true, placeholder: 'A short speaker bio', maxLength: MAX_LONG_TEXT_LENGTH })}
                 {headshotNode}
                 {linksNode}
               </FieldGroup>
@@ -669,6 +674,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                 {textField('travel', 'Dietary', travel, setTravel, {
                   multiline: true,
                   placeholder: 'Flight details, hotel, dietary needs...',
+                  maxLength: MAX_TEXT_LENGTH,
                 })}
                 {customFieldNodes}
                 <button type="button" className="chq-btn chq-btn-secondary chq-contacts-add-field" onClick={addRow}>
@@ -677,7 +683,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               </FieldGroup>
 
               <FieldGroup title="Notes">
-                {textField('notes', 'Notes', notes, setNotes, { multiline: true, placeholder: 'Internal notes about this contact' })}
+                {textField('notes', 'Notes', notes, setNotes, { multiline: true, placeholder: 'Internal notes about this contact', maxLength: MAX_LONG_TEXT_LENGTH })}
               </FieldGroup>
             </div>
 

@@ -22,6 +22,7 @@ import { formatDayLabel } from '../../lib/dates';
 import { DEC_021 } from '../../../../src/decisions';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 import { MAX_BREAKS_PER_EVENT } from '../../lib/batch-caps';
+import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 
 void DEC_021;
 
@@ -202,6 +203,7 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
           <input
             id={`chq-break-edit-label-${b.id}`}
             className="chq-input"
+            maxLength={MAX_NAME_LENGTH}
             value={editForm.label}
             onChange={(e) => setEditForm((prev) => ({ ...prev, label: e.target.value }))}
           />
@@ -219,6 +221,7 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
           <input
             id={`chq-break-edit-location-${b.id}`}
             className="chq-input"
+            maxLength={MAX_NAME_LENGTH}
             value={editForm.location}
             onChange={(e) => setEditForm((prev) => ({ ...prev, location: e.target.value }))}
           />
@@ -393,6 +396,7 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
           <input
             id="chq-break-label"
             className="chq-input"
+            maxLength={MAX_NAME_LENGTH}
             placeholder="Lunch"
             value={form.label}
             onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
@@ -411,6 +415,7 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
           <input
             id="chq-break-location"
             className="chq-input"
+            maxLength={MAX_NAME_LENGTH}
             placeholder="Foyer"
             value={form.location}
             onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
