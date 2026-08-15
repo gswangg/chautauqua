@@ -42,8 +42,46 @@ function entryFiles(): string[] {
     .sort();
 }
 
+// DEC-068 wave-37 amendment: nextSeq() mints one past the HIGHEST existing
+// prefix, so every concurrent lane in a wave gets the same number by
+// construction -- wave 35's merge train hand-renumbered a silent 0188
+// collision and no test caught it. Detection belongs in the instrument:
+// both --check and the default write path call this and fail loudly on any
+// duplicate 4-digit prefix, naming every colliding file.
+export function duplicateSequences(files: readonly string[]): string[] {
+  const byPrefix = new Map<string, string[]>();
+  for (const f of files) {
+    const prefix = f.slice(0, 4);
+    const existing = byPrefix.get(prefix);
+    if (existing) {
+      existing.push(f);
+    } else {
+      byPrefix.set(prefix, [f]);
+    }
+  }
+  const collisions: string[] = [];
+  for (const group of byPrefix.values()) {
+    if (group.length > 1) {
+      collisions.push(...group);
+    }
+  }
+  return collisions.sort();
+}
+
+function assertNoDuplicateSequences(files: readonly string[]): void {
+  const collisions = duplicateSequences(files);
+  if (collisions.length > 0) {
+    throw new Error(
+      `assemble-verification-log: duplicate 4-digit sequence prefix among: ${collisions.join(
+        ", ",
+      )} -- nextSeq() mints one past the highest prefix, so concurrent lanes in one wave collide by construction (DEC-068 wave-37 amendment). Remediation: renumber every file but the earliest-dated one in each colliding group to the next free sequence(s), then re-run \`tsx scripts/assemble-verification-log.ts\`.`,
+    );
+  }
+}
+
 function assemble(): string {
   const files = entryFiles();
+  assertNoDuplicateSequences(files);
   const parts = [PREAMBLE];
   for (const f of files) {
     parts.push(readFileSync(join(INDEX_DIR, f), "utf8"));
@@ -58,21 +96,27 @@ function nextSeq(): string {
   return String(lastNum + 1).padStart(4, "0");
 }
 
-const mode = process.argv[2];
+// Guarded so this module can be imported for its pure exports (e.g.
+// duplicateSequences) -- by tests -- without triggering a filesystem write
+// or process.exit as a side effect of import (matches
+// scripts/ensure-dev-vars.ts / scripts/exit-predicate.ts's thin-CLI shape).
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const mode = process.argv[2];
 
-if (mode === "--next-seq") {
-  process.stdout.write(nextSeq() + "\n");
-} else if (mode === "--check") {
-  const current = readFileSync(OUTPUT_FILE, "utf8");
-  const expected = assemble();
-  if (current !== expected) {
-    console.error(
-      "docs/verification-log.md is out of date with docs/verification-log/index/*.md -- run `tsx scripts/assemble-verification-log.ts`",
-    );
-    process.exit(1);
+  if (mode === "--next-seq") {
+    process.stdout.write(nextSeq() + "\n");
+  } else if (mode === "--check") {
+    const current = readFileSync(OUTPUT_FILE, "utf8");
+    const expected = assemble();
+    if (current !== expected) {
+      console.error(
+        "docs/verification-log.md is out of date with docs/verification-log/index/*.md -- run `tsx scripts/assemble-verification-log.ts`",
+      );
+      process.exit(1);
+    }
+    console.log("docs/verification-log.md is up to date.");
+  } else {
+    writeFileSync(OUTPUT_FILE, assemble());
+    console.log(`Wrote ${OUTPUT_FILE} from ${entryFiles().length} entries.`);
   }
-  console.log("docs/verification-log.md is up to date.");
-} else {
-  writeFileSync(OUTPUT_FILE, assemble());
-  console.log(`Wrote ${OUTPUT_FILE} from ${entryFiles().length} entries.`);
 }

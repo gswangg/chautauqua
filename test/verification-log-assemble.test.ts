@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { duplicateSequences } from "../scripts/assemble-verification-log";
 
 const ROOT = join(__dirname, "..");
 const INDEX_DIR = join(ROOT, "docs", "verification-log", "index");
@@ -64,6 +65,33 @@ describe("docs/verification-log.md assembly (contention decomposition)", () => {
       encoding: "utf8",
     }).trim();
     expect(out).toBe(String(highest + 1).padStart(4, "0"));
+  });
+
+  it("duplicateSequences flags a synthetic colliding prefix (DEC-068 wave-37 amendment)", () => {
+    const files = [
+      "0001-a.md",
+      "0002-b.md",
+      "0002-c.md",
+      "0003-d.md",
+      "0004-e.md",
+      "0004-f.md",
+      "0004-g.md",
+    ];
+    expect(duplicateSequences(files)).toEqual([
+      "0002-b.md",
+      "0002-c.md",
+      "0004-e.md",
+      "0004-f.md",
+      "0004-g.md",
+    ]);
+  });
+
+  it("duplicateSequences returns empty for a collision-free list", () => {
+    expect(duplicateSequences(["0001-a.md", "0002-b.md", "0003-c.md"])).toEqual([]);
+  });
+
+  it("the real docs/verification-log/index directory is collision-free", () => {
+    expect(duplicateSequences(entryFiles())).toEqual([]);
   });
 
   it("DEC-069 grep contract: assembled file alone carries every RESULT:/OPEN ITEMS: line from the index entries", () => {
