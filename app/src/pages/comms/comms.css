@@ -843,6 +843,15 @@
   table-layout: fixed;
 }
 
+/* Submission (the title column) deliberately carries no width declaration --
+   it is the single remainder column that absorbs whatever the other four
+   don't claim (DEC-902 wave-20 sub-rule 3). This width-less rule exists so
+   css-contract.scan.test.ts's DEC-976 "every className has a matching rule"
+   check has one to find, matching .chq-submissions-col-title's precedent. */
+.chq-comms-compose-col-title {
+  text-align: left;
+}
+
 .chq-comms-compose-col-select {
   width: 26px;
 }

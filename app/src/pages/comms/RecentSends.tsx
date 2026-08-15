@@ -121,7 +121,7 @@ function BatchRecipients({
           trailing cell holding the per-row disclosure. */}
       {!error && items && items.map((row) => (
         <div key={row.id} className="chq-comms-recipient-row">
-          <span className="chq-comms-recipient-lead" aria-hidden="true" />
+          <span aria-hidden="true" />
           <span className="chq-comms-recipient-to">{row.toEmail}</span>
           <span className="chq-meta">{row.status}</span>
           {/* A subject only differs when a merge field made it real (e.g. a
@@ -132,7 +132,7 @@ function BatchRecipients({
           {row.subject !== batchSubject ? (
             <span className="chq-comms-recipient-subject">Subject: {row.subject}</span>
           ) : (
-            <span className="chq-comms-recipient-subject-empty" aria-hidden="true" />
+            <span aria-hidden="true" />
           )}
           {/* DEC-846's "history owes the WORDS" half is served by DEC-833's
               disclosure here: the list projection stays narrow (DEC-543,

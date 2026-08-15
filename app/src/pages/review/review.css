@@ -188,6 +188,14 @@
    band (docs/design/Chautauqua Review.dc.html:117,121,136,140,153). Title
    is the single remainder column; Decision hugs its two buttons at 1px
    (DEC-902 wave-20 sub-rule 4) rather than sizing from the frame's `auto`. */
+/* Title deliberately carries no width declaration -- it is the single
+   remainder column (DEC-902 wave-20 sub-rule 3). This width-less rule exists
+   so css-contract.scan.test.ts's DEC-976 "every className has a matching
+   rule" check has one to find, matching .chq-submissions-col-title. */
+.chq-review-results-col-title {
+  text-align: left;
+}
+
 .chq-review-results-col-rank {
   width: 44px;
 }
