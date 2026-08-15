@@ -18,43 +18,43 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   bulk-email dedupe, table-layout, sub-pixel geometry, role="cell" wraps not
   replaces, bleed-vs-clamp, citations must quote. TOOL TRAP: Grep -C drops
   some `/`. LINE NUMBER IS NOT AN IDENTITY. RULING WITH NO SCAN DRIFTS BACK.
-- FINDINGS w25-30 (compacted): MANDATE WAS MEASURED ALL ALONG (DEC-620/976/
-  129); THE RED TEST WAS THE MANDATE; FAN-OUT OWNS ITS OWN CLEANUP (DEC-530);
-  KV IS NOT A PURGE BUS (DEC-083); A GATE'S OWN INSTRUMENTS LIE HALF THE TIME
-  (DEC-409/426); A LINE QUOTED OUT OF ITS SECTION IS A RUMOUR (DEC-976). A
-  COUNT IS NOT A LICENCE TO SCAN (DEC-829/773). A REFUSAL THAT PROTECTS A
-  SIDE EFFECT CAN LOCK THE MAIN EFFECT (DEC-720/317). A CEILING THAT GUARDS
-  ONE CONTENT TYPE IS NOT A CEILING (DEC-020). AN ALLOWLIST NAMED IN A
-  CONTRACT MUST BE CALLED AT EVERY DOOR (DEC-322). A UNIVERSAL NEEDS A
-  POPULATION (DEC-459/618). A DESKTOP PASS CANNOT SEE A PHONE-ONLY
-  COMPONENT'S ERRORS (DEC-253). w30 amended DEC-720/317/020/322/618/459/253.
-- FINDINGS w31 (main `dbac66d1`, ref-measured not inherited: w28 gates all
-  merged; w29 a/c/d/f MERGED, **b and e produced ZERO commits** so their
-  scope returned to unowned; w30 a-f IN FLIGHT — a/b carry commits, c/d
-  branched at main with none, e/f not yet cut. Do not re-file w30 scope).
-- A RECORDED RULING IS NOT A LANDED FIX (DEC-358/773 w31). DEC-773's
-  wave-29 amendment argued the files-library fix at file:line, compiled
-  into `src/decisions.ts`, and `files-library.ts:215` never moved — the
-  owning lane produced nothing. `decisions/` is a MANDATE, never a receipt.
-- NON-INDEXABLE "BY CONSTRUCTION" IS USUALLY NON-INDEXABLE BY SPELLING
-  (DEC-773 w31): `contact.headshot_url = '/headshots/' || file.id` buries
-  the PK inside a concat, so no planner drives `file` by id — 1.6M
-  comparisons, twice per request, 481ms. Rewritten `file.id =
-  substr(contact.headshot_url, 12)` + an explicit 11-char prefix guard, the
-  same rows come back off the PK with no migration. Move the indexed column
-  to one side before reaching for a schema change.
-- "ONE ROUND TRIP PER VIEW" HAS A SERVER SIDE (DEC-338 w31): SPEC §7's
-  no-waterfall rule was only ever enforced on the client. The reviewer
-  queue awaits ELEVEN repo calls in a row (reviewer.ts:99-215), buildResults
-  five (shared.ts:433-460). Independent calls issue as one `Promise.all`
-  wave; envelope/order/numbers stay byte-identical; prove concurrency with
-  an instrumented fake Db that counts in-flight statements, never a grep.
-- A PERF NUMBER TAKEN DURING A PARALLEL WAVE GRADES A DELTA (DEC-347 w31):
-  N lanes each seeding + running `wrangler dev` + 30 iterations inflate
-  every absolute by an unrecordable amount. Paired before/after in ONE
-  session; the absolute belongs to the serial verification wave. Migration
-  numbers are pre-assigned per lane so concurrent lanes cannot collide.
-- A HARNESS THAT SKIPS A CHECK MEASURES NOTHING (DEC-644 w31): seeder was
-  profile-threaded, smoke script kept two literals, `DEFAULT_ONLY_CHECK_
-  NAMES` silently dropped the review subsystem from non-default runs.
-- DEC space FULL (001-999); w31 amended DEC-773/338/347/644/358.
+- FINDINGS w25-30 (compacted): MANDATE WAS MEASURED ALL ALONG; RED TEST WAS
+  THE MANDATE; FAN-OUT OWNS ITS OWN CLEANUP; KV IS NOT A PURGE BUS; A GATE'S
+  OWN INSTRUMENTS LIE HALF THE TIME; A LINE QUOTED OUT OF ITS SECTION IS A
+  RUMOUR; A COUNT IS NOT A LICENCE TO SCAN (DEC-829/773); A REFUSAL THAT
+  PROTECTS A SIDE EFFECT CAN LOCK THE MAIN EFFECT (DEC-720/317); A CEILING
+  GUARDING ONE CONTENT TYPE ISN'T A CEILING; AN ALLOWLIST MUST BE CALLED AT
+  EVERY DOOR; A UNIVERSAL NEEDS A POPULATION; A DESKTOP PASS CAN'T SEE A
+  PHONE-ONLY COMPONENT'S ERRORS.
+- FINDINGS w31 (compacted): A RECORDED RULING IS NOT A LANDED FIX (DEC-358/
+  773) — a mandate in decisions/ isn't a receipt until the code moves.
+  NON-INDEXABLE "BY CONSTRUCTION" IS USUALLY NON-INDEXABLE BY SPELLING
+  (DEC-773) — move the indexed column to one side before a migration. "ONE
+  ROUND TRIP PER VIEW" HAS A SERVER SIDE (DEC-338) — independent repo calls
+  issue as one Promise.all wave, proven with an instrumented fake Db. A PERF
+  NUMBER TAKEN DURING A PARALLEL WAVE GRADES A DELTA (DEC-347). A HARNESS
+  THAT SKIPS A CHECK MEASURES NOTHING (DEC-644). w31 amended DEC-773/338/
+  347/644/358.
+- FINDINGS w32 (main `6dbf7117`, ref-measured, NOT inherited): w31 brief was
+  WRONG about w29 — task-w29-b/e landed LATE, merged. files-library fixed
+  (HEADSHOT_JOIN=eq(contact.headshotFileId,file.id), migration 0040,
+  481ms->13.0ms); reviewer.ts already carries DEC-829's Promise.all; w31 a/b
+  re-did landed work from a pre-merge base. ZERO-COMMIT BRANCH != DEAD
+  BRANCH — re-read refs at your own runtime.
+- HYDRATION IS PER-PAGE; RANKING IS PER-POPULATION (DEC-829 w32). buildResults
+  fetches speakers+tracks for all ~2000 plan rows before slicing though sort
+  reads 6 fields; queue fetches display fields for the whole scope to emit
+  200. Split paged routes: RANK (population, ordering fields only) then
+  HYDRATE (sliced ids; export paths pass full set). Totals stay pre-slice.
+- A REFUSAL WITH ONE ESCAPE HATCH IS A MANDATE (DEC-720 w32). Making
+  `changes_requested` writable only by the mailing endpoint turns "never
+  auto-email" into "this one always does"; w30 fixed only the zero-recipient
+  half.
+- THE FASTEST READER IS THE ONLY ONE THAT MOVED (DEC-773 w32). w29's indexed
+  FK converted files-library only; profile.ts's public serve path and two
+  more modules still re-parse the headshot URL string, two failure modes.
+  Convert every reader when you add the column.
+- A ROW THAT WAS NEVER ADDED MEASURES NOTHING (DEC-644 w32). `/plans/:id/
+  progress` (7 sequential awaits) and `/plans/:id/reviewers` scale with plan
+  size, never in the perf table. Lane that adds a row does not fix the route.
+  DEC space FULL (001-999); w32 amended DEC-829/338/720/773/644.
