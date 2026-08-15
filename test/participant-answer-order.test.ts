@@ -33,12 +33,24 @@ import { listEventDeliverableFiles } from "../src/server/repo/files-library";
 // args) per db.select() call, replays queued row sets in call order — the
 // same pattern established by test/exports-order.test.ts and
 // test/api-submissions.test.ts's makeFakeDb.
+//
+// DEC-155 wave-34 amendment: the queued row set is claimed when db.select()
+// is called, NOT when the chain is awaited. Under the sequential readers
+// this file was written against the two orders coincided, but once a reader
+// issues its reads as one Promise.all wave they diverge: every chain in a
+// wave is BUILT in source order, then awaited in microtask order (a callee's
+// own inner await resolves before the caller's sibling thenables — measured
+// select order 1,2,3,4,5,6 vs then order 3,1,2,4,5,6 for getAgendaPayload).
+// Claiming at select() keeps "replays in call order" true for both shapes,
+// and matches the call-counter convention in test/agenda-repo.test.ts.
 function makeFakeDb(responses: unknown[][]) {
   let cursor = 0;
   const calls: { method: string; args: unknown[] }[][] = [];
   function chain(): any {
     const log: { method: string; args: unknown[] }[] = [];
     calls.push(log);
+    const value = responses[cursor] ?? [];
+    cursor += 1;
     const obj: any = {};
     const passthrough = [
       "from",
@@ -57,11 +69,8 @@ function makeFakeDb(responses: unknown[][]) {
         return obj;
       };
     }
-    obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
-      const value = responses[cursor] ?? [];
-      cursor += 1;
-      return Promise.resolve(value).then(resolve, reject);
-    };
+    obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) =>
+      Promise.resolve(value).then(resolve, reject);
     return obj;
   }
   return { select: () => chain(), selectDistinct: () => chain(), calls } as unknown as AppEnv["Variables"]["db"] & {
