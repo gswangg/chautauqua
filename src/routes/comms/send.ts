@@ -19,6 +19,8 @@ import { preflightRender } from "../../domain/compose";
 import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
+import { dedupeCutoff, dedupeKey, retryAtMs } from "../../domain/comms-dedupe";
+import { DEC_238, DEC_846 } from "../../decisions";
 import {
   requireFullMatch,
   resolveComposeInput,
@@ -98,8 +100,62 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
     throw new ApiError("invalid", "One or more recipients are missing merge fields", missingToFields(result.missing));
   }
 
+  // DEC-238 wave-3 amendment: refuse to deliver the same message (event,
+  // lower(email), exact rendered subject) to the same address twice within
+  // COMPOSE_DEDUPE_WINDOW_MS of the prior successful send — a gate-7 probe
+  // re-sent the same template to the same recipients 40s apart and both were
+  // emailed again. This runs BEFORE the send loop so a skip is decided from
+  // one consistent snapshot of email_log, not interleaved with this call's
+  // own sends.
+  void DEC_238;
+  const now = new Date();
+  const recentlySent = await repo.loadRecentlySent(
+    c.var.db,
+    eventId,
+    result.rendered.map((r) => ({ email: r.email, subject: r.subject })),
+    dedupeCutoff(now.getTime()),
+  );
+  const skipped: {
+    email: string;
+    name: string;
+    submissionId: string;
+    reason: "already_sent_recently";
+    retryAtIso: string;
+  }[] = [];
+  const toSend: typeof result.rendered = [];
+  for (const rendered of result.rendered) {
+    const lastSentAt = recentlySent.get(dedupeKey(rendered.email, rendered.subject));
+    if (lastSentAt !== undefined) {
+      skipped.push({
+        email: rendered.email,
+        name: rendered.name,
+        submissionId: rendered.submissionId,
+        reason: "already_sent_recently",
+        retryAtIso: new Date(retryAtMs(lastSentAt)).toISOString(),
+      });
+      continue;
+    }
+    toSend.push(rendered);
+  }
+
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
-  const templateId = typeof body.templateId === "string" ? body.templateId : undefined;
+  // DEC-846 wave-3 amendment: templateId is PROVENANCE, not authority — the
+  // composer always sends its own rendered subject/bodyText, but a posted
+  // templateId must still name a real template of THIS event; an
+  // unvalidated foreign id written into email_log.template_id is a
+  // cross-tenant leak.
+  void DEC_846;
+  let templateId: string | undefined;
+  if (body.templateId !== undefined) {
+    if (typeof body.templateId !== "string") {
+      throw new ApiError("invalid", "templateId must be a string", { templateId: "must be a string" });
+    }
+    const template = await repo.findTemplateById(c.var.db, body.templateId);
+    if (!template || template.eventId !== eventId) {
+      throw new ApiError("invalid", "Template not found for this event", { templateId: "not found for this event" });
+    }
+    templateId = template.id;
+  }
   const { makeMailer } = await import("../../server/context");
   const mailer = makeMailer(c.var.db, c.env);
   // DEC-603: one id per fan-out call, shared by every recipient in this
@@ -109,7 +165,7 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
   // abort the whole send — catch per-recipient, keep going, and report the
   // partial outcome in the 200 response rather than surfacing a 500.
   const failed: { email: string; message: string }[] = [];
-  for (const rendered of result.rendered) {
+  for (const rendered of toSend) {
     try {
       // DEC-547 amendment (wave 43): the ICS construction (and its
       // resolveIcsOrganizerEmail(c.env) config read, which can throw when
@@ -162,6 +218,16 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
   // Bump ics_sequence exactly once per submission per send call — after
   // every recipient of every submission has been sent the CURRENT stored
   // sequence value (DEC-051). Never runs on preview.
+  //
+  // RULING (DEC-238 wave-3 amendment, dedupe): this bump stays UNCONDITIONAL
+  // over every submission in input.submissionIds, exactly as before the
+  // dedupe change — it does NOT narrow to submissions with at least one
+  // toSend recipient. The pre-existing behavior already bumps the sequence
+  // even when every recipient of a submission lands in `failed` (a
+  // mailer-failure outcome), so a dedupe skip — a strictly milder, expected
+  // outcome — is held to the same standard: the sequence is a property of
+  // "this send call attempted this submission", not of how many of its
+  // recipients actually received mail this time.
   if (icsMap) {
     await bumpIcsSequences(c.var.db, input.submissionIds);
   }
@@ -169,5 +235,5 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
   // DEC-949 amendment: the send response must never carry rendered bodies
   // (they contain live claim tokens minted above) -- only the SPA-consumed
   // counts. Preview handlers legitimately return `items`; send never does.
-  return c.json({ sent: result.rendered.length - failed.length, failed });
+  return c.json({ sent: toSend.length - failed.length, skipped, failed });
 });

@@ -145,6 +145,10 @@ vi.mock("../src/server/repo/comms", async () => {
     listFeedbackComments: vi.fn(async () => []),
     listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
     loadIcsScheduleData: vi.fn(async () => new Map()),
+    // DEC-238 wave-3 amendment: this file's fakeDb has no .select() —
+    // stubbed so the new dedupe-partition read (unrelated to this file's
+    // unconfigured-mail scope) doesn't 500 before reaching the mailer.
+    loadRecentlySent: vi.fn(async () => new Map()),
   };
 });
 

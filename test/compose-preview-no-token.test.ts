@@ -61,6 +61,10 @@ vi.mock("../src/server/repo/comms", async () => {
     // DEC-912: buildRenderTargets now unconditionally loads schedule data
     // for `scheduled` — unrelated to this file's claim-token scope.
     loadIcsScheduleData: vi.fn(async () => new Map()),
+    // DEC-238 wave-3 amendment: this file's fakeDb has no .select() —
+    // stubbed so the new dedupe-partition read (unrelated to this file's
+    // claim-token scope) doesn't 500 before reaching the mailer.
+    loadRecentlySent: vi.fn(async () => new Map()),
   };
 });
 

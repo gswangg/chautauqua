@@ -3,7 +3,7 @@
 // the compose pipeline. Only this file (and repo/email.ts) touches drizzle
 // row types for comms; src/domain/compose.ts stays pure.
 
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -12,6 +12,7 @@ export type { ComposeSubmission } from "../../domain/compose";
 import { chunkIds, ID_CHUNK_SIZE } from "../../lib/chunk";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { slotWithinEventRange } from "./public/gates";
+import { dedupeKey } from "../../domain/comms-dedupe";
 
 // ---------------------------------------------------------------------------
 // Templates
@@ -442,5 +443,59 @@ export async function loadIcsScheduleData(
     });
   }
   return map;
+}
+
+// ---------------------------------------------------------------------------
+// Compose dedupe (DEC-238 wave-3 amendment)
+// ---------------------------------------------------------------------------
+
+/** For each (email, subject) pair, the most recent `sent_at` (ms) among this
+ * event's `email_log` rows with status 'sent' whose sent_at is at or after
+ * `cutoffMs` — keyed by src/domain/comms-dedupe.ts's dedupeKey so the route
+ * layer's skip decision and this reader always agree on message identity.
+ * A pair with no qualifying row is simply absent from the returned map.
+ * Chunks the email inArray() through chunkIds (DEC-078) — the incoming
+ * `keys` list is bounded by MAX_COMPOSE_RECIPIENTS, but this reader must not
+ * itself assume any particular caller's cap. */
+export async function loadRecentlySent(
+  db: Db,
+  eventId: string,
+  keys: { email: string; subject: string }[],
+  cutoffMs: number,
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  if (keys.length === 0) return result;
+
+  const wantedKeys = new Set(keys.map((k) => dedupeKey(k.email, k.subject)));
+  const emails = [...new Set(keys.map((k) => k.email.trim().toLowerCase()))];
+
+  const rows: { toEmail: string; subject: string; sentAt: Date }[] = [];
+  for (const emailChunk of chunkIds(emails)) {
+    const batchRows = await db
+      .select({
+        toEmail: schema.emailLog.toEmail,
+        subject: schema.emailLog.subject,
+        sentAt: schema.emailLog.sentAt,
+      })
+      .from(schema.emailLog)
+      .where(
+        and(
+          eq(schema.emailLog.eventId, eventId),
+          eq(schema.emailLog.status, "sent"),
+          gte(schema.emailLog.sentAt, new Date(cutoffMs)),
+          inArray(sql`lower(${schema.emailLog.toEmail})`, emailChunk),
+        ),
+      );
+    rows.push(...batchRows);
+  }
+
+  for (const row of rows) {
+    const key = dedupeKey(row.toEmail, row.subject);
+    if (!wantedKeys.has(key)) continue;
+    const sentAtMs = row.sentAt.getTime();
+    const existing = result.get(key);
+    if (existing === undefined || sentAtMs > existing) result.set(key, sentAtMs);
+  }
+  return result;
 }
 
