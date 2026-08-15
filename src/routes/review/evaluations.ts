@@ -27,7 +27,7 @@ reviewEvaluationsRoutes.get("/api/v1/submissions/:id/evaluations", requireOrgani
   const submissionId = c.req.param("id");
   const ownership = await getSubmissionOwnership(c.var.db, submissionId);
   if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const planIdParam = c.req.query("planId");
   if (planIdParam) {

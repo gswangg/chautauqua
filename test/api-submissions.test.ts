@@ -553,7 +553,7 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
 
     const res = await app.request(patchRequest("/api/v1/submissions/sub-1", { title: "New Title" }));
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     expect(updates).toHaveLength(0);
   });
 

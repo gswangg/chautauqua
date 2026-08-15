@@ -164,12 +164,12 @@ describe("GET /tasks/:id/delete-preview (DEC-933 amendment)", () => {
     });
   });
 
-  it("404s for another org's task", async () => {
+  it("404s for another org's task (existence-hiding, never 403)", async () => {
     const app = await buildApp(ORGANIZER_B);
     const res = await app.request(`http://test/api/v1/tasks/${TASK_ID}/delete-preview`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     const body = (await res.json()) as { error: { code: string } };
-    expect(body.error.code).toBe("forbidden");
+    expect(body.error.code).toBe("not_found");
   });
 
   it("404s for a task id that does not exist at all", async () => {

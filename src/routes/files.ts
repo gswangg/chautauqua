@@ -99,7 +99,7 @@ async function authzSubmissionRead(c: Context<AppEnv>, submissionId: string) {
   const scope = await getSubmissionScope(c.var.db, submissionId);
   if (!scope) throw new ApiError("not_found", "Submission not found");
   if (auth.role === "organizer") {
-    if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+    if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
     return { auth, scope };
   }
   if (auth.role === "speaker") {
@@ -263,7 +263,7 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
   const submissionId = c.req.param("id");
   const scope = await getSubmissionScope(c.var.db, submissionId);
   if (!scope) throw new ApiError("not_found", "Submission not found");
-  if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as { contentStatus?: unknown };
   if (!isValidContentStatus(body.contentStatus)) {
@@ -313,7 +313,7 @@ fileApiRoutes.get("/events/:eventId/files", requireOrganizer, async (c) => {
   const eventId = c.req.param("eventId");
   const scope = await getEventFilesScope(c.var.db, eventId);
   if (!scope) throw new ApiError("not_found", "Event not found");
-  if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
 
   const page = clampPage(c.req.query("page"));
   const perPage = clampPerPage(c.req.query("perPage"));
@@ -365,7 +365,7 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   const eventId = c.req.param("eventId");
   const scope = await getEventFilesScope(c.var.db, eventId);
   if (!scope) throw new ApiError("not_found", "Event not found");
-  if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as { fileIds?: unknown };
   const fileIds = parseBoundedIdArray(body.fileIds, "fileIds", { maxCount: MAX_ARCHIVE_FILES }); // DEC-182
@@ -543,7 +543,7 @@ fileApiRoutes.delete("/files/:fileId", csrfJson, async (c) => {
 
   if (auth.role === "organizer") {
     // DEC-713: an organizer may delete ANY version of a submission in their org.
-    if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+    if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
   } else {
     // DEC-713: a speaker may delete ONLY the latest version of the chain,
     // that they uploaded, while the submission is still pending review.

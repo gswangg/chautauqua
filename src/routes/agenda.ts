@@ -37,7 +37,7 @@ agendaRoutes.get("/events/:eventId/agenda", requireOrganizer, async (c) => {
   const eventId = c.req.param("eventId");
   const event = await getEventInfo(c.var.db, eventId);
   if (!event) throw new ApiError("not_found", "Event not found");
-  if (event.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (event.orgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
 
   const payload = await getAgendaPayload(c.var.db, eventId, event);
   return c.json(payload);
@@ -49,7 +49,7 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
   const submissionId = c.req.param("id");
   const ownership = await getSubmissionOwnership(c.var.db, submissionId);
   if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
   if (ownership.status !== "accepted") {
     throw new ApiError("invalid", "Only accepted submissions can be scheduled");
   }
@@ -90,7 +90,7 @@ agendaRoutes.delete("/submissions/:id/slot", requireOrganizer, csrfJson, async (
   const submissionId = c.req.param("id");
   const ownership = await getSubmissionOwnership(c.var.db, submissionId);
   if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   await unscheduleSlot(c.var.db, submissionId);
 
@@ -115,7 +115,7 @@ agendaRoutes.post("/events/:eventId/agenda/publish", requireOrganizer, csrfJson,
   const eventId = c.req.param("eventId");
   const event = await getEventInfo(c.var.db, eventId);
   if (!event) throw new ApiError("not_found", "Event not found");
-  if (event.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (event.orgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
 
   const payload = await getAgendaPayload(c.var.db, eventId, event);
   const placed = payload.placed.length;
@@ -170,7 +170,7 @@ agendaRoutes.post("/events/:eventId/agenda/auto-schedule", requireOrganizer, csr
   const eventId = c.req.param("eventId");
   const event = await getEventInfo(c.var.db, eventId);
   if (!event) throw new ApiError("not_found", "Event not found");
-  if (event.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (event.orgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as AutoScheduleBody;
   const fields: Record<string, string> = {};

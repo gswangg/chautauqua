@@ -208,7 +208,7 @@ describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
 
     const res = await app.request(jsonRequest("/api/v1/submissions/sub-1/participants", { contactId: "contact-1" }));
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     expect(inserts).toHaveLength(0);
   });
 
@@ -311,7 +311,7 @@ describe("PATCH /api/v1/submissions/:id/participants/:participantId (DEC-070 vis
 
     const res = await app.request(patchRequest("/api/v1/submissions/sub-1/participants/p1", { visible: false }));
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     expect(updates).toHaveLength(0);
   });
 

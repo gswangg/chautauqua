@@ -66,7 +66,7 @@ function appWithDb(routes: Hono<AppEnv>, auth: AuthInfo, selects: unknown[][]) {
 const orgAAuth: AuthInfo = { userId: "u-org-a", role: "organizer", orgId: "org-a" };
 
 describe("DELETE /api/v1/views/:id (DEC-031) — app-level orgId comparison, not SQL-filtered", () => {
-  it("403s when the saved view's event belongs to a different org (IDOR)", async () => {
+  it("404s when the saved view's event belongs to a different org (IDOR, existence-hiding, never 403)", async () => {
     // getSavedViewOwnership returns the row regardless of org; the route
     // itself must compare ownership.orgId to auth.orgId and reject. Legacy
     // (null createdByUserId) row so this exercises only the org-level gate,
@@ -79,7 +79,7 @@ describe("DELETE /api/v1/views/:id (DEC-031) — app-level orgId comparison, not
       { method: "DELETE", headers: { "x-chq-csrf": "1" } },
       {} as unknown as AppEnv["Bindings"],
     );
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("succeeds (200) when the saved view belongs to the caller's own org", async () => {
@@ -98,7 +98,7 @@ describe("DELETE /api/v1/views/:id (DEC-031) — app-level orgId comparison, not
 });
 
 describe("PATCH /api/v1/tasks/:id (DEC-023) — app-level orgId comparison", () => {
-  it("403s when the task's event belongs to a different org (IDOR)", async () => {
+  it("404s when the task's event belongs to a different org (IDOR, existence-hiding, never 403)", async () => {
     const app = appWithDb(taskRoutes, orgAAuth, [[{ eventId: "event-b", orgId: "org-b", kind: "general" }]]);
     const res = await app.request(
       "/tasks/task-1",
@@ -109,7 +109,7 @@ describe("PATCH /api/v1/tasks/:id (DEC-023) — app-level orgId comparison", () 
       },
       {} as unknown as AppEnv["Bindings"],
     );
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("succeeds (200) when the task belongs to the caller's own org", async () => {

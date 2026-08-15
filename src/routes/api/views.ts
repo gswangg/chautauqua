@@ -30,7 +30,7 @@ function requireAuth(c: Context<AppEnv>): AuthInfo {
 async function assertEventOwnership(db: Db, eventId: string, orgId: string) {
   const eventOrgId = await getEventOrgId(db, eventId);
   if (!eventOrgId) throw new ApiError("not_found", "Event not found");
-  if (eventOrgId !== orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (eventOrgId !== orgId) throw new ApiError("not_found", "Event not found");
 }
 
 // GET /api/v1/events/:eventId/views
@@ -88,7 +88,7 @@ viewsRoutes.delete("/views/:id", requireOrganizer, csrfJson, async (c) => {
   const id = c.req.param("id");
   const ownership = await getSavedViewOwnership(c.var.db, id);
   if (!ownership) throw new ApiError("not_found", "Saved view not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Saved view belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Saved view not found");
 
   // DEC-975: the delete gate matches the DEC-904 read gate. A row with
   // createdByUserId === null is legacy org-owned (pre-DEC-904) -- any

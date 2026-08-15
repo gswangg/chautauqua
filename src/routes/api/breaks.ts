@@ -38,7 +38,7 @@ async function assertEventOwnership(
 ): Promise<{ startDate: string; endDate: string }> {
   const event = await getEventInfo(c.var.db, eventId);
   if (!event) throw new ApiError("not_found", "Event not found");
-  if (event.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (event.orgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
   return event;
 }
 

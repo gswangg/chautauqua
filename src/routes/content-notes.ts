@@ -53,7 +53,7 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
 
   const scope = await getSubmissionScope(c.var.db, submissionId);
   if (!scope) throw new ApiError("not_found", "Submission not found");
-  if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as ContentNoteBody;
 
