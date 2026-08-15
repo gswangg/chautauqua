@@ -22,6 +22,7 @@ import { RemindPreviewModal } from './RemindPreviewModal';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { STATUS_LABELS } from '../submissions/types';
 import { CONTENT_STATUS_LABELS } from '../content/types';
+import { EmptyState } from '../../components/EmptyState';
 import { DEC_930 } from '../../../../src/decisions';
 import type { SpeakerDetailResponse, SpeakerDetailTaskStatus } from './speakerDetail';
 import './speakers.css';
@@ -308,7 +309,10 @@ export function SpeakerDetailPage() {
                   <span className="chq-section-label">Sessions &middot; {detail.sessions.length}</span>
                 </div>
                 {detail.sessions.length === 0 ? (
-                  <p className="chq-empty">No sessions.</p>
+                  // DEC-678: this list has no filter axis of its own (it's
+                  // this one speaker's whole session set, not a facet of a
+                  // larger table), so it only ever ships the fresh variant.
+                  <EmptyState variant="fresh" what="No sessions." />
                 ) : (
                   <table className="chq-table chq-speaker-detail-sessions-table">
                     <thead>
@@ -352,7 +356,8 @@ export function SpeakerDetailPage() {
                   </span>
                 </div>
                 {detail.tasks.length === 0 ? (
-                  <p className="chq-empty">No tasks.</p>
+                  // DEC-678: no filter axis here either -- fresh only.
+                  <EmptyState variant="fresh" what="No tasks." />
                 ) : (
                   <table className="chq-table chq-speaker-detail-tasks-table">
                     <thead>
@@ -402,7 +407,8 @@ export function SpeakerDetailPage() {
                   <span className="chq-section-label">Files &middot; {files.length}</span>
                 </div>
                 {files.length === 0 ? (
-                  <p className="chq-empty">No files.</p>
+                  // DEC-678: no filter axis -- fresh only.
+                  <EmptyState variant="fresh" what="No files." />
                 ) : (
                   <table className="chq-table chq-speaker-detail-files-table">
                     <thead>
@@ -455,7 +461,8 @@ export function SpeakerDetailPage() {
                   <span className="chq-section-label">Across your events &middot; {detail.otherEventsCount}</span>
                 </div>
                 {otherEvents.length === 0 ? (
-                  <p className="chq-empty">No other events.</p>
+                  // DEC-678: no filter axis -- fresh only.
+                  <EmptyState variant="fresh" what="No other events." />
                 ) : (
                   <ul className="chq-speaker-detail-other-events-list">
                     {otherEvents.map((e) => (

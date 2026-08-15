@@ -122,9 +122,18 @@ describe('VersionList', () => {
     expect(screen.queryByText('v2')).not.toBeInTheDocument();
   });
 
-  it('renders nothing-uploaded-yet copy for an empty list', () => {
+  // DEC-678 (w55-c): the zero-row state renders through EmptyState's fresh
+  // variant (no filter axis on this list), not the bare `.chq-empty` line.
+  it('renders nothing-uploaded-yet copy for an empty list, through EmptyState fresh anatomy', () => {
     render(<VersionList versions={[]} onDeleted={() => {}} />);
     expect(screen.getByText('No versions uploaded yet.')).toBeInTheDocument();
+    const block = document.querySelector('.chq-empty-block');
+    expect(block).toHaveClass('chq-empty-block-fresh');
+    expect(block?.querySelector('.chq-empty-what')).toHaveTextContent('No versions uploaded yet.');
+    // Fresh has no escape link (there is no filter to clear) and no
+    // primary action was passed, so no actions row either.
+    expect(block?.querySelector('.chq-empty-escape')).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-empty')).not.toBeInTheDocument();
   });
 
   // w1-h reskin: every version, including prior ones, must stay downloadable

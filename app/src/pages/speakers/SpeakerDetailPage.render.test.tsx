@@ -220,6 +220,46 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(downloadLink).toHaveAttribute('download');
   });
 
+  // DEC-678 (w55-c): sessions/tasks/files/other-events zero-row states
+  // render through EmptyState's fresh anatomy (no filter axis on any of
+  // these four sub-collections); the notes field's own `.chq-empty` line
+  // is NOT a collection and stays untouched.
+  it('renders EmptyState fresh anatomy for zero sessions/tasks/files/other-events, and leaves the notes chq-empty line untouched', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        sessions: [],
+        tasks: [],
+        otherEvents: [],
+        otherEventsCount: 0,
+        contact: { ...baseDetail().contact, notes: null },
+      }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const main = document.querySelector('.chq-speaker-detail-main');
+    const rail = document.querySelector('.chq-speaker-detail-rail');
+
+    const freshBlocks = document.querySelectorAll('.chq-empty-block-fresh');
+    // Sessions, Tasks, Files (tasks with no file), Other events -- four.
+    expect(freshBlocks).toHaveLength(4);
+    expect(main).toHaveTextContent('No sessions.');
+    expect(main).toHaveTextContent('No tasks.');
+    expect(main).toHaveTextContent('No files.');
+    expect(rail).toHaveTextContent('No other events.');
+    for (const block of Array.from(freshBlocks)) {
+      expect(block.querySelector('.chq-empty-escape')).not.toBeInTheDocument();
+    }
+
+    // The notes field's bare `.chq-empty` paragraph is the ONE surviving
+    // non-collection site and is left exactly as it was.
+    const notesSection = rail?.querySelector('.chq-speaker-detail-notes');
+    const notesEmpty = notesSection?.querySelector('p.chq-empty');
+    expect(notesEmpty).toHaveTextContent('No notes.');
+    expect(document.querySelectorAll('p.chq-empty')).toHaveLength(1);
+  });
+
   it('caps otherEvents at 5 even if the server sends more', async () => {
     const many = Array.from({ length: 7 }, (_, i) => ({ eventId: `evt-${i}`, name: `Conf ${i}` }));
     mockApi({
