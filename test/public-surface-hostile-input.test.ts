@@ -111,6 +111,9 @@ function makeDb() {
       }),
     }),
     delete: () => ({ where: async () => {} }),
+    // DEC-949 (wave 46 amendment): POST /claim/:token now issues
+    // refundScopedLimit (db.update) once the token resolves.
+    update: () => ({ set: () => ({ where: async () => {} }) }),
   } as unknown as AppEnv["Variables"]["db"];
 }
 
@@ -137,6 +140,9 @@ function makeEmptyDb() {
       }),
     }),
     delete: () => ({ where: async () => {} }),
+    // DEC-949 (wave 46 amendment): POST /claim/:token now issues
+    // refundScopedLimit (db.update) once the token resolves.
+    update: () => ({ set: () => ({ where: async () => {} }) }),
   } as unknown as AppEnv["Variables"]["db"];
 }
 
