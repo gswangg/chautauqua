@@ -130,18 +130,12 @@ export function speakerInitials(firstName: string, lastName: string): string {
   return `${f}${l}`.toUpperCase();
 }
 
-export function formatMinutes(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  const ampm = h < 12 ? "AM" : "PM";
-  return `${hour12}:${String(m).padStart(2, "0")} ${ampm}`;
-}
-
-// w1-c: the sessions-list gutter's line-1 start time — 24h, no leading zero
-// on the hour ("9:00", not "09:00" or "9:00 AM"). Distinct from
-// formatMinutes (still used by the session-detail schedule line, which
-// keeps the AM/PM range) since the gutter no longer has room for a range.
+// DEC-768 (wave 48 amendment): ONE public clock grammar. A 12-hour
+// AM/PM formatter used to live here alongside this 24h formatter,
+// letting the same session print two clocks depending on which surface
+// rendered it (agenda/programme vs. sessions-list/detail). Every public
+// caller now uses this 24h formatter; a start-end range is
+// `${formatStartTime24(a)}–${formatStartTime24(b)}`.
 export function formatStartTime24(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;

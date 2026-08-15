@@ -58,7 +58,7 @@ describe("DEC-584 (wave 64 amendment): AgendaDayGrid time-row sequence replaces 
   it("renders exactly one time-row per distinct start minute, ascending", () => {
     const html = String(AgendaDayGrid({ day: "2026-08-10", items: ITEMS, event: EVENT, from: "agenda" }));
     const times = [...html.matchAll(/<div class="chq-pub-agenda-day-time">([^<]+)<\/div>/g)].map((m) => m[1]);
-    expect(times).toEqual(["8:00 AM", "10:00 AM"]);
+    expect(times).toEqual(["8:00", "10:00"]);
   });
 
   // w69-d (DEC-584 amendment): the toggle now requires itinerary=true --
@@ -117,8 +117,8 @@ describe("DEC-602/DEC-555 (task w1-d): /schedule renders its OWN saved-list mark
     // full day text (formatDay output, DEC-768 wave 7 amendment: formatDayLong)
     // is on the day-group heading.
     expect(html).toMatch(/Monday 10 August/);
-    expect(html).toContain("8:00 AM");
-    expect(html).toContain("9:30 AM");
+    expect(html).toContain("8:00");
+    expect(html).toContain("9:30");
     expect(html).toContain("Alpha Hall");
     expect(html).toContain("Ada");
   });

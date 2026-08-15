@@ -126,7 +126,7 @@ describe("DEC-851 amendment (wave 5): break row anatomy -- time in the gutter, b
     const breaksByDay = new Map([["2026-08-10", [brk({ startMin: 615, label: "Coffee", location: "Foyer", durationMin: 15 })]]]);
     const html = String(AgendaContent({ event: EVENT, items, total: 1, breaksByDay }));
     // The gutter cell carries the break's own start time...
-    expect(html).toContain('<div class="chq-pub-agenda-day-time">10:15 AM</div><div class="chq-pub-agenda-break">');
+    expect(html).toContain('<div class="chq-pub-agenda-day-time">10:15</div><div class="chq-pub-agenda-break">');
     // ...and the band text itself no longer repeats the time inline.
     const bandMatch = html.match(/<div class="chq-pub-agenda-break">([^<]*)<\/div>/);
     expect(bandMatch).toBeTruthy();

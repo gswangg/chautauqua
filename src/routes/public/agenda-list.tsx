@@ -6,8 +6,11 @@ import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
 import type { ScheduleBreak } from "../../server/repo/breaks"; // type-only; the public barrel re-exports the read path (getPublicBreaksByDay)
 import { publicRoomLabel } from "../../domain/schedule";
 import { sessionDetailPath, type Surface, type SurfaceBase } from "./shell";
-import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay, formatMinutes } from "./cards";
+import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay, formatStartTime24 } from "./cards";
 import { formatBreakLabel } from "./agenda-grid";
+import { DEC_768 } from "../../decisions";
+
+void DEC_768;
 
 /** DEC-584: phone (<700px) markup for a single agenda day. AgendaDayGrid's
  * absolutely-positioned room-column grid is unreadable as a horizontal
@@ -77,7 +80,7 @@ export function AgendaItemList(props: {
             return (
               <li class="chq-pub-agenda-break" aria-label={`Break: ${formatBreakLabel(b)}`}>
                 {showDay ? `${formatDay(day)} · ` : ""}
-                {formatMinutes(b.startMin)} · {formatBreakLabel(b)}
+                {formatStartTime24(b.startMin)} · {formatBreakLabel(b)}
               </li>
             );
           }
@@ -88,13 +91,13 @@ export function AgendaItemList(props: {
             <>
               {isNewGroup ? (
                 <li class="chq-pub-schedule-time-subhead" aria-hidden="true">
-                  {formatMinutes(item.startMin)}
+                  {formatStartTime24(item.startMin)}
                 </li>
               ) : null}
               <li class="chq-pub-agenda-list-item" id={`chq-agenda-list-${item.submissionId}`} data-submission-id={item.submissionId}>
             <div class="chq-pub-agenda-list-time">
               {showDay ? `${formatDay(day)} · ` : ""}
-              {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
+              {formatStartTime24(item.startMin)}–{formatStartTime24(item.endMin)}
             </div>
             <div>
               <strong>

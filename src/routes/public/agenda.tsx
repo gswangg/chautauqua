@@ -12,11 +12,14 @@ import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../../server/re
 import type { ScheduleBreak } from "../../server/repo/breaks"; // type-only; the public barrel re-exports the read path (getPublicBreaksByDay)
 import { plural } from "../../domain/count-copy";
 import { surfacePath, sessionDetailPath, type Surface, type SurfaceBase } from "./shell";
-import { formatDay, formatMinutes, SpeakerNames } from "./cards";
+import { formatDay, formatStartTime24, SpeakerNames } from "./cards";
 import { formatDayLong } from "../../lib/event-time";
 import { publicRoomLabel } from "../../domain/schedule";
 import { AgendaDayGrid } from "./agenda-grid";
 import { AgendaItemList } from "./agenda-list";
+import { DEC_768 } from "../../decisions";
+
+void DEC_768;
 // agendaQs is also re-exported below (barrel); this import is the local
 // binding the agenda day-footer's "next day" out-link composes with.
 import { DaySwitcher, ItinerarySearchForm, agendaQs } from "./agenda-controls";
@@ -212,7 +215,7 @@ export function AgendaContent(props: {
               ))}
               {nextDay && lastEndMin !== null ? (
                 <p class="chq-pub-agenda-day-footer">
-                  Last session ends {formatMinutes(lastEndMin)} ·{" "}
+                  Last session ends {formatStartTime24(lastEndMin)} ·{" "}
                   <a href={`${basePath}${agendaQs(switcherCurrent, { day: nextDay })}`}>{formatDay(nextDay)} ›</a>
                 </p>
               ) : null}
@@ -269,7 +272,7 @@ function ScheduleRow(props: { event: PublicEvent; item: PublicAgendaItem; day: s
     >
       <div class="chq-pub-schedule-row-gutter">
         <span class="chq-pub-schedule-row-time">
-          {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
+          {formatStartTime24(item.startMin)}–{formatStartTime24(item.endMin)}
         </span>
         <span class="chq-pub-schedule-row-room">{publicRoomLabel(item.roomName)}</span>
       </div>
