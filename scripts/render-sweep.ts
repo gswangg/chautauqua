@@ -448,7 +448,10 @@ export const INTERACTION_STATE_ENTRIES: readonly InteractionStateEntry[] = [
     path: `/admin/review/plans/${INTERACTION_STATE_PLAN_ID}`,
     selector: ".chq-review-field-disabled .chq-review-checkbox-label",
     role: "review-anonymize-disabled",
-    expected: { colorHex: "#8E8A7A", backgroundColorHex: "#DDD8C8" },
+    // --chq-disabled on --chq-disabled-bg. DEC-436's wave-25 amendment
+    // darkened the ink token #8E8A7A -> #7D7869 (app/src/styles.css,
+    // src/views/theme.ts); the fill is unchanged, so only colorHex moves.
+    expected: { colorHex: "#7D7869", backgroundColorHex: "#DDD8C8" },
   },
 ] as const;
 

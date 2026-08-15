@@ -87,7 +87,11 @@ const ALLOWLIST = new Set<string>(
     '#1B1D17',
     '#3F4237',
     '#565A4B',
-    '#8E8A7A',
+    // Disabled: DEC-436's wave-25 amendment darkened this token #8E8A7A ->
+    // #7D7869 (3:1 against --chq-disabled-bg and the page grounds). The
+    // README §Colour table moved with it; #8E8A7A is no longer declared
+    // anywhere, so this is the table mirrored, not a colour excused.
+    '#7D7869',
     '#E1DDCE',
     '#D3CFC0',
     '#BAB6A6',

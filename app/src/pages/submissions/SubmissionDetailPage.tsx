@@ -1313,7 +1313,7 @@ export function SubmissionDetailPage() {
                   />
                   {/* DEC-958 (findings wave 13 amendment): the row is NEVER
                       omitted -- an absent role field renders this same
-                      select in the disabled treatment (B8: #8E8A7A text on
+                      select in the disabled treatment (B8: #7D7869 text on
                       #DDD8C8 border) rather than swapping it for inert
                       prose, so the row can't be mistaken for a bug. */}
                   <select

@@ -39,7 +39,7 @@ const DISABLED_ENTRY: InteractionStateEntry = {
   path: "/admin/review/plans/seed_evaluation_plan_0001",
   selector: ".chq-review-field-disabled .chq-review-checkbox-label",
   role: "review-anonymize-disabled",
-  expected: { colorHex: "#8E8A7A", backgroundColorHex: "#DDD8C8" },
+  expected: { colorHex: "#7D7869", backgroundColorHex: "#DDD8C8" },
 };
 
 describe("evaluateInteractionState — FOCUS", () => {
@@ -136,7 +136,7 @@ describe("evaluateInteractionState — HOVER", () => {
 describe("evaluateInteractionState — DISABLED", () => {
   it("passes on the exact disabled-register color+background", () => {
     const result = evaluateInteractionState(DISABLED_ENTRY, {
-      colorHex: "#8E8A7A",
+      colorHex: "#7D7869",
       backgroundColorHex: "#DDD8C8",
     });
     expect(result.ok).toBe(true);
@@ -144,16 +144,16 @@ describe("evaluateInteractionState — DISABLED", () => {
 
   it("fails a near-miss text color and names the selector", () => {
     const result = evaluateInteractionState(DISABLED_ENTRY, {
-      colorHex: "#8E8A79",
+      colorHex: "#7D7868",
       backgroundColorHex: "#DDD8C8",
     });
     expect(result.ok).toBe(false);
     expect(result.failureReason).toContain(".chq-review-field-disabled .chq-review-checkbox-label");
-    expect(result.failureReason).toContain("color #8E8A79 !== expected #8E8A7A");
+    expect(result.failureReason).toContain("color #7D7868 !== expected #7D7869");
   });
 
   it("fails a missing background measurement and names the selector", () => {
-    const result = evaluateInteractionState(DISABLED_ENTRY, { colorHex: "#8E8A7A" });
+    const result = evaluateInteractionState(DISABLED_ENTRY, { colorHex: "#7D7869" });
     expect(result.ok).toBe(false);
     expect(result.failureReason).toContain(".chq-review-field-disabled .chq-review-checkbox-label");
     expect(result.failureReason).toContain("background-color not measured (expected #DDD8C8)");

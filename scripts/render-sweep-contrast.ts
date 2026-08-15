@@ -24,8 +24,9 @@
  * `.chq-forms-field-locked` (app/src/styles.css) and
  * `.chq-forms-settings-title` (app/src/pages/forms/forms.css) — from
  * `var(--chq-disabled)` to `var(--chq-muted)` (6.28:1 against paper, well
- * above the 4.5:1 AA minimum), WITHOUT changing --chq-disabled itself (still
- * #8E8A7A, still WCAG-exempt for genuinely disabled controls). This lane's
+ * above the 4.5:1 AA minimum), WITHOUT changing --chq-disabled itself (then
+ * #8E8A7A, still WCAG-exempt for genuinely disabled controls; DEC-436's
+ * wave-25 amendment later darkened that token to #7D7869). This lane's
  * own render-sweep run then read 42/42 all-PASS
  * (docs/verification-log/task-w16-a-build-test-stage1.md), so per DEC-436
  * ("flip only if your own run reads all-PASS") CONTRAST_BLOCKING now flips
