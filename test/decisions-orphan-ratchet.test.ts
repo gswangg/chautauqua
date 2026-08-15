@@ -333,7 +333,6 @@ const KNOWN_ORPHANS: Record<string, string> = {
   DEC_286: "process/bookkeeping decision, no runtime surface",
   DEC_287: "UNVERIFIED — no implementing module found",
   DEC_288: "UNVERIFIED — no implementing module found",
-  DEC_292: "UNVERIFIED — no implementing module found",
   DEC_293: "UNVERIFIED — no implementing module found",
   DEC_294: "UNVERIFIED — no implementing module found",
   DEC_297: "UNVERIFIED — no implementing module found",
@@ -880,7 +879,7 @@ const KNOWN_ORPHANS: Record<string, string> = {
 // only if a future wave adds a genuinely new decision that also has no
 // implementing module on day one -- which itself should be rare and should
 // be flagged, not routine.
-const PINNED_ORPHAN_COUNT = 764;
+const PINNED_ORPHAN_COUNT = 763;
 
 describe("decisions-data DEC_NNN orphan ratchet (DEC-472 amendment, wave 47)", () => {
   it("PINNED_ORPHAN_COUNT matches KNOWN_ORPHANS length (the pin can only fall)", () => {

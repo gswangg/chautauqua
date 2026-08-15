@@ -6,7 +6,9 @@
 // DEC-467: exactly one normalizeEmail survives in the product (src/domain/email.ts).
 import { normalizeEmail } from "./email";
 import { ACTIVE_INVITE_STATUSES } from "./acceptance";
-import { contactLabels, TRAVEL_KEY } from "./contact-labels";
+import { contactLabels, RESERVED_CUSTOM_FIELD_KEYS } from "./contact-labels";
+
+const RESERVED_CUSTOM_FIELD_KEY_SET: Set<string> = new Set(Object.values(RESERVED_CUSTOM_FIELD_KEYS));
 import { overBudgetBy } from "./count-copy";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH, MAX_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { DEC_800 } from "../decisions";
@@ -567,17 +569,19 @@ export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]
 
     // Labels: union of both sides' customFields keys folded into ONE row
     // through contactLabels (DEC-738/DEC-748 amendment) -- never a raw
-    // customFields.<key> row. TRAVEL_KEY is excluded (it's edited via its
-    // own textarea, never listed as a label). A duplicate-only key upgrades
-    // the row to 'combine'; a colliding key that differs stays 'keep' with
-    // the dropped "key value" pair recorded in discarded.
+    // customFields.<key> row. The reserved keys (dietary, travel,
+    // accessibility -- DEC-292 amendment findings wave 5) are excluded
+    // (they're each edited via their own textarea, never listed as a
+    // label). A duplicate-only key upgrades the row to 'combine'; a
+    // colliding key that differs stays 'keep' with the dropped "key value"
+    // pair recorded in discarded.
     labelByKey.set("labels", "Labels");
     const customFieldKeys = new Set<string>([
       ...Object.keys(before.customFields ?? {}),
       ...Object.keys(duplicate.customFields ?? {}),
     ]);
     for (const fieldKey of customFieldKeys) {
-      if (fieldKey === TRAVEL_KEY) continue;
+      if (RESERVED_CUSTOM_FIELD_KEY_SET.has(fieldKey)) continue;
       const beforeValue = before.customFields?.[fieldKey];
       const hasDupValue = Object.prototype.hasOwnProperty.call(duplicate.customFields ?? {}, fieldKey);
       const dupValue = duplicate.customFields?.[fieldKey];
