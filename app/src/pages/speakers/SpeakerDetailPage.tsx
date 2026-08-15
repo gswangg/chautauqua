@@ -235,7 +235,7 @@ export function SpeakerDetailPage() {
     <div className="chq-page chq-speaker-detail-page chq-measure-table">
       {error && <div className="chq-error">{error}</div>}
       {toast && (
-        <div className="chq-error" role="status">
+        <div className="chq-toast" role="status">
           {toast}
           <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setToast(null)} aria-label="Dismiss">
             &times;

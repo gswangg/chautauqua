@@ -156,7 +156,7 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
       {error && <div className="chq-error">{error}</div>}
       {dismissError && <div className="chq-error">{dismissError}</div>}
       {mergedNotice && (
-        <div className="chq-error" role="status">
+        <div className="chq-toast" role="status">
           {mergedNotice}
         </div>
       )}

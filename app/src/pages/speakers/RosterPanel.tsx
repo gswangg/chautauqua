@@ -144,7 +144,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
 
   if (mode === 'none') {
     return toast ? (
-      <div className="chq-error" role="status">
+      <div className="chq-toast" role="status">
         {toast}
         <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setToast(null)} aria-label="Dismiss">
           &times;
@@ -160,7 +160,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
   return (
     <>
       {toast && (
-        <div className="chq-error" role="status">
+        <div className="chq-toast" role="status">
           {toast}
           <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setToast(null)} aria-label="Dismiss">
             &times;

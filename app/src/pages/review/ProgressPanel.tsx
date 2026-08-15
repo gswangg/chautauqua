@@ -141,7 +141,7 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
         </div>
       )}
       {remindMessage !== null && (
-        <div className="chq-error" role="status">
+        <div className="chq-toast" role="status">
           {remindMessage}
         </div>
       )}

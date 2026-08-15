@@ -698,7 +698,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         </div>
       )}
       {toast && (
-        <div className="chq-error" role="status">
+        <div className="chq-toast" role="status">
           {toast}
           <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setToast(null)} aria-label="Dismiss">
             &times;
