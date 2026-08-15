@@ -179,9 +179,15 @@ const MOBILE_CONTROL_SELECTOR = [
 // that makes DEC-385's phone-frame redesign checkable; it lands advisory
 // (see ADMIN_MOBILE_PASS_BLOCKING in render-sweep-lib.ts) because these
 // routes have never been measured at 390px before.
+// w25-e: carries expectedStatus through from ROUTE_MANIFEST — a route that
+// deliberately renders a non-200 on desktop (e.g. /portal/preview's
+// existence-hiding 404 with no ?eventId=, src/routes/portal/preview.tsx:96-145)
+// renders the same deliberate non-200 at 390px too; dropping the field here
+// made every such row read a permanent "status 404 !== 200" FAIL on the
+// mobile pass even once the desktop pass's equivalent row passed.
 export const ADMIN_MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = ROUTE_MANIFEST.filter(
   (entry) => (entry.role === "organizer" || entry.role === "reviewer") && entry.path !== "/admin/*",
-).map((entry) => ({ path: entry.path, role: entry.role }));
+).map((entry) => ({ path: entry.path, role: entry.role, expectedStatus: entry.expectedStatus }));
 
 /** DEC-387 control selector: the redesign's phone-bar/primary-control
  * vocabulary (tabbar links/buttons, .chq-btn, .chq-input, .chq-select,
@@ -354,14 +360,19 @@ async function measureFontFloor(page: Page): Promise<{ minPx: number | null; off
 // DEC-643: measures getComputedStyle(fontSize/fontWeight/letterSpacing) for
 // every OVERVIEW_TYPE_ROLES selector on the current page (only meaningful on
 // /admin/overview desktop — see the call site below), plus the observed
-// font-weight of every ".chq-overview-deadline-value" cell for the
-// deadline-strip group rule. letter-spacing "normal" (unset) reports as
-// undefined rather than NaN so evaluateTypeRoleResult reports it as
-// "not measured" instead of a false numeric mismatch.
+// font-weight AND rendered text of every ".chq-overview-deadline-value" cell
+// for the deadline-strip group rule (DEC-611 wave-2 amendment: the tie is a
+// SET measured on the displayed value, see evaluateDeadlineNearestWeights).
+// letter-spacing "normal" (unset) reports as undefined rather than NaN so
+// evaluateTypeRoleResult reports it as "not measured" instead of a false
+// numeric mismatch.
 async function measureTypeRoles(
   page: Page,
   selectors: readonly string[],
-): Promise<{ bySelector: Record<string, { fontSizePx?: number; fontWeight?: number; letterSpacingEm?: number }>; deadlineWeights: number[] }> {
+): Promise<{
+  bySelector: Record<string, { fontSizePx?: number; fontWeight?: number; letterSpacingEm?: number }>;
+  deadlineCells: { weight: number; value: string }[];
+}> {
   return page.evaluate((sels: string[]) => {
     const readOne = (el: Element): { fontSizePx?: number; fontWeight?: number; letterSpacingEm?: number } => {
       const style = getComputedStyle(el);
@@ -386,12 +397,12 @@ async function measureTypeRoles(
       if (el) bySelector[sel] = readOne(el);
     }
 
-    const deadlineWeights = Array.from(document.querySelectorAll(".chq-overview-deadline-value")).map((el) => {
+    const deadlineCells = Array.from(document.querySelectorAll(".chq-overview-deadline-value")).map((el) => {
       const w = parseInt(getComputedStyle(el).fontWeight, 10);
-      return Number.isNaN(w) ? 0 : w;
+      return { weight: Number.isNaN(w) ? 0 : w, value: (el.textContent ?? "").trim() };
     });
 
-    return { bySelector, deadlineWeights };
+    return { bySelector, deadlineCells };
   }, selectors as string[]);
 }
 
@@ -442,13 +453,31 @@ export const INTERACTION_STATE_ENTRIES: readonly InteractionStateEntry[] = [
 /** Focuses `selector` (page.locator.focus(), which Chromium treats as a
  * keyboard-equivalent focus for :focus-visible purposes) and reads its
  * computed outline. Returns null if the selector never resolved. */
+// w25-e: Chromium's :focus-visible heuristic keys off input MODALITY — a
+// programmatic `locator.focus()` call does not reliably read as a keyboard
+// interaction for a <button>, so `:focus-visible { outline: 2px solid
+// var(--chq-brand) }` (src/views/theme.ts:170) never actually applied even
+// though the rule is present in the cascade (THEME_CSS inlined before
+// CFP_CSS, src/routes/public/submit-views.tsx:47-69). The probe must induce
+// a REAL keyboard Tab so it measures the ring a keyboard user actually sees.
+const FOCUS_TAB_ATTEMPT_LIMIT = 25;
+
 async function measureFocusState(
   page: Page,
   selector: string,
 ): Promise<{ outlineWidthPx?: number; outlineStyle?: string; outlineColorHex?: string; outlineOffsetPx?: number } | null> {
   const locator = page.locator(selector).first();
   if ((await locator.count()) === 0) return null;
-  await locator.focus();
+  // Start each Tab walk from a known, unfocused baseline.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  let reached = false;
+  for (let i = 0; i < FOCUS_TAB_ATTEMPT_LIMIT && !reached; i++) {
+    await page.keyboard.press("Tab");
+    reached = await page.evaluate((sel: string) => document.activeElement?.matches(sel) ?? false, selector);
+  }
+  if (!reached) {
+    throw new Error(`selector unreachable via keyboard Tab within ${FOCUS_TAB_ATTEMPT_LIMIT} presses: ${selector}`);
+  }
   return page.evaluate((sel: string) => {
     const el = document.querySelector(sel);
     if (!el) return null;
@@ -507,12 +536,26 @@ async function measureHoverState(
  * (the disabled register applies purely from the class chain / [disabled]
  * attribute, DEC-409's amendment). Returns null if the selector never
  * resolved. */
+// w25-e: `.chq-review-field-disabled` only attaches once PlanEditor's
+// evaluationCountsByRound fetch resolves and planHasSubmittedReview flips
+// true (app/src/pages/review/PlanEditor.tsx:448) — a bare `.count()` read
+// immediately after #root appears could race that state update and read 0
+// even though the field genuinely disables a beat later on the SAME route.
+// Waiting for the selector to actually attach (rather than snapshotting
+// once) is the re-pin: the row still measures the real disabled register,
+// it just gives the instrument time to observe it.
+const DISABLED_STATE_ATTACH_TIMEOUT_MS = 5000;
+
 async function measureDisabledState(
   page: Page,
   selector: string,
 ): Promise<{ colorHex?: string; backgroundColorHex?: string } | null> {
   const locator = page.locator(selector).first();
-  if ((await locator.count()) === 0) return null;
+  try {
+    await locator.waitFor({ state: "attached", timeout: DISABLED_STATE_ATTACH_TIMEOUT_MS });
+  } catch {
+    return null;
+  }
   return page.evaluate((sel: string) => {
     const el = document.querySelector(sel);
     if (!el) return null;
@@ -785,13 +828,13 @@ async function visitRoute(
   if (typeRoleResults && entry.path === "/admin/overview") {
     try {
       const selectors = OVERVIEW_TYPE_ROLES.map((r) => r.selector);
-      const { bySelector, deadlineWeights } = await measureTypeRoles(page, selectors);
+      const { bySelector, deadlineCells } = await measureTypeRoles(page, selectors);
       for (const roleEntry of OVERVIEW_TYPE_ROLES) {
         const observed = bySelector[roleEntry.selector] ?? {};
         const { ok, failureReason } = evaluateTypeRoleResult(observed, roleEntry.expected);
         typeRoleResults.push({ selector: roleEntry.selector, role: roleEntry.role, ok, failureReason, observed, expected: roleEntry.expected });
       }
-      const nearest = evaluateDeadlineNearestWeights(deadlineWeights);
+      const nearest = evaluateDeadlineNearestWeights(deadlineCells);
       typeRoleResults.push({
         selector: ".chq-overview-deadline-value (group)",
         role: "deadline-strip-nearest",
