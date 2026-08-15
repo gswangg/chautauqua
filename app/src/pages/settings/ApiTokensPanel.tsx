@@ -236,7 +236,11 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
         <table className="chq-table chq-settings-tokens-table">
           <thead>
             <tr>
-              <th className="chq-settings-tokens-col-name">Name and prefix</th>
+              {/* No class hook: under table-layout:fixed this is the SOLE
+                  unwidthed remainder column (DEC-902 wave-22), so it needs no
+                  width rule -- and a className with no CSS rule behind it is
+                  exactly what DEC-976/DEC-379 forbid. */}
+              <th>Name and prefix</th>
               <th className="chq-settings-tokens-col-created">Created</th>
               <th className="chq-settings-tokens-col-last-used">Last used</th>
               <th className="chq-settings-tokens-col-actions">Revoke</th>
