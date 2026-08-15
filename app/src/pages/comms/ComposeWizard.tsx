@@ -795,7 +795,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             <table className="chq-table chq-comms-compose-table">
               <thead>
                 <tr>
-                  <th>
+                  <th className="chq-comms-compose-col-select">
                     <input
                       type="checkbox"
                       className="chq-check"
@@ -807,10 +807,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                       aria-label="Select every submission on this page"
                     />
                   </th>
-                  <th>Title</th>
-                  <th>Speakers</th>
-                  <th>Status</th>
-                  <th>Slot</th>
+                  <th className="chq-comms-compose-col-title">Title</th>
+                  <th className="chq-comms-compose-col-speaker">Speakers</th>
+                  <th className="chq-comms-compose-col-status">Status</th>
+                  <th className="chq-comms-compose-col-slot">Slot</th>
                 </tr>
               </thead>
               <tbody>
