@@ -97,19 +97,6 @@ export interface SpeakerDetail {
   otherEventsCount: number;
 }
 
-/** Parses `/headshots/<fileId>` (the exact shape repo/profile.ts's
- * setHeadshot writes) back into a bare file id -- fails loudly on any other
- * shape rather than guessing, since a malformed stored URL is a bug, not a
- * "no headshot" state. */
-function parseHeadshotFileId(headshotUrl: string | null): string | null {
-  if (headshotUrl === null) return null;
-  const prefix = "/headshots/";
-  if (!headshotUrl.startsWith(prefix) || headshotUrl.length <= prefix.length) {
-    throw new Error(`speaker detail: headshotUrl '${headshotUrl}' does not match the expected /headshots/<fileId> shape`);
-  }
-  return headshotUrl.slice(prefix.length);
-}
-
 /** Builds the DEC-930 per-speaker detail payload for one contact on one
  * event, in a bounded number of queries independent of how many
  * sessions/tasks the contact has: (i) the contact + roster participation
@@ -133,6 +120,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       phone: schema.contact.phone,
       notes: schema.contact.notes,
       headshotUrl: schema.contact.headshotUrl,
+      headshotFileId: schema.contact.headshotFileId,
       userId: schema.user.id,
     })
     .from(schema.contact)
@@ -304,7 +292,17 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       hasAccount: contactRow.userId != null,
       phone: contactRow.phone,
       notes: contactRow.notes,
-      headshotFileId: parseHeadshotFileId(contactRow.headshotUrl),
+      // DEC-773 amendment (w32-e): headshotFileId is the single home for the
+      // file id, always written together with headshotUrl (profile.ts's
+      // setContactHeadshot, contacts/merge.ts, scripts/seed.ts) -- a non-null
+      // url with a null fk is a violated invariant, not a "no headshot" state.
+      headshotFileId: ((): string | null => {
+        if (contactRow.headshotUrl === null) return null;
+        if (contactRow.headshotFileId === null) {
+          throw new Error(`speaker detail: contact ${contactRow.id} has headshotUrl but no headshotFileId`);
+        }
+        return contactRow.headshotFileId;
+      })(),
     },
     participation: {
       participantId: primary.participantId,
