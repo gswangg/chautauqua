@@ -123,6 +123,11 @@ export function TracksRoomsPanel() {
   // rendered as a list under the failing row instead of the bare message.
   const [trackDeleteBlockers, setTrackDeleteBlockers] = useState<Record<string, Record<string, string>>>({});
   const [roomDeleteBlockers, setRoomDeleteBlockers] = useState<Record<string, Record<string, string>>>({});
+  // w4-e/DEC-815 amendment: the add form is revealed from a tertiary action
+  // on the section head, not shown open-by-default with a filled primary --
+  // one filled primary per view (the footer's Done/Save) is the invariant.
+  const [showAddTrack, setShowAddTrack] = useState(false);
+  const [showAddRoom, setShowAddRoom] = useState(false);
 
   function reload(id: string) {
     apiList<Track>(`/events/${id}/tracks`)
@@ -392,7 +397,16 @@ export function TracksRoomsPanel() {
             ),
           }}
         >
-          <h3 className="chq-section-label">Tracks</h3>
+          <div className="chq-settings-section-head">
+            <h3 className="chq-section-label">Tracks &middot; {tracks.length}</h3>
+            <button
+              type="button"
+              className="chq-settings-section-action chq-link-button"
+              onClick={() => setShowAddTrack((v) => !v)}
+            >
+              Add a track
+            </button>
+          </div>
           <ul className="chq-settings-edit-list">
             {tracks.map((track) => {
               const draft = trackDrafts[track.id] ?? trackBaseline(track);
@@ -518,59 +532,72 @@ export function TracksRoomsPanel() {
               );
             })}
           </ul>
-          {trackAddSummaryProblems.length > 0 ? (
-            <ErrorSummary
-              heading={countHeading(trackAddSummaryProblems.length, 'before this track can be added')}
-              problems={trackAddSummaryProblems}
-            />
-          ) : null}
-          <SettingsField label="New track name" htmlFor="chq-new-track-name" width="name">
-            <input
-              id="chq-new-track-name"
-              className={trackFieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
-              placeholder="New track name"
-              value={newTrack.name}
-              onChange={(e) => setNewTrack({ ...newTrack, name: e.target.value })}
-              aria-invalid={trackFieldErrors.name ? 'true' : undefined}
-              maxLength={MAX_NAME_LENGTH}
-            />
-          </SettingsField>
-          <div className="chq-settings-row">
-            <div id="chq-new-track-color" className="chq-swatch-picker" role="radiogroup" aria-label="Track color">
-              {TRACK_SWATCHES.map((swatch) => (
-                <button
-                  key={swatch.value}
-                  type="button"
-                  role="radio"
-                  className="chq-color-swatch chq-swatch-picker-option"
-                  style={{ background: swatch.value }}
-                  aria-checked={newTrack.color === swatch.value}
-                  aria-label={swatch.label}
-                  onClick={() => setNewTrack({ ...newTrack, color: swatch.value })}
+          {showAddTrack ? (
+            <>
+              {trackAddSummaryProblems.length > 0 ? (
+                <ErrorSummary
+                  heading={countHeading(trackAddSummaryProblems.length, 'before this track can be added')}
+                  problems={trackAddSummaryProblems}
                 />
-              ))}
-            </div>
-            <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addTrack()}>
-              Add track
-            </button>
-            {trackFieldErrors.name ? (
-              <span role="alert" className="chq-field-error">
-                {trackFieldErrors.name}
-              </span>
-            ) : null}
-            {trackFieldErrors.color ? (
-              <span role="alert" className="chq-field-error">
-                {trackFieldErrors.color}
-              </span>
-            ) : null}
-            {trackAddUnowned.map(([key, message]) => (
-              <span key={key} role="alert" className="chq-field-error">
-                {`${key}: ${message}`}
-              </span>
-            ))}
-          </div>
+              ) : null}
+              <SettingsField label="New track name" htmlFor="chq-new-track-name" width="name">
+                <input
+                  id="chq-new-track-name"
+                  className={trackFieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
+                  placeholder="New track name"
+                  value={newTrack.name}
+                  onChange={(e) => setNewTrack({ ...newTrack, name: e.target.value })}
+                  aria-invalid={trackFieldErrors.name ? 'true' : undefined}
+                  maxLength={MAX_NAME_LENGTH}
+                />
+              </SettingsField>
+              <div className="chq-settings-row">
+                <div id="chq-new-track-color" className="chq-swatch-picker" role="radiogroup" aria-label="Track color">
+                  {TRACK_SWATCHES.map((swatch) => (
+                    <button
+                      key={swatch.value}
+                      type="button"
+                      role="radio"
+                      className="chq-color-swatch chq-swatch-picker-option"
+                      style={{ background: swatch.value }}
+                      aria-checked={newTrack.color === swatch.value}
+                      aria-label={swatch.label}
+                      onClick={() => setNewTrack({ ...newTrack, color: swatch.value })}
+                    />
+                  ))}
+                </div>
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void addTrack()}>
+                  Add track
+                </button>
+                {trackFieldErrors.name ? (
+                  <span role="alert" className="chq-field-error">
+                    {trackFieldErrors.name}
+                  </span>
+                ) : null}
+                {trackFieldErrors.color ? (
+                  <span role="alert" className="chq-field-error">
+                    {trackFieldErrors.color}
+                  </span>
+                ) : null}
+                {trackAddUnowned.map(([key, message]) => (
+                  <span key={key} role="alert" className="chq-field-error">
+                    {`${key}: ${message}`}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : null}
 
-          <h3 className="chq-section-label">Rooms</h3>
+          <div className="chq-settings-section-head">
+            <h3 className="chq-section-label">Rooms &middot; {rooms.length}</h3>
+            <button
+              type="button"
+              className="chq-settings-section-action chq-link-button"
+              onClick={() => setShowAddRoom((v) => !v)}
+            >
+              Add a room
+            </button>
+          </div>
           <ul className="chq-settings-edit-list">
             {rooms.map((room) => {
               const draft = roomDrafts[room.id] ?? roomBaseline(room);
@@ -682,55 +709,59 @@ export function TracksRoomsPanel() {
               );
             })}
           </ul>
-          {roomAddSummaryProblems.length > 0 ? (
-            <ErrorSummary
-              heading={countHeading(roomAddSummaryProblems.length, 'before this room can be added')}
-              problems={roomAddSummaryProblems}
-            />
+          {showAddRoom ? (
+            <>
+              {roomAddSummaryProblems.length > 0 ? (
+                <ErrorSummary
+                  heading={countHeading(roomAddSummaryProblems.length, 'before this room can be added')}
+                  problems={roomAddSummaryProblems}
+                />
+              ) : null}
+              <SettingsFieldPair>
+                <SettingsField label="New room name" htmlFor="chq-new-room-name" width="name">
+                  <input
+                    id="chq-new-room-name"
+                    className={roomFieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
+                    placeholder="New room name"
+                    value={newRoom.name}
+                    onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
+                    aria-invalid={roomFieldErrors.name ? 'true' : undefined}
+                    maxLength={MAX_NAME_LENGTH}
+                  />
+                </SettingsField>
+                <SettingsField label="Seats" htmlFor="chq-new-room-capacity" width="seats">
+                  <input
+                    id="chq-new-room-capacity"
+                    className={roomFieldErrors.capacity ? 'chq-input chq-field-invalid' : 'chq-input'}
+                    placeholder="Capacity"
+                    value={newRoom.capacity}
+                    onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
+                    aria-invalid={roomFieldErrors.capacity ? 'true' : undefined}
+                  />
+                </SettingsField>
+              </SettingsFieldPair>
+              <div className="chq-settings-row">
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void addRoom()}>
+                  Add room
+                </button>
+                {roomFieldErrors.name ? (
+                  <span role="alert" className="chq-field-error">
+                    {roomFieldErrors.name}
+                  </span>
+                ) : null}
+                {roomFieldErrors.capacity ? (
+                  <span role="alert" className="chq-field-error">
+                    {roomFieldErrors.capacity}
+                  </span>
+                ) : null}
+                {roomAddUnowned.map(([key, message]) => (
+                  <span key={key} role="alert" className="chq-field-error">
+                    {`${key}: ${message}`}
+                  </span>
+                ))}
+              </div>
+            </>
           ) : null}
-          <SettingsFieldPair>
-            <SettingsField label="New room name" htmlFor="chq-new-room-name" width="name">
-              <input
-                id="chq-new-room-name"
-                className={roomFieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
-                placeholder="New room name"
-                value={newRoom.name}
-                onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
-                aria-invalid={roomFieldErrors.name ? 'true' : undefined}
-                maxLength={MAX_NAME_LENGTH}
-              />
-            </SettingsField>
-            <SettingsField label="Seats" htmlFor="chq-new-room-capacity" width="seats">
-              <input
-                id="chq-new-room-capacity"
-                className={roomFieldErrors.capacity ? 'chq-input chq-field-invalid' : 'chq-input'}
-                placeholder="Capacity"
-                value={newRoom.capacity}
-                onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
-                aria-invalid={roomFieldErrors.capacity ? 'true' : undefined}
-              />
-            </SettingsField>
-          </SettingsFieldPair>
-          <div className="chq-settings-row">
-            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void addRoom()}>
-              Add room
-            </button>
-            {roomFieldErrors.name ? (
-              <span role="alert" className="chq-field-error">
-                {roomFieldErrors.name}
-              </span>
-            ) : null}
-            {roomFieldErrors.capacity ? (
-              <span role="alert" className="chq-field-error">
-                {roomFieldErrors.capacity}
-              </span>
-            ) : null}
-            {roomAddUnowned.map(([key, message]) => (
-              <span key={key} role="alert" className="chq-field-error">
-                {`${key}: ${message}`}
-              </span>
-            ))}
-          </div>
         </SettingsEditForm>
       </SummarySection>
     </>
