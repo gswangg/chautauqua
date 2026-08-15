@@ -10,6 +10,13 @@
  * import the same string instead of hand-copying it. */
 export const TRAVEL_KEY = "travel_logistics";
 
+// DEC-417 amendment (wave 2): a contact's customFields object was bounded
+// per-value (checkLen on each string) but never bounded in KEY COUNT --
+// unbounded keys is an unbounded collection with no cap at all. Owned here
+// (pure core, no node:/cloudflare/drizzle imports) rather than in the route
+// file, since the batch-cap scan forbids the literal there.
+export const MAX_CONTACT_CUSTOM_FIELDS = 40;
+
 /**
  * Formats a contact's customFields as its Labels: one "`key` `value`"
  * string per entry, in stable key order (the order Object.keys returns),
