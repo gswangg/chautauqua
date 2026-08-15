@@ -118,7 +118,7 @@ export function ProgrammeDocument(props: {
       </head>
       <body>
         <main class="chq-prog-main">
-          <h1 class="chq-prog-title">{event.name}</h1>
+          <h1 class="chq-prog-title chq-pub-surface-title">{event.name}</h1>
           <p class="chq-prog-meta">{eventDatesLine(event)}</p>
           {items.length < total ? (
             <p class="chq-prog-note">

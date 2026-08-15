@@ -89,7 +89,7 @@ export function ClosedPage(props: { event: EventRow; form: FormRow }) {
     <PageShell title={`Submissions closed - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
       <div class="chq-cfp-closed chq-bare-page">
         <span class="chq-cfp-meta">{props.event.name}</span>
-        <h1>The call for papers has closed</h1>
+        <h1 class="chq-pub-surface-title">The call for papers has closed</h1>
         <p role="alert" class="chq-cfp-closed-body">
           Submissions for this event closed on{" "}
           {formatEventDateTime(
@@ -114,7 +114,7 @@ export function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
     <PageShell title={`Submissions not yet open - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
       <div class="chq-cfp-closed chq-bare-page">
         <span class="chq-cfp-meta">{props.event.name}</span>
-        <h1>Submissions aren't open yet</h1>
+        <h1 class="chq-pub-surface-title">Submissions aren't open yet</h1>
         <p role="alert" class="chq-cfp-closed-body">
           Submissions open{" "}
           {formatEventDateTime(
@@ -501,7 +501,7 @@ export function SubmitPage(props: {
           {/* DEC-986 (wave 40 amendment): a separate, literal <h1> sits above
               the form inside the reading column -- the header above no
               longer carries an <h1> of its own. */}
-          <h1>Submit a talk</h1>
+          <h1 class="chq-pub-surface-title">Submit a talk</h1>
           {/* w5-c (frame 10--14): the lede returns to the "no account
               needed" family -- describes the CFP itself (offered tracks/
               formats, no signup step) rather than duplicating the
@@ -693,7 +693,7 @@ export function ConfirmationPage(props: {
     <PageShell title={`Submission received - ${props.event.name}`}>
       <div class="chq-cfp-confirm">
         <span class="chq-cfp-confirm-flag">SUBMITTED &middot; {props.ref}</span>
-        <h1>{props.emailDelivered ? "That's in. Check your email." : "That's in. We couldn't send your confirmation email."}</h1>
+        <h1 class="chq-pub-surface-title">{props.emailDelivered ? "That's in. Check your email." : "That's in. We couldn't send your confirmation email."}</h1>
         <p class="chq-cfp-confirm-body">
           {props.form.closeDate
             ? `You can edit this until ${formatEventDateTime(dayLabelEndInstant(props.form.closeDate, props.event.timezone), props.event.timezone)}.`

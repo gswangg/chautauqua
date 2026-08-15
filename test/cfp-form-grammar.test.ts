@@ -121,7 +121,9 @@ describe("GET /submit/:eventSlug form grammar (DEC-951)", () => {
     // "Submit a talk" heading above the form, inside the reading column.
     const h1Matches = body.match(/<h1[\s>]/g) ?? [];
     expect(h1Matches.length).toBe(1);
-    expect(body).toContain("<h1>Submit a talk</h1>");
+    // task-w49-h (DEC-990 amendment): this h1 now carries the shared
+    // .chq-pub-surface-title page-title register class.
+    expect(body).toContain('<h1 class="chq-pub-surface-title">Submit a talk</h1>');
     expect(body).toContain(`<span class="chq-cfp-title">${EVENT_ROW.name}</span>`);
     expect(body).toContain("Already have an account?");
 
