@@ -178,7 +178,7 @@ describe('OverviewPage render smoke (DEC-370)', () => {
 
     expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument();
     expect(screen.getByText('Taming 40-Minute CI')).toBeInTheDocument();
-    expect(screen.getByText('5 things need your attention')).toBeInTheDocument();
+    expect(screen.getByText('Five things need your attention')).toBeInTheDocument();
     expect(screen.getByText('Review')).toBeInTheDocument();
     expect(screen.getByText('Comms')).toBeInTheDocument();
 

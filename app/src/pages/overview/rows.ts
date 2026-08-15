@@ -59,9 +59,23 @@ export function headlineCount(payload: OverviewPayload): number {
   );
 }
 
+/** Capitalizes the first letter of a word — no second word list, just a
+ * sentence-case transform for spellSmallNumber's output. */
+export function capitalizeFirst(word: string): string {
+  if (word.length === 0) return word;
+  return word[0]!.toUpperCase() + word.slice(1);
+}
+
 export function headlineText(payload: OverviewPayload): string {
   const count = headlineCount(payload);
-  return `${count} ${pluralize(count, 'thing')} need${count === 1 ? 's' : ''} your attention`;
+  const verb = `need${count === 1 ? 's' : ''}`;
+  // DEC-370 amendment (wave 51): the headline spells counts 1-10 out
+  // ("One thing…", "Four things…"), sentence-capitalized, matching the
+  // frame's copy voice — the fresh-event 0 case is owned by a different
+  // screen block and stays a bare numeral; counts above ten keep the
+  // numeral too (spellSmallNumber's own documented fallback).
+  const countText = count === 0 ? String(count) : capitalizeFirst(spellSmallNumber(count));
+  return `${countText} ${pluralize(count, 'thing')} ${verb} your attention`;
 }
 
 export interface DeadlineCell {
