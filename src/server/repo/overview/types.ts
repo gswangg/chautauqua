@@ -119,8 +119,8 @@ export interface UnplacedRow {
   ref: string;
   title: string;
   speakerName: string;
-  // DEC-895: the submission's own SESSION_FORMAT_FIELD_ID answer (null when
-  // absent) — carried through so the client never re-derives durationMin
+  // DEC-895: the submission's own role-tagged session_format answer (null
+  // when absent) — carried through so the client never re-derives durationMin
   // itself; the client only renders it.
   format: string | null;
   // DEC-772/DEC-895: parseFormatDurationMin(format) — null whenever the

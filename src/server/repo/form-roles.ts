@@ -1,9 +1,9 @@
-// DEC-592 amendment (wave 10, task w10-a): role-keyed resolution of the two
-// well-known CFP fields (session_format, audience_level) via the form_field.
-// role column (migrations/0038_form_field_role.sql), as an alternative to
-// the global-PK literal ids (SESSION_FORMAT_FIELD_ID / AUDIENCE_LEVEL_
-// FIELD_ID in src/forms/types.ts). Those literals still stand this wave --
-// no read site is converted here (task w10-b owns that).
+// DEC-592/DEC-755: the ONE role-keyed resolver every read site uses for the
+// two well-known CFP fields (session_format, audience_level), via the
+// form_field.role column (migrations/0038_form_field_role.sql). Replaces the
+// retired global-PK literal ids that used to be hardcoded in src/forms/types.ts
+// -- role is the sole matcher now, everywhere a caller needs the event's
+// format or audience-level field.
 
 import { and, eq, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../context";

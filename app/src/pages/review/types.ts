@@ -213,12 +213,14 @@ export interface ReviewerQueueItem {
   // DEC-831: this reviewer's own blended score for the plan's current round
   // (computeWeightedScore over their recorded scores), null when unscored.
   myScore: number | null;
-  // DEC-857: the submission's SESSION_FORMAT_FIELD_ID answer label, verbatim
-  // (already carries its own '(N min)' suffix). Null when unanswered. A
-  // session-shape fact, not identity -- present even on an anonymized plan.
+  // DEC-857: the submission's role-tagged session_format answer label,
+  // verbatim (already carries its own '(N min)' suffix). Null when
+  // unanswered. A session-shape fact, not identity -- present even on an
+  // anonymized plan.
   format: string | null;
   // DEC-874/DEC-986: an audience-level answer, when the submission's CFP
-  // form has one (AUDIENCE_LEVEL_FIELD_ID, src/forms/types.ts) and the
+  // form has a field with role 'audience_level' (src/forms/types.ts,
+  // resolved via src/server/repo/form-roles.ts) and the
   // submission answered it. Null (not absent) when there's no such answer,
   // mirroring `format`'s convention -- the wire now always includes the
   // key. A session-shape fact, never stripped for an anonymized plan.

@@ -1,7 +1,7 @@
 // EMB-01/EMB-08 (DEC-592, DEC-579): Format must render on every public
 // session surface — the sessions-list card, the session detail drill-in,
 // the agenda item, and the JSON twin of the sessions feed — hydrated from
-// submission_answer for the SESSION_FORMAT_FIELD_ID field. A null format
+// submission_answer for the role-tagged session_format field. A null format
 // (no such field on this event's form, or no answer given) must render
 // NOTHING: never a labelled blank chip/row. Fake-db-chain harness mirrors
 // the established pattern in test/public.test.ts (no local sqlite/D1 test

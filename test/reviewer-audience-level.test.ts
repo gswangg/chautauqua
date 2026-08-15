@@ -1,5 +1,5 @@
-// DEC-857 (task w7-b): audience level, wired the same way SESSION_FORMAT_FIELD_ID
-// already was -- listAudienceLevelLabelsBySubmission is the exact twin of
+// DEC-857 (task w7-b): audience level, wired the same way the role-tagged
+// session_format field already was -- listAudienceLevelLabelsBySubmission is the exact twin of
 // listFormatLabelsBySubmission (same chunkIds batching, ONE query per chunk),
 // and both the reviewer queue and the submission-detail route carry the
 // stored answer LABEL verbatim, null when a submission has no answer, and
@@ -28,7 +28,7 @@ describe("listAudienceLevelLabelsBySubmission (DEC-857)", () => {
     expect(map.size).toBe(0);
   });
 
-  it("issues ONE query per chunkIds batch, filters to AUDIENCE_LEVEL_FIELD_ID, and returns the label verbatim; absent submissions map to null", async () => {
+  it("issues ONE query per chunkIds batch, filters to the audience_level-role field, and returns the label verbatim; absent submissions map to null", async () => {
     // 91 ids forces exactly two chunkIds batches (90 + 1) -- the batching
     // must be observed, not just the per-row parsing.
     const ids = Array.from({ length: 91 }, (_, i) => `sub-${i}`);
