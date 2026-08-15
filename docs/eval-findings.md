@@ -243,21 +243,64 @@ found" is itself a citation.
   `test/public-speakers-filter-bar.render.test.ts`. Do not re-file; do not
   touch `app/src/pages/speakers/**` on this basis.
 - `src/routes/tasks.ts` onboarding-grid status refuses unrecognised tokens
-  — `src/routes/tasks.ts:164-209` (DEC-340 wave-18 amendment).
-  UNFALSIFIABLE — owner: wave-38 lane (code-shape citation only, no test
-  file named).
+  — `src/routes/tasks.ts:164-213` (DEC-340 wave-18 amendment).
+  FALSIFYING CHECK (wave-39, DEC-358): `test/onboarding-grid-query.test.ts` —
+  opened and confirmed it exercises `parseOnboardingGridQuery` directly
+  (not the route), asserting (a) a lone unrecognised `status` throws
+  `ApiError('invalid')` with `fields.status` set, (b) a lone unrecognised
+  `overdueOnly` token throws the same shape, and (c) `status: "bogus"` +
+  `inviteStatus: "nope"` together throw ONE `ApiError` whose `fields` names
+  BOTH `status` AND `inviteStatus` — i.e. the accumulate-both-bad-tokens
+  shape at `:208-210` is covered, not just the single-bad-token case.
+  Reverting the accumulate-then-throw block to a first-bad-token-wins throw
+  would fail the two-bad-tokens assertion.
 - `countEvaluationsBySubmission` caps `MAX_PLAN_SUBMISSION_SCAN + 1` —
-  `src/server/repo/review/evaluations.ts:158-200`. UNFALSIFIABLE — owner:
-  wave-38 lane.
+  `src/server/repo/review/evaluations.ts`. FALSIFYING CHECK (wave-39,
+  DEC-358): `test/review-repo-aggregates.test.ts`'s
+  "refuses past MAX_PLAN_SUBMISSION_SCAN distinct submissions, in submission
+  vocabulary" — builds `MAX_PLAN_SUBMISSION_SCAN + 1` distinct-submission
+  fixture rows through a fake db that recovers and applies the repo
+  function's actual drizzle `where` bindings, then asserts the call rejects
+  with an `ApiError` whose message contains
+  `"more than {cap} submissions"`. Reverting the cap check would resolve
+  instead of reject.
 - `isSubmissionInReviewerScope` shares `resolveReviewerSubmissions`'s cap —
-  `src/server/repo/review/submissions.ts:396-407` vs `:241-252`.
-  UNFALSIFIABLE — owner: wave-38 lane.
+  `src/server/repo/review/submissions.ts:396-407` vs `:241-252`. This claim
+  was FALSE AS AN "already covered" claim: every existing call site that
+  imports `isSubmissionInReviewerScope` (`review-idor.test.ts`,
+  `admin-list-bounds-review.test.ts`, `eval-scorecard-caps.test.ts`, and
+  others) mocks the function rather than exercising its real cap-refusal —
+  a revert of the `:401-407` cap check would have passed every test in the
+  tree silently before this wave. WRITTEN this wave:
+  `test/tier0-falsifiability.test.ts` — asserts, against the real function
+  and the real `MAX_REVIEWER_SCOPE_ROWS` constant, that (a) a plan_reviewer
+  read of `MAX_REVIEWER_SCOPE_ROWS + 1` rows rejects with an `ApiError`
+  naming the cap, (b) exactly-at-cap resolves without throwing. Observable
+  behavior only (thrown error + message), never query shape/call order, per
+  this wave's co-ownership note with task-w39-d/e.
 - `clearSessionCookie` appends `Secure` like `buildSessionCookie` —
-  `src/auth/cookies.ts:31-42` vs `:26-28`. UNFALSIFIABLE — owner: wave-38
-  lane.
+  `src/auth/cookies.ts:32-44` vs `:18-30`. FALSIFYING CHECK (wave-39,
+  DEC-358): `test/cookie-flags.test.ts`'s `clearSessionCookie` describe
+  block — asserts (a) `secure:false` omits `Secure` entirely, (b)
+  `secure:true` appends `; Secure` as the last attribute, and (c) a direct
+  attribute-name-order comparison against `buildSessionCookie({secure:true})`
+  (minus the token/Max-Age value) so the two builders' Secure-placement
+  can't silently drift apart. Reverting either builder to unconditionally
+  omit/include `Secure` fails (a)/(b); reordering one relative to the other
+  fails (c).
 - Public sessions LIST hydrates speakers via `visibleParticipantConditions()`
-  — `src/server/repo/public/sessions.ts:405-417`. UNFALSIFIABLE — owner:
-  wave-38 lane.
+  — `src/server/repo/public/sessions.ts:405-417`. FALSIFYING CHECK (wave-39,
+  DEC-358): `test/public-invite-visibility.test.ts`'s "the hydrateSessions
+  speaker-hydration query gates on visibleParticipantConditions()" — slices
+  `hydrateSessions`'s body around its `schema.participant.submissionId,
+  batch` call site and asserts the literal `visibleParticipantConditions()`
+  call appears in that slice (not merely present anywhere in the file).
+  Removing the call from that query's `.where(...)` (even while leaving the
+  function/import elsewhere) fails this. Weaker than a runtime probe, but
+  pinned to the actual call site, so a revert of THIS behavior (not just
+  deletion of the function) is caught; `test/participant-invite-audience.scan.test.ts`'s
+  scan-lock backs this further (a marker-less rewrite of the query fails
+  that scan too), cited as supporting, not primary.
 - `isSlugTaken` has no `orgId` predicate, DELIBERATE (`/e/:slug` global
   namespace) — `src/server/repo/events.ts:141-147`. DELIBERATE-BY-DESIGN,
   not a defect; falsifiability n/a.
@@ -285,10 +328,26 @@ found" is itself a citation.
   Comms phone landing — `app/src/phone-block-visibility.test.ts:109-121`
   (DEC-621). Home footer media rule —
   `src/routes/public/home.css.ts:72-76`. This whole block:
-  UNFALSIFIABLE — owner: wave-38 lane (batch of code-shape citations, no
+  UNFALSIFIABLE — owner: wave-40 lane (batch of code-shape citations, no
   per-item exercised check named; several already have adjacent test files
   cited inline — e.g. `app/src/phone-block-visibility.test.ts` — those
   sub-items are exempt from the UNFALSIFIABLE label, the rest are not).
+  Wave-39 (DEC-358) spot-checked and PULLED TWO items out of this batch as
+  genuinely discharged, cheapest-first, in the time available; the rest of
+  the batch is untouched and still needs the same per-item treatment:
+  - **Accepted speakers keep editing past close** (`src/domain/edit-lock.ts:22`,
+    DEC-041) — FALSIFYING CHECK: `test/edit-lock.test.ts` — opened and
+    confirmed it directly asserts `canEditSubmission("accepted", PAST_CLOSE,
+    NOW, LA)` is `true` (labelled "DEC-041 amendment, wave 6") while the
+    sibling `"pending" + closed` case is `false` — the accepted-stays-open
+    carve-out is exercised against its own negative control, not just
+    asserted in isolation.
+  - **Pipeline fit score + rationale** (`src/domain/pipeline-fit.ts`) —
+    FALSIFYING CHECK: `test/pipeline-fit.test.ts` — opened and confirmed
+    `sortByFit` (descending by score, null/unrated last, non-mutating) and
+    `validateFitScore`/`validateRationale` (integer 1-5 or null; bounded
+    text or null; throw a named `ApiError` field rather than coerce) are
+    each exercised directly against the real functions, not a shape guess.
 - **DEC-099 wave-35 Vary: Cookie population + fix** — `task-w35-c`
   (`beb58e29` at filing, MERGED as of this wave — `3a041507` on `main`'s
   first-parent line per `task-w36-a`/`task-w36-b`/`task-w36-c`/`task-w36-e`'s
@@ -342,9 +401,10 @@ MERGED; `task-w17-b` perf-seed/perf-smoke harness bugs MERGED (`956fe263`);
 files-library table-layout, templates Delete, ENVELOPE_ALLOWLIST) all
 MERGED between `956fe263` and `39ac22d0`; `task-w23-f` MERGED via
 `f519f562` (DEC-902 column contract + DEC-937 review phone label). This
-whole block: UNFALSIFIABLE — owner: wave-38 lane, except items that already
-cite a test file inline (e.g. `test/audit-claims.test.ts`-adjacent items
-elsewhere in this doc).
+whole block: UNFALSIFIABLE — owner: wave-40 lane (not touched this wave;
+time went to the higher-priority named rows above), except items that
+already cite a test file inline (e.g. `test/audit-claims.test.ts`-adjacent
+items elsewhere in this doc).
 
 ### Verification-log walkthrough items (docs/verification-log.md:3468-3478) — all FOUR fixed, harness-side
 
@@ -365,10 +425,39 @@ fixes are live-exercised, not merely present in source.
 
 - `/portal/tasks` measure fix — `src/routes/portal/portal.css.ts:417-430`
   (`min-width: 0` on `.chq-measure`, DEC-253 wave-25 amendment).
-  UNFALSIFIABLE — owner: wave-38 lane (no named gate row cited).
+  DISCHARGED this wave (DEC-358): re-read the gate this task was asked to
+  weigh, `scripts/render-sweep.ts`/`scripts/render-sweep-lib.ts`'s DEC-253
+  mobile pass. `/portal/tasks` IS one of the entries in the BLOCKING
+  `MOBILE_ROUTE_MANIFEST` (`scripts/render-sweep.ts:160`), and
+  `evaluateMobileRoute` (`scripts/render-sweep-lib.ts:265-286`) fails the
+  route on ANY page-level horizontal overflow
+  (`document.scrollingElement.scrollWidth` / `maxElementRight` vs
+  `window.innerWidth`, 1px slack). This IS a genuine falsifying check for
+  THIS row specifically (not just a generic assertion of no relation): a
+  reverted `min-width: 0` on `.chq-measure` is exactly the kind of
+  unconstrained-flex-child overflow this assertion exists to catch on a
+  narrow (390px) viewport, and the row is in the manifest that actually
+  blocks the gate. Caveat: this reasons from the assertion's shape and the
+  manifest membership, not from an actual booted-server run (out of scope
+  for a docs-only task with no server to boot) — a wave-40 owner should take
+  one real `npm run gate:render-sweep` reading to make this a runtime
+  reading rather than a code-read.
 - `/admin/submissions` filterbar 44px floor —
   `app/src/pages/submissions/submissions.css:557-564` (DEC-253/DEC-367).
-  UNFALSIFIABLE — owner: wave-38 lane.
+  CORRECTION (DEC-358 wave-39): the delegating task description characterized
+  the render-sweep mobile-pass floor as 40px — that's WRONG as re-read this
+  wave. `scripts/render-sweep-lib.ts:258` defines
+  `MIN_TAP_TARGET_PX = 44` exactly (comment at `:264` cites DEC-393), and
+  `evaluateMobileRoute` (`:280-286`) fails any route whose
+  `minControlHeight < MIN_TAP_TARGET_PX`. `/admin/submissions` (role
+  `organizer`) is a member of `ADMIN_MOBILE_ROUTE_MANIFEST`
+  (`scripts/render-sweep.ts:191-193`, filtered from `ROUTE_MANIFEST` by
+  role), and `ADMIN_MOBILE_PASS_BLOCKING = true`
+  (`scripts/render-sweep-lib.ts:387`) — this pass blocks the gate, it is not
+  advisory. So the 44px claim is NOT rounded up from 40px — the gate's own
+  constant is 44px, matching the row's claim exactly. DISCHARGED on the same
+  code-read basis and same caveat as the `/portal/tasks` row above (no
+  booted-server reading taken this task; a wave-40 owner should take one).
 
 ## IN FLIGHT — owned by a branch, do not re-file
 
