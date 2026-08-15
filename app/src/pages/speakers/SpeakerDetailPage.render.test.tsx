@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SpeakerDetailPage } from './SpeakerDetailPage';
@@ -118,19 +118,30 @@ describe('SpeakerDetailPage render smoke', () => {
 
     // Deliverable named by its own filename in the Files section -- never
     // the word 'File' -- with a separate Download action beside it.
+    // DEC-930 wave-22 amendment: this anchor also carries role="cell" (it's
+    // the row's last table cell), which overrides its implicit link role.
     expect(screen.getByText('slides-final.pdf')).toBeInTheDocument();
-    const fileLink = screen.getAllByRole('link', { name: 'Download' }).find((a) => a.getAttribute('href') === '/files/file-1');
+    const fileLink = screen.getAllByRole('cell', { name: 'Download' }).find((a) => a.getAttribute('href') === '/files/file-1');
     expect(fileLink).toBeDefined();
 
     // Session row links to /admin/submissions/:submissionId (basename-free
     // in this render, since SpeakerDetailPage is rendered without App's
-    // <BrowserRouter basename="/admin">).
-    const sessionLink = screen.getByRole('link', { name: /Analytical Engines/ });
+    // <BrowserRouter basename="/admin">). It too carries role="cell".
+    const sessionLink = screen.getByRole('cell', { name: /Analytical Engines/ });
     expect(sessionLink).toHaveAttribute('href', '/submissions/sub-1');
 
     // Counts printed on the page agree with the payload's own arrays.
     expect(screen.getByText('Sessions · 1')).toBeInTheDocument();
     expect(screen.getByText('Tasks · 2 · 1 outstanding · 0 overdue')).toBeInTheDocument();
+
+    // DEC-930 wave-22 amendment: the row grids under Sessions/Tasks/Files
+    // carry table semantics -- role=table wrapper, one role=row per record.
+    const sessionsTable = screen.getByRole('table', { name: 'Sessions' });
+    expect(within(sessionsTable).getAllByRole('row')).toHaveLength(1);
+    const tasksTable = screen.getByRole('table', { name: 'Tasks' });
+    expect(within(tasksTable).getAllByRole('row')).toHaveLength(2);
+    const filesTable = screen.getByRole('table', { name: 'Files' });
+    expect(within(filesTable).getAllByRole('row')).toHaveLength(1);
 
     // Page root carries chq-measure-table (two-plus scanned tables), never
     // the plain chq-measure reading-page class.
@@ -338,6 +349,9 @@ describe('SpeakerDetailPage render smoke', () => {
 
     expect(screen.getByRole('button', { name: 'Remind Ada' })).toBeInTheDocument();
     // Only the pending row's link renders -- the completed row's does not.
-    expect(screen.getAllByRole('button', { name: 'Remind this task' })).toHaveLength(1);
+    // DEC-930 wave-22 amendment: this per-row control also carries
+    // role="cell" (it's the row's last table cell), which overrides its
+    // implicit button role for the accessibility tree -- query by cell.
+    expect(screen.getAllByRole('cell', { name: 'Remind this task' })).toHaveLength(1);
   });
 });
