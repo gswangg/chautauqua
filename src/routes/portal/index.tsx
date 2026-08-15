@@ -555,21 +555,26 @@ portalRoutes.get("/submissions/:id", async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
   const id = c.req.param("id");
-  const detail = await getPortalSubmissionDetail(c.var.db, id, contactId, auth.orgId);
+  // DEC-777/DEC-338 (wave 33): every read below carries contactId AND
+  // auth.orgId in its own arguments, so none can return another speaker's
+  // row at any ordering — they issue as one caller-scoped wave. The
+  // getPortalParticipants read below is scoped by the path id ALONE and
+  // must therefore stay behind the ownership proof (`detail` truthy).
+  const [detail, data, editData, myTaskAssignments, deliverable] = await Promise.all([
+    getPortalSubmissionDetail(c.var.db, id, contactId, auth.orgId),
+    getPortalData(c.var.db, contactId, auth.orgId),
+    loadEditableSubmission(c.var.db, auth.orgId, contactId, id),
+    getMyTaskAssignments(c.var.db, contactId, auth.orgId),
+    getLatestDeliverable(c.var.db, contactId, auth.orgId, id),
+  ]);
   if (!detail) {
     return c.text("Not found", 404);
   }
-  // Re-derive branding for the header; cheap relative to the round trip
-  // already spent on the detail query, and keeps this handler thin.
-  const data = await getPortalData(c.var.db, contactId, auth.orgId);
   // DEC-041: the edit link only shows when the submission is still
   // editable (accepted, or the form window is open).
-  const editData = await loadEditableSubmission(c.var.db, auth.orgId, contactId, id);
   const editable = editData
     ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now(), editData.form.timezone)
     : false;
-  const deliverable = await getLatestDeliverable(c.var.db, contactId, auth.orgId, id);
-  const deliverableVersion = deliverable ? await getFileVersionNumber(c.var.db, deliverable.id) : null;
   // DEC-777: the Slides card only ever links to an upload page that exists
   // — resolve the speaker's own file_request task assignments (any event)
   // and find one whose upload could carry THIS submission, never a button
@@ -578,20 +583,24 @@ portalRoutes.get("/submissions/:id", async (c) => {
   // task matches when this submission is among the caller's own deliverable
   // candidates in that task's event (with several candidates the upload page
   // asks which one; with exactly one it is this one).
-  const myTaskAssignments = await getMyTaskAssignments(c.var.db, contactId, auth.orgId);
   const fileRequestCandidates = myTaskAssignments.filter((t) => t.kind === "file_request");
-  const candidatesByEvent = await listDeliverableCandidatesForEvents(
-    c.var.db,
-    contactId,
-    fileRequestCandidates.map((t) => t.eventId),
-  );
+  // DEC-777 (wave 4 amendment): the SAME getPortalParticipants read
+  // edit.tsx uses — one call, never a second query shape or a
+  // per-participant query — with the viewer's own row excluded. Gated
+  // behind the `detail` ownership proof above, so it only ever runs once
+  // the caller is confirmed to own this submission.
+  const [participants, deliverableVersion, candidatesByEvent] = await Promise.all([
+    getPortalParticipants(c.var.db, id),
+    deliverable ? getFileVersionNumber(c.var.db, deliverable.id) : null,
+    listDeliverableCandidatesForEvents(
+      c.var.db,
+      contactId,
+      fileRequestCandidates.map((t) => t.eventId),
+    ),
+  ]);
   const fileRequestTask =
     fileRequestCandidates.find((t) => (candidatesByEvent.get(t.eventId) ?? []).some((cand) => cand.id === id)) ??
     null;
-  // DEC-777 (wave 4 amendment): the SAME getPortalParticipants read
-  // edit.tsx uses — one call, never a second query shape or a
-  // per-participant query — with the viewer's own row excluded.
-  const participants = await getPortalParticipants(c.var.db, id);
   const coPresenters = participants.filter((p) => p.contactId !== contactId);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });

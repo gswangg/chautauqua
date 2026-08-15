@@ -96,6 +96,30 @@ vi.mock("../src/server/repo/portal", async () => {
     getResourceDownloadScope: vi.fn(async (_db: unknown, _resourceId: string, contactId: string) =>
       contactId === OWNER_CONTACT ? { r2Key: "k", contentType: "application/pdf", filename: "f.pdf" } : null,
     ),
+    // DEC-338 (wave 33): GET /portal/submissions/:id now issues these three
+    // reads in the SAME Promise.all wave as getPortalSubmissionDetail (all
+    // four carry the caller's own contactId+orgId, so none can leak another
+    // speaker's row regardless of ordering) -- they fire even for a
+    // wrong-owner request, before the `detail` ownership check. Stubbed here
+    // so that still-legitimate wave-1 fan-out never reaches this probe's
+    // throwing db proxy; the probe's actual assertion (no participants read,
+    // 404 status) is unaffected.
+    getPortalData: vi.fn(async () => ({
+      branding: {
+        eventId: null,
+        eventName: "Speaker Portal",
+        welcomeMessage: null,
+        accentColor: null,
+        logoUrl: null,
+        showResources: true,
+      },
+      submissions: [],
+      tasks: [],
+      contactName: "",
+      contactCompany: null,
+    })),
+    getMyTaskAssignments: vi.fn(async () => []),
+    getLatestDeliverable: vi.fn(async () => null),
   };
 });
 
