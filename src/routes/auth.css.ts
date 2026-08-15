@@ -86,14 +86,8 @@ export const AUTH_CSS = `
   .chq-auth-card-notice .chq-auth-body { margin-bottom: 26px; }
 
   .chq-auth-titlerow { display: flex; flex-direction: column; gap: 10px; }
-  /* wave-6 (11-account gate-4): /account/password's h1 -> "CURRENT
-     PASSWORD" gap inherits the card's uniform 26px gap, measuring 29.0
-     against the frame's 20.5. Scoped to a titlerow immediately followed by
-     the fields form (only /account/password's PasswordPage shape -- the
-     404 notice card and the expired-claim card both put a <p> next, never
-     a form) so login's own titlerow-free header and the notice card's own
-     margin-bottom:19px override are both untouched. */
-  .chq-auth-titlerow:has(+ .chq-auth-fields) { margin-bottom: -8.5px; }
+  /* DEC-369 amendment (wave 22): the fitted -8.5px override chased a gate-4
+     render measurement now superseded; the card's shared 26px gap governs. */
   .chq-auth-back {
     font-size: 13px;
     font-weight: 700;
@@ -215,12 +209,9 @@ export const AUTH_CSS = `
     gap: 14px;
     border-top: 1px solid var(--chq-rule);
     padding-top: 18px;
-    /* wave-6: last-input bottom -> divider measured 14.0 (the .chq-auth-
-       fields flex gap alone) against the frame's 20.5 -- .chq-auth-actions
-       is the LAST child inside the .chq-auth-fields form (/account/password
-       only), so this margin-top adds the remaining 6.5px without touching
-       the 14px pitch between the password fields themselves. */
-    margin-top: 6.5px;
+    /* DEC-369 amendment (wave 22): the fitted 6.5px chased a gate-4 render
+       measurement now superseded; rounded to the nearest integer. */
+    margin-top: 6px;
   }
   .chq-auth-hint { font-size: 13px; color: var(--chq-muted); }
   .chq-auth-cancel { display: none; }

@@ -680,18 +680,18 @@ describe('overview top-third spacing measure (Gate-4 wave-6 amendment)', () => {
     expect(ruleBody('.chq-overview-section-header')).toMatch(/padding-bottom:\s*3px/);
   });
 
-  it('§01 row pitch: the overdue row overrides the shared padding to 11.5px, leaving other row shapes untouched', () => {
-    expect(ruleBody('.chq-overview-row-overdue')).toMatch(/padding:\s*11.5px 0/);
+  it('§01 row pitch (DEC-369 amendment, docs/design/Chautauqua Overview.dc.html:79): the overdue row padding matches the shared row padding at 16px', () => {
+    expect(ruleBody('.chq-overview-row-overdue')).toMatch(/padding:\s*16px 0/);
     expect(ruleBody('.chq-overview-row')).toMatch(/padding:\s*16px 0/);
   });
 
-  it('toolbar buttons: vertical padding is 4.2px (secondary) / 5.2px (primary), horizontal padding unchanged', () => {
-    expect(ruleBody('.chq-overview-toolbar-btn')).toMatch(/padding:\s*4.2px 16px/);
-    expect(ruleBody('.chq-overview-toolbar-btn-primary')).toMatch(/padding:\s*5.2px 16px/);
+  it('toolbar buttons (DEC-369 amendment): vertical padding is 9px (secondary) / 10px (primary), horizontal padding unchanged', () => {
+    expect(ruleBody('.chq-overview-toolbar-btn')).toMatch(/padding:\s*9px 16px/);
+    expect(ruleBody('.chq-overview-toolbar-btn-primary')).toMatch(/padding:\s*10px 16px/);
   });
 
-  it('"No action needed" quiet-row pitch: vertical padding is 8.6px, the shared value column grid is untouched', () => {
-    expect(ruleBody('.chq-overview-row-quiet')).toMatch(/padding:\s*8.6px 0/);
-    expect(ruleBody('.chq-overview-row-quiet')).toMatch(/grid-template-columns:\s*220.5px 1fr/);
+  it('"No action needed" quiet-row pitch (DEC-369 amendment, docs/design/Chautauqua Overview.dc.html:172): vertical padding is 14px, value column grid is 200px 1fr', () => {
+    expect(ruleBody('.chq-overview-row-quiet')).toMatch(/padding:\s*14px 0/);
+    expect(ruleBody('.chq-overview-row-quiet')).toMatch(/grid-template-columns:\s*200px 1fr/);
   });
 });

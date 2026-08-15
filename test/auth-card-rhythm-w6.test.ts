@@ -61,18 +61,17 @@ describe("auth card rhythm (DEC-945 wave-6 amendment)", () => {
     expect(rule).toMatch(/margin-bottom:\s*-13px/);
   });
 
-  it("a titlerow immediately followed by the fields form tightens its own gap without touching the notice card's", () => {
-    const rule = extractRule(AUTH_CSS, ".chq-auth-titlerow:has(+ .chq-auth-fields)");
-    expect(rule).toMatch(/margin-bottom:\s*-8\.5px/);
+  it("DEC-369 amendment (wave 22): the titlerow->fields override is gone, the card's shared 26px gap governs", () => {
+    expect(AUTH_CSS).not.toMatch(/\.chq-auth-titlerow:has\(\+ \.chq-auth-fields\)/);
 
     // the 404 notice card's own override is untouched.
     const noticeRule = extractRule(AUTH_CSS, ".chq-auth-card-notice .chq-auth-titlerow");
     expect(noticeRule).toMatch(/margin-bottom:\s*19px/);
   });
 
-  it(".chq-auth-actions adds the remaining gap to its divider without moving the field pitch", () => {
+  it(".chq-auth-actions adds the remaining gap to its divider without moving the field pitch (DEC-369 amendment: 6.5px rounded to 6px)", () => {
     const rule = extractRule(AUTH_CSS, ".chq-auth-actions");
-    expect(rule).toMatch(/margin-top:\s*6\.5px/);
+    expect(rule).toMatch(/margin-top:\s*6px/);
     expect(rule).toMatch(/gap:\s*14px/); // its own internal button/hint gap, unrelated to the field pitch above
   });
 });

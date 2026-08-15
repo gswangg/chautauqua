@@ -44,12 +44,10 @@
   padding-bottom: 9px;
 }
 
-/* DEC-021 amendment (w6-f): the gap from the title's own ink to the
-   summary's ink is 15.5px (title ends 147, summary starts 162.5) — the
-   flex row's 24px item gap plus this rule's own margin needed to net down
-   to that, not add on top of it. */
+/* DEC-369 amendment (wave 22): the fitted -8.5px margin-left chased a
+   gate-4 render measurement now superseded; the flex row's own gap governs
+   the title<->summary spacing. */
 .chq-agenda-summary {
-  margin-left: -8.5px;
   white-space: nowrap;
 }
 
@@ -93,17 +91,9 @@
   border-bottom: 1px solid var(--chq-hairline);
 }
 
-/* DEC-021 amendment (w6-f): the day pills grow from 26px to 29px and their
-   own inter-pill gap from 8px to 11.5px — scoped to this row (it doubles as
-   .chq-chipstrip, shared sitewide) so no other chip strip's spacing moves. */
-.chq-agenda-day-tabs.chq-chipstrip {
-  gap: 11.5px;
-}
-
-.chq-agenda-day-tabs .chq-pill {
-  padding-top: 6.5px;
-  padding-bottom: 6.5px;
-}
+/* DEC-369 amendment (wave 22): the fitted 11.5px gap override and 6.5px
+   pill padding override chased gate-4 render measurements now superseded;
+   the shared .chq-chipstrip gap and .chq-pill padding govern this row. */
 
 .chq-agenda-clash-note {
   margin-left: auto;
@@ -436,10 +426,11 @@
 .chq-day-grid-clash-card {
   align-self: stretch;
   justify-self: start;
-  /* DEC-021 amendment (w6-f): matches .chq-day-grid-placed-card's own
-     ~3.5px inset inside the column divider instead of sitting flush on it. */
-  width: calc(100% - 3.5px);
-  margin-left: 3.5px;
+  /* DEC-369 amendment (wave 22): the fitted -3.5px inset chased a gate-4
+     render measurement now superseded; .chq-day-grid-placed-card declares
+     no inset of its own (width: 100%, no margin-left), so this card matches
+     it exactly. */
+  width: 100%;
   background: var(--chq-ink);
   border: 1px solid var(--chq-ink);
   border-radius: var(--chq-r-ctl);
