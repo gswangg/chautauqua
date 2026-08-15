@@ -178,8 +178,39 @@
 
 .chq-review-results-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 14px;
+}
+
+/* DEC-902 wave-21 amendment: the frame's ONE grid -- 44px 1fr 150px 130px
+   92px 92px auto -- repeats across the head, the rows and the expanded
+   band (docs/design/Chautauqua Review.dc.html:117,121,136,140,153). Title
+   is the single remainder column; Decision hugs its two buttons at 1px
+   (DEC-902 wave-20 sub-rule 4) rather than sizing from the frame's `auto`. */
+.chq-review-results-col-rank {
+  width: 44px;
+}
+
+.chq-review-results-col-speaker {
+  width: 150px;
+}
+
+.chq-review-results-col-track {
+  width: 130px;
+}
+
+.chq-review-results-col-score {
+  width: 92px;
+}
+
+.chq-review-results-col-reviews {
+  width: 92px;
+}
+
+.chq-review-results-col-decision {
+  width: 1px;
+  white-space: nowrap;
 }
 
 .chq-review-results-table th {
@@ -249,6 +280,10 @@
    renders through ::before as a micro-label. Progress row collapses to a
    single column alongside it. */
 @media (max-width: 700px) {
+  .chq-review-results-table {
+    table-layout: auto;
+  }
+
   .chq-review-results-table thead {
     display: none;
   }

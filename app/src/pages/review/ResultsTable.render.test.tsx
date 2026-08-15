@@ -956,3 +956,113 @@ describe('ResultsTable sort honesty (DEC-737)', () => {
     expect(screen.queryByRole('button', { name: 'Prev' })).not.toBeInTheDocument();
   });
 });
+
+// DEC-902 (wave-21 amendment): the frame's seven-track grid -- 44px 1fr
+// 150px 130px 92px 92px auto (Rank/Title/Speaker/Track/Score/Reviews/
+// Decision) -- is pinned as fixed table layout, not left to auto-layout
+// content sizing.
+describe('ResultsTable results table is fixed-layout on the frame\'s seven tracks (DEC-902 wave-21)', () => {
+  it('gives each <th> its own width-class hook in frame order', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+
+    const table = document.querySelector('table.chq-review-results-table')!;
+    const headerClasses = Array.from(table.querySelectorAll('thead th')).map((th) => th.className);
+    expect(headerClasses).toEqual([
+      'chq-review-results-col-rank',
+      'chq-review-results-col-title',
+      'chq-review-results-col-speaker',
+      'chq-review-results-col-track',
+      'chq-review-results-col-score',
+      'chq-review-results-col-reviews',
+      'chq-review-results-col-decision',
+    ]);
+  });
+
+  it('the sheet declares fixed layout with the six pinned tracks + Title as the single remainder', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const cssPath = join(process.cwd(), 'app/src/pages/review/review.css');
+    const sheet = readFileSync(cssPath, 'utf-8');
+
+    // fixed layout on the base rule, not left to the media-query reset alone.
+    const baseRule = sheet.slice(sheet.indexOf('.chq-review-results-table {'), sheet.indexOf('.chq-review-results-table th {'));
+    expect(baseRule).toContain('table-layout: fixed;');
+
+    expect(sheet).toContain('.chq-review-results-col-rank {\n  width: 44px;\n}');
+    expect(sheet).toContain('.chq-review-results-col-speaker {\n  width: 150px;\n}');
+    expect(sheet).toContain('.chq-review-results-col-track {\n  width: 130px;\n}');
+    expect(sheet).toContain('.chq-review-results-col-score {\n  width: 92px;\n}');
+    expect(sheet).toContain('.chq-review-results-col-reviews {\n  width: 92px;\n}');
+    // Decision hugs its two buttons (DEC-902 wave-20 sub-rule 4) rather than
+    // taking a frame-literal `auto`.
+    expect(sheet).toMatch(/\.chq-review-results-col-decision\s*{\s*width:\s*1px;\s*white-space:\s*nowrap;\s*}/);
+    // Title carries no pinned width of its own -- it is the remainder column.
+    expect(sheet).not.toMatch(/\.chq-review-results-col-title\s*{[^}]*width:/);
+
+    // The phone-card media block resets to auto-layout explicitly rather
+    // than relying on display:block to silently override table-layout.
+    const mediaBlock = sheet.slice(sheet.indexOf('@media (max-width: 700px)'), sheet.indexOf('@media (max-width: 700px)') + 600);
+    expect(mediaBlock).toContain('table-layout: auto;');
+  });
+
+  it('B8: each expanded reviewer row is a real <tr> with exactly seven <td>s, matching head column parity structurally', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+      [`GET /api/v1/submissions/sub-1/evaluations`]: listEnvelope([
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Priya Patel',
+          scores: { c1: 4 },
+          score: 4,
+          criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+          comment: 'Strong proposal, well scoped.',
+          submittedAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /3 reviews/ }));
+    expect(await screen.findByText('Priya Patel')).toBeInTheDocument();
+
+    const table = document.querySelector('table.chq-review-results-table')!;
+    const headerCount = table.querySelectorAll('thead th').length;
+    const reviewerRow = Array.from(table.querySelectorAll('tbody tr.chq-review-reviews-row')).find((tr) =>
+      tr.textContent!.includes('Priya Patel'),
+    )!;
+    expect(reviewerRow).toBeDefined();
+    expect(reviewerRow.querySelectorAll('td').length).toBe(headerCount);
+    expect(reviewerRow.querySelectorAll('td').length).toBe(7);
+
+    // The reviewer's name lands under Title (index 1), their score under
+    // Score (index 4) -- alignment from real column position, no
+    // band-specific layout of its own.
+    const cells = reviewerRow.querySelectorAll('td');
+    expect(cells[1]!.textContent).toContain('Priya Patel');
+    expect(cells[4]!.textContent).toContain('4.0');
+  });
+});

@@ -378,22 +378,22 @@ export function ResultsTable({
               {/* DEC-906: Rank leads -- it is never sortable itself; it is
                  always the row's position in whatever order (default: score
                  descending) the table is currently showing. */}
-              <th>Rank</th>
-              <th aria-sort={ariaSort({ column: 'title' }, sort)}>
+              <th className="chq-review-results-col-rank">Rank</th>
+              <th className="chq-review-results-col-title" aria-sort={ariaSort({ column: 'title' }, sort)}>
                 <SortButton label="Title" columnKey={{ column: 'title' }} sort={sort} onSort={handleSort} />
               </th>
               {/* DEC-703: SPEAKER and TRACK, unsorted (server has no sort key
                  for them) -- who this is and where it goes, without leaving
                  the page. */}
-              <th>Speaker</th>
-              <th>Track</th>
+              <th className="chq-review-results-col-speaker">Speaker</th>
+              <th className="chq-review-results-col-track">Track</th>
               {/* DEC-737: ONE blended score column -- per-criterion detail
                  moved behind the row's ▸ Reviews disclosure. */}
-              <th aria-sort={ariaSort({ column: 'average' }, sort)}>
+              <th className="chq-review-results-col-score" aria-sort={ariaSort({ column: 'average' }, sort)}>
                 <SortButton label="Score" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
               </th>
-              <th>Reviews</th>
-              <th>Decision</th>
+              <th className="chq-review-results-col-reviews">Reviews</th>
+              <th className="chq-review-results-col-decision">Decision</th>
             </tr>
           </thead>
           <tbody>
