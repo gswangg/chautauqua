@@ -10,7 +10,7 @@ import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate";
 import * as repo from "../../../server/repo/contacts";
 import { getEventForOrg } from "../../../server/repo/events";
 import type { KVStore } from "../../../auth/claim";
-import { preflightRender, type RenderTarget } from "../../../domain/compose";
+import { preflightRender, MAX_COMPOSE_RECIPIENTS, type RenderTarget } from "../../../domain/compose";
 import { applyMintedPortalLinks, resolvePortalLinks } from "../../../server/repo/portal-link";
 import { templateUsesMergeField } from "../../../mail/render";
 import { renderEmailHtml } from "../../../mail/shell";
@@ -22,7 +22,9 @@ import { DEC_766 } from "../../../decisions";
 
 void DEC_766;
 
-const MAX_BULK_EMAIL_RECIPIENTS = 100;
+// DEC-019/DEC-422 (amendment, wave 59): the bulk-email batch and the
+// compose batch are ONE cap -- MAX_COMPOSE_RECIPIENTS (src/domain/compose.ts),
+// never a private second literal.
 
 type BulkEmailRequest = {
   event: { id: string; name: string };
@@ -40,7 +42,7 @@ async function validateBulkEmailRequest(db: Db, orgId: string, body: Record<stri
   // one array used below for both the org lookup and the full-match check —
   // never re-read the raw body, or a repeated contactId silently 404s or
   // double-sends.
-  const contactIds = parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: MAX_BULK_EMAIL_RECIPIENTS });
+  const contactIds = parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: MAX_COMPOSE_RECIPIENTS });
   if (typeof body.eventId !== "string" || body.eventId.trim() === "") {
     throw new ApiError("invalid", "Validation failed", { eventId: "required" });
   }

@@ -8,7 +8,7 @@ import { csrfJson } from "../../../server/middleware";
 import { ApiError, parseBoundedText } from "../../../server/http";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
 import * as repo from "../../../server/repo/contacts";
-import { matchesSegment, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
+import { matchesSegment, MAX_SEGMENT_RULES, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
 import { clampPage, listPerPage } from "../../../lib/pagination";
 import { DEC_711, DEC_864 } from "../../../decisions";
 import { currentOrgId, asRecord, checkLen, serializeSegment, requireOwnedSegment } from "./shared";
@@ -16,13 +16,11 @@ import { currentOrgId, asRecord, checkLen, serializeSegment, requireOwnedSegment
 void DEC_711; // GET /segments `count`: the directory rail's per-segment figure, endpoint-backed
 void DEC_864; // GET /segments counts every segment in ONE bounded directory scan
 
-// DEC-417 (wave-31 amendment): bounds the segment rule set on BOTH the
-// write path (POST/PATCH /segments) and the read path (?rules=), so a
-// stored segment can never exceed what a live query is allowed to send --
-// same constant, one spelling. Deliberately local to this file rather than
-// src/lib/query-bounds.ts (a sibling task's shared home for other routes'
-// caps) to avoid a merge collision within the same wave.
-export const MAX_SEGMENT_RULES = 20;
+// DEC-417 (wave-31 amendment)/DEC-422 (amendment, wave 59): MAX_SEGMENT_RULES
+// now lives in src/domain/contacts.ts (imported above), bounding the
+// segment rule set on BOTH the write path (POST/PATCH /segments) and the
+// read path (?rules=), so a stored segment can never exceed what a live
+// query is allowed to send -- same constant, one spelling.
 
 function isRuleShape(r: unknown): r is SegmentRule {
   return (

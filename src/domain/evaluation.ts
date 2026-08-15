@@ -15,6 +15,14 @@ import { DEC_676 } from "../decisions";
 
 void DEC_676;
 
+/** DEC-082 (wave-43 amendment), moved to pure core DEC-422 (amendment, wave
+ * 59): rounds must be a positive integer, capped at MAX_PLAN_ROUNDS --
+ * every reader (PlanEditor.tsx, ResultsTable.tsx) turns this count
+ * straight into `Array.from({ length: rounds })`, so an unbounded value is
+ * a client-side allocation DoS that permanently bricks the plan's editor
+ * and results pages. */
+export const MAX_PLAN_ROUNDS = 10;
+
 export interface EvaluationCriterion {
   id: string;
   label: string;

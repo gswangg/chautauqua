@@ -10,7 +10,7 @@ import * as repo from "../../../server/repo/contacts";
 import { getEventForOrg } from "../../../server/repo/events";
 import { listAcceptedContactIds } from "../../../server/repo/tasks";
 import { parseCsv } from "../../../lib/csv";
-import { mapImportRow } from "../../../domain/contacts";
+import { mapImportRow, MAX_IMPORT_CSV_BYTES as DOMAIN_MAX_IMPORT_CSV_BYTES } from "../../../domain/contacts"; // DEC-422 (amendment, wave 59)
 import { DEC_290, DEC_810 } from "../../../decisions";
 import { currentOrgId, asRecord, isPlainObject } from "./shared";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
@@ -24,9 +24,12 @@ void DEC_290;
 // invented per-row 'Invited: <name>' fallback (DEC-810).
 void DEC_810;
 
-// DEC-417: CSV import request-input bound, before parseCsv touches an
-// arbitrarily large body.
-export const MAX_IMPORT_CSV_BYTES = 5_000_000;
+// DEC-417/DEC-422 (amendment, wave 59): the cap itself lives ONE place,
+// src/domain/contacts.ts, matching this route's own MAX_IMPORT_ROWS
+// pattern just below -- both are re-exported here (not re-declared) so
+// every existing caller/test of this route module still finds them by
+// this name.
+export const MAX_IMPORT_CSV_BYTES = DOMAIN_MAX_IMPORT_CSV_BYTES;
 // DEC-478: the row cap lives ONE place, src/server/repo/contacts/import.ts,
 // so this route's bound and message always agree with what applyImportRows
 // actually enforces.

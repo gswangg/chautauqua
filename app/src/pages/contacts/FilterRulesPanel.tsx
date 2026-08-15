@@ -17,7 +17,7 @@
 // exists to populate a dropdown from.
 import { activeRules } from './segments';
 import type { SegmentRule } from './types';
-import { SEGMENT_STANDARD_FIELDS } from '../../../../src/domain/contacts';
+import { SEGMENT_STANDARD_FIELDS, MAX_SEGMENT_RULES } from '../../../../src/domain/contacts';
 import { DEC_868 } from '../../../../src/decisions';
 
 void DEC_868;
@@ -143,9 +143,19 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
         );
       })}
 
-      <button type="button" className="chq-btn chq-btn-tertiary" onClick={addRule}>
+      <button
+        type="button"
+        className="chq-btn chq-btn-tertiary"
+        onClick={addRule}
+        disabled={rules.length >= MAX_SEGMENT_RULES}
+      >
         Add a rule
       </button>
+      {rules.length >= MAX_SEGMENT_RULES && (
+        <span className="chq-meta chq-contacts-filter-rules-cap">
+          Up to {MAX_SEGMENT_RULES} rules.
+        </span>
+      )}
 
       {activeRules(rules).length > 0 && (
         <span className="chq-contacts-filter-rules-end">

@@ -13,7 +13,7 @@ import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
 import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_460, DEC_461, DEC_624, DEC_676, DEC_709 } from "../../decisions";
-import { criteriaForRound } from "../../domain/evaluation";
+import { criteriaForRound, MAX_PLAN_ROUNDS } from "../../domain/evaluation";
 import { countOf } from "../../domain/count-copy";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import {
@@ -27,7 +27,6 @@ import {
   checkEpochOrder,
   deepEqual,
   requireOwnedPlan,
-  MAX_PLAN_ROUNDS,
 } from "./shared";
 
 export const reviewPlansCrudRoutes = new Hono<AppEnv>();

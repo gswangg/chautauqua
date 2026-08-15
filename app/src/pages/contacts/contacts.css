@@ -106,6 +106,13 @@
   white-space: nowrap;
 }
 
+/* DEC-422 (amendment, wave 59): the quiet "Up to N rules." line shown only
+   once "Add a rule" hits MAX_SEGMENT_RULES -- conditional-and-quiet, same
+   register as the caption/match-count text beside it. */
+.chq-contacts-filter-rules-cap {
+  white-space: nowrap;
+}
+
 /* Search + segment control at the RIGHT end of the tab row. */
 .chq-contacts-tab-filters {
   display: flex;

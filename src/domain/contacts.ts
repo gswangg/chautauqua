@@ -11,6 +11,19 @@ import { DEC_800 } from "../decisions";
 
 void DEC_800;
 
+// DEC-422 (amendment, wave 59): batch caps get one pure-core home so a
+// route module can never hand-declare its own `const MAX_* = <number>`
+// literal (see test/batch-cap-declaration.scan.test.ts). Bounds the
+// segment rule set on BOTH the write path (POST/PATCH /segments) and the
+// read path (?rules=), so a stored segment can never exceed what a live
+// query is allowed to send -- same constant, one spelling (DEC-417,
+// wave-31 amendment).
+export const MAX_SEGMENT_RULES = 20;
+
+// DEC-422 (amendment, wave 59): CSV import request-input bound, before
+// parseCsv touches an arbitrarily large body (DEC-417).
+export const MAX_IMPORT_CSV_BYTES = 5_000_000;
+
 export interface SocialLinks {
   twitter: string;
   linkedin: string;

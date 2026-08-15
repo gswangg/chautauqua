@@ -40,7 +40,7 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // and adds the comment block above the `items` map.
   // The exceptions themselves are unchanged.
   "src/routes/comms/preview.ts:74",
-  "src/routes/api/contacts/bulk-email.ts:247",
+  "src/routes/api/contacts/bulk-email.ts:249",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,
   // total, shortfall })`, matching the scanner's `{ items` pattern). The

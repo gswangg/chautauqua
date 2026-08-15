@@ -7,7 +7,8 @@
 
 import { renderTemplate } from "../mail/render";
 
-/** Mirrors MAX_COMPOSE_RECIPIENTS/MAX_BULK_EMAIL_RECIPIENTS's precedent. */
+/** Mirrors MAX_COMPOSE_RECIPIENTS's precedent (DEC-019/DEC-422; the
+ * bulk-email route reuses MAX_COMPOSE_RECIPIENTS directly, wave 59). */
 export const MAX_PORTAL_INVITE_RECIPIENTS = 100;
 
 export const PORTAL_INVITE_SUBJECT_TEMPLATE = "You're invited to the {event_name} speaker portal";
