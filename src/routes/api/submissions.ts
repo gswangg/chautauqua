@@ -33,6 +33,7 @@ import {
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
 import { isValidContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
+import { settleInDeclarationOrder } from "../../lib/settle";
 import { isActiveParticipant } from "../../domain/acceptance";
 import { plural } from "../../domain/count-copy";
 import { overCapCountMessage, participantCapRefusalMessage } from "../../domain/cap-copy";
@@ -303,23 +304,17 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
   // DEC-598 (wave-34 amendment): the three validators below are independent
   // reads that consume nothing from each other and sit behind the
   // ownership check that already resolved above -- issue them as ONE wave
-  // via Promise.allSettled (never Promise.all, which would reject with
-  // whichever settles first and silently change which field error the
-  // caller sees) and re-throw the first rejection in DECLARATION order:
+  // via settleInDeclarationOrder (never Promise.all, which would reject
+  // with whichever settles first and silently change which field error the
+  // caller sees). Rejections are re-thrown in DECLARATION order:
   // trackIds, format, audienceLevel.
-  const [trackIdsResult, formatResult, audienceLevelResult] = await Promise.allSettled([
+  const [trackIds, format, audienceLevel] = await settleInDeclarationOrder([
     body.trackIds !== undefined ? parseTrackIdsField(c.var.db, eventId, body.trackIds) : Promise.resolve(undefined),
     body.format !== undefined ? parseFormatField(c.var.db, eventId, body.format) : Promise.resolve(undefined),
     body.audienceLevel !== undefined
       ? parseAudienceLevelField(c.var.db, eventId, body.audienceLevel)
       : Promise.resolve(undefined),
   ]);
-  if (trackIdsResult.status === "rejected") throw trackIdsResult.reason;
-  if (formatResult.status === "rejected") throw formatResult.reason;
-  if (audienceLevelResult.status === "rejected") throw audienceLevelResult.reason;
-  const trackIds = trackIdsResult.value;
-  const format = formatResult.value;
-  const audienceLevel = audienceLevelResult.value;
 
   const id = await createSubmission(c.var.db, eventId, auth.orgId, { title, description, contact });
 
@@ -394,7 +389,7 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   // the DEC-158 pre-edit content snapshot) are four independent reads —
   // none consumes another's result, and all sit behind the ownership check
   // above that has already resolved — issued as ONE wave via
-  // Promise.allSettled (never Promise.all, which would reject with
+  // settleInDeclarationOrder (never Promise.all, which would reject with
   // whichever settles first and silently change which field error the
   // caller sees). Rejections are re-thrown in DECLARATION order: trackIds,
   // format, audienceLevel, then getSubmissionContent.
@@ -405,7 +400,7 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   // as the POST create route.
   // DEC-900 amendment (findings wave 13): audienceLevel mirrors format
   // exactly — same field-options validation, same CLEAR-on-null semantics.
-  const [trackIdsResult, formatResult, audienceLevelResult, contentResult] = await Promise.allSettled([
+  const [trackIds, format, audienceLevel, content] = await settleInDeclarationOrder([
     body.trackIds !== undefined
       ? parseTrackIdsField(c.var.db, ownership.eventId, body.trackIds)
       : Promise.resolve(undefined),
@@ -417,13 +412,6 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
     // this PATCH actually changed title/description before appending history.
     getSubmissionContent(c.var.db, id),
   ]);
-  if (trackIdsResult.status === "rejected") throw trackIdsResult.reason;
-  if (formatResult.status === "rejected") throw formatResult.reason;
-  if (audienceLevelResult.status === "rejected") throw audienceLevelResult.reason;
-  if (contentResult.status === "rejected") throw contentResult.reason;
-  const trackIds = trackIdsResult.value;
-  const format = formatResult.value;
-  const audienceLevel = audienceLevelResult.value;
 
   if (
     Object.keys(fields).length === 0 &&
@@ -440,7 +428,7 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
     );
   }
 
-  const before = contentResult.value;
+  const before = content;
   if (!before) throw new ApiError("not_found", "Submission not found");
 
   if (Object.keys(fields).length > 0) {

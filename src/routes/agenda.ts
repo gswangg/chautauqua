@@ -8,6 +8,7 @@ import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, readJsonBody, readOptionalJsonBody } from "../server/http";
 import { MINUTES_PER_DAY } from "../domain/schedule";
+import { settleInDeclarationOrder } from "../lib/settle";
 import {
   countPubliclyVisible,
   DEFAULT_AUTO_SCHEDULE_PARAMS,
@@ -66,15 +67,15 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
   }
   // DEC-155 wave-34 amendment: roomBelongsToEvent (only when body.roomId is
   // a string) and getEventInfo consume nothing from each other, so they
-  // issue as one wave. Both can independently produce a user-facing
-  // ApiError past this point, so the wave uses allSettled and re-throws in
-  // SOURCE order (room check first, event-not-found second) — a doubly-bad
-  // request must still produce the identical 'Room does not belong to this
-  // event' error it did before this change.
+  // issue as one wave via settleInDeclarationOrder. Both can independently
+  // produce a user-facing ApiError past this point, and rejections are
+  // re-thrown in SOURCE order (room check first, event-not-found second) —
+  // a doubly-bad request must still produce the identical 'Room does not
+  // belong to this event' error it did before this change.
   let event: Awaited<ReturnType<typeof getEventInfo>>;
   if (typeof body.roomId === "string") {
     const roomId = body.roomId;
-    const [roomResult, eventResult] = await Promise.allSettled([
+    const [, eventResult] = await settleInDeclarationOrder([
       (async () => {
         if (!(await roomBelongsToEvent(c.var.db, roomId, ownership.eventId))) {
           throw new ApiError("invalid", "Room does not belong to this event", {
@@ -84,9 +85,7 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
       })(),
       getEventInfo(c.var.db, ownership.eventId),
     ]);
-    if (roomResult.status === "rejected") throw roomResult.reason;
-    if (eventResult.status === "rejected") throw eventResult.reason;
-    event = eventResult.value;
+    event = eventResult;
   } else {
     event = await getEventInfo(c.var.db, ownership.eventId);
   }
