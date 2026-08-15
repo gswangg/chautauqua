@@ -6,19 +6,10 @@ import { gt, lt, or } from "drizzle-orm";
 import * as schema from "../../../db/schema";
 import { isIsoDate } from "../../../domain/iso-date";
 
-/** Inclusive list of 'YYYY-MM-DD' days from event.startDate..endDate. */
-export function computeDays(startDate: string, endDate: string): string[] {
-  const start = new Date(`${startDate}T00:00:00Z`);
-  const end = new Date(`${endDate}T00:00:00Z`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    throw new Error(`computeDays: invalid date range '${startDate}'..'${endDate}'`);
-  }
-  const days: string[] = [];
-  for (let t = start.getTime(); t <= end.getTime(); t += 24 * 60 * 60 * 1000) {
-    days.push(new Date(t).toISOString().slice(0, 10));
-  }
-  return days;
-}
+// DEC-277 (wave 60 amendment): computeDays moved to pure core as
+// src/domain/event-days.ts's eventDays -- the ONE owner of the event's
+// calendar-day list, shared by this repo layer AND both public surfaces.
+// Callers re-point there directly; no compatibility re-export here.
 
 /** The ONE day-shape gate for request bodies: a zero-padded, calendar-valid
  * ISO `YYYY-MM-DD`, and nothing else. isDayWithinEventRange below compares

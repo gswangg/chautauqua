@@ -11,7 +11,6 @@
 // continues to resolve unchanged.
 
 export {
-  computeDays,
   isIsoDay,
   isDayWithinEventRange,
   dayOutsideEventRangeCondition,

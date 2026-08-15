@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  computeDays,
   DEFAULT_AUTO_SCHEDULE_PARAMS,
   getAgendaPayload,
   getConflictsAndSummary,
@@ -9,6 +8,7 @@ import {
   MAX_AGENDA_SCAN,
   runAutoSchedule,
 } from "../src/server/repo/agenda";
+import { eventDays as computeDays } from "../src/domain/event-days";
 import { formatRef } from "../src/domain/ids";
 import * as schema from "../src/db/schema";
 import type { Db } from "../src/server/context";

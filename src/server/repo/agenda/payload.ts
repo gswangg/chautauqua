@@ -12,7 +12,8 @@ import { chunkIds } from "../../../lib/chunk";
 import { visibleSessionConditions } from "../public/gates";
 import { ApiError } from "../../http";
 import { findConflicts, scheduleSummary, type PlacedSession } from "../../../domain/schedule";
-import { computeDays, dayOutsideEventRangeCondition, isDayWithinEventRange } from "./days";
+import { dayOutsideEventRangeCondition, isDayWithinEventRange } from "./days";
+import { eventDays } from "../../../domain/event-days";
 import { buildConflictLabels, describeConflicts } from "./labels";
 import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
 import {
@@ -30,7 +31,7 @@ import type {
 
 /** Builds the full GET .../agenda payload (DEC-021 single round-trip). */
 export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo): Promise<AgendaPayload> {
-  const days = computeDays(event.startDate, event.endDate);
+  const days = eventDays(event.startDate, event.endDate);
 
   const roomRows = await db
     .select({ id: schema.room.id, name: schema.room.name })

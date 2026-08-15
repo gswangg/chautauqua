@@ -20,6 +20,7 @@ import { PublicSearchBox, PublicFilterSelectForm, PublicActiveFilters } from "./
 import { PublicEmptyState } from "./empty-state";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 import { capitalizeFirst, countOf, plural, spellCount } from "../../domain/count-copy";
+import { eventDays } from "../../domain/event-days";
 import { DEC_919 } from "../../decisions";
 
 void DEC_919;
@@ -32,31 +33,6 @@ void DEC_919;
 // anything longer falls back to the numeral.
 function dayCountWord(n: number): string {
   return capitalizeFirst(spellCount(n));
-}
-
-/** Every calendar day between event.startDate and event.endDate inclusive,
- * as 'YYYY-MM-DD' day labels (DEC-522: these are day labels, not instants --
- * read from UTC calendar fields only, matching formatEventDay/
- * formatEventDayRange). Malformed startDate/endDate returns [] so callers
- * can fail soft to whatever day set they already have, matching this
- * codebase's fail-soft contract for organizer-entered scheduling data. */
-function eventDayList(startDate: string, endDate: string): string[] {
-  if (!startDate || !endDate) return [];
-  const [sy, sm, sd] = startDate.split("-").map(Number);
-  const [ey, em, ed] = endDate.split("-").map(Number);
-  if (!sy || !sm || !sd || !ey || !em || !ed) return [];
-  const start = Date.UTC(sy, sm - 1, sd);
-  const end = Date.UTC(ey, em - 1, ed);
-  if (end < start) return [];
-  const days: string[] = [];
-  for (let cursor = start; cursor <= end; cursor += 86400000) {
-    const d = new Date(cursor);
-    const yyyy = d.getUTCFullYear();
-    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-    const dd = String(d.getUTCDate()).padStart(2, "0");
-    days.push(`${yyyy}-${mm}-${dd}`);
-  }
-  return days;
 }
 
 function ScheduleRailSection(props: { event: PublicEvent }) {
@@ -80,12 +56,12 @@ function DayIndexRailSection(props: { event: PublicEvent; dayCounts: { day: stri
   const { event, dayCounts } = props;
   // Frame anatomy lists EVERY day of the event, not just the days that
   // happen to already have a session scheduled -- a day with zero sessions
-  // still reads "0 sessions" rather than vanishing from the index. Falls
-  // back to whichever days dayCounts already carries if startDate/endDate
-  // fail to parse (should not happen for a real event row).
-  const allDays = eventDayList(event.startDate, event.endDate);
+  // still reads "0 sessions" rather than vanishing from the index. DEC-277
+  // (wave 60 amendment): eventDays throws loudly on a malformed range
+  // instead of degrading to whatever dayCounts already carries -- there is
+  // nothing to fall back from once the owner is fail-loud.
+  const days = eventDays(event.startDate, event.endDate);
   const countByDay = new Map(dayCounts.map((d) => [d.day, d.count]));
-  const days = allDays.length > 0 ? allDays : dayCounts.map((d) => d.day);
   if (days.length === 0) return null;
   return (
     <section class="chq-pub-rail-section">
@@ -240,7 +216,7 @@ export function SessionsContent(props: {
       </>
     );
   }
-  const eventDays = eventDayList(event.startDate, event.endDate);
+  const allEventDays = eventDays(event.startDate, event.endDate);
   const trackNameOf = new Map(tracks.map((t) => [t.id, t.name]));
   const roomNameOf = new Map((rooms ?? []).map((r) => [r.id, r.name]));
   // v7 active-filter line: one removable chip per active facet (search
@@ -296,12 +272,12 @@ export function SessionsContent(props: {
                 {/* day facet is /e/-site-only: DEC-489's embed rationale
                     survives v7 — day is not an embed knob and must not be
                     advertised there. */}
-                {!embed && eventDays.length > 1 ? (
+                {!embed && allEventDays.length > 1 ? (
                   <PublicFilterSelectForm
                     action={basePath}
                     name="day"
                     allLabel="All days"
-                    options={eventDays.map((d) => ({ value: d, label: formatDay(d) }))}
+                    options={allEventDays.map((d) => ({ value: d, label: formatDay(d) }))}
                     activeValue={activeDay}
                     hidden={hiddenCarry("day")}
                   />
