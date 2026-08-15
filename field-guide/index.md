@@ -18,43 +18,43 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   scope null->LIST, evaluation lattice, date grammars, error vocabulary (V9),
   locked-field/minutes/score/clock single sources. w69: SWARM REBOOTED at
   gate-7. Shapes: A CAP ONLY IN THE SPA IS A SUGGESTION.
-- FINDINGS w8-13 (all LANDED/SWEPT, heavily compacted): session-card, compose,
-  history pager, edit-lock, icsChip, trackIds dedup+cap, plan window, saved-
-  view cap lockout, /logout POST, unsendable-template (DEC-856), reviewer
-  single-plan skip (DEC-874), track HIGHLIGHT-not-filter (DEC-851), .ics
-  SEQUENCE, acceptance/auto-schedule write caps, schedule.ics ?ids=, deleteTrack
-  /Room 409, conditional-visibility fixed point, breaks midnight, CSV/import
-  caps, home 820/34px, role-is-ONE-matcher, distribute pre-write cap,
-  addReviewers dup, saved-embed cap, compose 100-cap, acceptance back-fill
-  fan-out (DEC-932), contact merge keepId, bearer-token CSRF exemption, file-
-  version chain repoint, audienceLevel/role PATCH parsing (DONE by w13-a).
+- FINDINGS w8-13 (all LANDED/SWEPT, heavily compacted): session-card/compose/
+  history-pager/edit-lock/icsChip/trackIds/plan-window/saved-view caps, .ics
+  SEQUENCE, write caps (schedule.ics ?ids=, distribute, addReviewers, saved-
+  embed, compose-100, acceptance back-fill DEC-932), contact merge keepId,
+  bearer-token CSRF exemption, audienceLevel/role PATCH (DONE by w13-a).
   Shapes: A HANDOFF THAT DROPS THE SELECTION ASKS THE SAME QUESTION TWICE. A
   FAN-OUT WITH NO PRE-WRITE CAP IS A HALF-WRITE. A KNOB TABLE THAT DRIFTS BY
   COMMENT IS PROSE, NOT A CONTRACT. A KEY THE CLIENT SENDS AND NO ROUTE
   PARSES IS A BUTTON THAT 400s.
-- FINDINGS w14 (planned by reading main + .git refs mid-merge-train; main MOVED
-  during planning — task-w13-a LANDED while this was written, so audienceLevel +
-  participant role PATCH parsing is DONE; task-w13-b/-c refs still exist UNMERGED
-  and stay owned: do NOT re-file form_field.role's two-way door or the dead role
-  selects). RE-VERIFIED STALE, do NOT re-file: trackIds dedupe (both doors —
-  api/submissions.ts:128 and public/submit-body.ts:79), reviewer plan window on
-  GET detail + file authz (reviewer.ts:288, files-authz.ts:209), saved-view cap is
-  AUTHORSHIP (views.ts:87 countSavedViewsCreatedBy), schedule.ics ?ids= 300 cap,
-  Add-a-track/room ARE tertiary section actions (frame lines 822/838), hub GET /
-  auth redirect, portal-invite re-mint is safe (DEC-949 48h supersede grace),
-  content-notes already mails only ACTIVE-invite participants. RULED DELIBERATE,
-  leave alone: send.ts's unconditional ics_sequence bump (a SEQUENCE gap is
-  harmless; a missed bump is not). VERIFIED OPEN and filed: CRM bulk-email has no
-  DEC-238 window and no per-address collapse; validateBreakWrite accumulates but
-  calls two THROWING parsers; createUser/createEvent guard a UNIQUE index with
-  SELECT-then-INSERT (500, not the documented 409/400); `.chq-field-invalid`
-  (0,1,0) LOSES to theme.ts's `input[type=...]` base group (0,1,1) on every SSR
-  surface; the submission editor is a div, not a form. Shapes: A CLASS THAT LOSES
-  TO A TYPE SELECTOR IS A RULE NOBODY DRAWS. A HALF-DEAD VOCABULARY PASSES EVERY
-  CLASS-PRESENCE TEST. AN ACCUMULATOR WITH A THROWING HELPER REPORTS THE FIRST
-  PROBLEM AND FORGETS THE REST. A PRE-CHECK IS NOT A CONSTRAINT. A SAVE BUTTON
-  OUTSIDE A FORM COSTS A MOUSE TRIP PER EDIT.
-- TOOL TRAP (cost this planner an hour): Grep -C output silently drops some `/`
+- FINDINGS w14 (all LANDED except task-w14-d unmerged .chq-field-invalid
+  specificity, do NOT re-file; task-w13-b/-c refs still UNMERGED, stay owned).
+  RULED DELIBERATE: send.ts's unconditional ics_sequence bump. Shapes: A CLASS
+  THAT LOSES TO A TYPE SELECTOR IS A RULE NOBODY DRAWS. AN ACCUMULATOR WITH A
+  THROWING HELPER REPORTS THE FIRST PROBLEM AND FORGETS THE REST. A PRE-CHECK
+  IS NOT A CONSTRAINT. A SAVE BUTTON OUTSIDE A FORM COSTS A MOUSE TRIP/EDIT.
+- TOOL TRAP (cost a planner an hour): Grep -C output silently drops some `/`
   characters — `"/api/v1/forms/:formId"` rendered as `"/api/v1/forms:formId"` and
   leading `//` as `/`. NEVER file a defect off a Grep excerpt alone; Read the
   exact lines before believing a missing slash, a missing token, or a typo.
+- FINDINGS w15 (planned by reading main while the w14 merge train ran; main MOVED
+  mid-planning). CORRECTION to the w14 note: w14-a/-b/-c ALL LANDED (bulk-email.ts:214
+  intra-batch+window dedupe, breaks.ts:132 collectBoundedText accumulation, users.ts:106
+  + events.ts:185 onConflictDoNothing). task-w14-d (.chq-field-invalid specificity) has
+  a ref and is UNMERGED -- do NOT re-file. task-w14-e NEVER EXISTED (no ref); CNT-S3 was
+  unowned and is taken here as w15-a. RE-VERIFIED CLOSED this wave, do NOT re-file:
+  `q` IS in hasActiveNarrowing (OnboardingGrid.tsx:130); results head is single
+  (ResultsTable.tsx:285,327); public agenda never renders TBD (ruling A25); public
+  session-detail HAS the itinerary toggle (detail.tsx:124, ruling A26); toCsv neutralizes
+  formula injection (lib/csv.ts:150); submission seq is an atomic subquery; import
+  contactIds ARE deduped (import.ts:272 addContactId); reviewer file authz excludes
+  anonymized + closed plans (files-authz.ts:205-210); dev mailbox is mount-gated.
+  VERIFIED OPEN and filed: send.ts has the DEC-238 WINDOW but no intra-batch collapse
+  (its sibling's comment claims parity it does not have); MAX_PARTICIPANTS_PER_SUBMISSION
+  is enforced at 2 of 4 doors (CSV roster import + Sessionboard import bypass it);
+  updateEvent guards event_slug_idx with isSlugTaken and no catch (500, not the 400 the
+  route documents 170 lines above); the mail envelope recipient skips addressValue while
+  its own To: header does not; the submission-detail editors are divs (only 6 <form>
+  elements exist in the entire SPA). Shapes: A COMMENT THAT CLAIMS PARITY IS NOT PARITY.
+  A CAP AT TWO OF FOUR DOORS IS A SUGGESTION. AN INSERT GUARD IS NOT AN UPDATE GUARD.
+  THE ONE CALL SITE THAT SKIPS THE SANITIZER IS THE ONE THAT MATTERS.
