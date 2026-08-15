@@ -4015,3 +4015,50 @@ details recorded NOT RE-CHECKED rather than assumed.
 OPEN ITEMS: 4 (constant-time-compare/session-rotation detail; speaker→
 /admin redirect detail; §7 server+perceived runtime budgets, unmeasurable
 without a running instance; §7 CI perf smoke, requires seed+dev server)
+
+## 2026-08-15 task-w28-g — stage-1 exit ledger @ 3564c774
+
+QUALIFYING
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+Frozen literal `3564c7747e211f0e5857091e5909536c56e31b4a` (main WILL move
+under this ledger while it works; every grade below is against this literal,
+never against main's later state). Newest PRODUCT-code-bearing sha
+(src/**, app/src/**, migrations/**, package.json; scripts/**, test/**,
+docs/**, decisions/**, field-guide/** allow-listed non-code-bearing per
+DEC-069's wave-28 amendment) walking `--first-parent` from the literal:
+`0d0e24e88752d9de94653b7cd88a207bc74d9eca` ("merge task-w27-a" — the DEC-991
+line-height:1 deletions in comms.css/forms.css/auth.css.ts).
+
+Five DEC-069 required sections graded against that product sha: the only
+candidates in the log (`task-w27-b/c/d/e`) are all timestamped `@ ceda66f2`
+(parent of the product sha, i.e. BEFORE it) and are explicitly labelled
+`[DIAGNOSTIC]` by the wave-26/27 amendments, not `[QUALIFYING]` — none
+qualify. Wave 28's own gate lanes have not yet landed on the frozen literal:
+`task-w28-a` (walkthrough, `0778816b`), `task-w28-b` (build+test, `bb702a52`),
+`task-w28-c` (perf-smoke, `a8dacd1b`), `task-w28-e` (spec-audit, `3d6ef260`)
+all carry commits beyond base — PENDING-OWNED(task-w28-a/b/c/e) respectively.
+`task-w28-f` (triage-closure) resolves to `3564c774`, IDENTICAL to base —
+PRODUCED NOTHING per DEC-069's wave-17 amendment — FAIL-unowned.
+
+DEC-991 independently re-confirmed on this literal: zero `line-height: 1`
+declarations remain alongside any display-face heading in
+`app/src/pages/forms/forms.css`, `app/src/pages/comms/comms.css`,
+`src/routes/auth.css.ts` (the sole surviving `line-height: 1`, comms.css:766,
+is a DEC-993 caret glyph, not a heading). `test/display-heading-line-height
+.scan.test.ts` run live: 5/5 PASS — a scan now guards regrowth.
+
+Full detail, including verbatim quotes of all five section headers/RESULT/
+OPEN ITEMS lines and the blocker list: docs/verification-log/task-w28-g-stage1-exit-ledger-3564c774.md.
+
+STAGE 1 IS NOT COMPLETE. Zero of five required rows PASS; four are
+PENDING-OWNED (task-w28-a, task-w28-b, task-w28-c, task-w28-e — live
+branches, work not yet on this literal); one (triage closure) is
+FAIL-unowned (task-w28-f produced nothing). The substantive defects the
+wave-27 diagnostic battery found (37 failing tests, DEC-244 "version 2"
+walkthrough FAIL, perf-smoke budget overruns, unmeasured §7-3 bundle size)
+remain unconfirmed-fixed at this literal — owner: unassigned pending a
+future code wave.
+
+RESULT: FAIL — 0/5 required DEC-069 sections are PASS at the product sha; 4 PENDING-OWNED, 1 FAIL-unowned; stage 1 not complete.
+OPEN ITEMS: 6
