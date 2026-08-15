@@ -274,7 +274,7 @@ export function DeliverableDetail({
   // requestChanges also moves content_status (never 'approved' — approval
   // stays a separate, silent action below).
   async function handleSendNote(fileId: string, body: string, requestChanges: boolean) {
-    const result = await apiPost<{ sent: number; failed: { email: string; message: string }[] }>(
+    const result = await apiPost<{ sent: number; failed: { email: string; message: string }[]; recipients: number }>(
       `/submissions/${submissionId}/content-note`,
       { fileId, body, requestChanges },
     );

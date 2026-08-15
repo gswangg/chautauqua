@@ -18,20 +18,24 @@ function formatThousands(n: number): string {
 interface SendResult {
   sent: number;
   failed: { email: string; message: string }[];
+  recipients: number;
 }
 
 interface CommentThreadProps {
   comments: FileComment[];
-  /** DEC-720/DEC-741: every note posted here is emailed to the submission's
-   * active participants — there is no silent "just comment" path. */
+  /** DEC-720/DEC-741: every note posted here goes through /content-note.
+   * The send to the submission's active-invite participants is best-effort
+   * — with zero such participants the note still posts and the status
+   * still moves (DEC-317/DEC-720 wave-30 amendment). */
   onSend: (body: string, requestChanges: boolean) => Promise<SendResult>;
 }
 
 /** Comment thread for one deliverable's latest file (DEC-573 chain thread).
  * The composer always sends through /content-note (DEC-720/DEC-741): "Ask
  * for changes" also moves content_status to changes_requested, "Send note
- * only" leaves status untouched — both always email the speakers, so the
- * caption below never promises a silent post. */
+ * only" leaves status untouched — both attempt a best-effort email to
+ * whatever active-invite participants exist, so the caption below never
+ * promises a silent post but also never guarantees a recipient. */
 export function CommentThread({ comments, onSend }: CommentThreadProps) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
@@ -123,7 +127,10 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
           <SendFailures failed={summary.failed} />
         </div>
       )}
-      {summary && summary.failed.length === 0 && (
+      {summary && summary.failed.length === 0 && summary.recipients === 0 && (
+        <p className="chq-meta chq-content-comment-sent">Posted to the thread · nobody to email</p>
+      )}
+      {summary && summary.failed.length === 0 && summary.recipients > 0 && (
         <p className="chq-meta chq-content-comment-sent">
           Sent to {countOf(summary.sent, 'recipient')}.
         </p>

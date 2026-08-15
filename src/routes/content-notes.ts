@@ -1,10 +1,13 @@
 // DEC-720/DEC-741: asking for changes is a MESSAGE, not a column flip. This
 // is a NEW file (not files.ts) precisely because files.ts carries the
 // DEC-009 invariant "this module MUST NEVER import a mailer" — the content
-// note endpoint's whole job is to post a note to the DEC-573 chain thread,
-// optionally move content_status, and mail the submission's active-invite
-// participants so the send appears in Comms history. Approval stays
-// entirely silent (no code path here ever sets 'approved').
+// note endpoint's whole job is to post a note to the DEC-573 chain thread
+// and optionally move content_status; those writes are DURABLE regardless
+// of who can be mailed. Sending to the submission's active-invite
+// participants is best-effort and happens only when such participants
+// exist — zero recipients is not an error (DEC-317/DEC-720 wave-30
+// amendment). Approval stays entirely silent (no code path here ever sets
+// 'approved').
 
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
@@ -21,7 +24,6 @@ import type { KVStore } from "../auth/claim";
 import { resolvePortalLinks } from "../server/repo/portal-link";
 import { getFileScope, getSubmissionScope, insertFileComment, updateContentStatus } from "../server/repo/files";
 import { findAccountUserIds, loadComposeSubmissions } from "../server/repo/comms";
-import { noRecipientFields } from "./comms";
 import { DEC_009, DEC_317, DEC_573, DEC_720, DEC_741 } from "../decisions";
 
 void DEC_009;
@@ -86,12 +88,12 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   }
 
   // DEC-317: resolve the SAME active-invite recipient set the comms compose
-  // path uses — before any send, and before any write (atomic per DEC-019).
+  // path uses. A missing row or an empty participants array is ZERO
+  // RECIPIENTS, not an error — the note and any status move below are
+  // durable regardless of who can be mailed (DEC-317/DEC-720 wave-30
+  // amendment).
   const [composeSubmission] = await loadComposeSubmissions(c.var.db, scope.eventId, [submissionId]);
-  const noRecipients = noRecipientFields(composeSubmission ? [composeSubmission] : [], [submissionId]);
-  if (Object.keys(noRecipients).length > 0) {
-    throw new ApiError("invalid", "This session has no eligible recipients to notify", noRecipients); // DEC-317
-  }
+  const participants = composeSubmission?.participants ?? [];
 
   // Post the note to the DEC-573 chain thread (writes anchor on the latest
   // file id in the chain, same row /files/:fileId/comments POST writes).
@@ -108,6 +110,10 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
     await updateContentStatus(c.var.db, submissionId, "changes_requested");
   }
 
+  if (participants.length === 0) {
+    return c.json({ sent: 0, failed: [], recipients: 0 });
+  }
+
   const kv = c.env.KV as unknown as KVStore;
   const origin = resolveBaseUrl(c);
   // B9: the note-reply shell names the event in its wordmark/footer
@@ -115,7 +121,7 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   const noteEvent = await getEventForOrg(c.var.db, scope.eventId, auth.orgId);
   const accountMap = await findAccountUserIds(
     c.var.db,
-    composeSubmission!.participants.map((p) => ({ contactId: p.contactId, email: p.email })),
+    participants.map((p) => ({ contactId: p.contactId, email: p.email })),
   );
 
   // DEC-547 amendment (wave 43): construct the mailer lazily, inside the
@@ -130,7 +136,7 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   // send loop, instead of an await-per-participant KV round trip inside it.
   const portalLinkMap = await resolvePortalLinks(
     kv,
-    composeSubmission!.participants.map((p) => ({ contactId: p.contactId, userId: accountMap.get(p.contactId) ?? null })),
+    participants.map((p) => ({ contactId: p.contactId, userId: accountMap.get(p.contactId) ?? null })),
     scope.eventId,
     origin,
     true,
@@ -141,7 +147,7 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   // outcome in the 200 response.
   const failed: { email: string; message: string }[] = [];
   let sent = 0;
-  for (const participant of composeSubmission!.participants) {
+  for (const participant of participants) {
     const portalLink = portalLinkMap.get(participant.contactId);
     if (!portalLink) throw new Error(`no portal link resolved for contactId ${participant.contactId}`);
     const name = `${participant.firstName} ${participant.lastName}`.trim();
@@ -167,5 +173,5 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
     }
   }
 
-  return c.json({ sent, failed });
+  return c.json({ sent, failed, recipients: participants.length });
 });

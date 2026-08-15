@@ -3,7 +3,7 @@
 // comment authored by the signed-in organizer reads 'You' (identity by
 // useMe().userId, never a display-string comparison).
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { CommentThread } from './CommentThread';
 import { MAX_COMMENT_BODY_LENGTH } from '../../lib/file-caps';
@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 async function noopSend() {
-  return { sent: 0, failed: [] };
+  return { sent: 0, failed: [], recipients: 0 };
 }
 
 describe('CommentThread', () => {
@@ -133,5 +133,36 @@ describe('CommentThread', () => {
     ) as HTMLTextAreaElement;
     expect(textarea.maxLength).toBe(MAX_COMMENT_BODY_LENGTH);
     expect(screen.getByText('Up to 4,000 characters.')).toBeInTheDocument();
+  });
+
+  // w30-a (DEC-317/DEC-720 wave-30 amendment): the note+status write is
+  // durable even with zero mailable participants -- the summary line must
+  // say so rather than falsely implying nobody-to-email failed.
+  it('renders "Posted to the thread · nobody to email" when the send succeeded with zero recipients', async () => {
+    async function zeroRecipientSend() {
+      return { sent: 0, failed: [], recipients: 0 };
+    }
+    render(<CommentThread comments={[]} onSend={zeroRecipientSend} />);
+    const textarea = screen.getByPlaceholderText('Write a note — sent with the decision, and kept on the thread');
+    fireEvent.change(textarea, { target: { value: 'A note with nobody to mail.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send note only' }));
+    await waitFor(() => {
+      expect(screen.getByText('Posted to the thread · nobody to email')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Sent to \d/)).not.toBeInTheDocument();
+  });
+
+  it('renders "Sent to N recipients." when the send had at least one recipient', async () => {
+    async function sendWithRecipients() {
+      return { sent: 2, failed: [], recipients: 2 };
+    }
+    render(<CommentThread comments={[]} onSend={sendWithRecipients} />);
+    const textarea = screen.getByPlaceholderText('Write a note — sent with the decision, and kept on the thread');
+    fireEvent.change(textarea, { target: { value: 'A note with two recipients.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send note only' }));
+    await waitFor(() => {
+      expect(screen.getByText('Sent to 2 recipients.')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Posted to the thread · nobody to email')).not.toBeInTheDocument();
   });
 });
