@@ -312,77 +312,79 @@ export function PeopleRolesPanel() {
         <p>No people yet.</p>
       ) : (
         <>
-          <div className="chq-settings-people-header-row" role="row">
-            <span role="columnheader">Person</span>
-            <span role="columnheader">Role</span>
-            <span role="columnheader">Scope</span>
-            <span role="columnheader" aria-hidden="true" />
+          <div role="table" aria-label="People and roles">
+            <div className="chq-settings-people-header-row" role="row">
+              <span role="columnheader">Person</span>
+              <span role="columnheader">Role</span>
+              <span role="columnheader">Scope</span>
+              <span role="columnheader" aria-hidden="true" />
+            </div>
+            <ul className="chq-settings-people-list" role="rowgroup">
+              {users.map((user) => {
+                const isSelf = me?.userId === user.id;
+                const label = personLabel(user);
+                const hasName = Boolean(user.name && user.name.trim());
+                return (
+                  <li key={user.id} className="chq-settings-people-row" role="row">
+                    <div className="chq-settings-people-identity" role="cell">
+                      <span className="chq-settings-people-name">{label}</span>
+                      {hasName && <span className="chq-settings-people-email">{user.email}</span>}
+                    </div>
+                    <span className="chq-settings-people-role-cell" role="cell">
+                      <select
+                        className="chq-select chq-settings-people-role"
+                        aria-label={`Role for ${user.email}`}
+                        value={user.role === 'organizer' ? 'organizer' : 'reviewer'}
+                        disabled={isSelf || roleSavingId === user.id}
+                        title={isSelf ? 'You cannot remove or demote yourself' : undefined}
+                        onChange={(e) => void handleRoleChange(user, e.target.value as Role)}
+                      >
+                        <option value="reviewer">Reviewer</option>
+                        <option value="organizer">Organizer</option>
+                      </select>
+                      {roleErrors[user.id] ? (
+                        <span role="alert" className="chq-error">
+                          {roleErrors[user.id]}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="chq-settings-people-scope" role="cell" data-testid="people-scope">
+                      All events in this org
+                    </span>
+                    <div className="chq-settings-people-actions" role="cell">
+                      {isSelf ? (
+                        <>
+                          <span className="chq-settings-row-hint">You cannot remove or demote yourself</span>
+                          <a className="chq-link-button" href="/account/password">
+                            Change password
+                          </a>
+                        </>
+                      ) : resetTargetId === user.id ? (
+                        <span className="chq-settings-people-confirm">
+                          Reset {user.email}&apos;s password?
+                          <button
+                            type="button"
+                            className="chq-btn chq-btn-primary"
+                            disabled={resetting}
+                            onClick={() => void handleResetConfirm(user)}
+                          >
+                            {resetting ? 'Resetting…' : 'Confirm reset'}
+                          </button>
+                          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setResetTargetId(null)}>
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button type="button" className="chq-link-button" onClick={() => setResetTargetId(user.id)}>
+                          Reset password
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-          <ul className="chq-settings-people-list">
-            {users.map((user) => {
-              const isSelf = me?.userId === user.id;
-              const label = personLabel(user);
-              const hasName = Boolean(user.name && user.name.trim());
-              return (
-                <li key={user.id} className="chq-settings-people-row">
-                  <div className="chq-settings-people-identity">
-                    <span className="chq-settings-people-name">{label}</span>
-                    {hasName && <span className="chq-settings-people-email">{user.email}</span>}
-                  </div>
-                  <span className="chq-settings-people-role-cell">
-                    <select
-                      className="chq-select chq-settings-people-role"
-                      aria-label={`Role for ${user.email}`}
-                      value={user.role === 'organizer' ? 'organizer' : 'reviewer'}
-                      disabled={isSelf || roleSavingId === user.id}
-                      title={isSelf ? 'You cannot remove or demote yourself' : undefined}
-                      onChange={(e) => void handleRoleChange(user, e.target.value as Role)}
-                    >
-                      <option value="reviewer">Reviewer</option>
-                      <option value="organizer">Organizer</option>
-                    </select>
-                    {roleErrors[user.id] ? (
-                      <span role="alert" className="chq-error">
-                        {roleErrors[user.id]}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="chq-settings-people-scope" data-testid="people-scope">
-                    All events in this org
-                  </span>
-                  <div className="chq-settings-people-actions">
-                    {isSelf ? (
-                      <>
-                        <span className="chq-settings-row-hint">You cannot remove or demote yourself</span>
-                        <a className="chq-link-button" href="/account/password">
-                          Change password
-                        </a>
-                      </>
-                    ) : resetTargetId === user.id ? (
-                      <span className="chq-settings-people-confirm">
-                        Reset {user.email}&apos;s password?
-                        <button
-                          type="button"
-                          className="chq-btn chq-btn-primary"
-                          disabled={resetting}
-                          onClick={() => void handleResetConfirm(user)}
-                        >
-                          {resetting ? 'Resetting…' : 'Confirm reset'}
-                        </button>
-                        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setResetTargetId(null)}>
-                          Cancel
-                        </button>
-                      </span>
-                    ) : (
-                      <button type="button" className="chq-link-button" onClick={() => setResetTargetId(user.id)}>
-                        Reset password
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
           <p className="chq-settings-people-total">
             Showing {users.length} of {total}
           </p>

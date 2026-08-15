@@ -141,6 +141,24 @@ describe('PeopleRolesPanel', () => {
 
   // w5-e/DEC-691 amendment: the role cell IS the select at rest -- no prior
   // click needed to reach it.
+  // DEC-930 wave-22 amendment: the header row + row grid are wrapped in a
+  // role=table so the previously-orphaned role=row header is valid ARIA,
+  // and the columnheaders are reachable from inside that table.
+  it('wraps the header and rows in a table with reachable columnheaders (DEC-930)', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    const table = screen.getByRole('table', { name: 'People and roles' });
+    expect(within(table).getByRole('columnheader', { name: 'Person' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Role' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Scope' })).toBeInTheDocument();
+    expect(within(table).getAllByRole('row')).toHaveLength(3); // header row + 2 people rows
+  });
+
   it("renders each row's role control as a select without any prior click", async () => {
     mockPeople();
     renderPanel(['/settings?section=people&edit=1']);
