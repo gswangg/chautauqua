@@ -229,9 +229,25 @@ fileApiRoutes.post("/submissions/:id/files", csrfJson, async (c) => {
   // submissionId is always present (route param) and kind is already
   // narrowed to FILE_KINDS above (never HEADSHOT_KIND) — this is always a
   // real deliverable upload, never a resource/library upload.
-  await reopenContentReview(c.var.db, submissionId);
+  //
+  // DEC-020 wave-58 amendment: the organizer's own upload previously left
+  // this reopen silent (the speaker portal's identical upload discloses it,
+  // this route didn't) — the 201 now carries `contentReviewReopened` so the
+  // caller can render the same disclosure.
+  const { reopened } = await reopenContentReview(c.var.db, submissionId);
 
-  return c.json({ id: fileId, filename: file.name, kind, sizeBytes: file.size, contentType: validation.servedContentType }, 201);
+  return c.json(
+    {
+      id: fileId,
+      filename: file.name,
+      kind,
+      sizeBytes: file.size,
+      contentType: validation.servedContentType,
+      contentReviewReopened: reopened,
+      ...(reopened ? { contentStatus: "pending" as const } : {}),
+    },
+    201,
+  );
 });
 
 // -----------------------------------------------------------------------

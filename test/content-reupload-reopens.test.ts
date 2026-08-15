@@ -238,6 +238,50 @@ describe("POST /api/v1/submissions/:id/files reopens content review on a new del
     expect(res.status).toBe(201);
     expect(readContentStatus(sqlite, "sub-org-2")).toBe("pending");
   });
+
+  // DEC-020 wave-58 amendment: the organizer's OWN upload previously left
+  // the reopen silent (no 201 field) even though the identical speaker-portal
+  // upload discloses it. The 201 body now carries contentReviewReopened.
+  it("the 201 reports contentReviewReopened:true and contentStatus:'pending' for an approved submission", async () => {
+    seedSubmission(sqlite, "sub-org-3", 3, "approved");
+    const app = await buildOrganizerApp();
+    const form = new FormData();
+    form.set("file", new File([new Uint8Array([1, 2, 3])], "slides-v2.pdf", { type: "application/pdf" }));
+    form.set("kind", "presentation");
+    const res = await app.request(
+      new Request("http://test.local/api/v1/submissions/sub-org-3/files", { method: "POST", headers: { "x-chq-csrf": "1" }, body: form }),
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { contentReviewReopened: boolean; contentStatus?: string };
+    expect(body.contentReviewReopened).toBe(true);
+    expect(body.contentStatus).toBe("pending");
+    expect(readContentStatus(sqlite, "sub-org-3")).toBe("pending");
+  });
+
+  // ... and false, with the row left untouched, when the submission was
+  // already 'pending' before this upload — the idempotent no-op case.
+  it("the 201 reports contentReviewReopened:false for an already-pending submission, and leaves the row untouched", async () => {
+    seedSubmission(sqlite, "sub-org-4", 4, "pending");
+    const before = sqlite.prepare(`select updated_at from submission where id = ?`).get("sub-org-4") as {
+      updated_at: number;
+    };
+    const app = await buildOrganizerApp();
+    const form = new FormData();
+    form.set("file", new File([new Uint8Array([1, 2, 3])], "slides-v2.pdf", { type: "application/pdf" }));
+    form.set("kind", "presentation");
+    const res = await app.request(
+      new Request("http://test.local/api/v1/submissions/sub-org-4/files", { method: "POST", headers: { "x-chq-csrf": "1" }, body: form }),
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { contentReviewReopened: boolean; contentStatus?: string };
+    expect(body.contentReviewReopened).toBe(false);
+    expect(body.contentStatus).toBeUndefined();
+    expect(readContentStatus(sqlite, "sub-org-4")).toBe("pending");
+    const after = sqlite.prepare(`select updated_at from submission where id = ?`).get("sub-org-4") as {
+      updated_at: number;
+    };
+    expect(after.updated_at).toBe(before.updated_at);
+  });
 });
 
 // Sanity: confirm the drizzle `and`/`inArray`-composed predicate names imported

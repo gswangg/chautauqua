@@ -36,7 +36,11 @@ const submissionScope = {
 };
 
 const reopenContentReviewMock = vi.fn(async (_db: unknown, submissionId: string) => {
-  if (submissionId === IN_SCOPE_SUB) currentContentStatus = "pending";
+  if (submissionId === IN_SCOPE_SUB) {
+    currentContentStatus = "pending";
+    return { reopened: true };
+  }
+  return { reopened: false };
 });
 const insertFileMock = vi.fn(async () => "file-new");
 

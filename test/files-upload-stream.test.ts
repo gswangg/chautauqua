@@ -30,7 +30,7 @@ vi.mock("../src/server/repo/files", async () => {
     ...actual,
     getSubmissionScope: vi.fn(async () => scope),
     insertFile: vi.fn(async () => "new-file-id"),
-    reopenContentReview: vi.fn(async () => {}),
+    reopenContentReview: vi.fn(async () => ({ reopened: false })),
   };
 });
 

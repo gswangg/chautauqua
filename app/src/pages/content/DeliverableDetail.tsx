@@ -127,6 +127,12 @@ export function DeliverableDetail({
   // fabricated placeholder) until this resolves, so the header renders the
   // title alone rather than a wrong/blank subtitle for a beat.
   const [headerDetail, setHeaderDetail] = useState<DeliverableHeaderDetail | null>(null);
+  // DEC-020 wave-58 amendment: the organizer's own upload can reopen content
+  // review exactly like the speaker portal's upload does — the 201 now
+  // names it (`contentReviewReopened`), and this holds that receipt for the
+  // most recent upload so the disclosure line below can render it. Reset on
+  // every new upload attempt, never carried across submissions.
+  const [uploadReopened, setUploadReopened] = useState(false);
 
   // DEC-020 amendment (wave 12): ONE content-status reader -- this is the
   // single GET this component ever issues for header/status data. Both the
@@ -249,7 +255,8 @@ export function DeliverableDetail({
     form.set('file', file);
     form.set('kind', kind);
     if (replacesFileId) form.set('replacesFileId', replacesFileId);
-    await apiUpload(`/submissions/${submissionId}/files`, form);
+    setUploadReopened(false);
+    const result = await apiUpload<{ contentReviewReopened: boolean }>(`/submissions/${submissionId}/files`, form);
     const [, detail] = await Promise.all([loadFiles(), loadHeader()]);
     // DEC-020 amendment (wave 12): an upload can flip content_status server-
     // side (files.ts's reopenContentReview, approved -> pending) -- the
@@ -259,6 +266,11 @@ export function DeliverableDetail({
       setPill(detail.contentStatus);
       onContentStatusChange(submissionId, detail.contentStatus);
     }
+    // DEC-020 wave-58 amendment: the 201's own contentReviewReopened flag
+    // (not a re-derivation from the refetched pill, which would also be true
+    // for a submission that was ALREADY pending before this upload) drives
+    // the disclosure line -- only a real reopen names the consequence.
+    setUploadReopened(result.contentReviewReopened);
     onUploaded?.();
   }
 
@@ -515,6 +527,21 @@ export function DeliverableDetail({
                 contentStatus={pill}
                 statusChangedAt={headerDetail?.updatedAt ?? null}
               />
+              {/* DEC-020 wave-58 amendment: the organizer's own upload can
+                  reopen content review exactly like the speaker portal's
+                  does -- the portal already discloses this after the fact
+                  ("Received your file for ... The session is off the public
+                  schedule pending the producer's approval."); this is the
+                  same disclosure in the organizer's own vocabulary, gated on
+                  the 201's own contentReviewReopened flag rather than a
+                  guess, and reset on every upload attempt (see
+                  uploadReopened above). */}
+              {uploadReopened && (
+                <p role="status" className="chq-meta chq-content-upload-reopened-notice">
+                  The new version is back with review and the session is off the public schedule until it is
+                  approved again.
+                </p>
+              )}
               <UploadZone kind={activeKind} replacesFileId={activeLatest?.id} onUpload={handleUpload} />
             </div>
             <div className="chq-content-comments-col">

@@ -98,9 +98,16 @@ export async function updateContentStatuses(
  * One set-based UPDATE, never read-then-write; idempotent — a submission
  * already 'pending' is left untouched (WHERE excludes it), and rows outside
  * ('approved','changes_requested') are simply not matched. DEC-009 invariant
- * applies here too — this module MUST NEVER import a mailer. */
-export async function reopenContentReview(db: Db, submissionId: string): Promise<void> {
-  await db
+ * applies here too — this module MUST NEVER import a mailer.
+ *
+ * DEC-020 wave-58 amendment: returns `{ reopened }`, derived from
+ * `.returning()` on the SAME statement (never a second SELECT) — true iff
+ * this call's WHERE actually matched a row (i.e. the submission moved
+ * approved/changes_requested -> pending), false when it was already
+ * 'pending' (idempotent no-op) or doesn't exist. Callers use this to
+ * disclose the reopen at the point of upload rather than leaving it silent. */
+export async function reopenContentReview(db: Db, submissionId: string): Promise<{ reopened: boolean }> {
+  const rows = await db
     .update(schema.submission)
     .set({ contentStatus: PENDING_CONTENT_STATUS, updatedAt: new Date() })
     .where(
@@ -108,5 +115,7 @@ export async function reopenContentReview(db: Db, submissionId: string): Promise
         eq(schema.submission.id, submissionId),
         inArray(schema.submission.contentStatus, ["approved", "changes_requested"]),
       ),
-    );
+    )
+    .returning({ id: schema.submission.id });
+  return { reopened: rows.length > 0 };
 }
