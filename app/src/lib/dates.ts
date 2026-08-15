@@ -265,10 +265,14 @@ export function formatDayInput(yyyyMmDd: string): string {
 }
 
 /**
- * DEC-146 amendment (w44-b): parse DateField's free-text entry into a
+ * DEC-146 amendment (w44-b, w49-c): parse DateField's free-text entry into a
  * yyyy-mm-dd string. Accepts "11 May 2028" (any case month abbreviation,
  * matched by its first three letters so "may"/"May"/"MAY"/"December" all
- * work) and the raw wire format "2028-05-11". Returns null -- never a
+ * work), the month-first spelling "May 1, 2027" / "May 1 2027" / "Sep 01
+ * 2026" (comma after the day optional, month matched the same way), and the
+ * raw wire format "2028-05-11". All-numeric slash forms like "05/11/2028"
+ * are deliberately NOT accepted -- day-first vs month-first is ambiguous
+ * without a month name to disambiguate. Returns null -- never a
  * partially-parsed guess -- for anything else, including an empty string,
  * so DateField can refuse to call onChange with garbage (fail loudly).
  */
@@ -289,17 +293,34 @@ export function parseDayInput(text: string): string | null {
   if (dayMonthYearMatch) {
     const [, dayStr, monthStr, yearStr] = dayMonthYearMatch;
     if (!dayStr || !monthStr || !yearStr) return null;
-    const monthIndex = SHORT_MONTH_NAMES.findIndex(
-      (name) => name.toLowerCase() === monthStr.slice(0, 3).toLowerCase()
-    );
+    const monthIndex = monthIndexFromName(monthStr);
     if (monthIndex === -1) return null;
     const day = Number(dayStr);
     const year = Number(yearStr);
-    if (!isValidCalendarDate(year, monthIndex + 1, day)) return null;
-    return `${String(year).padStart(4, '0')}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return toIsoDateString(year, monthIndex + 1, day);
+  }
+
+  const monthDayYearMatch = /^([A-Za-z]{3,})\s+(\d{1,2}),?\s+(\d{4})$/.exec(trimmed);
+  if (monthDayYearMatch) {
+    const [, monthStr, dayStr, yearStr] = monthDayYearMatch;
+    if (!monthStr || !dayStr || !yearStr) return null;
+    const monthIndex = monthIndexFromName(monthStr);
+    if (monthIndex === -1) return null;
+    const day = Number(dayStr);
+    const year = Number(yearStr);
+    return toIsoDateString(year, monthIndex + 1, day);
   }
 
   return null;
+}
+
+function monthIndexFromName(monthStr: string): number {
+  return SHORT_MONTH_NAMES.findIndex((name) => name.toLowerCase() === monthStr.slice(0, 3).toLowerCase());
+}
+
+function toIsoDateString(year: number, month: number, day: number): string | null {
+  if (!isValidCalendarDate(year, month, day)) return null;
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 function isValidCalendarDate(year: number, month: number, day: number): boolean {

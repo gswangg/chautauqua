@@ -14,6 +14,13 @@ import { formatDayInput, parseDayInput } from '../lib/dates';
  * unparseable, non-empty value never reaches the caller's onChange (fail
  * loudly, never coerce) -- it renders an inline error instead and leaves
  * the raw text in place so the producer can fix it.
+ *
+ * DEC-146 amendment (w49-c): a rejected date must also block the enclosing
+ * form's submit, not just fail silently local to this component. On every
+ * keystroke (not just blur) the input's native validity is set via
+ * setCustomValidity so an unparseable non-empty value fails native
+ * constraint validation exactly like `required` -- but the inline message
+ * still only appears after blur, so the producer isn't shouted at mid-type.
  */
 export function DateField(props: {
   id: string;
@@ -30,6 +37,7 @@ export function DateField(props: {
   const [text, setText] = useState(() => formatDayInput(value));
   const [error, setError] = useState<string | null>(null);
   const focusedRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Keep the display text in sync with an externally-changed value (e.g.
   // the parent resets the form) -- but never while the producer is mid-edit,
@@ -38,7 +46,18 @@ export function DateField(props: {
     if (focusedRef.current) return;
     setText(formatDayInput(value));
     setError(null);
+    applyCustomValidity(formatDayInput(value));
   }, [value]);
+
+  function applyCustomValidity(candidateText: string) {
+    const el = inputRef.current;
+    if (!el) return;
+    if (candidateText.trim() !== '' && parseDayInput(candidateText) === null) {
+      el.setCustomValidity('Use a date like 11 May 2028');
+    } else {
+      el.setCustomValidity('');
+    }
+  }
 
   function handleBlur() {
     focusedRef.current = false;
@@ -63,6 +82,7 @@ export function DateField(props: {
   return (
     <>
       <input
+        ref={inputRef}
         id={id}
         type="text"
         inputMode="text"
@@ -76,7 +96,10 @@ export function DateField(props: {
         onFocus={() => {
           focusedRef.current = true;
         }}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          applyCustomValidity(e.target.value);
+        }}
         onBlur={handleBlur}
       />
       {error ? (

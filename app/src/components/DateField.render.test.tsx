@@ -73,6 +73,50 @@ describe('DateField', () => {
     fireEvent.blur(input);
     expect(onChange).toHaveBeenCalledWith('');
   });
+
+  it('accepts a month-first spelling on blur', () => {
+    const onChange = vi.fn();
+    render(<DateField id="d1" value="" onChange={onChange} />);
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'May 1, 2027' } });
+    fireEvent.blur(input);
+    expect(onChange).toHaveBeenCalledWith('2027-05-01');
+  });
+});
+
+describe('DateField native constraint validation (DEC-146 amendment, w49-c)', () => {
+  it('fails checkValidity() while the typed text is unparseable', () => {
+    render(<DateField id="d1" value="" onChange={vi.fn()} />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'not a date' } });
+    expect(input.checkValidity()).toBe(false);
+  });
+
+  it('passes checkValidity() once the text is corrected to a parseable date', () => {
+    render(<DateField id="d1" value="" onChange={vi.fn()} />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'not a date' } });
+    expect(input.checkValidity()).toBe(false);
+    fireEvent.change(input, { target: { value: 'May 1, 2027' } });
+    expect(input.checkValidity()).toBe(true);
+  });
+
+  it('passes checkValidity() once the text is cleared', () => {
+    render(<DateField id="d1" value="" onChange={vi.fn()} />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'not a date' } });
+    expect(input.checkValidity()).toBe(false);
+    fireEvent.change(input, { target: { value: '' } });
+    expect(input.checkValidity()).toBe(true);
+  });
+
+  it('shows no inline error message while typing an unparseable value (only after blur)', () => {
+    render(<DateField id="d1" value="" onChange={vi.fn()} />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'not a date' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(input.checkValidity()).toBe(false);
+  });
 });
 
 describe('DateField source-scan: zero native date inputs remain (DEC-146 amendment)', () => {
@@ -102,5 +146,37 @@ describe('DateField source-scan: zero native date inputs remain (DEC-146 amendme
       });
     }
     expect(violations, `native type="date" input found:\n${violations.join('\n')}`).toEqual([]);
+  });
+});
+
+describe('DateField source-scan: no noValidate on a form containing a DateField (DEC-146 amendment, w49-c)', () => {
+  // DateField relies on native constraint validation (setCustomValidity) to
+  // block submit -- a form that opts out with noValidate would silently let
+  // a rejected date through, per the w49-c ruling closing that drop.
+  it('finds no `noValidate` on the known DateField call sites', () => {
+    const HERE = dirname(fileURLToPath(import.meta.url));
+    const APP_SRC = join(HERE, '..'); // app/src
+    const callSites = [
+      join(APP_SRC, 'pages/review/PlanEditor.tsx'),
+      join(APP_SRC, 'pages/settings/EventSettingsPanel.tsx'),
+      join(APP_SRC, 'pages/speakers/TaskModal.tsx'),
+      join(APP_SRC, 'pages/settings/CallForPapersPanel.tsx'),
+      join(APP_SRC, 'pages/settings/EmbedsPanel.tsx'),
+      join(APP_SRC, 'pages/forms/FormsPage.tsx'),
+      join(APP_SRC, 'components/EventSwitcher.tsx'),
+    ];
+
+    const violations: string[] = [];
+    for (const file of callSites) {
+      const source = readFileSync(file, 'utf-8');
+      expect(source, `${file} imports DateField`).toMatch(/DateField/);
+      const lines = source.split('\n');
+      lines.forEach((lineText, idx) => {
+        if (/\bnoValidate\b/.test(lineText) && !/^\s*(\*|\/\/)/.test(lineText.trim())) {
+          violations.push(`${relative(APP_SRC, file)}:${idx + 1}: ${lineText.trim()}`);
+        }
+      });
+    }
+    expect(violations, `noValidate found on a form containing a DateField:\n${violations.join('\n')}`).toEqual([]);
   });
 });
