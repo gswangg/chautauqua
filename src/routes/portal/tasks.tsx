@@ -59,6 +59,7 @@ import {
   getMyTaskAssignments,
   getPortalData,
   listDeliverableCandidates,
+  listDeliverableCandidatesForEvents,
   listLatestDeliverables,
   resolveChosenDeliverable,
   saveTaskFileCompletion,
@@ -156,15 +157,45 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
   );
   const fileIds = fileTaskAssignments.map((a) => a.fileId as string);
 
-  const [latestByFileId, chainByFileId] = await Promise.all([
+  // DEC-891 (wave 34 amendment): candidates are event-scoped (every accepted
+  // session the caller holds in that event), not task-scoped, and this read
+  // consumes only `assignments` (already in hand after wave 1) — so it joins
+  // the chain-resolution wave below rather than waiting on it. One batched
+  // statement over every distinct event id on the page (not one call per
+  // event, and not one call per assignment).
+  const deliverableAssignments = assignments.filter((a) => a.kind === "file_request" && a.deliverableKind != null);
+  const eventIds = [...new Set(deliverableAssignments.map((a) => a.eventId))];
+
+  const [latestByFileId, chainByFileId, candidatesByEventId] = await Promise.all([
     resolveTaskFileChainLatestMany(c.var.db, fileIds),
     listFileChainVersionsMany(c.var.db, fileIds),
+    listDeliverableCandidatesForEvents(c.var.db, contactId, eventIds),
   ]);
 
   // Every id across every chain on the page, deduped — the single set
-  // listFileCommentsForFiles reads comments for in one pass.
+  // listFileCommentsForFiles reads comments for in one pass. This consumes
+  // only chainByFileId (just resolved above), and listLatestDeliverables
+  // below consumes only candidatesByEventId (also just resolved above) — so
+  // the two reads are independent of each other and join the same wave.
   const allChainIds = [...new Set([...chainByFileId.values()].flatMap((chain) => chain.map((row) => row.id)))];
-  const commentsByFileId = await listFileCommentsForFiles(c.var.db, allChainIds);
+
+  // DEC-962/DEC-530: one batched "latest deliverable" read over every
+  // candidate submission id this page could show (DEC-891's quiet
+  // single-candidate rule already excludes rows that won't render), instead
+  // of one getLatestDeliverable call per candidate per assignment.
+  const relevantSubmissionIds = [
+    ...new Set(
+      deliverableAssignments.flatMap((a) => {
+        const candidates = candidatesByEventId.get(a.eventId) ?? [];
+        return candidates.length < 2 ? [] : candidates.map((cand) => cand.id); // conditional-and-quiet
+      }),
+    ),
+  ];
+
+  const [commentsByFileId, latestDeliverableBySubmissionId] = await Promise.all([
+    listFileCommentsForFiles(c.var.db, allChainIds),
+    listLatestDeliverables(c.var.db, contactId, orgId, relevantSubmissionIds),
+  ]);
 
   const fileExtrasByAssignmentId = new Map<string, FileRequestExtras>();
   for (const a of fileTaskAssignments) {
@@ -200,37 +231,6 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
       versions,
     });
   }
-
-  // DEC-891: candidates are event-scoped (every accepted session the caller
-  // holds in that event), not task-scoped — one listDeliverableCandidates
-  // call per distinct event id (not per assignment), run in parallel.
-  const deliverableAssignments = assignments.filter((a) => a.kind === "file_request" && a.deliverableKind != null);
-  const eventIds = [...new Set(deliverableAssignments.map((a) => a.eventId))];
-  const candidatesByEventId = new Map<string, DeliverableCandidate[]>();
-  await Promise.all(
-    eventIds.map(async (eventId) => {
-      candidatesByEventId.set(eventId, await listDeliverableCandidates(c.var.db, contactId, eventId));
-    }),
-  );
-
-  // DEC-962/DEC-530: one batched "latest deliverable" read over every
-  // candidate submission id this page could show (DEC-891's quiet
-  // single-candidate rule already excludes rows that won't render), instead
-  // of one getLatestDeliverable call per candidate per assignment.
-  const relevantSubmissionIds = [
-    ...new Set(
-      deliverableAssignments.flatMap((a) => {
-        const candidates = candidatesByEventId.get(a.eventId) ?? [];
-        return candidates.length < 2 ? [] : candidates.map((cand) => cand.id); // conditional-and-quiet
-      }),
-    ),
-  ];
-  const latestDeliverableBySubmissionId = await listLatestDeliverables(
-    c.var.db,
-    contactId,
-    orgId,
-    relevantSubmissionIds,
-  );
 
   const deliverableChoiceByAssignmentId = new Map<string, DeliverableChoiceInfo>();
   for (const a of deliverableAssignments) {
