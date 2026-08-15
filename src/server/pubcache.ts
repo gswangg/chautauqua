@@ -6,8 +6,23 @@
 // swap, not a TTL wait: bumpPublicVersionMiddleware writes a fresh random
 // token to KV after any successful (status < 400) non-GET/HEAD/OPTIONS
 // request, and publicCacheMiddleware folds that version into the cache
-// key so a purge is just "the old key is never looked up again" (O(1),
-// no URL enumeration, no lost-update window from concurrent counters).
+// key so a purge is a version swap: the old key is never looked up again
+// (O(1), no URL enumeration, no lost-update window from concurrent
+// counters), but the swap is NOT instantaneous for every reader. The
+// version token itself is read from Workers KV (readPublicVersion below),
+// and KV is edge-cached + eventually consistent — the platform floor on a
+// KV read's cacheTtl is PUBLIC_VERSION_STALENESS_SECONDS (60s), so a colo
+// that already has the old token cached can keep serving the pre-bump
+// version for up to that window after the bump. Validating that bound in
+// production is stage 2 (SPEC.md:59-62 assigns "production edge-cache
+// validation" there); DEC-083's wave-26 amendment names this a documented
+// bound, not a defect to re-architect in stage 1. What publicCacheMiddleware
+// DOES do in this stage (see the cookie check at the top of the middleware,
+// below) is make sure the one reader who would otherwise notice the lag —
+// the signed-in organiser who just made the change — never hits the stale
+// edge copy at all: any request carrying a chq_session cookie skips the
+// cache entirely and renders fresh, so the staleness window is invisible
+// to anonymous visitors' shared cache experience only.
 //
 // DEC-099: the internal 86400 max-age on the stored copy must never reach
 // clients/proxies. On a cache hit, servePublicGet rebuilds the Response
@@ -44,6 +59,7 @@ import type { KVStore } from "../lib/draft";
 import { DEC_627 } from "../decisions";
 import { executionCtxOf } from "./execution-ctx";
 import { MAX_PUBLIC_QUERY_VALUE_LENGTH, PUBLIC_CACHE_KEY_PARAMS } from "./repo/public/bounds";
+import { SESSION_COOKIE_NAME, parseCookies } from "../auth/cookies";
 
 void DEC_627;
 
@@ -63,6 +79,29 @@ export interface CacheLike {
 }
 
 const ABSENT_VERSION = "v0";
+
+/** DEC-083 wave-26 amendment: the bound on how long a signed-out visitor's
+ * colo can keep serving a pre-bump public page after an organiser's write.
+ * This is a platform property, not a chosen TTL: Workers KV's edge read
+ * (readPublicVersion's `kv.get(PUBVER_KEY)` below) has a documented
+ * cacheTtl floor of 60s, and KV writes propagate to the edge eventually
+ * (not synchronously) on top of that — so no `kv.get` can promise a purge
+ * lands sooner than this window. SPEC.md:59-62 assigns "production
+ * edge-cache validation and perf measurement" to stage 2; this constant
+ * documents the known bound now rather than deferring the honesty of the
+ * claim. Exported (not just a comment) so a test can assert the number
+ * can't be silently loosened. */
+export const PUBLIC_VERSION_STALENESS_SECONDS = 60;
+
+// This is CLIENT_CACHE_CONTROL_OVERRIDE (the internal caches.default max-age
+// on the STORED copy, never sent to a real client — see DEC-099 above): its
+// 86400 is correct as-is and is not touched by PUBLIC_VERSION_STALENESS_SECONDS.
+// A stored entry's staleness is bounded by how stale the __chqv token used to
+// key it can be (readPublicVersion's KV read, capped at
+// PUBLIC_VERSION_STALENESS_SECONDS), not by this stored Response's own TTL —
+// once the token in a new request's key differs, the old keyed entry is
+// simply never looked up again, so a long TTL here does no harm and saves a
+// re-store on every hit within the same version.
 const CLIENT_CACHE_CONTROL_OVERRIDE = "public, max-age=86400";
 
 /** DEC-099: client-facing Cache-Control for cache-hit responses. Must stay
@@ -72,7 +111,11 @@ export const CLIENT_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=
 
 /** Reads the current public version, defaulting to 'v0' when the key is
  * simply absent (a fresh KV namespace pre-first-mutation). A missing KV
- * *binding* is a caller bug and is not handled here — fail loudly. */
+ * *binding* is a caller bug and is not handled here — fail loudly.
+ *
+ * This `kv.get` is the read whose result can lag a bump by up to
+ * PUBLIC_VERSION_STALENESS_SECONDS (Workers KV's edge cacheTtl floor plus
+ * eventually-consistent propagation) — see that constant's comment. */
 export async function readPublicVersion(kv: KVStore): Promise<string> {
   const raw = await kv.get(PUBVER_KEY);
   return raw ?? ABSENT_VERSION;
@@ -395,6 +438,19 @@ export async function bumpIfMutating(kv: KVStore, method: string, path: string, 
 export function publicCacheMiddleware(cache: () => CacheLike) {
   return async (c: Context<AppEnv>, next: Next) => {
     if (c.req.method !== "GET" || isUncacheableIcsRequest(c.req.url)) {
+      await next();
+      return;
+    }
+    // DEC-083 wave-26 amendment: a signed-in organiser is the one visitor
+    // who would actually notice the up-to-PUBLIC_VERSION_STALENESS_SECONDS
+    // edge lag documented above — they're the person who just made the
+    // change. Skip BOTH cache.match and cache.put for any request carrying
+    // a chq_session cookie so they always render fresh; every anonymous
+    // visitor (no session cookie) still reads/writes the shared cache
+    // exactly as before, so scripts/perf-smoke.ts's bare-fetch, no-cookie
+    // probes of public routes are unaffected.
+    const cookies = parseCookies(c.req.header("cookie") ?? null);
+    if (SESSION_COOKIE_NAME in cookies) {
       await next();
       return;
     }
