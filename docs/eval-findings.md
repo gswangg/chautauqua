@@ -52,6 +52,119 @@ triage, not a fresh finding.
   on both endpoints, falling back to "every outstanding contact" only when
   omitted.
 
+### Re-verified this wave (w9-e, 2026-08-15) — moved out of TIER 1 item 4
+
+Each closed on a STRUCTURAL citation (file:line read against current `main`);
+none of these were exercised (no test run this wave — docs-only task).
+
+- **EMB session-card speaker title/company** (was TIER 1 item 1) — STRUCTURAL:
+  `src/routes/public/cards.tsx:102-116` `SpeakerNames`/`speakerIdentityClause`
+  already renders `Name · Title, Company` in the muted register, and
+  `src/server/repo/public/sessions.ts` already selects `job_title`/`company`.
+  This item was NOT in this wave's assigned citation list but was found
+  closed while cross-checking the IN FLIGHT block (below) — closing it here
+  rather than leaving a stale open item standing on a false premise.
+- **Reviewer multi-track scope renders a list, never "All tracks"** —
+  STRUCTURAL: `src/domain/evaluation/progress.ts:39` (`resolveReviewerScopeTrackIds`,
+  DEC-845) returns `[]` only when genuinely unrestricted, else every
+  restricted track id named; `src/routes/review/reviewer.ts:99-101` builds
+  `scopeTrackName` from `formatReviewerScopeLabel`, which joins every track
+  name with `·` — never truncates to a count.
+- **Accepted speakers keep editing past close** — STRUCTURAL:
+  `src/domain/edit-lock.ts:22` `canEditSubmission` returns
+  `status === "accepted" || !isFormClosed(...)` — the accepted branch never
+  gates on the close date (DEC-041 forfeit reversal, see TIER 1 note below).
+- **`npm run deploy` exists** — STRUCTURAL: `package.json:21`
+  (`"deploy": "wrangler d1 migrations apply chautauqua --remote && wrangler deploy"`).
+- **Comms preview `.ics` chip formats in the event's own timezone** —
+  STRUCTURAL: `app/src/pages/comms/icsChip.ts:18-19` `formatLocal` calls
+  `formatDateTimeInZone(iso, timeZone)` (DEC-494) — never the viewer's
+  ambient zone.
+- **Settings edit-view field widths are tokens (dates 200, seats 110)** —
+  STRUCTURAL: `app/src/pages/settings/settings.css:17-22`
+  (`--chq-field-w-date: 200px`, `--chq-field-w-seats: 110px`, DEC-896
+  amendment) — the only widths a settings edit field can render at.
+- **`/account/password` has a real Cancel control and the bare page is a
+  real 820 column** — STRUCTURAL: `src/routes/account.tsx:139-144` renders
+  `<a class="chq-btn chq-btn-secondary chq-auth-cancel" href={props.backHref}>Cancel</a>`;
+  `src/routes/auth.css.ts:318-336` scopes the fixed-footer/scrollable-stack
+  treatment to `.chq-bare-page:has(.chq-auth-fields)` (wave 48 amendment).
+- **Overview §01 carries "Skips anyone reminded in the last hour"** —
+  STRUCTURAL: `app/src/pages/Overview.tsx:325`.
+- **Pipeline fit score + rationale exist** — STRUCTURAL:
+  `src/domain/pipeline-fit.ts` present and exporting the fit computation.
+- **Portal "what speakers may edit" toggles exist** — STRUCTURAL:
+  `app/src/pages/settings/PortalSettingsPanel.tsx:306` (`What speakers may
+  edit` section header) plus the toggle rows beneath it.
+
+### Mobile / phone items re-verified this wave — leave in the phone queue below, cited
+
+These stay in the "Mobile / phone queue" section per the task's instruction
+(built items, but the queue as a whole is not being promoted) — cited here
+so the next mobile-lane sweep doesn't re-derive them:
+
+- **Phone agenda N-aware clash caption** — STRUCTURAL:
+  `app/src/pages/agenda/PhoneAgenda.tsx:186` (`{countOf(slot.sessions.length,
+  'session')} in this slot`).
+- **Phone agenda occupied-slot "Place here anyway" path** — STRUCTURAL:
+  `app/src/pages/agenda/PhoneAgenda.tsx:167-176` (free-slot branch) and
+  `:199-208` (clash-slot branch), both gated on `armed`.
+- **Phone-block override assertion exercises the override side, not just
+  the base** — STRUCTURAL: `app/src/phone-block-visibility.test.ts:186-205`
+  asserts every non-exempt selector's top-level `display:none` is switched
+  back on inside a phone media query.
+- **Phone password screen's fixed footer + Cancel** — STRUCTURAL:
+  `src/routes/auth.css.ts:318-336` (same citation as the desktop item above
+  — the phone-width media query scopes the fixed-footer/Cancel-visible
+  treatment to `.chq-bare-page:has(.chq-auth-fields)`, and `.chq-auth-cancel
+  { display: inline-flex; }` at line 335 is the phone-only Cancel reveal).
+- **Comms phone landing** — STRUCTURAL:
+  `app/src/phone-block-visibility.test.ts:109-121`, the
+  `.chq-comms-phone-landing` entry in `NO_PHONE_RULE_OK` (DEC-621) — its
+  phone-width visibility rule lives on the co-applied
+  `.chq-comms-phone-landing-show` class, exempted with a reasoned entry.
+- **Home footer media rule** — STRUCTURAL: `src/routes/public/home.css.ts:72-76`
+  (`@media (max-width: 700px)` block reflowing `.chq-home-header`,
+  `.chq-home-body`, `.chq-home-hero h1`, `.chq-home-footer`).
+
+## IN FLIGHT — owned by a branch, do not re-file
+
+Corrected this wave against actual branch/main state (see notes below —
+two of the branches named in this task's brief are already merged, not
+in-flight; recorded accurately here rather than as given):
+
+- **`task-w8-d`** (compose step-1 slot column + footer) — UNMERGED
+  (`git merge-base --is-ancestor task-w8-d main` fails). Owns
+  `app/src/pages/comms/ComposeWizard.tsx` step-1 table. Note: this branch's
+  diff against current `main` is wide (touches `HistoryTab.tsx`,
+  `BulkActionBar.tsx`, `Agenda.tsx`) because it was cut before `task-w8-b`
+  and `task-w8-e` merged — it needs a rebase onto current `main`, not a
+  plain merge, or it will revert already-landed work.
+- **`task-w8-c`** (review round name + window) — UNMERGED
+  (`git merge-base --is-ancestor task-w8-c main` fails; `roundLabel`/
+  `roundMeta` do not exist in `main`'s
+  `app/src/pages/review/ReviewerQueue.tsx`). This wave's task brief asserted
+  w8-c had landed at `ReviewerQueue.tsx:502-512` — re-checked and that is
+  NOT true against current `main`; correcting the record here rather than
+  propagating the stale claim. Owns the plan-scoped queue header subtitle.
+
+Already landed, NOT in flight (corrected from this wave's task brief):
+
+- **`task-w8-b`** (Submissions→Comms `?ids=` handoff + ComposeWizard
+  entry-effects landing rule) — MERGED (`git merge-base --is-ancestor
+  task-w8-b main` succeeds; commit `6b5ae238` "merge task-w8-b" is in
+  `main`'s history). STRUCTURAL: `app/src/pages/submissions/BulkActionBar.tsx:77`
+  links to `/comms?tab=compose&ids=${emailIds.join(',')}`.
+- **`task-w8-e`** (Comms History pager) — MERGED (commit `508c0152` "merge
+  task-w8-e" is in `main`'s history). STRUCTURAL:
+  `app/src/pages/comms/HistoryTab.tsx:42-160` renders `page`/`perPage` state
+  wired to a real pager (prev/next, `paginationSummary`).
+- **`task-w8-a`** as named in this wave's brief (public session-card
+  speaker title/company, EMB-01/09) — no branch by that name currently
+  exists (the `task-w8-a` name is reused from an earlier, unrelated wave's
+  submission-detail-page task, already merged and gone). The EMB-01/09 work
+  itself is done on `main` — see the TIER 0 closure above.
+
 ## TIER 1 — re-verified open items (orchestrator promotion, 2026-08-15 morning)
 
 The gate-7 evidence is NOT archive-stale — it was MEASURED TODAY against boundary
@@ -62,36 +175,31 @@ the vendored docs/design/*.dc.html IS the v9 pack — the research repo's
 design-frames-v9 PNGs are renders of these exact files; distrust of "v9" is
 misplaced.
 
-1. **⚡ EMB session-card speaker title/company** (~1.3 composite): sbek EMB-01/09
-   reasoning (measured on prod today) — "the required speaker job title and company
-   are NOT shown on the session cards... only bold speaker names." Render
-   "Name · Title, Company" second line in the muted register on SessionCard
-   (src/routes/public/cards.tsx SpeakerNames); public sessions query must select
-   job_title/company. EMB-09 also wants the description on agenda-style cards.
-2. **⚡ Compose-flow turn diet**: CFP-04/16 cannot_judge AGAIN today — both CFP
+1. **⚡ Compose-flow turn diet**: CFP-04/16 cannot_judge AGAIN today — both CFP
    scenarios capped with the compose steps eating the budget before the
    close-the-call step. Fewer clicks per compose step, default-forward selections.
-   (Step-4 anatomy + dedupe landed post-boundary — the DIET half remains.)
-3. **CNT-S3 session-edit loop**: capped at the session-edit step again today
+   (Step-4 anatomy + dedupe landed post-boundary, and the `?ids=` handoff/step-1
+   slot-column structural fixes are w8-b (landed)/w8-d (in flight, see IN
+   FLIGHT above) — the DIET half itself, beyond those structural fixes,
+   remains open.)
+2. **CNT-S3 session-edit loop**: capped at the session-edit step again today
    (CNT-10 cannot_judge) — cheapen edit-save-reload on the admin session detail.
-4. **Gate-7 fleet remaining MAJORs** (measured today, per-pair detail in
+3. **Gate-7 fleet remaining MAJORs** (measured today, per-pair detail in
    fidelity-gate7/pair*/report.md; several already converted post-boundary —
-   re-verify against current main before re-filing as closed): 07 comms step-1
-   SLOT/footer + templates-grid overlap + history-tab chrome · 05 files-library
+   re-verify against current main before re-filing as closed; four sub-items
+   closed this wave, see TIER 0 above): 07 comms step-1 SLOT/footer +
+   templates-grid overlap + history-tab chrome · 05 files-library
    column swap + orphan row + upload-reject modal + content-detail 1180/32
    container · 04 participation panel 420 + speaker-detail grid/theads + reminders
    modal (prints localhost:8799) + write-failed banner anatomy + search excluded
    from hasActiveNarrowing · 02 SESSION DETAILS label-left grid + participant
-   chips · 09 field widths (dates 200, seats 110) + shared destructive-far-left
-   footer + Add-track tertiary + portal what-speakers-may-edit toggles + CFP-edit
-   intro/description binding + saved-embed single-card anatomy · CLASS 1 admin
+   chips · 09 Add-track tertiary + CFP-edit intro/description binding +
+   saved-embed single-card anatomy · CLASS 1 admin
    measure 1372@114 + topbar 59 (everywhere) · 12-home chrome at 46px gutters +
    732 body · 10 active-filter ink chip + TBD room on public (ruling A25) +
    speakers toolbar right-cluster + underlined initials + blue avatars · 11
-   /account/password broken button + bare-page must be a real 820 column
-   (auth.css.ts body flex shrink-wrap) + AUTH_CSS .chq-field-invalid cascade
-   inert · 03 duplicated results head + FORM ANSWERS stacked + plan-editor draft
-   footer.
+   AUTH_CSS .chq-field-invalid cascade inert · 03 duplicated results head +
+   FORM ANSWERS stacked + plan-editor draft footer.
 
 **CFP-16 is a RECORDED DELIBERATE FORFEIT** (DEC-041 findings-wave-6 amendment):
 accepted speakers keep editing past close per docs/clarifications.md:39 (swyx,
@@ -134,12 +242,21 @@ as its own section, per the archive's "Mobile queue (NEXT ROUND)" note:
 - Phone agenda: enumerate all `chq-phone-*` classes in the media-query
   override (base `display:none`, restored only under the phone breakpoint)
   and fix `phone-block-visibility.test.ts` to assert the override side, not
-  just the base; N-aware clash caption; occupied-slot "place anyway" path.
+  just the base — DONE, cited above (STRUCTURAL:
+  `app/src/phone-block-visibility.test.ts:186-205`); N-aware clash caption —
+  DONE, cited above (STRUCTURAL: `app/src/pages/agenda/PhoneAgenda.tsx:186`);
+  occupied-slot "place anyway" path — DONE, cited above (STRUCTURAL:
+  `app/src/pages/agenda/PhoneAgenda.tsx:167-176,199-208`).
 - Phone shells: bottom fixed tab bar + inset scroll, 44px targets
-  everywhere, phone landing/content parity (Comms landing content,
+  everywhere, phone landing/content parity (Comms landing content — DONE,
+  cited above via the `NO_PHONE_RULE_OK` `.chq-comms-phone-landing` entry;
   Submissions triage cards' verbose fields, Settings subscreens as routes,
-  phone CFP 2-step wizard, phone password screen's fixed footer + Cancel,
-  roster screen, Home footer media rule).
+  phone CFP 2-step wizard, phone password screen's fixed footer + Cancel —
+  DONE, cited above (STRUCTURAL: `src/routes/auth.css.ts:318-336`), roster
+  screen, Home footer media rule — DONE, cited above (STRUCTURAL:
+  `src/routes/public/home.css.ts:72-76`)). The un-cited items in this bullet
+  (triage cards, Settings subscreens-as-routes, CFP 2-step wizard, roster
+  screen) were NOT re-checked this wave and stay open/unverified.
 - Governing principle (affirmed, still binds): mobile is additive reflow —
   a mobile change must never move a desktop pixel (scan-lock). Phone
   grammar (action bars, sheets, stacking, 44px targets) is a legitimate
