@@ -20,6 +20,7 @@ import {
   criteriaForRound,
   partitionRecused,
   computeWeightedScore,
+  formatReviewerScopeLabel,
 } from "../../domain/evaluation";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
@@ -94,10 +95,9 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   // track/close date) so the queue header renders from ONE fetch instead of
   // a second GET /review/plans/:id round trip -- resolved here so both the
   // closed-plan early return and the open-plan result share the same values.
-  const scopeTrackId = auth.role === "organizer" ? null : await repo.getReviewerScopeTrackId(c.var.db, plan.id, auth.userId);
-  const scopeTrackName = scopeTrackId
-    ? (await repo.getTrackNamesByIds(c.var.db, [scopeTrackId])).get(scopeTrackId) ?? null
-    : null;
+  const scopeTrackIds = auth.role === "organizer" ? [] : await repo.getReviewerScopeTrackIds(c.var.db, plan.id, auth.userId);
+  const scopeTrackNames = [...(await repo.getTrackNamesByIds(c.var.db, scopeTrackIds)).values()];
+  const scopeTrackName = auth.role === "organizer" ? null : formatReviewerScopeLabel(scopeTrackNames);
 
   const shapeQueueEnvelope = (fields: {
     items: unknown[];

@@ -165,7 +165,7 @@ vi.mock("../src/server/repo/review", async () => {
     getSubmissionSummaryInEvent: vi.fn(async (_db: unknown, submissionId: string, eventId: string) =>
       submissionId === submission.id && eventId === plan.eventId ? submission : null,
     ),
-    getReviewerScopeTrackId: vi.fn(async () => null),
+    getReviewerScopeTrackIds: vi.fn(async () => []),
     getTrackNamesByIds: vi.fn(async () => new Map()),
     listFormatLabelsBySubmission: vi.fn(async () => new Map()),
     listAudienceLevelLabelsBySubmission: vi.fn(async () => new Map()),

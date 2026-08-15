@@ -21,7 +21,8 @@ import {
   assignedExcludingRecused,
   sortResultsRows,
   selectRemindTargets,
-  resolveReviewerScopeTrackId,
+  resolveReviewerScopeTrackIds,
+  formatReviewerScopeLabel,
 } from "../../domain/evaluation";
 import { toCsv } from "../../lib/csv";
 import { contentDispositionAttachment } from "../../domain/files";
@@ -94,12 +95,12 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
     list.push({ trackId: r.trackId, submissionId: r.submissionId });
     reviewerRowsByUser.set(r.userId, list);
   }
-  const scopeTrackIdByUser = new Map<string, string | null>();
+  const scopeTrackIdsByUser = new Map<string, string[]>();
   for (const userId of userIds) {
-    scopeTrackIdByUser.set(userId, resolveReviewerScopeTrackId(reviewerRowsByUser.get(userId) ?? []));
+    scopeTrackIdsByUser.set(userId, resolveReviewerScopeTrackIds(reviewerRowsByUser.get(userId) ?? []));
   }
-  const scopeTrackIds = [...new Set([...scopeTrackIdByUser.values()].filter((id): id is string => id !== null))];
-  const trackNameById = await repo.getTrackNamesByIds(c.var.db, scopeTrackIds);
+  const allScopeTrackIds = [...new Set([...scopeTrackIdsByUser.values()].flat())];
+  const trackNameById = await repo.getTrackNamesByIds(c.var.db, allScopeTrackIds);
 
   const items = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
@@ -113,7 +114,8 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
     for (const submissionId of evaluated) {
       if (assignedIds.has(submissionId)) completed += 1;
     }
-    const scopeTrackId = scopeTrackIdByUser.get(user.userId) ?? null;
+    const scopeTrackIds = scopeTrackIdsByUser.get(user.userId) ?? [];
+    const scopeTrackNames = scopeTrackIds.map((id) => trackNameById.get(id)).filter((n): n is string => n !== undefined);
     return {
       userId: user.userId,
       email: user.email,
@@ -121,9 +123,10 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
       assigned: assigned.length,
       completed,
       recused: recusedByUser.get(user.userId)?.size ?? 0,
-      // w5-f: null (no single-track scope) reads as "All tracks" in the SPA
-      // -- the same rule getReviewerScopeTrackId's callers already use.
-      trackName: scopeTrackId ? (trackNameById.get(scopeTrackId) ?? null) : null,
+      // DEC-845 amendment: null (unrestricted scope) reads as "All tracks"
+      // in the SPA; a reviewer scoped to one or more tracks is named in
+      // full, joined with ' · ' -- never truncated to a count.
+      trackName: formatReviewerScopeLabel(scopeTrackNames),
     };
   });
   // DEC-466/DEC-461(e): blessed JS-slice -- `items` is assembled from

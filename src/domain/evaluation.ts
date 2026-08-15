@@ -75,7 +75,8 @@ export {
 
 export {
   reviewerProgressState,
-  resolveReviewerScopeTrackId,
+  resolveReviewerScopeTrackIds,
+  formatReviewerScopeLabel,
   selectRemindTargets,
 } from "./evaluation/progress";
 export type { ReviewerProgressState, RemindTargetRow } from "./evaluation/progress";

@@ -62,7 +62,7 @@ vi.mock("../src/server/repo/review", async () => {
     listEvaluationScoresForReviewer: vi.fn(async () => new Map()),
     // DEC-845: the queue envelope's scopeTrackName resolution -- no track
     // scoping in these fixtures.
-    getReviewerScopeTrackId: vi.fn(async () => null),
+    getReviewerScopeTrackIds: vi.fn(async () => []),
     getTrackNamesByIds: vi.fn(async () => new Map()),
     // DEC-857: sub-1 carries a format answer, sub-2 has none.
     listFormatLabelsBySubmission: vi.fn(async () => new Map([["sub-1", "Talk (30 min)"]])),
@@ -251,5 +251,33 @@ describe("DEC-239: reviewer queue item wire shape", () => {
       items: { submissionId: string; audienceLevel: string | null }[];
     };
     expect(body.items.find((i) => i.submissionId === "sub-1")?.audienceLevel).toBe("advanced");
+  });
+
+  // DEC-845 amendment (w6-b, docs/clarifications.md:18): a reviewer scoped
+  // to two or more tracks is named in full, joined with ' · ' -- never
+  // folded into null/"All tracks".
+  it("names both tracks joined with ' · ' when the reviewer is scoped to two tracks", async () => {
+    const { getReviewerScopeTrackIds, getTrackNamesByIds } = await import("../src/server/repo/review");
+    vi.mocked(getReviewerScopeTrackIds).mockResolvedValueOnce(["trk-a", "trk-b"]);
+    vi.mocked(getTrackNamesByIds).mockResolvedValueOnce(
+      new Map([
+        ["trk-a", "Zebras"],
+        ["trk-b", "AI Engineering"],
+      ]),
+    );
+    const app = await buildApp({ userId: "r1", role: "reviewer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { scopeTrackName: string | null };
+    expect(body.scopeTrackName).toBe("AI Engineering · Zebras");
+  });
+
+  // The unrestricted reviewer stays null (renders "All tracks" in the SPA).
+  it("keeps scopeTrackName null for an unrestricted reviewer", async () => {
+    const app = await buildApp({ userId: "r1", role: "reviewer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { scopeTrackName: string | null };
+    expect(body.scopeTrackName).toBeNull();
   });
 });

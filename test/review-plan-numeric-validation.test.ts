@@ -156,7 +156,7 @@ vi.mock("../src/server/repo/review", async () => {
     ),
     // DEC-845: the queue envelope's scopeTrackName resolution -- no track
     // scoping in this fixture set.
-    getReviewerScopeTrackId: vi.fn(async () => null),
+    getReviewerScopeTrackIds: vi.fn(async () => []),
     getTrackNamesByIds: vi.fn(async () => new Map()),
     // DEC-857: no format answers in this fixture set.
     listFormatLabelsBySubmission: vi.fn(async () => new Map()),

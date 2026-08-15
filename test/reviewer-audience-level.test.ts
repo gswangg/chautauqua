@@ -155,7 +155,7 @@ vi.mock("../src/server/repo/review", async () => {
     countEvaluationsBySubmission: vi.fn(async () => new Map()),
     listSubmissionIdsRatedBy: vi.fn(async () => new Set<string>()),
     listEvaluationScoresForReviewer: vi.fn(async () => new Map()),
-    getReviewerScopeTrackId: vi.fn(async () => null),
+    getReviewerScopeTrackIds: vi.fn(async () => []),
     getTrackNamesByIds: vi.fn(async () => new Map()),
     listFormatLabelsBySubmission: vi.fn(async () => new Map()),
     // The lookup under test: sub-1 has an audience-level answer, sub-2 does not.
