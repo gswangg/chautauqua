@@ -20,7 +20,7 @@ import {
 } from "../auth/password-reset";
 import { requestIpFromHeaders } from "../lib/rate-limit";
 import { checkAndIncrementScopedLimit } from "../server/repo/rate-limit";
-import { listEventsForOrg } from "../server/repo/events";
+import { getAnchorEventForOrg } from "../server/repo/events";
 import { makeMailer } from "../server/context";
 import { resolveBaseUrl } from "../server/origin";
 import { renderEmailHtml } from "../mail/shell";
@@ -149,8 +149,7 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
       // identical either way) but has no event to log the send against, so
       // sending is skipped. No design doc covers this gap; narrowest
       // reading, flagged for the scribe.
-      const orgEvents = await listEventsForOrg(db, user.orgId);
-      const anchorEvent = orgEvents[0];
+      const anchorEvent = await getAnchorEventForOrg(db, user.orgId);
       if (!anchorEvent) {
         // Mint without delivery (task-w34-c): the token is live but there is
         // no event to log the send against, so no email goes out. This must

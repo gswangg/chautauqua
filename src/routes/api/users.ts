@@ -14,7 +14,7 @@ import { overCapFieldMessage } from "../../domain/cap-copy"; // DEC-422 amendmen
 import { revokeResetTokenForUser, type KVStore } from "../../auth/password-reset";
 import * as repo from "../../server/repo/users";
 import { isOrgUserRole } from "../../server/repo/users";
-import { listEventsForOrg } from "../../server/repo/events";
+import { getAnchorEventForOrg } from "../../server/repo/events";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { normalizeEmail, isValidEmail } from "../../domain/email";
 import { DEC_239, DEC_454, DEC_467, DEC_778, DEC_865 } from "../../decisions";
@@ -89,9 +89,9 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   // account + one-time password in the response — no design doc covers this
   // gap, so we take the narrowest reading: no event, no email row, but the
   // account still works. Flagged for the scribe.
-  const orgEvents = await listEventsForOrg(c.var.db, auth.orgId, { limit: 1, offset: 0 });
-  const anchorEventId = orgEvents[0]?.id;
-  const anchorEventName = orgEvents[0]?.name ?? null;
+  const anchorEvent = await getAnchorEventForOrg(c.var.db, auth.orgId);
+  const anchorEventId = anchorEvent?.id;
+  const anchorEventName = anchorEvent?.name ?? null;
   if (anchorEventId) {
     // DEC-238: user creation must succeed even if the best-effort welcome
     // notice fails to send (the account, password, and response body are

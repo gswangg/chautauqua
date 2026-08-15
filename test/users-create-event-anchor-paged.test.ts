@@ -1,8 +1,10 @@
-// DEC-461: POST /api/v1/users only needs one row (the org's first event, by
-// the repo's own desc(startDate)/asc(id) ordering) to anchor the welcome
-// notice's email_log.event_id. It must call listEventsForOrg with a page,
-// not load every event row in the org. Mirrors the mocking pattern in
-// test/users-create-mailer-failure.test.ts.
+// DEC-461/DEC-013 (wave-26 amendment): POST /api/v1/users only needs one row
+// (the org's anchor event, by the repo's own desc(startDate)/asc(id)
+// ordering) to anchor the welcome notice's email_log.event_id. It must call
+// the shared getAnchorEventForOrg helper (LIMIT 1 under the hood — see
+// test/anchor-event-contract.test.ts for the ordering/limit contract
+// itself), not load every event row in the org. Mirrors the mocking pattern
+// in test/users-create-mailer-failure.test.ts.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -26,12 +28,12 @@ vi.mock("../src/server/repo/users", async () => {
   };
 });
 
-const listEventsForOrgMock = vi.fn(async () => [{ id: "evt-1", name: "DevCon" }]);
+const getAnchorEventForOrgMock = vi.fn(async () => ({ id: "evt-1", name: "DevCon" }));
 vi.mock("../src/server/repo/events", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
   return {
     ...actual,
-    listEventsForOrg: listEventsForOrgMock,
+    getAnchorEventForOrg: getAnchorEventForOrgMock,
   };
 });
 
@@ -60,8 +62,8 @@ async function buildApp(auth: AuthInfo | undefined, db: unknown = {} as never) {
   return app;
 }
 
-describe("POST /api/v1/users — event anchor lookup is paged (DEC-461)", () => {
-  it("calls listEventsForOrg with a { limit: 1, offset: 0 } page, not an unbounded read", async () => {
+describe("POST /api/v1/users — event anchor lookup is bounded (DEC-461/DEC-013)", () => {
+  it("calls getAnchorEventForOrg once, scoped to the caller's org, not an unbounded listEventsForOrg read", async () => {
     const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
     const res = await app.request("/api/v1/users", {
       method: "POST",
@@ -69,13 +71,8 @@ describe("POST /api/v1/users — event anchor lookup is paged (DEC-461)", () => 
       body: JSON.stringify({ email: "new@org.test", role: "reviewer" }),
     });
     expect(res.status).toBe(201);
-    expect(listEventsForOrgMock).toHaveBeenCalledTimes(1);
-    const [, orgId, page] = listEventsForOrgMock.mock.calls[0]! as unknown as [
-      unknown,
-      string,
-      { limit: number; offset: number },
-    ];
+    expect(getAnchorEventForOrgMock).toHaveBeenCalledTimes(1);
+    const [, orgId] = getAnchorEventForOrgMock.mock.calls[0]! as unknown as [unknown, string];
     expect(orgId).toBe(ORG_A);
-    expect(page).toEqual({ limit: 1, offset: 0 });
   });
 });

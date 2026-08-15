@@ -34,7 +34,7 @@ vi.mock("../src/server/repo/events", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
   return {
     ...actual,
-    listEventsForOrg: vi.fn(async () => []),
+    getAnchorEventForOrg: vi.fn(async () => undefined),
   };
 });
 

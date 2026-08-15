@@ -44,7 +44,7 @@ describe("POST /api/v1/users welcome email logs contactId: null (DEC-191)", () =
       const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
       return {
         ...actual,
-        listEventsForOrg: vi.fn(async () => [{ id: "event-1", orgId: ORG_A }]),
+        getAnchorEventForOrg: vi.fn(async () => ({ id: "event-1", orgId: ORG_A })),
         // B9 (DEC-037 amendment, wave 27): the remind route names the event in
         // the email shell, via an owned single-event lookup this stub db cannot
         // answer.
