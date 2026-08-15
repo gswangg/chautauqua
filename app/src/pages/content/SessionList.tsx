@@ -196,10 +196,10 @@ export function SessionList({
           (docs/design/README.md); the row keeps only Approve + Open, Open
           selecting the submission the same way the row click already does. */}
       {loading ? (
-        <table className="chq-table chq-content-table">
+        <table className="chq-table chq-content-table chq-content-worklist-table">
           <thead>
             <tr>
-              <th>
+              <th className="chq-content-worklist-col-select">
                 <input
                   className="chq-check"
                   type="checkbox"
@@ -212,10 +212,10 @@ export function SessionList({
                 />
               </th>
               <th>Session</th>
-              <th>Speaker</th>
-              <th>Latest file</th>
-              <th>Status</th>
-              <th></th>
+              <th className="chq-content-worklist-col-speaker">Speaker</th>
+              <th className="chq-content-worklist-col-latest-file">Latest file</th>
+              <th className="chq-content-worklist-col-status">Status</th>
+              <th className="chq-content-worklist-col-actions"></th>
             </tr>
           </thead>
           <tbody>
@@ -260,13 +260,13 @@ export function SessionList({
           <EmptyState variant="fresh" what="No accepted sessions yet." />
         )
       ) : (
-        <table className="chq-table chq-content-table">
+        <table className="chq-table chq-content-table chq-content-worklist-table">
           <thead>
             <tr>
               {/* DEC-825 amendment: selection column leads the DEC-692 column
                   set (Session · Speaker · Latest file · Status · actions) —
                   bulk selection is added TO that IA, it does not replace it. */}
-              <th>
+              <th className="chq-content-worklist-col-select">
                 <input
                   className="chq-check"
                   type="checkbox"
@@ -279,10 +279,10 @@ export function SessionList({
                 />
               </th>
               <th>Session</th>
-              <th>Speaker</th>
-              <th>Latest file</th>
-              <th>Status</th>
-              <th></th>
+              <th className="chq-content-worklist-col-speaker">Speaker</th>
+              <th className="chq-content-worklist-col-latest-file">Latest file</th>
+              <th className="chq-content-worklist-col-status">Status</th>
+              <th className="chq-content-worklist-col-actions"></th>
             </tr>
           </thead>
           <tbody>

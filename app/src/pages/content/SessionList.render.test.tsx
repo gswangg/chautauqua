@@ -1054,3 +1054,145 @@ describe('SessionList: no <td> ever carries display:flex (DEC-871)', () => {
     }
   });
 });
+
+// w21-c (DEC-902 wave-21 amendment): the worklist table
+// (docs/design/Chautauqua Content.dc.html:81/85 --
+// 26px 1fr 168px 200px 152px auto, gap:18px) was still auto-layout with
+// zero widths after w18-d pinned only the files table. `.chq-content-table`
+// is a SHARED vocabulary class worn by both tables (w21 finding), so the
+// worklist's own pins hang off a worklist-only `chq-content-worklist-table`
+// class instead of the shared one.
+describe('SessionList: worklist table takes the frame six tracks under fixed layout (w21-c, DEC-902)', () => {
+  it('carries the worklist class and one width-class hook per column on the loaded table', () => {
+    render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[baseItem]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const table = screen.getByRole('table');
+    expect(table).toHaveClass('chq-table');
+    expect(table).toHaveClass('chq-content-table');
+    expect(table).toHaveClass('chq-content-worklist-table');
+
+    const headers = screen.getAllByRole('columnheader');
+    expect(headers).toHaveLength(6);
+    expect(headers[0]).toHaveClass('chq-content-worklist-col-select');
+    // Session (headers[1]) carries no width class -- it is the sole
+    // remainder column under table-layout:fixed.
+    expect(headers[1]!.className).not.toMatch(/chq-content-worklist-col/);
+    expect(headers[2]).toHaveClass('chq-content-worklist-col-speaker');
+    expect(headers[3]).toHaveClass('chq-content-worklist-col-latest-file');
+    expect(headers[4]).toHaveClass('chq-content-worklist-col-status');
+    expect(headers[5]).toHaveClass('chq-content-worklist-col-actions');
+  });
+
+  it('carries the worklist class on the loading-skeleton table too', () => {
+    render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={true}
+        loaded={false}
+        onContentStatusChange={noop}
+        total={0}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const table = screen.getByRole('table');
+    expect(table).toHaveClass('chq-content-worklist-table');
+    const headers = screen.getAllByRole('columnheader');
+    expect(headers).toHaveLength(6);
+    expect(headers[0]).toHaveClass('chq-content-worklist-col-select');
+    expect(headers[2]).toHaveClass('chq-content-worklist-col-speaker');
+    expect(headers[3]).toHaveClass('chq-content-worklist-col-latest-file');
+    expect(headers[4]).toHaveClass('chq-content-worklist-col-status');
+    expect(headers[5]).toHaveClass('chq-content-worklist-col-actions');
+  });
+
+  it('declares table-layout:fixed with the four pinned tracks, one hug column, and one remainder', () => {
+    const cssPath = join(process.cwd(), 'app/src/pages/content/content.css');
+    const css = readFileSync(cssPath, 'utf-8');
+
+    const tableMatch = css.match(/\.chq-content-worklist-table\s*\{([^}]*)\}/);
+    const selectMatch = css.match(/\.chq-content-worklist-table \.chq-content-worklist-col-select\s*\{([^}]*)\}/);
+    const speakerMatch = css.match(/\.chq-content-worklist-table \.chq-content-worklist-col-speaker\s*\{([^}]*)\}/);
+    const latestFileMatch = css.match(
+      /\.chq-content-worklist-table \.chq-content-worklist-col-latest-file\s*\{([^}]*)\}/,
+    );
+    const statusMatch = css.match(/\.chq-content-worklist-table \.chq-content-worklist-col-status\s*\{([^}]*)\}/);
+    const actionsMatch = css.match(/\.chq-content-worklist-table \.chq-content-worklist-col-actions\s*\{([^}]*)\}/);
+
+    expect(tableMatch).not.toBeNull();
+    expect(selectMatch).not.toBeNull();
+    expect(speakerMatch).not.toBeNull();
+    expect(latestFileMatch).not.toBeNull();
+    expect(statusMatch).not.toBeNull();
+    expect(actionsMatch).not.toBeNull();
+
+    expect(tableMatch![1]).toMatch(/table-layout:\s*fixed/);
+    expect(selectMatch![1]).toMatch(/width:\s*26px/);
+    expect(speakerMatch![1]).toMatch(/width:\s*168px/);
+    expect(latestFileMatch![1]).toMatch(/width:\s*200px/);
+    expect(statusMatch![1]).toMatch(/width:\s*152px/);
+    expect(actionsMatch![1]).toMatch(/width:\s*1px/);
+    expect(actionsMatch![1]).toMatch(/white-space:\s*nowrap/);
+  });
+
+  it('leaves the shared .chq-content-files-table rules untouched (no shared-class regression)', () => {
+    const cssPath = join(process.cwd(), 'app/src/pages/content/content.css');
+    const css = readFileSync(cssPath, 'utf-8');
+
+    const filesTableMatch = css.match(/\.chq-content-files-table\s*\{([^}]*)\}/);
+    const filesSessionMatch = css.match(/\.chq-content-files-table \.chq-content-files-col-session\s*\{([^}]*)\}/);
+    const filesVersionMatch = css.match(/\.chq-content-files-table \.chq-content-files-col-version\s*\{([^}]*)\}/);
+    const filesSizeMatch = css.match(/\.chq-content-files-table \.chq-content-files-col-size\s*\{([^}]*)\}/);
+    const filesActionsMatch = css.match(/\.chq-content-files-table \.chq-content-files-col-actions\s*\{([^}]*)\}/);
+
+    expect(filesTableMatch![1]).toMatch(/table-layout:\s*fixed/);
+    expect(filesSessionMatch![1]).toMatch(/width:\s*190px/);
+    expect(filesVersionMatch![1]).toMatch(/width:\s*108px/);
+    expect(filesSizeMatch![1]).toMatch(/width:\s*92px/);
+    expect(filesActionsMatch![1]).toMatch(/width:\s*1px/);
+
+    // Neither the shared .chq-content-table selector, nor the files-only
+    // selector, ever declares the worklist's fixed layout -- the pins must
+    // stay on the worklist-only class.
+    const sharedTableMatch = css.match(/(?:^|[,{}\s])\.chq-content-table\s*\{([^}]*)\}/);
+    if (sharedTableMatch) {
+      expect(sharedTableMatch[1]).not.toMatch(/table-layout:\s*fixed/);
+    }
+  });
+
+  it('leaves the phone card block (max-width:700px) auto-layout — no width/table-layout rules added there', () => {
+    const cssPath = join(process.cwd(), 'app/src/pages/content/content.css');
+    const css = readFileSync(cssPath, 'utf-8');
+
+    const phoneBlockMatch = css.match(/@media \(max-width: 700px\) \{([\s\S]*?)\n\}\n/);
+    expect(phoneBlockMatch).not.toBeNull();
+    const phoneBlock = phoneBlockMatch![1]!;
+    expect(phoneBlock).not.toMatch(/chq-content-worklist-table/);
+    expect(phoneBlock).not.toMatch(/table-layout/);
+  });
+});
