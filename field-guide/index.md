@@ -33,25 +33,28 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   IDENTIFIER DOCUMENTS A BUG, NOT A CONTRACT. max-width WITHOUT width
   IS A SUGGESTION TO A FLEX ITEM. A FACE CLASS WITHOUT ITS BOX CLASS IS
   PAINT WITH NO GEOMETRY.
-- FINDINGS w4 (planned against main, wave-3 a..e in flight, f/g/h not
-  re-filed). Verified STALE, do NOT re-file: "admin measure 1372@114"
-  CONTRADICTS README §Widths (table=1440, authority over frame packs);
-  reminders-modal leak (gone); dup ranked-results head; per-version
-  Delete; matrix header Edit; roster Import-CSV; contact drawer groups;
-  API-token shown-once; scorecard role=radio pills; import dedupe
-  rename; public search button hidden by design; TBD room filter;
-  portal B6; Overview/programme empty states. Filed w4-a..g (OPEN): B8
-  selected-row edge missing + bleeds measure (margin-inline:-16px) on
-  .chq-review-plan-row.is-active / .chq-participation-menu-item
-  .is-current; portal EDIT drops "what speakers may edit" pills READ
-  shows; files-library FILE/SESSION unpinned starves filename; .chq-
-  settings-field-pair .chq-settings-field{width:100%} overrides every
-  --chq-field-w-* token; TracksRooms "Add track" 2nd olive primary;
-  public filters at 99px pill radius + outlined active chip (want 4px
-  ctl radius + ink-fill chip); two gutters (268 vs 126) for one
-  time/room stack. Shapes: AN EXTERNAL FRAME MEASUREMENT LOSES TO
-  README.md ON CONFLICT. width:100% ON A TOKENISED FIELD DEFEATS THE
-  TOKEN SYSTEM IT LIVES INSIDE. TWO SURFACES, TWO WIDTHS = THE MEASURE
-  WAS NEVER A TOKEN. A PHONE FRAME'S FULL-WIDTH BAR IS NOT THE DESKTOP
-  ADD AFFORDANCE. A STATE PAINTING THE FILL BUT NOT THE EDGE IS HALF A
-  STANDARD.
+- FINDINGS w4 (compacted; a..g landed/re-verified over w5): B8 selected-row
+  edge/bleed measure; portal EDIT dropped pills READ shows; files-library
+  FILE/SESSION unpinned; settings-field-pair width:100% override; TracksRooms
+  dup primary; public filters radius/chip; two gutters for one stack. Shapes:
+  AN EXTERNAL FRAME MEASUREMENT LOSES TO README.md ON CONFLICT. width:100%
+  ON A TOKENISED FIELD DEFEATS THE TOKEN SYSTEM IT LIVES INSIDE. A PHONE
+  FRAME'S FULL-WIDTH BAR IS NOT THE DESKTOP ADD AFFORDANCE.
+- FINDINGS w5 (planned on main; w3-b/e/f/g/h + w4-a..f still unmerged — their
+  targets re-verified ABSENT from main, so nothing here re-files them).
+  docs/design/*.dc.html IS the frame pack now (gate-7's v9 line refs do NOT
+  resolve here — re-read the vendored file before filing). Filed w5-a..g:
+  reviewer plans-hub row has 2 of 5 framed elements + H1 names the page not
+  the work (Review :695-733/:937); compose step-4 is paragraphs, not the
+  framed report (Comms :495-536); .zip passes as a SLIDE while the frame
+  refuses it and ships it as a handout (Content :448/:480) and the refusal is
+  an inline ribbon, not the 560 modal (:431-457); .chq-confirm-btn-danger
+  paints #7a2a1e — A SEMANTIC RED IN A PALETTE THAT HAS NONE, unseen ~70
+  waves, no hex scan; people-rows flex space-between, role select hidden
+  behind a mode (Settings :978); Session details stacks h3s not the 150/1fr
+  label-left grid, roles as bare text (Submissions :259-300/:665); ONE
+  reserved contact key wears another's label ("Dietary" = travel_logistics),
+  test translates the mismatch (Contacts :899-904). Shapes: AN INTERIM SPEC DIES
+  THE DAY ITS FRAME LANDS. A PER-KIND ALLOWLIST IS THE ONLY WAY TWO FRAMES
+  CAN BOTH BE TRUE. A VOCABULARY WITH NO SCAN IS A CONVENTION. A CONTROL
+  BEHIND A MODE IS A CONTROL THE SCREEN DOESN'T HAVE.
