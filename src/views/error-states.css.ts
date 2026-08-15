@@ -33,7 +33,17 @@ export const ERROR_STATES_CSS = `
      ink border plus a 3px ink LEFT edge, which replaces (not adds to) 3px
      of the control's own left padding so nothing shifts on error. Applies
      equally to a text input, textarea, select or fieldset. */
-  .chq-field-invalid { border: 1px solid var(--chq-ink); border-left: 3px solid var(--chq-ink); padding-left: calc(0.6rem - 3px); }
+  /* DEC-124 (wave-14 amendment): src/views/theme.ts's base
+     input[type=...], select, textarea { border: ...; padding: ... }
+     group is (0,1,1) per arm (an attribute selector counts as a class
+     for specificity), which beats a bare .chq-field-invalid at
+     (0,1,0) REGARDLESS of source order, because specificity is compared
+     before order ever matters. Doubling the class to
+     .chq-field-invalid.chq-field-invalid raises this rule to (0,2,0),
+     which outranks theme.ts's group on every surface, order-independent
+     -- no !important (DEC-409: these stylesheets argue by specificity,
+     not by !important). */
+  .chq-field-invalid.chq-field-invalid { border: 1px solid var(--chq-ink); border-left: 3px solid var(--chq-ink); padding-left: calc(0.6rem - 3px); }
   fieldset.chq-field-invalid { padding-left: 0; }
 
   /* DEC-124: the top-of-form error summary -- one block, one anchor per
