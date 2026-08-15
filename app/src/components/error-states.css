@@ -15,7 +15,20 @@
    marks its wrapper `data-invalid="true"` and this same block reaches the
    nested .chq-input/.chq-select/.chq-textarea control via the descendant
    selector below -- one declaration, two ways in. */
-.chq-field-invalid,
+/* DEC-124 (wave-14 amendment): the SSR counterpart of this rule
+   (src/views/error-states.css.ts) loses to src/views/theme.ts's base
+   `input[type=...], select, textarea { border: ...; padding: ... }`
+   group -- that group is (0,1,1) per arm (an attribute selector counts
+   as a class), which beats a bare `.chq-field-invalid` at (0,1,0)
+   regardless of source order, since specificity is compared before
+   order ever matters. Doubling the class to
+   `.chq-field-invalid.chq-field-invalid` raises this rule to (0,2,0),
+   order-independent -- no !important (DEC-409). Mirrored here, byte-
+   identical, so the parity scan (test/error-vocabulary-parity.scan.
+   test.ts) keeps passing; the three `.chq-form-row[data-invalid='true']
+   ...` descendant arms are already well above that base group's
+   specificity and are left untouched. */
+.chq-field-invalid.chq-field-invalid,
 .chq-form-row[data-invalid='true'] .chq-form-row-control > .chq-input,
 .chq-form-row[data-invalid='true'] .chq-form-row-control > .chq-select,
 .chq-form-row[data-invalid='true'] .chq-form-row-control > .chq-textarea {
