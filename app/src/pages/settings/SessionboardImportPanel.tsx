@@ -304,9 +304,13 @@ export function SessionboardImportPanel() {
               <table className="chq-table chq-settings-sessionboard-mapping">
                 <thead>
                   <tr>
-                    <th>Column</th>
-                    <th>Sample value</th>
-                    <th></th>
+                    <th className="chq-settings-sessionboard-mapping-col-column">Column</th>
+                    <th className="chq-settings-sessionboard-mapping-col-sample">Sample value</th>
+                    <th className="chq-settings-sessionboard-mapping-col-arrow"></th>
+                    {/* No class hook: under table-layout:fixed this is the
+                        SOLE unwidthed remainder column (DEC-902 wave-23) --
+                        it holds the `.chq-segmented` pill group, the one
+                        control that needs room to flex. */}
                     <th>Target field</th>
                   </tr>
                 </thead>

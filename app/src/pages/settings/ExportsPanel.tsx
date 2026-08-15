@@ -46,9 +46,13 @@ export function ExportsPanel() {
         <table className="chq-table chq-settings-exports-table">
           <thead>
             <tr>
+              {/* No class hook: under table-layout:fixed this is the SOLE
+                  unwidthed remainder column (DEC-902 wave-23), so it needs no
+                  width rule -- and a className with no CSS rule behind it is
+                  exactly what DEC-976/DEC-379 forbid. */}
               <th>Data</th>
-              <th>CSV</th>
-              <th>JSON</th>
+              <th className="chq-settings-exports-col-csv">CSV</th>
+              <th className="chq-settings-exports-col-json">JSON</th>
             </tr>
           </thead>
           <tbody>
