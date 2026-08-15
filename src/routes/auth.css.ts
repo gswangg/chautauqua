@@ -141,7 +141,8 @@ export const AUTH_CSS = `
      a full-column bar -- that's phone anatomy on a card this narrow. It
      lives in a .chq-auth-submitrow footer row (below), never bare in
      .chq-auth-fields' own gap. */
-  .chq-auth-card button[type=submit] {
+  .chq-auth-card button[type=submit],
+  .chq-auth-actions button[type=submit] {
     width: auto;
     min-height: 46px;
     padding: 0 22px;
@@ -198,7 +199,6 @@ export const AUTH_CSS = `
        the 14px pitch between the password fields themselves. */
     margin-top: 6.5px;
   }
-  .chq-auth-actions button[type=submit] { width: auto; padding: 0 20px; }
   .chq-auth-hint { font-size: 13px; color: var(--chq-muted); }
   .chq-auth-cancel { display: none; }
 

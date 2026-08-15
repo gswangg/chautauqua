@@ -466,27 +466,8 @@ export const THEME_CSS = `
     padding: 15px 0 0;
   }
 
-  .chq-phone-actionbar { display: none; }
-
   @media (max-width: 700px) {
     body { overflow-wrap: anywhere; }
-
-    .chq-phone-actionbar {
-      display: flex;
-      gap: 8px;
-      flex-shrink: 0;
-      border-top: 1px solid var(--chq-ink);
-      background: var(--chq-surface-sunk);
-      padding: 12px 16px 16px;
-    }
-    .chq-phone-actionbar-primary {
-      flex: 1;
-      min-height: 48px;
-      justify-content: center;
-    }
-    .chq-phone-actionbar-secondary {
-      min-height: 48px;
-    }
   }
 
   /* DEC-367 amendment (wave 48): the >=44px tap floor is a PHONE rule, not a

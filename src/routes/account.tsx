@@ -132,12 +132,12 @@ export function PasswordPage(props: {
                 />
               </label>
             </div>
-            <div className="chq-phone-actionbar chq-auth-actions">
-              <button type="submit" className="chq-btn-primary chq-phone-actionbar-primary">
+            <div className="chq-auth-actions">
+              <button type="submit" className="chq-btn chq-btn-primary">
                 Change it
               </button>
               <a
-                className="chq-btn chq-btn-secondary chq-phone-actionbar-secondary chq-auth-cancel"
+                className="chq-btn chq-btn-secondary chq-auth-cancel"
                 href={props.backHref}
               >
                 Cancel

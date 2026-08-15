@@ -120,7 +120,7 @@ export function LoginPage(props: {
               <a className="chq-auth-tertiary" href="/forgot">
                 Forgot your password?
               </a>
-              <button type="submit" id="chq-login-submit" className="chq-btn-primary">
+              <button type="submit" id="chq-login-submit" className="chq-btn chq-btn-primary">
                 Sign in
               </button>
             </div>
@@ -192,7 +192,7 @@ export function ClaimPage(props: { csrfToken: string; error?: string }) {
               />
             </label>
             <div className="chq-auth-submitrow">
-              <button type="submit" className="chq-btn-primary">
+              <button type="submit" className="chq-btn chq-btn-primary">
                 Create password
               </button>
             </div>
@@ -267,7 +267,7 @@ export function ForgotPasswordPage(props: { csrfToken: string; email?: string; e
               <a className="chq-auth-tertiary" href="/login">
                 &lsaquo; Back to sign in
               </a>
-              <button type="submit" className="chq-btn-primary">
+              <button type="submit" className="chq-btn chq-btn-primary">
                 Email me a link
               </button>
             </div>
@@ -354,7 +354,7 @@ export function ResetPasswordPage(props: { csrfToken: string; email: string; err
               />
             </label>
             <div className="chq-auth-submitrow">
-              <button type="submit" className="chq-btn-primary">
+              <button type="submit" className="chq-btn chq-btn-primary">
                 Save and sign in
               </button>
             </div>
