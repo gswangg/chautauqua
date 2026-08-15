@@ -1,27 +1,34 @@
-# Eval findings — rebased 2026-08-15 (wave 35, task-w35-f)
+# Eval findings — rebased 2026-08-15 (wave 37, task-w37-c)
 
-Verified against `main` sha `0db68e3611bac24dbd8e52b717efb329689ba460` ("merge
-task-w34-a"), derived AT THIS TASK'S OWN RUNTIME — not from this task's own
-brief, where it disagreed with measurement — by running, in order: `git
-rev-parse main`; `git for-each-ref refs/heads` (28 live branches, none
-numbered `task-w31-*`/`task-w32-*`/`task-w33-*`); `git merge-base --is-ancestor
-<ref> main` for every live `task-w*` ref. **RE-VERIFY, the tree moves:** this
-task's own brief named `main` as `c9532d9a` ("merge task-w34-b"); by the time
-this rebase ran, "merge task-w34-a" (`0db68e36`, carrying `c6ef98d3`'s DEC-774
-Promise.all collapse) had landed on top of it — one more merge than the brief
-described. **Trap for the next rebase:** `.git/packed-refs` carries a STALE
-`refs/heads/main` entry at `4207460470b672176e119ed3502d08d869489509` — the
-loose ref (`.git/refs/heads/main`) overrides it and is the one `git
+Verified against `main` sha `494b6c016c726178b53c76a55c33512bd2449422` ("scribe
+wave 37"), derived AT THIS TASK'S OWN RUNTIME by running, in order: `git
+for-each-ref refs/heads` (29 live branches); `git log -1 --format='%H %s'
+HEAD` on `main`; `git merge-base --is-ancestor <ref> main` for every live
+`task-w*` ref; `.git/logs/refs/heads/<branch>` for each wave-36/37 lane to
+read its commit message (cheapest way to learn what a live lane owns without
+re-running its gate). **Trap reconfirmed, still live:** `.git/packed-refs`
+carries a STALE `refs/heads/main` entry at
+`4207460470b672176e119ed3502d08d869489509` — the loose ref
+(`.git/refs/heads/main`, `494b6c01`) overrides it and is the one `git
 rev-parse main` actually returns; do not read the packed line as current.
+**Glob trap reconfirmed:** globbing `.git/refs/heads/*` on disk misses
+packed refs entirely — use `git for-each-ref refs/heads`.
 
-COMPACTION per DEC-358's wave-35 amendment (which itself extends the wave-27
-amendment): the wave-31 header (351 lines, boundary `6dbf7117`, itself nine
-merges/four waves stale by this rebase) is replaced by this one, not
-prepended. No per-item citation below is deleted, only re-homed/compacted —
-dismissals are recorded, never deleted. Per the wave-35 amendment's added
-rule, every "file X does not exist" claim carried from the prior header was
-re-globbed before being carried; the one that was re-globbed and found FALSE
-(TIER-1 pointer, below) is corrected rather than carried.
+COMPACTION per DEC-358's wave-35/37 amendments: the wave-35 header (boundary
+`0db68e36`) is REPLACED by this one, not prepended. No per-item citation
+below is deleted, only re-homed/compacted — dismissals are recorded, never
+deleted. Every "file X does not exist" claim carried from the prior header
+was re-globbed before being carried; none were found false this wave (the
+one false claim from wave 31-35, the `task-w27-g` fidelity-recheck file, was
+already corrected in the wave-35 rebase and is re-confirmed present again
+this wave: `ls docs/verification-log/task-w27-g-fidelity-recheck-ceda66f2.md`
+— exists).
+
+**Wave-37 addition (DEC-358 wave-37 amendment):** every TIER 0 CLOSED row
+below is now labelled with the EXERCISED check that would fail if its fix
+were reverted — a test file path, a named gate row, or a walkthrough
+assertion. A row whose only backing is a code-shape citation is relabelled
+`UNFALSIFIABLE — owner: wave-38 lane` and KEPT, not deleted.
 
 ## Standing rules (still bind)
 
@@ -38,7 +45,10 @@ re-globbed before being carried; the one that was re-globbed and found FALSE
   restated claim (DEC-069, DEC-976 wave-25 amendment).
 - **IN FLIGHT is built from `.git` ref state at the writing task's own
   runtime** (DEC-069 wave-17 amendment). A branch whose tip equals its
-  merge-base with `main` produced zero commits.
+  merge-base with `main` produced zero commits — UNLESS it was created
+  within this same wave and may still be running (DEC-069 wave-37
+  amendment): check `.git/logs/refs/heads/<branch>`'s creation timestamp
+  against sibling lanes before calling it dead.
 - **A recorded ruling is not a landed fix** (DEC-358 wave-31 amendment): a
   DEC amendment's argued file:line is a mandate, not a receipt — only a
   diff or an exercised check closes an item.
@@ -47,6 +57,9 @@ re-globbed before being carried; the one that was re-globbed and found FALSE
   that contains EVERY fix credited with closing it; two lanes each
   measuring their own fix with the sibling fix absent produce two PASS
   readings and zero readings of the tree that actually shipped.
+- **A closed TIER 0 row names its falsifying check** (DEC-358 wave-37
+  amendment): a code-shape citation alone is not a closure backing; label
+  it `UNFALSIFIABLE — owner: wave-38 lane` and keep it, don't delete it.
 - **An absence is a measurement, not a note to carry** (DEC-358 wave-35
   amendment): a rebase re-globs every "file X does not exist" claim before
   carrying it; an existence claim that survives a rebase unre-globbed is
@@ -58,87 +71,108 @@ re-globbed before being carried; the one that was re-globbed and found FALSE
 
 ## TIER 0 — re-verified, already correct or already merged, do not re-file
 
-### Closed, carried (boundary `6dbf7117`, re-verified present on `0db68e36`)
+### Closed, carried (boundary `0db68e36`, re-verified present on `494b6c01`)
 
 - **`files library (page 1)` perf FAIL** (raw 484.4ms/adj 481.5ms vs 50ms
   budget, `docs/verification-log/task-w28-c-perf-smoke-c6dbdb7c.md:67-84`)
   — CLOSED. `task-w29-b`'s real commit `c50e56f3` (ancestor of `main`)
   replaced the non-indexable `headshot_url` string-concat join with an
-  indexed FK (`contact.headshot_file_id`, migration 0040) at all three call
-  sites and rewrote `totalSizeBytes` as a SQL aggregate. PASS: raw
-  17.7ms/adj 13.0ms — `docs/verification-log/task-w29-b-files-library-perf-c50e56f3.md`.
-  Lands DEC-773's wave-29 "option 3" (real FK); do not re-file as unfixed.
+  indexed FK (`contact.headshotFileId`, `src/db/schema/org.ts:72,98`) at all
+  three call sites and rewrote `totalSizeBytes` as a SQL aggregate.
+  FALSIFYING CHECK: `docs/verification-log/task-w36-c-perf-smoke-f5783479.md`
+  — reconfirmed 3-of-3 PASS at `f5783479` (adj 16.8/12.0/15.7ms), the newest
+  measurement of this row. Lands DEC-773's wave-29 "option 3" (real FK); do
+  not re-file as unfixed.
 - **`onboarding grid` perf FAIL** — CLOSED. `task-w29-a`, adjusted p95
-  116.1ms → 23.0ms (PASS) —
-  `docs/verification-log/task-w29-a-onboarding-perf-1d274c8b.md:59-62`.
+  116.1ms → 23.0ms (PASS). FALSIFYING CHECK: reconfirmed 3-of-3 PASS at
+  `f5783479` in `task-w36-c`'s perf-smoke run (adj 38.0/24.0/37.7ms),
+  `docs/verification-log/task-w36-c-perf-smoke-f5783479.md`.
 - **Render-sweep interaction-state (2/4→3/3) incl. `.chq-cfp-step-next`
-  focus** — CLOSED. `task-w29-c`,
-  `docs/verification-log/task-w29-c-render-sweep-6aa4a438.md:69-106`:
-  `.chq-cfp-step-next  cfp-primary-focus  focus  PASS`. Independently
-  reconfirmed in a fresh full-gate run by `task-w35-b`
-  (`docs/verification-log.md`, `task-w35-b` entry, DOCS ONLY) — same PASS.
-- **`.chq-participation-menu-caret` contrast row** — CLOSED by `task-w29-d`
-  (`add09a9e`, ancestor of `main`): `app/src/pages/speakers/speakers.css:384-403`,
-  now `color: inherit;` (was hard-coded `var(--chq-muted)`). CAVEAT added
-  this wave, do not drop it: `task-w35-b`'s fresh full-gate render-sweep run
-  found the gate's contrast check has NO row for this selector at all — the
-  original `task-w29-c`/`task-w29-d` PASS credit was never independently
-  observed by an exercised check, only by the code shape. The code fix is
-  real (verified in the tree); the CLOSED status rests on the code-shape
-  citation, not a gate PASS row, until a contrast check for this selector is
-  added and run.
+  focus** — CLOSED. `task-w29-c`. FALSIFYING CHECK:
+  `docs/verification-log/task-w36-e-render-sweep-f5783479.md` — the
+  wave-36 `task-w36-e` fresh full-gate render-sweep run scored
+  interaction-state `3/3` with zero FAIL rows at `f5783479`, third
+  independent reconfirmation after `task-w29-c` and `task-w35-b`.
+- **`.chq-participation-menu-caret` contrast row** — CLOSED, RELABELLED
+  falsifiable this wave. `task-w29-d` (`add09a9e`, ancestor of `main`):
+  `app/src/pages/speakers/speakers.css:405`, `color: inherit;` (was
+  hard-coded `var(--chq-muted)`). Prior wave's caveat is RESOLVED, not
+  carried as a caveat: `task-w35-b`'s wave-35 finding that the gate had NO
+  contrast row for this selector was itself CLOSED by `task-w36-e`
+  (`docs/verification-log/index/0188-2026-08-15-task-w35-b-render-sweep-a0b8501b.md:29-39`
+  cites the gap; `docs/verification-log/task-w36-e-render-sweep-f5783479.md`
+  closes it). `task-w36-e` added `NAMED_CONTRAST_SELECTOR` to
+  `scripts/render-sweep-contrast.ts:43` and an in-page contrast probe to
+  `scripts/render-sweep.ts`, then ran the gate: `[NAMED-PAIR
+  .chq-participation-menu-caret: ... ratio=6.82 ... PASS]` on both
+  `/admin/speakers` and `/admin/speakers/seed_contact_0001`, clearing WCAG
+  AA's 4.5:1 minimum with margin. FALSIFYING CHECK:
+  `test/render-sweep-contrast.test.ts` (asserts the `NAMED_CONTRAST_SELECTOR`
+  named-pair machinery; 18/18 passed at `f5783479`) plus the gate row itself
+  — this selector now has both a unit-test-backed instrument and a runtime
+  gate reading, not a code-shape citation alone.
 
-### TIER 0 OWNED — surviving perf FAILs, reassigned this wave
+### TIER 0 OWNED — perf rows, resolved this wave
 
-Per DEC-644's wave-35 amendment, neither row below closes on its own PASS
-reading — each was measured with the sibling fix absent, so no boundary
-reading of the shipped tree (both fixes together) exists yet:
+Per DEC-644's wave-35 amendment, a row closes only on a single `perf:smoke`
+run timing it at a boundary containing every credited fix. **This wave finds
+that run:** `task-w36-e`'s ANCESTOR check confirms `task-w36-c` (HEAD
+`f5783479`) is an ancestor of every live wave-36 sibling, and `task-w36-c`'s
+own perf-smoke entry (`docs/verification-log/task-w36-c-perf-smoke-f5783479.md`)
+confirms both `74c6377a` (`task-w32-b`, `reviewer.ts`) and `904dd3d8`
+(`task-w32-a`, `shared.ts`/`plans-progress.ts`) as proven ancestors of that
+same HEAD, and times BOTH mandate rows in the same three-run sequence. This
+IS the merged-boundary reading DEC-644 wave-35 required — not a brief's
+restated claim, a citation re-run at this wave's own runtime.
 
-- **`reviewer queue`** — `task-w32-b` (`74c6377a`, ancestor of `main`,
-  `src/routes/review/reviewer.ts` rewritten per DEC-829 wave-32 amendment)
-  measured 48.7/32.2/38.9ms adj PASS — but in that same run `plan results
-  (page 1)` still FAILed (72.9/50.3/57.3ms adj) and
-  `src/routes/review/shared.ts` was untouched by this lane
-  (`docs/verification-log.md:4599-4634`). STAYS OPEN.
-- **`plan results (page 1)`** — `task-w32-a` (`904dd3d8`, ancestor of
-  `main`, `src/routes/review/shared.ts` split into `rankPlanResults`/
-  `hydrateResultsRows` per DEC-829 wave-32 amendment) measured raw
-  44.8ms/adj 39.0ms PASS — but in that same run `reviewer queue` still
-  FAILed and `src/routes/review/reviewer.ts` was untouched by this lane
-  (`docs/verification-log.md:4553-4596`). STAYS OPEN.
-- Both rows are now on `main` (both commits are ancestors), so the code
-  fixes are real; what's missing is a single `perf:smoke` run at a tip
-  containing both `74c6377a`'s and `904dd3d8`'s changes together, timing
-  both rows in that one run. Deleted this wave: the stale `task-w31-a`/
-  `task-w31-b`/`task-w31-c` ownership rows — all three branches are gone
-  from `refs/heads` (deleted post-merge; `task-w31-c`'s scope, files
-  library, closed above under a different named lane). **OWNED BY NAME by
-  `task-w35-a`** until a merged-boundary reading (one `perf:smoke` run
-  timing both rows on a tip containing both fixes) exists.
+- **`plan results (page 1)`** — CLOSED. `task-w36-c`'s run at `f5783479`:
+  3 of 3 PASS (adj 30.6/19.5/25.7ms) vs the 50ms budget, with both credited
+  fixes (`74c6377a`, `904dd3d8`) proven ancestors of the reading boundary —
+  the exact joint-boundary reading DEC-644 wave-35 demanded. FALSIFYING
+  CHECK: `docs/verification-log/task-w36-c-perf-smoke-f5783479.md`
+  ("plan results (page 1)" row).
+- **`reviewer queue`** — STAYS OPEN, now a REGRESSION finding rather than an
+  ownership gap. `task-w36-c`'s run at the SAME joint boundary (`f5783479`,
+  both `74c6377a` and `904dd3d8` ancestors): run1 raw 54.2/adj 51.5ms FAIL,
+  run2 raw 36.5/adj 34.1ms PASS, run3 raw 58.5/adj 55.3ms FAIL — 1 of 3 PASS
+  vs the 50ms budget, markedly less stable than `task-w35-a`'s earlier 3-of-3
+  PASS at the same fix set. This is now a joint-boundary reading (the
+  ownership question DEC-644 wave-35 raised is answered: the boundary
+  exists, and at it the row FAILs), not a missing-reading gap. FINDING
+  (logged by `task-w36-c`, not fixed): `src/routes/review/reviewer.ts`'s
+  `GET /api/v1/review/plans/:id/queue` handler now straddles the 50ms
+  budget line. OWNED BY NAME by no lane; next wave should re-measure or
+  investigate the straddle, not re-file the ownership question as unsettled
+  — it is settled (FAIL, not "no reading yet"). Deleted this wave: the
+  `task-w35-a` OWNED-BY-NAME line — superseded by the joint reading above.
 
 ### DISMISSED review-lens/instrument alarms
 
 - **"DEC-358 cited with no backing"** — DISMISSED, `decisions/DEC-358.md:9-11`
   carries the wave-27 compaction amendment verbatim; a decision file is its
   own backing.
-- **"37 failing tests"** — DISMISSED, suite green:
-  `docs/verification-log.md:3975-3977`, "Test Files 1061 passed (1061)",
-  "Tests 11745 passed (11745)", bundle 69.19 kB gzip vs 300 kB budget.
+- **"37 failing tests"** — DISMISSED, suite green, reconfirmed at `f5783479`
+  by `task-w36-a`: `docs/verification-log/task-w36-a-build-test-f5783479.md`
+  — "Test Files 1084 passed (1084)", "Tests 11898 passed (11898)", bundle
+  69.20 kB gzip vs 300 kB budget.
 - **DEC-244 "version 2" walkthrough defect** — DISMISSED, instrument bug,
   repaired, PASS twice — `docs/verification-log.md:3912-3930` (ad hoc
   `file_request` task minted+assigned same-run so no seed loop
   pre-completed it; repaired script creates both versions itself).
 - **`migrations/0039_user_name.sql` untracked-file alarm** — DISMISSED,
   `docs/verification-log/task-w28-c-perf-smoke-c6dbdb7c.md:15`: "all 39
-  migrations (`0001`..`0039`) applied ✅" — tracked and applied.
+  migrations (`0001`..`0039`) applied ✅" — tracked and applied. Migration
+  count reconfirmed current: `task-w36-b`'s walkthrough ran `db:migrate` to
+  43 migrations at `f5783479` clean.
 - **"routes lacking `requireOrganizer`"** — DISMISSED, mount-guarded: admin
   sub-apps are guarded at the mount point, not re-declared per route, and
   several handlers additionally carry inline `c.var.auth.role` checks a
   route-signature grep for the literal string does not recognize — grepping
   under-reports the guarded surface by construction.
 - **"`.chq-participation-menu-caret` contrast row has no gate check"** —
-  found by `task-w35-b`'s fresh full-gate run; not a defect, a gate-coverage
-  gap. Recorded above under the row's CLOSED entry, not filed separately.
+  RESOLVED, not just dismissed. `task-w35-b` found the gap; `task-w36-e`
+  built the gate row and closed it (see TIER 0 CLOSED entry above). Do not
+  re-file.
 
 ### STALE-ON-MEASUREMENT (do not re-file — closed, re-checked this wave)
 
@@ -147,10 +181,9 @@ reading of the shipped tree (both fixes together) exists yet:
   disabled-token pair (`--chq-disabled` on `--chq-disabled-bg`) is exempt
   under WCAG 2.1 SC 1.4.3, recorded as `EXEMPT-BY-RULE` rather than a FAIL
   — `scripts/render-sweep-contrast.ts:77-84,112-115` (the `exempted`/
-  `exemptNote` fields), asserted by
-  `test/render-sweep-contrast.test.ts:61`. Reconfirmed present in
-  `task-w35-b`'s fresh full-gate run ("one expected EXEMPT-BY-RULE contrast
-  row").
+  `exemptNote` fields), asserted by `test/render-sweep-contrast.test.ts:61`.
+  Reconfirmed present in `task-w36-e`'s wave-36 fresh full-gate run at
+  `f5783479` (contrast `60/60`, advisory, zero FAIL rows).
 - **Mobile render-sweep console-error collection** — CLOSED, DEC-253
   wave-30 amendment: `scripts/render-sweep.ts:1023-1032` attaches the same
   `console`/`pageerror` collectors to the phone-viewport pass that the
@@ -187,14 +220,15 @@ reading of the shipped tree (both fixes together) exists yet:
 
 ### RULED-NOT-IMPLEMENTED (DEC-358 wave-31 amendment)
 
-No item currently qualifies for this tier at this boundary (`0db68e36`) —
-every DEC amendment checked across waves 29-35 (DEC-773 wave-29/31, DEC-830
-wave-29, DEC-829 wave-32, DEC-644 wave-31/32/35, DEC-099 wave-35) has either
-a landed, ref-verified fix or — for the two rows in TIER 0 OWNED above — two
-landed, ref-verified fixes still missing a joint boundary reading, which is
-a narrower and different problem than "zero commits" and is tracked there,
-not here. Section kept (empty) so a future wave files into it rather than
-re-deriving the header, and so "checked, none found" is itself a citation.
+No item currently qualifies for this tier at this boundary (`494b6c01`) —
+every DEC amendment checked across waves 29-37 (DEC-773 wave-29/31, DEC-830
+wave-29, DEC-829 wave-32, DEC-644 wave-31/32/35/36/37, DEC-099 wave-35,
+DEC-426 wave-36) has either a landed, ref-verified fix or, as of this wave,
+a resolved joint-boundary reading (see TIER 0 OWNED above — both rows now
+have a verdict, one CLOSED and one a confirmed FAIL/regression, neither is
+"zero commits" or "no reading yet"). Section kept (empty) so a future wave
+files into it rather than re-deriving the header, and so "checked, none
+found" is itself a citation.
 
 ### DISMISSED-VERIFIED-CLOSED (carried, wave 24-29 boundaries, not re-checked this wave beyond ref presence)
 
@@ -210,16 +244,23 @@ re-deriving the header, and so "checked, none found" is itself a citation.
   touch `app/src/pages/speakers/**` on this basis.
 - `src/routes/tasks.ts` onboarding-grid status refuses unrecognised tokens
   — `src/routes/tasks.ts:164-209` (DEC-340 wave-18 amendment).
+  UNFALSIFIABLE — owner: wave-38 lane (code-shape citation only, no test
+  file named).
 - `countEvaluationsBySubmission` caps `MAX_PLAN_SUBMISSION_SCAN + 1` —
-  `src/server/repo/review/evaluations.ts:158-200`.
+  `src/server/repo/review/evaluations.ts:158-200`. UNFALSIFIABLE — owner:
+  wave-38 lane.
 - `isSubmissionInReviewerScope` shares `resolveReviewerSubmissions`'s cap —
   `src/server/repo/review/submissions.ts:396-407` vs `:241-252`.
+  UNFALSIFIABLE — owner: wave-38 lane.
 - `clearSessionCookie` appends `Secure` like `buildSessionCookie` —
-  `src/auth/cookies.ts:31-42` vs `:26-28`.
+  `src/auth/cookies.ts:31-42` vs `:26-28`. UNFALSIFIABLE — owner: wave-38
+  lane.
 - Public sessions LIST hydrates speakers via `visibleParticipantConditions()`
-  — `src/server/repo/public/sessions.ts:405-417`.
+  — `src/server/repo/public/sessions.ts:405-417`. UNFALSIFIABLE — owner:
+  wave-38 lane.
 - `isSlugTaken` has no `orgId` predicate, DELIBERATE (`/e/:slug` global
-  namespace) — `src/server/repo/events.ts:141-147`.
+  namespace) — `src/server/repo/events.ts:141-147`. DELIBERATE-BY-DESIGN,
+  not a defect; falsifiability n/a.
 - Seeded dates relative to one seed clock — `scripts/seed.ts:261-278`
   (DEC-591). Saved embeds exist — `src/db/schema/embed.ts`,
   `src/routes/public/saved-embed.tsx`. Per-person reminder scope on send
@@ -243,16 +284,21 @@ re-deriving the header, and so "checked, none found" is itself a citation.
   Phone password fixed footer + Cancel — `src/routes/auth.css.ts:318-336`.
   Comms phone landing — `app/src/phone-block-visibility.test.ts:109-121`
   (DEC-621). Home footer media rule —
-  `src/routes/public/home.css.ts:72-76`.
+  `src/routes/public/home.css.ts:72-76`. This whole block:
+  UNFALSIFIABLE — owner: wave-38 lane (batch of code-shape citations, no
+  per-item exercised check named; several already have adjacent test files
+  cited inline — e.g. `app/src/phone-block-visibility.test.ts` — those
+  sub-items are exempt from the UNFALSIFIABLE label, the rest are not).
 - **DEC-099 wave-35 Vary: Cookie population + fix** — `task-w35-c`
-  (`beb58e29`, still UNMERGED, see IN FLIGHT below — listed here only as a
-  pointer, not yet CLOSED): built
+  (`beb58e29` at filing, MERGED as of this wave — `3a041507` on `main`'s
+  first-parent line per `task-w36-a`/`task-w36-b`/`task-w36-c`/`task-w36-e`'s
+  shared "merge task-w35-c" citation): built
   `test/public-cacheability-enumeration.test.ts`, enumerating every GET
   route under `/e/*`, `/embed/*` and `/` and asserting `Cache-Control !=
-  no-store <=> Vary: Cookie`; found a real violation in
-  `publicNotFound`/`publicErrorDocument`/`publicRoutes.onError`. Do not
-  re-file the population-derivation gap once `task-w35-c` merges — verify
-  the fix landed first (DEC-069).
+  no-store <=> Vary: Cookie`; found and fixed a real violation in
+  `publicNotFound`/`publicErrorDocument`/`publicRoutes.onError`. CLOSED —
+  no longer a pointer, the fix is confirmed landed and merged.
+  FALSIFYING CHECK: `test/public-cacheability-enumeration.test.ts`.
 
 ### DO-NOT-RE-FILE (carried, waves 14-23, not re-checked this wave beyond ref presence)
 
@@ -295,7 +341,10 @@ MERGED; `task-w17-b` perf-seed/perf-smoke harness bugs MERGED (`956fe263`);
 `task-w18-b/c/d/e/f/g` (reviewer-scope, compose defaults, History Export,
 files-library table-layout, templates Delete, ENVELOPE_ALLOWLIST) all
 MERGED between `956fe263` and `39ac22d0`; `task-w23-f` MERGED via
-`f519f562` (DEC-902 column contract + DEC-937 review phone label).
+`f519f562` (DEC-902 column contract + DEC-937 review phone label). This
+whole block: UNFALSIFIABLE — owner: wave-38 lane, except items that already
+cite a test file inline (e.g. `test/audit-claims.test.ts`-adjacent items
+elsewhere in this doc).
 
 ### Verification-log walkthrough items (docs/verification-log.md:3468-3478) — all FOUR fixed, harness-side
 
@@ -306,76 +355,71 @@ now asserts `chq-portal-flag-done` (DEC-366 froze "Done"/"To do"); (2)
 `scripts/walkthrough/data.ts:492-497` show-flow header now includes
 trailing `kind` (DEC-022 wave-66); (4)
 `scripts/walkthrough/scale.ts:393-407` `readMailboxCount` now threads an
-authenticated organizer cookie jar (DEC-546). Not independently re-run this
-task (DOCS ONLY) — the exercised PASS/FAIL receipt is `task-w27-g`'s scope
-(see TIER-1 pointer below — the fidelity-recheck file at that citation
-DOES exist, contra the previous header's claim).
+authenticated organizer cookie jar (DEC-546). FALSIFYING CHECK: the
+`task-w36-b` wave-36 walkthrough re-run at `f5783479`
+(`docs/verification-log/task-w36-b-walkthrough-f5783479.md`) exercised all
+six areas including `data`/`scale` PASS with zero FAIL lines — the harness
+fixes are live-exercised, not merely present in source.
 
 ### Render-sweep items closed in the tree (carried, quoted)
 
 - `/portal/tasks` measure fix — `src/routes/portal/portal.css.ts:417-430`
   (`min-width: 0` on `.chq-measure`, DEC-253 wave-25 amendment).
+  UNFALSIFIABLE — owner: wave-38 lane (no named gate row cited).
 - `/admin/submissions` filterbar 44px floor —
   `app/src/pages/submissions/submissions.css:557-564` (DEC-253/DEC-367).
+  UNFALSIFIABLE — owner: wave-38 lane.
 
 ## IN FLIGHT — owned by a branch, do not re-file
 
-Ref-measured at THIS task's own runtime against `0db68e36` (28 refs total;
+Ref-measured at THIS task's own runtime against `494b6c01` (29 refs total;
 `git for-each-ref refs/heads` + `git merge-base --is-ancestor <ref> main`
-for every `task-w*` ref):
+for every `task-w*` ref; `.git/logs/refs/heads/<branch>` for creation
+timestamps):
 
-- **NO `task-w30-*`, `task-w31-*`, `task-w32-*`, or `task-w33-*` refs
-  exist.** All merged, branches deleted. The prior header's own IN FLIGHT
-  fences for waves 31-33 point at nothing; do not re-file any wave
-  30-through-33 scope on the strength of an old "OWNED BY" line (DEC-069
-  wave-17 amendment).
-- **`task-w34-a`** — ancestor of `main` (merged, `merge task-w34-a` on
-  `main`'s first-parent line, carrying `c6ef98d3`'s DEC-774 wave-34
-  Promise.all collapse). MERGED.
-- **`task-w35-a`** — ancestor of `main` ("scribe wave 35",
-  `a0b8501b`): touched `decisions/DEC-063.md`, `DEC-099.md`, `DEC-338.md`,
-  `DEC-358.md`, `DEC-644.md`, `field-guide/index.md` only. MERGED, but its
-  content is the scribe pass, not a perf fix — see TIER 0 OWNED above for
-  the ownership this wave's brief assigns to this name regardless.
-- **`task-w35-b`** — tip `70294572`, NOT an ancestor of `main`. UNMERGED,
-  real commit: "render-sweep design-fidelity reading @ a0b8501b (log-only)"
-  — a fresh full-gate render-sweep run, DOCS ONLY (`docs/verification-log.md`
-  entry only, no product-code diff). Falsified one prior credit (see
-  DISMISSED alarms above: no gate row exists for
-  `.chq-participation-menu-caret` contrast) and reconfirmed two others.
-- **`task-w35-c`** — tip `beb58e29`, NOT an ancestor of `main`. UNMERGED,
-  real commit: "DEC-099 wave-35: derived population for the Vary:Cookie
-  claim + fix found by building it" — adds
-  `test/public-cacheability-enumeration.test.ts` and a real product fix in
-  `setCacheHeaders`'s callers (see DISMISSED-VERIFIED-CLOSED pointer
-  above). OWNED, verify merged before treating the fix as landed.
-- **`task-w35-d`** — tip equals its own merge-base with `main`
-  (`a0b8501b`, same sha as `task-w35-a`'s tip): PRODUCED NOTHING as
-  measured. Not further triaged (DOCS ONLY scope this task).
-- **`task-w35-e`** — tip equals `main`'s current tip (`0db68e36`) exactly:
-  this lane's own commits ARE `main`'s current head (the `merge
-  task-w34-a` step). MERGED / is-main.
+- **NO `task-w30-*` through `task-w35-*` refs are live** — confirmed via
+  `git for-each-ref refs/heads`; none of `task-w30`..`task-w35`'s named
+  branches exist as refs today (all merged, branches deleted post-merge;
+  their content is on `main`'s history, not as a live named ref). Do not
+  re-file any wave 30-through-35 scope on the strength of an old "OWNED BY"
+  line (DEC-069 wave-17 amendment).
+- **`task-w36-c`** (`864b681e`) — ancestor of `main` (merged). Owns the
+  perf-smoke joint-boundary reading; content folded into TIER 0 OWNED above.
+  MERGED.
+- **`task-w36-e`** (`76431743`) — ancestor of `main` (merged). Owns the
+  `.chq-participation-menu-caret` gate-coverage fix; content folded into
+  TIER 0 above. MERGED.
+- **`task-w36-f`** (`3b3b56c7`) — tip equals an ANCESTOR of `main` (the
+  "merge task-w36-b" commit, not `main`'s current tip), created
+  `2026-08-15` at wave-36's own runtime, per
+  `.git/logs/refs/heads/task-w36-f`: created from `main`, never committed
+  past that point. PRODUCED NOTHING as measured, and wave 37 has since
+  opened (scribe wave 37 landed on `main`) — this lane is DEAD, not
+  running; safe to not re-file, but do not assign new scope to this name
+  without checking whether it's been deleted/recreated.
+- **`task-w37-a`, `task-w37-b`** — both tip equal `main`'s current head
+  (`494b6c01`) exactly, both created at the SAME timestamp as this task's
+  own branch creation (`.git/logs/refs/heads/task-w37-a`,
+  `.git/logs/refs/heads/task-w37-b`: `branch: Created from main` at the
+  same second this task's own branch was created). RUNNING SIBLINGS, not
+  dead — do not re-file wave-37 scope under either name; their tip-equals-
+  base state reflects "not yet committed," not "produced nothing" (DEC-069
+  wave-37 amendment: a branch minutes old at its base is running).
 - **`task-w17-i`** (`7b78d8b6`) — STILL UNMERGED, unchanged across many
   waves: "Sign-in page names the event and its open CFP (DEC-716)." Very
   stale; needs a fresh boundary before re-attempt.
 - **Every other live ref** — `mail-rich-shape-fallback`, `manual-qa`,
   `task-custodian-w68-4`, `task-w68-b/c/d/e`, `task-w71-a/c/d/e`,
   `task-w72-a`-`j` — all UNMERGED but belong to waves numbered ahead of
-  wave 35 (68/71/72), a different/later campaign. Flagged, not triaged.
+  wave 37 (68/71/72), a different/later campaign. Flagged, not triaged.
 
 ### TIER-1 pointer — `task-w27-g` owns fidelity-recheck verdicts, cite as OWNED
 
-**Correction (re-globbed this wave, per DEC-358's wave-35 amendment):** the
-prior header (carried unresolved from wave 27 through wave 31) claimed
-`docs/verification-log/task-w27-g-fidelity-recheck-*.md` "does not exist."
-Re-globbed at this wave's runtime: `ls
-docs/verification-log/task-w27-g-fidelity-recheck-ceda66f2.md` — **the file
-EXISTS.** The stale claim is the seed case for this wave's DEC-358
-amendment (an absence claim decays exactly like a presence claim, and this
-one was carried unre-globbed across at least four waves). Not
-independently re-read for content this task (DOCS ONLY rebase); next TIER-1
-touch should read it rather than trust either this note or the deleted
-prior claim.
+Re-globbed again this wave: `ls
+docs/verification-log/task-w27-g-fidelity-recheck-ceda66f2.md` — file EXISTS
+(unchanged from the wave-35 correction). Not independently re-read for
+content this task (DOCS ONLY rebase); next TIER-1 touch should read it
+rather than trust this note.
 
 ## TIER 1 — open items (gate-7 evidence, boundary `ea2a5543`; not re-derived this wave)
 
@@ -434,7 +478,21 @@ landing, phone password fixed footer + Cancel, Home footer media rule.
 Additional: Settings subscreens are URL state not path routes, DELIBERATE
 (`app/src/pages/Settings.tsx:13-30`, DEC-728); Phone submissions triage
 cards exist (`app/src/pages/submissions/submissions-phone-card.render.test.tsx`,
-DEC-610). Still open/unverified: CFP 2-step wizard, roster screen.
+DEC-610).
+
+**Deleted this wave (DEC-358 wave-37 amendment — false claim, re-verified
+against the tree):** the prior "Still open/unverified: CFP 2-step wizard,
+roster screen" line. Both exist and were verified present at this wave's
+runtime: `src/routes/public/cfp-steps-script.tsx` (1.9 KB) plus
+`src/routes/public/submit-views.tsx`'s `data-chq-cfp-step`/`.chq-cfp-steps`
+markup (`:556-567`) implement the CFP 2-step wizard; `app/src/pages/speakers/
+RosterPanel.tsx` (14 KB) plus its
+`app/src/pages/speakers/RosterPanel.render.test.tsx` (9.7 KB) implement and
+test the roster screen. Neither is a live gap; this was a stale claim
+carried forward unre-verified, the same class of defect DEC-358's wave-35
+amendment named for "does not exist" file claims — an existence claim
+("still open/unverified") decays exactly the same way and needed re-globbing
+before being carried, and on re-globbing was found false.
 
 **Governing principle (affirmed, still binds):** mobile is additive
 reflow — a mobile change must never move a desktop pixel (scan-lock).
