@@ -223,3 +223,43 @@ describe('ContactsTable column allocation (w20-c, DEC-902)', () => {
     expect(contactsCss).not.toMatch(/^\.chq-contacts-table\s*\{/m);
   });
 });
+
+// DEC-937 amendment (wave 24): the phone card's label is sourced from the
+// cell itself (data-label mirroring its own <th>), never from column
+// position -- a nth-child selector can't tell Company from Labels apart
+// after a column reorder.
+describe('ContactsTable phone card label source (DEC-937 wave-24)', () => {
+  it('marks the company and labels cells with the exact string their own <th> renders, and no other cell', () => {
+    renderTable();
+    const table = screen.getByRole('table');
+    const rows = within(table).getAllByRole('row').slice(1); // drop the header row
+    for (const row of rows) {
+      const cells = within(row).getAllByRole('cell');
+      expect(cells).toHaveLength(5);
+      expect(cells[0]).not.toHaveAttribute('data-label'); // select
+      expect(cells[1]).not.toHaveAttribute('data-label'); // Name and email
+      expect(cells[2]).toHaveAttribute('data-label', 'Company');
+      expect(cells[3]).toHaveAttribute('data-label', 'Labels');
+      expect(cells[4]).not.toHaveAttribute('data-label'); // actions
+    }
+  });
+
+  it('never re-introduces a positional ::before label rule in contacts.css', () => {
+    const contactsCss = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'contacts.css'),
+      'utf-8',
+    );
+    const phoneBlockMatch = contactsCss.match(/@media \(max-width: 700px\) \{([\s\S]*)\}\s*$/);
+    expect(phoneBlockMatch).not.toBeNull();
+    const phoneBlock = phoneBlockMatch![1]!;
+
+    // No nth-child/first-child/last-child selector paired with ::before/::after
+    // may declare a letter-bearing content literal.
+    const positionalPseudoWithBefore =
+      /:(nth-child|nth-of-type|first-child|last-child)\([^)]*\)::(before|after)\s*\{[^}]*content:\s*'[^']*[A-Za-z][^']*'/;
+    expect(phoneBlock).not.toMatch(positionalPseudoWithBefore);
+
+    // The one guarded rule sources its text from the attribute, not a literal.
+    expect(phoneBlock).toMatch(/td\[data-label\]::before\s*\{\s*content:\s*attr\(data-label\)/);
+  });
+});
