@@ -58,6 +58,51 @@ describe('ComposeWizard ?ids= landing', () => {
     expect(screen.getByText('2. Pick or edit a template')).toBeInTheDocument();
   });
 
+  it('120 ids over the cap: lands on step 2 with 100 selected and states the truncation', async () => {
+    const ids = Array.from({ length: 120 }, (_, i) => `sub-${i}`).join(',');
+    window.history.pushState({}, '', `/comms?tab=compose&ids=${ids}`);
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await waitFor(() => expect(screen.getByText('100 submissions selected')).toBeInTheDocument());
+    expect(screen.getByText('2. Pick or edit a template')).toBeInTheDocument();
+    expect(screen.getByText('100 of 120 kept · a send is capped at 100')).toBeInTheDocument();
+  });
+
+  it('5 clean ids: lands on step 2 with no truncation sentence', async () => {
+    window.history.pushState({}, '', '/comms?tab=compose&ids=sub-a,sub-b,sub-c,sub-d,sub-e');
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await waitFor(() => expect(screen.getByText('5 submissions selected')).toBeInTheDocument());
+    expect(screen.getByText('2. Pick or edit a template')).toBeInTheDocument();
+    expect(screen.queryByText(/kept/)).not.toBeInTheDocument();
+  });
+
+  it('ids that all parse to nothing: stays on step 1 with no truncation sentence', async () => {
+    window.history.pushState({}, '', '/comms?tab=compose&ids=,,,');
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await waitFor(() => expect(screen.getByText('1. Pick submissions')).toBeInTheDocument());
+    expect(screen.queryByText(/kept/)).not.toBeInTheDocument();
+  });
+
   it('a ?template= with no ?ids= applies the template but stays on step 1', async () => {
     window.history.pushState({}, '', '/comms?tab=compose&template=tpl-1');
 
