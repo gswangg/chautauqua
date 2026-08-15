@@ -5,7 +5,7 @@
 // any of them declares its own `const NAME_LENGTH = <number>` or `const
 // NAME_MAX_LEN = <number>` literal instead of importing one from
 // src/domain/**.
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -90,5 +90,154 @@ describe('no src/routes/**/*.ts module hand-declares a text-length cap literal (
 
     const violating = `const CFP_WIDGET_MAX_LEN = 1200;\nfunction f() { return CFP_WIDGET_MAX_LEN; }`;
     expect(findLocalTextCapDeclarations(violating)).toEqual(['const CFP_WIDGET_MAX_LEN = 1']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-425 wave-67 amendment: a `const MAX_X = <number>` declaration isn't the
+// only way a route hand-types a cap -- a bound can be written straight into
+// its own comparison AND its refusal message, with no named constant at all
+// (src/routes/api/submissions.ts's `raw.length > 1000` /
+// src/routes/review/recusals.ts's `body.reason.length > 500`, both fixed
+// this wave). This second detector flags a bare numeric literal sitting
+// inside an `ApiError(...)` call's string arguments (message OR fields
+// values) when that string also carries a cap-shaped keyword -- the
+// declaration-scan above can't see this shape because there's no `const`.
+// ---------------------------------------------------------------------------
+
+/** Every complete `new ApiError(...)` call's argument-list text, balancing
+ * parens/strings so a nested `{ field: "..." }` object doesn't truncate the
+ * scan early. */
+function findApiErrorCallBlocks(src: string): string[] {
+  const blocks: string[] = [];
+  const marker = 'new ApiError(';
+  let idx = 0;
+  while ((idx = src.indexOf(marker, idx)) !== -1) {
+    let i = idx + marker.length;
+    let depth = 1;
+    let inStr: string | null = null;
+    const start = i;
+    while (i < src.length && depth > 0) {
+      const ch = src[i];
+      if (inStr) {
+        if (ch === '\\') {
+          i += 2;
+          continue;
+        }
+        if (ch === inStr) inStr = null;
+      } else {
+        if (ch === '"' || ch === "'" || ch === '`') inStr = ch;
+        else if (ch === '(') depth++;
+        else if (ch === ')') depth--;
+      }
+      i++;
+    }
+    blocks.push(src.slice(start, i - 1));
+    idx = i;
+  }
+  return blocks;
+}
+
+// Cap-shaped keyword vocabulary, case-insensitive, word-bounded.
+const CAP_KEYWORD_RE = /\b(max|at most|exceed|exceeds|no more than|up to|limit)\b/i;
+const STRING_LITERAL_RE = /(['"`])((?:\\.|(?!\1)[^\\])*)\1/g;
+
+/** Strips `${...}` interpolation spans so a template-literal message built
+ * from an imported constant (`` `Max ${MAX_X}` ``) doesn't itself read as a
+ * hand-typed digit -- only a LITERAL digit character in the source string
+ * counts. */
+function stripInterpolations(s: string): string {
+  return s.replace(/\$\{[^}]*\}/g, '');
+}
+
+function findRefusalNumberLiterals(src: string): string[] {
+  const out: string[] = [];
+  for (const block of findApiErrorCallBlocks(src)) {
+    STRING_LITERAL_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = STRING_LITERAL_RE.exec(block))) {
+      const raw = m[2] ?? '';
+      if (/\d/.test(stripInterpolations(raw)) && CAP_KEYWORD_RE.test(raw)) {
+        out.push(raw);
+      }
+    }
+  }
+  return out;
+}
+
+// Named, live allowlist: a real cap-shaped literal that legitimately
+// survives this scan because fixing it is out of this task's owned-file
+// scope (submissions.ts + recusals.ts only, per DEC-425 wave-67). Filed for
+// a future wave rather than silently widened here.
+const REFUSAL_NUMBER_ALLOWLIST: { file: string; reason: string }[] = [
+  {
+    file: join(ROUTES_ROOT, 'api', 'embeds.ts'),
+    reason:
+      "\"limit must be an integer 1-100\" duplicates parseLimit's hand-typed 1..100 range check in " +
+      'src/routes/public/query.ts -- a real finding, but src/routes/api/embeds.ts and query.ts are ' +
+      'outside this task\'s owned-file scope (DEC-425 wave-67 covers submissions.ts trackIds + ' +
+      'recusals.ts reason only); filed for a follow-up wave rather than fixed here.',
+  },
+];
+
+describe('no src/routes/**/*.{ts,tsx} ApiError call hand-types a cap-shaped numeric literal (DEC-425, wave 67 amendment)', () => {
+  const ROUTE_FILES = allSourceFiles(ROUTES_ROOT);
+
+  it('every allowlist entry still names a live file', () => {
+    for (const entry of REFUSAL_NUMBER_ALLOWLIST) {
+      expect(() => statSync(entry.file), `allowlisted file no longer exists: ${entry.file}`).not.toThrow();
+    }
+  });
+
+  it('no src/routes ApiError call (outside the named allowlist) hand-types a cap-shaped numeric literal', () => {
+    const allowlistedFiles = new Set(REFUSAL_NUMBER_ALLOWLIST.map((e) => e.file));
+    const offenders: string[] = [];
+    for (const path of ROUTE_FILES) {
+      if (allowlistedFiles.has(path)) continue;
+      const src = readFileSync(path, 'utf-8');
+      const found = findRefusalNumberLiterals(src);
+      if (found.length > 0) offenders.push(`${relative(HERE, path)}: ${found.join(' | ')}`);
+    }
+    expect(
+      offenders,
+      `ApiError calls hand-typing a cap-shaped numeric literal:\n${offenders.join('\n')}`,
+    ).toEqual([]);
+  });
+
+  // The allowlisted file DOES still carry the literal the allowlist
+  // excuses -- confirms the entry isn't stale for something already fixed.
+  it('the allowlisted file still carries the literal the allowlist excuses', () => {
+    for (const entry of REFUSAL_NUMBER_ALLOWLIST) {
+      const src = readFileSync(entry.file, 'utf-8');
+      expect(
+        findRefusalNumberLiterals(src).length,
+        `${relative(HERE, entry.file)} no longer hand-types a cap-shaped literal -- remove its allowlist entry`,
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  // Vacuous-scan tripwire.
+  it('vacuous-scan tripwire: the routes scan walked a non-empty file set', () => {
+    expect(ROUTE_FILES.length).toBeGreaterThan(10);
+  });
+
+  // Both-ways negative control: a synthetic hand-typed refusal built with a
+  // literal digit IS flagged; the identical sentence built by interpolating
+  // an imported constant is NOT.
+  it('the detector flags a hand-typed refusal literal but not the same sentence built from an interpolated constant', () => {
+    const violating = `throw new ApiError("invalid", "ids must not exceed 1000 entries", { ids: "Max 1000" });`;
+    expect(findRefusalNumberLiterals(violating)).toEqual(['ids must not exceed 1000 entries', 'Max 1000']);
+
+    const clean =
+      'throw new ApiError("invalid", `ids must not exceed ${MAX_IDS} entries`, { ids: `Max ${MAX_IDS}` });';
+    expect(findRefusalNumberLiterals(clean)).toEqual([]);
+  });
+
+  // Confirms the keyword gate itself: a numeric literal with NO cap-shaped
+  // keyword nearby (e.g. an id/count echoed back, not a bound) is not
+  // flagged -- the detector isn't just "any digit in an ApiError string".
+  it('a bare digit with no cap-shaped keyword is not flagged', () => {
+    const clean = `throw new ApiError("not_found", "Submission 42 not found", { id: "42" });`;
+    expect(findRefusalNumberLiterals(clean)).toEqual([]);
   });
 });

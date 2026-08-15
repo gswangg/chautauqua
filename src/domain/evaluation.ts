@@ -722,6 +722,12 @@ export function anonymizeForReviewer<
 // harness, so this is the tested core.
 // ---------------------------------------------------------------------------
 
+// DEC-425 wave-67 amendment: the recusal reason's free-text cap, previously
+// hand-typed as `500` at the length comparison AND the refusal message in
+// src/routes/review/recusals.ts -- single-sourced here so both read the same
+// number.
+export const MAX_RECUSAL_REASON_LENGTH = 500;
+
 /**
  * Splits a reviewer's queue/scope items into { kept, recused } by
  * submissionId membership in `recusedIds`. Order of `kept` is preserved.

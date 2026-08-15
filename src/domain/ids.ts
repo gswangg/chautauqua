@@ -3,6 +3,12 @@
 const BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
 const ID_LENGTH = 20;
 
+// DEC-425 wave-67 amendment: the submission trackIds array's max entry
+// count, previously hand-typed as `1000` at both the length comparison and
+// the refusal message in src/routes/api/submissions.ts's parseTrackIdsField
+// (DEC-598/DEC-755).
+export const MAX_SUBMISSION_TRACK_IDS = 1000;
+
 /** 20-char lowercase base32 id from crypto.getRandomValues, per DEC-003 primary key strategy. */
 export function newId(): string {
   const bytes = new Uint8Array(ID_LENGTH);

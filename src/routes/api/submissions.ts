@@ -53,6 +53,8 @@ import { clampPage, listPerPage } from "../../lib/pagination";
 import { bumpIcsSequences } from "../../server/repo/ics-sequence";
 import { getEventTracks, replaceSubmissionTracks, upsertSubmissionAnswers } from "../../server/repo/submit";
 import { getFormatFieldOptions } from "../../server/repo/forms";
+import { MAX_SUBMISSION_TRACK_IDS } from "../../domain/ids";
+import { MAX_FILTER_ID_LENGTH } from "../../lib/query-bounds";
 import { SESSION_FORMAT_FIELD_ID, LOCKED_TITLE_MAX_LENGTH, LOCKED_ABSTRACT_MAX_LENGTH } from "../../forms/types";
 import { commitSubmissionDelete, planSubmissionDelete } from "../../server/repo/submission-delete";
 import { makeFileStore } from "../../server/context";
@@ -101,18 +103,24 @@ async function assertEventOwnership(db: Db, eventId: string, orgId: string) {
   if (eventOrgId !== orgId) throw new ApiError("not_found", "Event not found");
 }
 
-// DEC-598/DEC-755: the ONE trackIds validation rule — array of 1-64-char
-// id strings, max 1000, an empty array is a legal "no tracks" request, and
-// every id must belong to THIS event or it's a 400 naming the unknown ids.
-// Shared by POST (create) and PATCH so the two routes can never drift.
+// DEC-598/DEC-755: the ONE trackIds validation rule — array of
+// 1-MAX_FILTER_ID_LENGTH-char id strings, max MAX_SUBMISSION_TRACK_IDS, an
+// empty array is a legal "no tracks" request, and every id must belong to
+// THIS event or it's a 400 naming the unknown ids. Shared by POST (create)
+// and PATCH so the two routes can never drift.
 async function parseTrackIdsField(db: Db, eventId: string, raw: unknown): Promise<string[]> {
-  if (!Array.isArray(raw) || raw.some((t) => typeof t !== "string" || t.length === 0 || t.length > 64)) {
-    throw new ApiError("invalid", "trackIds must be an array of id strings (1-64 chars)", {
-      trackIds: "Invalid id",
+  if (
+    !Array.isArray(raw) ||
+    raw.some((t) => typeof t !== "string" || t.length === 0 || t.length > MAX_FILTER_ID_LENGTH)
+  ) {
+    throw new ApiError("invalid", `trackIds must be an array of id strings (1-${MAX_FILTER_ID_LENGTH} chars)`, {
+      trackIds: `Invalid id (max ${MAX_FILTER_ID_LENGTH} chars)`,
     });
   }
-  if (raw.length > 1000) {
-    throw new ApiError("invalid", "trackIds must not exceed 1000 entries", { trackIds: "Max 1000" });
+  if (raw.length > MAX_SUBMISSION_TRACK_IDS) {
+    throw new ApiError("invalid", `trackIds must not exceed ${MAX_SUBMISSION_TRACK_IDS} entries`, {
+      trackIds: `Max ${MAX_SUBMISSION_TRACK_IDS}`,
+    });
   }
   const trackIds = raw as string[];
   const eventTracks = await getEventTracks(db, eventId);
