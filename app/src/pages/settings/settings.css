@@ -919,10 +919,10 @@
   cursor: default;
 }
 
-.chq-settings-portal-resources {
-  width: 100%;
-}
-
+/* task-w4-b moved Resources out of a .chq-settings-row wrapper and into its
+   own section head inside the edit form, so the former wrapper class
+   .chq-settings-portal-resources has no markup left; deleted rather than
+   kept as dead CSS (app/src/css-contract.scan.test.ts, DEC-970). */
 .chq-settings-portal-resources-block {
   display: flex;
   flex-direction: column;

@@ -2,9 +2,20 @@
 // content 16px and keeps the surface's column grid; a row action sizes to
 // its content. This scan pins the four rules the ruling depends on, all in
 // app/src/pages/review/review.css:
-//   - .chq-review-plan-row.is-active: background + non-zero inline padding
-//     (an equal negative margin cancels the padding, so the row's own
-//     grid-template-columns stay pixel-identical to unstated siblings).
+//   - .chq-review-plan-row.is-active: background + a left inset the row's
+//     unstated sibling already carries, so the row's own
+//     grid-template-columns stay pixel-identical to unstated siblings.
+//     DEC-745's findings-wave-4 amendment SUPERSEDES the MECHANISM this
+//     clause originally pinned (`margin-inline:-16px; padding-inline:16px`):
+//     that bought the inset by drawing the band 16px OUTSIDE the reading
+//     measure it belongs to. The selected row is now the B8 shared pattern
+//     -- `--chq-surface-sunk` fill PLUS a 3px `--chq-brand` left edge that
+//     REPLACES 3px of the row's own 16px left padding, inheriting the
+//     parent's box instead of escaping it. Wave-20's actual requirement
+//     (tint inset, content on the sibling's column positions) is unchanged
+//     and is what is asserted below: 3 + 13 == the base row's 16, and no
+//     negative margin-inline anywhere. The edge itself is pinned by
+//     app/src/b8-selected-row.scan.test.ts.
 //   - .chq-review-reviews-detail: background + non-zero padding (this is
 //     the colSpan <td>, so real padding is correct -- no negative margin).
 //   - the reviews band keeps the surface's columns and never free-floats its
@@ -44,11 +55,24 @@ describe("review.css state-band inset (DEC-939 wave-20 amendment)", () => {
     expect(css.trim().length).toBeGreaterThan(0);
   });
 
-  it(".chq-review-plan-row.is-active declares a background and non-zero inline padding", () => {
+  it(".chq-review-plan-row.is-active declares a background and keeps the unstated row's 16px left inset without bleeding past it", () => {
+    const base = findRule(css, ".chq-review-plan-row");
+    // The unstated row owns the inset; the state only re-divides it.
+    expect(base, "the unstated plan row must carry the 16px left inset the band re-divides").toMatch(
+      /padding:\s*16px 0 16px 16px/,
+    );
+
     const body = findRule(css, ".chq-review-plan-row.is-active");
     expect(body).toMatch(/background:/);
-    expect(body).toMatch(/padding-inline:\s*16px/);
+    // DEC-745 findings-wave-4: 3px olive edge + 13px padding == the base
+    // row's 16px, so selecting a row shifts its content by zero pixels.
+    expect(body).toMatch(/border-left:\s*3px solid var\(--chq-brand\)/);
+    expect(body).toMatch(/padding-left:\s*13px/);
     expect(body).not.toMatch(/padding-inline:\s*0/);
+    expect(body).not.toMatch(/padding-left:\s*0/);
+    // The band inherits the parent's box -- it never escapes the measure.
+    expect(body, "a state band must not bleed past the reading measure").not.toMatch(/margin-inline:\s*-/);
+    expect(body).not.toMatch(/margin-left:\s*-/);
   });
 
   it(".chq-review-reviews-detail declares a background and non-zero padding", () => {

@@ -71,9 +71,12 @@ export const CHROME_CSS = `
     color: var(--chq-muted);
   }
   /* DEC-919 amendment (wave 4, task-w4-f): the active-filter chip is the
-     SELECTED treatment (docs/design/Chautauqua Public and Portal.dc.html
-     line 61) -- ink fill, paper text, its remove glyph muted-on-ink -- not
-     an outlined chip on the surface tint the filter-bar controls use. */
+     SELECTED treatment (docs/design's public+portal frame pack, line 61)
+     -- ink fill, paper text, its remove glyph muted-on-ink -- not an
+     outlined chip on the surface tint the filter-bar controls use.
+     (This comment ships inside the inlined <style>; test/root.test.ts
+     forbids the product name above the footer, so the pack is cited the
+     way every other rule in this file cites docs/design.) */
   .chq-pub-activefilters-chip {
     display: inline-flex;
     align-items: center;
