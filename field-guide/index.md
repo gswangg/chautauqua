@@ -23,37 +23,38 @@ hard 60-line budget, compacting old entries. Injected into every agent.
 - FINDINGS w2-w4 (compacted): DateField/search, EMB cards, password/builder/
   PlanEditor caps, logout, CSV dup, settings rail, gutters. Shapes: A CAP ONLY
   IN THE SPA IS A SUGGESTION. AN EXTERNAL FRAME MEASUREMENT LOSES TO README.md.
-- FINDINGS w5 (compacted; docs/design/*.dc.html IS the frame pack). Filed
-  w5-a..g: plans-hub framed elements, compose step-4 report, .zip-as-SLIDE,
-  danger-btn semantic red, role select behind a mode, Session details grid.
-  Shapes: AN INTERIM SPEC DIES THE DAY ITS FRAME LANDS. A CONTROL BEHIND A
-  MODE IS A CONTROL THE SCREEN DOESN'T HAVE.
-- FINDINGS w6 (compacted): canEditSubmission DISCARDS status and locked
-  accepted speakers out at close (restored, w/ canUploadDeliverables deleted
-  as dup); reviewer scope null meant both "none"/"many", now a LIST w/ one
-  formatter; login-band detail line hard-coded per headline, now a pair;
-  `npm run deploy` NO LONGER absent by design; eval-findings.md archived.
-  Affirmed (DEC-932/746): acceptance back-fill is DENSE by design. Shapes: A
-  DISCARDED PARAMETER IS A RULE THAT STOPPED BINDING. A NULL MEANING BOTH
-  "NONE" AND "MANY" TELLS THE USER "ALL". A MANDATE THAT OUTLIVES ITS FRAME
-  PACK IS A MAP OF A DEMOLISHED CITY.
-- FINDINGS w7 (planned on main; task-w5-a..g AND task-w6-a..e are all still
-  unmerged branches — none of their twelve targets is re-filed here). Filed
-  w7-a..d, each read off the tree: Settings' ONE portal action
-  (PortalSettingsPanel.tsx:212 -> /portal) is bounced to /admin by speakerGate
-  (portal/shared.tsx:55), so ruling A22's blessed row has no capability at all —
-  a read-only GET /portal/preview (branding + welcome + resources, zero
-  contact-scoped reads) is built instead of the wording fix A22 anticipated;
-  docs/AUDIT.md prose drifted in four places (a /logout confirmation screen
-  deleted in wave 25, an export list that names `sessions` — not a kind — and
-  omits evaluations/email-log, a Resend-is-unbuilt bullet contradicted by
-  src/mail/email-binding.ts, a missing AIRTABLE_ORG_ID throw), and EXPORT_KINDS
-  joins routes + absence markers as a machine-checked claim; the agenda's only
-  empty-state escape points at `/settings#…` — neither the route (/admin/settings)
-  nor the grammar (?section=tracks-rooms) — and six sibling /admin anchors reload
-  the whole SPA; YourDataPanel prints `chautauqua.cc/docs/api` as literal copy on
-  every self-hosted instance while FormsPage.tsx:252 already derives the host.
-  Shapes: AN ACTION ITS OWN ROLE CANNOT REACH IS NOT AN ACTION. A SELF-AUDIT
-  MAINTAINED BY MEMORY IS THE DOCUMENT MOST LIKELY TO BE WRONG. A LINK TARGET
-  NOBODY NAVIGATED IS A ROUTE NOBODY CHECKED. A HOSTNAME IN COPY IS TRUE ON
-  EXACTLY ONE DEPLOYMENT.
+- FINDINGS w5 (compacted): plans-hub framed elements, compose step-4 report,
+  .zip-as-SLIDE, danger-btn semantic red, role select behind a mode, Session
+  details grid. Shapes: AN INTERIM SPEC DIES THE DAY ITS FRAME LANDS. A
+  CONTROL BEHIND A MODE IS A CONTROL THE SCREEN DOESN'T HAVE.
+- FINDINGS w6 (compacted): canEditSubmission DISCARDS status/locked-accepted
+  (restored); reviewer scope null->LIST w/ formatter; login-band pair;
+  `npm run deploy` restored; eval-findings.md archived; acceptance back-fill
+  DENSE by design (DEC-932/746).
+- FINDINGS w7 (planned on main; w5-a..g/w6-a..e unmerged, not re-filed). Filed
+  w7-a..d: Settings' portal action bounced to /admin by speakerGate -> built
+  read-only GET /portal/preview instead; docs/AUDIT.md prose drift (4 spots)
+  fixed via EXPORT_KINDS machine-checked claim; agenda empty-state link wrong
+  route/grammar, 6 sibling /admin anchors reload SPA; YourDataPanel hardcoded
+  hostname now derived (FormsPage.tsx:252 pattern). Shapes: AN ACTION ITS OWN
+  ROLE CANNOT REACH IS NOT AN ACTION.
+- FINDINGS w8 (planned on main; w7-a..d still unmerged — portal/preview,
+  AUDIT.md, agenda/SPA anchors and the derived API-docs host are NOT re-filed).
+  Swept and found ALREADY LANDED, do not re-file without runtime evidence:
+  fleet-list items (active-filter ink chip, headshot-fallback initials,
+  files-library columns, hasActiveNarrowing+q, phone-block override test, Home
+  820/44, root.tsx role redirects, distribute-with-preview, speakers List/Grid
+  + nav, mail/shell.ts B9 shell, seed one-clock w/ CFP open -12/+18d); public
+  agenda already frame's time-anchored sequence (A25 "no TBD column" holds);
+  CNT-S3's edit loop already ?edit=1/?history=1 from DeliverableDetail. Filed
+  w8-a..e, each read off the tree: session cards drop title/company that
+  EMB-01(w3)/EMB-09(w2) require and the query already loads; Submissions has
+  no route into Comms so J5's "select decided records -> compose" asks for
+  the selection twice (?template= lands on step 2 w/ empty step 1); a round
+  is an integer w/ no name or window though DEC-147 was opened for ABS-01's
+  three; compose step 1 hides the slot until step 3 refuses the .ics; History
+  fetches page 1 of a 50/page endpoint, prints a total it cannot reach. Shapes:
+  A SAMPLE STRING IN A FRAME IS NOT A RULING — THE FRAME FIXES THE LINE, THE
+  SOURCES FIX THE FACTS. A HANDOFF THAT DROPS THE SELECTION ASKS THE SAME
+  QUESTION TWICE. A PAGED ENDPOINT RENDERED WITHOUT A PAGER IS A LIST THAT
+  LIES ABOUT ENDING.
