@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { listSourceFiles, relativePath } from "./support/list-envelope-enumeration/scan-utils";
+import { findStaleAllowlistEntries, listSourceFiles, relativePath } from "./support/list-envelope-enumeration/scan-utils";
 import { findItemsEnvelopeSites, ENVELOPE_ALLOWLIST } from "./support/list-envelope-enumeration/envelope-sites";
 import { findStrayPerPageConstantDeclarations } from "./support/list-envelope-enumeration/pagination-const-scan";
 
@@ -120,12 +120,27 @@ describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {
         seen.add(`${relativePath(REPO_ROOT, site.file)}#${site.route}`);
       }
     }
-    for (const entry of ENVELOPE_ALLOWLIST) {
-      expect(
-        seen.has(entry),
-        `allowlisted site ${entry} no longer exists (no c.json({ items ... site under that route) -- remove the stale entry`,
-      ).toBe(true);
+    const stale = findStaleAllowlistEntries(ENVELOPE_ALLOWLIST, seen);
+    if (stale.length > 0) {
+      throw new Error(
+        `Found ${stale.length} stale ENVELOPE_ALLOWLIST entry(s) that match no site in the current scan -- ` +
+          `remove them from test/support/list-envelope-enumeration/envelope-sites.ts:\n${stale
+            .map((e) => `  ${e}`)
+            .join("\n")}`,
+      );
     }
+    expect(stale).toEqual([]);
+  });
+
+  it("(a) unit case: an orphaned allowlist key is detected as stale (proves the mechanism, not just today's inputs)", () => {
+    const seen = new Set<string>(["src/routes/comms/preview.ts#POST /api/v1/events/:eventId/compose/preview"]);
+    const fakeAllowlist = new Set<string>([
+      "src/routes/comms/preview.ts#POST /api/v1/events/:eventId/compose/preview",
+      "src/routes/nonexistent/gone.ts#GET /api/v1/never/registered",
+    ]);
+    expect(findStaleAllowlistEntries(fakeAllowlist, seen)).toEqual([
+      "src/routes/nonexistent/gone.ts#GET /api/v1/never/registered",
+    ]);
   });
 
   it("(b) src/lib/pagination.ts is the only file declaring the per-page clamp constant pair", () => {
