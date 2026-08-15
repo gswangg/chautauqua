@@ -1705,8 +1705,13 @@
   font-size: 13px;
 }
 
+/* w25-c/DEC-436 amendment: Delete plan is a destructive action, not an
+   inert one -- even while frozen (planHasSubmittedReview) it must clear the
+   full 4.5:1 normal-text floor, not the 3:1 disabled-control exemption, so
+   it deliberately uses --chq-muted (6.28:1 against --chq-paper) rather than
+   --chq-disabled here. */
 .chq-review-editor-footer-delete:disabled {
-  color: var(--chq-disabled);
+  color: var(--chq-muted);
   cursor: not-allowed;
 }
 
