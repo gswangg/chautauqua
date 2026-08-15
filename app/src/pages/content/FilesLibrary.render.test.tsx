@@ -8,6 +8,9 @@
 // SESSION / VERSION / SIZE / Download — with no select-all checkbox and no
 // bulk ZIP control; uploader + upload date fold into the FILE cell's
 // subline instead of their own UPLOADED column.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -113,6 +116,65 @@ describe('FilesLibrary render smoke', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
 
     consoleError.mockRestore();
+  });
+
+  it('pins File/Session/Version/Size column widths to the frame grid (w4-c, DEC-902)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(
+        [
+          {
+            rootFileId: 'file-v1',
+            latestFileId: 'file-v2',
+            filename: 'slides.pdf',
+            kind: 'presentation',
+            submissionId: 'sub-1',
+            submissionRef: 'SES-014',
+            submissionTitle: 'Scaling Vector Search',
+            speakerName: 'Priya Raman',
+            uploadedAt: 1700000000000,
+            versionCount: 2,
+            versionNo: 2,
+            sizeBytes: 1234567,
+            uploaderName: 'Priya Raman',
+          },
+        ],
+        { kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 1 } },
+      ),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('files-library')).toBeInTheDocument();
+    });
+    await screen.findByText('slides.pdf');
+
+    // Frame: docs/design/Chautauqua Content.dc.html:311 --
+    // grid-template-columns: 1fr 190px 108px 92px auto; gap:16px.
+    // File carries no width class (takes the 1fr remainder); the other
+    // three are pinned classes styled in content.css.
+    const table = screen.getByRole('table');
+    const sessionHeader = within(table).getAllByRole('columnheader')[1]!;
+    const versionHeader = within(table).getAllByRole('columnheader')[2]!;
+    const sizeHeader = within(table).getAllByRole('columnheader')[3]!;
+    expect(sessionHeader).toHaveClass('chq-content-files-col-session');
+    expect(versionHeader).toHaveClass('chq-content-files-col-version');
+    expect(sizeHeader).toHaveClass('chq-content-files-col-size');
+  });
+
+  // Frame: docs/design/Chautauqua Content.dc.html:311 --
+  // grid-template-columns: 1fr 190px 108px 92px auto; gap:16px. File takes
+  // the 1fr remainder (no width class); Session/Version/Size are pinned.
+  it('pins the four Files table column-width literals to the frame (w4-c, DEC-902)', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
+    const sessionMatch = css.match(/\.chq-content-files-table \.chq-content-files-col-session\s*\{([^}]*)\}/);
+    const versionMatch = css.match(/\.chq-content-files-table \.chq-content-files-col-version\s*\{([^}]*)\}/);
+    const sizeMatch = css.match(/\.chq-content-files-table \.chq-content-files-col-size\s*\{([^}]*)\}/);
+    expect(sessionMatch).not.toBeNull();
+    expect(versionMatch).not.toBeNull();
+    expect(sizeMatch).not.toBeNull();
+    expect(sessionMatch![1]).toMatch(/width:\s*190px/);
+    expect(versionMatch![1]).toMatch(/width:\s*108px/);
+    expect(sizeMatch![1]).toMatch(/width:\s*92px/);
   });
 
   it('renders a headshot row as a plain filename with its own version number', async () => {
