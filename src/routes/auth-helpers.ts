@@ -17,6 +17,27 @@ export const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
 export const AUTH_RATE_LIMIT_MAX = 20;
 export const RATE_LIMIT_ERROR = "Too many attempts. Try again in a few minutes.";
 
+// DEC-072 wave-66 amendment: the account-wide login budget, keyed on the
+// bare normalised email with NO ip component. This is the ONLY login
+// bucket that satisfies src/lib/rate-limit.ts:52-55's own doc-comment --
+// "callers that need real correctness MUST also key a scoped limiter by a
+// stable identity value ... rather than relying on IP alone". Both other
+// login buckets (loginIdentityKey below and the bare `ip` flood guard) are
+// keyed on a value the client can rotate at will (x-forwarded-for, absent
+// any trusted edge in stage 1), so a spoofed header alone buys unlimited
+// admission to those two. Deliberately looser than the pair budget below
+// (50 vs 20) so a legitimate owner mistyping their password from their own
+// IP cannot reach it, while an attacker rotating the header is still
+// capped at 50 guesses/15min against one address rather than infinity.
+// This is the ONE assembler of the "login-account" scope key -- every
+// touch of that bucket (admission, refund on a later deny, reset on
+// success) must call this rather than hand-assembling the key string.
+export const AUTH_ACCOUNT_RATE_LIMIT_MAX = 50;
+
+export function loginAccountKey(email: string): string {
+  return email;
+}
+
 // DEC-072 wave-54 amendment: the per-identity login budget is keyed on
 // email+IP together, not the bare email -- a bare-email key lets a stranger
 // who knows (or guesses) a valid organizer address exhaust that address's
