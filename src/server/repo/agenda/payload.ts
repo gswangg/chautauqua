@@ -33,19 +33,23 @@ import type {
 export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo): Promise<AgendaPayload> {
   const days = eventDays(event.startDate, event.endDate);
 
-  const roomRows = await db
-    .select({ id: schema.room.id, name: schema.room.name })
-    .from(schema.room)
-    .where(eq(schema.room.eventId, eventId))
-    .orderBy(schema.room.position, asc(schema.room.id));
-
-  const trackRows = await db
-    .select({ id: schema.track.id, name: schema.track.name, color: schema.track.color })
-    .from(schema.track)
-    .where(eq(schema.track.eventId, eventId))
-    .orderBy(schema.track.position);
-
-  const accepted = await loadAcceptedSessions(db, eventId, event.recordPrefix);
+  // DEC-155 wave-34 amendment: roomRows, trackRows and loadAcceptedSessions
+  // consume nothing from one another (all three are scoped only by
+  // `eventId`), so they issue as one Promise.all wave rather than three
+  // strictly-sequential awaits.
+  const [roomRows, trackRows, accepted] = await Promise.all([
+    db
+      .select({ id: schema.room.id, name: schema.room.name })
+      .from(schema.room)
+      .where(eq(schema.room.eventId, eventId))
+      .orderBy(schema.room.position, asc(schema.room.id)),
+    db
+      .select({ id: schema.track.id, name: schema.track.name, color: schema.track.color })
+      .from(schema.track)
+      .where(eq(schema.track.eventId, eventId))
+      .orderBy(schema.track.position),
+    loadAcceptedSessions(db, eventId, event.recordPrefix),
+  ]);
 
   const placed: PlacedAgendaSession[] = [];
   const unscheduled: UnscheduledAgendaSession[] = [];
@@ -194,20 +198,34 @@ export async function getConflictsAndSummary(
   eventId: string,
   event: Pick<EventInfo, "startDate" | "endDate" | "recordPrefix">,
 ): Promise<{ conflicts: DescribedConflict[]; summary: { unplaced: number; conflicts: number } }> {
-  const slotRows = await db
-    .select({
-      submissionId: schema.scheduleSlot.submissionId,
-      roomId: schema.scheduleSlot.roomId,
-      day: schema.scheduleSlot.day,
-      startMin: schema.scheduleSlot.startMin,
-      endMin: schema.scheduleSlot.endMin,
-      seq: schema.submission.seq,
-      title: schema.submission.title,
-    })
-    .from(schema.scheduleSlot)
-    .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
-    .limit(MAX_AGENDA_SCAN + 1);
+  // DEC-155 wave-34 amendment: roomRows (:283 originally) and
+  // totalAcceptedRows (:289 originally) consume nothing from the slot chain
+  // below (both are scoped only by `eventId`), so they join the slot read's
+  // wave rather than trailing it as two more sequential awaits.
+  const [slotRows, roomRows, totalAcceptedRows] = await Promise.all([
+    db
+      .select({
+        submissionId: schema.scheduleSlot.submissionId,
+        roomId: schema.scheduleSlot.roomId,
+        day: schema.scheduleSlot.day,
+        startMin: schema.scheduleSlot.startMin,
+        endMin: schema.scheduleSlot.endMin,
+        seq: schema.submission.seq,
+        title: schema.submission.title,
+      })
+      .from(schema.scheduleSlot)
+      .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+      .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+      .limit(MAX_AGENDA_SCAN + 1),
+    db
+      .select({ id: schema.room.id, name: schema.room.name })
+      .from(schema.room)
+      .where(eq(schema.room.eventId, eventId)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted"))),
+  ]);
 
   if (slotRows.length > MAX_AGENDA_SCAN) {
     throw new ApiError(
@@ -280,16 +298,7 @@ export async function getConflictsAndSummary(
   }));
   const conflicts = findConflicts(placedSessions);
 
-  const roomRows = await db
-    .select({ id: schema.room.id, name: schema.room.name })
-    .from(schema.room)
-    .where(eq(schema.room.eventId, eventId));
   const labels = buildConflictLabels(roomRows, placedRows);
-
-  const totalAcceptedRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.submission)
-    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")));
   const totalAccepted = Number(totalAcceptedRows[0]?.count ?? 0);
 
   return {

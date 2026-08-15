@@ -64,13 +64,32 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
       },
     );
   }
-  if (typeof body.roomId === "string" && !(await roomBelongsToEvent(c.var.db, body.roomId, ownership.eventId))) {
-    throw new ApiError("invalid", "Room does not belong to this event", {
-      roomId: "Room does not belong to this event",
-    });
+  // DEC-155 wave-34 amendment: roomBelongsToEvent (only when body.roomId is
+  // a string) and getEventInfo consume nothing from each other, so they
+  // issue as one wave. Both can independently produce a user-facing
+  // ApiError past this point, so the wave uses allSettled and re-throws in
+  // SOURCE order (room check first, event-not-found second) — a doubly-bad
+  // request must still produce the identical 'Room does not belong to this
+  // event' error it did before this change.
+  let event: Awaited<ReturnType<typeof getEventInfo>>;
+  if (typeof body.roomId === "string") {
+    const roomId = body.roomId;
+    const [roomResult, eventResult] = await Promise.allSettled([
+      (async () => {
+        if (!(await roomBelongsToEvent(c.var.db, roomId, ownership.eventId))) {
+          throw new ApiError("invalid", "Room does not belong to this event", {
+            roomId: "Room does not belong to this event",
+          });
+        }
+      })(),
+      getEventInfo(c.var.db, ownership.eventId),
+    ]);
+    if (roomResult.status === "rejected") throw roomResult.reason;
+    if (eventResult.status === "rejected") throw eventResult.reason;
+    event = eventResult.value;
+  } else {
+    event = await getEventInfo(c.var.db, ownership.eventId);
   }
-
-  const event = await getEventInfo(c.var.db, ownership.eventId);
   if (!event) throw new ApiError("not_found", "Event not found");
   if (!isDayWithinEventRange(body.day, event.startDate, event.endDate)) {
     throw new ApiError("invalid", "Slot day is outside the event date range", {
@@ -92,9 +111,14 @@ agendaRoutes.delete("/submissions/:id/slot", requireOrganizer, csrfJson, async (
   if (!ownership) throw new ApiError("not_found", "Submission not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
-  await unscheduleSlot(c.var.db, submissionId);
-
-  const event = await getEventInfo(c.var.db, ownership.eventId);
+  // DEC-155 wave-34 amendment: getEventInfo observes nothing the delete
+  // writes (unscheduleSlot only touches schedule_slot; getEventInfo reads
+  // the event row's dates), so it joins the write's wave rather than
+  // trailing it as a fourth sequential await.
+  const [, event] = await Promise.all([
+    unscheduleSlot(c.var.db, submissionId),
+    getEventInfo(c.var.db, ownership.eventId),
+  ]);
   if (!event) throw new ApiError("not_found", "Event not found");
   const refreshed = await getConflictsAndSummary(c.var.db, ownership.eventId, event);
   return c.json(refreshed);
