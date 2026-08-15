@@ -1018,7 +1018,13 @@ export function SubmissionDetailPage() {
                 // affordance here is the redundancy this pass removes.
                 detail.description && <p className="chq-detail-abstract">{detail.description}</p>
               ) : (
-                <div className="chq-detail-edit-form">
+                <form
+                  className="chq-detail-edit-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void saveEdit();
+                  }}
+                >
                   {Object.keys(editFieldErrors).length > 0 && (
                     <ErrorSummary
                       heading={countHeading(Object.keys(editFieldErrors).length, 'before this edit can be saved')}
@@ -1051,6 +1057,12 @@ export function SubmissionDetailPage() {
                       disabled={savingEdit}
                       maxLength={LOCKED_ABSTRACT_MAX_LENGTH}
                       onChange={(e) => setEditDescription(e.target.value)}
+                      onKeyDown={(e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                          e.preventDefault();
+                          void saveEdit();
+                        }
+                      }}
                       aria-invalid={editFieldErrors.description ? 'true' : undefined}
                     />
                   </label>
@@ -1058,7 +1070,7 @@ export function SubmissionDetailPage() {
                     <div className="chq-form-row-error" role="alert">{editFieldErrors.description}</div>
                   )}
                   <div className="chq-detail-edit-form-actions">
-                    <button type="button" className="chq-btn chq-btn-primary" disabled={savingEdit} onClick={saveEdit}>
+                    <button type="submit" className="chq-btn chq-btn-primary" disabled={savingEdit}>
                       Save
                     </button>
                     <button
@@ -1070,7 +1082,7 @@ export function SubmissionDetailPage() {
                       Cancel
                     </button>
                   </div>
-                </div>
+                </form>
               )}
             </div>
           </section>
