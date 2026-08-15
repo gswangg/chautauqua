@@ -5,6 +5,9 @@
 // body paragraph); the rail region carries notes + the other-events list;
 // a null headshot renders no broken image and no dead Download link; and
 // otherEvents is capped at 5 even if the server ever sent more.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -137,6 +140,26 @@ describe('SpeakerDetailPage render smoke', () => {
     // Exact slot string for a placed session: day formatted via
     // formatDayLabel + zero-padded clock times, never the raw ISO day.
     expect(screen.getByText('Wed 13 May 10:00–10:45, Hall A')).toBeInTheDocument();
+  });
+
+  // DEC-930 wave-19 amendment: Sessions/Tasks/Files drop <table>/<thead>
+  // for header-ruled row grids -- and the rail column is the pack's 320px
+  // track, not the old 300px one.
+  it('renders no <thead> anywhere and the detail grid declares a 320px rail track', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    expect(document.querySelectorAll('thead')).toHaveLength(0);
+
+    const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'speakers.css');
+    const css = readFileSync(cssPath, 'utf-8');
+    const gridBody = css.match(/\.chq-speaker-detail-grid\s*\{([^}]*)\}/)?.[1];
+    expect(gridBody).toBeDefined();
+    expect(gridBody).toMatch(/320px/);
   });
 
   it('promotes the participation control into the header row, not a body paragraph', async () => {

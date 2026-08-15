@@ -58,6 +58,15 @@ function taskStatusClass(status: SpeakerDetailTaskStatus): string {
   return `chq-speakers-status chq-speakers-status-${status}`;
 }
 
+// DEC-930 wave-19 amendment: the Files row-grid's 52px lead track is a
+// short file-kind tag (frame :385's `{{ v.tag }}`) -- derived client-side
+// from the filename already on the wire, never a new server field.
+function fileKindTag(filename: string): string {
+  const dot = filename.lastIndexOf('.');
+  const ext = dot > -1 ? filename.slice(dot + 1) : '';
+  return (ext || 'FILE').slice(0, 4).toUpperCase();
+}
+
 function scheduledLabel(scheduled: SpeakerDetailResponse['sessions'][number]['scheduled']): string {
   if (!scheduled) return 'Not placed';
   const slot = `${formatDayLabel(scheduled.day)} ${clockHHMM(scheduled.startMin)}–${clockHHMM(scheduled.endMin)}`;
@@ -314,34 +323,22 @@ export function SpeakerDetailPage() {
                   // larger table), so it only ever ships the fresh variant.
                   <EmptyState variant="fresh" what="No sessions." />
                 ) : (
-                  <table className="chq-table chq-speaker-detail-sessions-table">
-                    <thead>
-                      <tr>
-                        <th>Session</th>
-                        <th>Status</th>
-                        <th>Content status</th>
-                        <th>Slot / room</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.sessions.map((session) => (
-                        <tr key={session.submissionId}>
-                          <td>
-                            <Link to={`/submissions/${session.submissionId}`}>
-                              {session.ref} &middot; {session.title}
-                            </Link>
-                          </td>
-                          <td>
-                            <span className={neutralStatusClass()}>{STATUS_LABELS[session.status]}</span>
-                          </td>
-                          <td>
-                            <span className={neutralStatusClass()}>{CONTENT_STATUS_LABELS[session.contentStatus]}</span>
-                          </td>
-                          <td>{scheduledLabel(session.scheduled)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  // DEC-930 wave-19 amendment: the frame's row track is
+                  // link/slot/status (3 tracks, :357) -- status and content
+                  // status share the one status track (both spans of the
+                  // same evaluation-lattice axis, DEC-367) rather than
+                  // dropping either value.
+                  detail.sessions.map((session) => (
+                    <div className="chq-speaker-detail-sessions-row" key={session.submissionId}>
+                      <Link to={`/submissions/${session.submissionId}`}>
+                        {session.ref} &middot; {session.title}
+                      </Link>
+                      <span>{scheduledLabel(session.scheduled)}</span>
+                      <span className={neutralStatusClass()}>
+                        {STATUS_LABELS[session.status]} &middot; {CONTENT_STATUS_LABELS[session.contentStatus]}
+                      </span>
+                    </div>
+                  ))
                 )}
               </section>
 
@@ -354,56 +351,45 @@ export function SpeakerDetailPage() {
                     {' · '}
                     {detail.counts.overdue} overdue
                   </span>
+                  {detail.tasks.length > 0 && (
+                    <span className="chq-speaker-detail-tasks-caption">Click a status to change it</span>
+                  )}
                 </div>
                 {detail.tasks.length === 0 ? (
                   // DEC-678: no filter axis here either -- fresh only.
                   <EmptyState variant="fresh" what="No tasks." />
                 ) : (
-                  <table className="chq-table chq-speaker-detail-tasks-table">
-                    <thead>
-                      <tr>
-                        <th>Task</th>
-                        <th>Due</th>
-                        <th>Status</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.tasks.map((task) => (
-                        <tr key={task.assignmentId}>
-                          <td>
-                            {task.title}
-                            {task.required && <span className="chq-speaker-detail-required"> Required</span>}
-                          </td>
-                          <td>{formatDateOnly(task.dueDate)}</td>
-                          <td>
-                            <button
-                              type="button"
-                              className={taskStatusClass(task.status)}
-                              onClick={() => toggleTaskStatus(task.assignmentId, task.status)}
-                              aria-label={`Toggle ${task.title} for ${detail.contact.name}`}
-                            >
-                              {TASK_STATUS_LABELS[task.status]}
-                            </button>
-                          </td>
-                          <td>
-                            {/* DEC-829 amendment (w61-e): quiet on an
-                                already-complete task row -- nothing this
-                                send would ever reach for that assignment. */}
-                            {task.status !== 'complete' && (
-                              <button
-                                type="button"
-                                className="chq-link-button chq-speaker-detail-task-remind"
-                                onClick={openRemindReview}
-                              >
-                                Remind this task
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  detail.tasks.map((task) => (
+                    <div className="chq-speaker-detail-tasks-row" key={task.assignmentId}>
+                      <span>
+                        {task.title}
+                        {task.required && <span className="chq-speaker-detail-required"> Required</span>}
+                      </span>
+                      <span>{formatDateOnly(task.dueDate)}</span>
+                      <button
+                        type="button"
+                        className={taskStatusClass(task.status)}
+                        onClick={() => toggleTaskStatus(task.assignmentId, task.status)}
+                        aria-label={`Toggle ${task.title} for ${detail.contact.name}`}
+                      >
+                        {TASK_STATUS_LABELS[task.status]}
+                      </button>
+                      {/* DEC-829 amendment (w61-e): quiet on an
+                          already-complete task row -- nothing this send
+                          would ever reach for that assignment. */}
+                      {task.status !== 'complete' ? (
+                        <button
+                          type="button"
+                          className="chq-link-button chq-speaker-detail-task-remind"
+                          onClick={openRemindReview}
+                        >
+                          Remind this task
+                        </button>
+                      ) : (
+                        <span />
+                      )}
+                    </div>
+                  ))
                 )}
               </section>
 
@@ -415,34 +401,24 @@ export function SpeakerDetailPage() {
                   // DEC-678: no filter axis -- fresh only.
                   <EmptyState variant="fresh" what="No files." />
                 ) : (
-                  <table className="chq-table chq-speaker-detail-files-table">
-                    <thead>
-                      <tr>
-                        <th>File</th>
-                        <th>Size</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {files.map((task) => (
-                        <tr key={task.assignmentId}>
-                          <td>{task.file.filename}</td>
-                          <td>{formatBytes(task.file.sizeBytes)}</td>
-                          <td>
-                            <a
-                              href={`/files/${task.file.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="chq-speakers-file-link"
-                              title={task.file.filename}
-                            >
-                              Download
-                            </a>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  files.map((task) => (
+                    <div className="chq-speaker-detail-files-row" key={task.assignmentId}>
+                      <span className="chq-speaker-detail-file-tag" aria-hidden="true">
+                        {fileKindTag(task.file.filename)}
+                      </span>
+                      <span>{task.file.filename}</span>
+                      <span>{formatBytes(task.file.sizeBytes)}</span>
+                      <a
+                        href={`/files/${task.file.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="chq-speakers-file-link"
+                        title={task.file.filename}
+                      >
+                        Download
+                      </a>
+                    </div>
+                  ))
                 )}
               </section>
             </div>

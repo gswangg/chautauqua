@@ -800,14 +800,14 @@
   gap: 10px;
 }
 
-/* DEC-930 amendment (wave 26): the 1180 pair -- a flexible 820px reading
-   column plus a 300px rail, 60px gap (820 + 60 + 300 = 1180). No max-width
-   of its own -- the page root's own chq-measure-table clamp is the outer
-   bound (WIDTH BEATS MAX-WIDTH: a nested clamp here would just fight it). */
+/* DEC-930 wave-19 amendment: the pack's true column pair -- a flexible
+   reading column plus a 320px rail, 34px gap. No max-width of its own --
+   the page root's own chq-measure-table clamp is the outer bound (WIDTH
+   BEATS MAX-WIDTH: a nested clamp here would just fight it). */
 .chq-speaker-detail-grid {
   display: grid;
-  grid-template-columns: minmax(0, 820px) 300px;
-  gap: 60px;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 34px;
   align-items: start;
 }
 
@@ -833,21 +833,72 @@
   gap: 8px;
 }
 
-.chq-speaker-detail-sessions-table,
-.chq-speaker-detail-tasks-table,
-.chq-speaker-detail-files-table {
-  width: 100%;
+/* DEC-930 wave-19 amendment: the three sections drop <table>/<thead> for
+   header-ruled row grids -- the section head itself (border-bottom:2px,
+   shared .chq-section-head/-label) is the only heading; each item below it
+   is one grid row over a 1px hairline, tracks per the frame. */
+.chq-speaker-detail-sessions-row {
+  display: grid;
+  grid-template-columns: 1fr 150px 130px;
+  gap: 18px;
+  align-items: baseline;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-speaker-detail-tasks-row {
+  display: grid;
+  grid-template-columns: 1fr 150px 130px auto;
+  gap: 18px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-speaker-detail-files-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 150px auto;
+  gap: 18px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-speaker-detail-tasks-caption {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-speaker-detail-file-tag {
+  font-family: var(--chq-font-display);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .chq-speaker-detail-task-remind {
   font-size: 12px;
 }
 
-/* DEC-930 amendment (wave 26) rail sections: each is a flex child of the
-   fixed 300px .chq-speaker-detail-rail column, so it needs min-width: 0 plus
+/* DEC-385: narrow overrides wide via max-width only -- each header-ruled
+   row grid collapses to a single stacked column under 700px, matching the
+   onboarding grid's own card treatment. */
+@media (max-width: 700px) {
+  .chq-speaker-detail-sessions-row,
+  .chq-speaker-detail-tasks-row,
+  .chq-speaker-detail-files-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+/* DEC-930 wave-19 amendment: each rail section is a flex child of the
+   fixed 320px .chq-speaker-detail-rail column, so it needs min-width: 0 plus
    a wrap rule -- a long unbroken string (an email address, an event name)
    would otherwise set the section's content min-size and push the rail past
-   300px, breaking the 1180 pair. Inner spacing stays on the -body/-list
+   320px, breaking the column pair. Inner spacing stays on the -body/-list
    rules below; these three only hold the column in. */
 .chq-speaker-detail-contact,
 .chq-speaker-detail-other-events,
