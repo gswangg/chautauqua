@@ -23,9 +23,44 @@ export function isNonEmptyText(text: string): boolean {
 }
 
 /**
+ * w17-d: for a row that DELIBERATELY expects a non-200 status (e.g. the
+ * DEC-945 chromeless /admin/* 404, DEC-747's /portal/preview 404), Chromium
+ * itself logs a console 'error' for the top-level navigation's own failed
+ * resource load ("Failed to load resource: the server responded with a
+ * status of 404 (Not Found)") -- a direct, unavoidable byproduct of the
+ * expected status, not a product-code defect. Strips exactly that one
+ * message (matched by the row's own expectedStatus, never a blanket
+ * allowlist) so an intentionally-non-200 row can still satisfy the
+ * zero-console-errors rule; any OTHER console error on the same page (a
+ * broken image, a script exception) still fails the row.
+ */
+export function filterExpectedStatusConsoleNoise(
+  entry: RouteManifestEntry,
+  consoleErrors: readonly string[],
+): string[] {
+  const expectedStatus = entry.expectedStatus ?? 200;
+  if (expectedStatus === 200) return [...consoleErrors];
+  const noise = new RegExp(
+    `^Failed to load resource: the server responded with a status of ${expectedStatus} \\(`,
+  );
+  let stripped = false;
+  const out: string[] = [];
+  for (const msg of consoleErrors) {
+    if (!stripped && noise.test(msg)) {
+      stripped = true;
+      continue;
+    }
+    out.push(msg);
+  }
+  return out;
+}
+
+/**
  * Evaluates a single route's collected observations against the render-sweep
  * pass criteria: HTTP 200, non-empty rendered text, and zero collected
- * console 'error' + pageerror events (no allowlist).
+ * console 'error' + pageerror events (no allowlist beyond
+ * filterExpectedStatusConsoleNoise's single-message strip for a
+ * deliberately-non-200 row).
  */
 export function evaluateRoute(
   entry: RouteManifestEntry,
@@ -52,6 +87,7 @@ export function evaluateRoute(
   const landedPath = observed.landedPath ?? entry.path;
   const expectedStatus = entry.expectedStatus ?? 200;
   const expectedLandedPath = entry.expectedLandedPath ?? entry.path;
+  const consoleErrors = filterExpectedStatusConsoleNoise(entry, observed.consoleErrors);
   const reasons: string[] = [];
   if (observed.status !== expectedStatus) {
     reasons.push(`status ${observed.status} !== expected ${expectedStatus}`);
@@ -60,8 +96,8 @@ export function evaluateRoute(
     reasons.push(`landed on ${landedPath} !== expected ${expectedLandedPath}`);
   }
   if (!bodyNonEmpty) reasons.push("empty rendered text");
-  if (observed.consoleErrors.length > 0) {
-    reasons.push(`${observed.consoleErrors.length} console error(s): ${observed.consoleErrors.join(" | ")}`);
+  if (consoleErrors.length > 0) {
+    reasons.push(`${consoleErrors.length} console error(s): ${consoleErrors.join(" | ")}`);
   }
   if (observed.pageErrors.length > 0) {
     reasons.push(`${observed.pageErrors.length} pageerror(s): ${observed.pageErrors.join(" | ")}`);
