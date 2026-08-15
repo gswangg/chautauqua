@@ -203,22 +203,164 @@
   gap: 8px;
 }
 
-/* Ruling B1: step 4's post-send report leads with the audience count --
-   sized like the other step headings, not buried in body copy. */
-.chq-comms-send-report-headline {
-  font-family: var(--chq-font-display);
-  font-size: 16px;
-  font-weight: 700;
+/* DEC-238 amendment (findings wave 5): step 4's post-send REPORT, framed at
+   docs/design/Chautauqua Comms.dc.html :495-536. Owned block for this
+   wave -- eyebrow + headline + "All history", the TEMPLATE / SUBJECT THEY
+   SAW / SENT definition grid, the skipped section, and the footer row. */
+
+.chq-comms-send-report-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
 }
 
-/* DEC-238 amendment (wave 3): under the headline, the three plain count
-   lines (sent / skipped / remaining) read as one quiet block -- body text,
-   tight leading, secondary ink so the headline keeps the emphasis. */
-.chq-comms-send-report-counts {
-  margin-top: 6px;
+.chq-comms-send-report-head-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-comms-send-report-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-brand);
+}
+
+.chq-comms-send-report-headline {
+  margin: 0;
+  font-family: var(--chq-font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.chq-comms-send-report-all-history {
   font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  white-space: nowrap;
+}
+
+.chq-comms-send-report-all-history:hover {
+  color: var(--chq-brand-hover);
+}
+
+.chq-comms-send-report-grid {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 16px 20px;
+  align-items: baseline;
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
+  padding: 16px 0;
+}
+
+.chq-comms-send-report-grid-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-comms-send-report-grid-value {
+  font-size: 15px;
+}
+
+.chq-comms-send-report-skipped-head {
+  border-bottom: 2px solid var(--chq-ink);
+  padding-bottom: 8px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chq-comms-send-report-skipped-label {
+  font-family: var(--chq-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.chq-comms-send-report-skipped-caption {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-comms-send-report-skipped-row {
+  display: grid;
+  grid-template-columns: 200px 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-comms-send-report-skipped-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-comms-send-report-skipped-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.chq-comms-send-report-skipped-email {
+  font-size: 12px;
+  color: var(--chq-muted);
+  word-break: break-all;
+}
+
+.chq-comms-send-report-skipped-reason {
+  font-size: 14px;
   line-height: 1.5;
   color: var(--chq-ink-2);
+}
+
+.chq-comms-send-report-skipped-retry {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.chq-comms-send-report-skipped-note {
+  padding: 14px 0 0;
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+  line-height: 1.5;
+}
+
+.chq-comms-send-report-footer {
+  border-top: 1px solid var(--chq-rule);
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chq-comms-send-report-footer-note {
+  font-size: 13px;
+  color: var(--chq-muted);
+  line-height: 1.5;
+}
+
+.chq-comms-send-report-footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .chq-comms-preview-nav {

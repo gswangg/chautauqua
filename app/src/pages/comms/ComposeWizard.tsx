@@ -15,8 +15,8 @@ import { SendFailures } from '../../components/SendFailures';
 import { FormRow } from '../../components/ModalFrame';
 import { COMPOSE_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
-import { countOf } from '../../lib/plural';
-import { formatDateTime, isoToMs } from '../../lib/dates';
+import { countOf, capitalizeFirst, plural, spellCount } from '../../lib/plural';
+import { isoToMs } from '../../lib/dates';
 import { paginationSummary } from '../../lib/pagination-summary';
 import type { ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
@@ -220,6 +220,21 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     // the already-loaded submission list before giving up to a raw id.
     const submission = submissions.find((s) => s.id === submissionId);
     return submission ? `${submission.ref} — ${submission.title}` : submissionId;
+  }
+
+  // DEC-238 amendment (findings wave 5): the skipped section's per-row retry
+  // action ("Send in N minutes") is derived from the server's own
+  // retryAtIso -- never a client-guessed window -- measured from the
+  // instant this batch's send resolved (sentAt), so the minute count stays
+  // fixed for the life of this report instead of ticking down as the
+  // organizer reads it. Floors at 1 (a retry time already in the past --
+  // clock skew, or a slow render -- still reads as "eligible again very
+  // soon", never zero/negative minutes).
+  function retryMinutes(retryAtIso: string): number {
+    const retryMs = isoToMs(retryAtIso);
+    const fromMs = sentAt ?? Date.now();
+    if (retryMs === null) return 1;
+    return Math.max(1, Math.ceil((retryMs - fromMs) / 60000));
   }
 
   // DEC-051: pulls the { <submissionId>: 'not scheduled' } field errors out
@@ -1052,56 +1067,77 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
       {step === 'sent' && sendResult && (
         <section>
-          <div className="chq-section-head">
-            <span className="chq-section-label">4. Send</span>
+          {/* DEC-238 amendment (findings wave 5): the framed send REPORT
+              (docs/design/Chautauqua Comms.dc.html :495-536) -- eyebrow +
+              headline carry `sent`, the skipped section carries `skipped`,
+              and <SendFailures/> below carries `remaining`. No separate
+              counts stack: the interim wave-3 paragraph is gone, per the
+              amendment. */}
+          <div className="chq-comms-send-report-head">
+            <div className="chq-comms-send-report-head-titles">
+              <span className="chq-comms-send-report-eyebrow">Send complete</span>
+              <h1 className="chq-comms-send-report-headline">
+                {sendResult.sent} of {sentTotal} speakers were emailed
+                {partialExcludedIds && partialExcludedIds.length > 0
+                  ? ` — ${partialExcludedIds.length} excluded (not yet scheduled)`
+                  : ''}
+              </h1>
+            </div>
+            <a href="/admin/comms?tab=history" className="chq-comms-send-report-all-history">
+              All history &rsaquo;
+            </a>
           </div>
-          {/* Ruling B1: a report ABOUT RECIPIENTS, not a copy of the email --
-              leads with the audience, then the metadata the organizer needs
-              to find this batch again, then names every failed recipient
-              individually. */}
-          <p className="chq-comms-send-report-headline">
-            {sendResult.sent} of {sentTotal} speakers were emailed
-            {partialExcludedIds && partialExcludedIds.length > 0
-              ? ` — ${partialExcludedIds.length} excluded (not yet scheduled)`
-              : ''}
-          </p>
-          {/* DEC-238 amendment (wave 3): the ruling's three plain lines --
-              sent, skipped, remaining (remaining is the failed set: a
-              recipient the product still owes a message). */}
-          <p className="chq-comms-send-report-counts">
-            {sendResult.sent} sent
-            <br />
-            {skippedRecipients.length} skipped
-            <br />
-            {sentFailedCount} remaining
-          </p>
-          <div className="chq-comms-panel-note">
-            <p>Template: {templateName || 'No template'}</p>
-            <p>Subject: {resolvedSendSubject}</p>
-            {sentAt !== null && <p>Sent: {formatDateTime(sentAt)}</p>}
+
+          <div className="chq-comms-send-report-grid">
+            <span className="chq-comms-send-report-grid-label">Template</span>
+            <span className="chq-comms-send-report-grid-value">{templateName || 'No template'}</span>
+            <span className="chq-comms-send-report-grid-label">Subject they saw</span>
+            <span className="chq-comms-send-report-grid-value">{resolvedSendSubject}</span>
+            <span className="chq-comms-send-report-grid-label">Sent</span>
+            {/* The client never invents/hard-codes a from-address -- this
+                composer holds no such field, so the value states only the
+                fact it does have (when, by whom). A future wave that gives
+                the composer a from-address appends " · from <address>". */}
+            <span className="chq-comms-send-report-grid-value">Just now, by you</span>
           </div>
+
           {/* DEC-238 amendment (wave 3): a skip is never silent -- every
               recipient the dedupe window held back is named here with the
-              time it becomes eligible again, and the copy states plainly
-              that a changed subject is a different message (the only
-              escape this wave -- no 'send anyway' override, ruling item
-              4). */}
+              time it becomes eligible again. DEC-238 ruling item 4: no
+              'send anyway' override this wave -- the retry action states
+              WHEN, never a control that fires early. */}
           {skippedRecipients.length > 0 && (
-            <div className="chq-comms-panel-note">
-              <p>Skipped ({skippedRecipients.length} already sent within the hour):</p>
-              <ul>
-                {skippedRecipients.map((r) => (
-                  <li key={r.email + r.submissionId}>
-                    {r.name} ({r.email}) — {submissionLabel(r.submissionId, preview)}: eligible again{' '}
-                    {formatDateTime(isoToMs(r.retryAtIso))}
-                  </li>
-                ))}
-              </ul>
-              <p className="chq-comms-panel-note">
-                Changing the subject makes it a new message, sent right away.
+            <section className="chq-comms-send-report-skipped">
+              <div className="chq-comms-send-report-skipped-head">
+                <span className="chq-comms-send-report-skipped-label">
+                  {capitalizeFirst(spellCount(skippedRecipients.length))}{' '}
+                  {plural(skippedRecipients.length, 'was', 'were')} skipped
+                </span>
+                <span className="chq-comms-send-report-skipped-caption">
+                  Nothing was sent to these {spellCount(skippedRecipients.length)}
+                </span>
+              </div>
+              {skippedRecipients.map((r) => (
+                <div className="chq-comms-send-report-skipped-row" key={r.email + r.submissionId}>
+                  <div className="chq-comms-send-report-skipped-who">
+                    <span className="chq-comms-send-report-skipped-name">{r.name}</span>
+                    <span className="chq-comms-send-report-skipped-email">{r.email}</span>
+                  </div>
+                  <span className="chq-comms-send-report-skipped-reason">
+                    Already sent within the hour, for {submissionLabel(r.submissionId, preview)}.
+                  </span>
+                  <span className="chq-comms-send-report-skipped-retry">
+                    Send in {retryMinutes(r.retryAtIso)} minutes
+                  </span>
+                </div>
+              ))}
+              <p className="chq-comms-send-report-skipped-note">
+                The dedupe window stops a speaker being emailed twice in an hour by two organisers
+                working at once. It clears on its own.
               </p>
-            </div>
+            </section>
           )}
+
           {/* DEC-793 amendment (wave 28): the partial-send path never
               silently shrinks the audience -- every excluded recipient is
               named here under its own heading, same as the failed list
@@ -1117,9 +1153,20 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </div>
           )}
           {sentFailedCount > 0 && <SendFailures failed={sendResult.failed ?? []} />}
-          <button type="button" className="chq-btn chq-btn-primary" onClick={reset}>
-            Compose another
-          </button>
+
+          <div className="chq-comms-send-report-footer">
+            <span className="chq-comms-send-report-footer-note">
+              All {sendResult.sent} are in History, each with the address it went to
+            </span>
+            <div className="chq-comms-send-report-footer-actions">
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={reset}>
+                Compose another
+              </button>
+              <a href="/admin/comms" className="chq-btn chq-btn-primary">
+                Back to Comms
+              </a>
+            </div>
+          </div>
         </section>
       )}
     </div>

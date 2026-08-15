@@ -910,14 +910,21 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
 
     await screen.findByText(/1 of 1 speakers were emailed/);
 
-    const counts = document.querySelector('.chq-comms-send-report-counts');
-    expect(counts).not.toBeNull();
-    expect(counts!.textContent).toBe('1 sent2 skipped0 remaining');
+    // DEC-238 amendment (findings wave 5): the interim counts paragraph is
+    // gone -- sent lives in the headline, skipped in its own named section.
+    expect(document.querySelector('.chq-comms-send-report-counts')).toBeNull();
+    expect(screen.getByText('Two were skipped')).toBeInTheDocument();
+    expect(screen.getByText('Nothing was sent to these two')).toBeInTheDocument();
 
-    expect(screen.getByText(/Ada Lovelace/)).toBeInTheDocument();
-    expect(screen.getByText(/ada@example\.com/)).toBeInTheDocument();
-    expect(screen.getByText(/Grace Hopper/)).toBeInTheDocument();
-    expect(screen.getByText(/grace@example\.com/)).toBeInTheDocument();
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(screen.getByText('grace@example.com')).toBeInTheDocument();
+    // The retry action is derived from the server's own retryAtIso.
+    expect(screen.getAllByText(/^Send in \d+ minutes?$/).length).toBe(2);
+    expect(
+      screen.getByText(/The dedupe window stops a speaker being emailed twice in an hour/),
+    ).toBeInTheDocument();
     // No 'send anyway' override control this wave (ruling item 4).
     expect(screen.queryByRole('button', { name: /send anyway/i })).not.toBeInTheDocument();
   });
@@ -949,10 +956,86 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
 
     await screen.findByText(/1 of 1 speakers were emailed/);
 
-    const counts = document.querySelector('.chq-comms-send-report-counts');
-    expect(counts).not.toBeNull();
-    expect(counts!.textContent).toBe('1 sent0 skipped0 remaining');
+    expect(document.querySelector('.chq-comms-send-report-counts')).toBeNull();
+    expect(document.querySelector('.chq-comms-send-report-skipped')).toBeNull();
     expect(screen.queryByText(/already sent within the hour/)).not.toBeInTheDocument();
+  });
+});
+
+// DEC-238 amendment (findings wave 5): step 4 becomes the framed send
+// REPORT (docs/design/Chautauqua Comms.dc.html :495-536) -- eyebrow +
+// headline + "All history" on one row, a TEMPLATE / SUBJECT THEY SAW / SENT
+// definition grid, and a footer pairing "Compose another" with a "Back to
+// Comms" link.
+describe('ComposeWizard send report frame (DEC-238 amendment, findings wave 5)', () => {
+  async function sendAndReachReport() {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [] },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello there' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText('Attachments');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
+
+    const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
+    fireEvent.click(sendButton);
+
+    await screen.findByText('1 of 1 speakers were emailed');
+  }
+
+  it('renders the eyebrow + headline + All history row', async () => {
+    await sendAndReachReport();
+
+    expect(screen.getByText('Send complete')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '1 of 1 speakers were emailed' })).toBeInTheDocument();
+    const historyLink = screen.getByRole('link', { name: /All history/ });
+    expect(historyLink).toHaveAttribute('href', '/admin/comms?tab=history');
+  });
+
+  it('renders the Template / Subject they saw / Sent definition grid', async () => {
+    await sendAndReachReport();
+
+    const grid = document.querySelector('.chq-comms-send-report-grid');
+    expect(grid).not.toBeNull();
+    expect(within(grid as HTMLElement).getByText('Template')).toBeInTheDocument();
+    expect(within(grid as HTMLElement).getByText('No template')).toBeInTheDocument();
+    expect(within(grid as HTMLElement).getByText('Subject they saw')).toBeInTheDocument();
+    expect(within(grid as HTMLElement).getByText('Hello there')).toBeInTheDocument();
+    expect(within(grid as HTMLElement).getByText('Sent')).toBeInTheDocument();
+    // No from-address the client holds -- never invented/hard-coded.
+    expect(within(grid as HTMLElement).getByText('Just now, by you')).toBeInTheDocument();
+  });
+
+  it('renders both footer controls: Compose another and Back to Comms', async () => {
+    await sendAndReachReport();
+
+    expect(screen.getByText(/All 1 are in History, each with the address it went to/)).toBeInTheDocument();
+    const composeAnother = screen.getByRole('button', { name: 'Compose another' });
+    expect(composeAnother).toHaveClass('chq-btn-secondary');
+    const backToComms = screen.getByRole('link', { name: 'Back to Comms' });
+    expect(backToComms).toHaveAttribute('href', '/admin/comms');
+    expect(backToComms).toHaveClass('chq-btn-primary');
+  });
+
+  it('Compose another resets the wizard back to step 1', async () => {
+    await sendAndReachReport();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Compose another' }));
+
+    expect(await screen.findByText('1. Pick submissions')).toBeInTheDocument();
   });
 });
 
