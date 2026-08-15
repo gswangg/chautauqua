@@ -45,6 +45,11 @@ function fakeDb(selectQueue: unknown[][]) {
           current.where = cond;
           return chain;
         },
+        // DEC-829 wave-29: totalRows/contactRows/speakersCountRows now
+        // GROUP BY contact.id (driving relation is participant/submission,
+        // never `contact` alone) -- the fake chain just needs to keep
+        // returning `chain` so `.groupBy(...).orderBy(...)` still resolves.
+        groupBy: () => chain,
         orderBy: (o: unknown) => {
           current.orderBy = o;
           return chain;
