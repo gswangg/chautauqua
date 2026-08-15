@@ -43,6 +43,7 @@ const GRID: OnboardingGridResponse = {
   page: 1,
   perPage: 50,
   counts: { speakers: 2, outstandingRequired: 1, overdue: 1, outstandingContacts: 2 },
+      timezone: 'UTC',
 };
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;

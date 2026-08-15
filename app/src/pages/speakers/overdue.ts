@@ -1,4 +1,4 @@
-import { effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
+import { effectiveAssignmentDueDate, isAssignmentOverdue } from '../../../../src/domain/task-due';
 import { daysAgo } from '../../lib/dates';
 import type { OnboardingCell, OnboardingTask } from './types';
 
@@ -7,14 +7,19 @@ import type { OnboardingCell, OnboardingTask } from './types';
  * is not yet complete. Tasks without a due date are never overdue. DEC-801:
  * lateness is judged against the assignment's EFFECTIVE due date (never the
  * raw task.dueDate), so a task assigned after its own due date isn't
- * overdue on arrival.
+ * overdue on arrival. DEC-801 (wave 58 amendment): task.dueDate is a DAY
+ * LABEL, not an instant -- delegates to isAssignmentOverdue (the ONE
+ * predicate) so this grid agrees with the portal worklist and reminders.
  */
-export function isCellOverdue(cell: OnboardingCell, task: OnboardingTask | undefined, now: number): boolean {
+export function isCellOverdue(
+  cell: OnboardingCell,
+  task: OnboardingTask | undefined,
+  now: number,
+  timezone: string,
+): boolean {
   if (!task) return false;
-  const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
-  if (effectiveDueDate === null) return false;
   if (cell.status === 'complete') return false;
-  return effectiveDueDate < now;
+  return isAssignmentOverdue(task.dueDate, cell.assignedAt, now, timezone);
 }
 
 /**

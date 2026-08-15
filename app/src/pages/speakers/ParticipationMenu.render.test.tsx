@@ -52,6 +52,7 @@ function gridWith(inviteStatus: InviteStatus): OnboardingGridResponse {
     page: 1,
     perPage: 50,
     counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
   };
 }
 

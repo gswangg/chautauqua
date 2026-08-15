@@ -31,7 +31,7 @@ function makeCell(overrides: Partial<OnboardingCell> = {}): OnboardingCell {
 describe('TaskCell', () => {
   it('renders the em-dash "no assignment" state when cell is undefined', () => {
     render(
-      <TaskCell task={TASK} cell={undefined} contactName="Ada Lovelace" now={Date.now()} onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
+      <TaskCell task={TASK} cell={undefined} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
     );
     expect(screen.getByText('—')).toBeInTheDocument();
   });
@@ -39,7 +39,7 @@ describe('TaskCell', () => {
   it('calls onToggle with the assignment id and current status when clicked', () => {
     const onToggle = vi.fn();
     render(
-      <TaskCell task={TASK} cell={makeCell()} contactName="Ada Lovelace" now={Date.now()} onToggle={onToggle} onOpenResponse={vi.fn()} />,
+      <TaskCell task={TASK} cell={makeCell()} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={onToggle} onOpenResponse={vi.fn()} />,
     );
     screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' }).click();
     expect(onToggle).toHaveBeenCalledWith('as1', 'pending');
@@ -54,6 +54,7 @@ describe('TaskCell', () => {
         cell={makeCell({ status: 'complete', completedAt: 1 })}
         contactName="Ada Lovelace"
         now={Date.now()}
+        timezone="UTC"
         onToggle={vi.fn()}
         onOpenResponse={onOpenResponse}
       />,
@@ -69,6 +70,7 @@ describe('TaskCell', () => {
         cell={makeCell({ status: 'complete', fileId: 'file-1', fileName: 'slides.pdf' })}
         contactName="Ada Lovelace"
         now={Date.now()}
+        timezone="UTC"
         onToggle={vi.fn()}
         onOpenResponse={vi.fn()}
       />,
@@ -87,6 +89,7 @@ describe('TaskCell', () => {
         cell={makeCell({ status: 'pending' })}
         contactName="Ada Lovelace"
         now={Date.now()}
+        timezone="UTC"
         onToggle={vi.fn()}
         onOpenResponse={vi.fn()}
         notChased={true}
@@ -103,6 +106,7 @@ describe('TaskCell', () => {
         cell={makeCell({ status: 'complete', completedAt: 1 })}
         contactName="Ada Lovelace"
         now={Date.now()}
+        timezone="UTC"
         onToggle={vi.fn()}
         onOpenResponse={vi.fn()}
         notChased={true}
@@ -114,7 +118,7 @@ describe('TaskCell', () => {
 
   it('does not mute when notChased is false/omitted', () => {
     render(
-      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
+      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
     );
     const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
     expect(btn.closest('.chq-speakers-cell')).not.toHaveClass('chq-speakers-cell-muted');
@@ -130,6 +134,7 @@ describe('TaskCell', () => {
         cell={makeCell({ status: 'pending' })}
         contactName="Ada Lovelace"
         now={Date.now()}
+        timezone="UTC"
         onToggle={vi.fn()}
         onOpenResponse={vi.fn()}
         notSaved={true}
@@ -142,7 +147,7 @@ describe('TaskCell', () => {
 
   it('does not append the marker when notSaved is false/omitted', () => {
     render(
-      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
+      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
     );
     const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
     expect(btn).toHaveTextContent('Pending');

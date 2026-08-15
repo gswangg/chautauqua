@@ -116,6 +116,9 @@ export interface OnboardingGridResponse {
   page: number;
   perPage: number;
   counts: OnboardingGridCounts;
+  // DEC-801 (wave 58 amendment): the owning event's IANA timezone, so cells
+  // can judge lateness via isAssignmentOverdue instead of a raw UTC compare.
+  timezone: string;
 }
 
 export interface GridFilterState {
