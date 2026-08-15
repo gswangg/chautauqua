@@ -3,31 +3,17 @@
 
 import { isFormClosed } from "../lib/submit-core";
 
-/** DEC-041 amendment (gate-6 diagnostic, CFP-16 FAIL): the close-date gate
- * binds EVERY status. The old accepted-status exception let a speaker edit
- * an accepted talk's title/abstract forever after the call closed —
- * measured live by the eval, and contradicting the portal ruling ("title
- * and abstract stay organiser-only post-acceptance"). While the window is
- * open, every status edits; once it closes, nobody speaker-side does
- * (organizer-side editing is a different route and unaffected).
+/** DEC-041 amendment (wave 6, restored): an accepted speaker keeps editing
+ * their submission (title/abstract) after the CFP closes — docs/clarifications.md:39,
+ * SPEC.md:297-298, and the vendored frame (docs/design/Chautauqua Public and
+ * Portal.dc.html:597-620, "Edit your session", only Session length disabled)
+ * all agree on this. A prior wave's CFP-16 diagnostic dropped the exception;
+ * per docs/README.md's precedence order (clarifications > brief > sessionboard-
+ * reference > eval-rubric) that diagnostic is a recorded forfeit, not binding.
+ * Every other status locks at close.
  * DEC-522: closeDate is a DAY LABEL, expanded to the event-local end-of-day
  * instant by isFormClosed. */
 export function canEditSubmission(
-  status: string,
-  closeDate: number | null,
-  now: number,
-  timeZone: string,
-): boolean {
-  void status;
-  return !isFormClosed(closeDate, now, timeZone);
-}
-
-/** Deliverable uploads and file comments KEEP the accepted-status
- * exception canEditSubmission lost (CFP-16 amendment above): an accepted
- * speaker's obligations — slides, recordings, comment threads — run well
- * past the CFP window, so the close date must not lock the content flow.
- * Only the submission's own text/answers lock at close. */
-export function canUploadDeliverables(
   status: string,
   closeDate: number | null,
   now: number,

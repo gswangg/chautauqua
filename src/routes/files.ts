@@ -41,7 +41,7 @@ import {
   slugifyTitle,
   validateUpload,
 } from "../domain/files";
-import { canUploadDeliverables } from "../domain/edit-lock"; // DEC-041 + CFP-16 split
+import { canEditSubmission } from "../domain/edit-lock"; // DEC-041
 import {
   canAccessFile,
   canAccessResourceFile,
@@ -129,12 +129,12 @@ const NOT_ACTIVE_PARTICIPANT_ERROR = "Not authorized to modify this submission's
 
 /** DEC-041 edit-lock, in ONE place: throws when a speaker's submission-scoped
  * write (upload, comment, or delete a version) falls outside the
- * canUploadDeliverables window — the same rule src/routes/portal/edit.tsx
+ * canEditSubmission window — the same rule src/routes/portal/edit.tsx
  * enforces for the portal's own submission edits. This is the ONLY call site
- * of canUploadDeliverables in this file; every speaker write path routes
+ * of canEditSubmission in this file; every speaker write path routes
  * through it (wave-46 amendment: the DELETE path previously bypassed it). */
 function assertSpeakerSubmissionUnlocked(scope: { status: string; formCloseDate: number | null; timezone: string }): void {
-  if (!canUploadDeliverables(scope.status, scope.formCloseDate, Date.now(), scope.timezone)) {
+  if (!canEditSubmission(scope.status, scope.formCloseDate, Date.now(), scope.timezone)) {
     throw new ApiError("forbidden", "This submission can no longer be edited");
   }
 }
@@ -495,7 +495,7 @@ async function authzFileRead(c: Context<AppEnv>, fileId: string) {
  * are refused OUTRIGHT here (DEC-170, wave-54 amendment): the read grant
  * (GET comments, GET the file itself) never implies a write grant — a
  * reviewer's non-anonymized in-scope plan lets them read, never comment.
- * Loads the file's submission scope to apply the same canUploadDeliverables
+ * Loads the file's submission scope to apply the same canEditSubmission
  * check authzSubmissionWrite uses; scope.submissionId is always non-null
  * here (getFileScope already filters to submission-attached files). */
 async function authzFileWrite(c: Context<AppEnv>, fileId: string) {
