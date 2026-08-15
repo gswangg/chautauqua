@@ -271,12 +271,22 @@ export async function resolveReviewerSubmissions(
   // matched submissions still feed buildReviewerQueue's fewest-ratings-first
   // JS slice (src/routes/review/reviewer.ts:212-214, DEC-466) -- bounding the
   // SQL that feeds it is exactly why that JS slice stays legal.
-  const matched = await db
-    .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
-    .from(schema.submission)
-    .where(and(...conditions))
-    .orderBy(asc(schema.submission.seq), asc(schema.submission.id))
-    .limit(MAX_PLAN_SUBMISSION_SCAN + 1);
+  // task w39-d (DEC-829 wave-39): the record-prefix lookup below consumes
+  // nothing from `matched` -- issue both in one Promise.all wave instead of
+  // sequential awaits.
+  const [matched, eventRows] = await Promise.all([
+    db
+      .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
+      .from(schema.submission)
+      .where(and(...conditions))
+      .orderBy(asc(schema.submission.seq), asc(schema.submission.id))
+      .limit(MAX_PLAN_SUBMISSION_SCAN + 1),
+    db
+      .select({ recordPrefix: schema.event.recordPrefix })
+      .from(schema.event)
+      .where(eq(schema.event.id, plan.eventId))
+      .limit(1),
+  ]);
   if (matched.length > MAX_PLAN_SUBMISSION_SCAN) {
     throw new ApiError(
       "invalid",
@@ -285,11 +295,6 @@ export async function resolveReviewerSubmissions(
   }
   if (matched.length === 0) return [];
 
-  const eventRows = await db
-    .select({ recordPrefix: schema.event.recordPrefix })
-    .from(schema.event)
-    .where(eq(schema.event.id, plan.eventId))
-    .limit(1);
   const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
 
   return matched.map((row) => ({

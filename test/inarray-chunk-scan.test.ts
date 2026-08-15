@@ -58,12 +58,14 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
   [
     "src/server/repo/review/evaluations.ts",
     "batch",
-    "countEvaluationsBySubmission's id-scoped branch IS chunkIds-bound — it " +
-      "issues one query per `chunkIds(submissionIds).map((batch) => ...)` " +
-      "element (concurrent batches via Promise.all) rather than a sequential " +
-      "`for (const batch of chunkIds(...))` loop, which is the only form " +
-      "isChunkLoopBound recognises. The bound is the same ID_CHUNK_SIZE " +
-      "slice; only the iteration form differs.",
+    "countEvaluationsBySubmission's id-scoped branch IS chunkIds-bound — " +
+      "`batch` is `chunkIds(submissionIds)[0]`, the single element it's " +
+      "provably left holding once (DEC-829 wave-39) any id list spanning " +
+      "MORE than one chunkIds batch falls through to the unscoped GROUP BY " +
+      "below instead of chunk-fanning-out. Same ID_CHUNK_SIZE-bound slice " +
+      "as before; only the shape (indexed element vs a Promise.all map) " +
+      "differs, which is why isChunkLoopBound's `for (const x of " +
+      "chunkIds(...))` pattern doesn't match here.",
   ],
   [
     "src/server/repo/tasks/speaker-detail.ts",
