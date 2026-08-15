@@ -208,5 +208,92 @@ describe('VersionList', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(fetchMock).not.toHaveBeenCalled();
     });
+
+    // w9-c / DESIGN-RULINGS A3: only a chain's own head asks before
+    // deleting -- it's the live file the portal/public surfaces resolve
+    // to. A superseded row (idxInChain > 0) is dead weight already, so it
+    // deletes immediately on click, no dialog.
+    it('a chain head still confirms, but a superseded row deletes immediately with no dialog', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ deleted: true }), { status: 200 })));
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const onDeleted = vi.fn();
+      const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null, versionNo: 1 });
+      const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1', versionNo: 2 });
+      render(<VersionList versions={[v2, v1]} onDeleted={onDeleted} />);
+
+      const deleteButtons = screen.getAllByRole('button', { name: 'Delete' });
+      expect(deleteButtons).toHaveLength(2);
+
+      // Superseded row (v1, idxInChain 1): fires immediately, no dialog.
+      fireEvent.click(deleteButtons[1]!);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/files/v1'),
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+
+      // Chain head (v2, idxInChain 0): still asks first.
+      fireEvent.click(deleteButtons[0]!);
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+      await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(2));
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/files/v2'),
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+    });
+
+    it('a rejected delete on a superseded row (no dialog) still surfaces the error banner', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: { code: 'FORBIDDEN', message: 'Cannot delete this version' } }), {
+          status: 403,
+        }),
+      );
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null, versionNo: 1 });
+      const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1', versionNo: 2 });
+      render(<VersionList versions={[v2, v1]} onDeleted={() => {}} />);
+
+      const deleteButtons = screen.getAllByRole('button', { name: 'Delete' });
+      fireEvent.click(deleteButtons[1]!);
+
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Cannot delete this version'));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    // Both chain heads in a multi-chain list ask before deleting -- the
+    // task-upload chain and the organizer chain are independent documents,
+    // each with its own live file.
+    it('both chain heads in a multi-chain fixture ask before deleting', () => {
+      const orgOld = file({ id: 'org-old', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null, versionNo: 1 });
+      const orgNew = file({ id: 'org-new', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'org-old', versionNo: 2 });
+      const taskOld = file({ id: 'task-old', filename: 'slides.pdf', createdAt: 10, previousFileId: null, versionNo: 1 });
+      const taskNew = file({ id: 'task-new', filename: 'slides.pdf', createdAt: 20, previousFileId: 'task-old', versionNo: 2 });
+
+      const fetchMock = vi.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      render(<VersionList versions={[orgNew, orgOld, taskNew, taskOld]} onDeleted={() => {}} />);
+      const items = screen.getAllByRole('listitem');
+
+      // items[0] = orgNew (global newest, chain head), items[2] = taskNew
+      // (this chain's own head, but not the global newest).
+      fireEvent.click(within(items[0]!).getByRole('button', { name: 'Delete' }));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+      fireEvent.click(within(items[2]!).getByRole('button', { name: 'Delete' }));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(within(screen.getByRole('dialog')).getByText(/slides\.pdf/)).toBeInTheDocument();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
   });
 });

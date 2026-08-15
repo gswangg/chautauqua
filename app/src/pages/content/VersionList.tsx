@@ -45,8 +45,18 @@ interface VersionListProps {
  *
  * DEC-713: this surface is organizer-only (mounted from the admin Content
  * app), so an organizer may delete any version here — the quiet Delete
- * tertiary renders on every row, confirmed through the shared ConfirmDialog
- * (never window.confirm), and refreshes the list on success. */
+ * tertiary renders on every row. Per DESIGN-RULINGS A3, only a chain's own
+ * HEAD (idxInChain === 0) confirms through ConfirmDialog before deleting;
+ * that row is the live file its own document resolves to, so removing it
+ * changes what the portal/public surfaces show. A superseded row
+ * (idxInChain > 0) is already dead weight -- it isn't the file anything
+ * resolves to -- so it deletes immediately on click. The gate is
+ * idxInChain, NOT the global isCurrent (chainIdx === 0 && idxInChain === 0):
+ * orderVersionChains can return several independent chains (e.g. a
+ * task-upload chain and a separately-uploaded organizer chain), and each
+ * chain's own head is live for its own document, so confirming only the
+ * single global newest would leave a second chain's live file deletable
+ * without a word. */
 export function VersionList({ versions, onDeleted, contentStatus, statusChangedAt }: VersionListProps) {
   const [pendingDelete, setPendingDelete] = useState<DeliverableFile | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -61,12 +71,11 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
 
   const chains = orderVersionChains(versions);
 
-  async function confirmDelete() {
-    if (!pendingDelete) return;
+  async function deleteVersion(file: DeliverableFile) {
     setDeleting(true);
     setError(null);
     try {
-      await apiDelete(`/files/${pendingDelete.id}`);
+      await apiDelete(`/files/${file.id}`);
       setPendingDelete(null);
       onDeleted();
     } catch (err) {
@@ -74,6 +83,11 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
     } finally {
       setDeleting(false);
     }
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    await deleteVersion(pendingDelete);
   }
 
   return (
@@ -132,7 +146,18 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
                 <button
                   type="button"
                   className="chq-btn chq-btn-tertiary chq-content-version-delete"
-                  onClick={() => setPendingDelete(v)}
+                  disabled={deleting}
+                  onClick={() => {
+                    // DESIGN-RULINGS A3: only this chain's own head asks --
+                    // it's the live file this document resolves to. A
+                    // superseded row (idxInChain > 0) is already replaced,
+                    // so it deletes immediately.
+                    if (idxInChain === 0) {
+                      setPendingDelete(v);
+                    } else {
+                      void deleteVersion(v);
+                    }
+                  }}
                 >
                   Delete
                 </button>
@@ -144,7 +169,7 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
       {pendingDelete && (
         <ConfirmDialog
           title="Delete this version?"
-          body={`"${pendingDelete.filename}" will be removed. This can't be undone.`}
+          body={`"${pendingDelete.filename}" is the live file for this deliverable -- removing it changes what the speaker's portal and the public event page resolve to. This can't be undone.`}
           confirmLabel="Delete"
           pending={deleting}
           onConfirm={() => void confirmDelete()}
