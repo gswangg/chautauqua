@@ -821,6 +821,37 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* DEC-902 wave-21 amendment (task-w21-a): compose step-1 recipient      */
+/* table (Select / Submission / Speaker / Status / Slot) takes the       */
+/* frame's column allocation instead of falling back to plain            */
+/* .chq-table auto-layout, which was handing the whole remainder to      */
+/* whichever <td> happened to sit last. Matches docs/design/Chautauqua   */
+/* Comms.dc.html:424/428's `26px 1fr 170px 130px 118px` track list --    */
+/* Submission (title) is the single unwidthed remainder column. Reset    */
+/* to auto below in the 700px card-reflow query.                        */
+/* ------------------------------------------------------------------ */
+
+.chq-comms-compose-table {
+  table-layout: fixed;
+}
+
+.chq-comms-compose-col-select {
+  width: 26px;
+}
+
+.chq-comms-compose-col-speaker {
+  width: 170px;
+}
+
+.chq-comms-compose-col-status {
+  width: 130px;
+}
+
+.chq-comms-compose-col-slot {
+  width: 118px;
+}
+
+/* ------------------------------------------------------------------ */
 /* Phone landing (DEC-621): names the three things Comms does instead   */
 /* of dropping straight into compose step 1. Hidden at desktop by       */
 /* default (top-level display:none, verified below by conformance       */
@@ -930,6 +961,10 @@
      (thead hidden, tr becomes a card) — no cell is hidden, so each cell
      carries a data-label attribute (from ComposeWizard.tsx) surfaced via
      td::before, matching DEC-386's ambiguous-cell pattern. */
+  .chq-comms-compose-table {
+    table-layout: auto;
+  }
+
   .chq-comms-compose-table thead {
     display: none;
   }
