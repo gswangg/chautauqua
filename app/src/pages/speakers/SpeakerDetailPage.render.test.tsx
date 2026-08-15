@@ -274,4 +274,47 @@ describe('SpeakerDetailPage render smoke', () => {
     // The count line still reports the true total, not the capped list length.
     expect(screen.getByText('Across your events · 7')).toBeInTheDocument();
   });
+
+  // DEC-829 amendment (w61-e): a Remind control only where something on
+  // this speaker's task list is outstanding.
+  it('a fully-complete speaker shows no Remind affordance anywhere', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        tasks: [
+          {
+            assignmentId: 'as-1',
+            taskId: 'task-1',
+            title: 'Upload slides',
+            kind: 'file_request',
+            required: true,
+            dueDate: Date.UTC(2026, 0, 15),
+            status: 'complete',
+            completedAt: 1700000000000,
+            file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2 },
+          },
+        ],
+        counts: { outstandingRequired: 0, overdue: 0 },
+      }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    expect(screen.queryByRole('button', { name: /^Remind/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remind this task' })).not.toBeInTheDocument();
+  });
+
+  it('a speaker with one pending task shows both the header Remind control and the per-row "Remind this task" link', async () => {
+    mockApi({
+      // baseDetail() already carries one complete task + one pending task.
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    expect(screen.getByRole('button', { name: 'Remind Ada' })).toBeInTheDocument();
+    // Only the pending row's link renders -- the completed row's does not.
+    expect(screen.getAllByRole('button', { name: 'Remind this task' })).toHaveLength(1);
+  });
 });

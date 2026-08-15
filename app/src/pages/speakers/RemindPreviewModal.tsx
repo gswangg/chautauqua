@@ -28,17 +28,32 @@ interface RemindPreviewModalProps {
   onCancel: () => void;
 }
 
+// DEC-829 amendment (w61-e): the modal's own emptiness, named -- an empty
+// drafts array is never rendered as a bare <ul> plus a "0 recipients"
+// subtitle (both were the B7 violation, chrome around nothing). Which
+// sentence fires depends on WHY nothing's outstanding: skipped > 0 means
+// real recipients exist but were deduped (reminded in the last hour);
+// skipped === 0 means there was nothing to remind about in the first
+// place.
+function zeroStateMessage(skipped: number): string {
+  if (skipped > 0) {
+    return `Nobody to remind right now — ${countOf(skipped, 'contact')} reminded in the last hour.`;
+  }
+  return 'Nothing outstanding to remind about.';
+}
+
 export function RemindPreviewModal({ loading, error, drafts, skipped, remaining, sending, onSend, onCancel }: RemindPreviewModalProps) {
   // DEC-829 amendment: the recipient count IS the server's drafts array
   // length -- one draft per recipient the send will actually reach -- never
   // a separately recomputed figure.
   const count = drafts?.length ?? 0;
   const first = drafts && drafts.length > 0 ? drafts[0]! : null;
+  const isZeroState = !loading && !!drafts && count === 0;
 
   return (
     <ModalFrame
       title="Review reminders"
-      subtitle={loading ? 'Loading...' : countOf(count, 'recipient')}
+      subtitle={loading ? 'Loading...' : isZeroState ? undefined : countOf(count, 'recipient')}
       onClose={onCancel}
       closeDisabled={sending}
       modalClassName="chq-speakers-modal"
@@ -56,7 +71,16 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
       {loading && <DelayedLoading />}
       {error && <div className="chq-error">{error}</div>}
 
-      {!loading && !error && drafts && (
+      {!loading && !error && drafts && isZeroState && (
+        <>
+          <p className="chq-speakers-remind-empty">{zeroStateMessage(skipped)}</p>
+          {remaining > 0 && (
+            <div className="chq-speakers-remind-remaining">{countOf(remaining, 'contact')} still outstanding &mdash; run it again to continue.</div>
+          )}
+        </>
+      )}
+
+      {!loading && !error && drafts && !isZeroState && (
         <>
           {skipped > 0 && (
             <div className="chq-speakers-remind-skipped">{countOf(skipped, 'contact')} skipped &mdash; reminded in the last hour</div>

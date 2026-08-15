@@ -1761,3 +1761,51 @@ describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
     });
   });
 });
+
+// DEC-829 amendment (w61-e): the per-row "Remind {first}" control now also
+// goes quiet when a row has nothing outstanding (every existing cell already
+// complete) -- a SECOND, independent reason alongside declinedOnly's marker.
+// A fully-complete row carries neither the marker nor the button.
+describe('OnboardingGrid: DEC-829 amendment (w61-e) Remind only where something is outstanding', () => {
+  const OUTSTANDING_GRID: OnboardingGridResponse = {
+    tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
+    rows: [
+      {
+        // Every existing cell already 'complete' -- nothing outstanding.
+        contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
+        cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: 1700000000000, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
+      },
+      {
+        // One pending cell -- outstanding.
+        contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false, participations: [{ participantId: 'p-ct2', submissionId: 'sub-ct2', ref: 'SES-002', title: 'Talk', inviteStatus: 'accepted' }] },
+        cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
+      },
+    ],
+    total: 2,
+    page: 1,
+    perPage: 50,
+    counts: { speakers: 2, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+    timezone: 'UTC',
+  };
+
+  it('a fully-complete row shows no Remind affordance and no marker; a row with a pending task shows the control', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: OUTSTANDING_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Grace Hopper').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const adaRow = within(table.getByText('Ada Lovelace').closest('tr')!);
+    const graceRow = within(table.getByText('Grace Hopper').closest('tr')!);
+
+    // Fully-complete row: no Remind button, no "Not chased" marker either.
+    expect(adaRow.queryByRole('button', { name: /^Remind/ })).not.toBeInTheDocument();
+    expect(adaRow.queryByText('Not chased')).not.toBeInTheDocument();
+
+    // Row with outstanding work still offers the per-row control.
+    expect(graceRow.getByRole('button', { name: 'Remind Grace' })).toBeInTheDocument();
+  });
+});

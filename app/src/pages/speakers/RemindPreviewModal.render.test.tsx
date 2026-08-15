@@ -196,4 +196,69 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
     );
     expect(screen.queryByText(/still outstanding/)).not.toBeInTheDocument();
   });
+
+  // DEC-829 amendment (w61-e): a loaded, empty drafts array is never the
+  // bare <ul> + "0 recipients" subtitle -- one sentence names its own
+  // emptiness, and which sentence depends on WHY (skipped vs never
+  // outstanding).
+  describe('DEC-829 amendment (w61-e): zero-state sentence', () => {
+    it('names the deduped-skip reason when skipped > 0', () => {
+      render(
+        <RemindPreviewModal
+          loading={false}
+          error={null}
+          drafts={[]}
+          skipped={3}
+          remaining={0}
+          sending={false}
+          onSend={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText('Nobody to remind right now — 3 contacts reminded in the last hour.'),
+      ).toBeInTheDocument();
+      // The old empty-list + recipient-count subtitle is gone.
+      expect(screen.queryByText('0 recipients')).not.toBeInTheDocument();
+      expect(document.querySelector('.chq-speakers-remind-recipients')).not.toBeInTheDocument();
+      // Send stays present but disabled -- its action is genuinely inert.
+      expect(screen.getByRole('button', { name: 'Send 0 reminders' })).toBeDisabled();
+    });
+
+    it('names "nothing outstanding" when skipped is zero too', () => {
+      render(
+        <RemindPreviewModal
+          loading={false}
+          error={null}
+          drafts={[]}
+          skipped={0}
+          remaining={0}
+          sending={false}
+          onSend={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(screen.getByText('Nothing outstanding to remind about.')).toBeInTheDocument();
+      expect(screen.queryByText('0 recipients')).not.toBeInTheDocument();
+      expect(document.querySelector('.chq-speakers-remind-recipients')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Send 0 reminders' })).toBeDisabled();
+    });
+
+    it('keeps the remaining line even in the zero-draft state', () => {
+      render(
+        <RemindPreviewModal
+          loading={false}
+          error={null}
+          drafts={[]}
+          skipped={0}
+          remaining={2}
+          sending={false}
+          onSend={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(screen.getByText('Nothing outstanding to remind about.')).toBeInTheDocument();
+      expect(screen.getByText('2 contacts still outstanding — run it again to continue.')).toBeInTheDocument();
+    });
+  });
 });

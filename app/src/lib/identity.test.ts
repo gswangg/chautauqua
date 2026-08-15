@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { emailLocalPart, identityLabel, initialsForm } from './identity';
+import { emailLocalPart, firstNameOf, identityLabel, initialsForm } from './identity';
+
+describe('firstNameOf', () => {
+  it('returns the first token of a two-part name', () => {
+    expect(firstNameOf('Jordan Alvarez')).toBe('Jordan');
+  });
+
+  it('collapses a padded name to its first non-whitespace token', () => {
+    expect(firstNameOf('  Jordan   Alvarez  ')).toBe('Jordan');
+  });
+
+  it('returns the whole trimmed input for a mononym', () => {
+    expect(firstNameOf('Madonna')).toBe('Madonna');
+  });
+});
 
 describe('initialsForm', () => {
   it('formats a two-part name as "GIVEN S."', () => {

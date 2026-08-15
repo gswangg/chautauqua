@@ -26,6 +26,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { formatBytes } from '../content/format';
 import { publicRoomLabel } from '../../lib/room-label';
 import { clockHHMM } from '../../lib/clock';
+import { firstNameOf } from '../../lib/identity';
 import { DEC_930 } from '../../../../src/decisions';
 import type { SpeakerDetailResponse, SpeakerDetailTaskStatus } from './speakerDetail';
 import './speakers.css';
@@ -287,11 +288,17 @@ export function SpeakerDetailPage() {
                 hasAccount={detail.contact.hasAccount}
               />
               <a className="chq-btn chq-btn-secondary" href={`mailto:${detail.contact.email}`}>
-                Email {detail.contact.name.split(' ')[0]}
+                Email {firstNameOf(detail.contact.name)}
               </a>
-              <button type="button" className="chq-btn chq-btn-primary" onClick={openRemindReview}>
-                Remind {detail.contact.name.split(' ')[0]}
-              </button>
+              {/* DEC-829 amendment (w61-e): a header-level Remind control
+                  only where something on this speaker's task list is
+                  outstanding -- a fully-complete speaker has nothing this
+                  send would ever reach. */}
+              {detail.tasks.some((t) => t.status !== 'complete') && (
+                <button type="button" className="chq-btn chq-btn-primary" onClick={openRemindReview}>
+                  Remind {firstNameOf(detail.contact.name)}
+                </button>
+              )}
             </div>
           </div>
 
@@ -380,13 +387,18 @@ export function SpeakerDetailPage() {
                             </button>
                           </td>
                           <td>
-                            <button
-                              type="button"
-                              className="chq-link-button chq-speaker-detail-task-remind"
-                              onClick={openRemindReview}
-                            >
-                              Remind this task
-                            </button>
+                            {/* DEC-829 amendment (w61-e): quiet on an
+                                already-complete task row -- nothing this
+                                send would ever reach for that assignment. */}
+                            {task.status !== 'complete' && (
+                              <button
+                                type="button"
+                                className="chq-link-button chq-speaker-detail-task-remind"
+                                onClick={openRemindReview}
+                              >
+                                Remind this task
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
