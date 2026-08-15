@@ -90,34 +90,39 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
       return (
         <input
           type="checkbox"
+          class={error ? "chq-field-invalid" : undefined}
           id={name}
           name={name}
           data-field-id={field.id}
           value="true"
           checked={Boolean(value)}
+          aria-invalid={ariaInvalid}
         />
       );
     case "number":
       return (
         <input
           type="number"
-          class="chq-input"
+          class={invalidClass("chq-input")}
           id={name}
           name={name}
           data-field-id={field.id}
           value={typeof value === "number" ? String(value) : ""}
           required={field.required}
           data-required={field.required ? "true" : "false"}
+          aria-invalid={ariaInvalid}
         />
       );
     case "file":
       return (
         <input
           type="file"
+          class={error ? "chq-field-invalid" : undefined}
           id={name}
           name={name}
           data-field-id={field.id}
           accept={allowedUploadExtensions().map((e) => `.${e}`).join(",")}
+          aria-invalid={ariaInvalid}
         />
       );
     default: {
