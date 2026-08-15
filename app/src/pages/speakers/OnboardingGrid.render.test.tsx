@@ -679,6 +679,79 @@ describe('OnboardingGrid: DEC-934 amendment names the active narrowing', () => {
   });
 });
 
+// DEC-678 amendment (w3-d): a search that finds nothing is a NARROWING, not
+// a fresh/empty roster -- `q` joins hasActiveNarrowing so the search-miss
+// empty state renders the 'filtered' voice (never "No speakers on the
+// roster yet."), names the term the organiser actually typed, and its
+// escape restores the full roster by clearing q too.
+describe('OnboardingGrid: DEC-678 amendment -- a search miss renders the filtered voice', () => {
+  it('renders the filtered EmptyState naming the search term, and clicking the escape clears q and refetches the full roster', async () => {
+    const emptyGrid: OnboardingGridResponse = {
+      tasks: GRID.tasks,
+      rows: [],
+      total: 0,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 2, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+      timezone: 'UTC',
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    // mockApi strips query strings before matching, so it can't return a
+    // different body for the q=Zzyx request -- stub fetch directly to
+    // branch on the real request URL instead.
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes(`/events/${EVENT_ID}/onboarding`) && url.includes('q=Zzyx')) {
+          return Promise.resolve(
+            new Response(JSON.stringify(emptyGrid), { status: 200, headers: { 'content-type': 'application/json' } }),
+          );
+        }
+        return realFetch(input, init);
+      }),
+    );
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const searchInput = screen.getByLabelText('Search speakers');
+    fireEvent.change(searchInput, { target: { value: 'Zzyx' } });
+
+    // The search-miss state is FILTERED, not fresh: never the roster's
+    // never-had-a-row copy.
+    await waitFor(() => {
+      expect(screen.queryByText('No speakers on the roster yet.')).not.toBeInTheDocument();
+      expect(screen.getByText('No speakers match the current filters.')).toBeInTheDocument();
+    });
+    // The reason names the actual term, read off filters.q.
+    expect(screen.getByText('matching "Zzyx"')).toBeInTheDocument();
+    // The narrowing caption above the (now-empty) grid also names it.
+    expect(screen.getByText('Showing 0 of 2 speakers · matching "Zzyx"')).toBeInTheDocument();
+
+    // The pager stays visible for a filtered zero-state (chrome is how a
+    // filter gets undone) -- unlike the fresh zero-state, which hides it.
+    expect(screen.getByText(/^Showing /, { selector: '.chq-summary' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    // The escape clears the search box itself (bound straight to filters.q).
+    await waitFor(() => {
+      expect((searchInput as HTMLInputElement).value).toBe('');
+    });
+    // ...and restores the full roster.
+    await waitFor(() => {
+      expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Grace Hopper').length).toBeGreaterThan(0);
+    });
+  });
+});
+
 // w7-f: the toolbar's constraint caption must name the real skip rule
 // planManualReminders applies (src/domain/reminders.ts:20,175 --
 // MANUAL_DEDUPE_WINDOW_MS, one hour), and must use the middot separator
