@@ -4330,7 +4330,6 @@ not a regression from this lane.
 
 INVALIDATED BY: app/src/**/*.css, src/**/*.css.ts, src/views/theme.ts, scripts/render-sweep*
 
-<<<<<<< HEAD
 ## 2026-08-15 task-w29-b — files library perf fix @ c50e56f3
 
 INVALIDATED BY: src/server/repo/files-library.ts, src/db/schema/**, migrations/**
