@@ -167,9 +167,12 @@ function SaveViewDialog({ filters, tracks, pending, count, onCancel, onSave }: S
       }
     >
       {error && <div className="chq-error">{error}</div>}
-      <div className="chq-submissions-viewtabs-count">
-        {count} of {MAX_SAVED_VIEWS_PER_EVENT}
-      </div>
+      {/* DEC-976/DEC-379: the cap caption reuses chq-meta, the existing
+          in-dialog caption face (same shape as FieldModal.tsx's "N of MAX
+          options"), rather than minting a one-off class. */}
+      <p className="chq-meta">
+        {count} of {MAX_SAVED_VIEWS_PER_EVENT} saved views
+      </p>
       <FormRow label="Name it" htmlFor="save-view-name">
         <input
           id="save-view-name"

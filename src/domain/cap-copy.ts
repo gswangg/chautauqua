@@ -32,10 +32,14 @@ export function overCapSentence(label: string, length: number, max: number): str
  * item (e.g. 'rule', 'row', 'track') -- built directly on countOf (not
  * overBudgetBy, which hardcodes the "character" noun for the length
  * grammar above). Throws if `count` does not actually exceed `max` -- this
- * is a refusal-composition helper, not a defensive count check. */
-export function overCapCountMessage(count: number, max: number, noun: string): string {
+ * is a refusal-composition helper, not a defensive count check.
+ *
+ * `pluralForm` is the irregular plural, forwarded to countOf for nouns that
+ * do not pluralize by appending 's' (e.g. 'criterion' -> 'criteria').
+ * countOf NEVER guesses a plural, so an irregular noun must pass it here. */
+export function overCapCountMessage(count: number, max: number, noun: string, pluralForm?: string): string {
   if (count <= max) {
     throw new Error(`overCapCountMessage: count ${count} does not exceed max ${max}`);
   }
-  return `${countOf(count, noun)} — ${countOf(count - max, noun)} over the ${max.toLocaleString("en-US")} limit`;
+  return `${countOf(count, noun, pluralForm)} — ${countOf(count - max, noun, pluralForm)} over the ${max.toLocaleString("en-US")} limit`;
 }

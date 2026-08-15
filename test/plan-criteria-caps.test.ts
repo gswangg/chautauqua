@@ -13,6 +13,10 @@ import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { MAX_PLAN_CRITERIA, MAX_CRITERION_OPTIONS } from "../src/domain/evaluation";
+// DEC-422 amendment: the refusal copy is the ONE cap grammar from
+// cap-copy.ts, so these assertions compose the expected string the same way
+// the route does rather than hand-writing a second copy of the prose.
+import { overCapCountMessage } from "../src/domain/cap-copy";
 
 const ORG_A = "org-a";
 
@@ -147,7 +151,9 @@ describe("DEC-422 (amendment, wave 2): parseCriteriaList enforces MAX_PLAN_CRITE
     const res = await createPlan({ name: "Plan", scale: { min: 1, max: 5 }, criteria });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(body.error.fields?.criteria).toMatch(new RegExp(`at most ${MAX_PLAN_CRITERIA}`));
+    expect(body.error.fields?.criteria).toBe(
+      overCapCountMessage(MAX_PLAN_CRITERIA + 1, MAX_PLAN_CRITERIA, "criterion", "criteria"),
+    );
   });
 
   it("PATCH roundCriteria override exceeding MAX_PLAN_CRITERIA is refused with a 400, under its own roundCriteria.<round> key", async () => {
@@ -155,7 +161,9 @@ describe("DEC-422 (amendment, wave 2): parseCriteriaList enforces MAX_PLAN_CRITE
     const res = await patchPlan({ roundCriteria: { "2": criteria } });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(body.error.fields?.["roundCriteria.2"]).toMatch(new RegExp(`at most ${MAX_PLAN_CRITERIA}`));
+    expect(body.error.fields?.["roundCriteria.2"]).toBe(
+      overCapCountMessage(MAX_PLAN_CRITERIA + 1, MAX_PLAN_CRITERIA, "criterion", "criteria"),
+    );
     // base plan.criteria error key must never collide with a round override's key
     expect(body.error.fields?.criteria).toBeUndefined();
   });
@@ -172,7 +180,9 @@ describe("DEC-422 (amendment, wave 2): parseCriteriaList enforces MAX_PLAN_CRITE
     const res = await createPlan({ name: "Plan", scale: { min: 1, max: 5 }, criteria });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(body.error.fields?.criteria).toMatch(new RegExp(`at most ${MAX_CRITERION_OPTIONS} options`));
+    expect(body.error.fields?.criteria).toContain(
+      overCapCountMessage(MAX_CRITERION_OPTIONS + 1, MAX_CRITERION_OPTIONS, "option"),
+    );
   });
 
   it("POST rejects a dropdown criterion option longer than MAX_NAME_LENGTH", async () => {

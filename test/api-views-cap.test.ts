@@ -16,6 +16,7 @@ import { registerErrorHandler } from "../src/server/http";
 import { viewsRoutes } from "../src/routes/api/views";
 import { createSavedView } from "../src/server/repo/views";
 import { MAX_SAVED_VIEWS_PER_EVENT } from "../src/domain/saved-views";
+import { overCapCountMessage } from "../src/domain/cap-copy";
 
 const DDL = `
 create table saved_view (
@@ -120,7 +121,12 @@ describe("POST /events/:eventId/views (DEC-422 per-event cap)", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields?.name).toBe(`Max ${MAX_SAVED_VIEWS_PER_EVENT} saved views`);
+    // DEC-422 amendment: the ONE cap grammar from src/domain/cap-copy.ts,
+    // never the terse bare-number grammar -- same shape as the already-full
+    // form-fields refusal (test/forms-field-options-cap.test.ts).
+    expect(body.error.fields?.name).toBe(
+      overCapCountMessage(MAX_SAVED_VIEWS_PER_EVENT + 1, MAX_SAVED_VIEWS_PER_EVENT, "saved view"),
+    );
 
     const rows = await db.select().from(schema.savedView);
     expect(rows.length).toBe(MAX_SAVED_VIEWS_PER_EVENT);

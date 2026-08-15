@@ -9,6 +9,7 @@ import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError, parseBoundedText, readOptionalJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { MAX_SAVED_VIEWS_PER_EVENT } from "../../domain/saved-views"; // DEC-422
+import { overCapCountMessage } from "../../domain/cap-copy"; // DEC-422 amendment
 import { getEventOrgId } from "../../server/repo/submissions";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import {
@@ -82,8 +83,11 @@ viewsRoutes.post("/events/:eventId/views", requireOrganizer, csrfJson, async (c)
   // unpaged tab strip (ViewTabs.tsx).
   const existingCount = await countSavedViews(c.var.db, eventId, auth.userId);
   if (existingCount >= MAX_SAVED_VIEWS_PER_EVENT) {
-    throw new ApiError("invalid", `Max ${MAX_SAVED_VIEWS_PER_EVENT} saved views`, {
-      name: `Max ${MAX_SAVED_VIEWS_PER_EVENT} saved views`,
+    // DEC-422 amendment: the refusal copy is the ONE cap grammar from
+    // cap-copy.ts, never the terse bare-number grammar -- same shape as the
+    // already-full form-fields refusal in src/routes/api/forms.ts.
+    throw new ApiError("invalid", `This event already has the maximum of ${MAX_SAVED_VIEWS_PER_EVENT} saved views.`, {
+      name: overCapCountMessage(existingCount + 1, MAX_SAVED_VIEWS_PER_EVENT, "saved view"),
     });
   }
 

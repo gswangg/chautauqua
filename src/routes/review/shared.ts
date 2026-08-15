@@ -8,6 +8,7 @@
 import type { AppEnv } from "../../server/env";
 import { ApiError } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
+import { overCapCountMessage } from "../../domain/cap-copy"; // DEC-422 amendment
 import {
   aggregateSubmission,
   aggregateDropdownCriterion,
@@ -90,7 +91,7 @@ export function parseCriteriaList(
   // Add link -- the server accepted an array of any length. Applies equally
   // to the base `criteria` array and every `roundCriteria` override.
   if (list.length > MAX_PLAN_CRITERIA) {
-    errors[errKey] = `must have at most ${MAX_PLAN_CRITERIA} criteria`;
+    errors[errKey] = overCapCountMessage(list.length, MAX_PLAN_CRITERIA, "criterion", "criteria"); // DEC-422 grammar
     return undefined;
   }
   const out: EvaluationCriterionDef[] = [];
@@ -139,7 +140,7 @@ export function parseCriteriaList(
       // were previously unbounded here -- the CFP builder caps its own
       // options, this one did not.
       if (c.options.length > MAX_CRITERION_OPTIONS) {
-        errors[errKey] = `criterion "${c.id}" (dropdown) must have at most ${MAX_CRITERION_OPTIONS} options`;
+        errors[errKey] = `criterion "${c.id}" (dropdown) has ${overCapCountMessage(c.options.length, MAX_CRITERION_OPTIONS, "option")}`; // DEC-422 grammar
         return undefined;
       }
       if ((c.options as string[]).some((o) => o.length > MAX_NAME_LENGTH)) {
