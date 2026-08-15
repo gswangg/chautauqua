@@ -44,7 +44,7 @@ describe("contrastRatio", () => {
 
 describe("evaluateContrast", () => {
   it("PASSes a route with no offenders", () => {
-    const result = evaluateContrast(ENTRY, { minRatio: 12, offenders: [] });
+    const result = evaluateContrast(ENTRY, { minRatio: 12, offenders: [], exempted: [] });
     expect(result.ok).toBe(true);
     expect(result.minRatio).toBe(12);
     expect(result.failureReason).toBeUndefined();
@@ -52,13 +52,30 @@ describe("evaluateContrast", () => {
 
   it("FAILs a route with offenders and includes offender text in failureReason", () => {
     const offender = "span.chq-badge ratio=2.10 fg=rgb(100,100,100) bg=rgb(120,120,120)";
-    const result = evaluateContrast(ENTRY, { minRatio: 2.1, offenders: [offender] });
+    const result = evaluateContrast(ENTRY, { minRatio: 2.1, offenders: [offender], exempted: [] });
     expect(result.ok).toBe(false);
     expect(result.failureReason).toContain(offender);
   });
 
+  // DEC-426 wave-29 amendment: a disabled-token (--chq-disabled on
+  // --chq-disabled-bg) pair is exempt under WCAG 2.1 SC 1.4.3, recorded via
+  // exemptNote rather than silently passed or failed.
+  it("records an EXEMPT-BY-RULE note without failing when only exempted pairs are under threshold", () => {
+    const exempted = "label.chq-review-checkbox-label ratio=3.09 fg=rgb(125,120,105) bg=rgb(221,216,200)";
+    const result = evaluateContrast(ENTRY, { minRatio: 3.09, offenders: [], exempted: [exempted] });
+    expect(result.ok).toBe(true);
+    expect(result.exemptNote).toContain("EXEMPT-BY-RULE");
+    expect(result.exemptNote).toContain("WCAG 2.1 SC 1.4.3");
+    expect(result.exemptNote).toContain(exempted);
+  });
+
+  it("omits exemptNote when nothing was exempted", () => {
+    const result = evaluateContrast(ENTRY, { minRatio: 12, offenders: [], exempted: [] });
+    expect(result.exemptNote).toBeUndefined();
+  });
+
   it("PASSes vacuously when minRatio is null (no measurable text)", () => {
-    const result = evaluateContrast(ENTRY, { minRatio: null, offenders: [] });
+    const result = evaluateContrast(ENTRY, { minRatio: null, offenders: [], exempted: [] });
     expect(result.ok).toBe(true);
     expect(result.minRatio).toBeNull();
   });
@@ -76,15 +93,15 @@ describe("contrastErrorResult", () => {
 
 describe("allContrastPassed / formatting", () => {
   it("allContrastPassed is true only when every result passed", () => {
-    const passing = [evaluateContrast(ENTRY, { minRatio: 10, offenders: [] })];
-    const failing = [evaluateContrast(ENTRY, { minRatio: 1, offenders: ["x"] })];
+    const passing = [evaluateContrast(ENTRY, { minRatio: 10, offenders: [], exempted: [] })];
+    const failing = [evaluateContrast(ENTRY, { minRatio: 1, offenders: ["x"], exempted: [] })];
     expect(allContrastPassed(passing)).toBe(true);
     expect(allContrastPassed(failing)).toBe(false);
   });
 
   it("formatContrastTable/Summary render without throwing", () => {
     const results = [
-      evaluateContrast(ENTRY, { minRatio: 10, offenders: [] }),
+      evaluateContrast(ENTRY, { minRatio: 10, offenders: [], exempted: [] }),
       contrastErrorResult(ENTRY, "boom"),
     ];
     expect(formatContrastTable(results)).toContain("PASS");

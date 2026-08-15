@@ -18,11 +18,17 @@ import {
   type InteractionStateEntry,
 } from "../scripts/render-sweep-lib";
 
+// DEC-409/DEC-426 wave-29 amendment: every entry now names its own
+// `viewport` (the CFP focus check must run at the phone-only 390x844
+// viewport, not desktop) and `personaRole` (the review plan path is shared
+// by two structurally different component trees per persona).
 const FOCUS_ENTRY: InteractionStateEntry = {
   kind: "focus",
   path: "/submit/devflow-conf-2027",
   selector: ".chq-cfp-step-next",
   role: "cfp-primary-focus",
+  viewport: { width: 390, height: 844 },
+  personaRole: "public",
   expected: { outlineWidthPx: 2, outlineStyle: "solid", outlineColorHex: "#4E5C31", outlineOffsetPx: 2 },
 };
 
@@ -31,6 +37,8 @@ const HOVER_ENTRY: InteractionStateEntry = {
   path: "/admin/content",
   selector: ".chq-content-row",
   role: "content-row-hover",
+  viewport: { width: 1280, height: 720 },
+  personaRole: "organizer",
   expected: { backgroundColorHex: "#EFEBDF", noLayoutShift: true },
 };
 
@@ -39,6 +47,8 @@ const DISABLED_ENTRY: InteractionStateEntry = {
   path: "/admin/review/plans/seed_evaluation_plan_0001",
   selector: ".chq-review-field-disabled .chq-review-checkbox-label",
   role: "review-anonymize-disabled",
+  viewport: { width: 1280, height: 720 },
+  personaRole: "organizer",
   expected: { colorHex: "#7D7869", backgroundColorHex: "#DDD8C8" },
 };
 
@@ -166,6 +176,21 @@ describe("interactionStateErrorResult", () => {
     expect(result.ok).toBe(false);
     expect(result.failureReason).toContain(".chq-cfp-step-next");
     expect(result.failureReason).toContain("instrument-blocked");
+  });
+
+  // DEC-409 wave-29 amendment: an instrument-blocked reason must name the
+  // viewport (and persona) it measured at, so a reader can tell "genuinely
+  // missing" apart from "wrong window to look through" without re-deriving.
+  it("names the entry's viewport and personaRole in the instrument-blocked reason", () => {
+    const result = interactionStateErrorResult(FOCUS_ENTRY, "selector unreachable via keyboard Tab within 25 presses");
+    expect(result.failureReason).toContain("390x844");
+    expect(result.failureReason).toContain("public");
+  });
+
+  it("names a desktop viewport for the hover entry", () => {
+    const result = interactionStateErrorResult(HOVER_ENTRY, "selector never resolved");
+    expect(result.failureReason).toContain("1280x720");
+    expect(result.failureReason).toContain("organizer");
   });
 });
 

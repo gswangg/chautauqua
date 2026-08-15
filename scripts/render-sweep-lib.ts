@@ -843,6 +843,24 @@ export interface InteractionStateEntry {
   readonly selector: string;
   readonly role: string;
   readonly expected: InteractionStateExpected;
+  /** DEC-409 wave-29 amendment: the browser viewport this row must be
+   * measured at. Some routes render a structurally different component
+   * tree per persona/viewport (the public CFP wizard's step-next button
+   * is display:none above 700px width; `/admin/review/plans/:id` renders
+   * PlanEditor for an organizer visit but ReviewerQueue for a reviewer
+   * visit of the SAME path) — a probe that ignores viewport/persona and
+   * matches on path alone can visit a context where the target element
+   * cannot exist BY CONSTRUCTION, which is an instrument defect, not a
+   * product defect. Every instrument-blocked reason string names this
+   * viewport so a reader can tell "genuinely missing" from "wrong window
+   * to look through" at a glance. */
+  readonly viewport: { readonly width: number; readonly height: number };
+  /** DEC-426 wave-29 amendment: the RouteManifestEntry persona this row
+   * must be measured under, disambiguating routes whose path is shared
+   * across two structurally different component trees (see `viewport`
+   * doc above). The check only runs for the manifest visit whose
+   * `entry.role` matches this field. */
+  readonly personaRole: RouteManifestEntry["role"];
 }
 
 export interface InteractionStateResult {
@@ -957,7 +975,10 @@ export function interactionStateErrorResult(
     selector: entry.selector,
     role: entry.role,
     ok: false,
-    failureReason: `${entry.selector}: instrument-blocked: ${message}`,
+    // DEC-409 wave-29 amendment: name the viewport this row measured at,
+    // so an instrument-blocked reason can be told apart from a genuine
+    // markup defect without re-deriving which window the probe used.
+    failureReason: `${entry.selector}: instrument-blocked (viewport ${entry.viewport.width}x${entry.viewport.height}, persona ${entry.personaRole}): ${message}`,
     observed: {},
     expected: entry.expected,
   };

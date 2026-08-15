@@ -74,6 +74,14 @@ export interface ContrastObservation {
    * the two colours, never text content — DEC-401 convention) for elements
    * under their applicable threshold, lowest ratio first. */
   offenders: string[];
+  /** DEC-426 wave-29 amendment: same descriptor shape as `offenders`, but for
+   * elements under threshold whose fg/bg pair is the `--chq-disabled` /
+   * `--chq-disabled-bg` token pair (#7D7869 on #DDD8C8) — an inactive
+   * component, exempt under WCAG 2.1 SC 1.4.3 ("Incidental" text and
+   * "Inactive User Interface Components have no contrast requirement"). Kept
+   * OUT of `offenders` (so it never fails the gate) but never silently
+   * dropped either — evaluateContrast records it as its own exemption row. */
+  exempted: string[];
 }
 
 export interface ContrastResult {
@@ -82,6 +90,10 @@ export interface ContrastResult {
   minRatio: number | null;
   ok: boolean;
   failureReason?: string;
+  /** DEC-426 wave-29 amendment: set whenever this route measured at least
+   * one exempted (disabled-token) pair — printed regardless of `ok`, so an
+   * exemption is always recorded, never a silent pass and never a FAIL. */
+  exemptNote?: string;
 }
 
 /** Evaluates one route's contrast observation. A page with no measurable
@@ -89,18 +101,25 @@ export interface ContrastResult {
  * evaluateFontFloor/evaluateMobileRoute's null cases. The applicable
  * threshold comparison already happened in-page (per-element, since large
  * vs. normal text differ); a non-null minRatio below any applicable
- * threshold is surfaced via the offenders list. */
+ * threshold is surfaced via the offenders list. Exempted (disabled-token)
+ * pairs never contribute to `offenders`/`ok` but are always surfaced via
+ * `exemptNote`, citing the WCAG rule that exempts them. */
 export function evaluateContrast(entry: ContrastRouteEntry, observed: ContrastObservation): ContrastResult {
   const reasons: string[] = [];
   if (observed.offenders.length > 0) {
     reasons.push(`contrast below WCAG AA threshold — worst: ${observed.offenders.join(" | ")}`);
   }
+  const exemptNote =
+    observed.exempted.length > 0
+      ? `EXEMPT-BY-RULE (WCAG 2.1 SC 1.4.3, inactive component): ${observed.exempted.join(" | ")}`
+      : undefined;
   return {
     path: entry.path,
     role: entry.role,
     minRatio: observed.minRatio,
     ok: reasons.length === 0,
     failureReason: reasons.length > 0 ? reasons.join("; ") : undefined,
+    exemptNote,
   };
 }
 
@@ -133,8 +152,9 @@ export function formatContrastTable(results: readonly ContrastResult[]): string 
   for (const r of results) {
     const mark = r.ok ? "PASS" : "FAIL";
     const detail = r.ok ? "" : `  (${r.failureReason})`;
+    const exemptDetail = r.exemptNote ? `  [${r.exemptNote}]` : "";
     const ratioStr = r.minRatio === null ? "-" : r.minRatio.toFixed(2);
-    lines.push(`${r.path.padEnd(pathWidth)}  ${r.role.padEnd(roleWidth)}  ${ratioStr.padStart(8)}  ${mark}${detail}`);
+    lines.push(`${r.path.padEnd(pathWidth)}  ${r.role.padEnd(roleWidth)}  ${ratioStr.padStart(8)}  ${mark}${detail}${exemptDetail}`);
   }
   return lines.join("\n");
 }
