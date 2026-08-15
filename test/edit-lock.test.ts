@@ -19,8 +19,12 @@ describe("canEditSubmission (DEC-041 server-side edit lock)", () => {
     expect(canEditSubmission("pending", PAST_CLOSE, NOW, LA)).toBe(false);
   });
 
-  it("accepted + closed form remains editable (accepted speakers keep editing)", () => {
-    expect(canEditSubmission("accepted", PAST_CLOSE, NOW, LA)).toBe(true);
+  it("accepted + closed form is NOT editable (CFP-16: the close gate binds every status)", () => {
+    expect(canEditSubmission("accepted", PAST_CLOSE, NOW, LA)).toBe(false);
+  });
+
+  it("accepted + open form is still editable", () => {
+    expect(canEditSubmission("accepted", FUTURE_CLOSE, NOW, LA)).toBe(true);
   });
 
   it("decline_queue + closed form is not editable", () => {

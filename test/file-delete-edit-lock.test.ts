@@ -1,9 +1,9 @@
 // DEC-041 wave-46 amendment: DELETE /api/v1/files/:fileId (DEC-713 version
 // deletion) is a destructive speaker write, just like upload and comment —
 // it must obey the SAME server-side edit lock (src/domain/edit-lock.ts
-// canEditSubmission), not just the uploader/latest/pending-content checks.
+// canUploadDeliverables), not just the uploader/latest/pending-content checks.
 // Modelled on test/deliverable-edit-lock.test.ts. A source-scan assertion at
-// the bottom enforces that canEditSubmission is called from exactly ONE
+// the bottom enforces that canUploadDeliverables is called from exactly ONE
 // place in src/routes/files.ts (assertSpeakerSubmissionUnlocked) — every
 // speaker write path routes through it.
 
@@ -167,15 +167,15 @@ describe("DELETE /api/v1/files/:fileId — DEC-041 wave-46 edit lock", () => {
 });
 
 describe("assertSpeakerSubmissionUnlocked — ONE predicate for every speaker write path", () => {
-  it("canEditSubmission is called exactly once in src/routes/files.ts, inside assertSpeakerSubmissionUnlocked", () => {
+  it("canUploadDeliverables is called exactly once in src/routes/files.ts, inside assertSpeakerSubmissionUnlocked", () => {
     const filesRouteUrl = new URL("../src/routes/files.ts", import.meta.url);
     const source = readFileSync(fileURLToPath(filesRouteUrl), "utf8");
-    const callSites = source.match(/canEditSubmission\(/g) ?? [];
+    const callSites = source.match(/canUploadDeliverables\(/g) ?? [];
     expect(callSites.length).toBe(1);
 
     const helperStart = source.indexOf("function assertSpeakerSubmissionUnlocked");
     expect(helperStart).toBeGreaterThan(-1);
-    const callSiteIndex = source.indexOf("canEditSubmission(");
+    const callSiteIndex = source.indexOf("canUploadDeliverables(");
     const helperEnd = source.indexOf("\n}", helperStart);
     expect(callSiteIndex).toBeGreaterThan(helperStart);
     expect(callSiteIndex).toBeLessThan(helperEnd);
