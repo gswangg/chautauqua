@@ -8,6 +8,7 @@ import { newId } from "../../../domain/ids";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
 import type { EvaluationCriterionDef } from "../../../domain/evaluation";
 import { ApiError } from "../../http";
+import { chunkIds } from "../../../lib/chunk";
 import { MAX_PLAN_SUBMISSION_SCAN } from "./submissions";
 
 // DEC-346 amendment (wave 62): the ceiling listEvaluationScoresForPlan's
@@ -173,12 +174,50 @@ export async function countEvaluationsForSubmission(
  * same population), not MAX_PLAN_EVALUATION_SCAN -- that constant bounds
  * ungrouped evaluation-row scans elsewhere in this file (evaluations are
  * submissions x reviewers, so it is deliberately set higher and would never
- * fire here, silently disabling the guard). */
+ * fire here, silently disabling the guard).
+ *
+ * DEC-829 (wave-29 amendment, applied to review by task w29-e): `submissionIds`
+ * is an OPTIONAL id-scoped narrowing. The reviewer queue (its one production
+ * caller with a natural scope) passes its own resolveReviewerSubmissions-
+ * resolved ids, chunkIds-batched (DEC-078) -- the driving relation becomes
+ * this reviewer's own already-scoped set, never the plan's whole population,
+ * matching DEC-829's "driving relation is the already-scoped set, never a
+ * wider table" ruling. Every other/whole-plan caller omits the param and
+ * gets the exact original unscoped GROUP BY below, unchanged (locked by
+ * test/review-repo-aggregates.test.ts's 2-arg contract). */
 export async function countEvaluationsBySubmission(
   db: Db,
   planId: string,
   round: number,
+  submissionIds?: string[],
 ): Promise<Map<string, number>> {
+  if (submissionIds !== undefined) {
+    const result = new Map<string, number>();
+    if (submissionIds.length === 0) return result;
+    // Independent per-batch queries over disjoint id sets -- Promise.all
+    // instead of a sequential await per batch (same reasoning as the
+    // submissions.ts DEC-829 amendment siblings).
+    const batches = await Promise.all(
+      chunkIds(submissionIds).map((batch) =>
+        db
+          .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
+          .from(schema.evaluation)
+          .where(
+            and(
+              eq(schema.evaluation.planId, planId),
+              eq(schema.evaluation.round, round),
+              inArray(schema.evaluation.submissionId, batch),
+              submittedEvaluationCondition(),
+            ),
+          )
+          .groupBy(schema.evaluation.submissionId),
+      ),
+    );
+    for (const rows of batches) {
+      for (const r of rows) result.set(r.submissionId, Number(r.count));
+    }
+    return result;
+  }
   const rows = await db
     .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
     .from(schema.evaluation)
