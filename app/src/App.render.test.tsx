@@ -559,23 +559,22 @@ describe('RoleGate blocks routed content while /me is unresolved (DEC-857)', () 
   });
 });
 
-// w6-h (DEC-369 amendment): Gate-4 measured the header rule 15% too tall
-// (logical y=66.2 vs the 01/06 frames' 57.5) and nav ink starting 31px too
-// far right (x=169 vs 138), with an extra ~4.4px of gap per nav item (35px
-// over the 8 gaps between the 9 sections). jsdom doesn't run real layout,
-// so this pins the CSS declarations directly against the stylesheet — a
-// regression guard against the geometry drifting back, not a live pixel
+// DEC-369 amendment (wave 22): the fitted sub-pixel geometry chased gate-4/
+// gate-5 render measurements that are now superseded; the vendored frame
+// outranks a render measurement. jsdom doesn't run real layout, so this
+// pins the CSS declarations directly against the stylesheet — a regression
+// guard against the fitted geometry drifting back, not a live pixel
 // measurement.
 describe('Header/nav geometry pinned to the frame (DEC-369 amendment)', () => {
-  it('.chq-header: vertical padding trimmed by 4.35px/side (closes the 8.7px height delta) and no wordmark<->nav gap', () => {
+  it('.chq-header: padding 15px 34px, gap 22px (docs/design/Chautauqua Overview.dc.html:33)', () => {
     const body = topLevelRuleBody(STYLES_CSS, '.chq-header');
-    expect(body).toMatch(/padding:\s*10\.65px 34px/);
-    expect(body).toMatch(/gap:\s*0/);
+    expect(body).toMatch(/padding:\s*15px 34px/);
+    expect(body).toMatch(/gap:\s*22px/);
   });
 
-  it(".chq-nav: item gap trimmed to 10.625px; +13px margin clears the wordmark (gate-5: the old -9px pulled the first link's glyphs UNDER 'chautauqua' — a 9px glyph overlap on every admin page)", () => {
+  it('.chq-nav: item gap 15px, no margin-left (docs/design/Chautauqua Overview.dc.html:35)', () => {
     const body = topLevelRuleBody(STYLES_CSS, '.chq-nav');
-    expect(body).toMatch(/gap:\s*10\.625px/);
-    expect(body).toMatch(/margin-left:\s*13px/);
+    expect(body).toMatch(/gap:\s*15px/);
+    expect(body).not.toMatch(/margin-left/);
   });
 });

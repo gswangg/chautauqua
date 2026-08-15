@@ -100,14 +100,13 @@
   flex-wrap: nowrap;
 }
 
-/* DEC-370 amendment (wave 5), Gate-4 wave-6 amendment: toolbar buttons pin
-   to 37px tall — the wave-5 pass left them measuring 42.8px against the
-   frame; vertical padding tightens a further -2.9px per side, horizontal
-   padding is unchanged. */
+/* DEC-369 amendment (wave 22): the fitted 4.2px/5.2px vertical paddings
+   chased a gate-4/gate-5 render measurement now superseded; restored to the
+   frame's secondary/primary control padding (horizontal unchanged). */
 .chq-overview-toolbar-btn {
   border: 1px solid var(--chq-border);
   border-radius: 4px;
-  padding: 4.2px 16px;
+  padding: 9px 16px;
   font-size: 13px;
   font-weight: 600;
   font-family: var(--chq-font-ui);
@@ -125,7 +124,7 @@
   background: var(--chq-brand);
   color: var(--chq-on-brand);
   font-weight: 700;
-  padding: 5.2px 16px;
+  padding: 10px 16px;
 }
 
 .chq-overview-section {
@@ -186,13 +185,12 @@
   border-bottom: 1px solid var(--chq-hairline);
 }
 
-/* Gate-4 wave-6 amendment: §01's row pitch measured 81px against the
-   frame's 72px -- vertical padding only tightens for THIS row shape (-4.5px
-   per side), overriding the shared .chq-overview-row padding; §02/§03/§04
-   keep the shared pitch untouched. */
+/* DEC-369 amendment (wave 22): the fitted 11.5px vertical padding chased a
+   gate-4 render measurement now superseded; restored to the frame's row
+   pitch (docs/design/Chautauqua Overview.dc.html:79). */
 .chq-overview-row-overdue {
   grid-template-columns: 1fr 1.15fr auto;
-  padding: 11.5px 0;
+  padding: 16px 0;
 }
 
 .chq-overview-row-content {
@@ -207,16 +205,18 @@
    Review/Comms rows plus Public pages) share ONE two-column grid -- the
    same 220.5px value-column offset and the same 14px type size, so a row
    never grows past what a single-clause summary needs. */
+/* DEC-369 amendment (wave 22): the fitted 220.5px column and 8.6px vertical
+   padding chased a gate-4 render measurement now superseded; restored to
+   the frame (docs/design/Chautauqua Overview.dc.html:172). */
 .chq-overview-row-quiet {
-  grid-template-columns: 220.5px 1fr;
-  /* DEC-370 amendment (wave 5), Gate-4 wave-6 amendment: the "No action
-     needed" row pitch is 51px (58.4px still measured after wave 5) —
-     vertical padding tightens a further -3.7px per side, the shared
-     .chq-overview-row padding stays untouched for every other row shape. */
-  padding: 8.6px 0;
+  grid-template-columns: 200px 1fr;
+  padding: 14px 0;
 }
 
-.chq-overview-row-quiet .chq-overview-row-title-sm,
+.chq-overview-row-quiet .chq-overview-row-title-sm {
+  font-size: 15px;
+}
+
 .chq-overview-row-quiet .chq-overview-row-meta-sm {
   font-size: 14px;
 }

@@ -187,21 +187,18 @@ a:hover {
   flex-direction: column;
 }
 
-/* w6-h (DEC-369 amendment): Gate-4 measured the header rule at logical
-   y=66.2 against the 01/06 frames' 57.5 (15% too tall) with the wordmark's
-   x already correct (33.5 vs 34.5) -- vertical padding only. 15px top/
-   bottom trimmed by 4.35px each closes the 8.7px gap exactly. The
-   wordmark<->nav gap moves off the shared `gap` (which also separates nav
-   from the auto-margined identity block, so zeroing it here is safe) onto
-   .chq-nav's own margin-left below, so the two adjacencies can be tuned
-   independently. */
+/* DEC-369 amendment (wave 22): the fitted 10.65px vertical padding and
+   zeroed gap chased a gate-4/gate-5 render measurement that has since been
+   superseded. The vendored frame (every admin header, e.g. docs/design/
+   Chautauqua Overview.dc.html:33; docs/design/README.md:149) declares
+   padding: 15px 34px and gap: 22px -- restored below. */
 .chq-header {
   flex-shrink: 0;
   border-bottom: 1px solid var(--chq-ink);
-  padding: 10.65px 34px;
+  padding: 15px 34px;
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 22px;
   background: var(--chq-paper);
   flex-wrap: nowrap;
 }
@@ -255,21 +252,15 @@ a:hover {
   color: var(--chq-ink);
 }
 
-/* w6-h (DEC-369 amendment): Gate-4 measured nav ink starting at x=169
-   against the frame's 138 (the header's wordmark<->nav `gap` moved to 0
-   above; margin-left here closes the remaining 9px against the wordmark's
-   measured end) and the ink span running 590.5 against 555.5 -- 35px over
-   the 8 gaps between the 9 nav items, i.e. ~4.4px extra per item (15px ->
-   10.625px removes exactly that). */
+/* DEC-369 amendment (wave 22): the fitted 10.625px gap and +13px margin-left
+   chased a gate-4/gate-5 render measurement now superseded. The frame
+   (docs/design/Chautauqua Overview.dc.html:35) declares gap: 15px; the
+   wordmark<->nav separation is now the header's own 22px gap, so the
+   margin-left glyph-overlap correction is moot and dropped. */
 .chq-nav {
   display: flex;
   align-items: center;
-  gap: 10.625px;
-  /* gate-5 PASS-check: -9px pulled the first link's GLYPHS under the
-     wordmark (chautauqua ends x147, Overview ink started x138 — a 9px
-     glyph-on-glyph overlap on every admin page). +13px puts the first
-     link's ink at ~x169 with its own padding, clear of the wordmark. */
-  margin-left: 13px;
+  gap: 15px;
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
