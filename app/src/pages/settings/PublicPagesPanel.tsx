@@ -27,6 +27,14 @@
 // capability set unconditionally, including Edit/Turn on-off/Delete/Build
 // on saved embeds, which used to be gated behind this panel's own
 // `editing` and now always render.
+//
+// DEC-896 amendment (wave 20): the section head also carries the frame's
+// consequence micro-label, right-flushed on the same rule as the h2
+// (docs/design/Chautauqua Settings.dc.html:131) -- "Unpublishing returns
+// 404 to anyone holding the link". .chq-settings-section-head-consequence
+// (settings.css) is a new rule appended at the end of that file; no
+// existing eyebrow/caption class in settings.css or settings-lists.css
+// matched the frame's 11px/600/.04em/uppercase/muted register.
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -139,6 +147,9 @@ export function PublicPagesPanel() {
       <section className="chq-settings-panel chq-settings-numbered" aria-label="Public pages">
         <div className="chq-settings-section-head">
           <h2>Public pages</h2>
+          <span className="chq-settings-section-head-consequence">
+            Unpublishing returns 404 to anyone holding the link
+          </span>
         </div>
         {event ? (
           <ul className="chq-settings-public-pages-list">
