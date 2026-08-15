@@ -24,3 +24,4 @@ results (page 1)` adjusted p95 71.8ms > budget(read) 50ms. Not fixed (out
 of scope for this lane).
 RESULT: FAIL — perf-smoke exit code 1; 23/27 checks PASS, 4 FAIL (all read-
 class budget overruns) at sha c6dbdb7cc615248d1a49485d63320570168f4c7b.
+
