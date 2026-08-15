@@ -3,8 +3,10 @@ import { apiPost, ApiError } from '../../lib/api';
 import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
-import { DEC_810, DEC_575, DEC_124 } from '../../../../src/decisions';
+import { DEC_810, DEC_575, DEC_124, DEC_478 } from '../../../../src/decisions';
 import { countOf, plural } from '../../lib/plural';
+import { MAX_IMPORT_ROWS, MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
+import { formatBytes } from '../../../../src/domain/files';
 import './contacts-panels.css';
 
 // Compile-checked dependency marker: when `eventId` is set, this wizard
@@ -20,6 +22,13 @@ void DEC_810;
 // classes; app/src/components/error-states.css owns them.
 void DEC_575;
 void DEC_124;
+// DEC-478 (amendment, wave 62): the row/byte caps are disclosed where the
+// file is chosen (the caption on step 1) and enforced before the
+// match-columns step, not only as the 400 the server would eventually
+// return after every column has already been mapped. See
+// MAX_IMPORT_ROWS/MAX_IMPORT_CSV_BYTES below, imported from the ONE
+// pure-core home so the SPA's cap always agrees with the server's.
+void DEC_478;
 
 interface Props {
   onClose: () => void;
@@ -104,6 +113,15 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const allDataRows = rows ? rows.slice(1) : [];
   const parseError = typeof parsed === 'string' ? parsed : null;
 
+  // DEC-478 (amendment, wave 62): the same two caps the server enforces,
+  // checked as soon as the file is parsed -- BEFORE the match-columns step
+  // -- so an oversize file is refused where it was chosen, not after the
+  // organizer has mapped every column.
+  const csvByteLength = useMemo(() => (csvText === '' ? 0 : new TextEncoder().encode(csvText).length), [csvText]);
+  const overRowCount = allDataRows.length > MAX_IMPORT_ROWS ? allDataRows.length - MAX_IMPORT_ROWS : 0;
+  const overByteCount = csvByteLength > MAX_IMPORT_CSV_BYTES ? csvByteLength - MAX_IMPORT_CSV_BYTES : 0;
+  const showSizeRefusal = header.length > 0 && !plan && !result && (overRowCount > 0 || overByteCount > 0);
+
   // DEC-575 (wave 28 amendment): a pre-mapping, file-level refusal for rows
   // missing the dedupe key (email) -- counted from the header's own
   // auto-suggested mapping (suggestMapping, same alias table the "Match
@@ -124,7 +142,8 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allDataRows, header.join(' ')]);
 
-  const showFileWarning = header.length > 0 && !plan && !result && badRows.length > 0 && !warningAcknowledged;
+  const showFileWarning =
+    header.length > 0 && !plan && !result && !showSizeRefusal && badRows.length > 0 && !warningAcknowledged;
 
   // Once the organizer accepts "Import the N good rows", every downstream
   // step (match columns, dedupe preview, dry run) sees only the usable
@@ -191,7 +210,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   // map columns, 3 = review the dry run, 4 = done. Display-only -- does
   // not gate the real flow, which stays driven by
   // csvText/header/plan/result exactly as before.
-  const step = result ? 4 : plan ? 3 : header.length > 0 ? 2 : 1;
+  const step = result ? 4 : plan ? 3 : header.length > 0 && !showSizeRefusal ? 2 : 1;
 
   // w15-c: the dialog title names the current step; "Import contacts from
   // CSV" moves down to the ModalFrame subtitle so it stays visible across
@@ -295,7 +314,11 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     }
   }
 
-  const actions = showFileWarning ? (
+  const actions = showSizeRefusal ? (
+    <button type="button" className="chq-btn chq-btn-secondary" onClick={resetToChooseFile}>
+      Choose a different file
+    </button>
+  ) : showFileWarning ? (
     <>
       <button
         type="button"
@@ -363,6 +386,23 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
 
       {error && <div className="chq-error">{error}</div>}
 
+      {/* DEC-478 (amendment, wave 62): a file-level, pre-mapping refusal for
+          a file over either cap -- rendered above the step content, in the
+          same error-vocabulary grammar as the DEC-575 email-warning block
+          below (summarize, count the overage, offer the way out). The file
+          itself is never cleared automatically; "Choose a different file"
+          is the only reset. */}
+      {showSizeRefusal && (
+        <div className="chq-error-summary" role="alert">
+          <p className="chq-error-summary-heading">
+            {overRowCount > 0
+              ? `${allDataRows.length.toLocaleString()} ${plural(allDataRows.length, 'row')} — ${overRowCount.toLocaleString()} over the ${MAX_IMPORT_ROWS.toLocaleString()}-row limit`
+              : `${formatBytes(csvByteLength)} — ${formatBytes(overByteCount)} over the ${formatBytes(MAX_IMPORT_CSV_BYTES)} limit`}
+          </p>
+          <p className="chq-error-summary-detail">Split the file and import each part.</p>
+        </div>
+      )}
+
       {/* DEC-575 (wave 28 amendment): a file-level, pre-mapping block for
           rows missing the dedupe key (email) -- rendered above the step
           content, offering a partial import instead of proceeding silently
@@ -386,9 +426,12 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       )}
 
       {/* Step 1 -- choose a file, unmounted entirely once a header row has
-          been parsed (from either the file input or the paste box) so it
-          never shares the screen with step 2's column-matching UI. */}
-      {header.length === 0 && !plan && !result && (
+          been parsed AND is within both caps (from either the file input or
+          the paste box) so it never shares the screen with step 2's
+          column-matching UI. Stays mounted for an oversize file
+          (showSizeRefusal) so "Choose a different file" has controls to
+          come back to. */}
+      {(header.length === 0 || showSizeRefusal) && !plan && !result && (
         <div className="chq-contacts-import-drop">
           <FormRow label="Upload a CSV file" htmlFor="import-csv-file">
             <input
@@ -414,6 +457,12 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
             />
           </FormRow>
 
+          {/* DEC-478 (amendment, wave 62): the row/byte caps disclosed where
+              the file is chosen, not only in the 400 at the end. */}
+          <p className="chq-contacts-pipeline-caption">
+            Up to {countOf(MAX_IMPORT_ROWS, 'row')} · {formatBytes(MAX_IMPORT_CSV_BYTES)} max
+          </p>
+
           {parseError && <div className="chq-error">{parseError}</div>}
         </div>
       )}
@@ -424,7 +473,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           column" affordance. Does not touch the dry-run/commit contract
           (DEC-663): mapping state feeds the same runPreview() call as
           before, unchanged below. */}
-      {header.length > 0 && !plan && !result && !showFileWarning && (
+      {header.length > 0 && !plan && !result && !showSizeRefusal && !showFileWarning && (
         <div className="chq-contacts-import-match">
           <div className="chq-contacts-import-match-head">
             <span className="chq-contacts-import-match-filename">{fileName ?? 'Pasted CSV'}</span>

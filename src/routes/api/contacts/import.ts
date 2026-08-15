@@ -30,9 +30,12 @@ void DEC_810;
 // every existing caller/test of this route module still finds them by
 // this name.
 export const MAX_IMPORT_CSV_BYTES = DOMAIN_MAX_IMPORT_CSV_BYTES;
-// DEC-478: the row cap lives ONE place, src/server/repo/contacts/import.ts,
-// so this route's bound and message always agree with what applyImportRows
-// actually enforces.
+// DEC-478 (amendment, wave 62): the row cap lives ONE place,
+// src/domain/contacts.ts (moved from src/server/repo/contacts/import.ts so
+// app/src/pages/contacts/ImportWizard.tsx can import it too), so this
+// route's bound and message always agree with what applyImportRows
+// actually enforces AND what the SPA discloses before the user maps a
+// single column.
 export const MAX_IMPORT_ROWS = repo.MAX_IMPORT_ROWS;
 
 export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
