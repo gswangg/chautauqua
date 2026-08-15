@@ -30,6 +30,7 @@ import {
   ResetPasswordPage,
   ExpiredResetPage,
   MIN_PASSWORD_LENGTH,
+  MAX_PASSWORD_LENGTH,
 } from "./auth-views";
 import {
   ensureCsrfCookie,
@@ -258,6 +259,18 @@ resetRoutes.post("/reset/:token", csrfForm, async (c) => {
         csrfToken={csrfToken}
         email={user.email}
         error={`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`}
+      />,
+      400,
+    );
+  }
+  if (next.length > MAX_PASSWORD_LENGTH) {
+    const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+    if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+    return c.html(
+      <ResetPasswordPage
+        csrfToken={csrfToken}
+        email={user.email}
+        error={`New password must be at most ${MAX_PASSWORD_LENGTH} characters.`}
       />,
       400,
     );

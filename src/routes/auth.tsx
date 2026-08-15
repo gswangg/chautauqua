@@ -30,7 +30,7 @@ authRoutes.route("/", resetRoutes);
 
 // Re-exported for callers that reached into this file directly before the
 // split (test/*, src/routes/account.tsx).
-export { MIN_PASSWORD_LENGTH } from "./auth-views";
+export { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "./auth-views";
 export {
   loginStatusLine,
   AUTH_RATE_LIMIT_WINDOW_SECONDS,

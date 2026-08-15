@@ -9,6 +9,7 @@ import { ApiError, readJsonBody } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { renderEmailHtml } from "../../mail/shell";
 import { hashPassword } from "../../auth/password";
+import { MAX_PASSWORD_LENGTH } from "../../domain/auth-copy";
 import { revokeResetTokenForUser, type KVStore } from "../../auth/password-reset";
 import * as repo from "../../server/repo/users";
 import { isOrgUserRole } from "../../server/repo/users";
@@ -75,6 +76,9 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   }
 
   const password = generatePassword();
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    throw new ApiError("invalid", "Invalid user", { password: `Max ${MAX_PASSWORD_LENGTH}` });
+  }
   const passwordHash = await hashPassword(password);
   const created = await repo.createUser(c.var.db, { orgId: auth.orgId, email, role, passwordHash });
 
@@ -134,6 +138,9 @@ usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, csrfJson,
   await revokeResetTokenForUser(c.env.KV as unknown as KVStore, target.id);
 
   const password = generatePassword();
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    throw new ApiError("invalid", "Invalid user", { password: `Max ${MAX_PASSWORD_LENGTH}` });
+  }
   const passwordHash = await hashPassword(password);
   await repo.updateUserPasswordHash(c.var.db, target.id, passwordHash);
   // Revoke every existing session for the target user so a stolen/shared
