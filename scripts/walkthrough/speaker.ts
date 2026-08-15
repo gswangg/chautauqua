@@ -781,7 +781,7 @@ async function main(): Promise<void> {
   });
 
   await check(
-    `GET /portal/tasks shows the DEC-244 deliverable panel for the completed '${adHocFileTaskTitle}' assignment`,
+    `GET /portal/tasks shows the DEC-244 deliverable panel at version 1 for the completed '${adHocFileTaskTitle}' assignment`,
     async () => {
       const tasksPage = await speaker1.getText("/portal/tasks");
       assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
@@ -796,19 +796,98 @@ async function main(): Promise<void> {
       // stable aria-label token rather than the full opening tag.
       assert(row.includes('aria-label="Uploaded file"'), "row is missing the Uploaded file section");
       assert(row.includes("walkthrough-bio-photo.jpg"), "row is missing the uploaded filename");
-      // scripts/seed.ts's DEC-739 loop pre-completes this task (with a real
-      // minted file at version_no=1) for every contactIdx % 3 === 0 speaker,
-      // which includes the DEC-172-pinned primary seeded speaker (Priya,
-      // contactIdx 0) this walkthrough logs in as — so our upload above is a
-      // REPLACE onto an already-complete assignment and lands at version 2,
-      // not version 1.
-      assert(row.includes("version 2"), "row is missing 'version 2'");
+      // DEC-244 wave-28 amendment: adHocFileTaskTitle is minted at runtime
+      // (Date.now(), :719) and the task is created + assigned within this
+      // same run (:721-742) — no scripts/seed.ts loop can have pre-completed
+      // it, so the single upload above lands at version 1. The lane itself
+      // performs a second (replace) upload below to exercise version 2 and
+      // the version-history chain, rather than asserting on seed state it
+      // never created (DEC-244/w28 amendment).
+      assert(row.includes("version 1"), "row is missing 'version 1'");
       assert(
         new RegExp(`href="\\/portal\\/tasks\\/${escapeRegex(bioAssignmentId)}\\/file"`).test(row),
         "row is missing a download link to /portal/tasks/:assignmentId/file",
       );
       assert(row.includes(">Replace file<"), "row is missing the 'Replace file' button");
       assert(row.includes('<section aria-label="Comments">'), "row is missing the Comments section");
+      assert(row.includes('<section aria-label="Version history">'), "row is missing the Version history section");
+      const historyMatch = row.match(/<section aria-label="Version history">[\s\S]*?<\/section>/);
+      assert(historyMatch, "could not isolate the Version history section");
+      const history = historyMatch![0]!;
+      const versionNums = [...history.matchAll(/chq-portal-version-num">v(\d+)</g)].map((m) => m[1]);
+      assert(
+        versionNums.length === 1 && versionNums[0] === "1",
+        `expected exactly one v1 row in Version history, got ${JSON.stringify(versionNums)}`,
+      );
+      assert(history.includes('chq-portal-flag-done">Current<'), "the v1 row is missing the Current marker");
+    },
+  );
+
+  await check(
+    "replace-upload a second file onto the same file_request assignment (assert 302)",
+    async () => {
+      // Same idiom as the first upload above: the panel's Replace form
+      // re-posts multipart to the same endpoint (views.tsx:299), with a
+      // distinct filename so the version chain and flat block can be told
+      // apart on the next GET.
+      const tasksPageForReupload = await speaker1.getText("/portal/tasks");
+      const submissionIdMatch2 = tasksPageForReupload.body.match(
+        new RegExp(`${escapeRegex(adHocFileTaskTitle)}(?:(?!${NEXT_TASK_ROW})[\\s\\S])*?<select name="submissionId"[^>]*>([\\s\\S]*?)<\\/select>`),
+      );
+      const chosenSubmissionId2 = submissionIdMatch2
+        ? submissionIdMatch2[1]!.match(/<option value="([\w-]+)"/)?.[1]
+        : undefined;
+
+      const form2 = new FormData();
+      form2.set("chq_csrf", speaker1.cookies.chq_csrf ?? "");
+      form2.set(
+        "file",
+        new File([new Uint8Array([0xff, 0xd8, 0xff, 0xdb])], "walkthrough-bio-photo-v2.jpg", { type: "image/jpeg" }),
+      );
+      if (chosenSubmissionId2) form2.set("submissionId", chosenSubmissionId2);
+      const res2 = await speaker1.postMultipart(`/portal/tasks/${bioAssignmentId}/upload`, form2);
+      assert(
+        res2.status === 302,
+        `POST /portal/tasks/:assignmentId/upload (replace) expected 302, got ${res2.status}: ${JSON.stringify(res2.body)}`,
+      );
+    },
+  );
+
+  await check(
+    `GET /portal/tasks shows the DEC-244 deliverable panel at version 2 for the completed '${adHocFileTaskTitle}' assignment`,
+    async () => {
+      const tasksPage2 = await speaker1.getText("/portal/tasks");
+      assert(tasksPage2.status === 200, `GET /portal/tasks returned ${tasksPage2.status}`);
+      const rowMatch2 = tasksPage2.body.match(
+        new RegExp(`${escapeRegex(adHocFileTaskTitle)}(?:(?!${NEXT_TASK_ROW})[\\s\\S])*`),
+      );
+      assert(rowMatch2, `could not find the '${adHocFileTaskTitle}' task row on /portal/tasks (second read)`);
+      const row2 = rowMatch2![0]!;
+      assert(row2.includes('aria-label="Uploaded file"'), "row is missing the Uploaded file section");
+      assert(row2.includes("walkthrough-bio-photo-v2.jpg"), "row is missing the replaced filename");
+      assert(row2.includes("version 2"), "row is missing 'version 2'");
+      assert(
+        new RegExp(`href="\\/portal\\/tasks\\/${escapeRegex(bioAssignmentId)}\\/file"`).test(row2),
+        "row is missing a download link to /portal/tasks/:assignmentId/file",
+      );
+      assert(row2.includes(">Replace file<"), "row is missing the 'Replace file' button");
+      assert(row2.includes('<section aria-label="Comments">'), "row is missing the Comments section");
+      const historyMatch2 = row2.match(/<section aria-label="Version history">[\s\S]*?<\/section>/);
+      assert(historyMatch2, "could not isolate the Version history section");
+      const history2 = historyMatch2![0]!;
+      const versionNums2 = [...history2.matchAll(/chq-portal-version-num">v(\d+)</g)].map((m) => m[1]);
+      assert(
+        versionNums2.length === 2 && versionNums2.includes("1") && versionNums2.includes("2"),
+        `expected v1 and v2 rows in Version history, got ${JSON.stringify(versionNums2)}`,
+      );
+      const historyRows2 = [...history2.matchAll(/<li class="chq-portal-version-row">[\s\S]*?<\/li>/g)].map((m) => m[0]);
+      const v1Row = historyRows2.find((r) => r.includes('version-num">v1<'));
+      const v2Row = historyRows2.find((r) => r.includes('version-num">v2<'));
+      assert(v2Row && v2Row.includes('chq-portal-flag-done">Current<'), "the v2 row is missing the Current marker");
+      assert(
+        v1Row && !v1Row.includes('chq-portal-flag-done">Current<'),
+        "the v1 row unexpectedly still carries the Current marker",
+      );
     },
   );
 
