@@ -591,13 +591,20 @@ export interface SpeakerSummary {
   name: string;
   company: string | null;
   title: string | null;
+  /** DEC-561/DEC-562: never serialized to the client through this endpoint's
+   * `detail.speakers` field (organizers use the admin submission detail for
+   * that) -- callers that need it (DEC-018 wave-54 identity redaction) must
+   * strip it before assigning speakers onto a response body. Selected here
+   * (rather than a second query) purely so the reviewer.ts route can fold it
+   * into the anonymization identity list without a new round-trip. */
+  email: string;
 }
 
-/** DEC-561/DEC-562: reviewers never see contact.email through this endpoint
- * (organizers use the admin submission detail for that); `name` is derived
- * server-side so the reviewer surface never has to reassemble it. Ordered
- * (participant.order asc, contact.id asc) -- DEC-562's canonical people
- * order for any list of a submission's people. */
+/** DEC-561/DEC-562: reviewers never see contact.email through this endpoint's
+ * response body (organizers use the admin submission detail for that);
+ * `name` is derived server-side so the reviewer surface never has to
+ * reassemble it. Ordered (participant.order asc, contact.id asc) --
+ * DEC-562's canonical people order for any list of a submission's people. */
 export async function listSpeakersForSubmission(db: Db, submissionId: string): Promise<SpeakerSummary[]> {
   const rows = await db
     .select({
@@ -606,6 +613,7 @@ export async function listSpeakersForSubmission(db: Db, submissionId: string): P
       lastName: schema.contact.lastName,
       company: schema.contact.company,
       title: schema.contact.title,
+      email: schema.contact.email,
     })
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
@@ -616,6 +624,7 @@ export async function listSpeakersForSubmission(db: Db, submissionId: string): P
     name: `${r.firstName} ${r.lastName}`.trim(),
     company: r.company,
     title: r.title,
+    email: r.email,
   }));
 }
 

@@ -297,7 +297,10 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
 
   const detail = {
     ...summary,
-    speakers: speakers as repo.SpeakerSummary[] | undefined,
+    // DEC-561/DEC-562: strip `email` before this leaves the server -- it is
+    // fetched on SpeakerSummary purely so the anonymization identity list
+    // below can be built without a second query.
+    speakers: speakers.map(({ email: _email, ...s }) => s) as Omit<repo.SpeakerSummary, "email">[] | undefined,
     speakerAnswers: answers.filter((a) => a.section === "speaker") as repo.SubmissionAnswerRow[] | undefined,
     sessionAnswers: answers.filter((a) => a.section === "session"),
     criteria,
@@ -307,8 +310,13 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
     ...(myRecusalRecord ? { myRecusal: { reason: myRecusalRecord.reason ?? null, createdAt: myRecusalRecord.createdAt } } : {}),
   };
 
-  // DEC-018: server-side anonymization only, never client-side.
-  const out = plan.anonymized ? anonymizeForReviewer(detail) : detail;
+  // DEC-018 (wave-54 amendment): server-side anonymization only, never
+  // client-side, and never a bare identity STRING left behind in free text
+  // (title/description/sessionAnswers) -- built from the FULL name, email,
+  // and company of every speaker already loaded above, never a bare first
+  // or last name (that would mask ordinary words too aggressively).
+  const identities = speakers.flatMap((s) => [s.name, s.email, s.company].filter((v): v is string => !!v && v.trim().length > 0));
+  const out = plan.anonymized ? anonymizeForReviewer(detail, identities) : detail;
   return c.json(out);
 });
 

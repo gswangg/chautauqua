@@ -7,6 +7,7 @@ import {
   needsMoreRatings,
   buildResultsRows,
   anonymizeForReviewer,
+  redactIdentity,
   validateEvaluationScores,
   reviewerProgressState,
   selectRemindTargets,
@@ -470,6 +471,55 @@ describe("resolveAssignments", () => {
   });
 });
 
+describe("redactIdentity", () => {
+  it("masks a case-insensitive occurrence in a string", () => {
+    expect(redactIdentity("Talk by ADA LOVELACE about math", ["Ada Lovelace"])).toBe(
+      "Talk by [hidden] about math",
+    );
+  });
+
+  it("applies identities longest-first so a full name is masked before a substring identity fragments it", () => {
+    // "Ada" alone is also an identity here (e.g. a nickname/first-name-only
+    // entry); the full name must win so no bare "[hidden] Lovelace" fragment
+    // survives.
+    expect(redactIdentity("Ada Lovelace spoke well", ["Ada", "Ada Lovelace"])).toBe(
+      "[hidden] spoke well",
+    );
+  });
+
+  it("escapes regex metacharacters so a literal company name matches itself", () => {
+    expect(redactIdentity("Sponsored by C++ Corp this year", ["C++ Corp"])).toBe(
+      "Sponsored by [hidden] this year",
+    );
+    // Sanity: a naive unescaped regex would treat "++" as invalid/greedy
+    // syntax and either throw or fail to match -- this must not happen.
+    expect(() => redactIdentity("no match here", ["C++ Corp"])).not.toThrow();
+  });
+
+  it("masks every occurrence within an array of strings", () => {
+    expect(redactIdentity(["Ada Lovelace", "not Ada Lovelace either"], ["Ada Lovelace"])).toEqual([
+      "[hidden]",
+      "not [hidden] either",
+    ]);
+  });
+
+  it("leaves non-string, non-string-array values untouched", () => {
+    expect(redactIdentity(42, ["Ada Lovelace"])).toBe(42);
+    expect(redactIdentity(true, ["Ada Lovelace"])).toBe(true);
+    expect(redactIdentity(null, ["Ada Lovelace"])).toBe(null);
+    const obj = { foo: "Ada Lovelace" };
+    expect(redactIdentity(obj, ["Ada Lovelace"])).toBe(obj);
+  });
+
+  it("ignores blank/whitespace-only identities", () => {
+    expect(redactIdentity("hello world", ["", "   "])).toBe("hello world");
+  });
+
+  it("returns the value unchanged when there are no identities", () => {
+    expect(redactIdentity("Ada Lovelace", [])).toBe("Ada Lovelace");
+  });
+});
+
 describe("anonymizeForReviewer", () => {
   it("strips speaker identity and answer fields", () => {
     const sub = {
@@ -478,11 +528,34 @@ describe("anonymizeForReviewer", () => {
       speakers: [{ name: "Ada Lovelace" }],
       speakerAnswers: { bio: "..." },
     };
-    const anon = anonymizeForReviewer(sub);
+    const anon = anonymizeForReviewer(sub, []);
     expect(anon.speakers).toBeUndefined();
     expect(anon.speakerAnswers).toBeUndefined();
     expect(anon.id).toBe("s1");
     expect(anon.title).toBe("Talk");
+    expect(anon.anonymized).toBe(true);
+  });
+
+  it("redacts speaker identity strings out of title, description, and sessionAnswers values", () => {
+    const sub = {
+      id: "s1",
+      title: "A talk by Ada Lovelace",
+      description: "Ada Lovelace (ada@example.com, Analytical Engines Inc) will speak.",
+      speakers: [{ name: "Ada Lovelace" }],
+      sessionAnswers: [
+        { fieldId: "f1", section: "session" as const, label: "Bio", kind: "text", value: "By Ada Lovelace, of Analytical Engines Inc" },
+        { fieldId: "f2", section: "session" as const, label: "Tags", kind: "text", value: ["ada lovelace", "math"] },
+        { fieldId: "f3", section: "session" as const, label: "Rating", kind: "rating", value: 4 },
+      ],
+    };
+    const identities = ["Ada Lovelace", "ada@example.com", "Analytical Engines Inc"];
+    const anon = anonymizeForReviewer(sub, identities);
+    expect(anon.title).toBe("A talk by [hidden]");
+    expect(anon.description).toBe("[hidden] ([hidden], [hidden]) will speak.");
+    expect(anon.sessionAnswers?.[0]?.value).toBe("By [hidden], of [hidden]");
+    expect(anon.sessionAnswers?.[1]?.value).toEqual(["[hidden]", "math"]);
+    expect(anon.sessionAnswers?.[2]?.value).toBe(4);
+    expect(anon.anonymized).toBe(true);
   });
 });
 

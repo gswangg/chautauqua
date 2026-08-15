@@ -315,6 +315,10 @@ export interface ReviewerSubmissionDetail {
   // gap (no reserved field id yet; the wire does not populate it).
   format: string | null;
   audienceLevel?: string | null;
+  // DEC-018 (wave-54 amendment): present (true) only when the server ran
+  // anonymizeForReviewer over this detail -- the Scorecard's own signal for
+  // the reading-column disclosure, rather than re-deriving it from plan.
+  anonymized?: boolean;
 }
 
 export interface Track {
