@@ -683,8 +683,9 @@ async function main(): Promise<void> {
   // reply via the double-submit chq_csrf FORM FIELD (not the x-chq-csrf
   // header used by JSON mutations — see docs/verification-log/
   // task-w2-e-findings-closure.md's CNT-07a note), the reply rendering back
-  // on re-GET, and the MAX_COMMENT_BODY_LENGTH=4000 cap rejecting an
-  // oversized body with 400.
+  // on re-GET, and the MAX_COMMENT_BODY_LENGTH=4000 cap re-rendering the
+  // page inline (200, draft kept) for an oversized body (DEC-244 amendment,
+  // wave 56).
   // -------------------------------------------------------------------------
 
   const bioAssignmentId = await check(
@@ -762,12 +763,18 @@ async function main(): Promise<void> {
     assert(tasksPage.body.includes(fixture.identities.speaker.name), "comment author name did not render on /portal/tasks");
   });
 
-  await check("POST a reply exceeding MAX_COMMENT_BODY_LENGTH (4000) is rejected with 400", async () => {
-    const res = await speaker1.postForm(`/portal/tasks/${bioAssignmentId}/comments`, {
-      body: "x".repeat(4001),
-    });
-    assert(res.status === 400, `expected 400 for an over-length comment body, got ${res.status}`);
-  });
+  await check(
+    "POST a reply exceeding MAX_COMMENT_BODY_LENGTH (4000) re-renders inline (DEC-244 amendment, wave 56) with the typed text kept",
+    async () => {
+      const oversized = "x".repeat(4001);
+      const res = await speaker1.postForm(`/portal/tasks/${bioAssignmentId}/comments`, {
+        body: oversized,
+      });
+      assert(res.status === 200, `expected 200 (inline re-render) for an over-length comment body, got ${res.status}`);
+      assert(res.body.includes("too long"), "expected the named-cap refusal message on the re-rendered page");
+      assert(res.body.includes(oversized), "expected the typed draft body to be kept in the re-rendered textarea");
+    },
+  );
 
   // -------------------------------------------------------------------------
   // Speaker itinerary .ics route (J9/DEC-022): public route, but exercised

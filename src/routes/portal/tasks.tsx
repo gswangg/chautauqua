@@ -74,6 +74,7 @@ import {
   assertServedContentTypeHeader,
   contentDispositionAttachment,
   isValidFileKind,
+  MAX_COMMENT_BODY_LENGTH,
   sanitizeFilenameForKey,
   uploadHintText,
   validateUpload,
@@ -118,12 +119,6 @@ void DEC_605;
 void DEC_657;
 void DEC_696;
 void DEC_891;
-
-// DEC-244: comment body cap on the portal reply endpoint (matches no
-// existing forms/validate.ts constant since file comments aren't a form
-// field — long-text form answers cap at 20000, but a deliverable reply
-// thread is capped much tighter).
-export const MAX_COMMENT_BODY_LENGTH = 4000;
 
 portalTasksRoutes.use("*", speakerGate);
 
@@ -663,18 +658,52 @@ portalTasksRoutes.post("/tasks/:assignmentId/comments", csrfForm, async (c) => {
 
   const body = await c.req.parseBody();
   const raw = body["body"];
-  const text = typeof raw === "string" ? raw.trim() : "";
-  if (!text) throw new ApiError("invalid", "body is required", { body: "Required" });
-  if (text.length > MAX_COMMENT_BODY_LENGTH) {
-    throw new ApiError("invalid", `body must be ${MAX_COMMENT_BODY_LENGTH} characters or fewer`, {
-      body: "Too long",
-    });
+  const text = typeof raw === "string" ? raw : "";
+  const trimmed = text.trim();
+
+  // DEC-244 amendment (wave 56): a producer-input refusal here (empty body,
+  // over-cap body) must fail the way the upload route's reRenderWithError
+  // already fails — inline, same page, with the speaker's typed text kept —
+  // never the bare thrown ApiError that used to lose the draft into the
+  // global JSON handler. Authz refusals above (not_found / wrong kind / no
+  // file) still throw: those aren't something the speaker typed.
+  async function reRenderWithCommentError(message: string): Promise<Response> {
+    const { data, assignments, fileExtrasByAssignmentId, deliverableChoiceByAssignmentId } = await loadTasksPageData(
+      c,
+      contactId as string,
+      auth.orgId,
+    );
+    const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+    if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+    return c.html(
+      <TasksPage
+        branding={data.branding}
+        assignments={assignments}
+        csrfToken={csrfToken}
+        formLinkFor={(a) => `/portal/tasks/${a.id}/form`}
+        fileExtrasFor={(id) => fileExtrasByAssignmentId.get(id)}
+        deliverableChoiceFor={(id) => deliverableChoiceByAssignmentId.get(id)}
+        commentErrorFor={(id) => (id === assignmentId ? message : undefined)}
+        commentDraftBodyFor={(id) => (id === assignmentId ? text : undefined)}
+        speakerName={data.contactName}
+      />,
+      200,
+    );
+  }
+
+  if (!trimmed) {
+    return reRenderWithCommentError("A reply can't be empty.");
+  }
+  if (trimmed.length > MAX_COMMENT_BODY_LENGTH) {
+    return reRenderWithCommentError(
+      `Reply is too long — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString()} characters or fewer.`,
+    );
   }
 
   const latest = await resolveTaskFileChainLatest(c.var.db, scope.fileId);
   await insertFileComment(c.var.db, {
     fileId: latest.id,
-    body: text,
+    body: trimmed,
     authorUserId: auth.userId,
     authorContactId: contactId,
   });
