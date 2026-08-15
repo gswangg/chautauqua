@@ -4,7 +4,7 @@
 
 import type { PlacedSession } from "../../../domain/schedule";
 import { findConflicts } from "../../../domain/schedule";
-import { effectiveAssignmentDueDate } from "../../../domain/task-due";
+import { assignmentDaysLate, effectiveAssignmentDueDate } from "../../../domain/task-due";
 import type {
   OverviewPayload,
   FileRowForPick,
@@ -12,8 +12,6 @@ import type {
   OverdueTaskRow,
   OverdueTaskInputRow,
 } from "./types";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Reduces a grouped `status -> count` query result into the three DEC-030
  * triage buckets. Unknown/other statuses (e.g. accepted, declined) are
@@ -58,15 +56,19 @@ export function minNonNull(values: (number | null | undefined)[]): number | null
 
 /** DEC-370/DEC-826 overdueTasks rows: derives the effective due date
  * (effectiveAssignmentDueDate — a task can't be late before it was
- * assigned) and attaches `daysLate` (whole days late, clamped to zero)
- * computed against that effective date, never the raw task.dueDate. */
-export function buildOverdueTaskRows(rows: OverdueTaskInputRow[], now: number): OverdueTaskRow[] {
+ * assigned) and attaches `daysLate` (DEC-801 wave 63 amendment:
+ * assignmentDaysLate, the ONE count that agrees with the timezone-aware
+ * isAssignmentOverdue predicate that selected this set — never the old
+ * UTC-bare `Math.floor((now - dueDate) / DAY_MS)`, which could disagree
+ * with that predicate at the day boundary and print "Due today" on a row
+ * already selected as overdue). */
+export function buildOverdueTaskRows(rows: OverdueTaskInputRow[], now: number, timeZone: string): OverdueTaskRow[] {
   return rows.map(({ taskDueDate, assignedAt, ...rest }) => {
     const dueDate = effectiveAssignmentDueDate(taskDueDate, assignedAt)!;
     return {
       ...rest,
       dueDate,
-      daysLate: Math.max(0, Math.floor((now - dueDate) / DAY_MS)),
+      daysLate: assignmentDaysLate(taskDueDate, assignedAt, now, timeZone),
     };
   });
 }

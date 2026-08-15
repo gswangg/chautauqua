@@ -222,6 +222,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
         assignedAt: r.assignedAt!.getTime(),
       })),
       now,
+      timeZone,
     ),
   };
 

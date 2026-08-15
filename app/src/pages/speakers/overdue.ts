@@ -1,5 +1,4 @@
-import { effectiveAssignmentDueDate, isAssignmentOverdue } from '../../../../src/domain/task-due';
-import { daysAgo } from '../../lib/dates';
+import { isAssignmentOverdue } from '../../../../src/domain/task-due';
 import type { OnboardingCell, OnboardingTask } from './types';
 
 /**
@@ -20,13 +19,4 @@ export function isCellOverdue(
   if (!task) return false;
   if (cell.status === 'complete') return false;
   return isAssignmentOverdue(task.dueDate, cell.assignedAt, now, timezone);
-}
-
-/**
- * Whole days between a past due date and now, floored at 1 -- feeds the
- * .chq-flag "N DAYS LATE" micro-label. Callers must only invoke this when
- * isCellOverdue is already true (dueDate non-null and in the past).
- */
-export function daysLate(dueDate: number, now: number): number {
-  return Math.max(1, daysAgo(dueDate, now));
 }
