@@ -723,7 +723,12 @@ async function visitRoute(
   }
 
   let bodyText = "";
-  const isAdminSpaRoute = entry.path.startsWith("/admin");
+  // w17-d: a row with expectedStatus !== 200 under /admin (the DEC-945
+  // chromeless /admin/* 404) is a plain server-rendered NotFoundDocument,
+  // not the React admin SPA -- it has no #root, so grading it as an SPA
+  // route always produced a false "empty rendered text" failure. Only rows
+  // that actually land on the SPA shell wait for #root.
+  const isAdminSpaRoute = entry.path.startsWith("/admin") && (entry.expectedStatus ?? 200) === 200;
   try {
     if (isAdminSpaRoute) {
       await page.waitForSelector("#root", { timeout: 5000 });

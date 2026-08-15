@@ -14,6 +14,7 @@ import {
   evaluateFontFloor,
   evaluateMobileRoute,
   evaluateRoute,
+  filterExpectedStatusConsoleNoise,
   filterKnownClipExceptions,
   fontFloorErrorResult,
   formatFontFloorSummary,
@@ -167,6 +168,53 @@ describe("evaluateRoute expectedStatus / expectedLandedPath (w45-a)", () => {
   it("landedPath defaults to entry.path when the caller omits it", () => {
     const result = evaluateRoute(ENTRY, { status: 200, bodyText: "Overview", consoleErrors: [], pageErrors: [] });
     expect(result.landedPath).toBe(ENTRY.path);
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe("filterExpectedStatusConsoleNoise (w17-d)", () => {
+  it("strips exactly the main-navigation status console message for a row that expects that status", () => {
+    const entry: RouteManifestEntry = { path: "/admin/*", role: "organizer", expectedStatus: 404 };
+    expect(
+      filterExpectedStatusConsoleNoise(entry, [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      ]),
+    ).toEqual([]);
+  });
+
+  it("only strips one occurrence, leaving a genuine second 404 (e.g. a broken image) visible", () => {
+    const entry: RouteManifestEntry = { path: "/admin/*", role: "organizer", expectedStatus: 404 };
+    const input = [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    ];
+    expect(filterExpectedStatusConsoleNoise(entry, input)).toEqual([input[1]]);
+  });
+
+  it("leaves unrelated console errors untouched", () => {
+    const entry: RouteManifestEntry = { path: "/admin/*", role: "organizer", expectedStatus: 404 };
+    expect(filterExpectedStatusConsoleNoise(entry, ["TypeError: x is not a function"])).toEqual([
+      "TypeError: x is not a function",
+    ]);
+  });
+
+  it("is a no-op for a row with no expectedStatus (defaults to 200)", () => {
+    expect(
+      filterExpectedStatusConsoleNoise(ENTRY, [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      ]),
+    ).toEqual(["Failed to load resource: the server responded with a status of 404 (Not Found)"]);
+  });
+
+  it("evaluateRoute end-to-end: an expectedStatus:404 row with only the navigation-status console message passes", () => {
+    const entry: RouteManifestEntry = { path: "/admin/*", role: "organizer", expectedStatus: 404 };
+    const result = evaluateRoute(entry, {
+      status: 404,
+      bodyText: "Not Found",
+      consoleErrors: ["Failed to load resource: the server responded with a status of 404 (Not Found)"],
+      pageErrors: [],
+      landedPath: "/admin/*",
+    });
     expect(result.ok).toBe(true);
   });
 });
