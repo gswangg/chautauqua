@@ -43,9 +43,14 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // The exceptions themselves are unchanged.
   "src/routes/comms/preview.ts:82",
   // bulk-email.ts's preview site shifted again (277 -> 278) by DEC-422's
-  // (amendment) cap-copy import line added near the top of the file. The
-  // exception itself is unchanged.
-  "src/routes/api/contacts/bulk-email.ts:278",
+  // (amendment) cap-copy import line added near the top of the file.
+  // Shifted again (278 -> 321) by DEC-238's wave-14 amendment, which adds the
+  // two-stage dedupe partition (intra-batch address collapse + the shared
+  // one-hour loadRecentlySent window) to the SEND handler above this preview
+  // handler. The exception itself is unchanged: the preview still slices to
+  // BULK_EMAIL_PREVIEW_LIMIT (5) before rendering, so it is bounded by that
+  // constant rather than by a page/perPage query param.
+  "src/routes/api/contacts/bulk-email.ts:321",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,
   // total, shortfall })`, matching the scanner's `{ items` pattern). The

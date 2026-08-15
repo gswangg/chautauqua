@@ -73,7 +73,7 @@ describe("send responses never carry rendered bodies or claim tokens", () => {
     expect(handler).toContain("bodyText: r.text");
   });
 
-  it("documents the exact send response contract: comms/send.ts is {sent, skipped, failed} (DEC-238 wave-3 amendment); bulk-email.ts stays {sent, failed}", () => {
+  it("documents the exact send response contract: comms/send.ts is {sent, skipped, failed} (DEC-238 wave-3 amendment); bulk-email.ts is {sent, skipped, failed} too (DEC-238 wave-14 amendment)", () => {
     const commsHandler = handlerBody(commsSendSrc, '"/api/v1/events/:eventId/compose/send"', []);
     const bulkHandler = handlerBody(bulkEmailSrc, '"/contacts/bulk-email"', ['"/contacts/bulk-email/preview"']);
 
@@ -90,10 +90,20 @@ describe("send responses never carry rendered bodies or claim tokens", () => {
     }
 
     // DEC-238 wave-3 amendment: compose/send is the highest-consequence
-    // fan-out and now carries a `skipped` dedupe report; bulk-email.ts is a
-    // separate route this wave does not touch, and keeps its original
-    // {sent, failed} shape.
+    // fan-out and carries a `skipped` dedupe report (a per-recipient ARRAY,
+    // because its own step-4 report is per-submission).
+    // DEC-238 wave-14 amendment: the CRM bulk-email send is the SAME dedupe
+    // class -- it reuses the one window and one key verbatim and additionally
+    // collapses to the first contact per lower-cased address within the
+    // batch -- so it too answers `skipped`, as a COUNT (matching
+    // app/src/lib/sendResult.ts's SendResult contract). Both handlers now
+    // share the {sent, skipped, failed} key set; only the `skipped` VALUE
+    // shape differs, which is asserted below.
     expect(keysOf(commsHandler)).toEqual(["failed", "sent", "skipped"]);
-    expect(keysOf(bulkHandler)).toEqual(["failed", "sent"]);
+    expect(keysOf(bulkHandler)).toEqual(["failed", "sent", "skipped"]);
+
+    // The shapes are deliberately different: compose/send maps a per-recipient
+    // array; bulk-email sums two integer counters (intra-batch + cross-call).
+    expect(bulkHandler).toMatch(/skipped:\s*intraBatchSkipped\s*\+\s*crossCallSkipped/);
   });
 });
