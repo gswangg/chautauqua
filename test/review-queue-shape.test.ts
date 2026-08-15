@@ -69,6 +69,10 @@ vi.mock("../src/server/repo/review", async () => {
     // DEC-986 (task w6-i): sub-1 carries an audience-level answer, sub-2
     // has none -- mirrors listFormatLabelsBySubmission's fixture exactly.
     listAudienceLevelLabelsBySubmission: vi.fn(async () => new Map([["sub-1", "advanced"]])),
+    // DEC-018 (wave-57): no speaker identities in these fixtures -- the
+    // anonymized-plan test below only checks audienceLevel survives, not
+    // title redaction (see test/review-queue-anonymized-titles.test.ts).
+    listSpeakerIdentitiesForSubmissions: vi.fn(async () => new Map()),
   };
 });
 

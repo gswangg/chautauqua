@@ -14,6 +14,7 @@ import {
   needsMoreRatings,
   isPlanOpen,
   anonymizeForReviewer,
+  redactIdentity,
   validateEvaluationScores,
   criteriaForRound,
   partitionRecused,
@@ -157,6 +158,26 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     c.var.db,
     scoped.map((s) => s.id),
   );
+  // DEC-018 (wave-57 amendment): the queue's own title field leaks speaker
+  // identity the same way the submission detail's title/description do
+  // (line ~318 below) -- loaded once for the full scoped id set, alongside
+  // the batches above, and used to mask both the actionable queueItems'
+  // titles and the recusedOut rows' titles when the plan is anonymized.
+  // listSpeakerIdentitiesForSubmissions carries NO inviteStatus filter, so
+  // it is a superset of the display-scoped speaker lists used elsewhere on
+  // this route.
+  const identitiesBySubmission = plan.anonymized
+    ? await repo.listSpeakerIdentitiesForSubmissions(
+        c.var.db,
+        scoped.map((s) => s.id),
+      )
+    : new Map<string, repo.SpeakerIdentity[]>();
+  const identitiesFor = (submissionId: string): string[] =>
+    (identitiesBySubmission.get(submissionId) ?? []).flatMap((s) =>
+      [s.name, s.email, s.company].filter((v): v is string => !!v && v.trim().length > 0),
+    );
+  const maybeRedactTitle = (submissionId: string, title: string): string =>
+    plan.anonymized ? (redactIdentity(title, identitiesFor(submissionId)) as string) : title;
   // DEC-147: blend through the round's resolved criteria, restricted to
   // 'rating' criteria -- computeWeightedScore (src/domain/evaluation.ts) is
   // the single blended-score formula; a plan with no rating criteria has
@@ -187,7 +208,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   const recusedOut = recusedScoped.map((s) => ({
     submissionId: s.id,
     ref: s.ref,
-    title: s.title,
+    title: maybeRedactTitle(s.id, s.title),
     reason: recusalBySubmission.get(s.id)?.reason ?? null,
     format: formatBySubmission.get(s.id) ?? null,
     audienceLevel: audienceLevelBySubmission.get(s.id) ?? null,
@@ -218,7 +239,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
       return {
         submissionId: summary.id,
         ref: summary.ref,
-        title: summary.title,
+        title: maybeRedactTitle(id, summary.title),
         ratingsCount: countsBySubmission.get(id) ?? 0,
         alreadyRatedByMe: ratedByMe.has(id),
         myScore,
