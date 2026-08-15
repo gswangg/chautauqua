@@ -35,3 +35,4 @@ EXEMPT-BY-RULE note). `.chq-participation-menu-caret`
 not a regression from this lane.
 
 INVALIDATED BY: app/src/**/*.css, src/**/*.css.ts, src/views/theme.ts, scripts/render-sweep*
+

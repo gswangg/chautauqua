@@ -349,7 +349,18 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
   });
 
   it("sets headshot_url on at least 3 contacts, backed by the real docs/fixtures/headshot.png fixture", () => {
-    const updates = [...sql.matchAll(/UPDATE contact SET "headshot_url" = '([^']*)' WHERE "id" = '([^']*)';/g)];
+    // DEC-078/w29-b: the seed now writes contact.headshot_file_id (the indexed
+    // FK that replaced the `headshot_url = '/headshots/' || file.id` join
+    // predicate) in the SAME statement, so this asserts both columns are set
+    // together -- a seed that set only headshot_url would desync the FK.
+    const updates = [
+      ...sql.matchAll(
+        /UPDATE contact SET "headshot_url" = '([^']*)', "headshot_file_id" = '([^']*)' WHERE "id" = '([^']*)';/g,
+      ),
+    ];
+    for (const [, headshotUrl, fileId] of updates) {
+      expect(headshotUrl).toBe(`/headshots/${fileId}`);
+    }
     expect(updates.length).toBeGreaterThanOrEqual(3);
 
     const manifestPath = join(REPO_ROOT, ".seed-assets", "manifest.json");

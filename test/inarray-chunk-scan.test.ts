@@ -56,6 +56,16 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
       "by event configuration (rounds/tracks), not by review-row volume.",
   ],
   [
+    "src/server/repo/review/evaluations.ts",
+    "batch",
+    "countEvaluationsBySubmission's id-scoped branch IS chunkIds-bound — it " +
+      "issues one query per `chunkIds(submissionIds).map((batch) => ...)` " +
+      "element (concurrent batches via Promise.all) rather than a sequential " +
+      "`for (const batch of chunkIds(...))` loop, which is the only form " +
+      "isChunkLoopBound recognises. The bound is the same ID_CHUNK_SIZE " +
+      "slice; only the iteration form differs.",
+  ],
+  [
     "src/server/repo/tasks/speaker-detail.ts",
     "submissionIds",
     "submissionIds is one contact's own submissions within one event — " +
