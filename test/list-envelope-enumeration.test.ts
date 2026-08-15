@@ -30,7 +30,7 @@ import { findStrayPerPageConstantDeclarations } from "./support/list-envelope-en
  *     totalAssigned, items, perReviewer, shortfall }` -- cap echoed first
  *     -- so it no longer matches this scanner's `{ items` pattern and needs
  *     no entry):
- *       - src/routes/comms/preview.ts:74 (POST .../compose/preview) returns a
+ *       - src/routes/comms/preview.ts:82 (POST .../compose/preview) returns a
  *         compose-preview render, one row per selected submission, bounded
  *         by the 100-recipient send cap (DEC checked elsewhere in comms/)
  *         -- a preview payload, not a list GET.
