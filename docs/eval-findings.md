@@ -119,6 +119,30 @@ rules 5/6 incomplete) · /account/password lost its card but is NOT the bare-820
 inputs 188px, H1 28px at x=643 (fleet fix: fields at the full 820, H1 ~36, content
 x≈390). CLASS 4 is part-landed; finish the measure.
 
+## 140-TURN DIAGNOSTIC (run 02-24-33, DIAGNOSTIC ONLY — never a trend number; official cap is 70)
+
+**The five capped areas at double turn budget: 94.3 @ 97% coverage** — ABS 96.4@100 ·
+CFP 94.4@95 · CNT 93.1@94 · **CRM 100.0@100 (first perfect area)** · AIA 91.7@100.
+All 13 scenarios COMPLETED (zero caps; finishes at 74-124 turns). Implied full-product
+ceiling ≈ **93.8 composite** — i.e., the 70-turn cap costs ~6 points of already-working
+product, which is exactly what the turn-diet lane recovers at the official cap.
+
+**NEW P1 DEFECT the caps were hiding — CFP-16 FAILED when finally measured:** with the
+close date in the past, a speaker's submission is NOT locked — "Edit submission" stays on
+the read view and the full edit form (title/abstract/format/level/notes/accessibility/
+profile) loads editable post-close. Build the post-close lock (read-only view + edit
+affordances gone; organizer-side editing unaffected) + runtime-verify by closing a CFP
+and loading the speaker view.
+
+**Also learned:** CFP-11 (scorecard second-criterion commit) PASSED at 140 turns — the
+agent works around it with patience, so it costs points only via turn-burn; the defect
+fix (already mandated) doubles as diet. AIA-04 fires for LEAD placements live (badge +
+"2 new clashes" toast + counter) — the open half remains the co-presenter path as filed.
+**CNT-14 never reached even at 140 turns** — CNT-S3's step list is structurally too long;
+no realistic diet reaches bulk-export at 70. Recommend accepting CNT-14 as
+likely-unjudged (compliant control exists for MANUAL judging) and not spending further
+build effort on reachability.
+
 ## GATE-6 SBEK LOSS ANALYSIS (run 22-14-24: composite 87.9 @ 92% — ZERO environmental losses)
 
 **The drops (CFP −5.4, AIA −5.6, CRM −6.0) decompose into: one re-falsified closure, a
