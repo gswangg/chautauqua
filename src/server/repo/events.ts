@@ -157,25 +157,38 @@ export interface CreateEventInput {
   branding?: EventBranding | null;
 }
 
+/** DEC-552 amendment (findings wave 14): isSlugTaken (routes/api/events.ts)
+ * is a fast-path pre-check only, not the gate — a concurrent create can land
+ * its INSERT between that check and this write. The INSERT itself is the
+ * authority: it targets event_slug_idx (migrations/0000_secret_matthew_
+ * murdock.sql) with onConflictDoNothing, and a post-insert re-select-by-id
+ * that comes up empty means this call's row lost the race, at which point it
+ * throws the exact same refusal the route's pre-check already raises. */
 export async function createEvent(db: Db, input: CreateEventInput): Promise<EventRecord> {
   const now = new Date();
   const id = newId();
-  await db.insert(schema.event).values({
-    id,
-    orgId: input.orgId,
-    name: input.name,
-    slug: input.slug,
-    startDate: input.startDate,
-    endDate: input.endDate,
-    location: input.location ?? null,
-    timezone: input.timezone,
-    brandingJson: input.branding ? JSON.stringify(input.branding) : null,
-    createdAt: now,
-    updatedAt: now,
-  });
-  const created = await getEventForOrg(db, id, input.orgId);
-  if (!created) throw new Error("createEvent: insert did not persist");
-  return created;
+  await db
+    .insert(schema.event)
+    .values({
+      id,
+      orgId: input.orgId,
+      name: input.name,
+      slug: input.slug,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      location: input.location ?? null,
+      timezone: input.timezone,
+      brandingJson: input.branding ? JSON.stringify(input.branding) : null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({ target: schema.event.slug });
+  const rows = await db.select().from(schema.event).where(eq(schema.event.id, id)).limit(1);
+  const row = rows[0];
+  if (!row) {
+    throw new ApiError("invalid", "Slug is already in use", { slug: "Already in use" });
+  }
+  return toEventRecord(row);
 }
 
 /** Scoped by orgId — returns null (never another org's row) when not found. */

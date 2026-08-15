@@ -81,7 +81,16 @@ export interface CreateUserInput {
 }
 
 /** Creates an org user account. Throws ApiError('conflict') on duplicate
- * email (user_email_idx is unique) rather than swallowing the D1 error. */
+ * email (user_email_idx is unique) rather than swallowing the D1 error.
+ *
+ * DEC-552 amendment (findings wave 14): the pre-read below is a fast path
+ * only, not the gate — a concurrent POST /api/v1/users (or a race with the
+ * speaker-account insert in routes/auth-claim.tsx) can land its INSERT
+ * between this SELECT and the write. The INSERT itself is the authority:
+ * it targets user_email_idx (migrations/0000_secret_matthew_murdock.sql)
+ * with onConflictDoNothing, and a post-insert re-select-by-id that comes up
+ * empty means this call's row lost the race, at which point it throws the
+ * exact same ApiError the pre-check raises. */
 export async function createUser(db: Db, input: CreateUserInput): Promise<OrgUserRecord> {
   if (input.email !== input.email.toLowerCase()) throw new Error("createUser: email must be lowercased by the caller");
   const existing = await db
@@ -94,19 +103,24 @@ export async function createUser(db: Db, input: CreateUserInput): Promise<OrgUse
   }
   const now = new Date();
   const id = newId();
-  await db.insert(schema.user).values({
-    id,
-    orgId: input.orgId,
-    email: input.email,
-    passwordHash: input.passwordHash,
-    role: input.role,
-    contactId: null,
-    createdAt: now,
-    updatedAt: now,
-  });
+  await db
+    .insert(schema.user)
+    .values({
+      id,
+      orgId: input.orgId,
+      email: input.email,
+      passwordHash: input.passwordHash,
+      role: input.role,
+      contactId: null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({ target: schema.user.email });
   const rows = await db.select().from(schema.user).where(eq(schema.user.id, id)).limit(1);
   const row = rows[0];
-  if (!row) throw new Error("createUser: insert did not persist");
+  if (!row) {
+    throw new ApiError("conflict", "A user with this email already exists", { email: "already in use" });
+  }
   return toOrgUserRecord(row);
 }
 
