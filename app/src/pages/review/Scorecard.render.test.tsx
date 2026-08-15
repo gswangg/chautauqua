@@ -1358,3 +1358,200 @@ describe('Scorecard rating group keyboard contract (DEC-939 amendment)', () => {
     expect(within(qualityGroup).getByRole('radio', { name: '3' })).toHaveAttribute('tabindex', '0');
   });
 });
+
+// DEC-958 (wave-66 amendment): PUT .../evaluations/:id's fields map renders
+// AT its control -- per-criterion messages under the criterion's own row,
+// {comment: ...} at the comment textarea, and every key (matched or not)
+// gets one anchor in the top-of-rail ErrorSummary. A field-less conflict
+// still renders its message verbatim, with no fabricated field marker.
+describe('Scorecard server refusal shapes render at their control (DEC-958 wave-66 amendment)', () => {
+  function ratingAndTextCriteria() {
+    return [
+      { id: 'c1', label: 'Quality', kind: 'rating' as const, weight: 1 },
+      { id: 'c2', label: 'Notes', kind: 'text' as const, required: false },
+    ];
+  }
+
+  async function renderScorecard(criteria: ReturnType<typeof ratingAndTextCriteria>) {
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+    void criteria;
+  }
+
+  it('renders a per-criterion out-of-range refusal under that criterion, anchored from the summary', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: ratingAndTextCriteria(),
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Invalid scores', fields: { c1: 'score must be within [1, 5]' } } },
+      },
+    });
+
+    await renderScorecard(ratingAndTextCriteria());
+
+    // Fill both criteria so the client-side completeness gate passes and
+    // the PUT actually fires.
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+
+    const message = await screen.findByText('score must be within [1, 5]');
+    const criterionRow = document.getElementById('chq-review-criterion-c1');
+    expect(criterionRow).not.toBeNull();
+    expect(criterionRow!.contains(message)).toBe(true);
+
+    // The summary's anchor for this key points at the same row id.
+    const summaryLink = screen.getByRole('link', { name: /Quality: score must be within \[1, 5\]/ });
+    expect(summaryLink).toHaveAttribute('href', '#chq-review-criterion-c1');
+  });
+
+  it('renders an unknown-criterion key labelled by its raw key, never dropped', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: ratingAndTextCriteria(),
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Invalid scores', fields: { stray: 'unknown criterion' } } },
+      },
+    });
+
+    await renderScorecard(ratingAndTextCriteria());
+
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+
+    const summaryLink = await screen.findByRole('link', { name: /stray: unknown criterion/ });
+    expect(summaryLink).toHaveAttribute('href', '#stray');
+  });
+
+  it('renders the comment-cap refusal at the comment textarea', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: ratingAndTextCriteria(),
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Invalid comment', fields: { comment: 'Max 20000' } } },
+      },
+    });
+
+    await renderScorecard(ratingAndTextCriteria());
+
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+
+    const message = await screen.findByText('Max 20000');
+    const commentField = screen.getByLabelText('Comment to the committee');
+    expect(commentField).toHaveAttribute('id', 'chq-review-comment-field');
+    // The message sits right beside the field it names.
+    expect(message.previousElementSibling === commentField || message.parentElement?.contains(commentField)).toBeTruthy();
+
+    const summaryLink = screen.getByRole('link', { name: /Comment to the committee: Max 20000/ });
+    expect(summaryLink).toHaveAttribute('href', `#${commentField.id}`);
+  });
+
+  it('renders the {scores: required} refusal as an unmatched key, not the generic message', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: ratingAndTextCriteria(),
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'scores is required', fields: { scores: 'required' } } },
+      },
+    });
+
+    await renderScorecard(ratingAndTextCriteria());
+
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+
+    const summaryLink = await screen.findByRole('link', { name: /scores: required/ });
+    expect(summaryLink).toHaveAttribute('href', '#scores');
+  });
+
+  it('renders a field-less conflict verbatim, with no ErrorSummary and no fabricated field marker', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: ratingAndTextCriteria(),
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: {
+        status: 409,
+        body: { error: { code: 'conflict', message: 'This review plan is not currently open' } },
+      },
+    });
+
+    await renderScorecard(ratingAndTextCriteria());
+
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+
+    expect(await screen.findByText('This review plan is not currently open')).toBeInTheDocument();
+    expect(document.querySelector('.chq-error-summary')).toBeNull();
+    expect(document.getElementById('chq-review-criterion-c1')?.querySelector('.chq-field-error')).toBeNull();
+  });
+
+  it('a draft save still renders the per-criterion message (DEC-873: only completeness is skipped)', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: ratingAndTextCriteria(),
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Invalid scores', fields: { c1: 'score must be within [1, 5]' } } },
+      },
+    });
+
+    await renderScorecard(ratingAndTextCriteria());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    const message = await screen.findByText('score must be within [1, 5]');
+    const criterionRow = document.getElementById('chq-review-criterion-c1');
+    expect(criterionRow!.contains(message)).toBe(true);
+  });
+});

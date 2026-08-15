@@ -29,6 +29,7 @@ import { MAX_PER_PAGE } from '../../../../src/lib/pagination';
 // reviewer's number and the organizer's number can never disagree.
 import { computeWeightedScore, criterionWeightShares } from '../../../../src/domain/evaluation';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
+import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import type {
   EvaluationCriterion,
   EvaluationPlan,
@@ -38,6 +39,39 @@ import type {
   ReviewerSubmissionDetail,
   Track,
 } from './types';
+
+// DEC-958 (wave-66 amendment): PUT .../evaluations/:id emits a fields map
+// keyed by CRITERION ID (the per-criterion messages from
+// validateEvaluationScores, src/domain/evaluation.ts) plus two named
+// top-level keys (`scores`, `comment`) that are not criterion ids -- every
+// key renders AT its control, never collapsed into the top-level message.
+// A key that matches neither a criterion id nor the known `comment` key
+// (an 'unknown criterion' refusal, or any future top-level key) still
+// renders in the summary, labelled by its own raw key, rather than being
+// dropped -- the same unmatched-key rule PlanEditor's reviewerAssignProblems
+// and BulkEmailModal already follow.
+const COMMENT_FIELD_ANCHOR_ID = 'chq-review-comment-field';
+
+function criterionAnchorId(criterionId: string): string {
+  return `chq-review-criterion-${criterionId}`;
+}
+
+function evaluationRefusalProblems(
+  fields: Record<string, string>,
+  criteria: EvaluationCriterion[],
+): { anchorId: string; label: string }[] {
+  const criterionById = new Map(criteria.map((c) => [c.id, c]));
+  return Object.entries(fields).map(([key, message]) => {
+    const criterion = criterionById.get(key);
+    if (criterion) {
+      return { anchorId: criterionAnchorId(criterion.id), label: `${criterion.label}: ${message}` };
+    }
+    if (key === 'comment') {
+      return { anchorId: COMMENT_FIELD_ANCHOR_ID, label: `Comment to the committee: ${message}` };
+    }
+    return { anchorId: key, label: `${key}: ${message}` };
+  });
+}
 
 // DEC-889 (wave-72 amendment): the reading column IS the frame's body --
 // the abstract prints in full under an ABSTRACT eyebrow, and the session
@@ -71,6 +105,13 @@ export function Scorecard() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // DEC-958 (wave-66 amendment): the server's per-criterion/per-field
+  // refusal map, kept WHOLE and keyed by the server's own wire keys --
+  // cleared at the start of every submit/save attempt, fed only from a
+  // fields-bearing ApiError. A field-less conflict (plan not open, recused,
+  // cap reached, already submitted) never touches this map -- it renders
+  // through the pre-existing `error` message instead.
+  const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({});
 
   // DEC-271: this reviewer's declared conflict of interest on this
   // submission, if any. Scoring is disabled once recused.
@@ -183,6 +224,7 @@ export function Scorecard() {
     }
     setSubmitting(true);
     setError(null);
+    setServerFieldErrors({});
     setSaved(false);
     try {
       await apiPut(`/review/plans/${planId}/evaluations/${submissionId}`, { scores, comment });
@@ -205,7 +247,16 @@ export function Scorecard() {
         navigate(`/review/plans/${planId}`);
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to submit evaluation');
+      // DEC-958 (wave-66 amendment): a fields-bearing refusal is rendered
+      // AT its control (per-criterion messages, the comment cap) never as
+      // the shared top-level message ('Invalid scores') -- a field-less
+      // conflict (plan not open, recused, cap reached) still falls through
+      // to the verbatim `error` sentence exactly as before.
+      if (err instanceof ApiError && err.fields) {
+        setServerFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to submit evaluation');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -219,12 +270,22 @@ export function Scorecard() {
     if (!planId || !submissionId || !plan) return;
     setSaving(true);
     setError(null);
+    setServerFieldErrors({});
     setSaved(false);
     try {
       await apiPut(`/review/plans/${planId}/evaluations/${submissionId}`, { scores, comment, draft: true });
       setSaved(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save evaluation');
+      // DEC-958/DEC-873 (wave-66 amendment): a draft skips only the
+      // COMPLETENESS check server-side -- every PRESENT value is still
+      // validated, so a draft save must render the same per-criterion
+      // messages as a full submit, never gate this reader on the non-draft
+      // path.
+      if (err instanceof ApiError && err.fields) {
+        setServerFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save evaluation');
+      }
     } finally {
       setSaving(false);
     }
@@ -463,9 +524,21 @@ export function Scorecard() {
         </div>
 
         <aside className="chq-review-scorecard-rail">
+          {/* DEC-958 (wave-66 amendment): the server's fields map, kept
+              WHOLE -- one anchor per key, pointing at that criterion's own
+              row (or the comment textarea, or the raw key for a shape this
+              surface doesn't recognise -- an 'unknown criterion' refusal is
+              never dropped). */}
+          {Object.keys(serverFieldErrors).length > 0 && (
+            <ErrorSummary
+              heading={countHeading(Object.keys(serverFieldErrors).length, 'before this evaluation can be saved')}
+              problems={evaluationRefusalProblems(serverFieldErrors, criteria)}
+            />
+          )}
           {criteria.map((criterion: EvaluationCriterion) => (
             <div
               key={criterion.id}
+              id={criterionAnchorId(criterion.id)}
               className={`chq-review-criterion${ringArmed && focusedId === criterion.id ? ' chq-focused' : ''}${
                 // DEC-939 (wave-3 amendment): a quiet marker on each blocking
                 // criterion's row, added only once a submit has been
@@ -596,6 +669,16 @@ export function Scorecard() {
                   onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
                 />
               )}
+              {/* DEC-958 (wave-66 amendment): the server's own message for
+                  THIS criterion, beside the existing client-side
+                  chq-review-criterion-missing treatment above -- the
+                  completeness gate and the server's answer are different
+                  facts, so neither replaces the other. */}
+              {serverFieldErrors[criterion.id] && (
+                <p className="chq-field-error" role="alert">
+                  {serverFieldErrors[criterion.id]}
+                </p>
+              )}
             </div>
           ))}
 
@@ -622,8 +705,21 @@ export function Scorecard() {
 
           <label className="chq-review-field">
             Comment to the committee
-            <textarea className="chq-textarea" value={comment} disabled={!!recusal} onChange={(e) => setComment(e.target.value)} />
+            <textarea
+              id={COMMENT_FIELD_ANCHOR_ID}
+              className="chq-textarea"
+              value={comment}
+              disabled={!!recusal}
+              onChange={(e) => setComment(e.target.value)}
+            />
           </label>
+          {/* DEC-958 (wave-66 amendment): the {comment: 'Max N'} refusal
+              anchors here, not in the shared top-level error region. */}
+          {serverFieldErrors.comment && (
+            <span className="chq-field-error" role="alert">
+              {serverFieldErrors.comment}
+            </span>
+          )}
 
           {/* DEC-939 (bare recusal amendment): the recusal declaration sits
               below the work, not above it -- a reviewer shouldn't be asked
