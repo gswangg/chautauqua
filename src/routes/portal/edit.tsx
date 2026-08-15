@@ -6,6 +6,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
+import { PublicEmptyState } from "../public/empty-state";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import {
@@ -240,7 +241,11 @@ function ParticipantsSection(props: {
     <section aria-label="Participants" class="chq-section">
       <div class="chq-section-label">Participants</div>
       {participants.length === 0 ? (
-        <p>No participants yet.</p>
+        <PublicEmptyState
+          variant="fresh"
+          what="No participants yet."
+          reason="Anyone presenting this session with you appears here."
+        />
       ) : (
         <ul>
           {participants.map((p) => (

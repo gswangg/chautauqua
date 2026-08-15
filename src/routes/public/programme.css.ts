@@ -7,6 +7,8 @@
 // `<style dangerouslySetInnerHTML={{ __html: PROGRAMME_CSS }} />`, exactly
 // like shell.tsx's BaseStyles inlines PUBLIC_CSS.
 
+import { EMPTY_CSS } from "./css/empty.css";
+
 export const PROGRAMME_CSS = `
   .chq-prog-main {
     max-width: 760px;
@@ -101,4 +103,5 @@ export const PROGRAMME_CSS = `
       display: none;
     }
   }
+${EMPTY_CSS}
 `;
