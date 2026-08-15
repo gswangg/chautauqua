@@ -24,6 +24,24 @@ export const MAX_SEGMENT_RULES = 20;
 // parseCsv touches an arbitrarily large body (DEC-417).
 export const MAX_IMPORT_CSV_BYTES = 5_000_000;
 
+/** Hard cap on rows per CSV import (DEC-356, DEC-478): protects against an
+ * unbounded per-row write burst. This is the ONE MAX_IMPORT_ROWS in the
+ * product (DEC-478); the route layer imports it from here rather than
+ * declaring its own. Producers must split larger files client-side.
+ *
+ * DEC-491 amendment (wave 47): the commit loop below issues NO awaited
+ * writes per row — every create/update is resolved in memory and flushed
+ * AFTER the loop through chunked multi-row statements (chunkRowsForInsert,
+ * DEC-528), so the per-request statement count is O(rows / chunk size), not
+ * O(rows). See MAX_D1_STATEMENTS_PER_REQUEST below for the derived bound
+ * this is checked against.
+ *
+ * DEC-478 amendment (wave 62): moved from src/server/repo/contacts/import.ts
+ * (a drizzle-importing repo module the SPA cannot import) to this pure-core
+ * module so app/src/pages/contacts/ImportWizard.tsx can disclose the cap
+ * where the file is chosen, not only in the 400 at the end. */
+export const MAX_IMPORT_ROWS = 2000;
+
 export interface SocialLinks {
   twitter: string;
   linkedin: string;

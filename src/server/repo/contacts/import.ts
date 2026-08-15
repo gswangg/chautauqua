@@ -8,6 +8,7 @@ import * as schema from "../../../db/schema";
 import {
   describeImportOverwrites,
   findImportDuplicateCandidates,
+  MAX_IMPORT_ROWS,
   type ContactRecord,
 } from "../../../domain/contacts";
 import { ApiError } from "../../http";
@@ -33,18 +34,7 @@ export interface ImportResult {
   contactIds: string[];
 }
 
-/** Hard cap on rows per CSV import (DEC-356, DEC-478): protects against an
- * unbounded per-row write burst. This is the ONE MAX_IMPORT_ROWS in the
- * product (DEC-478); the route layer imports it from here rather than
- * declaring its own. Producers must split larger files client-side.
- *
- * DEC-491 amendment (wave 47): the commit loop below issues NO awaited
- * writes per row — every create/update is resolved in memory and flushed
- * AFTER the loop through chunked multi-row statements (chunkRowsForInsert,
- * DEC-528), so the per-request statement count is O(rows / chunk size), not
- * O(rows). See MAX_D1_STATEMENTS_PER_REQUEST below for the derived bound
- * this is checked against. */
-export const MAX_IMPORT_ROWS = 2000;
+export { MAX_IMPORT_ROWS };
 
 /** DEC-491 amendment (wave 47): a Cloudflare Workers request may issue on
  * the order of 1000 subrequests, and each D1 statement (including each

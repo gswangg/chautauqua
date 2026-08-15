@@ -14,6 +14,8 @@ import '@testing-library/jest-dom/vitest';
 import { ImportWizard } from './ImportWizard';
 import { mockApi } from '../../test-utils/mockApi';
 import type { ImportPlan, ImportResult } from './types';
+import { MAX_IMPORT_ROWS, MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
+import { formatBytes } from '../../../../src/domain/files';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS = readFileSync(join(HERE, 'contacts-panels.css'), 'utf-8');
@@ -487,5 +489,74 @@ describe('ImportWizard: w15-c step-named title + wide frame', () => {
   it('the columns grid uses minmax(0, 1fr) tracks so a long option can\'t force overflow', () => {
     const body = topLevelRuleBody(CSS, '.chq-contacts-import-columns');
     expect(body).toMatch(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  });
+});
+
+// DEC-478 (amendment, wave 62): the row/byte caps are disclosed where the
+// file is chosen (step 1's caption), and enforced BEFORE the match-columns
+// step -- never only as the 400 the server would return after every column
+// has already been mapped.
+function csvWithDataRows(n: number): string {
+  const header = 'First Name,Last Name,Email';
+  const rows = Array.from({ length: n }, (_, i) => `First${i},Last${i},user${i}@example.com`);
+  return [header, ...rows].join('\n');
+}
+
+describe('ImportWizard: DEC-478 amendment -- import caps disclosed at choose-file, enforced before match-columns', () => {
+  it('the choose-file step names both caps, sourced from the imported constants', () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    // Text is split across JSX expression nodes -- assert against the
+    // caption element's flattened textContent rather than a single node.
+    const caption = document.querySelector('.chq-contacts-import-drop .chq-contacts-pipeline-caption');
+    expect(caption).not.toBeNull();
+    expect(caption!.textContent).toBe(`Up to ${MAX_IMPORT_ROWS} rows · ${formatBytes(MAX_IMPORT_CSV_BYTES)} max`);
+  });
+
+  it('a file over MAX_IMPORT_ROWS is refused before the match-columns step, with the overage counted', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    const overage = 143;
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), {
+      target: { value: csvWithDataRows(MAX_IMPORT_ROWS + overage) },
+    });
+
+    const heading = await screen.findByText(
+      `${(MAX_IMPORT_ROWS + overage).toLocaleString()} rows — ${overage} over the ${MAX_IMPORT_ROWS.toLocaleString()}-row limit`,
+    );
+    expect(heading).toBeInTheDocument();
+    expect(screen.getByText('Split the file and import each part.')).toBeInTheDocument();
+
+    // Never advances to the match-columns step.
+    expect(screen.queryByLabelText('Map column Email')).not.toBeInTheDocument();
+
+    // The file stays addressable -- an explicit action clears it, never a
+    // silent reset.
+    const resetBtn = screen.getByRole('button', { name: 'Choose a different file' });
+    fireEvent.click(resetBtn);
+    expect((screen.getByLabelText('Or paste CSV text') as HTMLTextAreaElement).value).toBe('');
+  });
+
+  it('a paste over MAX_IMPORT_CSV_BYTES is refused the same way, with the byte overage counted', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    const bigField = 'x'.repeat(MAX_IMPORT_CSV_BYTES + 1000);
+    const oversizeCsv = `First Name,Last Name,Email,Company\nJohn,Doe,john@example.com,${bigField}`;
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: oversizeCsv } });
+
+    await screen.findByText('Split the file and import each part.');
+    const byteLength = new TextEncoder().encode(oversizeCsv).length;
+    expect(
+      screen.getByText(
+        `${formatBytes(byteLength)} — ${formatBytes(byteLength - MAX_IMPORT_CSV_BYTES)} over the ${formatBytes(MAX_IMPORT_CSV_BYTES)} limit`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Map column Email')).not.toBeInTheDocument();
+  });
+
+  it('a file at exactly MAX_IMPORT_ROWS proceeds to the match-columns step', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), {
+      target: { value: csvWithDataRows(MAX_IMPORT_ROWS) },
+    });
+    expect(await screen.findByLabelText('Map column Email')).toBeInTheDocument();
+    expect(screen.queryByText('Split the file and import each part.')).not.toBeInTheDocument();
   });
 });
