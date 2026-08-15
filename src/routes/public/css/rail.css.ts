@@ -36,15 +36,13 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     overflow-wrap: break-word;
   }
 
-  /* task-w1-d (DEC-555 amendment): the honest empty state for /schedule's
-     saved-sessions view (id retargeted from the dropped 'Show only my
-     picks' toggle to #chq-schedule-empty -- see the new frame block below).
-     Shown/hidden by ItineraryScript's applyScheduleView (agenda-itinerary-
-     script.tsx) once localStorage is read. */
-  .chq-pub-picks-empty {
-    color: var(--chq-muted);
-    font-size: 13px;
-  }
+  /* DEC-919 (wave 51 amendment): the /schedule saved-sessions empty state
+     (#chq-schedule-empty, shown/hidden by ItineraryScript's
+     applyScheduleView once localStorage is read) no longer carries its own
+     .chq-pub-picks-empty rule -- it now renders the SAME
+     .chq-pub-empty-block/.chq-pub-empty-what anatomy as the SSR
+     PublicEmptyState, so the one-off class is deleted rather than left
+     dead (test/ssr-css-contract.scan.test.ts, DEC-970). */
 
   /* ===== task-w14-d (DEC-683): sessions list + rail =====
      Two-column grid (list, then a 300px <aside>) above 700px, single column

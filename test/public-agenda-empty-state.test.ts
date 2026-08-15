@@ -100,6 +100,25 @@ describe("AgendaContent day-grid empty state (DEC-919 amendment)", () => {
     expect(html).toContain(">Show every track<");
   });
 
+  // DEC-768 (wave 67 amendment) inside the DEC-919 split: `day` is itself a
+  // facet. A requested ?day= that is NOT one of the event's scheduled days
+  // is a day the visitor asked for and which holds nothing -- filtered,
+  // naming that day, with an escape that drops only ?day=. (An activeDay
+  // that IS a scheduled day stays fresh -- the first test above.)
+  it("renders the FILTERED block for a requested day outside the event's scheduled days, dropping only day", () => {
+    const html = String(
+      AgendaContent({ event: EVENT, items: [], total: 0, activeDay: "2099-01-01", allDays: ["2026-08-10"] }),
+    );
+    expect(html).toContain("chq-pub-empty-block chq-pub-empty-block-filtered");
+    expect(html).toContain("No sessions match");
+    expect(html).not.toContain("No sessions scheduled yet.");
+    const match = html.match(/class="chq-pub-accent-link chq-pub-empty-escape" href="([^"]*)"/);
+    expect(match).not.toBeNull();
+    const href = (match![1] ?? "").replace(/&amp;/g, "&");
+    expect(href).not.toContain("day=");
+    expect(html).toContain(">Show the first scheduled day<");
+  });
+
   it("stays FRESH (no schedule at all) when there is no activeDay, even if a stray q is present", () => {
     const html = String(AgendaContent({ event: EVENT, items: [], total: 0, activeDay: null, allDays: [], q: "anything" }));
     expect(html).toContain("chq-pub-empty-block-fresh");

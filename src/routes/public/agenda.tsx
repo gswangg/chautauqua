@@ -203,7 +203,21 @@ export function AgendaContent(props: {
             // (highlightTrackId is render-level only, DEC-851), but it is
             // still named here so a future filter-widening of the track
             // control degrades to the correct copy instead of a stale one.
-            activeDay && (props.q || props.highlightTrackId) ? (
+            //
+            // The THIRD facet is `day` itself: DEC-768's wave-67 amendment
+            // binds "with a day explicitly requested, the empty state names
+            // THAT day rather than claiming the event has no schedule".
+            // `activeDay` alone cannot tell a requested ?day= from the
+            // dispatch layer's default (the first day WITH scheduled
+            // sessions) -- but `days` can: every defaulted activeDay is by
+            // construction one of the event's scheduled days, so an
+            // activeDay absent from `days` is a day the visitor asked for
+            // and which holds nothing. That is a filtered state with a real
+            // escape (drop ?day= and land back on the first scheduled day);
+            // an activeDay that IS a scheduled day but rendered zero rows
+            // with no q/track in flight is genuinely fresh -- offering
+            // "clear the day" there would link to the same empty view.
+            activeDay && (props.q || props.highlightTrackId || !days.includes(activeDay)) ? (
               props.q ? (
                 <PublicEmptyState
                   variant="filtered"
@@ -212,13 +226,21 @@ export function AgendaContent(props: {
                   escapeHref={`${basePath}${agendaQs({ trackId: props.highlightTrackId ?? null, q: props.q ?? null, day: activeDay }, { q: null })}`}
                   escapeLabel="Clear the search"
                 />
-              ) : (
+              ) : props.highlightTrackId ? (
                 <PublicEmptyState
                   variant="filtered"
                   what={`No sessions match your search on ${formatDay(activeDay)}.`}
                   reason="Filtered by the track highlight."
                   escapeHref={`${basePath}${agendaQs({ trackId: props.highlightTrackId ?? null, q: props.q ?? null, day: activeDay }, { trackId: null })}`}
                   escapeLabel="Show every track"
+                />
+              ) : (
+                <PublicEmptyState
+                  variant="filtered"
+                  what={`No sessions match ${formatDay(activeDay)}.`}
+                  reason={`Filtered to ${formatDay(activeDay)}, which has nothing scheduled.`}
+                  escapeHref={`${basePath}${agendaQs({ trackId: props.highlightTrackId ?? null, q: props.q ?? null, day: activeDay }, { day: null })}`}
+                  escapeLabel="Show the first scheduled day"
                 />
               )
             ) : (
