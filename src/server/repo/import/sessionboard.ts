@@ -14,7 +14,9 @@ import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from 
 import { updateSubmissionStatuses } from "../submissions/status";
 import { touchSubmissionsForContacts, touchSubmissionsForTracks } from "../submissions/touch";
 import type { SubmissionStatus } from "../../../domain/status";
-import { DEC_612, DEC_717 } from "../../../decisions";
+import { DEC_604, DEC_612, DEC_717 } from "../../../decisions";
+import { MAX_PARTICIPANTS_PER_SUBMISSION } from "../../../domain/participant-roles";
+void DEC_604;
 
 void DEC_717; // submission.status is written ONLY through updateSubmissionStatuses -- never a raw insert/update column -- so the J6 acceptance auto-creation always fires.
 void DEC_612; // wave-54 amendment: contact identity resolves by normalized email BEFORE falling back to create, since a Sessionboard roster import and the CFP form both mint contacts and a ref-less CFP contact must not be duplicated. The (org_id, external_ref) uniqueIndex this decision names is a contract -- a ref is adopted by an email match only when the matched contact's own ref is null and no other row in this batch has already claimed it.
@@ -518,6 +520,15 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
     const contactByRef = await loadContactsByRef(db, orgId, speakerRefs);
     const submissionIds = [...new Set([...submissionIdByRef.values()])];
     const pairMap = await loadExistingParticipantPairs(db, submissionIds);
+    // DEC-604 (participant-cap amendment): running per-submission participant
+    // count, seeded from the existing-pairs load above, enforced identically
+    // on the dryRun and real-write paths (DEC-613: one planner, two modes) so
+    // the Review step reports exactly the rows the real run will drop.
+    const participantCountBySubmissionId = new Map<string, number>();
+    for (const pairKey of pairMap.keys()) {
+      const submissionId = pairKey.slice(0, pairKey.indexOf(":"));
+      participantCountBySubmissionId.set(submissionId, (participantCountBySubmissionId.get(submissionId) ?? 0) + 1);
+    }
 
     // DEC-528 (wave 47 amendment): every id the row loop below needs is
     // resolved HERE, in the batched pre-pass -- the loop reads maps and
@@ -605,6 +616,15 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
       const existingId = pairMap.get(pairKey);
 
       if (existingId === undefined) {
+        const currentCount = participantCountBySubmissionId.get(submissionId) ?? 0;
+        if (currentCount >= MAX_PARTICIPANTS_PER_SUBMISSION) {
+          skipped.push({
+            row: plan.row,
+            reason: `Submission ${submissionId} is already at the ${MAX_PARTICIPANTS_PER_SUBMISSION}-participant cap`,
+          });
+          continue;
+        }
+        participantCountBySubmissionId.set(submissionId, currentCount + 1);
         const id = newId();
         let order: number;
         if (v.order !== undefined) {

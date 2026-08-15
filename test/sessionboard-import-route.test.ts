@@ -579,7 +579,20 @@ describe("applySessionboardPlans participants: batched pre-pass + set-based crea
     const { applySessionboardPlans } = await import("../src/server/repo/import/sessionboard");
     const { db, rows } = makeFakeDb();
     seedEvent(rows, "ev1", "org-1");
-    seedSubmission(rows, { id: "sub-1", eventId: "ev1", externalRef: "sessionboard:sb-sess-1", title: "Talk" });
+    // DEC-604 (participant-cap amendment): spread the 40 rows across 7
+    // submissions (round-robin) so no single submission's participant count
+    // approaches MAX_PARTICIPANTS_PER_SUBMISSION (6) -- this test asserts
+    // batching statement counts, not the cap, and the cap door (covered by
+    // test/sessionboard-participant-cap.test.ts) must not confound it.
+    const SUBMISSION_COUNT = 7;
+    for (let s = 0; s < SUBMISSION_COUNT; s++) {
+      seedSubmission(rows, {
+        id: `sub-${s + 1}`,
+        eventId: "ev1",
+        externalRef: `sessionboard:sb-sess-${s + 1}`,
+        title: "Talk",
+      });
+    }
 
     const ROW_COUNT = 40;
     for (let i = 0; i < ROW_COUNT; i++) {
@@ -614,7 +627,7 @@ describe("applySessionboardPlans participants: batched pre-pass + set-based crea
       row: i + 2,
       externalRef: null,
       values: {
-        sessionExternalId: "sb-sess-1",
+        sessionExternalId: `sb-sess-${(i % SUBMISSION_COUNT) + 1}`,
         speakerEmail: `speaker${i}@example.com`,
         role: "speaker",
       },
@@ -643,21 +656,28 @@ describe("applySessionboardPlans participants: batched pre-pass + set-based crea
 
     // (c) resulting rows match the shape the pre-batching implementation
     // produced: one participant per row, all created (none skipped), speaker
-    // role, visible=false, inviteStatus='none', order assigned 0..39 within
-    // the batch (DEC-675/DEC-656 snapshot semantics untouched).
+    // role, visible=false, inviteStatus='none', order assigned 0..N-1 WITHIN
+    // EACH submission (DEC-675/DEC-656 snapshot semantics untouched; orders
+    // are per-submission, not global, since DEC-604's cap check is scoped
+    // per submission).
     expect(result.created).toBe(ROW_COUNT);
     expect(result.updated).toBe(0);
     expect(result.skipped).toEqual([]);
     expect(rows.participant).toHaveLength(ROW_COUNT);
-    const orders = rows.participant.map((r) => r.order as number).sort((a, b) => a - b);
-    expect(orders).toEqual(Array.from({ length: ROW_COUNT }, (_, i) => i));
+    const ordersBySubmission = new Map<string, number[]>();
     for (const r of rows.participant) {
-      expect(r.submissionId).toBe("sub-1");
+      const list = ordersBySubmission.get(r.submissionId as string) ?? [];
+      list.push(r.order as number);
+      ordersBySubmission.set(r.submissionId as string, list);
       expect(r.role).toBe("speaker");
       expect(r.visible).toBe(false);
       expect(r.inviteStatus).toBe("none");
       const idx = Number(String(r.contactId).replace("con-", ""));
       expect(Number.isInteger(idx)).toBe(true);
+    }
+    for (const orders of ordersBySubmission.values()) {
+      const sorted = [...orders].sort((a, b) => a - b);
+      expect(sorted).toEqual(Array.from({ length: orders.length }, (_, i) => i));
     }
   });
 });
