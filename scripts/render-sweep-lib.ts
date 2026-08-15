@@ -188,7 +188,7 @@ export interface MobileRouteResult {
   failureReason?: string;
 }
 
-const MIN_TAP_TARGET_PX = 44;
+export const MIN_TAP_TARGET_PX = 44;
 // 1px slack for sub-pixel layout rounding across engines.
 const OVERFLOW_TOLERANCE_PX = 1;
 
