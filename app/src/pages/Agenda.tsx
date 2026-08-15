@@ -24,11 +24,18 @@ const GRID_MIN = 15;
 // DEC-615/DEC-667: closed vocabulary mirroring UnplacedReason — used only to
 // summarize why nothing got placed this run, never to invent a reason the
 // server didn't compute.
-const UNPLACED_REASON_LABELS: Record<UnplacedReason, string> = {
+// DEC-615 (wave 43 amendment): 'slot_outside_event_range' and
+// 'write_cap_reached' are server-side UnplacedReason literals (src/domain/
+// schedule.ts) not yet mirrored into agenda/types.ts's UnplacedReason union
+// (out of this lane's file ownership) — widened locally so this lookup
+// covers every reason the server can actually send.
+const UNPLACED_REASON_LABELS: Record<UnplacedReason | 'slot_outside_event_range' | 'write_cap_reached', string> = {
   no_rooms_configured: 'no rooms configured',
   duration_exceeds_day: 'longer than the day',
   no_free_slot: 'no free slot available',
   speaker_double_booked: 'speaker already booked elsewhere',
+  slot_outside_event_range: 'scheduled day outside the event range',
+  write_cap_reached: "this run's write cap reached",
 };
 
 /** Finds a session's ref (placed or unscheduled) for toast copy — the click

@@ -94,7 +94,14 @@ export type UnplacedReason =
   // but the run's per-request write-burst cap (MAX_AUTO_SCHEDULE_PLACEMENTS)
   // was already exhausted by earlier placements — the tail is reported
   // here instead of silently discarded.
-  | "write_cap_reached";
+  | "write_cap_reached"
+  // DEC-615 (wave 43 amendment): the session already carries a persisted
+  // schedule_slot, but that slot's day falls outside the event's current
+  // [startDate, endDate] window (DEC-318: unpublishable). The placer must
+  // never touch it (onConflictDoNothing forbids overwriting an existing
+  // schedule_slot row per DEC-552/DEC-492), so it is named here instead of
+  // silently re-placed or silently dropped.
+  | "slot_outside_event_range";
 
 export interface UnplacedSession {
   submissionId: string;
@@ -129,6 +136,8 @@ export function describeUnplaced(
       return `"${title}" not placed: every open slot conflicts with a speaker already booked elsewhere`;
     case "write_cap_reached":
       return `"${title}" not placed: this run's write cap was reached — re-run auto-schedule to place the rest`;
+    case "slot_outside_event_range":
+      return `"${title}" not placed: its scheduled day falls outside the event's date range — move it or extend the event's dates`;
   }
 }
 
