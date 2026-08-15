@@ -77,6 +77,11 @@ vi.mock("../src/server/repo/comms", async () => {
     // DEC-912: buildRenderTargets now unconditionally loads schedule data
     // for `scheduled` — unrelated to this file's portal-link scope.
     loadIcsScheduleData: vi.fn(async () => new Map()),
+    // DEC-238 wave-14 amendment: bulk-email/compose-send now read
+    // loadRecentlySent before sending — this file's fake db has no real D1
+    // to query, so stub the reader to report nothing recently sent (this
+    // file is not exercising the dedupe window).
+    loadRecentlySent: vi.fn(async () => new Map()),
   };
 });
 

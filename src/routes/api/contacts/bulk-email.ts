@@ -9,6 +9,7 @@ import { ApiError, parseBoundedIdArray } from "../../../server/http";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
 import { overCapFieldMessage } from "../../../domain/cap-copy";
 import * as repo from "../../../server/repo/contacts";
+import { loadRecentlySent } from "../../../server/repo/comms";
 import { getEventForOrg } from "../../../server/repo/events";
 import type { KVStore } from "../../../auth/claim";
 import { preflightRender, MAX_COMPOSE_RECIPIENTS, type RenderTarget } from "../../../domain/compose";
@@ -19,7 +20,8 @@ import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
 import { currentOrgId, asRecord } from "./shared";
 import { newId } from "../../../domain/ids";
-import { DEC_766 } from "../../../decisions";
+import { dedupeCutoff, dedupeKey } from "../../../domain/comms-dedupe";
+import { DEC_766, DEC_238 } from "../../../decisions";
 
 void DEC_766;
 
@@ -209,6 +211,44 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw bulkEmailMergeFieldError(result.missing, targets, targets.length);
     }
 
+    // DEC-238 wave-14 amendment: bulk-email is the SAME dedupe class as
+    // compose/send (src/routes/comms/send.ts:110-139) — mirrored here, not
+    // reinvented. Stage 1 (intra-batch): collapse to the FIRST rendered
+    // entry per lower-cased trimmed address — a bulk email renders one
+    // subject for everyone, so two contact rows sharing an address would
+    // otherwise each get a byte-identical copy. Stage 2 (cross-call): drop
+    // any surviving entry whose (email, subject) was already sent within
+    // COMPOSE_DEDUPE_WINDOW_MS (src/domain/comms-dedupe.ts) — the one
+    // window, never a second literal.
+    void DEC_238;
+    const seenAddresses = new Set<string>();
+    let intraBatchSkipped = 0;
+    const afterIntraBatch: typeof result.rendered = [];
+    for (const rendered of result.rendered) {
+      const addressKey = rendered.email.trim().toLowerCase();
+      if (seenAddresses.has(addressKey)) {
+        intraBatchSkipped += 1;
+        continue;
+      }
+      seenAddresses.add(addressKey);
+      afterIntraBatch.push(rendered);
+    }
+    const recentlySent = await loadRecentlySent(
+      c.var.db,
+      event.id,
+      afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject })),
+      dedupeCutoff(Date.now()),
+    );
+    let crossCallSkipped = 0;
+    const toSend: typeof result.rendered = [];
+    for (const rendered of afterIntraBatch) {
+      if (recentlySent.has(dedupeKey(rendered.email, rendered.subject))) {
+        crossCallSkipped += 1;
+        continue;
+      }
+      toSend.push(rendered);
+    }
+
     const { makeMailer } = await import("../../../server/context");
     // DEC-603: one id per fan-out call, shared by every recipient in this
     // loop, so the comms history tab can group the batch into one row.
@@ -224,7 +264,7 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     // from UnconfiguredMailer.send inside the try/catch below, not here.
     const mailer = makeMailer(c.var.db, c.env);
 
-    for (const rendered of result.rendered) {
+    for (const rendered of toSend) {
       const attempt = {
         to: { email: rendered.email, name: rendered.name },
         subject: rendered.subject,
@@ -250,7 +290,10 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     // DEC-949 amendment: the send response must never carry rendered bodies
     // (they contain live claim tokens minted above) -- only the SPA-consumed
     // counts. The preview handler below legitimately returns `items`.
-    return c.json({ sent: result.rendered.length - failed.length, failed });
+    // DEC-238 wave-14 amendment: `skipped` is a COUNT (both dedupe stages
+    // combined), matching app/src/lib/sendResult.ts's SendResult contract —
+    // not the per-recipient array compose/send returns.
+    return c.json({ sent: toSend.length - failed.length, skipped: intraBatchSkipped + crossCallSkipped, failed });
   });
 
   /** CRM-11 (DEC-150): preview uses the exact same merge-field rendering

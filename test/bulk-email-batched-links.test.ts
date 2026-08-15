@@ -63,6 +63,15 @@ vi.mock("../src/server/repo/events", async () => {
   };
 });
 
+// DEC-238 wave-14 amendment: bulk-email now reads loadRecentlySent before
+// sending — this test's fake db has no real D1 to query, so stub the reader
+// to report nothing recently sent (this test is not exercising the dedupe
+// window; see test/contacts-bulk-email-dedupe.test.ts for that).
+vi.mock("../src/server/repo/comms", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
+  return { ...actual, loadRecentlySent: vi.fn(async () => new Map()) };
+});
+
 const mailerSendMock = vi.fn(async () => {});
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
