@@ -176,15 +176,23 @@ export async function countEvaluationsForSubmission(
  * submissions x reviewers, so it is deliberately set higher and would never
  * fire here, silently disabling the guard).
  *
- * DEC-829 (wave-29 amendment, applied to review by task w29-e): `submissionIds`
- * is an OPTIONAL id-scoped narrowing. The reviewer queue (its one production
- * caller with a natural scope) passes its own resolveReviewerSubmissions-
- * resolved ids, chunkIds-batched (DEC-078) -- the driving relation becomes
- * this reviewer's own already-scoped set, never the plan's whole population,
- * matching DEC-829's "driving relation is the already-scoped set, never a
- * wider table" ruling. Every other/whole-plan caller omits the param and
- * gets the exact original unscoped GROUP BY below, unchanged (locked by
- * test/review-repo-aggregates.test.ts's 2-arg contract). */
+ * DEC-829 (wave-29 amendment, applied to review by task w29-e; refined
+ * wave-39 by task w39-d): `submissionIds` is an OPTIONAL id-scoped
+ * narrowing. The reviewer queue (its one production caller with a natural
+ * scope) passes its own resolveReviewerSubmissions-resolved ids. When those
+ * ids fit in a SINGLE chunkIds batch (<= ID_CHUNK_SIZE), the driving
+ * relation is this reviewer's own already-scoped set, never the plan's
+ * whole population, matching DEC-829's "driving relation is the
+ * already-scoped set, never a wider table" ruling -- one scoped GROUP BY.
+ * When the ids span MORE than one batch (an unrestricted reviewer's scope
+ * can be ~2000 ids, ~23 batches), chunking degenerates into a fan-out over
+ * what is effectively the plan's whole population again; in that case this
+ * falls through to the single unscoped plan+round GROUP BY below instead
+ * (one round trip regardless of scope size), since the queue reads the
+ * returned whole-round map only via .get(id) for ids in its own
+ * already-scoped set, leaking nothing. Every other/whole-plan caller omits
+ * the param entirely and always gets the unscoped GROUP BY, unchanged
+ * (locked by test/review-repo-aggregates.test.ts's 2-arg contract). */
 export async function countEvaluationsBySubmission(
   db: Db,
   planId: string,
@@ -194,29 +202,35 @@ export async function countEvaluationsBySubmission(
   if (submissionIds !== undefined) {
     const result = new Map<string, number>();
     if (submissionIds.length === 0) return result;
-    // Independent per-batch queries over disjoint id sets -- Promise.all
-    // instead of a sequential await per batch (same reasoning as the
-    // submissions.ts DEC-829 amendment siblings).
-    const batches = await Promise.all(
-      chunkIds(submissionIds).map((batch) =>
-        db
-          .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
-          .from(schema.evaluation)
-          .where(
-            and(
-              eq(schema.evaluation.planId, planId),
-              eq(schema.evaluation.round, round),
-              inArray(schema.evaluation.submissionId, batch),
-              submittedEvaluationCondition(),
-            ),
-          )
-          .groupBy(schema.evaluation.submissionId),
-      ),
-    );
-    for (const rows of batches) {
+    const idBatches = chunkIds(submissionIds);
+    // DEC-829 (wave-39 amendment): when the id-scoped narrowing would still
+    // span MORE THAN ONE chunkIds batch (~2000 ids for an unrestricted
+    // reviewer is ~23 GROUP BY statements), that's no longer "the
+    // already-scoped set" -- it's the plan's whole population back again,
+    // just chunked. Fall through to the single unscoped plan+round GROUP BY
+    // below instead: its docstring already blesses the whole-round map as
+    // leaking nothing, since every caller (the reviewer queue included)
+    // reads it only via .get(id) over its own scoped set.
+    if (idBatches.length > 1) {
+      submissionIds = undefined;
+    } else {
+      const batch = idBatches[0];
+      if (!batch) throw new Error("countEvaluationsBySubmission: unreachable -- non-empty ids with no batch");
+      const rows = await db
+        .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
+        .from(schema.evaluation)
+        .where(
+          and(
+            eq(schema.evaluation.planId, planId),
+            eq(schema.evaluation.round, round),
+            inArray(schema.evaluation.submissionId, batch),
+            submittedEvaluationCondition(),
+          ),
+        )
+        .groupBy(schema.evaluation.submissionId);
       for (const r of rows) result.set(r.submissionId, Number(r.count));
+      return result;
     }
-    return result;
   }
   const rows = await db
     .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
