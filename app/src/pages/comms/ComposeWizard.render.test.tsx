@@ -858,6 +858,104 @@ describe('ComposeWizard: Send moves to step 4 (ruling B1)', () => {
   });
 });
 
+// DEC-238 amendment (wave 3): step 4's post-send report states the ruling's
+// three plain lines (sent/skipped/remaining) and, when the dedupe window
+// held any recipient back, names each one with its retry time -- never a
+// silent narrowing and never a 'send anyway' control (foreclosed this
+// wave).
+describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendment)', () => {
+  it('renders the three-line report and names both skipped recipients with their retry times', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: {
+        sent: 1,
+        failed: [],
+        skipped: [
+          {
+            email: 'ada@example.com',
+            name: 'Ada Lovelace',
+            submissionId: 'sub-1',
+            reason: 'already_sent_recently',
+            retryAtIso: '2026-08-15T13:00:00.000Z',
+          },
+          {
+            email: 'grace@example.com',
+            name: 'Grace Hopper',
+            submissionId: 'sub-2',
+            reason: 'already_sent_recently',
+            retryAtIso: '2026-08-15T14:30:00.000Z',
+          },
+        ],
+      },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText('Attachments');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
+
+    const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
+    fireEvent.click(sendButton);
+
+    await screen.findByText(/1 of 1 speakers were emailed/);
+
+    const counts = document.querySelector('.chq-comms-send-report-counts');
+    expect(counts).not.toBeNull();
+    expect(counts!.textContent).toBe('1 sent2 skipped0 remaining');
+
+    expect(screen.getByText(/Ada Lovelace/)).toBeInTheDocument();
+    expect(screen.getByText(/ada@example\.com/)).toBeInTheDocument();
+    expect(screen.getByText(/Grace Hopper/)).toBeInTheDocument();
+    expect(screen.getByText(/grace@example\.com/)).toBeInTheDocument();
+    // No 'send anyway' override control this wave (ruling item 4).
+    expect(screen.queryByRole('button', { name: /send anyway/i })).not.toBeInTheDocument();
+  });
+
+  it('reports zero skipped and renders no skipped list when the server has not landed the field yet', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [] },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText('Attachments');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
+
+    const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
+    fireEvent.click(sendButton);
+
+    await screen.findByText(/1 of 1 speakers were emailed/);
+
+    const counts = document.querySelector('.chq-comms-send-report-counts');
+    expect(counts).not.toBeNull();
+    expect(counts!.textContent).toBe('1 sent0 skipped0 remaining');
+    expect(screen.queryByText(/already sent within the hour/)).not.toBeInTheDocument();
+  });
+});
+
 // w27-d: DEC-954 -- the no-slot caption reads `scheduled` (populated on
 // every row) instead of the ICS-gated `ics` field, which only exists when
 // the server actually ran the preflight for that particular preview call;

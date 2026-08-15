@@ -9,7 +9,6 @@ import {
   selectionReducer,
 } from '../submissions/selection';
 import { PreviewPane } from './PreviewPane';
-import type { SendResult } from '../../lib/sendResult';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { SendFailures } from '../../components/SendFailures';
@@ -19,7 +18,7 @@ import { InsertFieldMenu } from './InsertFieldMenu';
 import { countOf } from '../../lib/plural';
 import { formatDateTime } from '../../lib/dates';
 import { paginationSummary } from '../../lib/pagination-summary';
-import type { EmailTemplate, RenderedRecipient } from './types';
+import type { ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
 import { DEC_793, DEC_967, DEC_993 } from '../../../../src/decisions';
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
@@ -82,7 +81,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // attachIcs was requested. Surfaced literally next to the toggle — never
   // pre-filtered client-side, since that would hide the server's contract.
   const [icsUnscheduledIds, setIcsUnscheduledIds] = useState<string[] | null>(null);
-  const [sendResult, setSendResult] = useState<SendResult | null>(null);
+  const [sendResult, setSendResult] = useState<ComposeSendResult | null>(null);
   // DEC-967 amendment (wave 25, ruling B1): step 4 IS the confirmation --
   // there is no separate dialog. `sentAt` is stamped the instant the send
   // resolves, purely for the post-send report's "when" line (never posted).
@@ -136,11 +135,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
   // DEC-890 (Templates "Use in a send"): a ?template=<id> landing preselects
   // that template exactly as the template <select>'s own onChange does --
-  // prefill subject/body from the template, then clear the selection so
-  // (per DEC-846/DEC-832) templateId is never itself posted; the composer
-  // always sends its own text. Reads location.search directly (this
-  // component isn't otherwise router-aware) once templates have loaded, and
-  // only once per mount (a later template list refresh must not re-fire it).
+  // prefill subject/body from the template. DEC-846 amendment (wave 3):
+  // templateId itself IS recorded here (provenance, not authority -- see
+  // composeBody below), since this landing names the exact template the
+  // batch was seeded from just as plainly as a manual dropdown pick. Reads
+  // location.search directly (this component isn't otherwise router-aware)
+  // once templates have loaded, and only once per mount (a later template
+  // list refresh must not re-fire it).
   const appliedTemplateParam = useRef(false);
   useEffect(() => {
     if (appliedTemplateParam.current || templates.length === 0) return;
@@ -152,7 +153,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setTemplateName(found.name);
     setSubject(found.subject);
     setBodyText(found.bodyText);
-    setTemplateId('');
+    setTemplateId(found.id);
     setStep('template');
   }, [templates]);
 
@@ -188,13 +189,20 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     if (effectiveIncludeFeedback && effectiveFeedbackPlanId) {
       base.feedbackPlanId = effectiveFeedbackPlanId;
     }
-    // DEC-832/DEC-846: a template is a starting point, not a mode — selecting
-    // one only prefills these fields (below, in the template <select>
-    // onChange) and the composer thereafter ALWAYS posts its own
-    // subject/bodyText. templateId is never sent, so every later edit
+    // DEC-846 amendment (wave 3): templateId is PROVENANCE, not authority --
+    // two different questions get two different answers. subject/bodyText
+    // (below) answer "what went out": a template is a starting point, not a
+    // mode, so selecting one only prefills these fields (in the template
+    // <select> onChange / the ?template= landing effect) and the composer
+    // thereafter ALWAYS posts its own subject/bodyText -- every later edit
     // (including DEC-793 merge chip inserts) is what actually goes out and
-    // history shows the words — never the stored template, silently ignoring
-    // the organizer's typing.
+    // history shows the words, never the stored template. templateId
+    // answers "where did this send come from": when the composer still
+    // holds one (unedited-away by a dropdown re-pick), it's posted too, so
+    // Recent Sends/Templates' "Last used" aren't permanently blank for the
+    // product's main send path. The server validates it belongs to this
+    // event and renders exclusively from the posted subject/bodyText.
+    if (templateId) base.templateId = templateId;
     base.subject = subject;
     base.bodyText = bodyText;
     return base;
@@ -366,7 +374,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
         excludeIds && excludeIds.length > 0
           ? composeBody({ submissionIds: [...selection.selectedIds].filter((id) => !excludeIds.includes(id)) })
           : composeBody();
-      const res = await apiPost<SendResult>(`/events/${eventId}/compose/send`, body);
+      const res = await apiPost<ComposeSendResult>(`/events/${eventId}/compose/send`, body);
       setSendResult(res);
       setSentAt(Date.now());
       setPartialExcludedIds(excludeIds);
@@ -463,6 +471,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // failures the server hasn't reported yet.
   const sentFailedCount = sendResult?.failed?.length ?? 0;
   const sentTotal = sendResult ? sendResult.sent + sentFailedCount : 0;
+  // DEC-238 amendment (wave 3): the ruling's three plain lines. `skipped`
+  // defaults to [] client-side (ComposeSendResult) so a server that hasn't
+  // landed the dedupe field yet reports zero, never a fabricated count.
+  // `remaining` is the failed set -- a recipient the product still owes a
+  // message, never a second server-posted field.
+  const skippedRecipients = sendResult?.skipped ?? [];
 
   return (
     <div className="chq-compose-wizard">
@@ -1044,20 +1058,50 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           {/* Ruling B1: a report ABOUT RECIPIENTS, not a copy of the email --
               leads with the audience, then the metadata the organizer needs
               to find this batch again, then names every failed recipient
-              individually. Never invents a skipped-recipient list or a
-              retry clock: compose/send returns skipped: 0 on this path, and
-              a fabricated field is worse than a missing one. */}
+              individually. */}
           <p className="chq-comms-send-report-headline">
             {sendResult.sent} of {sentTotal} speakers were emailed
             {partialExcludedIds && partialExcludedIds.length > 0
               ? ` — ${partialExcludedIds.length} excluded (not yet scheduled)`
               : ''}
           </p>
+          {/* DEC-238 amendment (wave 3): the ruling's three plain lines --
+              sent, skipped, remaining (remaining is the failed set: a
+              recipient the product still owes a message). */}
+          <p className="chq-comms-send-report-counts">
+            {sendResult.sent} sent
+            <br />
+            {skippedRecipients.length} skipped
+            <br />
+            {sentFailedCount} remaining
+          </p>
           <div className="chq-comms-panel-note">
             <p>Template: {templateName || 'No template'}</p>
             <p>Subject: {resolvedSendSubject}</p>
             {sentAt !== null && <p>Sent: {formatDateTime(sentAt)}</p>}
           </div>
+          {/* DEC-238 amendment (wave 3): a skip is never silent -- every
+              recipient the dedupe window held back is named here with the
+              time it becomes eligible again, and the copy states plainly
+              that a changed subject is a different message (the only
+              escape this wave -- no 'send anyway' override, ruling item
+              4). */}
+          {skippedRecipients.length > 0 && (
+            <div className="chq-comms-panel-note">
+              <p>Skipped ({skippedRecipients.length} already sent within the hour):</p>
+              <ul>
+                {skippedRecipients.map((r) => (
+                  <li key={r.email + r.submissionId}>
+                    {r.name} ({r.email}) — {submissionLabel(r.submissionId, preview)}: eligible again{' '}
+                    {formatDateTime(new Date(r.retryAtIso).getTime())}
+                  </li>
+                ))}
+              </ul>
+              <p className="chq-comms-panel-note">
+                Changing the subject makes it a new message, sent right away.
+              </p>
+            </div>
+          )}
           {/* DEC-793 amendment (wave 28): the partial-send path never
               silently shrinks the audience -- every excluded recipient is
               named here under its own heading, same as the failed list
