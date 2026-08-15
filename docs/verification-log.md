@@ -5253,7 +5253,6 @@ signal that doesn't depend on request headers at all.
 RESULT: PASS (pre-flight helpers added and unit-tested; targeted battery
 green) — product gap named above remains OPEN, not fixed by this task.
 OPEN ITEMS: 1
-
 ## 2026-08-15 task-w40-a — build+test+bundle @ 14db7b30
 
 QUALIFYING
@@ -5466,7 +5465,6 @@ exit-ledger OPEN rows (reviewer queue, plan progress (page 1)) close at 3-of-3
 PASS at `2e99b272ef26a3a0bd57150441a97670b15a3ed8`, confirming wave 39's two
 SPEC §7 read-budget fixes.
 OPEN ITEMS: 0
-
 ## 2026-08-15 task-w40-e — render-sweep @ 14db7b30
 
 QUALIFYING (advisory to the DEC-069 predicate — classifies to none of the
