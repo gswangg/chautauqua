@@ -183,7 +183,14 @@ export async function countEvaluationsBySubmission(
         submittedEvaluationCondition(),
       ),
     )
-    .groupBy(schema.evaluation.submissionId);
+    .groupBy(schema.evaluation.submissionId)
+    .limit(MAX_PLAN_EVALUATION_SCAN + 1);
+  if (rows.length > MAX_PLAN_EVALUATION_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This plan would scan more than ${MAX_PLAN_EVALUATION_SCAN} evaluations -- narrow the plan's track filter first`,
+    );
+  }
   const result = new Map<string, number>();
   for (const r of rows) result.set(r.submissionId, Number(r.count));
   return result;

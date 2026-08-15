@@ -114,14 +114,15 @@ function makeFakeDb(fixture: FakeEvaluationRow[]): Db {
               (filter.reviewerId === undefined || r.reviewerId === filter.reviewerId),
           );
           return {
-            // countEvaluationsBySubmission calls .groupBy() after .where();
-            // listSubmissionIdsRatedBy resolves .where()'s result directly
-            // (it's thenable).
+            // countEvaluationsBySubmission calls .groupBy().limit() after
+            // .where() (DEC-346 amendment, wave 18: MAX_PLAN_EVALUATION_SCAN
+            // bound); listSubmissionIdsRatedBy resolves .where()'s result
+            // directly (it's thenable).
             groupBy: () => {
               const counts = new Map<string, number>();
               for (const r of matched) counts.set(r.submissionId, (counts.get(r.submissionId) ?? 0) + 1);
               const rows = [...counts.entries()].map(([submissionId, count]) => ({ submissionId, count }));
-              return Promise.resolve(rows);
+              return { limit: (n: number) => Promise.resolve(rows.slice(0, n)) };
             },
             then: (resolve: (v: unknown[]) => void) =>
               resolve(matched.map((r) => ({ submissionId: r.submissionId }))),
