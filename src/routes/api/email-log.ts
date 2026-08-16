@@ -40,7 +40,9 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
       : undefined;
   const statusRaw = c.req.query("status") || undefined;
   if (statusRaw !== undefined && !(EMAIL_LOG_STATUSES as readonly string[]).includes(statusRaw)) {
-    throw new ApiError("invalid", "status must be one of sent, failed", { status: "invalid" });
+    throw new ApiError("invalid", `status must be one of ${EMAIL_LOG_STATUSES.join(", ")}`, {
+      status: "invalid",
+    });
   }
   const status = statusRaw;
   const qRaw = c.req.query("q") || undefined;

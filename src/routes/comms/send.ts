@@ -186,7 +186,7 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
   }
   const toSend = finalResult.rendered;
 
-  const { makeMailer } = await import("../../server/context");
+  const { makeMailer, d1EmailLogWriter } = await import("../../server/context");
   const mailer = makeMailer(c.var.db, c.env);
   // DEC-603: one id per fan-out call, shared by every recipient in this
   // loop, so the comms history tab can group the batch into one row.
@@ -251,6 +251,54 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
       failed.push({ email: rendered.email, message: err instanceof Error ? err.message : String(err) });
     }
   });
+
+  // DEC-238 (wave-8 amendment, sha efb77e4a): the comms history row must
+  // agree with the send report about skipped recipients — write one
+  // email_log row per `skipped` entry through the SAME single insert owner
+  // (d1EmailLogWriter) that DevSinkMailer/EmailBindingMailer/UnconfiguredMailer
+  // use, rather than a second insert site for schema.emailLog. `skipped`
+  // entries do not carry contactId/subject/text (ComposeDedupeSkip is a
+  // display shape shared with /compose/preview), so look each one back up
+  // in `preflightResult.rendered` by (submissionId, lower(email)) — the same
+  // UNMINTED render the planner itself was fed.
+  //
+  // Invariant 1: loadRecentlySent (src/server/repo/comms.ts) filters
+  // `status = 'sent'`, so a skipped row written here can never itself count
+  // as a prior send and cause a second skip — covered by
+  // test/comms/send-skipped-log.route.test.ts.
+  //
+  // Invariant 2: no claim token is ever minted for a skipped recipient
+  // (minting above is narrowed to `toSendTargets`), so the body stored here
+  // is the UNMINTED preflightResult.rendered text/subject and must contain
+  // no {portal_link} substitution — also covered by that test.
+  if (skipped.length > 0) {
+    const renderedBySubmissionAndEmail = new Map(
+      preflightResult.rendered.map((r) => [`${r.submissionId}::${r.email.trim().toLowerCase()}`, r]),
+    );
+    const emailLogWriter = d1EmailLogWriter(c.var.db);
+    const sentAtMs = now.getTime();
+    for (const skip of skipped) {
+      const source = renderedBySubmissionAndEmail.get(`${skip.submissionId}::${skip.email.trim().toLowerCase()}`);
+      if (!source) continue;
+      await emailLogWriter.write({
+        eventId,
+        contactId: source.contactId,
+        templateId,
+        batchId,
+        toEmail: source.email,
+        toName: source.name,
+        subject: source.subject,
+        bodyText: source.text,
+        // No html render exists for a skipped recipient -- their message
+        // never reached the shell-rendering step (send.ts:235 runs only
+        // inside the fan-out loop, over `toSend`, not over `skipped`).
+        bodyHtml: "",
+        provider: "none",
+        status: "skipped",
+        sentAt: sentAtMs,
+      });
+    }
+  }
 
   // Bump ics_sequence exactly once per submission per send call — after
   // every recipient of every submission has been sent the CURRENT stored
