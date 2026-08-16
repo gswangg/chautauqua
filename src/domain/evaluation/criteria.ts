@@ -44,10 +44,16 @@ export const MAX_PLAN_ROUNDS = 10;
 // a separate cap.
 export const MAX_PLAN_CRITERIA = 7;
 
-// DEC-422 (amendment, wave 2): a dropdown criterion's options list was
-// bounded by the CFP builder's own control but not here -- capped at the
-// same order of magnitude as other bounded option lists in the codebase.
-export const MAX_CRITERION_OPTIONS = 20;
+// DEC-422 (amendment, wave 2, Scale-or-Choice v12 ruling): the v12 ruling
+// (docs/design/DESIGN-RULINGS.md §"Review criteria — Scale or Choice")
+// states the bound twice -- "an organiser-defined list of 2-6 options" and,
+// describing the control itself, "Remove disabled at two -- the bound
+// enforced by the control". Previously this was a soft cap of 20 borrowed
+// from other bounded option lists in the codebase with no minimum at all;
+// now single-sourced to the ruling's actual 2-6 window, enforced server-side
+// (parseCriteriaList below) as well as by the control.
+export const MAX_CRITERION_OPTIONS = 6;
+export const MIN_CRITERION_OPTIONS = 2;
 
 // DEC-676: a criterion may carry a one-line guidance string shown to
 // reviewers under its label and to organizers in the plan editor -- bounded
@@ -242,6 +248,14 @@ export const DEFAULT_PLAN_CRITERIA: EvaluationCriterionDef[] = [
  * criterion -- a missing or non-string score is a data-integrity violation
  * and throws (fail loudly) rather than being silently skipped. Empty input
  * yields a zeroed counts map (one entry per option, all 0) and a null modal.
+ *
+ * DEC-241 (amendment, wave 2): `counts` is a plain object -- consumers MUST
+ * NOT iterate it with `Object.keys`/`Object.entries` to get "declared
+ * order". JS object key order re-sorts any key that looks like an array
+ * index (integer-like strings, e.g. option labels "5", "3", "1") to the
+ * front, ahead of insertion order, silently reordering the committee's own
+ * declared option list. Use `dropdownDistribution` below, which returns the
+ * declared order explicitly as an array.
  */
 export function aggregateDropdownCriterion(
   evals: { scores: Record<string, unknown> }[],
@@ -278,6 +292,22 @@ export function aggregateDropdownCriterion(
   }
 
   return { counts, modal };
+}
+
+/**
+ * DEC-241 (amendment, wave 2): returns one entry per DECLARED option, in
+ * declared order, with `count` 0 for any option absent from `counts` --
+ * the ordering half of aggregateDropdownCriterion's contract, split out so
+ * every consumer that needs a per-option list (CSV columns, a future
+ * results-table distribution bar) reads the criterion's own option order
+ * instead of re-deriving it from `Object.keys(counts)`, which silently
+ * hoists integer-like option labels (see aggregateDropdownCriterion above).
+ */
+export function dropdownDistribution(
+  criterion: DropdownCriterionDef,
+  counts: Record<string, number>,
+): { option: string; count: number }[] {
+  return criterion.options.map((option) => ({ option, count: counts[option] ?? 0 }));
 }
 
 /**

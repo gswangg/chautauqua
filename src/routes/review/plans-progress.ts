@@ -24,6 +24,7 @@ import {
   selectRemindTargets,
   resolveReviewerScopeTrackIds,
   formatReviewerScopeLabel,
+  dropdownDistribution,
 } from "../../domain/evaluation";
 import { toCsv } from "../../domain/csv";
 import { contentDispositionAttachment } from "../../domain/files";
@@ -234,7 +235,15 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/results", requireOrganizer, asy
       // its own two-decimal-precision numeric value, unrounded further.
       Number(r.average.toFixed(2)),
       ...criteria.map((cr) => Number((r.perCriterion[cr.id] ?? 0).toFixed(2))),
-      ...dropdownColumns.map(({ dc, option }) => r.perDropdown[dc.id]?.counts[option] ?? 0),
+      // DEC-241 (amendment, wave 2): per-option counts come from
+      // dropdownDistribution -- one entry per declared option, in declared
+      // order -- never from indexing/iterating the raw counts map, so an
+      // integer-like option label can't silently reorder a column here.
+      ...dropdowns.flatMap((dc) => {
+        const agg = r.perDropdown[dc.id];
+        const dist = dropdownDistribution(dc, agg?.counts ?? {});
+        return dist.map((d) => d.count);
+      }),
     ]);
     const csv = toCsv([header, ...dataRows]);
     return c.body(csv, 200, {
