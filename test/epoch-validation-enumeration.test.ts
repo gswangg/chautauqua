@@ -16,6 +16,18 @@
 // for isEpochMs does not use that exact phrase, so the predicate's own
 // definition site is not mistaken for a consumer.
 //
+// DEC-522 (wave-52 amendment) added a SECOND door phrasing. A day-label
+// column (form.open_date/close_date, evaluation-plan window fields) is now
+// refused by isDayLabelMs with the message "must be a UTC-midnight day
+// label (ms-epoch multiple of 86400000)". That door is still a ms-epoch
+// boundary — isDayLabelMs delegates to isEpochMs and then additionally
+// requires the midnight multiple — so it belongs in THIS enumeration.
+// Recognising only the older phrase would have let src/routes/api/forms.ts
+// drop silently out of the member set the moment both of its doors became
+// day labels, re-opening exactly the coverage hole DEC-527 exists to close.
+// So the marker is the union of both phrasings, and the import obligation
+// is satisfied by either predicate.
+//
 // This is verification-only: it reads source files as plain text and
 // regex-scans them. It does not import or execute production code, so a
 // change here can never affect src/ behavior.
@@ -23,7 +35,7 @@
 import { describe, expect, it } from "vitest";
 import { globSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { isEpochMs, MIN_EPOCH_MS, MAX_EPOCH_MS } from "../src/routes/api/validators";
+import { isEpochMs, isDayLabelMs, DAY_LABEL_MS, MIN_EPOCH_MS, MAX_EPOCH_MS } from "../src/routes/api/validators";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const ROUTES_DIR = path.join(REPO_ROOT, "src", "routes");
@@ -44,15 +56,24 @@ const FILES: FileText[] = ROUTE_FILES.map((relPath) => {
   return { relPath, absPath, text };
 });
 
+/** The older, plain ms-epoch door phrasing (DEC-509/DEC-517). */
 const MS_EPOCH_MARKER = /ms-epoch integer/i;
-const IMPORTS_IS_EPOCH_MS = /\bimport\s*\{[^}]*\bisEpochMs\b[^}]*\}\s*from\s*["'][^"']+["']/;
+/** The DEC-522 day-label door phrasing, which is a ms-epoch door too. */
+const DAY_LABEL_MARKER = /UTC-midnight day label/i;
+/** A file is a member if it carries EITHER door phrasing. */
+const EPOCH_DOOR_MARKER = (text: string): boolean => MS_EPOCH_MARKER.test(text) || DAY_LABEL_MARKER.test(text);
+/** Either predicate discharges the obligation: isDayLabelMs is isEpochMs
+ * plus the midnight-multiple requirement, so importing it still binds the
+ * DEC-517 range at that door. */
+const IMPORTS_EPOCH_PREDICATE =
+  /\bimport\s*\{[^}]*\b(?:isEpochMs|isDayLabelMs)\b[^}]*\}\s*from\s*["'][^"']+["']/;
 
 describe("DEC-527: isEpochMs invariant, enumerated over src/routes/**/*.ts", () => {
   it("found at least one route file to scan (glob is not silently empty)", () => {
     expect(FILES.length).toBeGreaterThan(3);
   });
 
-  const membersWithMarker = FILES.filter((f) => MS_EPOCH_MARKER.test(f.text)).map((f) => f.relPath);
+  const membersWithMarker = FILES.filter((f) => EPOCH_DOOR_MARKER(f.text)).map((f) => f.relPath);
 
   it("derives today's expected member set from the tree (documents current membership)", () => {
     expect(membersWithMarker.sort()).toEqual(
@@ -60,11 +81,27 @@ describe("DEC-527: isEpochMs invariant, enumerated over src/routes/**/*.ts", () 
     );
   });
 
-  it("every file accepting a ms-epoch request-body field imports isEpochMs", () => {
-    const offenders = FILES.filter((f) => MS_EPOCH_MARKER.test(f.text) && !IMPORTS_IS_EPOCH_MS.test(f.text)).map(
+  it("every file accepting a ms-epoch request-body field imports isEpochMs or isDayLabelMs", () => {
+    const offenders = FILES.filter((f) => EPOCH_DOOR_MARKER(f.text) && !IMPORTS_EPOCH_PREDICATE.test(f.text)).map(
       (f) => f.relPath,
     );
-    expect(offenders, `ms-epoch validation without isEpochMs import: ${offenders.join(", ")}`).toEqual([]);
+    expect(offenders, `ms-epoch validation without a shared predicate import: ${offenders.join(", ")}`).toEqual([]);
+  });
+
+  // DEC-522 wave-52: the day-label door is strictly narrower than the plain
+  // ms-epoch door — it inherits the DEC-517 range AND refuses any sub-day
+  // component, which is how a `Date.now() - N` offset reached a day-label
+  // column in the first place.
+  it("isDayLabelMs is isEpochMs narrowed to exact UTC midnights", () => {
+    expect(DAY_LABEL_MS).toBe(86_400_000);
+    expect(isDayLabelMs(Date.UTC(2027, 2, 1))).toBe(true);
+    expect(isDayLabelMs(0)).toBe(true);
+    // a sub-day offset is refused even though it is a valid ms-epoch
+    expect(isEpochMs(Date.UTC(2027, 2, 1) - 60_000)).toBe(true);
+    expect(isDayLabelMs(Date.UTC(2027, 2, 1) - 60_000)).toBe(false);
+    // out-of-range is refused even when it is an exact day multiple
+    expect(isDayLabelMs(1e18)).toBe(false);
+    expect(isDayLabelMs(-1e18)).toBe(false);
   });
 
   // DEC-517 amendment (wave 42): every one of the above members shares the
