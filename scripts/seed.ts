@@ -1394,6 +1394,11 @@ async function main(): Promise<void> {
   // ~40 evaluation rows: the reviewer persona (track 0) only clears 7 of
   // 10 submissions, leaving their queue/progress view genuinely
   // incomplete; the synthetic reviewers clear their whole tracks.
+  // DEC-702 (amendment): 12 entries, comfortably above the largest observed
+  // per-(reviewer, plan) evaluation count (10, on the two 10-submission
+  // tracks) -- insertEvaluation below throws rather than silently wrapping
+  // if a future fixture grows past this pool, instead of quietly repeating
+  // a comment under one reviewer's name again.
   const EVAL_COMMENTS = [
     "Strong technical depth, well organized.",
     "Good energy but could tighten the scope.",
@@ -1403,6 +1408,10 @@ async function main(): Promise<void> {
     "Well-suited for this track.",
     "Could use more advanced content for this audience.",
     "Clear structure, minor polish needed.",
+    "Thoughtful framing; the middle section could be trimmed.",
+    "Practical takeaways an attendee could apply right away.",
+    "Ambitious scope for the slot -- consider narrowing.",
+    "Confident premise, would benefit from a concrete case study.",
   ];
   // Deterministic, non-degenerate recommendation spread (DEC-273): mostly
   // Approve, a meaningful minority Maybe, a few Deny -- so the DEC-241
@@ -1438,6 +1447,15 @@ async function main(): Promise<void> {
     return 1 + (h % 5);
   }
   let evalCounter = 0;
+  // DEC-702 (amendment): comment text must be indexed by the (reviewer, plan)
+  // pair an evaluation belongs to, never by a single global emission counter
+  // -- a global counter cycling through EVAL_COMMENTS.length (8) means any
+  // reviewer whose own call-count gap across the run is a multiple of 8 gets
+  // byte-identical prose signed under their name (confirmed:
+  // seed_evaluation_0002/0058, both seed_user_0004). evalCounter is kept
+  // purely for id minting (seedId("evaluation", ...)); it no longer drives
+  // the comment index.
+  const commentIndexByReviewerPlan = new Map<string, number>();
   function insertEvaluation(
     reviewerId: string,
     submissionId: string,
@@ -1449,7 +1467,17 @@ async function main(): Promise<void> {
     const deliveryScore = scoreOverride?.speaker_delivery ?? hashedScore(reviewerId, submissionId, "speaker_delivery");
     const recommendation =
       RECOMMENDATION_PATTERN[(evalCounter - 1) % RECOMMENDATION_PATTERN.length]!;
-    const comment = EVAL_COMMENTS[evalCounter % EVAL_COMMENTS.length]!;
+    const reviewerPlanKey = `${reviewerId}::${planId}`;
+    const reviewerPlanIndex = commentIndexByReviewerPlan.get(reviewerPlanKey) ?? 0;
+    commentIndexByReviewerPlan.set(reviewerPlanKey, reviewerPlanIndex + 1);
+    if (reviewerPlanIndex >= EVAL_COMMENTS.length) {
+      throw new Error(
+        `seed: reviewer ${reviewerId} would sign a repeated comment on plan ${planId} ` +
+          `(evaluation #${reviewerPlanIndex + 1} for this pair, only ${EVAL_COMMENTS.length} distinct comments seeded) -- ` +
+          "add more EVAL_COMMENTS entries instead of letting the index wrap.",
+      );
+    }
+    const comment = EVAL_COMMENTS[reviewerPlanIndex]!;
     statements.push(
       insertStmt("evaluation", {
         id: seedId("evaluation", evalCounter),
@@ -1653,20 +1681,25 @@ async function main(): Promise<void> {
       rounds: 1,
       // DEC-875 (wave 42 amendment): the "Reviews per talk" field/subtitle
       // read path is restored on every plan, not just the open one -- null
-      // read as blank here too. Every scoped plan_reviewer pair (reviewerC
-      // + reviewerD, both on track 2) evaluates every track-2 submission
-      // exactly once, so the max per-submission count under this plan is 2;
-      // a cap of 3 is a real, non-degenerate number that still removes
-      // nothing from any queue (needsMoreRatings, src/domain/evaluation.ts).
+      // read as blank here too. The scoped plan_reviewer pair (reviewerD,
+      // on track 2) evaluates every track-2 submission exactly once, so the
+      // max per-submission count under this plan is 1; a cap of 3 is a
+      // real, non-degenerate number that still removes nothing from any
+      // queue (needsMoreRatings, src/domain/evaluation.ts).
+      //
+      // DEC-702 (amendment, wave 1a): reviewerC was scoped here too, but
+      // reviewerC is also DEC-854's plan-3 fixture AND (below) plan 4's
+      // cap-saturation observer -- a third plan for the same identity is
+      // exactly the noise DEC-702 prosecutes, so reviewerC's redundant
+      // scope on THIS plan is the one dropped (reviewerD's evaluations
+      // alone already satisfy the "every scoped pair reads 100%" invariant
+      // below).
       max_evaluations: 3,
       created_at: nextTs(),
       updated_at: ts,
     }),
   );
-  const plan2ReviewerAssignments = [
-    { userId: reviewerCUserId, trackIndex: 2 },
-    { userId: reviewerDUserId, trackIndex: 2 },
-  ];
+  const plan2ReviewerAssignments = [{ userId: reviewerDUserId, trackIndex: 2 }];
   plan2ReviewerAssignments.forEach((ra, i) => {
     statements.push(
       insertStmt("plan_reviewer", {
@@ -1690,11 +1723,23 @@ async function main(): Promise<void> {
   // --- evaluation plan 3 (DEC-668/DEC-836): a SECOND plan open at SEED_NOW
   // alongside plan 1 -- the Review landing needs more than one open row so
   // the multi-plan reviewer queue and the per-plan scoping DEC-831 is about
-  // are both reachable from seeded data. reviewerUserId (the demo reviewer
-  // persona) is scoped to track 0 on both plan 1 and this plan, so 'which
-  // queue am I in' is a real question against seeded rows. Zero evaluations
-  // are seeded here on purpose -- an open plan mid-progress (0/N), distinct
-  // from plan 1's partially-worked queue and plan 2's fully-closed one.
+  // are both reachable from seeded data. Zero evaluations are seeded here on
+  // purpose -- an open plan mid-progress (0/N), distinct from plan 1's
+  // partially-worked queue and plan 2's fully-closed one.
+  //
+  // DEC-702 (amendment, wave 1a): reviewerUserId (the demo reviewer persona)
+  // is scoped to track 1 here -- DIFFERENT from plan 1's track 0 -- rather
+  // than the track 0 it previously shared with plan 1. DEC-854 below still
+  // needs reviewerUserId as one of plan 3's four distinct reviewer ids (a
+  // seed-coherence test enumerates that count directly and there is no 5th
+  // reviewer persona to substitute), and
+  // test/seed-coherence.test.ts's "(DEC-848) the reviewer persona has two
+  // simultaneously open, differently-track-scoped queues" requires their
+  // open-plan track scopes to differ -- so plan 3's track can no longer
+  // match plan 1's without failing that test. Scoping reviewerUserId here
+  // (instead of plan 4, DEC-707's cap-saturation fixture) lets reviewerUserId
+  // drop from three whole-track-scoped plans to two (plan 1 + plan 3);
+  // plan 4's pair is now reviewerB + reviewerC instead (see below).
   const evalPlan3Id = seedId("evaluation_plan", 3);
   const evalPlan3Criteria = [
     {
@@ -1739,12 +1784,18 @@ async function main(): Promise<void> {
       updated_at: ts,
     }),
   );
+  // DEC-875 (wave 42 amendment): reviewerUserId is scoped to track 1 here
+  // (see the comment above the plan's declaration) -- track_id differs from
+  // reviewerB/reviewerC below (track 0), so this row alone still keeps
+  // plan 0003 at >=2 distinct tracks even though reviewerUserId no longer
+  // shares Sam-Ana-Devin's "same track" grouping from the original DEC-854
+  // mock (see that comment below).
   statements.push(
     insertStmt("plan_reviewer", {
       id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 1),
       plan_id: evalPlan3Id,
       user_id: reviewerUserId,
-      track_id: trackIds[0]!,
+      track_id: trackIds[1]!,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -1770,9 +1821,23 @@ async function main(): Promise<void> {
   // track, plus Ines Duarte scoped to a DIFFERENT track -- the mock's
   // "unchanged · wrong track" delta case) -- gate-4 found plan 0003 only
   // ever carried 2 of those 4, so the four-row distribute table was
-  // unreproducible. reviewerC (Devin) joins on the same track as Sam/Ana;
+  // unreproducible. reviewerC (Devin) joins on the same track as Ana;
   // reviewerD (Ines) is deliberately scoped to a different track, matching
   // the mock's mismatched-track row.
+  //
+  // DEC-702 amendment (wave 1a): reviewerUserId (Sam) moved from track 0 to
+  // track 1 above (now sharing reviewerD's track instead of Ana/Devin's) so
+  // that reviewerUserId's whole-track footprint could drop from three plans
+  // to two elsewhere (see the comment above the plan's declaration) --
+  // test/seed-coherence.test.ts's DEC-854 assertion only checks for >=4
+  // distinct reviewer ids on this plan, not the exact track grouping, and
+  // test/seed.test.ts's "two reviewer scopes on distinct tracks" assertion
+  // only checks for >=2 distinct tracks, both of which still hold. The
+  // *exact* four-way "3 same track + 1 different" grouping the original
+  // mock frame shows is no longer reproduced (it is now 2 same track + 2 on
+  // a second track); a 5th reviewer persona would be needed to restore the
+  // exact grouping while also satisfying DEC-702 -- flagged for a future
+  // wave rather than decided here.
   statements.push(
     insertStmt("plan_reviewer", {
       id: seedId("plan_reviewer", 10),
@@ -1795,25 +1860,32 @@ async function main(): Promise<void> {
   );
 
   // --- evaluation plan 4 (DEC-848): a SECOND plan simultaneously open
-  // alongside plan 1 (distinct from plan 3, which shares plan 1's track 0
-  // scope) so the scoped review queue is exercised: reviewerUserId here is
-  // scoped to trackIds[1] instead of plan 1's trackIds[0], so their two
-  // live queues differ in both name and track scope, not just plan name.
-  // Only a minority (2) of this plan's in-track submissions are scored,
-  // mirroring plan 1's own partial (7-of-10) progress, so the new queue
-  // reads genuinely incomplete rather than trivially empty or complete.
+  // alongside plan 1 (distinct from plan 3) so the scoped review queue is
+  // exercised. Only a minority (2) of this plan's in-track submissions are
+  // scored, mirroring plan 1's own partial (7-of-10) progress, so the new
+  // queue reads genuinely incomplete rather than trivially empty or
+  // complete.
   //
   // DEC-707 (wave-79 amendment): this plan's cap is set to 1 (not 2) and a
-  // second reviewer (reviewerB) is scoped to the same track/plan below --
-  // deliberately cap-saturated so DEC-707's assignedExcludingSaturated
+  // second reviewer is scoped to the same track/plan below -- deliberately
+  // cap-saturated so DEC-707's assignedExcludingSaturated
   // (src/domain/evaluation/queue.ts) has a seed-reachable case: the 2
-  // track-1 submissions reviewerUserId scores below each collect exactly 1
-  // evaluation (the cap), so they must fall out of reviewerB's "assigned"
-  // denominator on GET /plans/:id/progress, while the rest of track 1 stays
-  // in it. Before this amendment, every seeded plan's cap sat strictly
-  // above every seeded per-submission count, so only a hand-built mock
-  // harness (test/reviewer-progress-cap-denominator.test.ts) ever exercised
-  // this branch.
+  // track-1 submissions the scoring reviewer evaluates below each collect
+  // exactly 1 evaluation (the cap), so they must fall out of the other
+  // reviewer's "assigned" denominator on GET /plans/:id/progress, while the
+  // rest of track 1 stays in it. Before this amendment, every seeded plan's
+  // cap sat strictly above every seeded per-submission count, so only a
+  // hand-built mock harness (test/reviewer-progress-cap-denominator.test.ts)
+  // ever exercised this branch.
+  //
+  // DEC-702 amendment (wave 1a): reviewerUserId used to be the scoring
+  // reviewer here (paired with reviewerB), but that was reviewerUserId's
+  // THIRD whole-track-scoped plan (plan 1, plan 3, this one) -- reviewerC
+  // takes over the scoring role instead (identity is irrelevant to
+  // test/reviewer-progress-cap-denominator-seed.test.ts, which resolves
+  // "the scoring reviewer" and "the second reviewer" from the SQL rows
+  // rather than hardcoding either), letting reviewerUserId drop this plan
+  // and hold whole-track scope on only plan 1 + plan 3.
   const evalPlan4Id = seedId("evaluation_plan", 4);
   const evalPlan4Criteria = [
     {
@@ -1848,7 +1920,7 @@ async function main(): Promise<void> {
       scale_json: JSON.stringify({ min: 1, max: 5 }),
       criteria_json: JSON.stringify(evalPlan4Criteria),
       rounds: 1,
-      // DEC-707 (wave-79 amendment): capped at 1, not 2 -- reviewerUserId
+      // DEC-707 (wave-79 amendment): capped at 1, not 2 -- reviewerC
       // evaluates 2 of track 1's submissions once each (see below), so at a
       // cap of 1 those two submissions are exactly saturated the moment
       // they're scored, giving assignedExcludingSaturated a real,
@@ -1859,20 +1931,26 @@ async function main(): Promise<void> {
       updated_at: ts,
     }),
   );
+  // DEC-702 amendment (wave 1a): reviewerC (not reviewerUserId) is the
+  // scoring reviewer here -- reviewerUserId's own whole-track budget is
+  // already spent on plan 1 + plan 3 (see above); reviewerC is otherwise
+  // only scoped to plan 1/track 2 and plan 3/track 0, both different
+  // tracks, so this row doesn't collide with any existing plan_reviewer
+  // pair.
   statements.push(
     insertStmt("plan_reviewer", {
       id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 2),
       plan_id: evalPlan4Id,
-      user_id: reviewerUserId,
+      user_id: reviewerCUserId,
       track_id: trackIds[1]!,
       created_at: nextTs(),
       updated_at: ts,
     }),
   );
   // DEC-707 (wave-79 amendment): a second reviewer scoped to the SAME
-  // plan/track as reviewerUserId above, so the two track-1 submissions
-  // reviewerUserId saturates (cap of 1, see above) are genuinely "assigned
-  // but unreachable" for THIS reviewer -- the seed-reachable case for
+  // plan/track as reviewerC above, so the two track-1 submissions
+  // reviewerC saturates (cap of 1, see above) are genuinely "assigned but
+  // unreachable" for THIS reviewer -- the seed-reachable case for
   // assignedExcludingSaturated. reviewerB is not otherwise scoped to plan
   // 4/track 1 (their only other scoping is plan 1/track 1 and plan 3/track
   // 0, both different plans), so this row doesn't collide with any existing
@@ -1894,7 +1972,7 @@ async function main(): Promise<void> {
     );
   }
   for (const submissionId of track1Subs.slice(0, 2)) {
-    insertEvaluation(reviewerUserId, submissionId, evalPlan4Id);
+    insertEvaluation(reviewerCUserId, submissionId, evalPlan4Id);
   }
 
   // --- onboarding tasks (DEC-009/DEC-023): the 5 canonical default tasks,
