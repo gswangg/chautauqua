@@ -80,6 +80,28 @@ describe('NewContactModal fields render as FormRow (DEC-950)', () => {
   });
 });
 
+// DEC-597 (wave 64 amendment): the modal states why email is required and
+// ends by naming what it does not do (directory add != event add).
+describe('NewContactModal copy (DEC-597 wave 64 amendment)', () => {
+  it('gives the email field a help reason about matching/merging', () => {
+    mockApi({});
+    renderModal();
+
+    const emailInput = screen.getByLabelText('Email');
+    const helpText = emailInput.closest('.chq-form-row')?.querySelector('.chq-form-row-help');
+    expect(helpText).not.toBeNull();
+    expect(helpText?.textContent).toMatch(/matched and merged/);
+  });
+
+  it('closes by naming that adding a contact does not put them on an event', () => {
+    mockApi({});
+    renderModal();
+
+    expect(screen.getByText(/does not put them on an event/)).toBeInTheDocument();
+    expect(screen.getByText(/Add to an event/)).toBeInTheDocument();
+  });
+});
+
 describe('NewContactModal duplicate hint (DEC-788)', () => {
   it('shows a "Possible duplicate" hint once the check finds a match, and Create still succeeds', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

@@ -427,6 +427,11 @@ export function TracksRoomsPanel() {
               Add a track
             </button>
           </div>
+          {/* DEC-888 (wave 64 amendment): one caption for the section, not
+              one per row -- names what the colour is for. */}
+          <p className="chq-settings-section-caption">
+            The colour is how a track reads on the agenda and the public pages.
+          </p>
           <ul className="chq-settings-edit-list">
             {tracks.map((track) => {
               const draft = trackDrafts[track.id] ?? trackBaseline(track);
