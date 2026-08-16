@@ -21,6 +21,12 @@ export type {
 } from "./evaluation/scoring";
 
 export {
+  EvaluationScoresJsonError,
+  parseEvaluationScoresJson,
+  numericScoresFor,
+} from "./evaluation/scores-json";
+
+export {
   MAX_PLAN_ROUNDS,
   MAX_PLAN_CRITERIA,
   MAX_CRITERION_OPTIONS,

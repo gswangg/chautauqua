@@ -8,6 +8,7 @@ import { newId } from "../../../domain/ids";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
 import type { EvaluationCriterionDef } from "../../../domain/evaluation";
 import { parsePlanCriteria, parsePlanScale } from "../../../domain/evaluation/plan-json";
+import { parseEvaluationScoresJson } from "../../../domain/evaluation/scores-json";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
 import { MAX_PLAN_SUBMISSION_SCAN } from "./submissions";
@@ -52,7 +53,7 @@ function toEvaluationRecord(row: typeof schema.evaluation.$inferSelect): Evaluat
     submissionId: row.submissionId,
     reviewerId: row.reviewerId,
     round: row.round,
-    scores: JSON.parse(row.scoresJson) as Record<string, number | string>,
+    scores: parseEvaluationScoresJson(row.scoresJson, row.id),
     comment: row.comment,
     submittedAt: row.submittedAt ? row.submittedAt.getTime() : null,
   };
@@ -96,7 +97,7 @@ export async function listEvaluationScoresForPlan(
   }
   return rows.map((r) => ({
     submissionId: r.submissionId,
-    scores: JSON.parse(r.scoresJson) as Record<string, number | string>,
+    scores: parseEvaluationScoresJson(r.scoresJson, r.submissionId),
   }));
 }
 
@@ -287,7 +288,14 @@ export async function listSubmissionIdsRatedBy(
 /** DEC-831: this reviewer's own scores for a plan round, keyed by
  * submissionId -- read beside listSubmissionIdsRatedBy (same WHERE shape)
  * rather than a second pass over listEvaluationScoresForPlan, so the reviewer
- * queue's myScore column shares one query per reviewer per round. */
+ * queue's myScore column shares one query per reviewer per round.
+ * DEC-346 amendment (wave 81): this was the only scores read in the module
+ * with no ceiling -- its two siblings (listEvaluationScoresForPlan,
+ * listEvaluatedPairsForPlan) already refuse loudly at
+ * MAX_PLAN_EVALUATION_SCAN + 1 rather than silently truncating; this read is
+ * scoped to a single reviewer within a single plan+round, so the same cap
+ * (and the same total order) is a conservative, never-firing-in-practice
+ * ceiling for that scope, not a new behavioral limit. */
 export async function listEvaluationScoresForReviewer(
   db: Db,
   planId: string,
@@ -309,9 +317,17 @@ export async function listEvaluationScoresForReviewer(
         // read from a partial, unsubmitted draft.
         submittedEvaluationCondition(),
       ),
+    )
+    .orderBy(asc(schema.evaluation.submissionId), asc(schema.evaluation.id))
+    .limit(MAX_PLAN_EVALUATION_SCAN + 1);
+  if (rows.length > MAX_PLAN_EVALUATION_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This plan would scan more than ${MAX_PLAN_EVALUATION_SCAN} evaluations -- narrow the plan's track filter first`,
     );
+  }
   return new Map(
-    rows.map((r) => [r.submissionId, JSON.parse(r.scoresJson) as Record<string, number | string>]),
+    rows.map((r) => [r.submissionId, parseEvaluationScoresJson(r.scoresJson, r.submissionId)]),
   );
 }
 
@@ -428,7 +444,7 @@ export async function listEvaluationsForSubmission(
       lastName: r.contactLastName,
       email: r.userEmail,
     }),
-    scores: JSON.parse(r.scoresJson) as Record<string, number | string>,
+    scores: parseEvaluationScoresJson(r.scoresJson, r.evaluationId),
     comment: r.comment,
     submittedAt: r.submittedAt ? r.submittedAt.getTime() : null,
   }));

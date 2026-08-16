@@ -15,6 +15,7 @@ import {
   buildResultsRows,
   criteriaForRound,
   normalizeGuidance,
+  numericScoresFor,
   MAX_CRITERION_GUIDANCE_LENGTH,
   MAX_PLAN_ROUNDS,
   MAX_PLAN_CRITERIA,
@@ -22,7 +23,6 @@ import {
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type DropdownCriterionDef,
-  type EvaluationScores,
   type ResultsSortKey,
   type SortDirection,
   type RoundMetaEntry,
@@ -484,9 +484,18 @@ export async function rankPlanResults(
 
   const rows: RankedResultsRow[] = submissions.map((sub) => {
     const subEvals = evalsBySubmission.get(sub.id) ?? [];
-    const evals = subEvals.map((e) => ({ scores: e.scores as unknown as EvaluationScores }));
+    // DEC-212 (wave-81 amendment): numericScoresFor is the ONE validated
+    // narrowing from the row's raw Record<string, number|string> to the
+    // arithmetic-safe EvaluationScores shape -- no cast, since a non-numeric
+    // value here would otherwise reach computeWeightedScore's `score *
+    // weight` as NaN and silently poison the plan's ranking.
+    const evals = subEvals.map((e) => ({ scores: numericScoresFor(e.scores, criteria, e.submissionId) }));
     const agg = aggregateSubmission(evals, criteria);
-    const dropdownEvals = subEvals.map((e) => ({ scores: e.scores as unknown as Record<string, unknown> }));
+    // aggregateDropdownCriterion only ever reads a dropdown criterion's own
+    // key (validated as a string against its options list) -- the row's
+    // Record<string, number|string> already satisfies its
+    // Record<string, unknown> parameter structurally, no cast needed.
+    const dropdownEvals = subEvals.map((e) => ({ scores: e.scores }));
     const perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }> = {};
     for (const dc of dropdowns) {
       perDropdown[dc.id] = aggregateDropdownCriterion(dropdownEvals, dc);
