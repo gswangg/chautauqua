@@ -30,6 +30,7 @@ export {
 
 export {
   customFieldsJsonOf,
+  parseContactCustomFields,
   findContactById,
   findContactForOrg,
   createContact,

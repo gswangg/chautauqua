@@ -61,6 +61,25 @@ export function customFieldsJsonOf(customFields: Record<string, string> | null |
   return JSON.stringify(customFields);
 }
 
+/** DEC-738 (wave-77 amendment): the ONE declared parser for
+ * contact.custom_fields_json, beside its declared serializer above. Every
+ * reader in this repo routes through here instead of hand-rolling
+ * `JSON.parse` (eight call sites previously gave three different answers
+ * for a null/empty column). null/undefined/empty string all mean "no custom
+ * fields yet" -> {}, matching customFieldsJsonOf's own null-for-empty
+ * writer. A non-empty column is trusted invariant data written only by
+ * customFieldsJsonOf -- malformed or non-object JSON is a violated
+ * invariant and fails loudly (no try/catch, house rule), never silently
+ * coerced to {}. */
+export function parseContactCustomFields(json: string | null | undefined): Record<string, string> {
+  if (json === null || json === undefined || json === "") return {};
+  const parsed: unknown = JSON.parse(json);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("contact.custom_fields_json did not decode to a plain object");
+  }
+  return parsed as Record<string, string>;
+}
+
 export async function findContactById(db: Db, id: string): Promise<ContactRow | null> {
   const rows = await db.select().from(schema.contact).where(eq(schema.contact.id, id)).limit(1);
   const row = rows[0];
@@ -412,7 +431,7 @@ async function scanOrgContactRecords(db: Db, orgId: string, whereExpr: ReturnTyp
     lastName: r.lastName,
     ...(r.company ? { company: r.company } : {}),
     ...(r.title ? { title: r.title } : {}),
-    ...(r.customFieldsJson ? { customFields: JSON.parse(r.customFieldsJson) as Record<string, string> } : {}),
+    customFields: parseContactCustomFields(r.customFieldsJson),
     updatedAt: r.updatedAt.getTime(),
   }));
 }

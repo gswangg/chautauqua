@@ -15,7 +15,7 @@ import {
 import { fullName } from "../../../domain/contacts-parts/types";
 import { ApiError } from "../../http";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
-import { customFieldsJsonOf } from "./crud";
+import { customFieldsJsonOf, parseContactCustomFields } from "./crud";
 import { resolveImportUpsert } from "./query";
 import { toContactRecord, toRow, type ContactRow } from "./rows";
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
@@ -261,9 +261,7 @@ export async function applyImportRows(
       const row = toRow(raw);
       byEmail.set(normalizeEmail(row.email), row.id);
       existingById.set(row.id, row);
-      if (row.customFieldsJson) {
-        existingCustomFieldsById.set(row.id, JSON.parse(row.customFieldsJson) as Record<string, string>);
-      }
+      existingCustomFieldsById.set(row.id, parseContactCustomFields(row.customFieldsJson));
     }
   }
 
@@ -370,9 +368,7 @@ export async function applyImportRows(
       // main commit loop below already reads, so the merge branch there
       // needs no extra query.
       existingById.set(target.id, target);
-      if (target.customFieldsJson) {
-        existingCustomFieldsById.set(target.id, JSON.parse(target.customFieldsJson) as Record<string, string>);
-      }
+      existingCustomFieldsById.set(target.id, parseContactCustomFields(target.customFieldsJson));
     }
   }
 

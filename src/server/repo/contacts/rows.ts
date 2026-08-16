@@ -5,6 +5,7 @@
 import * as schema from "../../../db/schema";
 import type { ContactRecord } from "../../../domain/contacts";
 import { parseSocialLinks } from "../profile";
+import { parseContactCustomFields } from "./crud";
 
 // DEC-554: the ONE shared bound for both whole-directory contact scans —
 // duplicate detection (contacts/merge.ts) and the segment/rules list path
@@ -70,6 +71,6 @@ export function toContactRecord(row: ContactRow): ContactRecord {
     ...(row.headshotUrl ? { headshotUrl: row.headshotUrl } : {}),
     ...(row.notes ? { notes: row.notes } : {}),
     ...(hasSocialLinks ? { socialLinks } : {}),
-    ...(row.customFieldsJson ? { customFields: JSON.parse(row.customFieldsJson) as Record<string, string> } : {}),
+    customFields: parseContactCustomFields(row.customFieldsJson),
   };
 }

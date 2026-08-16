@@ -85,7 +85,7 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     return c.json({
       items: result.items.map((item) => ({
         ...serializeContact(item),
-        labels: contactLabels(item.customFieldsJson ? JSON.parse(item.customFieldsJson) : {}),
+        labels: contactLabels(repo.parseContactCustomFields(item.customFieldsJson)),
       })),
       total: result.total,
       page: params.page,

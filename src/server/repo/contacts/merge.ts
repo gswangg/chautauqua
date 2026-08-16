@@ -18,7 +18,7 @@ import {
 import { normalizeEmail } from "../../../domain/email";
 import { serializeSocialLinks } from "../profile";
 import { ApiError } from "../../http";
-import { findContactById } from "./crud";
+import { findContactById, customFieldsJsonOf } from "./crud";
 import { toContactRecord, type ContactRow, MAX_CONTACT_DIRECTORY_SCAN } from "./rows";
 import { buildMergeRepointOps, mergedPipelineStage, type PipelineStageLike } from "./query";
 import { planMergeFold, detectMergeConflicts } from "./merge-preflight";
@@ -458,7 +458,7 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
       headshotFileId: mergedHeadshotFileId,
       notes: merged.notes ?? null,
       socialLinksJson: merged.socialLinks ? serializeSocialLinks(merged.socialLinks) : null,
-      customFieldsJson: merged.customFields ? JSON.stringify(merged.customFields) : null,
+      customFieldsJson: customFieldsJsonOf(merged.customFields) ?? null,
       updatedAt: new Date(),
     })
     .where(eq(schema.contact.id, keepId));
