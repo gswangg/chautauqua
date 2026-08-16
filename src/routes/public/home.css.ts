@@ -93,9 +93,12 @@ export const HOME_CSS = `
      test/public-home-motion.test.ts, and a bare colour hover here needs no
      transition contract of its own.
      The 44px tap floor is NOT declared here: DEC-367 (wave-57 amendment) puts
-     it inside @media (max-width: 700px) in every SSR CSS module -- desktop
+     it inside the 700px phone media block in every SSR CSS module -- desktop
      sizes from padding, like its bare-text sibling .chq-home-action-quiet.
-     The phone floor is re-asserted in this module's phone block below. */
+     The phone floor is re-asserted in this module's phone block below.
+     (That block's opening literal is deliberately NOT repeated in this
+     comment: test/tier0-falsifiability-w46.test.ts locates the phone block
+     with indexOf on it, so an earlier copy would redirect the scan.) */
   .chq-home-action-tertiary { font-size: 14px; font-weight: 700; padding: 0 8px; display: flex; align-items: center; white-space: nowrap; color: var(--chq-ink-strong); text-decoration: none; }
   a.chq-home-action-tertiary:hover { color: var(--chq-brand); }
 
