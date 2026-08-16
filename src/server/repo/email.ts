@@ -62,6 +62,12 @@ export interface EmailLogListParams {
    * COALESCE(batch_id, id) expression listEmailBatches groups by — so a
    * legacy/NULL-batch row's own id is a valid batchKey too. */
   batchKey?: string;
+  /** DEC-603 (wave-56 amendment): the History tab's template chip row —
+   * unlike DEC-905's status/contactId/batchId, this one IS expressible at
+   * batch grain (listEmailBatches already projects templateId per batch, via
+   * MIN()), so it is pushed into the shared emailLogConditions/batchWhere
+   * predicates rather than refused when combined with groupBy=batch. */
+  templateId?: string;
   /** DEC-905: epoch-ms lower bound (inclusive) on sentAt, pushed into the
    * SQL WHERE clause — never a post-fetch filter — so the Comms head's
    * "N sent in the last 7 days" reads the window's own total rather than a
@@ -151,13 +157,16 @@ const SELECTED_COLUMNS = {
  * reuse this exact predicate so "one predicate, two surfaces" holds: a
  * filtered export and the SAME filter through GET .../email-log agree on
  * which rows match, always. */
-export function emailLogConditions(params: Pick<EmailLogListParams, "eventId" | "contactId" | "status" | "orgId" | "batchKey" | "since" | "q">) {
+export function emailLogConditions(
+  params: Pick<EmailLogListParams, "eventId" | "contactId" | "status" | "orgId" | "batchKey" | "since" | "q" | "templateId">,
+) {
   const conditions = [];
   if (params.eventId) conditions.push(eq(schema.emailLog.eventId, params.eventId));
   if (params.contactId) conditions.push(eq(schema.emailLog.contactId, params.contactId));
   if (params.status) conditions.push(eq(schema.emailLog.status, params.status));
   if (params.orgId) conditions.push(eq(schema.event.orgId, params.orgId));
   if (params.batchKey) conditions.push(eq(BATCH_KEY, params.batchKey));
+  if (params.templateId) conditions.push(eq(schema.emailLog.templateId, params.templateId));
   if (params.since !== undefined) conditions.push(gte(schema.emailLog.sentAt, new Date(params.since)));
   if (params.q && params.q.trim() !== "") {
     // DEC-506: escape via likeContains + ESCAPE '\\' so a literal `%`/`_`
@@ -265,6 +274,11 @@ export interface EmailBatchListParams {
    * its `items` describe the same window (a batch is windowed on its own
    * MAX(sentAt), matching the row-level `since` filter listEmailLog uses). */
   since?: number;
+  /** DEC-603 (wave-56 amendment): same templateId facet as the flat grain,
+   * pushed into batchWhere so a batch grouping only surfaces batches whose
+   * rows match the chip — never a post-fetch filter over the grouped
+   * result. */
+  templateId?: string;
   page: number;
   perPage: number;
 }
@@ -274,7 +288,7 @@ export interface EmailBatchListResult {
   total: number;
 }
 
-function batchWhere(params: Pick<EmailBatchListParams, "eventId" | "q" | "since">) {
+function batchWhere(params: Pick<EmailBatchListParams, "eventId" | "q" | "since" | "templateId">) {
   const conditions: (SQL<unknown> | undefined)[] = [eq(schema.emailLog.eventId, params.eventId)];
   if (params.q && params.q.trim() !== "") {
     const like = likeContains(params.q.trim());
@@ -287,6 +301,9 @@ function batchWhere(params: Pick<EmailBatchListParams, "eventId" | "q" | "since"
   }
   if (params.since !== undefined) {
     conditions.push(gte(schema.emailLog.sentAt, new Date(params.since)));
+  }
+  if (params.templateId) {
+    conditions.push(eq(schema.emailLog.templateId, params.templateId));
   }
   return and(...conditions);
 }

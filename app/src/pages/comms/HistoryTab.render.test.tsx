@@ -391,4 +391,113 @@ describe('HistoryTab', () => {
       expect(String(lastCall[0])).toContain('q=welcome');
     });
   });
+
+  // DEC-603 (wave-56 amendment, frame :625-631): the chips row -- 'All
+  // sends' plus one chip per templatesById entry, sorted by name. Selecting
+  // one sets templateId on the request, resets to page 1, and marks the
+  // chip active; the facet is carried in ?templateId= so a reload keeps it.
+  describe('template chips (DEC-603, wave-56 amendment)', () => {
+    it('renders one chip per template sorted by name, "All sends" active by default, and selecting one filters + resets to page 1', async () => {
+      const fetchMock = mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batch()], { total: 120 }),
+      });
+
+      render(
+        <MemoryRouter>
+          <HistoryTab
+            eventId={EVENT_ID}
+            templatesById={{ 'tpl-b': 'Reminder', 'tpl-a': 'Acceptance' }}
+          />
+        </MemoryRouter>,
+      );
+
+      await screen.findByText('You are in!');
+
+      const allChip = screen.getByRole('button', { name: 'All sends' });
+      const acceptanceChip = screen.getByRole('button', { name: 'Acceptance' });
+      const reminderChip = screen.getByRole('button', { name: 'Reminder' });
+      expect(allChip).toHaveAttribute('aria-pressed', 'true');
+      expect(acceptanceChip).toHaveAttribute('aria-pressed', 'false');
+
+      // Sorted by name: Acceptance before Reminder in document order.
+      const chipRow = document.querySelector('.chq-comms-history-chips') as HTMLElement;
+      const chipLabels = Array.from(chipRow.querySelectorAll('button')).map((b) => b.textContent);
+      expect(chipLabels).toEqual(['All sends', 'Acceptance', 'Reminder']);
+
+      // Move off page 1 first, so selecting a chip's page reset is provable.
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      await waitFor(() => {
+        const calls = fetchMock.mock.calls;
+        expect(String(calls[calls.length - 1]![0])).toContain('page=2');
+      });
+
+      fireEvent.click(acceptanceChip);
+      await waitFor(() => {
+        const calls = fetchMock.mock.calls;
+        const last = String(calls[calls.length - 1]![0]);
+        expect(last).toContain('templateId=tpl-a');
+        expect(last).toContain('page=1');
+      });
+      expect(acceptanceChip).toHaveAttribute('aria-pressed', 'true');
+      expect(allChip).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('carries templateId in the URL search params so a reload keeps the facet', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batch()]),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/comms?tab=history&templateId=tpl-a']}>
+          <HistoryTab eventId={EVENT_ID} templatesById={{ 'tpl-a': 'Acceptance' }} />
+        </MemoryRouter>,
+      );
+
+      await screen.findByText('You are in!');
+      expect(screen.getByRole('button', { name: 'Acceptance' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('shows the filtered empty state naming the CHIP as the excluding facet when a chip is active with no search text, and the escape clears it', async () => {
+      const fetchMock = mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/comms?tab=history&templateId=tpl-a']}>
+          <HistoryTab eventId={EVENT_ID} templatesById={{ 'tpl-a': 'Acceptance' }} />
+        </MemoryRouter>,
+      );
+
+      expect(await screen.findByText('No sends match this template.')).toBeInTheDocument();
+      expect(screen.getByText('No sends match “Acceptance”.')).toBeInTheDocument();
+      // Not the totally-fresh empty state (a chip filter is active).
+      expect(screen.queryByText('Nothing has been sent yet')).not.toBeInTheDocument();
+
+      const escapeButton = screen.getByRole('button', { name: 'Clear the filter' });
+      fireEvent.click(escapeButton);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'All sends' })).toHaveAttribute('aria-pressed', 'true');
+      });
+
+      void fetchMock;
+    });
+
+    it('passes columnHeads to RecentSends so the batch table renders WHEN/SUBJECT/RECIPIENTS/TEMPLATE heads', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batch()]),
+      });
+
+      render(
+        <MemoryRouter>
+          <HistoryTab eventId={EVENT_ID} templatesById={{}} />
+        </MemoryRouter>,
+      );
+
+      await screen.findByText('You are in!');
+      const headRow = document.querySelector('.chq-comms-batch-col-heads-row') as HTMLElement;
+      expect(headRow).toBeInTheDocument();
+      expect(headRow.textContent).toContain('When');
+      expect(headRow.textContent).toContain('Recipients');
+    });
+  });
 });
