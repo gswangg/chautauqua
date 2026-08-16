@@ -42,6 +42,11 @@ function parseStatus(raw: string | null): SubmissionStatus[] {
     .filter((token): token is SubmissionStatus => (SUBMISSION_STATUSES as readonly string[]).includes(token));
 }
 
+// Client-side URL restore: an unknown/absent token quietly falls back to the
+// default sort — this is deliberately different from the server's
+// readSortToken (src/server/repo/submissions/query.ts), which THROWS on an
+// unrecognised token (DEC-843). A malformed/stale URL should never break the
+// page; a malformed API request must never be silently widened. Not a drift.
 function parseSort(raw: string | null): SortOrder {
   if (raw && (SORT_ORDERS as readonly string[]).includes(raw)) {
     return raw as SortOrder;

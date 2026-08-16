@@ -32,9 +32,13 @@ export const STATUS_LABELS: Record<SubmissionStatus, string> = {
   waitlisted: 'Waitlisted',
 };
 
-export type SortOrder = 'newest' | 'oldest' | 'title' | 'ref';
-
-export const SORT_ORDERS: readonly SortOrder[] = ['newest', 'oldest', 'title', 'ref'];
+// Re-exported from the pure domain vocabulary (DEC-613 wave-68 amendment) —
+// the ONE set shared with src/server/repo/submissions/query.ts, so a saved
+// view or URL carrying 'worklist' (the content app's server-side ordering)
+// is a real member here too.
+import type { SortOrder } from '../../../../src/domain/submission-sort';
+export type { SortOrder };
+export { SORT_ORDERS } from '../../../../src/domain/submission-sort';
 
 export interface SubmissionSpeaker {
   contactId: string;
