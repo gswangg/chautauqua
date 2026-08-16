@@ -7,9 +7,25 @@ import { asc, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { chunkIds } from "../../lib/chunk";
-import { DEC_965 } from "../../decisions";
+import { ApiError } from "../http";
+import { DEC_461, DEC_965 } from "../../decisions";
 
 void DEC_965;
+void DEC_461;
+
+/** DEC-461 w78: listSubmissionFiles selected every file row for a
+ * submission with no ceiling, while src/routes/files.ts JS-pages the fully
+ * materialised array -- the same shape every sibling JS-paged list in this
+ * tree already refuses loudly over (MAX_FILE_LIBRARY_SCAN,
+ * MAX_PLAN_SUBMISSION_SCAN, MAX_CONTACT_DIRECTORY_SCAN, MAX_AGENDA_SCAN,
+ * MAX_REVIEWER_SCOPE_ROWS). 1000, not 20000 like those siblings: this reads
+ * ONE submission's own version history, which is inherently small (a
+ * handful of deliverable kinds x a bounded number of re-uploads), never the
+ * whole org/event surface those other ceilings guard -- and a ceiling at or
+ * above MAX_FILE_LIBRARY_SCAN could never fire before the library guard
+ * does (DEC-829 w74 sibling-guard-ordering precedent: the narrower cap must
+ * sit below the broader one it's nested inside, or it's decoration). */
+export const MAX_SUBMISSION_FILE_SCAN = 1000;
 
 // ---------------------------------------------------------------------------
 // DEC-601: a file version's uploader name, resolved server-side
@@ -70,7 +86,15 @@ export async function listSubmissionFiles(db: Db, submissionId: string): Promise
     })
     .from(schema.file)
     .where(eq(schema.file.submissionId, submissionId))
-    .orderBy(desc(schema.file.createdAt), asc(schema.file.id));
+    .orderBy(desc(schema.file.createdAt), asc(schema.file.id))
+    .limit(MAX_SUBMISSION_FILE_SCAN + 1);
+
+  if (rows.length > MAX_SUBMISSION_FILE_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This submission would scan more than ${MAX_SUBMISSION_FILE_SCAN} file versions -- narrow the version history first`,
+    );
+  }
 
   const grouped: FilesByKind = {};
   for (const row of rows) {
