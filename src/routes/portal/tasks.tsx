@@ -385,6 +385,17 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
   // its prior stored file id (carry-forward, not a clear); a field with
   // neither a new upload nor a prior value is simply absent, same as any
   // other unanswered field.
+  //
+  // DEC-040 wave-78 amendment: a re-answer of an already-filled file field
+  // must chain onto the prior upload's row (previousFileId), never overwrite
+  // it with an unlinked file — otherwise the earlier row + its R2 object are
+  // orphaned forever, same defect DEC-922 already closed on the plain
+  // ~/upload path below. Mirrors that route's chain-or-restart rule inline:
+  // when the field's prior stored answer resolves to a file whose own
+  // submissionId is null (a form 'handout' answer never carries one) and
+  // whose kind is 'handout', the new file chains onto it; any mismatch (a
+  // legacy/foreign row) just starts a fresh chain — never a 400 here, this
+  // is never a validation error for the speaker.
   const store = makeFileStore(c.env.FILES);
   const fileErrors: Record<string, string> = {};
   // DEC-040 amendment (wave 74): every file this request writes gets tracked
@@ -409,6 +420,15 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
       continue;
     }
     const r2Key = `task/${assignmentId}/${newId()}-${sanitizeFilenameForKey(file.name)}`;
+    let previousFileId: string | null = null;
+    const priorValue = priorAnswers[field.id];
+    if (typeof priorValue === "string" && priorValue) {
+      const target = await getReplacesTarget(c.var.db, priorValue);
+      if (target && target.submissionId === null && target.kind === "handout") {
+        previousFileId = priorValue;
+      }
+      // else: a mismatch (legacy/foreign row) — fresh chain, never a 400.
+    }
     const fileId = await putThenRecord(store, r2Key, file.stream(), validation.servedContentType, () =>
       insertFile(c.var.db, {
         submissionId: null,
@@ -417,7 +437,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
         r2Key,
         sizeBytes: file.size,
         contentType: validation.servedContentType,
-        previousFileId: null,
+        previousFileId,
         uploadedByContactId: contactId,
         taskAssignmentId: assignmentId,
       }),
@@ -609,6 +629,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
       contentType: validation.servedContentType,
       previousFileId,
       uploadedByContactId: contactId,
+      taskAssignmentId: assignmentId,
     }),
   );
 

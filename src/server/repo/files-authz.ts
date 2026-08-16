@@ -308,19 +308,20 @@ export interface TaskFileScope {
 /** Authz scope for GET /files/:fileId when the file is a task-assignment
  * upload: DEC-248 population is submissionId-null + referenced by a
  * task_assignment, of ANY kind (not restricted to 'handout'). Two disjoint
- * links can name a task_assignment: the plain-upload path (~/upload) writes
- * task_assignment.fileId pointing AT the file, while the kind='form'
- * onboarding-field path (~/form, DEC-248 amendment wave 10) writes the
- * file's own task_assignment_id pointing back at its assignment (the field
- * answer only ever stores the file id inline in response_json, never a
- * reverse-joinable column on task_assignment). These links are NOT
- * guaranteed to resolve the same assignment — a stale/reassigned
- * task_assignment.fileId can point at a file whose taskAssignmentId now
- * names a different assignment (different speaker). DEC-248 wave-70
- * amendment: the file's OWN task_assignment_id is authoritative (it's the
+ * links can name a task_assignment: task_assignment.fileId points AT the
+ * assignment's current/legacy completion file, while the file's own
+ * task_assignment_id points back at its assignment. DEC-248 wave-78
+ * amendment: EVERY task writer (the plain ~/upload path and the kind='form'
+ * onboarding-field path alike) now stamps the file's own task_assignment_id
+ * at insert time, so every version in a task file's chain — including
+ * superseded ones a stale task_assignment.fileId no longer names — carries
+ * its own stored link. These links are NOT guaranteed to resolve the same
+ * assignment — a stale/reassigned task_assignment.fileId can point at a
+ * file whose taskAssignmentId now names a different assignment (different
+ * speaker). The file's OWN task_assignment_id is authoritative (it's the
  * column the file's uploader/owner actually set); the reverse fileId link
- * is only a fallback for files with no taskAssignmentId of their own (the
- * plain ~/upload path never sets it). We therefore query id=taskAssignmentId
+ * is only a legacy-row fallback for files written before wave 78 with no
+ * taskAssignmentId of their own. We therefore query id=taskAssignmentId
  * FIRST when present, and only fall back to the fileId=... query when that
  * lookup returns nothing — never a single or() with no total order, whose
  * winner SQLite is free to pick arbitrarily. Per DEC-549 the discriminator
