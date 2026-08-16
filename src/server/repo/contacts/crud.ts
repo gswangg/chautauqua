@@ -122,6 +122,10 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
   if (patch.email !== undefined) {
     const newEmailLower = patch.email.toLowerCase();
     if (newEmailLower !== current!.email.toLowerCase()) {
+      // DEC-558: at most one row by construction — `user_email_idx` is a
+      // uniqueIndex on schema.user.email, and every insert path
+      // (createUser, auth-claim.tsx) stores email pre-lowercased, so
+      // lower(email) = newEmailLower can match at most the same one row.
       const conflicting = await db
         .select({ id: schema.user.id, contactId: schema.user.contactId })
         .from(schema.user)

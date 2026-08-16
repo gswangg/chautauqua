@@ -70,6 +70,9 @@ export async function resolveTaskFileChainLatest(db: Db, fileId: string): Promis
   let current = fileId;
   const visited = new Set<string>([current]);
   for (;;) {
+    // DEC-558: at most one row by construction — `file_previous_file_id_unique`
+    // is a partial uniqueIndex on previousFileId (WHERE previousFileId IS
+    // NOT NULL), and `current` is always non-null here.
     const nextRows = await db
       .select({ id: schema.file.id })
       .from(schema.file)
@@ -221,6 +224,9 @@ export async function listFileChainIds(db: Db, fileId: string): Promise<string[]
   const forwardVisited = new Set<string>([root]);
   let current = root;
   for (;;) {
+    // DEC-558: at most one row by construction — `file_previous_file_id_unique`
+    // is a partial uniqueIndex on previousFileId (WHERE previousFileId IS
+    // NOT NULL), and `current` is always non-null here.
     const nextRows = await db
       .select({ id: schema.file.id })
       .from(schema.file)
