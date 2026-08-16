@@ -12,6 +12,7 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 import { exportsRoutes } from "../src/routes/api/exports";
 import { reviewRoutes } from "../src/routes/review";
 import * as evaluationsRepo from "../src/server/repo/review/evaluations";
+import * as reviewersRepo from "../src/server/repo/review/reviewers";
 
 const EVENT_ID = "event-1";
 const ORG_A = "org-a";
@@ -93,6 +94,7 @@ async function buildSubmissionEvaluationsApp(auth: AuthInfo) {
       submittedAt: 1_700_000_000_000,
     },
   ]);
+  vi.spyOn(reviewersRepo, "countAssignedReviewersForSubmission").mockResolvedValue(1);
   vi.spyOn(evaluationsRepo, "listPlanCriteriaByIds").mockResolvedValue(
     new Map([
       [
@@ -133,7 +135,7 @@ describe("DEC-736: evaluations export and evaluations screen agree by naming the
     expect(res.status).toBe(200);
     const records = (await res.json()) as Array<Record<string, string>>;
     expect(records).toHaveLength(1);
-    expect(records[0]!["reviewerEmail"]).toBe(REVIEWER_EMAIL);
+    expect(records[0]!["reviewer"]).toBe(REVIEWER_EMAIL);
     const serialized = JSON.stringify(records);
     expect(serialized).not.toContain("(anonymized)");
   });
@@ -156,6 +158,6 @@ describe("DEC-736: evaluations export and evaluations screen agree by naming the
     const screenRes = await screenApp.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations`);
     const screenBody = (await screenRes.json()) as { items: Array<{ reviewerName: string }> };
 
-    expect(exportRecords[0]!["reviewerEmail"]).toBe(screenBody.items[0]!.reviewerName);
+    expect(exportRecords[0]!["reviewer"]).toBe(screenBody.items[0]!.reviewerName);
   });
 });
