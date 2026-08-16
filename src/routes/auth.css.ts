@@ -89,7 +89,7 @@ export const AUTH_CSS = `
      render measurement now superseded; the card's shared 26px gap governs. */
   /* DEC-367 amendment (wave 57): the >=44px tap floor is a PHONE rule
      (docs/design/README.md:92), not a desktop one -- the tap-floor box
-     now only appears in the @media (max-width: 700px) block at the
+     now only appears in the phone media block (max-width 700px) at the
      tail of this module. The wave-6 align-items:flex-start +
      margin-bottom:-13px compensation this rule used to carry (fighting the
      always-on box's own centering back off so the following h1 held its
@@ -231,7 +231,7 @@ export const AUTH_CSS = `
   }
   /* DEC-367 amendment (wave 57): the >=44px tap floor is a PHONE rule
      (docs/design/README.md:92), not a desktop one -- the tap-floor box
-     now only appears in the @media (max-width: 700px) block at the
+     now only appears in the phone media block (max-width 700px) at the
      tail of this module, shared unscoped by both this /login footer row
      and the 404 notice card (src/server/not-found.tsx renders the same
      .chq-auth-footer-links markup with no .chq-auth-footer wrapper). The

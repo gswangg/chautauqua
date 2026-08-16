@@ -659,10 +659,10 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
   // client-built query string (page/filter params), never a route segment,
   // in every case below, confirmed by reading each call site.
   const UNRESOLVABLE_PATHS: string[] = [
-    "app/src/pages/comms/ComposeWizard.tsx:144 interpolation-erased: /events/${eventId}/submissions${qs}",
+    "app/src/pages/comms/ComposeWizard.tsx:139 interpolation-erased: /events/${eventId}/submissions${qs}",
     "app/src/pages/contacts/MergePage.tsx:98 interpolation-erased: /contacts/duplicates${query}",
-    "app/src/pages/review/PlanEditor.tsx:823 interpolation-erased: /plans/${planId}/assignments/distribute/preview${qs}",
-    "app/src/pages/submissions/SubmissionDetailPage.tsx:454 interpolation-erased: /events/${detail.eventId}/submissions${buildSubmissionsQuery(listFilters)}",
+    "app/src/pages/review/PlanEditor.tsx:872 interpolation-erased: /plans/${planId}/assignments/distribute/preview${qs}",
+    "app/src/pages/submissions/SubmissionDetailPage.tsx:459 interpolation-erased: /events/${detail.eventId}/submissions${buildSubmissionsQuery(listFilters)}",
     "app/src/pages/submissions/SubmissionsTable.tsx:148 interpolation-erased: /events/${eventId}/submissions${qs}",
   ];
 
