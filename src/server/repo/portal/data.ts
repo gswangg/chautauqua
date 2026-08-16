@@ -15,6 +15,7 @@ import { safeImageSrc } from "../../../domain/brand-url";
 import { chunkIds } from "../../../lib/chunk";
 import { DEC_322, DEC_988 } from "../../../decisions";
 import { DEFAULT_PORTAL_SETTINGS } from "../../../domain/portal-settings";
+import { parseSubmissionAnswerValue } from "../../../forms/answer-json";
 
 void DEC_988;
 
@@ -370,7 +371,7 @@ export async function getPortalSubmissionDetail(
   const answers: PortalSubmissionAnswer[] = answerRows.map((a) => ({
     fieldId: a.fieldId,
     label: a.label,
-    value: JSON.parse(a.valueJson),
+    value: parseSubmissionAnswerValue(a.valueJson, a.fieldId),
   }));
 
   const trackName = trackNames.get(submissionId)?.[0] ?? null;

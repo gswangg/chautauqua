@@ -18,6 +18,7 @@ import { DEC_017, DEC_027 } from "../../../decisions";
 import { answerExportCell } from "../../../domain/answer-text";
 import { type ExportTable, type CustomFieldColumn, EXPORT_MAX_ROWS, buildTable, nameCustomColumns } from "./table";
 import { getRecordPrefix } from "./common";
+import { parseSubmissionAnswerValue } from "../../../forms/answer-json";
 
 void DEC_017;
 void DEC_027;
@@ -219,7 +220,7 @@ export async function exportSubmissions(
   const answersBySubmission = new Map<string, Record<string, unknown>>();
   for (const a of answerRows) {
     const rec = answersBySubmission.get(a.submissionId) ?? {};
-    rec[a.formFieldId] = JSON.parse(a.valueJson);
+    rec[a.formFieldId] = parseSubmissionAnswerValue(a.valueJson, a.formFieldId);
     answersBySubmission.set(a.submissionId, rec);
   }
 

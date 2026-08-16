@@ -13,6 +13,7 @@ import { eventYear } from "../../../lib/event-time";
 // DEC-780: SubmissionDetailSlot is defined canonically in list.ts (the LIST
 // payload's `slot` field reuses this exact shape) and re-exported here.
 import { reUploadedSql, type SubmissionDetailSlot } from "./list";
+import { parseSubmissionAnswerValue } from "../../../forms/answer-json";
 
 export interface SubmissionDetailParticipant {
   id: string;
@@ -221,7 +222,7 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
     .where(eq(schema.submissionAnswer.submissionId, submissionId));
 
   const answers: Record<string, unknown> = {};
-  for (const a of answerRows) answers[a.formFieldId] = JSON.parse(a.valueJson);
+  for (const a of answerRows) answers[a.formFieldId] = parseSubmissionAnswerValue(a.valueJson, a.formFieldId);
 
   // DEC-920: the real attachment rows for a 'file'-kind answer — ONE query,
   // never a per-answer fetch (the N-scan rule).

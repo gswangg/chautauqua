@@ -12,6 +12,7 @@ import { likeContains } from "../like";
 import { findRoot, type DeliverableFileRow } from "../files-library";
 import { DEC_692, DEC_780, DEC_881, DEC_913 } from "../../../decisions";
 import { CONTENT_STATUSES, isContentStatus } from "../../../domain/content-status";
+import { parseSubmissionAnswerValue } from "../../../forms/answer-json";
 
 // DEC-780 (DEC-051 amendment, findings wave 8): the submission LIST payload
 // gains the slot the submission DETAIL payload already carries — same shape,
@@ -470,7 +471,7 @@ export async function listSubmissions(
   const answersBySubmission = new Map<string, Record<string, unknown>>();
   for (const a of answerRows) {
     const map = answersBySubmission.get(a.submissionId) ?? {};
-    map[a.formFieldId] = JSON.parse(a.valueJson);
+    map[a.formFieldId] = parseSubmissionAnswerValue(a.valueJson, a.formFieldId);
     answersBySubmission.set(a.submissionId, map);
   }
 
