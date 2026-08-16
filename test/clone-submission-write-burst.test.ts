@@ -72,6 +72,7 @@ function fakeDb(seed: Seed) {
               if (table === schema.submissionTrack) return thenable(seed.tracks);
               if (table === schema.submissionAnswer) return thenable(seed.answers);
               if (table === schema.participant) return thenable(seed.participants);
+              if (table === schema.formField) return thenable([]);
               throw new Error(`fakeDb: unexpected table in select().from(): ${String(table)}`);
             },
           };
@@ -118,7 +119,7 @@ describe("DEC-542: cloneSubmission is a set-based copy", () => {
       participants,
     });
 
-    const newSubmissionId = await cloneSubmission(db, "sub-1");
+    const { id: newSubmissionId } = await cloneSubmission(db, "sub-1");
 
     const trackCalls = callsFor(calls, schema.submissionTrack);
     const answerCalls = callsFor(calls, schema.submissionAnswer);

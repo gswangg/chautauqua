@@ -172,7 +172,10 @@ export async function updateSubmissionFields(
  * acceptance planning for a participant-less submission is a documented
  * no-op, not an error.
  */
-export async function cloneSubmission(db: Db, submissionId: string): Promise<string> {
+export async function cloneSubmission(
+  db: Db,
+  submissionId: string,
+): Promise<{ id: string; droppedFileAnswers: number }> {
   const rows = await db
     .select()
     .from(schema.submission)
@@ -215,14 +218,33 @@ export async function cloneSubmission(db: Db, submissionId: string): Promise<str
     .select({ formFieldId: schema.submissionAnswer.formFieldId, valueJson: schema.submissionAnswer.valueJson })
     .from(schema.submissionAnswer)
     .where(eq(schema.submissionAnswer.submissionId, submissionId));
-  const newAnswerRows = answerRows.map((a) => ({
-    id: newId(),
-    submissionId: newSubmissionId,
-    formFieldId: a.formFieldId,
-    valueJson: a.valueJson,
-    createdAt: now,
-    updatedAt: now,
-  }));
+  // DEC-275 wave-51 amendment: a file answer's value is a file id owned by
+  // the ORIGINAL submission (submission-delete.ts:307's cascade trigger
+  // fires on that submission, not the clone) -- copying the row would alias
+  // another submission's upload. The original answer SELECT above stays
+  // exactly as-is (never an innerJoin on form_field: an answer whose
+  // formFieldId no longer resolves must never be silently dropped here);
+  // this is one extra set-based query to find file-kind field ids to filter
+  // out, not a rewrite of the base query.
+  let fileFieldIds: Set<string> = new Set();
+  if (original.formId) {
+    const fileFields = await db
+      .select({ id: schema.formField.id })
+      .from(schema.formField)
+      .where(and(eq(schema.formField.formId, original.formId), eq(schema.formField.kind, "file")));
+    fileFieldIds = new Set(fileFields.map((f) => f.id));
+  }
+  const droppedFileAnswers = fileFieldIds.size > 0 ? answerRows.filter((a) => fileFieldIds.has(a.formFieldId)).length : 0;
+  const newAnswerRows = answerRows
+    .filter((a) => !fileFieldIds.has(a.formFieldId))
+    .map((a) => ({
+      id: newId(),
+      submissionId: newSubmissionId,
+      formFieldId: a.formFieldId,
+      valueJson: a.valueJson,
+      createdAt: now,
+      updatedAt: now,
+    }));
   for (const chunk of chunkRowsForInsert(newAnswerRows)) {
     await db.insert(schema.submissionAnswer).values(chunk);
   }
@@ -259,5 +281,5 @@ export async function cloneSubmission(db: Db, submissionId: string): Promise<str
     await db.insert(schema.participant).values(chunk);
   }
 
-  return newSubmissionId;
+  return { id: newSubmissionId, droppedFileAnswers };
 }
