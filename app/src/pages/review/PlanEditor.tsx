@@ -11,8 +11,12 @@ import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import {
   addCriterion,
+  addCriterionOption,
+  moveCriterionOption,
   removeCriterion,
+  removeCriterionOption,
   updateCriterion,
+  updateCriterionOption,
   validateCriteriaList,
   validatePlanDraft,
   type PlanValidationErrors,
@@ -56,7 +60,7 @@ import { countOf } from '../../lib/plural';
 // cap like ReviewerQueue.tsx's own "Show all N" affordance, never silently
 // truncate at listPerPage's default.
 import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
-import { MAX_PLAN_CRITERIA } from '../../lib/batch-caps';
+import { MAX_PLAN_CRITERIA, MIN_CRITERION_OPTIONS, MAX_CRITERION_OPTIONS } from '../../lib/batch-caps';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
@@ -469,6 +473,40 @@ export function PlanEditor() {
     if (sourceIndex < 0 || sourceIndex === targetIndex) return;
     const delta = targetIndex - sourceIndex;
     setEditingCriteria((c) => moveCriterion(c, draggedId, delta > 0 ? 1 : -1));
+  }
+
+  // v12 intake section A: a Choice criterion's option rows reorder the same
+  // way the criteria list above does -- drag handle + ArrowUp/ArrowDown
+  // through the ONE moveCriterionOption write path -- keyed by
+  // `${criterionId}:${optionIndex}` since several criteria's option lists
+  // can be on screen at once.
+  const [dragOverOptionKey, setDragOverOptionKey] = useState<string | null>(null);
+
+  function handleOptionDragStart(event: DragEvent, criterionId: string, optionIndex: number) {
+    event.dataTransfer.setData('text/plain', `${criterionId}:${optionIndex}`);
+    event.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleOptionDragOver(event: DragEvent, criterionId: string, optionIndex: number) {
+    event.preventDefault();
+    const key = `${criterionId}:${optionIndex}`;
+    if (dragOverOptionKey !== key) setDragOverOptionKey(key);
+  }
+
+  function handleOptionDragLeave(criterionId: string, optionIndex: number) {
+    const key = `${criterionId}:${optionIndex}`;
+    setDragOverOptionKey((current) => (current === key ? null : current));
+  }
+
+  function handleOptionDrop(event: DragEvent, criterionId: string, targetIndex: number) {
+    event.preventDefault();
+    setDragOverOptionKey(null);
+    const [draggedCriterionId, draggedIndexRaw] = event.dataTransfer.getData('text/plain').split(':');
+    if (draggedCriterionId !== criterionId) return;
+    const sourceIndex = Number(draggedIndexRaw);
+    if (!Number.isFinite(sourceIndex) || sourceIndex === targetIndex) return;
+    const delta = targetIndex - sourceIndex;
+    setEditingCriteria((c) => moveCriterionOption(c, criterionId, sourceIndex, delta > 0 ? 1 : -1));
   }
 
   // DEC-676/DEC-213: the currently-edited round is locked once it already
@@ -1768,33 +1806,108 @@ export function PlanEditor() {
                         )}
                       </span>
                     ) : criterion.kind === 'dropdown' ? (
-                      <input
-                        id={`criterion-${criterion.id}-options`}
-                        className={
-                          submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]
-                            ? 'chq-input chq-field-invalid'
-                            : 'chq-input'
-                        }
-                        placeholder="Options (comma-separated)"
+                      // v12 intake section A / DEC-650: a Choice criterion's
+                      // options are EDITABLE ROWS (drag handle, label input,
+                      // Remove), the deliberate one-way divergence from the
+                      // CFP FieldModal's comma-joined textarea -- row order
+                      // IS the order reviewers see and the order results
+                      // print, so this never re-sorts.
+                      <div
+                        className="chq-review-criterion-options"
                         aria-label={`${criterion.label || 'criterion'} options`}
-                        aria-invalid={
-                          submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]
-                            ? 'true'
-                            : undefined
-                        }
-                        value={(criterion.options ?? []).join(', ')}
-                        disabled={activeRoundIsLocked}
-                        onChange={(e) =>
-                          setEditingCriteria((c) =>
-                            updateCriterion(c, criterion.id, {
-                              options: e.target.value
-                                .split(',')
-                                .map((o) => o.trim())
-                                .filter((o) => o.length > 0),
-                            }),
-                          )
-                        }
-                      />
+                        id={`criterion-${criterion.id}-options`}
+                      >
+                        {(criterion.options ?? []).map((option, optionIndex) => {
+                          const optionKey = `${criterion.id}:${optionIndex}`;
+                          return (
+                            <div
+                              key={optionIndex}
+                              className={[
+                                'chq-review-criterion-option-row',
+                                dragOverOptionKey === optionKey ? 'chq-review-criterion-row-drop-target' : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                              onDragOver={(event) => handleOptionDragOver(event, criterion.id, optionIndex)}
+                              onDragLeave={() => handleOptionDragLeave(criterion.id, optionIndex)}
+                              onDrop={(event) => handleOptionDrop(event, criterion.id, optionIndex)}
+                            >
+                              <button
+                                type="button"
+                                className="chq-forms-field-drag"
+                                aria-label={`Reorder option ${optionIndex + 1} of ${(criterion.options ?? []).length}`}
+                                draggable
+                                disabled={activeRoundIsLocked}
+                                onDragStart={(event) => handleOptionDragStart(event, criterion.id, optionIndex)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'ArrowUp') {
+                                    event.preventDefault();
+                                    setEditingCriteria((c) => moveCriterionOption(c, criterion.id, optionIndex, -1));
+                                  } else if (event.key === 'ArrowDown') {
+                                    event.preventDefault();
+                                    setEditingCriteria((c) => moveCriterionOption(c, criterion.id, optionIndex, 1));
+                                  }
+                                }}
+                              >
+                                ⋮⋮
+                              </button>
+                              <input
+                                className={
+                                  submitted &&
+                                  (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]
+                                    ? 'chq-input chq-field-invalid'
+                                    : 'chq-input'
+                                }
+                                placeholder={`Option ${optionIndex + 1}`}
+                                aria-label={`${criterion.label || 'criterion'} option ${optionIndex + 1}`}
+                                aria-invalid={
+                                  submitted &&
+                                  (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]
+                                    ? 'true'
+                                    : undefined
+                                }
+                                value={option}
+                                disabled={activeRoundIsLocked}
+                                onChange={(e) =>
+                                  setEditingCriteria((c) =>
+                                    updateCriterionOption(c, criterion.id, optionIndex, e.target.value),
+                                  )
+                                }
+                              />
+                              <button
+                                type="button"
+                                className="chq-btn chq-btn-tertiary"
+                                aria-label={`Remove option ${optionIndex + 1}`}
+                                disabled={activeRoundIsLocked || (criterion.options ?? []).length <= MIN_CRITERION_OPTIONS}
+                                onClick={() =>
+                                  setEditingCriteria((c) => removeCriterionOption(c, criterion.id, optionIndex))
+                                }
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          );
+                        })}
+                        <div className="chq-review-criterion-options-footer">
+                          <span className="chq-review-criterion-options-count">
+                            {(criterion.options ?? []).length} of {MAX_CRITERION_OPTIONS}
+                          </span>
+                          {(criterion.options ?? []).length < MAX_CRITERION_OPTIONS && (
+                            <a
+                              href="#add-option"
+                              className="chq-review-add-link"
+                              aria-disabled={activeRoundIsLocked}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (activeRoundIsLocked) return;
+                                setEditingCriteria((c) => addCriterionOption(c, criterion.id));
+                              }}
+                            >
+                              Add an option
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     ) : (
                       <label className="chq-review-checkbox-label">
                         <input

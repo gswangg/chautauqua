@@ -29,8 +29,8 @@ export {
 export {
   MAX_PLAN_ROUNDS,
   MAX_PLAN_CRITERIA,
-  MAX_CRITERION_OPTIONS,
   MIN_CRITERION_OPTIONS,
+  MAX_CRITERION_OPTIONS,
   MAX_CRITERION_GUIDANCE_LENGTH,
   normalizeGuidance,
   validateEvaluationScores,
