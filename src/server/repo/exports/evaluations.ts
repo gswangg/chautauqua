@@ -85,67 +85,47 @@ const EVALUATIONS_FIXED_HEADER = ["planName", "ref", "title", "reviewer", "round
 const FIXED_EVALUATIONS_COLUMN_NAMES = new Set<string>(EVALUATIONS_FIXED_HEADER);
 
 /** Pure row-shaping for the evaluations export (DB-free, unit-tested
- * directly): derives the dynamic score columns from the UNION of score keys
- * actually present across the exported rows -- the load-bearing property
- * that no stored score value is ever dropped -- then renders each row's
- * cells, planName/weightedScore alongside the fixed columns.
- *
- * DEC-529 amendment (wave 4): within a plan, columns come out in the plan's
- * DECLARED criteria order (declaredOrderByPlan -- base criteria_json plus
- * every round_criteria_json override, unioned by the caller), matching what
- * /plans/:id/results renders. A score key present in the data but absent
- * from the declared list (a criterion removed from the plan after
- * submission, or legacy history) is still never dropped -- it is appended
- * after the declared columns, in stable first-seen order. Plans themselves
- * keep their existing first-appearance grouping. */
+ * directly). DEC-529 (wave-5 amendment): score columns follow the plan's
+ * DECLARED criteria order (`criteriaByPlan`, base criteria_json followed by
+ * any round-override-only ids in ascending round order) rather than
+ * `Object.keys` of whatever the rows happen to contain -- so integer-like
+ * criterion ids no longer hoist to the front, and a declared-but-unscored
+ * criterion still gets a column (empty cells). A score key present in the
+ * stored data but absent from the plan's declared set is still never
+ * dropped -- it is appended after the declared columns, sorted
+ * lexicographically by "planId:criterionId". */
 export function shapeEvaluationsExport(
   rows: EvaluationExportRow[],
-  labelsByPlan: Map<string, Map<string, string>>,
+  criteriaByPlan: Map<string, { id: string; label: string }[]>,
   planNames: Map<string, string>,
-  declaredOrderByPlan: Map<string, string[]>,
 ): ExportTable {
-  const planOrder: string[] = [];
-  const presentByPlan = new Map<string, Set<string>>();
-  const firstSeenByPlan = new Map<string, string[]>();
-  for (const r of rows) {
-    if (!presentByPlan.has(r.planId)) {
-      presentByPlan.set(r.planId, new Set());
-      firstSeenByPlan.set(r.planId, []);
-      planOrder.push(r.planId);
-    }
-    const present = presentByPlan.get(r.planId)!;
-    const firstSeen = firstSeenByPlan.get(r.planId)!;
-    for (const criterionId of Object.keys(r.scores)) {
-      if (present.has(criterionId)) continue;
-      present.add(criterionId);
-      firstSeen.push(criterionId);
+  const declaredColumns: EvaluationScoreColumn[] = [];
+  const declaredKeys = new Set<string>();
+  for (const [planId, criteria] of criteriaByPlan) {
+    const planName = planNames.get(planId) ?? planId;
+    for (const c of criteria) {
+      declaredKeys.add(`${planId}:${c.id}`);
+      declaredColumns.push({ planId, criterionId: c.id, label: `${planName}: ${c.label}` });
     }
   }
 
-  const scoreColumns: EvaluationScoreColumn[] = [];
-  for (const planId of planOrder) {
-    const present = presentByPlan.get(planId)!;
-    const declared = declaredOrderByPlan.get(planId) ?? [];
-    const emitted = new Set<string>();
-    const ordered: string[] = [];
-    for (const criterionId of declared) {
-      if (present.has(criterionId) && !emitted.has(criterionId)) {
-        emitted.add(criterionId);
-        ordered.push(criterionId);
-      }
-    }
-    for (const criterionId of firstSeenByPlan.get(planId)!) {
-      if (!emitted.has(criterionId)) {
-        emitted.add(criterionId);
-        ordered.push(criterionId);
-      }
-    }
-    const planName = planNames.get(planId) ?? planId;
-    for (const criterionId of ordered) {
-      const label = labelsByPlan.get(planId)?.get(criterionId) ?? criterionId;
-      scoreColumns.push({ planId, criterionId, label: `${planName}: ${label}` });
+  const orphanKeys = new Set<string>();
+  for (const r of rows) {
+    for (const criterionId of Object.keys(r.scores)) {
+      const key = `${r.planId}:${criterionId}`;
+      if (declaredKeys.has(key)) continue;
+      orphanKeys.add(key);
     }
   }
+  const orphanColumns: EvaluationScoreColumn[] = [...orphanKeys].sort().map((key) => {
+    const sep = key.indexOf(":");
+    const planId = key.slice(0, sep);
+    const criterionId = key.slice(sep + 1);
+    const planName = planNames.get(planId) ?? planId;
+    return { planId, criterionId, label: `${planName}: ${criterionId}` };
+  });
+
+  const scoreColumns: EvaluationScoreColumn[] = [...declaredColumns, ...orphanColumns];
 
   const columnNames = nameCustomColumns(
     scoreColumns.map((c) => ({ fieldId: `${c.planId}:${c.criterionId}`, label: c.label })),
@@ -313,33 +293,37 @@ export async function exportEvaluations(db: Db, eventId: string, params?: Evalua
     };
   });
 
-  // DEC-529 amendment (wave 4): declared-order union, built from the
-  // criteria this function already resolved above -- planBaseCriteria (the
-  // plan's base declared order) plus criteriaForRoundCache's per-round
-  // results (already memoised at criteriaForRoundCache, not re-parsed) --
-  // so a round-override criterion lands at the override's declared
-  // position, appended after any base criteria it didn't replace.
-  const declaredOrderByPlan = new Map<string, string[]>();
-  for (const [planId, base] of planBaseCriteria) {
-    const seen = new Set<string>();
-    const order: string[] = [];
+  // DEC-529 (wave-5 amendment): per plan, the declared column order is the
+  // base criteria_json array followed by any round-override-only criterion
+  // ids in ascending round order -- reusing the same criteriaForRound door
+  // and criteriaForRoundCache the weightedScore computation above already
+  // populated, and labelByCriterionId for the label text, so the label
+  // vocabulary keeps exactly one owner.
+  const criteriaByPlan = new Map<string, { id: string; label: string }[]>();
+  for (const planId of planNames.keys()) {
+    const base = planBaseCriteria.get(planId) ?? [];
+    const orderedIds: string[] = [];
+    const seenIds = new Set<string>();
     for (const c of base) {
-      if (seen.has(c.id)) continue;
-      seen.add(c.id);
-      order.push(c.id);
+      if (seenIds.has(c.id)) continue;
+      seenIds.add(c.id);
+      orderedIds.push(c.id);
     }
-    const roundKeys = [...criteriaForRoundCache.keys()]
-      .filter((key) => key.startsWith(`${planId}:`))
-      .sort((a, b) => Number(a.slice(planId.length + 1)) - Number(b.slice(planId.length + 1)));
-    for (const key of roundKeys) {
-      for (const c of criteriaForRoundCache.get(key)!) {
-        if (seen.has(c.id)) continue;
-        seen.add(c.id);
-        order.push(c.id);
+    const rounds = [...new Set(rows.filter((r) => r.planId === planId).map((r) => r.round))].sort((a, b) => a - b);
+    for (const round of rounds) {
+      const roundCriteria = criteriaForRoundCache.get(`${planId}:${round}`) ?? [];
+      for (const c of roundCriteria) {
+        if (seenIds.has(c.id)) continue;
+        seenIds.add(c.id);
+        orderedIds.push(c.id);
       }
     }
-    declaredOrderByPlan.set(planId, order);
+    const labels = labelsByPlan.get(planId) ?? new Map<string, string>();
+    criteriaByPlan.set(
+      planId,
+      orderedIds.map((id) => ({ id, label: labels.get(id) ?? id })),
+    );
   }
 
-  return shapeEvaluationsExport(exportRows, labelsByPlan, planNames, declaredOrderByPlan);
+  return shapeEvaluationsExport(exportRows, criteriaByPlan, planNames);
 }
