@@ -11,8 +11,11 @@ import { findFormForEvent } from "./forms";
 import { listPlansForEvent } from "./review";
 import { formatScheduleSlotLabel } from "../../lib/event-time";
 import { touchSubmissionsForTracks } from "./submissions/touch";
-import { DEC_229, DEC_461, DEC_851, DEC_931 } from "../../decisions";
+import { DEC_229, DEC_322, DEC_461, DEC_851, DEC_931 } from "../../decisions";
 import { EMBED_SURFACES, knobsForSurface } from "../../lib/embed-knobs";
+import { parseEventBranding, type EventBranding } from "../../domain/event-branding";
+
+void DEC_322; // toEventRecord's branding field is the one parser for event.branding_json -- see parseEventBranding
 
 void DEC_931; // delete-refusal fields name their blocking rows -- see deleteTrack/deleteRoom below
 void DEC_851; // deleteTrack's saved-embed blocker only fires for surfaces that actually honor trackId -- see below
@@ -29,10 +32,7 @@ export interface RepoPage {
 }
 void DEC_461;
 
-export interface EventBranding {
-  logoUrl?: string;
-  accentColor?: string;
-}
+export type { EventBranding } from "../../domain/event-branding";
 
 export interface EventRecord {
   id: string;
@@ -44,13 +44,9 @@ export interface EventRecord {
   location: string | null;
   timezone: string;
   recordPrefix: string;
-  branding: EventBranding | null;
+  branding: EventBranding;
   createdAt: number;
   updatedAt: number;
-}
-
-function toBranding(json: string | null): EventBranding | null {
-  return json ? (JSON.parse(json) as EventBranding) : null;
 }
 
 function toEventRecord(row: typeof schema.event.$inferSelect): EventRecord {
@@ -64,7 +60,7 @@ function toEventRecord(row: typeof schema.event.$inferSelect): EventRecord {
     location: row.location,
     timezone: row.timezone,
     recordPrefix: row.recordPrefix,
-    branding: toBranding(row.brandingJson),
+    branding: parseEventBranding(row.brandingJson),
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
   };

@@ -35,7 +35,7 @@ const eventDetail = {
   location: null,
   timezone: 'UTC',
   recordPrefix: 'EV',
-  branding: null,
+  branding: {},
 };
 
 function renderPanel() {

@@ -67,7 +67,7 @@ interface EventDetail {
   location: string | null;
   timezone: string;
   recordPrefix: string;
-  branding: { logoUrl?: string; accentColor?: string } | null;
+  branding: { logoUrl?: string; accentColor?: string };
   unscheduledByWindow?: {
     count: number;
     sessions: { submissionId: string; ref: string; title: string; day: string }[];
