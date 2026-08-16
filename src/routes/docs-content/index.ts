@@ -9,18 +9,29 @@
 
 import { startHere } from "./start-here";
 import { callForPapersAndSubmissions } from "./call-for-papers-and-submissions";
+import { speakersTasksAndContent } from "./speakers-tasks-and-content";
+import { agendaAndPublishing } from "./agenda-and-publishing";
+import { embedsAndPublicPages } from "./embeds-and-public-pages";
+import { contactsPipelineAndComms } from "./contacts-pipeline-and-comms";
 import { reviewingStartToFinish } from "./reviewing-start-to-finish";
 import { yourSpeakerPortal } from "./your-speaker-portal";
-import { contactsPipelineAndComms } from "./contacts-pipeline-and-comms";
 import { runningTheSoftware } from "./running-the-software";
 import type { DocsArticle } from "./types";
 
+// Listed in DOCS_GROUPS order (getting-started, running-an-event,
+// your-contacts, for-reviewers, for-speakers, running-the-software) so the
+// registry reads in the same order the docs index renders. The manifest test
+// compares slug SETS, so this order is a readability convention, not a
+// contract -- nothing may depend on the array's index positions.
 export const DOCS_ARTICLES: readonly DocsArticle[] = [
   startHere,
   callForPapersAndSubmissions,
+  speakersTasksAndContent,
+  agendaAndPublishing,
+  embedsAndPublicPages,
+  contactsPipelineAndComms,
   reviewingStartToFinish,
   yourSpeakerPortal,
-  contactsPipelineAndComms,
   runningTheSoftware,
 ];
 
