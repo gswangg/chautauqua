@@ -2,12 +2,44 @@ import { describe, expect, it } from 'vitest';
 import {
   expandFullNameMapping,
   FULL_NAME_TARGET,
+  importEmailProblem,
   mapImportRow,
   parseCsv,
   splitFullName,
   suggestMapping,
   toCsvVerbatim,
 } from './csv';
+
+// G13 (frame 08-contacts--15): the file-level import gate names the problem
+// with an email cell per row — the three failure kinds the frame enumerates
+// — validated by the ONE canonical rule (isValidEmail, src/domain/email.ts,
+// DEC-454), never a second regex.
+describe('importEmailProblem', () => {
+  it('names a blank cell (frame kind 1: "Name and company present, email blank")', () => {
+    expect(importEmailProblem('')).toBe('Email blank');
+    expect(importEmailProblem('   ')).toBe('Email blank');
+  });
+
+  it('names a placeholder value (frame kind 2: Email reads "n/a")', () => {
+    expect(importEmailProblem('n/a')).toBe('Email reads "n/a"');
+    expect(importEmailProblem('N/A')).toBe('Email reads "N/A"');
+    expect(importEmailProblem('none')).toBe('Email reads "none"');
+  });
+
+  it('names a missing @ (frame kind 3: Email missing an @ — "priya.example.com")', () => {
+    expect(importEmailProblem('priya.example.com')).toBe('Email missing an @ — "priya.example.com"');
+  });
+
+  it('names an @-carrying value the canonical rule still refuses', () => {
+    expect(importEmailProblem('priya@nodot')).toBe('Not a valid email address — "priya@nodot"');
+    expect(importEmailProblem('a@b@c.com')).toBe('Not a valid email address — "a@b@c.com"');
+  });
+
+  it('returns null for an address isValidEmail accepts', () => {
+    expect(importEmailProblem('priya@example.com')).toBeNull();
+    expect(importEmailProblem('  Priya@Example.com ')).toBeNull();
+  });
+});
 
 describe('parseCsv (re-exported from src/domain/csv.ts, DEC-011/DEC-179 wave-65 amendment)', () => {
   it('parses a simple header + rows', () => {

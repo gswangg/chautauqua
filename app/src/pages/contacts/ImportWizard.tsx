@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiPost, ApiError } from '../../lib/api';
-import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsvVerbatim, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
+import { expandFullNameMapping, importEmailProblem, mapImportRow, parseCsv, suggestMapping, toCsvVerbatim, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { usePendingLabel } from '../../components/PendingAction';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
@@ -89,13 +89,16 @@ function actionLabel(row: ImportPlanRow): string {
   return `Skip — ${row.reason ?? 'no reason given'}`;
 }
 
-/** Row numbers capped at ten, then 'and N more' (DEC-575 wave-28 amendment). */
-function formatRowList(lines: number[]): string {
-  if (lines.length <= 10) return lines.join(', ');
-  const shown = lines.slice(0, 10);
-  const more = lines.length - shown.length;
-  return `${shown.join(', ')}, and ${more} more`;
+/** One rejected row of the DEC-575 file-level gate: its 1-based CSV line
+ * and the named problem with its email cell (G13, frame 08-contacts--15). */
+interface BadRow {
+  line: number;
+  problem: string;
 }
+
+/** Rows listed with their reasons, capped at ten, then 'and N more'
+ * (DEC-575 wave-28 amendment; per-row reasons per frame 08-contacts--15). */
+const BAD_ROW_LIST_CAP = 10;
 
 export function ImportWizard({ onClose, onImported, eventId, eventName }: Props) {
   const [csvText, setCsvText] = useState('');
@@ -181,14 +184,20 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   const showSizeRefusal = header.length > 0 && !plan && !result && (overRowCount > 0 || overByteCount > 0);
 
   // DEC-575 (wave 28 amendment): a pre-mapping, file-level refusal for rows
-  // missing the dedupe key (email) -- counted from the header's own
+  // whose email cell is unusable -- counted from the header's own
   // auto-suggested mapping (suggestMapping, same alias table the "Match
   // columns" screen uses to prime its selects), computed ONCE per parsed
   // file and never re-derived from the organizer's later, live edits to
   // `mapping` in the match step -- a match-step "skip this column" toggle
   // on Email must not resurrect this file-level gate after it has already
   // been passed.
-  const badRows = useMemo(() => {
+  //
+  // G13 (frame 08-contacts--15): the gate tests the cell with
+  // importEmailProblem -- the domain's canonical isValidEmail rule
+  // (DEC-454), the same one the server's plan/commit path enforces -- not
+  // just emptiness, and carries each rejected row's named reason so the
+  // refusal can say WHY per row, the way the frame draws it.
+  const badRows: BadRow[] = useMemo(() => {
     if (header.length === 0) return [];
     const autoMapping = suggestMapping(header);
     // DEC-011/DEC-478 (wave-65 amendment): the domain's mapImportRow has no
@@ -197,10 +206,11 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     // expandFullNameMapping FIRST -- the same two steps runPreview's own
     // POST body already runs below -- before mapImportRow ever sees it.
     const expanded = expandFullNameMapping(header, allDataRows, autoMapping);
-    const bad: number[] = [];
+    const bad: BadRow[] = [];
     expanded.rows.forEach((row, i) => {
       const mapped = mapImportRow(expanded.mapping, expanded.header, row);
-      if (!mapped.email) bad.push(i + 2); // +2: header is line 1, first data row is line 2.
+      const problem = importEmailProblem(mapped.email ?? '');
+      if (problem) bad.push({ line: i + 2, problem }); // +2: header is line 1, first data row is line 2.
     });
     return bad;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,7 +223,11 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   // step (match columns, dedupe preview, dry run) sees only the usable
   // rows -- the raw file (csvText / allDataRows) is untouched so re-upload
   // and "the file is still loaded" both stay true.
-  const dataRows = warningAcknowledged ? allDataRows.filter((_, i) => !badRows.includes(i + 2)) : allDataRows;
+  const dataRows = useMemo(() => {
+    if (!warningAcknowledged) return allDataRows;
+    const badLines = new Set(badRows.map((r) => r.line));
+    return allDataRows.filter((_, i) => !badLines.has(i + 2));
+  }, [warningAcknowledged, allDataRows, badRows]);
 
   // P1 fix (w1-f): auto-suggest a mapping from header names on the first
   // sight of a given header (see suggestMapping in ./csv.ts), so a CSV whose
@@ -499,7 +513,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
         Import the {countOf(allDataRows.length - badRows.length, 'good row', 'good rows')}
       </button>
       <button type="button" className="chq-btn chq-btn-secondary" onClick={resetToChooseFile}>
-        Re-upload a different file
+        Upload a different file
       </button>
     </>
   ) : result ? (
@@ -618,12 +632,21 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
             {badRows.length} of {allDataRows.length} rows have no email address
           </p>
           <p className="chq-error-summary-detail">
-            Email is the key the importer uses to match and update existing contacts, so these rows can't be
-            imported.
+            Email is how a contact is matched and how anything reaches them, so a row without one cannot be
+            created.
           </p>
-          <p className="chq-error-summary-rows">
-            {plural(badRows.length, 'Row')} {formatRowList(badRows)}.
-          </p>
+          {/* G13 (frame 08-contacts--15): every rejected row names its own
+              reason -- blank, a placeholder like "n/a", a missing @ -- in
+              the frame's vocabulary, capped at ten rows then 'and N more'
+              (DEC-575). */}
+          <ul className="chq-error-summary-rows">
+            {badRows.slice(0, BAD_ROW_LIST_CAP).map((row) => (
+              <li key={row.line}>
+                Row {row.line} — {row.problem}
+              </li>
+            ))}
+            {badRows.length > BAD_ROW_LIST_CAP && <li>and {badRows.length - BAD_ROW_LIST_CAP} more</li>}
+          </ul>
           <p className="chq-error-summary-kept">Nothing was lost — the file is still loaded.</p>
         </div>
       )}
