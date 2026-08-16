@@ -1,6 +1,9 @@
-// Slot writes (DEC-021: accepted-only, always bump ics_sequence).
+// Slot writes (DEC-021: accepted-only; DEC-519 wave-6 amendment: bump
+// ics_sequence only on an actual VEVENT-affecting change, never on a no-op
+// write, matching the differential events.ts already applies to timezone
+// and room-name changes).
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -40,19 +43,35 @@ export function isValidSlotInput(body: unknown): body is SlotInput {
 }
 
 /** Upserts the schedule_slot for an accepted submission and bumps
- * ics_sequence (DEC-007 caller duty). Throws (via caller's ApiError) is the
- * route's job — this function assumes the accepted-only check already ran. */
+ * ics_sequence only when a column the VEVENT serializes (day/startMin/
+ * endMin/roomId — see room-name and timezone bumps in api/events.ts for the
+ * siblings of this differential) actually changed (DEC-519 wave-6
+ * amendment). Throws (via caller's ApiError) is the route's job — this
+ * function assumes the accepted-only check already ran. */
 export async function upsertSlot(db: Db, submissionId: string, input: SlotInput): Promise<void> {
   const now = new Date();
   // DEC-552: one atomic statement -- no read-then-write over the
-  // schedule_slot_submission_id_idx uniqueIndex.
+  // schedule_slot_submission_id_idx uniqueIndex. The `setWhere` clause
+  // makes the DO UPDATE a no-op (and RETURNING empty) when every supplied
+  // column already matches the stored row, per SQLite's UPSERT semantics
+  // ("if the WHERE clause is false ... no change is made to that row ...
+  // RETURNING doesn't return that row"). `IS NOT` (not `<>`) so a NULL
+  // roomId compares correctly against `excluded.room_id`.
   // Tri-state roomId (DEC-021 wave-66 amendment): decide by key presence,
   // not resolved value, so an absent key on the UPDATE branch leaves the
   // stored room untouched (house idiom: portal-edit.ts, pipeline.ts's
   // `if ("fitScore" in fit)`). The INSERT branch has nothing to preserve,
-  // so it keeps the `?? null` default.
+  // so it keeps the `?? null` default. roomId is only compared in
+  // `setWhere` when the key is present -- an absent key must never look
+  // like a "no-op" bump refusal for the columns that WERE supplied.
   const roomIdKeyPresent = "roomId" in input;
-  await db
+  const changeConditions = [
+    sql`${schema.scheduleSlot.day} IS NOT excluded.day`,
+    sql`${schema.scheduleSlot.startMin} IS NOT excluded.start_min`,
+    sql`${schema.scheduleSlot.endMin} IS NOT excluded.end_min`,
+    ...(roomIdKeyPresent ? [sql`${schema.scheduleSlot.roomId} IS NOT excluded.room_id`] : []),
+  ];
+  const rows = await db
     .insert(schema.scheduleSlot)
     .values({
       id: newId(),
@@ -73,12 +92,28 @@ export async function upsertSlot(db: Db, submissionId: string, input: SlotInput)
         endMin: input.endMin,
         updatedAt: now,
       },
-    });
+      setWhere: sql.join(changeConditions, sql` OR `),
+    })
+    .returning({ id: schema.scheduleSlot.id });
 
-  await bumpIcsSequences(db, [submissionId]);
+  // An INSERT always returns a row; an UPDATE returns one only when
+  // `setWhere` was true, i.e. something actually changed. Either way,
+  // an empty `rows` means the stored row was already byte-identical.
+  if (rows.length > 0) {
+    await bumpIcsSequences(db, [submissionId]);
+  }
 }
 
+/** Deletes the schedule_slot for a submission and bumps ics_sequence only
+ * when a row actually existed to delete (DEC-519 wave-6 amendment) -- a
+ * submission with no slot has nothing to un-notify calendar subscribers
+ * about. */
 export async function unscheduleSlot(db: Db, submissionId: string): Promise<void> {
-  await db.delete(schema.scheduleSlot).where(eq(schema.scheduleSlot.submissionId, submissionId));
-  await bumpIcsSequences(db, [submissionId]);
+  const deleted = await db
+    .delete(schema.scheduleSlot)
+    .where(eq(schema.scheduleSlot.submissionId, submissionId))
+    .returning({ id: schema.scheduleSlot.id });
+  if (deleted.length > 0) {
+    await bumpIcsSequences(db, [submissionId]);
+  }
 }

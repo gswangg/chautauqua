@@ -9,6 +9,8 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
+import { DatabaseSync } from "node:sqlite";
+import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "../src/db/schema";
 import type { Db } from "../src/server/context";
 import type { AppEnv, AuthInfo } from "../src/server/env";
@@ -571,5 +573,144 @@ describe("bumpIcsSequencesForRoom (DEC-519/DEC-492: atomic set-based, never read
     // proves the bump is derived FROM the room's own schedule slots, not a
     // blanket update.
     expect(selectCalls).toContain(freshSchema.scheduleSlot);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7. upsertSlot / unscheduleSlot (src/server/repo/agenda/slots.ts) -- the
+// defect this task fixes. upsertSlot previously called bumpIcsSequences
+// unconditionally, so a drag that lands back in place (or the SPA's
+// optimistic re-PUT) churned every subscriber's calendar and
+// submission.updatedAt (the Airtable sync cursor) with nothing to say. Both
+// writes now use a real in-memory sqlite db (node:sqlite, matching
+// test/api-views-cap.test.ts's established pattern) so the `setWhere` /
+// `.returning()` UPSERT differential runs through actual SQL, not a
+// hand-rolled fake that would just assert its own mock back.
+// ---------------------------------------------------------------------------
+
+const SLOT_DDL = `
+create table schedule_slot (
+  id text primary key,
+  submission_id text unique,
+  room_id text,
+  day text,
+  start_min integer,
+  end_min integer,
+  created_at integer,
+  updated_at integer
+);
+create table submission (
+  id text primary key,
+  event_id text,
+  form_id text,
+  seq integer,
+  title text,
+  description text,
+  track_id text,
+  additional_track_ids_json text,
+  status text not null default 'pending',
+  content_status text not null default 'pending',
+  accepted_at integer,
+  ics_sequence integer not null default 0,
+  external_ref text,
+  created_at integer,
+  updated_at integer
+);
+`;
+
+function makeSlotTestDb(): Db {
+  const sqlite = new DatabaseSync(":memory:");
+  sqlite.exec(SLOT_DDL);
+  const db = drizzle(
+    async (sqlText, params, method) => {
+      const stmt = sqlite.prepare(sqlText);
+      stmt.setReturnArrays(true);
+      if (method === "run") {
+        stmt.run(...params);
+        return { rows: [] };
+      }
+      const rows = stmt.all(...params) as unknown[];
+      return { rows };
+    },
+    { schema },
+  );
+  return db as unknown as Db;
+}
+
+async function insertSlotTestSubmission(db: Db, id: string) {
+  await db.insert(schema.submission).values({
+    id,
+    eventId: "event-1",
+    seq: 1,
+    title: "T",
+    icsSequence: 0,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  } as never);
+}
+
+describe("upsertSlot / unscheduleSlot (DEC-519 wave-6 amendment: no-op differential)", () => {
+  it("does NOT bump ics_sequence when the identical slot is PUT twice", async () => {
+    const { upsertSlot } = await import("../src/server/repo/agenda/slots");
+    const db = makeSlotTestDb();
+    await insertSlotTestSubmission(db, "sub-1");
+    const input = { day: "2026-06-01", startMin: 60, endMin: 90, roomId: "room-1" };
+    await upsertSlot(db, "sub-1", input);
+    const afterFirst = (await db.select().from(schema.submission)) as { icsSequence: number }[];
+    expect(afterFirst[0]?.icsSequence).toBe(1);
+
+    // Second PUT: identical values (the SPA's optimistic re-PUT / a drag
+    // that lands back in place).
+    await upsertSlot(db, "sub-1", input);
+    const afterSecond = (await db.select().from(schema.submission)) as { icsSequence: number }[];
+    expect(afterSecond[0]?.icsSequence).toBe(1); // unchanged, not 2
+  });
+
+  it("bumps ics_sequence when the room actually changes", async () => {
+    const { upsertSlot } = await import("../src/server/repo/agenda/slots");
+    const db = makeSlotTestDb();
+    await insertSlotTestSubmission(db, "sub-1");
+    await upsertSlot(db, "sub-1", { day: "2026-06-01", startMin: 60, endMin: 90, roomId: "room-1" });
+    await upsertSlot(db, "sub-1", { day: "2026-06-01", startMin: 60, endMin: 90, roomId: "room-2" });
+    const rows = (await db.select().from(schema.submission)) as { icsSequence: number }[];
+    expect(rows[0]?.icsSequence).toBe(2);
+  });
+
+  it("bumps ics_sequence when the time actually changes", async () => {
+    const { upsertSlot } = await import("../src/server/repo/agenda/slots");
+    const db = makeSlotTestDb();
+    await insertSlotTestSubmission(db, "sub-1");
+    await upsertSlot(db, "sub-1", { day: "2026-06-01", startMin: 60, endMin: 90, roomId: "room-1" });
+    await upsertSlot(db, "sub-1", { day: "2026-06-01", startMin: 61, endMin: 90, roomId: "room-1" });
+    const rows = (await db.select().from(schema.submission)) as { icsSequence: number }[];
+    expect(rows[0]?.icsSequence).toBe(2);
+  });
+
+  it("bumps ics_sequence on the initial insert (an insert always returns a row)", async () => {
+    const { upsertSlot } = await import("../src/server/repo/agenda/slots");
+    const db = makeSlotTestDb();
+    await insertSlotTestSubmission(db, "sub-1");
+    await upsertSlot(db, "sub-1", { day: "2026-06-01", startMin: 60, endMin: 90, roomId: "room-1" });
+    const rows = (await db.select().from(schema.submission)) as { icsSequence: number }[];
+    expect(rows[0]?.icsSequence).toBe(1);
+  });
+
+  it("unscheduleSlot does NOT bump when there is no slot to delete", async () => {
+    const { unscheduleSlot } = await import("../src/server/repo/agenda/slots");
+    const db = makeSlotTestDb();
+    await insertSlotTestSubmission(db, "sub-with-no-slot");
+    await unscheduleSlot(db, "sub-with-no-slot");
+    const rows = (await db.select().from(schema.submission)) as { icsSequence: number }[];
+    expect(rows[0]?.icsSequence).toBe(0); // untouched
+  });
+
+  it("unscheduleSlot bumps when an existing slot is actually deleted", async () => {
+    const { upsertSlot, unscheduleSlot } = await import("../src/server/repo/agenda/slots");
+    const db = makeSlotTestDb();
+    await insertSlotTestSubmission(db, "sub-1");
+    await upsertSlot(db, "sub-1", { day: "2026-06-01", startMin: 60, endMin: 90, roomId: "room-1" });
+    await unscheduleSlot(db, "sub-1");
+    const rows = (await db.select().from(schema.submission)) as { icsSequence: number }[];
+    expect(rows[0]?.icsSequence).toBe(2); // 1 from the insert, 1 from the delete
   });
 });

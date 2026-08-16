@@ -75,6 +75,10 @@ function makeInstrumentedDb(rowsByTable: Map<unknown, unknown[]>, tracker: Track
     for (const method of ["values", "set", "where", "onConflictDoUpdate"]) {
       self[method] = () => self;
     }
+    // DEC-519 wave-6 amendment: upsertSlot/unscheduleSlot now gate their ics
+    // bump on `.returning()` having a row -- this fake reports one, since
+    // writes are not the thing under test here (see the file header).
+    self.returning = () => Promise.resolve([{ id: "row-1" }]);
     self.then = (resolve: (v: unknown) => void) => resolve(undefined);
     return self;
   }

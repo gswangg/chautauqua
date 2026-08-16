@@ -95,7 +95,15 @@ function makeFakeDb() {
               const call: UpsertCall = { table, rows: asArray, target: opts.target, set: opts.set };
               upserts.push(call);
               if (table === schema.evaluation) lastEvaluationUpsert = call;
-              return Promise.resolve();
+              const result = Promise.resolve() as Promise<undefined> & {
+                returning: () => Promise<{ id: unknown }[]>;
+              };
+              // DEC-519 wave-6 amendment: upsertSlot gates its ics bump on
+              // `.returning()` having a row -- these tests are exercising
+              // the atomic-upsert shape (never a read-then-write), each
+              // call here is a genuine change, so report one row.
+              result.returning = () => Promise.resolve([{ id: (asArray[0] as { id?: unknown })?.id ?? "row-1" }]);
+              return result;
             },
           };
         },

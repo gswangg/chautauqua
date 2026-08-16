@@ -58,8 +58,11 @@ describe("PUT /submissions/:id/slot (DEC-476 minute bounds)", () => {
         return writeChain;
       },
       // DEC-552: upsertSlot is now one INSERT ... ON CONFLICT DO UPDATE, so the
-      // insert chain must terminate on onConflictDoUpdate.
-      onConflictDoUpdate: async () => undefined,
+      // insert chain must terminate on onConflictDoUpdate. DEC-519 wave-6
+      // amendment: upsertSlot gates the ics bump on `.returning()` having a
+      // row -- this fake reports one, since these tests are not about the
+      // no-op differential itself.
+      onConflictDoUpdate: () => ({ returning: async () => [{ id: "slot-1" }] }),
       where: async () => undefined,
     };
     const db = {
