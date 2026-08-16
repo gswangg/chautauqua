@@ -324,6 +324,147 @@ interface HeadshotRootRow {
   uploadedByContactId: string | null;
 }
 
+/** Fetches the event row (for the submission ref prefix). Wave-1 read: an
+ * independent (eventId)-only query, never depends on anything the list
+ * resolves. */
+async function fetchRecordPrefix(db: Db, eventId: string): Promise<string> {
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  return eventRows[0]?.recordPrefix ?? "SES";
+}
+
+/** Wave-1 read: the deliverable chain-root page over (eventId, kinds, q)
+ * only -- never depends on any other wave-1 read's result. */
+async function fetchDeliverableRoots(
+  db: Db,
+  eventId: string,
+  deliverableKinds: string[],
+  q: string | null,
+): Promise<DeliverableRootRow[]> {
+  const deliverableWhere = buildDeliverableWhere(eventId, deliverableKinds, q);
+  const deliverableRoots = await db
+    .select({
+      id: schema.file.id,
+      submissionId: schema.file.submissionId,
+      createdAt: schema.file.createdAt,
+      submissionSeq: schema.submission.seq,
+      submissionTitle: schema.submission.title,
+    })
+    .from(schema.file)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
+    .where(deliverableWhere)
+    .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`)
+    .limit(MAX_FILE_LIBRARY_SCAN + 1);
+  if (deliverableRoots.length > MAX_FILE_LIBRARY_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This files library filter would scan more than ${MAX_FILE_LIBRARY_SCAN} deliverable files — narrow with the search box first (the q filter runs in SQL and composes with the kind filter)`,
+    );
+  }
+  return deliverableRoots;
+}
+
+/** Wave-2 read: the chain-tip size sum, keyed on the same (eventId, kinds,
+ * q) predicate the deliverable root page resolves against (DEC-902 keeps
+ * this off the printed kindCounts, but it still shares q/kind scope with
+ * the page, so it moves with the page-keyed wave rather than the bare
+ * event-row read). */
+async function fetchDeliverableSizeBytes(
+  db: Db,
+  eventId: string,
+  deliverableKinds: string[],
+  q: string | null,
+): Promise<number> {
+  const deliverableTipWhere = buildDeliverableTipWhere(eventId, deliverableKinds, q);
+  const deliverableSizeRows = await db
+    .select({ sum: sql<number>`coalesce(sum(${schema.file.sizeBytes}), 0)` })
+    .from(schema.file)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
+    .where(deliverableTipWhere);
+  return Number(deliverableSizeRows[0]?.sum ?? 0);
+}
+
+/** Wave-1 read: the headshot root page over (eventId, q) only -- never
+ * depends on any other wave-1 read's result. Dedupe-by-file-id (DEC-680) is
+ * cheap in-process work done here so the caller sees a clean root list. */
+async function fetchHeadshotRoots(db: Db, eventId: string, q: string | null): Promise<HeadshotRootRow[]> {
+  const headshotWhere = buildHeadshotWhere(eventId, q);
+  const rows = await db
+    .selectDistinct({
+      id: schema.file.id,
+      contactId: schema.contact.id,
+      createdAt: schema.file.createdAt,
+      filename: schema.file.filename,
+      sizeBytes: schema.file.sizeBytes,
+      uploadedByContactId: schema.file.uploadedByContactId,
+    })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .innerJoin(schema.file, HEADSHOT_JOIN)
+    .where(headshotWhere)
+    .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`)
+    .limit(MAX_FILE_LIBRARY_SCAN + 1);
+  if (rows.length > MAX_FILE_LIBRARY_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This files library filter would scan more than ${MAX_FILE_LIBRARY_SCAN} headshot files — narrow with the search box first (the q filter runs in SQL and composes with the kind filter)`,
+    );
+  }
+  // A contact can speak on multiple accepted submissions — dedupe by
+  // file id (DEC-680), never rely on selectDistinct alone since row
+  // identity here is the file, not the (participant, file) pair.
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    if (seen.has(r.id)) return false;
+    seen.add(r.id);
+    return true;
+  });
+}
+
+/** Wave-2 read: lead speaker names for the PAGE's own deliverable
+ * submissions (DEC-344 bounded-cost rule). */
+async function fetchLeadBySubmission(
+  db: Db,
+  submissionIds: string[],
+): Promise<Map<string, { order: number; contactId: string; name: string }>> {
+  const leadBySubmission = new Map<string, { order: number; contactId: string; name: string }>();
+  for (const batch of chunkIds(submissionIds)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        order: schema.participant.order,
+        contactId: schema.contact.id,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
+      .where(
+        and(
+          inArray(schema.participant.submissionId, batch),
+          eq(schema.participant.role, "speaker"),
+          inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+        ),
+      );
+    for (const p of batchRows) {
+      if (!p.submissionId) continue;
+      const existing = leadBySubmission.get(p.submissionId);
+      if (!existing || p.order < existing.order || (p.order === existing.order && p.contactId < existing.contactId)) {
+        leadBySubmission.set(p.submissionId, {
+          order: p.order,
+          contactId: p.contactId,
+          name: `${p.firstName} ${p.lastName}`.trim(),
+        });
+      }
+    }
+  }
+  return leadBySubmission;
+}
+
 /** DEC-773: the files library is ONE list — deliverable version chains AND
  * speaker headshots (kind='headshot', submissionId null, attributed to
  * their contact) merged by createdAt desc/id asc. Never a SQL UNION (the
@@ -334,104 +475,42 @@ interface HeadshotRootRow {
  * buildDeliverableWhere/buildHeadshotWhere compose (DEC-773 amendment,
  * w29-b) -- never a chain materialization purely to sum a number. Per-page
  * hydration (lead speaker names, uploader names, and now the deliverable
- * chains themselves) stays scoped to just the page's rows (DEC-344). */
+ * chains themselves) stays scoped to just the page's rows (DEC-344).
+ *
+ * DEC-370/DEC-338 (w61-i): every read below issues in one of TWO declared
+ * Promise.all waves rather than a strictly-sequential await ladder. Wave 1
+ * holds every read keyed only on (eventId, params) -- the event row,
+ * computeKindCounts (still sharing the LIST's own q/event predicate, DEC-
+ * 902), and the two root-page queries that resolve which ids land on this
+ * page. Wave 2 holds every read keyed on the PAGE's own resolved ids -- the
+ * chain-tip size sum, the page's lead-speaker names, and the page's own
+ * deliverable version chains. batchContactNames stays a THIRD, solitary
+ * step: it needs uploadedByContactId off the chain's latest file, which
+ * wave 2's loadDeliverableChains call itself resolves, so it is a real
+ * sequential dependency, not an unowned ladder rung. No read here is ever
+ * parallelized with a write. */
 export async function listEventDeliverableFiles(
   db: Db,
   eventId: string,
   params: EventFilesQuery,
 ): Promise<EventDeliverableChainPage> {
-  const eventRows = await db
-    .select({ recordPrefix: schema.event.recordPrefix })
-    .from(schema.event)
-    .where(eq(schema.event.id, eventId))
-    .limit(1);
-  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
-
-  // DEC-902: independent of params.kinds -- the chip strip's own counts
-  // must never depend on which chip is currently selected.
-  const kindCounts = await computeKindCounts(db, eventId, params.q);
-
   const deliverableKinds = params.kinds.filter((k) => k !== HEADSHOT_KIND);
   const wantsDeliverables = params.kinds.length === 0 || deliverableKinds.length > 0;
   const wantsHeadshots = params.kinds.length === 0 || params.kinds.includes(HEADSHOT_KIND);
 
-  let deliverableRoots: DeliverableRootRow[] = [];
-  let deliverableSizeBytes = 0;
-  if (wantsDeliverables) {
-    const deliverableWhere = buildDeliverableWhere(eventId, deliverableKinds, params.q);
-    deliverableRoots = await db
-      .select({
-        id: schema.file.id,
-        submissionId: schema.file.submissionId,
-        createdAt: schema.file.createdAt,
-        submissionSeq: schema.submission.seq,
-        submissionTitle: schema.submission.title,
-      })
-      .from(schema.file)
-      .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
-      .where(deliverableWhere)
-      .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`)
-      .limit(MAX_FILE_LIBRARY_SCAN + 1);
-    if (deliverableRoots.length > MAX_FILE_LIBRARY_SCAN) {
-      throw new ApiError(
-        "invalid",
-        `This files library filter would scan more than ${MAX_FILE_LIBRARY_SCAN} deliverable files — narrow with the search box first (the q filter runs in SQL and composes with the kind filter)`,
-      );
-    }
-
-    // DEC-773 amendment (w29-b): the chain-tip sum, never a chain
-    // materialization -- ONE aggregate over the same event/kind/q
-    // predicates as the root scan above, just testing the chain's TIP
-    // (buildDeliverableTipWhere) instead of its ROOT.
-    const deliverableTipWhere = buildDeliverableTipWhere(eventId, deliverableKinds, params.q);
-    const deliverableSizeRows = await db
-      .select({ sum: sql<number>`coalesce(sum(${schema.file.sizeBytes}), 0)` })
-      .from(schema.file)
-      .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
-      .where(deliverableTipWhere);
-    deliverableSizeBytes = Number(deliverableSizeRows[0]?.sum ?? 0);
-  }
-
-  let headshotRoots: HeadshotRootRow[] = [];
-  if (wantsHeadshots) {
-    const headshotWhere = buildHeadshotWhere(eventId, params.q);
-    const rows = await db
-      .selectDistinct({
-        id: schema.file.id,
-        contactId: schema.contact.id,
-        createdAt: schema.file.createdAt,
-        filename: schema.file.filename,
-        sizeBytes: schema.file.sizeBytes,
-        uploadedByContactId: schema.file.uploadedByContactId,
-      })
-      .from(schema.participant)
-      .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .innerJoin(schema.file, HEADSHOT_JOIN)
-      .where(headshotWhere)
-      .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`)
-      .limit(MAX_FILE_LIBRARY_SCAN + 1);
-    if (rows.length > MAX_FILE_LIBRARY_SCAN) {
-      throw new ApiError(
-        "invalid",
-        `This files library filter would scan more than ${MAX_FILE_LIBRARY_SCAN} headshot files — narrow with the search box first (the q filter runs in SQL and composes with the kind filter)`,
-      );
-    }
-    // A contact can speak on multiple accepted submissions — dedupe by
-    // file id (DEC-680), never rely on selectDistinct alone since row
-    // identity here is the file, not the (participant, file) pair.
-    const seen = new Set<string>();
-    headshotRoots = rows.filter((r) => {
-      if (seen.has(r.id)) return false;
-      seen.add(r.id);
-      return true;
-    });
-  }
+  // Wave 1: independent of everything except (eventId, params).
+  const [recordPrefix, kindCounts, deliverableRoots, headshotRoots] = await Promise.all([
+    fetchRecordPrefix(db, eventId),
+    // DEC-902: independent of params.kinds -- the chip strip's own counts
+    // must never depend on which chip is currently selected.
+    computeKindCounts(db, eventId, params.q),
+    wantsDeliverables
+      ? fetchDeliverableRoots(db, eventId, deliverableKinds, params.q)
+      : Promise.resolve([] as DeliverableRootRow[]),
+    wantsHeadshots ? fetchHeadshotRoots(db, eventId, params.q) : Promise.resolve([] as HeadshotRootRow[]),
+  ]);
 
   const total = deliverableRoots.length + headshotRoots.length;
-
-  let totalSizeBytes = deliverableSizeBytes;
-  for (const root of headshotRoots) totalSizeBytes += root.sizeBytes;
 
   interface Candidate {
     id: string;
@@ -460,63 +539,39 @@ export async function listEventDeliverableFiles(
   const offset = (params.page - 1) * params.perPage;
   const page = merged.slice(offset, offset + params.perPage);
 
-  if (page.length === 0) return { items: [], total, totalSizeBytes, page: params.page, perPage: params.perPage, kindCounts };
-
   const deliverablePage = page.filter((c) => c.deliverable !== null);
   const headshotPage = page.filter((c) => c.headshot !== null);
-
-  // Lead speaker names, scoped to just the page's submissions (DEC-344).
-  const leadBySubmission = new Map<string, { order: number; contactId: string; name: string }>();
-  if (deliverablePage.length > 0) {
-    const submissionIds = [
-      ...new Set(deliverablePage.map((c) => c.deliverable!.submissionId).filter((id): id is string => !!id)),
-    ];
-    for (const batch of chunkIds(submissionIds)) {
-      const batchRows = await db
-        .select({
-          submissionId: schema.participant.submissionId,
-          order: schema.participant.order,
-          contactId: schema.contact.id,
-          firstName: schema.contact.firstName,
-          lastName: schema.contact.lastName,
-        })
-        .from(schema.participant)
-        .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-        .where(
-          and(
-            inArray(schema.participant.submissionId, batch),
-            eq(schema.participant.role, "speaker"),
-            inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
-          ),
-        );
-      for (const p of batchRows) {
-        if (!p.submissionId) continue;
-        const existing = leadBySubmission.get(p.submissionId);
-        if (!existing || p.order < existing.order || (p.order === existing.order && p.contactId < existing.contactId)) {
-          leadBySubmission.set(p.submissionId, {
-            order: p.order,
-            contactId: p.contactId,
-            name: `${p.firstName} ${p.lastName}`.trim(),
-          });
-        }
-      }
-    }
-  }
-
-  // DEC-773 amendment (w29-b): chains are loaded HERE, scoped to just the
-  // page's own submissions -- never the full matching population
+  // DEC-773 amendment (w29-b): chains are loaded scoped to just the page's
+  // own submissions -- never the full matching population
   // (loadDeliverableChains was previously called eagerly over every
   // matching deliverableRoot's submissionId purely so totalSizeBytes could
-  // sum each chain's latest version; that sum is now the SQL aggregate
-  // above, so this per-page load is the only chain materialization left,
-  // matching DEC-344's bounded-cost rule for real).
+  // sum each chain's latest version; that sum is the SQL aggregate below,
+  // so this per-page load is the only chain materialization left, matching
+  // DEC-344's bounded-cost rule for real).
   const pageSubmissionIds = [
     ...new Set(deliverablePage.map((c) => c.deliverable!.submissionId).filter((id): id is string => !!id)),
   ];
-  const deliverableChains = await loadDeliverableChains(db, pageSubmissionIds);
+
+  // Wave 2: every read keyed on the page's own resolved ids -- the
+  // chain-tip size sum (shares the page's own event/kind/q predicate),
+  // the page's lead-speaker names, and the page's own deliverable version
+  // chains. chunkIds([]) yields zero batches, so an empty pageSubmissionIds
+  // issues no statement here (mirrors the original conditional guards).
+  const [deliverableSizeBytes, leadBySubmission, deliverableChains] = await Promise.all([
+    wantsDeliverables ? fetchDeliverableSizeBytes(db, eventId, deliverableKinds, params.q) : Promise.resolve(0),
+    fetchLeadBySubmission(db, pageSubmissionIds),
+    loadDeliverableChains(db, pageSubmissionIds),
+  ]);
+
+  let totalSizeBytes = deliverableSizeBytes;
+  for (const root of headshotRoots) totalSizeBytes += root.sizeBytes;
+
+  if (page.length === 0) return { items: [], total, totalSizeBytes, page: params.page, perPage: params.perPage, kindCounts };
 
   // Uploader/owner names, batched across BOTH branches' page rows in ONE
-  // lookup (never per-row, DEC-601).
+  // lookup (never per-row, DEC-601). This is a real sequential dependency
+  // on wave 2's loadDeliverableChains result (uploadedByContactId comes off
+  // the chain's latest file), not an unowned ladder rung -- DEC-370.
   const latestByRoot = new Map<string, DeliverableFileRow>();
   for (const c of deliverablePage) {
     const chain = deliverableChains.get(c.id);
