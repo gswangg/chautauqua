@@ -34,9 +34,20 @@
 // row instead of retyping, and a reset states the two facts unique to it
 // (sessions end everywhere, no email is sent). DESIGN-RULINGS.md:353,
 // 358-366 is the frame authority.
+//
+// DEC-747 amendment (wave 67): the invite flow (frames 09--18/19/20) is a
+// DIALOG, not an inline strip -- "Invite someone" opens the shared
+// ModalFrame (DEC-651), and the created/reveal screen is the SAME dialog's
+// second step (its body swaps from the form to the reveal block) so the
+// one-time password is still shown exactly once and closing the dialog is
+// still the last time it is seen. The reset-password reveal is a distinct
+// per-row affordance (frame 09--24) and keeps its inline site/copy
+// untouched -- only the shared reveal markup is extracted into
+// PasswordRevealBlock so the two paths can't drift.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { ModalFrame } from '../../components/ModalFrame';
 import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useMe } from '../../lib/useMe';
 import { copyText } from '../../lib/clipboard';
@@ -46,7 +57,7 @@ import { capitalizeFirst } from '../../lib/plural';
 import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
 import { DEC_747 } from '../../../../src/decisions';
 
-void DEC_747; // the invite/reset flows below implement wave-58's amendment: verb-matches-act, reveal-once shape, honest email gap
+void DEC_747; // the invite/reset flows below implement wave-58's amendment (verb-matches-act, reveal-once shape, honest email gap) and wave-67's amendment (invite dialog form factor)
 
 const SECTION_KEY = 'people';
 
@@ -68,6 +79,83 @@ function personLabel(user: OrgUser): string {
 
 type Role = 'organizer' | 'reviewer';
 
+interface RevealedPassword {
+  email: string;
+  password: string;
+  context: 'invite' | 'reset';
+  // DEC-238 (wave 65 amendment): only set on the invite path -- the
+  // server's closed vocabulary for what happened to the welcome notice,
+  // named per-account rather than a blanket hedge.
+  welcomeEmail?: 'sent' | 'not_sent_no_event' | 'not_sent_failed';
+}
+
+// DEC-747 amendment (wave 67): the reveal-once markup is shared by the
+// invite path (rendered as the dialog's second step) and the reset path
+// (rendered inline, unchanged site) -- extracted so the two can't drift,
+// without changing one character of either path's copy.
+function PasswordRevealBlock({
+  revealed,
+  copyResult,
+  failedCopyRef,
+  onCopy,
+  onDone,
+}: {
+  revealed: RevealedPassword;
+  copyResult: { ok: boolean } | null;
+  failedCopyRef: { current: HTMLInputElement | null };
+  onCopy: () => void;
+  onDone: () => void;
+}) {
+  return (
+    <div className="chq-token-reveal" role="alert">
+      <strong>
+        One-time password for {revealed.email} — copy it now, it will not be shown again:
+      </strong>
+      <code className="chq-settings-people-password">{revealed.password}</code>
+      <button type="button" className="chq-btn chq-btn-secondary" onClick={onCopy}>
+        {copyResult?.ok ? 'Copied!' : 'Copy'}
+      </button>
+      <button type="button" className="chq-btn chq-btn-secondary" onClick={onDone}>
+        Done
+      </button>
+      <div role="status" aria-live="polite" className="chq-copy-status">
+        {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
+      </div>
+      {copyResult && !copyResult.ok ? (
+        <input
+          ref={failedCopyRef}
+          className="chq-input"
+          readOnly
+          value={revealed.password}
+          onFocus={(e) => e.currentTarget.select()}
+          aria-label="One-time password to copy manually"
+        />
+      ) : null}
+      <p className="chq-settings-people-closing-note">
+        Closing this dialog is the last time you see it — after that only a reset can replace it.
+      </p>
+      {revealed.context === 'invite' ? (
+        <p className="chq-settings-people-closing-note">
+          {revealed.welcomeEmail === 'sent'
+            ? `A welcome notice was sent to ${revealed.email}.`
+            : revealed.welcomeEmail === 'not_sent_no_event'
+              ? "This org has no events yet, so there is nowhere to log the notice and nothing was sent — pass the password on yourself."
+              : 'The welcome notice could not be sent — pass the password on yourself.'}
+        </p>
+      ) : (
+        <>
+          <p className="chq-settings-people-closing-note">
+            Every session signed in as {revealed.email} is ended — they are signed out everywhere.
+          </p>
+          <p className="chq-settings-people-closing-note">
+            Resetting sends no email; pass the new password on yourself.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function PeopleRolesPanel() {
   const { me } = useMe();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -87,15 +175,7 @@ export function PeopleRolesPanel() {
   // DEC-747 amendment (wave 58): the reveal-once screen carries a `context`
   // so the closing facts can differ -- the invite path states the
   // email_log gap, the reset path states session revocation + no-email.
-  const [revealedPassword, setRevealedPassword] = useState<{
-    email: string;
-    password: string;
-    context: 'invite' | 'reset';
-    // DEC-238 (wave 65 amendment): only set on the invite path -- the
-    // server's closed vocabulary for what happened to the welcome notice,
-    // named per-account rather than a blanket hedge.
-    welcomeEmail?: 'sent' | 'not_sent_no_event' | 'not_sent_failed';
-  } | null>(null);
+  const [revealedPassword, setRevealedPassword] = useState<RevealedPassword | null>(null);
   const [copyResult, setCopyResult] = useState<{ ok: boolean } | null>(null);
   const failedCopyRef = useRef<HTMLInputElement | null>(null);
   // DEC-747 amendment (wave 58): a rejected duplicate email offers a route
@@ -116,6 +196,20 @@ export function PeopleRolesPanel() {
       params.delete('edit');
       return params;
     });
+  }
+
+  // DEC-747 amendment (wave 67): the ONE way the invite dialog closes,
+  // whichever control triggers it (Cancel, the frame's Close, Escape, a
+  // scrim click, or Done on the reveal step) -- and per DEC-238/DEC-747
+  // wave-58, closing it is the last time the one-time password is shown, so
+  // this is also the only place the invite-context reveal is cleared.
+  function closeInviteDialog() {
+    setInviting(false);
+    setRevealedPassword((prev) => (prev && prev.context === 'invite' ? null : prev));
+    setCopyResult(null);
+    setError(null);
+    setFieldErrors({});
+    setDuplicateUser(null);
   }
 
   function load() {
@@ -163,7 +257,9 @@ export function PeopleRolesPanel() {
       setNewFirstName('');
       setNewLastName('');
       setNewRole('reviewer');
-      setInviting(false);
+      // Dialog stays open -- its body now swaps from the form to the
+      // reveal step (DEC-747 wave-67 amendment); `closeInviteDialog` is
+      // what eventually closes it (Done/Close/Escape/scrim).
       await load();
     } catch (err) {
       if (err instanceof ApiError && err.fields) {
@@ -184,7 +280,7 @@ export function PeopleRolesPanel() {
 
   function openDuplicateRow() {
     if (!duplicateUser) return;
-    setInviting(false);
+    closeInviteDialog();
     const el = document.getElementById(`people-row-${duplicateUser.id}`);
     el?.focus();
     el?.scrollIntoView?.({ block: 'center' });
@@ -283,13 +379,17 @@ export function PeopleRolesPanel() {
         <button
           type="button"
           className="chq-settings-section-action chq-link-button"
-          onClick={() => setInviting((v) => !v)}
+          onClick={() => setInviting(true)}
         >
           Invite someone
         </button>
       </div>
 
-      {error && (
+      {/* DEC-747 amendment (wave 67): the reset-password reveal keeps its
+          original inline site -- only the invite-context reveal moved into
+          the dialog below. A general (non-invite) error, e.g. a load
+          failure, still renders here since the dialog isn't open for it. */}
+      {!inviting && error && (
         <div className="chq-error" role="alert">
           {error}
           {duplicateUser ? (
@@ -300,154 +400,141 @@ export function PeopleRolesPanel() {
         </div>
       )}
 
-      {revealedPassword && (
-        <div className="chq-token-reveal" role="alert">
-          <strong>
-            One-time password for {revealedPassword.email} — copy it now, it will not be shown again:
-          </strong>
-          <code className="chq-settings-people-password">{revealedPassword.password}</code>
-          <button
-            type="button"
-            className="chq-btn chq-btn-secondary"
-            onClick={() => void handleCopyPassword()}
-          >
-            {copyResult?.ok ? 'Copied!' : 'Copy'}
-          </button>
-          <button
-            type="button"
-            className="chq-btn chq-btn-secondary"
-            onClick={() => {
-              setRevealedPassword(null);
-              setCopyResult(null);
-            }}
-          >
-            Done
-          </button>
-          <div role="status" aria-live="polite" className="chq-copy-status">
-            {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
-          </div>
-          {copyResult && !copyResult.ok ? (
-            <input
-              ref={failedCopyRef}
-              className="chq-input"
-              readOnly
-              value={revealedPassword.password}
-              onFocus={(e) => e.currentTarget.select()}
-              aria-label="One-time password to copy manually"
-            />
-          ) : null}
-          <p className="chq-settings-people-closing-note">
-            Closing this dialog is the last time you see it — after that only a reset can replace it.
-          </p>
-          {revealedPassword.context === 'invite' ? (
-            <p className="chq-settings-people-closing-note">
-              {revealedPassword.welcomeEmail === 'sent'
-                ? `A welcome notice was sent to ${revealedPassword.email}.`
-                : revealedPassword.welcomeEmail === 'not_sent_no_event'
-                  ? "This org has no events yet, so there is nowhere to log the notice and nothing was sent — pass the password on yourself."
-                  : 'The welcome notice could not be sent — pass the password on yourself.'}
-            </p>
-          ) : (
-            <>
-              <p className="chq-settings-people-closing-note">
-                Every session signed in as {revealedPassword.email} is ended — they are signed out everywhere.
-              </p>
-              <p className="chq-settings-people-closing-note">
-                Resetting sends no email; pass the new password on yourself.
-              </p>
-            </>
-          )}
-        </div>
+      {revealedPassword && revealedPassword.context === 'reset' && (
+        <PasswordRevealBlock
+          revealed={revealedPassword}
+          copyResult={copyResult}
+          failedCopyRef={failedCopyRef}
+          onCopy={() => void handleCopyPassword()}
+          onDone={() => {
+            setRevealedPassword(null);
+            setCopyResult(null);
+          }}
+        />
       )}
 
-      {inviting && (
-        // A plain div, not a nested <form> -- the whole edit view is already
-        // inside SettingsEditForm's own <form> (DEC-896/B10), and nested
-        // <form> elements are invalid HTML.
-        <div className="chq-settings-row">
-          <p className="chq-settings-row-hint">
-            This creates the account immediately — the password appears on the next screen, so nobody waits for
-            an acceptance that will never come.
-          </p>
-          <label htmlFor="people-invite-first-name">
-            First name
-            <input
-              id="people-invite-first-name"
-              className="chq-input"
-              type="text"
-              required
-              value={newFirstName}
-              onChange={(e) => setNewFirstName(e.target.value)}
-            />
-          </label>
-          {fieldErrors.firstName ? <span role="alert">{fieldErrors.firstName}</span> : null}
-          <label htmlFor="people-invite-last-name">
-            Last name
-            <input
-              id="people-invite-last-name"
-              className="chq-input"
-              type="text"
-              required
-              value={newLastName}
-              onChange={(e) => setNewLastName(e.target.value)}
-            />
-          </label>
-          {fieldErrors.lastName ? <span role="alert">{fieldErrors.lastName}</span> : null}
-          <label htmlFor="people-invite-email">
-            Email
-            <input
-              id="people-invite-email"
-              className="chq-input"
-              type="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              maxLength={MAX_EMAIL_LENGTH}
-            />
-          </label>
-          {fieldErrors.email ? <span role="alert">{fieldErrors.email}</span> : null}
-          <div>
-            <span id="people-invite-role-label">Role</span>
-            <div className="chq-chipstrip" role="radiogroup" aria-labelledby="people-invite-role-label">
+      {inviting && revealedPassword && revealedPassword.context === 'invite' ? (
+        <ModalFrame title="Account created" onClose={closeInviteDialog} modalClassName="chq-people-invite-modal">
+          <PasswordRevealBlock
+            revealed={revealedPassword}
+            copyResult={copyResult}
+            failedCopyRef={failedCopyRef}
+            onCopy={() => void handleCopyPassword()}
+            onDone={closeInviteDialog}
+          />
+        </ModalFrame>
+      ) : null}
+
+      {inviting && !(revealedPassword && revealedPassword.context === 'invite') ? (
+        <ModalFrame
+          as="form"
+          title="Invite someone"
+          onClose={closeInviteDialog}
+          closeDisabled={creating}
+          modalClassName="chq-people-invite-modal"
+          onSubmit={(e) => void handleInvite(e)}
+          actions={
+            <>
               <button
-                type="button"
-                role="radio"
-                aria-checked={newRole === 'reviewer'}
-                className={newRole === 'reviewer' ? 'chq-pill is-active' : 'chq-pill'}
-                onClick={() => setNewRole('reviewer')}
+                type="submit"
+                className="chq-btn chq-btn-primary"
+                disabled={
+                  creating ||
+                  newEmail.trim().length === 0 ||
+                  newFirstName.trim().length === 0 ||
+                  newLastName.trim().length === 0
+                }
               >
-                Reviewer
+                {creating ? 'Creating…' : 'Create the account'}
               </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={newRole === 'organizer'}
-                className={newRole === 'organizer' ? 'chq-pill is-active' : 'chq-pill'}
-                onClick={() => setNewRole('organizer')}
-              >
-                Organizer
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={closeInviteDialog}>
+                Cancel
               </button>
-            </div>
+            </>
+          }
+        >
+          <div className="chq-settings-row">
             <p className="chq-settings-row-hint">
-              a reviewer sees only the plans they are assigned to &middot; an organiser sees everything, including
-              this page
+              This creates the account immediately — the password appears on the next screen, so nobody waits for
+              an acceptance that will never come.
             </p>
+            {error && (
+              <div className="chq-error" role="alert">
+                {error}
+                {duplicateUser ? (
+                  <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
+                    Open {personLabel(duplicateUser)}&apos;s row
+                  </button>
+                ) : null}
+              </div>
+            )}
+            <label htmlFor="people-invite-first-name">
+              First name
+              <input
+                id="people-invite-first-name"
+                className="chq-input"
+                type="text"
+                required
+                value={newFirstName}
+                onChange={(e) => setNewFirstName(e.target.value)}
+              />
+            </label>
+            {fieldErrors.firstName ? <span role="alert">{fieldErrors.firstName}</span> : null}
+            <label htmlFor="people-invite-last-name">
+              Last name
+              <input
+                id="people-invite-last-name"
+                className="chq-input"
+                type="text"
+                required
+                value={newLastName}
+                onChange={(e) => setNewLastName(e.target.value)}
+              />
+            </label>
+            {fieldErrors.lastName ? <span role="alert">{fieldErrors.lastName}</span> : null}
+            <label htmlFor="people-invite-email">
+              Email
+              <input
+                id="people-invite-email"
+                className="chq-input"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                maxLength={MAX_EMAIL_LENGTH}
+              />
+            </label>
+            {fieldErrors.email ? <span role="alert">{fieldErrors.email}</span> : null}
+            <div>
+              <span id="people-invite-role-label">Role</span>
+              <div className="chq-chipstrip" role="radiogroup" aria-labelledby="people-invite-role-label">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={newRole === 'reviewer'}
+                  className={newRole === 'reviewer' ? 'chq-pill is-active' : 'chq-pill'}
+                  onClick={() => setNewRole('reviewer')}
+                >
+                  Reviewer
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={newRole === 'organizer'}
+                  className={newRole === 'organizer' ? 'chq-pill is-active' : 'chq-pill'}
+                  onClick={() => setNewRole('organizer')}
+                >
+                  Organizer
+                </button>
+              </div>
+              <p className="chq-settings-row-hint">
+                a reviewer sees only the plans they are assigned to &middot; an organiser sees everything, including
+                this page
+              </p>
+            </div>
+            {fieldErrors.role ? <span role="alert">{fieldErrors.role}</span> : null}
           </div>
-          {fieldErrors.role ? <span role="alert">{fieldErrors.role}</span> : null}
-          <button
-            type="button"
-            className="chq-btn chq-btn-primary"
-            onClick={() => void handleInvite()}
-            disabled={
-              creating ||
-              newEmail.trim().length === 0 ||
-              newFirstName.trim().length === 0 ||
-              newLastName.trim().length === 0
-            }
-          >
-            {creating ? 'Creating…' : 'Create the account'}
-          </button>
-        </div>
-      )}
+        </ModalFrame>
+      ) : null}
 
       {loading ? (
         <DelayedLoading />
