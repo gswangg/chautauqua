@@ -65,6 +65,11 @@ import { enumerateRegisteredRoutes } from "./helpers/registered-routes";
 // migrations/0004_wave3.sql, migrations/0009_review_rounds.sql,
 // migrations/0010_round_criteria.sql, migrations/0017_review_recusal.sql and
 // migrations/0024_review_anonymized_at.sql define for these tables.
+// DEC-370 (wave-61 amendment): GET /review/submissions/:id now issues its
+// eight reads as ONE wave regardless of which one ultimately refuses, so
+// contact/participant/form_field/submission_answer must exist even on the
+// refusal paths this file drives -- a discarded read still touches its
+// table.
 // ---------------------------------------------------------------------------
 
 const DDL = `
@@ -120,6 +125,63 @@ create table submission_track (
   submission_id text,
   track_id text,
   created_at integer
+);
+create table contact (
+  id text primary key,
+  org_id text,
+  first_name text,
+  last_name text,
+  email text,
+  phone text,
+  company text,
+  title text,
+  bio text,
+  headshot_url text,
+  headshot_file_id text,
+  social_links_json text,
+  notes text,
+  custom_fields_json text,
+  external_ref text,
+  created_at integer,
+  updated_at integer
+);
+create table participant (
+  id text primary key,
+  submission_id text,
+  contact_id text,
+  role text,
+  "order" integer,
+  visible integer,
+  invite_status text,
+  title_at_time text,
+  org_at_time text,
+  name_at_time text,
+  created_at integer,
+  updated_at integer
+);
+create table form_field (
+  id text primary key,
+  form_id text,
+  section text,
+  kind text,
+  label text,
+  help_text text,
+  required integer,
+  position integer,
+  options_json text,
+  rule_json text,
+  locked integer,
+  role text,
+  created_at integer,
+  updated_at integer
+);
+create table submission_answer (
+  id text primary key,
+  submission_id text,
+  form_field_id text,
+  value_json text,
+  created_at integer,
+  updated_at integer
 );
 create table evaluation_plan (
   id text primary key,
