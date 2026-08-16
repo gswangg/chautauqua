@@ -216,6 +216,12 @@ const EXEMPTIONS: Exemption[] = [
     control: 'submission-add-copresenter-contact',
     reason: 'search/filter query, never persisted -- no capping route reaches this field',
   },
+  {
+    file: 'components/ConfirmDialog.tsx',
+    control: 'chq-confirm-typed-input',
+    reason:
+      "DEC-941 (wave-58 amendment) irreversible-weight type-to-confirm echo, compared client-side against confirmPhrase only -- never sent to the server, so no capping route reaches it",
+  },
 ];
 
 function isExempt(file: string, control: string): boolean {

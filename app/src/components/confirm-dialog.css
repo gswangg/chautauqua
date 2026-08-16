@@ -15,3 +15,16 @@
   color: var(--chq-ink-2);
   white-space: pre-wrap;
 }
+
+/* DEC-941 (wave-58 amendment): the irreversible weight's type-to-confirm
+   row. Layout only -- .chq-input's own chrome comes from styles.css. */
+.chq-confirm-typed-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-confirm-typed-label {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}

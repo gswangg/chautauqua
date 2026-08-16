@@ -109,7 +109,12 @@ describe('ResourcesPanel (DEC-941)', () => {
       false,
     );
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    // DEC-941 (wave-58 amendment): irreversible weight -- the primary stays
+    // disabled until the resource's own title is typed.
+    expect(within(dialog).getByRole('button', { name: 'Delete resource' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Speaker FAQ' } });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete resource' }));
 
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(

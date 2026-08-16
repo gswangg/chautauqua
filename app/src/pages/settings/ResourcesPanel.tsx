@@ -374,7 +374,9 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
         <ConfirmDialog
           title="Delete this resource?"
           body={`Speakers lose the download from their portal. "${pendingDelete.title}" cannot be recovered.`}
-          confirmLabel="Delete"
+          confirmLabel="Delete resource"
+          weight="irreversible"
+          confirmPhrase={pendingDelete.title}
           pending={deleting}
           onConfirm={() => void confirmDeleteResource()}
           onCancel={() => setPendingDelete(null)}

@@ -295,7 +295,11 @@ describe('MergePage render (DEC-684)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Merge into Jane Doe' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Merge these records?' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Merge' }));
+    // DEC-941 (wave-58 amendment): irreversible weight -- the primary stays
+    // disabled until the losing contact's own name is typed.
+    expect(within(dialog).getByRole('button', { name: 'Merge contacts' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Jane Doe' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Merge contacts' }));
 
     await waitFor(() => {
       expect(screen.getByText('Contacts landing')).toBeInTheDocument();
