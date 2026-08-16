@@ -86,7 +86,7 @@ async function openEditModalForTalkLength() {
 }
 
 describe('FormsPage edit-field cascade confirm (DEC-505 wave-53 amendment)', () => {
-  it('renders the "Change anyway" confirm on a dependents conflict, and confirming retries with ?cascade=1 then refetches the form', async () => {
+  it('renders the "Change field anyway" confirm on a dependents conflict, and confirming retries with ?cascade=1 then refetches the form', async () => {
     let patchCalls = 0;
     const patchHandler = () => {
       patchCalls += 1;
@@ -112,7 +112,7 @@ describe('FormsPage edit-field cascade confirm (DEC-505 wave-53 amendment)', () 
 
     const confirmDialog = await screen.findByRole('dialog', { name: 'Confirm field change' });
     expect(confirmDialog).toBeInTheDocument();
-    const changeAnywayButton = await screen.findByRole('button', { name: 'Change anyway' });
+    const changeAnywayButton = await screen.findByRole('button', { name: 'Change field anyway' });
     expect(
       screen.getByText(/would invalidate 1 dependent question/i),
     ).toBeInTheDocument();
@@ -124,7 +124,7 @@ describe('FormsPage edit-field cascade confirm (DEC-505 wave-53 amendment)', () 
     fireEvent.click(changeAnywayButton);
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Change anyway' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Change field anyway' })).not.toBeInTheDocument();
     });
 
     const retryCall = fetchMock.mock.calls.find(([input, init]) => {
@@ -146,7 +146,7 @@ describe('FormsPage edit-field cascade confirm (DEC-505 wave-53 amendment)', () 
     });
   });
 
-  it('renders NO "Change anyway" control for a terminal answers conflict, leaving the FieldModal banner', async () => {
+  it('renders NO "Change field anyway" control for a terminal answers conflict, leaving the FieldModal banner', async () => {
     const patchHandler = () => ({
       status: 409,
       body: {
@@ -166,7 +166,7 @@ describe('FormsPage edit-field cascade confirm (DEC-505 wave-53 amendment)', () 
     await waitFor(() => {
       expect(screen.getByText(/collected answers/i)).toBeInTheDocument();
     });
-    expect(screen.queryByRole('button', { name: 'Change anyway' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change field anyway' })).not.toBeInTheDocument();
     // Original dialog (still the edit form) remains mounted.
     expect(dialog).toBeInTheDocument();
   });

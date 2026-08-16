@@ -14,9 +14,13 @@ import { describe, expect, it } from 'vitest';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE; // app/src
 
-// FieldModal/FormsPage delete affordance is owned by unmerged branch
-// task-w66-i at wave 68 -- re-check when it lands.
-const EXEMPT_DIRS = ['pages/forms/'];
+// DEC-099 (wave-76 amendment): an exemption reason may never be a branch
+// name. This scan formerly exempted pages/forms/ with a reason parked on
+// "unmerged branch task-w66-i at wave 68" -- that branch is absent from
+// .git/refs/heads/* and .git/packed-refs, and the work it named has landed.
+// The exemption was hiding a live defect (FormsPage.tsx's bare
+// 'Delete'/'Delete anyway'/'Change anyway'), now fixed -- there is no
+// remaining exemption, and this scan covers the whole tree unconditionally.
 
 // Matches a LITERAL confirmLabel string prop: `confirmLabel="..."`. A
 // computed label (`confirmLabel={...}`) does not match this regex -- it is
@@ -45,20 +49,18 @@ function findLineNumber(source: string, index: number): number {
 }
 
 describe('DEC-941 (wave 68): every ConfirmDialog primary names its object, not a bare verb', () => {
-  it('no literal confirmLabel is a bare member of the disallowed-verb set, outside the exempt dirs', () => {
+  it('no literal confirmLabel is a bare member of the disallowed-verb set', () => {
     const offenders: string[] = [];
     const skipped: string[] = [];
 
     for (const file of walkSourceFiles(APP_SRC)) {
       const relPath = relative(APP_SRC, file);
-      const exempt = EXEMPT_DIRS.some((dir) => relPath.startsWith(dir));
       const source = readFileSync(file, 'utf8');
 
       CONFIRM_LABEL_LITERAL.lastIndex = 0;
       let m: RegExpExecArray | null;
       while ((m = CONFIRM_LABEL_LITERAL.exec(source))) {
         const label = m[1] as string;
-        if (exempt) continue;
         if (BARE_VERBS.has(label)) {
           offenders.push(`${relPath}:${findLineNumber(source, m.index)}`);
         }
@@ -80,10 +82,6 @@ describe('DEC-941 (wave 68): every ConfirmDialog primary names its object, not a
     expect(skipped).toContain(
       "pages/settings/TracksRoomsPanel.tsx:809:pendingDelete.kind === 'track' ? 'Remove track' : 'Remove room'",
     );
-  });
-
-  it('the exempt-dir list only names the forms directory, with its reason on record', () => {
-    expect(EXEMPT_DIRS).toEqual(['pages/forms/']);
   });
 
   // Negative control: proves the regex and bare-verb set actually catch a
