@@ -36,22 +36,32 @@
 // What this scan deliberately does NOT see (so a green run is never mistaken
 // for a total proof):
 //   - Computed request bodies: a second argument that is not itself a `{`
-//     literal (a variable, a function call, a ternary of two objects, an
-//     object spread of another value with no literal keys of its own --
-//     e.g. TemplatesTab.tsx's `apiPost(path, draft)`,
-//     PortalSettingsPanel.tsx's `apiPut(path, buildPortalSettingsPayload
-//     (form))`, ResourcesPanel.tsx's `apiPatch(path, isWiki ? {...} : {...})`
-//     ,OnboardingGrid.tsx's `contactIds ? { contactIds } : {}`). These calls
-//     are invisible to this scan entirely.
+//     literal. DEC-817's wave-80 amendment resolves what's STATICALLY
+//     resolvable -- a ternary whose both branches are `{...}` literals
+//     (ResourcesPanel.tsx's `isWiki ? {...} : {...}`), a bare identifier
+//     assigned `const x = {...}` in the call's own enclosing function
+//     (PlanEditor.tsx's `const body = {...}; ...; apiPost(path, body)`),
+//     and a call to a function DECLARED IN THE SAME FILE whose body
+//     contains a `return {...}` -- and ledgers the irreducible remainder
+//     structurally in UNCHECKED_BODIES below (a function PARAMETER with no
+//     in-scope literal assignment, a builder imported from another file,
+//     a same-file builder that mutates a local instead of returning a
+//     literal, a ternary where either branch isn't a bare object literal).
+//     apiUpload's FormData body is ruled out of this check entirely, by
+//     kind, in findMutationCalls -- multipart, not JSON, so there is no
+//     JSON key to check a route's JSON-body parser against.
 //   - Spread and conditional-spread entries inside an otherwise-literal
 //     object (`...request`, `...(cond ? { a } : {})`) -- skipped with a
 //     `SPREAD_SKIPPED` marker rather than resolved, because their keys are
-//     not statically knowable from this text scan.
+//     not statically knowable from this text scan. Enumerated (not just
+//     floored above zero) in SPREAD_COMPUTED_KEY_ENTRIES below.
 //   - Computed keys (`{ [which]: today }`) -- skipped with a
-//     `COMPUTED_KEY_SKIPPED` marker for the same reason.
+//     `COMPUTED_KEY_SKIPPED` marker for the same reason. Same ledger as
+//     the spread entries above.
 //   - Keys added to the request body by a helper the SPA calls before
-//     apiPost/apiPatch/apiPut (e.g. anything a builder function mixes in
-//     that isn't visible as a literal key at the call site).
+//     apiPost/apiPatch/apiPut, where that helper is not itself resolvable
+//     by the rules above (imported from another file, or builds its result
+//     via mutation rather than a literal return).
 //   - Whether the route's own body PARSER actually reads/validates a
 //     matched key correctly (only that the token appears somewhere in the
 //     module's source) -- a key present only in a comment, or read but
@@ -288,6 +298,26 @@ interface MutationCall {
   skipped: { kind: "spread" | "computed-key"; text: string }[];
 }
 
+// DEC-817 wave-80 amendment: the BODY-side counterpart of `SkippedPath` --
+// a call whose second argument is not a bare `{` literal AND that this scan
+// could not statically resolve down to one anyway (see `resolveComputedBody`
+// below). Recorded rather than silently treated as `keys: []` (i.e. "checked,
+// found nothing"), which is exactly the hole the amendment closes.
+interface UncheckedBody {
+  file: string; // repo-relative path
+  line: number; // 1-indexed line of the call
+  kind: "identifier" | "call" | "ternary" | "other";
+  text: string; // raw source text of the second argument, truncated
+}
+
+// DEC-817 wave-80 amendment: mirrors `buildUnresolvableKey` exactly --
+// location-independent (no `line`), discriminating on file + kind + the
+// exact expression text, so a blank line inserted above the call can't
+// change the key and a renamed/removed expression produces a DIFFERENT key.
+function buildUncheckedBodyKey(u: UncheckedBody): string {
+  return `${u.file} ${u.kind}: ${u.text}`;
+}
+
 // DEC-817's wave-57 amendment: the PATH side of this scan silently dropped
 // three shapes the BODY side is scrupulous about -- a call whose first
 // argument isn't a string literal, an api* identifier not actually followed
@@ -429,10 +459,230 @@ function insideAnySpan(idx: number, spans: Array<[number, number]>): boolean {
   return spans.some(([start, end]) => idx >= start && idx < end);
 }
 
-function findMutationCalls(file: string, rawSrc: string): { calls: MutationCall[]; skippedPaths: SkippedPath[] } {
+/** Finds the index (within `text`) of the first top-level (depth-0, outside
+ * any string/template literal) occurrence of `target` at or after `from` --
+ * used to locate a ternary's `?`/`:` without being fooled by a `?`/`:`
+ * nested inside a call, array, or object appearing in a branch. A `?`
+ * immediately followed by `.` (optional chaining) never counts as a
+ * ternary `?`. */
+function findTopLevelChar(text: string, target: string, from: number): number {
+  let depth = 0;
+  let i = from;
+  const n = text.length;
+  while (i < n) {
+    const c = text[i];
+    if (c === "(" || c === "[" || c === "{") {
+      depth++;
+    } else if (c === ")" || c === "]" || c === "}") {
+      depth--;
+    } else if (c === '"' || c === "'" || c === "`") {
+      const quote = c;
+      i++;
+      while (i < n && text[i] !== quote) {
+        if (text[i] === "\\" && i + 1 < n) i++;
+        i++;
+      }
+    } else if (depth === 0 && c === target && !(target === "?" && text[i + 1] === ".")) {
+      return i;
+    }
+    i++;
+  }
+  return -1;
+}
+
+/** DEC-817 wave-80 amendment, resolution (a): a ternary whose BOTH branches
+ * are bare object literals (`cond ? { ... } : { ... }`) resolves to the
+ * union of both branches' keys -- ResourcesPanel.tsx's
+ * `isWiki ? { title, content } : { title }` is the motivating case. A
+ * ternary where either branch is anything else (a variable, `undefined`,
+ * a nested ternary) is NOT resolved here -- it falls through to the
+ * UncheckedBody ledger as kind "ternary", same as any other computed shape
+ * this scan can't prove statically. */
+function tryResolveTernaryOfObjects(bodyArg: string): { keys: string[]; skipped: MutationCall["skipped"] } | undefined {
+  const qIdx = findTopLevelChar(bodyArg, "?", 0);
+  if (qIdx === -1) return undefined;
+  const colonIdx = findTopLevelChar(bodyArg, ":", qIdx + 1);
+  if (colonIdx === -1) return undefined;
+  const trueBranch = bodyArg.slice(qIdx + 1, colonIdx).trim();
+  const falseBranch = bodyArg.slice(colonIdx + 1).trim();
+  if (trueBranch[0] !== "{" || falseBranch[0] !== "{") return undefined;
+  const trueClose = findMatchingBracket(trueBranch, 0);
+  const falseClose = findMatchingBracket(falseBranch, 0);
+  // Each branch must be EXACTLY a `{...}` literal with nothing trailing --
+  // otherwise it's not the two-object-literal shape this rule resolves.
+  if (trueBranch.slice(trueClose + 1).trim() !== "" || falseBranch.slice(falseClose + 1).trim() !== "") return undefined;
+  const a = extractObjectKeys(trueBranch.slice(1, trueClose));
+  const b = extractObjectKeys(falseBranch.slice(1, falseClose));
+  const keySet = new Set<string>([...a.keys, ...b.keys]);
+  return { keys: [...keySet], skipped: [...a.skipped, ...b.skipped] };
+}
+
+/** Enumerates every function-BODY span (`[bodyOpenBraceIdx, bodyCloseBraceIdx]`)
+ * in `src`: `function foo(...) { ... }`, `const foo = (...) => { ... }`,
+ * `const foo = async (...) => { ... }`, `const foo = function(...) { ... }`.
+ * Arrow functions with an implicit-return expression body (no `{`) are not
+ * function-BODY spans and are correctly absent. Used to find the nearest
+ * enclosing function of a call site, so identifier resolution (below) can't
+ * cross into an unrelated sibling function that happens to declare a
+ * same-named local (PlanEditor.tsx has three distinct `const body = {...}`/
+ * `const body: X = {...}` locals across three different functions). */
+function enumerateFunctionBodySpans(src: string): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  const declRe = /\bfunction\s+[A-Za-z_$][\w$]*\s*\(|\b(?:const|let)\s+[A-Za-z_$][\w$]*\s*(?::[^=]+)?=\s*(?:async\s*)?(?:function\s*)?\(/g;
+  let m: RegExpExecArray | null;
+  while ((m = declRe.exec(src))) {
+    const parenIdx = src.indexOf("(", m.index);
+    if (parenIdx === -1) continue;
+    let closeParenIdx: number;
+    try {
+      closeParenIdx = findMatchingBracket(src, parenIdx);
+    } catch {
+      continue;
+    }
+    const rest = src.slice(closeParenIdx + 1, closeParenIdx + 200);
+    const arrowRel = rest.search(/=>/);
+    const braceRel = rest.indexOf("{");
+    let bodyOpen = -1;
+    if (arrowRel !== -1 && (braceRel === -1 || arrowRel < braceRel)) {
+      let j = closeParenIdx + 1 + arrowRel + 2;
+      while (j < src.length && /\s/.test(src[j] ?? "")) j++;
+      if (src[j] === "{") bodyOpen = j;
+      // else: implicit-return arrow (no block body) -- not a function-BODY
+      // span, correctly skipped.
+    } else if (braceRel !== -1) {
+      bodyOpen = closeParenIdx + 1 + braceRel;
+    }
+    if (bodyOpen === -1) continue;
+    let bodyClose: number;
+    try {
+      bodyClose = findMatchingBracket(src, bodyOpen);
+    } catch {
+      continue;
+    }
+    spans.push([bodyOpen, bodyClose]);
+  }
+  return spans;
+}
+
+/** The smallest function-body span in `spans` that strictly contains `pos`
+ * -- the nearest enclosing function -- or `undefined` if `pos` is at module
+ * top level (inside no function body at all). */
+function enclosingFunctionSpan(spans: Array<[number, number]>, pos: number): [number, number] | undefined {
+  let best: [number, number] | undefined;
+  for (const span of spans) {
+    const [s, e] = span;
+    if (s < pos && pos < e) {
+      if (!best || e - s < best[1] - best[0]) best = span;
+    }
+  }
+  return best;
+}
+
+/** DEC-817 wave-80 amendment, resolution (b): a bare identifier second
+ * argument (`apiPatch(path, body)`) resolves when the call's OWN nearest
+ * enclosing function declares `const body = { ... }` / `let body: X =
+ * { ... }` (the nearest such declaration textually preceding the call,
+ * WITHIN that same enclosing function) -- PlanEditor.tsx's
+ * `const body = {...}; ... apiPost(path, body)` is the motivating case.
+ * Scoped to the enclosing function (not "anywhere earlier in the file") so
+ * a same-named local in an unrelated sibling function can never be picked
+ * up by mistake -- PlanEditor.tsx alone declares three distinct `body`
+ * locals in three different functions; picking the textually-nearest one
+ * with no scope check would silently attach the wrong function's keys to
+ * this call (verified: it would have attached duplicatePlan's
+ * name/openDate/closeDate/scale/criteria/maxEvaluations to
+ * postReviewerAssignment's actual userId/trackId/submissionId body, and the
+ * key-check test would not have caught it -- a false pass, not a hole this
+ * scan should ever produce). A declaration whose right-hand side is not
+ * itself a `{` literal (e.g. `const patch = buildEventPatch(...)`, `const
+ * [draft] = useState(...)`) does not match this rule -- it falls through to
+ * the ledger. */
+function resolveIdentifierObjectLiteral(src: string, ident: string, callPos: number): { keys: string[]; skipped: MutationCall["skipped"] } | undefined {
+  const spans = enumerateFunctionBodySpans(src);
+  const enclosing = enclosingFunctionSpan(spans, callPos);
+  const searchFrom = enclosing ? enclosing[0] : 0;
+
+  const declRe = new RegExp(`\\b(?:const|let)\\s+${ident}\\b[^=;{}]*=\\s*\\{`, "g");
+  let m: RegExpExecArray | null;
+  let last: RegExpExecArray | null = null;
+  while ((m = declRe.exec(src))) {
+    // Only a declaration TEXTUALLY BEFORE the call, AND within the call's
+    // own nearest enclosing function (or, if the call is at module top
+    // level, anywhere before it), qualifies.
+    if (m.index >= searchFrom && m.index < callPos) last = m;
+  }
+  if (!last) return undefined;
+  const braceIdx = last.index + last[0].length - 1;
+  const closeIdx = findMatchingBracket(src, braceIdx);
+  const inner = src.slice(braceIdx + 1, closeIdx);
+  return extractObjectKeys(inner);
+}
+
+/** DEC-817 wave-80 amendment, resolution (c): a call to a function DECLARED
+ * IN THE SAME FILE (`function foo(...) {...}`, `const foo = (...) => {...}`,
+ * `const foo = function(...) {...}`) whose body contains a `return { ... }`
+ * statement resolves to that literal's keys. A function whose body builds
+ * the object via property assignment and returns a bare identifier (e.g.
+ * ComposeWizard.tsx's `composeBody`, which does `base.foo = ...; return
+ * base;`) does NOT match -- there is no `return {` for this rule to find --
+ * and correctly falls through to the ledger: this scan proves what a
+ * literal states, never what a sequence of mutations implies. A function
+ * imported from another file (EventSwitcher.tsx's `buildNewEventPayload`,
+ * PortalSettingsPanel.tsx's `buildPortalSettingsPayload`) is invisible to
+ * this rule by construction -- there is no same-file declaration to find. */
+function resolveSameFileFunctionReturnLiteral(src: string, fnName: string): { keys: string[]; skipped: MutationCall["skipped"] } | undefined {
+  const fnDeclRe = new RegExp(`\\bfunction\\s+${fnName}\\s*\\(|\\b(?:const|let)\\s+${fnName}\\s*=\\s*(?:function\\s*)?\\(`, "g");
+  fnDeclRe.lastIndex = 0;
+  const m = fnDeclRe.exec(src);
+  if (!m) return undefined;
+  const parenIdx = m.index + m[0].length - 1;
+  const closeParenIdx = findMatchingBracket(src, parenIdx);
+  const braceIdx = src.indexOf("{", closeParenIdx + 1);
+  if (braceIdx === -1) return undefined;
+  const bodyClose = findMatchingBracket(src, braceIdx);
+  const bodyText = src.slice(braceIdx + 1, bodyClose);
+  const returnMatch = /\breturn\s*\{/.exec(bodyText);
+  if (!returnMatch) return undefined;
+  const objOpenRel = returnMatch.index + returnMatch[0].length - 1;
+  const objCloseRel = findMatchingBracket(bodyText, objOpenRel);
+  const inner = bodyText.slice(objOpenRel + 1, objCloseRel);
+  return extractObjectKeys(inner);
+}
+
+/** Dispatches a non-`{`-literal body argument to the three resolution rules
+ * in turn; `undefined` means genuinely unresolvable by this scan (becomes
+ * an UncheckedBody ledger entry). */
+function resolveComputedBody(src: string, bodyArg: string, callPos: number): { keys: string[]; skipped: MutationCall["skipped"] } | undefined {
+  const ternary = tryResolveTernaryOfObjects(bodyArg);
+  if (ternary) return ternary;
+  if (/^[A-Za-z_$][\w$]*$/.test(bodyArg)) {
+    return resolveIdentifierObjectLiteral(src, bodyArg, callPos);
+  }
+  const callMatch = /^([A-Za-z_$][\w$]*)\(/.exec(bodyArg);
+  if (callMatch && bodyArg.endsWith(")")) {
+    return resolveSameFileFunctionReturnLiteral(src, callMatch[1]!);
+  }
+  return undefined;
+}
+
+/** Classifies a body argument shape this scan could not resolve, purely for
+ * the UncheckedBody ledger's `kind` column -- never used to decide whether
+ * to resolve, only to label what's left. */
+function classifyBodyShape(bodyArg: string): UncheckedBody["kind"] {
+  if (/^[A-Za-z_$][\w$]*$/.test(bodyArg)) return "identifier";
+  if (/^[A-Za-z_$][\w$]*\(/.test(bodyArg) && bodyArg.endsWith(")")) return "call";
+  if (findTopLevelChar(bodyArg, "?", 0) !== -1) return "ternary";
+  return "other";
+}
+
+function findMutationCalls(
+  file: string,
+  rawSrc: string,
+): { calls: MutationCall[]; skippedPaths: SkippedPath[]; uncheckedBodies: UncheckedBody[] } {
   const src = stripComments(rawSrc);
   const out: MutationCall[] = [];
   const skippedPaths: SkippedPath[] = [];
+  const uncheckedBodies: UncheckedBody[] = [];
   const relFile = relative(ROOT, file).split("\\").join("/");
   const importedSpans = importSpans(src);
   let match: RegExpExecArray | null;
@@ -519,11 +769,42 @@ function findMutationCalls(file: string, rawSrc: string): { calls: MutationCall[
       const extracted = extractObjectKeys(inner);
       keys = extracted.keys;
       skipped = extracted.skipped;
+    } else if (bodyArg !== "" && name === "apiUpload") {
+      // DEC-817 wave-80 amendment: apiUpload's body is always a FormData
+      // instance (multipart, not JSON) -- ruled out of the key check BY
+      // KIND, in this one place, rather than falling into the
+      // identifier/call resolution rules below (which would either
+      // misfire or, more likely, just dump every apiUpload call into the
+      // UncheckedBody ledger for a reason that isn't really "unresolved",
+      // it's "not applicable": a multipart body has no JSON keys to check
+      // a route's JSON-body parser against in the first place.
+    } else if (bodyArg !== "") {
+      // The identifier-resolution rule below must only consider a
+      // declaration TEXTUALLY BEFORE this call site -- otherwise a same-
+      // named local in an unrelated, later-declared function (PlanEditor.tsx
+      // has three distinct `const body = {...}`/`const body: X = {...}`
+      // locals across three functions) could resolve against the WRONG
+      // scope's literal. `callPos` is the position, in `src`, of this
+      // call's second argument -- the same offset arithmetic the literal-
+      // object branch above already uses to relocate `args[1]` into `src`.
+      const secondArgOffsetInArgsText = argsOffsetOfIndex(argsText, 1);
+      const callPos = openParenIdx + 1 + secondArgOffsetInArgsText;
+      const resolved = resolveComputedBody(src, bodyArg, callPos);
+      if (resolved) {
+        keys = resolved.keys;
+        skipped = resolved.skipped;
+      } else {
+        uncheckedBodies.push({
+          file: relFile,
+          line: lineIdx + 1,
+          kind: classifyBodyShape(bodyArg),
+          text: truncate(bodyArg),
+        });
+      }
     }
-    // No body, or a computed body (variable/call/ternary/FormData/etc) --
-    // the path is still resolved and checked (that's the whole point of the
-    // widened scan); only the key check is invisible for a non-literal or
-    // absent body, per the file header.
+    // No body -- the path is still resolved and checked (that's the whole
+    // point of the widened scan); only the key check is invisible for an
+    // absent body.
 
     out.push({
       file: relFile,
@@ -534,7 +815,7 @@ function findMutationCalls(file: string, rawSrc: string): { calls: MutationCall[
       skipped,
     });
   }
-  return { calls: out, skippedPaths };
+  return { calls: out, skippedPaths, uncheckedBodies };
 }
 
 /** Returns the character offset, within `argsText`, of the start of the Nth
@@ -626,6 +907,7 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
 
   const calls: MutationCall[] = [];
   const skippedPaths: SkippedPath[] = [];
+  const uncheckedBodies: UncheckedBody[] = [];
   for (const file of files) {
     if (file === API_TS) continue;
     const rawSrc = readFileSync(file, "utf8");
@@ -633,6 +915,7 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
       const result = findMutationCalls(file, rawSrc);
       calls.push(...result.calls);
       skippedPaths.push(...result.skippedPaths);
+      uncheckedBodies.push(...result.uncheckedBodies);
     } catch (err) {
       throw new Error(`${file}: ${(err as Error).message}`);
     }
@@ -707,6 +990,104 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
       stale,
       `UNRESOLVABLE_PATHS entries the scan no longer produces (the call site was fixed, removed, or renamed) -- delete this line:\n${stale.join("\n")}`,
     ).toEqual([]);
+  });
+
+  // DEC-817 wave-80 amendment: the BODY-side counterpart of
+  // UNRESOLVABLE_PATHS -- every call whose second argument is not a bare
+  // `{` literal and that resolveComputedBody (findMutationCalls) could not
+  // statically resolve down to one either. Keyed structurally through
+  // buildUncheckedBodyKey (file + kind + exact expression text, no line),
+  // exactly mirroring buildUnresolvableKey.
+  //
+  // DISCHARGE (wave 80): the resolvable subset of the population named in
+  // the amendment (ternary-of-literals, same-file `const x = {...}`,
+  // same-file builder-returns-literal) is now checked for real --
+  // PlanEditor.tsx's `body` locals and ResourcesPanel.tsx's ternary are no
+  // longer in this ledger; their keys are asserted against their routes by
+  // the key-check test below like any literal body. What remains here is
+  // genuinely irreducible by a text scan: a function parameter (no
+  // same-file literal assignment exists to find), a builder imported from
+  // another file, or a same-file builder that mutates a local instead of
+  // returning a literal.
+  const UNCHECKED_BODIES: string[] = [
+    "app/src/components/EventSwitcher.tsx call: buildNewEventPayload(form)",
+    "app/src/pages/comms/ComposeWizard.tsx call: composeBody(overrides)",
+    "app/src/pages/comms/ComposeWizard.tsx identifier: body",
+    "app/src/pages/comms/TemplatesTab.tsx identifier: draft",
+    "app/src/pages/forms/FormsPage.tsx identifier: input",
+    "app/src/pages/review/PlanEditor.tsx identifier: body",
+    "app/src/pages/review/ProgressPanel.tsx ternary: scope === 'not_started' ? { scope } : undefined",
+    "app/src/pages/settings/EventSettingsPanel.tsx identifier: patch",
+    "app/src/pages/settings/PortalSettingsPanel.tsx call: buildPortalSettingsPayload(form)",
+    "app/src/pages/speakers/OnboardingGrid.tsx identifier: input",
+  ];
+
+  it("every request body this scan could not statically resolve to a set of keys is recorded, not silently treated as checked (no growth beyond UNCHECKED_BODIES)", () => {
+    const observedKeys = uncheckedBodies.map(buildUncheckedBodyKey);
+    const observedLines = uncheckedBodies.map((u) => `${u.file}:${u.line} ${u.kind}: ${u.text}`).sort();
+    // eslint-disable-next-line no-console
+    console.log(`spa-mutation-contract: ${observedLines.length} unchecked body/bodies:\n${observedLines.join("\n")}`);
+
+    const ledgerSet = new Set(UNCHECKED_BODIES);
+    const unlisted = observedKeys.filter((k) => !ledgerSet.has(k)).sort();
+    expect(
+      unlisted,
+      `request bodies this scan could not statically resolve to a checkable set of keys, and that are NOT named in UNCHECKED_BODIES (add an entry with a reason that states a PRINCIPLE, or fix the call site to use a literal/resolvable body):\n${unlisted.join("\n")}`,
+    ).toEqual([]);
+
+    const observedSet = new Set(observedKeys);
+    const stale = UNCHECKED_BODIES.filter((k) => !observedSet.has(k)).sort();
+    expect(
+      stale,
+      `UNCHECKED_BODIES entries the scan no longer produces (the call site was fixed, resolved, or removed) -- delete this line:\n${stale.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  // DEC-817 wave-80 amendment falsifiability controls: mirrors the
+  // UNRESOLVABLE_PATHS controls exactly, exercised against a real
+  // UNCHECKED_BODIES entry (EventSwitcher.tsx's `buildNewEventPayload(form)`
+  // call -- the function is imported, not declared in this file, so its
+  // "unresolved" verdict does not depend on surrounding file content and a
+  // single-line synthetic source reproduces it honestly).
+  it("falsifiability: a blank line inserted above an unresolvable body expression does not break the ledger match", () => {
+    const expr = "apiPost('/events', buildNewEventPayload(form));";
+    const withoutBlankLine = expr;
+    const withBlankLines = `\n\n\n${expr}`;
+    const file = "app/src/components/EventSwitcher.tsx";
+
+    const r1 = findMutationCalls(file, withoutBlankLine);
+    const r2 = findMutationCalls(file, withBlankLines);
+    expect(r1.uncheckedBodies).toHaveLength(1);
+    expect(r2.uncheckedBodies).toHaveLength(1);
+
+    // Sanity: the raw line number DID move -- this is exactly the drift that
+    // used to break a line-keyed ledger.
+    expect(r1.uncheckedBodies[0]!.line).not.toBe(r2.uncheckedBodies[0]!.line);
+
+    const key1 = buildUncheckedBodyKey(r1.uncheckedBodies[0]!);
+    const key2 = buildUncheckedBodyKey(r2.uncheckedBodies[0]!);
+    expect(key1).toBe(key2);
+    expect(UNCHECKED_BODIES).toContain(key1);
+  });
+
+  it("falsifiability: renaming or removing an unresolvable body expression drops it out of the ledger", () => {
+    const file = "app/src/components/EventSwitcher.tsx";
+    const renamed = "apiPost('/events', buildRenamedEventPayload(form));";
+    const rRenamed = findMutationCalls(file, renamed);
+    expect(rRenamed.uncheckedBodies).toHaveLength(1);
+    expect(UNCHECKED_BODIES).not.toContain(buildUncheckedBodyKey(rRenamed.uncheckedBodies[0]!));
+
+    const removed = "apiPost('/events', { name: form.name });";
+    const rRemoved = findMutationCalls(file, removed);
+    expect(rRemoved.uncheckedBodies).toHaveLength(0);
+  });
+
+  it("apiUpload's FormData body is ruled out of the key check by kind, not funneled into UncheckedBody", () => {
+    const synthetic = "apiUpload(`/contacts/${contactId}/headshot`, form);";
+    const result = findMutationCalls("app/src/__synthetic_upload__.tsx", synthetic);
+    expect(result.calls).toHaveLength(1);
+    expect(result.calls[0]!.keys).toEqual([]);
+    expect(result.uncheckedBodies).toHaveLength(0);
   });
 
   // DEC-967 wave-62 falsifiability controls: the ledger re-key must be
@@ -822,16 +1203,43 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
     expect(resolveRegisteredRoute("GET", "/this/path/does/not/exist")).toBeUndefined();
   });
 
-  it("documents (does not suppress) every spread/computed-key entry this scan skipped", () => {
+  // DEC-817 wave-80 amendment: a real enumeration of every spread/computed-
+  // key entry this scan skips inside an otherwise-literal object body --
+  // location-independent (file + kind + trimmed text, no line, matching
+  // UNRESOLVABLE_PATHS/UNCHECKED_BODIES' own keying convention above), so
+  // this is a genuine population ledger, not a floor of one that a whole
+  // class of these could silently disappear behind.
+  const SPREAD_COMPUTED_KEY_ENTRIES: string[] = [
+    "app/src/pages/contacts/ImportWizard.tsx spread: ...plannedRequest",
+    "app/src/pages/contacts/ImportWizard.tsx spread: ...request",
+    "app/src/pages/settings/CallForPapersPanel.tsx computed-key: [which]: today",
+    "app/src/pages/submissions/SubmissionsTable.tsx spread: ...(input.format ? { format: input.format } : {})",
+  ];
+
+  it("every spread/computed-key entry this scan skips (inside an otherwise-literal body) is enumerated, not just floored above zero (no growth beyond SPREAD_COMPUTED_KEY_ENTRIES)", () => {
     // Not an allowlist -- a finding, printed for the next reader, never used
     // to shrink the population above. See the file header's "does NOT see"
     // list.
-    const skipped = calls.flatMap((call) => call.skipped.map((s) => `${call.file}:${call.line} ${s.kind}: ${s.text.trim()}`));
-    // At least the two known cases (SubmissionsTable.tsx's conditional
-    // ...({format}) spread, CallForPapersPanel.tsx's/FormsPage.tsx's
-    // computed [which] key) must still be present -- if this count drops to
-    // zero, either the code changed shape or the extractor regressed; either
-    // way it's worth a human look, not a silent pass.
-    expect(skipped.length).toBeGreaterThan(0);
+    const skippedDetailed = calls.flatMap((call) =>
+      call.skipped.map((s) => ({ file: call.file, line: call.line, kind: s.kind, text: s.text.trim() })),
+    );
+    const observedLines = skippedDetailed.map((s) => `${s.file}:${s.line} ${s.kind}: ${s.text}`).sort();
+    // eslint-disable-next-line no-console
+    console.log(`spa-mutation-contract: ${observedLines.length} spread/computed-key entr(y/ies):\n${observedLines.join("\n")}`);
+
+    const observedKeys = skippedDetailed.map((s) => `${s.file} ${s.kind}: ${s.text}`);
+    const ledgerSet = new Set(SPREAD_COMPUTED_KEY_ENTRIES);
+    const unlisted = [...new Set(observedKeys.filter((k) => !ledgerSet.has(k)))].sort();
+    expect(
+      unlisted,
+      `spread/computed-key entries NOT named in SPREAD_COMPUTED_KEY_ENTRIES (add an entry -- this is a finding, never an allowlist that shrinks what's checked):\n${unlisted.join("\n")}`,
+    ).toEqual([]);
+
+    const observedSet = new Set(observedKeys);
+    const stale = SPREAD_COMPUTED_KEY_ENTRIES.filter((k) => !observedSet.has(k)).sort();
+    expect(
+      stale,
+      `SPREAD_COMPUTED_KEY_ENTRIES entries the scan no longer produces (the call site was fixed, resolved, or removed) -- delete this line:\n${stale.join("\n")}`,
+    ).toEqual([]);
   });
 });
