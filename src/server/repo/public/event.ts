@@ -78,15 +78,17 @@ export async function getPublicCfpWindow(
   db: Db,
   eventId: string,
 ): Promise<{ openDate: number | null; closeDate: number | null } | null> {
-  // DEC-558/DEC-398 (wave 75): isDefault=true is set on exactly one form per
-  // event, only at creation time in createDefaultForm (src/server/repo/
-  // forms.ts) and never toggled by any other write path (see findFormForEvent
-  // in that file for the same invariant), so this predicate already narrows
-  // to at most one row.
+  // DEC-558/DEC-398 (wave 75, amended wave 5): isDefault=true is set on
+  // exactly one form per event by createDefaultForm's application-level
+  // invariant (src/server/repo/forms.ts), but (eventId, isDefault) has no
+  // declared uniqueIndex backing that claim -- see findFormForEvent in that
+  // file for the same gap. .orderBy(...) makes the pick deterministic
+  // regardless of whether the invariant ever slips.
   const rows = await db
     .select({ openDate: schema.form.openDate, closeDate: schema.form.closeDate })
     .from(schema.form)
     .where(and(eq(schema.form.eventId, eventId), eq(schema.form.isDefault, true)))
+    .orderBy(asc(schema.form.id))
     .limit(1);
   const row = rows[0];
   if (!row) return null;

@@ -106,34 +106,42 @@ function namesUniqueIndexOrOrdering(context: string): boolean {
 // this number in a later wave -- never raise it.
 //
 // Wave 75 (task-w75-a, DEC-558 amendment): resolved the 14 sites this
-// lane's scope covered (src/server/repo/** excluding portal/**, review/**,
-// contacts/**, files*.ts, and tasks/**), lowering the count from 30 to 17.
-// The remaining 17 are deliberately left to sibling lanes/files this wave
-// did not own: src/routes/auth-login.tsx and src/server/middleware.ts
-// (outside src/server/repo/** entirely), src/server/repo/contacts/** and
-// src/server/repo/files*.ts (task-w75-b), src/server/repo/portal/**
-// (task-w74-b), and src/server/repo/review/** (task-w74-a/-c).
+// lane's scope covered, lowering the count from 30 to 17.
 //
 // Wave 79 (task-w79-b, DEC-558 amendment): narrowed hasDecCitation (below)
 // to require a named uniqueIndex or an explicit ordering alongside the DEC
-// number, not a bare DEC number alone -- a bare DEC-NNN citation used to
-// exempt a chain regardless of what the comment actually argued. Measured
-// against this worktree's src/ under the narrowed rule, BEFORE any src/
-// fix: 22 (up from 17), because 8 real sites had only ever been waived by
-// the bare-DEC-number loophole (contacts/merge.ts EXISTS-only reasoning
-// with no `.orderBy`, files-authz.ts's "1:1 in practice" note on a plain
-// index, and a stale lookup in auth-reset.tsx that had no uniqueness
-// reasoning at all). Each was resolved the honest way this same wave: an
-// `.orderBy(schema.<table>.id)` added to genuinely EXISTS-only chains
-// (contacts/merge.ts) so the candidate set has a real total order even
-// though row identity was already never observed, and a real uniqueIndex
-// name added to the citing comment where DEC-558 reasoning already argued
-// for one but didn't name it in the six-line citation window (auth-reset.
-// tsx: user_email_idx; contacts/merge.ts: pipeline_entry_org_id_contact_id_
-// idx). That brought the measured count back down to 17 -- the same 17
-// sites wave 75 left to sibling lanes (see above), now re-verified honest
-// under the narrowed rule rather than merely uncounted. Ceiling held at 17.
-const MAX_UNORDERED_LIMIT_ONE = 17;
+// number, not a bare DEC number alone. Measured under the narrowed rule
+// before that wave's fixes: 22 (up from 17); resolved back down to 17.
+//
+// ## Amendment (wave 5, sha ee8ceffa): the "left to sibling lanes" reasoning
+// above named task-w74-a/-b/-c and task-w75-b, branches from the harness's
+// PRE-RESET numbering that DEC-358 (wave-3 amendment) already ruled dead --
+// a branch from a previous harness run is not "in flight". Re-running the
+// scan against this tree found the actual offender list had already drifted
+// from the one that reasoning named (no auth-login.tsx or middleware.ts
+// sites were live; the real 17 were spread across files-authz.ts,
+// files-versions-delete.ts, forms.ts, portal/data.ts, profile.ts,
+// public/event.ts, review/evaluations.ts, review/plans.ts, review/
+// recusal.ts, review/submissions.ts, submissions/create.ts, and submit.ts).
+// Each was resolved per the standing DEC-558 menu: cited a real declared
+// uniqueIndex where one exists and covers the exact predicate tuple
+// (evaluation_plan_submission_reviewer_round_idx, review_recusal_plan_
+// submission_user_idx, portal_settings_event_id_idx, submission_event_id_
+// seq_idx, file_previous_file_id_unique); added `.orderBy(...)` where the
+// candidate set is genuinely unkeyed by any uniqueIndex (form isDefault
+// lookups, form-field role lookups, existence-only checks, the
+// duplicate-email contact lookup -- mirroring findContactByEmail's
+// createdAt-asc/id-asc order, since contact.email is deliberately a plain,
+// non-unique index per DEC-755/contacts/merge.ts). Additionally, three
+// explanatory comments (files-authz.ts, contacts/merge.ts) that merely
+// *mentioned* `.limit(1)` in prose were reworded (dropping the leading
+// dot) after they were found to trip this scanner's own naive substring
+// match and produce phantom flagged "statements" with no real code behind
+// them -- not a scan widening, just removing an accidental self-match.
+// The scan now measures 0 unordered chains. Ceiling lowered to 0: every
+// `.limit(1)` in src/ is now either primary-key-scoped, uniqueIndex-scoped,
+// or carries an explicit `.orderBy(...)`.
+const MAX_UNORDERED_LIMIT_ONE = 0;
 
 function listSourceFiles(dir: string): string[] {
   const out: string[] = [];

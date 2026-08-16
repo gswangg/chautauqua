@@ -111,9 +111,10 @@ export interface FileScope {
  * NULL always have file.submissionId null and are served by
  * getTaskFileScope below instead — the two populations are disjoint on
  * that discriminator. */
-// DEC-248 wave-70 amendment sibling check: getFileScope's own .limit(1)
-// selects on schema.file.id (the table's primary key) — a single-column
-// equality on a unique key, so it's already deterministic; no change needed.
+// DEC-248 wave-70 amendment sibling check: getFileScope's own row lookup
+// below selects on schema.file.id (the table's primary key) — a single-
+// column equality on a unique key, so it's already deterministic; no
+// change needed.
 export async function getFileScope(db: Db, fileId: string): Promise<FileScope | null> {
   const fileRows = await db
     .select({
@@ -235,16 +236,17 @@ export interface ResourceFileScope {
  * it). Organizers whose org owns the resource's event may serve it —
  * mirrors src/server/repo/portal.ts's getResourceDownloadScope, which is
  * the speaker-side counterpart for the same underlying resource/file rows. */
-// DEC-248 wave-70 amendment sibling check: getResourceFileScope's first
-// .limit(1) (on schema.file.id) is deterministic — unique key. Its second
-// .limit(1) (schema.resource, eq(resource.fileId, fileId)) sits on
+// DEC-248 wave-70 amendment sibling check: getResourceFileScope's first row
+// lookup below (on schema.file.id) is deterministic — unique key. Its
+// second lookup (schema.resource, eq(resource.fileId, fileId)) sits on
 // resource_file_id_idx, a plain (non-unique) index, so DB schema alone
 // doesn't prove one row — but every resource.fileId is written exactly once,
 // from a freshly minted file id at resource-creation time (createFileResource
 // -> insertResourceFile), and no code path ever repoints an existing
 // resource's fileId at another file or vice versa, so the population is 1:1
-// in practice. Left unchanged; flagging here per DEC-248's instruction to
-// re-read siblings rather than silently leaving the gap unstated.
+// in practice. DEC-558 wave-5 amendment: an explicit .orderBy(...) is added
+// below anyway so the pick is reproducible even though row identity was
+// already unambiguous by construction.
 export async function getResourceFileScope(db: Db, fileId: string): Promise<ResourceFileScope | null> {
   const fileRows = await db
     .select({
@@ -270,6 +272,7 @@ export async function getResourceFileScope(db: Db, fileId: string): Promise<Reso
     .from(schema.resource)
     .innerJoin(schema.event, eq(schema.resource.eventId, schema.event.id))
     .where(eq(schema.resource.fileId, fileId))
+    .orderBy(asc(schema.resource.id))
     .limit(1);
   const resourceRow = resourceRows[0];
   if (!resourceRow) return null;

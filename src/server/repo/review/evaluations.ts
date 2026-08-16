@@ -115,6 +115,9 @@ export async function getEvaluation(
   reviewerId: string,
   round: number,
 ): Promise<EvaluationRecord | null> {
+  // DEC-558 wave-5 amendment: evaluation_plan_submission_reviewer_round_idx
+  // (src/db/schema/review.ts) is a uniqueIndex on exactly this (planId,
+  // submissionId, reviewerId, round) tuple -- at most one row can match.
   const rows = await db
     .select()
     .from(schema.evaluation)

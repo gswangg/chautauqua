@@ -24,6 +24,7 @@ function fakeDb(fileRow: FileRow, contactRow: ContactRow, visible: boolean) {
       from: () => chain,
       innerJoin: () => chain,
       where: () => chain,
+      orderBy: () => chain,
       limit: async () => rows,
     };
     return chain;

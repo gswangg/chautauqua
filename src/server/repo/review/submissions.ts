@@ -414,12 +414,16 @@ async function matchesPlanFilterTracks(
   filterTracks: string[] | undefined,
 ): Promise<boolean> {
   if (!filterTracks || filterTracks.length === 0) return true;
+  // DEC-558 wave-5 amendment: only `.length > 0` is read below -- WHICH
+  // matching track row SQLite returns is never observed. .orderBy(...)
+  // makes the pick deterministic regardless.
   const matchRows = await db
     .select({ trackId: schema.submissionTrack.trackId })
     .from(schema.submissionTrack)
     .where(
       and(eq(schema.submissionTrack.submissionId, submissionId), inArray(schema.submissionTrack.trackId, filterTracks)),
     )
+    .orderBy(asc(schema.submissionTrack.trackId))
     .limit(1);
   return matchRows.length > 0;
 }
@@ -434,8 +438,17 @@ export async function submissionMatchesPlanFilters(
   plan: PlanRecord,
   submissionId: string,
 ): Promise<boolean> {
+  // DEC-558 wave-5 amendment: conditions[0] is eq(schema.submission.id,
+  // submissionId), submission's own primary key -- already narrows to at
+  // most one row. .orderBy(...) is added anyway since the predicate is
+  // built via array spread, not literally inline in this statement.
   const conditions = [eq(schema.submission.id, submissionId), ...buildPlanScopeConditions(db, plan)];
-  const rows = await db.select({ id: schema.submission.id }).from(schema.submission).where(and(...conditions)).limit(1);
+  const rows = await db
+    .select({ id: schema.submission.id })
+    .from(schema.submission)
+    .where(and(...conditions))
+    .orderBy(asc(schema.submission.id))
+    .limit(1);
   return rows.length > 0;
 }
 
@@ -568,6 +581,8 @@ export async function findSubmissionIdByRefOrId(db: Db, eventId: string, input: 
   const seq = parseRef(recordPrefix, input);
   if (seq === null) return null;
 
+  // DEC-558 wave-5 amendment: submission_event_id_seq_idx (src/db/schema/
+  // submissions.ts) is a uniqueIndex on exactly this (eventId, seq) tuple.
   const rows = await db
     .select({ id: schema.submission.id })
     .from(schema.submission)

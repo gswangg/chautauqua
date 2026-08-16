@@ -114,10 +114,14 @@ export async function getEventBySlug(db: Db, slug: string): Promise<EventRow | n
 /** Public CFP always targets the event's default form (DEC-015: an event
  * can have multiple forms, but /submit/:eventSlug has no form-id in path). */
 export async function getDefaultForm(db: Db, eventId: string): Promise<FormRow | null> {
+  // DEC-558 wave-5 amendment: (eventId, isDefault=true) has no declared
+  // uniqueIndex (see findFormForEvent in ./forms.ts for the same gap).
+  // .orderBy(...) makes the pick deterministic.
   const rows = await db
     .select()
     .from(schema.form)
     .where(and(eq(schema.form.eventId, eventId), eq(schema.form.isDefault, true)))
+    .orderBy(asc(schema.form.id))
     .limit(1);
   const row = rows[0];
   if (!row) return null;

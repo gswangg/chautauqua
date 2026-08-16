@@ -94,6 +94,9 @@ export async function hasRecusal(
   submissionId: string,
   userId: string,
 ): Promise<RecusalRecord | null> {
+  // DEC-558 wave-5 amendment: review_recusal_plan_submission_user_idx
+  // (src/db/schema/review.ts) is a uniqueIndex on exactly this (planId,
+  // submissionId, userId) tuple -- at most one row can match.
   const rows = await db
     .select()
     .from(schema.reviewRecusal)

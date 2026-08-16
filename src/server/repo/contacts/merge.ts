@@ -390,8 +390,8 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   // — this recheck of just this pair can never fire; kept as a fail-loud
   // invariant (same thrown shape) rather than deleted, so a preflight bug
   // surfaces as a loud error instead of a silently-orphaned login.
-  // DEC-558: `.limit(1)` is safe here even though `user_contact_id_idx` is
-  // a plain (non-unique) index — both queries below are used only via
+  // DEC-558: the limit-1 lookup below is safe even though `user_contact_id_idx`
+  // is a plain (non-unique) index — both queries below are used only via
   // `.length > 0` (an EXISTS check), never by row identity, so which row
   // SQLite happens to return when more than one exists is immaterial.
   const keepUserRows = await db
