@@ -178,7 +178,7 @@ describe("findConflicts equivalence (DEC-533)", () => {
   it("scheduleSummary.conflicts matches findConflicts(placed).length and accepts a precomputed array identically", () => {
     const corpus = buildRandomCorpus();
     const conflicts = findConflicts(corpus);
-    const computed = scheduleSummary(corpus, corpus.length);
+    const computed = scheduleSummary(corpus, corpus.length, conflicts);
     expect(computed.conflicts).toBe(findConflicts(corpus).length);
 
     const withPrecomputed = scheduleSummary(corpus, corpus.length, conflicts);
