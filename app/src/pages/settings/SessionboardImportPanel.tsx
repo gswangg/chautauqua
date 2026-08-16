@@ -27,8 +27,9 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { parseCsv } from '../contacts/csv';
 import { MAX_IMPORT_CSV_BYTES } from '../../lib/domain-caps';
 import { formatBytes } from '../../../../src/domain/files';
+import { SB_TARGET_FIELDS, autoMapSessionboardColumns, type SbEntity } from '../../../../src/domain/sessionboard';
 
-export type SessionboardEntity = 'contacts' | 'submissions' | 'tracks' | 'participants';
+export type SessionboardEntity = SbEntity;
 
 const ENTITIES: { entity: SessionboardEntity; label: string }[] = [
   { entity: 'contacts', label: 'Contacts' },
@@ -37,19 +38,18 @@ const ENTITIES: { entity: SessionboardEntity; label: string }[] = [
   { entity: 'participants', label: 'Participants' },
 ];
 
-// Target field vocabularies, one per entity, drawn from the app's own
-// domain shapes (contacts: app/src/pages/contacts/csv.ts's
-// STANDARD_IMPORT_FIELDS; submissions/tracks: the `submission`/`track`
-// table columns in migrations/0000_secret_matthew_murdock.sql) -- not from
-// any fixture or Sessionboard-specific vocabulary, since the server's
-// mapping target names are the authority this UI must match once
-// task-w5-b lands.
-const TARGET_FIELDS: Record<SessionboardEntity, string[]> = {
-  contacts: ['firstName', 'lastName', 'email', 'company', 'title', 'phone', 'bio'],
-  submissions: ['title', 'description', 'trackName', 'status'],
-  tracks: ['name', 'color'],
-  participants: ['sessionExternalId', 'speakerExternalId', 'speakerEmail', 'role', 'order'],
-};
+// DEC-613 (amendment, task-w60-b): the target field vocabulary and its
+// grouping per entity are owned by src/domain/sessionboard.ts's
+// SB_TARGET_FIELDS -- the SAME list planSessionboardRows plans against, so
+// a hand-mapped column can never name a target the planner does not
+// recognise (the P0 trap: a locally re-declared list without "externalId"
+// meant every hand-mapped row was refused for a "missing" id that was
+// simply never offered as a pill). Only the picker's LABEL for
+// "externalId" is UI-local; the wire value it posts is the exact string
+// "externalId" the planner expects.
+function pillLabel(field: string): string {
+  return field === 'externalId' ? 'externalId (Record ID)' : field;
+}
 
 const IGNORE_TARGET = '';
 
@@ -192,6 +192,18 @@ export function SessionboardImportPanel() {
     setFinalReport(null);
   }, [entity]);
 
+  // DEC-613 (amendment, task-w60-b): seed the mapping from the SAME
+  // autoMapSessionboardColumns the server falls back to (src/routes/api/
+  // import.ts only auto-maps when the posted mapping is EMPTY) whenever a
+  // fresh CSV parses or the entity changes -- so the picker opens already
+  // at the auto-mapped state and hand-editing one column can only ADD to
+  // it, never unmap every other column back to "Ignore".
+  useEffect(() => {
+    if (header.length === 0) return;
+    setMapping(autoMapSessionboardColumns(entity, header));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entity, header]);
+
   const report = finalReport ?? dryRunReport;
 
   return (
@@ -333,7 +345,7 @@ export function SessionboardImportPanel() {
                             >
                               Ignore
                             </button>
-                            {TARGET_FIELDS[entity].map((field) => (
+                            {SB_TARGET_FIELDS[entity].map((field) => (
                               <button
                                 key={field}
                                 type="button"
@@ -341,7 +353,7 @@ export function SessionboardImportPanel() {
                                 aria-pressed={current === field}
                                 onClick={() => setColumnTarget(col, field)}
                               >
-                                {field}
+                                {pillLabel(field)}
                               </button>
                             ))}
                           </div>
