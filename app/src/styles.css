@@ -313,6 +313,10 @@ a:hover {
   border: none;
   font: inherit;
   cursor: pointer;
+  /* DEC-851 (wave-67 amendment): B8 colour-only transition, same shape as
+     .chq-btn (:579-581) -- nothing here moves. */
+  transition: background-color var(--chq-motion-color) var(--chq-ease-state),
+    color var(--chq-motion-color) var(--chq-ease-state);
 }
 
 .chq-nav-link:hover {

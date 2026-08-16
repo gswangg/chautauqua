@@ -103,8 +103,13 @@
 /* DEC-369 amendment (wave 22): the fitted 4.2px/5.2px vertical paddings
    chased a gate-4/gate-5 render measurement now superseded; restored to the
    frame's secondary/primary control padding (horizontal unchanged). */
+/* DEC-851 (wave-67 amendment): secondary tier — border uses the same
+   --chq-border-strong/--chq-secondary-* token trio as the shared
+   .chq-btn-secondary (styles.css:601-618); the colour-only transition
+   shape is copied verbatim from .chq-btn (styles.css:579-581). Nothing
+   here moves (no lift/shadow/border-width) -- colour only. */
 .chq-overview-toolbar-btn {
-  border: 1px solid var(--chq-border);
+  border: 1px solid var(--chq-border-strong);
   border-radius: 4px;
   padding: 9px 16px;
   font-size: 13px;
@@ -117,14 +122,43 @@
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  transition: background-color var(--chq-motion-color) var(--chq-ease-state),
+    border-color var(--chq-motion-color) var(--chq-ease-state),
+    color var(--chq-motion-color) var(--chq-ease-state);
 }
 
+@media (hover: hover) {
+  .chq-overview-toolbar-btn:hover {
+    background: var(--chq-secondary-hover);
+    border-color: var(--chq-secondary-hover-border);
+  }
+}
+
+.chq-overview-toolbar-btn:active {
+  background: var(--chq-secondary-active);
+}
+
+/* DEC-851 (wave-67 amendment): primary tier — fill darkens on hover/press
+   per the shared .chq-btn-primary tokens; the label stays
+   var(--chq-on-brand) throughout (never repainted dark-on-dark). The
+   colour transition is inherited from .chq-overview-toolbar-btn above,
+   since every primary toolbar button also carries that base class. */
 .chq-overview-toolbar-btn-primary {
   border: none;
   background: var(--chq-brand);
   color: var(--chq-on-brand);
   font-weight: 700;
   padding: 10px 16px;
+}
+
+@media (hover: hover) {
+  .chq-overview-toolbar-btn-primary:hover {
+    background: var(--chq-brand-hover);
+  }
+}
+
+.chq-overview-toolbar-btn-primary:active {
+  background: var(--chq-brand-active);
 }
 
 .chq-overview-section {
@@ -310,8 +344,10 @@
   font-weight: 700;
 }
 
+/* DEC-851 (wave-67 amendment): secondary tier, same token trio and
+   transition shape as .chq-overview-toolbar-btn above. */
 .chq-overview-btn {
-  border: 1px solid var(--chq-border);
+  border: 1px solid var(--chq-border-strong);
   border-radius: 4px;
   padding: 9px 16px;
   font-size: 13px;
@@ -321,8 +357,25 @@
   color: var(--chq-ink);
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color var(--chq-motion-color) var(--chq-ease-state),
+    border-color var(--chq-motion-color) var(--chq-ease-state),
+    color var(--chq-motion-color) var(--chq-ease-state);
 }
 
+@media (hover: hover) {
+  .chq-overview-btn:hover {
+    background: var(--chq-secondary-hover);
+    border-color: var(--chq-secondary-hover-border);
+  }
+}
+
+.chq-overview-btn:active {
+  background: var(--chq-secondary-active);
+}
+
+/* DEC-851 (wave-67 amendment): primary tier — transition inherited from
+   .chq-overview-btn above (every primary row button also carries that
+   base class); label stays var(--chq-on-brand) throughout. */
 .chq-overview-btn-primary {
   border: none;
   background: var(--chq-brand);
@@ -330,6 +383,18 @@
   font-weight: 700;
 }
 
+@media (hover: hover) {
+  .chq-overview-btn-primary:hover {
+    background: var(--chq-brand-hover);
+  }
+}
+
+.chq-overview-btn-primary:active {
+  background: var(--chq-brand-active);
+}
+
+/* DEC-851 (wave-67 amendment): tertiary link tier — colour-only
+   transition (there is no border/background on this tier to animate). */
 .chq-overview-link-btn {
   border: none;
   background: none;
@@ -340,10 +405,25 @@
   color: var(--chq-brand);
   cursor: pointer;
   white-space: nowrap;
+  transition: color var(--chq-motion-color) var(--chq-ease-state);
+}
+
+@media (hover: hover) {
+  .chq-overview-link-btn:hover {
+    color: var(--chq-brand-hover);
+    text-decoration: underline;
+  }
 }
 
 .chq-overview-link-btn.chq-overview-link-muted {
   color: var(--chq-muted);
+}
+
+@media (hover: hover) {
+  .chq-overview-link-btn.chq-overview-link-muted:hover {
+    color: var(--chq-ink);
+    text-decoration: underline;
+  }
 }
 
 .chq-overview-empty {
