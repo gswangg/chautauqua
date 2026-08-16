@@ -100,9 +100,9 @@ export function ContentApp() {
   const [filesReloadKey, setFilesReloadKey] = useState(0);
 
   // DEC-341: one server round trip per view — the list endpoint carries
-  // deliverableCounts (chain roots, DEC-247) and applies the tab filter +
-  // worklist sort server-side, so no client-side fan-out or re-filtering
-  // of a single page is needed (SPEC §7).
+  // latestFileByKind (DEC-708/DEC-902, superseding DEC-247's deliverableCounts)
+  // and applies the tab filter + worklist sort server-side, so no
+  // client-side fan-out or re-filtering of a single page is needed (SPEC §7).
   const loadWorklist = useCallback(() => {
     if (!eventId) return;
     setLoading(true);

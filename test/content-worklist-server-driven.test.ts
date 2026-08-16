@@ -85,7 +85,6 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
       [submissionRow("sub-1", 1, "Talk One")],
       [], // participants
       [], // tracks
-      [], // deliverable counts
       [], // latestFile candidates
       [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
@@ -114,7 +113,6 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
       [],
       [],
       [],
-      [],
       [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db1 = makeFakeDb(page1Responses);
@@ -132,7 +130,6 @@ describe("listSubmissions contentStatus filter (DEC-341)", () => {
       [{ count: 137 }],
       [], // DEC-913 grouped counts
       Array.from({ length: 37 }, (_, i) => submissionRow(`sub-p3-${i}`, 100 + i, `Talk P3 ${i}`)),
-      [],
       [],
       [],
       [],
@@ -159,7 +156,6 @@ describe("listSubmissions sort=worklist (DEC-341)", () => {
       [],
       [],
       [],
-      [],
       [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
@@ -180,74 +176,6 @@ describe("listSubmissions sort=worklist (DEC-341)", () => {
   });
 });
 
-describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain roots)", () => {
-  it("scopes the per-page deliverable-count query to chain roots (previous_file_id is null) among the three deliverable kinds", async () => {
-    const responses = [
-      [{ recordPrefix: "SES" }],
-      [{ count: 1 }],
-      [], // DEC-913 grouped counts
-      [submissionRow("sub-1", 1, "A Talk")],
-      [],
-      [],
-      [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
-      [], // latestFile candidates
-      [], // scheduled (schedule_slot/room) enrichment (w41-b)
-    ];
-    const db = makeFakeDb(responses);
-
-    await listSubmissions(db, EVENT_ID, baseParams());
-
-    // Deliverable-count query is the 7th select() call (index 6).
-    const deliverableCallLog = db.calls[6]!;
-    const whereCall = deliverableCallLog.find((c: { method: string }) => c.method === "where");
-    expect(whereCall).toBeDefined();
-    const { sql } = dialect.sqlToQuery(whereCall!.args[0] as any);
-    expect(sql).toContain('"file"."previous_file_id" is null');
-    expect(sql).toMatch(/"file"\."kind" in/);
-  });
-
-  it("reports the server-hydrated chain-root count and defaults absent kinds to 0", async () => {
-    const responses = [
-      [{ recordPrefix: "SES" }],
-      [{ count: 1 }],
-      [], // DEC-913 grouped counts
-      [submissionRow("sub-1", 1, "A Talk")],
-      [],
-      [],
-      // Only a presentation chain-root row comes back — a file whose
-      // previous_file_id is set would never appear here (excluded by the
-      // WHERE, not filtered client-side), and poster/handout have none.
-      [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
-      [], // latestFile candidates
-      [], // scheduled (schedule_slot/room) enrichment (w41-b)
-    ];
-    const db = makeFakeDb(responses);
-
-    const result = await listSubmissions(db, EVENT_ID, baseParams());
-
-    expect(result.items[0]!.deliverableCounts).toEqual({ presentation: 1, poster: 0, handout: 0, recording: 0, photo: 0 });
-  });
-
-  it("defaults every kind to 0 for a submission with no deliverable rows at all", async () => {
-    const responses = [
-      [{ recordPrefix: "SES" }],
-      [{ count: 1 }],
-      [], // DEC-913 grouped counts
-      [submissionRow("sub-1", 1, "A Talk")],
-      [],
-      [],
-      [],
-      [], // latestFile candidates
-      [], // scheduled (schedule_slot/room) enrichment (w41-b)
-    ];
-    const db = makeFakeDb(responses);
-
-    const result = await listSubmissions(db, EVENT_ID, baseParams());
-
-    expect(result.items[0]!.deliverableCounts).toEqual({ presentation: 0, poster: 0, handout: 0, recording: 0, photo: 0 });
-  });
-});
-
 describe("listSubmissions latestFile (w15-f, DEC-686 page-scoped hydration)", () => {
   it("reports the most recently uploaded file in a two-version chain, with versionCount from the chain length", async () => {
     const responses = [
@@ -257,7 +185,6 @@ describe("listSubmissions latestFile (w15-f, DEC-686 page-scoped hydration)", ()
       [submissionRow("sub-1", 1, "A Talk")],
       [], // participants
       [], // tracks
-      [{ submissionId: "sub-1", kind: "presentation", count: 1 }], // deliverable counts
       // latestFile candidates: a v1 replaced by a v2 (previousFileId chain).
       [
         {
@@ -303,7 +230,6 @@ describe("listSubmissions latestFile (w15-f, DEC-686 page-scoped hydration)", ()
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
-      [],
       [], // latestFile candidates — none
       [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
@@ -325,7 +251,6 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
       [{ count: 1 }],
       [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
-      [],
       [],
       [],
       [],
@@ -352,7 +277,6 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
       [],
       [],
       [],
-      [],
       [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
     const db = makeFakeDb(responses);
@@ -373,7 +297,6 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
-      [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
       [
         {
           id: "file-v1",
@@ -415,7 +338,6 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
       [submissionRow("sub-1", 1, "A Talk")],
       [],
       [],
-      [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
       [
         {
           id: "file-v1",
@@ -444,7 +366,6 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
       [{ count: 1 }],
       [], // DEC-913 grouped counts
       [submissionRow("sub-1", 1, "A Talk")],
-      [],
       [],
       [],
       [],

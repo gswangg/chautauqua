@@ -342,12 +342,6 @@ const LEDGER: LedgerEntry[] = [
       "superseded by an existing design ruling, not an oversight: DEC-737 explicitly moved per-criterion detail off the results row (removing the 'column per rating criterion' spreadsheet) and INTO the per-review Reviews disclosure, which renders each evaluation's own criterion/score pairs from SubmissionEvaluationItem.criteria+scores instead -- this field's plan-wide MEAN per criterion has no design-sanctioned surface left to land on; inventing one is a product decision, not a missing wire-up.",
   },
   {
-    key: 'app/src/pages/content/types.ts#ContentSubmissionListItem.deliverableCounts',
-    verdict: 'exempt',
-    reason:
-      "superseded by a later amendment to the same worklist row, not an oversight: DEC-247 established deliverableCounts (root-file count per kind) to answer 'does this kind have a deliverable', but the w5-i/DEC-708 amendment on this same interface introduced latestFileByKind for the SAME per-kind presence question plus its version number ('Slides v3 · Recording v1'), which is what SessionList.tsx's Latest-file column reads instead -- this task's own scope is asserting/fixing a reader, not retiring a field DEC-247 still names as the worklist's count source; flagged in this task's report as a follow-up deletion candidate rather than decided here as this task's fourth closure (the mandate caps real closures at three).",
-  },
-  {
     key: 'app/src/pages/content/types.ts#DeliverableFile.contentType',
     verdict: 'exempt',
     reason:

@@ -237,7 +237,6 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       [row], // 4: page
       [], // participant enrichment
       [], // submission_track enrichment
-      [], // deliverable-count enrichment (DEC-341)
       [], // latestFile candidate enrichment (w15-f)
       [], // scheduled (schedule_slot/room) enrichment (w41-b)
     ];
@@ -255,9 +254,10 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       reuploaded: null,
     });
 
-    // Exactly 9 db.select() calls total: 4 core (incl. DEC-913 grouped
-    // counts) + 5 enrichment batches.
-    expect(db.calls.length).toBe(9);
+    // Exactly 8 db.select() calls total: 4 core (incl. DEC-913 grouped
+    // counts) + 4 enrichment batches (deliverableCounts retired wave 9,
+    // DEC-247 amendment -- superseded by latestFileByKind, DEC-708/DEC-902).
+    expect(db.calls.length).toBe(8);
     expect(result.total).toBe(1);
     expect(result.items[0]!.id).toBe("sub-1");
     expect(result.contentStatusCounts).toEqual({ pending: 1, approved: 0, changes_requested: 0 });
@@ -307,7 +307,7 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
 
   // w41-b (DEC-902 amendment): the worklist SESSION cell's subtitle needs
   // the submission's placed schedule_slot + room -- batched per id chunk the
-  // SAME way deliverableCounts/latestFile are (one query per chunk, never a
+  // SAME way latestFile is (one query per chunk, never a
   // per-row fetch). This exercises the batched query in isolation and
   // asserts a submission with no schedule_slot row reads back `scheduled:
   // null`.
@@ -338,11 +338,10 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       [placedRow, unplacedRow], // 4: page
       [], // 5: participant enrichment
       [], // 6: submission_track enrichment
-      [], // 7: deliverable-count enrichment (DEC-341)
-      [], // 8: latestFile candidate enrichment (w15-f)
+      [], // 7: latestFile candidate enrichment (w15-f)
       [
         { submissionId: "sub-1", day: "2026-05-12", startMin: 600, endMin: 660, roomName: "Room 2A" },
-      ], // 9: w41-b scheduled enrichment -- only sub-1 has a schedule_slot row
+      ], // 8: w41-b scheduled enrichment -- only sub-1 has a schedule_slot row
     ];
     const db = makeFakeDb(responses);
 
@@ -358,9 +357,9 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       reuploaded: null,
     });
 
-    // Exactly ONE batched query for the scheduled enrichment (9 selects
-    // total: 4 core + 5 enrichment batches, not a per-row fetch).
-    expect(db.calls.length).toBe(9);
+    // Exactly ONE batched query for the scheduled enrichment (8 selects
+    // total: 4 core + 4 enrichment batches, not a per-row fetch).
+    expect(db.calls.length).toBe(8);
 
     const placed = result.items.find((i) => i.id === "sub-1");
     const unplaced = result.items.find((i) => i.id === "sub-2");
@@ -400,11 +399,10 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       [placedRow, unplacedRow], // 4: page
       [], // 5: participant enrichment
       [], // 6: submission_track enrichment
-      [], // 7: deliverable-count enrichment (DEC-341)
-      [], // 8: latestFile candidate enrichment (w15-f)
+      [], // 7: latestFile candidate enrichment (w15-f)
       [
         { submissionId: "sub-1", day: "2026-05-12", startMin: 600, endMin: 660, roomName: "Room 2A" },
-      ], // 9: w41-b/w8-d scheduled+slot enrichment -- only sub-1 has a schedule_slot row
+      ], // 8: w41-b/w8-d scheduled+slot enrichment -- only sub-1 has a schedule_slot row
     ];
     const db = makeFakeDb(responses);
 
@@ -420,9 +418,9 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       reuploaded: null,
     });
 
-    // No extra round trip: still exactly 9 db.select() calls (4 core + 5
+    // No extra round trip: still exactly 8 db.select() calls (4 core + 4
     // enrichment batches) -- `slot` rides the same batch `scheduled` does.
-    expect(db.calls.length).toBe(9);
+    expect(db.calls.length).toBe(8);
 
     const placed = result.items.find((i) => i.id === "sub-1");
     const unplaced = result.items.find((i) => i.id === "sub-2");

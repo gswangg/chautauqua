@@ -57,15 +57,6 @@ export function reUploadedSql() {
   return sql`coalesce(${latestDeliverableVersionNoSql()} > 1, 0)`;
 }
 
-/** DEC-879 (wave-20 amendment): the deliverable vocabulary is spoken from
- * FILE_KINDS, all four members — not a hand-typed subset. Zero-fills every
- * kind so the SPA's Record<FileKind, number> contract (app/src/pages/content/
- * types.ts) never sees a missing key on a submission with no (or partial)
- * deliverable files. */
-function zeroDeliverableCounts(): Record<FileKind, number> {
-  return Object.fromEntries(FILE_KINDS.map((k) => [k, 0])) as Record<FileKind, number>;
-}
-
 export interface SubmissionSpeaker {
   contactId: string;
   name: string;
@@ -91,7 +82,6 @@ export interface SubmissionListItem {
   trackIds: string[];
   submittedAt: number | null;
   createdAt: number;
-  deliverableCounts: Record<FileKind, number>;
   latestFile: { filename: string; kind: FileKind; versionCount: number; uploadedAt: number } | null;
   // DEC-881: the single re-uploaded predicate (latest deliverable file's
   // stored version_no, DEC-818 identity, > 1) — false when the submission
@@ -111,8 +101,8 @@ export interface SubmissionListItem {
   latestFileByKind: Partial<Record<FileKind, number>>;
   answers?: Record<string, unknown>;
   // w41-b: the worklist SESSION cell's subtitle (DEC-902 amendment) --
-  // batched off schedule_slot/room the same way deliverableCounts/latestFile
-  // are, never a per-row fetch. null for a submission not yet placed on the
+  // batched off schedule_slot/room the same way latestFile is, never a
+  // per-row fetch. null for a submission not yet placed on the
   // agenda.
   scheduled: SubmissionDetailSlot | null;
   // w8-d (DEC-051/DEC-780 amendment, findings wave 8): the same slot the
@@ -283,7 +273,6 @@ export async function listSubmissions(
     participantBatches,
     trackBatches,
     answerBatches,
-    deliverableBatches,
     latestFileCandidateBatches,
     scheduledBatches,
   ] = await Promise.all([
@@ -324,31 +313,9 @@ export async function listSubmissions(
           )
         : [],
     ),
-    // DEC-341: per-page deliverable counts (chain roots only — DEC-247) via
-    // ONE grouped query per id chunk. Cost bound by page size, not total
-    // submission count.
-    Promise.all(
-      idBatches.map((batch) =>
-        db
-          .select({
-            submissionId: schema.file.submissionId,
-            kind: schema.file.kind,
-            count: sql<number>`count(*)`,
-          })
-          .from(schema.file)
-          .where(
-            and(
-              inArray(schema.file.submissionId, batch),
-              sql`${schema.file.previousFileId} is null`,
-              inArray(schema.file.kind, FILE_KINDS as unknown as string[]),
-            ),
-          )
-          .groupBy(schema.file.submissionId, schema.file.kind),
-      ),
-    ),
     // latestFile (v4 mock worklist column): ONE batched query per id chunk,
-    // same style as deliverableCounts above — page-scoped WHERE, never a
-    // whole-event scan (DEC-686). Unlike the grouped count query, this needs
+    // page-scoped WHERE, never a whole-event scan (DEC-686). Unlike a
+    // grouped count query, this needs
     // full rows (previousFileId/createdAt) so the chain can be walked in
     // memory via files-library's findRoot rather than re-derived per file.
     // DEC-881: versionNo rides along on the same candidate-row query so the
@@ -401,12 +368,6 @@ export async function listSubmissions(
   const trackRows: { submissionId: string; trackId: string }[] = trackBatches.flat();
 
   const answerRows: { submissionId: string; formFieldId: string; valueJson: string }[] = answerBatches.flat();
-
-  const deliverableRows: { submissionId: string; kind: string; count: number }[] = deliverableBatches.flat() as {
-    submissionId: string;
-    kind: string;
-    count: number;
-  }[];
 
   const latestFileCandidateRows: LatestFileCandidateRow[] = [];
   for (const batch of latestFileCandidateBatches) {
@@ -471,7 +432,7 @@ export async function listSubmissions(
 
   // w41-b (DEC-902 amendment): the worklist SESSION cell's subtitle needs
   // the submission's placed schedule_slot + room, batched per id chunk the
-  // same way deliverableCounts/latestFile are above -- never a per-row
+  // same way latestFile is above -- never a per-row
   // fetch. A submission with no schedule_slot row simply isn't in the
   // batch's result set.
   const scheduledBySubmission = new Map<
@@ -488,14 +449,6 @@ export async function listSubmissions(
         roomName: r.roomName ?? null,
       });
     }
-  }
-
-  const deliverableCountsBySubmission = new Map<string, Record<FileKind, number>>();
-  for (const d of deliverableRows) {
-    if (!d.submissionId) continue;
-    const existing = deliverableCountsBySubmission.get(d.submissionId) ?? zeroDeliverableCounts();
-    existing[d.kind as FileKind] = Number(d.count);
-    deliverableCountsBySubmission.set(d.submissionId, existing);
   }
 
   const speakersBySubmission = new Map<string, { contactId: string; name: string; order: number }[]>();
@@ -543,7 +496,6 @@ export async function listSubmissions(
       trackIds,
       submittedAt: r.createdAt.getTime(),
       createdAt: r.createdAt.getTime(),
-      deliverableCounts: deliverableCountsBySubmission.get(r.id) ?? zeroDeliverableCounts(),
       latestFile: latestFileBySubmission.get(r.id) ?? null,
       latestFileByKind: latestFileByKindBySubmission.get(r.id) ?? {},
       reuploaded: latestFileVersionNo !== null && latestFileVersionNo > 1,
