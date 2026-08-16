@@ -164,6 +164,42 @@ describe('CommsPage render smoke', () => {
     fireEvent.click(toggle);
     expect(within(batchButton).getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
+
+  // DEC-603 amendment (wave 66, gate-11 sweep item 6): the rhythm sentence
+  // is stated ONCE, by Comms.tsx's own page head -- HistoryTab's own
+  // subtitle no longer restates it (and RecentSends' own subtitle slot is
+  // suppressed by columnHeads on the History mount), so the whole rendered
+  // tree carries exactly one instance of the sentence while History is open.
+  it('states the rhythm sentence exactly once in the rendered tree while the History tab is open', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: (() => {
+        return () =>
+          listEnvelope([
+            {
+              batchKey: 'batch-1',
+              subject: 'You are in!',
+              sentAt: 1700000000000,
+              recipientCount: 3,
+              statusCounts: { sent: 3 },
+            },
+          ]);
+      })(),
+    });
+
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'History' }));
+    await screen.findByText('You are in!');
+
+    const matches = await screen.findAllByText(/sent in the last 7 days/, { exact: false });
+    expect(matches).toHaveLength(1);
+  });
 });
 
 // DEC-905 (wave-61 amendment): the head's "N sent in the last 7 days" reads
