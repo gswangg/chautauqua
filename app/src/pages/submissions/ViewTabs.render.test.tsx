@@ -94,7 +94,7 @@ describe('ViewTabs (DEC-941)', () => {
 
     expect(await screen.findByText(/Only the saved filter "AI track, unread" goes/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete view' }));
 
     expect(await screen.findByRole('button', { name: 'Waitlist' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'AI track, unread' })).not.toBeInTheDocument();

@@ -814,7 +814,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               `Delete ${firstName} ${lastName}? Any task assignments and sourcing-pipeline history for this person are removed with them. This cannot be undone.`
             )
           }
-          confirmLabel="Delete"
+          confirmLabel="Delete contact"
           pending={deleting}
           onConfirm={confirmDelete}
           onCancel={() => setShowDeleteConfirm(false)}

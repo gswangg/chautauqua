@@ -1246,9 +1246,9 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
         '812 speakers are assigned this task and 401 have completed it. Their uploaded files stay in the files library; their form responses do not — 118 responses will be deleted.',
       );
     });
-    expect(within(dialog).getByRole('button', { name: 'Remove' })).not.toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Remove task' })).not.toBeDisabled();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove task' }));
 
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([input, init]) => {
@@ -1304,7 +1304,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
 
     const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
     expect(dialog).toHaveTextContent('Counting affected speakers');
-    expect(within(dialog).getByRole('button', { name: 'Remove' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Remove task' })).toBeDisabled();
 
     resolvePreview(
       new Response(
@@ -1319,7 +1319,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     );
 
     await waitFor(() => {
-      expect(within(dialog).getByRole('button', { name: 'Remove' })).not.toBeDisabled();
+      expect(within(dialog).getByRole('button', { name: 'Remove task' })).not.toBeDisabled();
     });
   });
 
@@ -1342,7 +1342,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     await waitFor(() => {
       expect(dialog).toHaveTextContent('Could not load the delete preview');
     });
-    expect(within(dialog).getByRole('button', { name: 'Remove' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Remove task' })).toBeDisabled();
   });
 });
 

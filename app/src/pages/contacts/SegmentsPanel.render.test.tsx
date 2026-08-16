@@ -83,7 +83,7 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
     // Delete goes through the shared ConfirmDialog (DEC-809) — the click
     // above only arms it, the dialog's own "Delete" confirms.
     const dialog = await screen.findByRole('dialog', { name: 'Delete this segment' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete segment' }));
 
     await waitFor(() => {
       const deleteCall = fetchMock.mock.calls.find(([input]) =>

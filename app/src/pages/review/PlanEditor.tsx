@@ -2417,7 +2417,7 @@ export function PlanEditor() {
         <ConfirmDialog
           title="Remove this reviewer?"
           body={`${pendingUnassignReviewer.displayName} loses their queue on this plan. Scores they have already submitted stay.`}
-          confirmLabel="Remove"
+          confirmLabel="Remove reviewer"
           pending={unassigningReviewer}
           onConfirm={() => void confirmUnassignReviewer()}
           onCancel={() => setPendingUnassignReviewer(null)}

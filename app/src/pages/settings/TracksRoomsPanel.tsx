@@ -800,7 +800,7 @@ export function TracksRoomsPanel() {
               This cannot be undone.
             </p>
           }
-          confirmLabel="Remove"
+          confirmLabel={pendingDelete.kind === 'track' ? 'Remove track' : 'Remove room'}
           onConfirm={() =>
             void (pendingDelete.kind === 'track'
               ? confirmDeleteTrack(pendingDelete.track)

@@ -256,7 +256,7 @@ describe('TemplatesTab', () => {
       false,
     );
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete template' }));
 
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(
