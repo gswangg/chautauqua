@@ -275,6 +275,12 @@ export interface ReviewerQueueEnvelope {
   // never infer this from row presence (a closed plan with zero submissions
   // would fool that).
   viewerIsOrganizer: boolean;
+  // DEC-346 (wave-74 amendment): how many of this reviewer's own scoped
+  // submissions the cap filter dropped from `items` -- lets the empty/short
+  // queue states say WHY instead of reading like a broken assignment. A
+  // subtraction the server already made over two in-memory arrays, never a
+  // second query.
+  cappedOut: number;
   recused: RecusalItem[];
   // DEC-845: the plan's own facts, carried on the queue envelope so the
   // scoped header renders from this one fetch. scopeTrackName is the

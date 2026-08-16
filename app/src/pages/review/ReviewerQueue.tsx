@@ -81,6 +81,10 @@ function PlanSection({
   // presence -- a closed plan with zero submissions would fool a
   // rows-based guess. Threaded straight off the envelope (see load() below).
   const [viewerIsOrganizer, setViewerIsOrganizer] = useState(false);
+  // DEC-346 (wave-74 amendment): how many of this reviewer's own scoped
+  // submissions the server's cap filter dropped from `items` -- names the
+  // reason for an empty/short queue instead of leaving it silent.
+  const [cappedOut, setCappedOut] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [undoingId, setUndoingId] = useState<string | null>(null);
@@ -106,6 +110,7 @@ function PlanSection({
         setRecused(res.recused);
         setTotal(res.total);
         setPerPage(res.perPage);
+        setCappedOut(res.cappedOut);
         onData?.(res);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load your queue'))
@@ -197,8 +202,22 @@ function PlanSection({
             : 'This review plan is not currently open.'}
         </p>
       )}
+      {/* DEC-346 (wave-74 amendment): a queue that's empty because the cap
+          filter emptied it (not because there's genuinely nothing left) says
+          so -- otherwise it's indistinguishable from a broken assignment.
+          countOf carries the pluralisation; never hand-composed here. */}
       {(open || viewerIsOrganizer) && items.length === 0 && recused.length === 0 && !error && (
-        <EmptyState variant="fresh" what="Nothing left in your queue. Nicely done." action={null} />
+        <EmptyState
+          variant="fresh"
+          what={
+            cappedOut > 0
+              ? `${countOf(cappedOut, 'talk')} still in your scope already ${
+                  cappedOut === 1 ? 'has' : 'have'
+                } a full set of reviews.`
+              : 'Nothing left in your queue. Nicely done.'
+          }
+          action={null}
+        />
       )}
       {/* DEC-874: recused submissions render INLINE in this same ordered
           list -- marked and carrying the reason plus the existing Undo --
@@ -358,6 +377,16 @@ function PlanSection({
                   </span>
                 )}
                 <span className="chq-review-queue-footer-note">Your scores stay hidden from other reviewers</span>
+                {/* DEC-346 (wave-74 amendment): a quiet line beside the count
+                    -- the queue isn't short because of a broken assignment,
+                    it's short because the cap already covered these. */}
+                {cappedOut > 0 && (
+                  <span className="chq-review-queue-footer-note">
+                    {`${countOf(cappedOut, 'talk')} in your scope already ${
+                      cappedOut === 1 ? 'has' : 'have'
+                    } a full set of reviews`}
+                  </span>
+                )}
               </div>
             )}
           </>
