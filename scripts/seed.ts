@@ -1358,14 +1358,14 @@ async function main(): Promise<void> {
       rounds: 1,
       // DEC-875: capped at 3 so the "Reviews per talk" field and the
       // "· N reviews each" subtitles/distribute summary have a real
-      // maxEvaluations to read instead of null. Safe against the seeded
-      // per-submission counts below: track 0 tops out at 1 (7 of 10
-      // submissions get exactly one evaluation), track 2 at 1, and track 1
-      // at 2 (reviewerB + reviewerD each evaluate every track-1
-      // submission once) -- so no submission ever carries more than 2
-      // evaluations, well under the cap of 3, meaning
-      // needsMoreRatings (`ratingsCount < cap`, src/domain/evaluation.ts)
-      // removes nothing from any reviewer's queue at this cap.
+      // maxEvaluations to read instead of null. Track 0 tops out at 1 (7 of
+      // 10 submissions get exactly one evaluation), track 2 at 1, and track
+      // 1 at 2 (reviewerB + reviewerD each evaluate every track-1
+      // submission once) -- so no submission on THIS plan ever reaches the
+      // cap of 3; needsMoreRatings (`ratingsCount < cap`,
+      // src/domain/evaluation.ts) removes nothing from any reviewer's queue
+      // here. DEC-707's cap-saturation branch is instead exercised on plan 4
+      // below (deliberately cap-saturated there).
       max_evaluations: 3,
       created_at: nextTs(),
       updated_at: ts,
@@ -1731,7 +1731,9 @@ async function main(): Promise<void> {
       rounds: 1,
       // DEC-875 (wave 42 amendment): zero evaluations are seeded on this
       // plan (see the comment above), so any positive cap is safe against
-      // needsMoreRatings -- 2 keeps it consistent with plan 4's cap below.
+      // needsMoreRatings -- 2 is an arbitrary non-degenerate value (plan 4's
+      // own cap, below, is now 1 and deliberately saturated -- unrelated to
+      // this plan's choice of 2).
       max_evaluations: 2,
       created_at: nextTs(),
       updated_at: ts,
@@ -1800,6 +1802,18 @@ async function main(): Promise<void> {
   // Only a minority (2) of this plan's in-track submissions are scored,
   // mirroring plan 1's own partial (7-of-10) progress, so the new queue
   // reads genuinely incomplete rather than trivially empty or complete.
+  //
+  // DEC-707 (wave-79 amendment): this plan's cap is set to 1 (not 2) and a
+  // second reviewer (reviewerB) is scoped to the same track/plan below --
+  // deliberately cap-saturated so DEC-707's assignedExcludingSaturated
+  // (src/domain/evaluation/queue.ts) has a seed-reachable case: the 2
+  // track-1 submissions reviewerUserId scores below each collect exactly 1
+  // evaluation (the cap), so they must fall out of reviewerB's "assigned"
+  // denominator on GET /plans/:id/progress, while the rest of track 1 stays
+  // in it. Before this amendment, every seeded plan's cap sat strictly
+  // above every seeded per-submission count, so only a hand-built mock
+  // harness (test/reviewer-progress-cap-denominator.test.ts) ever exercised
+  // this branch.
   const evalPlan4Id = seedId("evaluation_plan", 4);
   const evalPlan4Criteria = [
     {
@@ -1834,11 +1848,13 @@ async function main(): Promise<void> {
       scale_json: JSON.stringify({ min: 1, max: 5 }),
       criteria_json: JSON.stringify(evalPlan4Criteria),
       rounds: 1,
-      // DEC-875 (wave 42 amendment): only reviewerUserId is scoped to this
-      // plan and they evaluate 2 of track 1's submissions once each (see
-      // below), so the max per-submission count is 1 -- a cap of 2 is a
-      // real number that removes nothing from the queue.
-      max_evaluations: 2,
+      // DEC-707 (wave-79 amendment): capped at 1, not 2 -- reviewerUserId
+      // evaluates 2 of track 1's submissions once each (see below), so at a
+      // cap of 1 those two submissions are exactly saturated the moment
+      // they're scored, giving assignedExcludingSaturated a real,
+      // seed-reachable submission to exclude from the SECOND track-1
+      // reviewer's (reviewerB, added below) denominator.
+      max_evaluations: 1,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -1848,6 +1864,25 @@ async function main(): Promise<void> {
       id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 2),
       plan_id: evalPlan4Id,
       user_id: reviewerUserId,
+      track_id: trackIds[1]!,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  // DEC-707 (wave-79 amendment): a second reviewer scoped to the SAME
+  // plan/track as reviewerUserId above, so the two track-1 submissions
+  // reviewerUserId saturates (cap of 1, see above) are genuinely "assigned
+  // but unreachable" for THIS reviewer -- the seed-reachable case for
+  // assignedExcludingSaturated. reviewerB is not otherwise scoped to plan
+  // 4/track 1 (their only other scoping is plan 1/track 1 and plan 3/track
+  // 0, both different plans), so this row doesn't collide with any existing
+  // plan_reviewer pair. Index 12 is the next unused seedId("plan_reviewer",
+  // N) -- 1..11 are all already spent above.
+  statements.push(
+    insertStmt("plan_reviewer", {
+      id: seedId("plan_reviewer", 12),
+      plan_id: evalPlan4Id,
+      user_id: reviewerBUserId,
       track_id: trackIds[1]!,
       created_at: nextTs(),
       updated_at: ts,
