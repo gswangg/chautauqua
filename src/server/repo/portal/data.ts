@@ -2,7 +2,7 @@
 // out of the former monolithic portal.ts — see ./shared.ts for the pure
 // ownership/status helpers this module relies on.
 
-import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -199,6 +199,21 @@ export interface PortalSubmissionDetail {
   roomName: string | null;
 }
 
+/** DEC-962 (wave 47 amendment): the correlated EXISTS proving `contactId`
+ * is a PORTAL_VISIBLE_INVITE_STATUSES participant of `schema.submission.id`
+ * — ANDed into getPortalSubmissionDetail's WHERE alongside the id/orgId
+ * predicates, so a foreign submissionId (or a submission this contact isn't
+ * a visible participant of) contributes no row, by construction, not by
+ * the JS check below. */
+function submissionOwnedByContact(contactId: string) {
+  return sql`exists (
+    select 1 from ${schema.participant}
+    where ${schema.participant.submissionId} = ${schema.submission.id}
+      and ${schema.participant.contactId} = ${contactId}
+      and ${inArray(schema.participant.inviteStatus, [...PORTAL_VISIBLE_INVITE_STATUSES])}
+  )`;
+}
+
 /**
  * Read-only detail for exactly one of the speaker's own submissions.
  * Returns null when the submission doesn't exist OR exists but the speaker
@@ -242,9 +257,19 @@ export async function getPortalSubmissionDetail(
       ),
     )
     .leftJoin(schema.room, eq(schema.scheduleSlot.roomId, schema.room.id))
-    .where(eq(schema.submission.id, submissionId))
+    .where(
+      and(
+        eq(schema.submission.id, submissionId),
+        eq(schema.event.orgId, orgId),
+        submissionOwnedByContact(contactId),
+      ),
+    )
     .limit(1);
   const row = rows[0];
+  // DEC-962 (wave 47 amendment): the WHERE above already ANDs eventOrgId =
+  // orgId and submissionOwnedByContact(contactId) — this recheck can never
+  // fire (a foreign row is never fetched to check). Kept as a fail-loud
+  // invariant, same DEC-026 wave-43 pattern as mergeOnePair.
   if (!row || row.eventOrgId !== orgId) return null;
 
   const formatRows = await db
@@ -270,6 +295,11 @@ export async function getPortalSubmissionDetail(
       ),
     );
   const participantContactIds = participantRows.map((p) => p.contactId);
+  // DEC-962 (wave 47 amendment): submissionOwnedByContact in the main
+  // query's WHERE above already proved contactId is a
+  // PORTAL_VISIBLE_INVITE_STATUSES participant of this submission — this
+  // recheck can never fire. Kept as a fail-loud invariant (same null
+  // return), same DEC-026 wave-43 pattern as mergeOnePair.
   if (!isOwnedByContact(participantContactIds, contactId)) return null;
 
   const answerRows = await db

@@ -2,7 +2,7 @@
 // participates in. Wiki content renders as escaped paragraphs; file
 // resources stream via GET /portal/resources/:resourceId/download.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { PORTAL_VISIBLE_INVITE_STATUSES } from "../../../domain/acceptance";
@@ -107,6 +107,24 @@ export interface PortalResourceDownloadScope {
   filename: string;
 }
 
+/** DEC-962 (wave 47 amendment): the correlated EXISTS twin of getMyEventIds
+ * — asserts `contactId` participates (PORTAL_VISIBLE_INVITE_STATUSES, org
+ * `orgId`) in the event named by `schema.resource.eventId`, so a foreign
+ * resourceId's event never contributes a row regardless of what caller
+ * discipline would otherwise have to enforce. Reuses the exact predicate
+ * getMyEventIds expresses rather than inventing a second rule. */
+function contactParticipatesInResourceEvent(contactId: string, orgId: string) {
+  return sql`exists (
+    select 1 from ${schema.participant}
+    inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId}
+    inner join ${schema.event} on ${schema.event.id} = ${schema.submission.eventId}
+    where ${schema.submission.eventId} = ${schema.resource.eventId}
+      and ${schema.participant.contactId} = ${contactId}
+      and ${schema.event.orgId} = ${orgId}
+      and ${inArray(schema.participant.inviteStatus, [...PORTAL_VISIBLE_INVITE_STATUSES])}
+  )`;
+}
+
 /**
  * Authz + lookup for GET /portal/resources/:resourceId/download: the
  * resource must be kind='file' with a linked file row, and the requesting
@@ -129,12 +147,25 @@ export async function getResourceDownloadScope(
     })
     .from(schema.resource)
     .innerJoin(schema.event, eq(schema.resource.eventId, schema.event.id))
-    .where(eq(schema.resource.id, resourceId))
+    .where(
+      and(
+        eq(schema.resource.id, resourceId),
+        eq(schema.event.orgId, orgId),
+        contactParticipatesInResourceEvent(contactId, orgId),
+      ),
+    )
     .limit(1);
   const row = rows[0];
+  // DEC-962 (wave 47 amendment): the WHERE above already ANDs eventOrgId =
+  // orgId and contactParticipatesInResourceEvent(contactId, orgId) — this
+  // recheck can never fire (a foreign row is never fetched to check). Kept
+  // as a fail-loud invariant, same DEC-026 wave-43 pattern as mergeOnePair.
   if (!row || row.eventOrgId !== orgId || row.kind !== "file" || !row.fileId) return null;
 
   const eventIds = await getMyEventIds(db, contactId, orgId);
+  // DEC-962 (wave 47 amendment): the WHERE above already proved contactId
+  // participates in row.eventId — this recheck can never fire. Kept as a
+  // fail-loud invariant, same DEC-026 wave-43 pattern as mergeOnePair.
   if (!isParticipantInEvent(eventIds, row.eventId)) return null;
 
   const fileRows = await db
