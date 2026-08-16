@@ -8,6 +8,10 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { DEC_785, DEC_822, DEC_839 } from "../../decisions";
+import { isIsoDate } from "../../domain/iso-date";
+import { normalizeHexColor } from "../../domain/color";
+import { ALL_CARD_FIELDS, type CardField } from "../../lib/card-fields";
+import { MIN_EMBED_LIMIT, MAX_EMBED_LIMIT } from "./public/bounds";
 
 void DEC_785;
 void DEC_822;
@@ -34,14 +38,88 @@ export interface EmbedOptions {
   accent?: string;
 }
 
+/** Thrown by parseStoredEmbedOptions when the stored embed.options_json
+ * does not match the vocabulary its writer (src/routes/api/embeds.ts's
+ * parseEmbedOptionsInput) is contracted to produce -- names the offending
+ * key so a corrupt row is loud, not a silent `{}` fallback. */
+export class EmbedOptionsJsonError extends Error {
+  constructor(key: string, detail: string) {
+    super(`embed.options_json.${key}: ${detail}`);
+    this.name = "EmbedOptionsJsonError";
+  }
+}
+
 /** Structural re-hydrate of the stored options_json column into the DEC-839
  * parsed shape. Shared by the repo's own row serialisation (below) and the
  * public renderer (src/routes/public/saved-embed.tsx) -- ONE place parses
- * the stored JSON, per DEC-839's "parse in one place" contract. */
+ * the stored JSON, per DEC-839's "parse in one place" contract.
+ *
+ * Every key's type/bounds mirror src/routes/api/embeds.ts's
+ * parseEmbedOptionsInput, the ONE write door for this column -- so a value
+ * that door would have refused can never silently survive a read. This is
+ * a TYPE/BOUNDS check, not a re-run of the write door's IO-backed rules
+ * (trackId/roomId "belongs to this event" existence checks stay write-side
+ * only; a read-side re-check would need a Db round trip per row read). */
 export function parseStoredEmbedOptions(raw: string): EmbedOptions {
-  const parsed = JSON.parse(raw) as unknown;
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
-  return parsed as EmbedOptions;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new EmbedOptionsJsonError("options_json", "not valid JSON");
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new EmbedOptionsJsonError("options_json", "must be an object");
+  }
+  const input = parsed as Record<string, unknown>;
+  const out: EmbedOptions = {};
+
+  if (input.trackId !== undefined) {
+    if (typeof input.trackId !== "string") throw new EmbedOptionsJsonError("trackId", "must be a string");
+    out.trackId = input.trackId;
+  }
+  if (input.sessionFormat !== undefined) {
+    if (typeof input.sessionFormat !== "string") throw new EmbedOptionsJsonError("sessionFormat", "must be a string");
+    out.sessionFormat = input.sessionFormat;
+  }
+  if (input.roomId !== undefined) {
+    if (typeof input.roomId !== "string") throw new EmbedOptionsJsonError("roomId", "must be a string");
+    out.roomId = input.roomId;
+  }
+  if (input.day !== undefined) {
+    if (!isIsoDate(input.day)) throw new EmbedOptionsJsonError("day", "must be YYYY-MM-DD");
+    out.day = input.day;
+  }
+  if (input.q !== undefined) {
+    if (typeof input.q !== "string") throw new EmbedOptionsJsonError("q", "must be a string");
+    out.q = input.q;
+  }
+  if (input.limit !== undefined) {
+    if (
+      typeof input.limit !== "number" ||
+      !Number.isInteger(input.limit) ||
+      input.limit < MIN_EMBED_LIMIT ||
+      input.limit > MAX_EMBED_LIMIT
+    ) {
+      throw new EmbedOptionsJsonError("limit", `must be an integer ${MIN_EMBED_LIMIT}-${MAX_EMBED_LIMIT}`);
+    }
+    out.limit = input.limit;
+  }
+  if (input.fields !== undefined) {
+    if (
+      !Array.isArray(input.fields) ||
+      input.fields.some((f) => typeof f !== "string" || !(ALL_CARD_FIELDS as readonly string[]).includes(f))
+    ) {
+      throw new EmbedOptionsJsonError("fields", "must be an array of known card field names");
+    }
+    out.fields = input.fields as CardField[];
+  }
+  if (input.accent !== undefined) {
+    if (typeof input.accent !== "string" || normalizeHexColor(input.accent) === null) {
+      throw new EmbedOptionsJsonError("accent", "must be a hex color");
+    }
+    out.accent = normalizeHexColor(input.accent) as string;
+  }
+  return out;
 }
 
 export interface EmbedRecord {

@@ -33,6 +33,15 @@
 //      carry a plain `reason:` string as long as that reason is not
 //      schedule-shaped (that file's own scan enforces this independently;
 //      see its VERDICT_OWED_RE carve-out).
+//   4. DEC-839 (wave 12): check 3 alone measures PRESENCE, not BEHAVIOUR --
+//      a parser file that exists, is called, and touches the column's
+//      property can still just be a cast (`JSON.parse(x) as Shape`), which
+//      satisfies (a)-(c) while silently mis-shaping bad data instead of
+//      refusing it. Every 'owned' row now also names a `refusalTest` file
+//      and a `refusalSymbol`; this scan checks the file exists on disk and
+//      mentions the symbol as a literal -- i.e. that a test proving the
+//      parser REFUSES (throws) or explicitly DROPS a malformed value for
+//      this column actually exists, not merely that the parser does.
 //
 // Deliberately NO count ratchet: unlike test/limit-one-total-order.scan.
 // test.ts's ceiling, this check is entirely structural (every column has a
@@ -140,6 +149,17 @@ interface OwnedRow {
   verdict: "owned";
   /** Repo-root-relative path to the parser module. */
   parser: string;
+  /** Repo-root-relative path to a test file proving the parser named above
+   * REFUSES (throws) or explicitly DROPS a malformed value for this
+   * column -- DEC-839's second citation, added because the first version
+   * of this ledger's "owned" check could not distinguish a validating
+   * parser from a cast (see this file's DEC-839 header note). */
+  refusalTest: string;
+  /** The exported symbol from `parser` whose refusal/drop behavior
+   * `refusalTest` is required to demonstrate for THIS specific column --
+   * needed because some parser modules (plan-json.ts, field-json.ts) own
+   * more than one column via different exported functions. */
+  refusalSymbol: string;
 }
 
 interface OwedRow {
@@ -155,22 +175,132 @@ type LedgerRow = OwnedRow | OwedRow;
 // forward from a prior wave's list -- see this file's header for the
 // checking rules that keep the ledger honest going forward.
 const LEDGER: LedgerRow[] = [
-  { key: "segment.rules_json", verdict: "owned", parser: "src/domain/contacts-parts/segments.ts" },
-  { key: "embed.options_json", verdict: "owned", parser: "src/server/repo/embeds.ts" },
-  { key: "contact.social_links_json", verdict: "owned", parser: "src/server/repo/profile.ts" },
-  { key: "contact.custom_fields_json", verdict: "owned", parser: "src/server/repo/contacts/crud.ts" },
-  { key: "event.branding_json", verdict: "owned", parser: "src/domain/event-branding.ts" },
-  { key: "form.tracks_json", verdict: "owned", parser: "src/forms/form-tracks.ts" },
-  { key: "form_field.options_json", verdict: "owned", parser: "src/forms/field-json.ts" },
-  { key: "form_field.rule_json", verdict: "owned", parser: "src/forms/field-json.ts" },
-  { key: "evaluation_plan.filters_json", verdict: "owned", parser: "src/domain/evaluation/plan-json.ts" },
-  { key: "evaluation_plan.scale_json", verdict: "owned", parser: "src/domain/evaluation/plan-json.ts" },
-  { key: "evaluation_plan.criteria_json", verdict: "owned", parser: "src/domain/evaluation/plan-json.ts" },
-  { key: "evaluation_plan.round_criteria_json", verdict: "owned", parser: "src/domain/evaluation/plan-json.ts" },
-  { key: "evaluation_plan.round_meta_json", verdict: "owned", parser: "src/domain/evaluation/plan-json.ts" },
-  { key: "evaluation.scores_json", verdict: "owned", parser: "src/domain/evaluation/scores-json.ts" },
-  { key: "saved_view.config_json", verdict: "owned", parser: "src/server/repo/views.ts" },
-  { key: "task_assignment.response_json", verdict: "owned", parser: "src/forms/task-response.ts" },
+  {
+    key: "segment.rules_json",
+    verdict: "owned",
+    parser: "src/domain/contacts-parts/segments.ts",
+    refusalTest: "test/segment-rules-json.test.ts",
+    refusalSymbol: "parseSegmentRulesJson",
+  },
+  {
+    key: "embed.options_json",
+    verdict: "owned",
+    parser: "src/server/repo/embeds.ts",
+    // DEC-839 (wave 12): parseStoredEmbedOptions used to cast `parsed as
+    // EmbedOptions` and silently return {} for a non-object stored value --
+    // now every key's type/bounds are checked and a malformed value throws
+    // EmbedOptionsJsonError naming the offending key.
+    refusalTest: "test/embed-options-json-parser.test.ts",
+    refusalSymbol: "parseStoredEmbedOptions",
+  },
+  {
+    key: "contact.social_links_json",
+    verdict: "owned",
+    parser: "src/server/repo/profile.ts",
+    // parseSocialLinks is a deliberate TOLERANT reader (never throws --
+    // absent/malformed/extra-key input degrades to the empty record, per
+    // its own header) -- refusalTest proves the "explicitly drops a
+    // malformed value" half of DEC-839's citation requirement, not a throw.
+    refusalTest: "test/profile.test.ts",
+    refusalSymbol: "parseSocialLinks",
+  },
+  {
+    key: "contact.custom_fields_json",
+    verdict: "owned",
+    parser: "src/server/repo/contacts/crud.ts",
+    refusalTest: "test/contact-custom-fields-single-parser.test.ts",
+    refusalSymbol: "parseContactCustomFields",
+  },
+  {
+    key: "event.branding_json",
+    verdict: "owned",
+    parser: "src/domain/event-branding.ts",
+    // DEC-839 (wave 12): parseEventBranding used to throw a bare TypeError
+    // on a stored JSON literal `null` (property access on null) and pass a
+    // non-string accentColor straight through -- now both throw a named
+    // EventBrandingJsonError naming the offending key. accentColor's
+    // hex-GRAMMAR stays deliberately unvalidated here (DEC-374, render
+    // edge); only its string TYPE is checked.
+    refusalTest: "test/event-branding-json-parser.test.ts",
+    refusalSymbol: "parseEventBranding",
+  },
+  {
+    key: "form.tracks_json",
+    verdict: "owned",
+    parser: "src/forms/form-tracks.ts",
+    refusalTest: "test/form-tracks-single-parser.test.ts",
+    refusalSymbol: "parseFormTracks",
+  },
+  {
+    key: "form_field.options_json",
+    verdict: "owned",
+    parser: "src/forms/field-json.ts",
+    refusalTest: "test/form-field-json-parser.test.ts",
+    refusalSymbol: "parseFieldOptions",
+  },
+  {
+    key: "form_field.rule_json",
+    verdict: "owned",
+    parser: "src/forms/field-json.ts",
+    refusalTest: "test/form-field-json-parser.test.ts",
+    refusalSymbol: "parseFieldRule",
+  },
+  {
+    key: "evaluation_plan.filters_json",
+    verdict: "owned",
+    parser: "src/domain/evaluation/plan-json.ts",
+    refusalTest: "test/plan-json-single-parser.test.ts",
+    refusalSymbol: "parsePlanFilters",
+  },
+  {
+    key: "evaluation_plan.scale_json",
+    verdict: "owned",
+    parser: "src/domain/evaluation/plan-json.ts",
+    refusalTest: "test/plan-json-single-parser.test.ts",
+    refusalSymbol: "parsePlanScale",
+  },
+  {
+    key: "evaluation_plan.criteria_json",
+    verdict: "owned",
+    parser: "src/domain/evaluation/plan-json.ts",
+    refusalTest: "test/plan-json-single-parser.test.ts",
+    refusalSymbol: "parsePlanCriteria",
+  },
+  {
+    key: "evaluation_plan.round_criteria_json",
+    verdict: "owned",
+    parser: "src/domain/evaluation/plan-json.ts",
+    refusalTest: "test/plan-json-single-parser.test.ts",
+    refusalSymbol: "parseRoundCriteria",
+  },
+  {
+    key: "evaluation_plan.round_meta_json",
+    verdict: "owned",
+    parser: "src/domain/evaluation/plan-json.ts",
+    refusalTest: "test/plan-json-single-parser.test.ts",
+    refusalSymbol: "parseRoundMeta",
+  },
+  {
+    key: "evaluation.scores_json",
+    verdict: "owned",
+    parser: "src/domain/evaluation/scores-json.ts",
+    refusalTest: "test/evaluation-scores-json.test.ts",
+    refusalSymbol: "parseEvaluationScoresJson",
+  },
+  {
+    key: "saved_view.config_json",
+    verdict: "owned",
+    parser: "src/server/repo/views.ts",
+    refusalTest: "test/api-views.test.ts",
+    refusalSymbol: "isValidSavedViewConfig",
+  },
+  {
+    key: "task_assignment.response_json",
+    verdict: "owned",
+    parser: "src/forms/task-response.ts",
+    refusalTest: "test/task-response-single-parser.test.ts",
+    refusalSymbol: "parseTaskResponse",
+  },
   {
     key: "submission.additional_track_ids_json",
     verdict: "owed",
@@ -288,6 +418,38 @@ function ownedRowHasLiveOwner(row: OwnedRow, column: JsonColumn): { ok: boolean;
   return { ok: true, detail: "" };
 }
 
+/** DEC-839 (wave 12): the second citation an 'owned' row must carry --
+ * proof the claimed parser actually VALIDATES rather than merely EXISTS.
+ * ownedRowHasLiveOwner (above) can only tell a parser file is present and
+ * wired to a caller; it cannot distinguish `JSON.parse(x) as Shape` (a
+ * cast) from a real validator, because both compile and both get called.
+ * This check requires a `refusalTest` file that exists on disk AND
+ * mentions the `refusalSymbol` -- the exact exported function this row
+ * claims owns the column -- as a literal. It does not run the test file
+ * (vitest already does that as its own suite); it only checks the CITATION
+ * is real, so a row can't claim proof that was never written. */
+function ownedRowHasRefusalTest(row: OwnedRow): { ok: boolean; detail: string } {
+  const testAbsPath = join(REPO_ROOT, row.refusalTest);
+  let exists = false;
+  try {
+    exists = statSync(testAbsPath).isFile();
+  } catch {
+    exists = false;
+  }
+  if (!exists) {
+    return { ok: false, detail: `refusal test file does not exist on disk: ${row.refusalTest}` };
+  }
+  const src = readFileSync(testAbsPath, "utf8");
+  const re = new RegExp(`\\b${row.refusalSymbol}\\b`);
+  if (!re.test(src)) {
+    return {
+      ok: false,
+      detail: `refusal test ${row.refusalTest} does not mention "${row.refusalSymbol}" -- citation does not name the owning symbol`,
+    };
+  }
+  return { ok: true, detail: "" };
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -340,6 +502,16 @@ describe("DEC-518 (wave 11 amendment): every JSON schema column has a ledgered, 
     expect(failures, failures.join("\n")).toEqual([]);
   });
 
+  it("every 'owned' ledger row's refusalTest exists and names the parser's owning symbol (DEC-839: proof of validation, not just presence)", () => {
+    const failures: string[] = [];
+    for (const row of LEDGER) {
+      if (row.verdict !== "owned") continue;
+      const result = ownedRowHasRefusalTest(row);
+      if (!result.ok) failures.push(`${row.key}: ${result.detail}`);
+    }
+    expect(failures, failures.join("\n")).toEqual([]);
+  });
+
   it("every 'owed' ledger row carries a non-empty, non-schedule-shaped reason", () => {
     // Mirrors, but does not replace, test/exemption-reason-is-a-principle.
     // scan.test.ts's own machine check of every `reason:` string in test/
@@ -371,7 +543,13 @@ describe("DEC-518 (wave 11 amendment): every JSON schema column has a ledgered, 
   });
 
   it("[falsifiability] an 'owned' row naming a nonexistent parser file IS reported", () => {
-    const badRow: OwnedRow = { key: "segment.rules_json", verdict: "owned", parser: "src/does/not/exist.ts" };
+    const badRow: OwnedRow = {
+      key: "segment.rules_json",
+      verdict: "owned",
+      parser: "src/does/not/exist.ts",
+      refusalTest: "test/segment-rules-json.test.ts",
+      refusalSymbol: "parseSegmentRulesJson",
+    };
     const column = derived.find((c) => c.key === badRow.key);
     expect(column).toBeDefined();
     const result = ownedRowHasLiveOwner(badRow, column!);
@@ -395,17 +573,53 @@ describe("DEC-518 (wave 11 amendment): every JSON schema column has a ledgered, 
       key: syntheticColumn.key,
       verdict: "owned",
       parser: "src/forms/form-tracks.ts",
+      refusalTest: "test/form-tracks-single-parser.test.ts",
+      refusalSymbol: "parseFormTracks",
     };
     const result = ownedRowHasLiveOwner(badRow, syntheticColumn);
     expect(result.ok).toBe(false);
     expect(result.detail).toContain("totallyMadeUpPropertyNameXyz");
   });
 
+  it("[falsifiability] an 'owned' row whose refusalTest file does not exist IS reported (DEC-839)", () => {
+    const badRow: OwnedRow = {
+      key: "segment.rules_json",
+      verdict: "owned",
+      parser: "src/domain/contacts-parts/segments.ts",
+      refusalTest: "test/does-not-exist-refusal.test.ts",
+      refusalSymbol: "parseSegmentRulesJson",
+    };
+    const result = ownedRowHasRefusalTest(badRow);
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain("does not exist on disk");
+  });
+
+  it("[falsifiability] an 'owned' row whose refusalTest exists but never mentions the claimed symbol IS reported (DEC-839)", () => {
+    // A real, on-disk test file that simply doesn't test the claimed
+    // symbol -- proves the check reads the FILE CONTENTS, not just its
+    // existence.
+    const badRow: OwnedRow = {
+      key: "segment.rules_json",
+      verdict: "owned",
+      parser: "src/domain/contacts-parts/segments.ts",
+      refusalTest: "test/form-field-json-parser.test.ts",
+      refusalSymbol: "parseSegmentRulesJson",
+    };
+    const result = ownedRowHasRefusalTest(badRow);
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain("parseSegmentRulesJson");
+  });
 
   it("[falsifiability] a stale ledger row (column no longer derived) IS reported", () => {
     const staleLedger: LedgerRow[] = [
       ...LEDGER,
-      { key: "renamed_table.old_column_json", verdict: "owned", parser: "src/forms/form-tracks.ts" },
+      {
+        key: "renamed_table.old_column_json",
+        verdict: "owned",
+        parser: "src/forms/form-tracks.ts",
+        refusalTest: "test/form-tracks-single-parser.test.ts",
+        refusalSymbol: "parseFormTracks",
+      },
     ];
     const derivedKeys = new Set(derived.map((c) => c.key));
     const stale = staleLedger.filter((row) => !derivedKeys.has(row.key)).map((row) => row.key);

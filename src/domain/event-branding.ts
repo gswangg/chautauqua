@@ -18,17 +18,49 @@ export interface EventBranding {
   accentColor?: string;
 }
 
+/** Thrown by parseEventBranding when the stored event.branding_json does
+ * not match the shape the column is contracted to hold -- names the
+ * offending key so a corrupt/legacy row is loud, not a bare TypeError from
+ * a property access on `null`. */
+export class EventBrandingJsonError extends Error {
+  constructor(detail: string) {
+    super(`event.branding_json: ${detail}`);
+    this.name = "EventBrandingJsonError";
+  }
+}
+
 /** Always returns a present object. `logoUrl` is present in the result only
  * when safeImageSrc accepts the stored value -- a hostile or malformed
- * logoUrl is dropped entirely, not replaced with a placeholder. `accentColor`
- * passes through verbatim: hex-grammar validation stays at the render edge
- * (validAccent/normalizeHexColor, DEC-374) and is NOT duplicated here. */
+ * logoUrl is DROPPED entirely (not replaced with a placeholder, and not a
+ * throw: src/routes/api/events.ts's write door already rejects an unsafe
+ * logoUrl before it can be stored, so a row that fails safeImageSrc here can
+ * only be a legacy row written before that DEC-322 gate existed, and
+ * dropping it is the documented, deliberate behavior). `accentColor`'s
+ * TYPE is validated (must be a string when present) but its hex GRAMMAR is
+ * deliberately NOT re-validated here -- that check stays at the render edge
+ * (validAccent/normalizeHexColor, DEC-374) and duplicating it here would be
+ * a second, divergent copy of the same rule. */
 export function parseEventBranding(json: string | null | undefined): EventBranding {
   if (!json) return {};
-  const parsed = JSON.parse(json) as { logoUrl?: string; accentColor?: string };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new EventBrandingJsonError("not valid JSON");
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new EventBrandingJsonError("must be an object");
+  }
+  const input = parsed as Record<string, unknown>;
+  if (input.logoUrl !== undefined && typeof input.logoUrl !== "string") {
+    throw new EventBrandingJsonError("logoUrl must be a string");
+  }
+  if (input.accentColor !== undefined && typeof input.accentColor !== "string") {
+    throw new EventBrandingJsonError("accentColor must be a string");
+  }
   const out: EventBranding = {};
-  const safe = safeImageSrc(parsed.logoUrl);
+  const safe = safeImageSrc(input.logoUrl as string | undefined);
   if (safe !== null) out.logoUrl = safe;
-  if (parsed.accentColor !== undefined) out.accentColor = parsed.accentColor;
+  if (input.accentColor !== undefined) out.accentColor = input.accentColor as string;
   return out;
 }
