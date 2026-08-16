@@ -357,7 +357,7 @@ describe("fresh-event-no-seed (DEC-008 wave-10 amendment): a runtime-minted even
     // is satisfied without this test asserting anything about content review
     // itself.
     await updateSubmissionStatuses(db, eventId, [submission.id], "accepted", new Date());
-    await updateContentStatus(db, submission.id, "approved");
+    await updateContentStatus(db, eventId, submission.id, "approved");
 
     const acceptedRow = sqlite.prepare(`select status, accepted_at from submission where id = ?`).get(submission.id) as {
       status: string;

@@ -82,7 +82,7 @@ vi.mock("../src/server/repo/files", async () => {
       insertFileCommentCalls.push(input);
       return "comment-1";
     }),
-    updateContentStatus: vi.fn(async (_db: unknown, submissionId: string, contentStatus: string) => {
+    updateContentStatus: vi.fn(async (_db: unknown, _eventId: string, submissionId: string, contentStatus: string) => {
       updateContentStatusCalls.push({ submissionId, contentStatus });
     }),
   };

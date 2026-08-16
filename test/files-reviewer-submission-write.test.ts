@@ -35,7 +35,7 @@ const submissionScope = {
   timezone: "UTC",
 };
 
-const reopenContentReviewMock = vi.fn(async (_db: unknown, submissionId: string) => {
+const reopenContentReviewMock = vi.fn(async (_db: unknown, _eventId: string, submissionId: string) => {
   if (submissionId === IN_SCOPE_SUB) {
     currentContentStatus = "pending";
     return { reopened: true };
@@ -146,7 +146,7 @@ describe("DEC-170 (wave 72): a reviewer may read but not write submission files"
       }),
     );
     expect(res.status).toBe(201);
-    expect(reopenContentReviewMock).toHaveBeenCalledWith(expect.anything(), IN_SCOPE_SUB);
+    expect(reopenContentReviewMock).toHaveBeenCalledWith(expect.anything(), EVENT_ID, IN_SCOPE_SUB);
     expect(currentContentStatus).toBe("pending");
   });
 });

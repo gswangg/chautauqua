@@ -434,7 +434,7 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   if (!before) throw new ApiError("not_found", "Submission not found");
 
   if (Object.keys(fields).length > 0) {
-    await updateSubmissionFields(c.var.db, id, fields);
+    await updateSubmissionFields(c.var.db, ownership.eventId, id, fields);
   }
 
   const newTitle = fields.title ?? before.title;
@@ -537,7 +537,7 @@ submissionsRoutes.post(
     // value that itself passed the create/PATCH caps when it was written) —
     // so it is intentionally NOT re-bounded here by LOCKED_TITLE_MAX_LENGTH/
     // LOCKED_ABSTRACT_MAX_LENGTH.
-    await updateSubmissionFields(c.var.db, id, { title: revision.title, description: revision.description });
+    await updateSubmissionFields(c.var.db, ownership.eventId, id, { title: revision.title, description: revision.description });
 
     if (revision.title !== before.title || revision.description !== before.description) {
       const editorName = await resolveActorName(c.var.db, auth.userId);

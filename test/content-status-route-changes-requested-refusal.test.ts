@@ -66,7 +66,7 @@ describe("POST /api/v1/submissions/:id/content-status (DEC-720 wave-32 amendment
     const res = await post(app, "changes_requested");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ id: "sub-1", contentStatus: "changes_requested" });
-    expect(updateContentStatus).toHaveBeenCalledWith(expect.anything(), "sub-1", "changes_requested");
+    expect(updateContentStatus).toHaveBeenCalledWith(expect.anything(), "event-1", "sub-1", "changes_requested");
   });
 
   it("400s on an unrelated invalid value", async () => {

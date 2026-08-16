@@ -621,7 +621,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   // submissionId (see the redirect below), not on that flag, so the value
   // is intentionally unused here.
   if (submissionId) {
-    await reopenContentReview(c.var.db, submissionId);
+    await reopenContentReview(c.var.db, scope.eventId, submissionId);
   }
 
   await saveTaskFileCompletion(c.var.db, assignmentId, fileId);

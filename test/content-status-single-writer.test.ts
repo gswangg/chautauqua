@@ -275,6 +275,8 @@ const contentNotesSource = readFileSync(join(__dirname, "..", "src", "routes", "
 
 describe("content-notes.ts is untouched", () => {
   it("writes via updateContentStatus", () => {
-    expect(contentNotesSource).toMatch(/updateContentStatus\(c\.var\.db, submissionId, "changes_requested"\)/);
+    expect(contentNotesSource).toMatch(
+      /updateContentStatus\(c\.var\.db, scope\.eventId, submissionId, "changes_requested"\)/,
+    );
   });
 });
