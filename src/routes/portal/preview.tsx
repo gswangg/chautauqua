@@ -49,6 +49,16 @@ function PreviewResourceRow(props: { resource: ResourceRecord }) {
     <div class="chq-portal-row">
       <span class="chq-portal-row-title">{resource.title}</span>
       <span class="chq-portal-due">{resourceKindLabel(resource.kind)}</span>
+      {/* DEC-733 says an action that cannot apply to a row is ABSENT, never
+          disabled — but Download is not inapplicable here, it is a real
+          speaker control this preview cannot exercise because there is no
+          speaker session to download as. Rendering it disabled shows the
+          organizer the control that exists for the speaker, rather than
+          silently dropping it, so DEC-747's frame ruling names this the one
+          sanctioned disabled control on the surface. */}
+      <button type="button" class="chq-btn-secondary" disabled aria-disabled="true" title="Preview only — sign in as this speaker to download">
+        Download
+      </button>
     </div>
   );
 }
@@ -79,6 +89,13 @@ function PreviewPage(props: {
         Preview · read-only. This is the portal your speakers see — no speaker's own submissions, tasks or files
         appear here.
       </p>
+      {/* Frame 10--24, clause 2: the honest sentence that this page is the
+          configuration, not a person's data — there is no way for an
+          organizer to actually stand inside a real speaker's portal. */}
+      <p class="chq-meta">
+        To see a real speaker's portal, you would have to be them — this preview shows the configuration, not a
+        person's data.
+      </p>
       {props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
       <section aria-label="Resources" class="chq-section">
         <div class="chq-section-label">Resources</div>
@@ -98,6 +115,25 @@ function PreviewPage(props: {
           props.resources.map((resource) => <PreviewResourceRow resource={resource} />)
         )}
       </section>
+      {/* Frame 10--24, clause 1: named from what the route's own header
+          comment (:8-10) says it declines to load — their submissions,
+          their tasks, their files. Not invented: this is that list. */}
+      <section aria-label="Not shown here" class="chq-section">
+        <div class="chq-section-label">Not shown here</div>
+        <p class="chq-meta">
+          This preview does not include what a real speaker sees on their own portal:
+        </p>
+        <ul class="chq-portal-not-shown-list">
+          <li class="chq-portal-not-shown-chip">Their submissions</li>
+          <li class="chq-portal-not-shown-chip">Their tasks</li>
+          <li class="chq-portal-not-shown-chip">Their uploaded files</li>
+        </ul>
+      </section>
+      {/* Frame 10--24, clause 4: a plain link, never a form or button — the
+          route's no-mutation invariant (comment block above) stands. */}
+      <p class="chq-meta">
+        <a href={`/settings?section=portal`}>&larr; Back to settings</a>
+      </p>
     </PortalLayout>
   );
 }
