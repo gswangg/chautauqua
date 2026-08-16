@@ -20,7 +20,7 @@ import { countOf, capitalizeFirst, plural, spellCount } from '../../lib/plural';
 import { isoToMs, formatDayLabel } from '../../lib/dates';
 import { clockHHMM } from '../../lib/clock';
 import { paginationSummary } from '../../lib/pagination-summary';
-import type { ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
+import type { ComposePreviewPlan, ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
 import { DEC_317, DEC_793, DEC_967, DEC_993 } from '../../../../src/decisions';
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
@@ -78,6 +78,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const [attachIcs, setAttachIcs] = useState(false);
 
   const [preview, setPreview] = useState<RenderedRecipient[]>([]);
+  // wave-60 amendment (DEC-238, P1 cluster 4): the dedupe plan
+  // /compose/preview computes -- `willSend` is the number the step-3/4
+  // primaries must display, never `preview.length` (the raw
+  // (contact,submission) expansion). Defaults to "nothing skipped yet" so a
+  // server that hasn't returned `plan` renders the pre-DEC-238 behavior
+  // rather than a fabricated zero.
+  const [previewPlan, setPreviewPlan] = useState<ComposePreviewPlan>({ willSend: 0, skipped: [] });
   const [previewIndex, setPreviewIndex] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -374,8 +381,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setMissingMergeFieldLines(null);
     setNoRecipientRefs(null);
     try {
-      const res = await apiPost<{ items: RenderedRecipient[] }>(`/events/${eventId}/compose/preview`, composeBody(overrides));
+      const res = await apiPost<{ items: RenderedRecipient[]; plan?: ComposePreviewPlan }>(
+        `/events/${eventId}/compose/preview`,
+        composeBody(overrides),
+      );
       setPreview(res.items);
+      // Server-default fallback: a plan-less response (should not happen
+      // post-wave-60, but the field is optional on the wire type) is
+      // treated as "nothing skipped" rather than desyncing the button
+      // count from what actually rendered.
+      setPreviewPlan(res.plan ?? { willSend: res.items.length, skipped: [] });
       setPreviewIndex(0);
       setStep('preview');
     } catch (err) {
@@ -524,6 +539,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setFeedbackPlanId('');
     setAttachIcs(false);
     setPreview([]);
+    setPreviewPlan({ willSend: 0, skipped: [] });
     setPreviewIndex(0);
     setSendResult(null);
     setSentAt(null);
@@ -579,13 +595,18 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // never the pre-send preview count, which can't see per-recipient
   // failures the server hasn't reported yet.
   const sentFailedCount = sendResult?.failed?.length ?? 0;
-  const sentTotal = sendResult ? sendResult.sent + sentFailedCount : 0;
   // DEC-238 amendment (wave 3): the ruling's three plain lines. `skipped`
   // defaults to [] client-side (ComposeSendResult) so a server that hasn't
   // landed the dedupe field yet reports zero, never a fabricated count.
   // `remaining` is the failed set -- a recipient the product still owes a
   // message, never a second server-posted field.
   const skippedRecipients = sendResult?.skipped ?? [];
+  // wave-60 amendment (DEC-238, P1 cluster 4): the denominator must include
+  // every recipient the batch actually contained, not just sent+failed --
+  // otherwise a batch that skipped 30 of 36 reports "6 of 6", which reads
+  // as complete. sent + failed + skipped is the same arithmetic
+  // /compose/send's own toSend.length + skipped.length runs internally.
+  const sentTotal = sendResult ? sendResult.sent + sentFailedCount + skippedRecipients.length : 0;
 
   return (
     <div className="chq-compose-wizard" onKeyDown={handleStepEnterKeyDown}>
@@ -1241,12 +1262,28 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               disabled={busy || icsUnscheduledIds !== null}
               onClick={() => void send()}
             >
-              Send {countOf(preview.length, 'email')}
+              {/* wave-60 amendment (DEC-238, P1 cluster 4): the button names
+                  the count the server will actually attempt -- the same
+                  dedupe plan preview computed -- never the raw
+                  (contact,submission) expansion (preview.length), which is
+                  what produced "Send 36 emails" against a 6-sent history
+                  row. */}
+              Send {countOf(previewPlan.willSend, 'email')}
             </button>
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('preview')}>
               Back to the preview
             </button>
           </div>
+          {/* A collapsed recipient is named quietly here, before the send,
+              never only after (the result panel below repeats it with full
+              per-recipient reasons). No count on this screen is invented:
+              previewPlan.skipped is the exact list /compose/send is about
+              to compute the same way. */}
+          {previewPlan.skipped.length > 0 && (
+            <p className="chq-comms-panel-note">
+              {countOf(previewPlan.skipped.length, 'duplicate/recently-sent recipient')} will be skipped.
+            </p>
+          )}
         </section>
       )}
 
