@@ -198,6 +198,31 @@ failing bar with the observed numbers. Evaluators are pure functions in
 walkthrough in `scripts/walkthrough/stress.ts` only gathers observations via
 real HTTP calls and reports them.
 
+### Dev: docs screenshot shoot
+
+`npm run shots:docs` is an OPERATOR command, run at freeze time against an
+already-migrated, already-seeded `npm run dev` — it is never run in CI and
+never part of `npm test`. It reads the declared manifest in
+`scripts/docs-shots-lib.ts` (`DOCS_SHOTS`), logs in via the real `/login`
+form as whichever seeded persona each route needs (resolved from
+`app/src/routeManifest.ts`), and writes one full-frame PNG per row to
+`public/docs/shots/<id>.png` at exactly 1600×900 —
+docs/design/DESIGN-RULINGS.md:308-316's "Screenshot rules": from the real
+app, seeded `DevFlow Conf 2027` data only, full frames never crops, no
+drawn annotation, re-shot every release.
+
+```sh
+npm run seed
+npm run dev   # in another terminal, migrated + running
+npm run shots:docs
+```
+
+It aborts the whole run — no placeholder image, no catch-and-continue — on
+a route that doesn't return 200, a missing seeded `DevFlow Conf 2027`
+event, a route it can't resolve to exactly one persona, or a shot id
+repeated within one run. Serialized through `scripts/with-test-lock.sh`
+like the other heavy gates.
+
 ## For evaluators
 
 **[docs/AUDIT.md](docs/AUDIT.md)** is a self-audit: what each SPEC.md area actually does
