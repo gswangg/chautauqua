@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import { buildExport } from "../src/server/repo/exports";
+import { shapeEvaluationsExport } from "../src/server/repo/exports/evaluations";
 import type { AppEnv } from "../src/server/env";
 
 function makeChain(rows: unknown[]) {
@@ -227,6 +228,123 @@ describe("DEC-736 (wave 79 amendment): reviewer column carries a name when the c
     const table = await buildExport(fakeDb(queue()), "event-1", "evaluations");
     expect(table.header).not.toContain("reviewerEmail");
     expect(table.header).toContain("reviewer");
+  });
+});
+
+describe("DEC-529 amendment (wave 4): CSV column order follows the plan's declared criteria, not stored-JSON key order", () => {
+  it("via buildExport: plan-a's columns come out in declared order (cri_a1, cri_a2, cri_a4, cri_a3) even though scoresJson keys were stored in a different order per row", async () => {
+    const table = await buildExport(fakeDb(queue()), "event-1", "evaluations");
+    const planAHeader = table.header.filter((h) => h.startsWith("Program Committee:") && (h.includes("Clarity") || h.includes("Relevance") || h.includes("Notes") || h.includes("Depth")) && !h.includes("("));
+    // cri_a1=Clarity, cri_a2=Relevance, cri_a4=Notes are the base declared
+    // order; cri_a3=Depth is a round-2-only override criterion, so it must
+    // land after the base three, not before (it appears in row 2's
+    // scoresJson as {cri_a1, cri_a3} -- cri_a1 first -- which would put
+    // Depth right after Clarity under naive first-seen-across-all-rows
+    // ordering).
+    const relevance = table.header.indexOf(planAHeader.find((h) => h.includes("Relevance"))!);
+    const notes = table.header.indexOf(planAHeader.find((h) => h.includes("Notes"))!);
+    const depth = table.header.indexOf(planAHeader.find((h) => h.includes("Depth"))!);
+    expect(relevance).toBeGreaterThan(-1);
+    expect(notes).toBeGreaterThan(relevance);
+    expect(depth).toBeGreaterThan(notes);
+  });
+
+  it("unit: shapeEvaluationsExport emits a plan's columns in declaredOrderByPlan order regardless of the row scores' own key order", () => {
+    const rows = [
+      {
+        planId: "plan-x",
+        planName: "Plan X",
+        ref: "SES-1",
+        title: "Talk",
+        reviewer: "r@example.com",
+        round: 1,
+        // Stored/serialized key order is the REVERSE of the declared order.
+        scores: { crit_c: 3, crit_b: 2, crit_a: 1 },
+        weightedScore: "2",
+        comment: "",
+        submittedAt: "",
+      },
+    ];
+    const labelsByPlan = new Map([
+      ["plan-x", new Map([["crit_a", "A"], ["crit_b", "B"], ["crit_c", "C"]])],
+    ]);
+    const planNames = new Map([["plan-x", "Plan X"]]);
+    const declaredOrderByPlan = new Map([["plan-x", ["crit_a", "crit_b", "crit_c"]]]);
+
+    const table = shapeEvaluationsExport(rows, labelsByPlan, planNames, declaredOrderByPlan);
+    const dynamicCols = table.header.filter((h) => h.startsWith("Plan X:"));
+    expect(dynamicCols).toEqual(["Plan X: A", "Plan X: B", "Plan X: C"]);
+  });
+
+  it("unit: a score key with no declared criterion still appears, after the declared ones", () => {
+    const rows = [
+      {
+        planId: "plan-x",
+        planName: "Plan X",
+        ref: "SES-1",
+        title: "Talk",
+        reviewer: "r@example.com",
+        round: 1,
+        scores: { crit_undeclared: 9, crit_a: 1 },
+        weightedScore: "",
+        comment: "",
+        submittedAt: "",
+      },
+    ];
+    const labelsByPlan = new Map([["plan-x", new Map([["crit_a", "A"]])]]);
+    const planNames = new Map([["plan-x", "Plan X"]]);
+    const declaredOrderByPlan = new Map([["plan-x", ["crit_a"]]]);
+
+    const table = shapeEvaluationsExport(rows, labelsByPlan, planNames, declaredOrderByPlan);
+    const dynamicCols = table.header.filter((h) => h.startsWith("Plan X:"));
+    // crit_undeclared has no label entry, so labelByCriterionId's own
+    // fallback rule (criterionId as the label) applies.
+    expect(dynamicCols).toEqual(["Plan X: A", "Plan X: crit_undeclared"]);
+  });
+
+  it("unit: two plans' declared-order columns do not interleave", () => {
+    const rows = [
+      {
+        planId: "plan-a",
+        planName: "Plan A",
+        ref: "SES-1",
+        title: "Talk 1",
+        reviewer: "r@example.com",
+        round: 1,
+        scores: { a2: 2, a1: 1 },
+        weightedScore: "",
+        comment: "",
+        submittedAt: "",
+      },
+      {
+        planId: "plan-b",
+        planName: "Plan B",
+        ref: "SES-2",
+        title: "Talk 2",
+        reviewer: "r@example.com",
+        round: 1,
+        scores: { b1: 1 },
+        weightedScore: "",
+        comment: "",
+        submittedAt: "",
+      },
+    ];
+    const labelsByPlan = new Map([
+      ["plan-a", new Map([["a1", "A1"], ["a2", "A2"]])],
+      ["plan-b", new Map([["b1", "B1"]])],
+    ]);
+    const planNames = new Map([
+      ["plan-a", "Plan A"],
+      ["plan-b", "Plan B"],
+    ]);
+    const declaredOrderByPlan = new Map([
+      ["plan-a", ["a1", "a2"]],
+      ["plan-b", ["b1"]],
+    ]);
+
+    const table = shapeEvaluationsExport(rows, labelsByPlan, planNames, declaredOrderByPlan);
+    const dynamicCols = table.header.filter((h) => h.startsWith("Plan A:") || h.startsWith("Plan B:"));
+    expect(dynamicCols).toEqual(["Plan A: A1", "Plan A: A2", "Plan B: B1"]);
   });
 });
 
