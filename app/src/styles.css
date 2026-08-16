@@ -130,6 +130,38 @@
      (rail.css.ts) so the two renderings of one stack can't drift again.
      Mirrored in THEME_CSS (DEC-367/372 shared vocabulary). */
   --chq-pub-when-gutter: 126px;
+
+  /* Interaction-state + motion tokens (DEC-383, wave-58 amendment; V11 A1/A2/
+     A6/A8, docs/design/DESIGN-RULINGS.md:108-177 "B8 — Interaction-states
+     standard"). Colour literals for these tiers live here and NOWHERE else
+     -- component rules reference the token, never a hex. */
+  --chq-brand-active: #33401a;
+  --chq-secondary-hover: #e4dfd2;
+  --chq-secondary-hover-border: #bab6a6;
+  --chq-secondary-active: #dcd6c6;
+  --chq-destructive: #565a4b;
+  --chq-destructive-hover: #1b1d17;
+  --chq-border-hover: #8e8a7a;
+
+  /* Motion: three enter durations/easings per the B8 table, plus the
+     "leave at half" rule as separate exit tokens so callers never compute
+     half a duration inline. Colour transitions use --chq-ease-state
+     (ease-out); geometry transitions use --chq-ease-geometry (decelerate,
+     no overshoot). Re-bound wholesale under prefers-reduced-motion below. */
+  --chq-motion-color: 120ms;
+  --chq-motion-appear: 180ms;
+  --chq-motion-geometry: 220ms;
+  --chq-motion-color-exit: 60ms;
+  --chq-motion-appear-exit: 90ms;
+  --chq-motion-geometry-exit: 110ms;
+  --chq-ease-state: ease-out;
+  --chq-ease-geometry: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Touch has no hover (B8): a tap must not leave a stuck tint behind after
+   the 300ms hover-simulation delay some browsers apply on touch. */
+html {
+  -webkit-tap-highlight-color: transparent;
 }
 
 * {
@@ -541,6 +573,11 @@ a:hover {
   border: none;
   cursor: pointer;
   text-decoration: none;
+  /* B8: each tier darkens on hover/press, nothing moves -- colour only,
+     never `all` (that would also animate the focus ring). */
+  transition: background-color var(--chq-motion-color) var(--chq-ease-state),
+    border-color var(--chq-motion-color) var(--chq-ease-state),
+    color var(--chq-motion-color) var(--chq-ease-state);
 }
 
 .chq-btn-primary {
@@ -550,8 +587,14 @@ a:hover {
   font-weight: 700;
 }
 
-.chq-btn-primary:hover {
-  background: var(--chq-brand-hover);
+@media (hover: hover) {
+  .chq-btn-primary:hover {
+    background: var(--chq-brand-hover);
+  }
+}
+
+.chq-btn-primary:active {
+  background: var(--chq-brand-active);
 }
 
 .chq-btn-secondary {
@@ -560,6 +603,17 @@ a:hover {
   border: 1px solid var(--chq-border-strong);
   color: var(--chq-ink-strong);
   font-weight: 600;
+}
+
+@media (hover: hover) {
+  .chq-btn-secondary:hover {
+    background: var(--chq-secondary-hover);
+    border-color: var(--chq-secondary-hover-border);
+  }
+}
+
+.chq-btn-secondary:active {
+  background: var(--chq-secondary-active);
 }
 
 .chq-btn-tertiary {
@@ -571,8 +625,16 @@ a:hover {
   padding: 4px 0;
 }
 
-.chq-btn-tertiary:hover {
-  color: var(--chq-brand-hover);
+@media (hover: hover) {
+  .chq-btn-tertiary:hover {
+    color: var(--chq-brand-hover);
+    text-decoration: underline;
+  }
+}
+
+.chq-btn-tertiary:active {
+  color: var(--chq-brand-active);
+  text-decoration: underline;
 }
 
 /* DEC-366: tertiary/link-style buttons carry no border/background of their
@@ -582,6 +644,55 @@ a:hover {
 .chq-btn-tertiary:focus-visible {
   outline: 2px solid var(--chq-brand);
   outline-offset: 2px;
+}
+
+/* Destructive tertiary tier (B8 table row 4): link-style, no surface of
+   its own, rests at --chq-destructive and darkens to --chq-destructive-hover
+   on hover/press -- used for irreversible actions styled as a link. */
+.chq-btn-destructive-tertiary {
+  font-family: inherit;
+  background: none;
+  border: none;
+  color: var(--chq-destructive);
+  font-weight: 700;
+  padding: 4px 0;
+}
+
+@media (hover: hover) {
+  .chq-btn-destructive-tertiary:hover {
+    color: var(--chq-destructive-hover);
+    text-decoration: underline;
+  }
+}
+
+.chq-btn-destructive-tertiary:active {
+  color: var(--chq-destructive-hover);
+  text-decoration: underline;
+}
+
+.chq-btn-destructive-tertiary:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: 2px;
+}
+
+/* B8: a disabled button has no hover state at all -- rest colour, stays
+   there, cursor:default. Scoped inside .chq-btn so it beats every tier's
+   own colour without needing !important. */
+.chq-btn:disabled,
+.chq-btn[aria-disabled='true'] {
+  color: var(--chq-disabled);
+  background: var(--chq-disabled-bg);
+  border-color: var(--chq-disabled-bg);
+  cursor: default;
+}
+
+.chq-btn:disabled:hover,
+.chq-btn[aria-disabled='true']:hover,
+.chq-btn:disabled:active,
+.chq-btn[aria-disabled='true']:active {
+  color: var(--chq-disabled);
+  background: var(--chq-disabled-bg);
+  border-color: var(--chq-disabled-bg);
 }
 
 /* Inline text-styled button (row cells that act as links but must stay
@@ -631,6 +742,21 @@ a:hover {
   border-radius: var(--chq-r-ctl);
   padding: 0 13px;
   min-height: 44px;
+  transition: border-color var(--chq-motion-color) var(--chq-ease-state);
+}
+
+@media (hover: hover) {
+  .chq-input:not([readonly]):not(:disabled):hover,
+  .chq-select:not([readonly]):not(:disabled):hover,
+  .chq-textarea:not([readonly]):not(:disabled):hover {
+    border-color: var(--chq-border-hover);
+  }
+}
+
+.chq-input:focus,
+.chq-select:focus,
+.chq-textarea:focus {
+  border-color: var(--chq-brand);
 }
 
 .chq-textarea {
@@ -1063,7 +1189,7 @@ a:hover {
   /* DEC-678: belt-and-braces -- the DelayedLoading timer already withholds
      this block for ~250ms, but any render path that reaches this class
      directly still fades in instead of popping. */
-  animation: chq-loading-fade-in 120ms ease-in;
+  animation: chq-loading-fade-in var(--chq-motion-color) var(--chq-ease-state);
   animation-delay: 250ms;
   animation-fill-mode: backwards;
 }
@@ -1794,3 +1920,20 @@ a:hover {
        padding-left: 13px;
      }
    ----------------------------------------------------------------------- */
+
+/* DEC-383 (wave-58 amendment), B8 "Respect the system setting": under
+   prefers-reduced-motion, colour transitions go to 0ms and geometry drops
+   to a 90ms opacity fade -- states still change, nothing travels. Re-bind
+   the duration tokens themselves rather than adding a parallel rule set,
+   so every consumer that already references --chq-motion-* inherits the
+   reduced values for free. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --chq-motion-color: 0ms;
+    --chq-motion-appear: 90ms;
+    --chq-motion-geometry: 90ms;
+    --chq-motion-color-exit: 0ms;
+    --chq-motion-appear-exit: 90ms;
+    --chq-motion-geometry-exit: 90ms;
+  }
+}
