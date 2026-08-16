@@ -23,6 +23,7 @@ import { buildSurfaceFeed, buildSurfaceFeedXml, agendaIcsEvents } from "../src/r
 import type { PublicEvent, PublicAgendaItem } from "../src/server/repo/public";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
+import { MAX_PUBLIC_ROWS } from "../src/server/repo/public/bounds";
 
 const EVENT_ROW = {
   id: "ev1",
@@ -397,7 +398,11 @@ describe("GET /embed/:eventSlug/agenda.json (DEC-484 unpaged surface)", () => {
     expect(body.items).toHaveLength(1);
     expect(body.total).toBe(body.items.length);
     expect(body.page).toBe(1);
-    expect(body.perPage).toBe(body.items.length);
+    // DEC-489 (wave-49 amendment): perPage reports the ceiling the repo
+    // query actually applies (MAX_PUBLIC_ROWS), not items.length — the
+    // latter divides by zero for an empty agenda and hides truncation at
+    // the ceiling, exactly what the envelope exists to expose.
+    expect(body.perPage).toBe(MAX_PUBLIC_ROWS);
   });
 });
 
