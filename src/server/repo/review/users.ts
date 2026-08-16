@@ -26,26 +26,36 @@ export async function getUsersByIds(db: Db, userIds: string[]): Promise<Reviewer
 }
 
 /**
- * DEC-708: batched account -> contact display-name resolver, the exact
+ * DEC-708/DEC-757: batched account -> display-name resolver, the exact
  * inverse of findAccountUserId/findAccountUserIds' contact-id-OR-email rule
- * (comms.ts DEC-530). Resolution order per user: user.contactId first, else
- * an org-scoped contact-email match (contact.orgId = user.orgId AND
- * lower(contact.email) = lower(user.email)) -- never a bare email match
- * across orgs. Exactly one query per direction (user batch, contact-by-id
- * batch, contact-by-org+email batch), never a query per row. Every
- * requested userId is present in the returned map; a userId with no
- * resolvable contact maps to null (render the email alone, never a
- * fabricated name from the email's local part).
+ * (comms.ts DEC-530). Resolution order per user, per DEC-757 wave 72:
+ *   1. user.contactId, if it resolves to a contact
+ *   2. else an org-scoped contact-email match (contact.orgId = user.orgId
+ *      AND lower(contact.email) = lower(user.email)) -- never a bare email
+ *      match across orgs
+ *   3. else the name the invite flow stored on the user (user.name), if
+ *      non-blank
+ *   4. else null (render the email alone, never a fabricated name from the
+ *      email's local part)
+ * Exactly one query per direction (user batch, contact-by-id batch,
+ * contact-by-org+email batch), never a query per row. Every requested
+ * userId is present in the returned map.
  */
 export async function batchUserDisplayNames(db: Db, userIds: string[]): Promise<Map<string, string | null>> {
   const result = new Map<string, string | null>();
   if (userIds.length === 0) return result;
   for (const id of userIds) result.set(id, null);
 
-  const users: { id: string; orgId: string; email: string; contactId: string | null }[] = [];
+  const users: { id: string; orgId: string; email: string; contactId: string | null; name: string | null }[] = [];
   for (const batch of chunkIds(userIds)) {
     const rows = await db
-      .select({ id: schema.user.id, orgId: schema.user.orgId, email: schema.user.email, contactId: schema.user.contactId })
+      .select({
+        id: schema.user.id,
+        orgId: schema.user.orgId,
+        email: schema.user.email,
+        contactId: schema.user.contactId,
+        name: schema.user.name,
+      })
       .from(schema.user)
       .where(inArray(schema.user.id, batch));
     users.push(...rows);
@@ -91,7 +101,13 @@ export async function batchUserDisplayNames(db: Db, userIds: string[]): Promise<
     const contact =
       (u.contactId !== null ? contactById.get(u.contactId) : undefined) ??
       contactByOrgEmail.get(`${u.orgId}::${u.email.toLowerCase()}`);
-    result.set(u.id, contact ? `${contact.firstName} ${contact.lastName}`.trim() : null);
+    if (contact) {
+      result.set(u.id, `${contact.firstName} ${contact.lastName}`.trim());
+    } else if (u.name && u.name.trim().length > 0) {
+      result.set(u.id, u.name);
+    } else {
+      result.set(u.id, null);
+    }
   }
   return result;
 }
