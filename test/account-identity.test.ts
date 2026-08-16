@@ -123,6 +123,7 @@ function selectQueueDb(selectQueue: unknown[][]) {
       const chain: any = {
         from: () => chain,
         where: () => chain,
+        orderBy: () => chain,
         limit: async () => rows,
         then: (resolve: (v: unknown[]) => void) => resolve(rows),
       };
@@ -463,7 +464,7 @@ describe("findAccountUserId still finds the account after a merge repoints user.
     // ct-keep, but the user's own email is still the pre-merge address —
     // findAccountUserId (the real, un-mocked implementation) must still
     // resolve it via contact_id.
-    const { db } = selectQueueDb([[{ id: "user-repointed" }]]);
+    const { db } = selectQueueDb([[{ id: "user-repointed", contactId: "ct-keep", email: "pre-merge-address@example.com" }]]);
     const userId = await findAccountUserId(db, { contactId: "ct-keep", email: "some-other-address@example.com" });
     expect(userId).toBe("user-repointed");
   });
