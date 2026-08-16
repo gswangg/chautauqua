@@ -11,11 +11,12 @@ import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { visibleSessionConditions } from "../public/gates";
 import { ApiError } from "../../http";
-import { findConflicts, scheduleSummary, type PlacedSession } from "../../../domain/schedule";
+import { findConflicts, scheduleSummary, type PlacedSession, type ScheduleBlock } from "../../../domain/schedule";
 import { dayOutsideEventRangeCondition, isDayWithinEventRange } from "./days";
 import { eventDays } from "../../../domain/event-days";
 import { buildConflictLabels, describeConflicts } from "./labels";
 import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
+import { listBreaksForEvent, type ScheduleBreak } from "../breaks";
 import {
   MAX_AGENDA_SCAN,
   loadAcceptedSessions,
@@ -29,15 +30,29 @@ import type {
   UnscheduledAgendaSession,
 } from "./types";
 
+/** DEC-557 (wave 69 amendment): the ONE place a ScheduleBreak row becomes
+ * the ScheduleBlock shape findConflicts needs. `endMin` is derived, never
+ * stored twice. */
+function toScheduleBlocks(breaks: ScheduleBreak[]): ScheduleBlock[] {
+  return breaks.map((b) => ({
+    breakId: b.id,
+    label: b.label,
+    day: b.day,
+    startMin: b.startMin,
+    endMin: b.startMin + b.durationMin,
+  }));
+}
+
 /** Builds the full GET .../agenda payload (DEC-021 single round-trip). */
 export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo): Promise<AgendaPayload> {
   const days = eventDays(event.startDate, event.endDate);
 
-  // DEC-155 wave-34 amendment: roomRows, trackRows and loadAcceptedSessions
-  // consume nothing from one another (all three are scoped only by
-  // `eventId`), so they issue as one Promise.all wave rather than three
-  // strictly-sequential awaits.
-  const [roomRows, trackRows, accepted] = await Promise.all([
+  // DEC-155 wave-34 amendment: roomRows, trackRows, loadAcceptedSessions and
+  // the event's breaks (DEC-557 wave-69 amendment: break conflicts need the
+  // same rows autoSchedule already loads) consume nothing from one another
+  // (all four are scoped only by `eventId`), so they issue as one
+  // Promise.all wave rather than sequential awaits.
+  const [roomRows, trackRows, accepted, breaks] = await Promise.all([
     db
       .select({ id: schema.room.id, name: schema.room.name })
       .from(schema.room)
@@ -49,7 +64,9 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
       .where(eq(schema.track.eventId, eventId))
       .orderBy(schema.track.position),
     loadAcceptedSessions(db, eventId, event.recordPrefix),
+    listBreaksForEvent(db, eventId),
   ]);
+  const blocks = toScheduleBlocks(breaks);
 
   const placed: PlacedAgendaSession[] = [];
   const unscheduled: UnscheduledAgendaSession[] = [];
@@ -87,7 +104,7 @@ export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo
     }
   }
 
-  const conflicts = findConflicts(placedSessions);
+  const conflicts = findConflicts(placedSessions, blocks);
   const summary = scheduleSummary(placedSessions, accepted.length, conflicts);
   const labels = buildConflictLabels(roomRows, accepted);
 
@@ -215,8 +232,9 @@ export async function getConflictsAndSummary(
   // DEC-155 wave-34 amendment: roomRows (:283 originally) and
   // totalAcceptedRows (:289 originally) consume nothing from the slot chain
   // below (both are scoped only by `eventId`), so they join the slot read's
-  // wave rather than trailing it as two more sequential awaits.
-  const [slotRows, roomRows, totalAcceptedRows] = await Promise.all([
+  // wave rather than trailing it as two more sequential awaits. DEC-557
+  // (wave 69 amendment): breaks join the same wave for the same reason.
+  const [slotRows, roomRows, totalAcceptedRows, breaks] = await Promise.all([
     db
       .select({
         submissionId: schema.scheduleSlot.submissionId,
@@ -239,7 +257,9 @@ export async function getConflictsAndSummary(
       .select({ count: sql<number>`count(*)` })
       .from(schema.submission)
       .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted"))),
+    listBreaksForEvent(db, eventId),
   ]);
+  const blocks = toScheduleBlocks(breaks);
 
   if (slotRows.length > MAX_AGENDA_SCAN) {
     throw new ApiError(
@@ -310,7 +330,7 @@ export async function getConflictsAndSummary(
     endMin: s.slot!.endMin,
     speakerContactIds: s.speakerContactIds,
   }));
-  const conflicts = findConflicts(placedSessions);
+  const conflicts = findConflicts(placedSessions, blocks);
 
   const labels = buildConflictLabels(roomRows, placedRows);
   const totalAccepted = Number(totalAcceptedRows[0]?.count ?? 0);

@@ -18,6 +18,8 @@ describe("describeConflict (DEC-557)", () => {
       day: "2026-09-01",
       roomId: "room-1",
       speakerContactIds: [],
+      breakId: null,
+      breakLabel: null,
     };
     const text = describeConflict(c, labels);
     expect(text).toContain("Ballroom A");
@@ -35,6 +37,8 @@ describe("describeConflict (DEC-557)", () => {
       day: "2026-09-01",
       roomId: null,
       speakerContactIds: ["ct-1"],
+      breakId: null,
+      breakLabel: null,
     };
     const text = describeConflict(c, labels);
     expect(text).toContain("Ada Lovelace");
@@ -57,6 +61,8 @@ describe("describeConflict (DEC-557)", () => {
       day: "2026-09-01",
       roomId: "room-1",
       speakerContactIds: [],
+      breakId: null,
+      breakLabel: null,
     };
     const text = describeConflict(room, emptyLabels);
     expect(text).toContain("room-1");
@@ -69,6 +75,8 @@ describe("describeConflict (DEC-557)", () => {
       day: "2026-09-01",
       roomId: null,
       speakerContactIds: ["ct-1"],
+      breakId: null,
+      breakLabel: null,
     };
     const speakerText = describeConflict(speaker, emptyLabels);
     expect(speakerText).toContain("ct-1");

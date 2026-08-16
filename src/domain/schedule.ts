@@ -45,11 +45,29 @@ export interface PlacedSession {
 }
 
 export interface Conflict {
-  kind: "room_overlap" | "speaker_overlap";
-  submissionIds: [string, string];
+  kind: "room_overlap" | "speaker_overlap" | "break_overlap";
+  /** Exactly 2 ids for room_overlap/speaker_overlap; exactly 1 for
+   * break_overlap (DEC-557 wave-71/69 amendments). */
+  submissionIds: string[];
   day: string;
   roomId: string | null;
   speakerContactIds: string[];
+  /** Set only on break_overlap; null on the pair kinds (explicit, matching
+   * roomId/speakerContactIds' own explicit-null convention). */
+  breakId: string | null;
+  breakLabel: string | null;
+}
+
+/** DEC-557 (wave 69): an event-defined non-bookable window findConflicts
+ * checks placed sessions against — the same fact autoSchedule/nextFreeSlot
+ * already refuse to place into (BlockedInterval above), plus the id/label a
+ * break_overlap conflict must carry. */
+export interface ScheduleBlock {
+  breakId: string;
+  label: string;
+  day: string;
+  startMin: number;
+  endMin: number;
 }
 
 /** DEC-557: label lookups used by describeConflict to render a Conflict as
@@ -63,10 +81,21 @@ export interface ConflictLabels {
 /** DEC-557: the ONE place a Conflict becomes human-readable prose. Never
  * emits a raw id when the corresponding label map resolves it. */
 export function describeConflict(c: Conflict, labels: ConflictLabels): string {
-  const titleA =
-    labels.titleBySubmissionId.get(c.submissionIds[0]) ?? c.submissionIds[0];
-  const titleB =
-    labels.titleBySubmissionId.get(c.submissionIds[1]) ?? c.submissionIds[1];
+  const idA = c.submissionIds[0];
+  if (idA === undefined) {
+    throw new Error("describeConflict: submissionIds must carry at least one id");
+  }
+  const titleA = labels.titleBySubmissionId.get(idA) ?? idA;
+
+  if (c.kind === "break_overlap") {
+    return `"${titleA}" scheduled over the break "${c.breakLabel ?? c.breakId ?? "unknown break"}" on ${c.day}`;
+  }
+
+  const idB = c.submissionIds[1];
+  if (idB === undefined) {
+    throw new Error("describeConflict: room_overlap/speaker_overlap must carry two ids");
+  }
+  const titleB = labels.titleBySubmissionId.get(idB) ?? idB;
 
   if (c.kind === "room_overlap") {
     const roomName =
@@ -331,7 +360,7 @@ function buildOccupancyIndexes(existing: PlacedSession[]): {
  * `room_overlap`/`speaker_overlap` per pair — is byte-identical to the naive
  * double loop.
  */
-export function findConflicts(placed: PlacedSession[]): Conflict[] {
+export function findConflicts(placed: PlacedSession[], blocks: ScheduleBlock[] = []): Conflict[] {
   const conflicts: Conflict[] = [];
   const n = placed.length;
   if (n === 0) return conflicts;
@@ -388,6 +417,8 @@ export function findConflicts(placed: PlacedSession[]): Conflict[] {
         day: a.day,
         roomId: a.roomId,
         speakerContactIds: [],
+        breakId: null,
+        breakLabel: null,
       });
     }
 
@@ -401,6 +432,29 @@ export function findConflicts(placed: PlacedSession[]): Conflict[] {
         day: a.day,
         roomId: null,
         speakerContactIds: sharedSpeakers,
+        breakId: null,
+        breakLabel: null,
+      });
+    }
+  }
+
+  // DEC-557 (wave 69 amendment): break conflicts are APPENDED after all pair
+  // conflicts so DEC-533's emission order is preserved. A break blocks EVERY
+  // room — emitted regardless of the session's room (including the
+  // room-less TBD column) — reusing the SAME half-open interval predicate
+  // (intervalsOverlap) the pair scan and scanForFreeSlot both use.
+  for (const session of placed) {
+    for (const block of blocks) {
+      if (session.day !== block.day) continue;
+      if (!intervalsOverlap(session, block)) continue;
+      conflicts.push({
+        kind: "break_overlap",
+        submissionIds: [session.submissionId],
+        day: session.day,
+        roomId: session.roomId,
+        speakerContactIds: [],
+        breakId: block.breakId,
+        breakLabel: block.label,
       });
     }
   }

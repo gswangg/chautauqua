@@ -201,6 +201,7 @@ describe("DEC-562: JS re-aggregation sorts gain the contact-id tiebreak (byte-id
         [], // rooms
         [], // tracks (event-level)
         [submissionRow], // accepted submissionRows
+        [], // scheduleBreak (listBreaksForEvent, DEC-557 wave 69)
         [], // trackRows (per-submission)
         participantRows, // participantRows
         [], // slotRows

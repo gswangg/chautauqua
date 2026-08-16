@@ -28,11 +28,36 @@ export function buildConflictRows(
 ): Omit<ConflictRow, "resolution">[] {
   const rows: Omit<ConflictRow, "resolution">[] = [];
   for (const c of conflicts.slice(0, cap)) {
-    const [aId, bId] = c.submissionIds;
+    const aId = c.submissionIds[0];
+    if (aId === undefined) {
+      throw new Error("buildConflictRows: submissionIds must carry at least one id");
+    }
     const a = sessionById.get(aId);
+    if (!a) {
+      throw new Error(`buildConflictRows: session ${aId} not in the loaded set`);
+    }
+
+    if (c.kind === "break_overlap") {
+      // DEC-557 (wave 69 amendment g): a break row is one session + the
+      // break's own label — never "X and undefined".
+      rows.push({
+        day: a.day,
+        startMin: a.startMin,
+        endMin: a.endMin,
+        roomName: a.roomId ? (roomNameById.get(a.roomId) ?? null) : null,
+        kind: c.kind,
+        entries: [{ submissionId: aId, ref: a.ref, title: a.title, speakerName: a.speakerName }],
+      });
+      continue;
+    }
+
+    const bId = c.submissionIds[1];
+    if (bId === undefined) {
+      throw new Error("buildConflictRows: room_overlap/speaker_overlap must carry two ids");
+    }
     const b = sessionById.get(bId);
-    if (!a || !b) {
-      throw new Error(`buildConflictRows: session ${aId}/${bId} not in the loaded set`);
+    if (!b) {
+      throw new Error(`buildConflictRows: session ${bId} not in the loaded set`);
     }
     rows.push({
       day: a.day,
@@ -122,7 +147,16 @@ export function buildConflictResolutionFor(
   params: NextFreeSlotParams,
   blocked: BlockedInterval[] = [],
 ): ConflictResolution | null {
-  const [aId, bId] = conflict.submissionIds;
+  // DEC-557 (wave 69 amendment g): break_overlap has no second session to
+  // "move it" against — returns the existing no-suggestion shape rather
+  // than inventing a new resolution vocabulary.
+  if (conflict.kind === "break_overlap") return null;
+
+  const aId = conflict.submissionIds[0];
+  const bId = conflict.submissionIds[1];
+  if (aId === undefined || bId === undefined) {
+    throw new Error("buildConflictResolutionFor: room_overlap/speaker_overlap must carry two ids");
+  }
   const a = sessionById.get(aId);
   const b = sessionById.get(bId);
   if (!a || !b) {

@@ -488,7 +488,10 @@ describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", (
   // roomRows and totalAcceptedRows as one Promise.all wave (all three
   // consume nothing from the slot chain) — their db.select() calls are
   // still made synchronously in that source order before any awaits, so
-  // calls 1-3 below map to that wave and call 4 is the (still-sequential,
+  // calls 1-3 below map to that wave. DEC-557 (wave 69 amendment): the
+  // event's breaks (listBreaksForEvent) joined that same wave as its 4th
+  // member, so call 4 is now the breaks read (empty fixture -> no
+  // break_overlap conflicts here) and call 5 is the (still-sequential,
   // dependent-on-slotRows) participantRows batch.
   function makeConflictsSummaryDb(totalAccepted: number) {
     let call = 0;
@@ -499,6 +502,7 @@ describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", (
         if (thisCall === 1) return makeChain(joinedSlotRows); // scheduleSlot innerJoin submission
         if (thisCall === 2) return makeChain(roomRows); // rooms
         if (thisCall === 3) return makeChain([{ count: totalAccepted }]); // totalAccepted count(*)
+        if (thisCall === 4) return makeChain([]); // scheduleBreak (listBreaksForEvent)
         return makeChain(participantRows); // participant innerJoin contact
       },
     } as unknown as Db;
@@ -506,8 +510,12 @@ describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", (
   }
 
   // Separate fake tailored to getAgendaPayload's own call sequence (rooms,
-  // tracks, submissionRows, trackRows, participantRows, slotRows) so the
-  // same fixture can be replayed through both functions for comparison.
+  // tracks, submissionRows, breaks, trackRows, participantRows, slotRows —
+  // DEC-557 wave 69: breaks joined the roomRows/trackRows/accepted
+  // Promise.all wave as its 4th member, ahead of loadAcceptedSessions' own
+  // internal trackRows/participantRows/slotRows wave, which now lands at
+  // calls 5-7) so the same fixture can be replayed through both functions
+  // for comparison.
   function makeAgendaPayloadDb() {
     const submissions = [
       { id: "sub-1", seq: 1, title: "Talk One" },
@@ -526,8 +534,9 @@ describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", (
         if (thisCall === 1) return makeChain(roomRows); // rooms
         if (thisCall === 2) return makeChain([]); // tracks
         if (thisCall === 3) return makeChain(submissions); // submissionRows
-        if (thisCall === 4) return makeChain([]); // trackRows (submissionTrack)
-        if (thisCall === 5) return makeChain(participantRows); // participantRows
+        if (thisCall === 4) return makeChain([]); // scheduleBreak (listBreaksForEvent)
+        if (thisCall === 5) return makeChain([]); // trackRows (submissionTrack)
+        if (thisCall === 6) return makeChain(participantRows); // participantRows
         return makeChain(slots); // slotRows
       },
     } as unknown as Db;
@@ -556,20 +565,28 @@ describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", (
       title: `Talk ${i}`,
     }));
     // DEC-155 wave-34 amendment: slotRows now issues alongside roomRows/
-    // totalAcceptedRows in one Promise.all wave, so every db.select() call
-    // (not just the innerJoin'd one) needs a chainable, awaitable fake —
-    // the other two waves' rows are irrelevant, only slotRows' overflow
-    // length drives the assertion below.
-    function overflowChain(): unknown {
+    // totalAcceptedRows/breaks (DEC-557 wave 69) in one Promise.all wave, so
+    // every db.select() call (not just the innerJoin'd one) needs a
+    // chainable, awaitable fake — the other waves' rows are irrelevant,
+    // only slotRows' overflow length drives the assertion below. The
+    // breaks call (4th) must resolve to an EMPTY row set rather than
+    // overflowRows — listBreaksForEvent's toRecord expects real
+    // ScheduleBreak columns (createdAt/updatedAt as Date), which the slot
+    // fixture rows don't carry.
+    let call = 0;
+    function overflowChain(rows: unknown[]): unknown {
       const chain: Record<string, unknown> = {};
-      for (const method of ["from", "innerJoin", "where", "limit"]) {
+      for (const method of ["from", "innerJoin", "where", "limit", "orderBy"]) {
         chain[method] = () => chain;
       }
-      chain.then = (resolve: (v: unknown) => void) => resolve(overflowRows);
+      chain.then = (resolve: (v: unknown) => void) => resolve(rows);
       return chain;
     }
     const db = {
-      select: () => overflowChain(),
+      select: () => {
+        call += 1;
+        return overflowChain(call === 4 ? [] : overflowRows);
+      },
     } as unknown as Db;
 
     await expect(getConflictsAndSummary(db, "event1", event)).rejects.toThrow(
