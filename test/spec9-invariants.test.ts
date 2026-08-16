@@ -125,8 +125,13 @@ describe("SPEC §9 invariant: close-date lock (SPEC.md:297-298)", () => {
   });
 
   it("an ACCEPTED speaker keeps editing past close -- the recorded deliberate carve-out (src/domain/edit-lock.ts:22, DEC-041, docs/clarifications.md:39)", () => {
-    const now = Date.now();
-    const pastClose = now - 24 * 60 * 60 * 1000;
+    // Frozen day labels + frozen now (DEC-522 amendment, wave 49): closeDate
+    // is a DAY LABEL, not an instant -- a wall-clock `Date.now() - 24h` value
+    // is NOT necessarily "yesterday's" UTC day label and makes this
+    // assertion clock-dependent (red for ~7h of every UTC day). Mirrors
+    // test/edit-lock.test.ts:9-11 exactly.
+    const now = Date.UTC(2027, 2, 15); // 2027-03-15 (arbitrary "today")
+    const pastClose = Date.UTC(2027, 0, 1); // 2027-01-01 -- well closed by now
     // Every other status locks at close (the general rule this is a carve-out of).
     expect(canEditSubmission("pending", pastClose, now, "America/Los_Angeles")).toBe(false);
     // "Accepted speakers can keep editing their submission" (docs/clarifications.md:39).
