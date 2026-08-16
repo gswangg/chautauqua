@@ -483,62 +483,86 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   const before = content;
   if (!before) throw new ApiError("not_found", "Submission not found");
 
-  if (Object.keys(fields).length > 0) {
-    await updateSubmissionFields(c.var.db, ownership.eventId, id, fields);
-  }
-
   const newTitle = fields.title ?? before.title;
   const newDescription = fields.description !== undefined ? fields.description : before.description;
-  if (newTitle !== before.title || newDescription !== before.description) {
+  const contentChanged = newTitle !== before.title || newDescription !== before.description;
+
+  // DEC-155 (wave-68 amendment, P1-PERF): the write phase below collapses
+  // seven sequential awaits into two waves. Wave 1 = updateSubmissionFields
+  // + ensureBaselineRevision — different tables, neither observes the
+  // other's result. Wave 2 = appendSubmissionRevision, bumpIcsSequences,
+  // replaceSubmissionTracks, and the two applyRoleAnswer writes — each slot
+  // this request didn't ask for becomes Promise.resolve(undefined), the
+  // same shape the read wave above already uses. ensureBaselineRevision
+  // stays strictly before appendSubmissionRevision (revision #1 before #2)
+  // by virtue of being in an earlier wave. getSubmissionDetail stays a
+  // separate, LAST await outside both waves since it observes every write.
+  //
+  // The two "field id missing after validation passed" guards, and the
+  // editorName guard, are fail-loud invariant checks — they must run
+  // BEFORE wave 2 is issued, not inside it, so a broken invariant never
+  // races against unrelated writes in the same wave.
+  if (contentChanged && editorName === undefined) {
+    throw new Error("PATCH submission: editorName missing after title/description edit");
+  }
+  if (format !== undefined && !formatFieldId) {
+    throw new Error("PATCH submission: session_format field id missing after validation passed");
+  }
+  if (audienceLevel !== undefined && !audienceLevelFieldId) {
+    throw new Error("PATCH submission: audience_level field id missing after validation passed");
+  }
+
+  await settleInDeclarationOrder([
+    Object.keys(fields).length > 0
+      ? updateSubmissionFields(c.var.db, ownership.eventId, id, fields)
+      : Promise.resolve(undefined),
     // DEC-158 wave-59 amendment: stamp the ORIGINAL (pre-edit) content as
     // revision #1 before appending the actual edit's snapshot — this is a
     // no-op once the submission has any revision at all.
-    await ensureBaselineRevision(c.var.db, id, {
-      title: before.title,
-      description: before.description,
-      at: before.createdAt,
-    });
+    contentChanged
+      ? ensureBaselineRevision(c.var.db, id, {
+          title: before.title,
+          description: before.description,
+          at: before.createdAt,
+        })
+      : Promise.resolve(undefined),
+  ]);
+
+  await settleInDeclarationOrder([
     // editorName was resolved above, in the hoisted read wave — DEC-155.
-    // Guaranteed non-undefined here: this branch is only reachable when
-    // fields.title or fields.description is set, which is exactly the
-    // condition that wave slot was resolved under.
-    if (editorName === undefined) throw new Error("PATCH submission: editorName missing after title/description edit");
-    await appendSubmissionRevision(c.var.db, {
-      submissionId: id,
-      editorUserId: auth.userId,
-      editorName,
-      title: newTitle,
-      description: newDescription,
-    });
-    await bumpIcsSequences(c.var.db, [id]); // DEC-519: title/description are VEVENT fields
-  }
-
-  // DEC-598: full-set replace through the same submission_track writer the
-  // portal-edit path uses (src/server/repo/submit.ts:replaceSubmissionTracks)
-  // — never title/description-only ics/revision semantics, tracks are not a
-  // VEVENT field and don't affect ics sequence or content history.
-  if (trackIds !== undefined) {
-    await replaceSubmissionTracks(c.var.db, id, trackIds);
-  }
-
-  // DEC-755/DEC-155: format has no submission column — the same
-  // submission_answer writer POST create uses. The field id was already
-  // resolved above in the hoisted read wave (parseFormatField already
-  // confirmed a session_format field exists on this event's default form,
-  // so formatFieldId is guaranteed non-null here — see writeRoleAnswer's
-  // own doc comment for the identical guarantee it relies on).
-  if (format !== undefined) {
-    if (!formatFieldId) throw new Error("PATCH submission: session_format field id missing after validation passed");
-    await applyRoleAnswer(c.var.db, id, formatFieldId, format);
-  }
-  // DEC-900 amendment (findings wave 13) / DEC-155: audienceLevel through
-  // the same generalized writer, keyed on the audience_level-role field,
-  // field id resolved above in the hoisted read wave.
-  if (audienceLevel !== undefined) {
-    if (!audienceLevelFieldId)
-      throw new Error("PATCH submission: audience_level field id missing after validation passed");
-    await applyRoleAnswer(c.var.db, id, audienceLevelFieldId, audienceLevel);
-  }
+    // Guaranteed non-undefined here: guarded above, before this wave was
+    // issued.
+    contentChanged
+      ? appendSubmissionRevision(c.var.db, {
+          submissionId: id,
+          editorUserId: auth.userId,
+          editorName: editorName as string,
+          title: newTitle,
+          description: newDescription,
+        })
+      : Promise.resolve(undefined),
+    // DEC-519: title/description are VEVENT fields.
+    contentChanged ? bumpIcsSequences(c.var.db, [id]) : Promise.resolve(undefined),
+    // DEC-598: full-set replace through the same submission_track writer the
+    // portal-edit path uses (src/server/repo/submit.ts:replaceSubmissionTracks)
+    // — never title/description-only ics/revision semantics, tracks are not a
+    // VEVENT field and don't affect ics sequence or content history.
+    trackIds !== undefined ? replaceSubmissionTracks(c.var.db, id, trackIds) : Promise.resolve(undefined),
+    // DEC-755/DEC-155: format has no submission column — the same
+    // submission_answer writer POST create uses. The field id was already
+    // resolved above in the hoisted read wave (parseFormatField already
+    // confirmed a session_format field exists on this event's default form,
+    // so formatFieldId is guaranteed non-null here, guarded above).
+    format !== undefined
+      ? applyRoleAnswer(c.var.db, id, formatFieldId as string, format)
+      : Promise.resolve(undefined),
+    // DEC-900 amendment (findings wave 13) / DEC-155: audienceLevel through
+    // the same generalized writer, keyed on the audience_level-role field,
+    // field id resolved above in the hoisted read wave, guarded above.
+    audienceLevel !== undefined
+      ? applyRoleAnswer(c.var.db, id, audienceLevelFieldId as string, audienceLevel)
+      : Promise.resolve(undefined),
+  ]);
 
   const detail = await getSubmissionDetail(c.var.db, id);
   return c.json(detail);
