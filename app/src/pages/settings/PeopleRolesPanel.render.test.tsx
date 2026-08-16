@@ -280,7 +280,10 @@ describe('PeopleRolesPanel', () => {
 
   it('shows the created one-time password exactly once and it is not re-fetchable', async () => {
     const fetchMock = mockPeople({
-      'POST /api/v1/users': { status: 201, body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56' } },
+      'POST /api/v1/users': {
+        status: 201,
+        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56', welcomeEmail: 'not_sent_no_event' },
+      },
     });
     renderPanel(['/settings?section=people&edit=1']);
 
@@ -397,7 +400,7 @@ describe('PeopleRolesPanel', () => {
     mockPeople({
       'POST /api/v1/users': {
         status: 201,
-        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56' },
+        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56', welcomeEmail: 'not_sent_no_event' },
       },
     });
     renderPanel(['/settings?section=people&edit=1']);
@@ -422,7 +425,11 @@ describe('PeopleRolesPanel', () => {
         'Closing this dialog is the last time you see it — after that only a reset can replace it.',
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/an org with no events yet gets a working account and no email/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'This org has no events yet, so there is nowhere to log the notice and nothing was sent — pass the password on yourself.',
+      ),
+    ).toBeInTheDocument();
 
     const copyButton = screen.getByRole('button', { name: 'Copy' });
     fireEvent.click(copyButton);
@@ -437,7 +444,7 @@ describe('PeopleRolesPanel', () => {
     mockPeople({
       'POST /api/v1/users': {
         status: 201,
-        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56' },
+        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56', welcomeEmail: 'not_sent_no_event' },
       },
     });
     renderPanel(['/settings?section=people&edit=1']);
@@ -521,8 +528,64 @@ describe('PeopleRolesPanel', () => {
       screen.getByText(`Every session signed in as ${OTHER.email} is ended — they are signed out everywhere.`),
     ).toBeInTheDocument();
     expect(screen.getByText('Resetting sends no email; pass the new password on yourself.')).toBeInTheDocument();
-    // The reset path never states the invite path's email_log gap.
-    expect(screen.queryByText(/an org with no events yet gets a working account/)).not.toBeInTheDocument();
+    // The reset path never states one of the invite path's welcomeEmail sentences.
+    expect(
+      screen.queryByText(/This org has no events yet, so there is nowhere to log the notice/),
+    ).not.toBeInTheDocument();
+  });
+
+  // DEC-238 (wave 65 amendment): the 201 body's welcomeEmail vocabulary
+  // drives one sentence per outcome, decided server-side.
+  it('names the address the welcome notice was sent to when welcomeEmail is "sent"', async () => {
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 201,
+        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56', welcomeEmail: 'sent' },
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('ab12-cd34-ef56')).toBeInTheDocument();
+    });
+    expect(screen.getByText('A welcome notice was sent to new@example.com.')).toBeInTheDocument();
+  });
+
+  it('tells the organizer to pass the password on themselves when welcomeEmail is "not_sent_failed"', async () => {
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 201,
+        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56', welcomeEmail: 'not_sent_failed' },
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('ab12-cd34-ef56')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText('The welcome notice could not be sent — pass the password on yourself.'),
+    ).toBeInTheDocument();
   });
 
   it('does not build a pending-invitation state', async () => {

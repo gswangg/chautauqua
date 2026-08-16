@@ -100,6 +100,10 @@ usersRoutes.post("/api/v1/users", requireOrganizer, requireCookieSession, csrfJs
   const anchorEvent = await getAnchorEventForOrg(c.var.db, auth.orgId);
   const anchorEventId = anchorEvent?.id;
   const anchorEventName = anchorEvent?.name ?? null;
+  // DEC-238 (wave 65 amendment): the 201 body must report which of the three
+  // outcomes actually happened -- a closed vocabulary decided server-side,
+  // never inferred by the caller.
+  let welcomeEmail: "sent" | "not_sent_no_event" | "not_sent_failed";
   if (anchorEventId) {
     // DEC-238: user creation must succeed even if the best-effort welcome
     // notice fails to send (the account, password, and response body are
@@ -121,12 +125,19 @@ usersRoutes.post("/api/v1/users", requireOrganizer, requireCookieSession, csrfJs
         // intentionally excludes rows like this one.
         contactId: null,
       });
+      welcomeEmail = "sent";
     } catch (err) {
       console.error("account-creation welcome email failed (account still created):", err);
+      welcomeEmail = "not_sent_failed";
     }
+  } else {
+    welcomeEmail = "not_sent_no_event";
   }
 
-  return c.json({ id: created.id, email: created.email, role: created.role, name: created.name, password }, 201);
+  return c.json(
+    { id: created.id, email: created.email, role: created.role, name: created.name, password, welcomeEmail },
+    201,
+  );
 });
 
 // DEC-215: organizer-triggered password re-issue for an org user (reviewer

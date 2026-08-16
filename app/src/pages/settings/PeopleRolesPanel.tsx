@@ -91,6 +91,10 @@ export function PeopleRolesPanel() {
     email: string;
     password: string;
     context: 'invite' | 'reset';
+    // DEC-238 (wave 65 amendment): only set on the invite path -- the
+    // server's closed vocabulary for what happened to the welcome notice,
+    // named per-account rather than a blanket hedge.
+    welcomeEmail?: 'sent' | 'not_sent_no_event' | 'not_sent_failed';
   } | null>(null);
   const [copyResult, setCopyResult] = useState<{ ok: boolean } | null>(null);
   const failedCopyRef = useRef<HTMLInputElement | null>(null);
@@ -139,13 +143,22 @@ export function PeopleRolesPanel() {
     setFieldErrors({});
     setDuplicateUser(null);
     try {
-      const res = await apiPost<{ email: string; password: string }>('/users', {
+      const res = await apiPost<{
+        email: string;
+        password: string;
+        welcomeEmail: 'sent' | 'not_sent_no_event' | 'not_sent_failed';
+      }>('/users', {
         email: newEmail.trim(),
         role: newRole,
         firstName: newFirstName.trim(),
         lastName: newLastName.trim(),
       });
-      setRevealedPassword({ email: res.email, password: res.password, context: 'invite' });
+      setRevealedPassword({
+        email: res.email,
+        password: res.password,
+        context: 'invite',
+        welcomeEmail: res.welcomeEmail,
+      });
       setNewEmail('');
       setNewFirstName('');
       setNewLastName('');
@@ -328,9 +341,11 @@ export function PeopleRolesPanel() {
           </p>
           {revealedPassword.context === 'invite' ? (
             <p className="chq-settings-people-closing-note">
-              The welcome email is logged against this org&apos;s first event (email_log requires one) — an org
-              with no events yet gets a working account and no email, so you&apos;ll need to pass the password on
-              yourself.
+              {revealedPassword.welcomeEmail === 'sent'
+                ? `A welcome notice was sent to ${revealedPassword.email}.`
+                : revealedPassword.welcomeEmail === 'not_sent_no_event'
+                  ? "This org has no events yet, so there is nowhere to log the notice and nothing was sent — pass the password on yourself."
+                  : 'The welcome notice could not be sent — pass the password on yourself.'}
             </p>
           ) : (
             <>

@@ -74,5 +74,9 @@ describe("POST /api/v1/users — event anchor lookup is bounded (DEC-461/DEC-013
     expect(getAnchorEventForOrgMock).toHaveBeenCalledTimes(1);
     const [, orgId] = getAnchorEventForOrgMock.mock.calls[0]! as unknown as [unknown, string];
     expect(orgId).toBe(ORG_A);
+    // DEC-238 (wave 65 amendment): an anchor event exists and the mailer
+    // resolved, so the 201 body must report a successful send.
+    const body = (await res.json()) as { welcomeEmail: string };
+    expect(body.welcomeEmail).toBe("sent");
   });
 });
