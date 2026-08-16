@@ -30,6 +30,7 @@ import { ResourcesPanel } from './ResourcesPanel';
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm, SettingsField, SettingsSaveButton } from './SettingsEditForm';
 import { countOf } from '../../lib/plural';
+import { DEFAULT_PORTAL_SETTINGS } from '../../lib/portal-defaults';
 import {
   buildPortalSettingsPayload,
   validatePortalSettingsForm,
@@ -48,10 +49,10 @@ interface PortalSettingsRecord {
 }
 
 const EMPTY_FORM: PortalSettingsForm = {
-  logoUrl: '',
-  accentColor: '',
-  welcomeMessage: '',
-  showResources: true,
+  logoUrl: DEFAULT_PORTAL_SETTINGS.logoUrl ?? '',
+  accentColor: DEFAULT_PORTAL_SETTINGS.accentColor ?? '',
+  welcomeMessage: DEFAULT_PORTAL_SETTINGS.welcomeMessage ?? '',
+  showResources: DEFAULT_PORTAL_SETTINGS.showResources,
 };
 
 function formFromRecord(record: PortalSettingsRecord): PortalSettingsForm {

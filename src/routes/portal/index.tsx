@@ -44,6 +44,7 @@ import {
 import { getFileVersionNumber } from "../../server/repo/files";
 import { formatBytes } from "../../domain/files";
 import { DEC_729, DEC_777, DEC_884 } from "../../decisions";
+import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
 void DEC_729;
 void DEC_777;
@@ -376,7 +377,7 @@ function PortalPage(props: {
             <SessionCard
               session={s}
               deliverable={deliverables.get(s.submissionId) ?? null}
-              showResources={props.data.showResourcesByEventId[s.eventId] ?? true}
+              showResources={props.data.showResourcesByEventId[s.eventId] ?? DEFAULT_PORTAL_SETTINGS.showResources}
             />
           ))
         )}

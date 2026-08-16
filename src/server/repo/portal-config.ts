@@ -9,6 +9,7 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { ApiError } from "../http";
 import { DEC_461 } from "../../decisions";
+import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
 void DEC_461;
 
@@ -90,7 +91,7 @@ export function mergePortalSettingsInput(
       logoUrl: input.logoUrl ?? null,
       accentColor: input.accentColor ?? null,
       welcomeMessage: input.welcomeMessage ?? null,
-      showResources: input.showResources ?? true,
+      showResources: input.showResources ?? DEFAULT_PORTAL_SETTINGS.showResources,
     };
   }
   return {

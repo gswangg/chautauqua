@@ -14,6 +14,7 @@ import { loadTrackNamesBySubmission } from "../submission-tracks";
 import { safeImageSrc } from "../../../domain/brand-url";
 import { chunkIds } from "../../../lib/chunk";
 import { DEC_322, DEC_988 } from "../../../decisions";
+import { DEFAULT_PORTAL_SETTINGS } from "../../../domain/portal-settings";
 
 void DEC_988;
 
@@ -195,13 +196,14 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
   // contact participates in — the union of their submission and
   // task-assignment events, never the single "most recent submission" event
   // branding above resolves. One batched select over portal_settings keyed
-  // by that event-id set; an event with no row reads true (schema default,
-  // src/db/schema/content.ts).
+  // by that event-id set; an event with no row reads DEFAULT_PORTAL_SETTINGS
+  // (src/domain/portal-settings.ts), which agrees with the schema default at
+  // src/db/schema/content.ts.
   const participantEventIds = new Set<string>();
   for (const row of submissionRows) participantEventIds.add(row.eventId);
   for (const row of taskRows) participantEventIds.add(row.eventId);
   const showResourcesByEventId: Record<string, boolean> = {};
-  for (const eventId of participantEventIds) showResourcesByEventId[eventId] = true;
+  for (const eventId of participantEventIds) showResourcesByEventId[eventId] = DEFAULT_PORTAL_SETTINGS.showResources;
   const eventIdList = [...participantEventIds];
   if (eventIdList.length > 0) {
     for (const batch of chunkIds(eventIdList)) {

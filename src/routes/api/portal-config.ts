@@ -28,6 +28,7 @@ import {
   upsertPortalSettings,
 } from "../../server/repo/portal-config";
 import { isValidHexColor, normalizeHexColor } from "../../domain/color";
+import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 import { safeImageSrc } from "../../domain/brand-url";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { DEC_523, DEC_322 } from "../../decisions";
@@ -82,10 +83,7 @@ portalConfigRoutes.get("/events/:eventId/portal-settings", async (c) => {
     settings ?? {
       id: null,
       eventId,
-      logoUrl: null,
-      accentColor: null,
-      welcomeMessage: null,
-      showResources: true,
+      ...DEFAULT_PORTAL_SETTINGS,
       createdAt: null,
       updatedAt: null,
     },
