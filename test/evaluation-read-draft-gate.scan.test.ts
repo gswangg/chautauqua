@@ -49,12 +49,6 @@ const KNOWN_DRAFT_INCLUSIVE: Record<string, string> = {
   // DEC-027: the evaluations export shows submittedAt as an empty string
   // for a draft row -- draft visibility is the export's audit purpose.
   exportEvaluations: "export intentionally lists drafts, rendering submittedAt as empty string for audit visibility",
-  // Filters submittedAt === null in JS after the select, per its own inline
-  // comment ("in-progress evaluation, not a history event").
-  listSubmissionHistory: "filters submittedAt===null in JS post-select (see its own inline comment)",
-  // Filters row.submittedAt === null in JS after the select, per its own
-  // inline loop.
-  listFeedbackCommentsForSubmissions: "filters submittedAt===null in JS post-select before building the comment map",
   // Already filters via isNotNull(schema.evaluation.submittedAt) inline in
   // its own WHERE (not submittedEvaluationCondition(), but the same
   // predicate) -- a submission with only a draft evaluation is deletable.

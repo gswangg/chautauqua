@@ -16,6 +16,7 @@ import {
 } from "../../../domain/evaluation/plan-json";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
+import { submittedEvaluationCondition } from "./evaluations";
 
 export interface PlanRecord {
   id: string;
@@ -323,7 +324,7 @@ export async function countSubmittedEvaluationsForPlan(db: Db, planId: string, s
     .where(
       and(
         eq(schema.evaluation.planId, planId),
-        sql`${schema.evaluation.submittedAt} is not null`,
+        submittedEvaluationCondition(),
         sinceMs !== undefined ? gte(schema.evaluation.submittedAt, new Date(sinceMs)) : undefined,
       ),
     );
@@ -343,7 +344,7 @@ export async function countSubmittedEvaluationsForRound(db: Db, planId: string, 
       and(
         eq(schema.evaluation.planId, planId),
         eq(schema.evaluation.round, round),
-        sql`${schema.evaluation.submittedAt} is not null`,
+        submittedEvaluationCondition(),
       ),
     );
   return Number(rows[0]?.count ?? 0);

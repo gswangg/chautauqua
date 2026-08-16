@@ -13,6 +13,7 @@ import { chunkIds, ID_CHUNK_SIZE } from "../../lib/chunk";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { slotWithinEventRange } from "./public/gates";
 import { dedupeKey } from "../../domain/comms-dedupe";
+import { submittedEvaluationCondition } from "./review/evaluations";
 
 // ---------------------------------------------------------------------------
 // Templates
@@ -294,11 +295,12 @@ export async function listFeedbackCommentsForSubmissions(
           inArray(schema.evaluation.submissionId, batch),
           eq(schema.evaluation.planId, scope.planId),
           eq(schema.evaluation.round, scope.round),
+          submittedEvaluationCondition(),
         ),
       )
       .orderBy(asc(schema.evaluation.createdAt), asc(schema.evaluation.id));
     for (const row of rows) {
-      if (row.submittedAt === null || !row.comment || row.comment.trim() === "") continue;
+      if (!row.comment || row.comment.trim() === "") continue;
       const existing = map.get(row.submissionId);
       if (existing) existing.push(row.comment);
       else map.set(row.submissionId, [row.comment]);
