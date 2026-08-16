@@ -62,6 +62,9 @@ export function useCurrentEvent(): UseCurrentEventResult {
   const [error, setError] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    // DEC-856: clear at the start of the read that can replace it, matching
+    // the discipline applied to the other page-level error banners.
+    setError(undefined);
     if (!fromUrl && !fromStorage) {
       setLoading(true);
       loadEventsOnce()
