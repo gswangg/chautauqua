@@ -34,7 +34,7 @@ import {
 import { DEC_733, DEC_761, DEC_784, DEC_900, DEC_958, DEC_998 } from '../../../../src/decisions';
 // DEC-784/DEC-604: role is picked from the SAME imported vocabulary
 // AddToEventModal.tsx uses -- never a hand-written list.
-import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
+import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
 
 void DEC_733;
 void DEC_761;
@@ -1442,11 +1442,21 @@ export function SubmissionDetailPage() {
                   </thead>
                   <tbody>
                     {detail.participants.map((p) => {
-                      // DEC-900 (wave 25 amendment): the Role column reads
-                      // LEAD / CO-PRESENTER, never the raw stored role key
-                      // -- the same lead participant this page's Speaker
-                      // rail already resolves (role==='speaker', falling
-                      // back to the first participant, order asc).
+                      // DEC-604 (wave 67 amendment): REVERSES the wave-25
+                      // clause below (previously cited as DEC-900) that had
+                      // the Role column read a binary LEAD / CO-PRESENTER,
+                      // collapsing 'moderator' and 'panelist' into
+                      // "CO-PRESENTER" even though the speaker portal
+                      // resolves and prints those labels for the same
+                      // person (src/server/repo/portal-edit.ts:448). LEAD
+                      // is a POSITION -- the resolved lead participant this
+                      // page's Speaker rail already owns (role==='speaker',
+                      // falling back to the first participant, order asc)
+                      // -- and keeps its own literal chip text. Every other
+                      // row now reads participantRoleLabel(p.role), the
+                      // one exported vocabulary DEC-604 owns, including its
+                      // documented free-text fallback for organizer-set
+                      // roles outside the vocabulary.
                       const isLead = speaker !== null && p.id === speaker.id;
                       // DEC-958 (wave 66 amendment): the row's own three
                       // write paths (remove/make co-presenter/visibility)
@@ -1468,7 +1478,7 @@ export function SubmissionDetailPage() {
                             </td>
                             <td>
                               <span className={isLead ? 'chq-role-chip chq-role-chip-lead' : 'chq-role-chip chq-role-chip-co'}>
-                                {isLead ? 'LEAD' : 'CO-PRESENTER'}
+                                {isLead ? 'LEAD' : participantRoleLabel(p.role).toUpperCase()}
                               </span>
                             </td>
                             <td className="chq-participant-email-cell">{p.email}</td>
