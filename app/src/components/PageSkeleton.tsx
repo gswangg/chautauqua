@@ -14,19 +14,24 @@ import './page-skeleton.css';
 
 export type PageSkeletonVariant = 'table' | 'list' | 'detail';
 
+/**
+ * DEC-678 (wave-58 amendment): always six placeholder rows -- never a guess
+ * at the real count, never a caller-supplied override. A skeleton that
+ * guesses lies twice, once while loading and again when the number differs.
+ */
+export const SKELETON_ROWS = 6;
+
 interface PageSkeletonProps {
-  /** Number of placeholder rows/entries to render. */
-  rows?: number;
   /** Shape of the placeholder content, matching what the page renders once loaded. */
   variant?: PageSkeletonVariant;
   /** Screen-reader-only label announced via the visually-hidden text and aria-busy region. */
   label?: string;
 }
 
-function TableRows({ rows }: { rows: number }) {
+function TableRows() {
   return (
     <div className="chq-skeleton-frame">
-      {Array.from({ length: rows }, (_, i) => (
+      {Array.from({ length: SKELETON_ROWS }, (_, i) => (
         <div className="chq-skeleton-row chq-skeleton-row-table" key={i}>
           <span className="chq-skeleton-bar chq-skeleton-bar-wide" />
           <span className="chq-skeleton-bar chq-skeleton-bar-narrow" />
@@ -37,10 +42,10 @@ function TableRows({ rows }: { rows: number }) {
   );
 }
 
-function ListRows({ rows }: { rows: number }) {
+function ListRows() {
   return (
     <div className="chq-skeleton-frame">
-      {Array.from({ length: rows }, (_, i) => (
+      {Array.from({ length: SKELETON_ROWS }, (_, i) => (
         <div className="chq-skeleton-row chq-skeleton-row-list" key={i}>
           <span className="chq-skeleton-bar chq-skeleton-bar-ref" />
           <span className="chq-skeleton-bar chq-skeleton-bar-title" />
@@ -51,8 +56,8 @@ function ListRows({ rows }: { rows: number }) {
   );
 }
 
-function DetailRows({ rows }: { rows: number }) {
-  const perColumn = Math.max(1, Math.ceil(rows / 2));
+function DetailRows() {
+  const perColumn = Math.ceil(SKELETON_ROWS / 2);
   return (
     <div className="chq-skeleton-detail">
       <span className="chq-skeleton-bar chq-skeleton-bar-title-lg" />
@@ -63,7 +68,7 @@ function DetailRows({ rows }: { rows: number }) {
           ))}
         </div>
         <div className="chq-skeleton-detail-col">
-          {Array.from({ length: rows - perColumn }, (_, i) => (
+          {Array.from({ length: SKELETON_ROWS - perColumn }, (_, i) => (
             <span className="chq-skeleton-bar chq-skeleton-bar-wide" key={i} />
           ))}
         </div>
@@ -80,7 +85,7 @@ function DetailRows({ rows }: { rows: number }) {
  * `aria-busy="true"` and a visually-hidden label so a screen reader
  * announces the wait instead of silence.
  */
-export function PageSkeleton({ rows = 6, variant = 'table', label = 'Loading…' }: PageSkeletonProps) {
+export function PageSkeleton({ variant = 'table', label = 'Loading…' }: PageSkeletonProps) {
   // No `chq-skeleton-${variant}` modifier on the container: the variant
   // already selects which subtree renders below, and each subtree carries
   // its own shape classes, so a container modifier would be a class with no
@@ -89,9 +94,9 @@ export function PageSkeleton({ rows = 6, variant = 'table', label = 'Loading…'
   return (
     <div className="chq-skeleton" role="status" aria-busy="true">
       <span className="chq-skeleton-sr-label">{label}</span>
-      {variant === 'table' && <TableRows rows={rows} />}
-      {variant === 'list' && <ListRows rows={rows} />}
-      {variant === 'detail' && <DetailRows rows={rows} />}
+      {variant === 'table' && <TableRows />}
+      {variant === 'list' && <ListRows />}
+      {variant === 'detail' && <DetailRows />}
     </div>
   );
 }

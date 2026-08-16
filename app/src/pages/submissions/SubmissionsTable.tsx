@@ -402,7 +402,7 @@ export function SubmissionsTable() {
             {loading && (
               <tr>
                 <td className="chq-submissions-loading" colSpan={9 + shownColumns.length}>
-                  <PageSkeleton variant="table" rows={4} />
+                  <PageSkeleton variant="table" />
                 </td>
               </tr>
             )}
