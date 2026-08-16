@@ -209,4 +209,26 @@ describe('ProgressPanel render smoke', () => {
 
     expect(await screen.findByText('Track Review: round 1 of 2')).toBeInTheDocument();
   });
+
+  // DEC-147 wave-63 amendment: a single-round plan's round count is noise,
+  // not information -- planNamesRound(1) is false, so no round line at all
+  // (not an empty span) rather than "round 1 of 1".
+  it('renders no round line for a single-round plan', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan({ name: 'Track Review', currentRound: 1, rounds: 1 }),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/progress`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/progress" element={<ProgressPanel />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('heading', { name: 'Reviewer progress' });
+    expect(screen.queryByText(/round 1 of 1/)).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-summary')).not.toBeInTheDocument();
+  });
 });

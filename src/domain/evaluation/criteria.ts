@@ -364,3 +364,23 @@ export function roundLabel(planName: string, round: number, meta: { name: string
   void round;
   return meta.name;
 }
+
+/** DEC-147 amendment (wave 63, task w63-f; eval-findings item 17): the ONE
+ * predicate that decides whether a round is worth naming out loud. A round
+ * is noise, not information, on a plan that only ever has one -- so this is
+ * true iff `rounds > 1`, and every surface that has the plan's rounds count
+ * in scope must gate its round line on it instead of printing one
+ * unconditionally.
+ *
+ * Structural exemptions (do NOT wire this predicate into these two; they
+ * cannot, and printing something different is not a bug):
+ *  - `app/src/pages/review/ResultsTable.tsx` (~:537): its row envelope
+ *    carries `ev.round`/`ev.planName` per evaluation, never the plan's
+ *    `rounds` count, so there is nothing here to gate on.
+ *  - `app/src/pages/review/ComposeWizard.tsx` (~:1068): its line names the
+ *    PLAN ('Round 2 of Track A Review'), a different grammar with its own
+ *    landed assertions, not a bare round label.
+ */
+export function planNamesRound(rounds: number): boolean {
+  return rounds > 1;
+}

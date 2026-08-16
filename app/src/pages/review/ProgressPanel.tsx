@@ -5,7 +5,7 @@ import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 // reviewersNotStarted all resolve through the SAME domain predicate the
 // route imports -- never a second copy here.
 import { reviewersWithIncompleteQueues, reviewersNotStarted, reviewerDisplayLabel } from './progress';
-import { reviewerProgressState } from '../../../../src/domain/evaluation';
+import { planNamesRound, reviewerProgressState } from '../../../../src/domain/evaluation';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
@@ -143,11 +143,14 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
           </p>
           <div className="chq-review-summary-row">
             <h1 className="chq-page-title">Reviewer progress</h1>
-            {plan && (
+            {plan && planNamesRound(plan.rounds) && (
               // DEC-760 (wave-60 amendment): names the plan so this reads as
               // the per-plan fact it is, never an event-level claim -- a
               // bare "Round N of M" was read by a judge as describing the
               // whole event rather than this one plan.
+              // DEC-147 amendment (wave 63): a single-round plan's round
+              // count is noise, not information -- render nothing (not an
+              // empty span) rather than "round 1 of 1".
               <span className="chq-summary">
                 {plan.name}: round {plan.currentRound} of {plan.rounds}
               </span>

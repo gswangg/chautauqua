@@ -13,7 +13,7 @@ import { PageSkeleton } from '../../components/PageSkeleton';
 import './review.css';
 import type { EvaluationPlan, ProgressRow, Track } from './types';
 import { countOf } from '../../lib/plural';
-import { isPlanOpen } from '../../../../src/domain/evaluation';
+import { isPlanOpen, planNamesRound } from '../../../../src/domain/evaluation';
 
 /** Presentational-only window state derived from openDate/closeDate — never
  * stored server-side, so it must never be asserted as more than "now vs.
@@ -275,7 +275,7 @@ export function PlanList() {
               })()}
               <span className="chq-review-plan-meta">
                 {planWindow(plan)}
-                {plan.rounds > 1 && (
+                {planNamesRound(plan.rounds) && (
                   <>
                     {' '}
                     · Round {plan.currentRound} of {plan.rounds}
