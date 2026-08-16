@@ -33,10 +33,13 @@ describe("auth card geometry (DEC-945 V8 amendment, wave 25)", () => {
     expect(bodyRule).toMatch(/align-items:\s*flex-start/);
   });
 
-  it(".chq-auth-card declares a 1px rule border, paper fill and 8px radius", () => {
+  it(".chq-auth-card declares a 1px rule border, surface fill and 8px radius", () => {
     const cardRule = extractRule(AUTH_CSS, ".chq-auth-card");
     expect(cardRule).toMatch(/border:\s*1px solid var\(--chq-rule\)/);
-    expect(cardRule).toMatch(/background:\s*var\(--chq-paper\)/);
+    // G13 fix (frame 11-account--00): the card paints one surface step
+    // LIGHTER than the page -- frame samples #FAF8F2 (--chq-surface) on the
+    // #F4F1E8 page, so paper fill on paper page was no contrast at all.
+    expect(cardRule).toMatch(/background:\s*var\(--chq-surface\)/);
     expect(cardRule).toMatch(/border-radius:\s*8px/);
   });
 

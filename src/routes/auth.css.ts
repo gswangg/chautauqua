@@ -40,19 +40,39 @@ void DEC_124;
 // chrome at all. Only /login, /forgot and /reset keep the small bordered
 // .chq-auth-card (a credential prompt is deliberately a small card).
 export const AUTH_CSS = `
-  body { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
+  /* G13 fix (11-account frames 00/05-09): every credential card centres
+     VERTICALLY in the viewport -- min-height gives the flex row a cross
+     axis to centre against; bare reading pages keep the top-anchored
+     flex-start default. */
+  body { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; min-height: 100dvh; box-sizing: border-box; }
+
+  /* G13 fix (A23): /login stacks the card and the demo-accounts block as
+     one centred unit -- the demo block sits below the card, outside it. */
+  .chq-auth-stack {
+    width: 100%;
+    max-width: 460px;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
 
   .chq-auth-card {
     width: 100%;
     max-width: 460px;
+    align-self: center;
     border: 1px solid var(--chq-rule);
-    background: var(--chq-paper);
+    /* G13 fix (frame 11-account--00): the card paints one surface step
+       LIGHTER than the page (#FAF8F2 on #F4F1E8), never the page colour. */
+    background: var(--chq-surface);
     border-radius: 8px;
     padding: 36px 34px 32px;
     display: flex;
     flex-direction: column;
     gap: 22px;
   }
+  /* Inside the /login stack the wrapper owns centring; the card fills it. */
+  .chq-auth-stack .chq-auth-card { align-self: stretch; }
   .chq-auth-wordmark {
     font-family: 'Familjen Grotesk', system-ui, sans-serif;
     font-size: 28px;
@@ -62,7 +82,9 @@ export const AUTH_CSS = `
   }
   .chq-auth-title {
     font-family: 'Familjen Grotesk', system-ui, sans-serif;
-    font-size: 28px;
+    /* G13 fix (frames 11-account--05/07/08): the CARD's H1 draws ~24px;
+       the bare reading page keeps 28px via .chq-bare-page's own override. */
+    font-size: 24px;
     font-weight: 700;
     letter-spacing: -0.04em;
     line-height: 1.2;
@@ -128,6 +150,12 @@ export const AUTH_CSS = `
     display: block;
     width: 100%;
     min-height: 48px;
+    /* Frame 11-account--07 samples the inputs at #FFFFFF (one step above
+       the card's #FAF8F2), but white is not in the README §Colour palette
+       (the palette-closure scan bans off-palette literals) -- needs a
+       palette ruling before the input fill can go lighter than
+       --chq-surface. Card-vs-page contrast (the MAJOR half of the finding)
+       is fixed above. */
   }
   /* wave 25 (DEC-945 V8 amendment): an intrinsic-width olive control, never
      a full-column bar -- that's phone anatomy on a card this narrow. It
@@ -249,15 +277,24 @@ export const AUTH_CSS = `
   .chq-auth-footer-links a:hover,
   .chq-auth-footer-links a:focus-visible { text-decoration: underline; }
 
+  /* G13 fix (A23): the block lives OUTSIDE the card now, under a DEMO
+     ACCOUNTS micro-label -- three tertiary ROWS (role · email), one per
+     line, plus a muted passwords-come-from-the-seed line. */
   .chq-auth-demo {
-    border-top: 1px solid var(--chq-rule);
-    padding-top: 18px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    padding: 0 34px;
   }
-  .chq-auth-demo-label { font-size: 13px; color: var(--chq-muted); }
-  .chq-auth-demo-buttons { display: flex; flex-wrap: wrap; gap: 16px; }
+  .chq-auth-demo-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+  .chq-auth-demo-buttons { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .chq-auth-demo-note { font-size: 13px; color: var(--chq-muted); margin: 0; }
   /* Small links in card vocabulary, not the 44px .chq-btn-secondary box --
      still a <button type="button"> (DEMO_PREFILL_SCRIPT delegates on the
      .chq-auth-demo-btn class + click event), just restyled to read as
