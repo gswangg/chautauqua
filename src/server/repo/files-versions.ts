@@ -9,6 +9,8 @@ import { newId } from "../../domain/ids";
 import { FILE_KINDS, type FileKind } from "../../domain/files";
 import { chunkIds } from "../../lib/chunk";
 import { DEC_244, DEC_713, DEC_818, DEC_965 } from "../../decisions";
+import { ApiError } from "../http";
+import { isUniqueViolation } from "./constraints";
 
 void DEC_244;
 void DEC_713;
@@ -492,21 +494,33 @@ export async function insertFile(db: Db, input: InsertFileInput): Promise<string
     versionNo = pred.versionNo + 1;
   }
 
-  await db.insert(schema.file).values({
-    id,
-    submissionId: input.submissionId,
-    kind: input.kind,
-    filename: input.filename,
-    r2Key: input.r2Key,
-    sizeBytes: input.sizeBytes,
-    contentType: input.contentType,
-    previousFileId: input.previousFileId,
-    versionNo,
-    uploadedByContactId: input.uploadedByContactId,
-    taskAssignmentId: input.taskAssignmentId ?? null,
-    createdAt: now,
-    updatedAt: now,
-  });
+  try {
+    await db.insert(schema.file).values({
+      id,
+      submissionId: input.submissionId,
+      kind: input.kind,
+      filename: input.filename,
+      r2Key: input.r2Key,
+      sizeBytes: input.sizeBytes,
+      contentType: input.contentType,
+      previousFileId: input.previousFileId,
+      versionNo,
+      uploadedByContactId: input.uploadedByContactId,
+      taskAssignmentId: input.taskAssignmentId ?? null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } catch (err) {
+    // DEC-818 amendment: file_previous_file_id_unique (migrations/0043)
+    // encodes "at most one row may name a given predecessor" -- a
+    // concurrent re-upload racing this insert onto the same chain head
+    // loses here, loudly and retryably, rather than minting a second row
+    // at the same version_no.
+    if (isUniqueViolation(err, "file.previous_file_id")) {
+      throw new ApiError("conflict", "This file was already replaced by a newer version. Reload and try again.");
+    }
+    throw err;
+  }
   return id;
 }
 
