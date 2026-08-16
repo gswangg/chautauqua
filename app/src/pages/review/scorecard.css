@@ -1,10 +1,12 @@
-/* DEC-939 (wave-65 amendment, frame 03--01): the scorecard is a two-column
+/* DEC-939 (wave-57 amendment, frame 03--01): the scorecard is a two-column
    work surface -- a reading column (submission context) and a scoring rail
    (everything the reviewer writes into), not one long single-column form.
    The page root itself clamps at --chq-measure-wide (1180px); this grid's
-   tracks (a flexible reading column that maxes at 820 + a 300 rail + 36 gap
-   = 1156 at full width) fit inside that without a max-width of its own.
-   Between 900 and 1156 the reading track absorbs the shortfall via its
+   tracks are an exact-sum identity against that token, not an independent
+   ruler reading: a flexible reading column that maxes at 820 + a 300 rail +
+   a 60 gap = 1180, filling the page's own declared measure exactly, with no
+   max-width of its own and no leftover slack to explain.
+   Between 900 and 1180 the reading track absorbs the shortfall via its
    minmax(0, 820px) lower bound rather than overflowing. At 900px there is no
    longer room for both tracks side by side, so the ONE additive media query
    collapses to a single column and the rail simply flows under the reading
@@ -15,7 +17,7 @@
 .chq-review-scorecard-grid {
   display: grid;
   grid-template-columns: minmax(0, 820px) 300px;
-  gap: 36px;
+  gap: 60px;
   align-items: start;
 }
 
