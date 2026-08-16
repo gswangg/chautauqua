@@ -21,24 +21,26 @@ import * as schema from "../../../db/schema";
 import { emailLogConditions, type EmailLogListParams } from "../email";
 import { type ExportTable, EXPORT_MAX_ROWS, buildTable } from "./table";
 
-export interface EmailLogExportParams {
-  contactId?: string;
-  status?: string;
-  q?: string;
-  batchKey?: string;
-  since?: number;
-}
+// DEC-027 (wave-82 amendment): an export's filter vocabulary is DERIVED from
+// the list's own params type, never hand-listed — a hand-written interface
+// here previously omitted templateId even though emailLogConditions takes it
+// and the CSV's own header ships a templateId column, so templateId was
+// silently dropped on this route while it worked on the sibling list route.
+// Picking from EmailLogListParams means a future field the list gains (or
+// loses) shows up here as a compile error, not a silent drift.
+export type EmailLogExportParams = Pick<EmailLogListParams, "contactId" | "status" | "q" | "batchKey" | "since" | "templateId">;
 
 export async function exportEmailLog(db: Db, eventId: string, params?: EmailLogExportParams): Promise<ExportTable> {
   const header = ["sentAt", "toEmail", "subject", "status", "templateId"];
 
-  const filterParams: Pick<EmailLogListParams, "eventId" | "contactId" | "status" | "orgId" | "batchKey" | "since" | "q"> = {
+  const filterParams: Pick<EmailLogListParams, "eventId" | "contactId" | "status" | "orgId" | "batchKey" | "since" | "q" | "templateId"> = {
     eventId,
     contactId: params?.contactId,
     status: params?.status,
     q: params?.q,
     batchKey: params?.batchKey,
     since: params?.since,
+    templateId: params?.templateId,
   };
   const conditions = emailLogConditions(filterParams);
   const where = conditions.length > 0 ? and(...conditions) : undefined;
