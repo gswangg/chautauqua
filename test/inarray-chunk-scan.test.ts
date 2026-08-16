@@ -118,7 +118,7 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
       "unbounded.",
   ],
   [
-    "src/server/repo/files-library.ts",
+    "src/server/repo/files-library-query.ts",
     "deliverableKinds",
     "deliverableKinds is params.kinds validated against the fixed " +
       "LIBRARY_KIND_TOKENS enum by routes/files.ts's parseKinds (throws on " +
