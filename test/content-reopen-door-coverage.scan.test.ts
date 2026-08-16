@@ -13,7 +13,8 @@
 // numbers stay accurate).
 //
 // WHAT COUNTS AS A "WRITE OF A FILE ROW": a call to `insertFile(` (the
-// shared repo helper, src/server/repo/files-versions.ts) OR any
+// shared repo helper, src/server/repo/files-versions-write.ts since the
+// wave-52 custodian split, re-exported from files-versions.ts) OR any
 // `db.insert(schema.file)` (a direct write bypassing that helper -- there
 // are three: repo/submit.ts, repo/profile.ts, repo/portal-config.ts -- plus
 // insertFile's OWN implementation, which also literally contains
@@ -298,7 +299,10 @@ const EXEMPT_HITS: { file: string; scope: string; reason: string }[] = [
       "The public CFP create path (src/routes/public/submit-post.tsx calls this while minting a brand-new submission in the SAME request). The submission has no prior content_status to reopen -- it doesn't exist as an approved/changes_requested row yet at the moment this file row is written.",
   },
   {
-    file: "src/server/repo/files-versions.ts",
+    // Moved here from src/server/repo/files-versions.ts by the wave-52
+    // custodian split (files-versions.ts -> -read/-write/-chain/-delete
+    // submodules); insertFile's own insert now lives in the -write submodule.
+    file: "src/server/repo/files-versions-write.ts",
     scope: "insertFile",
     reason:
       "This is insertFile()'s own db.insert(schema.file) implementation -- not a caller of insertFile, it IS insertFile. The reopen obligation belongs to each individual `insertFile(...)` CALL SITE (scanned separately, by kind 'insertFile-call' above), which decides whether to reopen based on its own caller context after insertFile returns.",
