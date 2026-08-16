@@ -36,12 +36,6 @@ function allSourceFiles(root: string): string[] {
   return out.sort();
 }
 
-// (a) A bare `Max ${...}` template literal -- the terse grammar this task
-// deleted. Matches the opening of the template literal only (the
-// interpolation's contents don't matter -- the banned shape is the literal
-// text "Max " immediately followed by an interpolation).
-const BARE_MAX_TEMPLATE_RE = /`Max \$\{/;
-
 /** Files that legitimately still say "Max ${...}" -- an informational size
  * ceiling describing MULTIPLE simultaneous caps (document/image/video byte
  * ceilings) in a user-facing MESSAGE string, not a terse fields-map value

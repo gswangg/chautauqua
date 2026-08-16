@@ -38,7 +38,6 @@ import path from "node:path";
 import { isEpochMs, isDayLabelMs, DAY_LABEL_MS, MIN_EPOCH_MS, MAX_EPOCH_MS } from "../src/routes/api/validators";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
-const ROUTES_DIR = path.join(REPO_ROOT, "src", "routes");
 
 /** All route-layer source files, globbed fresh on every run so a route file
  * added tomorrow that accepts a ms-epoch field is covered automatically. */

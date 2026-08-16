@@ -22,30 +22,8 @@ export const ASSIGNED_LATE_GRACE_DAYS = 7;
 
 const GRACE_MS = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
 
-/** Returns the due date an assignment is actually held to: null stays
- * null (no due date == never overdue); a task due date at or after the
- * assignment's creation is returned unchanged; otherwise the assignment
- * is given a grace window from the moment it was actually created.
- *
- * DEC-801 (wave 38 amendment): this is the module-PRIVATE instant form,
- * used only by isAssignmentOverdue/assignmentDaysLate below, whose
- * two-branch comparisons stay the predicates of record. Every
- * reader-facing surface (grid cell, portal list, reminder email, overview
- * aggregate) must call effectiveAssignmentDueDayLabel instead — feeding
- * this instant into a day-label field (formatCalendarDate and friends) is
- * a type error the compiler cannot see, because a task's own dueDate is a
- * UTC-midnight day label, not an instant, and the grace branch here
- * returns a real instant that must be re-collapsed into a day label
- * before it reaches any reader. Do not re-export this for convenience. */
-function effectiveAssignmentDueDate(taskDueDate: number | null, assignmentCreatedAt: number): number | null {
-  if (taskDueDate === null) return null;
-  if (taskDueDate >= assignmentCreatedAt) return taskDueDate;
-  return assignmentCreatedAt + GRACE_MS;
-}
-
 /** DEC-801 (wave 38 amendment): the ONE reader-facing conversion — every
- * surface that displays or emails an assignment's due date must call this,
- * never effectiveAssignmentDueDate (private, instant-valued) directly. A
+ * surface that displays or emails an assignment's due date must call this. A
  * null task due date stays null. When the task's own due date holds
  * (>= the assignment's creation) it is already a day label and is
  * returned byte-identical — no re-zoning. Otherwise the grace-window

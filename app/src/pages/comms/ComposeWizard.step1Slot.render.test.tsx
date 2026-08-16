@@ -12,7 +12,7 @@
 // existing icsRefusal test only covers the DIFFERENT, fully-blocking
 // icsUnscheduledIds banner. This file closes that gap.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ComposeWizard } from './ComposeWizard';

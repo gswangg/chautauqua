@@ -11,7 +11,6 @@ import { Hono } from "hono";
 import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
-import type { Db } from "../src/server/context";
 
 const EVENT_ROW = {
   id: "ev1",
@@ -62,47 +61,6 @@ function makeChain(rows: unknown[]) {
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
-}
-
-function sessionRow(id: string, title: string) {
-  return { id, seq: 1, title, description: "A description.", icsSequence: 0 };
-}
-
-const TWO_ROWS = [
-  { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomId: "room1" },
-  { submissionId: "sub2", day: "2026-08-11", startMin: 540, endMin: 600, roomId: "room1" },
-];
-const TRACKS = [{ id: "trk-a", name: "Track A", color: null }];
-
-function buildScheduleApp() {
-  let selectCall = 0;
-  const sessionRows = TWO_ROWS.map((r) => sessionRow(r.submissionId, `Talk ${r.submissionId}`));
-  const db = {
-    select: () => {
-      selectCall += 1;
-      // DEC-851 (wave 64 amendment): getPublicFormatOptions is no longer
-      // called at all for agenda/schedule (format isn't an agenda facet).
-      if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-      if (selectCall === 2) return makeChain(TRACKS); // getPublicTracks
-      if (selectCall === 3) return makeChain([{ count: TWO_ROWS.length }]); // total
-      if (selectCall === 4) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
-      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 6) return makeChain([]); // trackRows
-      if (selectCall === 7) return makeChain([]); // speakerRows
-      if (selectCall === 8) return makeChain([]); // slotRows
-      return makeChain([]); // formatRows
-    },
-    selectDistinct: () => makeChain(TWO_ROWS),
-  } as unknown as AppEnv["Variables"]["db"];
-
-  const app = new Hono<AppEnv>();
-  app.use("*", async (c, next) => {
-    c.set("db", db);
-    await next();
-  });
-  registerErrorHandler(app);
-  app.route("/", publicRoutes);
-  return app;
 }
 
 function buildSimpleApp(rowsBySelect: unknown[][]) {

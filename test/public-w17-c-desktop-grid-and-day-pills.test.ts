@@ -8,7 +8,7 @@ import { PUBLIC_CSS } from "../src/routes/public/public.css";
 import { AGENDA_CSS } from "../src/routes/public/css/agenda.css";
 import { CARDS_CSS } from "../src/routes/public/css/cards.css";
 import { SpeakersContent, GalleryContent } from "../src/routes/public/speakers";
-import { AgendaContent, ScheduleContent } from "../src/routes/public/agenda";
+import { AgendaContent } from "../src/routes/public/agenda";
 import type { PublicAgendaItem, PublicEvent, PublicSpeakerWithSessions } from "../src/server/repo/public";
 
 const EVENT: PublicEvent = {

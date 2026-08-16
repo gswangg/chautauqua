@@ -10,7 +10,7 @@
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
 import { makeVisibilityPredicate } from "../../forms/visibility";
-import { formatEventDateTime, formatEventDayRange } from "../../lib/event-time";
+import { formatEventDateTime } from "../../lib/event-time";
 import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
 import { FormFieldsSection, FieldRulesScript, fieldInputName, FormField } from "../../views/form-render";
 import { countOf, thingsNeedFixingHeading } from "../../domain/count-copy";

@@ -12,7 +12,7 @@
 // re-exports it (the one app -> src crossing, DEC-957). This scan bans any
 // OTHER module from declaring a spelled-number word list, with exactly one
 // documented, temporary allowlist entry.
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -46,10 +46,6 @@ function walk(dir: string): string[] {
     }
   }
   return out;
-}
-
-function relPath(absPath: string): string {
-  return relative(ROOT, absPath).split("\\").join("/");
 }
 
 // A spelled-number word list: a run of at least three quoted number words
@@ -88,7 +84,6 @@ describe("count-grammar.scan (DEC-925 amendment, wave 52): one spelled-count wor
   });
 
   it("src/domain/count-copy.ts genuinely declares the word list (proves the pattern isn't vacuous)", () => {
-    const offenders = findSpelledNumberListFiles(SRC_ROOT, ROOT);
     // count-copy.ts itself is excluded from `offenders` by construction (the
     // OWNER skip); assert directly that its source matches the sequence so a
     // future rewrite that drops the word list is caught.

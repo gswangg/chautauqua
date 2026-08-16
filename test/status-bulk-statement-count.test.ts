@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
 import { updateSubmissionStatuses } from "../src/server/repo/submissions";
-import { chunkIds, ID_CHUNK_SIZE, MAX_D1_BOUND_PARAMS } from "../src/lib/chunk";
+import { chunkIds, MAX_D1_BOUND_PARAMS } from "../src/lib/chunk";
 
 // DEC-528: task_assignment inserts are chunked by bound-parameter budget
 // (columns-per-row derived from the row shape: id, taskId, contactId,

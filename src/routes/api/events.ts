@@ -23,7 +23,6 @@ import {
   deleteTrack,
   getEventForOrg,
   getRoomForEvent,
-  getTrackForEvent,
   isSlugTaken,
   listEventsForOrg,
   listEventsForReviewer,

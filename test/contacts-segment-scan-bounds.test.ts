@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
 import type { Db } from "../src/server/context";
 import { listContactsForOrg } from "../src/server/repo/contacts/crud";
-import { toContactRecord, toRow, type ContactRow } from "../src/server/repo/contacts/rows";
+import { toContactRecord, toRow } from "../src/server/repo/contacts/rows";
 import { compareContacts } from "../src/server/repo/contacts/query";
 import { matchesSegment, SEGMENT_STANDARD_FIELDS, type SegmentRule } from "../src/domain/contacts";
 import { MAX_CONTACT_DIRECTORY_SCAN } from "../src/server/repo/contacts/rows";

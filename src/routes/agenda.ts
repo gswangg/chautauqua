@@ -20,7 +20,6 @@ import {
   getSubmissionOwnership,
   isDayWithinEventRange,
   isValidSlotInput,
-  roomBelongsToEvent,
   runAutoSchedule,
   unscheduleSlot,
   upsertSlot,

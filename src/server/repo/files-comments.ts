@@ -9,7 +9,7 @@
 // resolves the whole chain via listFileChainIds, and reads comments across
 // every link.
 
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { asc, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";

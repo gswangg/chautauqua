@@ -519,7 +519,12 @@ describe("PATCH /api/v1/pipeline/:id (fit-only, DEC-980)", () => {
   });
 
   it("a same-stage PATCH is likewise not a move", async () => {
-    const { db, inserts, updates } = fakeDb([
+    // NOTE (task w6-e, noUnusedLocals cleanup): `updates` used to be
+    // destructured here unused. It plausibly should feed an
+    // `expect(updates).toHaveLength(1)` assertion (the rationale field
+    // write) -- not added here since inventing that assertion is outside
+    // this task's scope. Flagged in the task report instead.
+    const { db, inserts } = fakeDb([
       [ENTRY_ROW], // requireOwnedEntry
       [{ ...ENTRY_ROW, rationale: "Updated note" }], // findEntryById after fit update
       [CONTACT_ORG_A], // findContactForOrg

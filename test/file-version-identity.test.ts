@@ -13,7 +13,6 @@ import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "../src/db/schema";
 import { insertFile, deleteFileVersion } from "../src/server/repo/files-versions";
 import { listFileComments, insertFileComment } from "../src/server/repo/files-comments";
-import { newId } from "../src/domain/ids";
 import type { Db } from "../src/server/context";
 
 const DDL = `

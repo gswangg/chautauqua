@@ -24,7 +24,6 @@ import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { Hono } from "hono";
 import * as schema from "../src/db/schema";
 import { checkAndIncrementScopedLimit } from "../src/server/repo/rate-limit";
-import { scopedRateLimitKey } from "../src/lib/rate-limit";
 import type { Db } from "../src/server/context";
 import { hashPassword } from "../src/auth/password";
 import { authRoutes } from "../src/routes/auth";

@@ -12,7 +12,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
-import * as schema from "../src/db/schema";
 import type { Db } from "../src/server/context";
 
 const REVIEWER = "reviewer-1";

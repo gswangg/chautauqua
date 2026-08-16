@@ -45,8 +45,12 @@ function walkCondition(node: unknown, seen = new Set<unknown>(), depth = 0): str
 
 describe("getPublicAgenda (DEC-783): q/trackId are SQL predicates, not a post-fetch filter", () => {
   it("threads trackId into the count query's WHERE (via the submissionTrack join)", async () => {
+    // NOTE (task w6-e, noUnusedLocals cleanup): the second where() call's
+    // condition used to be captured here unread. It plausibly should also
+    // be walked and asserted (the rows-query WHERE, mirroring the count
+    // query's assertion below) -- not added here since inventing that
+    // assertion is outside this task's scope. Flagged in the task report.
     let capturedCountWhere: unknown;
-    let capturedRowsWhere: unknown;
     let call = 0;
     const chain: any = {
       from: () => chain,
@@ -55,7 +59,6 @@ describe("getPublicAgenda (DEC-783): q/trackId are SQL predicates, not a post-fe
       where: (cond: unknown) => {
         call += 1;
         if (call === 1) capturedCountWhere = cond;
-        else capturedRowsWhere = cond;
         return chain;
       },
       orderBy: () => chain,

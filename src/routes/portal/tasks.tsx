@@ -48,7 +48,6 @@ import {
 
   listFileChainVersions,
   listFileChainVersionsMany,
-  listFileComments,
   listFileCommentsForFiles,
   reopenContentReview,
   resolveTaskFileChainLatest,
@@ -64,7 +63,6 @@ import {
   resolveChosenDeliverable,
   saveTaskFileCompletion,
   saveTaskFormResponse,
-  type DeliverableCandidate,
 } from "../../server/repo/portal";
 import { deleteFileRow } from "../../server/repo/portal-config";
 import { listFields } from "../../server/repo/forms";
@@ -82,7 +80,6 @@ import {
   uploadHintText,
   validateUpload,
 } from "../../domain/files";
-import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import {
   DEC_016,
   DEC_020,
