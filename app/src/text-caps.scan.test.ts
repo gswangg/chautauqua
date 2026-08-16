@@ -88,7 +88,10 @@ const EXEMPTIONS: Exemption[] = [
     reason: 'validated as hex color format (parseAccent, src/routes/api/embeds.ts), not length-capped',
   },
   {
-    file: 'pages/settings/EmbedsPanel.tsx',
+    // w4-d/DEC-785 amendment: this control moved into the shared
+    // EmbedCodeReadout component (used by both EmbedsPanel's builder and
+    // SavedEmbedsPanel's "Get code" row).
+    file: 'pages/settings/EmbedCodeReadout.tsx',
     control: 'embed-copy-fallback',
     reason: 'read-only copy-fallback echo of an already-built embed URL/snippet, not user input',
   },

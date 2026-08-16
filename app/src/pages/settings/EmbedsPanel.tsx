@@ -3,14 +3,14 @@
 // field selection) and a branding accent, then copies the resulting URL or
 // snippet. Every knob maps 1:1 onto the query-param contract fixed in
 // decisions/DEC-289.md via embedSnippet.ts's pure builders.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DateField } from '../../components/DateField';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { copyText } from '../../lib/clipboard';
 import { capitalizeFirst } from '../../lib/plural';
+import { EmbedCodeReadout } from './EmbedCodeReadout';
 import {
   buildEmbedUrl,
   buildSnippet,
@@ -105,10 +105,6 @@ export function EmbedsPanel() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
-  const [copyResult, setCopyResult] = useState<{ target: 'url' | 'snippet'; ok: boolean; text: string } | null>(
-    null,
-  );
-  const failedCopyRef = useRef<HTMLInputElement | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -208,14 +204,6 @@ export function EmbedsPanel() {
     );
   }
 
-  async function handleCopy(target: 'url' | 'snippet', text: string) {
-    const ok = await copyText(text);
-    setCopyResult({ target, ok, text });
-    if (ok) {
-      window.setTimeout(() => setCopyResult((current) => (current?.target === target ? null : current)), 2000);
-    }
-  }
-
   // DEC-822: the builder's PRIMARY action — writes the FULL current knob
   // set as the embed's options (not just name/enabled), so a saved
   // embed's filters can be edited later and every page it's pasted on
@@ -265,13 +253,6 @@ export function EmbedsPanel() {
   }
 
   const saveUnownedErrors = Object.entries(saveFieldErrors).filter(([key]) => !KNOWN_SAVE_FIELDS.includes(key));
-
-  useEffect(() => {
-    if (copyResult && !copyResult.ok) {
-      failedCopyRef.current?.focus();
-      failedCopyRef.current?.select();
-    }
-  }, [copyResult]);
 
   const knobs = EMBED_KNOBS_BY_SURFACE[surface];
 
@@ -584,56 +565,19 @@ export function EmbedsPanel() {
                 readout (docs/design/Chautauqua Settings.dc.html :1082-1090),
                 not a separate URL block stacked above a Snippet block. Copy
                 URL survives as a tertiary link inside the shared action row
-                rather than a block of its own. */}
-            <div className="chq-embeds-output-block">
-              <span className="chq-settings-eyebrow">Snippet</span>
-              <code>{snippet}</code>
-              <div className="chq-embeds-output-actions">
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary"
-                  onClick={() => void handleCopy('snippet', snippet)}
-                >
-                  {copyResult?.target === 'snippet' && copyResult.ok ? 'Copied!' : 'Copy snippet'}
-                </button>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-tertiary"
-                  onClick={() => void handleCopy('url', url)}
-                >
-                  {copyResult?.target === 'url' && copyResult.ok ? 'Copied!' : 'Copy URL'}
-                </button>
-                {/* w41-h/DEC-785: Preview opens the SAME url the snippet embeds
-                    (built above via buildEmbedUrl) -- never a second URL
-                    builder, so the preview can never drift from what the
-                    snippet/Copy URL actually point at. */}
-                <a className="chq-btn chq-btn-tertiary" href={url} target="_blank" rel="noreferrer">
-                  Preview
-                </a>
-              </div>
-              <span className="chq-embeds-note">
-                The URL carries the embed&apos;s name, so changing these settings updates every page it is
-                pasted on
-              </span>
-            </div>
-            <div role="status" aria-live="polite" className="chq-copy-status">
-              {copyResult
-                ? copyResult.ok
-                  ? 'Copied'
-                  : 'Copy failed — select the text and copy it manually'
-                : null}
-            </div>
-            {copyResult && !copyResult.ok ? (
-              <input
-                id="embed-copy-fallback"
-                ref={failedCopyRef}
-                className="chq-input"
-                readOnly
-                value={copyResult.text}
-                onFocus={(e) => e.currentTarget.select()}
-                aria-label={`${copyResult.target === 'url' ? 'URL' : 'Snippet'} to copy manually`}
-              />
-            ) : null}
+                rather than a block of its own.
+                w4-d/DEC-785 amendment: the box itself (code, Copy
+                snippet/Copy URL/Preview, copy-status, copy-failure
+                fallback) now lives in EmbedCodeReadout, shared with
+                SavedEmbedsPanel's "Get code" disclosure -- w41-h/DEC-785's
+                Preview-never-a-second-URL-builder guarantee holds because
+                Preview still opens the SAME `url` this panel builds above,
+                passed straight through as `previewHref`. */}
+            <EmbedCodeReadout url={url} snippet={snippet} previewHref={url} />
+            <span className="chq-embeds-note">
+              The URL carries the embed&apos;s name, so changing these settings updates every page it is pasted
+              on
+            </span>
             <p className="chq-embeds-note">
               This embed is chromeless and needs no login — anyone with the URL can view it.
             </p>
