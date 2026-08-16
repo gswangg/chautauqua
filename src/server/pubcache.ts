@@ -24,6 +24,19 @@
 // cache entirely and renders fresh, so the staleness window is invisible
 // to anonymous visitors' shared cache experience only.
 //
+// DEC-083's wave-70 amendment: PUBVER_KEY is deliberately ONE instance-wide
+// key, not oversight. bumpIfMutating rewrites it on any successful
+// non-NEVER_PUBLIC mutation, so a write on one event cold-caches every
+// /e/* and /embed/* page of every event in the instance, not just the one
+// that changed. Per-event scoping was considered and rejected for stage 1:
+// it needs either a slug->event (and embedId->event) resolution added to
+// the anonymous read path this cache exists to protect, or a
+// context-variable protocol threaded through ~40 mutating routes, and the
+// measured public surface still passes its budget cold (15-98ms adjusted
+// against a 150ms budget at 2,030 submissions — see docs/AUDIT.md and
+// docs/eval-findings.md's "PROD-LIKE LOAD TEST" section). Document the
+// blast radius, don't re-architect the mechanism.
+//
 // DEC-099: the internal 86400 max-age on the stored copy must never reach
 // clients/proxies. On a cache hit, servePublicGet rebuilds the Response
 // with Cache-Control overwritten back to CLIENT_CACHE_CONTROL (byte-
