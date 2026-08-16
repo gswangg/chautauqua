@@ -339,7 +339,7 @@ function seedFixture(sqlite: DatabaseSync) {
 
   run(
     `insert into evaluation_plan (id, event_id, name, scale_json, criteria_json, rounds, current_round, created_at, updated_at)
-     values (?, ?, 'Plan A', '{}', '[]', 1, 1, ?, ?)`,
+     values (?, ?, 'Plan A', '{"min":1,"max":5}', '[]', 1, 1, ?, ?)`,
     IDS.planA,
     EVENT_A,
     now,
@@ -347,7 +347,7 @@ function seedFixture(sqlite: DatabaseSync) {
   );
   run(
     `insert into evaluation_plan (id, event_id, name, scale_json, criteria_json, rounds, current_round, created_at, updated_at)
-     values (?, ?, 'Plan B', '{}', '[]', 1, 1, ?, ?)`,
+     values (?, ?, 'Plan B', '{"min":1,"max":5}', '[]', 1, 1, ?, ?)`,
     IDS.planB,
     EVENT_B,
     now,
