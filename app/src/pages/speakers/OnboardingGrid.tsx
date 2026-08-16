@@ -249,6 +249,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const [page, setPage] = useState(1);
   const [showNewTask, setShowNewTask] = useState(false);
   const [taskForms, setTaskForms] = useState<EventForm[]>([]);
+  // DEC-746 (wave-59 amendment): the New task modal's subset picker
+  // roster, fetched with the SAME effect shape as taskForms above -- only
+  // while the modal is open, never on the grid's initial load.
+  const [taskAssignees, setTaskAssignees] = useState<{ contactId: string; name: string }[]>([]);
+  const [taskAssigneesTruncated, setTaskAssigneesTruncated] = useState(false);
   const [reviewingRemind, setReviewingRemind] = useState(false);
   const [remindPreviewLoading, setRemindPreviewLoading] = useState(false);
   const [remindPreviewError, setRemindPreviewError] = useState<string | null>(null);
@@ -321,6 +326,34 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       })
       .catch(() => {
         if (!cancelled) setTaskForms([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showNewTask, eventId]);
+
+  // DEC-746 (wave-59 amendment): the subset picker's roster -- same DEC-398
+  // effect shape as taskForms above (fetched only while the New task modal
+  // is open). page=1&perPage=200 (MAX_PER_PAGE, src/lib/pagination.ts:10);
+  // a roster past that ceiling states it and offers only "Everyone
+  // accepted" (assigneesTruncated), never a truncated list presented as
+  // the whole roster. A failed fetch fails loudly in the modal the same
+  // way taskForms does: the picker stays offering only "Everyone accepted"
+  // rather than silently rendering an empty checkbox list.
+  useEffect(() => {
+    if (!showNewTask || !eventId) return;
+    let cancelled = false;
+    apiGet<OnboardingGridResponse>(`/events/${eventId}/onboarding?page=1&perPage=200`)
+      .then((res) => {
+        if (cancelled) return;
+        setTaskAssignees(res.rows.map((r) => ({ contactId: r.contact.id, name: r.contact.name })));
+        setTaskAssigneesTruncated(res.total > 200);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTaskAssignees([]);
+          setTaskAssigneesTruncated(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -1073,6 +1106,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           onSubmit={handleCreateTask}
           forms={taskForms}
           acceptedCount={counts?.speakers ?? 0}
+          assignees={taskAssignees}
+          assigneesTruncated={taskAssigneesTruncated}
         />
       )}
 
