@@ -217,6 +217,10 @@ describe("contact merge ownership proof is set-based (DEC-629 amendment, wave 49
       [KEEP, MERGE], // requireOwnedContacts([keep, dup]) -- one set-based select
       [{ count: 0 }], // countMergeImpact participant count
       [{ count: 0 }], // countMergeImpact task_assignment count
+      [KEEP], // checkMergeConflicts (DEC-026 wave-47): findContactById(keepId)
+      [MERGE], // checkMergeConflicts: findContactById(mergeId)
+      [], // checkMergeConflicts: login chunk (nobody has an account)
+      [], // checkMergeConflicts: email-owner chunk (nobody else owns the merged email)
     ]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
@@ -224,6 +228,10 @@ describe("contact merge ownership proof is set-based (DEC-629 amendment, wave 49
       new Request(`http://local/api/v1/contacts/merge/preview?ids=${KEEP.id},${MERGE.id}&keep=${KEEP.id}`),
     );
     expect(res.status).toBe(200);
-    expect(selectCallCount()).toBe(3);
+    // Exactly one select is the ownership proof; the rest belong to
+    // countMergeImpact (2) and checkMergeConflicts (4) -- the SAME
+    // whole-operation preflight the POST route runs (wave-47 amendment),
+    // not a second ownership check.
+    expect(selectCallCount()).toBe(7);
   });
 });

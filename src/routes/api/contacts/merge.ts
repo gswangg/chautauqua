@@ -34,13 +34,18 @@ export function registerMergeRoutes(contactsRoutes: Hono<AppEnv>): void {
     return c.json(serializeContact(merged));
   });
 
-  // DEC-705: preview beside the merge route, org-scoped/authz'd identically
-  // (requireOwnedContacts over the whole id set BEFORE anything else).
-  // Computes its
-  // report by running the same pure-core planMerge fold the POST route's
-  // repo.mergeContacts uses (via previewMerge) over the FULL contact
-  // records -- never a second implementation of the merge rules -- so the
-  // preview and the write can never drift.
+  // DEC-705/DEC-026 (wave-47 amendment): preview beside the merge route,
+  // org-scoped/authz'd identically (requireOwnedContacts over the whole id
+  // set BEFORE anything else). Computes its field report by running the
+  // same pure-core planMerge fold the POST route's repo.mergeContacts uses
+  // (via previewMerge) over the FULL contact records -- never a second
+  // implementation of the merge rules -- and ALSO runs repo.checkMergeConflicts,
+  // the exact same whole-operation preflight (same fold order, same
+  // contactIdsWithLogin/emailOwners reads, same detectMergeConflicts
+  // judgement) that repo.mergeContacts runs before it writes -- so the
+  // preview and the write can never drift. A conflict here does NOT throw
+  // and does NOT become an HTTP error: a preview's job is to describe,
+  // including describing a refusal, so it stays 200 and reports `blocked`.
   contactsRoutes.get("/contacts/merge/preview", async (c) => {
     const orgId = currentOrgId(c);
     const idsParam = c.req.query("ids") ?? "";
@@ -70,6 +75,7 @@ export function registerMergeRoutes(contactsRoutes: Hono<AppEnv>): void {
       c.var.db,
       duplicateRows.map((row) => row.id),
     );
-    return c.json({ fields, impact });
+    const blocked = await repo.checkMergeConflicts(c.var.db, keepId, dedupedMergeIds);
+    return c.json({ fields, impact, blocked });
   });
 }
