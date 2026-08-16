@@ -261,7 +261,7 @@ const KNOWN_SWALLOWS: { file: string; marker: string; reason: string }[] = [
   },
   {
     file: 'app/src/pages/speakers/OnboardingGrid.tsx',
-    marker: '/onboarding?page=1&perPage=200',
+    marker: '/onboarding?page=1&perPage=${MAX_TASK_ASSIGNEES}',
     reason:
       'DEC-746 (wave-59 amendment) subset-picker roster: same fail-loud-in-the-modal shape as the /forms fetch above. On failure the roster stays empty AND assigneesTruncated is set, so TaskModal offers only "Everyone accepted" and never renders an empty checkbox list that would read as "this event has no accepted speakers".',
   },
