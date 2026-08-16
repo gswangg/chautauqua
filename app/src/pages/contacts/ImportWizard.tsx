@@ -115,6 +115,12 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [plannedRequest, setPlannedRequest] = useState<PlannedRequest | null>(null);
   const [skipLines, setSkipLines] = useState<Set<number>>(new Set());
+  // DEC-663 (wave-64 amendment): the possible-duplicate disposition -- a
+  // line's chosen merge target (line -> contactId), 'Import as new' by
+  // default (absent from the map). A line can be skipped OR merged, never
+  // both -- toggleSkipLine and setMergeSelection each clear the other's
+  // entry for the same line.
+  const [mergeSelections, setMergeSelections] = useState<Map<number, string>>(new Map());
   // w49-f: the review table renders only the rows where something is lost
   // or ambiguous by default -- this flips it to show every row (still
   // sorted updates-first, still skippable). Reset on every fresh preview so
@@ -397,6 +403,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
       setPlan(res);
       setPlannedRequest(request);
       setSkipLines(new Set());
+      setMergeSelections(new Map());
       setShowAllRows(false);
     } catch (err) {
       handleImportApiError(err, 'Preview failed');
@@ -406,6 +413,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   }
 
   function toggleSkipLine(line: number) {
+    const willSkip = !skipLines.has(line);
     setSkipLines((prev) => {
       const next = new Set(prev);
       if (next.has(line)) {
@@ -415,6 +423,34 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
       }
       return next;
     });
+    // A line can be skipped or merged, never both -- checking Skip clears
+    // any merge selection for the same line.
+    if (willSkip && mergeSelections.has(line)) {
+      setMergeSelections((prev) => {
+        const next = new Map(prev);
+        next.delete(line);
+        return next;
+      });
+    }
+  }
+
+  // DEC-663 (wave-64 amendment): contactId === null selects 'Import as
+  // new' (the default, absent from the map). Picking a merge target clears
+  // that line's Skip checkbox -- the mirror of toggleSkipLine above.
+  function setMergeSelection(line: number, contactId: string | null) {
+    setMergeSelections((prev) => {
+      const next = new Map(prev);
+      if (contactId) next.set(line, contactId);
+      else next.delete(line);
+      return next;
+    });
+    if (contactId && skipLines.has(line)) {
+      setSkipLines((prev) => {
+        const next = new Set(prev);
+        next.delete(line);
+        return next;
+      });
+    }
   }
 
   async function runCommit() {
@@ -423,9 +459,11 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     setError(null);
     setFieldErrors(null);
     try {
+      const mergeLines = [...mergeSelections.entries()].map(([line, contactId]) => ({ line, contactId }));
       const res = await apiPost<ImportResult>('/contacts/import', {
         ...plannedRequest,
         skipLines: [...skipLines],
+        mergeLines,
       });
       setResult(res);
       onImported();
@@ -812,12 +850,51 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
                               <span className="chq-contacts-import-overwrite-new">{ow.to}</span>
                             </li>
                           ))}
-                          {(row.possibleDuplicates ?? []).map((dup) => (
-                            <li key={`dup-${dup.contactId}`}>
-                              May be a duplicate of {dup.name} ({dup.email}) — a different email address.
-                            </li>
-                          ))}
                         </ul>
+                      )}
+                      {/* DEC-663 (wave-64 amendment): the third disposition
+                          for a possible duplicate -- 'Import as new' (the
+                          default) or 'Merge into <name> (<email>)' per
+                          candidate, a natural-width radio group rather than
+                          a bare select. Mutually exclusive with the row's
+                          Skip checkbox (see setMergeSelection/
+                          toggleSkipLine): a line is skipped or merged,
+                          never both. */}
+                      {(row.possibleDuplicates ?? []).length > 0 && (
+                        <fieldset
+                          className="chq-contacts-import-review-dupe-group"
+                          role="radiogroup"
+                          aria-label={`Possible duplicate for line ${row.line}`}
+                        >
+                          <label className="chq-checkbox-label">
+                            <input
+                              className="chq-check"
+                              type="radio"
+                              name={`import-merge-${row.line}`}
+                              checked={!mergeSelections.get(row.line)}
+                              onChange={() => setMergeSelection(row.line, null)}
+                            />
+                            Import as new
+                          </label>
+                          {(row.possibleDuplicates ?? []).map((dup) => (
+                            <label key={dup.contactId} className="chq-checkbox-label">
+                              <input
+                                className="chq-check"
+                                type="radio"
+                                name={`import-merge-${row.line}`}
+                                checked={mergeSelections.get(row.line) === dup.contactId}
+                                onChange={() => setMergeSelection(row.line, dup.contactId)}
+                              />
+                              Merge into {dup.name} ({dup.email})
+                            </label>
+                          ))}
+                          {typeof row.possibleDuplicatesMore === 'number' && row.possibleDuplicatesMore > 0 && (
+                            <p className="chq-contacts-import-review-dupe-more">
+                              {countOf(row.possibleDuplicatesMore, 'more possible match', 'more possible matches')} not
+                              shown — check the directory's Duplicates view.
+                            </p>
+                          )}
+                        </fieldset>
                       )}
                     </td>
                     <td className="chq-contacts-import-review-col-skip">

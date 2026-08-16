@@ -162,6 +162,11 @@ export interface ImportPlanRow {
   contactId?: string;
   overwrites?: ImportOverwrite[];
   possibleDuplicates?: ImportPossibleDuplicate[];
+  // DEC-663 (wave-64 amendment): possibleDuplicates is capped server-side;
+  // this names how many additional candidates were found but not sent, so
+  // the Review step can say so honestly rather than presenting the capped
+  // list as complete.
+  possibleDuplicatesMore?: number;
 }
 
 export interface ImportPlan {
