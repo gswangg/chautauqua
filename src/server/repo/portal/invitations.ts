@@ -99,13 +99,18 @@ export async function getParticipantScope(db: Db, participantId: string): Promis
 export async function setInviteStatus(
   db: Db,
   participantId: string,
+  contactId: string,
   status: "accepted" | "declined",
   submissionId: string,
 ): Promise<void> {
   const now = new Date();
+  // DEC-962 (wave-63 amendment): contactId is part of the WHERE, not just an
+  // upstream getParticipantScope().contactId check — same shape as
+  // saveTaskFormResponse/saveTaskFileCompletion above. The caller (route)
+  // still checks scope.contactId !== contactId first (defence in depth).
   await db
     .update(schema.participant)
     .set({ inviteStatus: status, updatedAt: now })
-    .where(eq(schema.participant.id, participantId));
+    .where(and(eq(schema.participant.id, participantId), eq(schema.participant.contactId, contactId)));
   await touchSubmissions(db, [submissionId], now);
 }

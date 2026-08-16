@@ -175,6 +175,7 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
       "complete",
       SPEAKER.userId,
       expect.any(Date),
+      CONTACT_A,
     );
   });
 

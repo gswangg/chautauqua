@@ -28,7 +28,7 @@ vi.mock("../src/server/repo/portal", async () => {
       inviteStatus: "invited",
       orgId: "org-1",
     })),
-    setInviteStatus: vi.fn(async (_db: unknown, participantId: string, status: string) => {
+    setInviteStatus: vi.fn(async (_db: unknown, participantId: string, _contactId: string, status: string) => {
       setInviteStatusCalls.push({ participantId, status });
     }),
   };

@@ -330,7 +330,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/complete", csrfForm, async (c) => {
   assertOwnAssignmentOr403(scope, contactId);
   if (scope.kind !== "general") throw new ApiError("invalid", "Only 'general' tasks complete this way");
 
-  await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date());
+  await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date(), contactId);
   return c.redirect("/portal/tasks", 302);
 });
 
@@ -473,8 +473,8 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
     );
   }
 
-  await saveTaskFormResponse(c.var.db, assignmentId, JSON.stringify(validation.cleaned));
-  await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date());
+  await saveTaskFormResponse(c.var.db, assignmentId, contactId, JSON.stringify(validation.cleaned));
+  await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date(), contactId);
   return c.redirect("/portal/tasks", 302);
 });
 
@@ -624,8 +624,8 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
     await reopenContentReview(c.var.db, scope.eventId, submissionId);
   }
 
-  await saveTaskFileCompletion(c.var.db, assignmentId, fileId);
-  await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date());
+  await saveTaskFileCompletion(c.var.db, assignmentId, contactId, fileId);
+  await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date(), contactId);
   // DEC-020 amendment (wave 10): the reopen above (submissionId != null) is
   // otherwise silent — a speaker who just posted a new deck gets no receipt
   // that it pulled their accepted session off the public schedule pending

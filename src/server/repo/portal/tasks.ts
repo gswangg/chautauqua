@@ -312,19 +312,37 @@ export function assertOwnAssignment(scope: PortalAssignmentScope, contactId: str
 /** kind='form' task_assignment completion: stores the answer JSON blob.
  * Status transition to 'complete' is applied separately by
  * src/server/repo/tasks.ts's updateAssignmentStatus (DEC-023 owns assignment
- * status semantics — this module never duplicates that logic). */
-export async function saveTaskFormResponse(db: Db, assignmentId: string, responseJson: string): Promise<void> {
+ * status semantics — this module never duplicates that logic).
+ *
+ * DEC-962 (wave-63 amendment): contactId is part of the WHERE, not just an
+ * upstream assertOwnAssignment check — a caller's memory is not a scope.
+ * Callers already hold contactId (it is the authenticated speaker's own id)
+ * and MUST keep calling assertOwnAssignment first (defence in depth, not a
+ * replacement): the JS check gives a clean 403 with a message, this predicate
+ * makes a foreign id write zero rows even if the JS check is ever skipped. */
+export async function saveTaskFormResponse(
+  db: Db,
+  assignmentId: string,
+  contactId: string,
+  responseJson: string,
+): Promise<void> {
   await db
     .update(schema.taskAssignment)
     .set({ responseJson, updatedAt: new Date() })
-    .where(eq(schema.taskAssignment.id, assignmentId));
+    .where(and(eq(schema.taskAssignment.id, assignmentId), eq(schema.taskAssignment.contactId, contactId)));
 }
 
 /** kind='file_request' task_assignment completion: links the uploaded file
- * row. Status transition to 'complete' is applied separately (see above). */
-export async function saveTaskFileCompletion(db: Db, assignmentId: string, fileId: string): Promise<void> {
+ * row. Status transition to 'complete' is applied separately (see above).
+ * DEC-962 (wave-63 amendment): see saveTaskFormResponse above. */
+export async function saveTaskFileCompletion(
+  db: Db,
+  assignmentId: string,
+  contactId: string,
+  fileId: string,
+): Promise<void> {
   await db
     .update(schema.taskAssignment)
     .set({ fileId, updatedAt: new Date() })
-    .where(eq(schema.taskAssignment.id, assignmentId));
+    .where(and(eq(schema.taskAssignment.id, assignmentId), eq(schema.taskAssignment.contactId, contactId)));
 }

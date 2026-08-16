@@ -211,9 +211,10 @@ describe("POST /portal/tasks/:assignmentId/form — DEC-040 file-kind fields", (
     expect(vi.mocked(saveTaskFormResponse)).toHaveBeenCalledWith(
       expect.anything(),
       ASSIGNMENT_ID,
+      CONTACT_A,
       expect.stringContaining(NEW_FILE_ID),
     );
-    const savedJson = vi.mocked(saveTaskFormResponse).mock.calls[0]![2] as string;
+    const savedJson = vi.mocked(saveTaskFormResponse).mock.calls[0]![3] as string;
     const saved = JSON.parse(savedJson);
     expect(saved[FILE_FIELD_ID]).toBe(NEW_FILE_ID);
     expect(vi.mocked(updateAssignmentStatus)).toHaveBeenCalledWith(
@@ -222,6 +223,7 @@ describe("POST /portal/tasks/:assignmentId/form — DEC-040 file-kind fields", (
       "complete",
       SPEAKER_A.userId,
       expect.any(Date),
+      CONTACT_A,
     );
   });
 
@@ -255,7 +257,7 @@ describe("POST /portal/tasks/:assignmentId/form — DEC-040 file-kind fields", (
     expect(res.status).toBe(302);
     expect(insertFile).not.toHaveBeenCalled();
     expect(bucket.put).not.toHaveBeenCalled();
-    const savedJson = vi.mocked(saveTaskFormResponse).mock.calls[0]![2] as string;
+    const savedJson = vi.mocked(saveTaskFormResponse).mock.calls[0]![3] as string;
     const saved = JSON.parse(savedJson);
     expect(saved[FILE_FIELD_ID]).toBe(priorFileId);
   });
