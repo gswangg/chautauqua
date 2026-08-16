@@ -29,6 +29,7 @@ import { clockHHMM } from '../../lib/clock';
 import { firstNameOf } from '../../lib/identity';
 import { DEC_930 } from '../../../../src/decisions';
 import type { SpeakerDetailResponse, SpeakerDetailTaskStatus } from './speakerDetail';
+import { toRows, fromRows, reservedValue, RESERVED_CUSTOM_FIELD_KEYS, RESERVED_CUSTOM_FIELD_LABELS } from '../contacts/customFields';
 import './speakers.css';
 
 void DEC_930;
@@ -95,6 +96,14 @@ export function SpeakerDetailPage() {
   const [remindRemaining, setRemindRemaining] = useState(0);
   const [reminding, setReminding] = useState(false);
 
+  // DEC-738 amendment (wave 71): the person's org-wide logistics facts
+  // (dietary/travel/accessibility) -- same customFields the CRM drawer
+  // edits, so save round-trips through the SAME pure helpers
+  // (toRows/fromRows/reservedValue) rather than a second normalization.
+  const [editingLogistics, setEditingLogistics] = useState(false);
+  const [logisticsDraft, setLogisticsDraft] = useState({ dietary: '', travel: '', accessibility: '' });
+  const [savingLogistics, setSavingLogistics] = useState(false);
+
   useEffect(() => {
     if (!eventId || !contactId) return;
     setLoading(true);
@@ -128,6 +137,40 @@ export function SpeakerDetailPage() {
       setToast(`${describeSendResult(res, { one: 'contact', many: 'contacts' })}${lines ? ` ${lines}.` : ''}`);
     } catch (err) {
       setError(err instanceof ApiError ? `Send failed: ${err.message}` : 'Send failed');
+    }
+  }
+
+  function startEditLogistics() {
+    if (!detail) return;
+    setLogisticsDraft({
+      dietary: reservedValue(detail.contact.customFields, RESERVED_CUSTOM_FIELD_KEYS.dietary),
+      travel: reservedValue(detail.contact.customFields, RESERVED_CUSTOM_FIELD_KEYS.travel),
+      accessibility: reservedValue(detail.contact.customFields, RESERVED_CUSTOM_FIELD_KEYS.accessibility),
+    });
+    setError(null);
+    setEditingLogistics(true);
+  }
+
+  async function saveLogistics() {
+    if (!detail) return;
+    const rows = toRows(detail.contact.customFields);
+    const result = fromRows(logisticsDraft, rows);
+    if ('error' in result) {
+      setError(result.error);
+      return;
+    }
+    const previous = detail;
+    setSavingLogistics(true);
+    setError(null);
+    setDetail({ ...detail, contact: { ...detail.contact, customFields: result.fields } });
+    setEditingLogistics(false);
+    try {
+      await apiPatch(`/contacts/${detail.contact.id}`, { customFields: result.fields });
+    } catch (err) {
+      setDetail(previous);
+      setError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
+    } finally {
+      setSavingLogistics(false);
     }
   }
 
@@ -485,6 +528,66 @@ export function SpeakerDetailPage() {
                       <li key={e.eventId}>{e.name}</li>
                     ))}
                   </ul>
+                )}
+              </section>
+
+              {/* DEC-738 amendment (wave 71): the person's org-wide logistics
+                  facts -- the SAME customFields record the Contacts drawer
+                  edits, not an event-scoped copy, and no promise of travel
+                  booking. */}
+              <section className="chq-section chq-speaker-detail-logistics">
+                <div className="chq-section-head">
+                  <span className="chq-section-label">Logistics &middot; org-wide</span>
+                  {!editingLogistics && (
+                    <button type="button" className="chq-link-button" onClick={startEditLogistics}>
+                      Edit
+                    </button>
+                  )}
+                </div>
+                {editingLogistics ? (
+                  <div className="chq-speaker-detail-logistics-form">
+                    {(
+                      [
+                        ['dietary', RESERVED_CUSTOM_FIELD_KEYS.dietary],
+                        ['travel', RESERVED_CUSTOM_FIELD_KEYS.travel],
+                        ['accessibility', RESERVED_CUSTOM_FIELD_KEYS.accessibility],
+                      ] as const
+                    ).map(([draftKey, reservedKey]) => (
+                      <label key={reservedKey} className="chq-speaker-detail-logistics-field">
+                        <span className="chq-section-label">{RESERVED_CUSTOM_FIELD_LABELS[reservedKey]}</span>
+                        <textarea
+                          value={logisticsDraft[draftKey]}
+                          onChange={(e) => setLogisticsDraft({ ...logisticsDraft, [draftKey]: e.target.value })}
+                        />
+                      </label>
+                    ))}
+                    <div className="chq-speaker-detail-logistics-actions">
+                      <button type="button" className="chq-btn chq-btn-primary" onClick={saveLogistics} disabled={savingLogistics}>
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-tertiary"
+                        onClick={() => setEditingLogistics(false)}
+                        disabled={savingLogistics}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <dl className="chq-speaker-detail-logistics-body">
+                    {(
+                      [RESERVED_CUSTOM_FIELD_KEYS.dietary, RESERVED_CUSTOM_FIELD_KEYS.travel, RESERVED_CUSTOM_FIELD_KEYS.accessibility] as const
+                    ).map((key) => (
+                      <div key={key} className="chq-speaker-detail-logistics-row">
+                        <dt className="chq-meta">{RESERVED_CUSTOM_FIELD_LABELS[key]}</dt>
+                        <dd>
+                          {reservedValue(detail.contact.customFields, key) || <span className="chq-empty">Not set.</span>}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
                 )}
               </section>
 

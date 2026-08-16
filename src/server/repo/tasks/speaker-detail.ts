@@ -29,6 +29,13 @@ export interface SpeakerDetailContact {
   hasAccount: boolean;
   phone: string | null;
   notes: string | null;
+  // DEC-738 amendment (wave 71): the person's org-wide logistics facts
+  // (dietary/travel/accessibility, plus any unreserved custom keys) live on
+  // this same contact record and the CRM drawer edits them -- projected
+  // here too so the speaker record is not a second, poorer view of the
+  // same person. Parsed from contact.customFieldsJson; absent/blank is {},
+  // never null.
+  customFields: Record<string, string>;
   // Parsed out of contact.headshotUrl (stored as `/headshots/<fileId>` --
   // see repo/profile.ts) rather than a dedicated column, so this stays the
   // one place a headshot URL turns into a bare id.
@@ -141,6 +148,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       title: schema.contact.title,
       phone: schema.contact.phone,
       notes: schema.contact.notes,
+      customFieldsJson: schema.contact.customFieldsJson,
       headshotUrl: schema.contact.headshotUrl,
       headshotFileId: schema.contact.headshotFileId,
       userId: schema.user.id,
@@ -329,6 +337,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       hasAccount: contactRow.userId != null,
       phone: contactRow.phone,
       notes: contactRow.notes,
+      customFields: contactRow.customFieldsJson ? (JSON.parse(contactRow.customFieldsJson) as Record<string, string>) : {},
       // DEC-773 amendment (w32-e): headshotFileId is the single home for the
       // file id, always written together with headshotUrl (profile.ts's
       // setContactHeadshot, contacts/merge.ts, scripts/seed.ts) -- a non-null

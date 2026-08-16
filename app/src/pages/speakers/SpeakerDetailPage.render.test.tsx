@@ -30,6 +30,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
       hasAccount: true,
       phone: '+1 415 555 0134',
       notes: 'Prefers a morning slot.',
+      customFields: {},
       headshotFileId: null,
     },
     participation: {

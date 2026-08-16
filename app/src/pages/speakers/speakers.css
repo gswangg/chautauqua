@@ -969,6 +969,7 @@
    rules below; these three only hold the column in. */
 .chq-speaker-detail-contact,
 .chq-speaker-detail-other-events,
+.chq-speaker-detail-logistics,
 .chq-speaker-detail-notes {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -1006,6 +1007,48 @@
   padding-top: 4px;
   font-size: 14px;
   line-height: 1.6;
+}
+
+.chq-speaker-detail-logistics-body {
+  margin: 0;
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-speaker-detail-logistics-row dt {
+  font-size: 11px;
+}
+
+.chq-speaker-detail-logistics-row dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.chq-speaker-detail-logistics-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.chq-speaker-detail-logistics-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-speaker-detail-logistics-field textarea {
+  resize: vertical;
+  min-height: 48px;
+  font: inherit;
+}
+
+.chq-speaker-detail-logistics-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .chq-speaker-detail-required {
