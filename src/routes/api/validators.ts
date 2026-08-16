@@ -66,3 +66,19 @@ export function isEpochOrderValid(open: number | null | undefined, close: number
   if (open === null || open === undefined || close === null || close === undefined) return true;
   return open <= close;
 }
+
+/**
+ * DEC-522 (wave-52 amendment) / DEC-517: a day label is MINTED (UTC
+ * midnight), never MEASURED (a sub-day instant). form.open_date/close_date
+ * and evaluation-plan window fields are day labels, not timestamps — a
+ * caller must pass an epoch that is both a valid isEpochMs and an exact
+ * multiple of one day (86,400,000 ms), i.e. Date.UTC(y, m, d) with no
+ * hour/minute/second/ms component. Guards against a sub-day clock offset
+ * (e.g. Date.now() - N) reaching a day-label column and silently shifting
+ * the UTC calendar date the value resolves to for part of every day.
+ */
+export const DAY_LABEL_MS = 86_400_000;
+
+export function isDayLabelMs(value: unknown): value is number {
+  return isEpochMs(value) && (value as number) % DAY_LABEL_MS === 0;
+}
