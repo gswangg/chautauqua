@@ -84,6 +84,7 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
   function load() {
     if (!planId) return;
     setLoading(true);
+    setError(null);
     Promise.all([apiGet<EvaluationPlan>(`/plans/${planId}`), apiList<ProgressRow>(`/plans/${planId}/progress`)])
       .then(([planRes, progressRes]) => {
         setPlan(planRes);

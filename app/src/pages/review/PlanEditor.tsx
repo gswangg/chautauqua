@@ -517,6 +517,7 @@ export function PlanEditor() {
 
   useEffect(() => {
     if (!eventId) return;
+    setError(null);
     apiList<Track>(`/events/${eventId}/tracks`)
       .then((res) => setTracks(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
@@ -525,6 +526,7 @@ export function PlanEditor() {
   useEffect(() => {
     if (isNew || !planId) return;
     setLoading(true);
+    setError(null);
     apiGet<EvaluationPlan>(`/plans/${planId}`)
       .then((plan) => {
         const loaded: PlanDraft = {

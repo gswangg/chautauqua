@@ -136,6 +136,7 @@ export function AgendaPage() {
       setAllBreaks([]);
       return;
     }
+    setError(null);
     apiGet<{ items: ScheduleBreakRow[] }>(`/events/${eventId}/breaks`)
       .then((res) => setAllBreaks(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load breaks'));

@@ -99,6 +99,7 @@ function PlanSection({
   function load() {
     setLoading(true);
     setShowAll(false);
+    setError(null);
     // DEC-845 amendment (wave 38): always request the site-wide page cap --
     // a reviewer scope above 200 rows must still get page 1's worth of
     // rows, not apiList's 50-row default.
@@ -501,6 +502,8 @@ export function ReviewerQueue() {
   const [envelopes, setEnvelopes] = useState<Record<string, ReviewerQueueEnvelope | null>>({});
 
   useEffect(() => {
+    setError(null);
+    setRoutePlanError(null);
     // A deep link to a single plan (/review/plans/:planId) shows that plan
     // alone -- it never needs the reviewer's full plan list.
     if (routePlanId) {

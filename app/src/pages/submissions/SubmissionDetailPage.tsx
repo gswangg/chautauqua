@@ -405,6 +405,7 @@ export function SubmissionDetailPage() {
 
   useEffect(() => {
     if (!detail) return;
+    setError(null);
     apiList<Track>(`/events/${detail.eventId}/tracks`)
       .then((res) => setTracks(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));

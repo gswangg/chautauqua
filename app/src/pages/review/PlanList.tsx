@@ -120,6 +120,7 @@ export function PlanList() {
 
   useEffect(() => {
     if (!eventId) return;
+    setError(null);
     apiList<Track>(`/events/${eventId}/tracks`)
       .then((res) => setTracks(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
