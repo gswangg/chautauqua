@@ -176,11 +176,15 @@ describe('ProgressPanel render smoke', () => {
     });
   });
 
-  it('says "unknown" rather than inventing a number when the server omits a field', async () => {
+  // DEC-238 (wave-66 amendment): the server's remind response carries a
+  // CLOSED vocabulary -- sent/skipped/remaining are ALWAYS present -- so the
+  // panel never falls back to a client-hedged "unknown". A failed count,
+  // when present, appends a fourth clause.
+  it('appends a failure clause when the server reports any failed sends', async () => {
     mockApi({
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([NOT_STARTED_ROW]),
-      [`POST /api/v1/plans/${PLAN_ID}/remind`]: { sent: 3 },
+      [`POST /api/v1/plans/${PLAN_ID}/remind`]: { sent: 3, skipped: 0, remaining: 0, failed: [{ email: 'x@example.com', message: 'boom' }] },
     });
 
     render(<ProgressPanel planId={PLAN_ID} />);
@@ -189,7 +193,7 @@ describe('ProgressPanel render smoke', () => {
     fireEvent.click(notStartedButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent('Sent: 3. Skipped: unknown. Remaining: unknown.');
+      expect(screen.getByRole('status')).toHaveTextContent('Sent: 3. Skipped: 0. Remaining: 0. Failed: 1.');
     });
   });
 

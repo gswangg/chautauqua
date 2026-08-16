@@ -92,6 +92,18 @@ vi.mock("../src/server/repo/events", async () => {
   };
 });
 
+// DEC-238 (wave-66 amendment): POST /plans/:id/remind now consults
+// loadRecentlySent before sending -- this file's db stub is `{}`, so the
+// real reader would throw; return an always-empty map (nothing is ever
+// "recently sent" in this fixture) so the dedupe check is a no-op here.
+vi.mock("../src/server/repo/comms", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
+  return {
+    ...actual,
+    loadRecentlySent: vi.fn(async () => new Map()),
+  };
+});
+
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
   return {

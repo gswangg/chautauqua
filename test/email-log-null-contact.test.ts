@@ -135,6 +135,17 @@ describe("POST /api/v1/plans/:id/remind logs contactId: null (DEC-191)", () => {
         batchUserDisplayNames: vi.fn(async () => new Map()),
       };
     });
+    // DEC-238 (wave-66 amendment): /remind now consults loadRecentlySent
+    // before sending -- this file's db stub is `{}`, so the real reader
+    // would throw; return an always-empty map so the dedupe check is a
+    // no-op here.
+    vi.doMock("../src/server/repo/comms", async () => {
+      const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
+      return {
+        ...actual,
+        loadRecentlySent: vi.fn(async () => new Map()),
+      };
+    });
     vi.doMock("../src/server/context", async () => {
       const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
       return {
