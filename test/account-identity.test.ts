@@ -377,6 +377,20 @@ describe("POST /claim/:token redirects to /login (not a duplicate insert) for a 
             },
           };
         },
+        // DEC-949 (wave 46 amendment): POST /claim/:token now issues
+        // refundScopedLimit (db.update) once the token resolves.
+        update(table: unknown) {
+          return {
+            set() {
+              return {
+                where() {
+                  if (table === schema.rateLimit) return Promise.resolve();
+                  throw new Error("unexpected table in fake db update");
+                },
+              };
+            },
+          };
+        },
       } as unknown as AppEnv["Variables"]["db"],
       inserted,
     };

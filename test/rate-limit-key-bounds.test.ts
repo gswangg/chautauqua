@@ -69,6 +69,10 @@ function makeRateLimitFakeMethods() {
       },
     }),
     delete: () => ({ where: async () => {} }),
+    // DEC-949 (wave 46 amendment): POST /claim/:token now issues
+    // refundScopedLimit (db.update) when a token resolves -- the fake must
+    // answer it rather than throw.
+    update: () => ({ set: () => ({ where: async () => {} }) }),
   };
 }
 
@@ -164,6 +168,7 @@ describe("DEC-457: POST /login with an oversized email", () => {
       },
       insert: rateLimitFake.insert,
       delete: rateLimitFake.delete,
+      update: rateLimitFake.update,
     } as unknown as AppEnv["Variables"]["db"];
 
     const kv = new ThrowingKV();
@@ -215,7 +220,7 @@ describe("DEC-457: POST /claim/:token with an oversized x-forwarded-for", () => 
     const app = new Hono<AppEnv>();
     registerErrorHandler(app);
     app.use("*", async (c, next) => {
-      c.set("db", { insert: rateLimitFake.insert, delete: rateLimitFake.delete } as unknown as AppEnv["Variables"]["db"]);
+      c.set("db", { insert: rateLimitFake.insert, delete: rateLimitFake.delete, update: rateLimitFake.update } as unknown as AppEnv["Variables"]["db"]);
       await next();
     });
     app.route("/", authRoutes);
@@ -312,6 +317,7 @@ function fakeDb(selectQueue: unknown[][]) {
     },
     insert: rateLimitFake.insert,
     delete: rateLimitFake.delete,
+    update: rateLimitFake.update,
   };
   return { db: db as unknown as AppEnv["Variables"]["db"], rateLimitKeys: rateLimitFake.keys };
 }
