@@ -46,10 +46,12 @@ export {
   matchesSegment,
 } from "./contacts-parts/segments";
 
+export type { StandardImportField } from "./contacts-parts/import";
 export {
   MAX_IMPORT_CSV_BYTES,
   MAX_IMPORT_ROWS,
   MAX_POSSIBLE_DUPLICATES,
+  STANDARD_IMPORT_FIELDS,
   mapImportRow,
   importFieldCapViolations,
   validateImportMapping,

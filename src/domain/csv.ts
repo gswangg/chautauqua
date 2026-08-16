@@ -134,6 +134,38 @@ export function toCsv(rows: (string | number | null)[][]): string {
     .join("\r\n");
 }
 
+/**
+ * Serializes rows into CSV text with NO DEC-179 formula-injection
+ * neutralization (no leading-apostrophe prefixing of `= + - @`-led cells).
+ *
+ * This must never be named `toCsv`, and must never be pointed at an export
+ * surface: it exists ONLY for text this application re-parses ITSELF (the
+ * import wizard's preview -> commit round trip, see
+ * app/src/pages/contacts/ImportWizard.tsx). toCsv's apostrophe prefix is
+ * correct for a file a human opens in a spreadsheet, but corrupts data our
+ * own parseCsv will read right back -- a `+1 555 0100` phone number or a
+ * `--Keynote--` title would silently gain a leading `'` on every preview ->
+ * commit round trip, and (being CSV-legal) never surface as an error. Two
+ * differently-named functions mean a future caller reading only the name
+ * can never wire an export surface to the unsafe one by accident, and can
+ * never wire this re-parsed-by-us round trip to the apostrophe-mangling one
+ * (DEC-179 amendment, wave 65).
+ *
+ * Fields are quoted only when they contain a comma, double-quote, or
+ * newline; embedded double-quotes are doubled. Rows are joined with `\n`
+ * (not CRLF), with a trailing newline.
+ */
+export function toCsvVerbatim(rows: string[][]): string {
+  return rows.map((row) => row.map(formatCellVerbatim).join(",")).join("\n") + "\n";
+}
+
+function formatCellVerbatim(cell: string): string {
+  if (cell.includes(",") || cell.includes('"') || cell.includes("\n") || cell.includes("\r")) {
+    return '"' + cell.replace(/"/g, '""') + '"';
+  }
+  return cell;
+}
+
 function formatCell(cell: string | number | null): string {
   if (cell === null) {
     return "";

@@ -86,11 +86,24 @@ export function validateImportMapping(mapping: Record<string, string>): void {
 }
 
 /**
+ * The ONE list of standard (non-custom) import target fields (DEC-478
+ * amendment, wave 65): mapImportRow below derives its accepted-target set
+ * directly from this array (never a hand-listed switch that could diverge
+ * from it), and app/src/pages/contacts/csv.ts's suggestMapping imports this
+ * same array for its alias table -- so a field added here without a
+ * corresponding FIELD_ALIASES entry is a suggestMapping gap, not a
+ * mapImportRow gap (mapImportRow accepts any of these regardless of whether
+ * suggestMapping can auto-suggest it).
+ */
+export const STANDARD_IMPORT_FIELDS = ["email", "firstName", "lastName", "company", "title", "phone", "bio"] as const;
+export type StandardImportField = (typeof STANDARD_IMPORT_FIELDS)[number];
+
+/**
  * Maps an already-parsed CSV row into a partial ContactRecord using a
- * csvColumn -> targetField mapping. Targets are the standard fields
- * (email, firstName, lastName, company, title, phone, bio) plus 'custom.<key>'.
- * Columns with no mapping entry are ignored. If the mapped email column is
- * missing or blank, returns {} so callers can reject the row.
+ * csvColumn -> targetField mapping. Targets are STANDARD_IMPORT_FIELDS plus
+ * 'custom.<key>'. Columns with no mapping entry are ignored. If the mapped
+ * email column is missing or blank, returns {} so callers can reject the
+ * row.
  */
 export function mapImportRow(
   mapping: Record<string, string>,
@@ -115,30 +128,10 @@ export function mapImportRow(
       continue;
     }
 
-    switch (target) {
-      case "email":
-        result.email = value;
-        break;
-      case "firstName":
-        result.firstName = value;
-        break;
-      case "lastName":
-        result.lastName = value;
-        break;
-      case "company":
-        result.company = value;
-        break;
-      case "title":
-        result.title = value;
-        break;
-      case "phone":
-        result.phone = value;
-        break;
-      case "bio":
-        result.bio = value;
-        break;
-      default:
-        throw new Error(`mapImportRow: unknown target field "${target}"`);
+    if ((STANDARD_IMPORT_FIELDS as readonly string[]).includes(target)) {
+      (result as Record<string, string>)[target] = value;
+    } else {
+      throw new Error(`mapImportRow: unknown target field "${target}"`);
     }
   }
 

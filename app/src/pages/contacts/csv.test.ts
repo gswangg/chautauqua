@@ -2,15 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   expandFullNameMapping,
   FULL_NAME_TARGET,
-  isEmptyMappedRow,
   mapImportRow,
   parseCsv,
   splitFullName,
   suggestMapping,
-  toCsv,
+  toCsvVerbatim,
 } from './csv';
 
-describe('parseCsv', () => {
+describe('parseCsv (re-exported from src/domain/csv.ts, DEC-011/DEC-179 wave-65 amendment)', () => {
   it('parses a simple header + rows', () => {
     const rows = parseCsv('First,Last,Email\nAda,Lovelace,ada@example.com\n');
     expect(rows).toEqual([
@@ -27,12 +26,12 @@ describe('parseCsv', () => {
     ]);
   });
 
-  it('throws on an unterminated quoted field', () => {
-    expect(() => parseCsv('Name\n"unterminated')).toThrow(/Unterminated/);
+  it('throws on an unterminated quoted field, naming the line (CsvParseError)', () => {
+    expect(() => parseCsv('Name\n"unterminated')).toThrow(/Unterminated.*line 2/);
   });
 });
 
-describe('mapImportRow', () => {
+describe('mapImportRow (re-exported from src/domain/contacts-parts/import.ts, DEC-478 wave-65 amendment)', () => {
   const header = ['First Name', 'Last Name', 'Email Address', 'Org'];
   const mapping = { 'First Name': 'firstName', 'Last Name': 'lastName', 'Email Address': 'email', Org: 'custom.department' };
 
@@ -54,7 +53,6 @@ describe('mapImportRow', () => {
   it('returns {} when the mapped email is missing or blank', () => {
     const row = mapImportRow(mapping, header, ['Ada', 'Lovelace', '', 'Engineering']);
     expect(row).toEqual({});
-    expect(isEmptyMappedRow(row)).toBe(true);
   });
 
   it('throws for an unknown target field', () => {
@@ -69,6 +67,11 @@ describe('mapImportRow', () => {
       'Computer scientist',
     ]);
     expect(row).toEqual({ email: 'ada@example.com', phone: '555-1234', bio: 'Computer scientist' });
+  });
+
+  it('rejects a custom.<key> target the same way the domain accepts it (regression: the deleted app copy used to reject this)', () => {
+    const row = mapImportRow({ Email: 'email', Org: 'custom.department' }, ['Email', 'Org'], ['ada@example.com', 'Engineering']);
+    expect(row).toEqual({ email: 'ada@example.com', customFields: { department: 'Engineering' } });
   });
 });
 
@@ -87,15 +90,6 @@ describe('splitFullName (P1 fix, w1-f: combined name column import)', () => {
 
   it('handles blank input', () => {
     expect(splitFullName('  ')).toEqual({ firstName: '', lastName: '' });
-  });
-});
-
-describe('mapImportRow with FULL_NAME_TARGET', () => {
-  it('splits a fullName-mapped column into firstName/lastName in the preview row', () => {
-    const header = ['name', 'email'];
-    const mapping = { name: FULL_NAME_TARGET, email: 'email' };
-    const row = mapImportRow(mapping, header, ['Marcus Okafor', 'marcus@example.com']);
-    expect(row).toEqual({ firstName: 'Marcus', lastName: 'Okafor', email: 'marcus@example.com' });
   });
 });
 
@@ -133,11 +127,29 @@ describe('expandFullNameMapping (fixture speakers.csv shape: name,email,title,co
     const mapping = { firstName: 'firstName', lastName: 'lastName' };
     expect(expandFullNameMapping(header, rows, mapping)).toEqual({ header, rows, mapping });
   });
+
+  it('previews exactly the rows it posts: expand -> mapImportRow matches expand -> toCsvVerbatim -> parseCsv -> mapImportRow', () => {
+    const header = ['name', 'email'];
+    const rows = [['Marcus Okafor', 'marcus@example.com']];
+    const mapping = { name: FULL_NAME_TARGET, email: 'email' };
+
+    const expanded = expandFullNameMapping(header, rows, mapping);
+    const previewed = mapImportRow(expanded.mapping, expanded.header, expanded.rows[0]!);
+
+    // The wizard's actual POST body: serialize the expanded rows verbatim,
+    // then (on the server) re-parse and map -- must produce the identical
+    // mapped row the preview already showed the organizer.
+    const csvText = toCsvVerbatim([expanded.header, ...expanded.rows]);
+    const reparsed = parseCsv(csvText);
+    const posted = mapImportRow(expanded.mapping, reparsed[0]!, reparsed[1]!);
+
+    expect(posted).toEqual(previewed);
+  });
 });
 
-describe('toCsv', () => {
+describe('toCsvVerbatim (DEC-179 amendment, wave 65: no formula-injection neutralization)', () => {
   it('serializes rows and quotes fields containing commas/quotes', () => {
-    expect(toCsv([['a', 'b'], ['Doe, Jane', 'Says "hi"']])).toBe('a,b\n"Doe, Jane","Says ""hi"""\n');
+    expect(toCsvVerbatim([['a', 'b'], ['Doe, Jane', 'Says "hi"']])).toBe('a,b\n"Doe, Jane","Says ""hi"""\n');
   });
 
   it('round-trips through parseCsv', () => {
@@ -145,7 +157,19 @@ describe('toCsv', () => {
       ['name', 'email'],
       ['Priya Raman', 'priya@example.com'],
     ];
-    expect(parseCsv(toCsv(rows))).toEqual(rows);
+    expect(parseCsv(toCsvVerbatim(rows))).toEqual(rows);
+  });
+
+  it('leaves a leading =/+/-/@ cell untouched, byte-for-byte, across a re-parse round trip (the regression the toCsv/toCsvVerbatim naming split exists to prevent)', () => {
+    const rows = [
+      ['phone', 'title', 'formula'],
+      ['+1 555 0100', '--Keynote--', '=SUM(A1:A2)'],
+    ];
+    const serialized = toCsvVerbatim(rows);
+    expect(serialized).not.toContain("'+1 555 0100");
+    expect(serialized).not.toContain("'--Keynote--");
+    expect(serialized).not.toContain("'=SUM");
+    expect(parseCsv(serialized)).toEqual(rows);
   });
 });
 
