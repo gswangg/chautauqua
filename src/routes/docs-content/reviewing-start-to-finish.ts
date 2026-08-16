@@ -20,7 +20,7 @@ export const reviewingStartToFinish: DocsArticle = {
       kind: "figure",
       shotId: "for-reviewers-reviewing-start-to-finish-01",
       caption:
-        "The reviewer queue: each row shows a submission and how many ratings it has so far. The one with the fewest ratings sits at the top — work down the list rather than picking around.",
+        "The reviewer queue: each row shows your own status for that submission — scored (with your score) or not yet — not a shared rating count. Work down the list rather than picking around.",
     },
     { kind: "heading", text: "The scorecard" },
     {

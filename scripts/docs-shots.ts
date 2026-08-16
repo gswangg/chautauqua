@@ -39,6 +39,13 @@ import { chromium, type Browser, type BrowserContext } from "playwright";
 import { parseUrlArg } from "./walkthrough-lib";
 import { DOCS_SHOT_VIEWPORT, DOCS_SHOTS, DOCS_SHOTS_EVENT_SLUG, type DocsShotEntry } from "./docs-shots-lib";
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
+// Pure data registry (JSX-free, DEC-518) -- importing it here adds no
+// node:/playwright dependency to scripts/docs-shots-lib.ts, which stays
+// dependency-free for its own vitest coverage. DOCS_SHOTS dropped its own
+// `caption` field (the article's figure block is the one copy); this
+// script reads the caption from the owning figure block for logging/alt
+// text instead of restating it.
+import { DOCS_ARTICLES } from "../src/routes/docs-content";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -148,6 +155,21 @@ async function assertSeededEventPresent(baseUrl: string): Promise<void> {
   }
 }
 
+/** Looks up a shot's caption from the article registry it belongs to --
+ * FAILS LOUDLY (never a blank/placeholder alt text) if no figure block
+ * anywhere in DOCS_ARTICLES declares this shotId, since
+ * test/docs-shots-manifest.test.ts is supposed to make that impossible by
+ * asserting DOCS_SHOTS and DOCS_ARTICLES's figure shotIds are the same set
+ * in both directions. */
+function captionForShot(shotId: string): string {
+  for (const article of DOCS_ARTICLES) {
+    for (const block of article.blocks) {
+      if (block.kind === "figure" && block.shotId === shotId) return block.caption;
+    }
+  }
+  throw new Error(`docs-shots: no figure block in DOCS_ARTICLES declares shotId "${shotId}" (docs-shots-lib.ts and the article registry have drifted)`);
+}
+
 async function shootOne(context: BrowserContext, baseUrl: string, entry: DocsShotEntry): Promise<string> {
   const page = await context.newPage();
   await page.setViewportSize(DOCS_SHOT_VIEWPORT);
@@ -210,7 +232,7 @@ async function main(): Promise<void> {
       }
       const outPath = await shootOne(context, url, entry);
       writtenIds.add(entry.id);
-      console.log(`SHOT ${entry.id} -> ${outPath} (${entry.route})`);
+      console.log(`SHOT ${entry.id} -> ${outPath} (${entry.route}) -- ${captionForShot(entry.id)}`);
     }
 
     console.log(`docs-shots OK: ${writtenIds.size} screenshots written to ${SHOTS_DIR}`);

@@ -1,3 +1,19 @@
+// DEC-518 wave-3 reconciliation: scripts/docs-shots-lib.ts's DOCS_SHOTS and
+// src/routes/docs-content/**'s DOCS_ARTICLES (figure blocks) each declared
+// their own vocabulary of shotIds with ZERO members in common, because
+// each self-test (this file and test/docs-content-manifest.test.ts) only
+// ever checked its own file's grammar, never the other file's population.
+// The fix below is a SET-EQUALITY check in BOTH directions -- no manifest
+// row without a figure slot, no figure slot without a manifest row -- with
+// a negative control (below) proving it can actually fail.
+//
+// REPAIR RECIPE for the next drift: three branches are adding five more
+// articles this wave (task-w2-a/-b/-e). Adding an article with a `figure`
+// block WILL fail this test at merge until a matching
+// `{ id, route, group }` row (id === the figure's shotId, group === the
+// owning article's group, route === a real ROUTE_MANIFEST-mounted path) is
+// added to scripts/docs-shots-lib.ts's DOCS_SHOTS. That failure is the
+// intended signal telling you a row is owed -- not a flake to work around.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +23,18 @@ import {
   DOCS_SHOTS,
   shotIdMatchesGroup,
 } from "../scripts/docs-shots-lib";
+import { DOCS_ARTICLES } from "../src/routes/docs-content";
+
+/** Every `{ shotId, group }` a `figure` block in DOCS_ARTICLES declares. */
+function articleFigureShots(): { shotId: string; group: string }[] {
+  const out: { shotId: string; group: string }[] = [];
+  for (const article of DOCS_ARTICLES) {
+    for (const block of article.blocks) {
+      if (block.kind === "figure") out.push({ shotId: block.shotId, group: article.group });
+    }
+  }
+  return out;
+}
 
 describe("DOCS_SHOT_VIEWPORT", () => {
   it("is exactly 1600x900 (DESIGN-RULINGS.md:308-316 rule 1)", () => {
@@ -51,16 +79,46 @@ describe("DOCS_SHOTS manifest", () => {
     }
   });
 
-  it("every caption is non-empty prose (carries the point on its own -- rule 4)", () => {
-    for (const entry of DOCS_SHOTS) {
-      expect(entry.caption.trim().length).toBeGreaterThan(10);
-    }
-  });
-
   it("covers every declared group at least once", () => {
     const covered = new Set(DOCS_SHOTS.map((entry) => entry.group));
     for (const group of DOCS_SHOT_GROUPS) {
       expect(covered.has(group), `no DOCS_SHOTS row covers group "${group}"`).toBe(true);
+    }
+  });
+});
+
+describe("DOCS_SHOTS reconciled against DOCS_ARTICLES's figure blocks", () => {
+  it("every DOCS_SHOTS id has a matching figure shotId in DOCS_ARTICLES (no manifest row without a figure slot)", () => {
+    const articleShotIds = new Set(articleFigureShots().map((s) => s.shotId));
+    for (const entry of DOCS_SHOTS) {
+      expect(articleShotIds.has(entry.id), `DOCS_SHOTS row "${entry.id}" has no figure block in DOCS_ARTICLES`).toBe(true);
+    }
+  });
+
+  it("every DOCS_ARTICLES figure shotId has a matching DOCS_SHOTS row (no figure slot without a manifest row)", () => {
+    const manifestIds = new Set(DOCS_SHOTS.map((entry) => entry.id));
+    for (const { shotId } of articleFigureShots()) {
+      expect(manifestIds.has(shotId), `figure shotId "${shotId}" has no DOCS_SHOTS row`).toBe(true);
+    }
+  });
+
+  it("the two id sets are exactly equal (set equality, not just subset in one direction)", () => {
+    const manifestIds = new Set(DOCS_SHOTS.map((entry) => entry.id));
+    const articleIds = new Set(articleFigureShots().map((s) => s.shotId));
+    expect([...manifestIds].sort()).toEqual([...articleIds].sort());
+  });
+
+  it("negative control: set equality DOES fail when the two populations actually diverge", () => {
+    const manifestIds = new Set(DOCS_SHOTS.map((entry) => entry.id));
+    const articleIds = new Set(articleFigureShots().map((s) => s.shotId));
+    const articleIdsWithExtra = new Set([...articleIds, "getting-started-a-shotid-nobody-declared-99"]);
+    expect([...manifestIds].sort()).not.toEqual([...articleIdsWithExtra].sort());
+  });
+
+  it("every DOCS_SHOTS row's group equals the owning article's group", () => {
+    const groupByShotId = new Map(articleFigureShots().map((s) => [s.shotId, s.group]));
+    for (const entry of DOCS_SHOTS) {
+      expect(groupByShotId.get(entry.id), `shot "${entry.id}" group mismatch`).toBe(entry.group);
     }
   });
 });
