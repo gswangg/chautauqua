@@ -249,7 +249,6 @@ describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
     const result = await previewRemindNow(db, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
 
     const eventName = "DevFlow Conf 2027";
-    const eventTimezone = "America/Los_Angeles";
     const portalLink = `${ORIGIN}/claim/${PREVIEW_CLAIM_TOKEN}`;
 
     for (const draft of result.drafts) {
@@ -264,7 +263,7 @@ describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
         taskId: r.taskId,
         taskTitle: r.taskTitle,
       }));
-      const expected = buildReminderMessage(eventName, eventTimezone, assignments, portalLink);
+      const expected = buildReminderMessage(eventName, assignments, portalLink);
       expect(draft.subject).toBe(expected.subject);
       expect(draft.text).toBe(expected.text);
     }
