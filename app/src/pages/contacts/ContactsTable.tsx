@@ -48,8 +48,14 @@ export function ContactsTable({
 
   return (
     <div className="chq-contacts-table-wrap">
-      {selectedCount > 0 && (
-        <div className="chq-bulkbar" role="toolbar" aria-label="Bulk actions">
+      {/* User-filed: always mounted — idle keeps the space so selecting
+          never shifts the table (see .chq-bulkbar-idle). */}
+      <div
+        className={selectedCount > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}
+        role="toolbar"
+        aria-label="Bulk actions"
+        aria-hidden={selectedCount === 0 ? 'true' : undefined}
+      >
           <span className="chq-bulkbar-count">{selectedCount} selected</span>
           <span className="chq-bulkbar-note">Kept across pages · sent in batches of 100</span>
           <div className="chq-bulkbar-actions">
@@ -65,7 +71,6 @@ export function ContactsTable({
             </button>
           </div>
         </div>
-      )}
 
       {settledEmpty ? (
         <EmptyState

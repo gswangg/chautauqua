@@ -273,9 +273,16 @@ describe('SubmissionsPage render smoke', () => {
       expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
     });
 
-    expect(screen.queryByText('Kept across pages · sent in batches of 100')).not.toBeInTheDocument();
+    // User-filed contract change: the bar is ALWAYS mounted so first
+    // selection cannot shift the table — idle it is aria-hidden and
+    // invisible (visibility), so it is absent from the accessibility tree
+    // but its geometry stays reserved.
+    expect(screen.queryByRole('toolbar', { name: 'Bulk actions' })).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-bulkbar-idle')).not.toBeNull();
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select S-001' }));
+
+    expect(document.querySelector('.chq-bulkbar-idle')).toBeNull();
 
     expect(screen.getByText('Kept across pages · sent in batches of 100')).toBeInTheDocument();
     expect(screen.getByText('1 selected')).toBeInTheDocument();
