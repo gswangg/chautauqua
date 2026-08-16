@@ -629,6 +629,40 @@ describe('AgendaPage render smoke', () => {
     });
   });
 
+  // DEC-615 (wave 69 amendment): 'changed_during_run' is a full member of
+  // the server UnplacedReason union (src/domain/schedule.ts) that had no
+  // label in the SPA's old hand-widened Record, rendering "N undefined" in
+  // this toast. It must now render an honest label with no "undefined".
+  it('auto-schedule toast names changed_during_run with no "undefined"', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      [`POST /api/v1/events/${EVENT_ID}/agenda/auto-schedule`]: {
+        ...agendaPayload(),
+        summary: { unplaced: 1, conflicts: 0, placed: 2, total: 3 },
+        unplacedReasons: [
+          { submissionId: 'sub-3', reason: 'changed_during_run', durationMin: 30, detail: 'Changed mid-run.' },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auto-schedule' }));
+
+    await waitFor(() => {
+      const toast = screen.getByRole('status');
+      expect(toast.textContent).toMatch(/^Auto-schedule placed no sessions: 1 /);
+      expect(toast.textContent).not.toMatch(/undefined/i);
+    });
+  });
+
   // DEC-701/J9 warn-never-block: an occupied cell must still accept a
   // placement through the accessible (click) path, not just drag-drop --
   // it's a real button whose accessible name states the clash count.

@@ -58,8 +58,10 @@ export interface AgendaSummary {
 
 // DEC-615: closed vocabulary mirroring src/domain/schedule.ts's
 // UnplacedReason — the SPA never invents a reason, it only renders one
-// already computed server-side.
-export type UnplacedReason = 'no_rooms_configured' | 'duration_exceeds_day' | 'no_free_slot' | 'speaker_double_booked';
+// already computed server-side. Re-exported from the schedule-vocabulary
+// crossing module so this type can never drift from the server union.
+import type { UnplacedReason } from '../../lib/schedule-vocabulary';
+export type { UnplacedReason };
 
 export interface DescribedUnplaced {
   submissionId: string;
