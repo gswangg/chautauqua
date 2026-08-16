@@ -68,42 +68,60 @@ const DEFAULT_BRANDING: PortalBranding = {
  * never from an unverified request param.
  */
 export async function getPortalData(db: Db, contactId: string, orgId: string): Promise<PortalData> {
-  const contactRows = await db
-    .select({
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      company: schema.contact.company,
-    })
-    .from(schema.contact)
-    .where(eq(schema.contact.id, contactId))
-    .limit(1);
+  // WAVE 1 (DEC-370 wave-62 amendment): contactRows, submissionRows and
+  // taskRows are mutually independent — only the branding read below
+  // depends on submissionRows[0].eventId, so it stays its own wave.
+  const [contactRows, submissionRows, taskRows] = await Promise.all([
+    db
+      .select({
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        company: schema.contact.company,
+      })
+      .from(schema.contact)
+      .where(eq(schema.contact.id, contactId))
+      .limit(1),
+    db
+      .select({
+        id: schema.submission.id,
+        seq: schema.submission.seq,
+        title: schema.submission.title,
+        status: schema.submission.status,
+        createdAt: schema.submission.createdAt,
+        eventId: schema.event.id,
+        eventName: schema.event.name,
+        recordPrefix: schema.event.recordPrefix,
+        timezone: schema.event.timezone,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+      .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+      .where(
+        and(
+          eq(schema.participant.contactId, contactId),
+          eq(schema.event.orgId, orgId),
+          inArray(schema.participant.inviteStatus, PORTAL_VISIBLE_INVITE_STATUSES),
+        ),
+      )
+      .orderBy(desc(schema.submission.createdAt)),
+    db
+      .select({
+        id: schema.taskAssignment.id,
+        status: schema.taskAssignment.status,
+        title: schema.task.title,
+        dueDate: schema.task.dueDate,
+        required: schema.task.required,
+        eventOrgId: schema.event.orgId,
+        timezone: schema.event.timezone,
+      })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+      .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
+      .where(and(eq(schema.taskAssignment.contactId, contactId), eq(schema.event.orgId, orgId))),
+  ]);
   const contactRow = contactRows[0];
   const contactName = contactRow ? `${contactRow.firstName} ${contactRow.lastName}`.trim() : "";
   const contactCompany = contactRow?.company ?? null;
-
-  const submissionRows = await db
-    .select({
-      id: schema.submission.id,
-      seq: schema.submission.seq,
-      title: schema.submission.title,
-      status: schema.submission.status,
-      createdAt: schema.submission.createdAt,
-      eventId: schema.event.id,
-      eventName: schema.event.name,
-      recordPrefix: schema.event.recordPrefix,
-      timezone: schema.event.timezone,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .where(
-      and(
-        eq(schema.participant.contactId, contactId),
-        eq(schema.event.orgId, orgId),
-        inArray(schema.participant.inviteStatus, PORTAL_VISIBLE_INVITE_STATUSES),
-      ),
-    )
-    .orderBy(desc(schema.submission.createdAt));
 
   const submissions: PortalSubmissionSummary[] = submissionRows.map((row) => {
     const status = row.status as SubmissionStatus;
@@ -117,21 +135,6 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
       timezone: row.timezone,
     };
   });
-
-  const taskRows = await db
-    .select({
-      id: schema.taskAssignment.id,
-      status: schema.taskAssignment.status,
-      title: schema.task.title,
-      dueDate: schema.task.dueDate,
-      required: schema.task.required,
-      eventOrgId: schema.event.orgId,
-      timezone: schema.event.timezone,
-    })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-    .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
-    .where(and(eq(schema.taskAssignment.contactId, contactId), eq(schema.event.orgId, orgId)));
 
   const tasks: PortalTask[] = taskRows.map((row) => ({
     id: row.id,
@@ -272,46 +275,54 @@ export async function getPortalSubmissionDetail(
   // invariant, same DEC-026 wave-43 pattern as mergeOnePair.
   if (!row || row.eventOrgId !== orgId) return null;
 
-  const formatRows = await db
-    .select({ valueJson: schema.submissionAnswer.valueJson })
-    .from(schema.submissionAnswer)
-    .where(
-      and(
-        eq(schema.submissionAnswer.submissionId, submissionId),
-        answerFieldRoleCondition("session_format"),
+  // WAVE 2 (DEC-370 wave-62 amendment): the scope row above is the only
+  // gate (its WHERE proves ownership and returns null on miss) — these four
+  // reads are all keyed by submissionId alone, so they run concurrently.
+  // Array order matches the prior sequential order.
+  const [formatRows, participantRows, answerRows, trackNames] = await Promise.all([
+    db
+      .select({ valueJson: schema.submissionAnswer.valueJson })
+      .from(schema.submissionAnswer)
+      .where(
+        and(
+          eq(schema.submissionAnswer.submissionId, submissionId),
+          answerFieldRoleCondition("session_format"),
+        ),
+      )
+      .limit(1),
+    db
+      .select({ contactId: schema.participant.contactId, inviteStatus: schema.participant.inviteStatus })
+      .from(schema.participant)
+      .where(
+        and(
+          eq(schema.participant.submissionId, submissionId),
+          inArray(schema.participant.inviteStatus, PORTAL_VISIBLE_INVITE_STATUSES),
+        ),
       ),
-    )
-    .limit(1);
+    db
+      .select({
+        fieldId: schema.submissionAnswer.formFieldId,
+        label: schema.formField.label,
+        valueJson: schema.submissionAnswer.valueJson,
+      })
+      .from(schema.submissionAnswer)
+      .innerJoin(schema.formField, eq(schema.submissionAnswer.formFieldId, schema.formField.id))
+      .where(eq(schema.submissionAnswer.submissionId, submissionId))
+      .orderBy(asc(schema.formField.position), asc(schema.formField.id)),
+    loadTrackNamesBySubmission(db, [submissionId]),
+  ]);
+
   const formatParsed: unknown = formatRows[0] ? JSON.parse(formatRows[0].valueJson) : null;
   const format = typeof formatParsed === "string" && formatParsed.length > 0 ? formatParsed : null;
 
-  const participantRows = await db
-    .select({ contactId: schema.participant.contactId, inviteStatus: schema.participant.inviteStatus })
-    .from(schema.participant)
-    .where(
-      and(
-        eq(schema.participant.submissionId, submissionId),
-        inArray(schema.participant.inviteStatus, PORTAL_VISIBLE_INVITE_STATUSES),
-      ),
-    );
   const participantContactIds = participantRows.map((p) => p.contactId);
-  // DEC-962 (wave 47 amendment): submissionOwnedByContact in the main
-  // query's WHERE above already proved contactId is a
+  // DEC-962 (wave 47 amendment; DEC-370 wave-62 amendment): submissionOwnedByContact
+  // in the main query's WHERE above already proved contactId is a
   // PORTAL_VISIBLE_INVITE_STATUSES participant of this submission — this
   // recheck can never fire. Kept as a fail-loud invariant (same null
-  // return), same DEC-026 wave-43 pattern as mergeOnePair.
+  // return), evaluated in source order after wave 2 resolves, same
+  // DEC-026 wave-43 pattern as mergeOnePair.
   if (!isOwnedByContact(participantContactIds, contactId)) return null;
-
-  const answerRows = await db
-    .select({
-      fieldId: schema.submissionAnswer.formFieldId,
-      label: schema.formField.label,
-      valueJson: schema.submissionAnswer.valueJson,
-    })
-    .from(schema.submissionAnswer)
-    .innerJoin(schema.formField, eq(schema.submissionAnswer.formFieldId, schema.formField.id))
-    .where(eq(schema.submissionAnswer.submissionId, submissionId))
-    .orderBy(asc(schema.formField.position), asc(schema.formField.id));
 
   const answers: PortalSubmissionAnswer[] = answerRows.map((a) => ({
     fieldId: a.fieldId,
@@ -319,7 +330,6 @@ export async function getPortalSubmissionDetail(
     value: JSON.parse(a.valueJson),
   }));
 
-  const trackNames = await loadTrackNamesBySubmission(db, [submissionId]);
   const trackName = trackNames.get(submissionId)?.[0] ?? null;
 
   const status = row.status as SubmissionStatus;
