@@ -61,6 +61,55 @@ live tree this task, not inherited from a prior wave's claim:
   (`accept={...}`) and `:168` (`uploadHintText(...)`) derive from — one
   source, cannot drift.
 
+## GATE-12 VERDICTS — FREEZE-BLOCKING FIX LANE (fidelity-gate12/group{1,2,3}.md; freeze candidate d4584747; integrity CLEAN x3)
+
+**Scoreboard: 01/04/05/10 PASS · 03/06/07/08/11/13 MINOR · 02/09/12 MAJOR — not
+yet all-PASS. Scale-or-Choice CONFIRMED E2E (all layers, 409s on frozen-type,
+shares 60/40). Docs site MINOR on its FIRST audit; both fixed captions verified
+truthful against real screens.**
+
+**ORCHESTRATOR IS TAKING (named one-liners, do not double-fix):**
+- 12-home content-box 558→732: .chq-home-body missing width:100% (group1 named it).
+- §09 M1: capacity/name inputs 178px — inputs lack width:100% inside the fixed
+  tracks (track itself already 110).
+- CFP builder reading column: add the internal padding so content-box = 756
+  inside the 820 container (frame 422–1178).
+
+**SWARM LANE (priority order):**
+1. §06 Breaks "Location · optional" row: DELETE IT — it contradicts the design's
+   own semantic ("a break blocks every room at once", ruling + frame draw 3
+   fields). Remove from add+edit forms + tests. Also nudge Done to the frame's
+   left cluster (minor).
+2. §07 batch-row send grammar: wire `skipped` into the history row ("14 sent ·
+   1 skipped") — grammar exists for failed, unwired for skipped; expansion too.
+3. §09 M5+M4 CFP edit view to frame 09--10: add Form name + Time zone controls
+   + the Questions-builder link; stop binding the intro textarea to the seeded
+   `description` string (bind the real CFP intro field).
+4. §09 M2 destructive footer: implement "Close the form now" (09--10 far-left
+   destructive — small, well-defined: sets close to now via existing PATCH).
+   "Archive this event" (09--11) is a NEW capability — DO NOT build it in the
+   freeze window; recorded as a documented deviation (roadmap) unless the user
+   says otherwise.
+5. §08 new-contact modal residue: primary verb "Add the contact", subtitle
+   ("Added to the org, not to an event"), two-up name row per frame (not 506w
+   stacked singles), neutral placeholders (not example people).
+6. Group-1 minors: frozen-criteria caption adds "type"; frozen Choice row cells
+   ("Recorded as a spread, not averaged / Choice / Not scored"); distribution
+   into the footer mean slot w/ 16px inset; FieldModal condition row to frame
+   ("IS" head, 3-col rule row, "N of 40" counter, "Save the question"/"Delete
+   this question" labels); home CTA 120ms colour transition.
+7. §13 docs prose truth: recusal copy — the APP offers Undo (verified 201/204),
+   the caption claims "permanent step-aside". FIX THE PROSE to describe the
+   real semantics (undoable until the window closes / whatever the route
+   actually enforces — read it); recusal control location wording ("on the
+   scorecard", not "directly in the queue"); figure-01 "on the right" → what
+   the screen shows. Docs shell extras (sidebar/search/prev-next) = MINOR,
+   build only if cheap.
+
+Closures measured, as always. When this lane is dry → FREEZE (shoot + deploy +
+final run).
+
+
 ## V12 DESIGN INTAKE (2026-08-16 morning) — authority now design-frames-v12 (158 frames; 13 sections incl. NEW 13-docs)
 
 Vendored: NEW `Chautauqua Docs.dc.html` + changed Review + DESIGN-RULINGS + README
