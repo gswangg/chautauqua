@@ -101,6 +101,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
 
   async function addResource(): Promise<boolean> {
     if (!eventId) return false;
+    setError(undefined);
     const errors = validateResourceForm(newResource);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return false;
@@ -172,6 +173,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
 
   async function saveEdit(resource: Resource) {
     if (!eventId) return;
+    setError(undefined);
     const form = editing[resource.id];
     if (!form) return;
     const isWiki = resource.kind === 'wiki';
@@ -192,6 +194,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
   async function confirmDeleteResource() {
     if (!eventId || !pendingDelete) return;
     setDeleting(true);
+    setError(undefined);
     try {
       await apiDelete(`/resources/${pendingDelete.id}`);
       setPendingDelete(null);

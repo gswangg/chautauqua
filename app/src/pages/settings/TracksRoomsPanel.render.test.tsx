@@ -614,6 +614,78 @@ describe('TracksRoomsPanel', () => {
     expect(summaryLink).toHaveAttribute('href', '#chq-new-room-name');
   });
 
+  // DEC-856 amendment (wave 69): the page-level banner is a REFUSAL, not a
+  // sticky log -- a write handler clears it as its first statement, so a
+  // successful Add that follows a failed one never renders beside a stale
+  // error.
+  it('clears the page-level error banner on a write that succeeds after one that failed', async () => {
+    let calls = 0;
+    const fetchMock = mockTracksRooms({
+      [`POST /api/v1/events/${EVENT_ID}/tracks`]: () => {
+        calls += 1;
+        if (calls === 1) {
+          return { status: 500, body: { error: { code: 'internal', message: 'Server exploded' } } };
+        }
+        return { status: 200, body: { id: 'trk-new', name: 'New Track', color: '#4338ca', submissionCount: 0 } };
+      },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    fireEvent.click(within(section).getByRole('button', { name: 'Add a track' }));
+    fireEvent.change(within(section).getByPlaceholderText('New track name'), {
+      target: { value: 'New Track' },
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Add track' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Server exploded');
+    });
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Add track' }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'POST'))
+        .toHaveLength(2);
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  // DEC-856 (wave 65): a fields-map refusal never collapses into the
+  // page-level banner -- it routes to the per-field control (and the
+  // ErrorSummary anchor) instead, so the two error surfaces never fire for
+  // the same refusal.
+  it('a fields-map refusal routes to the per-field control, never the page-level banner', async () => {
+    mockTracksRooms({
+      [`POST /api/v1/events/${EVENT_ID}/rooms`]: {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Invalid room', fields: { name: 'Required' } } },
+      },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    fireEvent.click(within(section).getByRole('button', { name: 'Add a room' }));
+    fireEvent.click(within(section).getByRole('button', { name: 'Add room' }));
+
+    await waitFor(() => {
+      expect(within(section).getAllByText('Required').length).toBeGreaterThan(0);
+    });
+    const nameInput = within(section).getByPlaceholderText('New room name');
+    expect(nameInput).toHaveClass('chq-field-invalid');
+    // The page-level banner (a bare <p role="alert">, distinct from the
+    // per-field <span role="alert">s) never fires for a fields-map refusal.
+    expect(section.querySelector('p[role="alert"]')).not.toBeInTheDocument();
+  });
+
   it('Done clears the URL drill state and returns to the read-only summary', async () => {
     mockTracksRooms();
     render(

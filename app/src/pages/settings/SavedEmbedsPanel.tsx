@@ -113,6 +113,7 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
   }
 
   async function handleToggle(embed: SavedEmbed) {
+    setError(undefined);
     setRowFieldErrors((prev) => ({ ...prev, [embed.id]: {} }));
     try {
       await apiPatch(`/embeds/${embed.id}`, { enabled: !embed.enabled });
@@ -140,6 +141,7 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
 
   async function handleDelete(embed: SavedEmbed) {
     setDeleting(true);
+    setError(undefined);
     setRowFieldErrors((prev) => ({ ...prev, [embed.id]: {} }));
     try {
       await apiDelete(`/embeds/${embed.id}`);
