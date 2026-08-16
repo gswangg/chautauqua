@@ -23,15 +23,30 @@
 // rows (name + role, one per person) instead of a count-only summary. The
 // interactive directory (invite, per-row role change, reset password, scope
 // cell) still lives entirely behind 'Change'.
-import { useEffect, useState, type FormEvent } from 'react';
+//
+// DEC-747 amendment (wave 58): POST /api/v1/users creates the account
+// IMMEDIATELY -- there is no invitation, no pending state -- so the create
+// form's primary reads 'Create the account', the role field states each
+// role's consequence, the created screen carries the reveal-once password
+// with a Copy control that reports success/failure (never a silent
+// clipboard failure, same shape as ApiTokensPanel's), the email_log gap is
+// stated honestly, a rejected duplicate offers a route to the existing
+// row instead of retyping, and a reset states the two facts unique to it
+// (sessions end everywhere, no email is sent). DESIGN-RULINGS.md:353,
+// 358-366 is the frame authority.
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useMe } from '../../lib/useMe';
+import { copyText } from '../../lib/clipboard';
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
 import { capitalizeFirst } from '../../lib/plural';
 import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
+import { DEC_747 } from '../../../../src/decisions';
+
+void DEC_747; // the invite/reset flows below implement wave-58's amendment: verb-matches-act, reveal-once shape, honest email gap
 
 const SECTION_KEY = 'people';
 
@@ -69,7 +84,20 @@ export function PeopleRolesPanel() {
   const [newLastName, setNewLastName] = useState('');
   const [newRole, setNewRole] = useState<Role>('reviewer');
   const [creating, setCreating] = useState(false);
-  const [revealedPassword, setRevealedPassword] = useState<{ email: string; password: string } | null>(null);
+  // DEC-747 amendment (wave 58): the reveal-once screen carries a `context`
+  // so the closing facts can differ -- the invite path states the
+  // email_log gap, the reset path states session revocation + no-email.
+  const [revealedPassword, setRevealedPassword] = useState<{
+    email: string;
+    password: string;
+    context: 'invite' | 'reset';
+  } | null>(null);
+  const [copyResult, setCopyResult] = useState<{ ok: boolean } | null>(null);
+  const failedCopyRef = useRef<HTMLInputElement | null>(null);
+  // DEC-747 amendment (wave 58): a rejected duplicate email offers a route
+  // to the existing row instead of making the organizer retype -- resolved
+  // against the already-loaded `users` list, never a second fetch.
+  const [duplicateUser, setDuplicateUser] = useState<OrgUser | null>(null);
 
   const [resetTargetId, setResetTargetId] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
@@ -109,6 +137,7 @@ export function PeopleRolesPanel() {
     setCreating(true);
     setError(null);
     setFieldErrors({});
+    setDuplicateUser(null);
     try {
       const res = await apiPost<{ email: string; password: string }>('/users', {
         email: newEmail.trim(),
@@ -116,7 +145,7 @@ export function PeopleRolesPanel() {
         firstName: newFirstName.trim(),
         lastName: newLastName.trim(),
       });
-      setRevealedPassword({ email: res.email, password: res.password });
+      setRevealedPassword({ email: res.email, password: res.password, context: 'invite' });
       setNewEmail('');
       setNewFirstName('');
       setNewLastName('');
@@ -128,9 +157,24 @@ export function PeopleRolesPanel() {
         setFieldErrors(err.fields);
       }
       setError(err instanceof ApiError ? err.message : 'Failed to invite');
+      // DEC-747 amendment (wave 58): a conflict on the email field is a
+      // duplicate account -- resolve it against the already-loaded list so
+      // the row-out link can name and focus it.
+      if (err instanceof ApiError && err.code === 'conflict' && err.fields?.email) {
+        const submitted = newEmail.trim().toLowerCase();
+        setDuplicateUser(users.find((u) => u.email.toLowerCase() === submitted) ?? null);
+      }
     } finally {
       setCreating(false);
     }
+  }
+
+  function openDuplicateRow() {
+    if (!duplicateUser) return;
+    setInviting(false);
+    const el = document.getElementById(`people-row-${duplicateUser.id}`);
+    el?.focus();
+    el?.scrollIntoView?.({ block: 'center' });
   }
 
   async function handleResetConfirm(user: OrgUser) {
@@ -138,7 +182,7 @@ export function PeopleRolesPanel() {
     setError(null);
     try {
       const res = await apiPost<{ email: string; password: string }>(`/users/${user.id}/reset-password`);
-      setRevealedPassword({ email: res.email, password: res.password });
+      setRevealedPassword({ email: res.email, password: res.password, context: 'reset' });
       setResetTargetId(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to reset password');
@@ -146,6 +190,20 @@ export function PeopleRolesPanel() {
       setResetting(false);
     }
   }
+
+  async function handleCopyPassword() {
+    if (!revealedPassword) return;
+    const ok = await copyText(revealedPassword.password);
+    setCopyResult({ ok });
+    if (ok) window.setTimeout(() => setCopyResult(null), 2000);
+  }
+
+  useEffect(() => {
+    if (copyResult && !copyResult.ok) {
+      failedCopyRef.current?.focus();
+      failedCopyRef.current?.select();
+    }
+  }, [copyResult]);
 
   // DEC-691 amendment (findings wave 5): the ROLE cell IS the select at
   // rest, so a change commits immediately -- write the row optimistically,
@@ -218,21 +276,72 @@ export function PeopleRolesPanel() {
         </button>
       </div>
 
-      {error && <div className="chq-error" role="alert">{error}</div>}
+      {error && (
+        <div className="chq-error" role="alert">
+          {error}
+          {duplicateUser ? (
+            <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
+              Open {personLabel(duplicateUser)}&apos;s row
+            </button>
+          ) : null}
+        </div>
+      )}
 
       {revealedPassword && (
         <div className="chq-token-reveal" role="alert">
           <strong>
             One-time password for {revealedPassword.email} — copy it now, it will not be shown again:
           </strong>
-          <code>{revealedPassword.password}</code>
+          <code className="chq-settings-people-password">{revealedPassword.password}</code>
           <button
             type="button"
             className="chq-btn chq-btn-secondary"
-            onClick={() => setRevealedPassword(null)}
+            onClick={() => void handleCopyPassword()}
+          >
+            {copyResult?.ok ? 'Copied!' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            onClick={() => {
+              setRevealedPassword(null);
+              setCopyResult(null);
+            }}
           >
             Done
           </button>
+          <div role="status" aria-live="polite" className="chq-copy-status">
+            {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
+          </div>
+          {copyResult && !copyResult.ok ? (
+            <input
+              ref={failedCopyRef}
+              className="chq-input"
+              readOnly
+              value={revealedPassword.password}
+              onFocus={(e) => e.currentTarget.select()}
+              aria-label="One-time password to copy manually"
+            />
+          ) : null}
+          <p className="chq-settings-people-closing-note">
+            Closing this dialog is the last time you see it — after that only a reset can replace it.
+          </p>
+          {revealedPassword.context === 'invite' ? (
+            <p className="chq-settings-people-closing-note">
+              The welcome email is logged against this org&apos;s first event (email_log requires one) — an org
+              with no events yet gets a working account and no email, so you&apos;ll need to pass the password on
+              yourself.
+            </p>
+          ) : (
+            <>
+              <p className="chq-settings-people-closing-note">
+                Every session signed in as {revealedPassword.email} is ended — they are signed out everywhere.
+              </p>
+              <p className="chq-settings-people-closing-note">
+                Resetting sends no email; pass the new password on yourself.
+              </p>
+            </>
+          )}
         </div>
       )}
 
@@ -241,6 +350,10 @@ export function PeopleRolesPanel() {
         // inside SettingsEditForm's own <form> (DEC-896/B10), and nested
         // <form> elements are invalid HTML.
         <div className="chq-settings-row">
+          <p className="chq-settings-row-hint">
+            This creates the account immediately — the password appears on the next screen, so nobody waits for
+            an acceptance that will never come.
+          </p>
           <label htmlFor="people-invite-first-name">
             First name
             <input
@@ -277,18 +390,33 @@ export function PeopleRolesPanel() {
             />
           </label>
           {fieldErrors.email ? <span role="alert">{fieldErrors.email}</span> : null}
-          <label htmlFor="people-invite-role">
-            Role
-            <select
-              id="people-invite-role"
-              className="chq-select"
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value as Role)}
-            >
-              <option value="reviewer">Reviewer</option>
-              <option value="organizer">Organizer</option>
-            </select>
-          </label>
+          <div>
+            <span id="people-invite-role-label">Role</span>
+            <div className="chq-chipstrip" role="radiogroup" aria-labelledby="people-invite-role-label">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={newRole === 'reviewer'}
+                className={newRole === 'reviewer' ? 'chq-pill is-active' : 'chq-pill'}
+                onClick={() => setNewRole('reviewer')}
+              >
+                Reviewer
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={newRole === 'organizer'}
+                className={newRole === 'organizer' ? 'chq-pill is-active' : 'chq-pill'}
+                onClick={() => setNewRole('organizer')}
+              >
+                Organizer
+              </button>
+            </div>
+            <p className="chq-settings-row-hint">
+              a reviewer sees only the plans they are assigned to &middot; an organiser sees everything, including
+              this page
+            </p>
+          </div>
           {fieldErrors.role ? <span role="alert">{fieldErrors.role}</span> : null}
           <button
             type="button"
@@ -301,7 +429,7 @@ export function PeopleRolesPanel() {
               newLastName.trim().length === 0
             }
           >
-            {creating ? 'Inviting…' : 'Send invite'}
+            {creating ? 'Creating…' : 'Create the account'}
           </button>
         </div>
       )}
@@ -325,7 +453,13 @@ export function PeopleRolesPanel() {
                 const label = personLabel(user);
                 const hasName = Boolean(user.name && user.name.trim());
                 return (
-                  <li key={user.id} className="chq-settings-people-row" role="row">
+                  <li
+                    key={user.id}
+                    id={`people-row-${user.id}`}
+                    tabIndex={-1}
+                    className="chq-settings-people-row"
+                    role="row"
+                  >
                     <div className="chq-settings-people-identity" role="cell">
                       <span className="chq-settings-people-name">{label}</span>
                       {hasName && <span className="chq-settings-people-email">{user.email}</span>}

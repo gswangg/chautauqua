@@ -456,6 +456,17 @@
   margin: 6px 0 0;
 }
 
+/* DEC-747 amendment (wave 58): the one-time password on the invite/reset
+   reveal-once screen -- 20px monospace, larger than the generic
+   .chq-token-reveal <code> (12px) it's nested inside, so the value that
+   actually has to be typed elsewhere reads at a size that survives a
+   glance. */
+.chq-settings-people-password {
+  display: block;
+  font-size: 20px;
+  margin: 8px 0;
+}
+
 /* DEC-402: page-prefixed second classes so each table is addressable by
    this stylesheet without redefining the shared .chq-table rules above,
    which already cover both tables' desktop and phone-card treatment via

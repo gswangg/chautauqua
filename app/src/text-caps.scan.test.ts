@@ -98,6 +98,11 @@ const EXEMPTIONS: Exemption[] = [
     reason: 'read-only copy-fallback echo of an already-minted token, not user input',
   },
   {
+    file: 'pages/settings/PeopleRolesPanel.tsx',
+    control: 'One-time password to copy manually',
+    reason: 'read-only copy-fallback echo of an already-generated password (DEC-747 wave 58), not user input',
+  },
+  {
     file: 'pages/settings/SessionboardImportPanel.tsx',
     control: 'name,email,company...',
     reason: 'bounded in bytes via MAX_IMPORT_CSV_BYTES (TextEncoder), not chars',
