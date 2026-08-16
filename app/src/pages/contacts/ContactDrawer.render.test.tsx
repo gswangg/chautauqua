@@ -358,10 +358,36 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(fileBody).toMatch(/max-width:\s*100%/);
   });
 
-  // DEC-616 amendment (wave 4): action-bar buttons never wrap at 520px.
-  it('keeps the action bar on one line per button (no wrap)', () => {
+  // DEC-616 wave-70 amendment: the row itself now wraps (with a row-gap)
+  // instead of scrolling horizontally behind a clipping overlay scrollbar
+  // -- per-button nowrap+no-shrink (asserted elsewhere) still keeps each
+  // button's own label on one line.
+  it('lets the action bar wrap, with no horizontal overflow', () => {
     const body = topLevelRuleBody(CONTACTS_CSS, '.chq-contacts-drawer-actions');
-    expect(body).toMatch(/flex-wrap:\s*nowrap/);
+    expect(body).toMatch(/flex-wrap:\s*wrap/);
+    expect(body).not.toMatch(/overflow-x/);
+  });
+
+  // DEC-616 wave-70 amendment: the scope sentence moved onto its own line
+  // above the action bar so it (and Save) can never be clipped past the
+  // drawer's right edge — assert the note is no longer nested inside the
+  // right-hand button group, and Save still is.
+  it('keeps the save-scope note off its own line above the action bar, not inside the button group', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    const note = dialog.querySelector('.chq-contacts-save-scope-note');
+    expect(note).not.toBeNull();
+    expect(note!.closest('.chq-contacts-drawer-actions-right')).toBeNull();
+
+    const saveButton = within(dialog).getByRole('button', { name: 'Save' });
+    expect(saveButton.closest('.chq-contacts-drawer-actions-right')).not.toBeNull();
   });
 
   // DEC-366: .chq-btn-tertiary already carries the design-system olive
