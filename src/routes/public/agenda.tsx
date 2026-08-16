@@ -31,6 +31,7 @@ import { DaySwitcher, ItinerarySearchForm, agendaQs } from "./agenda-controls";
 import { ItineraryScript } from "./agenda-itinerary-script";
 import { AgendaRail, ScheduleRail, realRoomsInUse } from "./agenda-rail";
 import { PublicEmptyState } from "./empty-state";
+import { embedKnobQuery } from "../../lib/embed-knobs";
 
 export { AgendaDayGrid } from "./agenda-grid";
 export { AgendaItemList } from "./agenda-list";
@@ -121,6 +122,11 @@ export function AgendaContent(props: {
   // DEC-022 amendment (wave 63): breaks, keyed by the same 'YYYY-MM-DD' day
   // string groupByDay() below groups `items` on.
   breaksByDay?: Map<string, ScheduleBreak[]>;
+  // DEC-489 (wave-54 amendment): the /embed accent override -- threaded
+  // through to DaySwitcher/ItinerarySearchForm so every out-link they render
+  // carries it forward. null/absent outside an embed (the /e/ full-chrome
+  // surface has no per-request accent to carry).
+  accent?: string | null;
 }) {
   const byDay = groupByDay(props.items);
   const renderedDays = new Set(byDay.keys());
@@ -176,6 +182,8 @@ export function AgendaContent(props: {
           activeDay={props.activeDay}
           trackId={props.highlightTrackId}
           q={props.q}
+          embed={props.embed}
+          accent={props.accent}
         />
       </div>
       <div class="chq-pub-agenda-layout">
@@ -190,6 +198,9 @@ export function AgendaContent(props: {
             activeDay={props.activeDay ?? null}
             q={props.q ?? null}
             basePath={basePath}
+            surface="agenda"
+            embed={props.embed}
+            accent={props.accent}
           />
           {byDay.size === 0 ? (
             // DEC-768/DEC-919 (wave 51 amendment): "this day has no matches
@@ -362,11 +373,17 @@ export function ScheduleContent(props: {
   highlightTrackId?: string | null;
   q?: string | null;
   breaksByDay?: Map<string, ScheduleBreak[]>;
+  // DEC-489 (wave-54 amendment): threaded into the one internal out-link
+  // this frame renders (the sessions surface's own declared knob set is what
+  // decides whether it's spent, via embedKnobQuery -- same idiom as
+  // agenda-controls.tsx).
+  accent?: string | null;
 }) {
   const byDay = groupByDay(props.items);
   const days = [...byDay.keys()].sort();
   const base: SurfaceBase = props.embed ? "/embed" : "/e";
   const sessionsPath = surfacePath(props.event, "sessions", base);
+  const sessionsQs = props.embed ? embedKnobQuery("sessions", { accent: props.accent }) : "";
   return (
     <>
       <div class="chq-pub-schedule-layout">
@@ -380,7 +397,7 @@ export function ScheduleContent(props: {
             </div>
             {/* DEC-838: an out-link off this surface gets the shared accent-
                 bound class, same as the "Show more"/"Back to" links. */}
-            <a class="chq-pub-schedule-browse-link chq-pub-accent-link" href={sessionsPath}>
+            <a class="chq-pub-schedule-browse-link chq-pub-accent-link" href={sessionsQs ? `${sessionsPath}?${sessionsQs}` : sessionsPath}>
               Browse all sessions ›
             </a>
           </div>

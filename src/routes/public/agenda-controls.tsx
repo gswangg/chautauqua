@@ -11,9 +11,17 @@ import { PublicSearchBox } from "./filters";
 // query-param contract (DEC-919) and is the ONE place a scheduled day is
 // named on the itinerary surfaces (DEC-768) -- referenced here so both
 // dependencies are compile-checked (src/decisions.ts).
-import { DEC_919, DEC_768 } from "../../decisions";
+import { DEC_919, DEC_768, DEC_489 } from "../../decisions";
 void DEC_919;
 void DEC_768;
+void DEC_489;
+
+// DEC-489 (wave-54 amendment): agenda/schedule's declared knob set includes
+// `accent` (src/lib/embed-knobs.ts) — every out-link this module renders
+// must carry it forward inside an embed, or a branded iframe reverts to the
+// event default on the visitor's first click (day switch, clear-highlight,
+// or the search/highlight GET forms below).
+import { embedKnobQuery } from "../../lib/embed-knobs";
 
 // DEC-851 (wave 64 amendment): the ONE param-composition rule for every
 // itinerary-surface out-link (day pills, the track highlight select's Clear
@@ -23,9 +31,19 @@ void DEC_768;
 // longer a knob these two surfaces compose at all (superseded amendment: it
 // was never an agenda facet worth honouring here, and track is a highlight
 // now, not a filter — see the amendment text on DEC-851 for the ruling).
+// DEC-489 (wave-54 amendment): `embedCtx` is optional, third-parameter
+// plumbing so agendaQs's other call sites (agenda.tsx's next-day footer link
+// and its filtered/fresh empty-state escape hrefs) keep composing exactly
+// as before -- only DaySwitcher's day pills and ItinerarySearchForm's Clear
+// link (below) pass it, since those are the two out-links this wave owns.
+// `accent` is appended through the surface's own declared knob set
+// (embedKnobQuery), never hand-appended, so a surface that doesn't declare
+// `accent` (none currently exist, but the guard survives a future table
+// edit) silently drops it instead of emitting a param the reader ignores.
 export function agendaQs(
   current: { day?: string | null; trackId?: string | null; q?: string | null },
   override: { day?: string | null; trackId?: string | null; q?: string | null } = {},
+  embedCtx?: { surface: "agenda" | "schedule"; accent?: string | null } | null,
 ): string {
   const day = override.day !== undefined ? override.day : (current.day ?? null);
   const trackId = override.trackId !== undefined ? override.trackId : (current.trackId ?? null);
@@ -34,6 +52,10 @@ export function agendaQs(
   if (day) parts.push(`day=${day}`);
   if (trackId) parts.push(`trackId=${encodeURIComponent(trackId)}`);
   if (q) parts.push(`q=${encodeURIComponent(q)}`);
+  if (embedCtx) {
+    const extra = embedKnobQuery(embedCtx.surface, { accent: embedCtx.accent });
+    if (extra) parts.push(extra);
+  }
   return parts.length > 0 ? `?${parts.join("&")}` : "";
 }
 
@@ -55,8 +77,13 @@ export function DaySwitcher(props: {
   activeDay?: string | null;
   trackId?: string | null;
   q?: string | null;
+  // DEC-489 (wave-54 amendment): `embed` gates whether this control's own
+  // out-links carry `accent` forward at all (the /e/ full-chrome surface has
+  // no per-request accent override to carry); `accent` is the value itself.
+  embed?: boolean;
+  accent?: string | null;
 }) {
-  const { days, renderedDays, event, surface, base, activeDay, trackId, q } = props;
+  const { days, renderedDays, event, surface, base, activeDay, trackId, q, embed, accent } = props;
   if (days.length <= 1) return null;
   // DEC-783/DEC-851: a day jump must not silently drop the active
   // q/trackId (highlight) selection — every out-link carries them forward
@@ -80,7 +107,7 @@ export function DaySwitcher(props: {
     <nav aria-label="Jump to day" class="chq-pub-day-switcher">
       {days.map((day) => {
         const isActive = day === effectiveActiveDay;
-        const qs = agendaQs(current, { day });
+        const qs = agendaQs(current, { day }, embed ? { surface, accent } : null);
         const href = renderedDays.has(day)
           ? `${surfacePath(event, surface, base)}${qs}#chq-day-${day}`
           : `${surfacePath(event, surface, base)}${qs}`;
@@ -116,9 +143,16 @@ export function ItinerarySearchForm(props: {
   activeDay: string | null;
   q: string | null;
   basePath: string;
+  // DEC-489 (wave-54 amendment): same plumbing as DaySwitcher above -- which
+  // surface's declared knob set to compose against, whether an accent is
+  // even in play (embed) and the value itself.
+  surface?: "agenda" | "schedule";
+  embed?: boolean;
+  accent?: string | null;
 }) {
-  const { tracks, activeTrackId, activeDay, q, basePath } = props;
+  const { tracks, activeTrackId, activeDay, q, basePath, surface, embed, accent } = props;
   const current = { day: activeDay, trackId: activeTrackId, q };
+  const embedCtx = embed && surface ? { surface, accent } : null;
   // DEC-919 (wave 40 amendment) / DEC-851 (wave 64 amendment): one
   // .chq-pub-filter-row -- the search box first, then the track-highlight
   // control, shared by both AgendaContent and ScheduleContent.
@@ -131,6 +165,7 @@ export function ItinerarySearchForm(props: {
           <>
             {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
             {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
+            {embed && accent ? <input type="hidden" name="accent" value={accent} /> : null}
           </>
         }
       />
@@ -169,12 +204,13 @@ export function ItinerarySearchForm(props: {
         </select>
         {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
         {q ? <input type="hidden" name="q" value={q} /> : null}
+        {embed && accent ? <input type="hidden" name="accent" value={accent} /> : null}
         <button class="chq-visually-hidden" type="submit">
           Highlight
         </button>
       </form>
       {activeTrackId ? (
-        <a class="chq-pub-select-clear" href={`${basePath}${agendaQs(current, { trackId: null })}`}>
+        <a class="chq-pub-select-clear" href={`${basePath}${agendaQs(current, { trackId: null }, embedCtx)}`}>
           Clear
         </a>
       ) : null}

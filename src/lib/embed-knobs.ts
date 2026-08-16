@@ -67,6 +67,44 @@ export function trackKnobMode(surface: EmbedSurface): TrackKnobMode {
   return EMBED_KNOB_TABLE[surface].trackMode;
 }
 
+/** DEC-489 (wave-54 amendment): the value bag a surface's rendered links may
+ * carry forward for `embedKnobQuery` below — one entry per EmbedKnob, using
+ * whichever shape that knob's value naturally takes (a single string for
+ * most, `readonly string[]` for `fields`). */
+export type EmbedKnobValues = Partial<Record<EmbedKnob, string | number | readonly string[] | null | undefined>>;
+
+/** DEC-489 (wave-54 amendment): renders `values` as a `k=v&k=v` query
+ * fragment (no leading '?' or '&') restricted to the knobs `surface`
+ * actually declares, in EMBED_KNOB_TABLE order — a value supplied for a
+ * knob the surface does not honor is silently dropped rather than emitted,
+ * matching saved-embed.tsx's redirect gate (the ONE other place a knob list
+ * is filtered against a surface). `null`/`undefined`/`""`/`[]` values are
+ * skipped (nothing to carry). `fields` joins with ','; `accent` strips any
+ * leading '#' (matching src/routes/public/saved-embed.tsx:93). */
+export function embedKnobQuery(surface: EmbedSurface, values: EmbedKnobValues): string {
+  const knobs = knobsForSurface(surface);
+  const parts: string[] = [];
+  for (const knob of knobs) {
+    const raw = values[knob];
+    if (raw === null || raw === undefined) continue;
+    if (Array.isArray(raw)) {
+      if (raw.length === 0) continue;
+      parts.push(`${knob}=${encodeURIComponent(raw.join(","))}`);
+      continue;
+    }
+    if (knob === "accent") {
+      const accent = String(raw).replace(/^#/, "");
+      if (accent === "") continue;
+      parts.push(`${knob}=${encodeURIComponent(accent)}`);
+      continue;
+    }
+    const value = String(raw);
+    if (value === "") continue;
+    parts.push(`${knob}=${encodeURIComponent(value)}`);
+  }
+  return parts.join("&");
+}
+
 // Back-compat-free direct table export for callers that want the full
 // per-surface knob list keyed by surface (e.g. the SPA's embedSnippet.ts,
 // which re-exports this under its historical name).
