@@ -1,31 +1,23 @@
-# Eval findings — rebased 2026-08-15 (wave 57, task-w57-e)
+# Eval findings — rebased 2026-08-16 (wave 62, task-w62-j)
 
-Verified against `main`/HEAD `50c3fcc4d63239784fdd237f7340a3f648934e31`
-("merge-train w56 repair: portal-edit mock passthrough + Review
-frame-citation drift"), MEASURED_SHA `50c3fcc4`, derived AT THIS TASK'S
-OWN RUNTIME (DEC-069 wave-17/wave-37, DEC-358 rebase rule; this is a
-DOCS-ONLY wave-57 code-wave lane — no gate ran, no `docs/verification-log/
-index/` section filed, per DEC-069). This wave is a MANDATE
-RE-DERIVATION only: it re-runs the four "Recent review-lens findings"
-falsifying checks and the GATE-9 SWEEP VERDICTS census against the live
-tree (see the GATE-9 section below) rather than re-deriving TIER 0-2 in
-full. **The reflog holds multiple campaigns sharing this DEC corpus and
-this task-id namespace** — `task-custodian-w68-4` and `task-w72-a`
-through `-j` exist locally as leftover worktrees from an earlier,
-already-further-along campaign (reached wave 72) and are NOT part of
-this campaign's queue; flagged, not triaged, same as prior waves. Note
-for the NEXT rebase: `main` was observed to advance past this
-MEASURED_SHA (to `590083ed...`, a direct "Gate-8 loss-mine itemized"
-commit) while this task was still reading the tree — normal churn in a
-live swarm, not a correction to the sha pinned above, which is the sha
-this task's own file:line reads were taken against.
+Verified against `main`/HEAD `80a3eac3` ("scribe wave 61"), MEASURED_SHA
+`80a3eac3`, derived AT THIS TASK'S OWN RUNTIME (DEC-069 wave-17/wave-37,
+DEC-358 rebase rule; this is a DOCS-ONLY lane of a wave-62 CODE wave —
+no gate ran, no `docs/verification-log/index/` section filed, per
+DEC-069). This wave is a MANDATE HYGIENE task only: it records a small
+named set of this wave's verified closures with receipts (see the new
+"Wave 62 closures" section in `docs/eval-findings/03-tier0-landed.md`)
+plus two DO-NOT-CHASE rulings; it does not re-derive TIER 0-2 in full
+and does not re-run the wave-57 GATE-9/GATE-10 falsifying checks (those
+sections below are carried unchanged from their own last-stated
+runtime).
 
-COMPACTION per DEC-358's rebase rule: the wave-50 header (pinned to
-`87cee8b9`, seven waves stale) is REPLACED by this one. No per-item
-citation is deleted; the full TIER 0-2 body below this header was not
-re-derived this wave (out of this task's scope) and is carried
-unchanged — treat its own file:line citations as of ITS last stated
-runtime, not this one's.
+COMPACTION per DEC-358's rebase rule: the wave-57 header (pinned to
+`50c3fcc4`, five waves stale) is REPLACED by this one. No per-item
+citation is deleted; the full TIER 0-2 body below this header, and the
+GATE-8/9/10 sections, were not re-derived this wave (out of this task's
+scope) and are carried unchanged — treat their own file:line citations
+as of THEIR last stated runtime, not this one's.
 
 ## Recent review-lens findings — re-derived wave 57 (task-w57-e, at MEASURED_SHA `50c3fcc4`)
 
@@ -80,6 +72,16 @@ live tree this task, not inherited from a prior wave's claim:
 1. ~~Scorecard rail gutter 36 vs 60~~ — swarm commit 2304bbd6 (DEC-939 w57) landed
    AFTER the snapshot; main now reads gap:60px. VERIFY at gate-11, else closed.
 2. `/plans/:id/progress` STILL no measure (x=34 w=1532, ProgressPanel.tsx:118).
+   **CLOSED-WITH-RECEIPT wave 62 (task-w62-j, `main` `80a3eac3`):**
+   `app/src/pages/review/ProgressPanel.tsx` now carries the `chq-measure`
+   token on both the loading branch (`className="chq-page chq-review-page
+   chq-measure"`, `:122`) and the loaded, non-embedded wrapper
+   (`wrapperProps` at `:133`, same class string, comment at `:131` names the
+   820px token explicitly). No unclamped 1532px root remains on this
+   component. This wave did not re-run a render measurement (docs-only, no
+   gate per DEC-069) — the class is present in source; a future lane should
+   confirm the rendered width before restating this row PASS in a gate
+   verdict.
 3. 12-home HOME_MEASURE still 820 (home.css.ts:21) vs frames 732@434 — needs the
    ruling the gate-9 lane asked for; PLUS new: theme.ts:172 `a:hover` paints the
    "Submit a talk" primary's LABEL #3C471F on the #4E5C31 fill = dark-on-dark hover
@@ -102,6 +104,15 @@ live tree this task, not inherited from a prior wave's claim:
 - **ConfirmDialog**: one weight, no type-the-name anywhere (embed/resource/contact
   deletes all render inputs:0); worse, THREE destructive actions fire with NO confirm:
   embed "Turn off", tracks "Remove", admin co-presenter "Remove".
+  **PARTIAL CLOSED-WITH-RECEIPT wave 62 (task-w62-j, `main` `80a3eac3`):**
+  two of the three now open `ConfirmDialog` — tracks/rooms Remove
+  (`app/src/pages/settings/TracksRoomsPanel.tsx:790`, DEC-941 comment at
+  `:128`, `ConfirmDialog` rendered at `:790` with `confirmLabel="Remove"`)
+  and the admin co-presenter Remove
+  (`app/src/pages/submissions/SubmissionDetailPage.tsx:1849`, DEC-941
+  comment at `:367`, `ConfirmDialog` rendered at `:1849` with
+  `confirmLabel="Remove participant"`). The embed "Turn off" site is
+  UNTOUCHED by this receipt — stays open, do not mark closed.
 - **Invite flow vs 09--18/19/20**: inline strip not a dialog; primary "Send invite"
   (must be "Create the account"); reveal 12px mono, no Copy, no last-time line; 409
   lacks "Open <name>'s row". Reset (09--24) omits both facts though the server DOES
@@ -189,6 +200,15 @@ report.json` → areas[].defects + items[].
    title for this batch" and silently attaches every imported org-level contact to a
    synthetic accepted session on the current event — importing into the DIRECTORY must
    be possible with NO event side effects (event attach = explicit opt-in step).
+   **Part (a) CLOSED-WITH-RECEIPT wave 62 (task-w62-j, `main` `80a3eac3`):**
+   `app/src/pages/contacts/ImportWizard.tsx` now gates the event-attach body
+   fields behind an explicit `attachToEvent` boolean state (declared `:108`,
+   read at the submit-body spread `:382` — `...(eventId && attachToEvent ?
+   { eventId, sessionTitle: sessionTitle.trim() } : {})` — and the validation/
+   UI gates at `:366,465,478,664,675`), per DEC-810; importing with the
+   checkbox left off carries no `eventId`/`sessionTitle` and creates no
+   synthetic session. Part (b) (dedup-blindness/same-name+company
+   disposition) is UNTOUCHED by this receipt — stays open, do not mark closed.
    (b) Dedup matches exact email only; same-name+company with a new address mints
    duplicate rows with no pre-import warning — surface a name+company match as a
    pre-import "possible duplicate" disposition (merge-into / import-as-new choice).
@@ -255,6 +275,19 @@ fix after P1 clusters and P2; each needs measured closure):**
     "N placed sessions are not public yet (unapproved content)" with the list.
 20. Deliverable-kind taxonomy lacks Photo/Headshot while the Files library filters
     by a Headshot type — a headshot request must be mis-tagged today. Add the kind.
+    **DO-NOT-CHASE ruling wave 62 (task-w62-j, `main` `80a3eac3`):** WEAKENED by
+    design, not closed. `src/routes/files.ts:72-77` (`LIBRARY_KIND_TOKENS =
+    [...FILE_KINDS, HEADSHOT_KIND]`, comment names DEC-773) deliberately keeps
+    the upload-time `FILE_KINDS` vocabulary (submission-files upload route)
+    separate from the library `?kind=` filter token, which already accepts
+    `'headshot'`; `HEADSHOT_KIND` itself lives in
+    `src/server/repo/files-library.ts:32` (and is re-declared for the SPA at
+    `app/src/pages/content/types.ts:42`), a repo module this wave does not own.
+    `src/server/repo/profile.ts:207-242`
+    (`completeProfileTaskForContact`) already closes a "profile"/headshot task
+    the moment the profile is saved, independent of the deliverable-kind
+    taxonomy. A future lane revisiting this item must coordinate with whichever
+    lane owns `files-library.ts`'s `HEADSHOT_KIND` before touching it.
 21. Speakers dashboard per-task filter narrows nothing visible ("Showing 16 of 16 ·
     task X" with all 8 columns still shown) — filtering by task should collapse to
     that task's column (or rows with it), not just retitle the header.
@@ -284,10 +317,31 @@ fix after P1 clusters and P2; each needs measured closure):**
     track control FILTERS — the split is designed (frames call it Highlight) but
     verify the control labels state their verb; if both just say the track name,
     label the agenda one "Highlight".
+    **CLOSED-WITH-RECEIPT wave 62 (task-w62-j, `main` `80a3eac3`):**
+    `src/routes/public/agenda-controls.tsx:180,198,209` — the public agenda's
+    track control already states its verb: the visible label reads "Highlight
+    a track" (`:180`), the empty-option copy repeats it (`:198`), and the
+    action button itself reads "Highlight" (`:209`) rather than a bare track
+    name. The requested verification is satisfied; do not re-file.
 30. Seed near-duplicate submissions (SES-002 vs SES-032, identical title, different
     speaker, conflicting statuses Pending/Declined): if intentional CRM-dedup
     fixture, file the DEC saying so and make the statuses coherent; judges read it
     as data corruption in THREE areas' runs.
+    **DO-NOT-CHASE ruling wave 62 (task-w62-j, `main` `80a3eac3`):** DOES NOT
+    REPRODUCE against the current seed. `scripts/seed.ts:133-160`
+    (`SYNTH_TOPICS`, 27 entries) maps 1:1 index-for-index onto
+    `synthTitle(i)` (`:254-258`, `i % SYNTH_TOPICS.length === i` per the
+    comment at `:162-165` since `additionalCount === SYNTH_TOPICS.length`),
+    so every synthesized submission title is distinct by construction; the
+    three hand-authored fixture talk titles in
+    `docs/fixtures/sample-data.json` ("Taming 40-Minute CI: Incremental
+    Builds at Monorepo Scale", "Your AI Pair Programmer Is Lying to You:
+    Verification Patterns That Scale", "Docs That Answer Back:
+    Retrieval-Grounded Documentation Sites") do not collide with any
+    synthesized title either. Whatever the judge observed as SES-002/SES-032
+    was not produced by a title collision in this seed shape; a live
+    re-observation against the actual judge run is required before spending
+    a lane on this item — do not file a DEC assuming intentional duplication.
 
 **Budget note (user, 2026-08-15): eval ceiling raised to $650** (spend ≈$440).
 Plan of record: ONE interim full official run after the P1 clusters land, ONE
