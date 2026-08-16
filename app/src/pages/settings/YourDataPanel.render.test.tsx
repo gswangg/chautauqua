@@ -99,9 +99,10 @@ describe('YourDataPanel', () => {
     expect(within(section).getByRole('link', { name: 'Contacts CSV' })).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Everything JSON' })).toBeInTheDocument();
     // DEC-728 amendment (wave 15): the section's OWN drill action relabels
-    // to 'Back' rather than disappearing; ApiTokensPanel now mounts with
-    // its own local read/edit split (w1-f, DEC-785), whose rest-state
-    // 'Change' is a different, further drill.
+    // to 'Back' rather than disappearing. DEC-785 amendment (wave 66): the
+    // local summary/edit split ApiTokensPanel used to own is REMOVED --
+    // ApiTokensPanel now mounts straight into its full create/revoke
+    // surface, with no second 'Change' of its own.
     expect(within(section).getByRole('button', { name: 'Back' })).toBeInTheDocument();
 
     fireEvent.click(within(section).getByRole('button', { name: 'Import from Sessionboard' }));

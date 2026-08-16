@@ -35,8 +35,8 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
 });
 
-describe('ApiTokensPanel (w1-f, DEC-785)', () => {
-  it('renders label + last-used at rest, before any Change click, never the secret', async () => {
+describe('ApiTokensPanel (DEC-785 amendment, wave 66)', () => {
+  it('renders the full create/revoke surface directly at rest, with no local Change/Back drill', async () => {
     mockApi({
       'GET /api/v1/tokens': listEnvelope([token()]),
     });
@@ -44,10 +44,10 @@ describe('ApiTokensPanel (w1-f, DEC-785)', () => {
     render(<ApiTokensPanel />);
 
     expect(await screen.findByText('CI pipeline')).toBeInTheDocument();
-    expect(screen.getByText('Last used: Never')).toBeInTheDocument();
-    expect(screen.queryByText(/chq_abc/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+    expect(screen.getByText(/chq_abc/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 });
 
@@ -91,7 +91,6 @@ describe('ApiTokensPanel Created column + NEVER USED mark (DEC-027 wave-47 amend
 
     render(<ApiTokensPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
 
     expect(await screen.findByRole('columnheader', { name: 'Created' })).toBeInTheDocument();
 
@@ -129,7 +128,6 @@ describe('ApiTokensPanel table columns (w22-b, DEC-902 amendment)', () => {
 
     render(<ApiTokensPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
 
     const table = await screen.findByRole('table');
     const headerRow = within(table).getAllByRole('row')[0]!;
@@ -202,7 +200,6 @@ describe('ApiTokensPanel cap line (DEC-027 wave-51 amendment)', () => {
 
     render(<ApiTokensPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
 
     expect(await screen.findByText('1 of 25 used')).toBeInTheDocument();
   });
@@ -218,7 +215,6 @@ describe('ApiTokensPanel cap line (DEC-027 wave-51 amendment)', () => {
 
     render(<ApiTokensPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.change(await screen.findByLabelText('Token name'), { target: { value: 'One more' } });
     fireEvent.click(screen.getByRole('button', { name: 'New token' }));
 
@@ -237,7 +233,6 @@ describe('ApiTokensPanel (DEC-941)', () => {
 
     render(<ApiTokensPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }));
 
     const dialog = screen.getByRole('dialog');

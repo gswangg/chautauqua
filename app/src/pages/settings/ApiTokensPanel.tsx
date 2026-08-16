@@ -1,24 +1,23 @@
 // DEC-032 Settings panel: list/create/delete DEC-027 bearer API tokens.
 // The plaintext token is only ever returned once, at creation time.
 //
-// w1-f, DEC-785: this panel is only ever mounted inside its caller's own
-// edit drill (YourDataPanel), so at rest it must not ALSO dump straight
-// into the full create/revoke surface -- it owns its own local
-// summary/edit split. At rest it lists label + last-used per token (never
-// the token/prefix); 'Change' switches to the full table below.
+// DEC-815 amendment (wave 4): YourDataPanel's own SummarySection row needs
+// the real token rows, not a describing sentence. `readOnly` makes this
+// same component serve both: the row-level `readOnly` render is the plain
+// list with no controls at all (no create/revoke); the default (unset)
+// render is the full create/revoke surface reachable directly, with no
+// local drill-inside-the-drill.
 //
-// DEC-815 amendment (wave 4): YourDataPanel's own SummarySection row (the
-// one before 'Change' is even clicked) also needs the real token rows, not
-// a describing sentence. Rather than a second list renderer, `readOnly`
-// makes this same component serve both: the row-level `readOnly` render is
-// the plain list with no 'Change' control at all (no create/revoke, no
-// nested drill); the default (unset) keeps the existing local
-// summary/edit split used inside YourDataPanel's own edit branch.
+// DEC-785 amendment (wave 66): the local summary/edit split ('Change' /
+// 'Back', `showEditor` state) is REMOVED. This panel is only ever mounted
+// inside its caller's own edit drill (YourDataPanel's `edit=1` branch), so
+// a second nested drill just to reach Revoke was drill-inside-a-drill --
+// the caller already gated entry. The default (unset) render is now always
+// the full editing surface.
 //
 // DEC-027 amendment (wave 47): GET /tokens now carries createdAt too. Only
 // the full edit-view table grows a Created column -- the readOnly summary
-// and the local (unexpanded) summary/edit split (DEC-785) stay name +
-// last-used per the ruling above.
+// stays name + last-used per the ruling above.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
@@ -59,9 +58,6 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
   // straight from the row's Revoke link.
   const [pendingDelete, setPendingDelete] = useState<ApiTokenItem | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // w1-f, DEC-785: local read/edit split -- defaults to the read-only list
-  // (label + last-used); 'Change' switches to the full create/revoke table.
-  const [showEditor, setShowEditor] = useState(false);
 
   function load() {
     setLoading(true);
@@ -148,41 +144,12 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
     );
   }
 
-  if (!showEditor) {
-    return (
-      <section className="chq-settings-panel" aria-label="API tokens">
-        <h2>API Tokens</h2>
-        {error && <div className="chq-error" role="alert">{error}</div>}
-        {loading ? (
-          <DelayedLoading />
-        ) : (
-          <ul className="chq-settings-summary-list">
-            {tokens.map((t) => (
-              <li key={t.id} className="chq-settings-summary-row">
-                <span className="chq-settings-summary-row-primary">{t.name}</span>
-                <span className="chq-settings-summary-row-detail">Last used: {formatDate(t.lastUsedAt)}</span>
-              </li>
-            ))}
-            {tokens.length === 0 ? <li className="chq-settings-summary-empty">No API tokens yet.</li> : null}
-          </ul>
-        )}
-        <button type="button" className="chq-link-button" onClick={() => setShowEditor(true)}>
-          Change
-        </button>
-      </section>
-    );
-  }
-
   return (
     <section className="chq-settings-panel" aria-label="API tokens">
       <h2>API Tokens</h2>
       <p>Bearer tokens authenticate scripts/integrations against the same /api/v1 the app uses.</p>
       <p>The token is shown once, when you create it.</p>
       <p>Revoking takes effect immediately and cannot be undone.</p>
-
-      <button type="button" className="chq-link-button" onClick={() => setShowEditor(false)}>
-        Back
-      </button>
 
       {error && <div className="chq-error" role="alert">{error}</div>}
 
