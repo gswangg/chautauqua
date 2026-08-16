@@ -8,6 +8,7 @@ import { computeWeightedScore } from "../../../domain/evaluation";
 import { DEC_529 } from "../../../decisions";
 import { ApiError } from "../../http";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
+import { submittedEvaluationCondition } from "../review/evaluations";
 import { type ExportTable, EXPORT_MAX_ROWS, buildTable, nameCustomColumns } from "./table";
 import { getRecordPrefix } from "./common";
 
@@ -146,6 +147,13 @@ export async function exportEvaluations(db: Db, eventId: string, params?: Evalua
   const conditions = [eq(schema.evaluationPlan.eventId, eventId)];
   if (params?.planId !== undefined) conditions.push(eq(schema.evaluationPlan.id, params.planId));
   if (params?.round !== undefined) conditions.push(eq(schema.evaluation.round, params.round));
+  // DEC-873 (wave 54 amendment): every read side over schema.evaluation
+  // outside getEvaluation's deliberate draft-inclusive exception must apply
+  // the submitted-evaluation predicate below -- this CSV had no submitted
+  // predicate and disagreed with GET /api/v1/plans/:id/results (which does
+  // apply it) on row count, shipping in-progress reviewer drafts to
+  // exporters.
+  conditions.push(submittedEvaluationCondition());
 
   const rows = await db
     .select({
