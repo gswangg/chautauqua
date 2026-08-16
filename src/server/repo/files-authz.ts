@@ -2,7 +2,7 @@
 // files.ts (contention decomposition) — no behavior change, files.ts
 // re-exports everything below for existing callers.
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, type SQL } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { listPlansForEvent, isSubmissionInReviewerScope } from "./review";
@@ -345,7 +345,12 @@ export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFile
   const fileRow = fileRows[0];
   if (!fileRow || fileRow.submissionId !== null) return null;
 
-  const assignmentSelect = () =>
+  // Both lookups share this shape and differ only in which link column they
+  // match on. The scoping predicate is applied INSIDE the helper rather than
+  // deferred to the call sites: neither lookup is ever meant to run unscoped,
+  // so the chain should carry its own `.where(...)` (this is also what keeps
+  // the query-scoping invariant honest instead of allowlisted).
+  const assignmentBy = (link: SQL) =>
     db
       .select({
         assignmentContactId: schema.taskAssignment.contactId,
@@ -353,17 +358,17 @@ export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFile
       })
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-      .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id));
+      .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
+      .where(link)
+      .limit(1);
 
   let assignmentRow: { assignmentContactId: string; orgId: string } | undefined;
   if (fileRow.taskAssignmentId) {
-    const ownRows = await assignmentSelect()
-      .where(eq(schema.taskAssignment.id, fileRow.taskAssignmentId))
-      .limit(1);
+    const ownRows = await assignmentBy(eq(schema.taskAssignment.id, fileRow.taskAssignmentId));
     assignmentRow = ownRows[0];
   }
   if (!assignmentRow) {
-    const fallbackRows = await assignmentSelect().where(eq(schema.taskAssignment.fileId, fileId)).limit(1);
+    const fallbackRows = await assignmentBy(eq(schema.taskAssignment.fileId, fileId));
     assignmentRow = fallbackRows[0];
   }
   if (!assignmentRow) return null;
