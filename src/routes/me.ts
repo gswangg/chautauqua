@@ -2,9 +2,11 @@
 // and land reviewers on /review. Route file exports a named Hono sub-app;
 // only src/index.ts mounts it (DEC-012).
 //
-// DEC-576: also returns `name` (first + last from the signed-in user's
-// linked contact, or null if the user has no linked contact) so the header
-// can render "J. ALVAREZ" instead of a bare email.
+// DEC-576/DEC-757: also returns `name` — the signed-in user's linked
+// contact's `${firstName} ${lastName}` when present, else the stored
+// user.name when non-blank, else the user's email — so the header can
+// render "J. ALVAREZ" instead of a bare email, and staff without a linked
+// contact still get a real name instead of null.
 
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
@@ -21,6 +23,7 @@ meRoutes.get("/api/v1/me", async (c) => {
   const rows = await c.var.db
     .select({
       email: schema.user.email,
+      userName: schema.user.name,
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
     })
@@ -32,7 +35,12 @@ meRoutes.get("/api/v1/me", async (c) => {
   const email = row?.email;
   if (!email) throw new ApiError("unauthorized", "Login required");
 
-  const name = row.firstName && row.lastName ? `${row.firstName} ${row.lastName}` : null;
+  const name =
+    row.firstName && row.lastName
+      ? `${row.firstName} ${row.lastName}`
+      : row.userName && row.userName.trim()
+        ? row.userName
+        : email;
 
   return c.json({
     userId: auth.userId,

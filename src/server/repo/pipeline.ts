@@ -82,12 +82,12 @@ export interface PipelineContactSummary {
  * email — mirrors src/server/repo/files.ts's listFileComments pattern. */
 export async function resolveAuthorName(db: Db, userId: string): Promise<string> {
   const rows = await db
-    .select({ email: schema.user.email, contactId: schema.user.contactId })
+    .select({ email: schema.user.email, contactId: schema.user.contactId, name: schema.user.name })
     .from(schema.user)
     .where(eq(schema.user.id, userId))
     .limit(1);
   const user = rows[0];
-  if (!user) return "Unknown";
+  if (!user) throw new Error(`resolveAuthorName: no user row for ${userId}`);
   if (user.contactId) {
     const contactRows = await db
       .select({ firstName: schema.contact.firstName, lastName: schema.contact.lastName })
@@ -97,6 +97,7 @@ export async function resolveAuthorName(db: Db, userId: string): Promise<string>
     const contact = contactRows[0];
     if (contact) return `${contact.firstName} ${contact.lastName}`.trim();
   }
+  if (user.name && user.name.trim()) return user.name;
   return user.email;
 }
 

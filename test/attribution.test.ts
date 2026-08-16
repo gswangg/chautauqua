@@ -106,10 +106,25 @@ describe("resolveActorName (DEC-757)", () => {
     }
   });
 
-  it("falls back to the user's email when there is no linked contact", async () => {
-    const { db } = queueDb([[{ email: USER_NO_CONTACT.email, contactId: null }]]);
+  it("falls back to the user's email when there is no linked contact and no stored name", async () => {
+    const { db } = queueDb([[{ email: USER_NO_CONTACT.email, contactId: null, name: null }]]);
     const name = await resolveActorName(db, USER_NO_CONTACT.userId);
     expect(name).toBe(USER_NO_CONTACT.email);
+  });
+
+  it("uses the stored user.name when there is no linked contact (DEC-757 wave-72)", async () => {
+    const { db } = queueDb([[{ email: USER_NO_CONTACT.email, contactId: null, name: "Riley Reviewer" }]]);
+    const name = await resolveActorName(db, USER_NO_CONTACT.userId);
+    expect(name).toBe("Riley Reviewer");
+  });
+
+  it("prefers the linked contact's name over a stored user.name (precedence unchanged)", async () => {
+    const { db } = queueDb([
+      [{ email: ORGANIZER_WITH_CONTACT.email, contactId: ORGANIZER_WITH_CONTACT.contactId, name: "Ignored Name" }],
+      [ORGANIZER_WITH_CONTACT.contact],
+    ]);
+    const name = await resolveActorName(db, ORGANIZER_WITH_CONTACT.userId);
+    expect(name).toBe(`${ORGANIZER_WITH_CONTACT.contact.firstName} ${ORGANIZER_WITH_CONTACT.contact.lastName}`);
   });
 
   it("throws (fail loudly) rather than falling back to the raw id when the user row is missing", async () => {
