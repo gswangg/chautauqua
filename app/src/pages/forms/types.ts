@@ -1,13 +1,20 @@
 // Wire types for the J1 form-builder SPA (DEC-033), mirroring the DEC-008
 // FormFieldDef shape as serialized by src/routes/api/forms.ts.
 
-export type FormFieldSection = 'session' | 'speaker';
-export type FormFieldKind = 'text' | 'long_text' | 'dropdown' | 'checkbox' | 'number' | 'file';
-export type FormFieldRuleOp = 'eq' | 'ne' | 'in';
-// DEC-592/DEC-755 (wave 10, task w10-b): the role tag a form_field row can
-// carry, mirroring src/forms/types.ts's FormFieldRole -- the ONE matcher for
-// the two well-known CFP fields (session format, audience level).
-export type FormFieldRole = 'session_format' | 'audience_level';
+// DEC-615 (wave 73): the section/kind/ruleOp/role vocabularies are declared
+// once, as `as const` arrays, in src/forms/types.ts (pure core) and
+// re-exported here rather than re-declared -- a second copy is a trap with
+// a delay fuse (DEC-613). FIELD_KINDS/RULE_OPS below are the SAME array
+// objects as src/forms/builder.ts's FIELD_KINDS and
+// src/forms/types.ts's FORM_FIELD_RULE_OPS.
+import { FORM_FIELD_KINDS, FORM_FIELD_RULE_OPS } from '../../../../src/forms/types';
+import type {
+  FormFieldSection,
+  FormFieldKind,
+  FormFieldRuleOp,
+  FormFieldRole,
+} from '../../../../src/forms/types';
+export type { FormFieldSection, FormFieldKind, FormFieldRuleOp, FormFieldRole };
 
 export interface FormFieldRule {
   fieldId: string;
@@ -47,8 +54,8 @@ export interface EventTrack {
   color?: string | null;
 }
 
-export const FIELD_KINDS: readonly FormFieldKind[] = ['text', 'long_text', 'dropdown', 'checkbox', 'number', 'file'];
-export const RULE_OPS: readonly FormFieldRuleOp[] = ['eq', 'ne', 'in'];
+export const FIELD_KINDS = FORM_FIELD_KINDS;
+export const RULE_OPS = FORM_FIELD_RULE_OPS;
 
 // ONE organiser-facing label per field kind (DEC-762), audited against the
 // design pack (docs/design/Chautauqua Submissions.dc.html): the wire kind

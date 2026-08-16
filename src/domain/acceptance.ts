@@ -4,6 +4,12 @@
 
 import { isIsoDate } from "./iso-date";
 
+// DEC-615 (wave 73): FormFieldKind is the ONE kind vocabulary, declared as
+// an `as const` array in ../forms/types. acceptance.ts is pure core (no
+// node:/cloudflare/drizzle) and ../forms/types is too, so a type-only import
+// keeps this module dependency-free at runtime.
+import type { FormFieldKind } from "../forms/types";
+
 // Re-exported from the pure vocabulary module (DEC-613 wave-70 amendment) —
 // the ONE set shared with src/routes/tasks.ts, src/server/repo/portal/tasks.ts,
 // and the app's speakers pages.
@@ -69,7 +75,7 @@ export function onboardingTaskDueDate(eventStartDate: string, dueDaysBeforeEvent
 /** DEC-008 form-field kinds usable in a field spec (DEC-040 amendment, wave
  * 70: the portal task-form POST now has a real multipart upload path — see
  * src/routes/portal/tasks.tsx's /tasks/:assignmentId/form handler). */
-export type FormTaskFieldKind = "text" | "long_text" | "dropdown" | "checkbox" | "number" | "file";
+export type FormTaskFieldKind = FormFieldKind;
 
 export interface FormTaskFieldSpec {
   section: "speaker";

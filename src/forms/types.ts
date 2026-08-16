@@ -1,17 +1,24 @@
 // Form engine field model — per DEC-008. Pure types only, no runtime deps
 // beyond plain TS/JS (DEC-002: no node:/cloudflare/drizzle imports).
 
-export type FormFieldSection = "session" | "speaker";
+// DEC-615 (wave 73): declared once as `as const` arrays so both sides
+// (server pure core and the SPA) derive their types from the same runtime
+// vocabulary, mirroring FORM_FIELD_ROLES/FormFieldRole below.
+export const FORM_FIELD_SECTIONS = ["session", "speaker"] as const;
+export type FormFieldSection = (typeof FORM_FIELD_SECTIONS)[number];
 
-export type FormFieldKind =
-  | "text"
-  | "long_text"
-  | "dropdown"
-  | "checkbox"
-  | "number"
-  | "file";
+export const FORM_FIELD_KINDS = [
+  "text",
+  "long_text",
+  "dropdown",
+  "checkbox",
+  "number",
+  "file",
+] as const;
+export type FormFieldKind = (typeof FORM_FIELD_KINDS)[number];
 
-export type FormFieldRuleOp = "eq" | "ne" | "in";
+export const FORM_FIELD_RULE_OPS = ["eq", "ne", "in"] as const;
+export type FormFieldRuleOp = (typeof FORM_FIELD_RULE_OPS)[number];
 
 // DEC-592/DEC-755 (wave 10, task w10-b): the role tag a form_field row can
 // carry so the two well-known CFP fields (session format, audience level)
