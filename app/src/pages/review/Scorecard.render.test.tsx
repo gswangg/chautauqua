@@ -120,7 +120,7 @@ describe('Scorecard render smoke', () => {
 
     // rating criterion -> segmented radiogroup, one radio per scale value
     // (DEC-873: plan.scale is {min:1, max:5}).
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
     const qualityRadios = within(qualityGroup).getAllByRole('radio');
     expect(qualityRadios).toHaveLength(5);
     expect(qualityRadios.every((r) => r.getAttribute('aria-checked') === 'false')).toBe(true);
@@ -129,8 +129,8 @@ describe('Scorecard render smoke', () => {
     expect(screen.getByRole('option', { name: 'Great' })).toBeInTheDocument();
 
     // free-text criterion -> textarea
-    expect(screen.getByLabelText('Notes')).toBeInTheDocument();
-    expect(screen.getByLabelText('Notes').tagName).toBe('TEXTAREA');
+    expect(screen.getByLabelText('Notes (c3)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Notes (c3)').tagName).toBe('TEXTAREA');
 
     // DEC-889 (wave-72 amendment): the FORM ANSWERS block is at rest, not
     // behind a disclosure -- session and speaker answers render immediately.
@@ -181,7 +181,7 @@ describe('Scorecard render smoke', () => {
 
     expect(await screen.findByText('Rate the depth of the argument.')).toBeInTheDocument();
     // 'Fit' has no guidance -- nothing renders for it beyond its label.
-    const fitRow = screen.getByText('Fit').closest('div')!;
+    const fitRow = screen.getByText('Fit').closest('fieldset')!;
     expect(fitRow.querySelector('.chq-review-criterion-guidance')).toBeNull();
   });
 
@@ -222,7 +222,7 @@ describe('Scorecard render smoke', () => {
     expect(screen.getByText('Weight 3 · 75%')).toBeInTheDocument();
     expect(screen.getByText('Weight 1 · 25%')).toBeInTheDocument();
     // 'Fit' (dropdown, no weight) prints no weight caption.
-    const fitRow = screen.getByText('Fit').closest('div')!;
+    const fitRow = screen.getByText('Fit').closest('fieldset')!;
     expect(fitRow.querySelector('.chq-review-criterion-weight-caption')).toBeNull();
 
     // Overall renders an em dash before every rating criterion is scored;
@@ -234,15 +234,15 @@ describe('Scorecard render smoke', () => {
     const overallValue = () => document.querySelector('.chq-review-overall-value')!;
     expect(overallValue().textContent).toBe('—');
 
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
-    const depthGroup = screen.getByRole('radiogroup', { name: 'Depth' });
-    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '4' }));
-    expect(within(qualityGroup).getByRole('radio', { name: '4' })).toHaveAttribute('aria-checked', 'true');
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
+    const depthGroup = screen.getByRole('radiogroup', { name: 'Depth (c2)' });
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 4 of 5' }));
+    expect(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 4 of 5' })).toHaveAttribute('aria-checked', 'true');
 
     // Still incomplete (Depth unscored, Fit unset) -> still an em dash.
     expect(overallValue().textContent).toBe('—');
 
-    fireEvent.click(within(depthGroup).getByRole('radio', { name: '2' }));
+    fireEvent.click(within(depthGroup).getByRole('radio', { name: 'Depth (c2): 2 of 5' }));
     fireEvent.change(screen.getByRole('option', { name: 'Great' }).closest('select')!, { target: { value: 'Great' } });
 
     // Complete -> (4*3 + 2*1) / 4 = 3.5.
@@ -483,7 +483,7 @@ describe('Scorecard recusal placement and checkbox reveal (DEC-939)', () => {
 
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
     const buttons = within(qualityGroup).getAllByRole('radio');
     expect(buttons).toHaveLength(5);
     buttons.forEach((b) => expect(b).not.toHaveAttribute('aria-pressed'));
@@ -527,7 +527,7 @@ describe('Scorecard recusal survives reload (DEC-984)', () => {
     expect(screen.queryByRole('checkbox', { name: /conflict of interest/i })).not.toBeInTheDocument();
 
     // Every rating/dropdown control and both action buttons are disabled.
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
     within(qualityGroup).getAllByRole('radio').forEach((r) => expect(r).toBeDisabled());
     expect(screen.getByRole('combobox')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Submit and next' })).toBeDisabled();
@@ -602,9 +602,9 @@ describe('Scorecard reconciliation line (DEC-939)', () => {
 
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '5' }));
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Originality' })).getByRole('radio', { name: '4' }));
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Delivery' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality (c1)' })).getByRole('radio', { name: 'Quality (c1): 5 of 5' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Originality (c2)' })).getByRole('radio', { name: 'Originality (c2): 4 of 5' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Delivery (c3)' })).getByRole('radio', { name: 'Delivery (c3): 4 of 5' }));
 
     await waitFor(() =>
       expect(document.querySelector('.chq-review-overall-caption')?.textContent).toBe(
@@ -806,8 +806,8 @@ describe('Scorecard two-column work surface and armed focus ring (DEC-939 wave-6
     fireEvent.keyDown(root, { key: '4' });
 
     // The first rating criterion (pre-armed focusedId) receives the score.
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
-    expect(within(qualityGroup).getByRole('radio', { name: '4' })).toHaveAttribute('aria-checked', 'true');
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
+    expect(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 4 of 5' })).toHaveAttribute('aria-checked', 'true');
 
     // And the ring is now armed on that same criterion's row.
     const focused = document.querySelectorAll('.chq-focused');
@@ -865,7 +865,7 @@ describe('Scorecard two-column work surface and armed focus ring (DEC-939 wave-6
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
     const rail = document.querySelector('.chq-review-scorecard-rail')!;
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
     const submitButton = screen.getByRole('button', { name: 'Submit and next' });
     expect(rail.contains(qualityGroup)).toBe(true);
     expect(rail.contains(submitButton)).toBe(true);
@@ -924,13 +924,13 @@ describe('Scorecard completeness notice and form-field key guard (DEC-939 wave-3
     );
 
     // Fill both ratings and the dropdown -- clicking every control.
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Relevance' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Relevance (c1)' })).getByRole('radio', { name: 'Relevance (c1): 4 of 5' }));
     // The notice narrows as blockers clear (still recommendation + format fit).
     expect(
       await screen.findByText('Rate every criterion before submitting — still needed: Recommendation, Format fit'),
     ).toBeInTheDocument();
 
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Recommendation' })).getByRole('radio', { name: '3' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Recommendation (c2)' })).getByRole('radio', { name: 'Recommendation (c2): 3 of 5' }));
     fireEvent.change(screen.getByRole('option', { name: 'Yes' }).closest('select')!, { target: { value: 'Yes' } });
 
     // The notice vanishes the instant the last criterion is answered --
@@ -980,7 +980,7 @@ describe('Scorecard completeness notice and form-field key guard (DEC-939 wave-3
 
     // Neither the focused (first) rating criterion nor any other picked up
     // a score, and no PUT (submit) fired.
-    const relevanceGroup = screen.getByRole('radiogroup', { name: 'Relevance' });
+    const relevanceGroup = screen.getByRole('radiogroup', { name: 'Relevance (c1)' });
     within(relevanceGroup)
       .getAllByRole('radio')
       .forEach((r) => expect(r).toHaveAttribute('aria-checked', 'false'));
@@ -1178,8 +1178,8 @@ describe('Scorecard queue envelope counter and submit-and-next termination (DEC-
 
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
-    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '4' }));
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 4 of 5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
 
     await waitFor(() =>
@@ -1230,8 +1230,8 @@ describe('Scorecard queue envelope counter and submit-and-next termination (DEC-
 
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
-    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '4' }));
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 4 of 5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
 
     await waitFor(() =>
@@ -1284,78 +1284,78 @@ describe('Scorecard rating group keyboard contract (DEC-939 amendment)', () => {
 
   it('clicking a pill in the SECOND group commits its value; the Overall blend (the completed-count signal both groups feed) only resolves once both are set', async () => {
     const { overallValue } = await renderTwoGroups();
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
-    const depthGroup = screen.getByRole('radiogroup', { name: 'Depth' });
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
+    const depthGroup = screen.getByRole('radiogroup', { name: 'Depth (c2)' });
 
     // Nothing scored yet -> em dash.
     expect(overallValue().textContent).toBe('—');
 
-    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '4' }));
-    expect(within(qualityGroup).getByRole('radio', { name: '4' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 4 of 5' }));
+    expect(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 4 of 5' })).toHaveAttribute('aria-checked', 'true');
     // Depth still unscored -> still an em dash.
     expect(overallValue().textContent).toBe('—');
 
-    fireEvent.click(within(depthGroup).getByRole('radio', { name: '2' }));
-    expect(within(depthGroup).getByRole('radio', { name: '2' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(within(depthGroup).getByRole('radio', { name: 'Depth (c2): 2 of 5' }));
+    expect(within(depthGroup).getByRole('radio', { name: 'Depth (c2): 2 of 5' })).toHaveAttribute('aria-checked', 'true');
     // Both groups committed -> the Overall blend resolves, proving the
     // second group's click landed in the SAME scores store the first did.
     await waitFor(() => expect(overallValue().textContent).toBe('3.0'));
     // First group's selection is untouched by the second group's click.
-    expect(within(qualityGroup).getByRole('radio', { name: '4' })).toHaveAttribute('aria-checked', 'true');
+    expect(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 4 of 5' })).toHaveAttribute('aria-checked', 'true');
   });
 
   it('ArrowRight from a focused pill selects the next value and moves focus to it', async () => {
     await renderTwoGroups();
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
-    const first = within(qualityGroup).getByRole('radio', { name: '1' });
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
+    const first = within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 1 of 5' });
     first.focus();
     fireEvent.keyDown(qualityGroup, { key: 'ArrowRight' });
 
-    const second = within(qualityGroup).getByRole('radio', { name: '2' });
+    const second = within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 2 of 5' });
     expect(second).toHaveAttribute('aria-checked', 'true');
     expect(second).toHaveFocus();
   });
 
   it('ArrowLeft wraps from the first value to the last', async () => {
     await renderTwoGroups();
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
-    const first = within(qualityGroup).getByRole('radio', { name: '1' });
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
+    const first = within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 1 of 5' });
     first.focus();
     fireEvent.keyDown(qualityGroup, { key: 'ArrowLeft' });
 
-    const last = within(qualityGroup).getByRole('radio', { name: '5' });
+    const last = within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 5 of 5' });
     expect(last).toHaveAttribute('aria-checked', 'true');
     expect(last).toHaveFocus();
   });
 
   it('Home and End reach the first and last values', async () => {
     await renderTwoGroups();
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
-    within(qualityGroup).getByRole('radio', { name: '3' }).focus();
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
+    within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 3 of 5' }).focus();
     fireEvent.keyDown(qualityGroup, { key: 'End' });
-    const last = within(qualityGroup).getByRole('radio', { name: '5' });
+    const last = within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 5 of 5' });
     expect(last).toHaveAttribute('aria-checked', 'true');
     expect(last).toHaveFocus();
 
     fireEvent.keyDown(qualityGroup, { key: 'Home' });
-    const firstAgain = within(qualityGroup).getByRole('radio', { name: '1' });
+    const firstAgain = within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 1 of 5' });
     expect(firstAgain).toHaveAttribute('aria-checked', 'true');
     expect(firstAgain).toHaveFocus();
   });
 
   it('the group exposes exactly one tab stop, and it tracks the selected value', async () => {
     await renderTwoGroups();
-    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
     const radios = within(qualityGroup).getAllByRole('radio');
 
     // Nothing selected yet -> the first pill is the one tab stop.
     expect(radios.filter((r) => r.getAttribute('tabindex') === '0')).toHaveLength(1);
     expect(radios[0]).toHaveAttribute('tabindex', '0');
 
-    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '3' }));
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 3 of 5' }));
     const radiosAfter = within(qualityGroup).getAllByRole('radio');
     expect(radiosAfter.filter((r) => r.getAttribute('tabindex') === '0')).toHaveLength(1);
-    expect(within(qualityGroup).getByRole('radio', { name: '3' })).toHaveAttribute('tabindex', '0');
+    expect(within(qualityGroup).getByRole('radio', { name: 'Quality (c1): 3 of 5' })).toHaveAttribute('tabindex', '0');
   });
 });
 
@@ -1405,7 +1405,7 @@ describe('Scorecard server refusal shapes render at their control (DEC-958 wave-
 
     // Fill both criteria so the client-side completeness gate passes and
     // the PUT actually fires.
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality (c1)' })).getByRole('radio', { name: 'Quality (c1): 4 of 5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
 
     const message = await screen.findByText('score must be within [1, 5]');
@@ -1437,7 +1437,7 @@ describe('Scorecard server refusal shapes render at their control (DEC-958 wave-
 
     await renderScorecard(ratingAndTextCriteria());
 
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality (c1)' })).getByRole('radio', { name: 'Quality (c1): 4 of 5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
 
     const summaryLink = await screen.findByRole('link', { name: /stray: unknown criterion/ });
@@ -1463,7 +1463,7 @@ describe('Scorecard server refusal shapes render at their control (DEC-958 wave-
 
     await renderScorecard(ratingAndTextCriteria());
 
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality (c1)' })).getByRole('radio', { name: 'Quality (c1): 4 of 5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
 
     const message = await screen.findByText('Max 20000');
@@ -1495,7 +1495,7 @@ describe('Scorecard server refusal shapes render at their control (DEC-958 wave-
 
     await renderScorecard(ratingAndTextCriteria());
 
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality (c1)' })).getByRole('radio', { name: 'Quality (c1): 4 of 5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
 
     const summaryLink = await screen.findByRole('link', { name: /scores: required/ });
@@ -1521,7 +1521,7 @@ describe('Scorecard server refusal shapes render at their control (DEC-958 wave-
 
     await renderScorecard(ratingAndTextCriteria());
 
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '4' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality (c1)' })).getByRole('radio', { name: 'Quality (c1): 4 of 5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
 
     expect(await screen.findByText('This review plan is not currently open')).toBeInTheDocument();
@@ -1553,5 +1553,104 @@ describe('Scorecard server refusal shapes render at their control (DEC-958 wave-
     const message = await screen.findByText('score must be within [1, 5]');
     const criterionRow = document.getElementById('chq-review-criterion-c1');
     expect(criterionRow!.contains(message)).toBe(true);
+  });
+});
+
+// DEC-939 (wave-61 amendment): scorecard a11y -- two criteria whose labels
+// collide must still be two distinct groups in the accessibility tree. Each
+// row is a real <fieldset> with a visible <legend>, and the group's/each
+// radio's accessible name is derived from the criterion's own id as well as
+// its label, so it stays unique even when the (user-editable) label is not.
+describe('Scorecard a11y: colliding criterion labels stay distinct groups (DEC-939 wave-61 amendment)', () => {
+  function twoCollidingRatingCriteria() {
+    return [
+      { id: 'crit-a', label: 'Relevance', kind: 'rating' as const, weight: 1 },
+      { id: 'crit-b', label: 'Relevance', kind: 'rating' as const, weight: 1 },
+    ];
+  }
+
+  it('renders two fieldsets with two distinct group names and ten distinct radio names', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoCollidingRatingCriteria(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+
+    // Two <fieldset> rows, one per criterion, each with a <legend> carrying
+    // the (colliding) visible label text.
+    const fieldsets = document.querySelectorAll('fieldset.chq-review-criterion');
+    expect(fieldsets).toHaveLength(2);
+    fieldsets.forEach((fs) => {
+      const legend = fs.querySelector('legend');
+      expect(legend).not.toBeNull();
+      expect(legend!.textContent).toContain('Relevance');
+    });
+
+    // The two radiogroups are distinct accessible-name-addressable groups
+    // even though both criteria share the visible label 'Relevance'.
+    const groupA = screen.getByRole('radiogroup', { name: 'Relevance (crit-a)' });
+    const groupB = screen.getByRole('radiogroup', { name: 'Relevance (crit-b)' });
+    expect(groupA).not.toBe(groupB);
+    const allGroups = screen.getAllByRole('radiogroup');
+    const groupNames = allGroups.map((g) => g.getAttribute('aria-label'));
+    expect(new Set(groupNames).size).toBe(2);
+
+    // Ten radios total (5 per group), every one with a distinct accessible
+    // name -- the collision would otherwise flatten value 'N' from group A
+    // and value 'N' from group B into the same name.
+    const allRadios = screen.getAllByRole('radio');
+    expect(allRadios).toHaveLength(10);
+    const radioNames = allRadios.map((r) => r.getAttribute('aria-label'));
+    expect(new Set(radioNames).size).toBe(10);
+    radioNames.forEach((name) => expect(name).not.toMatch(/^\d+$/));
+  });
+
+  it('keeps the arrow-key roving-focus contract working inside a collided group', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoCollidingRatingCriteria(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+
+    const groupA = screen.getByRole('radiogroup', { name: 'Relevance (crit-a)' });
+    const first = within(groupA).getByRole('radio', { name: 'Relevance (crit-a): 1 of 5' });
+    first.focus();
+    fireEvent.keyDown(groupA, { key: 'ArrowRight' });
+
+    const second = within(groupA).getByRole('radio', { name: 'Relevance (crit-a): 2 of 5' });
+    expect(second).toHaveAttribute('aria-checked', 'true');
+    expect(second).toHaveFocus();
   });
 });
