@@ -3,21 +3,17 @@
 // directly by the route layer and by plain vitest.
 
 import type { FormFieldDef, FormFieldKind, FormFieldRule, FormFieldRuleOp } from "./types";
+import { FORM_FIELD_KINDS, FORM_FIELD_RULE_OPS } from "./types"; // DEC-615
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "./validate"; // DEC-417
 import { canonicalizeOperand } from "./rule-match"; // DEC-681
 import { MAX_FIELD_OPTIONS } from "../domain/form-copy"; // w2-c
 import { overCapCountMessage } from "../domain/cap-copy"; // DEC-422 amendment
 
-export const FIELD_KINDS: readonly FormFieldKind[] = [
-  "text",
-  "long_text",
-  "dropdown",
-  "checkbox",
-  "number",
-  "file",
-];
+// DEC-615 (wave 73): the ONE kind list, re-exported from the domain
+// vocabulary so this module's population is the same array object.
+export const FIELD_KINDS: readonly FormFieldKind[] = FORM_FIELD_KINDS;
 
-const RULE_OPS: readonly FormFieldRuleOp[] = ["eq", "ne", "in"];
+const RULE_OPS: readonly FormFieldRuleOp[] = FORM_FIELD_RULE_OPS;
 
 export type FieldErrors = Record<string, string>;
 
