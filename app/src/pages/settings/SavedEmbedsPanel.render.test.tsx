@@ -134,7 +134,43 @@ describe('SavedEmbedsPanel', () => {
     expect(within(row).getByText(/<iframe src="[^"]*\/embed\/e\/emb1"/)).toBeInTheDocument();
   });
 
-  it('turning a row on/off calls the real PATCH endpoint and re-renders the new state', async () => {
+  it('turning a row on calls the real PATCH endpoint directly, with no confirm dialog', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: () =>
+        listEnvelope([
+          { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: false },
+        ]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`PATCH /api/v1/embeds/emb1`]: {
+        id: 'emb1',
+        name: 'Homepage widget',
+        surface: 'sessions',
+        format: 'iframe',
+        enabled: true,
+      },
+    });
+    renderPanel(['/settings'], undefined, true);
+
+    await waitFor(() => {
+      expect(screen.getByText('Off')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Turn on' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      const [, patchInit] =
+        fetchMock.mock.calls.find(([input]) => String(input).includes('/api/v1/embeds/emb1')) ?? [];
+      expect(patchInit).toMatchObject({ method: 'PATCH' });
+    });
+  });
+
+  // DEC-941: turning a saved embed OFF stops a public URL from serving on
+  // whatever page it's pasted into -- an effect the organiser cannot see
+  // from this screen, so it is routed through the shared ConfirmDialog and
+  // only PATCHes after the user confirms.
+  it('turning a row off opens the confirm dialog first, and only PATCHes after confirming', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/embeds`]: () =>
         listEnvelope([
@@ -156,6 +192,16 @@ describe('SavedEmbedsPanel', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Turn off Homepage widget?')).toBeInTheDocument();
+    expect(within(dialog).getByText(/\/embed\/e\/emb1 permalink stops serving this surface/)).toBeInTheDocument();
+
+    expect(
+      fetchMock.mock.calls.find(([input]) => String(input).includes('/api/v1/embeds/emb1')),
+    ).toBeUndefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Turn it off' }));
 
     await waitFor(() => {
       const [, patchInit] =

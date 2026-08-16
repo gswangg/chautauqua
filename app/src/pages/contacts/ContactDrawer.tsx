@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
+import { loadEventsOnce, useCurrentEvent } from '../../lib/useCurrentEvent';
 import type { ContactDetail, ContactListItem } from './types';
 import { fromRows, toRows, reservedValue, type CustomFieldRow } from './customFields';
 import { countOf } from '../../lib/plural';
@@ -150,6 +151,12 @@ function buildHistoryRows(history: ContactDetail['history']): HistoryRow[] {
 
 export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }: Props) {
   const [contact, setContact] = useState<ContactDetail | null>(null);
+  // Names the event-scoped record group with the organiser's actual current
+  // event when it resolves; falls back to the generic 'On this event' when
+  // there is none in play or the lookup fails -- soft-fail only, this is a
+  // label, not a control, and must never block the rest of the drawer.
+  const { eventId: currentEventId } = useCurrentEvent();
+  const [currentEventName, setCurrentEventName] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -228,6 +235,25 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contact'))
       .finally(() => setLoading(false));
   }, [contactId]);
+
+  useEffect(() => {
+    if (!currentEventId) {
+      setCurrentEventName(undefined);
+      return;
+    }
+    let cancelled = false;
+    loadEventsOnce()
+      .then((items) => {
+        if (cancelled) return;
+        setCurrentEventName(items.find((item) => item.id === currentEventId)?.name);
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentEventName(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentEventId]);
 
   async function save() {
     const result = fromRows({ dietary, travel, accessibility }, customFieldRows);
@@ -672,7 +698,10 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                 {linksNode}
               </FieldGroup>
 
-              <FieldGroup title="This event">
+              <FieldGroup title={currentEventName ?? 'On this event'}>
+                <p className="chq-meta chq-contacts-record-group-caption">
+                  These facts belong to this event only — everything above is this person's org-wide record.
+                </p>
                 {labelsNode}
                 {/* DEC-292 amendment (findings wave 5): the "This event"
                     group records three reserved fields, each in its own
@@ -756,6 +785,9 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                 <button type="button" className="chq-btn chq-btn-secondary" disabled={closeDisabled} onClick={onClose}>
                   Cancel
                 </button>
+                <span className="chq-meta chq-contacts-save-scope-note">
+                  {`Saves both the org-wide record and ${currentEventName ?? 'this event'}'s facts`}
+                </span>
                 <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
                   Save
                 </button>
