@@ -1,7 +1,7 @@
 // Data access for events, tracks, rooms (w2-b). Every lookup-by-id is
 // scoped to the caller's org/event so cross-tenant IDs 404 (no IDOR).
 
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId, formatRef } from "../../domain/ids";
@@ -11,9 +11,11 @@ import { findFormForEvent } from "./forms";
 import { listPlansForEvent } from "./review";
 import { formatScheduleSlotLabel } from "../../lib/event-time";
 import { touchSubmissionsForTracks } from "./submissions/touch";
-import { DEC_229, DEC_461, DEC_931 } from "../../decisions";
+import { DEC_229, DEC_461, DEC_851, DEC_931 } from "../../decisions";
+import { EMBED_SURFACES, knobsForSurface } from "../../lib/embed-knobs";
 
 void DEC_931; // delete-refusal fields name their blocking rows -- see deleteTrack/deleteRoom below
+void DEC_851; // deleteTrack's saved-embed blocker only fires for surfaces that actually honor trackId -- see below
 
 void DEC_229; // deleteTrack's referential guard extends to forms/plans/plan_reviewer -- see below
 
@@ -519,16 +521,26 @@ export async function deleteTrack(db: Db, trackId: string, eventId: string): Pro
   // blocker here: it's a private admin filter with no public consequence.
   // An embed blocks regardless of its `enabled` column -- a disabled embed
   // can be re-enabled later, so it still names a live dependency.
-  const embedRows = await db
-    .select({ name: schema.embed.name })
-    .from(schema.embed)
-    .where(
-      and(
-        eq(schema.embed.eventId, eventId),
-        sql`json_extract(${schema.embed.optionsJson}, '$.trackId') = ${trackId}`,
-      ),
-    )
-    .limit(5);
+  //
+  // DEC-851 (wave-55 amendment): only a surface whose EMBED_KNOB_TABLE row
+  // actually declares `trackId` can be blocking on it -- derived from
+  // knobsForSurface, never a hand-listed surface set, so this stays in
+  // sync with the ONE source of truth as the table changes.
+  const trackFilterSurfaces = EMBED_SURFACES.filter((surface) => knobsForSurface(surface).includes("trackId"));
+  const embedRows =
+    trackFilterSurfaces.length === 0
+      ? []
+      : await db
+          .select({ name: schema.embed.name })
+          .from(schema.embed)
+          .where(
+            and(
+              eq(schema.embed.eventId, eventId),
+              inArray(schema.embed.surface, trackFilterSurfaces),
+              sql`json_extract(${schema.embed.optionsJson}, '$.trackId') = ${trackId}`,
+            ),
+          )
+          .limit(5);
   if (embedRows.length > 0) {
     const countRows = await db
       .select({ count: sql<number>`count(*)` })
@@ -536,6 +548,7 @@ export async function deleteTrack(db: Db, trackId: string, eventId: string): Pro
       .where(
         and(
           eq(schema.embed.eventId, eventId),
+          inArray(schema.embed.surface, trackFilterSurfaces),
           sql`json_extract(${schema.embed.optionsJson}, '$.trackId') = ${trackId}`,
         ),
       );

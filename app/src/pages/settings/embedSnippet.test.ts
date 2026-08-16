@@ -146,9 +146,12 @@ describe('buildEmbedUrl knob table (DEC-489/DEC-490)', () => {
     expect(url).not.toContain('fields=');
   });
 
-  it('schedule honors trackId, day, q, accent, dropping format/roomId/limit/fields', () => {
+  // DEC-851 (wave-55 amendment): schedule dropped trackId entirely -- no
+  // reader honors it (ScheduleContent never read the highlight prop, the
+  // .json/.xml feed twin never threaded it into getPublicAgenda).
+  it('schedule honors day, q, accent only, dropping trackId/format/roomId/limit/fields', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'schedule', ALL_OPTS);
-    expect(url).toContain('trackId=trk1');
+    expect(url).not.toContain('trackId=');
     expect(url).toContain('day=2026-09-02');
     expect(url).toContain('q=ai');
     expect(url).toContain('accent=4f46e5');

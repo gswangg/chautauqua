@@ -146,10 +146,14 @@ describe("DEC-774 wave-34 amendment: public surfaces collapse their render water
     expect(state.tracker.calls.sort()).toEqual(["agenda", "breaks", "tracks"].sort());
   });
 
-  it("schedule with ?day=: total call count unchanged (day-switcher read included)", async () => {
+  // DEC-851 (wave-55 amendment): the day-switcher dayCounts read was only
+  // ever there to feed the deleted `allDays` prop -- schedule never issues
+  // it now, ?day= or not (a skipped read stays skipped, never
+  // fetched-then-discarded).
+  it("schedule with ?day=: total call count unchanged (still no day-switcher read)", async () => {
     resetTracker();
     await renderSurfaceContent(DB, EVENT, "schedule", { day: "2026-08-10" });
-    expect(state.tracker.calls.sort()).toEqual(["agenda", "breaks", "dayCounts", "tracks"].sort());
+    expect(state.tracker.calls.sort()).toEqual(["agenda", "breaks", "tracks"].sort());
   });
 
   it("pins the sessions surface title and rendered HTML byte-identical", async () => {

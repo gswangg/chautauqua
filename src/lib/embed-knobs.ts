@@ -8,13 +8,18 @@
 // (src/routes/public/dispatch.tsx, NORMATIVE, never changed to match this
 // table) actually honors.
 //
-// RULING (DEC-489 wave-12 amendment): sessions = trackId(filter), format,
-// roomId, day, q, limit, fields, accent; speakers/gallery = trackId(filter),
-// q, limit, accent; agenda/schedule = trackId(HIGHLIGHT — a render-level
-// highlight per DEC-851, never a SQL predicate, never a "filter" a copied
-// snippet could claim to narrow), day, q, accent. No format/roomId/limit/
-// fields on agenda/schedule: dispatch.tsx parses no `format` on those
-// surfaces at all and calls getPublicAgenda with no perPage.
+// RULING (DEC-489 wave-12 amendment, revised DEC-851 wave-55 amendment):
+// sessions = trackId(filter), format, roomId, day, q, limit, fields, accent;
+// speakers/gallery = trackId(filter), q, limit, accent; agenda = trackId
+// (HIGHLIGHT — a render-level highlight per DEC-851, never a SQL predicate,
+// never a "filter" a copied snippet could claim to narrow), day, q, accent;
+// schedule = day, q, accent ONLY — no trackId at all, because ScheduleContent
+// (src/routes/public/agenda.tsx) never read the highlight prop and
+// getSurfaceFeedPage's schedule branch never threaded it either, so the
+// row was a declared knob with no reader (DEC-851 wave-55 amendment). No
+// format/roomId/limit/fields on agenda/schedule: dispatch.tsx parses no
+// `format` on those surfaces at all and calls getPublicAgenda with no
+// perPage.
 
 export const EMBED_SURFACES = ["sessions", "speakers", "agenda", "schedule", "gallery"] as const;
 export type EmbedSurface = (typeof EMBED_SURFACES)[number];
@@ -50,7 +55,13 @@ const EMBED_KNOB_TABLE: Record<EmbedSurface, SurfaceKnobEntry> = {
     trackMode: "highlight",
   },
   schedule: {
-    knobs: ["trackId", "day", "q", "accent"],
+    // DEC-851 (wave-55 amendment): no reader honors trackId here --
+    // ScheduleContent never read the highlight prop and the .json/.xml
+    // feed twin never threaded it -- so the row named a knob with no
+    // reader. trackMode stays 'highlight' (never reached with trackId
+    // absent from `knobs`) rather than deleting the field, since nothing
+    // in this table's shape lets a surface omit trackMode.
+    knobs: ["day", "q", "accent"],
     trackMode: "highlight",
   },
 };

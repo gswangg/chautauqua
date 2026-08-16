@@ -259,28 +259,21 @@ export async function renderSurfaceContent(
       };
     }
     case "schedule": {
-      // DEC-851 (wave 64 amendment): same highlight-not-filter treatment as
-      // the agenda case above — `?trackId=` never reaches getPublicAgenda's
-      // params, `?format=` is not an agenda facet at all.
-      const highlightTrackId = parseTrackId(query.trackId);
+      // DEC-851 (wave-55 amendment): schedule honours no trackId at all --
+      // there is no highlight control on this frame and no feed twin reads
+      // it either, so the knob is not parsed here.
       const q = parseNameQuery(query.q);
       // DEC-804: same reuse as the agenda case above — one getPublicTracks
       // call feeds the search form's track <select>.
-      // DEC-768: ?day= narrows `items`, so the day switcher's full day list
-      // is fetched independently (same as the agenda case above) — the
-      // ?q= filter narrows the ROWS only, never the switcher. DEC-774
-      // wave-34 amendment: `query.day` comes straight off the query string,
-      // so nothing here waits on anything else -- ONE wave, with the
-      // switcher read folded in only when `?day=` is present (skipped read
-      // stays skipped, never fetched-then-discarded).
-      const [tracks, agendaPage, dayCountsRaw, breaksByDay] = await Promise.all([
+      // DEC-774 (wave-55 amendment): the day-switcher day-counts read is
+      // gone entirely -- its only consumer was the deleted `allDays` prop,
+      // and a skipped read stays skipped, never fetched-then-discarded.
+      const [tracks, agendaPage, breaksByDay] = await Promise.all([
         getPublicTracks(db, event.id),
         getPublicAgenda(db, event, { day: query.day, q }),
-        query.day ? getPublicScheduleDayCounts(db, event) : Promise.resolve(null),
         getPublicBreaksByDay(db, event, query.day),
       ]);
       const { items, total } = agendaPage;
-      const allDays = query.day ? dayCountsRaw!.map((d) => d.day) : null;
       return {
         title: `Schedule - ${event.name}`,
         content: (
@@ -290,9 +283,6 @@ export async function renderSurfaceContent(
             items={items}
             total={total}
             embed={query.embed}
-            allDays={allDays}
-            activeDay={query.day ?? null}
-            highlightTrackId={highlightTrackId}
             q={q}
             breaksByDay={breaksByDay}
           />
