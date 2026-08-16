@@ -102,6 +102,70 @@ describe('NewContactModal copy (DEC-597 wave 64 amendment)', () => {
   });
 });
 
+// DEC-597 (wave 8 amendment): frame 08--16's anatomy -- subtitle, primary
+// verb, neutral placeholders, and the two-up First/Last + Company/Title
+// rows -- WITHOUT the frame's false "Must be unique" email caption.
+describe('NewContactModal frame 08--16 anatomy (DEC-597 wave 8 amendment)', () => {
+  it('renders "Add the contact" as the primary action\'s accessible name', () => {
+    mockApi({});
+    renderModal();
+    expect(screen.getByRole('button', { name: 'Add the contact' })).toBeInTheDocument();
+  });
+
+  it('renders the "Added to the org, not to an event" subtitle', () => {
+    mockApi({});
+    renderModal();
+    expect(document.querySelector('.chq-modal-sub')?.textContent).toBe('Added to the org, not to an event');
+  });
+
+  it('keeps the closing scope note distinct from the subtitle', () => {
+    mockApi({});
+    renderModal();
+    expect(screen.getByText(/does not put them on an event/)).toBeInTheDocument();
+  });
+
+  it('uses neutral, non-example placeholders for all five fields', () => {
+    mockApi({});
+    renderModal();
+    expect(screen.getByLabelText('First name')).toHaveAttribute('placeholder', 'First name');
+    expect(screen.getByLabelText('Last name')).toHaveAttribute('placeholder', 'Last name');
+    expect(screen.getByLabelText('Email')).toHaveAttribute('placeholder', 'their@email.com');
+    expect(screen.getByLabelText(/^Company/)).toHaveAttribute('placeholder', 'Company');
+    expect(screen.getByLabelText(/^Title/)).toHaveAttribute('placeholder', 'Job title');
+  });
+
+  it('does not adopt the frame\'s "Must be unique" email caption (DEC-597)', () => {
+    mockApi({});
+    renderModal();
+    const emailInput = screen.getByLabelText('Email');
+    const helpText = emailInput.closest('.chq-form-row')?.querySelector('.chq-form-row-help');
+    expect(helpText?.textContent).not.toMatch(/Must be unique/);
+    expect(helpText?.textContent).toMatch(/matched and merged/);
+  });
+
+  it('groups First/Last name in one row container, and Company/Title in another, while Email stands alone', () => {
+    mockApi({});
+    renderModal();
+
+    const firstNameRow = screen.getByLabelText('First name').closest('.chq-form-row');
+    const lastNameRow = screen.getByLabelText('Last name').closest('.chq-form-row');
+    const companyRow = screen.getByLabelText(/^Company/).closest('.chq-form-row');
+    const titleRow = screen.getByLabelText(/^Title/).closest('.chq-form-row');
+    const emailRow = screen.getByLabelText('Email').closest('.chq-form-row');
+
+    const nameContainer = firstNameRow?.closest('.chq-contacts-new-contact-row-2up');
+    expect(nameContainer).not.toBeNull();
+    expect(lastNameRow?.closest('.chq-contacts-new-contact-row-2up')).toBe(nameContainer);
+
+    const companyContainer = companyRow?.closest('.chq-contacts-new-contact-row-2up');
+    expect(companyContainer).not.toBeNull();
+    expect(titleRow?.closest('.chq-contacts-new-contact-row-2up')).toBe(companyContainer);
+    expect(companyContainer).not.toBe(nameContainer);
+
+    expect(emailRow?.closest('.chq-contacts-new-contact-row-2up')).toBeNull();
+  });
+});
+
 describe('NewContactModal duplicate hint (DEC-788)', () => {
   it('shows a "Possible duplicate" hint once the check finds a match, and Create still succeeds', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -132,7 +196,7 @@ describe('NewContactModal duplicate hint (DEC-788)', () => {
     // "/admin/..." literal here would double the prefix to /admin/admin/...
     expect(duplicateLink).toHaveAttribute('href', '/contacts?openContact=ct-1');
 
-    const createButton = screen.getByRole('button', { name: 'Create contact' });
+    const createButton = screen.getByRole('button', { name: 'Add the contact' });
     expect(createButton).not.toBeDisabled();
     fireEvent.click(createButton);
 
@@ -182,7 +246,7 @@ describe('NewContactModal duplicate-address 409 (DEC-755 amendment wave 43)', ()
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Raman' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'priya@example.com' } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create contact' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add the contact' }));
 
     await waitFor(() => {
       expect(document.querySelector('.chq-error')).toHaveTextContent('Priya Raman already uses this email');
@@ -214,7 +278,7 @@ describe('NewContactModal duplicate-address 409 (DEC-755 amendment wave 43)', ()
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Raman' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'not-an-email' } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create contact' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add the contact' }));
 
     await waitFor(() => {
       expect(document.querySelector('.chq-error')).toHaveTextContent('Validation failed');
