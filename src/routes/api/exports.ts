@@ -122,6 +122,10 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
   // validators the sibling route (src/routes/api/email-log.ts) uses -- not a
   // reimplementation -- so an unrecognised status/since value 400s the same
   // way here as it does there.
+  // task-w3-g (DEC-027 wave-82 amendment): templateId joins that list too --
+  // EmailLogExportParams is now Pick<>'d from EmailLogListParams so this
+  // vocabulary can never silently drift from the list's again, and templateId
+  // is parsed with the same parseBoundedText call the list route uses.
   let emailLogParams: EmailLogExportParams | undefined;
   if (kind === "email-log") {
     const contactIdRaw = c.req.query("contactId") || undefined;
@@ -143,7 +147,13 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
       }
       since = n;
     }
-    emailLogParams = { contactId, status: statusRaw, q, batchKey, since };
+    // DEC-027 (wave-82 amendment): templateId parsed with the SAME
+    // parseBoundedText validator the sibling list route
+    // (src/routes/api/email-log.ts) uses, so an over-long/malformed value
+    // 400s identically on both routes rather than being reimplemented here.
+    const templateIdRaw = c.req.query("templateId") || undefined;
+    const templateId = templateIdRaw !== undefined ? parseBoundedText(templateIdRaw, "templateId", { max: 64, required: false }) : undefined;
+    emailLogParams = { contactId, status: statusRaw, q, batchKey, since, templateId };
   }
 
   // w41-a (DEC-027 wave-41 amendment): the 'evaluations' export honours an
@@ -182,7 +192,7 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
         : kind === "contacts"
           ? " Narrow with the directory's own filter (q/segmentId/rules) and retry."
           : kind === "email-log"
-            ? " Narrow with the history's own filter (status/q/batchId/since/contactId) and retry."
+            ? " Narrow with the history's own filter (status/q/batchId/since/contactId/templateId) and retry."
             : kind === "evaluations"
               ? " Narrow with planId/round and retry."
               : "";
