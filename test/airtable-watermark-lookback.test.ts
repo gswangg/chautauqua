@@ -221,3 +221,67 @@ describe("airtable watermark lookback (DEC-450 wave-33 amendment)", () => {
     );
   });
 });
+
+describe("airtable watermark validation (DEC-725)", () => {
+  it("throws naming the KV key and offending value on a garbage stored watermark, pushes nothing, and does not advance the cursor", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, T0);
+    insertContact(sqlite, "c1", T0);
+
+    const kv = makeKv();
+    const garbage = "not-a-date";
+    kv.store.set(`airtable:watermark:${ORG_A}`, garbage);
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: ORG_A, KV: kv };
+    const noSleep = async () => {};
+
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      return { ok: true, text: async () => "" } as Response;
+    }) as typeof fetch;
+
+    await expect(runAirtableSync(env, db, fetchImpl, new Date(T0 + 20_000), noSleep)).rejects.toThrow(
+      /airtable:watermark:org-a.*not-a-date/,
+    );
+    expect(calls).toBe(0);
+    // the cursor must not advance past the corrupt value
+    expect(kv.store.get(`airtable:watermark:${ORG_A}`)).toBe(garbage);
+  });
+
+  it("syncs incrementally with a valid ISO watermark", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, T0);
+    insertContact(sqlite, "c-recent", T0 - 50_000);
+    insertContact(sqlite, "c-stale", T0 - 600_000);
+
+    const kv = makeKv();
+    kv.store.set(`airtable:watermark:${ORG_A}`, new Date(T0).toISOString());
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: ORG_A, KV: kv };
+    const noSleep = async () => {};
+
+    const patch: Array<{ table: string; body: unknown }> = [];
+    const r = await runAirtableSync(env, db, collectingFetch(patch), new Date(T0 + 20_000), noSleep);
+
+    expect(r).not.toBeNull();
+    expect(pushedContactIds(patch)).toContain("c-recent");
+    expect(pushedContactIds(patch)).not.toContain("c-stale");
+    expect(kv.store.get(`airtable:watermark:${ORG_A}`)).toBe(new Date(T0 + 20_000).toISOString());
+  });
+
+  it("full-pushes when the watermark is absent", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, T0);
+    insertContact(sqlite, "c-old", T0 - 10_000_000);
+
+    const kv = makeKv();
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: ORG_A, KV: kv };
+    const noSleep = async () => {};
+
+    const patch: Array<{ table: string; body: unknown }> = [];
+    const r = await runAirtableSync(env, db, collectingFetch(patch), new Date(T0), noSleep);
+
+    expect(r).not.toBeNull();
+    expect(pushedContactIds(patch)).toContain("c-old");
+    expect(kv.store.get(`airtable:watermark:${ORG_A}`)).toBe(new Date(T0).toISOString());
+  });
+});
