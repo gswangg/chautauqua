@@ -68,6 +68,23 @@ yet all-PASS. Scale-or-Choice CONFIRMED E2E (all layers, 409s on frozen-type,
 shares 60/40). Docs site MINOR on its FIRST audit; both fixed captions verified
 truthful against real screens.**
 
+**USER-FILED BURST (gate-12 era, afternoon) — SWARM LANE ADDITIONS:**
+A. **Selection-banner layout shift (contacts AND submissions)**: checking a row
+   makes the bulk bar ("N selected · Kept across pages…") APPEAR above the
+   table, pushing everything down. Design the non-shifting version: either
+   reserve the bar's height permanently (empty state renders the space) or
+   make the bar an overlay/sticky band that does not reflow the table. Check
+   frames 08-contacts--00/02-submissions--00 for a drawn bulk bar first; if
+   the frames draw it inline, reserve-the-space is the frame-faithful answer.
+   Same fix must land on BOTH surfaces (shared pattern, one implementation).
+B. **Settings action-typography ROLE unification**: rows still mix action
+   styles ("Open" 12/700 beside "Copy" at body scale on the CFP Public-link
+   row; same class as the fixed View/Embed-code pair). Define exactly TWO
+   action roles from the frames — section-head action vs in-row inline
+   action — as ONE class each, and sweep EVERY settings row action onto the
+   right role. No row may mix two action styles. Cite frame 09--05/09--06
+   metrics for the two roles.
+
 **ORCHESTRATOR IS TAKING (named one-liners, do not double-fix):**
 - 12-home content-box 558→732: .chq-home-body missing width:100% (group1 named it).
 - §09 M1: capacity/name inputs 178px — inputs lack width:100% inside the fixed
