@@ -490,5 +490,39 @@ export const PORTAL_CSS = `
   .chq-portal-detail h2, .chq-portal-detail h3 { color: var(--chq-ink); margin: 0 0 6px; }
   .chq-portal-detail p, .chq-portal-detail ul { margin: 0 0 10px; }
   .chq-portal-detail ul { padding-left: 20px; }
+
+  /* DEC-604 (wave-56 amendment): the co-presenter add-form's submit is
+     left-aligned at its natural width, never the Save-changes row's
+     right-flush -- adding a co-presenter is an aside, not the page's
+     primary action. */
+  .chq-portal-copresenter-submit { padding-top: 2px; }
+  .chq-portal-copresenter-submit .chq-btn { min-height: 44px; }
+
+  /* DEC-604 (wave-56 amendment) B10 form spec: the edit view is the one
+     portal page with a form, so first/last name go two-up and email pairs
+     with the 190px role select once there is room -- test/breakpoint-
+     conformance.test.ts's DEC-385 scan forbids any min-width media query
+     anywhere in this tree (single-direction, max-width only), so the
+     wide-only pairing is intrinsic (flex-wrap + a flex-basis floor) rather
+     than a discrete breakpoint: below the fold-point each pair naturally
+     wraps to a stacked column (mobile is untouched, unconditionally, by
+     construction) and above it the two items sit side by side -- exactly
+     the 1600-frame layout the ruling draws, reached without a new
+     min-width query. */
+  .chq-portal-copresenter-names,
+  .chq-portal-copresenter-email-role {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 16px;
+  }
+  .chq-portal-copresenter-names > div,
+  .chq-portal-copresenter-email-role > div:first-child {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+  .chq-portal-copresenter-role {
+    flex: 0 1 190px;
+    min-width: 140px;
+  }
 ${EMPTY_CSS}
 ${ERROR_STATES_CSS}`;

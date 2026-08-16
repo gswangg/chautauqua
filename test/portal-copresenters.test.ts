@@ -8,6 +8,8 @@ import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
+import { formatEventDate } from "../src/lib/event-time";
+import type { EditableSubmissionData, PortalParticipant } from "../src/server/repo/portal-edit";
 
 vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
@@ -59,12 +61,26 @@ vi.mock("../src/server/repo/portal", async () => {
 
 const getPortalParticipantsMock = vi.fn(async () => [] as unknown[]);
 
-vi.mock("../src/server/repo/portal-edit", () => ({
-  loadEditableSubmission: vi.fn(async () => null),
-  getPortalParticipants: getPortalParticipantsMock,
-}));
+vi.mock("../src/server/repo/portal-edit", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/portal-edit")>("../src/server/repo/portal-edit");
+  return {
+    ...actual,
+    loadEditableSubmission: vi.fn(async () => null),
+    getPortalParticipants: getPortalParticipantsMock,
+  };
+});
 
 const speakerAuth: AuthInfo = { userId: "u-1", role: "speaker", orgId: "org-1", contactId: "ct-1" };
+
+// Loaded dynamically (top-level await), AFTER getPortalParticipantsMock is
+// initialized -- edit.tsx statically imports "../src/server/repo/portal-
+// edit" (mocked above), and a static top-level import of EditPage here
+// would pull that mocked module in during this file's own module
+// instantiation, before getPortalParticipantsMock's const binding exists
+// (TDZ). Everything else in this file already used a dynamic import for
+// exactly this reason.
+const { EditPage } = await import("../src/routes/portal/edit");
+const { CO_PRESENTER_DUPLICATE_MESSAGE } = await import("../src/server/repo/portal-edit");
 
 async function buildApp(auth: AuthInfo | undefined) {
   const { portalRoutes } = await import("../src/routes/portal/index");
@@ -78,6 +94,79 @@ async function buildApp(auth: AuthInfo | undefined) {
   app.route("/portal", portalRoutes);
   return app;
 }
+
+describe("EditPage co-presenter frame (DEC-604 wave-56 amendment)", () => {
+  const DATA: EditableSubmissionData = {
+    submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },
+    form: { id: "f1", closeDate: Date.UTC(2026, 7, 16), timezone: "America/Los_Angeles" },
+    fields: [],
+    answers: {},
+    offeredTrackIds: [],
+    allTracks: [],
+    selectedTrackIds: [],
+  };
+  const branding = { eventName: "Event", welcomeMessage: null, accentColor: null, logoUrl: null };
+  const participants: PortalParticipant[] = [
+    { id: "p-1", contactId: "ct-2", name: "Dana Ito", email: "dana@example.com", role: "speaker", roleLabel: "Speaker", visible: false },
+  ];
+
+  function render(overrides: Partial<Parameters<typeof EditPage>[0]> = {}) {
+    return EditPage({
+      branding,
+      submissionId: "s1",
+      data: DATA,
+      answers: {},
+      selectedTrackIds: [],
+      csrfToken: "tok",
+      editable: true,
+      tracksEditable: true,
+      participants,
+      speakerName: "Priya Raman",
+      ...overrides,
+    }).toString();
+  }
+
+  it("states the no-email fact verbatim, dropping the old passive wording", () => {
+    const html = render();
+    expect(html).toContain("No email goes to them — tell them yourself.");
+    expect(html).not.toContain("They will not receive an email or invitation.");
+  });
+
+  it("keeps the per-row muted unpublished line unchanged", () => {
+    const html = render();
+    expect(html).toContain("Not yet on the public site. Your organiser publishes co-presenters.");
+  });
+
+  it("renders the window sub-line under the h1 when the form has a close date", () => {
+    const html = render();
+    expect(html).toContain("You can change this until the form closes on");
+    expect(html).toContain(formatEventDate(DATA.form.closeDate!, DATA.form.timezone));
+    expect(html).not.toContain("Edits are live on the public pages straight away");
+  });
+
+  it("omits the window sub-line entirely when the form has no close date, never synthesizing one", () => {
+    const html = render({ data: { ...DATA, form: { ...DATA.form, closeDate: null } } });
+    expect(html).not.toContain("You can change this until the form closes on");
+  });
+
+  it("renders the duplicate-rejection standard error shape: a banner, the field message, and the survives-reload sentence", () => {
+    const html = render({
+      participantErrors: { email: CO_PRESENTER_DUPLICATE_MESSAGE },
+      participantValues: { firstName: "Dana", lastName: "Ito", email: "dana@example.com", role: "moderator" },
+    });
+    expect(html).toContain(CO_PRESENTER_DUPLICATE_MESSAGE);
+    expect(html).toContain("Everything you typed is still below.");
+    // participantValues round-trip through the re-rendered add-form.
+    expect(html).toContain('value="Dana"');
+    expect(html).toContain('value="Ito"');
+    expect(html).toContain('value="dana@example.com"');
+  });
+
+  it("does not render the duplicate banner for an ordinary field-validation error", () => {
+    const html = render({ participantErrors: { firstName: "First name is required" } });
+    expect(html).not.toContain("Everything you typed is still below.");
+  });
+});
 
 describe("GET /portal/submissions/:id — co-presenter 'With' line (DEC-777 wave 4 amendment)", () => {
   it("renders a With line naming other participants, excluding the viewer's own row", async () => {
