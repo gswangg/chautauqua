@@ -278,6 +278,10 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
   "app/src/test-utils/mockApi.ts":
     "Shared test helper imported only by *.render.test.tsx files -- test-file imports don't confer reachability " +
     "(DEC-518), and this module exists purely to serve those tests.",
+  "src/routes/docs-content/technical-names.ts":
+    "ASD-STE100 rule-1.5/1.6 technical-name declaration for the docs articles -- consumed only by " +
+    "test/docs-ste.scan.test.ts (the docs dictionary scan), and test-file imports don't confer reachability " +
+    "(DEC-518); it exists purely to serve that scan, same shape as mockApi.ts above.",
   "scripts/walkthrough/producer.ts":
     "Spawned by scripts/walkthrough.ts via `spawnSync(\"npx\", [\"tsx\", modulePath(area), ...])` over " +
     "WALKTHROUGH_AREAS (scripts/walkthrough-lib.ts) -- a runtime-computed child-process path, never a static " +

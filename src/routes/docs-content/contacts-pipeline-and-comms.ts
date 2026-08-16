@@ -5,66 +5,66 @@ export const contactsPipelineAndComms: DocsArticle = {
   group: "your-contacts",
   title: "Your contacts: directory, pipeline and comms",
   standfirst:
-    "The contacts directory is org-wide and continues after each event. A sourcing pipeline records possible speakers before they submit. A segment is a saved filter that you can use again. When you compose to a segment, a dedupe period stops a second send that occurs by accident.",
+    "The contacts directory is org-wide and persists across events. A sourcing pipeline records possible speakers before they submit, a segment is a saved filter you can reuse, and a dedupe window stops accidental double sends when you compose.",
   blocks: [
     { kind: "heading", text: "The directory and an event roster" },
     {
       kind: "prose",
-      text: "Each contact — added manually or with a CSV import — lives in one org-wide directory, not in one event. When you add a contact to the directory, the contact does not go onto an event. A contact shows on the roster of an event only after a connection that you make. A connection is a submission, a pipeline enrollment that you push across, or an import that you attach to the event. The directory is the one location where a person is recorded. An event roster is a view of the persons who are attached to that event.",
+      text: "Every contact — added by hand or through a CSV import — lives in one org-wide directory, not in any single event. Adding a contact to the directory does not put them on an event; a contact reaches a roster only through a connection you make. That connection is a submission, a pipeline enrollment you push across, or an import attached to the event. The directory is the one place a person is recorded; an event roster is just a view of the people attached to that event.",
     },
     { kind: "heading", text: "Importing a CSV" },
     {
       kind: "prose",
-      text: "The import wizard maps the columns of your file onto contact fields: the built-in fields plus each custom field. Then it runs a dry-run plan before it writes data. The wizard flags a row that matches a contact in the directory as a possible duplicate. Each flagged row gets its selection — not one decision for the full file. 'Import as new', the default, keeps the row as a new contact. Or you can select 'Merge into <name> (<email>)' to fold the row into that one contact.",
+      text: "The import wizard maps your file's columns onto contact fields — the built-in fields plus every custom field — and runs a dry-run plan before it writes anything. Rows that match an existing directory contact are flagged as possible duplicates, and each flagged row gets its own choice rather than one decision for the whole file. 'Import as new', the default, keeps the row as a new contact; 'Merge into <name> (<email>)' folds the row into that contact instead.",
     },
     {
       kind: "figure",
       shotId: "your-contacts-contacts-pipeline-and-comms-01",
       caption:
-        "A possible-duplicate row in the import wizard: 'Import as new' next to one radio control for each merge alternative. You make the decision for each row independently.",
+        "A possible-duplicate row in the import wizard: 'Import as new' beside one radio control for each merge option. You decide each row independently.",
     },
     {
       kind: "prose",
-      text: "To attach an import to an event is a selection that you make, not a side effect of the import. You select the event before you run the import. Only then do the imported rows go onto the roster of that event and also into the directory. If you do not select an event, the contacts go into the directory only. Use this when you collect contacts and do not do work on one event.",
+      text: "Attaching an import to an event is a choice you make, not a side effect of the import. You select the event before you run the import; only then do the imported rows go onto that roster as well as into the directory. If you select no event, the contacts go into the directory only — useful when you are collecting contacts without working on a particular event.",
     },
     { kind: "heading", text: "The sourcing pipeline" },
     {
       kind: "prose",
-      text: "The pipeline is a board for the persons that you contact as possible speakers. It is not the accept and decline flow of the call for papers: you use it before a person sends a submission. When you enroll a contact, the card goes into Identified. From there, the card moves through Contacted, Interested, and Confirmed, or to Declined. You move a card with a drag or with its Move-to control, and the Move-to control is the step that saves the change. Each card can have a fit score, a recorded cause, and a note log, and thus the card shows why it is where it is.",
+      text: "The pipeline is a board for the people you contact as possible speakers — not the accept-and-decline flow of the call for papers, but the stage before a person submits. An enrolled contact starts as a card in Identified and moves through Contacted, Interested, and Confirmed, or to Declined. You move a card by drag or with its Move-to control, and the Move-to control is what saves the change. Each card can carry a fit score, a recorded reason, and a note log, so the board shows why every card is where it is.",
     },
     {
       kind: "figure",
       shotId: "your-contacts-contacts-pipeline-and-comms-02",
       caption:
-        "The columns of the pipeline board — Identified, Contacted, Interested, Confirmed, Declined. Each card shows its fit score and the time that it has stayed in its column.",
+        "The pipeline board's columns — Identified, Contacted, Interested, Confirmed, Declined. Each card shows its fit score and how long it has been in its column.",
     },
-    { kind: "heading", text: "Segments: a saved filter that you can use again" },
+    { kind: "heading", text: "Segments: a saved filter you can reuse" },
     {
       kind: "prose",
-      text: "You can apply a filter to the directory by tag, by company, or by custom field. You can save that filter as a segment: a named view that you can use again. You can apply a segment again, or send it directly to compose. A segment does not make a copy of contacts. It is a saved set of rules, and each use applies the rules to the live directory again. Thus, a segment always shows the persons who match at that time, not a snapshot from the time of the save.",
+      text: "You can filter the directory by tag, company, or custom field, and save the filter as a segment — a named view you can reuse or send straight to compose. A segment does not copy contacts; it is a saved set of rules, and every use runs those rules against the live directory again. So a segment always shows the people who match right now, not a snapshot from when you saved it.",
     },
     { kind: "heading", text: "Composing to a segment" },
     {
       kind: "prose",
-      text: "Compose starts from a template, fills in the merge fields for each recipient, and sends to all persons that the segment matches at that time. If compose cannot fill a placeholder in the template, it rejects the template before a message goes out. No recipient gets the text '{missing_field}' in their mail.",
+      text: "Compose starts from a template, fills in the merge fields for each recipient, and sends to everyone the segment matches at that moment. If compose cannot fill a placeholder, it rejects the template before any message goes out — no recipient ever sees the literal text '{missing_field}' in their mail.",
     },
     {
       kind: "list",
       items: [
-        "'sent' — the number of messages that went out in this run.",
-        "'skipped' — the recipients that the dedupe period held back in this run.",
-        "'remaining' — the recipients that this run did not send to. Run compose again to continue from that point.",
+        "'sent' — the messages that went out in this run.",
+        "'skipped' — the recipients the dedupe window held back in this run.",
+        "'remaining' — the recipients this run did not send to. Run compose again to continue from that point.",
       ],
     },
     {
       kind: "prose",
-      text: "The 'skipped' number comes from the one-hour dedupe period. This period stops a second send to the same recipient with the same filled-in subject in the hour after the last correct send. Thus, a compose that runs again does not mail a person two times with the message that they got before. This period is a safety limit that does not change. You cannot adjust it for each send.",
+      text: "The 'skipped' number comes from the one-hour dedupe window. For an hour after a successful send, the window stops any second send to the same recipient with the same filled-in subject. So a compose you run again never mails a person twice with a message they already got. The window is a fixed safety limit; you cannot adjust it per send.",
     },
     {
       kind: "figure",
       shotId: "your-contacts-contacts-pipeline-and-comms-03",
       caption:
-        "The compose result after a send: 'sent', 'skipped', and 'remaining' shown independently, not folded into one number.",
+        "The compose result after a send: 'sent', 'skipped', and 'remaining' reported separately, not folded into one number.",
     },
   ],
 };

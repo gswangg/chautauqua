@@ -42,7 +42,7 @@ function walk(dir: string, suffix: string): string[] {
 const DISCLOSURE_TOGGLE_OK: Array<[file: string, line: number, reason: string]> = [
   [
     'pages/review/ResultsTable.tsx',
-    446,
+    478,
     "expand/collapse disclosure toggle ({expanded ? '▾' : '▸'} count) -- the " +
       'glyph precedes its label and flips direction with `expanded`, unlike a ' +
       'select caret, which always points down and always trails the label in ' +
@@ -50,9 +50,9 @@ const DISCLOSURE_TOGGLE_OK: Array<[file: string, line: number, reason: string]> 
   ],
   [
     'pages/submissions/SubmissionDetailPage.tsx',
-    1184,
+    1171,
     "expand/collapse criteria disclosure toggle ({criteriaOpen ? '▾' : '▸'} " +
-      'count) -- same disclosure affordance as ResultsTable.tsx:446.',
+      'count) -- same disclosure affordance as ResultsTable.tsx:478.',
   ],
 ];
 

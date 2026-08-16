@@ -60,7 +60,7 @@ describe("button vocabulary is exactly three tiers, tier class always wins (DEC-
         );
       });
 
-      it("exactly the three tier classes are defined (no fourth tier)", () => {
+      it("exactly the ruled tier classes are defined (no unruled tier)", () => {
         const tierNames = new Set<string>();
         for (const rule of tierRules) {
           for (const part of rule.selectors.split(",")) {
@@ -68,7 +68,16 @@ describe("button vocabulary is exactly three tiers, tier class always wins (DEC-
             if (found?.[1]) tierNames.add(found[1]);
           }
         }
-        expect([...tierNames].sort()).toEqual(["primary", "secondary", "tertiary"]);
+        // DEC-689 ruled exactly three tiers; DEC-383 (V11 B8 amendment,
+        // DESIGN-RULINGS.md B8 tier table row 4) superseded that for the SPA
+        // sheet by adding the destructive-tertiary register
+        // (.chq-btn-destructive-tertiary: link-style, --chq-destructive ink,
+        // darkens on hover). No fifth tier is permitted anywhere.
+        const expected =
+          label === "app/src/styles.css"
+            ? ["destructive", "primary", "secondary", "tertiary"]
+            : ["primary", "secondary", "tertiary"];
+        expect([...tierNames].sort()).toEqual(expected);
       });
     });
   }

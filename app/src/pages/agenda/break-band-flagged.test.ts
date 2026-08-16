@@ -91,10 +91,16 @@ describe('DEC-021 amendment (wave 66): the flagged break band differs from the b
     expect(() => ruleBody(AGENDA_CSS, '.chq-agenda-break-band-flagged .chq-agenda-break-band-label')).toThrow();
   });
 
-  it('the differential is the B8 provisional dashed border, matching .chq-day-grid-origin-well\'s literal', () => {
-    expect(declValue(flaggedBody, 'border-top')).toBe('1px dashed #bab6a6');
-    expect(declValue(flaggedBody, 'border-bottom')).toBe('1px dashed #bab6a6');
+  // Token form, not the literal #bab6a6: the palette closure guards
+  // (DEC-383 / DEC-631 -- fix to the nearest README token, never
+  // allowlist) supersede the raw hex this assertion originally quoted;
+  // var(--chq-border) IS #bab6a6 in the shell's :root.
+  it('the differential is the B8 provisional dashed border, matching .chq-day-grid-origin-well\'s token', () => {
+    expect(declValue(flaggedBody, 'border-top')).toBe('1px dashed var(--chq-border)');
+    expect(declValue(flaggedBody, 'border-bottom')).toBe('1px dashed var(--chq-border)');
     const wellBody = ruleBody(AGENDA_CSS, '.chq-day-grid-origin-well');
-    expect(declValue(wellBody, 'border')).toContain('#bab6a6');
+    expect(declValue(wellBody, 'border')).toContain('var(--chq-border)');
+    // The token still resolves to the B8 provisional literal the frame draws.
+    expect(resolveVar('var(--chq-border)')).toBe('#bab6a6');
   });
 });

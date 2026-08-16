@@ -29,7 +29,7 @@ export type ComposeSendResult = Omit<SendResult, 'skipped'> & {
 // wave-60 amendment (DEC-238, P1 cluster 4): /compose/preview's dedupe plan
 // summary — the same arithmetic /compose/send is about to run against the
 // same input. `willSend` is the number the wizard's primary Send button
-// must display; ComposeSendResult.sent + .failed + .skipped is the number
+// must display; ComposeSendResult's sent + failed + skipped sum is the number
 // the SAME denominator uses after send actually runs.
 export interface ComposePreviewPlan {
   willSend: number;

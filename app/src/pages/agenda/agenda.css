@@ -568,8 +568,8 @@
    solid border-top/border-bottom, so the flagged band is now visibly
    distinct from an ordinary one. */
 .chq-agenda-break-band-flagged {
-  border-top: 1px dashed #bab6a6;
-  border-bottom: 1px dashed #bab6a6;
+  border-top: 1px dashed var(--chq-border);
+  border-bottom: 1px dashed var(--chq-border);
 }
 
 /* DEC-903 (wave-63 amendment): B8's drag vocabulary — while a placed card
@@ -590,8 +590,8 @@
    Fill/border literals match the B8 muted-well pair already used for a
    flagged break band (.chq-agenda-break-band-flagged), not a fresh literal. */
 .chq-day-grid-origin-well {
-  background: #efebdf;
-  border: 1px dashed #bab6a6;
+  background: var(--chq-surface-sunk);
+  border: 1px dashed var(--chq-border);
   border-radius: var(--chq-r-ctl);
 }
 

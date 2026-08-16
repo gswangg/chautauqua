@@ -361,6 +361,15 @@
   gap: 9px;
 }
 
+/* DEC-650 (wave-66 amendment, DESIGN-RULINGS.md:314): 'Delete this
+   question' sits far left of the footer row, never adjacent to
+   Cancel/Save -- margin-right:auto pins it there even if the footer's
+   own justify-content changes. Colour/weight stay with
+   .chq-btn-destructive-tertiary in styles.css. */
+.chq-forms-field-delete {
+  margin-right: auto;
+}
+
 /* DEC-650(a): the conditional-visibility rule reads as a sentence -- this
    leading line, then the trigger/condition/value controls beneath it --
    rather than a bare "Field" select implying the sentence. */

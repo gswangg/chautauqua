@@ -726,6 +726,23 @@
    scope sentence lives on its own line above this bar now (see
    .chq-contacts-save-scope-note), so it never competes with these buttons
    for room. */
+/* DEC-292 amendment (findings wave 5): the caption under the per-event
+   group title, separating this event's facts from the org-wide record
+   above. Rides .chq-meta's 12px muted; this rule spaces it off the
+   fields beneath. */
+.chq-contacts-record-group-caption {
+  margin: 0 0 12px;
+}
+
+/* DEC-616 wave-70 amendment: the save-scope sentence sits on its own line
+   above the action bar, right-aligned so it reads with the right-flushed
+   Save beneath it and can never be clipped behind the drawer's right edge
+   at 520px. */
+.chq-contacts-save-scope-note {
+  margin: 14px 0 8px;
+  text-align: right;
+}
+
 .chq-contacts-drawer-actions {
   display: flex;
   justify-content: space-between;
