@@ -15,6 +15,7 @@ import { EMBED_FORMATS } from "../../lib/embed-formats";
 import { ALL_CARD_FIELDS } from "../../lib/card-fields";
 import { knobsForSurface, type EmbedKnob, type EmbedSurface } from "../../lib/embed-knobs";
 import { parseTrackId, parseDay, parseNameQuery, parseLimit, parseCardFields, parseAccent, parseFormat, parseRoomId } from "../public/query";
+import { MIN_EMBED_LIMIT, MAX_EMBED_LIMIT } from "../../server/repo/public/bounds";
 import { DEC_785, DEC_822, DEC_839, DEC_490 } from "../../decisions";
 import { MAX_SAVED_EMBEDS_PER_EVENT } from "../../domain/embeds";
 import { overCapCountMessage } from "../../domain/cap-copy";
@@ -137,7 +138,16 @@ async function parseEmbedOptionsInput(
       throw new ApiError("invalid", "limit must be a number", { limit: "Invalid limit" });
     }
     const parsed = parseLimit(String(input.limit));
-    if (parsed === null) throw new ApiError("invalid", "limit must be an integer 1-100", { limit: "Invalid limit" });
+    if (parsed === null) {
+      // DEC-487: the enforced range (parseLimit, src/routes/public/query.ts)
+      // and this refusal's described range are the same two symbols, so they
+      // can never drift apart.
+      throw new ApiError(
+        "invalid",
+        `limit must be an integer ${MIN_EMBED_LIMIT}-${MAX_EMBED_LIMIT}`,
+        { limit: "Invalid limit" },
+      );
+    }
     out.limit = parsed;
   }
   if (input.fields !== undefined) {

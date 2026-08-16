@@ -15,5 +15,5 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["src", "../src/domain/**/*.ts", "../src/forms/**/*.ts", "../src/mail/**/*.ts", "../src/decisions.ts"]
+  "include": ["src", "../src/domain/**/*.ts", "../src/forms/**/*.ts", "../src/mail/**/*.ts", "../src/decisions.ts", "../src/server/repo/public/bounds.ts"]
 }
