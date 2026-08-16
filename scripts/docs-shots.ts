@@ -30,7 +30,7 @@
 // Scripts/ tooling (not src/ pure-core, DEC-002), so node:/playwright
 // imports are fine here.
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,6 +44,28 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
 const FIXTURE_PATH = join(REPO_ROOT, "docs", "fixtures", "sample-data.json");
 const SHOTS_DIR = join(REPO_ROOT, "public", "docs", "shots");
+const SHOTS_AVAILABLE_PATH = join(REPO_ROOT, "src", "routes", "docs-content", "shots-available.ts");
+
+/** Writes src/routes/docs-content/shots-available.ts with the sorted list
+ * of ids actually captured this run -- the ONLY writer of that file (its
+ * own header repeats this: never hand-extend it). Called after every id in
+ * `ids` has a real PNG on disk in SHOTS_DIR. */
+function writeShotsAvailable(ids: readonly string[]): void {
+  const sorted = [...ids].sort();
+  const body = `// WRITTEN BY scripts/docs-shots.ts after a successful shoot (DEC-518
+// amendment, wave 4). This file must NEVER be hand-extended: the only
+// legal edits are (a) the script overwriting it with the sorted list of
+// shot ids it actually captured against a real, seeded \`npm run dev\`, or
+// (b) emptying it back to \`[]\`, which is always legal (it just returns
+// every docs figure to its named placeholder -- see
+// src/routes/docs-site.tsx's figure block renderer). A hand-added id here
+// with no PNG on disk would silently 404 an <img> the reader can't get
+// back from; that's why this is generated, not maintained.
+
+export const DOCS_SHOTS_AVAILABLE: readonly string[] = ${JSON.stringify(sorted)};
+`;
+  writeFileSync(SHOTS_AVAILABLE_PATH, body);
+}
 
 type PersonaRole = RouteManifestEntry["role"];
 
@@ -213,7 +235,9 @@ async function main(): Promise<void> {
       console.log(`SHOT ${entry.id} -> ${outPath} (${entry.route})`);
     }
 
+    writeShotsAvailable([...writtenIds]);
     console.log(`docs-shots OK: ${writtenIds.size} screenshots written to ${SHOTS_DIR}`);
+    console.log(`docs-shots: ${SHOTS_AVAILABLE_PATH} updated with ${writtenIds.size} ids`);
   } finally {
     for (const ctx of contextByRole.values()) await ctx.close();
     await browser.close();

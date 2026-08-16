@@ -18,7 +18,10 @@ import type { DocsArticle } from "../src/routes/docs-content/types";
 const CONTENT_DIR = resolve(fileURLToPath(import.meta.url), "../../src/routes/docs-content");
 
 // Files in this directory that are infrastructure, not articles.
-const NON_ARTICLE_FILES = new Set(["index.ts", "types.ts", "groups.ts"]);
+// shots-available.ts (task w4-a, DEC-518 amendment): WRITTEN BY
+// scripts/docs-shots.ts, a generated manifest of captured screenshot ids,
+// never a DocsArticle.
+const NON_ARTICLE_FILES = new Set(["index.ts", "types.ts", "groups.ts", "shots-available.ts"]);
 
 /** Finds the single DocsArticle-shaped named export of a dynamically
  * imported module (an object carrying `slug`, `group`, `title`). */

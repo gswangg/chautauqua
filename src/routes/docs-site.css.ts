@@ -87,6 +87,7 @@ export const DOCS_SITE_CSS = `
     place-items: center;
   }
   .chq-docs-figure-placeholder { font-family: ui-monospace, monospace; font-size: 12px; color: var(--chq-muted); padding: 0 16px; text-align: center; }
+  .chq-docs-figure-img { width: 100%; height: auto; display: block; }
   .chq-docs-figure-caption { font-size: 13px; color: var(--chq-muted); line-height: 1.55; }
 
   .chq-docs-empty { max-width: 680px; }
