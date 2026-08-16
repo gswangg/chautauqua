@@ -284,8 +284,11 @@ excluded from the idempotent render sweep. Built.
 
 The mailer port's local sink: every "send" (status-change notification, reminder,
 compose, .ics invite) writes an `email_log` row and is viewable, full rendered message
-included, at `/dev/mailbox` — deliberately **not mounted in production** (see README).
-Production delivery, via the Cloudflare `send_email` binding adapter, is listed below.
+included, at `/dev/mailbox` — mounted only when `DEV_MODE='1'`, deliberately unset in
+production, so `/dev/mailbox` **404s by design on a deployed instance** (see the "Deploy
+parity checklist" above and the README's "For evaluators" section; the 404 is the intended
+behaviour, not a broken link). Production delivery, via the Cloudflare `send_email`
+binding adapter, is listed below.
 
 `/dev/mailbox/:emailId` (`src/server/repo/email.ts`, guarded by `guardDevMailbox` in
 `src/server/app.ts`) is the single logged message's own rendered view — same guard as the
@@ -387,7 +390,8 @@ and adapter swaps that a deploying operator does, not code gaps:
   already written, against the Cloudflare Workers `send_email` binding, not Resend. What's
   left is the operator's own account/domain provisioning (the binding + a verified sending
   domain), not a code gap. Local dev writes to `email_log` + `/dev/mailbox` instead, and
-  that route stays deliberately unmounted in production.
+  `/dev/mailbox` only mounts when `DEV_MODE='1'` — it 404s by design on a deployed
+  instance where that stays unset.
 - **Airtable one-way sync** — the push adapter is written (`src/sync/airtable.ts`, cron-
   invoked from `src/server/scheduled.ts`) and is a no-op unless both `AIRTABLE_TOKEN` and
   `AIRTABLE_BASE_ID` are configured; absence is a valid state, not an error. Once those two
@@ -397,6 +401,25 @@ and adapter swaps that a deploying operator does, not code gaps:
   has no secrets).
 - **Resend delivery-tracking webhooks → `email_log`** (SPEC §10 #8). Depends on the same
   external Resend account as production email above; not built.
+
+## Deploy parity checklist
+
+Variables `wrangler.jsonc`'s `vars` block must carry for a deployed origin to
+behave like local dev, each with the failure it causes if left unset (see
+"### Deploying" in the README for the full command):
+
+- **`PUBLIC_BASE_URL` — required.** `resolveBaseUrl`/`resolveBaseUrlForCron`
+  (`src/server/origin.ts`) fail loudly without it, and bulk-email sends
+  (compose, reminders, cron jobs with no inbound request to sniff an origin
+  from) **500** rather than silently emailing a broken link. This belongs on
+  the checklist, not in a perf-report footnote — `wrangler.jsonc` already sets
+  it to `https://chautauqua.cc` for the live deploy target; any other
+  deployed origin must set its own.
+- **`DEV_MODE` — must stay unset.** Its only effect is mounting `/dev/mailbox`
+  (see below); an operator who sets it on a real deployment exposes the dev
+  email sink.
+- **`send_email` binding, `MAIL_FROM_EMAIL`** — required for real outbound
+  email; see "Stage-2 platform wiring" below.
 
 ## Honesty rules this document itself is held to (and where they bite elsewhere)
 
