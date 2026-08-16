@@ -287,13 +287,18 @@ function buildAgendaApp(forJson = false, surface: "agenda" | "schedule" = "agend
         return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by agenda grid)
       }
       // surface === "schedule" (always requested with ?day= in this file).
+      // DEC-774 (wave-55 amendment): dispatch.tsx's schedule case no longer
+      // reads getPublicScheduleDayCounts AT ALL -- its only consumer was the
+      // `allDays` prop ScheduleContent never rendered, deleted with the
+      // trackId knob in the same amendment -- so schedule's wave is now
+      // tracks/agenda/breaksByDay and every call after the count-subquery
+      // sits ONE lower than it did while the day-counts read existed.
       if (selectCall === 3) return makeChain([{ count: matched.length }]); // DEC-548 total
-      if (selectCall === 4) return makeChain(dayCountRows); // getPublicScheduleDayCounts (?day= set)
-      if (selectCall === 5) return makeChain([]); // getPublicBreaksByDay
-      if (selectCall === 6) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
-      if (selectCall === 7) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 8) return makeChain([]); // hydrateSessions trackRows
-      if (selectCall === 9) return makeChain([]); // hydrateSessions speakerRows
+      if (selectCall === 4) return makeChain([]); // getPublicBreaksByDay
+      if (selectCall === 5) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+      if (selectCall === 6) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 7) return makeChain([]); // hydrateSessions trackRows
+      if (selectCall === 8) return makeChain([]); // hydrateSessions speakerRows
       return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by agenda grid)
     },
     selectDistinct: () => agendaChain(),

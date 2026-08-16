@@ -101,6 +101,15 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
       "adjacent code comment — a DEC-078 bounded-list exemption.",
   ],
   [
+    "src/server/repo/events.ts",
+    "trackFilterSurfaces",
+    "deleteTrack's trackFilterSurfaces is EMBED_SURFACES (a 5-element " +
+      "`as const` literal in src/lib/embed-knobs.ts) filtered by " +
+      "knobsForSurface(...).includes('trackId') per DEC-851 -- a subset of a " +
+      "compile-time enum of embed surfaces, bounded by the knob table's own " +
+      "size, never by request or data scale.",
+  ],
+  [
     "src/server/repo/files-comments.ts",
     "chainIds",
     "listFileComments throws (`version chain of N files exceeds " +
