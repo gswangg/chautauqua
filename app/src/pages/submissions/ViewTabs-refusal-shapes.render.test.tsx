@@ -16,6 +16,18 @@ import { DEFAULT_FILTER_STATE } from './types';
 
 const EVENT_ID = 'evt-viewtabs-refusal';
 
+// DEC-975/DEC-851 (wave 12, merged alongside this file): ViewTabs calls
+// useMe() to gate the per-row Delete control against the saved view's own
+// createdByUserId, so every mockApi() call here must serve GET /api/v1/me.
+// userId matches savedView()'s createdByUserId, i.e. the viewer IS the
+// creator and the client-side gate opens. The 403 below is therefore the
+// case DEC-975's gate cannot pre-empt (the server re-checks and refuses
+// anyway -- a reassigned or concurrently-edited row), which is exactly the
+// refusal this file must prove reaches the DOM verbatim.
+const ME_ROUTE = {
+  'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
+};
+
 function savedView() {
   return {
     id: 'view-1',
@@ -57,6 +69,7 @@ async function deleteView() {
 describe('ViewTabs saved-view delete refusal shapes (DEC-505/DEC-856)', () => {
   it("403 'Only the organiser who created a saved view can delete it' renders framed by the server's own wording, and restores the view", async () => {
     mockApi({
+      ...ME_ROUTE,
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([savedView()]),
       'DELETE /api/v1/views/view-1': {
         status: 403,
@@ -76,6 +89,7 @@ describe('ViewTabs saved-view delete refusal shapes (DEC-505/DEC-856)', () => {
 
   it("404 'Saved view not found' (stale row) renders framed by the server's own wording", async () => {
     mockApi({
+      ...ME_ROUTE,
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([savedView()]),
       'DELETE /api/v1/views/view-1': {
         status: 404,

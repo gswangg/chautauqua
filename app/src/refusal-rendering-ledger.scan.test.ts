@@ -376,9 +376,16 @@ describe('refusal-rendering ledger: every mutating SPA component maps to a proof
     // asserts a DIFFERENT string against the DOM -- exactly the shape
     // compose-refusal-shapes.test.ts was cited under before this wave (zero
     // `render(` calls, so nothing downstream of the mock is ever checked).
+    //
+    // NB (merge-time, DEC-817): the mockApi key inside these fixture strings
+    // must name a REAL registered route. test/spa-mock-route-contract.scan
+    // text-greps every app/src test file for `'METHOD /path':` keys and does
+    // not know a string literal is a fixture, so a synthetic path here
+    // (`POST /api/v1/x`) reads as a stale mock and fails that scan. The
+    // predicate under test ignores the path entirely, so any live route does.
     const nonConforming = `
       const body = errorEnvelope('invalid', 'A server message never re-asserted', { foo: 'also never re-asserted' });
-      mockApi({ 'POST /api/v1/x': { status: 400, body } });
+      mockApi({ 'POST /api/v1/contacts': { status: 400, body } });
       render(createElement(Widget));
       expect(screen.getByText('Widget')).toBeInTheDocument();
     `;
@@ -390,7 +397,7 @@ describe('refusal-rendering ledger: every mutating SPA component maps to a proof
     // ComposeWizard-refusal-shapes.render.test.tsx.
     const conforming = `
       const body = errorEnvelope('invalid', 'Validation failed', { name: 'S1 - Intro to Rust' });
-      mockApi({ 'POST /api/v1/x': { status: 400, body } });
+      mockApi({ 'POST /api/v1/contacts': { status: 400, body } });
       render(createElement(Widget));
       expect(await screen.findByText('S1 - Intro to Rust')).toBeInTheDocument();
     `;
@@ -418,7 +425,6 @@ const KNOWN_OWED: string[] = [
   'pages/Agenda.tsx',
   'pages/Overview.tsx',
   'pages/agenda/BreaksPanel.tsx',
-  'pages/comms/TemplatesTab.tsx',
   'pages/contacts/AddToEventModal.tsx',
   'pages/contacts/BulkEmailModal.tsx',
   'pages/contacts/ContactDrawer.tsx',
@@ -434,10 +440,7 @@ const KNOWN_OWED: string[] = [
   'pages/content/VersionList.tsx',
   'pages/forms/FormsPage.tsx',
   'pages/overview/AgendaWorkSection.tsx',
-  'pages/review/ProgressPanel.tsx',
   'pages/review/ResultsTable.tsx',
-  'pages/review/ReviewerQueue.tsx',
-  'pages/review/Scorecard.tsx',
   'pages/settings/ApiTokensPanel.tsx',
   'pages/settings/CallForPapersPanel.tsx',
   'pages/settings/EventSettingsPanel.tsx',
@@ -445,13 +448,6 @@ const KNOWN_OWED: string[] = [
   'pages/settings/PortalSettingsPanel.tsx',
   'pages/settings/ResourcesPanel.tsx',
   'pages/settings/SessionboardImportPanel.tsx',
-  'pages/speakers/OnboardingGrid.tsx',
-  'pages/speakers/RosterPanel.tsx',
-  'pages/speakers/SpeakerDetailPage.tsx',
-  'pages/submissions/DeleteSubmissionsPage.tsx',
-  'pages/submissions/SubmissionDetailPage.tsx',
-  'pages/submissions/SubmissionsTable.tsx',
-  'pages/submissions/ViewTabs.tsx',
 ].sort();
 
 describe('KNOWN_OWED tracks exactly the ledger rows verdict `owed` (DEC-180 wave-13 amendment)', () => {
