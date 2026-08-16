@@ -1,28 +1,29 @@
-# Eval findings — rebased 2026-08-16 (wave 74, task-w74-e)
+# Eval findings — rebased 2026-08-16 (harness-wave-1 counter reset, task-w1-f)
 
-Verified against `main`/HEAD `ba170df7` ("scribe wave 74"), MEASURED_SHA
-`ba170df7`, derived AT THIS TASK'S OWN RUNTIME (DEC-069 wave-17/wave-37,
-DEC-358 rebase rule; this is a DOCS-ONLY lane of a wave-74 CODE wave —
-no gate ran, no `docs/verification-log/index/` section filed, per
-DEC-069). This wave is a MANDATE HYGIENE task only: it records the
-rebuilt IN FLIGHT census and a set of DO-NOT-CHASE rulings (see the new
-`docs/eval-findings/15-wave74-receipts.md`); it does not re-derive TIER
-0-2 in full and does not re-run the wave-57 GATE-9/GATE-10 falsifying
-checks (those sections below are carried unchanged from their own
-last-stated runtime).
+Verified against `main`/HEAD `5458bda3` ("merge task-w1-c"), MEASURED_SHA
+`5458bda33d7a2ab3f6713c1e2d9580659f1fc188`, derived AT THIS TASK'S OWN
+RUNTIME (DEC-069 wave-17/wave-37, DEC-358 rebase rule, DEC-702; this is
+a DOCS-ONLY lane — no gate ran, no `docs/verification-log/index/`
+section filed, per DEC-069). The HARNESS branch-name counter has reset
+to `task-w1-*` while the tree itself is at wave-82+ vintage — a "wave
+N" token anywhere below (including in this header's own history) is a
+HARNESS LABEL for when a lane ran, not a claim about the tree's age;
+read the MEASURED_SHA, not the number, when weighing a citation. This
+task is a MANDATE HYGIENE task only: it re-verifies five specific
+ALL-PASS-lane items (see the new
+`docs/eval-findings/17-wave1-receipts.md`) and rebuilds the IN FLIGHT
+census; it does not re-derive TIER 0-2 in full and does not re-run the
+wave-57 GATE-9/GATE-10 falsifying checks (those sections below are
+carried unchanged from their own last-stated runtime).
 
-COMPACTION per DEC-358's rebase rule: the wave-62 header (pinned to
-`80a3eac3`, twelve waves stale) is REPLACED by this one. The wave-67
-mandate-hygiene pass block that previously sat here (`task-w67-h`, its
-seven wave-67 branch scopes and the nine wave-66 OFF-LIMITS names) is
-PRUNED — every one of those branches is now an ancestor of `main`
-(confirmed via `git merge-base --is-ancestor` at this task's own
-runtime) and the scopes they named have long since landed or been
-superseded by later waves' own findings. No per-item citation below
-this header is deleted; the full TIER 0-2 body, and the GATE-8/9/10
-sections, were not re-derived this wave (out of this task's scope) and
-are carried unchanged — treat their own file:line citations as of
-THEIR last stated runtime, not this one's.
+COMPACTION per DEC-358's rebase rule: the wave-74 header (pinned to
+`ba170df7`, stale) is REPLACED by this one. No per-item citation below
+this header is deleted except where this task's own five re-
+verifications close/narrow an ALL-PASS item (marked inline below, full
+receipts in `docs/eval-findings/17-wave1-receipts.md`); the full TIER
+0-2 body, and the GATE-8/9/10 sections, were not re-derived this task
+(out of scope) and are carried unchanged — treat their own file:line
+citations as of THEIR last stated runtime, not this one's.
 
 ## Recent review-lens findings — re-derived wave 57 (task-w57-e, at MEASURED_SHA `50c3fcc4`)
 
@@ -154,6 +155,22 @@ per the standing "a citation is not an assertion" rule). Remaining genuinely
 open work for the next code wave: A1, A3, A9, A10, B12, B13, B14, B17, B18,
 B20, B22.**
 
+**RE-VERIFIED task-w1-f (MEASURED_SHA `5458bda3`; full receipts in
+[`eval-findings/17-wave1-receipts.md`](eval-findings/17-wave1-receipts.md)):
+five of the nine items the wave-81 pass had left "NOT RE-VERIFIED" are now
+resolved with fresh citations — **A9 CLOSED/NARROWED** (the `resources`
+half is the same `?section=portal&edit=1` drill w78 already closed; no
+independent `resources` deep-link target exists to be open), **B12
+CLOSED, NOT A DEFECT** (reinstates the wave-62 ruling — 27 `SYNTH_TOPICS`
+= `additionalCount`, every synth title distinct, no fixture collision),
+**B17 NO CODE LANE** (all six `TracksRoomsPanel` write functions already
+clear the error banner first; needs a click-through, not a fix), **B20
+CLOSED** (`views.tsx:67` already renders through the seconds-carrying
+formatter), and **P3 #23 CLOSED by DEC-795** (the advisory is present, a
+second session is deliberately legitimate, no disabling logic exists to
+be broken). Remaining genuinely open/unverified from the wave-81 set: A1,
+A3, A10, B13, B14, B18, B22.**
+
 **A. FIDELITY residue (gate-10/11 + delta-6 still-open set):**
 1. §09 settings residue M1/M2/M4/M5/M7/R2 — field widths beyond dates, footer
    grammar, portal toggles, embed card anatomy (measures in fidelity-gate10/
@@ -210,12 +227,16 @@ B20, B22.**
    w66 amendment cited) and `:527-532` (rendered Done button); Location row
    kept at `:473-484` with its own "app-only" comment. Read directly this
    wave.
-9. NOT RE-VERIFIED wave 81 for the general `resources` section — still OPEN.
-   Settings deep-link ?section=<x>&edit=1 must arrive EDITING (resources
-   currently read-only until Change clicked). (Note: the `?section=portal&
-   edit=1` case was closed w78 per `PortalSettingsPanel.tsx:110,216,240,323`
-   — that is a different section than "resources" and does not close this
-   item.)
+9. **CLOSED/NARROWED task-w1-f** (receipt:
+   [`eval-findings/17-wave1-receipts.md`](eval-findings/17-wave1-receipts.md)
+   item 4). Settings deep-link `?section=<x>&edit=1` must arrive EDITING —
+   the `resources` half is NOT a separate section: `app/src/pages/settings/
+   ResourcesPanel.tsx:1-25` is a fragment mounted inside
+   `PortalSettingsPanel`'s own edit drill, and `PortalSettingsPanel.tsx:
+   110,216,240,323` (same lines the w78 receipt names) already threads
+   `editing` from `?section=portal&edit=1` to the full CRUD `ResourcesPanel`
+   at `:323`. There is no independent `resources` deep-link target for this
+   item to be open against; do not re-file as if a bug were found.
 10. NOT RE-VERIFIED wave 81 by direct read; carried from w78's citation
     (`YourDataPanel.tsx:53,202,228`) without a fresh confirmation this pass.
 11. **CLOSED wave 81, re-confirmed.** "Import 1 rows" plural — the shared
@@ -225,10 +246,16 @@ B20, B22.**
     carried a wave-67 receipt too, see item 11 above at line ~318).
 
 **B. EVAL-run minors (product-actionable set from the 93.8 run):**
-12. NOT RE-VERIFIED wave 81 — still OPEN. Seed: synth generator reuses the
-    fixture title "Your AI Pair Programmer Is Lying to You…" minting the
-    SES-002/SES-032 identical-title conflicting-status pair — make synth
-    titles unique (contaminated 3 areas, 3 runs straight).
+12. **CLOSED task-w1-f, NOT A DEFECT — reinstates the wave-62 ruling**
+    (receipt: [`eval-findings/17-wave1-receipts.md`](eval-findings/17-wave1-receipts.md)
+    item 1). Seed: `scripts/seed.ts:133-159` holds exactly 27
+    `SYNTH_TOPICS`; `additionalCount` (`:1109`) === `SYNTH_TOPICS.length`,
+    so `synthTitle(i)` (`:254-258`) draws a distinct topic per seeded row
+    and collides with no title in `docs/fixtures/sample-data.json` either.
+    Whatever produced the judge's SES-002/SES-032 pair is not a title
+    collision in this seed shape — do not file a DEC assuming intentional
+    duplication; a live re-observation against an actual judge run would be
+    needed to chase this further, out of this docs task's scope.
 13. **STILL OPEN, EMPIRICALLY REPRODUCED wave 81** (receipts:
     [`eval-findings/16-wave81-receipts.md`](eval-findings/16-wave81-receipts.md)
     item 13). Seed: Sam Whitfield's two seeded reviews carry byte-identical
@@ -263,11 +290,17 @@ B20, B22.**
     `src/routes/public/shell.tsx:274-276` — `EmbedShell` reads
     `props.accentOverride ?? b.accentColor` through `validAccent(...)`. Not
     dropped. Read directly this wave.
-17. NOT RE-VERIFIED wave 81 (needs a click-through per the item's own text,
-    out of a docs-only task's reach) — left OPEN pending that verification.
-    Tracks-and-rooms add: success + simultaneous "ONE THING NEEDS ATTENTION"
-    banner (DEC-856 w76 plausibly fixed this — VERIFY with a click-through,
-    close with evidence).
+17. **NO CODE LANE, task-w1-f** (receipt:
+    [`eval-findings/17-wave1-receipts.md`](eval-findings/17-wave1-receipts.md)
+    item 3) — DEC-856's shape is present in source but this item still
+    needs a click-through, out of a docs-only task's reach; do not treat as
+    closed. Tracks-and-rooms add: `app/src/pages/settings/
+    TracksRoomsPanel.tsx` calls `setError(undefined)` as the FIRST
+    statement of all six write functions — `addTrack` (`:208`), `saveTrack`
+    (`:234`), `confirmDeleteTrack` (`:269`), `addRoom` (`:287`), `saveRoom`
+    (`:313`), `confirmDeleteRoom` (`:351`) — matching DEC-856's
+    error-cleared-at-write-start shape. Re-file as a click-through
+    verification item, not a fix, if it still reproduces live.
 18. NOT RE-VERIFIED wave 81 — still OPEN. Pipeline DECLINED column: first
     card renders TWO fit badges + TWO rationale paragraphs under one name
     (card bleed/merge — likely a render-key or grouping bug; screenshot in
@@ -278,10 +311,15 @@ B20, B22.**
     (`summaryProblems` built from field errors), `:549` (rendered in the CFP
     form body), `:601-604` (per-field `role="alert"` messages still present
     too). Both halves present, read directly this wave.
-20. NOT RE-VERIFIED wave 81 against portal file-version rows specifically —
-    still OPEN. Version history v1/v2 identical minute timestamps — VERIFY
-    DEC-158 w77's seconds grammar covers portal file-version rows; fix if
-    not.
+20. **CLOSED task-w1-f** (receipt:
+    [`eval-findings/17-wave1-receipts.md`](eval-findings/17-wave1-receipts.md)
+    item 2). Version history v1/v2 identical minute timestamps —
+    `src/routes/portal/tasks/views.tsx:67` renders every version row
+    through `formatEventDateTimeWithSeconds(v.uploadedAt, timezone)`, not
+    the minute-granular formatter; the component's own doc comment
+    (`:55-56`) states the reason ("two versions uploaded in the same
+    minute must still read as distinguishable rows"). DEC-158's seconds
+    grammar does cover portal file-version rows.
 21. **CLOSED wave 81, re-confirmed.** Contacts/Speakers initial load:
     skeleton shows with no accessible label — add the aria-live "Loading"
     status to PageSkeleton. `app/src/components/PageSkeleton.tsx:88-96`:
@@ -746,10 +784,16 @@ fix after P1 clusters and P2; each needs measured closure):**
 22. History entries indistinguishable: two same-author edits logged with identical
     timestamp (minute-granular) and identical description — add seconds + a
     changed-fields summary so Restore has something to aim at.
-23. Add-to-event duplicate guard: for a contact already on the event the dialog
-    says "already on this event — 2 sessions" and still mints another session on
-    confirm — that path needs an explicit "add ANOTHER session" confirm, not a
-    relabel.
+23. **CLOSED by DEC-795, task-w1-f** (receipt:
+    [`eval-findings/17-wave1-receipts.md`](eval-findings/17-wave1-receipts.md)
+    item 5). Add-to-event duplicate guard: `app/src/pages/contacts/
+    AddToEventModal.tsx:179-190` — when `alreadyOnRoster` is true the
+    modal renders the DEC-795 advisory ("{name} is already on this event —
+    N sessions"), with a comment stating a second session is deliberately
+    legitimate and the primary "Add them" is never disabled by this state.
+    No relabel-vs-confirm gap exists to fix; minting another session on
+    confirm is the designed behaviour, and the advisory already states
+    what is about to happen. Do not re-file as a missing confirm.
 24. Contact drawer scoping clarity: org-level record mixes event-scoped rows
     ("THIS EVENT" role/year) into what reads as a cross-event record, and the save
     affordance is ambiguous — label the event-scoped block explicitly.
@@ -1041,6 +1085,7 @@ split, verify against git history if a citation seems to have moved.
 14. [`eval-findings/14-wave72-receipts.md`](eval-findings/14-wave72-receipts.md) — Wave 72 mandate-hygiene receipts (task-w72-p)
 15. [`eval-findings/15-wave74-receipts.md`](eval-findings/15-wave74-receipts.md) — Wave 74 mandate-hygiene receipts (task-w74-e; wave 73 filed no receipts file)
 16. [`eval-findings/16-wave81-receipts.md`](eval-findings/16-wave81-receipts.md) — Wave 81 mandate-hygiene receipts: re-derivation of the ALL-PASS PUSH lane (task-w81-c)
+17. [`eval-findings/17-wave1-receipts.md`](eval-findings/17-wave1-receipts.md) — Harness-wave-1 (counter reset) mandate-hygiene receipts: five ALL-PASS closures (A9, B12, B17, B20, P3#23) + rebuilt in-flight census (task-w1-f)
 
 Any citation of the form `docs/eval-findings.md #N` or `docs/eval-findings.md
 Section X` refers to content now living in one of the files above; the
