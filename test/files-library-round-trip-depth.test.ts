@@ -193,6 +193,7 @@ describe("DEC-370/DEC-338/DEC-902 (w61-i): listEventDeliverableFiles collapses i
         poster: 0,
         handout: 0,
         recording: 0,
+        photo: 0,
         headshot: 1,
       },
     });

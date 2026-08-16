@@ -533,7 +533,7 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
       totalSizeBytes: 0,
       page: 1,
       perPage: 50,
-      kindCounts: { presentation: 0, poster: 0, handout: 0, recording: 0, headshot: 0 },
+      kindCounts: { presentation: 0, poster: 0, handout: 0, recording: 0, photo: 0, headshot: 0 },
     });
   });
 
@@ -699,6 +699,7 @@ describe("kindCounts (DEC-902): one grouped query, matching the filtered list's 
       poster: 1,
       handout: 0,
       recording: 0,
+      photo: 0,
       headshot: 0,
     });
   });
@@ -771,6 +772,7 @@ describe("kindCounts (DEC-902): one grouped query, matching the filtered list's 
       poster: 0,
       handout: 0,
       recording: 0,
+      photo: 0,
       headshot: 0,
     });
 

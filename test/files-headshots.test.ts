@@ -416,7 +416,7 @@ describe("listEventDeliverableFiles kinds:['headshot'] (DEC-773)", () => {
       totalSizeBytes: 0,
       page: 1,
       perPage: 50,
-      kindCounts: { presentation: 0, poster: 0, handout: 0, recording: 0, headshot: 0 },
+      kindCounts: { presentation: 0, poster: 0, handout: 0, recording: 0, photo: 0, headshot: 0 },
     });
   });
 });

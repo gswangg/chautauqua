@@ -225,7 +225,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
 
     const result = await listSubmissions(db, EVENT_ID, baseParams());
 
-    expect(result.items[0]!.deliverableCounts).toEqual({ presentation: 1, poster: 0, handout: 0, recording: 0 });
+    expect(result.items[0]!.deliverableCounts).toEqual({ presentation: 1, poster: 0, handout: 0, recording: 0, photo: 0 });
   });
 
   it("defaults every kind to 0 for a submission with no deliverable rows at all", async () => {
@@ -244,7 +244,7 @@ describe("listSubmissions deliverableCounts (DEC-341 hydration, DEC-247 chain ro
 
     const result = await listSubmissions(db, EVENT_ID, baseParams());
 
-    expect(result.items[0]!.deliverableCounts).toEqual({ presentation: 0, poster: 0, handout: 0, recording: 0 });
+    expect(result.items[0]!.deliverableCounts).toEqual({ presentation: 0, poster: 0, handout: 0, recording: 0, photo: 0 });
   });
 });
 

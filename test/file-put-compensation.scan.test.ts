@@ -89,7 +89,7 @@ function scanForFileStorePuts(): PutHit[] {
 const KNOWN_FILE_STORE_PUTS: { file: string; line: number; reason: string }[] = [
   {
     file: "src/routes/public/submit-post.tsx",
-    line: 381,
+    line: 385,
     reason:
       "Multi-object batch upload: N attachments are staged before the DB write phase, which on ANY throw deletes every object it wrote (and the submission row) in its own catch block at :430-447 -- a single delete-on-throw doesn't cover N objects, so this keeps its own rollback rather than routing through putThenRecord. Per DEC-530 (amended wave 26) the staging puts fan out via Promise.allSettled(minted.map(...)) rather than a serial for loop or Promise.all: every r2Key is minted up front (:374-380) so the full key set is known no matter which promises settle, and on any rejection the fan-out deletes every minted key itself (:388) before rethrowing the first rejection unmodified. Both rollback paths still cover every object the batch could have written, so the exemption is unchanged in substance.",
   },

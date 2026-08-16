@@ -88,7 +88,7 @@ describe('orderVersionChains', () => {
 describe('groupByKindNewestFirst', () => {
   it('returns every FILE_KINDS kind even when a kind has no files', () => {
     const grouped = groupByKindNewestFirst([file({ id: 'p1', kind: 'poster' })]);
-    expect(Object.keys(grouped).sort()).toEqual(['handout', 'poster', 'presentation', 'recording']);
+    expect(Object.keys(grouped).sort()).toEqual(['handout', 'photo', 'poster', 'presentation', 'recording']);
     expect(grouped.presentation).toEqual([]);
     expect(grouped.handout).toEqual([]);
     expect(grouped.recording).toEqual([]);

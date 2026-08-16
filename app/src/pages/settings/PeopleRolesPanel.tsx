@@ -47,7 +47,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { ModalFrame } from '../../components/ModalFrame';
+import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useMe } from '../../lib/useMe';
 import { copyText } from '../../lib/clipboard';
@@ -468,8 +468,7 @@ export function PeopleRolesPanel() {
                 ) : null}
               </div>
             )}
-            <label htmlFor="people-invite-first-name">
-              First name
+            <FormRow label="First name" htmlFor="people-invite-first-name">
               <input
                 id="people-invite-first-name"
                 className="chq-input"
@@ -478,10 +477,9 @@ export function PeopleRolesPanel() {
                 value={newFirstName}
                 onChange={(e) => setNewFirstName(e.target.value)}
               />
-            </label>
+            </FormRow>
             {fieldErrors.firstName ? <span role="alert">{fieldErrors.firstName}</span> : null}
-            <label htmlFor="people-invite-last-name">
-              Last name
+            <FormRow label="Last name" htmlFor="people-invite-last-name">
               <input
                 id="people-invite-last-name"
                 className="chq-input"
@@ -490,10 +488,9 @@ export function PeopleRolesPanel() {
                 value={newLastName}
                 onChange={(e) => setNewLastName(e.target.value)}
               />
-            </label>
+            </FormRow>
             {fieldErrors.lastName ? <span role="alert">{fieldErrors.lastName}</span> : null}
-            <label htmlFor="people-invite-email">
-              Email
+            <FormRow label="Email" htmlFor="people-invite-email">
               <input
                 id="people-invite-email"
                 className="chq-input"
@@ -502,7 +499,7 @@ export function PeopleRolesPanel() {
                 onChange={(e) => setNewEmail(e.target.value)}
                 maxLength={MAX_EMAIL_LENGTH}
               />
-            </label>
+            </FormRow>
             {fieldErrors.email ? <span role="alert">{fieldErrors.email}</span> : null}
             <div>
               <span id="people-invite-role-label">Role</span>
