@@ -120,8 +120,12 @@ export function AgendaDayGrid(props: {
   // toggle there would flip its own CSS to "Saved" with nothing persisted.
   // Same condition AgendaContent already gates the rail and script on.
   itinerary?: boolean;
+  // DEC-151 (wave-59 amendment): the surface's active narrowing, already
+  // encoded via embedKnobQuery by the caller (AgendaContent) -- carried onto
+  // every drill-in link so the detail page's Back link can restore it.
+  carry?: string;
 }) {
-  const { day, items, event, from, base, breaks = [], highlightTrackId = null, itinerary = false } = props;
+  const { day, items, event, from, base, breaks = [], highlightTrackId = null, itinerary = false, carry } = props;
   const rows = buildDayRows(items, breaks);
 
   return (
@@ -193,7 +197,7 @@ export function AgendaDayGrid(props: {
                       </div>
                       <div class="chq-pub-agenda-block-title">
                         <strong>
-                          <a href={sessionDetailPath(event, item.submissionId, from, base)}>{item.title}</a>
+                          <a href={sessionDetailPath(event, item.submissionId, from, base, carry)}>{item.title}</a>
                         </strong>
                       </div>
                       <div class="chq-pub-agenda-block-speakers">

@@ -43,9 +43,26 @@ export function AgendaItemList(props: {
   // DEC-022 amendment (wave 63): breaks for this same day, interleaved into
   // the sorted list by startMin below.
   breaks?: ScheduleBreak[];
+  // DEC-151 (wave-59 amendment): the surface's active narrowing, already
+  // encoded via embedKnobQuery by the caller (AgendaContent) -- carried onto
+  // every drill-in link so the detail page's Back link can restore it.
+  carry?: string;
 }) {
-  const { day, items, event, from, itinerary, showDescription, showDay, listClass, sectionClass, base, groupByStart, breaks = [] } =
-    props;
+  const {
+    day,
+    items,
+    event,
+    from,
+    itinerary,
+    showDescription,
+    showDay,
+    listClass,
+    sectionClass,
+    base,
+    groupByStart,
+    breaks = [],
+    carry,
+  } = props;
   const sorted = [...items].sort((a, b) => {
     if (a.startMin !== b.startMin) return a.startMin - b.startMin;
     const posA = a.roomId ? (a.roomPosition ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
@@ -102,7 +119,7 @@ export function AgendaItemList(props: {
             </div>
             <div>
               <strong>
-                <a class="chq-pub-agenda-list-title" href={sessionDetailPath(event, item.submissionId, from, base)}>
+                <a class="chq-pub-agenda-list-title" href={sessionDetailPath(event, item.submissionId, from, base, carry)}>
                   {item.title}
                 </a>
               </strong>
