@@ -35,13 +35,13 @@ export const reviewingStartToFinish: DocsArticle = {
     { kind: "heading", text: "Recusal" },
     {
       kind: "prose",
-      text: "If you have a conflict of interest on a submission — you know the speaker, you work together, anything that should keep you from scoring it — recuse yourself from it directly in the queue. A recused submission drops out of your queue and your progress counts, and stops needing your rating at all; it doesn't get reassigned to you later.",
+      text: "If you have a conflict of interest on a submission — you know the speaker, you work together, anything that should keep you from scoring it — open the submission and declare the conflict on its scorecard. It then sits in your queue as recused and stops needing your rating; it doesn't get reassigned to you later.",
     },
     {
       kind: "figure",
       shotId: "for-reviewers-reviewing-start-to-finish-02",
       caption:
-        "Recusing from a submission: it leaves your queue immediately and your assigned/progress counts adjust to match — a recusal is a permanent step-aside, not a snooze.",
+        "Recusing from a submission: it's marked RECUSED in your queue and your assigned/progress counts adjust to match. You can undo it from the scorecard or the queue while the plan is still open; once the plan closes only an organizer can undo it.",
     },
   ],
 };

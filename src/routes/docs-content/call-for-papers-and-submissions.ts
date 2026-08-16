@@ -20,7 +20,7 @@ export const callForPapersAndSubmissions: DocsArticle = {
       kind: "figure",
       shotId: "running-an-event-call-for-papers-and-submissions-01",
       caption:
-        "The form builder: field list on the left, a field's settings — including its visibility rule — on the right. Required fields and custom questions live in the same list as the built-ins.",
+        "The form builder: the question list, with a field's settings — including its visibility rule — open in a dialog over it. Required fields and custom questions live in the same list as the built-ins.",
     },
     { kind: "heading", text: "The public link" },
     {
