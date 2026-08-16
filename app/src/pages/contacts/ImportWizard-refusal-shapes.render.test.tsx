@@ -59,6 +59,9 @@ describe('ImportWizard: DEC-856 preview/import refusals route to the step that p
     });
     render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+    // DEC-290: the eventId is a candidate, not an instruction -- tick the
+    // opt-in to reveal the session-title control this test exercises.
+    fireEvent.click(await screen.findByLabelText('Also add these people to this event as accepted speakers'));
     const titleInput = await screen.findByLabelText('Session title for this batch');
     fireEvent.change(titleInput, { target: { value: 'Lightning talks' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Import 2 rows' }));

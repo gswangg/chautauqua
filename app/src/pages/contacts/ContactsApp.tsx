@@ -147,20 +147,48 @@ export function ContactsApp() {
   // (CRM-only) state -- it never guesses a different event.
   const urlImportEventId = searchParams.get('eventId');
   const [importEventId, setImportEventId] = useState<string | undefined>(undefined);
+  // DEC-290 (wave-59 amendment): the opt-in checkbox names the event, so
+  // the same loadEventsOnce list this effect already resolves
+  // importEventId against also supplies the display name -- no second
+  // fetch.
+  const [importEventName, setImportEventName] = useState<string | undefined>(undefined);
   useEffect(() => {
     if (!urlImportEventId) {
-      setImportEventId(eventId ?? undefined);
-      return;
+      if (!eventId) {
+        setImportEventId(undefined);
+        setImportEventName(undefined);
+        return;
+      }
+      let cancelled = false;
+      loadEventsOnce()
+        .then((items) => {
+          if (cancelled) return;
+          setImportEventId(eventId);
+          setImportEventName(items.find((item) => item.id === eventId)?.name);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setImportEventId(eventId);
+            setImportEventName(undefined);
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
     }
     let cancelled = false;
     loadEventsOnce()
       .then((items) => {
         if (cancelled) return;
-        const known = items.some((item) => item.id === urlImportEventId);
+        const known = items.find((item) => item.id === urlImportEventId);
         setImportEventId(known ? urlImportEventId : undefined);
+        setImportEventName(known?.name);
       })
       .catch(() => {
-        if (!cancelled) setImportEventId(undefined);
+        if (!cancelled) {
+          setImportEventId(undefined);
+          setImportEventName(undefined);
+        }
       });
     return () => {
       cancelled = true;
@@ -555,6 +583,7 @@ export function ContactsApp() {
       {showImport && (
         <ImportWizard
           eventId={importEventId}
+          eventName={importEventName}
           onClose={closeImport}
           onImported={() => {
             reload();
