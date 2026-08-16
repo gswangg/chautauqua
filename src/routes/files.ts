@@ -53,6 +53,7 @@ import {
   getSubmissionScope,
   getTaskFileScope,
   batchContactNames,
+  CONTENT_STATUSES,
   deleteFileVersion,
   getFileDeleteScope,
   HEADSHOT_KIND,
@@ -302,7 +303,7 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
   if (!isValidContentStatus(body.contentStatus)) {
     throw new ApiError(
       "invalid",
-      "contentStatus must be 'pending', 'approved' or 'changes_requested'",
+      `contentStatus must be one of ${CONTENT_STATUSES.map((s) => `'${s}'`).join(", ")}`,
       { contentStatus: "Invalid contentStatus" },
     );
   }

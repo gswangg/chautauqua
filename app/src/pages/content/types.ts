@@ -3,9 +3,12 @@
 
 import type { FileKind } from '../../../../src/domain/files';
 import { FILE_KINDS } from '../../../../src/domain/files';
+import type { ContentStatus } from '../../../../src/domain/content-status';
 
-// DEC-003 content-status literals.
-export type ContentStatus = 'pending' | 'approved' | 'changes_requested';
+// DEC-003 content-status literals — imported from the pure core
+// (src/domain/content-status.ts) so the SPA's status union can never drift
+// from the server's.
+export type { ContentStatus };
 
 export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
   pending: 'Pending',

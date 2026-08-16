@@ -32,7 +32,7 @@ import {
   updateSubmissionFields,
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
-import { isValidContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
+import { CONTENT_STATUSES, isValidContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
 import { settleInDeclarationOrder } from "../../lib/settle";
 import { isActiveParticipant } from "../../domain/acceptance";
 import { plural } from "../../domain/count-copy";
@@ -987,7 +987,7 @@ submissionsRoutes.post(
     if (!isValidContentStatus(body.contentStatus)) {
       throw new ApiError(
         "invalid",
-        "contentStatus must be 'pending', 'approved' or 'changes_requested'",
+        `contentStatus must be one of ${CONTENT_STATUSES.map((s) => `'${s}'`).join(", ")}`,
         { contentStatus: "Invalid contentStatus" },
       );
     }

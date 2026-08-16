@@ -11,6 +11,7 @@ import { chunkIds, type ParsedListQuery, type SortOrder } from "./query";
 import { likeContains } from "../like";
 import { findRoot, type DeliverableFileRow } from "../files-library";
 import { DEC_692, DEC_780, DEC_881, DEC_913 } from "../../../decisions";
+import { CONTENT_STATUSES, isContentStatus } from "../../../domain/content-status";
 
 // DEC-780 (DEC-051 amendment, findings wave 8): the submission LIST payload
 // gains the slot the submission DETAIL payload already carries — same shape,
@@ -121,11 +122,10 @@ export interface SubmissionListItem {
   slot: SubmissionDetailSlot | null;
 }
 
-export interface SubmissionContentStatusCounts {
-  pending: number;
-  approved: number;
-  changes_requested: number;
-}
+// DEC-003 wave-73 amendment: one key per CONTENT_STATUSES member, derived
+// rather than hand-listed -- a fourth member now widens this type instead of
+// being silently dropped from the worklist chip counts.
+export type SubmissionContentStatusCounts = Record<(typeof CONTENT_STATUSES)[number], number>;
 
 export interface ListSubmissionsResult {
   items: SubmissionListItem[];
@@ -251,10 +251,12 @@ export async function listSubmissions(
   const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
   const total = Number(totalRows[0]?.count ?? 0);
 
-  const contentStatusCounts: SubmissionContentStatusCounts = { pending: 0, approved: 0, changes_requested: 0 };
+  const contentStatusCounts = Object.fromEntries(
+    CONTENT_STATUSES.map((status) => [status, 0]),
+  ) as SubmissionContentStatusCounts;
   let reuploadedCount = 0;
   for (const r of countRows) {
-    if (r.contentStatus === "pending" || r.contentStatus === "approved" || r.contentStatus === "changes_requested") {
+    if (isContentStatus(r.contentStatus)) {
       contentStatusCounts[r.contentStatus] = Number(r.count);
     }
     reuploadedCount += Number(r.reuploaded ?? 0);
