@@ -286,10 +286,16 @@
   cursor: pointer;
 }
 
-/* Ring is inset: DEC-383 bans any non-inset box-shadow under app/src, so the
-   DEC-730 hover ring is drawn inside the pill's edge rather than around it. */
+/* DEC-383/DEC-989 (wave-64 amendment, docs/design/DESIGN-RULINGS.md:113):
+   the status-cell ring is OUTSET, not inset -- it reads as a halo drawn
+   around the pill rather than a bevel eaten out of it. The table's own
+   td padding (10px 14px, styles.css .chq-table th/td) and the cell's own
+   7px inter-pill gap (.chq-speakers-cell) both clear the 2px ring with
+   room to spare, so no neighbour clips it. Hover paints no new background
+   (fill/outline stay owned by the -complete/-pending/-overdue modifiers
+   below), so the ring is the only hover affordance here. */
 .chq-speakers-status:hover {
-  box-shadow: inset 0 0 0 2px var(--chq-border-strong);
+  box-shadow: 0 0 0 2px var(--chq-border-strong);
 }
 
 /* Complete: filled olive pill. */

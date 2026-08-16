@@ -167,4 +167,65 @@ describe('SPA interaction-state / motion standard (DEC-383, wave-58 amendment)',
       expect(v.easeInOut).toBe(false);
     });
   });
+
+  // wave-64 (DEC-851 applied to motion tokens): a declared duration/easing
+  // token with no reader is a lie -- the -exit trio (color-exit/appear-
+  // exit/geometry-exit) sat unread from wave-58 through wave-63 before
+  // being deleted in this wave. Every --chq-motion-*/--chq-ease-* token
+  // DECLARED in the :root block must appear as a var(...) consumer
+  // somewhere else under app/src, or the declaration is dead and should be
+  // deleted instead of carried forward.
+  describe('every declared --chq-motion-*/--chq-ease-* token has a reader (DEC-851 wave-64)', () => {
+    const stylesPath = join(APP_SRC, 'styles.css');
+    const rawCss = readFileSync(stylesPath, 'utf-8');
+    const css = stripComments(rawCss);
+
+    // Declarations: `--chq-motion-foo: ...;` inside the :root block, not a
+    // var(--chq-motion-foo) consumption site.
+    const DECLARATION_RE = /--(chq-motion-[a-z-]+|chq-ease-[a-z-]+)\s*:/g;
+    // Consumption: var(--chq-motion-foo) or var(--chq-motion-foo, fallback).
+    const CONSUMPTION_RE = /var\(\s*--(chq-motion-[a-z-]+|chq-ease-[a-z-]+)\s*[,)]/g;
+
+    function declaredTokens(source: string): Set<string> {
+      const out = new Set<string>();
+      let m: RegExpExecArray | null;
+      const re = new RegExp(DECLARATION_RE);
+      while ((m = re.exec(source)) !== null) out.add(m[1]!);
+      return out;
+    }
+
+    function consumedTokens(source: string): Set<string> {
+      const out = new Set<string>();
+      let m: RegExpExecArray | null;
+      const re = new RegExp(CONSUMPTION_RE);
+      while ((m = re.exec(source)) !== null) out.add(m[1]!);
+      return out;
+    }
+
+    // All app/src CSS files feed the "does anything read this?" question --
+    // a token declared in styles.css can legitimately be spent in a page
+    // stylesheet like review.css, not only in styles.css itself.
+    const allSpaCss = allCssFiles(APP_SRC)
+      .map((f) => stripComments(readFileSync(f, 'utf-8')))
+      .join('\n');
+
+    const declared = declaredTokens(css);
+    const consumed = consumedTokens(allSpaCss);
+
+    it('the declared-token population is non-empty (sanity check on the regex)', () => {
+      expect(declared.size).toBeGreaterThan(0);
+    });
+
+    for (const token of [...declared].sort()) {
+      it(`--${token} declared in styles.css has at least one var() reader under app/src`, () => {
+        expect(consumed.has(token)).toBe(true);
+      });
+    }
+
+    it('negative control: a declared-but-unread token makes this check fail (DEC-989/DEC-941 doctrine)', () => {
+      const declaredOnly = declaredTokens(':root { --chq-motion-unread-fixture: 999ms; }');
+      const consumedElsewhere = consumedTokens('.thing { color: blue; }');
+      expect(consumedElsewhere.has([...declaredOnly][0]!)).toBe(false);
+    });
+  });
 });
