@@ -293,7 +293,9 @@ a:hover {
      same glyph-height box; the 1px nudge centers the lowercase x-height
      mass (only 'h'/'t' ascend, 'q' descends) against the nav's midline. */
   line-height: 1;
-  transform: translateY(-1px);
+  /* -1.75px, ink-measured: dense-band (x-height) center matched to the
+     nav's at 4x render — see wordmark-measure probe, gate-12 era. */
+  transform: translateY(-1.75px);
 }
 
 /* DEC-369 amendment (wave 22): the fitted 10.625px gap and +13px margin-left
