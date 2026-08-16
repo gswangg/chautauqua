@@ -763,7 +763,13 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
 
             {/* A20 (w26-c): 'Delete this contact' sits far left as a
                 tertiary link; Cancel and Save are right-flushed in their own
-                group — Delete is never adjacent to Save. */}
+                group — Delete is never adjacent to Save.
+                DEC-616 wave-70 amendment: the scope sentence moved onto its
+                own line above the action bar so it (and Save) can never be
+                clipped behind the drawer's right edge at 520px. */}
+            <p className="chq-meta chq-contacts-save-scope-note">
+              {`Saves both the org-wide record and ${currentEventName ?? 'this event'}'s facts`}
+            </p>
             <div className="chq-contacts-drawer-actions">
               <button
                 type="button"
@@ -785,9 +791,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                 <button type="button" className="chq-btn chq-btn-secondary" disabled={closeDisabled} onClick={onClose}>
                   Cancel
                 </button>
-                <span className="chq-meta chq-contacts-save-scope-note">
-                  {`Saves both the org-wide record and ${currentEventName ?? 'this event'}'s facts`}
-                </span>
                 <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
                   Save
                 </button>

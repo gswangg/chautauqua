@@ -706,19 +706,23 @@
 }
 
 /* DEC-616 amendment (wave 4): action-bar buttons stay on one line each at
-   520px -- nowrap on the row plus per-button nowrap+no-shrink means the bar
-   itself scrolls (contained within its own box) rather than a button's
-   label wrapping to a second line or the drawer picking up horizontal
-   scroll. A20 (w26-c): 'Delete this contact' sits far left, Cancel/Save
-   right-flushed in their own inner group -- space-between keeps the two
-   ends pinned without disturbing the nowrap/scroll contract above. */
+   520px -- per-button nowrap+no-shrink keeps a button's label from wrapping
+   to a second line. A20 (w26-c): 'Delete this contact' sits far left,
+   Cancel/Save right-flushed in their own inner group -- space-between keeps
+   the two ends pinned. DEC-616 wave-70 amendment: the row itself now wraps
+   (with a row-gap) instead of scrolling horizontally, and overflow-x is
+   gone -- a hidden overlay scrollbar was clipping the Save button and the
+   scope sentence past the drawer's right edge at 520px/1440px/1600px. The
+   scope sentence lives on its own line above this bar now (see
+   .chq-contacts-save-scope-note), so it never competes with these buttons
+   for room. */
 .chq-contacts-drawer-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 9px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  row-gap: 9px;
+  flex-wrap: wrap;
 }
 
 .chq-contacts-drawer-actions-right {

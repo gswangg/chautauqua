@@ -1632,11 +1632,17 @@ export function SubmissionDetailPage() {
                     ))}
                   </ul>
                 )}
-                {/* DEC-900 (wave 25 amendment): the lead is never changed by
-                    this search -- adding a co-presenter only emails them a
-                    portal link. */}
+                {/* DEC-900 (wave 25) said adding a co-presenter emailed them
+                    a portal link; POST /submissions/:id/participants (DEC-070)
+                    never sent one. DEC-604 wave-70 amendment: correct the
+                    claim and mirror the portal's own co-presenter form ("No
+                    email goes to them — tell them yourself") — this sends no
+                    email; a portal invite is a separate, explicit action
+                    (see "Send portal invite"). The lead is still never
+                    changed by this search. */}
                 <p className="chq-detail-copresenter-note">
-                  Adding a co-presenter emails them a portal link · the lead presenter is not changed
+                  Adding a co-presenter here sends no email — sending a portal invite is a separate, explicit action.
+                  The lead presenter is not changed.
                 </p>
               </div>
               </div>

@@ -1347,9 +1347,14 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(within(rows[0]!).queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
     expect(within(rows[0]!).queryByRole('button', { name: 'Make co-presenter' })).not.toBeInTheDocument();
 
-    // Co-presenter note renders verbatim under the search.
+    // Co-presenter note renders verbatim under the search. DEC-604
+    // wave-70 amendment: it now states the true no-email fact and that a
+    // portal invite is a separate explicit action (mirroring the portal's
+    // own co-presenter form), not the stale DEC-900 "emails them" claim.
     expect(
-      screen.getByText('Adding a co-presenter emails them a portal link · the lead presenter is not changed'),
+      screen.getByText(
+        'Adding a co-presenter here sends no email — sending a portal invite is a separate, explicit action. The lead presenter is not changed.',
+      ),
     ).toBeInTheDocument();
   });
 
