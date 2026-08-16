@@ -2212,9 +2212,13 @@ describe('rejected save (DEC-124 amendment)', () => {
     fireEvent.click(saveButton);
 
     expect(await screen.findByText('Two things need fixing before this plan can open')).toBeInTheDocument();
+    // G13 lane-D fix (03-review--11): the criteria/window kept sentence is
+    // drawn only when BOTH those errors fired — here the two problems are
+    // name and criteria, so the sentence would assert a date problem the
+    // organiser does not have.
     expect(
-      screen.getByText('A plan with no criteria has nothing for reviewers to score, and the window has to run forwards.'),
-    ).toBeInTheDocument();
+      screen.queryByText('A plan with no criteria has nothing for reviewers to score, and the window has to run forwards.'),
+    ).not.toBeInTheDocument();
 
     const summaryHeading = screen.getByText('Two things need fixing before this plan can open');
     const summary = summaryHeading.closest('.chq-error-summary') as HTMLElement;

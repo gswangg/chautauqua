@@ -142,7 +142,9 @@
   width: 100%;
   padding: 0 0 6px;
   margin: 0;
-  border-bottom: 1px solid var(--chq-hairline);
+  /* G13 lane-D fix (03-review--01): the frame draws a darker, heavier rule
+     under the criterion name row than the light hairline. */
+  border-bottom: 1px solid var(--chq-rule);
 }
 
 .chq-review-criterion-name-row .chq-review-criterion-weight-caption {

@@ -1306,9 +1306,12 @@ export function PlanEditor() {
         <div className="chq-review-editor-title-actions">
           {isNew ? (
             <>
+              {/* G13 lane-D fix (03-review--08): Cancel is drawn as a
+                  bordered secondary (B8: #EFEBDF on 1px #CFC7B7), not a bare
+                  tertiary link. */}
               <button
                 type="button"
-                className="chq-btn chq-btn-tertiary"
+                className="chq-btn chq-btn-secondary"
                 disabled={saving}
                 onClick={() => requestLeave(() => navigate('/review'))}
               >
@@ -1358,7 +1361,15 @@ export function PlanEditor() {
         {saveAttempted && Object.keys(errors).length > 0 && (
           <ErrorSummary
             heading={countHeading(Object.keys(errors).length, 'before this plan can open')}
-            kept="A plan with no criteria has nothing for reviewers to score, and the window has to run forwards."
+            /* G13 lane-D fix (03-review--11): the two-clause sentence is
+               drawn only in the two-problem state — as a constant it
+               asserted a date problem the organiser does not have whenever
+               only the criteria error fired. */
+            kept={
+              errors.criteria && errors.closeAt
+                ? 'A plan with no criteria has nothing for reviewers to score, and the window has to run forwards.'
+                : undefined
+            }
             problems={planErrorSummaryProblems(errors)}
           />
         )}

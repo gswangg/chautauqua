@@ -75,6 +75,32 @@
   gap: 16px;
 }
 
+/* G13 lane-D fix (03-review--00): the two reminder scopes sit together,
+   right-flushed on the section-label line. */
+.chq-review-progress-remind-links {
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+}
+
+/* G13 lane-D fix (03-review--00): the plan-status chip is the drawn 86x20
+   small-radius chip hugging its text — uppercase 11px/700/0.09em,
+   justify-self:start — not a full-track 150px fully-rounded pill in title
+   case. Overrides the shared .chq-pill geometry for this row only. */
+.chq-review-plan-row .chq-pill,
+.chq-review-plan-row .chq-flag {
+  justify-self: start;
+}
+
+.chq-review-plan-row .chq-pill {
+  border-radius: 3px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 .chq-review-plan-name {
   font-family: var(--chq-font-display);
   font-size: 17px;
@@ -543,13 +569,15 @@
    column 2 (the row's action) sits at intrinsic width, clamped and
    right-aligned, rather than the earlier phone-frame full-width button
    stacked underneath. */
+/* G13 lane-D fix (03-review--03): the frame's row pitch is a constant
+   103px — padding 18px 0, grid gap 24px, three lines only. */
 .chq-review-queue-row {
-  padding: 15px 0;
+  padding: 18px 0;
   border-bottom: 1px solid var(--chq-hairline);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 176px;
   align-items: center;
-  gap: 12px;
+  gap: 24px;
 }
 
 .chq-review-queue-row-main {
@@ -567,11 +595,12 @@
   color: var(--chq-muted);
 }
 
+/* G13 lane-D fix (03-review--03): the drawn title is 20px/600/-0.022em. */
 .chq-review-queue-title {
   font-family: var(--chq-font-display);
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.022em;
   line-height: 1.3;
   color: var(--chq-ink);
 }
@@ -592,13 +621,14 @@
 
 /* DEC-831/DEC-845: plan-scoped queue header (eyebrow/h1/subtitle/progress) +
    the per-row SCORED/NOT SCORED score column + "Score this" action link. */
+/* G13 lane-D fix (03-review--03): the frame's rule sits ABOVE the progress
+   bar, not below it — the bar row carries the border, the head keeps only
+   its rhythm. */
 .chq-review-scoped-head {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-bottom: 18px;
   margin-bottom: 12px;
-  border-bottom: 1px solid var(--chq-hairline);
 }
 
 /* REVIEW PACK frame 03-03: the plan-scoped header's own title row -- the
@@ -611,8 +641,16 @@
   gap: 12px;
 }
 
+/* G13 lane-D fix (03-review--03): the header primary is drawn at 48px tall,
+   15px/700, 20px side padding. */
 .chq-review-scoped-title-action {
   flex-shrink: 0;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 /* DEC-874 wave-72 amendment: the footer is the QUEUE's own row -- left group
@@ -667,6 +705,9 @@
   align-items: center;
   gap: 12px;
   margin-top: 4px;
+  /* G13 lane-D fix (03-review--03): the drawn rule above the bar. */
+  border-top: 1px solid var(--chq-hairline);
+  padding-top: 14px;
 }
 
 .chq-review-scoped-progress {
@@ -1453,12 +1494,14 @@
    is an empty-collection state, not a per-field error, so it borrows the
    locked-notice card's shape (headline/reason/actions) rather than the
    error vocabulary's ink-border treatment. No colour literal. */
+/* G13 lane-D fix (03-review--11): the frame's card is #FAF8F2 inside a 1px
+   ink border — not the sunk surface on a hairline. */
 .chq-review-criteria-empty-notice {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--chq-surface-sunk);
-  border: 1px solid var(--chq-hairline);
+  background: var(--chq-surface);
+  border: 1px solid var(--chq-ink);
   border-radius: var(--chq-r-card, 5px);
   padding: 14px 16px;
   margin: 0 0 12px;
@@ -1966,15 +2009,29 @@
   gap: 3px;
 }
 
-/* DEC-730 micro-label family: state carried by wording, not colour --
-   this pill has no distinct is-open/is-closed color treatment, only the
-   text itself ("Open"/"Closed") differs. */
+/* G13 lane-D fix (03-review--10): the frame PAINTS the OPEN state — olive
+   fill, on-brand label, 3px radius, hugging its text — so Open and Closed
+   are distinguishable at a glance. Closed keeps the muted micro-label
+   treatment (the drawn CLOSED state). The earlier DEC-730 "wording, not
+   colour" reading left OPEN unpainted, identical to CLOSED. */
 .chq-reviewer-plan-row-pill {
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--chq-muted);
+}
+
+.chq-reviewer-plan-row-pill.is-open {
+  justify-self: start;
+  width: fit-content;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  color: var(--chq-on-brand);
+  background: var(--chq-brand);
+  border-radius: 3px;
+  padding: 3px 9px;
 }
 
 .chq-reviewer-plan-row-bar {
