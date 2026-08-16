@@ -20,7 +20,7 @@ import { CfpStepsScript } from "./cfp-steps-script";
 import { eventDatesLine, validAccent } from "./shell";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { EventRow, FormRow, TrackRow } from "../../server/repo/submit";
-import { safeImageSrc } from "../../domain/brand-url";
+import { parseEventBranding, type EventBranding } from "../../domain/event-branding";
 import { DEC_322 } from "../../decisions";
 
 void DEC_322;
@@ -42,12 +42,11 @@ const CFP_EMAIL_HELP_TEXT = "We send your portal link here, so a typo means you 
 // radio group, which has no FormFieldDef/field id of its own to key off.
 export const TRACK_CHOICES_ID = "chq-cfp-track-choices";
 
-export function branding(event: EventRow): { logoUrl?: string; accentColor?: string } {
-  if (!event.brandingJson) return {};
-  const parsed = JSON.parse(event.brandingJson) as { logoUrl?: string; accentColor?: string };
-  // DEC-322 wave-30 amendment: sanitize at the read so a legacy stored value
-  // (written before this gate existed) can never reach an <img src>.
-  return { logoUrl: safeImageSrc(parsed.logoUrl) ?? undefined, accentColor: parsed.accentColor };
+// DEC-322 wave-78 amendment: the one parser for event.branding_json lives in
+// src/domain/event-branding.ts (parseEventBranding); this is a one-line
+// forwarder so callers keep this surface's own `branding(event)` signature.
+export function branding(event: EventRow): EventBranding {
+  return parseEventBranding(event.brandingJson);
 }
 
 // DEC-371/DEC-374: THEME_CSS (tokens/resets, shared by every SSR surface)

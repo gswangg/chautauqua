@@ -55,7 +55,7 @@ function mockEverySettingsRoute(overrides: Record<string, unknown> = {}) {
       location: 'Austin',
       timezone: 'UTC',
       recordPrefix: 'DC',
-      branding: null,
+      branding: {},
     },
     [`GET /api/v1/events/${EVENT_ID}/forms`]: {
       id: 'form1',

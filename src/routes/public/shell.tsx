@@ -9,7 +9,7 @@ import { PUBLIC_CSS } from "./public.css";
 import { DEC_374, DEC_371, DEC_593, DEC_322 } from "../../decisions";
 import { formatEventDayRange } from "../../lib/event-time";
 import { normalizeHexColor } from "../../domain/color";
-import { safeImageSrc } from "../../domain/brand-url";
+import { parseEventBranding, type EventBranding } from "../../domain/event-branding";
 
 void DEC_371;
 
@@ -106,12 +106,11 @@ export function setCacheHeaders(c: { header(name: string, value: string): void }
   c.header("Vary", "Cookie");
 }
 
-export function branding(event: PublicEvent): { logoUrl?: string; accentColor?: string } {
-  if (!event.brandingJson) return {};
-  const parsed = JSON.parse(event.brandingJson) as { logoUrl?: string; accentColor?: string };
-  // DEC-322 wave-30 amendment: sanitize at the read so a legacy stored value
-  // (written before this gate existed) can never reach an <img src>.
-  return { logoUrl: safeImageSrc(parsed.logoUrl) ?? undefined, accentColor: parsed.accentColor };
+// DEC-322 wave-78 amendment: the one parser for event.branding_json lives in
+// src/domain/event-branding.ts (parseEventBranding); this is a one-line
+// forwarder so callers keep this surface's own `branding(event)` signature.
+export function branding(event: PublicEvent): EventBranding {
+  return parseEventBranding(event.brandingJson);
 }
 
 const DEFAULT_ACCENT = "#4E5C31";
