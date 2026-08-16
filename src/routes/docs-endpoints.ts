@@ -307,6 +307,8 @@ export const PUBLIC_ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
         role: "public event hub — the org's events grouped by open CFP / published programme / past; signed-in users are redirected to /admin or /portal",
       },
       { method: "GET", path: "/docs/api", role: "this page" },
+      { method: "GET", path: "/docs", role: "user-facing documentation site — index of how-to articles" },
+      { method: "GET", path: "/docs/:slug", role: "user-facing documentation site — a single article" },
     ],
   },
   {

@@ -17,10 +17,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Hono } from "hono";
 import type { AppEnv } from "../src/server/env";
-import { ROUTE_GROUPS, PUBLIC_ROUTE_GROUPS, docsRoutes } from "../src/routes/docs";
-import { publicRoutes } from "../src/routes/public";
-import { publicSubmitRoutes } from "../src/routes/public/submit";
-import { rootRoutes } from "../src/routes/root";
+import { ROUTE_GROUPS, PUBLIC_ROUTE_GROUPS } from "../src/routes/docs";
 
 const INDEX_PATH = resolve(fileURLToPath(import.meta.url), "../../src/index.ts");
 const INDEX_DIR = dirname(INDEX_PATH);
@@ -85,46 +82,71 @@ function normalizePath(path: string): string {
   return path.replace(/:([a-zA-Z0-9_]+)(\{[^}]*\})?/g, ":$1");
 }
 
+/** One `app.route("<prefix>", <subApp>)` call from src/index.ts, resolved to
+ * the actual sub-app object and the module path it came from. Shared by both
+ * describe blocks below (DEC-518: one derivation, two consumers — no second
+ * hand-maintained list of module identifiers). */
+interface ResolvedMount {
+  prefix: string;
+  identifier: string;
+  modulePath: string;
+  subApp: Hono<AppEnv>;
+}
+
+/** Parses src/index.ts's own source for every `app.route(...)` call, resolves
+ * each identifier to its imported module + export, and dynamically imports
+ * that module. Fails loudly (throws) rather than silently skipping a call it
+ * can't resolve, so a future src/index.ts edit this parser can't follow
+ * breaks the test instead of passing vacuously. */
+async function resolveIndexMounts(): Promise<ResolvedMount[]> {
+  const source = readFileSync(INDEX_PATH, "utf-8");
+  const bindings = parseImportBindings(source);
+  const routeCalls = parseRouteCalls(source);
+
+  expect(routeCalls.length).toBeGreaterThan(0);
+
+  const moduleCache = new Map<string, Record<string, unknown>>();
+  async function loadModule(modulePath: string): Promise<Record<string, unknown>> {
+    let mod = moduleCache.get(modulePath);
+    if (!mod) {
+      const resolved = resolve(INDEX_DIR, modulePath);
+      mod = (await import(pathToFileURL(resolved).href)) as Record<string, unknown>;
+      moduleCache.set(modulePath, mod);
+    }
+    return mod;
+  }
+
+  const resolved: ResolvedMount[] = [];
+  for (const { prefix, identifier } of routeCalls) {
+    const binding = bindings.get(identifier);
+    if (!binding) {
+      throw new Error(
+        `src/index.ts calls app.route("${prefix}", ${identifier}) but ${identifier} is not ` +
+          `bound by any import statement in that file — this test can't resolve it and refuses ` +
+          `to silently skip it (DEC-518).`,
+      );
+    }
+    const mod = await loadModule(binding.modulePath);
+    const subApp = mod[binding.exportedName];
+    if (!subApp) {
+      throw new Error(
+        `src/index.ts imports ${identifier} (as ${binding.exportedName}) from ` +
+          `"${binding.modulePath}", but that module has no such export.`,
+      );
+    }
+    resolved.push({ prefix, identifier, modulePath: binding.modulePath, subApp: subApp as Hono<AppEnv> });
+  }
+  return resolved;
+}
+
 describe("docs.tsx ROUTE_GROUPS vs the real mounted /api/v1 routes (derived from src/index.ts)", () => {
   let app: Hono<AppEnv>;
 
   beforeAll(async () => {
-    const source = readFileSync(INDEX_PATH, "utf-8");
-    const bindings = parseImportBindings(source);
-    const routeCalls = parseRouteCalls(source);
-
-    expect(routeCalls.length).toBeGreaterThan(0);
-
-    const moduleCache = new Map<string, Record<string, unknown>>();
-    async function loadModule(modulePath: string): Promise<Record<string, unknown>> {
-      let mod = moduleCache.get(modulePath);
-      if (!mod) {
-        const resolved = resolve(INDEX_DIR, modulePath);
-        mod = (await import(pathToFileURL(resolved).href)) as Record<string, unknown>;
-        moduleCache.set(modulePath, mod);
-      }
-      return mod;
-    }
-
+    const mounts = await resolveIndexMounts();
     app = new Hono<AppEnv>();
-    for (const { prefix, identifier } of routeCalls) {
-      const binding = bindings.get(identifier);
-      if (!binding) {
-        throw new Error(
-          `src/index.ts calls app.route("${prefix}", ${identifier}) but ${identifier} is not ` +
-            `bound by any import statement in that file — this test can't resolve it and refuses ` +
-            `to silently skip it (DEC-518).`,
-        );
-      }
-      const mod = await loadModule(binding.modulePath);
-      const subApp = mod[binding.exportedName];
-      if (!subApp) {
-        throw new Error(
-          `src/index.ts imports ${identifier} (as ${binding.exportedName}) from ` +
-            `"${binding.modulePath}", but that module has no such export.`,
-        );
-      }
-      app.route(prefix, subApp as Hono<AppEnv>);
+    for (const { prefix, subApp } of mounts) {
+      app.route(prefix, subApp);
     }
   });
 
@@ -171,19 +193,35 @@ describe("docs.tsx ROUTE_GROUPS vs the real mounted /api/v1 routes (derived from
 });
 
 describe("docs.tsx PUBLIC_ROUTE_GROUPS vs the real mounted public GET routes", () => {
-  // src/index.ts mounts all four of these at "/" (app.route("/",
-  // publicRoutes), app.route("/", publicSubmitRoutes), app.route("/",
-  // docsRoutes), app.route("/", rootRoutes)) — mirror that here so the diff
-  // below sees the exact same route table the running server does. rootRoutes
-  // and docsRoutes carry the instance's own public surfaces (GET / and GET
-  // /docs/api) plus the non-public /admin and /admin/* shell routes, which
-  // are excluded below by name (DEC-056 amendment, wave 71).
-  const app = new Hono<AppEnv>();
-  app.route("/", publicRoutes);
-  app.route("/", publicSubmitRoutes);
-  app.route("/", docsRoutes);
-  app.route("/", rootRoutes);
+  // Which of the SAME resolveIndexMounts() mounts (used by the describe
+  // above for the full /api/v1 surface) are "public site" modules? Rather
+  // than hand-listing module identifiers (publicRoutes, publicSubmitRoutes,
+  // docsRoutes, rootRoutes, ...) — which drifted before docsSiteRoutes was
+  // added at src/index.ts:88 and went undetected — derive it from the
+  // directory-naming convention src/routes/ already follows: every no-login
+  // public surface lives under src/routes/public*, src/routes/docs*, or
+  // src/routes/root (mirrored by src/routes/portal*, src/routes/api/*, etc.
+  // for every non-public surface). A future public/docs/root module is
+  // picked up automatically; anything else is not.
+  const PUBLIC_MODULE_PATTERN = /^\.\/routes\/(public|docs|root)/;
 
+  let app: Hono<AppEnv>;
+
+  beforeAll(async () => {
+    const mounts = await resolveIndexMounts();
+    app = new Hono<AppEnv>();
+    for (const { prefix, modulePath, subApp } of mounts) {
+      if (prefix === "/" && PUBLIC_MODULE_PATTERN.test(modulePath)) {
+        app.route(prefix, subApp);
+      }
+    }
+  });
+
+  // rootRoutes/docsRoutes carry the instance's own public surfaces (GET /,
+  // GET /docs, GET /docs/:slug, GET /docs/api) plus the non-public /admin
+  // and /admin/* shell routes, which are excluded below by name (DEC-056
+  // amendment, wave 71).
+  //
   // The only two registered GETs on rootRoutes/docsRoutes that are NOT
   // public, no-login surfaces: the admin SPA shell (auth-gated, redirects
   // anonymous/speaker callers away) and its catch-all. Length is asserted
@@ -213,17 +251,22 @@ describe("docs.tsx PUBLIC_ROUTE_GROUPS vs the real mounted public GET routes", (
   // chromeless embed surfaces it redirects into are already documented.
   const EXCLUDED_UNDOCUMENTED = new Set(["GET /embed/:eventSlug"]);
 
-  it("documents every real public GET (nothing registered is missing from the table, or is a named non-public exclusion)", () => {
-    const actual = new Set(
-      app.routes
+  function actualPublicGetSet(target: Hono<AppEnv>): Set<string> {
+    return new Set(
+      target.routes
         .filter((r) => r.method === "GET")
         .map((r) => `GET ${normalizePublicPath(r.path)}`)
         .filter((r) => !EXCLUDED_UNDOCUMENTED.has(r))
         .filter((r) => !NON_PUBLIC.has(r)),
     );
-    const documented = new Set(PUBLIC_ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path}`));
+  }
 
-    const undocumented = [...actual].filter((r) => !documented.has(r));
+  function documentedPublicGetSet(): Set<string> {
+    return new Set(PUBLIC_ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path}`));
+  }
+
+  it("documents every real public GET (nothing registered is missing from the table, or is a named non-public exclusion)", () => {
+    const undocumented = [...actualPublicGetSet(app)].filter((r) => !documentedPublicGetSet().has(r));
     expect(undocumented).toEqual([]);
   });
 
@@ -231,13 +274,18 @@ describe("docs.tsx PUBLIC_ROUTE_GROUPS vs the real mounted public GET routes", (
     const actual = new Set(
       app.routes.filter((r) => r.method === "GET").map((r) => `GET ${normalizePublicPath(r.path)}`),
     );
-    const documented = new Set(PUBLIC_ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path}`));
-
-    const stale = [...documented].filter((r) => !actual.has(r));
+    const stale = [...documentedPublicGetSet()].filter((r) => !actual.has(r));
     expect(stale).toEqual([]);
   });
 
   it("NON_PUBLIC contains only /admin and /admin/* (no third entry slipped in)", () => {
     expect([...NON_PUBLIC].sort()).toEqual(["GET /admin", "GET /admin/*"]);
+  });
+
+  it("falsifiability: a synthetic mounted-but-undocumented route is actually detected (the diff isn't vacuous)", () => {
+    const probe = new Hono<AppEnv>();
+    probe.get("/__w9b-undocumented-probe__", (c) => c.text("probe"));
+    const undocumented = [...actualPublicGetSet(probe)].filter((r) => !documentedPublicGetSet().has(r));
+    expect(undocumented).toEqual(["GET /__w9b-undocumented-probe__"]);
   });
 });
