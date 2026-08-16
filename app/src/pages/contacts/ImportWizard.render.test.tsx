@@ -168,7 +168,7 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     expect(screen.getByRole('button', { name: 'Import 1 row' })).toBeInTheDocument();
   });
 
-  it('renders a possibleDuplicate as a plain-language line naming the contact and its different email', async () => {
+  it('renders a possibleDuplicate as a radio group naming the candidate\'s real name and email', async () => {
     const dupPlan: ImportPlan = {
       rows: [
         {
@@ -188,8 +188,10 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Import 2 rows' }));
 
     await screen.findByText('1 new · 0 updated');
-    expect(screen.getByText(/Jon Doe \(jon\.doe@old\.example\.com\)/)).toBeInTheDocument();
-    expect(screen.getByText(/different email address/)).toBeInTheDocument();
+    // The bug this closes: the duplicate's real NAME must be visible, not
+    // blank.
+    expect(screen.getByText(/Merge into Jon Doe \(jon\.doe@old\.example\.com\)/)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Import as new' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Skip line 2' })).toBeInTheDocument();
   });
 
@@ -261,6 +263,93 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     // run's intent counts (1 created, 1 updated, 0 skipped).
     expect(screen.getByText('Created 1, updated 0, skipped 1.')).toBeInTheDocument();
     expect(screen.getByText('Line 2: skipped by organizer')).toBeInTheDocument();
+  });
+});
+
+// DEC-663 (wave-64 amendment): the third possible-duplicate disposition --
+// 'Import as new' (default) or 'Merge into <name> (<email>)' per candidate,
+// mutually exclusive with the row's own Skip checkbox.
+describe('ImportWizard: DEC-663 wave-64 amendment -- possible-duplicate merge disposition', () => {
+  const MULTI_DUP_PLAN: ImportPlan = {
+    rows: [
+      {
+        line: 2,
+        email: 'john@example.com',
+        action: 'create',
+        possibleDuplicates: [
+          { contactId: 'ct-old-1', name: 'Jon Doe', email: 'jon.doe@old.example.com', company: 'Acme' },
+          { contactId: 'ct-old-2', name: 'Johnny Doe', email: 'johnny@other.example.com', company: null },
+        ],
+        possibleDuplicatesMore: 3,
+      },
+    ],
+    created: 1,
+    updated: 0,
+    skipped: 0,
+  };
+
+  it('renders one merge radio option per candidate, plus Import as new, and the honest overflow sentence', async () => {
+    mockApi({ 'POST /api/v1/contacts/import': MULTI_DUP_PLAN });
+    await pasteCsvAndPreview();
+    await screen.findByText('1 new · 0 updated');
+
+    expect(screen.getByRole('radio', { name: 'Import as new' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Merge into Jon Doe (jon.doe@old.example.com)' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Merge into Johnny Doe (johnny@other.example.com)' })).toBeInTheDocument();
+    expect(screen.getByText(/3 more possible matches not shown/)).toBeInTheDocument();
+    expect(screen.getByText(/Duplicates view/)).toBeInTheDocument();
+  });
+
+  it('selecting a merge option clears the Skip checkbox, and checking Skip clears the merge selection', async () => {
+    mockApi({ 'POST /api/v1/contacts/import': MULTI_DUP_PLAN });
+    await pasteCsvAndPreview();
+    await screen.findByText('1 new · 0 updated');
+
+    const skipBox = screen.getByRole('checkbox', { name: 'Skip line 2' });
+    const importAsNew = screen.getByRole('radio', { name: 'Import as new' });
+    const mergeOption = screen.getByRole('radio', { name: 'Merge into Jon Doe (jon.doe@old.example.com)' });
+
+    // Check Skip first, then select a merge option -- Skip must clear.
+    fireEvent.click(skipBox);
+    expect(skipBox).toBeChecked();
+    fireEvent.click(mergeOption);
+    expect(mergeOption).toBeChecked();
+    expect(importAsNew).not.toBeChecked();
+    expect(skipBox).not.toBeChecked();
+
+    // Now check Skip again -- the merge selection must clear back to
+    // 'Import as new'.
+    fireEvent.click(skipBox);
+    expect(skipBox).toBeChecked();
+    expect(importAsNew).toBeChecked();
+    expect(mergeOption).not.toBeChecked();
+  });
+
+  it('the applied request body carries mergeLines for a selected merge, and commits normally', async () => {
+    let calls = 0;
+    const fetchMock = mockApi({
+      'POST /api/v1/contacts/import': () => {
+        calls += 1;
+        return calls === 1 ? MULTI_DUP_PLAN : { created: 0, updated: 1, skipped: [] };
+      },
+    });
+
+    await pasteCsvAndPreview();
+    await screen.findByText('1 new · 0 updated');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Merge into Jon Doe (jon.doe@old.example.com)' }));
+    const commitBtn = await screen.findByRole('button', { name: 'Import 1 row' });
+    fireEvent.click(commitBtn);
+
+    await screen.findAllByText('Import complete');
+
+    const postCalls = fetchMock.mock.calls.filter(([input]) =>
+      (typeof input === 'string' ? input : input.toString()).includes('/contacts/import'),
+    );
+    expect(postCalls).toHaveLength(2);
+    const commitBody = JSON.parse((postCalls[1]![1]?.body as string) ?? '{}');
+    expect(commitBody.mergeLines).toEqual([{ line: 2, contactId: 'ct-old-1' }]);
+    expect(commitBody.skipLines).toEqual([]);
   });
 });
 
