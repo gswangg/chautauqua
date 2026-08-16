@@ -132,8 +132,11 @@ describe("PATCH /contacts/:id bio + socialLinks (CNT-10)", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { bio: string; socialLinks: Record<string, string> };
     expect(body.bio).toBe("Speaks about widgets.");
-    // linkedin was blank -> dropped by serializeSocialLinks, parses back as ""
-    expect(body.socialLinks).toEqual({ twitter: "@jane", github: "janedoe", website: "https://jane.example" });
+    // linkedin was blank -> dropped by serializeSocialLinks in STORAGE, but the
+    // wire always carries all four keys as strings (DEC-152 wave-76 amendment):
+    // serializeContact derives socialLinks through parseSocialLinks, so a
+    // dropped key comes back as "" rather than going missing.
+    expect(body.socialLinks).toEqual({ twitter: "@jane", linkedin: "", github: "janedoe", website: "https://jane.example" });
     expect(row.bio).toBe("Speaks about widgets.");
     expect(JSON.parse(row.socialLinksJson!)).toEqual({ twitter: "@jane", github: "janedoe", website: "https://jane.example" });
   });
