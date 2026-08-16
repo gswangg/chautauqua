@@ -116,18 +116,26 @@ describe("PUT /submissions/:id/slot (DEC-476 minute bounds)", () => {
     });
   }
 
+  // DEC-370 wave-61: select #1 is now getSlotWriteContext's single combined
+  // read (eventId/status/startDate/endDate/recordPrefix all in one row);
+  // no roomId is present in either body below, so getRoomEventId never
+  // issues a select. select #2/#3/#4 are getConflictsAndSummary's
+  // {slotRows, roomRows, totalAcceptedRows} wave.
+  const acceptedOwnershipWithEvent = [
+    {
+      eventId: "event1",
+      orgId: "org1",
+      status: "accepted",
+      startDate: "2026-08-10",
+      endDate: "2026-08-10",
+      recordPrefix: "EV",
+    },
+  ];
+
   it("accepts {startMin: 0, endMin: 1440} (the full-day boundary)", async () => {
     // DEC-492: ics_sequence bump is one atomic set-based UPDATE with no
     // preceding select, so there is no extra select entry for it here.
-    const { app } = appWithDb([
-      acceptedOwnership,
-      [{ orgId: "org1", startDate: "2026-08-10", endDate: "2026-08-10", recordPrefix: "EV" }],
-      [],
-      [],
-      [],
-      [],
-      [],
-    ]);
+    const { app } = appWithDb([acceptedOwnershipWithEvent, [], [], []]);
     const res = await putSlot(app, { day: "2026-08-10", startMin: 0, endMin: MINUTES_PER_DAY });
     expect(res.status).toBe(200);
   });
@@ -135,15 +143,7 @@ describe("PUT /submissions/:id/slot (DEC-476 minute bounds)", () => {
   it("accepts a normal {540, 600} slot", async () => {
     // DEC-492: ics_sequence bump is one atomic set-based UPDATE with no
     // preceding select, so there is no extra select entry for it here.
-    const { app } = appWithDb([
-      acceptedOwnership,
-      [{ orgId: "org1", startDate: "2026-08-10", endDate: "2026-08-10", recordPrefix: "EV" }],
-      [],
-      [],
-      [],
-      [],
-      [],
-    ]);
+    const { app } = appWithDb([acceptedOwnershipWithEvent, [], [], []]);
     const res = await putSlot(app, { day: "2026-08-10", startMin: 540, endMin: 600 });
     expect(res.status).toBe(200);
   });

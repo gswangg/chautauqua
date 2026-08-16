@@ -33,6 +33,8 @@ export {
   getEventInfo,
   roomBelongsToEvent,
   getSubmissionOwnership,
+  getSlotWriteContext,
+  getRoomEventId,
   MAX_AGENDA_SCAN,
   loadDurationMinBySubmission,
 } from "./rows";

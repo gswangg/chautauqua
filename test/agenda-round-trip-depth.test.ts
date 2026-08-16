@@ -26,6 +26,12 @@ const AUTH: AuthInfo = { userId: "u1", role: "organizer", orgId: ORG_A };
 interface Tracker {
   inFlight: number;
   max: number;
+  // DEC-370 wave-61: incremented each time inFlight rises 0->1 -- counts
+  // "waves" (bursts of simultaneously in-flight statements separated by
+  // idle periods), not individual statements. A handler that issues N
+  // sequential round trips (even if each round trip is itself a
+  // Promise.all wave) increments this N times.
+  waves: number;
 }
 
 /** A minimal chainable fake SELECT builder: every drizzle-style chain method
@@ -49,6 +55,7 @@ function makeInstrumentedDb(rowsByTable: Map<unknown, unknown[]>, tracker: Track
       };
     }
     self.then = (resolve: (v: unknown) => void, reject: (e: unknown) => void) => {
+      if (tracker.inFlight === 0) tracker.waves += 1;
       tracker.inFlight += 1;
       tracker.max = Math.max(tracker.max, tracker.inFlight);
       return new Promise<void>((r) => setTimeout(r, 8))
@@ -84,7 +91,7 @@ function buildRowsByTable(): Map<unknown, unknown[]> {
   rows.set(schema.event, [
     { orgId: ORG_A, startDate: "2026-08-10", endDate: "2026-08-11", recordPrefix: "EV" },
   ]);
-  rows.set(schema.room, [{ id: "room-1", name: "Room One" }]);
+  rows.set(schema.room, [{ id: "room-1", eventId: "event-1", name: "Room One" }]);
   rows.set(schema.track, [{ id: "track-1", name: "Track One", color: "#fff" }]);
   rows.set(schema.submission, [{ id: "sub-1", seq: 1, title: "Talk One" }]);
   rows.set(schema.submissionTrack, [{ submissionId: "sub-1", trackId: "track-1" }]);
@@ -117,7 +124,7 @@ afterEach(() => {
 
 describe("DEC-155 (wave-34 amendment): GET agenda collapses its waterfall", () => {
   it("has 3+ repo statements simultaneously in-flight (behavioural, not a source grep)", async () => {
-    const tracker: Tracker = { inFlight: 0, max: 0 };
+    const tracker: Tracker = { inFlight: 0, max: 0, waves: 0 };
     const db = makeInstrumentedDb(buildRowsByTable(), tracker);
     const app = await buildApp(db);
     const res = await app.request("/api/v1/events/event-1/agenda");
@@ -131,7 +138,7 @@ describe("DEC-155 (wave-34 amendment): GET agenda collapses its waterfall", () =
   });
 
   it("pins the GET agenda JSON envelope: unchanged by the scheduling change", async () => {
-    const tracker: Tracker = { inFlight: 0, max: 0 };
+    const tracker: Tracker = { inFlight: 0, max: 0, waves: 0 };
     const db = makeInstrumentedDb(buildRowsByTable(), tracker);
     const app = await buildApp(db);
     const res = await app.request("/api/v1/events/event-1/agenda");
@@ -165,7 +172,13 @@ describe("DEC-155 (wave-34 amendment): GET agenda collapses its waterfall", () =
 describe("DEC-155 (wave-34 amendment): PUT slot collapses its waterfall, error order preserved", () => {
   function ownershipRows(status = "accepted"): Map<unknown, unknown[]> {
     const rows = buildRowsByTable();
-    rows.set(schema.submission, [{ eventId: "event-1", orgId: ORG_A, status }]);
+    // The fake's `.from()`-keyed lookup returns this row verbatim for
+    // getSlotWriteContext's submission-LEFT-JOIN-event read (it doesn't
+    // actually merge the joined table), so this one fixture row carries
+    // every column the real query selects from BOTH sides of the join.
+    rows.set(schema.submission, [
+      { eventId: "event-1", orgId: ORG_A, status, startDate: "2026-08-10", endDate: "2026-08-11", recordPrefix: "EV" },
+    ]);
     // getConflictsAndSummary's slotRows read joins scheduleSlot+submission
     // and expects a seq/title on each row (for formatRef) -- irrelevant to
     // what this test measures (PUT's own wave concurrency), so keep it
@@ -189,21 +202,41 @@ describe("DEC-155 (wave-34 amendment): PUT slot collapses its waterfall, error o
   }
 
   it("has 2+ repo statements simultaneously in-flight (behavioural, not a source grep)", async () => {
-    const tracker: Tracker = { inFlight: 0, max: 0 };
+    const tracker: Tracker = { inFlight: 0, max: 0, waves: 0 };
     const db = makeInstrumentedDb(ownershipRows(), tracker);
     const res = await putSlot(db, "room-1");
     expect(res.status).toBe(200);
-    // getSubmissionOwnership runs alone first (authz gate); then
-    // {roomBelongsToEvent, getEventInfo} issue as one wave -- 2 statements
-    // simultaneously in-flight. A fully serial handler could never exceed 1.
+    // DEC-370 wave-61: {getSlotWriteContext, getRoomEventId} issue as ONE
+    // wave (no authz-gate read precedes them any more -- the body is read
+    // first, off the DB entirely) -- 2 statements simultaneously in-flight.
+    // A fully serial handler could never exceed 1.
     expect(tracker.max).toBeGreaterThanOrEqual(2);
   });
 
+  it("DEC-370 wave-61: happy-path PUT completes in at most 3 waves (was 4 sequential round trips)", async () => {
+    const tracker: Tracker = { inFlight: 0, max: 0, waves: 0 };
+    const db = makeInstrumentedDb(ownershipRows(), tracker);
+    const res = await putSlot(db, "room-1");
+    expect(res.status).toBe(200);
+    // Wave 1: {getSlotWriteContext, getRoomEventId}. Wave 2:
+    // getConflictsAndSummary's {slotRows, roomRows, totalAcceptedRows}. A
+    // future regression that re-serializes the room check (or anything
+    // else) into its own round trip must fail this assertion loudly.
+    expect(tracker.waves).toBeLessThanOrEqual(3);
+  });
+
   it("room-ownership error wins over the event-not-found error when both are wrong (SOURCE order)", async () => {
-    const tracker: Tracker = { inFlight: 0, max: 0 };
+    const tracker: Tracker = { inFlight: 0, max: 0, waves: 0 };
     const rows = ownershipRows();
-    rows.set(schema.room, []); // roomBelongsToEvent finds nothing -> invalid
-    rows.set(schema.event, []); // getEventInfo finds nothing -> not_found
+    // DEC-370 wave-61: getSlotWriteContext no longer reads schema.room at
+    // all (it reads submission LEFT JOIN event), so "room wrong" is now
+    // expressed as a room row that exists but names a DIFFERENT event
+    // (getRoomEventId's own read), and "event not found" is expressed by
+    // leaving the event table empty (getSlotWriteContext's LEFT JOIN would
+    // return a row with null startDate/endDate, which the route's ladder
+    // checks AFTER the room check -- so the room-ownership error must win).
+    rows.set(schema.room, [{ id: "nonexistent-room", eventId: "some-other-event", name: "Other Room" }]);
+    rows.set(schema.event, []); // getSlotWriteContext's LEFT JOIN finds no event row -> not_found
     const db = makeInstrumentedDb(rows, tracker);
     const res = await putSlot(db, "nonexistent-room");
     expect(res.status).toBe(400);
