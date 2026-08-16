@@ -81,7 +81,7 @@ async function openEditModalForTalkLength() {
   });
   const row = screen.getByText('Talk length').closest('[role="listitem"]') as HTMLElement;
   fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
-  const dialog = await screen.findByRole('dialog', { name: 'Edit field' });
+  const dialog = await screen.findByRole('dialog', { name: 'Edit a question' });
   return dialog;
 }
 

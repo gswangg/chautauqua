@@ -53,7 +53,7 @@ afterEach(() => {
 async function openEditModalFor(fieldLabel: string) {
   const row = screen.getByText(fieldLabel).closest('.chq-forms-field-row') as HTMLElement;
   fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
-  return screen.findByRole('dialog', { name: 'Edit field' });
+  return screen.findByRole('dialog', { name: 'Edit a question' });
 }
 
 describe('FieldModal Delete -> shared irreversible ConfirmDialog (DEC-650 wave-66)', () => {
@@ -80,7 +80,7 @@ describe('FieldModal Delete -> shared irreversible ConfirmDialog (DEC-650 wave-6
 
     // The edit modal is gone -- Delete does not stack a second dialog on
     // top of it.
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit field' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit a question' })).not.toBeInTheDocument());
 
     const confirmDialog = await screen.findByRole('dialog', { name: 'Delete field' });
     expect(within(confirmDialog).getAllByText(/Co-speaker email/).length).toBeGreaterThan(0);
