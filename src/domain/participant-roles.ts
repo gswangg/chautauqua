@@ -9,13 +9,13 @@ export interface ParticipantRoleOption {
   label: string;
 }
 
-// "speaker" is the default role stamped on the original CFP submitter
+// The default role stamped on the original CFP submitter
 // (src/server/repo/submit.ts:createParticipant) and on organizer-invited
 // participants that don't specify a role
-// (src/server/repo/participants.ts:inviteParticipant) — included here so
-// its label resolves through the same table as every other role. The
-// remaining three are the roles a speaker may choose when self-adding a
-// co-presenter.
+// (src/server/repo/participants.ts:inviteParticipant) now has a name:
+// DEFAULT_PARTICIPANT_ROLE, below — included here so its label resolves
+// through the same table as every other role. The remaining three are the
+// roles a speaker may choose when self-adding a co-presenter.
 export const PARTICIPANT_ROLE_OPTIONS: readonly ParticipantRoleOption[] = [
   { value: "speaker", label: "Speaker" },
   { value: "co-presenter", label: "Co-presenter" },
@@ -29,6 +29,15 @@ export const CO_PRESENTER_ROLE_VALUES: readonly string[] = PARTICIPANT_ROLE_OPTI
 
 export function isCoPresenterRoleValue(value: string): boolean {
   return CO_PRESENTER_ROLE_VALUES.includes(value);
+}
+
+// DEC-604 (wave-76 amendment): the default participant role, derived from
+// the vocabulary above (never a second hand-copied literal) — same
+// discipline as CO_PRESENTER_ROLE_VALUES above.
+export const DEFAULT_PARTICIPANT_ROLE: string = PARTICIPANT_ROLE_OPTIONS[0]!.value;
+
+export function isDefaultParticipantRole(role: string): boolean {
+  return role === DEFAULT_PARTICIPANT_ROLE;
 }
 
 /** Resolves a stored participant.role value to its display label. A role

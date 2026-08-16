@@ -15,7 +15,10 @@ import { updateSubmissionStatuses } from "../submissions/status";
 import { touchSubmissionsForContacts, touchSubmissionsForTracks } from "../submissions/touch";
 import type { SubmissionStatus } from "../../../domain/status";
 import { DEC_604, DEC_612, DEC_717 } from "../../../decisions";
-import { MAX_PARTICIPANTS_PER_SUBMISSION } from "../../../domain/participant-roles";
+import {
+  MAX_PARTICIPANTS_PER_SUBMISSION,
+  DEFAULT_PARTICIPANT_ROLE,
+} from "../../../domain/participant-roles";
 import { ApiError } from "../../http";
 import { isUniqueViolation } from "../constraints";
 
@@ -641,7 +644,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             id,
             submissionId,
             contactId,
-            role: v.role ?? "speaker",
+            role: v.role ?? DEFAULT_PARTICIPANT_ROLE,
             order,
             // DEC-675/DEC-656: an imported co-presenter is RECORDED, not
             // published -- it reaches the public site only through the

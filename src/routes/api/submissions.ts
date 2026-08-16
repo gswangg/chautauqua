@@ -51,7 +51,11 @@ import {
   setParticipantRole,
   setParticipantVisible,
 } from "../../server/repo/participants";
-import { PARTICIPANT_ROLE_OPTIONS, MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
+import {
+  PARTICIPANT_ROLE_OPTIONS,
+  MAX_PARTICIPANTS_PER_SUBMISSION,
+  isDefaultParticipantRole,
+} from "../../domain/participant-roles";
 import { findContactForOrg } from "../../server/repo/contacts";
 import { resolveActorName } from "../../server/repo/users";
 import {
@@ -844,7 +848,7 @@ submissionsRoutes.patch(
           role: "Cannot change the lead's role",
         });
       }
-      if (body.role === "speaker") {
+      if (isDefaultParticipantRole(body.role)) {
         throw new ApiError("invalid", "speaker is reserved for the lead participant", {
           role: "Cannot make a co-presenter the lead",
         });

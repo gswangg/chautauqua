@@ -10,6 +10,7 @@ import { submissionSeqSubquery } from "./seq";
 import { normalizeEmail } from "../../../domain/email";
 import { DEC_258, DEC_275, DEC_542, DEC_755, DEC_765 } from "../../../decisions";
 import { chunkRowsForInsert } from "../../../lib/chunk";
+import { DEFAULT_PARTICIPANT_ROLE } from "../../../domain/participant-roles";
 
 // Compile-checked dependency marker: createSubmission's participant insert
 // below snapshots DEC-258's title_at_time/org_at_time.
@@ -126,7 +127,7 @@ export async function createSubmission(
       id: newId(),
       submissionId: id,
       contactId: contact.id,
-      role: input.contact.role ?? "speaker",
+      role: input.contact.role ?? DEFAULT_PARTICIPANT_ROLE,
       order: 0,
       visible: true,
       inviteStatus: "none",
