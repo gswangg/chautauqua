@@ -67,3 +67,16 @@
   font-size: 13px;
   color: var(--chq-ink-2);
 }
+
+/* DEC-047 wave-64 amendment: the Add-a-resource modal's File/Wiki page
+   segmented kind control -- same "cream fill + 1px dark outline + ink text"
+   selected-chip visual as the speakers Task modal's own
+   .chq-speakers-kind-selected (a page owns its copy of this vocabulary
+   rather than spending the page-primary olive fill). */
+.chq-settings-kind-selected {
+  font-family: inherit;
+  background: var(--chq-surface);
+  border: 1px solid var(--chq-ink);
+  color: var(--chq-ink);
+  font-weight: 700;
+}

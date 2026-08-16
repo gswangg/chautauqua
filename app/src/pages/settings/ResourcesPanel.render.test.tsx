@@ -137,6 +137,7 @@ describe('ResourcesPanel file upload discloses caps up front (w63-c)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'File' }));
 
     const fileInput = document.querySelector('input[type="file"]');
     expect(fileInput).not.toBeNull();
@@ -157,9 +158,9 @@ describe('ResourcesPanel file upload discloses caps up front (w63-c)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'File' }));
 
-    const titleInputs = screen.getAllByPlaceholderText('Title');
-    const fileTitleInput = titleInputs[titleInputs.length - 1]!;
+    const fileTitleInput = screen.getByPlaceholderText('Title');
     fireEvent.change(fileTitleInput, { target: { value: 'My Slides' } });
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -174,12 +175,112 @@ describe('ResourcesPanel file upload discloses caps up front (w63-c)', () => {
     }
     expect(alert.textContent).toContain('Title is kept');
 
-    const titleInputsAfter = screen.getAllByPlaceholderText('Title');
-    expect((titleInputsAfter[titleInputsAfter.length - 1] as HTMLInputElement).value).toBe('My Slides');
+    expect((screen.getByPlaceholderText('Title') as HTMLInputElement).value).toBe('My Slides');
 
     expect(
       fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST'),
     ).toBe(false);
+  });
+});
+
+describe('ResourcesPanel Add-a-resource modal (DEC-047 wave-64 amendment)', () => {
+  it('opens as a modal dialog from the Add a resource control, with exactly one kind (Wiki page) selected by default', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: 'Wiki page' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(dialog).getByRole('button', { name: 'File' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('renders exactly one kind\'s fields at a time, switching when the chips are clicked', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    // Wiki page selected by default: content textarea present, no file input.
+    expect(document.querySelector('textarea')).not.toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add wiki page' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Upload file' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'File' }));
+
+    // File selected: file input present, no content textarea.
+    expect(document.querySelector('input[type="file"]')).not.toBeNull();
+    expect(document.querySelector('textarea')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Upload file' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add wiki page' })).not.toBeInTheDocument();
+
+    // Only one Title input in the DOM at any time.
+    expect(screen.getAllByPlaceholderText('Title')).toHaveLength(1);
+  });
+
+  it('submitting the wiki kind POSTs to the resources endpoint and closes the modal', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/resources`]: { status: 201, body: resource() },
+    });
+
+    render(<ResourcesPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    fireEvent.change(screen.getByPlaceholderText('Title'), { target: { value: 'Speaker FAQ' } });
+    fireEvent.change(document.querySelector('textarea')!, { target: { value: 'Some content' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add wiki page' }));
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
+      expect(postCall).toBeTruthy();
+      const body = JSON.parse((postCall![1] as RequestInit).body as string);
+      expect(body).toEqual({ title: 'Speaker FAQ', content: 'Some content' });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('submitting the File kind calls the same upload endpoint the row-level upload uses', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/resources`]: { status: 201, body: fileResource() },
+    });
+
+    render(<ResourcesPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+    fireEvent.click(screen.getByRole('button', { name: 'File' }));
+
+    fireEvent.change(screen.getByPlaceholderText('Title'), { target: { value: 'Handout.pdf' } });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const goodFile = new File(['x'], 'handout.pdf', { type: 'application/pdf' });
+    fireEvent.change(fileInput, { target: { files: [goodFile] } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload file' }));
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
+      expect(postCall).toBeTruthy();
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 });
 
