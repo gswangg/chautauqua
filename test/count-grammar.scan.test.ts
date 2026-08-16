@@ -61,12 +61,21 @@ function relPath(absPath: string): string {
 const SEQUENCE_LOWER = /['"]one['"]\s*,\s*['"]two['"]\s*,\s*['"]three['"]/;
 const SEQUENCE_UPPER = /['"]One['"]\s*,\s*['"]Two['"]\s*,\s*['"]Three['"]/;
 
+// DEC-925 (wave-5 amendment, sha ee8ceffa): this scan's subject is a CODE
+// construct (a declared word-list array), not prose, so it must strip
+// comments before matching -- a COMMENT that merely quotes the sequence is
+// not a declaration. Idiom reused from public-page-title-register.scan.
+// test.ts / type-scale-conformance.test.ts.
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
 export function findSpelledNumberListFiles(root: string, repoRoot: string): string[] {
   const offenders: string[] = [];
   for (const file of walk(root)) {
     const rel = relative(repoRoot, file).split("\\").join("/");
     if (rel === OWNER) continue;
-    const contents = readFileSync(file, "utf8");
+    const contents = stripComments(readFileSync(file, "utf8"));
     if (SEQUENCE_LOWER.test(contents) || SEQUENCE_UPPER.test(contents)) offenders.push(rel);
   }
   return offenders.sort();
@@ -108,6 +117,21 @@ describe("count-grammar.scan (DEC-925 amendment, wave 52): one spelled-count wor
   it("negative control: unrelated prose mentioning the words separately is NOT detected", () => {
     const synthetic = "// pick one, then two, then maybe three separate arrays: [a, b], [1, 2, 3]. It spans more than one day, and points at the current one.";
     expect(SEQUENCE_LOWER.test(synthetic) || SEQUENCE_UPPER.test(synthetic)).toBe(false);
+  });
+
+  // DEC-925 (wave-5 amendment): a comment merely quoting the sequence is not
+  // a declaration and must not be flagged, now that comments are stripped
+  // before matching. The real-array-declaration positive still holds.
+  it("[control] a comment quoting 'one', 'two', 'three' is NOT flagged once comments are stripped", () => {
+    const synthetic = "// e.g. reason: 'one', 'two', 'three' were the old spelled words before this landed\nconst X = 1;";
+    const stripped = stripComments(synthetic);
+    expect(SEQUENCE_LOWER.test(stripped) || SEQUENCE_UPPER.test(stripped)).toBe(false);
+  });
+
+  it("[control] a real array declaration IS still flagged after comment stripping", () => {
+    const synthetic = "// unrelated header comment\nconst WORDS = ['one', 'two', 'three', 'four'];";
+    const stripped = stripComments(synthetic);
+    expect(SEQUENCE_LOWER.test(stripped) || SEQUENCE_UPPER.test(stripped)).toBe(true);
   });
 });
 
