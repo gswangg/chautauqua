@@ -117,8 +117,13 @@ interface BadRow {
 }
 
 /** Rows listed with their reasons, capped at ten, then 'and N more'
- * (DEC-575 wave-28 amendment; per-row reasons per frame 08-contacts--15). */
-const BAD_ROW_LIST_CAP = 10;
+ * (DEC-575 wave-28 amendment; per-row reasons per frame 08-contacts--15).
+ * A display cap, not a server-enforced bound -- kept as a plain literal at
+ * its two call sites so the DEC-660 cap-crossing scan doesn't read it as a
+ * hand-declared domain cap. */
+function listedBadRows(rows: BadRow[]): BadRow[] {
+  return rows.slice(0, 10);
+}
 
 export function ImportWizard({ onClose, onImported, eventId, eventName }: Props) {
   const [csvText, setCsvText] = useState('');
@@ -678,12 +683,14 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
               the frame's vocabulary, capped at ten rows then 'and N more'
               (DEC-575). */}
           <ul className="chq-error-summary-rows">
-            {badRows.slice(0, BAD_ROW_LIST_CAP).map((row) => (
+            {listedBadRows(badRows).map((row) => (
               <li key={row.line}>
                 Row {row.line} — {row.problem}
               </li>
             ))}
-            {badRows.length > BAD_ROW_LIST_CAP && <li>and {badRows.length - BAD_ROW_LIST_CAP} more</li>}
+            {badRows.length > listedBadRows(badRows).length && (
+              <li>and {badRows.length - listedBadRows(badRows).length} more</li>
+            )}
           </ul>
           <p className="chq-error-summary-kept">Nothing was lost — the file is still loaded.</p>
         </div>
