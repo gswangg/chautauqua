@@ -118,6 +118,30 @@ describe('ContactsTable render (eval-findings 45+55, DEC-738/DEC-726)', () => {
   });
 });
 
+// USER RULING 2026-08-16: the always-mounted bulk bar's idle state is a
+// real quiet state — same box, no aria-hidden, one muted hint line naming
+// what selection unlocks instead of the armed controls.
+describe('ContactsTable idle bulk bar (USER RULING 2026-08-16)', () => {
+  it('idle renders the capability hint, stays in the accessibility tree, and hides the armed controls', () => {
+    renderTable();
+    const bar = screen.getByRole('toolbar', { name: 'Bulk actions' });
+    expect(bar).not.toHaveAttribute('aria-hidden');
+    expect(bar.classList.contains('chq-bulkbar-idle')).toBe(true);
+    expect(within(bar).getByText('Tick rows to email contacts in bulk.')).toHaveClass('chq-bulkbar-hint');
+    expect(within(bar).queryByRole('button', { name: /Bulk email/ })).not.toBeInTheDocument();
+    expect(within(bar).queryByText(/selected/)).not.toBeInTheDocument();
+  });
+
+  it('a selection swaps the hint for the armed controls in the same bar', () => {
+    renderTable({ selection: { ...EMPTY_SELECTION, selectedIds: new Set(['ct1']) } });
+    const bar = screen.getByRole('toolbar', { name: 'Bulk actions' });
+    expect(bar.classList.contains('chq-bulkbar-idle')).toBe(false);
+    expect(within(bar).queryByText('Tick rows to email contacts in bulk.')).not.toBeInTheDocument();
+    expect(within(bar).getByText('1 selected')).toBeInTheDocument();
+    expect(within(bar).getByRole('button', { name: 'Bulk email (1)' })).toBeInTheDocument();
+  });
+});
+
 // B7 rule 6 (DEC-678): a settled empty directory renders EmptyState INSTEAD
 // of the <table>, never live column headers over an empty body.
 describe('ContactsTable empty states (B7 rule 6, DEC-678)', () => {

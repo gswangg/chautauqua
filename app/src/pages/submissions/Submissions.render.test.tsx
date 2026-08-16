@@ -274,15 +274,19 @@ describe('SubmissionsPage render smoke', () => {
     });
 
     // User-filed contract change: the bar is ALWAYS mounted so first
-    // selection cannot shift the table — idle it is aria-hidden and
-    // invisible (visibility), so it is absent from the accessibility tree
-    // but its geometry stays reserved.
-    expect(screen.queryByRole('toolbar', { name: 'Bulk actions' })).not.toBeInTheDocument();
-    expect(document.querySelector('.chq-bulkbar-idle')).not.toBeNull();
+    // selection cannot shift the table. USER RULING 2026-08-16: idle is a
+    // real quiet state — same box, no aria-hidden, one muted hint line
+    // naming what selection unlocks instead of the armed controls.
+    const idleBar = screen.getByRole('toolbar', { name: 'Bulk actions' });
+    expect(idleBar).not.toHaveAttribute('aria-hidden');
+    expect(idleBar.classList.contains('chq-bulkbar-idle')).toBe(true);
+    expect(screen.getByText('Tick rows to change status or email speakers.')).toHaveClass('chq-bulkbar-hint');
+    expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select S-001' }));
 
     expect(document.querySelector('.chq-bulkbar-idle')).toBeNull();
+    expect(screen.queryByText('Tick rows to change status or email speakers.')).not.toBeInTheDocument();
 
     expect(screen.getByText('Kept across pages · sent in batches of 100')).toBeInTheDocument();
     expect(screen.getByText('1 selected')).toBeInTheDocument();

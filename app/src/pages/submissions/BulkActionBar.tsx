@@ -48,9 +48,12 @@ function movesFor(statusFilter: SubmissionStatus | null): BulkMove[] {
 }
 
 export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, onClear, selectedIds }: BulkActionBarProps) {
-  // User-filed (gate-12 era): never unmount — idle renders the same box
-  // invisible (.chq-bulkbar-idle) so first selection cannot shift the
-  // table under the cursor.
+  // User-filed (gate-12 era): never unmount — idle keeps the same box so
+  // first selection cannot shift the table under the cursor.
+  // USER RULING 2026-08-16: idle is a real quiet state now, not an
+  // invisible band — one muted hint line (.chq-bulkbar-hint, same height
+  // as the armed bar) names what selection unlocks, and the bar stays in
+  // the accessibility tree (no aria-hidden: the hint is real content).
   const idle = selectedCount === 0;
 
   // DEC-967 (findings wave 8, w8-b): the compose link carries at most
@@ -65,36 +68,41 @@ export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, o
       className={idle ? 'chq-submissions-bulkbar chq-bulkbar chq-bulkbar-idle' : 'chq-submissions-bulkbar chq-bulkbar'}
       role="toolbar"
       aria-label="Bulk actions"
-      aria-hidden={idle ? 'true' : undefined}
     >
-      <span className="chq-submissions-bulkbar-count">{selectedCount} selected</span>
-      <span className="chq-submissions-bulkbar-note">Kept across pages · sent in batches of 100</span>
-      <div className="chq-submissions-bulkbar-actions">
-        {movesFor(statusFilter).map((move) => (
-          <button
-            key={move.status}
-            type="button"
-            className={move.primary ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
-            disabled={pending}
-            onClick={() => onApply(move.status)}
-          >
-            {move.label}
-          </button>
-        ))}
-        <Link
-          to={`/comms?tab=compose&ids=${emailIds.join(',')}`}
-          className="chq-btn chq-btn-secondary"
-        >
-          Email these {countOf(emailIds.length, 'submission')}
-        </Link>
-        <button type="button" className="chq-btn chq-btn-tertiary" disabled={pending} onClick={onClear}>
-          Clear
-        </button>
-      </div>
-      {overCap && (
-        <span className="chq-submissions-bulkbar-note">
-          first {MAX_COMPOSE_RECIPIENTS} of {selectedIds.length} · a send is capped at {MAX_COMPOSE_RECIPIENTS}
-        </span>
+      {idle ? (
+        <span className="chq-bulkbar-hint">Tick rows to change status or email speakers.</span>
+      ) : (
+        <>
+          <span className="chq-submissions-bulkbar-count">{selectedCount} selected</span>
+          <span className="chq-submissions-bulkbar-note">Kept across pages · sent in batches of 100</span>
+          <div className="chq-submissions-bulkbar-actions">
+            {movesFor(statusFilter).map((move) => (
+              <button
+                key={move.status}
+                type="button"
+                className={move.primary ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+                disabled={pending}
+                onClick={() => onApply(move.status)}
+              >
+                {move.label}
+              </button>
+            ))}
+            <Link
+              to={`/comms?tab=compose&ids=${emailIds.join(',')}`}
+              className="chq-btn chq-btn-secondary"
+            >
+              Email these {countOf(emailIds.length, 'submission')}
+            </Link>
+            <button type="button" className="chq-btn chq-btn-tertiary" disabled={pending} onClick={onClear}>
+              Clear
+            </button>
+          </div>
+          {overCap && (
+            <span className="chq-submissions-bulkbar-note">
+              first {MAX_COMPOSE_RECIPIENTS} of {selectedIds.length} · a send is capped at {MAX_COMPOSE_RECIPIENTS}
+            </span>
+          )}
+        </>
       )}
     </div>
   );

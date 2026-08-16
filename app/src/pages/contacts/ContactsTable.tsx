@@ -49,28 +49,37 @@ export function ContactsTable({
   return (
     <div className="chq-contacts-table-wrap">
       {/* User-filed: always mounted — idle keeps the space so selecting
-          never shifts the table (see .chq-bulkbar-idle). */}
+          never shifts the table. USER RULING 2026-08-16: idle is a real
+          quiet state now — one muted hint line (.chq-bulkbar-hint, same
+          height as the armed bar) instead of an invisible band, kept in
+          the accessibility tree (no aria-hidden: the hint is real
+          content). */}
       <div
         className={selectedCount > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}
         role="toolbar"
         aria-label="Bulk actions"
-        aria-hidden={selectedCount === 0 ? 'true' : undefined}
       >
-          <span className="chq-bulkbar-count">{selectedCount} selected</span>
-          <span className="chq-bulkbar-note">Kept across pages · sent in batches of 100</span>
-          <div className="chq-bulkbar-actions">
-            <button type="button" className="chq-btn chq-btn-primary" onClick={onBulkEmail}>
-              Bulk email ({selectedCount})
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-tertiary"
-              onClick={() => onSelectionChange(selectionReducer(selection, { type: 'CLEAR' }))}
-            >
-              Clear selection
-            </button>
-          </div>
-        </div>
+        {selectedCount === 0 ? (
+          <span className="chq-bulkbar-hint">Tick rows to email contacts in bulk.</span>
+        ) : (
+          <>
+            <span className="chq-bulkbar-count">{selectedCount} selected</span>
+            <span className="chq-bulkbar-note">Kept across pages · sent in batches of 100</span>
+            <div className="chq-bulkbar-actions">
+              <button type="button" className="chq-btn chq-btn-primary" onClick={onBulkEmail}>
+                Bulk email ({selectedCount})
+              </button>
+              <button
+                type="button"
+                className="chq-btn chq-btn-tertiary"
+                onClick={() => onSelectionChange(selectionReducer(selection, { type: 'CLEAR' }))}
+              >
+                Clear selection
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {settledEmpty ? (
         <EmptyState

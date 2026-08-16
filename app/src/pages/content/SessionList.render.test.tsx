@@ -7,7 +7,7 @@
 // changes' — that action moved to the deliverable-detail screen).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useState, type ComponentProps } from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -866,7 +866,9 @@ describe('SessionList: B7 zero-row states render no <table> (DEC-678 amendment)'
 // content.css, so a future column can't reintroduce the stagger.
 // DEC-825 amendment (wave 25, ruling A1): the second bulk-approve primary
 // is gone — ONE bar, scoped to the ticked rows, renders between the
-// chipstrip and the table; it pre-ticks Re-uploaded rows only.
+// chipstrip and the table. USER RULING 2026-08-16: the Re-uploaded
+// pre-tick is retired — selection only ever comes from a user gesture;
+// the idle bar's hint carries the "Select them" quick-select instead.
 function StatefulSessionList(props: Omit<ComponentProps<typeof SessionList>, 'selectedIds' | 'onSelectionChange'>) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   return <SessionList {...props} selectedIds={selectedIds} onSelectionChange={setSelectedIds} />;
@@ -952,7 +954,10 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
     expect(tableIndex).toBeGreaterThan(bulkbarIndex);
   });
 
-  it('pre-ticks Re-uploaded rows only, never Not-reviewed rows, and the bar reads "1 selected"', () => {
+  // USER RULING 2026-08-16: selection must assert user intent — nothing is
+  // pre-ticked on load, and the idle bar is a real quiet state (no
+  // aria-hidden) whose hint carries the re-uploads quick-select.
+  it('never pre-selects on load — no checkbox is ticked and the bar stays idle', () => {
     render(
       <StatefulSessionList
         items={[reuploadedItem, notReviewedA, notReviewedB]}
@@ -973,6 +978,39 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
       />,
     );
 
+    const checkedBoxes = screen.getAllByRole('checkbox').filter((box) => (box as HTMLInputElement).checked);
+    expect(checkedBoxes).toHaveLength(0);
+    expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument();
+    const bar = screen.getByRole('toolbar', { name: 'Bulk content actions' });
+    expect(bar).not.toHaveAttribute('aria-hidden');
+    expect(bar.classList.contains('chq-bulkbar-idle')).toBe(true);
+  });
+
+  it('idle hint names the re-uploads and "Select them" selects exactly the Re-uploaded rows', () => {
+    render(
+      <StatefulSessionList
+        items={[reuploadedItem, notReviewedA, notReviewedB]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={3}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+        onBulkContentStatus={noop}
+        bulkPending={false}
+      />,
+    );
+
+    const bar = screen.getByRole('toolbar', { name: 'Bulk content actions' });
+    expect(bar.textContent).toContain('1 re-upload is waiting for re-review');
+    fireEvent.click(within(bar).getByRole('button', { name: 'Select them' }));
+
     expect(screen.getByText('1 selected')).toBeInTheDocument();
     const checkedBoxes = screen
       .getAllByRole('checkbox')
@@ -981,7 +1019,34 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
     expect(checkedBoxes[0]).toHaveAccessibleName(`Select ${reuploadedItem.title}`);
   });
 
-  it('renders the consequence line verbatim', () => {
+  it('idle hint falls back to the generic capability line when no row is Re-uploaded', () => {
+    render(
+      <StatefulSessionList
+        items={[notReviewedA, notReviewedB]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={2}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+        onBulkContentStatus={noop}
+        bulkPending={false}
+      />,
+    );
+
+    expect(screen.getByText('Tick rows to approve, request changes, or set pending in bulk.')).toHaveClass(
+      'chq-bulkbar-hint',
+    );
+    expect(screen.queryByRole('button', { name: 'Select them' })).not.toBeInTheDocument();
+  });
+
+  it('renders the consequence line verbatim once a selection arms the bar', () => {
     render(
       <StatefulSessionList
         items={[reuploadedItem]}
@@ -1001,6 +1066,8 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
         bulkPending={false}
       />,
     );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: `Select ${reuploadedItem.title}` }));
 
     expect(screen.getByText('Sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
   });

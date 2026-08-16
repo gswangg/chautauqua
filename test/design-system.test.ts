@@ -290,3 +290,42 @@ describe("DEC-379: styles.css closes the SPA's chq-* class vocabulary", () => {
     expect(THEME_CSS).toMatch(/--chq-ink-strong\s*:\s*#2e2a24/i);
   });
 });
+
+// USER RULING 2026-08-16: the always-mounted bulk bars' idle state is a
+// real quiet state — one muted .chq-bulkbar-hint line — with IDENTICAL box
+// geometry to the armed bar, so first selection never shifts the table.
+// The armed bar's height is set by its .chq-btn children, so the guarantee
+// is structural: the hint line must carry .chq-btn's exact vertical
+// metrics (same font-size, same line box via the same UI face, same
+// vertical padding), and the idle modifier must never touch geometry
+// (fill only — the armed surface-sunk wash drops to transparent).
+describe("idle bulk bar keeps armed geometry (USER RULING 2026-08-16)", () => {
+  const stylesCss = readFileSync(STYLES_CSS_PATH, "utf8");
+
+  function topLevelRuleBody(css: string, selector: string): string {
+    const re = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\{([^}]*)\\}");
+    const m = re.exec(css);
+    if (!m || m[1] === undefined) throw new Error(`rule not found: ${selector}`);
+    return m[1];
+  }
+
+  it(".chq-bulkbar-hint copies .chq-btn's vertical metrics (13px label, 10px vertical padding, UI face)", () => {
+    const btn = topLevelRuleBody(stylesCss, ".chq-btn");
+    const hint = topLevelRuleBody(stylesCss, ".chq-bulkbar-hint");
+    // Same label size and face => same line box height.
+    expect(btn).toMatch(/font-size:\s*13px/);
+    expect(hint).toMatch(/font-size:\s*13px/);
+    expect(btn).toMatch(/font-family:\s*var\(--chq-font-ui\)/);
+    expect(hint).toMatch(/font-family:\s*var\(--chq-font-ui\)/);
+    // Same vertical padding: .chq-btn's `padding: 10px 16px` vs the hint's
+    // `padding: 10px 0` — assert both start with the same 10px block value.
+    expect(btn).toMatch(/padding:\s*10px\s/);
+    expect(hint).toMatch(/padding:\s*10px\s/);
+  });
+
+  it(".chq-bulkbar-idle only drops the fill — no geometry declaration, no visibility, no display", () => {
+    const idle = topLevelRuleBody(stylesCss, ".chq-bulkbar.chq-bulkbar-idle");
+    expect(idle).toMatch(/background:\s*transparent/);
+    expect(idle).not.toMatch(/padding|margin|height|min-height|border|visibility|display/);
+  });
+});

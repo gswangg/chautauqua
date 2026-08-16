@@ -1201,11 +1201,48 @@ a:hover {
 /* User-filed (gate-12 era, ALL multi-select surfaces): the bar used to mount
    on first selection, pushing the table down — the row you were about to
    click moved under your cursor (the exact jank the motion spec bans for
-   arriving content). The bar now ALWAYS occupies its space; idle it is
-   invisible and inert (visibility keeps geometry and removes it from the
-   accessibility tree). */
+   arriving content). The bar ALWAYS occupies its space.
+   USER RULING 2026-08-16: idle is no longer an invisible reserved band — it
+   is a real quiet state: no fill (the armed bar's surface-sunk wash drops
+   to transparent; there is no border to preserve), same padding, and one
+   muted .chq-bulkbar-hint line naming what selection unlocks. */
 .chq-bulkbar.chq-bulkbar-idle {
-  visibility: hidden;
+  background: transparent;
+}
+
+/* The idle bar's single hint line. Vertical metrics deliberately copy
+   .chq-btn (13px label in the same UI face, 10px vertical padding): the
+   armed bar's height is set by its buttons, so a hint line with the same
+   line box + vertical padding keeps the idle box the exact same height —
+   zero layout shift when selection arms the bar (guarded by
+   test/design-system.test.ts). */
+.chq-bulkbar-hint {
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  padding: 10px 0;
+  color: var(--chq-muted);
+}
+
+/* Inline quiet action inside the hint (content worklist's "Select them"
+   re-uploads quick-select) — the house link register (.chq-link-button),
+   inheriting the hint's 13px line box so it never changes the bar's
+   height. */
+.chq-bulkbar-hint-action {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--chq-brand);
+  cursor: pointer;
+}
+
+.chq-bulkbar-hint-action:hover {
+  color: var(--chq-brand-hover);
+}
+
+.chq-bulkbar-hint-action:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: 2px;
 }
 
 .chq-rail {

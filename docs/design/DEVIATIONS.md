@@ -29,9 +29,14 @@ survives contact with state:
 - **Review plan-row 16px right inset** (mirrors the drawn left inset) — the
   actions cluster sat flush against the active band's edge.
 - **Bulk-action bars are ALWAYS mounted** (submissions, contacts, content
-  worklist): idle = invisible + aria-hidden with geometry reserved, so first
-  selection never shifts the table. Frames draw only the selected state in
-  flow; the user ruled the no-shift behavior for all multi-select surfaces.
+  worklist): idle is a visible quiet state — one muted `.chq-bulkbar-hint`
+  line naming what selection unlocks (on content, plus the "N re-uploads are
+  waiting for re-review — Select them" quick-select), no fill, no
+  aria-hidden — with geometry identical to the armed bar, so first selection
+  never shifts the table (USER RULING 2026-08-16; supersedes the earlier
+  invisible + aria-hidden reserved band). Frames draw only the selected
+  state in flow; the user ruled the no-shift behavior for all multi-select
+  surfaces.
 - **Tracks/rooms edit rows use a fixed 200px actions track** (frames draw no
   dirty state) — the dirty-only Save/Cancel pair appears without moving the
   row. Same rule as the people-and-roles rows.

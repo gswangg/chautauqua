@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { DELIVERABLE_LABELS, FILE_KINDS, type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, worklistStatusLabel, worklistStatusEmphasisClass, type WorklistTab } from './worklist';
 import { PageSkeleton } from '../../components/PageSkeleton';
@@ -7,6 +6,7 @@ import { formatRelativeDays, formatDayLabel } from '../../lib/dates';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { publicRoomLabel } from '../../lib/room-label';
 import { clockHHMM } from '../../lib/clock';
+import { countOf, plural } from '../../lib/plural';
 
 // w5-i (DEC-020 amendment quoted mock text, eval-findings.md STILL-PRESENT
 // residue): the Latest file column names EVERY kind that has files ("Slides
@@ -111,20 +111,14 @@ export function SessionList({
   const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
   const someSelected = pageIds.some((id) => selectedIds.has(id));
 
-  // DEC-825 amendment (wave 25, ruling A1): pre-tick re-uploads only, once
-  // per `items` identity (a fresh page/tab load or refresh) — never
-  // 'Not reviewed' rows, and never fighting a tick the user makes
-  // afterwards. Keyed on the items array reference so this seeds exactly
-  // once per fetch, not on every render.
-  const seededForRef = useRef<ContentSubmissionListItem[] | null>(null);
-  useEffect(() => {
-    if (seededForRef.current === items) return;
-    seededForRef.current = items;
-    const reuploaded = items.filter((item) => worklistStatusLabel(item.contentStatus, item.reuploaded) === 'Re-uploaded');
-    if (reuploaded.length === 0) return;
-    onSelectionChange(new Set(reuploaded.map((item) => item.id)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  // USER RULING 2026-08-16 (supersedes the wave-25 pre-tick): selection
+  // only ever comes from a user gesture — nothing is pre-ticked on fetch.
+  // The one-gesture affordance for re-uploads lives in the idle bar's
+  // hint instead: "N re-uploads are waiting for re-review — Select them"
+  // (same Re-uploaded predicate the retired effect used).
+  const reuploadedIds = visible
+    .filter((item) => worklistStatusLabel(item.contentStatus, item.reuploaded) === 'Re-uploaded')
+    .map((item) => item.id);
 
   function toggleRow(id: string) {
     const next = new Set(selectedIds);
@@ -175,13 +169,38 @@ export function SessionList({
           (house invariant), hence the consequence line rather than any
           "notify" language. */}
       {/* User-filed: always mounted — idle keeps the space so selecting
-          never shifts the worklist (see .chq-bulkbar-idle). */}
+          never shifts the worklist. USER RULING 2026-08-16: idle is a real
+          quiet state now — one muted hint line (.chq-bulkbar-hint, same
+          height as the armed bar) instead of an invisible band, kept in
+          the accessibility tree (no aria-hidden: the hint is real
+          content). When Re-uploaded rows are on the page, the hint carries
+          the one-gesture "Select them" quick-select that replaced the
+          retired pre-tick. */}
       <div
         className={selectedIds.size > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}
         role="toolbar"
         aria-label="Bulk content actions"
-        aria-hidden={selectedIds.size === 0 ? 'true' : undefined}
       >
+        {selectedIds.size === 0 ? (
+          <span className="chq-bulkbar-hint">
+            {reuploadedIds.length > 0 ? (
+              <>
+                {countOf(reuploadedIds.length, 're-upload')} {plural(reuploadedIds.length, 'is', 'are')} waiting for
+                re-review —{' '}
+                <button
+                  type="button"
+                  className="chq-bulkbar-hint-action"
+                  onClick={() => onSelectionChange(new Set(reuploadedIds))}
+                >
+                  Select them
+                </button>
+              </>
+            ) : (
+              'Tick rows to approve, request changes, or set pending in bulk.'
+            )}
+          </span>
+        ) : (
+          <>
           <span className="chq-bulkbar-count">{selectedIds.size} selected</span>
           <span className="chq-bulkbar-note">Sends nothing · the speaker sees it in their portal</span>
           <div className="chq-bulkbar-actions">
@@ -222,7 +241,9 @@ export function SessionList({
               Clear
             </button>
           </div>
-        </div>
+          </>
+        )}
+      </div>
 
       {/* v4 mock IA (docs/design/Chautauqua Content.dc.html, DEC-692): five
           columns — Session, Speaker, Latest file, Status, actions. 'Ask for

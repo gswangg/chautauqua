@@ -81,7 +81,10 @@ describe('BulkActionBar', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders nothing (no link, no bar) when nothing is selected', () => {
+  // USER RULING 2026-08-16: idle is a real quiet state — the bar stays in
+  // the accessibility tree (no aria-hidden) and renders one muted hint
+  // line naming what selection unlocks, instead of the armed controls.
+  it('idle (nothing selected) renders the capability hint and none of the armed controls', () => {
     render(
       <MemoryRouter>
         <BulkActionBar
@@ -95,7 +98,12 @@ describe('BulkActionBar', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.queryByRole('toolbar', { name: 'Bulk actions' })).not.toBeInTheDocument();
+    const bar = screen.getByRole('toolbar', { name: 'Bulk actions' });
+    expect(bar).not.toHaveAttribute('aria-hidden');
+    expect(bar.classList.contains('chq-bulkbar-idle')).toBe(true);
+    expect(screen.getByText('Tick rows to change status or email speakers.')).toHaveClass('chq-bulkbar-hint');
     expect(screen.queryByRole('link', { name: /Email these/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
   });
 });
