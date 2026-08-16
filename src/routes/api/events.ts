@@ -190,6 +190,9 @@ async function trackEventId(db: import("../../server/context").Db, trackId: stri
   return rows[0]?.eventId ?? null;
 }
 
+// Not routed through roomBelongsToEvent (DEC-248): this reports the room's
+// OWN eventId for a cross-table IDOR check upstream, it does not test
+// membership against a caller-supplied eventId — different semantics.
 async function roomEventId(db: import("../../server/context").Db, roomId: string): Promise<string | null> {
   const rows = await db
     .select({ eventId: schema.room.eventId })

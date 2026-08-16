@@ -24,11 +24,14 @@ import {
   deleteEmbed,
   getEmbedOwnership,
   listEmbeds,
-  roomBelongsToEvent,
   trackBelongsToEvent,
   updateEmbed,
   type EmbedOptions,
 } from "../../server/repo/embeds";
+// DEC-248 (wave 4 amendment): roomBelongsToEvent has one owner, the agenda
+// repo (the room's home surface) — import it from there, not from a local
+// copy in server/repo/embeds.ts.
+import { roomBelongsToEvent } from "../../server/repo/agenda/rows";
 
 void DEC_785;
 void DEC_822;

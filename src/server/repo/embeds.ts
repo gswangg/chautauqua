@@ -178,15 +178,6 @@ export async function trackBelongsToEvent(db: Db, trackId: string, eventId: stri
   return rows.length > 0;
 }
 
-export async function roomBelongsToEvent(db: Db, roomId: string, eventId: string): Promise<boolean> {
-  const rows = await db
-    .select({ id: schema.room.id })
-    .from(schema.room)
-    .where(and(eq(schema.room.id, roomId), eq(schema.room.eventId, eventId)))
-    .limit(1);
-  return rows.length > 0;
-}
-
 export async function updateEmbed(
   db: Db,
   id: string,
