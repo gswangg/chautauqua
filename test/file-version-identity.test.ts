@@ -25,6 +25,9 @@ create table contact (
 create table user (
   id text primary key,
   email text,
+  -- DEC-757 (wave 72): batched author-name ladders fall back to this when
+  -- there's no resolvable contact, so the in-memory mirror needs it.
+  name text,
   role text,
   contact_id text
 );

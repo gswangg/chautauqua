@@ -143,14 +143,20 @@ export async function listFileComments(
   }
 
   const userIds = [...new Set(pageRows.map((r) => r.authorUserId).filter((x): x is string => !!x))];
-  const userMap = new Map<string, { email: string; role: string; contactId: string | null }>();
+  const userMap = new Map<string, { email: string; role: string; contactId: string | null; name: string | null }>();
   if (userIds.length > 0) {
     for (const batch of chunkIds(userIds)) {
       const userRows = await db
-        .select({ id: schema.user.id, email: schema.user.email, role: schema.user.role, contactId: schema.user.contactId })
+        .select({
+          id: schema.user.id,
+          email: schema.user.email,
+          role: schema.user.role,
+          contactId: schema.user.contactId,
+          name: schema.user.name,
+        })
         .from(schema.user)
         .where(inArray(schema.user.id, batch));
-      for (const u of userRows) userMap.set(u.id, { email: u.email, role: u.role, contactId: u.contactId });
+      for (const u of userRows) userMap.set(u.id, { email: u.email, role: u.role, contactId: u.contactId, name: u.name });
     }
   }
 
@@ -188,6 +194,7 @@ export async function listFileComments(
     const authorName =
       (row.authorContactId && contactMap.get(row.authorContactId)) ||
       (user?.contactId && contactMap.get(user.contactId)) ||
+      (user?.name && user.name.trim().length > 0 ? user.name : undefined) ||
       user?.email;
     if (!authorName) {
       throw new Error(`listFileComments: comment ${row.id} has no resolvable author name`);
@@ -277,14 +284,20 @@ export async function listFileCommentsForFiles(db: Db, fileIds: string[]): Promi
   allRows.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
 
   const userIds = [...new Set(allRows.map((r) => r.authorUserId).filter((x): x is string => !!x))];
-  const userMap = new Map<string, { email: string; role: string; contactId: string | null }>();
+  const userMap = new Map<string, { email: string; role: string; contactId: string | null; name: string | null }>();
   if (userIds.length > 0) {
     for (const batch of chunkIds(userIds)) {
       const userRows = await db
-        .select({ id: schema.user.id, email: schema.user.email, role: schema.user.role, contactId: schema.user.contactId })
+        .select({
+          id: schema.user.id,
+          email: schema.user.email,
+          role: schema.user.role,
+          contactId: schema.user.contactId,
+          name: schema.user.name,
+        })
         .from(schema.user)
         .where(inArray(schema.user.id, batch));
-      for (const u of userRows) userMap.set(u.id, { email: u.email, role: u.role, contactId: u.contactId });
+      for (const u of userRows) userMap.set(u.id, { email: u.email, role: u.role, contactId: u.contactId, name: u.name });
     }
   }
 
@@ -313,6 +326,7 @@ export async function listFileCommentsForFiles(db: Db, fileIds: string[]): Promi
     const authorName =
       (row.authorContactId && contactMap.get(row.authorContactId)) ||
       (user?.contactId && contactMap.get(user.contactId)) ||
+      (user?.name && user.name.trim().length > 0 ? user.name : undefined) ||
       user?.email;
     if (!authorName) {
       throw new Error(`listFileCommentsForFiles: comment ${row.id} has no resolvable author name`);
