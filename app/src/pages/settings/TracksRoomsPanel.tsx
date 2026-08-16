@@ -205,6 +205,7 @@ export function TracksRoomsPanel() {
 
   async function addTrack() {
     if (!eventId) return;
+    setError(undefined);
     const errors = validateTrackForm(newTrack);
     setTrackFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -230,6 +231,7 @@ export function TracksRoomsPanel() {
 
   async function saveTrack(track: Track) {
     if (!eventId) return;
+    setError(undefined);
     const draft = trackDrafts[track.id];
     if (!draft) return;
     const errors = validateTrackForm(draft);
@@ -264,6 +266,7 @@ export function TracksRoomsPanel() {
 
   async function confirmDeleteTrack(track: Track) {
     if (!eventId) return;
+    setError(undefined);
     try {
       await apiDelete(`/tracks/${track.id}`);
       setTrackDeleteBlockers((prev) => ({ ...prev, [track.id]: {} }));
@@ -281,6 +284,7 @@ export function TracksRoomsPanel() {
 
   async function addRoom() {
     if (!eventId) return;
+    setError(undefined);
     const errors = validateRoomForm(newRoom);
     setRoomFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -306,6 +310,7 @@ export function TracksRoomsPanel() {
 
   async function saveRoom(room: Room) {
     if (!eventId) return;
+    setError(undefined);
     const draft = roomDrafts[room.id];
     if (!draft) return;
     const errors = validateRoomForm(draft);
@@ -343,6 +348,7 @@ export function TracksRoomsPanel() {
 
   async function confirmDeleteRoom(room: Room) {
     if (!eventId) return;
+    setError(undefined);
     try {
       await apiDelete(`/rooms/${room.id}`);
       setRoomDeleteBlockers((prev) => ({ ...prev, [room.id]: {} }));
