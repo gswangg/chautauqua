@@ -4,7 +4,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, apiDelete, ApiError } from '../../lib/api';
-import { formatDate as formatTimestamp, formatDateTime, epochDayIndex } from '../../lib/dates';
+import { formatDate as formatTimestamp, formatDateTimeWithSeconds, epochDayIndex } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
 import { formatScore } from '../../../../src/domain/score-copy';
 import { LOCKED_TITLE_MAX_LENGTH, LOCKED_ABSTRACT_MAX_LENGTH } from '../../../../src/forms/types';
@@ -282,6 +282,11 @@ interface HistoryTimelineEntry {
   kind: 'submitted' | 'edited' | 'reviewed' | 'emailed';
   label: string;
   detail: string | null;
+  // w59-f (DEC-158 amendment): the revision this entry corresponds to, or
+  // null when the entry has no restorable content (reviewed/emailed). The
+  // 'submitted' entry carries the baseline revision's id, so it is
+  // restorable too -- restorability hangs off this field, not entry.kind.
+  revisionId: string | null;
 }
 
 export function SubmissionDetailPage() {
@@ -869,9 +874,11 @@ export function SubmissionDetailPage() {
     });
   }
 
-  // A revision is restorable by its own id — the timeline's 'edited' entries
-  // are sourced 1:1 from submission_revision rows (history.ts reuses
-  // listRevisions), so entry.id IS the revisionId here.
+  // w59-f (DEC-158 amendment): a revision is restorable by entry.revisionId,
+  // not entry.id -- the timeline entry's own id is the history-row id, which
+  // is not always the same as the submission_revision row it points at (the
+  // 'submitted' entry has no history-row-native revision but does carry the
+  // baseline revision's id).
   async function restoreRevision(revisionId: string) {
     if (!id) return;
     setRestoringId(revisionId);
@@ -1761,38 +1768,55 @@ export function SubmissionDetailPage() {
                   <p>No history recorded yet.</p>
                 ) : (
                   <ul className="chq-submission-history-list">
-                    {historyEntries.map((entry) => (
-                      <li key={entry.id} className="chq-submission-history-entry">
-                        {/* DEC-892 timeline entry on the frame's 96px/1fr
-                            'when | what' grid -- the grid gap is the
-                            separator, no literal ' | ' text. */}
-                        <div className="chq-submission-history-row">
-                          {/* w5-i (DEC-708 amendment): a same-day sequence of
-                              history entries (e.g. edited, then reviewed a
-                              few hours later) is unreadable on a date-only
-                              stamp -- formatDateTime (DEC-545/DEC-907's ONE
-                              date-time grammar) carries the clock time too. */}
-                          <span className="chq-submission-history-when">{formatDateTime(entry.at)}</span>
-                          <span className="chq-submission-history-what">
-                            <strong>{entry.label}</strong>
-                            {entry.detail ? <> &mdash; {entry.detail}</> : null}
-                          </span>
-                        </div>
-                        {/* Only an 'edited' entry is a revision that can be
-                            restored — a submitted/reviewed/emailed entry has
-                            no prior content to put back. */}
-                        {entry.kind === 'edited' && (
-                          <button
-                            type="button"
-                            className="chq-btn chq-btn-tertiary"
-                            disabled={restoringId === entry.id}
-                            onClick={() => restoreRevision(entry.id)}
-                          >
-                            Restore
-                          </button>
-                        )}
-                      </li>
-                    ))}
+                    {(() => {
+                      // w59-f (DEC-158 amendment): the list is newest-first,
+                      // so the first entry that carries a revisionId IS the
+                      // current content by construction -- render it as an
+                      // inert 'Current version' caption rather than a
+                      // Restore control that could only ever be a no-op.
+                      const currentEntry = historyEntries.find((entry) => entry.revisionId !== null) ?? null;
+                      return historyEntries.map((entry) => (
+                        <li key={entry.id} className="chq-submission-history-entry">
+                          {/* DEC-892 timeline entry on the frame's 96px/1fr
+                              'when | what' grid -- the grid gap is the
+                              separator, no literal ' | ' text. */}
+                          <div className="chq-submission-history-row">
+                            {/* w5-i (DEC-708 amendment): a same-day sequence of
+                                history entries (e.g. edited, then reviewed a
+                                few hours later) is unreadable on a date-only
+                                stamp. w59-f: two edits inside one minute are
+                                unreadable on a minute-precision stamp too --
+                                formatDateTimeWithSeconds carries seconds. */}
+                            <span className="chq-submission-history-when">
+                              {formatDateTimeWithSeconds(entry.at)}
+                            </span>
+                            <span className="chq-submission-history-what">
+                              <strong>{entry.label}</strong>
+                              {entry.detail ? <> &mdash; {entry.detail}</> : null}
+                            </span>
+                          </div>
+                          {/* w59-f (DEC-158 amendment): restorability hangs off
+                              entry.revisionId, not entry.kind -- the
+                              'submitted' entry carries the baseline revision's
+                              id and is restorable too. The one entry that IS
+                              the current content renders a caption instead of
+                              a button that could not change anything. */}
+                          {entry.revisionId !== null &&
+                            (entry === currentEntry ? (
+                              <span className="chq-submission-history-current">Current version</span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="chq-btn chq-btn-tertiary"
+                                disabled={restoringId === entry.revisionId}
+                                onClick={() => restoreRevision(entry.revisionId!)}
+                              >
+                                Restore
+                              </button>
+                            ))}
+                        </li>
+                      ));
+                    })()}
                   </ul>
                 )}
               </div>
