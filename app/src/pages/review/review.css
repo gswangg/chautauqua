@@ -490,6 +490,29 @@
 
 .chq-review-dropdown-distribution-item {
   color: var(--chq-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* DEC-241 amendment (wave 7, sha ddc9a7d9): the distribution moved into the
+   band's one shared footer row, alongside the recusal sentence when both are
+   present -- stack them instead of the two footers the earlier layout drew. */
+.chq-review-reviews-recusal-footer .chq-review-reviews-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-review-reviews-recusal-sentence {
+  margin: 0;
+}
+
+.chq-review-dropdown-distribution-caption {
+  display: block;
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1.45;
 }
 /* --- end w3-c/DEC-241 block ---------------------------------------------- */
 

@@ -1006,6 +1006,74 @@ describe('ResultsTable Choice-criterion distribution (DEC-241/DEC-737)', () => {
 
     // Each reviewer's own pick still renders as text under the criterion.
     expect(screen.getByText('Fit: Yes')).toBeInTheDocument();
+
+    // DEC-241 amendment (wave 7): the distribution lives in the band's
+    // FOOTER, after the reviewer rows -- not ahead of them.
+    const reviewerRow = screen.getByText('Priya Patel').closest('tr')!;
+    const distributionRow = screen.getByText('Yes 2').closest('tr')!;
+    const rows = Array.from(document.querySelectorAll('tr'));
+    expect(rows.indexOf(reviewerRow)).toBeLessThan(rows.indexOf(distributionRow));
+
+    // The frame's caption sits beside the distribution, and there is
+    // exactly one footer row (not a separate distribution row plus a
+    // separate recusal footer).
+    expect(screen.getByText('No average — read the spread')).toBeInTheDocument();
+    expect(distributionRow.className).toContain('chq-review-reviews-recusal-footer');
+    expect(
+      document.querySelectorAll<HTMLTableRowElement>('tr.chq-review-reviews-recusal-footer').length,
+    ).toBe(1);
+  });
+
+  it('renders exactly one footer row carrying both the recusal sentence and the Choice distribution (DEC-241 wave 7)', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([
+        { ...resultsRow(), recusals: 1, perDropdown: { c2: { counts: { Yes: 2, No: 1 }, modal: 'Yes' } } },
+      ]),
+      [`GET /api/v1/submissions/sub-1/evaluations`]: listEnvelope([
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Priya Patel',
+          scores: { c1: 4, c2: 'Yes' },
+          score: 4,
+          criteria: [
+            { id: 'c1', label: 'Quality', kind: 'rating', weight: 1 },
+            { id: 'c2', label: 'Fit', kind: 'dropdown' },
+          ],
+          comment: null,
+          submittedAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /3 reviews/ }));
+
+    await screen.findByText('Priya Patel');
+    expect(screen.getByText(/recused · their scores are excluded from the mean/)).toBeInTheDocument();
+    expect(screen.getByText('Yes 2 · No 1')).toBeInTheDocument();
+
+    // ONE footer row, not two -- the recusal sentence and the distribution
+    // share it.
+    const footerRows = document.querySelectorAll<HTMLTableRowElement>('tr.chq-review-reviews-recusal-footer');
+    expect(footerRows.length).toBe(1);
+    const footerRow = footerRows[0]!;
+    expect(footerRow.textContent).toContain('recused');
+    expect(footerRow.textContent).toContain('Yes 2 · No 1');
+
+    // The reviewer row precedes the footer.
+    const rows = Array.from(document.querySelectorAll('tr'));
+    expect(rows.indexOf(screen.getByText('Priya Patel').closest('tr')!)).toBeLessThan(rows.indexOf(footerRow));
   });
 
   it('renders the named empty-cell fallback (—) when no evaluation carries the criterion', async () => {
