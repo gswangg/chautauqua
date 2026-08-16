@@ -918,6 +918,16 @@ a:hover {
   top: 0;
   right: 0;
   bottom: 0;
+  /* User-filed (gate-12 era): this element also carries .chq-modal via
+     ModalFrame, whose card props leaked through — max-height (100vh-80px)
+     truncated the drawer 80px short of the bottom edge, and the full
+     border+radius made it read as a floating card pinned top-right. A
+     drawer is an edge panel: full height, square, hairline on its travel
+     edge only (frame 08--02). */
+  height: 100vh;
+  max-height: none;
+  border: none;
+  border-radius: 0;
   /* DEC-616 amendment (wave 4): 520px, not 420 — the frame's measured
      width for the record view once empty rows collapse behind the "Show
      all fields" disclosure and the action bar keeps its labels on one
