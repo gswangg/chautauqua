@@ -17,6 +17,19 @@
 // requirement, and its parent bullet (the .ics-is-sufficient one) already
 // carries the ledger's citation for that whole clarification.
 //
+// DEC-518 (wave 7): the document's THIRD requirement-bearing section, "##
+// Field wisdom adopted into the spec", is prose, not a bulleted list, so it
+// needs its own derivation (deriveFieldWisdomClauses). Only the sentence
+// beginning "Baked into SPEC.md as design choices:" enumerates commitments
+// -- its remainder is split on ";" and each clause slugified with the same
+// slugify() used for the bullet lead-ins. The section's trailing sentence
+// ("His adapt-with-caution ideas live in SPEC.md §10 nice-to-haves.") is
+// excluded by its own words (§10 NICE-TO-HAVES is the opposite of "baked
+// into SPEC.md as design choices"), enforced as a rule (only that one
+// sentence contributes), never as a skipped index. deriveFieldWisdomClauses
+// throws if the lead sentence is absent, so a broken match can never
+// silently zero the section out.
+//
 // Ledger verdicts:
 //   - "honored": the cited file exists, contains the cited literal, and the
 //     cited test file exists.
@@ -45,6 +58,8 @@ interface DerivedBullet {
 
 const HEADINGS = ["## Scope reductions", "## Scope confirmations"];
 const BULLET_RE = /^- \*\*(.+?)\*\*/;
+const FIELD_WISDOM_HEADING = "## Field wisdom adopted into the spec (from Gene Kim's 12-year archive analysis)";
+const FIELD_WISDOM_LEAD = "Baked into SPEC.md as design choices:";
 
 /** Slugifies a bold lead-in into a stable, deterministic key: lowercase,
  * curly/straight quotes stripped, every run of non-alphanumeric characters
@@ -84,6 +99,39 @@ function deriveBullets(): DerivedBullet[] {
     }
   }
   return out;
+}
+
+/** Derives the "## Field wisdom adopted into the spec" section's clause
+ * population -- NOT bullets (that section is prose, not a bulleted list).
+ * Only the sentence beginning "Baked into SPEC.md as design choices:" is a
+ * requirements enumeration; its remainder (up to the next full stop) is
+ * split on ";", trimmed, and slugified into one key per clause. The
+ * trailing sentence ("His adapt-with-caution ideas live in SPEC.md §10
+ * nice-to-haves.") is excluded by its own words -- it names §10
+ * NICE-TO-HAVES, the opposite of "baked into SPEC.md as design choices" --
+ * so only the "Baked into…" sentence ever contributes. Throws if that
+ * sentence is absent, so a broken match can never silently zero the
+ * section out. */
+function deriveFieldWisdomClauses(): DerivedBullet[] {
+  const text = readFileSync(CLARIFICATIONS_PATH, "utf8");
+  const section = extractSection(text, FIELD_WISDOM_HEADING).replace(/\n/g, " ");
+  const leadIdx = section.indexOf(FIELD_WISDOM_LEAD);
+  if (leadIdx === -1) {
+    throw new Error(
+      `docs/clarifications.md's "${FIELD_WISDOM_HEADING}" section has no sentence starting "${FIELD_WISDOM_LEAD}"`,
+    );
+  }
+  const afterLead = section.slice(leadIdx + FIELD_WISDOM_LEAD.length);
+  const sentenceEnd = afterLead.indexOf(". ");
+  if (sentenceEnd === -1) {
+    throw new Error(`could not find the end of the "${FIELD_WISDOM_LEAD}" sentence`);
+  }
+  const sentence = afterLead.slice(0, sentenceEnd);
+  return sentence
+    .split(";")
+    .map((clause) => clause.trim())
+    .filter((clause) => clause.length > 0)
+    .map((clause) => ({ key: slugify(clause), leadIn: clause, heading: FIELD_WISDOM_HEADING }));
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +292,80 @@ const LEDGER: LedgerEntry[] = [
       testFile: "test/submission-tracks-are-a-set.test.ts",
     },
   },
+  // -- "## Field wisdom adopted into the spec" (DEC-518 wave 7): the third
+  // requirement-bearing section, derived by deriveFieldWisdomClauses() above
+  // from the single "Baked into SPEC.md as design choices:" sentence.
+  {
+    key: "per-submission-permalinks",
+    status: "honored",
+    reason: "every session gets a stable, directly-linkable public detail page.",
+    honored: {
+      file: "src/routes/public/shell.tsx",
+      literal: "export function sessionDetailPath",
+      testFile: "test/public.test.ts",
+    },
+  },
+  {
+    key: "fewest-ratings-first-and-average-score-descending-as-the-two-core-review-sorts",
+    status: "honored",
+    reason:
+      "the two core review sorts: fewest-ratings-first orders the reviewer queue (buildReviewerQueue); average-score-descending is one of parseResultsSort's results-table sort columns (src/routes/review/shared.ts).",
+    honored: {
+      file: "src/domain/evaluation/queue.ts",
+      literal: "export function buildReviewerQueue",
+      testFile: "test/evaluation.test.ts",
+    },
+  },
+  {
+    key: "warn-never-block-scheduling-tbd-is-a-real-value-partial-states-always-save",
+    status: "honored",
+    reason: "auto-schedule reports speaker_double_booked as an UNPLACED reason rather than refusing to save -- TBD/roomless placement always persists.",
+    honored: {
+      file: "src/domain/schedule.ts",
+      literal: "speaker_double_booked",
+      testFile: "test/schedule-unplaced-reasons.test.ts",
+    },
+  },
+  {
+    key: "stable-ids-everywhere-with-title-at-time-org-at-time-frozen-at-submission",
+    status: "honored",
+    reason: "titleAtTime/orgAtTime are captured once at submission and never re-derived from the live speaker/session rows.",
+    honored: {
+      file: "src/server/repo/submit.ts",
+      literal: "titleAtTime",
+      testFile: "test/participant-attribution.test.ts",
+    },
+  },
+  {
+    key: "ics-uids-that-never-churn",
+    status: "honored",
+    reason: "the .ics UID is a pure function of the submission id alone -- it never changes across invite updates (only SEQUENCE bumps).",
+    honored: {
+      file: "src/mail/ics.ts",
+      literal: "function uidFor(submissionId: string): string {",
+      testFile: "test/mail.test.ts",
+    },
+  },
+  {
+    key: "the-post-acceptance-content-loop-versions-comments-materials-states-as-a-first-class-surface",
+    status: "honored",
+    reason: "file versions with a comment thread that follows the whole version chain (DEC-573) is the post-acceptance content loop's first-class surface.",
+    honored: {
+      file: "src/server/repo/files-comments.ts",
+      literal: "export async function listFileComments",
+      testFile: "test/files-repo.test.ts",
+    },
+  },
+  {
+    key: "decide-notify",
+    status: "honored",
+    reason: "decide ≠ notify: status changes never auto-email -- enforced as its own executable ledger, not a single call site.",
+    honored: {
+      file: "test/status-change-mail-ledger.scan.test.ts",
+      literal: 'describe("status-change-mail-ledger.scan (DEC-459 amendment, wave 30)"',
+      testFile: "test/status-change-mail-ledger.scan.test.ts",
+    },
+  },
 ];
 
 // Shrink-only ratchet (DEC-518/DEC-099): a clarification the tree does NOT
@@ -389,8 +511,8 @@ const realResolvers = {
   },
 };
 
-describe("clarifications-ledger.scan (DEC-518 wave-41 amendment)", () => {
-  const derived = deriveBullets();
+describe("clarifications-ledger.scan (DEC-518 wave-41 amendment, wave 7)", () => {
+  const derived = [...deriveBullets(), ...deriveFieldWisdomClauses()];
 
   it("tripwire: derived bullet population is non-empty and every key is stable/derived (never hardcoded)", () => {
     expect(derived.length).toBeGreaterThan(0);
@@ -400,12 +522,18 @@ describe("clarifications-ledger.scan (DEC-518 wave-41 amendment)", () => {
     }
   });
 
-  it("both sections contribute at least one bullet each (a broken heading match would silently zero one out)", () => {
+  it("both bullet sections contribute at least one bullet each (a broken heading match would silently zero one out)", () => {
     const bySection = new Map<string, number>();
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     for (const heading of HEADINGS) {
       expect(bySection.get(heading) ?? 0, `"${heading}" contributed 0 bullets`).toBeGreaterThan(0);
     }
+  });
+
+  it("the field-wisdom section contributes a non-zero number of clauses (DEC-518 wave 7: the third requirement-bearing section)", () => {
+    const bySection = new Map<string, number>();
+    for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
+    expect(bySection.get(FIELD_WISDOM_HEADING) ?? 0, `"${FIELD_WISDOM_HEADING}" contributed 0 clauses`).toBeGreaterThan(0);
   });
 
   it("every derived bullet has exactly one ledger row, and every ledger row names a live derived key", () => {
