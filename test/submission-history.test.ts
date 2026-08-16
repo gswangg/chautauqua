@@ -61,9 +61,10 @@ describe("listSubmissionHistory (DEC-892)", () => {
     const db = fakeDb([
       // 1. submission row
       [{ id: "sub-1", createdAt: new Date(1000), externalRef: null }],
-      // 2. listRevisions
+      // 2. listRevisions (baseline + one edit, DEC-158 wave-59)
       [
         { id: "rev-1", editorName: "organizer@example.com", title: "Edited Title", description: "d", createdAt: new Date(3000) },
+        { id: "rev-0", editorName: "As submitted", title: "Original Title", description: "d", createdAt: new Date(1000) },
       ],
       // 3. reviewed (evaluation join)
       [
@@ -164,6 +165,74 @@ describe("listSubmissionHistory (DEC-892)", () => {
     const entries = await listSubmissionHistory(db, "sub-1");
     const submitted = entries.find((e) => e.kind === "submitted");
     expect(submitted?.detail).toBe("Imported via sessionize");
+  });
+});
+
+describe("listSubmissionHistory edited-entry detail diffing (DEC-892)", () => {
+  it("distinguishes title-only, description-only, both, and no-op edits by diffing against the immediately-prior revision", async () => {
+    const db = fakeDb([
+      [{ id: "sub-1", createdAt: new Date(1000), externalRef: null }],
+      // listRevisions: baseline + 3 edits (mock returns newest-first, as the
+      // real query does -- listSubmissionHistory must sort ascending itself).
+      [
+        { id: "rev-4", editorName: "b@example.com", title: "T3", description: "D3", createdAt: new Date(5000) },
+        { id: "rev-3", editorName: "b@example.com", title: "T3", description: "D2", createdAt: new Date(4000) },
+        { id: "rev-2", editorName: "a@example.com", title: "T2", description: "D1", createdAt: new Date(3000) },
+        { id: "rev-1", editorName: "As submitted", title: "T1", description: "D1", createdAt: new Date(1000) },
+      ],
+      [],
+      [],
+    ]);
+
+    const entries = await listSubmissionHistory(db, "sub-1");
+    const byId = Object.fromEntries(entries.map((e) => [e.id, e]));
+
+    // rev-2 vs baseline (rev-1): title T1->T2 changed, description D1==D1
+    expect(byId["rev-2"]?.detail).toBe("Title changed");
+    // rev-3 vs rev-2: title T2->T3 changed, description D1->D2 changed
+    expect(byId["rev-3"]?.detail).toBe("Title and description changed");
+    // rev-4 vs rev-3: title T3==T3, description D2->D3 changed
+    expect(byId["rev-4"]?.detail).toBe("Description changed");
+  });
+
+  it("reports 'No text change' when a revision's title and description are identical to its predecessor", async () => {
+    const db = fakeDb([
+      [{ id: "sub-1", createdAt: new Date(1000), externalRef: null }],
+      [
+        { id: "rev-2", editorName: "a@example.com", title: "Same", description: "Same body", createdAt: new Date(2000) },
+        { id: "rev-1", editorName: "As submitted", title: "Same", description: "Same body", createdAt: new Date(1000) },
+      ],
+      [],
+      [],
+    ]);
+
+    const entries = await listSubmissionHistory(db, "sub-1");
+    const edited = entries.find((e) => e.id === "rev-2");
+    expect(edited?.detail).toBe("No text change");
+  });
+
+  it("leaves submitted/reviewed/emailed entries' detail computation untouched", async () => {
+    const db = fakeDb([
+      [{ id: "sub-1", createdAt: new Date(1000), externalRef: "sessionize:abc123" }],
+      [],
+      [
+        {
+          id: "ev-1",
+          planName: "Track A Review",
+          anonymized: false,
+          submittedAt: new Date(2000),
+          reviewerFirstName: "Jane",
+          reviewerLastName: "Reviewer",
+          reviewerEmail: "jane@example.com",
+        },
+      ],
+      [{ id: "email-1", subject: "You're accepted!", sentAt: new Date(3000) }],
+    ]);
+
+    const entries = await listSubmissionHistory(db, "sub-1");
+    expect(entries.find((e) => e.kind === "submitted")?.detail).toBe("Imported via sessionize");
+    expect(entries.find((e) => e.kind === "reviewed")?.detail).toBe("Jane Reviewer");
+    expect(entries.find((e) => e.kind === "emailed")?.detail).toBe("You're accepted!");
   });
 });
 
