@@ -55,6 +55,73 @@ live tree this task, not inherited from a prior wave's claim:
   (`accept={...}`) and `:168` (`uploadHintText(...)`) derive from — one
   source, cannot drift.
 
+## ALL-PASS PUSH (USER DIRECTIVE 2026-08-16 morning) — fix EVERY remaining MINOR/BROKEN before the next fidelity fleet; the goal is a fleet verdict as close to all-PASS as possible. THIS LANE PRE-EMPTS ALL OTHER WORK. Freeze + final eval run follow the fleet.
+
+**A. FIDELITY residue (gate-10/11 + delta-6 still-open set):**
+1. §09 settings residue M1/M2/M4/M5/M7/R2 — field widths beyond dates, footer
+   grammar, portal toggles, embed card anatomy (measures in fidelity-gate10/
+   group3.md + gate11/group3.md).
+2. New-contact modal to frame 08--16: email carries WHY required (matched/merged),
+   modal closes by naming what it does NOT do (directory ≠ event).
+3. FieldModal residue: dialog title per frame (not "Edit field"), operator tokens
+   read as words (not raw eq/ne/in), card width 520 → 560.
+4. **12-home measure: ALIGN TO FRAME — HOME_MEASURE 820 → 732** (user's all-PASS
+   directive resolves the parked ruling in the frame's favor; home.css.ts:21).
+5. **CFP builder content measure: ALIGN TO FRAME — 820 → 756** (same resolution;
+   frame 02--04 draws 756 @ x422).
+6. Home CTA dark-on-dark hover: .chq-home-action-primary must keep its on-brand
+   label on hover (add .chq-btn or scope theme.ts a:hover away from it). VERIFY
+   with computed style — this was still live at gate-11.
+7. Status-cell hover ring: v11 literal is an OUTSET 0 0 0 2px #CFC7B7 — align
+   (currently inset per DEC-383); update the DEC.
+8. Breaks editor: add the frame's Done control; drop the extra Location row
+   (frame 06--02 has label/start/minutes three-up only).
+9. Settings deep-link ?section=<x>&edit=1 must arrive EDITING (resources currently
+   read-only until Change clicked).
+10. API-tokens row in Your data EDIT view (revoke currently unreachable there) —
+    VERIFY gate-11 filing landed; fix if not.
+11. "Import 1 rows" plural — verify the shared plural helper reached it.
+
+**B. EVAL-run minors (product-actionable set from the 93.8 run):**
+12. Seed: synth generator reuses the fixture title "Your AI Pair Programmer Is
+    Lying to You…" minting the SES-002/SES-032 identical-title conflicting-status
+    pair — make synth titles unique (contaminated 3 areas, 3 runs straight).
+13. Seed: Sam Whitfield's two seeded reviews carry byte-identical comment text —
+    vary seeded evaluation comments.
+14. Seed: reviewer assignments overlap broadly (Sam track-wide on 3 plans) —
+    narrow to distinct, non-overlapping seeded scopes.
+15. Deadline day-boundary: close saved 30 Apr 23:59 renders "CLOSES THU 29 APR"
+    on the hub — every countdown/day label must resolve in the EVENT timezone.
+16. Saved-embed accent: builder saves #2563eb but /embed/e/<id> renders no accent
+    — saved-embed.tsx:143 passes accentOverride; find where EmbedShell drops it,
+    fix, and render-test a non-default accent end-to-end.
+17. Tracks-and-rooms add: success + simultaneous "ONE THING NEEDS ATTENTION"
+    banner (DEC-856 w76 plausibly fixed this — VERIFY with a click-through, close
+    with evidence).
+18. Pipeline DECLINED column: first card renders TWO fit badges + TWO rationale
+    paragraphs under one name (card bleed/merge — likely a render-key or
+    grouping bug; screenshot in runs/2026-08-16T06-09-31 CRM evidence).
+19. Public CFP form: add an in-page error summary + per-field messages on submit
+    (currently native browser bubbles only; portal/admin forms already have the
+    pattern — reuse it).
+20. Version history v1/v2 identical minute timestamps — VERIFY DEC-158 w77's
+    seconds grammar covers portal file-version rows; fix if not.
+21. Contacts/Speakers initial load: skeleton shows with no accessible label —
+    add the aria-live "Loading" status to PageSkeleton per the v11 first-paint
+    spec's a11y intent.
+22. Organizer add-co-presenter flow: state the email difference explicitly
+    ("sends a portal invite" vs portal's "No email goes to them") — copy-only,
+    one sentence.
+
+**Out of scope for this lane (roadmap, judge feature-asks):** scorecard criterion
+field types (dropdown/Accept-Maybe-Reject custom criteria) · account-linked
+cross-device CFP drafts · bulk-export grouping by session/type. Do NOT build
+these before the deadline.
+
+Closures need measured evidence as always. When this lane is dry: gate-12 fleet
+(all-PASS target) → freeze → final deploy → final official run.
+
+
 ## DELTA-PROBE 6 (waves 64-72 churn; chautauqua-research/fidelity-delta6/report.md; sha b85dffb1, integrity CLEAN)
 
 **10/10 WORKS, zero BROKEN.** Measured closures to PRUNE: 1b import disposition
