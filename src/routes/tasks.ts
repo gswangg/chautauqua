@@ -491,8 +491,17 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
 
   // DEC-120: reject cross-org contact ids before any assignment write —
   // atomic, no partial assignment (DEC-019).
+  // DEC-370: findContactsForOrg and filterRosterContactIds range over
+  // independent tables (org contact directory vs. this event's roster) and
+  // neither depends on the other's result -- issued as one Promise.all, but
+  // both refusals below are still evaluated in SOURCE order (the DEC-120 org
+  // refusal first, the DEC-754/DEC-829 roster refusal second) so the error a
+  // caller sees for a given bad payload never changes.
   const dedupedContactIds = Array.from(new Set(contactIds));
-  const orgContacts = await findContactsForOrg(c.var.db, dedupedContactIds, auth.orgId);
+  const [orgContacts, rosterIds] = await Promise.all([
+    findContactsForOrg(c.var.db, dedupedContactIds, auth.orgId),
+    filterRosterContactIds(c.var.db, ownership.eventId, dedupedContactIds),
+  ]);
   const foundIds = new Set(orgContacts.map((r) => r.id));
   const missing = dedupedContactIds.filter((id) => !foundIds.has(id));
   if (missing.length > 0) {
@@ -508,7 +517,6 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   // predicate (rosterParticipantExistsForContact) and both reminder paths
   // (chaseableContactExists), so a successful assign never mints a
   // task_assignment row the grid can't show and no reminder path can chase.
-  const rosterIds = await filterRosterContactIds(c.var.db, ownership.eventId, dedupedContactIds);
   const notOnRoster = dedupedContactIds.filter((id) => !rosterIds.has(id));
   if (notOnRoster.length > 0) {
     const resolvedNames = orgContacts

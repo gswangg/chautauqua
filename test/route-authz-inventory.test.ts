@@ -36,17 +36,25 @@ function makeChain(rows: unknown[]) {
  * test/agenda-room-ownership.test.ts. */
 function appWithDb(routes: Hono<AppEnv>, auth: AuthInfo, selects: unknown[][]) {
   let call = 0;
+  const nextRows = () => {
+    const rows = selects[call] ?? [];
+    call += 1;
+    return rows;
+  };
+  // `where()` stays chainable (rather than resolving directly) so a caller
+  // that appends `.returning()` (e.g. updateTask's collapsed
+  // update-then-returning, DEC-948) draws its rows from the same queued
+  // `selects` sequence a bare `.select()` would have. A caller that awaits
+  // `.where()` directly (no `.returning()`) still resolves via `then`.
   const writeChain: any = {
     values: () => writeChain,
     set: () => writeChain,
-    where: async () => undefined,
+    where: () => writeChain,
+    returning: async () => nextRows(),
+    then: (resolve: (v: unknown) => void) => resolve(undefined),
   };
   const db = {
-    select: () => {
-      const rows = selects[call] ?? [];
-      call += 1;
-      return makeChain(rows);
-    },
+    select: () => makeChain(nextRows()),
     insert: () => writeChain,
     update: () => writeChain,
     delete: () => writeChain,
