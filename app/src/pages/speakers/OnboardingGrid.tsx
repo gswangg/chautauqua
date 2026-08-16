@@ -16,6 +16,7 @@ import { ParticipationMenu } from './ParticipationMenu';
 import { countOf } from '../../lib/plural';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { firstNameOf } from '../../lib/identity';
+import { MAX_TASK_ASSIGNEES } from '../../lib/batch-caps';
 import {
   DEFAULT_GRID_FILTERS,
   INVITE_STATUS_LABELS,
@@ -334,20 +335,22 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
   // DEC-746 (wave-59 amendment): the subset picker's roster -- same DEC-398
   // effect shape as taskForms above (fetched only while the New task modal
-  // is open). page=1&perPage=200 (MAX_PER_PAGE, src/lib/pagination.ts:10);
-  // a roster past that ceiling states it and offers only "Everyone
-  // accepted" (assigneesTruncated), never a truncated list presented as
-  // the whole roster. A failed fetch fails loudly in the modal the same
-  // way taskForms does: the picker stays offering only "Everyone accepted"
+  // is open). page=1&perPage=MAX_TASK_ASSIGNEES (DEC-422 wave-77 amendment,
+  // src/domain/task-kinds.ts) -- the picker's fetch ceiling matches the
+  // largest assignee set the assign/create doors will actually accept; a
+  // roster past that ceiling states it and offers only "Everyone accepted"
+  // (assigneesTruncated), never a truncated list presented as the whole
+  // roster. A failed fetch fails loudly in the modal the same way
+  // taskForms does: the picker stays offering only "Everyone accepted"
   // rather than silently rendering an empty checkbox list.
   useEffect(() => {
     if (!showNewTask || !eventId) return;
     let cancelled = false;
-    apiGet<OnboardingGridResponse>(`/events/${eventId}/onboarding?page=1&perPage=200`)
+    apiGet<OnboardingGridResponse>(`/events/${eventId}/onboarding?page=1&perPage=${MAX_TASK_ASSIGNEES}`)
       .then((res) => {
         if (cancelled) return;
         setTaskAssignees(res.rows.map((r) => ({ contactId: r.contact.id, name: r.contact.name })));
-        setTaskAssigneesTruncated(res.total > 200);
+        setTaskAssigneesTruncated(res.total > MAX_TASK_ASSIGNEES);
       })
       .catch(() => {
         if (!cancelled) {

@@ -17,6 +17,7 @@ import { ApiError } from '../../lib/api';
 // from the rule that actually validates it.
 import { MAX_TASK_INSTRUCTIONS_LENGTH } from '../../lib/domain-caps';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
+import { MAX_TASK_ASSIGNEES } from '../../lib/batch-caps';
 
 interface TaskModalProps {
   onCancel: () => void;
@@ -358,8 +359,8 @@ export function TaskModal({
             </span>
             {assigneesTruncated ? (
               <p className="chq-meta">
-                This event has too many speakers to choose from individually ({acceptedCount} accepted, more than the
-                200 this picker can list) -- the task will be created for everyone accepted.
+                This event has too many speakers to choose from individually ({acceptedCount} accepted, more than the{' '}
+                {MAX_TASK_ASSIGNEES} this picker can list) -- the task will be created for everyone accepted.
               </p>
             ) : (
               <div className="chq-radio-group" role="radiogroup" aria-labelledby="task-audience-label">

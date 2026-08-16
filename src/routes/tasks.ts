@@ -17,7 +17,7 @@ import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DE
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398, DEC_754 } from "../decisions";
 import { FILE_KINDS, isValidFileKind, type FileKind } from "../domain/files";
-import { TASK_KINDS } from "../domain/task-kinds"; // DEC-613 wave-70 amendment
+import { TASK_KINDS, MAX_TASK_ASSIGNEES } from "../domain/task-kinds"; // DEC-613 wave-70 amendment; DEC-422 wave-77 amendment
 import { INVITE_STATUSES, isInviteStatus, type InviteStatus } from "../domain/invite-status"; // DEC-789 wave-73 amendment
 import { MAX_TASK_INSTRUCTIONS_LENGTH } from "../domain/task-copy";
 import { findFormById } from "../server/repo/forms";
@@ -313,7 +313,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
     } else {
       let parsedContactIds: string[];
       try {
-        parsedContactIds = parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: 200 }); // DEC-182
+        parsedContactIds = parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: MAX_TASK_ASSIGNEES }); // DEC-182, DEC-422
       } catch (err) {
         if (err instanceof ApiError) {
           fields.contactIds = err.fields?.contactIds ?? err.message;
@@ -484,7 +484,7 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Task not found");
 
   const body = asRecord(await readOptionalJsonBody(c));
-  const contactIds = parseBoundedIdArray(body.contactIds, "contactIds"); // DEC-182
+  const contactIds = parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: MAX_TASK_ASSIGNEES }); // DEC-182, DEC-422
 
   // DEC-120: reject cross-org contact ids before any assignment write —
   // atomic, no partial assignment (DEC-019).
