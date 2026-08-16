@@ -43,6 +43,10 @@ function formatDate(ms: number | null): string {
 
 export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
   const [tokens, setTokens] = useState<ApiTokenItem[]>([]);
+  // DEC-027 wave-51 amendment: the org-scoped bound on the bearer-token
+  // population, rendered beside the create control. null until the list
+  // loads (the envelope always carries it, but nothing renders before then).
+  const [max, setMax] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
@@ -63,7 +67,10 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
     setLoading(true);
     setError(null);
     return apiList<ApiTokenItem>('/tokens')
-      .then((res) => setTokens(res.items))
+      .then((res) => {
+        setTokens(res.items);
+        if (res.max !== undefined) setMax(res.max);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load API tokens'))
       .finally(() => setLoading(false));
   }
@@ -226,6 +233,11 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
         <button type="submit" className="chq-btn chq-btn-primary" disabled={creating || newName.trim().length === 0}>
           {creating ? 'Creating…' : 'New token'}
         </button>
+        {max !== null && (
+          <span className="chq-settings-row-note">
+            {tokens.length} of {max} used
+          </span>
+        )}
       </form>
 
       {loading ? (
