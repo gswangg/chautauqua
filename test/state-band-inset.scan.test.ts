@@ -58,8 +58,11 @@ describe("review.css state-band inset (DEC-939 wave-20 amendment)", () => {
   it(".chq-review-plan-row.is-active declares a background and keeps the unstated row's 16px left inset without bleeding past it", () => {
     const base = findRule(css, ".chq-review-plan-row");
     // The unstated row owns the inset; the state only re-divides it.
+    // User-filed (gate-12 era): the right inset now mirrors the left so the
+    // actions cluster never sits flush against the row's fill edge. This
+    // scan's concern is the LEFT inset the band re-divides — unchanged.
     expect(base, "the unstated plan row must carry the 16px left inset the band re-divides").toMatch(
-      /padding:\s*16px 0 16px 16px/,
+      /padding:\s*16px 16px 16px 16px/,
     );
 
     const body = findRule(css, ".chq-review-plan-row.is-active");

@@ -45,7 +45,11 @@
   grid-template-columns: 1fr 150px 190px 210px auto;
   gap: 20px;
   align-items: center;
-  padding: 16px 0 16px 16px;
+  /* Right inset mirrors the left (user-filed, gate-12 era): with 0 right
+     padding the actions cluster sat flush against the row's fill edge —
+     invisible in the frames (which draw no row highlight) but visible the
+     moment the row carries its active/hover band. */
+  padding: 16px 16px 16px 16px;
   border-bottom: 1px solid var(--chq-hairline);
   cursor: pointer;
 }
