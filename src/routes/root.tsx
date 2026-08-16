@@ -268,7 +268,11 @@ function heroSummary(sections: HubSections): string {
     .join(" ");
 }
 
-function Footer() {
+// G13 lane-D fix (12-home--02/--04): the frames draw the footer's
+// right-hand 'API docs' link ONLY on the full hub -- between-cycles leaves
+// the right edge empty, and the fresh deploy already carries the affordance
+// once, as the hero's tertiary beside [Sign in].
+function Footer(props: { state: HubState }) {
   return (
     <footer class="chq-home-footer">
       <span class="chq-home-footer-text">
@@ -279,9 +283,11 @@ function Footer() {
         </a>{" "}
         · open-source speaker and event-content management
       </span>
-      <a class="chq-home-footer-link chq-home-footer-link-end" href="/docs/api">
-        API docs
-      </a>
+      {props.state === "full" ? (
+        <a class="chq-home-footer-link chq-home-footer-link-end" href="/docs/api">
+          API docs
+        </a>
+      ) : null}
     </footer>
   );
 }
@@ -392,7 +398,7 @@ function HubPage(props: { orgName: string; sections: HubSections; state: HubStat
             ) : null}
           </main>
 
-          <Footer />
+          <Footer state={state} />
         </div>
       </body>
     </html>
