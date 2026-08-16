@@ -223,36 +223,89 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     expect(NAMED_EXEMPTIONS).toEqual(new Set(['Agenda.tsx', 'Settings.tsx']));
   });
 
-  it('every page root className="chq-page" literal carries exactly one measure class', () => {
-    const MEASURE_CLASSES = ['chq-measure-wide', 'chq-measure-table', 'chq-measure'];
+  const MEASURE_CLASSES = ['chq-measure-wide', 'chq-measure-table', 'chq-measure'];
+
+  /** Strips `//` and `/* *\/` comments before the literal scan below --
+   * without this, an apostrophe in a prose comment ("chrome's", "e's own")
+   * pairs up with an unrelated later quote and the naive quote-matching
+   * regex below misreads a stretch of COMMENT TEXT as a string literal. */
+  function stripComments(content: string): string {
+    return content.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  }
+
+  /** Every single- or double-quoted string literal in the source (comments
+   * stripped first) that carries the exact `chq-page` token -- NOT limited
+   * to a JSX `className="..."` attribute the way the old regex was, so an
+   * object-property root (`{ className: 'chq-page ...' }`, ProgressPanel's
+   * DEC-989 wave-56 defect) or any other string-literal shape is caught
+   * too. Template literals (backtick strings) are deliberately excluded:
+   * the two documented per-view/per-tab delegations (ContentApp's
+   * DeliverableDetail state, Comms's per-tab root) build their className
+   * from a template literal with a `${...}` interpolation and are pinned
+   * by their own dedicated tests elsewhere in this file -- skipped HERE
+   * with this comment, never silently. */
+  function chqPageStringLiterals(content: string): string[] {
+    const literals: string[] = [];
+    const re = /'([^'\\]*)'|"([^"\\]*)"/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(stripComments(content))) !== null) {
+      const value = m[1] ?? m[2] ?? '';
+      const tokens = value.split(/\s+/);
+      // Only literals carrying the exact `chq-page` token are page-root
+      // containers; `chq-page-title`, `chq-page-content` etc are a
+      // different class that merely shares the string prefix.
+      if (tokens.includes('chq-page')) literals.push(value);
+    }
+    return literals;
+  }
+
+  /** Returns one violation message per chq-page literal that doesn't carry
+   * exactly the measure contract `fileName` owes (zero measure classes for
+   * a NAMED_EXEMPTIONS canvas/rail page, exactly one otherwise) -- empty
+   * when the file is clean. Shared by the real-file scan below and its
+   * negative control. */
+  function measureViolations(fileName: string, content: string): string[] {
+    const violations: string[] = [];
+    for (const literal of chqPageStringLiterals(content)) {
+      const tokens = literal.split(/\s+/);
+      const measureTokensPresent = MEASURE_CLASSES.filter((c) => tokens.includes(c));
+      if (NAMED_EXEMPTIONS.has(fileName)) {
+        if (measureTokensPresent.length !== 0) {
+          violations.push(`${fileName} literal "${literal}" is a named canvas/rail exemption and must not carry a measure class`);
+        }
+      } else if (measureTokensPresent.length !== 1) {
+        violations.push(`${fileName} literal "${literal}" must carry exactly one of ${MEASURE_CLASSES.join('/')}`);
+      }
+    }
+    return violations;
+  }
+
+  it('every page root chq-page string literal (className="..." or an object-property className) carries exactly one measure class', () => {
     let checkedAtLeastOne = false;
 
     for (const path of PAGE_TSX_FILES) {
       const label = relative(PAGES_ROOT, path);
       const fileName = path.split('/').pop() ?? '';
       const content = readFileSync(path, 'utf-8');
-      const classNameLiterals = content.match(/className="chq-page[^"]*"/g) ?? [];
-
-      for (const literal of classNameLiterals) {
-        const tokens = literal.slice('className="'.length, -1).split(/\s+/);
-        // Only literals carrying the exact `chq-page` token are page-root
-        // containers; `chq-page-title`, `chq-page-content` etc are a
-        // different class that merely shares the string prefix.
-        if (!tokens.includes('chq-page')) continue;
-        checkedAtLeastOne = true;
-
-        if (NAMED_EXEMPTIONS.has(fileName)) {
-          const measureTokensPresent = MEASURE_CLASSES.filter((c) => tokens.includes(c));
-          expect(measureTokensPresent, `${label} literal "${literal}" is a named canvas/rail exemption and must not carry a measure class`).toHaveLength(0);
-          continue;
-        }
-
-        const measureTokensPresent = MEASURE_CLASSES.filter((c) => tokens.includes(c));
-        expect(measureTokensPresent, `${label} literal "${literal}" must carry exactly one of ${MEASURE_CLASSES.join('/')}`).toHaveLength(1);
-      }
+      const literals = chqPageStringLiterals(content);
+      if (literals.length > 0) checkedAtLeastOne = true;
+      const violations = measureViolations(fileName, content);
+      expect(violations, violations.join('; ')).toHaveLength(0);
     }
 
     expect(checkedAtLeastOne).toBe(true);
+  });
+
+  it('negative control: a synthetic page file whose root is an object-property className with no measure token fails the widened scan', () => {
+    const syntheticContent = `
+      export function SyntheticPage({ embedded }: { embedded: boolean }) {
+        const wrapperProps = embedded ? {} : { className: 'chq-page chq-synthetic-page' };
+        return null;
+      }
+    `;
+    const violations = measureViolations('SyntheticPage.tsx', syntheticContent);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toContain('chq-page chq-synthetic-page');
   });
 
   // DEC-989 amendment (wave 23): ContentApp.tsx's DeliverableDetail state is

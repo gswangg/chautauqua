@@ -100,17 +100,51 @@ const REVIEWER_ASSIGN_FIELD_LABELS: Record<string, { anchorId: string; label: st
   submissionIds: { anchorId: 'plan-reviewer-choose-submissions', label: 'Submissions' },
 };
 
-/** Walks the WHOLE err.fields map (never a single named key) and renders a
- * problem per key -- known keys anchor to the control that owns them,
- * unknown keys anchor to their own key name rather than being dropped. */
-function reviewerAssignProblems(err: ApiError): { anchorId: string; label: string }[] {
+/** Walks the WHOLE err.fields map (never a single named key) against a
+ * given field-label map -- known keys anchor to the control that owns
+ * them, unknown keys anchor to their own key name rather than being
+ * dropped. Shared by reviewerAssignProblems and planSaveErrorProblems
+ * (DEC-124 wave-56 amendment) below, so this file has ONE err.fields
+ * walker rather than one per call site. */
+function fieldProblems(
+  err: ApiError,
+  labels: Record<string, { anchorId: string; label: string }>,
+): { anchorId: string; label: string }[] {
   if (!err.fields) return [];
   return Object.entries(err.fields).map(([key, message]) => {
-    const known = REVIEWER_ASSIGN_FIELD_LABELS[key];
+    const known = labels[key];
     return known
       ? { anchorId: known.anchorId, label: `${known.label}: ${message}` }
       : { anchorId: key, label: `${key}: ${message}` };
   });
+}
+
+function reviewerAssignProblems(err: ApiError): { anchorId: string; label: string }[] {
+  return fieldProblems(err, REVIEWER_ASSIGN_FIELD_LABELS);
+}
+
+// DEC-124 (wave-56 amendment): the field-label map for a rejected plan
+// save (POST /events/:eventId/plans, PATCH /plans/:id) -- keyed against
+// src/routes/review/plans-crud.ts:88/:151's `errors` object, which speaks
+// the SERVER's wire vocabulary (maxEvaluations/openDate/closeDate), not
+// the client draft's PlanValidationErrors vocabulary above
+// (maxEvaluationsPerSubmission/openAt/closeAt -- a different map, for a
+// different, client-side-only validation pass). Keys with no editable
+// control in this editor yet (instructions has no field here; rounds only
+// advances via "Start a new wave"; roundCriteria/roundMeta are whole-map
+// errors with no single control to anchor to) fall through to
+// fieldProblems' own-key-name fallback rather than pointing at a fake id.
+const SAVE_ERROR_FIELD_LABELS: Record<string, { anchorId: string; label: string }> = {
+  name: { anchorId: 'plan-name', label: 'Name' },
+  scale: { anchorId: 'plan-scale-min', label: 'Rating scale' },
+  criteria: { anchorId: 'plan-criteria', label: 'Scoring criteria' },
+  maxEvaluations: { anchorId: 'plan-max-evaluations', label: 'Reviews per talk' },
+  openDate: { anchorId: 'plan-open-at', label: 'Opens' },
+  closeDate: { anchorId: 'plan-close-at', label: 'Closes' },
+};
+
+function planSaveErrorProblems(err: ApiError): { anchorId: string; label: string }[] {
+  return fieldProblems(err, SAVE_ERROR_FIELD_LABELS);
 }
 
 // w28-b/DEC-745/DEC-124: fields the summary can anchor to. 'rounds' has no
@@ -287,6 +321,14 @@ export function PlanEditor() {
   const [reviewerAssignErrors, setReviewerAssignErrors] = useState<{ anchorId: string; label: string }[] | null>(
     null,
   );
+  // DEC-124 (wave-56 amendment): commitSave's own ErrorSummary problems,
+  // built from the WHOLE err.fields map a rejected POST/PATCH plan save
+  // returns (name, instructions, scale, criteria, rounds, roundCriteria,
+  // roundMeta, maxEvaluations, openDate, closeDate) via
+  // planSaveErrorProblems -- null when the save hasn't failed, or failed
+  // with no fields, in which case `error`'s bare sentence below is still
+  // the only rendering (never dropped).
+  const [saveErrorFields, setSaveErrorFields] = useState<{ anchorId: string; label: string }[] | null>(null);
   // w28-b/DEC-124 (rule 9: a draft never validates): generalised from the
   // old name-only "touched" gate -- NO field error anywhere in this form
   // (name, dates, scale, criteria) renders before the first Save/Create
@@ -641,6 +683,7 @@ export function PlanEditor() {
     if (!eventId) return;
     setSaving(true);
     setError(null);
+    setSaveErrorFields(null);
     // DEC-171: the API speaks PlanRecord's wire names (openDate/closeDate/
     // filters/maxEvaluations), not the draft's internal field names.
     const body = {
@@ -667,7 +710,13 @@ export function PlanEditor() {
         setPristineDraft(draft);
       }
     } catch (err) {
+      // DEC-124 (wave-56 amendment): the server named every offending
+      // field (plans-crud.ts:88/:151) -- err.message stays the ONE summary
+      // sentence rendered below, and the WHOLE err.fields map (when
+      // present) additionally walks into an anchored ErrorSummary, never
+      // dropped in favor of the bare sentence.
       setError(err instanceof ApiError ? err.message : 'Failed to save plan');
+      setSaveErrorFields(err instanceof ApiError && err.fields ? planSaveErrorProblems(err) : null);
     } finally {
       setSaving(false);
     }
@@ -1222,6 +1271,15 @@ export function PlanEditor() {
         <div className="chq-error" role="alert">
           {error}
         </div>
+      )}
+      {/* DEC-124 (wave-56 amendment): a rejected save's WHOLE err.fields map,
+          anchored one problem per key -- rendered alongside (never instead
+          of) the bare sentence above. */}
+      {saveErrorFields && saveErrorFields.length > 0 && (
+        <ErrorSummary
+          heading={countHeading(saveErrorFields.length, 'before this plan can be saved')}
+          problems={saveErrorFields}
+        />
       )}
 
       <div className="chq-review-editor">

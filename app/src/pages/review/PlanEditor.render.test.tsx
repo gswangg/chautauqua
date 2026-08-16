@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PlanEditor } from './PlanEditor';
-import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { guardedNavigate } from '../../lib/useNavExceptions';
 import { MAX_CRITERION_GUIDANCE_LENGTH } from '../../../../src/domain/evaluation';
 
@@ -2293,5 +2293,57 @@ describe('criteria/reviewer/distribute row tracks (DEC-745 wave-21 amendment)', 
     expect(table.querySelector('td.chq-review-distribute-col-name')).not.toBeNull();
     expect(table.querySelector('td.chq-review-distribute-col-track')).not.toBeNull();
     expect(table.querySelector('td.chq-review-distribute-col-talks')).not.toBeNull();
+  });
+
+  // DEC-124 (wave-56 amendment): a rejected save's WHOLE err.fields map
+  // walks into the V9 ErrorSummary, one anchored problem per key -- not
+  // just the bare `err.message` sentence plans-crud.ts:88/:151 also send.
+  it('a rejected save naming three fields renders three anchored problems, each field message present', async () => {
+    const patchSpy = vi.fn(() => ({
+      status: 400,
+      body: errorEnvelope('invalid', 'Invalid plan', {
+        name: 'required',
+        scale: 'must be { min: number, max: number } with min < max',
+        maxEvaluations: 'must be an integer >= 1, or null',
+      }),
+    }));
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+      [`PATCH /api/v1/plans/${PLAN_ID}`]: patchSpy,
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(patchSpy).toHaveBeenCalledTimes(1));
+
+    // The bare summary sentence still renders (never dropped in favor of
+    // the structured list).
+    expect(await screen.findByText('Invalid plan')).toBeInTheDocument();
+
+    // Every offending field lands as its own anchored problem.
+    const links = screen.getAllByRole('link', { name: /^(Name|Rating scale|Reviews per talk):/ });
+    expect(links).toHaveLength(3);
+    expect(screen.getByRole('link', { name: 'Name: required' })).toHaveAttribute('href', '#plan-name');
+    expect(
+      screen.getByRole('link', { name: 'Rating scale: must be { min: number, max: number } with min < max' }),
+    ).toHaveAttribute('href', '#plan-scale-min');
+    expect(
+      screen.getByRole('link', { name: 'Reviews per talk: must be an integer >= 1, or null' }),
+    ).toHaveAttribute('href', '#plan-max-evaluations');
   });
 });
