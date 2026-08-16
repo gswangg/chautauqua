@@ -161,6 +161,18 @@ describe("PATCH /api/v1/segments/:id rename collision (DEC-809 amendment)", () =
   });
 });
 
+// DEC-554 (amendment, wave 11): the write-door test for the shared
+// isSegmentField predicate lives in test/segment-rules-bounds.test.ts
+// (static-import pattern, matching that file's existing POST/PATCH route
+// coverage) rather than here -- this file's per-test vi.doMock +
+// vi.resetModules() cycle proved to leak module identity across tests
+// (an ApiError thrown from a PATCH handler here, following an earlier
+// test in this file whose own request errored, intermittently failed
+// `instanceof ApiError` in registerErrorHandler and surfaced as an
+// unrelated 500; reproducible with a two-test minimal repro, unrelated to
+// this task's domain change). Flagging as a pre-existing harness gap
+// rather than working around it inside this file.
+
 describe("migrations/0031_segment_name_unique.sql shape", () => {
   it("de-collides existing rows before creating the unique index", () => {
     const sql = readFileSync(join(__dirname, "..", "migrations", "0031_segment_name_unique.sql"), "utf8");

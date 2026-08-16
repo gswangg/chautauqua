@@ -39,13 +39,30 @@ export interface SegmentRule {
 // can derive its SQL projection by enumeration instead of hand-listing.
 export const SEGMENT_STANDARD_FIELDS = new Set(["email", "firstName", "lastName", "company", "title"]);
 
+// DEC-554 (amendment, wave 11): the ONE definition of a legal segment rule
+// field -- 'any' (DEC-149), a SEGMENT_STANDARD_FIELDS member, or
+// `custom.<key>` with a non-empty key. Both parse-time validation
+// (isValidSegmentRule, below) and match-time resolution (fieldValue, below)
+// call this so the two vocabularies can never drift: previously
+// isValidSegmentRule only checked `typeof field === "string"`, so a rule
+// with an unknown field passed the parser and threw an unnamed TypeError
+// from fieldValue during matching (an unnamed 500 on the contacts list and
+// the bulk-email recipient count).
+export function isSegmentField(field: string): boolean {
+  if (field === "any") return true;
+  if (SEGMENT_STANDARD_FIELDS.has(field)) return true;
+  return field.startsWith("custom.") && field.length > "custom.".length;
+}
+
 function fieldValue(contact: ContactRecord, field: string): string {
+  // 'any' is resolved by matchesRule before reaching fieldValue -- a field
+  // of 'any' here is a caller bug, not a valid single-field lookup.
+  if (field === "any" || !isSegmentField(field)) {
+    throw new Error(`matchesSegment: unknown field "${field}"`);
+  }
   if (field.startsWith("custom.")) {
     const key = field.slice("custom.".length);
     return contact.customFields?.[key] ?? "";
-  }
-  if (!SEGMENT_STANDARD_FIELDS.has(field)) {
-    throw new Error(`matchesSegment: unknown field "${field}"`);
   }
   const value = (contact as unknown as Record<string, unknown>)[field];
   return typeof value === "string" ? value : "";
@@ -93,6 +110,7 @@ function isValidSegmentRule(value: unknown): value is SegmentRule {
   const v = value as Record<string, unknown>;
   return (
     typeof v.field === "string" &&
+    isSegmentField(v.field) &&
     typeof v.op === "string" &&
     SEGMENT_RULE_OPS.has(v.op) &&
     typeof v.value === "string"
@@ -104,7 +122,12 @@ function isValidSegmentRule(value: unknown): value is SegmentRule {
  * shape the write path (POST/PATCH /segments) already enforces. Fails
  * loudly rather than letting a malformed row reach matchesRule as an
  * unnamed TypeError (e.g. rule.value.toLowerCase() on a non-string) or
- * .every on a non-array.
+ * .every on a non-array. isValidSegmentRule (via isSegmentField, DEC-554
+ * amendment wave 11) also rejects any rule whose `field` isn't 'any', a
+ * SEGMENT_STANDARD_FIELDS member, or `custom.<key>` -- previously such a
+ * rule passed the parser and threw an unnamed TypeError from fieldValue
+ * during matching (contacts list / bulk-email recipient count) instead of
+ * the named error thrown here.
  */
 export function parseSegmentRulesJson(raw: string, segmentId: string): SegmentRule[] {
   const parsed: unknown = JSON.parse(raw);

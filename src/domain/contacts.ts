@@ -43,6 +43,7 @@ export {
   MAX_SEGMENT_RULES,
   tokenizeContactQuery,
   SEGMENT_STANDARD_FIELDS,
+  isSegmentField,
   matchesSegment,
   parseSegmentRulesJson,
 } from "./contacts-parts/segments";

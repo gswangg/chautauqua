@@ -52,4 +52,31 @@ describe("parseSegmentRulesJson", () => {
     }));
     expect(parseSegmentRulesJson(JSON.stringify(rules), "seg-6")).toHaveLength(MAX_SEGMENT_RULES);
   });
+
+  // DEC-554 (amendment, wave 11): isValidSegmentRule previously only checked
+  // `typeof field === "string"`, so a rule referencing a field that is
+  // neither 'any', a SEGMENT_STANDARD_FIELDS member, nor a well-formed
+  // `custom.<key>` passed the parser and threw an unnamed TypeError from
+  // fieldValue at match time (an unnamed 500 on the contacts list / the
+  // bulk-email recipient count). It must now be refused at parse time, with
+  // the segment id named in the message.
+  it("refuses a rule with an unknown field, naming the segment id", () => {
+    const raw = JSON.stringify([{ field: "nickname", op: "eq", value: "a" }]);
+    expect(() => parseSegmentRulesJson(raw, "seg-7")).toThrow(/seg-7\.rules_json/);
+  });
+
+  it("refuses a rule with a malformed custom field (empty key)", () => {
+    const raw = JSON.stringify([{ field: "custom.", op: "eq", value: "a" }]);
+    expect(() => parseSegmentRulesJson(raw, "seg-8")).toThrow(/seg-8\.rules_json/);
+  });
+
+  it("still accepts 'any' as a field", () => {
+    const rules = [{ field: "any", op: "contains" as const, value: "a" }];
+    expect(parseSegmentRulesJson(JSON.stringify(rules), "seg-9")).toEqual(rules);
+  });
+
+  it("still accepts a well-formed custom.<key> field", () => {
+    const rules = [{ field: "custom.plan", op: "eq" as const, value: "pro" }];
+    expect(parseSegmentRulesJson(JSON.stringify(rules), "seg-10")).toEqual(rules);
+  });
 });
