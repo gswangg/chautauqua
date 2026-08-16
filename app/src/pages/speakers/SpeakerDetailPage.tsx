@@ -355,6 +355,29 @@ export function SpeakerDetailPage() {
               </div>
             </div>
 
+            {/* DEC-738 amendment (wave 75): the bio/social links the speaker
+                wrote through their portal profile -- read-only here (the CRM
+                contact drawer stays the one place a person's org-wide record
+                is edited, so this block links there rather than embedding a
+                second form). Nothing renders when both are empty. */}
+            {(detail.contact.bio || detail.contact.socialLinks.length > 0) && (
+              <div className="chq-speaker-detail-portal-bio">
+                {detail.contact.bio && <p className="chq-speaker-detail-portal-bio-text">{detail.contact.bio}</p>}
+                {detail.contact.socialLinks.length > 0 && (
+                  <p className="chq-speaker-detail-portal-bio-links">
+                    {detail.contact.socialLinks.map((link) => (
+                      <a key={link.label} href={link.url} target="_blank" rel="noreferrer">
+                        {link.label}
+                      </a>
+                    ))}
+                  </p>
+                )}
+                <Link className="chq-link-button" to={`/contacts?openContact=${detail.contact.id}`}>
+                  Edit in contact record &rsaquo;
+                </Link>
+              </div>
+            )}
+
             <div className="chq-speaker-detail-actions">
               <ParticipationMenu
                 contactName={detail.contact.name}

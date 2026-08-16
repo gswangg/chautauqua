@@ -32,6 +32,8 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
       notes: 'Prefers a morning slot.',
       customFields: {},
       headshotFileId: null,
+      bio: null,
+      socialLinks: [],
     },
     participation: {
       participantId: 'p-1',
@@ -407,5 +409,42 @@ describe('SpeakerDetailPage render smoke', () => {
     // DEC-930 wave-24 amendment: the row's cell role lives on a wrapper
     // <span>, so this per-row control keeps its implicit button role.
     expect(screen.getAllByRole('button', { name: 'Remind this task' })).toHaveLength(1);
+  });
+
+  // DEC-738 amendment (wave 75): the portal-written bio and social links
+  // are read-only-projected onto the speaker record beside the identity
+  // header, with a link to the CRM contact record rather than a second
+  // editor.
+  it('DEC-738: renders the portal-written bio and a social link, with a link to the contact record', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        contact: {
+          ...baseDetail().contact,
+          bio: 'PORTAL_BIO_SENTINEL: writes optimizing compilers for analytical engines.',
+          socialLinks: [{ label: 'Twitter', url: 'https://twitter.com/ada' }],
+        },
+      }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    expect(screen.getByText(/PORTAL_BIO_SENTINEL/)).toBeInTheDocument();
+    const socialLink = screen.getByRole('link', { name: 'Twitter' });
+    expect(socialLink).toHaveAttribute('href', 'https://twitter.com/ada');
+
+    const bioBlock = document.querySelector('.chq-speaker-detail-portal-bio');
+    expect(bioBlock).toHaveTextContent('Edit in contact record');
+  });
+
+  it('DEC-738: renders nothing (no empty frame) when both bio and social links are absent', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    expect(document.querySelector('.chq-speaker-detail-portal-bio')).not.toBeInTheDocument();
   });
 });

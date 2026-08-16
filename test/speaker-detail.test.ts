@@ -91,6 +91,8 @@ function contactRow(opts: Partial<Record<string, unknown>> = {}) {
     notes: null,
     headshotUrl: null,
     headshotFileId: null,
+    bio: null,
+    socialLinksJson: null,
     userId: null,
     ...opts,
   };
@@ -164,6 +166,8 @@ describe("DEC-930 getSpeakerDetail", () => {
         // facts; blank/absent customFieldsJson projects as {}, never null.
         customFields: {},
         headshotFileId: null,
+        bio: null,
+        socialLinks: [],
       },
       participation: {
         participantId: "p-sub-1",
@@ -368,5 +372,67 @@ describe("DEC-930 getSpeakerDetail", () => {
     await getSpeakerDetail(bigDb, EVENT_ID, CONTACT_ID);
 
     expect(smallTouched.length).toBe(bigTouched.length);
+  });
+
+  // DEC-738 amendment (wave 75): the bio and social links the speaker wrote
+  // through their portal profile (repo/profile.ts's updateProfile) are
+  // projected onto the same organizer-facing SpeakerDetailContact the CRM
+  // logistics fields already live on -- built the SAME way
+  // repo/public/detail.ts's getPublicSpeakerDetail does (parseSocialLinks +
+  // safeExternalUrl, fixed label order), dropping any unsafe URL.
+  it("DEC-738: projects the portal-written bio and social links, dropping an unsafe URL", async () => {
+    const { db } = fakeDb({
+      contact: [
+        contactRow({
+          bio: "PORTAL_BIO_SENTINEL: writes optimizing compilers for analytical engines.",
+          socialLinksJson: JSON.stringify({
+            twitter: "https://twitter.com/ada",
+            linkedin: "javascript:alert(1)", // unsafe -- dropped
+            github: "https://github.com/ada",
+            website: "",
+          }),
+        }),
+      ],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 1)],
+    });
+
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail?.contact.bio).toBe("PORTAL_BIO_SENTINEL: writes optimizing compilers for analytical engines.");
+    expect(detail?.contact.socialLinks).toEqual([
+      { label: "Twitter", url: "https://twitter.com/ada" },
+      { label: "GitHub", url: "https://github.com/ada" },
+    ]);
+  });
+
+  // A DECLARED KNOB/SETTING WITH NO READER IS A LIE (DEC-851 field guide):
+  // enumerate every field updateProfile (repo/profile.ts) writes to the
+  // portal-writable contact record and assert each has a reader on the
+  // SpeakerDetailContact contract, so the next portal-writable field can't
+  // be added here without a reader on the organizer's speaker record.
+  it("ledger: every field updateProfile writes has a reader on SpeakerDetailContact", async () => {
+    // updateProfile's UpdateProfileInput (repo/profile.ts) writes exactly
+    // these contact fields; headshot is written separately by
+    // setContactHeadshot but is still a portal-writable field on the same
+    // contact record.
+    const updateProfileWrittenFields = ["bio", "socialLinks", "title", "company", "headshot"] as const;
+    const speakerDetailContactReaders: Record<(typeof updateProfileWrittenFields)[number], string> = {
+      bio: "bio",
+      socialLinks: "socialLinks",
+      title: "title",
+      company: "company",
+      headshot: "headshotFileId",
+    };
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 1)],
+    });
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail).not.toBeNull();
+    for (const field of updateProfileWrittenFields) {
+      const readerKey = speakerDetailContactReaders[field];
+      expect(Object.prototype.hasOwnProperty.call(detail!.contact, readerKey)).toBe(true);
+    }
   });
 });

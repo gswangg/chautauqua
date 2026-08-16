@@ -35,6 +35,8 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
         role: 'keynote',
       },
       headshotFileId: null,
+      bio: null,
+      socialLinks: [],
     },
     participation: {
       participantId: 'p-1',
