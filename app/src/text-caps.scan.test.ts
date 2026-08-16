@@ -170,11 +170,6 @@ const EXEMPTIONS: Exemption[] = [
   },
   {
     file: 'pages/review/PlanEditor.tsx',
-    control: 'Options (comma-separated)',
-    reason: 'review/shared.ts requires non-empty string options for a dropdown criterion but applies no length cap',
-  },
-  {
-    file: 'pages/review/PlanEditor.tsx',
     control: 'reviewer@example.com',
     reason: 'new reviewer email is format-validated (isValidEmail) only -- no length-capping route reaches it',
   },

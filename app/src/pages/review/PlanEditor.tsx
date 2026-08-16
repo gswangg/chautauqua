@@ -1860,6 +1860,10 @@ export function PlanEditor() {
                                 }
                                 placeholder={`Option ${optionIndex + 1}`}
                                 aria-label={`${criterion.label || 'criterion'} option ${optionIndex + 1}`}
+                                // DEC-417: review/shared.ts caps each dropdown option at
+                                // MAX_NAME_LENGTH individually -- the control declares the
+                                // cap its route enforces.
+                                maxLength={MAX_NAME_LENGTH}
                                 aria-invalid={
                                   submitted &&
                                   (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]

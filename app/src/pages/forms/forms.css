@@ -324,9 +324,9 @@
 }
 
 /* DEC-650 (wave-3 amendment): 560px is frame 02--10's drawn measure
-   (docs/design/Chautauqua Submissions.dc.html:659) -- a GEOMETRY, so it
-   binds, unlike the frame's "3 of 40" sample count which is placeholder
-   content and stays MAX_FIELD_OPTIONS-driven. */
+   (docs/design/Chautauqua Submissions.dc.html:659 `width:560px`) -- a
+   GEOMETRY, so it binds, unlike the frame's "3 of 40" sample count which
+   is placeholder content and stays MAX_FIELD_OPTIONS-driven. */
 .chq-forms-field-modal {
   width: 100%;
   max-width: 560px;
