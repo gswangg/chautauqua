@@ -8,7 +8,7 @@ import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { eq } from "drizzle-orm";
 import type { AppEnv } from "../server/env";
-import { csrfForm } from "../server/middleware";
+import { csrfForm, requireCookieSession } from "../server/middleware";
 import * as schema from "../db/schema";
 import { hashPassword, verifyPassword } from "../auth/password";
 import {
@@ -168,7 +168,7 @@ const requireAuthOr302: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
-accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) => {
+accountRoutes.post("/account/password", requireAuthOr302, requireCookieSession, csrfForm, async (c) => {
   const auth = c.var.auth!;
   const db = c.var.db;
   const body = await c.req.parseBody();

@@ -13,7 +13,7 @@ import { sessionLoader, requireOrganizer } from "../src/server/middleware";
 import { authRoutes } from "../src/routes/auth";
 import { accountRoutes } from "../src/routes/account";
 import { hashPassword } from "../src/auth/password";
-import { newSessionToken, hashToken } from "../src/auth/tokens";
+import { newSessionToken, hashToken, newApiToken } from "../src/auth/tokens";
 import * as schema from "../src/db/schema";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
 import type { AppEnv } from "../src/server/env";
@@ -46,6 +46,10 @@ const COLUMN_KEYS = new Map<unknown, string>([
   // DEC-948: the login door's rate limiter now reads/writes a D1
   // rate_limit row instead of KV.
   ...buildColumnMap(schema.rateLimit as unknown as Record<string, unknown>),
+  // DEC-027 wave-70 amendment: a bearer-authenticated POST /account/password
+  // request needs a live api_token row to resolve through resolveBearerAuth's
+  // innerJoin(apiToken, user).
+  ...buildColumnMap(schema.apiToken as unknown as Record<string, unknown>),
 ]);
 
 function colKey(col: unknown): string {
@@ -65,7 +69,7 @@ function buildTableMap(table: Record<string, unknown>, tableRef: unknown, into: 
 }
 
 const COLUMN_TABLES = new Map<unknown, unknown>();
-for (const t of [schema.user, schema.authSession, schema.rateLimit]) {
+for (const t of [schema.user, schema.authSession, schema.rateLimit, schema.apiToken]) {
   buildTableMap(t as unknown as Record<string, unknown>, t, COLUMN_TABLES);
 }
 
@@ -142,11 +146,17 @@ function project(row: Row | JoinedRow, fields?: Record<string, unknown>): Row {
 }
 
 function makeFakeDb() {
-  const state: { users: Row[]; sessions: Row[]; rateLimits: Row[] } = { users: [], sessions: [], rateLimits: [] };
+  const state: { users: Row[]; sessions: Row[]; rateLimits: Row[]; apiTokens: Row[] } = {
+    users: [],
+    sessions: [],
+    rateLimits: [],
+    apiTokens: [],
+  };
   function rowsFor(table: unknown): Row[] {
     if (table === schema.user) return state.users;
     if (table === schema.authSession) return state.sessions;
     if (table === schema.rateLimit) return state.rateLimits;
+    if (table === schema.apiToken) return state.apiTokens;
     // DEC-740: the login door also queries getHubOrg (orderBy().limit(),
     // no where()) -- always empty here, so loadSingleEventContext
     // short-circuits before ever querying schema.event.
@@ -772,6 +782,62 @@ describe("POST /account/password — successful change", () => {
     // cookie issued on the change response still works.
     const postCheckFresh = await app.request("/api/v1/events", { headers: { cookie: freshCookie } }, env);
     expect(postCheckFresh.status).toBe(200);
+  });
+});
+
+// DEC-027 wave-70 amendment: requireCookieSession now sits on POST
+// /account/password (between requireAuthOr302 and csrfForm), closing the
+// bearer-token escalation on this credential-rotation route the same way
+// wave-38 already closed it for the org-user credential routes.
+describe("POST /account/password — bearer token is refused (DEC-027 wave-70)", () => {
+  it("403s with error code 'forbidden' and leaves the stored hash unchanged", async () => {
+    const { db, state } = makeFakeDb();
+    const user = await seedUser(state);
+    const plaintext = newApiToken();
+    state.apiTokens.push({
+      id: "tok_1",
+      orgId: user.orgId,
+      name: "CI token",
+      tokenHash: await hashToken(plaintext),
+      tokenPrefix: plaintext.slice(0, 12),
+      createdByUserId: user.id,
+      lastUsedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const { app, env } = buildApp(db);
+
+    const hashBefore = user.passwordHash;
+    const form = new URLSearchParams({
+      [CSRF_COOKIE_NAME]: "irrelevant",
+      current: OLD_PASSWORD,
+      next: NEW_PASSWORD,
+      confirm: NEW_PASSWORD,
+    });
+    const res = await app.request(
+      "/account/password",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          authorization: `Bearer ${plaintext}`,
+        },
+        body: form.toString(),
+      },
+      env,
+    );
+    // /account/password is an HTML form route (not under /api/v1), so
+    // errorResponse (src/server/http.ts) renders the ApiError as an HTML
+    // error page rather than a JSON envelope -- wantsHtmlResponse is true
+    // whenever the path isn't an API path. requireCookieSession still throws
+    // the 'forbidden' ApiError (STATUS_BY_CODE maps it to 403); this is the
+    // same refusal DEC-027's other credential routes (all under /api/v1,
+    // where it renders as JSON) already cover.
+    expect(res.status).toBe(403);
+    const html = await res.text();
+    expect(html).toContain("This action requires a signed-in session, not an API token");
+
+    expect(state.users.find((u) => u.id === user.id)?.passwordHash).toBe(hashBefore);
   });
 });
 
