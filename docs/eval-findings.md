@@ -50,6 +50,68 @@ below, per this task's own boundary (a discharge status this lane did not
 itself verify is never restated as closed).
 
 
+## GATE-8 LOSS-MINE, ITEMIZED (runs 2026-08-15T07-46 [89.0] + T13-02 [90.3 final], both vs prod) — CORRECTNESS LANE
+
+Every major-severity judge defect across BOTH runs traces to four clusters. These are
+real-organizer correctness bugs (user directive: fidelity + correctness focus); fixing
+them is justified on product grounds alone. Evidence: `killmysaas-evals/runs/<ts>/
+report.json` → areas[].defects + items[].
+
+**P1 CLUSTERS (all four produced MAJOR defects):**
+1. **CSV import: event coupling + dedup blindness** (hit in CRM AND SPK AND CNT — one
+   cluster, three areas' judgments contaminated). (a) The wizard REQUIRES "Session
+   title for this batch" and silently attaches every imported org-level contact to a
+   synthetic accepted session on the current event — importing into the DIRECTORY must
+   be possible with NO event side effects (event attach = explicit opt-in step).
+   (b) Dedup matches exact email only; same-name+company with a new address mints
+   duplicate rows with no pre-import warning — surface a name+company match as a
+   pre-import "possible duplicate" disposition (merge-into / import-as-new choice).
+2. **Push-to-event success but contact not findable in target event** (CRM major,
+   final run): "Add to an event" confirmed "Marcus Okafor was added as an accepted
+   speaker" for DevFlow Conf 2027, then /admin/speakers in that event does NOT show
+   him. Root-cause and fix; add a route test proving add-to-event → speaker roster
+   visibility (and the dialog's success line should deep-link the created row).
+3. **Task creation cannot target a subset**: New task ALWAYS "Created for all N
+   accepted speakers" (SPK major + CNT minor, both runs). Add assignee scoping
+   (all-accepted default, per-speaker multi-select). NOTE: reconcile with v11 — no
+   frame covers an assignee picker; keep it inside the existing modal grammar and file
+   a design-gap note in design-standard-brief.md if a frame is needed.
+4. **Bulk-send reporting untrustworthy**: "Send 36 emails" → history entry "6 sent"
+   listing ≥9 recipients (SPK major, final run). Root-cause the count (suspect: the
+   1-hour dedupe/throttle skips are uncounted or mislabelled). The fix is the v11
+   standard result line `{sent, skipped, remaining}` applied to comms history rows +
+   send results — sent must mean sent.
+
+**P2 QUICK WINS (recurring minors, independent of v11 lane):**
+5. Public search submit button unclickable — `#chq-pub-search-q` input overlays it;
+   reproduced on sessions AND agenda surfaces in both runs. Fix the stacking/hit area.
+6. `SBEK-PORTAL-BIO-01` residue string in seed_contact_0001's public bio (seed
+   hygiene — scrub the marker from seed.ts, it renders on prod).
+7. Speaker headshots render as blank navy rectangles on public speakers list/gallery/
+   detail (3 speakers with uploaded photos) — the data exists, the render path fails.
+8. OFF-toggled saved embed serves a BLANK page at its permalink — render a minimal
+   "This embed has been turned off" body instead of white nothing.
+9. `/dev/mailbox` 404s (operator-doc'd path, tried both runs) — either mount the dev
+   mailbox viewer or fix the operator docs; judges read the docs.
+10. Agenda: stale ROOM & SPEAKER CONFLICT badge after the clash is resolved +
+    header "% placed" inconsistent (84%→79% with identical counts) — recompute on
+    state change.
+11. Assigned reviewer's submission detail says "Reviews · 0 of 0 in" (assignment not
+    reflected in the denominator until a review lands).
+12. Out-of-queue reviewer gets bare "Submission not found" — keep the 404-shape but
+    say "not in your queue" when the submission exists but isn't assigned.
+
+**Already covered by the V11 lane (do NOT double-file):** Remind-laggards(0)
+active-no-op (DEC-760 hidden-not-disabled) · skeleton flash "0 files · 0 B" (250ms
+first-paint spec) · reminder-throttle visibility (result-panel spec).
+
+**NOT actionable, recorded so nobody chases them:** turn-cap cannot_judge items
+(ABS-10, CFP-11/13/16/18, CNT-10/14, CRM-03/04/11) · AIA judge-process death (area
+was 100.0 same-day morning run) · deliberate forfeits ABS-14/CFP-16. Same-day
+area variance is ±3-7 (ABS 98.1→85.4, EMB 82.9→100 on one build) — do NOT treat a
+single-run area dip as a regression without a defect citation.
+
+
 ## V11 DESIGN INTAKE (2026-08-15) — authority now design-frames-v11 (153 frames)
 
 Vendored: 7 changed `.dc.html` + DESIGN-RULINGS.md (support.js/README byte-identical
