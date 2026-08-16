@@ -20,6 +20,10 @@ import {
   parseLogSections,
   REQUIRED_SCOPES,
 } from "../scripts/exit-predicate";
+// DEC-068 wave-46 (task-w46-b): the assembler's synthetic-header derivation,
+// imported rather than re-implemented so this round-trip check cannot drift
+// from the rule the assembler actually applies.
+import { deriveSyntheticHeader } from "../scripts/assemble-verification-log";
 
 const ROOT = join(import.meta.dirname, "..");
 const INDEX_DIR = join(ROOT, "docs", "verification-log", "index");
@@ -115,27 +119,46 @@ describe("DEC-068 header contract over the real corpus (shrink-only ratchet)", (
 // ---------------------------------------------------------------------
 // 2. Round-trip: docs/verification-log.md is the assembled concatenation
 // of docs/verification-log/index/*.md (scripts/assemble-verification-log.ts).
-// Every index file whose own first line conforms to the header contract
-// must appear as its OWN section (never swallowed as a previous section's
-// body -- the ASCII-hyphen failure mode) in filename order.
+// EVERY index file must appear as its OWN section (never swallowed as a
+// previous section's body -- the ASCII-hyphen failure mode) in filename
+// order.
 //
-// Files that do NOT have a conformant header (the ratchet above) are, by
-// design (see test/exit-predicate.test.ts's "does not treat malformed
-// headers... as their own section" case), swallowed into the preceding
-// section's body -- that is tested, intentional parser behaviour, not the
-// bug this check guards against, so this check is scoped to conformant
-// files only.
+// DEC-068 wave-46 amendment (task-w46-b), reconciled here by the wave-46
+// merge train: this check used to be scoped to CONFORMANT files only,
+// because a non-conformant index file was swallowed into the preceding
+// section's body. The assembler no longer allows that -- assembleEntry()
+// prepends a SYNTHETIC, HEADER_RE-conforming header derived from the
+// filename to any entry whose own first line does not conform (keeping the
+// original first line as the section's first body line, and never editing
+// the index file itself). So the assembled output now yields one section
+// per index file, conformant or not, and the swallowing hazard task-w45-f
+// documented -- a swallowed entry silently donating its RESULT:/OPEN ITEMS:
+// lines to the preceding section and overwriting that section's verdict --
+// is structurally gone. This assertion is correspondingly STRONGER than the
+// one it replaces: it now covers all 224 entries rather than 200.
 // ---------------------------------------------------------------------
 
-describe("round-trip: assembled log has exactly one section per conformant index file, in order", () => {
-  it("parseLogSections(docs/verification-log.md) has no silently-swallowed conformant section", () => {
-    const conformantFiles = indexFiles().filter((f) => HEADER_RE.test(firstLine(readIndexFile(f))));
+describe("round-trip: assembled log has exactly one section per index file, in order", () => {
+  it("parseLogSections(docs/verification-log.md) has no silently-swallowed section", () => {
+    const files = indexFiles();
     const assembled = parseLogSections(readFileSync(LOG_FILE, "utf8"));
 
-    expect(assembled).toHaveLength(conformantFiles.length);
-    for (let i = 0; i < conformantFiles.length; i++) {
-      const expectedHeader = firstLine(readIndexFile(conformantFiles[i] as string));
+    expect(assembled).toHaveLength(files.length);
+    for (let i = 0; i < files.length; i++) {
+      const name = files[i] as string;
+      const own = firstLine(readIndexFile(name));
+      // Conformant entries keep their own first line verbatim; the rest are
+      // headed by the assembler's synthetic line, re-derived here from the
+      // filename rather than copied from the assembled output.
+      const expectedHeader = HEADER_RE.test(own) ? own : deriveSyntheticHeader(name);
       expect(assembled[i]?.header).toBe(expectedHeader);
+    }
+  });
+
+  it("every assembled section header conforms to the DEC-068 header contract", () => {
+    const assembled = parseLogSections(readFileSync(LOG_FILE, "utf8"));
+    for (const section of assembled) {
+      expect(HEADER_RE.test(`## ${section.header.replace(/^## /, "")}`)).toBe(true);
     }
   });
 });

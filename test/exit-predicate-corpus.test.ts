@@ -18,7 +18,7 @@ import {
   REQUIRED_SCOPES,
   type LogSection,
 } from "../scripts/exit-predicate";
-import { duplicateSequences } from "../scripts/assemble-verification-log";
+import { deriveSyntheticHeader, duplicateSequences } from "../scripts/assemble-verification-log";
 
 const ROOT = join(__dirname, "..");
 const LOG_FILE = join(ROOT, "docs", "verification-log.md");
@@ -90,11 +90,19 @@ describe("verification-log header population (real corpus, DEC-099 w40)", () => 
     expect(files.length).toBeGreaterThan(0);
   });
 
-  it("every conformant index file's header contributes exactly one section to parseLogSections", () => {
-    expect(conformant.length).toBe(sections.length);
+  // DEC-068 wave-46 amendment (task-w46-b), reconciled by the wave-46 merge
+  // train: the assembler now prepends a SYNTHETIC conformant header to any
+  // index entry whose own first line does not conform, so EVERY index file
+  // contributes exactly one section -- not just the conformant ones. A
+  // conformant file still contributes its own first line verbatim.
+  it("every index file contributes exactly one section to parseLogSections", () => {
+    expect(sections.length).toBe(files.length);
     const parsedHeaders = new Set(sections.map((s) => s.header));
     for (const f of conformant) {
       expect(parsedHeaders.has(firstLine(f))).toBe(true);
+    }
+    for (const f of nonConformant) {
+      expect(parsedHeaders.has(deriveSyntheticHeader(f))).toBe(true);
     }
   });
 
