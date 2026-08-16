@@ -584,65 +584,6 @@ async function main(): Promise<void> {
     );
   }
 
-  // --- near-duplicate contacts (task w1-d / DEC-145, retitled per
-  // DEC-771): two more contact rows for the same two people as the named
-  // speaker contacts above — same company, a different (CSV-import-style)
-  // email address per docs/fixtures/speakers.csv — but NOT an exact
-  // normalized-name collision. DEC-771 forbids any two contacts in an org
-  // sharing a normalized email or full name (3 graders hit "Priya has two
-  // [identically-named] contact records" as a bug, not a feature); the
-  // original vector used the literal fixture names "Priya Raman" / "Marcus
-  // Okafor" verbatim, which is exactly that forbidden collision. A middle
-  // initial (a realistic CSV-import variant — e.g. a secondary system that
-  // carries a middle name where the primary doesn't) keeps this a
-  // recognizable near-duplicate for CRM dedupe testing (DEC-143's
-  // same-company matching still groups them, since DEC-143 buckets by
-  // *normalized* name — case/whitespace only, not fuzzy — so this doesn't
-  // exercise that bucket, but the two rows remain visibly the same person
-  // under a distinct identity for organizer-facing merge/search flows)
-  // without violating DEC-771's exact-collision rule. Not linked to a user
-  // account or any submission.
-  const priyaDupContactId = seedId("contact", 3);
-  const marcusDupContactId = seedId("contact", 4);
-  statements.push(
-    insertStmt("contact", {
-      id: priyaDupContactId,
-      org_id: orgId,
-      first_name: "Priya",
-      last_name: "S. Raman",
-      email: "priya.speaker@sbek-test.example.com",
-      phone: null,
-      company: "Latticework Systems",
-      title: "Principal Engineer",
-      bio: "Leads the build-tooling platform team at Latticework Systems.",
-      headshot_url: null,
-      social_links_json: null,
-      notes: null,
-      custom_fields_json: null,
-      created_at: nextTs(),
-      updated_at: ts,
-    }),
-  );
-  statements.push(
-    insertStmt("contact", {
-      id: marcusDupContactId,
-      org_id: orgId,
-      first_name: "Marcus",
-      last_name: "T. Okafor",
-      email: "marcus.speaker@sbek-test.example.com",
-      phone: null,
-      company: "Cloudreach Labs",
-      title: "Staff Developer Advocate",
-      bio: "Focused on AI agents in production; writes Agents Weekly.",
-      headshot_url: null,
-      social_links_json: null,
-      notes: null,
-      custom_fields_json: null,
-      created_at: nextTs(),
-      updated_at: ts,
-    }),
-  );
-
   const organizerUserId = seedId("user", 1);
   const speakerUserId = seedId("user", 2);
   const speaker2UserId = seedId("user", 3);
@@ -1361,7 +1302,11 @@ async function main(): Promise<void> {
   }
   setContactCustomFields(speakerContactId, { role: "speaker", year: "2027" });
   setContactCustomFields(speaker2ContactId, { role: "speaker", year: "2027" });
-  setContactCustomFields(priyaDupContactId, { role: "reviewer" });
+  // DEC-823 wave-70 amendment: re-homed off the deleted priyaDupContactId
+  // near-duplicate vestige onto synth index 5 (not part of any
+  // findDuplicateGroups fixture pair -- see the DUPLICATE FIXTURE SET
+  // comment below) so the lone single-key Labels rendering case survives.
+  setContactCustomFields(synthContacts[5]!.contactId, { role: "reviewer" });
   setContactCustomFields(synthContacts[4]!.contactId, { role: "speaker", year: "2027" });
   setContactCustomFields(synthContacts[9]!.contactId, { role: "speaker", year: "2026" });
   setContactCustomFields(synthContacts[14]!.contactId, { role: "speaker", year: "2027" });
@@ -2562,10 +2507,11 @@ async function main(): Promise<void> {
   // scores, a distinct one-sentence rationale each, and activity timestamps
   // spread across real staleness buckets (days / weeks / months ago) rather
   // than the seed's monotonic minute-clock, which would cluster every card
-  // at "moments ago". Deliberately NOT Marcus Okafor (speaker2) and NOT
-  // either Priya Raman contact (speakerContactId / priyaDupContactId) —
-  // CRM-S2 enrolls Marcus manually during the eval run, so the seed must
-  // leave that enrollment available rather than pre-empting it.
+  // at "moments ago". The pipeline draws only from the synth_contact pool
+  // (indices 1-20), so it never enrolls Marcus Okafor (speaker2ContactId) or
+  // Priya Raman (speakerContactId) regardless -- CRM-S2 enrolls Marcus
+  // manually during the eval run, so the seed must leave that enrollment
+  // available rather than pre-empting it.
   {
     const pipelineCount = 20;
     const pipelineContactIds = Array.from({ length: pipelineCount }, (_, i) => seedId("synth_contact", i + 1));

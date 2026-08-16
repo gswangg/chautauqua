@@ -212,6 +212,44 @@ describe("seed coherence (DEC-771)", () => {
     }
   });
 
+  // DEC-823 wave-70 amendment: the two vestigial 'Priya S. Raman' /
+  // 'Marcus T. Okafor' near-duplicate contacts (seed_contact_0003/0004) were
+  // removed -- they can never be surfaced by findDuplicateGroups (it buckets
+  // on EXACT normalized name, so a middle initial never groups) and were
+  // contaminating the directory read ("two Priya, two Marcus"). The DEC-823
+  // fixture trio at scripts/seed.ts's "DUPLICATE FIXTURE SET" block is the
+  // real, and now the ONLY, duplicate demo: exactly three groups, one per
+  // DEC-800 reason, none of them an identity (persona/reviewer) contact.
+  it("(DEC-823 wave-70 amendment) findDuplicateGroups over the full seeded contact set returns exactly the three fixture pairs, one per reason, none of them a persona/reviewer contact", () => {
+    const contactRows = parseInserts(sql, "contact");
+    const identityIds = identityContactIds();
+    expect(identityIds.size).toBeGreaterThan(0);
+
+    const records: ContactRecord[] = contactRows.map((r) => ({
+      id: r.id!,
+      email: r.email ?? "",
+      firstName: r.first_name ?? "",
+      lastName: r.last_name ?? "",
+      company: r.company ?? undefined,
+    }));
+
+    const groups = findDuplicateGroups(records);
+    expect(groups.length, `expected exactly 3 duplicate groups, found: ${JSON.stringify(groups)}`).toBe(3);
+
+    const reasons = groups.map((g) => g.reason).sort();
+    expect(reasons).toEqual(["email", "name", "name_and_company"]);
+
+    for (const group of groups) {
+      expect(group.contactIds.length, `group ${JSON.stringify(group)} does not have exactly 2 members`).toBe(2);
+      for (const contactId of group.contactIds) {
+        expect(
+          identityIds.has(contactId),
+          `duplicate group ${JSON.stringify(group)} contains an identity (persona/reviewer) contact ${contactId}`,
+        ).toBe(false);
+      }
+    }
+  });
+
   it("(c) no two tasks in the event share a title", () => {
     const taskRows = parseInserts(sql, "task");
     expect(taskRows.length).toBeGreaterThan(0);
