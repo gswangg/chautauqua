@@ -4,7 +4,7 @@
 // create it with this exact contract; a merge dedupes identical content.
 // src/routes/portal/index.tsx is now rewired onto it.
 
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import type { AppEnv } from "../../server/env";
 import { ThemeStyles } from "../../views/theme";
 import { PORTAL_CSS } from "./portal.css";
@@ -94,6 +94,29 @@ function portalBackLinkLabel(to: string): string {
     throw new Error(`PortalBackLink: no label registered in PORTAL_BACK_LINKS for destination "${to}"`);
   }
   return entry.label;
+}
+
+// DEC-945 (wave-65 amendment): a speaker who follows a stale in-portal link
+// (a submission id that no longer resolves, a resources section the
+// producer turned off, ...) gets the SAME branded 404 card the speakerGate
+// above and /portal/preview already render, never a bare text/plain body.
+// The link set takes its label from PORTAL_BACK_LINKS (DEC-914) so a
+// signed-in speaker's 404 link can never disagree with the route it lands
+// on — it is a single "/portal" href, resolved through the same vocabulary
+// rather than a second hand-written label.
+export const SPEAKER_NOT_FOUND_LINKS: ReadonlyArray<{ href: string; label: string }> = [
+  { href: "/portal", label: portalBackLinkLabel("/portal") },
+];
+
+/** Renders the shared 404 card for an in-route speaker-portal refusal
+ * (existence-hiding, not just an unmatched route — see speakerGate above).
+ * Status stays 404 always; only the body copy is ever caller-supplied. */
+export async function portalNotFound(
+  c: Context<AppEnv>,
+  body = "The link may be old, or the event may have been switched since it was saved.",
+) {
+  const eyebrow = await resolveNotFoundEyebrow(c.var.db);
+  return c.html(<NotFoundDocument eyebrow={eyebrow} body={body} links={SPEAKER_NOT_FOUND_LINKS} />, 404);
 }
 
 /** One back-link renderer for every /portal/* page (DEC-914) — the label is

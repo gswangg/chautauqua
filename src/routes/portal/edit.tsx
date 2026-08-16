@@ -5,7 +5,7 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
-import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
+import { speakerGate, PortalLayout, PortalBackLink, portalNotFound } from "./shared";
 import { PublicEmptyState } from "../public/empty-state";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
@@ -382,7 +382,7 @@ portalEditRoutes.get("/submissions/:id/edit", async (c) => {
   const contactId = assertSpeakerContactId(auth);
   const submissionId = c.req.param("id");
   const data = await loadEditableSubmission(c.var.db, auth.orgId, contactId, submissionId);
-  if (!data) return c.text("Not found", 404);
+  if (!data) return portalNotFound(c);
 
   const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
   const tracksEditable = canEditTracks(data.form.closeDate, Date.now(), data.form.timezone);
@@ -412,7 +412,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
   const contactId = assertSpeakerContactId(auth);
   const submissionId = c.req.param("id");
   const data = await loadEditableSubmission(c.var.db, auth.orgId, contactId, submissionId);
-  if (!data) return c.text("Not found", 404);
+  if (!data) return portalNotFound(c);
 
   // Server-side re-check — never trust the hidden form (DEC-041): a client
   // could POST here after the window closes even if the GET rendered the
@@ -493,7 +493,7 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
   const contactId = assertSpeakerContactId(auth);
   const submissionId = c.req.param("id");
   const data = await loadEditableSubmission(c.var.db, auth.orgId, contactId, submissionId);
-  if (!data) return c.text("Not found", 404);
+  if (!data) return portalNotFound(c);
 
   // Server-side re-check — never trust the hidden form (DEC-041/DEC-604): a
   // client could POST here after the edit window closes.

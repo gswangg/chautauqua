@@ -145,6 +145,21 @@ vi.mock("../src/server/repo/portal-edit", async () => {
   };
 });
 
+// DEC-945 (wave-65 amendment): the existence-hiding 404s below now render via
+// portalNotFound (src/routes/portal/shared.tsx), which resolves the card's
+// eyebrow via resolveNotFoundEyebrow(c.var.db) -- the SAME shared read every
+// other 404 surface in the app already performs. Stubbed here so this
+// probe's throwing db proxy still isolates its actual concern (did the
+// OWNERSHIP check run before any resource read/write), rather than failing
+// on the unrelated, already-shared eyebrow lookup.
+vi.mock("../src/server/not-found", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/not-found")>("../src/server/not-found");
+  return {
+    ...actual,
+    resolveNotFoundEyebrow: vi.fn(async () => "Not found"),
+  };
+});
+
 // ---------------------------------------------------------------------------
 // Actor -- same role as the owner (speaker), different contact.
 // ---------------------------------------------------------------------------

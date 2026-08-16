@@ -7,7 +7,7 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
-import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
+import { speakerGate, PortalLayout, PortalBackLink, portalNotFound } from "./shared";
 import { PublicEmptyState } from "../public/empty-state";
 import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
 import { effectiveAssignmentDueDayLabel, isAssignmentOverdue } from "../../domain/task-due";
@@ -582,7 +582,7 @@ portalRoutes.get("/submissions/:id", async (c) => {
     getLatestDeliverable(c.var.db, contactId, auth.orgId, id),
   ]);
   if (!detail) {
-    return c.text("Not found", 404);
+    return portalNotFound(c);
   }
   // DEC-041: the edit link only shows when the submission is still
   // editable (accepted, or the form window is open).
