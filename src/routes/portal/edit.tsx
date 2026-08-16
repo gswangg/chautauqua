@@ -18,9 +18,11 @@ import {
   saveSubmissionEdits,
   getPortalParticipants,
   addCoPresenter,
+  CO_PRESENTER_DUPLICATE_MESSAGE,
   type EditableSubmissionData,
   type PortalParticipant,
 } from "../../server/repo/portal-edit";
+import { formatEventDate } from "../../lib/event-time";
 import { canEditSubmission, canEditTracks } from "../../domain/edit-lock";
 import { validateAnswers, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
@@ -153,6 +155,19 @@ export function EditPage(props: {
     <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
       <h1 class="chq-portal-hero">Edit submission</h1>
+      {/* DEC-604 (wave-56 amendment): the window is the FORM's close date,
+          not acceptance — canEditSubmission gates on it, so the header
+          states the deadline the speaker is actually working against.
+          Omitted entirely (never a synthesized date) when the form has no
+          close date. Replaces the earlier "Edits are live on the public
+          pages straight away" sub-line, which contradicted the
+          Participants section's "not yet published" fact on the same
+          screen. */}
+      {data.form.closeDate !== null ? (
+        <p class="chq-portal-sub">
+          You can change this until the form closes on {formatEventDate(data.form.closeDate, data.form.timezone)}
+        </p>
+      ) : null}
       {/* DEC-040 amendment (wave 70): this form's FormFieldsSection calls
           below render a real <input type="file"> for any kind='file' field
           (form-render.tsx's FieldControl has no read-only variant) even
@@ -210,6 +225,9 @@ export function EditPage(props: {
             </p>
           ))}
         <div class="chq-portal-actions">
+          <a class="chq-btn chq-btn-secondary" href={`/portal/submissions/${props.submissionId}`}>
+            Cancel
+          </a>
           <button type="submit" class="chq-btn chq-btn-primary">Save changes</button>
         </div>
       </form>
@@ -237,9 +255,23 @@ function ParticipantsSection(props: {
   values?: { firstName: string; lastName: string; email: string; role: string };
 }) {
   const { submissionId, csrfToken, participants, errors, values } = props;
+  // DEC-604 (wave-56 amendment): the unique index on the join table is the
+  // duplicate arbiter (migrations/0019) — the client cannot pre-empt it, so
+  // only THIS specific server-only rejection gets the "standard error
+  // shape" banner (DESIGN-RULINGS.md rule 12 + the Speaker portal section).
+  // A plain field-validation error (missing name, bad email format) stays a
+  // bare inline field message, never a banner naming a "did not happen".
+  const isDuplicate = errors?.email === CO_PRESENTER_DUPLICATE_MESSAGE;
   return (
     <section aria-label="Participants" class="chq-section">
       <div class="chq-section-label">Participants</div>
+      {isDuplicate ? (
+        <div class="chq-error-summary" role="alert">
+          <h2>Co-presenter not added</h2>
+          <p>{errors!.email}</p>
+          <p>Everything you typed is still below.</p>
+        </div>
+      ) : null}
       {participants.length === 0 ? (
         <PublicEmptyState
           variant="fresh"
@@ -260,54 +292,84 @@ function ParticipantsSection(props: {
       )}
       <h3 class="chq-portal-field-label">Add a co-presenter</h3>
       <p class="chq-portal-sub">
-        Added to this session. Your organiser puts co-presenters on the public site. They will not receive an email
-        or invitation.
+        Added to this session. Your organiser puts co-presenters on the public site. No email goes to them — tell
+        them yourself.
       </p>
-      <form method="post" action={`/portal/submissions/${submissionId}/participants`} enctype="multipart/form-data">
+      <form
+        method="post"
+        action={`/portal/submissions/${submissionId}/participants`}
+        enctype="multipart/form-data"
+      >
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-        <label class="chq-portal-field-label" for="cp-first-name">
-          First name
-        </label>
-        <input id="cp-first-name" type="text" name="firstName" value={values?.firstName ?? ""} maxLength={MAX_NAME_LENGTH} />
-        {errors?.firstName ? (
-          <p role="alert" class="chq-field-error">
-            {errors.firstName}
-          </p>
-        ) : null}
-        <label class="chq-portal-field-label" for="cp-last-name">
-          Last name
-        </label>
-        <input id="cp-last-name" type="text" name="lastName" value={values?.lastName ?? ""} maxLength={MAX_NAME_LENGTH} />
-        {errors?.lastName ? (
-          <p role="alert" class="chq-field-error">
-            {errors.lastName}
-          </p>
-        ) : null}
-        <label class="chq-portal-field-label" for="cp-email">
-          Email
-        </label>
-        <input id="cp-email" type="email" name="email" value={values?.email ?? ""} maxLength={MAX_TEXT_LENGTH} />
-        {errors?.email ? (
-          <p role="alert" class="chq-field-error">
-            {errors.email}
-          </p>
-        ) : null}
-        <label class="chq-portal-field-label" for="cp-role">
-          Role
-        </label>
-        <select id="cp-role" name="role">
-          {PARTICIPANT_ROLE_OPTIONS.filter((o) => CO_PRESENTER_ROLE_VALUES.includes(o.value)).map((o) => (
-            <option value={o.value} selected={(values?.role ?? CO_PRESENTER_ROLE_VALUES[0]) === o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        {/* DEC-604 (wave-56 amendment, B10 form spec): first/last name are
+            read as one thing, so the wide 1600 frame pairs them two-up.
+            portal.css.ts reaches that without a min-width media query
+            (test/breakpoint-conformance.test.ts's DEC-385 scan forbids
+            one) -- flex-wrap with a flex-basis floor, so the pair sits
+            side by side once there's room and wraps to a stack at the
+            portal's narrower default/phone widths. */}
+        <div class="chq-portal-copresenter-names">
+          <div>
+            <label class="chq-portal-field-label" for="cp-first-name">
+              First name
+            </label>
+            <input id="cp-first-name" type="text" name="firstName" value={values?.firstName ?? ""} maxLength={MAX_NAME_LENGTH} />
+            {errors?.firstName ? (
+              <p role="alert" class="chq-field-error">
+                {errors.firstName}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <label class="chq-portal-field-label" for="cp-last-name">
+              Last name
+            </label>
+            <input id="cp-last-name" type="text" name="lastName" value={values?.lastName ?? ""} maxLength={MAX_NAME_LENGTH} />
+            {errors?.lastName ? (
+              <p role="alert" class="chq-field-error">
+                {errors.lastName}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {/* DEC-604 (wave-56 amendment, B10 form spec): email pairs with a
+            190px-wide role select once there's room, same intrinsic
+            flex-wrap technique as the name pair above. */}
+        <div class="chq-portal-copresenter-email-role">
+          <div>
+            <label class="chq-portal-field-label" for="cp-email">
+              Email
+            </label>
+            <input id="cp-email" type="email" name="email" value={values?.email ?? ""} maxLength={MAX_TEXT_LENGTH} />
+            {errors?.email ? (
+              <p role="alert" class="chq-field-error">
+                {errors.email}
+              </p>
+            ) : null}
+          </div>
+          <div class="chq-portal-copresenter-role">
+            <label class="chq-portal-field-label" for="cp-role">
+              Role
+            </label>
+            <select id="cp-role" name="role">
+              {PARTICIPANT_ROLE_OPTIONS.filter((o) => CO_PRESENTER_ROLE_VALUES.includes(o.value)).map((o) => (
+                <option value={o.value} selected={(values?.role ?? CO_PRESENTER_ROLE_VALUES[0]) === o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         {errors?.role ? (
           <p role="alert" class="chq-field-error">
             {errors.role}
           </p>
         ) : null}
-        <div class="chq-portal-actions">
+        {/* DEC-604 (wave-56 amendment): left-aligned at its natural width,
+            never .chq-portal-actions' right-flush row — adding a
+            co-presenter is an aside within the edit screen, whose primary
+            action stays Save changes above. */}
+        <div class="chq-portal-copresenter-submit">
           <button type="submit" class="chq-btn chq-btn-secondary">Add co-presenter</button>
         </div>
       </form>

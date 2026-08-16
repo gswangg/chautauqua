@@ -449,6 +449,15 @@ export type AddCoPresenterResult =
   | { ok: true }
   | { ok: false; errors: Record<string, string> };
 
+// DEC-604 (wave-56 amendment): the join table's uniqueIndex
+// (migrations/0019_join_table_uniqueness.sql) is the arbiter of a duplicate
+// co-presenter — the client cannot pre-empt it. Exported so the portal
+// edit view can detect THIS specific server-only rejection (a "who did NOT
+// happen" banner, docs/eval-findings.md's "Speaker portal" section) without
+// re-deriving it from validation-error field messages that share the same
+// `errors.email` key.
+export const CO_PRESENTER_DUPLICATE_MESSAGE = "This person is already a participant on this submission";
+
 /** Adds a co-presenter to one of the speaker's own submissions. Caller must
  * have already verified canEditSubmission and that submissionId/orgId scope
  * to this speaker's own contact. Resolves the email against the org's
@@ -556,7 +565,7 @@ export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promis
     .onConflictDoNothing({ target: [schema.participant.submissionId, schema.participant.contactId] })
     .returning({ id: schema.participant.id });
   if (!inserted[0]) {
-    return { ok: false, errors: { email: "This person is already a participant on this submission" } };
+    return { ok: false, errors: { email: CO_PRESENTER_DUPLICATE_MESSAGE } };
   }
   // DEC-725 amendment: a newly-added (pending) co-presenter changes the
   // submission's published Speakers cell composition once accepted — see
