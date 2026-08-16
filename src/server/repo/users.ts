@@ -203,7 +203,7 @@ export async function deleteUserSessions(db: Db, userId: string): Promise<void> 
  * widely-depended-on call shape. */
 export async function resolveActorName(db: Db, userId: string): Promise<string> {
   const rows = await db
-    .select({ email: schema.user.email, contactId: schema.user.contactId })
+    .select({ email: schema.user.email, contactId: schema.user.contactId, name: schema.user.name })
     .from(schema.user)
     .where(eq(schema.user.id, userId))
     .limit(1);
@@ -219,5 +219,6 @@ export async function resolveActorName(db: Db, userId: string): Promise<string> 
     if (!contact) throw new Error(`resolveActorName: user ${userId} references missing contact ${user.contactId}`);
     return `${contact.firstName} ${contact.lastName}`.trim();
   }
+  if (user.name && user.name.trim()) return user.name;
   return user.email;
 }

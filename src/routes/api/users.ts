@@ -113,7 +113,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, requireCookieSession, csrfJs
       const mailer = makeMailer(c.var.db, c.env);
       const text = `An account has been created for you.\n\nEmail: ${created.email}\n\nSign in at /login with the temporary password your organizer will share with you; you can change it at /account/password after signing in.`;
       await mailer.send({
-        to: { email: created.email, name: created.email },
+        to: { email: created.email, name: created.name && created.name.trim() ? created.name : created.email },
         subject: "Your account has been created",
         text,
         html: renderEmailHtml(text, {
