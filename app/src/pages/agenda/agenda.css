@@ -398,7 +398,9 @@
 
 .chq-day-grid-noroom-btn:hover {
   border-style: solid;
-}
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: var(--chq-ink);
+  }
 
 .chq-day-grid-noroom-btn:focus-visible {
   outline: 2px solid var(--chq-brand);

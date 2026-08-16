@@ -132,7 +132,9 @@
 .chq-forms-strip-datefield:focus {
   border-color: var(--chq-rule);
   padding: 2px 4px;
-}
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: inherit;
+  }
 
 .chq-forms-section {
   display: block;

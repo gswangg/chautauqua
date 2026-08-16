@@ -131,6 +131,8 @@
   .chq-overview-toolbar-btn:hover {
     background: var(--chq-secondary-hover);
     border-color: var(--chq-secondary-hover-border);
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: var(--chq-ink);
   }
 }
 
@@ -154,6 +156,8 @@
 @media (hover: hover) {
   .chq-overview-toolbar-btn-primary:hover {
     background: var(--chq-brand-hover);
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: var(--chq-on-brand);
   }
 }
 
@@ -366,6 +370,8 @@
   .chq-overview-btn:hover {
     background: var(--chq-secondary-hover);
     border-color: var(--chq-secondary-hover-border);
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: var(--chq-ink);
   }
 }
 
@@ -386,6 +392,8 @@
 @media (hover: hover) {
   .chq-overview-btn-primary:hover {
     background: var(--chq-brand-hover);
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: var(--chq-on-brand);
   }
 }
 
