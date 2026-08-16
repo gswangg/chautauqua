@@ -435,6 +435,12 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
     }));
   }
   const agenda = computeAgendaSummary(unplacedCount, placed);
+  // NOTE (task w69-a scope): this overview worklist's own conflicts are
+  // deliberately NOT threaded with `blocked` breaks (unlike the agenda
+  // payload's findConflicts calls) — app/src/pages/overview/types.ts's
+  // AgendaConflict.kind is still the pre-break two-member union and is out
+  // of this task's scope (app/ is off-limits). Widening this call to emit
+  // break_overlap here is future work paired with that client type.
   const conflicts = findConflicts(placed);
   const placedById = new Map(placed.map((p) => [p.submissionId, p]));
 
@@ -453,8 +459,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
   for (const r of contentDetailRows) leadSpeakerIds.add(r.id);
   for (const id of unplacedCappedIds) leadSpeakerIds.add(id);
   for (const c of conflicts.slice(0, ROW_CAP)) {
-    leadSpeakerIds.add(c.submissionIds[0]);
-    leadSpeakerIds.add(c.submissionIds[1]);
+    for (const id of c.submissionIds) leadSpeakerIds.add(id);
   }
 
   // --- Room names for every room already in use on the event's placed

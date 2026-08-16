@@ -336,10 +336,8 @@ describe("autoSchedule", () => {
     expect(elapsedMs).toBeLessThan(2000);
 
     const newlyPlacedIds = new Set(result.placed.map((p) => p.submissionId));
-    const conflicts = findConflicts(result.placed).filter(
-      (c) =>
-        newlyPlacedIds.has(c.submissionIds[0]) ||
-        newlyPlacedIds.has(c.submissionIds[1]),
+    const conflicts = findConflicts(result.placed).filter((c) =>
+      c.submissionIds.some((id) => newlyPlacedIds.has(id)),
     );
     expect(conflicts).toEqual([]);
   });

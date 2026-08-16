@@ -33,6 +33,8 @@ function naiveFindConflicts(placed: PlacedSession[]): Conflict[] {
           day: a.day,
           roomId: a.roomId,
           speakerContactIds: [],
+          breakId: null,
+          breakLabel: null,
         });
       }
 
@@ -46,6 +48,8 @@ function naiveFindConflicts(placed: PlacedSession[]): Conflict[] {
           day: a.day,
           roomId: null,
           speakerContactIds: sharedSpeakers,
+          breakId: null,
+          breakLabel: null,
         });
       }
     }

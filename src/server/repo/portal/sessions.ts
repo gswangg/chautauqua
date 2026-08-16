@@ -178,7 +178,11 @@ function findMyOverlaps(
   };
 
   for (const c of conflicts) {
-    const [a, b] = c.submissionIds;
+    const a = c.submissionIds[0];
+    const b = c.submissionIds[1];
+    if (a === undefined || b === undefined) {
+      throw new Error("portal overlap: speaker_overlap must carry two ids");
+    }
     addOverlap(a, b);
     addOverlap(b, a);
   }

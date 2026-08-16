@@ -72,7 +72,11 @@ export interface AgendaConflict {
   // (the server is the authority — scheduling.ts emits `null` when the
   // conflicting assignment carries no roomId).
   roomName: string | null;
-  kind: 'room_overlap' | 'speaker_overlap';
+  // DEC-557 (wave 69 amendment): widened to match the server's Conflict
+  // union (src/domain/schedule.ts) after break_overlap started flowing
+  // through OverviewPayloadV2's agendaWork.conflicts — a compile-only
+  // widening, no render behavior change in this task's scope.
+  kind: 'room_overlap' | 'speaker_overlap' | 'break_overlap';
   entries: AgendaConflictEntry[];
   resolution: ConflictResolution | null;
 }
