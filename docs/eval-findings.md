@@ -123,7 +123,11 @@ this figure to the real submissions LIST (status pills + bulk status change,
 which the surrounding prose can describe truthfully) or move board prose to a
 contacts article. Every OTHER caption was checked against real screens and is
 shootable: overview / portal tasks / portal profile / form builder with field
-settings open / reviewer queue / recusal. The shoot script lands at
+settings open / reviewer queue / recusal. ONE caption drift within a real
+screen (fix wording, not the shot): reviewer-queue caption claims rows show
+"how many ratings it has so far · fewest at the top" — the screen actually
+shows the reviewer's OWN scored/not-scored status per row. Say what the
+screen says. The shoot script lands at
 scripts/docs-shots.mjs (orchestrator) — wire its output dir to however the
 shell serves shotIds.
 
