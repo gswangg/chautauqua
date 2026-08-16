@@ -233,7 +233,7 @@ const KNOWN_SWALLOWS: { file: string; marker: string; reason: string }[] = [
     file: 'app/src/pages/Comms.tsx',
     marker: '/templates`',
     reason:
-      'templatesById courtesy annotation (DEC-518 wave-43 amendment, left alone this wave): the template label is a courtesy annotation on an already-shown send record, not the record itself -- a failure to load the template list must not block or blank either Recent Sends mount.',
+      'templatesById courtesy annotation (DEC-518 wave-43 amendment): the template label is a courtesy annotation on an already-shown send record, not the record itself -- a failure to load the template list must not block or blank either Recent Sends mount.',
   },
   {
     file: 'app/src/pages/review/Scorecard.tsx',
