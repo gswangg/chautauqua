@@ -7,6 +7,7 @@ import { CONTENT_STATUSES, type ContentStatus } from "../files-content-status";
 import { DEC_078, DEC_843, DEC_417 } from "../../../decisions";
 import { clampPage, clampPerPage } from "../../../lib/pagination";
 import { boundedQueryString, MAX_SEARCH_QUERY_LENGTH, MAX_FILTER_ID_LENGTH } from "../../../lib/query-bounds";
+import { type SortOrder, SORT_ORDERS } from "../../../domain/submission-sort";
 
 void DEC_417; // wave-31 amendment: read-side q/trackId bounded, not just write-side field lengths
 
@@ -20,9 +21,11 @@ void DEC_078; // canonical chunk helper, re-exported here for existing importers
 // chunk of ids.
 export { chunkIds, ID_CHUNK_SIZE } from "../../../lib/chunk";
 
-export type SortOrder = "newest" | "oldest" | "title" | "ref" | "worklist";
-
-export const SORT_ORDERS: readonly SortOrder[] = ["newest", "oldest", "title", "ref", "worklist"];
+// Re-exported from the pure domain vocabulary (DEC-613 wave-68 amendment)
+// so every existing importer (list.ts, views.ts, submissions.ts barrel,
+// exports.ts) is untouched.
+export type { SortOrder };
+export { SORT_ORDERS };
 
 export interface ParsedListQuery {
   page: number;

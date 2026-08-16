@@ -1,6 +1,15 @@
 import type { ColumnDef } from './columns';
 import { ColumnPicker } from './ColumnPicker';
-import { SORT_ORDERS, STATUS_LABELS, SUBMISSION_STATUSES, type SortOrder, type SubmissionsFilterState, type SubmissionStatus, type Track } from './types';
+import { STATUS_LABELS, SUBMISSION_STATUSES, type SortOrder, type SubmissionsFilterState, type SubmissionStatus, type Track } from './types';
+
+// The submissions page's own sort <select> offers a NAMED subset of the full
+// SortOrder vocabulary (DEC-613 wave-68 amendment): 'worklist' is the
+// content app's server-side ordering (ContentApp.tsx sends sort=worklist)
+// and is never offered here — an organiser picking a sort on this page has
+// no reason to choose it, and no code path on this page ever sets it. A
+// saved view or URL may still carry 'worklist'; sortLabel below stays TOTAL
+// over the full set so that case still renders a real label.
+export const PICKABLE_SORT_ORDERS: readonly SortOrder[] = ['newest', 'oldest', 'title', 'ref'];
 
 interface FilterBarSearchSortProps {
   filters: SubmissionsFilterState;
@@ -27,7 +36,7 @@ export function FilterBarSearchSort({ filters, onChange }: FilterBarSearchSortPr
         value={filters.sort}
         onChange={(e) => onChange({ ...filters, sort: e.target.value as SortOrder, page: 1 })}
       >
-        {SORT_ORDERS.map((sort) => (
+        {PICKABLE_SORT_ORDERS.map((sort) => (
           <option key={sort} value={sort}>
             {sortLabel(sort)}
           </option>
@@ -95,6 +104,10 @@ export function FilterBar({ filters, tracks, columns, visibleFieldIds, onChange,
   );
 }
 
+// TOTAL over the full SortOrder set (DEC-613 wave-68 amendment), including
+// 'worklist' — never just the PICKABLE_SORT_ORDERS subset — so a saved view
+// or URL carrying a sort this page doesn't offer in its own <select> still
+// renders a real label instead of a blank option.
 export function sortLabel(sort: SortOrder): string {
   switch (sort) {
     case 'newest':
@@ -105,5 +118,7 @@ export function sortLabel(sort: SortOrder): string {
       return 'Title A-Z';
     case 'ref':
       return 'Reference #';
+    case 'worklist':
+      return 'Worklist order';
   }
 }
