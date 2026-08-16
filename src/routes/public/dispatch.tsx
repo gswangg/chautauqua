@@ -254,6 +254,7 @@ export async function renderSurfaceContent(
             highlightTrackId={highlightTrackId}
             q={q}
             breaksByDay={breaksByDay}
+            accent={query.accent ?? null}
           />
         ),
       };
@@ -295,6 +296,7 @@ export async function renderSurfaceContent(
             highlightTrackId={highlightTrackId}
             q={q}
             breaksByDay={breaksByDay}
+            accent={query.accent ?? null}
           />
         ),
       };
