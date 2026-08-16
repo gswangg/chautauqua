@@ -30,6 +30,35 @@ export async function getEventFieldIdByRole(db: Db, eventId: string, role: FormF
   return rows[0]?.id ?? null;
 }
 
+/** DEC-592 (Amendment, wave 80): the ONE resolver for a role-tagged
+ * submission_answer's stored value -- session_format and audience_level are
+ * both single-select dropdown answers whose value_json is either a JSON
+ * string (the chosen option's label) or one of the "no real answer"
+ * shapes: '""' (stored empty string), 'null', a number, an array, or an
+ * object. A non-empty JSON string is the label; every other shape is null.
+ *
+ * Deliberately NOT src/domain/answer-text.ts's grammar (DEC-561): that
+ * module renders an arbitrary CFP custom-answer for display or export
+ * (joins arrays, renders booleans as Yes/No or true/false). A role answer
+ * is never a list, never a boolean rendered as text -- it is a stored
+ * label or nothing. The two resolvers must never be conflated into one. */
+export function roleAnswerLabel(valueJson: string): string | null {
+  const parsed: unknown = JSON.parse(valueJson);
+  return typeof parsed === "string" && parsed.length > 0 ? parsed : null;
+}
+
+/** Batched form of roleAnswerLabel, keyed by submissionId -- the shared
+ * shape every caller (overview, review queue, scorecard, public sessions,
+ * portal submissions/data, agenda rows) collects role-tagged answer rows
+ * into. */
+export function roleAnswerMap(rows: readonly { submissionId: string; valueJson: string }[]): Map<string, string | null> {
+  const map = new Map<string, string | null>();
+  for (const row of rows) {
+    map.set(row.submissionId, roleAnswerLabel(row.valueJson));
+  }
+  return map;
+}
+
 /** The role-tagged field's dropdown options on the event's default form.
  * Null when the event's form has no field of that role; `[]` when it has
  * one with no options defined. */

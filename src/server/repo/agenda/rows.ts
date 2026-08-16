@@ -9,7 +9,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
 import { chunkIds } from "../../../lib/chunk";
-import { answerFieldRoleCondition } from "../form-roles";
+import { answerFieldRoleCondition, roleAnswerMap } from "../form-roles";
 import { ApiError } from "../../http";
 import { parseFormatDurationMin } from "../../../domain/schedule";
 import type { AgendaSpeaker } from "./types";
@@ -314,11 +314,7 @@ export async function loadDurationMinBySubmission(
     formatRows.push(...batchRows);
   }
 
-  const formatBySubmission = new Map<string, string | null>();
-  for (const r of formatRows) {
-    const parsed: unknown = JSON.parse(r.valueJson);
-    formatBySubmission.set(r.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
-  }
+  const formatBySubmission = roleAnswerMap(formatRows);
 
   for (const id of submissionIds) {
     const label = formatBySubmission.get(id) ?? null;

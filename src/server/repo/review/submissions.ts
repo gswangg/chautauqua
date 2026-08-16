@@ -7,7 +7,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef, parseRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
-import { answerFieldRoleCondition } from "../form-roles";
+import { answerFieldRoleCondition, roleAnswerLabel } from "../form-roles";
 import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
 import type { PlanRecord } from "./plans";
@@ -855,8 +855,7 @@ export async function listFormatLabelsBySubmission(db: Db, submissionIds: string
   );
   for (const rows of batches) {
     for (const row of rows) {
-      const parsed: unknown = JSON.parse(row.valueJson);
-      map.set(row.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
+      map.set(row.submissionId, roleAnswerLabel(row.valueJson));
     }
   }
   return map;
@@ -897,8 +896,7 @@ export async function listAudienceLevelLabelsBySubmission(
   );
   for (const rows of batches) {
     for (const row of rows) {
-      const parsed: unknown = JSON.parse(row.valueJson);
-      map.set(row.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
+      map.set(row.submissionId, roleAnswerLabel(row.valueJson));
     }
   }
   return map;

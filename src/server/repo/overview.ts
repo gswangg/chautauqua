@@ -25,7 +25,7 @@ import * as schema from "../../db/schema";
 import { findConflicts, parseFormatDurationMin, type BlockedInterval, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
-import { answerFieldRoleCondition } from "./form-roles";
+import { answerFieldRoleCondition, roleAnswerMap } from "./form-roles";
 import { loadTrackNamesBySubmission } from "./submission-tracks";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS, MAX_AGENDA_SCAN } from "./agenda";
 import { listBreaksForEvent } from "./breaks";
@@ -548,11 +548,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
   // function makes — reused here for the §04 nextFreeSlot suggestion calls
   // so a "Place at HH:MM"/"Move REF to HH:MM" suggestion never names a
   // break window, with no second breaks query.
-  const formatLabelByUnplacedId = new Map<string, string | null>();
-  for (const r of formatAnswerRows) {
-    const parsed: unknown = JSON.parse(r.valueJson);
-    formatLabelByUnplacedId.set(r.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
-  }
+  const formatLabelByUnplacedId = roleAnswerMap(formatAnswerRows);
 
   const triageQueue = {
     total: triage.pending,
