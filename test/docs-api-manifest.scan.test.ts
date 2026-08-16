@@ -37,10 +37,6 @@ function normalizePath(path: string): string {
     .replace(/:([A-Za-z0-9_]+)(\{[^}]*\})?/g, ":param");
 }
 
-interface LiveKeyed {
-  key: string;
-}
-
 function toLiveKeys(live: { method: string; path: string }[]): Set<string> {
   return new Set(live.map((r) => `${r.method} ${normalizePath(r.path)}`));
 }

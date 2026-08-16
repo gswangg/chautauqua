@@ -1,17 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { tokenizeContactQuery, type ContactRecord } from "../src/domain/contacts";
+import { tokenizeContactQuery } from "../src/domain/contacts";
 import { listContactsForOrg } from "../src/server/repo/contacts";
 import { likeContains } from "../src/server/repo/like";
 import type { AppEnv } from "../src/server/env";
-
-function contact(overrides: Partial<ContactRecord> & { id: string }): ContactRecord {
-  return {
-    email: "",
-    firstName: "",
-    lastName: "",
-    ...overrides,
-  };
-}
 
 describe("tokenizeContactQuery (DEC-266)", () => {
   it("lowercases and splits on whitespace, dropping empties", () => {

@@ -416,7 +416,11 @@ describe('HistoryTab', () => {
 
       const allChip = screen.getByRole('button', { name: 'All sends' });
       const acceptanceChip = screen.getByRole('button', { name: 'Acceptance' });
-      const reminderChip = screen.getByRole('button', { name: 'Reminder' });
+      // NOTE (task w6-e, noUnusedLocals cleanup): a `reminderChip` query
+      // used to be captured here unused; it plausibly should also be
+      // asserted `aria-pressed=false` alongside acceptanceChip below --
+      // not added here since inventing that assertion is outside this
+      // task's scope.
       expect(allChip).toHaveAttribute('aria-pressed', 'true');
       expect(acceptanceChip).toHaveAttribute('aria-pressed', 'false');
 

@@ -287,7 +287,6 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     let checkedAtLeastOne = false;
 
     for (const path of PAGE_TSX_FILES) {
-      const label = relative(PAGES_ROOT, path);
       const fileName = path.split('/').pop() ?? '';
       const content = readFileSync(path, 'utf-8');
       const literals = chqPageStringLiterals(content);

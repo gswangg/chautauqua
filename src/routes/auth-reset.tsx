@@ -9,7 +9,6 @@ import { csrfForm } from "../server/middleware";
 import * as schema from "../db/schema";
 import { hashPassword } from "../auth/password";
 import { issueSessionRevokingAll } from "../server/auth-session";
-import { isSecureRequest } from "../auth/cookies";
 import { type KVStore } from "../auth/claim";
 import {
   createResetToken,

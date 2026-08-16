@@ -174,15 +174,6 @@ function InviteStatusChip({ status }: { status: InviteStatus }) {
   return <span className="chq-status-pill">{INVITE_STATUS_LABELS[status]}</span>;
 }
 
-// CNT-11 (DEC-158): session content version history.
-interface RevisionEntry {
-  id: string;
-  editorName: string;
-  title: string;
-  description: string | null;
-  createdAt: number;
-}
-
 // DEC-723: /submissions/:id/evaluations item, landed server-side by task
 // w2-a in this same batch. criteria[] carries the plan's rubric (label,
 // kind, weight) so a criterion's DISPLAY VALUE is always looked up by
@@ -425,10 +416,13 @@ export function SubmissionDetailPage() {
   }, [detail?.eventId]);
 
   // DEC-998: a direct `?edit=1` link (e.g. from the deliverable detail's
-  // 'Edit title and abstract' action) opens the editor prefilled exactly as
-  // startEditing does today, once detail has loaded -- the button click path
-  // still prefills synchronously via startEditing itself, so this effect is
-  // a no-op there (same values).
+  // 'Edit title and abstract' action) opens the editor prefilled by this
+  // effect once detail has loaded. In-page entry into edit mode is the
+  // same `?edit=1` URL param (set by the header's link, DEC-900 ruling
+  // A6) rather than a separate imperative click handler, so this effect
+  // is the ONE place editTitle/editDescription get prefilled (task w6-e,
+  // noUnusedLocals cleanup: removed the superseded `startEditing` helper
+  // that used to also do this synchronously on click).
   //
   // DEC-958 (wave 64 amendment): keyed on detail?.id + the edit flag, NOT
   // the whole `detail` object -- saveEdit's own optimistic-write/loud-
@@ -512,18 +506,6 @@ export function SubmissionDetailPage() {
     } finally {
       setStatusPending(false);
     }
-  }
-
-  function startEditing() {
-    if (!detail) return;
-    setEditTitle(detail.title);
-    setEditDescription(detail.description ?? '');
-    setEditFieldErrors({});
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      params.set('edit', '1');
-      return params;
-    });
   }
 
   function closeEditing() {

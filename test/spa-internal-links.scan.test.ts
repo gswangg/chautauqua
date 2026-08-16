@@ -46,10 +46,6 @@ function walk(dir: string): string[] {
   return out;
 }
 
-function relPath(absPath: string): string {
-  return relative(ROOT, absPath).split("\\").join("/");
-}
-
 // Matches a string-literal href attribute: href="/..." or href='/...'.
 // Deliberately does NOT match template-literal hrefs (href={`/...`}) --
 // those are still a literal same-origin JSX `<a>` attribute in spirit, but

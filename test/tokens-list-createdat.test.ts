@@ -6,7 +6,7 @@
 // test/cross-org-event-scope-probe.test.ts (DatabaseSync + drizzle
 // sqlite-proxy against DDL concatenated from every migrations/*.sql file).
 
-import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { describe, expect, it, afterAll } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";

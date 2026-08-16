@@ -6,6 +6,7 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",

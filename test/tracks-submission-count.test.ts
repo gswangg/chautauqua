@@ -103,7 +103,11 @@ function track(id: string, position: number): FakeTrackRow {
 
 describe("DEC-916: listTracksForEvent submissionCount", () => {
   it("returns 0 for a track with no submissions, 1 for a track with one, N for a track with N", async () => {
-    const { db, callCount } = makeFakeDb({
+    // NOTE (task w6-e, noUnusedLocals cleanup): `callCount` used to be
+    // destructured here unused; the sibling test below asserts it stays
+    // flat, this one doesn't need to. Not adding an assertion here since
+    // inventing one is outside this task's scope.
+    const { db } = makeFakeDb({
       eventId: EVENT_ID,
       tracks: [track("trk-zero", 0), track("trk-one", 1), track("trk-many", 2)],
       submissions: [

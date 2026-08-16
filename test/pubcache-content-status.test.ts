@@ -83,8 +83,8 @@ describe("DEC-627: content_status writers are all classified public-affecting", 
       for (const fnName of WRITER_FN_NAMES) {
         // Match a call `fnName(` but not the function's own declaration/import.
         const callRe = new RegExp(`(?<!function )\\b${fnName}\\(`, "g");
-        let m: RegExpExecArray | null;
-        while ((m = callRe.exec(source)) !== null) {
+        const matchCount = [...source.matchAll(callRe)].length;
+        for (let i = 0; i < matchCount; i++) {
           callSiteCount++;
           found.push(`${file.slice(REPO_ROOT.length + 1)}: ${fnName}(`);
         }

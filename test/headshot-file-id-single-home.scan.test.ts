@@ -103,7 +103,6 @@ describe("headshot file id has one home (DEC-773 amendment, w32-e)", () => {
 // semantics identical to the old unindexed headshotUrl equality.
 
 type FileRow = { id: string; kind: string; r2Key: string; contentType: string };
-type ContactRow = { id: string; orgId: string; headshotFileId: string | null };
 
 // Same fakeDb shape as test/headshot-gate.test.ts: three sequential select()
 // calls per getHeadshotServeScope invocation (file row, reverse contact

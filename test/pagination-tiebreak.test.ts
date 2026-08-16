@@ -28,7 +28,6 @@ import { globSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
-const REPO_DIR = path.join(REPO_ROOT, "src", "server", "repo");
 
 /** All repo-layer source files, globbed fresh on every run. */
 const REPO_FILES: string[] = globSync("src/server/repo/**/*.ts", { cwd: REPO_ROOT }).sort();

@@ -11,7 +11,7 @@ import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MergePage } from './MergePage';
-import { mockApi, listEnvelope } from '../../test-utils/mockApi';
+import { mockApi } from '../../test-utils/mockApi';
 
 // DEC-992: createdAt (epoch ms) rides along on every contact -- 1 Jan 2024
 // and 15 Jun 2024, both in the past so formatDate always appends the year.

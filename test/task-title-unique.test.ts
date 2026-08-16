@@ -18,7 +18,6 @@ import * as schema from "../src/db/schema";
 import { createTask, updateTask } from "../src/server/repo/tasks/crud";
 import { ensureOnboardingTasks } from "../src/server/repo/submissions/status";
 import { ApiError } from "../src/server/http";
-import { newId } from "../src/domain/ids";
 import type { Db } from "../src/server/context";
 
 const DDL = `

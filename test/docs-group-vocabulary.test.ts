@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { resolve, dirname, join, relative } from "node:path";
+import { resolve, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DOCS_GROUPS } from "../src/routes/docs-content/types";
 import { DOCS_GROUP_META, DOCS_API_LEAVING_LINK } from "../src/routes/docs-content/groups";

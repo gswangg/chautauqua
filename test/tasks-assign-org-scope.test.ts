@@ -12,7 +12,6 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { ContactRow } from "../src/server/repo/contacts";
 
 const ORG_A = "org-a";
-const ORG_B = "org-b";
 const TASK_ID = "task-1";
 const EVENT_ID = "event-1";
 

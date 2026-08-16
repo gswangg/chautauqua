@@ -9,7 +9,6 @@
 
 import { describe, expect, it } from "vitest";
 import { dayOutsideEventRangeCondition, isDayWithinEventRange } from "../src/server/repo/agenda";
-import * as schema from "../src/db/schema";
 
 /** Evaluates a drizzle SQL condition tree built from and/or/lt/gt over the
  * schedule_slot.day column against a single candidate day, by walking the

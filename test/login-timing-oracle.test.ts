@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { hashPassword, verifyPassword, DUMMY_PASSWORD_HASH } from "../src/auth/password";
-import { CSRF_COOKIE_NAME, newCsrfToken } from "../src/auth/cookies";
+import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
 import { authRoutes } from "../src/routes/auth";
 import { registerErrorHandler } from "../src/server/http";
 import * as schema from "../src/db/schema";
