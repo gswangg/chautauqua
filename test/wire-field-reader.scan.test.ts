@@ -284,12 +284,6 @@ interface LedgerEntry {
 
 const LEDGER: LedgerEntry[] = [
   {
-    key: 'app/src/pages/review/types.ts#ResultsRow.perDropdown',
-    verdict: 'exempt',
-    reason:
-      "population scope boundary, not a schedule: this task's own mandate names perDropdown as out of scope because a sibling task in this wave owns wiring ResultsTable.tsx's Choice-criterion distribution display end to end -- asserting a reader for it here would race that task's own edit to the same component rather than report anything this scan can settle.",
-  },
-  {
     key: 'app/src/pages/review/types.ts#ResultsRow.perCriterion',
     verdict: 'exempt',
     reason:

@@ -477,6 +477,22 @@
   white-space: pre-wrap;
 }
 
+/* --- start w3-c/DEC-241 block: dropdown (Choice) distribution row -------- */
+/* Kept in its own clearly-marked block since review.css is also edited by
+   this batch's Scorecard task -- do not interleave rules across the two
+   blocks. */
+.chq-review-dropdown-distribution-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+
+.chq-review-dropdown-distribution-item {
+  color: var(--chq-ink);
+}
+/* --- end w3-c/DEC-241 block ---------------------------------------------- */
+
 /* ---------------------------------------------------------------------- */
 /* Reviewer queue + scorecard                                              */
 /* ---------------------------------------------------------------------- */
