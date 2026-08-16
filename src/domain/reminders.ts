@@ -45,6 +45,16 @@ export interface PlanRemindersInput {
   timeZone: string;
 }
 
+/** DEC-023 (wave-9 amendment): planManualReminders never reads
+ * eventEndsAt/timeZone — remind-now deliberately ignores the cron's
+ * terminal/timezone-expanded due-window gate (see planManualReminders'
+ * own doc comment) — so its input type only declares what it actually
+ * reads, instead of PlanRemindersInput's full cron-shaped surface. */
+export interface ManualReminderInput {
+  assignments: ReminderAssignment[];
+  now: number;
+}
+
 export interface ReminderGroup {
   contactId: string;
   assignments: ReminderAssignment[];
@@ -171,7 +181,7 @@ export function capReminderGroups<T extends { contactId: string }>(
  * lastRemindedAt falls within MANUAL_DEDUPE_WINDOW_MS of `now` (counted in
  * `skipped`), then applies capReminderGroups.
  */
-export function planManualReminders(input: PlanRemindersInput): {
+export function planManualReminders(input: ManualReminderInput): {
   groups: ReminderGroup[];
   skipped: number;
   remaining: number;

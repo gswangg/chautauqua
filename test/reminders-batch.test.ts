@@ -73,7 +73,7 @@ describe("planManualReminders (DEC-319)", () => {
     const assignments: ReminderAssignment[] = Array.from({ length: 250 }, (_, i) =>
       assignment({ assignmentId: `a${i}`, contactId: contactId(i + 1) }),
     );
-    const result = planManualReminders({ assignments, now: NOW, eventEndsAt: null, timeZone: "UTC" });
+    const result = planManualReminders({ assignments, now: NOW });
     expect(result.groups).toHaveLength(100);
     expect(result.remaining).toBe(150);
     expect(result.skipped).toBe(0);
@@ -89,7 +89,7 @@ describe("planManualReminders (DEC-319)", () => {
       assignment({ assignmentId: "a1", contactId: "c1", dueDate: NOW + 200 * HOUR }),
       assignment({ assignmentId: "a2", contactId: "c1", dueDate: null, taskId: "t2" }),
     ];
-    const result = planManualReminders({ assignments, now: NOW, eventEndsAt: null, timeZone: "UTC" });
+    const result = planManualReminders({ assignments, now: NOW });
     expect(result.groups).toHaveLength(1);
     expect(result.groups[0]?.assignments.map((a) => a.assignmentId).sort()).toEqual(["a1", "a2"]);
   });
@@ -98,7 +98,7 @@ describe("planManualReminders (DEC-319)", () => {
     const assignments: ReminderAssignment[] = [
       assignment({ assignmentId: "a1", contactId: "c1", lastRemindedAt: NOW - 10 * MINUTE }),
     ];
-    const result = planManualReminders({ assignments, now: NOW, eventEndsAt: null, timeZone: "UTC" });
+    const result = planManualReminders({ assignments, now: NOW });
     expect(result.groups).toEqual([]);
     expect(result.skipped).toBe(1);
     expect(result.remaining).toBe(0);
@@ -108,7 +108,7 @@ describe("planManualReminders (DEC-319)", () => {
     const assignments: ReminderAssignment[] = [
       assignment({ assignmentId: "a1", contactId: "c1", lastRemindedAt: NOW - 90 * MINUTE }),
     ];
-    const result = planManualReminders({ assignments, now: NOW, eventEndsAt: null, timeZone: "UTC" });
+    const result = planManualReminders({ assignments, now: NOW });
     expect(result.groups).toHaveLength(1);
     expect(result.skipped).toBe(0);
   });
@@ -118,7 +118,7 @@ describe("planManualReminders (DEC-319)", () => {
       assignment({ assignmentId: "a1", contactId: "c1", lastRemindedAt: NOW - 90 * MINUTE }),
       assignment({ assignmentId: "a2", contactId: "c1", lastRemindedAt: NOW - 10 * MINUTE, taskId: "t2" }),
     ];
-    const result = planManualReminders({ assignments, now: NOW, eventEndsAt: null, timeZone: "UTC" });
+    const result = planManualReminders({ assignments, now: NOW });
     // most recent reminder (10 min ago) is within the dedupe window, so skip
     expect(result.groups).toEqual([]);
     expect(result.skipped).toBe(1);
@@ -128,7 +128,7 @@ describe("planManualReminders (DEC-319)", () => {
     const assignments: ReminderAssignment[] = [
       assignment({ assignmentId: "a1", contactId: "c1", status: "complete" }),
     ];
-    const result = planManualReminders({ assignments, now: NOW, eventEndsAt: null, timeZone: "UTC" });
+    const result = planManualReminders({ assignments, now: NOW });
     expect(result.groups).toEqual([]);
     expect(result.skipped).toBe(0);
   });
@@ -137,7 +137,7 @@ describe("planManualReminders (DEC-319)", () => {
     const assignments: ReminderAssignment[] = [
       assignment({ assignmentId: "a1", contactId: "c1", lastRemindedAt: NOW - MANUAL_DEDUPE_WINDOW_MS }),
     ];
-    const result = planManualReminders({ assignments, now: NOW, eventEndsAt: null, timeZone: "UTC" });
+    const result = planManualReminders({ assignments, now: NOW });
     expect(result.groups).toHaveLength(1);
     expect(result.skipped).toBe(0);
   });

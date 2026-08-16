@@ -335,16 +335,16 @@ function toReminderAssignment(r: OutstandingRow): ReminderAssignment {
  * preview draft is always byte-identical to what a send would produce. */
 export function buildReminderMessage(
   eventName: string,
-  eventTimezone: string,
   assignments: ReminderAssignment[],
   portalLink: string,
 ): { subject: string; text: string } {
   const header = renderTemplate("You have outstanding tasks for {event_name}:", {
     event_name: eventName,
   });
-  // DEC-564/DEC-792: shared task-line renderer — eventTimezone is unused
-  // here (dueDate is a DEC-522 calendar day, not an instant); kept in the
-  // signature since callers still use it for other purposes.
+  // DEC-564/DEC-792: shared task-line renderer — dueDate is a DEC-522
+  // calendar day, not an instant, so no timezone is needed to render it
+  // (wave-9 amendment: the dead eventTimezone parameter this comment used
+  // to justify keeping was removed instead — DEC-851/DEC-988 class).
   const taskLines = formatTaskLines(assignments);
   // DEC-559: append the portal link through the same renderTemplate
   // '{portal_link}' idiom the CFP confirmation email uses (submit.tsx).
@@ -384,7 +384,6 @@ async function sendReminderEmails(
   mailer: Mailer,
   eventId: string,
   eventName: string,
-  eventTimezone: string,
   groups: { contactId: string; assignments: ReminderAssignment[] }[],
   outstandingByContact: Map<string, OutstandingRow[]>,
   now: Date,
@@ -492,12 +491,7 @@ async function sendReminderEmails(
   // toRelease below reconstruct exactly what the old sequential loop
   // produced.
   const results = await mapWithConcurrency(sendable, MAIL_FANOUT_CONCURRENCY, async ({ group, first, portalLink }) => {
-    const { subject, text: reminderText } = buildReminderMessage(
-      eventName,
-      eventTimezone,
-      group.assignments,
-      portalLink,
-    );
+    const { subject, text: reminderText } = buildReminderMessage(eventName, group.assignments, portalLink);
     await mailer.send({
       to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
       subject,
@@ -575,7 +569,6 @@ export async function remindNow(
     return { sent: 0, failed: [], skipped: chosen.skipped, remaining: chosen.remaining };
   }
   const eventName = outstanding[0]?.eventName ?? "";
-  const eventTimezone = outstanding[0]?.timezone ?? "";
 
   const outstandingByContact = new Map<string, OutstandingRow[]>();
   for (const r of outstanding) {
@@ -592,8 +585,6 @@ export async function remindNow(
   const plan = planManualReminders({
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
-    eventEndsAt: null,
-    timeZone: eventTimezone,
   });
   if (plan.groups.length === 0) {
     return { sent: 0, failed: [], skipped: chosen.skipped, remaining: chosen.remaining };
@@ -604,7 +595,6 @@ export async function remindNow(
     mailer,
     eventId,
     eventName,
-    eventTimezone,
     plan.groups,
     outstandingByContact,
     now,
@@ -646,7 +636,6 @@ export async function previewRemindNow(
   const outstanding = await listOutstandingForEvent(db, eventId, taskIds, chosen.contactIds);
   if (outstanding.length === 0) return { drafts: [], skipped: chosen.skipped, remaining: chosen.remaining };
   const eventName = outstanding[0]?.eventName ?? "";
-  const eventTimezone = outstanding[0]?.timezone ?? "";
 
   const outstandingByContact = new Map<string, OutstandingRow[]>();
   for (const r of outstanding) {
@@ -659,8 +648,6 @@ export async function previewRemindNow(
   const plan = planManualReminders({
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
-    eventEndsAt: null,
-    timeZone: eventTimezone,
   });
 
   // DEC-530/DEC-397: batched account lookup, then a preview never mints a
@@ -693,7 +680,7 @@ export async function previewRemindNow(
     if (!first) continue;
     const portalLink = portalLinkMap.get(group.contactId);
     if (!portalLink) throw new Error(`no portal link resolved for contactId ${group.contactId}`);
-    const { subject, text } = buildReminderMessage(eventName, eventTimezone, group.assignments, portalLink);
+    const { subject, text } = buildReminderMessage(eventName, group.assignments, portalLink);
     drafts.push({
       contactId: group.contactId,
       email: first.email,
@@ -829,7 +816,6 @@ export async function sendDueRemindersForEvent(
     mailer,
     eventId,
     eventName,
-    eventTimezone,
     cappedGroups,
     outstandingByContact,
     now,

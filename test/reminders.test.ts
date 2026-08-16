@@ -158,8 +158,10 @@ describe("planManualReminders still overrides every window (DEC-319)", () => {
     ];
     // isReminderDue (the cron gate) would refuse this: far past the 7-day tail.
     expect(isReminderDue(assignments[0]!, NOW, null, TZ)).toBe(false);
-    // but the organizer's explicit "remind now" still surfaces it.
-    const result = planManualReminders({ assignments, now: NOW, eventEndsAt: null, timeZone: TZ });
+    // but the organizer's explicit "remind now" still surfaces it — note no
+    // timezone is passed at all: DEC-023 wave-9 amendment, planManualReminders
+    // never reads one (compile-level proof the dead parameter is gone).
+    const result = planManualReminders({ assignments, now: NOW });
     expect(result.groups).toHaveLength(1);
     expect(result.groups[0]?.assignments.map((a) => a.assignmentId)).toEqual(["ancient"]);
   });
@@ -167,7 +169,6 @@ describe("planManualReminders still overrides every window (DEC-319)", () => {
 
 describe("buildReminderMessage task line ordering (DEC-564)", () => {
   const eventName = "DevFlow Conf 2027";
-  const eventTimezone = "America/Los_Angeles";
   const portalLink = "https://events.example.com/portal";
 
   // Three assignments: one undated, two sharing a due date with different
@@ -178,8 +179,8 @@ describe("buildReminderMessage task line ordering (DEC-564)", () => {
   const dueEarlyB = assignment({ assignmentId: "a_early_b", taskTitle: "Alpha task", dueDate: NOW });
 
   it("renders task lines in the declared order regardless of input order", () => {
-    const forward = buildReminderMessage(eventName, eventTimezone, [undated, dueEarlyA, dueEarlyB], portalLink);
-    const reversed = buildReminderMessage(eventName, eventTimezone, [dueEarlyB, dueEarlyA, undated], portalLink);
+    const forward = buildReminderMessage(eventName, [undated, dueEarlyA, dueEarlyB], portalLink);
+    const reversed = buildReminderMessage(eventName, [dueEarlyB, dueEarlyA, undated], portalLink);
 
     expect(forward.text).toBe(reversed.text);
     expect(forward.subject).toBe(reversed.subject);
@@ -196,12 +197,12 @@ describe("buildReminderMessage task line ordering (DEC-564)", () => {
   it("does not mutate the caller's input array order", () => {
     const input = [undated, dueEarlyA, dueEarlyB];
     const before = input.map((a) => a.assignmentId);
-    buildReminderMessage(eventName, eventTimezone, input, portalLink);
+    buildReminderMessage(eventName, input, portalLink);
     expect(input.map((a) => a.assignmentId)).toEqual(before);
   });
 
   it("keeps the {portal_link} footer, subject, and signature unchanged by ordering", () => {
-    const forward = buildReminderMessage(eventName, eventTimezone, [undated, dueEarlyA, dueEarlyB], portalLink);
+    const forward = buildReminderMessage(eventName, [undated, dueEarlyA, dueEarlyB], portalLink);
     expect(forward.subject).toBe(`Action needed: outstanding tasks for ${eventName}`);
     expect(forward.text.endsWith(portalLink)).toBe(true);
   });
