@@ -1060,10 +1060,33 @@ async function seedOverflowEvent(organizerJar: CookieJar): Promise<string> {
 
 /** DEC-175: unauthenticated requests must be turned away at the door —
  * /admin redirects to /login, and JSON APIs (including the root-mounted
- * file-serving route) return 401 rather than leaking any data. */
-async function runAuthzProbes(): Promise<void> {
+ * file-serving route) return 401 rather than leaking any data.
+ *
+ * DEC-268 (wave 49): immediately after confirming the door is shut for an
+ * anonymous caller, confirm it actually opens for an authenticated one — the
+ * two server-booting CI jobs (perf-smoke, walkthrough) now build the admin
+ * SPA bundle first, and this assertion is what proves that bundle is really
+ * served (status, content-type, and the built shell's `id="root"` mount
+ * node from app/index.html) rather than throwing root.tsx's "Admin SPA
+ * bundle missing" internal error. */
+async function runAuthzProbes(organizerJar: CookieJar): Promise<void> {
   const adminRes = await fetch(`${BASE_URL}/admin`, { redirect: "manual" });
   assertStatus("DEC-175 unauthenticated GET /admin", adminRes, 302, await adminRes.text());
+
+  const adminAuthedRes = await jarFetch(organizerJar, `${BASE_URL}/admin`);
+  const adminAuthedBody = await adminAuthedRes.text();
+  assertStatus("DEC-268 authenticated GET /admin", adminAuthedRes, 200, adminAuthedBody);
+  const adminContentType = adminAuthedRes.headers.get("content-type") ?? "";
+  assertTrue(
+    "DEC-268 authenticated GET /admin is text/html",
+    adminContentType.includes("text/html"),
+    `content-type was "${adminContentType}"`,
+  );
+  assertTrue(
+    "DEC-268 authenticated GET /admin serves the built SPA shell",
+    adminAuthedBody.includes('id="root"'),
+    adminAuthedBody,
+  );
 
   const contactsRes = await fetch(`${BASE_URL}/api/v1/contacts`);
   assertStatus("DEC-175 unauthenticated GET /api/v1/contacts", contactsRes, 401, await contactsRes.text());
@@ -1119,8 +1142,8 @@ async function main(): Promise<void> {
 
   void newEventId;
 
-  console.log("Running DEC-175 authz probes (unauthenticated requests)...");
-  await runAuthzProbes();
+  console.log("Running DEC-175 authz probes (unauthenticated requests) + DEC-268 admin SPA render...");
+  await runAuthzProbes(organizerJar);
   console.log("  ok");
 
   console.log("");
