@@ -82,3 +82,94 @@ describe('DEC-941: every apiDelete(...) call site imports ConfirmDialog (or is a
     expect(API_DELETE_CALL.test("import { apiDelete, apiPost } from '../../lib/api';")).toBe(false);
   });
 });
+
+// DEC-941 (wave 60 amendment): a scan asserting a delete is GUARDED by
+// ConfirmDialog says nothing about whether the guard can ever OPEN.
+// `ViewTabs.tsx` had `pendingDelete && <ConfirmDialog ... />` with
+// `setPendingDelete` called at exactly two sites, both passing `null` --
+// the dialog above passed every prior scan while being permanently dead.
+// This DEAD-CONFIRM check finds every `pendingX &&`/`pendingX ?` gate
+// directly in front of a `<ConfirmDialog` render and requires the SAME
+// file to also call `setPendingX(` with an argument that is not the
+// literal `null` -- i.e. somewhere the state actually gets ARMED, not just
+// disarmed.
+const GATE_AND = /\b(pending\w*)\s*&&\s*\(?\s*<ConfirmDialog/g;
+const GATE_TERNARY = /\b(pending\w*)\s*\?\s*\(?\s*<ConfirmDialog/g;
+
+function findConfirmDialogGateNames(source: string): string[] {
+  const names = new Set<string>();
+  for (const re of [GATE_AND, GATE_TERNARY]) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(source))) {
+      names.add(m[1] as string);
+    }
+  }
+  return [...names];
+}
+
+function hasNonNullArmingCall(source: string, pendingName: string): boolean {
+  const setterName = `set${(pendingName[0] as string).toUpperCase()}${pendingName.slice(1)}`;
+  const callRe = new RegExp(`\\b${setterName}\\(\\s*([^)]*)\\)`, 'g');
+  let m: RegExpExecArray | null;
+  while ((m = callRe.exec(source))) {
+    if ((m[1] as string).trim() !== 'null') return true;
+  }
+  return false;
+}
+
+describe('DEC-941 (wave 60): every pendingX-gated <ConfirmDialog can actually be armed', () => {
+  it('every file with a `pendingX && <ConfirmDialog` / `pendingX ? <ConfirmDialog` gate also calls setPendingX(...) with a non-null argument', () => {
+    const offenders: string[] = [];
+    for (const file of walkSourceFiles(APP_SRC)) {
+      const relPath = relative(APP_SRC, file);
+      const source = readFileSync(file, 'utf8');
+      if (!source.includes('<ConfirmDialog')) continue;
+      for (const name of findConfirmDialogGateNames(source)) {
+        if (!hasNonNullArmingCall(source, name)) {
+          offenders.push(`${relPath}:${name}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  // Negative control: a gate whose setter is ONLY ever called with `null`
+  // (the exact shape the pre-fix ViewTabs.tsx had) must be flagged.
+  it('flags a pendingX gate whose setter is only ever called with null (negative control)', () => {
+    const fixture = `
+      const [pendingDelete, setPendingDelete] = useState(null);
+      function dismiss() { setPendingDelete(null); }
+      return (
+        <div>
+          {pendingDelete && (
+            <ConfirmDialog onConfirm={confirmDelete} onCancel={() => setPendingDelete(null)} />
+          )}
+        </div>
+      );
+    `;
+    const gates = findConfirmDialogGateNames(fixture);
+    expect(gates).toEqual(['pendingDelete']);
+    expect(hasNonNullArmingCall(fixture, 'pendingDelete')).toBe(false);
+  });
+
+  // Positive control: a gate armed by a real setter call (the fixed shape)
+  // must NOT be flagged -- proves the matcher isn't just failing everything.
+  it('does not flag a properly armed pendingX gate (positive control)', () => {
+    const fixture = `
+      const [pendingDelete, setPendingDelete] = useState(null);
+      function openFor(view) { setPendingDelete(view); }
+      return (
+        <div>
+          <button onClick={() => setPendingDelete(view)}>Delete</button>
+          {pendingDelete && (
+            <ConfirmDialog onConfirm={confirmDelete} onCancel={() => setPendingDelete(null)} />
+          )}
+        </div>
+      );
+    `;
+    const gates = findConfirmDialogGateNames(fixture);
+    expect(gates).toEqual(['pendingDelete']);
+    expect(hasNonNullArmingCall(fixture, 'pendingDelete')).toBe(true);
+  });
+});

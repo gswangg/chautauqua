@@ -428,6 +428,12 @@
   color: var(--chq-muted);
 }
 
+/* DEC-941: per-view delete affordance inside the tab item, sized down to
+   match the private-view micro-label it usually sits next to. */
+.chq-submissions-viewtabs-delete {
+  font-size: 11px;
+}
+
 /* Phone-only per-row triage action group (DEC-610): a row awaiting triage
    (status 'pending') gets an Accept/Decline/Waitlist group in its own cell.
    Hidden above 700px -- desktop triage happens via the bulk-action bar

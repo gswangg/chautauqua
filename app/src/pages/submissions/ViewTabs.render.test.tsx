@@ -1,6 +1,6 @@
-// DEC-941/w41-j: deleting a saved view is irreversible; the view tab row
-// itself no longer carries a delete (x) control (frame 00 has none) -- a
-// saved-view tab just names and applies its filter/column config.
+// DEC-941: deleting a saved view is gated behind the shared ConfirmDialog
+// rather than firing on click. Each saved-view tab item carries a named
+// delete affordance (never a bare icon) alongside the apply button.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -38,8 +38,21 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
 });
 
+function otherSavedView() {
+  return {
+    id: 'view-2',
+    eventId: EVENT_ID,
+    name: 'Waitlist',
+    config: { q: '', status: ['waitlist'], trackId: null, sort: 'newest', columns: [] },
+    createdByUserId: 'user-1',
+    shared: false,
+    createdAt: 1700000001000,
+    updatedAt: 1700000001000,
+  };
+}
+
 describe('ViewTabs (DEC-941)', () => {
-  it('renders a saved view tab with no delete (x) control', async () => {
+  it('renders a saved view tab with a named delete affordance', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([savedView()]),
     });
@@ -56,7 +69,71 @@ describe('ViewTabs (DEC-941)', () => {
     );
 
     expect(await screen.findByRole('button', { name: 'AI track, unread' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Delete AI track, unread' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete view AI track, unread' })).toBeInTheDocument();
+  });
+
+  it('deletes a saved view after confirming, leaving the other view in place', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([savedView(), otherSavedView()]),
+      'DELETE /api/v1/views/view-1': { status: 200, body: {} },
+    });
+
+    render(
+      <ViewTabs
+        eventId={EVENT_ID}
+        filters={DEFAULT_FILTER_STATE}
+        visibleFieldIds={new Set()}
+        tracks={[]}
+        formFields={[]}
+        onApply={() => {}}
+      />,
+    );
+
+    await screen.findByRole('button', { name: 'AI track, unread' });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete view AI track, unread' }));
+
+    expect(await screen.findByText(/Only the saved filter "AI track, unread" goes/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(await screen.findByRole('button', { name: 'Waitlist' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'AI track, unread' })).not.toBeInTheDocument();
+
+    const deleteCall = fetchMock.mock.calls.find(([input, init]) => {
+      const url = typeof input === 'string' ? input : (input as URL | Request).toString();
+      return url.includes('/api/v1/views/view-1') && (init as RequestInit | undefined)?.method === 'DELETE';
+    });
+    expect(deleteCall).toBeTruthy();
+  });
+
+  it('cancelling the delete confirm leaves the view in place and issues no request', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([savedView(), otherSavedView()]),
+    });
+
+    render(
+      <ViewTabs
+        eventId={EVENT_ID}
+        filters={DEFAULT_FILTER_STATE}
+        visibleFieldIds={new Set()}
+        tracks={[]}
+        formFields={[]}
+        onApply={() => {}}
+      />,
+    );
+
+    await screen.findByRole('button', { name: 'AI track, unread' });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete view AI track, unread' }));
+
+    expect(await screen.findByText(/Only the saved filter "AI track, unread" goes/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText(/Only the saved filter/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'AI track, unread' })).toBeInTheDocument();
+
+    const deleteCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE');
+    expect(deleteCall).toBeUndefined();
   });
 });
 
