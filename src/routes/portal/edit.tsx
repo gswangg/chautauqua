@@ -309,22 +309,22 @@ function ParticipantsSection(props: {
             side by side once there's room and wraps to a stack at the
             portal's narrower default/phone widths. */}
         <div class="chq-portal-copresenter-names">
-          <div>
+          <div class="chq-field">
             <label class="chq-portal-field-label" for="cp-first-name">
               First name
             </label>
-            <input id="cp-first-name" type="text" name="firstName" value={values?.firstName ?? ""} maxLength={MAX_NAME_LENGTH} />
+            <input id="cp-first-name" class="chq-input" type="text" name="firstName" value={values?.firstName ?? ""} maxLength={MAX_NAME_LENGTH} />
             {errors?.firstName ? (
               <p role="alert" class="chq-field-error">
                 {errors.firstName}
               </p>
             ) : null}
           </div>
-          <div>
+          <div class="chq-field">
             <label class="chq-portal-field-label" for="cp-last-name">
               Last name
             </label>
-            <input id="cp-last-name" type="text" name="lastName" value={values?.lastName ?? ""} maxLength={MAX_NAME_LENGTH} />
+            <input id="cp-last-name" class="chq-input" type="text" name="lastName" value={values?.lastName ?? ""} maxLength={MAX_NAME_LENGTH} />
             {errors?.lastName ? (
               <p role="alert" class="chq-field-error">
                 {errors.lastName}
@@ -336,11 +336,11 @@ function ParticipantsSection(props: {
             190px-wide role select once there's room, same intrinsic
             flex-wrap technique as the name pair above. */}
         <div class="chq-portal-copresenter-email-role">
-          <div>
+          <div class="chq-field">
             <label class="chq-portal-field-label" for="cp-email">
               Email
             </label>
-            <input id="cp-email" type="email" name="email" value={values?.email ?? ""} maxLength={MAX_TEXT_LENGTH} />
+            <input id="cp-email" class="chq-input" type="email" name="email" value={values?.email ?? ""} maxLength={MAX_TEXT_LENGTH} />
             {errors?.email ? (
               <p role="alert" class="chq-field-error">
                 {errors.email}
