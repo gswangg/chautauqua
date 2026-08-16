@@ -318,6 +318,14 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     color: var(--chq-on-brand);
     border-color: var(--chq-ink);
   }
+  /* DEC-383 (wave-66 amendment): anchor-qualified so it beats theme.ts's
+     a:not(.chq-btn):hover (0,2,1 > 0,2,0) -- the fill has no dedicated hover
+     token here, so hover simply holds the resting on-brand label on the
+     unchanged near-black fill instead of letting the generic rule darken
+     the label onto it. */
+  a.chq-pub-day-pill-active:hover {
+    color: var(--chq-on-brand);
+  }
 
   /* Itinerary (schedule surface, DEC-022 localStorage-driven -- class name
      ".chq-itinerary-toggle" itself is behavior-critical, read by inline JS

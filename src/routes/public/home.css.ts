@@ -46,6 +46,11 @@ export const HOME_CSS = `
   .chq-home-meta { font-size: 13px; color: var(--chq-muted); }
   .chq-home-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .chq-home-action-primary { background: var(--chq-brand); color: var(--chq-on-brand); border-radius: var(--chq-r-ctl); min-height: 48px; display: flex; align-items: center; padding: 0 20px; font-size: 15px; font-weight: 700; white-space: nowrap; text-decoration: none; }
+  /* DEC-383 (wave-66 amendment): anchor-qualified so it beats theme.ts's
+     a:not(.chq-btn):hover (0,2,1 > 0,2,0) -- the hover darkens the FILL to
+     --chq-brand-hover, the label stays --chq-on-brand, matching .chq-btn-primary's
+     own hover tier without adopting its geometry. */
+  a.chq-home-action-primary:hover { background: var(--chq-brand-hover); color: var(--chq-on-brand); }
   .chq-home-action-secondary { border: 1px solid var(--chq-border-strong); border-radius: var(--chq-r-ctl); background: var(--chq-surface-sunk); min-height: 46px; display: flex; align-items: center; padding: 0 18px; font-size: 14px; font-weight: 600; color: var(--chq-ink-strong); white-space: nowrap; text-decoration: none; }
   .chq-home-action-quiet { font-size: 13px; font-weight: 700; white-space: nowrap; display: flex; align-items: center; }
 
