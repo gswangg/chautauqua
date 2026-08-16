@@ -52,6 +52,11 @@
 // degrades an over-cap value to the same result as `undefined` — so an
 // overlong non-keyed param was already dropped, and an overlong keyed one
 // now keys identically to its absence rather than needing a bypass at all.
+//
+// DEC-083 wave-70 amendment (restated wave 72): PUBVER_KEY is ONE key for
+// the WHOLE INSTANCE, not per-event — see the doc comment directly above
+// PUBVER_KEY below for the blast-radius statement and the reason this is
+// deliberate at stage 1, not an oversight.
 
 import type { Context, Next } from "hono";
 import type { AppEnv } from "./env";
@@ -63,6 +68,25 @@ import { SESSION_COOKIE_NAME, parseCookies } from "../auth/cookies";
 
 void DEC_627;
 
+/** One version key for the WHOLE INSTANCE — not per-event, not per-org.
+ * `bumpIfMutating` (below) rewrites this single KV entry after ANY
+ * successful (status < 400) non-GET/HEAD/OPTIONS request whose path is
+ * NOT classified `never-public` (i.e. any request where
+ * `affectsPublicOutput` is true, on any event). So a producer dragging one
+ * agenda slot on event A cold-caches every `/e/*` and `/embed/*` page of
+ * every OTHER event and org on the instance — the next anonymous visitor
+ * to any of them pays a full origin render even though nothing on their
+ * page changed.
+ *
+ * This is DELIBERATE at stage 1, per DEC-083's wave-70 amendment (restated
+ * wave 72), not an oversight to fix opportunistically: per-event scoping
+ * would require a slug→event (and embedId→event) resolution on the
+ * anonymous read path this cache exists to protect — a D1 query added to
+ * the exact request the cache is there to avoid — or a new
+ * context-variable protocol threaded through ~40 mutating routes. The
+ * public surfaces measure 15-98ms COLD against a 150ms budget at 2,030
+ * submissions, so instance-wide over-purging costs only cache warmth, not
+ * the budget. Do not scope this key without re-opening DEC-083. */
 export const PUBVER_KEY = "chq:pubver";
 
 /** @cloudflare/workers-types doesn't declare `caches.default` (it's a
