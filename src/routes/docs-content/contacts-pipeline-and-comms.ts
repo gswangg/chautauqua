@@ -5,7 +5,7 @@ export const contactsPipelineAndComms: DocsArticle = {
   group: "your-contacts",
   title: "Your contacts: directory, pipeline and comms",
   standfirst:
-    "The contacts directory is org-wide and persists across events. A sourcing pipeline records possible speakers before they submit, a segment is a saved filter you can reuse, and a dedupe window stops accidental double sends when you compose.",
+    "One directory of people, shared by every event you run: this page covers the sourcing pipeline, saved segments, and the compose tools that send email without double sends.",
   blocks: [
     { kind: "heading", text: "The directory and an event roster" },
     {

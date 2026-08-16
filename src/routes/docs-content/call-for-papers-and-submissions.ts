@@ -5,7 +5,7 @@ export const callForPapersAndSubmissions: DocsArticle = {
   group: "running-an-event",
   title: "Call for papers and submissions",
   standfirst:
-    "You build the call-for-papers form and publish its link; submissions arrive as pending, triage moves each one toward a decision, and a decision never sends email on its own.",
+    "Everything from opening the call to deciding what gets in: the form builder, the submission link, and the triage pipeline that carries each submission from pending to a decision.",
   blocks: [
     { kind: "heading", text: "The form builder" },
     {
