@@ -413,6 +413,15 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const counts = grid?.counts ?? null;
   const visibleRows = grid?.rows ?? [];
   const total = grid?.total ?? 0;
+  // P3 #21 (DEC-678 amendment, wave 59): the taskId facet is a ROW predicate
+  // server-side (grid.ts:220-224) -- every surviving row still carries a
+  // cell for every task, so narrowing "shows nothing a reader can see"
+  // unless the SPA itself collapses the rendered columns to match. Only the
+  // COLUMNS collapse: grid.tasks stays untouched on the wire (the task
+  // picker in GridFilters reads grid.tasks directly, so it keeps offering
+  // every task while the filter is active), and clearing the facet
+  // (clearNarrowingFacets) restores visibleTasks to the full list.
+  const visibleTasks = filters.taskId ? grid?.tasks.filter((t) => t.id === filters.taskId) ?? [] : grid?.tasks ?? [];
   const rangeEnd = total === 0 ? 0 : Math.min(page * PER_PAGE, total);
 
   // DEC-265 amendment: the shared cell-status write both toggleCell (below)
@@ -855,7 +864,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
               <thead>
                 <tr>
                   <th>Speaker &middot; Participation</th>
-                  {grid.tasks.map((task) => (
+                  {visibleTasks.map((task) => (
                     <th key={task.id}>
                       {/* Ruling A12 (DEC-662 amendment, wave 25): ONE quiet
                           Edit control per column, on the same line as the
@@ -964,7 +973,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         <div className="chq-speakers-not-chasing">{notChasingMessage(notChased)}</div>
                       )}
                     </td>
-                    {grid.tasks.map((task) => (
+                    {visibleTasks.map((task) => (
                       <td key={task.id}>
                         <TaskCell
                           task={task}
@@ -1042,7 +1051,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                   )}
                 </div>
                 <div className="chq-speakers-card-tasks">
-                  {grid.tasks.map((task) => (
+                  {visibleTasks.map((task) => (
                     <div key={task.id} className="chq-speakers-card-task">
                       <span className="chq-speakers-card-task-label">{task.title}</span>
                       <TaskCell

@@ -1882,3 +1882,97 @@ describe('OnboardingGrid: DEC-829 amendment (w61-e) Remind only where something 
     expect(graceRow.getByRole('button', { name: 'Remind Grace' })).toBeInTheDocument();
   });
 });
+
+// P3 #21 (DEC-678 amendment, wave 59): the taskId facet is a ROW predicate
+// server-side -- every surviving row already carries a cell for every task,
+// so narrowing by one task must also collapse the rendered COLUMNS, or
+// "Showing N of N · task X" narrows nothing a reader can see. grid.tasks
+// itself is untouched (the task picker keeps offering every task).
+describe('OnboardingGrid: P3 #21 taskId narrowing collapses the rendered columns', () => {
+  const THREE_TASK_GRID: OnboardingGridResponse = {
+    tasks: [
+      { id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true },
+      { id: 'task-2', kind: 'general', title: 'Submit bio', dueDate: null, required: true },
+      { id: 'task-3', kind: 'general', title: 'Upload headshot', dueDate: null, required: false },
+    ],
+    rows: [
+      {
+        contact: {
+          id: 'ct1',
+          name: 'Ada Lovelace',
+          email: 'ada@example.com',
+          company: 'Acme',
+          hasAccount: true,
+          participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }],
+        },
+        cells: [
+          { taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+          { taskId: 'task-2', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+          { taskId: 'task-3', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        ],
+      },
+    ],
+    total: 1,
+    page: 1,
+    perPage: 50,
+    counts: { speakers: 1, outstandingRequired: 2, overdue: 0, outstandingContacts: 1 },
+    timezone: 'UTC',
+  };
+
+  it('renders only the filtered task column while the facet is set, restores all three on clear, and never narrows the task picker itself', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: THREE_TASK_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    // Before filtering: all three task columns render in the pinned table.
+    const table = () => within(screen.getByRole('table'));
+    expect(table().getByText('Sign speaker agreement')).toBeInTheDocument();
+    expect(table().getByText('Submit bio')).toBeInTheDocument();
+    expect(table().getByText('Upload headshot')).toBeInTheDocument();
+
+    const taskPicker = screen.getByRole('combobox', { name: 'Filter by task' }) as HTMLSelectElement;
+    fireEvent.change(taskPicker, { target: { value: 'task-2' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Showing 1 of 1 speakers · task "Submit bio"')).toBeInTheDocument();
+    });
+
+    // Only the filtered task's header cell renders -- the other two columns
+    // are gone entirely.
+    expect(table().getByText('Submit bio')).toBeInTheDocument();
+    expect(table().queryByText('Sign speaker agreement')).not.toBeInTheDocument();
+    expect(table().queryByText('Upload headshot')).not.toBeInTheDocument();
+
+    // Exactly one task cell renders in Ada's row (the pinned table body has
+    // exactly one data <td> alongside the identity cell).
+    const adaRow = table().getByText('Ada Lovelace').closest('tr')!;
+    expect(adaRow.querySelectorAll('td')).toHaveLength(2);
+
+    // The card view (phone rendering) agrees: only one task label shown.
+    // Scope to the card container specifically -- the task picker <select>
+    // still lists all three task titles as <option>s, which is correct
+    // (checked separately below) and must not be mistaken for a leftover
+    // column.
+    const cards = within(document.querySelector('.chq-speakers-cards') as HTMLElement);
+    expect(cards.getAllByText('Submit bio').length).toBeGreaterThan(0);
+    expect(cards.queryAllByText('Sign speaker agreement')).toHaveLength(0);
+    expect(cards.queryAllByText('Upload headshot')).toHaveLength(0);
+
+    // The task picker itself still lists every task -- a filter must be
+    // able to name what it is not showing.
+    const options = Array.from(taskPicker.options).map((o) => o.textContent);
+    expect(options).toEqual(['All tasks', 'Sign speaker agreement', 'Submit bio', 'Upload headshot']);
+
+    // Clearing the facet restores every column.
+    fireEvent.change(taskPicker, { target: { value: '' } });
+    await waitFor(() => {
+      expect(table().getByText('Sign speaker agreement')).toBeInTheDocument();
+      expect(table().getByText('Submit bio')).toBeInTheDocument();
+      expect(table().getByText('Upload headshot')).toBeInTheDocument();
+    });
+  });
+});
