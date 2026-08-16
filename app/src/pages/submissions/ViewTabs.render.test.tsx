@@ -11,6 +11,16 @@ import { MAX_SAVED_VIEWS_PER_EVENT } from '../../lib/batch-caps';
 
 const EVENT_ID = 'evt-viewtabs-render';
 
+// DEC-975/DEC-851 (wave 12): ViewTabs now calls useMe() to gate the
+// per-row Delete control against the saved view's own createdByUserId --
+// every mockApi() call in this file must serve GET /api/v1/me. userId
+// matches the fixtures' createdByUserId so the existing delete-affordance
+// assertions (written when this route didn't exist) keep testing the same
+// "you may delete your own view" case.
+const ME_ROUTE = {
+  'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
+};
+
 function savedView() {
   return {
     id: 'view-1',
@@ -54,6 +64,7 @@ function otherSavedView() {
 describe('ViewTabs (DEC-941)', () => {
   it('renders a saved view tab with a named delete affordance', async () => {
     mockApi({
+      ...ME_ROUTE,
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([savedView()]),
     });
 
@@ -74,6 +85,7 @@ describe('ViewTabs (DEC-941)', () => {
 
   it('deletes a saved view after confirming, leaving the other view in place', async () => {
     const fetchMock = mockApi({
+      ...ME_ROUTE,
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([savedView(), otherSavedView()]),
       'DELETE /api/v1/views/view-1': { status: 200, body: {} },
     });
@@ -108,6 +120,7 @@ describe('ViewTabs (DEC-941)', () => {
 
   it('cancelling the delete confirm leaves the view in place and issues no request', async () => {
     const fetchMock = mockApi({
+      ...ME_ROUTE,
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([savedView(), otherSavedView()]),
     });
 
@@ -156,6 +169,7 @@ describe('ViewTabs save dialog (DEC-422 per-event cap disclosure)', () => {
 
   it('shows "n of MAX" and leaves Save enabled below the cap', async () => {
     mockApi({
+      ...ME_ROUTE,
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope(manyViews(3)),
     });
 
@@ -181,6 +195,7 @@ describe('ViewTabs save dialog (DEC-422 per-event cap disclosure)', () => {
 
   it('disables Save once the per-event view count reaches the cap', async () => {
     mockApi({
+      ...ME_ROUTE,
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope(manyViews(MAX_SAVED_VIEWS_PER_EVENT)),
     });
 

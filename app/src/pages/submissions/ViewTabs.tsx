@@ -15,6 +15,17 @@ import { findFormatField } from './columns';
 import { STATUS_LABELS, type FormField, type SubmissionsFilterState, type Track } from './types';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 import { MAX_SAVED_VIEWS_PER_EVENT } from '../../lib/batch-caps';
+import { useMe } from '../../lib/useMe';
+
+// DEC-975: the delete gate the API enforces server-side (a legacy
+// createdByUserId === null row is org-owned and any organiser may delete
+// it; otherwise only the creator may) -- rendered here too so the row's
+// Delete control never invites a click that the server is always going to
+// 403. Kept as one function so the SPA's rule can never drift from the
+// route's (src/routes/api/views.ts:114-118).
+function canDeleteSavedView(view: SavedView, viewerUserId: string | undefined): boolean {
+  return view.createdByUserId === null || view.createdByUserId === viewerUserId;
+}
 
 export interface BuiltInView {
   key: string;
@@ -209,6 +220,7 @@ interface ViewTabsProps {
 }
 
 export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, formFields, onApply }: ViewTabsProps) {
+  const { me } = useMe();
   const [views, setViews] = useState<SavedView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -286,14 +298,16 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, formFields
             {view.name}
           </button>
           {!view.shared && <span className="chq-submissions-viewtabs-private">Only you</span>}
-          <button
-            type="button"
-            className="chq-link-button chq-submissions-viewtabs-delete"
-            aria-label={`Delete view ${view.name}`}
-            onClick={() => setPendingDelete(view)}
-          >
-            Delete
-          </button>
+          {canDeleteSavedView(view, me?.userId) && (
+            <button
+              type="button"
+              className="chq-link-button chq-submissions-viewtabs-delete"
+              aria-label={`Delete view ${view.name}`}
+              onClick={() => setPendingDelete(view)}
+            >
+              Delete
+            </button>
+          )}
         </span>
       ))}
       <button

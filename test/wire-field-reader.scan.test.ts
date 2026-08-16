@@ -11,8 +11,37 @@
 // it -- a hand-limited schedule is not a principle): every `app/src/pages/
 // **/types.ts` module, discovered by a directory walk (sorted, so a failure
 // is stable across runs), not the three files this scan used to name by
-// hand. For every field declared on a RESPONSE-shaped `interface` in any of
-// those files, this scan asserts at least one reader exists somewhere under
+// hand.
+//
+// DEC-851 (wave 12): the wave-5 amendment was still a FILENAME convention
+// ("every types.ts under pages/"), not a population -- ten confirmed
+// response-shaped interfaces live outside it (SpeakerDetailResponse,
+// SavedEmbedRow/EventDetail in EmbedsPanel.tsx, EventDetail in
+// EventSettingsPanel.tsx, OverviewAggregatesPayload, DeliverableHeaderDetail,
+// ReminderResult, ScheduleBreakRow, AnswerRow's siblings, and more), and
+// `perDropdown` -- the defect this scan exists for -- would have been
+// equally invisible one directory over. The population is now defined by
+// the WIRE ITSELF: every `interface` (exported or module-local) declared
+// anywhere under app/src that is used as a type argument to apiGet<T>,
+// apiList<T>, apiPost<T>, apiPatch<T> or apiPut<T> (see app/src/lib/api.ts)
+// -- directly at the call site, or reached through a named `type X = ...`
+// alias chain (e.g. ComposeSendResult = Omit<SendResult, 'skipped'> & {...}
+// pulls in SendResult). That is what "on the wire" means: it admits every
+// interface above by construction (each is the literal type argument some
+// apiGet/apiList/apiPost/apiPatch/apiPut call names), and excludes a
+// SPA-internal derived/draft type (PublicPageRow, HistoryRow, AnswerRow,
+// PlanDraft, ...) by the same construction -- none of those are ever
+// themselves passed to the API client, they are built FROM a wire response
+// after the fact. No allowlist, so the population cannot be narrowed by
+// moving a file.
+//
+// The wave-5 `pages/**/types.ts` walk is KEPT as the baseline half of the
+// population (see BASELINE_TARGET_FILES below) and proven a strict subset
+// of the widened one by its own test, so the widening is provably additive,
+// never a narrowing in disguise.
+//
+// For every field declared on a RESPONSE-shaped `interface` in the widened
+// population, this scan asserts at least one reader exists somewhere under
 // app/src -- a property access (`x.field`), a destructure (`{ field }`/
 // `{ other, field }`), or a quoted string key (`'field'`/`"field"`).
 // Request-only / SPA-internal-draft types (documented as such in their own
@@ -203,8 +232,9 @@ function scanInterfaces(src: string): InterfaceDecl[] {
 
 // ---------------------------------------------------------------------------
 // Population -- every (file, interface, field) triple from a RESPONSE-shaped
-// interface in the three target files. Request-only / SPA-internal-draft
-// interfaces are excluded, with a written reason, never silently dropped.
+// interface anywhere in the wire (DEC-851 wave 12). Request-only /
+// SPA-internal-draft interfaces are excluded, with a written reason, never
+// silently dropped.
 // ---------------------------------------------------------------------------
 const EXCLUDED_INTERFACES: Record<string, string> = {
   PlanDraft:
@@ -218,7 +248,12 @@ interface PopulationMember {
   field: string;
 }
 
-function scanPopulation(): PopulationMember[] {
+/** BASELINE half of the population (DEC-851 wave-5 amendment): every
+ * `export interface` in a `pages/**\/types.ts` module. Deliberately left as
+ * its own function, scanned by the ORIGINAL (export-only) `scanInterfaces`,
+ * so the wave-12 widening below can be proven a strict superset of exactly
+ * what this scan used to check -- see the subset-check test. */
+function scanBaselinePopulation(): PopulationMember[] {
   const members: PopulationMember[] = [];
   for (const relFile of TARGET_FILES) {
     const src = readFileSync(join(ROOT, relFile), 'utf8');
@@ -230,6 +265,227 @@ function scanPopulation(): PopulationMember[] {
     }
   }
   return members;
+}
+
+// ---------------------------------------------------------------------------
+// WIRE half (DEC-851 wave 12) -- every `interface` (exported OR module-local
+// -- most of the newly-admitted ones, e.g. EmbedsPanel.tsx's EventDetail,
+// are declared without `export` and used only in their own file) declared
+// anywhere under app/src, reached from an apiGet<T>/apiList<T>/apiPost<T>/
+// apiPatch<T>/apiPut<T> call site -- directly, or through a named `type X =
+// ...` alias chain.
+// ---------------------------------------------------------------------------
+
+/** Same depth-tracking approach as findMatchingBrace, generalised to all
+ * four bracket pairs so it can find the matching `>` that closes a generic
+ * call's type argument (which may itself contain `{`, `[`, `(`, or a nested
+ * `<...>`, e.g. `apiPost<{ items: FormField[] }>` or `Record<string,
+ * number>`). */
+function findMatchingAngle(src: string, openIdx: number): number {
+  let depth = 0;
+  const modeStack: Mode[] = ['CODE'];
+  for (let i = openIdx; i < src.length; i++) {
+    const top = modeStack[modeStack.length - 1];
+    const ch = src[i];
+    if (top === 'CODE') {
+      if (ch === "'") modeStack.push('SINGLE');
+      else if (ch === '"') modeStack.push('DOUBLE');
+      else if (ch === '`') modeStack.push('TEMPLATE');
+      else if (ch === '<' || ch === '{' || ch === '[' || ch === '(') depth++;
+      else if (ch === '>' || ch === '}' || ch === ']' || ch === ')') {
+        depth--;
+        if (depth === 0) return i;
+      }
+      continue;
+    }
+    if (ch === '\\') {
+      i++;
+      continue;
+    }
+    if ((top === 'SINGLE' && ch === "'") || (top === 'DOUBLE' && ch === '"') || (top === 'TEMPLATE' && ch === '`')) {
+      modeStack.pop();
+    }
+  }
+  return -1;
+}
+
+/** Every `(apiGet|apiList|apiPost|apiPatch|apiPut)<...>(` call site's raw
+ * type-argument text, across every non-test .ts/.tsx file under app/src. */
+const WIRE_CALL_RE = /\b(?:apiGet|apiList|apiPost|apiPatch|apiPut)</g;
+function findWireCallTypeArgs(strippedSrc: string): string[] {
+  const out: string[] = [];
+  WIRE_CALL_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = WIRE_CALL_RE.exec(strippedSrc))) {
+    const openIdx = m.index + m[0].length - 1;
+    const closeIdx = findMatchingAngle(strippedSrc, openIdx);
+    if (closeIdx === -1) continue;
+    out.push(strippedSrc.slice(openIdx + 1, closeIdx));
+  }
+  return out;
+}
+
+/** `export interface Name {...}` OR module-local `interface Name {...}` --
+ * the wire population admits both, unlike the export-only baseline scan
+ * above (most newly-admitted interfaces, e.g. EmbedsPanel.tsx's local
+ * `EventDetail`, are never exported -- they're declared and consumed in the
+ * same file). */
+function scanInterfaceDecls(strippedSrc: string): InterfaceDecl[] {
+  const out: InterfaceDecl[] = [];
+  const RE = /(?:export\s+)?\binterface\s+(\w+)(?:\s+extends\s+[\w<>,\s]+)?\s*\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = RE.exec(strippedSrc))) {
+    const openIdx = m.index + m[0].length - 1;
+    const block = findMatchingBrace(strippedSrc, openIdx);
+    const body = block.slice(1, -1);
+    const fields: string[] = [];
+    for (const seg of topLevelMembers(body)) {
+      const nm = MEMBER_NAME_RE.exec(seg);
+      if (nm) fields.push(nm[1] as string);
+    }
+    out.push({ name: m[1] as string, fields });
+  }
+  return out;
+}
+
+/** `(export )?type Name = <rhs>;`, `<rhs>` captured raw (not parsed) up to
+ * the terminating top-level `;` -- resolved only to extract identifiers
+ * from it (see resolveWireInterfaceNames), never to reproduce its shape. */
+function scanTypeAliasRhs(strippedSrc: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const RE = /(?:export\s+)?type\s+(\w+)(?:<[^=]*>)?\s*=\s*/g;
+  let m: RegExpExecArray | null;
+  while ((m = RE.exec(strippedSrc))) {
+    const startIdx = m.index + m[0].length;
+    let depth = 0;
+    let end = -1;
+    for (let i = startIdx; i < strippedSrc.length; i++) {
+      const ch = strippedSrc[i];
+      if (ch === '{' || ch === '[' || ch === '(' || ch === '<') depth++;
+      else if (ch === '}' || ch === ']' || ch === ')' || ch === '>') depth--;
+      else if (ch === ';' && depth === 0) {
+        end = i;
+        break;
+      }
+    }
+    if (end === -1) continue;
+    out.set(m[1] as string, strippedSrc.slice(startIdx, end));
+  }
+  return out;
+}
+
+// Utility/generic type names that are never themselves a wire interface --
+// excluded so e.g. `Omit<SendResult, 'skipped'>` resolves to SendResult, not
+// to a bogus "Omit" lookup (which would no-op anyway, since no `interface
+// Omit` exists, but naming the exclusion makes the intent explicit).
+const NON_WIRE_TYPE_NAMES = new Set([
+  'Array', 'Record', 'Promise', 'Partial', 'Omit', 'Pick', 'Readonly', 'Required', 'Exclude', 'Extract',
+  'NonNullable', 'ReturnType', 'InstanceType', 'Map', 'Set', 'Date', 'Error', 'Object', 'Function',
+  'Uint8Array', 'FormData', 'Blob', 'ArrayBuffer', 'JSON', 'Math', 'String', 'Number', 'Boolean',
+]);
+
+/** Every capitalised identifier in `text` (string literals stripped first,
+ * so a union-of-literals member like `'sent' | 'failed'` never contributes
+ * a bogus name) -- a cheap net; only names that resolve against a REAL
+ * interface/alias declaration below ever do anything. */
+function extractCapitalizedIdentifiers(text: string): string[] {
+  const stripped = text.replace(/'(?:\\.|[^'\\])*'/g, "''").replace(/"(?:\\.|[^"\\])*"/g, '""');
+  const names = new Set<string>();
+  const RE = /\b([A-Z][A-Za-z0-9_]*)\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = RE.exec(stripped))) names.add(m[1] as string);
+  return [...names];
+}
+
+interface WireRegistry {
+  /** interface name -> every file that declares it (name collisions across
+   * files, e.g. `Track` in review/types.ts and submissions/types.ts, are
+   * resolved by admitting ALL of them -- safe over-inclusion for a scan
+   * whose job is to catch a missing reader, never under-inclusion). */
+  interfaceOwners: Map<string, string[]>;
+  interfaceFields: Map<string, string[]>; // "file#Name" -> fields
+  aliasRhs: Map<string, string>; // alias name -> raw RHS text (last writer wins)
+  callSiteTypeArgs: string[];
+}
+
+let wireRegistryCache: WireRegistry | null = null;
+function buildWireRegistry(): WireRegistry {
+  if (wireRegistryCache) return wireRegistryCache;
+  const interfaceOwners = new Map<string, string[]>();
+  const interfaceFields = new Map<string, string[]>();
+  const aliasRhs = new Map<string, string>();
+  const callSiteTypeArgs: string[] = [];
+
+  for (const absPath of walk(APP_SRC_DIR)) {
+    const file = relPath(absPath);
+    const stripped = stripComments(readFileSync(absPath, 'utf8'));
+
+    for (const decl of scanInterfaceDecls(stripped)) {
+      if (!interfaceOwners.has(decl.name)) interfaceOwners.set(decl.name, []);
+      interfaceOwners.get(decl.name)!.push(file);
+      interfaceFields.set(`${file}#${decl.name}`, decl.fields);
+    }
+    for (const [name, rhs] of scanTypeAliasRhs(stripped)) {
+      aliasRhs.set(name, rhs);
+    }
+    callSiteTypeArgs.push(...findWireCallTypeArgs(stripped));
+  }
+
+  wireRegistryCache = { interfaceOwners, interfaceFields, aliasRhs, callSiteTypeArgs };
+  return wireRegistryCache;
+}
+
+/** Resolves every call-site type argument to the set of interface names it
+ * reaches -- directly (`apiGet<Foo>`), through an inline reference buried in
+ * an object-literal/array type argument (`apiGet<{ items: Foo[] }>`), or
+ * through a named type alias chain (`apiPost<ComposeSendResult>` where
+ * `ComposeSendResult = Omit<SendResult, 'skipped'> & {...}` resolves to
+ * SendResult). Cycle-safe via visitedAlias. */
+function resolveWireInterfaceNames(registry: WireRegistry): Set<string> {
+  const result = new Set<string>();
+  const visitedAlias = new Set<string>();
+  function visit(name: string): void {
+    if (NON_WIRE_TYPE_NAMES.has(name)) return;
+    if (registry.interfaceOwners.has(name)) result.add(name);
+    if (registry.aliasRhs.has(name) && !visitedAlias.has(name)) {
+      visitedAlias.add(name);
+      for (const n of extractCapitalizedIdentifiers(registry.aliasRhs.get(name) as string)) visit(n);
+    }
+  }
+  for (const argText of registry.callSiteTypeArgs) {
+    for (const n of extractCapitalizedIdentifiers(argText)) visit(n);
+  }
+  return result;
+}
+
+/** WIRE half of the population: every field on every interface
+ * resolveWireInterfaceNames finds, from every file that declares it. */
+function scanWirePopulation(): PopulationMember[] {
+  const registry = buildWireRegistry();
+  const wireNames = resolveWireInterfaceNames(registry);
+  const members: PopulationMember[] = [];
+  for (const name of wireNames) {
+    if (name in EXCLUDED_INTERFACES) continue;
+    for (const file of registry.interfaceOwners.get(name) ?? []) {
+      const fields = registry.interfaceFields.get(`${file}#${name}`) ?? [];
+      for (const field of fields) {
+        members.push({ key: `${file}#${name}.${field}`, file, iface: name, field });
+      }
+    }
+  }
+  return members;
+}
+
+/** DEC-851 (wave 12): the population is now the UNION of the baseline
+ * (`pages/**\/types.ts`, export-only -- unchanged from wave 5) and the WIRE
+ * half above, deduplicated by key so a name that lives in both (e.g.
+ * `EvaluationPlan`, already in review/types.ts AND reachable from a call
+ * site) contributes exactly one row. */
+function scanPopulation(): PopulationMember[] {
+  const byKey = new Map<string, PopulationMember>();
+  for (const m of scanBaselinePopulation()) byKey.set(m.key, m);
+  for (const m of scanWirePopulation()) byKey.set(m.key, m);
+  return [...byKey.values()];
 }
 
 // ---------------------------------------------------------------------------
@@ -258,11 +514,85 @@ function relPath(absPath: string): string {
   return relative(ROOT, absPath).split('\\').join('/');
 }
 
+/** Blanks out the BODY of every `interface Name { ... }` declaration
+ * (export or module-local) in `src`, replacing non-newline characters with
+ * spaces so line numbers are unaffected. DEC-851 (wave 12): the widened
+ * population admits module-local interfaces that are declared AND consumed
+ * in the SAME file (e.g. EmbedsPanel.tsx's local `EventDetail`) -- unlike
+ * the baseline population, whose declaring files (pages/**\/types.ts) are
+ * wholesale-excluded from the reader search, these declaring files stay IN
+ * the search pool (real usage lives right below the declaration). Without
+ * this mask, a field's own FIRST position in its interface body
+ * self-matches the destructure/shorthand reader pattern (`{\s*id` matches
+ * the interface's own opening `{` immediately followed by its first
+ * member) -- a false "read" that would have hidden a real DEC-851 finding
+ * the moment the population widened past pages/**\/types.ts. */
+/** Same as stripComments, but LENGTH-PRESERVING (comment characters become
+ * spaces rather than being dropped) -- used only to find brace boundaries
+ * safely (a comment like "// see the { legacy shape }" must never unbalance
+ * findMatchingBrace's depth count) while keeping the blanked span aligned
+ * with the original src for the actual masking below. */
+function blankCommentsPreserveLength(src: string): string {
+  let out = '';
+  const modeStack: Mode[] = ['CODE'];
+  for (let i = 0; i < src.length; i++) {
+    const top = modeStack[modeStack.length - 1];
+    const ch = src[i];
+    if (top === 'CODE') {
+      if (ch === '/' && src[i + 1] === '/') {
+        const nl = src.indexOf('\n', i);
+        const end = nl === -1 ? src.length : nl;
+        out += ' '.repeat(end - i);
+        i = end - 1;
+        continue;
+      }
+      if (ch === '/' && src[i + 1] === '*') {
+        const end = src.indexOf('*/', i + 2);
+        const stop = end === -1 ? src.length : end + 2;
+        out += src.slice(i, stop).replace(/[^\n]/g, ' ');
+        i = stop - 1;
+        continue;
+      }
+      if (ch === "'") modeStack.push('SINGLE');
+      else if (ch === '"') modeStack.push('DOUBLE');
+      else if (ch === '`') modeStack.push('TEMPLATE');
+      out += ch;
+      continue;
+    }
+    out += ch;
+    if (ch === '\\') {
+      i++;
+      out += src[i] ?? '';
+      continue;
+    }
+    if ((top === 'SINGLE' && ch === "'") || (top === 'DOUBLE' && ch === '"') || (top === 'TEMPLATE' && ch === '`')) {
+      modeStack.pop();
+    }
+  }
+  return out;
+}
+
+function maskInterfaceBodies(src: string): string {
+  const commentSafe = blankCommentsPreserveLength(src);
+  const RE = /(?:export\s+)?\binterface\s+\w+(?:\s+extends\s+[\w<>,\s]+)?\s*\{/g;
+  let out = src;
+  let m: RegExpExecArray | null;
+  RE.lastIndex = 0;
+  while ((m = RE.exec(commentSafe))) {
+    const openIdx = m.index + m[0].length - 1;
+    const block = findMatchingBrace(commentSafe, openIdx);
+    const masked = block.replace(/[^\n]/g, ' ');
+    out = out.slice(0, openIdx) + masked + out.slice(openIdx + block.length);
+    RE.lastIndex = openIdx + block.length;
+  }
+  return out;
+}
+
 let candidateFilesCache: { path: string; src: string }[] | null = null;
 function candidateFiles(): { path: string; src: string }[] {
   if (candidateFilesCache) return candidateFilesCache;
   candidateFilesCache = walk(APP_SRC_DIR)
-    .map((abs) => ({ path: relPath(abs), src: readFileSync(abs, 'utf8') }))
+    .map((abs) => ({ path: relPath(abs), src: maskInterfaceBodies(readFileSync(abs, 'utf8')) }))
     .filter((f) => !TARGET_FILES.includes(f.path));
   return candidateFilesCache;
 }
@@ -359,6 +689,18 @@ const LEDGER: LedgerEntry[] = [
     reason:
       "DEC-902 explicitly rules this field OUT as the library's VERSION column value ('never versionCount, a chain-length marker') and names versionNo as the one that IS the identity shown -- no design mock or decision asks for a separate 'N versions in this chain' count display, so there is no documented UI obligation this task can wire a reader against without inventing new copy, which is a product decision outside this task's narrow scope.",
   },
+  {
+    key: 'app/src/pages/forms/types.ts#CfpForm.isDefault',
+    verdict: 'exempt',
+    reason:
+      "DEC-851 wave-12 finding, uncovered only once the interface-body mask closed a false-positive match on a documentation comment (app/src/pages/speakers/TaskModal.tsx's '{id, title, isDefault}' prose, never real code). DEC-398's own text names the field's one obligation: listFormsForEvent (src/server/repo/forms.ts:107-121) returns the event's forms 'default first then title' -- a SORT KEY the server already spends so every array-order consumer gets it for free, never a boolean a screen was asked to render as a '(Default)' badge or use to preselect a control. No decision or design mock documents that second, distinct UI obligation.",
+  },
+  {
+    key: 'app/src/pages/speakers/types.ts#EventForm.isDefault',
+    verdict: 'exempt',
+    reason:
+      "same DEC-398 'default first then title is a server-spent sort key, not a client-rendered fact' rationale as CfpForm.isDefault above -- EventForm is the sibling wire shape {id, title, isDefault} DEC-398's own header names for exactly this list (GET .../forms's additive `forms` key), consumed by TaskModal.tsx's form-task picker in array order; no decision or design mock asks that select to badge or preselect the default entry.",
+  },
 ];
 
 describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response field with no reader is a lie', () => {
@@ -369,8 +711,40 @@ describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response fie
   // tripwire is raised proportionally (measured population is 645) so a
   // broken walk (e.g. one that silently falls back to zero, or only finds
   // a handful of pages) fails loudly instead of passing vacuously.
-  it('tripwire: the nine app/src/pages/**/types.ts modules declare at least 500 response-shaped fields, never hardcoded', () => {
-    expect(population.length).toBeGreaterThanOrEqual(500);
+  //
+  // DEC-851 (wave 12): the population is now the WIRE, not the filename
+  // convention -- the baseline (pages/**/types.ts) is proven a strict
+  // subset below, and the union is measurably larger (~840+), so the
+  // tripwire is raised again for the same reason: a broken alias/call-site
+  // resolver silently falling back to "baseline only" must fail loudly.
+  it('tripwire: the widened wire population declares at least 800 response-shaped fields, never hardcoded', () => {
+    expect(population.length).toBeGreaterThanOrEqual(800);
+  });
+
+  // DEC-851 (wave 12): the widening must be provably ADDITIVE, never a
+  // narrowing in disguise -- every (file, interface, field) key the OLD
+  // (export-only, pages/**/types.ts-only) scan found is still present in
+  // the widened population.
+  it('the widened population is a strict superset of the wave-5 baseline (pages/**/types.ts, export-only)', () => {
+    const baselineKeys = new Set(scanBaselinePopulation().map((m) => m.key));
+    const widenedKeys = new Set(population.map((m) => m.key));
+    const missing = [...baselineKeys].filter((k) => !widenedKeys.has(k));
+    expect(missing, missing.join('\n')).toEqual([]);
+    expect(widenedKeys.size).toBeGreaterThan(baselineKeys.size);
+  });
+
+  // DEC-851 (wave 12): the widening actually admits interfaces that live
+  // OUTSIDE pages/**/types.ts -- proves the population is the wire, not
+  // still secretly bounded by the old directory walk.
+  it('the widened population includes at least one interface declared outside pages/**/types.ts', () => {
+    const outside = population.filter((m) => !TARGET_FILES.includes(m.file));
+    expect(outside.length).toBeGreaterThan(0);
+    const outsideFiles = new Set(outside.map((m) => m.file));
+    // Spot-check three of the ten confirmed-outside modules from this
+    // task's own evidence.
+    expect(outsideFiles.has('app/src/pages/speakers/speakerDetail.ts')).toBe(true);
+    expect(outsideFiles.has('app/src/lib/useNavExceptions.ts')).toBe(true);
+    expect(outsideFiles.has('app/src/pages/agenda/BreaksPanel.tsx')).toBe(true);
   });
 
   it('the excluded-interfaces list only names interfaces that actually exist in the target files (an exclusion for a dead name hides nothing)', () => {
@@ -440,6 +814,14 @@ describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response fie
     // from it) but must not put it back on the wire object literal returned
     // to the client.
     expect(/^\s*latestFileVersionNo,\s*$/m.test(serverSrc)).toBe(false);
+  });
+
+  it('the SavedView.createdByUserId finding is fixed (DEC-851 wave 12, DEC-975): ViewTabs.tsx now reads it to gate the per-row Delete control the same way the server does', () => {
+    const files = candidateFiles();
+    expect(hasReader('createdByUserId', files)).toBe(true);
+    const viewTabs = files.find((f) => f.path === 'app/src/pages/submissions/ViewTabs.tsx');
+    expect(viewTabs, 'ViewTabs.tsx not found under app/src').toBeTruthy();
+    expect(viewTabs!.src.includes('view.createdByUserId')).toBe(true);
   });
 });
 

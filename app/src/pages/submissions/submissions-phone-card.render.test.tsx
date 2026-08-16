@@ -24,6 +24,7 @@ describe('SubmissionsTable phone-card class hooks render (DEC-610, task w14-h)',
 
   it('emits both chq-submissions-table-clone-cell and (once toggled on) chq-submissions-table-custom', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: {
         id: 'form-1',
