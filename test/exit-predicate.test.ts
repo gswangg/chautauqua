@@ -118,14 +118,16 @@ describe("classifyScope", () => {
     ["walkthrough confirm", "walkthrough"],
     ["perf-smoke", "perf-smoke"],
     ["perf smoke", "perf-smoke"],
-    // DEC-099 w45: only the whole-token "perf-smoke"/"perf smoke" forms
-    // classify -- a colon separator is not a canonical form and a bare
-    // "perf" substring (e.g. real "onboarding grid TIER-0 perf" /
-    // "files library headshot join perf" corpus scopes) must NOT claim
+    // DEC-099 w45/w46: only the whole-token "perf-smoke"/"perf smoke"/
+    // "perf:smoke"/"perf_smoke" forms classify -- a bare "perf" substring
+    // (e.g. real "onboarding grid TIER-0 perf" / "files library headshot
+    // join perf" / "files library perf fix" corpus scopes) must NOT claim
     // the slot.
-    ["perf:smoke", null],
+    ["perf:smoke", "perf-smoke"],
+    ["perf_smoke", "perf-smoke"],
     ["onboarding grid TIER-0 perf", null],
     ["files library headshot join perf", null],
+    ["files library perf fix", null],
     ["perf-smoke + render-sweep", "perf-smoke"],
     ["spec-audit §6/§7/§8/§9", "spec-audit"],
     ["spec audit confirm", "spec-audit"],
