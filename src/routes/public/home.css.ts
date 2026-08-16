@@ -14,19 +14,24 @@ void DEC_373;
 void DEC_374;
 void DEC_582;
 
-// Chrome is always full bleed (docs/design/README.md §Widths): the shell
-// itself carries no max-width/border/background -- header, body and footer
-// rules run edge to edge while their content sits in a shared 820px centred
-// measure via padding-inline.
-const HOME_MEASURE = "padding-inline: max(34px, calc((100% - 820px) / 2));";
+// DEC-582 (wave-81 amendment): the hub's measure is read from the vendored
+// Home frame (docs/design/Chautauqua Home.dc.html), not from the README's
+// §Widths table, which does not list the hub. Header (:33) and footer (:101)
+// are full-bleed chrome, `padding:15px|18px 44px` on the FULL frame width --
+// no max-width, 44px gutters running edge to edge. The body (:38) is an 820
+// CONTAINER, `max-width:820px; margin:0 auto; padding:36px 44px 40px`; its
+// CONTENT box is therefore 820 - 2x44 = 732, centred, not the fleet's shared
+// 34px-minimum expression (which has no source in the frame).
+const HOME_CHROME_GUTTER = "padding-inline: 44px;";
+const HOME_BODY_MEASURE = "max-width: 820px; margin-inline: auto; padding-inline: 44px;";
 
 export const HOME_CSS = `
   .chq-home-shell { display: flex; flex-direction: column; }
-  .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding-block: 15px; ${HOME_MEASURE} display: flex; align-items: center; gap: 20px; }
+  .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding-block: 15px; ${HOME_CHROME_GUTTER} display: flex; align-items: center; gap: 20px; }
   .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
   .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; text-decoration: none; }
 
-  .chq-home-body { padding-block: 36px 40px; ${HOME_MEASURE} display: flex; flex-direction: column; gap: 34px; }
+  .chq-home-body { padding-block: 36px 40px; ${HOME_BODY_MEASURE} display: flex; flex-direction: column; gap: 34px; }
   .chq-home-hero { display: flex; flex-direction: column; gap: 10px; }
   .chq-home-hero h1 { margin: 0; font-family: var(--chq-font-display); font-size: 44px; font-weight: 700; letter-spacing: -0.042em; line-height: 1.2; }
   .chq-home-hero p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--chq-ink-2); max-width: 54ch; }
@@ -65,7 +70,7 @@ export const HOME_CSS = `
 
   .chq-home-signin-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 
-  .chq-home-footer { border-top: 1px solid var(--chq-rule); background: var(--chq-surface-sunk); padding-block: 18px; ${HOME_MEASURE} display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .chq-home-footer { border-top: 1px solid var(--chq-rule); background: var(--chq-surface-sunk); padding-block: 18px; ${HOME_CHROME_GUTTER} display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .chq-home-footer-text { font-size: 12px; color: var(--chq-muted); line-height: 1.5; }
   /* Inline flow, not inline-flex: a flex link takes its baseline from the
      SVG's bottom edge, floating the whole "mark + name" above the sentence's
