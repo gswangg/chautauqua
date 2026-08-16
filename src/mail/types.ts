@@ -26,7 +26,16 @@ export interface Mailer {
 // test/list-filter-vocabulary.test.ts's source scan); if one is ever added,
 // it must be added here first so the email-log route's ?status= filter can
 // keep failing loudly on typos instead of returning a confident empty page.
-export const EMAIL_LOG_STATUSES = ["sent", "failed"] as const;
+//
+// DEC-238 (wave-8 amendment, sha efb77e4a): 'skipped' means a recipient the
+// dedupe planner (planComposeSends) held back before fan-out -- no message
+// ever left the building, no provider was called, no claim token was
+// minted. It is written by src/routes/comms/send.ts through the same
+// d1EmailLogWriter as every other row. It is NOT a delivery outcome and
+// must never be read as one; loadRecentlySent (src/server/repo/comms.ts)
+// filters status='sent' specifically so a skipped row can never itself
+// count as a prior send and cause a second skip.
+export const EMAIL_LOG_STATUSES = ["sent", "failed", "skipped"] as const;
 export type EmailLogStatus = (typeof EMAIL_LOG_STATUSES)[number];
 
 // Columns per DEC-006: subject, body_text, body_html, ics_text, provider,

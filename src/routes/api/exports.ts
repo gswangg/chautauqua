@@ -132,7 +132,9 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
     const contactId = contactIdRaw !== undefined ? parseBoundedText(contactIdRaw, "contactId", { max: 64, required: false }) : undefined;
     const statusRaw = c.req.query("status") || undefined;
     if (statusRaw !== undefined && !(EMAIL_LOG_STATUSES as readonly string[]).includes(statusRaw)) {
-      throw new ApiError("invalid", "status must be one of sent, failed", { status: "invalid" });
+      throw new ApiError("invalid", `status must be one of ${EMAIL_LOG_STATUSES.join(", ")}`, {
+        status: "invalid",
+      });
     }
     const qRaw = c.req.query("q") || undefined;
     const q = qRaw !== undefined ? parseBoundedText(qRaw, "q", { max: 200, required: false }) : undefined;

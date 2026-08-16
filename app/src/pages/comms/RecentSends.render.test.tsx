@@ -112,6 +112,37 @@ describe('RecentSends', () => {
     expect(screen.getByText('0 sent · 3 failed')).toBeInTheDocument();
   });
 
+  // DEC-238 (wave-8 amendment, sha efb77e4a): the frame's own grammar
+  // (docs/design/Chautauqua Comms.dc.html:827-832) is 'N sent · N skipped
+  // · N failed', each clause appended only when non-zero, in that order.
+  it("appends '· N skipped' only when a skip exists, before any failed clause", () => {
+    render(
+      <RecentSends eventId={EVENT_ID} batchesLoaded batches={[batch({ statusCounts: { sent: 4, skipped: 2 } })]} templatesById={{}} />,
+    );
+    expect(screen.getByText('4 sent · 2 skipped')).toBeInTheDocument();
+    expect(screen.queryByText(/failed/)).not.toBeInTheDocument();
+  });
+
+  it('states all three clauses, in sent/skipped/failed order, when all three are non-zero', () => {
+    render(
+      <RecentSends
+        eventId={EVENT_ID}
+        batchesLoaded
+        batches={[batch({ statusCounts: { sent: 4, skipped: 2, failed: 1 } })]}
+        templatesById={{}}
+      />,
+    );
+    expect(screen.getByText('4 sent · 2 skipped · 1 failed')).toBeInTheDocument();
+  });
+
+  it('omits the skipped clause when skipped is zero, even alongside a failure', () => {
+    render(
+      <RecentSends eventId={EVENT_ID} batchesLoaded batches={[batch({ statusCounts: { sent: 2, skipped: 0, failed: 1 } })]} templatesById={{}} />,
+    );
+    expect(screen.getByText('2 sent · 1 failed')).toBeInTheDocument();
+    expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
+  });
+
   it('names the template from templatesById when both templateId and the map entry are present', () => {
     render(
       <RecentSends
@@ -467,6 +498,43 @@ describe('RecentSends', () => {
     }
     expect(rows[0]!.querySelector('.chq-comms-recipient-to')?.textContent).toBe('ada@example.com');
     expect(rows[1]!.querySelector('.chq-comms-recipient-to')?.textContent).toBe('bo@example.com');
+  });
+
+  // DEC-238 (wave-8 amendment, sha efb77e4a): a skipped recipient's row
+  // states its actual status rather than implying a send -- the Result
+  // cell renders row.status verbatim, so a 'skipped' row reads "skipped",
+  // never "sent".
+  it("renders a skipped recipient's own status in the Result cell, not 'sent'", async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+        { id: 'log-2', eventName: 'Evt', toEmail: 'bo@example.com', subject: 'You are in!', status: 'skipped', sentAt: 1700000000000 },
+      ]),
+    });
+
+    render(
+      <RecentSends
+        eventId={EVENT_ID}
+        batchesLoaded
+        batches={[batch({ statusCounts: { sent: 1, skipped: 1 } })]}
+        templatesById={{}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('bo@example.com')).toBeInTheDocument();
+    });
+
+    const rows = document.querySelectorAll('.chq-comms-recipient-row:not(.chq-comms-recipient-col-heads-row)');
+    expect(rows).toHaveLength(2);
+    const skippedRow = Array.from(rows).find((r) => r.querySelector('.chq-comms-recipient-to')?.textContent === 'bo@example.com')!;
+    // The Result cell is the row's second .chq-meta span (the first .chq-meta
+    // in the document belongs to the batch tally) -- assert on it directly
+    // rather than the row's full textContent, which also contains the
+    // per-row "Show what was sent" disclosure button's own label.
+    const resultCell = skippedRow.querySelector('.chq-meta') as HTMLElement;
+    expect(resultCell.textContent).toBe('skipped');
   });
 
   // DEC-751 (wave-21 amendment, B8): the expanded band's rows repeat the

@@ -559,7 +559,13 @@ describe("item 4: POST /compose/send collapses same-address/same-subject duplica
     registerErrorHandler(app);
     app.use("*", async (c, next) => {
       c.set("auth", organizerAuth);
-      c.set("db", {} as never);
+      // DEC-238 (wave-8 amendment, sha efb77e4a): send.ts now writes one
+      // email_log row per skipped recipient through d1EmailLogWriter
+      // (src/server/context.ts), which calls db.insert(...).values(...) --
+      // this fake db must support that call even though this test only
+      // asserts on the response body's `skipped` array, not on what got
+      // durably written.
+      c.set("db", { insert: () => ({ values: async () => {} }) } as never);
       await next();
     });
     app.route("/", commsRoutes);

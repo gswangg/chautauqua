@@ -167,14 +167,22 @@ function BatchRecipients({
   );
 }
 
-// w41-g (DEC-751 amendment): the collapsed row's SENT count -- 'N sent',
-// appending ' · N failed' only when a failure exists, so an all-failed
-// batch is still auditable at a glance without every healthy row carrying
-// a zero. Derived from batch.statusCounts, never fabricated.
+// w41-g (DEC-751 amendment), w8-e (DEC-238 amendment, sha efb77e4a, frame
+// `docs/design/Chautauqua Comms.dc.html:827-832`): the collapsed row's
+// count column follows the frame's own grammar, 'N sent · N skipped ·
+// N failed', appending each clause ONLY when its count is non-zero and
+// always in that order, so an all-failed or all-skipped batch is still
+// auditable at a glance without every healthy row carrying a zero.
+// Derived from batch.statusCounts (grouped by status in
+// src/server/repo/email.ts), never fabricated.
 function sentCountLabel(statusCounts: Record<string, number>): string {
   const sent = statusCounts.sent ?? 0;
+  const skipped = statusCounts.skipped ?? 0;
   const failed = statusCounts.failed ?? 0;
-  return failed > 0 ? `${sent} sent · ${failed} failed` : `${sent} sent`;
+  const clauses = [`${sent} sent`];
+  if (skipped > 0) clauses.push(`${skipped} skipped`);
+  if (failed > 0) clauses.push(`${failed} failed`);
+  return clauses.join(' · ');
 }
 
 export interface RecentSendsProps {
@@ -318,11 +326,12 @@ export function RecentSends({
           batch.templateId && templatesById?.[batch.templateId] ? templatesById[batch.templateId] : '—';
         return (
           <div key={batch.batchKey} className="chq-comms-batch">
-            {/* DEC-751 amendment (w41-g): exactly five columns --
-                [when][subject][N sent][template][Open]. The count column
-                states the SENT count and appends '· N failed' only when a
-                failure exists (sentCountLabel); the full per-status tally
-                lives in the expanded recipients disclosure instead. */}
+            {/* DEC-751 amendment (w41-g), w8-e (DEC-238 amendment, sha
+                efb77e4a): exactly five columns --
+                [when][subject][N sent · N skipped · N failed][template][Open].
+                The count column follows the frame's grammar (sentCountLabel),
+                appending each non-zero clause in order; the full per-status
+                tally lives in the expanded recipients disclosure instead. */}
             <div className="chq-comms-batch-row">
               <span className="chq-comms-history-when">{formatDateTime(batch.sentAt)}</span>
               <span className="chq-comms-history-subject">{batch.subject}</span>

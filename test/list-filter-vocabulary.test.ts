@@ -100,8 +100,13 @@ describe("GET .../email-log ?status= (DEC-905)", () => {
     expect(rowsSql.params).toContain("failed");
   });
 
-  it("EMAIL_LOG_STATUSES names exactly the two literals the writers produce", () => {
-    expect([...EMAIL_LOG_STATUSES].sort()).toEqual(["failed", "sent"]);
+  // DEC-238 (wave-8 amendment, sha efb77e4a): 'skipped' is written by
+  // src/routes/comms/send.ts through d1EmailLogWriter directly -- it is
+  // NOT a literal any src/mail/** writer produces (dev-sink/email-binding/
+  // unconfigured never write it), so it is named here explicitly rather
+  // than by the source scan below, whose SCOPE is src/mail/** only.
+  it("EMAIL_LOG_STATUSES names exactly the two literals the src/mail/** writers produce, plus 'skipped'", () => {
+    expect([...EMAIL_LOG_STATUSES].sort()).toEqual(["failed", "sent", "skipped"]);
   });
 });
 
