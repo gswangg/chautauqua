@@ -53,6 +53,7 @@ function fakeDb(opts: {
               if (table === schema.submissionTrack) return thenable([{ trackId: "track-1" }]);
               if (table === schema.submissionAnswer) return thenable([{ formFieldId: "field-1", valueJson: '"answer"' }]);
               if (table === schema.participant) return thenable(opts.participants);
+              if (table === schema.formField) return thenable([]);
               throw new Error(`fakeDb: unexpected table in select().from(): ${String(table)}`);
             },
           };
@@ -134,8 +135,9 @@ describe("DEC-275: cloneSubmission copies active participants", () => {
       ],
     });
 
-    const newId = await cloneSubmission(db, "sub-1");
+    const { id: newId, droppedFileAnswers } = await cloneSubmission(db, "sub-1");
     expect(newId).toBeTruthy();
+    expect(droppedFileAnswers).toBe(0);
 
     const participantInserts = inserts.filter((i) => i.table === schema.participant) as Array<{
       table: unknown;

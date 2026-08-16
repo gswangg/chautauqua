@@ -105,6 +105,7 @@ export function SubmissionsTable() {
   const [refreshToken, setRefreshToken] = useState(0);
   const [cloningId, setCloningId] = useState<string | null>(null);
   const [triagingId, setTriagingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const columns: ColumnDef[] = useMemo(() => deriveColumnsFromFormFields(formFields), [formFields]);
   const shownColumns = useMemo(() => visibleColumns(columns, visibleFieldIds), [columns, visibleFieldIds]);
@@ -194,8 +195,12 @@ export function SubmissionsTable() {
     setCloningId(id);
     setError(null);
     try {
-      await apiPost(`/submissions/${id}/clone`);
+      const result = await apiPost<{ droppedFileAnswers: number }>(`/submissions/${id}/clone`);
       setRefreshToken((n) => n + 1);
+      if (result.droppedFileAnswers > 0) {
+        const noun = result.droppedFileAnswers === 1 ? 'file answer was' : 'file answers were';
+        setToast(`Copied. ${result.droppedFileAnswers} ${noun} not copied — uploads stay with the original session.`);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? `Clone failed: ${err.message}` : 'Clone failed');
     } finally {
@@ -295,6 +300,14 @@ export function SubmissionsTable() {
       </div>
 
       {error && <div className="chq-error">{error}</div>}
+      {toast && (
+        <div className="chq-toast" role="status">
+          {toast}
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setToast(null)} aria-label="Dismiss">
+            &times;
+          </button>
+        </div>
+      )}
 
       {showNewModal && (
         <NewSubmissionModal

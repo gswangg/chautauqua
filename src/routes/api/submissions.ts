@@ -343,9 +343,10 @@ submissionsRoutes.post("/submissions/:id/clone", requireOrganizer, csrfJson, asy
   if (!ownership) throw new ApiError("not_found", "Submission not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
-  const newId = await cloneSubmission(c.var.db, id);
-  const detail = await getSubmissionDetail(c.var.db, newId);
-  return c.json(detail, 201);
+  const { id: cloneId, droppedFileAnswers } = await cloneSubmission(c.var.db, id);
+  const detail = await getSubmissionDetail(c.var.db, cloneId);
+  if (!detail) throw new Error(`clone submission ${cloneId}: getSubmissionDetail returned null`);
+  return c.json({ ...detail, droppedFileAnswers }, 201);
 });
 
 interface UpdateSubmissionBody {
