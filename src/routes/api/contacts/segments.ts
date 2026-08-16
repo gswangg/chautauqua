@@ -5,7 +5,7 @@
 import type { Hono } from "hono";
 import type { AppEnv } from "../../../server/env";
 import { csrfJson } from "../../../server/middleware";
-import { ApiError, parseBoundedText } from "../../../server/http";
+import { ApiError, parseBoundedText, requireAtLeastOneField } from "../../../server/http";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
 import { overCapCountMessage } from "../../../domain/cap-copy";
 import * as repo from "../../../server/repo/contacts";
@@ -180,6 +180,9 @@ export function registerSegmentRoutes(contactsRoutes: Hono<AppEnv>): void {
     const body = asRecord(await c.req.json().catch(() => {
       throw new ApiError("invalid", "Invalid JSON body");
     }));
+    // DEC-627 (amendment, wave 6): both fields are optional; an empty body
+    // must be refused rather than reaching patchSegment as a no-op.
+    requireAtLeastOneField(body, ["name", "rules"]);
 
     const fields: Record<string, string> = {};
     const patch: { name?: string; rules?: SegmentRule[] } = {};

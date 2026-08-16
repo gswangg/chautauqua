@@ -6,7 +6,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import type { Db } from "../../server/context";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, parseBoundedText, readOptionalJsonBody } from "../../server/http";
+import { ApiError, parseBoundedText, readOptionalJsonBody, requireAtLeastOneField } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { getEventOrgId } from "../../server/repo/submissions";
 import { clampPage, listPerPage } from "../../lib/pagination";
@@ -262,6 +262,15 @@ embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
   if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Embed not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as UpdateEmbedBody;
+  // DEC-627 (amendment, wave 6): every field on this PATCH is optional; an
+  // empty body must be refused rather than reaching updateEmbed as a no-op.
+  requireAtLeastOneField(body as unknown as Record<string, unknown>, [
+    "name",
+    "surface",
+    "format",
+    "options",
+    "enabled",
+  ]);
   const patch: { name?: string; surface?: string; format?: string; optionsJson?: string; enabled?: boolean } = {};
   if (body.name !== undefined) {
     patch.name = parseBoundedText(body.name, "name", { max: MAX_NAME_LENGTH, required: true });

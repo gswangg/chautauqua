@@ -7,7 +7,13 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, collectBoundedText, collectBoundedOptionalText, readOptionalJsonBody } from "../../server/http";
+import {
+  ApiError,
+  collectBoundedText,
+  collectBoundedOptionalText,
+  readOptionalJsonBody,
+  requireAtLeastOneField,
+} from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { MAX_BREAKS_PER_EVENT, MINUTES_PER_DAY } from "../../domain/schedule";
 import { getEventInfo, isDayWithinEventRange, isIsoDay } from "../../server/repo/agenda"; // DEC-318
@@ -200,6 +206,16 @@ breaksRoutes.patch("/breaks/:id", requireOrganizer, csrfJson, async (c) => {
   if (!existing) throw new ApiError("not_found", "Break not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as BreakBody;
+  // DEC-627 (amendment, wave 6): every field is optional on a PATCH (they
+  // all default to the existing row); an empty body must be refused rather
+  // than reaching updateBreak with every value unchanged.
+  requireAtLeastOneField(body as unknown as Record<string, unknown>, [
+    "day",
+    "label",
+    "location",
+    "startMin",
+    "durationMin",
+  ]);
   const { fields, values } = validateBreakWrite(body, event, existing as ResolvedBreakFields);
 
   if (Object.keys(fields).length > 0) {

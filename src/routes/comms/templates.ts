@@ -4,7 +4,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, requireAtLeastOneField } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { listTemplateLastUsedAt } from "../../server/repo/email";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
@@ -68,6 +68,9 @@ templatesRoutes.patch("/api/v1/templates/:templateId", requireOrganizer, csrfJso
   const body = await c.req.json().catch(() => {
     throw new ApiError("invalid", "Invalid JSON body");
   });
+  // DEC-627 (amendment, wave 6): all three fields are optional; an empty
+  // body must be refused rather than reaching patchTemplate as a no-op.
+  requireAtLeastOneField(body, ["name", "subject", "bodyText"]);
 
   const errors: Record<string, string> = {};
   const patch: repo.TemplatePatch = {};

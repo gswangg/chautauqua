@@ -12,7 +12,7 @@ import type { AppEnv, AuthInfo, Bindings } from "../server/env";
 import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
-import { ApiError, parseBoundedIdArray, readOptionalJsonBody } from "../server/http";
+import { ApiError, parseBoundedIdArray, readOptionalJsonBody, requireAtLeastOneField } from "../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398, DEC_754 } from "../decisions";
@@ -367,6 +367,17 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
   if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Task not found");
 
   const body = asRecord(await readOptionalJsonBody(c));
+  // DEC-627 (amendment, wave 6): every field on this PATCH is optional; an
+  // empty body must be refused rather than reaching updateTask as a no-op.
+  requireAtLeastOneField(body, [
+    "title",
+    "description",
+    "dueDate",
+    "required",
+    "formId",
+    "deliverableKind",
+    "instructions",
+  ]);
   const fields: Record<string, string> = {};
 
   const input: UpdateTaskInput = {};

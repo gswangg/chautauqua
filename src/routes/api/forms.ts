@@ -6,7 +6,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, requireAtLeastOneField } from "../../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapCountMessage } from "../../domain/cap-copy";
 import { validateFieldDefInput, validateRuleReference, isPermutation, type FieldDefInput } from "../../forms/builder";
@@ -91,6 +91,9 @@ formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c)
   const body = await c.req.json().catch(() => {
     throw new ApiError("invalid", "Invalid JSON body");
   });
+  // DEC-627 (amendment, wave 6): every field on this PATCH is optional; an
+  // empty body must be refused rather than reaching patchForm as a no-op.
+  requireAtLeastOneField(body, ["intro", "openDate", "closeDate", "tracks"]);
 
   const errors: Record<string, string> = {};
   const patch: repo.FormPatch = {};
@@ -211,6 +214,18 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
   const body = (await c.req.json().catch(() => {
     throw new ApiError("invalid", "Invalid JSON body");
   })) as FieldDefInput;
+  // DEC-627 (amendment, wave 6): every field on this PATCH is optional; an
+  // empty body must be refused rather than reaching patchField as a no-op.
+  requireAtLeastOneField(body as unknown as Record<string, unknown>, [
+    "label",
+    "helpText",
+    "required",
+    "kind",
+    "section",
+    "options",
+    "rule",
+    "role",
+  ]);
 
   if (field.locked && body.required !== undefined && body.required !== field.required) {
     throw new ApiError("invalid", "Locked fields' required flag cannot be changed");
