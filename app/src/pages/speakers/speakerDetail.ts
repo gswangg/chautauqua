@@ -3,6 +3,9 @@
 // so this task's wire contract can land without touching that file.
 
 import type { InviteStatus } from './types';
+// Alias of the shared vocabulary (DEC-613 wave-70 amendment) —
+// src/domain/task-kinds.ts is the ONE declaration.
+import type { TaskKind } from '../../../../src/domain/task-kinds';
 
 export interface SpeakerDetailContact {
   id: string;
@@ -82,7 +85,7 @@ export interface SpeakerDetailSession {
   scheduled: SpeakerDetailScheduled | null;
 }
 
-export type SpeakerDetailTaskKind = 'general' | 'file_request' | 'form';
+export type SpeakerDetailTaskKind = TaskKind;
 
 export type SpeakerDetailTaskStatus = 'pending' | 'complete';
 

@@ -4,7 +4,11 @@
 
 import { isIsoDate } from "./iso-date";
 
-export type TaskKind = "general" | "file_request" | "form";
+// Re-exported from the pure vocabulary module (DEC-613 wave-70 amendment) —
+// the ONE set shared with src/routes/tasks.ts, src/server/repo/portal/tasks.ts,
+// and the app's speakers pages.
+import type { TaskKind } from "./task-kinds";
+export type { TaskKind };
 
 export interface OnboardingTaskTemplate {
   title: string;

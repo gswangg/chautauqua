@@ -8,9 +8,12 @@
 // ../content/UploadZone.tsx.
 import { FILE_KINDS, type FileKind } from '../../../../src/domain/files';
 
-export type TaskKind = 'general' | 'file_request' | 'form';
-
-export const TASK_KINDS: readonly TaskKind[] = ['general', 'file_request', 'form'];
+// Re-exported from the pure domain vocabulary (DEC-613 wave-70 amendment) —
+// the ONE set shared with src/routes/tasks.ts, src/server/repo/portal/tasks.ts,
+// and speakerDetail.ts, same relative-import idiom as FILE_KINDS above.
+import type { TaskKind } from '../../../../src/domain/task-kinds';
+export type { TaskKind };
+export { TASK_KINDS } from '../../../../src/domain/task-kinds';
 
 // DEC-023: assignment status literals are exactly 'pending'/'complete' — the
 // admin-facing accept/decline queue states never apply here.

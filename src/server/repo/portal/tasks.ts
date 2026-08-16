@@ -11,9 +11,11 @@ import { formatRef } from "../../../domain/ids";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
 import { chaseableContactExistsForTaskEvent } from "../tasks/crud";
+import type { TaskKind } from "../../../domain/task-kinds";
 
-// 'general' | 'file_request' | 'form' — DEC-003 task.kind literal.
-export type PortalTaskKind = "general" | "file_request" | "form";
+// Alias of the shared vocabulary (DEC-613 wave-70 amendment) —
+// src/domain/task-kinds.ts is the ONE declaration.
+export type PortalTaskKind = TaskKind;
 
 export interface PortalTaskAssignment {
   id: string;
