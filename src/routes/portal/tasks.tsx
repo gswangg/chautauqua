@@ -70,6 +70,7 @@ import { deleteFileRow } from "../../server/repo/portal-config";
 import { listFields } from "../../server/repo/forms";
 import { validateAnswers } from "../../forms/validate";
 import type { AnswerMap } from "../../forms/types";
+import { parseTaskResponse, serializeTaskResponse } from "../../forms/task-response";
 import { fieldInputName } from "../../views/form-render";
 import { extractFileAnswers } from "../../lib/submit-core";
 import {
@@ -303,7 +304,7 @@ portalTasksRoutes.get("/tasks/:assignmentId/form", async (c) => {
   const assignment = assignments.find((a) => a.id === assignmentId);
   if (!assignment) throw new ApiError("not_found", "Task assignment not found");
 
-  const answers: AnswerMap = assignment.responseJson ? JSON.parse(assignment.responseJson) : {};
+  const answers: AnswerMap = parseTaskResponse(assignment.responseJson, assignmentId);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
 
@@ -355,7 +356,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
   const priorAssignments = await getMyTaskAssignments(c.var.db, contactId, auth.orgId);
   const priorAssignment = priorAssignments.find((a) => a.id === assignmentId);
   if (!priorAssignment) throw new ApiError("not_found", "Task assignment not found");
-  const priorAnswers: AnswerMap = priorAssignment.responseJson ? JSON.parse(priorAssignment.responseJson) : {};
+  const priorAnswers: AnswerMap = parseTaskResponse(priorAssignment.responseJson, assignmentId);
 
   const fileFields = fields.filter((field) => field.kind === "file");
   const fileAnswers = extractFileAnswers(
@@ -493,7 +494,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
     );
   }
 
-  await saveTaskFormResponse(c.var.db, assignmentId, contactId, JSON.stringify(validation.cleaned));
+  await saveTaskFormResponse(c.var.db, assignmentId, contactId, serializeTaskResponse(validation.cleaned));
   await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date(), contactId);
   return c.redirect("/portal/tasks", 302);
 });

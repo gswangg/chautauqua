@@ -16,6 +16,7 @@ import { ApiError, parseBoundedIdArray, readOptionalJsonBody } from "../server/h
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398, DEC_754 } from "../decisions";
+import { hasSavedTaskResponse } from "../forms/task-response";
 import { FILE_KINDS, isValidFileKind, type FileKind } from "../domain/files";
 import { TASK_KINDS, MAX_TASK_ASSIGNEES, DEFAULT_TASK_AUDIENCE } from "../domain/task-kinds"; // DEC-613 wave-70 amendment; DEC-422 + DEC-746 wave-77 amendments
 import { INVITE_STATUSES, isInviteStatus, type InviteStatus } from "../domain/invite-status"; // DEC-789 wave-73 amendment
@@ -580,7 +581,7 @@ taskRoutes.patch("/task-assignments/:id", csrfJson, async (c) => {
   // a file has been uploaded — both gated through the portal, not this raw
   // JSON API. 'general' tasks and any 'pending' transition are ungated.
   if (isOwningSpeaker && status === "complete") {
-    if (ownership.kind === "form" && ownership.responseJson === null) {
+    if (ownership.kind === "form" && !hasSavedTaskResponse(ownership.responseJson)) {
       throw new ApiError("invalid", "Complete this task through the portal form/upload flow", {
         status: "Save a response in the portal before marking this task complete",
       });

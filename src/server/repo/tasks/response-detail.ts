@@ -8,6 +8,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { listFields } from "../forms";
 import type { AnswerMap } from "../../../forms/types";
+import { parseTaskResponse } from "../../../forms/task-response";
 import { chunkIds } from "../../../lib/chunk";
 import { answerDisplayText } from "../../../domain/answer-text";
 
@@ -63,7 +64,7 @@ export async function getAssignmentResponseDetail(
   const row = rows[0];
   if (!row) return null;
 
-  const answers: AnswerMap = row.responseJson ? (JSON.parse(row.responseJson) as AnswerMap) : {};
+  const answers: AnswerMap = parseTaskResponse(row.responseJson, assignmentId);
   const fieldDefs = row.formId ? await listFields(db, row.formId) : [];
 
   // ONE batched select of (id, filename) over every file-kind field's answer
