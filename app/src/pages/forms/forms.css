@@ -326,6 +326,14 @@
   max-width: 520px;
 }
 
+/* DEC-650(a): the conditional-visibility rule reads as a sentence -- this
+   leading line, then the trigger/condition/value controls beneath it --
+   rather than a bare "Field" select implying the sentence. */
+.chq-forms-rule-sentence {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
 /* Fields section footer row (mock: "Public link · <url> · Copy") --
    quiet inline row under the field list. The builder ends here (frame 04,
    DEC-731 amendment); the Settings > Call for papers link sits just below
