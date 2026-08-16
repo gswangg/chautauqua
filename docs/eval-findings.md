@@ -1,95 +1,53 @@
-# Eval findings — rebased 2026-08-15 (wave 48, task-w48-e)
+# Eval findings — rebased 2026-08-15 (wave 50, task-w50-i)
 
-Verified against `main` sha `243b3094dcc4dd9125dc01f9cec01dc396251e89`
-("merge task-w47-e"), derived AT THIS TASK'S OWN RUNTIME (DEC-069
-wave-17/wave-37 amendments) by running, in order: `git merge --no-edit
-main` (worktree cut directly from `main`'s tip — reported "Already up to
-date", no new commits pulled); `git for-each-ref --format='%(objectname)
-%(refname:short)' refs/heads` (36 live branches) plus `git merge-base
---is-ancestor <ref> main` for every one, run individually (not trusted
-from `ref-state` alone); and `npx tsx scripts/ref-state.ts` for the
-cross-check. **Both traps reconfirmed, still live:** (1)
-`.git/packed-refs` (read from the main checkout,
-`/Users/wednesdayniemeyer/Documents/gniemeyer/Projects/chautauqua/.git/packed-refs`)
-carries a STALE `refs/heads/main` entry at
-`4207460470b672176e119ed3502d08d869489509` (the wave-44 boundary) — the
-loose ref (`.git/refs/heads/main`, `243b3094`) overrides it and is the one
-`git rev-parse main` actually returns; do not read the packed line as
-current. (2) globbing `.git/refs/heads/*` on disk misses packed refs
-entirely — use `git for-each-ref`. `ref-state`'s receipt, verbatim: DEC-644
-three-sha boundary — HEAD `243b3094dcc4dd9125dc01f9cec01dc396251e89`;
-newest first-parent product-code-bearing sha
-`243b3094dcc4dd9125dc01f9cec01dc396251e89`; every live ref (`main`,
-`manual-qa`, `task-custodian-w68-4`, `task-w46-g`, `task-w47-b`,
-`task-w47-c`, `task-w47-d`, `task-w47-e`, `task-w47-f`, `task-w48-b`,
-`task-w48-d`, `task-w48-e`, `task-w48-f`, `task-w68-d`, `task-w71-c`,
-`task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git
-merge-base --is-ancestor`; NON-ancestor refs (IN FLIGHT this wave, or
-unmerged from an earlier/later campaign): `mail-rich-shape-fallback`,
-`task-w17-i`, `task-w47-a`, `task-w47-g`, `task-w47-h`, `task-w48-a`,
-`task-w48-c`, `task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`,
-`task-w72-a` through `task-w72-j`. Individually re-run `git merge-base
---is-ancestor` per ref confirms the same split — see IN FLIGHT below for
-what each non-ancestor wave-47/48 ref actually contains at this runtime
-(inspected directly via `git show <ref>:<path>`/`git log -1`, not
-inferred). No `task-w48-g` or `task-w48-h` ref exists yet at this runtime
-(`git for-each-ref refs/heads` has no match for either name) — their
-sections are not yet in `docs/verification-log/index/` either (`ls
-docs/verification-log/index/ | grep -E 'w48-g|w48-h'` = zero matches).
+Verified against `main`/HEAD `87cee8b9fec30d190f93156c99ddf7011b68bc92`
+("scribe wave 50"), MEASURED_SHA `87cee8b9`, derived AT THIS TASK'S OWN
+RUNTIME (DEC-069 wave-17/wave-37, DEC-358 rebase rule) by running, in
+order: `git merge --no-edit main` (worktree cut directly from `main`'s
+tip — reported "Already up to date"); `npx tsx scripts/ref-state.ts`;
+`git for-each-ref --format='%(refname:short) %(objectname:short)'
+refs/heads` (46 live branches) plus `git merge-base --is-ancestor <ref>
+HEAD` for every one, run individually (never a `.git/refs/heads/*` glob,
+never the `.git/packed-refs` `refs/heads/main` line). `ref-state`'s
+receipt, verbatim: DEC-644 three-sha boundary — HEAD `87cee8b9`; newest
+first-parent product-code-bearing sha `c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`;
+ancestors of HEAD: `main`, `manual-qa`, `task-custodian-w68-4`,
+`task-w47-a`, `task-w47-g`, `task-w47-h`, `task-w48-a`, `task-w48-c`,
+`task-w48-f`, `task-w50-e`, `task-w50-h`, `task-w50-i`, `task-w68-d`,
+`task-w71-c`, `task-w71-d`, `task-w71-e`. NON-ancestors: `mail-rich-shape-fallback`,
+`task-w17-i`, `task-w48-b`, `task-w48-d`, `task-w48-e`, `task-w48-g`,
+`task-w49-a` through `-h`, `task-w50-a`, `task-w50-b`, `task-w50-c`,
+`task-w50-d`, `task-w50-f`, `task-w50-g`, `task-w68-b`, `task-w68-c`,
+`task-w68-e`, `task-w71-a`, `task-w72-a` through `-j`. **The pinned mandate
+(`32921050`, wave 47/task-w47-h) is now confirmed an ancestor of HEAD** —
+every wave-47 branch (`-a` through `-h`) landed since that pin; see the new
+TIER 0 "Landed since the wave-47 boundary" subsection.
 
-COMPACTION per DEC-358's rebase rule: the wave-44 header (boundary
-`6edb5263`) is REPLACED by this one, not prepended — the prior header
-predates waves 45, 46 and 47 entirely and named none of wave 45's seven
-CONFIRMED-DEFECT rows or wave 46/47's landed fixes for them. No per-item
-citation below is deleted, only re-homed/compacted — dismissals are
-recorded, never deleted. Every "file X exists / does not exist" claim
-carried from the prior header was re-globbed before being carried; all
-re-confirmed true this wave EXCEPT one duplicate found and removed (see
-below): `docs/verification-log/task-w27-g-fidelity-recheck-ceda66f2.md`,
-`src/db/schema/embed.ts`, `src/routes/public/saved-embed.tsx` (saved
-embeds), `app/src/pages/submissions/submissions-phone-card.render.test.tsx`
-(phone triage cards), `src/routes/public/cfp-steps-script.tsx` and
-`app/src/pages/speakers/RosterPanel.tsx` + `RosterPanel.render.test.tsx`
-(CFP 2-step wizard, roster screen), `docs/mandates/
-w41-falsifiability-batch-a.md` and `-batch-b.md`, `package.json` (`deploy`
-script, now at `:26` not `:21` — line drifted, claim itself still true),
-`app/src/pages/settings/settings.css:17-22`, `app/src/pages/agenda/
-PhoneAgenda.tsx` (clash caption `:186`, "Place here anyway" `:167-176`),
-`src/routes/auth.css.ts:318-336`, `src/routes/public/home.css.ts:72-76`,
-and every batch-B remainder file:line (`src/server/repo/form-roles.ts:16`,
-`src/routes/review/reviewer.ts:288`, `src/server/repo/files-authz.ts:185-209`,
-`app/src/components/error-states.css:31`, `src/server/repo/events.ts:224-259`,
-`src/server/repo/import/sessionboard.ts:620-627`,
-`src/routes/comms/send.ts:125-138`) — all re-confirmed present, exact line
-numbers may drift a few lines but every cited symbol/pattern is still at
-the claimed location. **DUPLICATE FOUND AND REMOVED:** the batch-A
-remainder list (former lines ~544-554) still carried "Home footer media
-rule — `src/routes/public/home.css.ts:72-76`" as UNFALSIFIABLE, but wave
-46's own discharge paragraph two lines above it already lists this exact
-item as CONFIRMED TRUE with a named falsifying check
-(`test/tier0-falsifiability-w46.test.ts`) — the remainder list was never
-updated when the discharge landed. Removed from the remainder below; not a
-new finding, a stale-carry bug in the doc itself (same decay class as
-DEC-358's wave-35 "absence is a measurement" rule, applied to a presence
-this time).
+COMPACTION per DEC-358's rebase rule: the wave-47 header is REPLACED by
+this one, not prepended (three waves stale: it predated wave 48's battery
+sections and every wave-49 lane). No per-item citation is deleted, only
+re-homed/compacted. Re-glob receipt (programmatic, this runtime): every
+backtick-quoted file-path citation in this document (169 distinct paths)
+was resolved against the working tree by exact path or, where a citation
+uses a bare filename inside a list, by unique basename match; **all 169
+resolved to a real file — zero false "exists" claims carried forward.**
+No "does not exist" claim is currently carried in this document (the two
+prior absence claims, `localhost:8799` and `TBD`, were themselves CLOSED
+by wave-46/task-w46-f and are cited as closures, not re-asserted as
+absences needing re-globbing).
 
-**This wave's own addition (folded in from the `6edb5263`..`243b3094`
-range):** wave 46's five instrument/authz fixes and wave 47's five landed
-product fixes are now MERGED ancestors of `main` — see the new "Landed
-since the wave-44 boundary" subsection under TIER 0. `task-w46-g`
-(`74d682d3`, DEC-020 upload-vocabulary scan-lock) is also confirmed a
-MERGED ancestor of `main` this wave, via `git log --ancestry-path
-74d682d3..main` showing `merge task-w46-g` (`185fa8d7`) landed before the
-wave-47 merges — see the note under "Landed since the wave-44 boundary"
-correcting DEC-358's wave-48 amendment, which was written from a stale
-reading before that merge. Wave 48's own gate lanes are still IN FLIGHT or
-not yet started as this rebase writes (see IN FLIGHT); the standing
-open-items COUNT and verdict belong to `task-w48-g`'s triage-closure
-section and `task-w48-h`'s stage-1 exit-ledger section — neither exists
-yet in `docs/verification-log/index/` at this runtime (confirmed absent
-above), so this file cites those lanes BY TASK ID and does not restate,
-predict, or fabricate a filename for their count (ownership boundary for
-this task, item 7 of the delegating brief).
+**This wave's own addition — folding the wave-47/48 range in.** All seven
+wave-45 CONFIRMED-DEFECT rows the wave-47 header carried as IN FLIGHT are
+now CLOSED: every `task-w47-a`..`-g` owning branch is a confirmed ancestor
+of this HEAD, and this task independently re-ran each item's falsifying
+check against the live tree (not inherited) — see the new TIER 0
+subsection below, which also folds in wave-48's three landed gate
+sections (`0240` build+test+bundle, `0242` perf-smoke, `0244`
+render-sweep) and reconciles `0240`'s two filed OPEN ITEMS against the
+current tree. Wave 49's eight lanes and wave 50's non-scribe siblings are
+NOT ancestors of this HEAD — named as OWNED-BUT-UNMERGED in IN FLIGHT
+below, per this task's own boundary (a discharge status this lane did not
+itself verify is never restated as closed).
 
 ## Standing rules (still bind)
 
@@ -232,7 +190,67 @@ label forward for `task-w46-g`. Formal census ownership (naming it CLOSED
 in a wave-48 triage table) belongs to `task-w48-g`, per the ownership
 boundary above — this is a ref-truth correction, not a census entry.
 
-### Landed since the wave-41 boundary (`b71a1358`..`6edb5263`), carried, re-verified present
+### Landed since the wave-47 boundary (`32921050`..`87cee8b9`), verified this wave
+
+**Wave-45's seven CONFIRMED-DEFECT rows — all seven CLOSED**, every
+`task-w47-a`..`-g` owning branch a confirmed ancestor of HEAD, each item
+re-checked directly against the live tree this task (not inherited):
+
+1. **Reminder send-then-stamp race** — CLOSED, `task-w47-a` (`030c9170`).
+   `reminders.ts:415-459` (DEC-023) claims via a conditional chunked
+   `UPDATE...RETURNING` BEFORE the mail loop. `test/reminders-claim-before-send.test.ts` 2/2.
+2. **Portal read doors scoped in JS** — CLOSED, `task-w47-b`.
+   `portal/data.ts:13-23,75`, `portal/resources.ts:116-154` (DEC-962) now
+   prove `contactId` via correlated `EXISTS` in the SQL `WHERE`.
+   `test/portal-detail-download-scope-sql.test.ts` 4/4,
+   `test/portal-resources-scope.test.ts` 2/2.
+3. **Auto-schedule accounting race** — CLOSED, `task-w47-c`.
+   `auto-schedule.ts:188-198` (DEC-615) reconciles by SET membership
+   against this run's own snapshot. `test/auto-schedule-unplaced-reconciliation.test.ts` 2/2.
+4. **CSV import duplicate-destination mapping** — CLOSED, `task-w47-d`.
+   `contacts-parts/import.ts:44-130` throws, never coerces/drops.
+   `test/contacts-import-mapping-injective.test.ts` 6/6.
+5. **Merge preview/execute preflight parity** — CLOSED, `task-w47-e`.
+   `api/contacts/merge.ts:35-83` (DEC-705/DEC-026) preview now runs
+   `repo.checkMergeConflicts`, returns `blocked` in the 200 body.
+   `test/contacts-merge-preview-parity.test.ts` 3/3.
+6. **Contact history `events` unbounded** — CLOSED, `task-w47-f`.
+   `contacts/history.ts:30,140` — `MAX_CONTACT_HISTORY_EVENTS = 20` now
+   bounds it. `test/contacts-history-event-id.test.ts` 6/6.
+7. **File version-mint race** — CLOSED, `task-w47-g` (`9a541796`).
+   `migrations/0043_file_version_chain_unique.sql` (on disk,
+   ancestor-confirmed) + `content.ts:81-83` `uniqueIndex`. Second insert
+   onto the same predecessor now throws a conflict `ApiError`.
+   `test/file-version-chain-unique.test.ts` 2/2.
+
+(All eight FALSIFYING CHECK files re-run this task, green — no citation
+inherited from a branch's own commit message.) `0236` (task-w45-f)'s
+24-file header-contract blast-radius finding stays UNOWNED (re-glob: no
+live branch claims it; `assemble-verification-log.ts:97-121`'s
+`deriveSyntheticHeader` already covers 17/24 mechanically, 15 sha-less
+legacy files still need a grandfather-vs-backfill DEC ruling).
+
+**Wave-48's three landed gate sections, folded in.**
+`docs/verification-log/index/0240` (task-w48-a, build+test+bundle @
+`0ecff8aa`, `FAIL`, 2 open items), `0242` (task-w48-c, perf-smoke,
+`PASS`, 117/117), `0244` (task-w48-f, render-sweep @ `243b3094`, `PASS`,
+all seven passes clean) — all ancestors of HEAD. `0240`'s two items,
+re-checked directly at this HEAD:
+   - **Item 1** (DEC-818 cited a non-existent migration) — CLOSED, the
+     file now exists (item 7 above). `test/decision-path-references.scan.test.ts` 2/2.
+   - **Item 2** (`test/spec9-invariants.test.ts:131` DEC-041 assertion
+     fails) — STILL FAILS, RECLASSIFIED as a TEST DEFECT not a product
+     regression (DEC-522 w49 finding, reconfirmed this task by re-running
+     it): the test feeds `Date.now() - 24h` against a UTC calendar DAY
+     LABEL, so which of lines 131/133 fails depends on the hour the suite
+     runs — `src/domain/edit-lock.ts:22`'s DEC-041 carve-out is unchanged.
+     This run: line 131 (`"pending"`) failed, not line 133
+     (`"accepted"`) as `0240` reported — same clock-boundary defect,
+     different assertion. Owner: wave-51 lane should freeze the test's
+     clock/day-label as `test/edit-lock.test.ts:9-11` does; do not
+     re-file as a product regression.
+
+### Landed since the wave-41 boundary (`b71a1358`..`6edb5263`), verified this wave
 
 - **Wave 42's six lanes, folded in.** `docs/verification-log/index/0210`
   (task-w42-a triage-closure, `OPEN ITEMS: 1`), `0211` (task-w42-c
@@ -735,13 +753,13 @@ actual defect (coverage gaps only, per the mandate's own text). Do not
 re-file these eight as UNFALSIFIABLE.
 
 **STILL UNFALSIFIABLE (batch B remainder, not reached that wave) —
-re-homed wave 48: UNOWNED (DEC-358 wave-46 amendment, an owner line names
-a BRANCH, not a wave — no wave-47 branch ref exists that touches any file
-in this list, confirmed against this wave's own `git for-each-ref`
-reading, so the prior "wave-47+ lane, branch to be named" line decayed the
-moment wave 47 closed without claiming it; not silently re-pointed at
-"wave-49" without a real branch):** all file:line targets re-globbed this
-wave and re-confirmed present (see the compaction paragraph above) —
+OWNED-BUT-UNMERGED this wave: `task-w49-g` (`73c2a306`, "discharge unowned
+batch-B falsifiability remainder (DEC-358)") claims the items below with
+re-confirmed-true checks and new/upgraded falsifying tests per its own
+commit message; committed, NOT an ancestor of HEAD at this runtime. Same
+caveat as batch A above — a named branch is a plan fact, not this lane's
+own re-verified discharge; do not read as CLOSED until `task-w49-g` lands
+or a lane independently re-runs its checks:**
 `answerFieldRoleCondition` missing event join — DISMISSED, DEC-592 wave-18
 amendment (`src/server/repo/form-roles.ts:16`);
 `countEvaluationsBySubmission`'s whole-plan map — DISMISSED, DEC-449;
@@ -826,160 +844,44 @@ fixes are live-exercised, not merely present in source.
 
 ## IN FLIGHT — owned by a branch, do not re-file
 
-Ref-measured at THIS task's own runtime against `243b3094` (36 refs total;
-`git for-each-ref --format='%(objectname) %(refname:short)' refs/heads` +
-`git merge-base --is-ancestor <ref> main` run individually for every ref +
-`npx tsx scripts/ref-state.ts` as a cross-check — all three agree):
+Ref-measured at THIS task's own runtime against HEAD `87cee8b9` (46 refs
+total; `git for-each-ref --format='%(refname:short) %(objectname:short)'
+refs/heads` + `npx tsx scripts/ref-state.ts` + `git merge-base
+--is-ancestor <ref> HEAD` run individually for every ref). Wave 45's
+seven-item defect ledger and wave-30-through-47's named branches are gone
+from this section — folded into TIER 0 above (all seven items CLOSED, all
+owning branches merged). **Only a discharge status this lane itself
+verified moved this wave; every branch below is named by sha and scope,
+not re-adjudicated (DEC-358 w50 boundary).**
 
-- **NO `task-w30-*` through `task-w46-*` named branch is live except
-  `task-w46-g`** — confirmed via `git for-each-ref refs/heads`; `task-w46-g`
-  (`74d682d3`, DEC-020 upload-vocabulary scan-lock) IS an ancestor of `main`
-  (merged, folded into TIER 0 above — see the correction note there). No
-  other wave-30-through-46 named branch exists as a live ref today. Do not
-  re-file any of those waves' scope on the strength of an old "OWNED BY"
-  line (DEC-069 wave-17 amendment).
-- **Wave-41/42/43/44/45/46 lanes are all either MERGED (folded into TIER 0
-  above) or have no surviving branch ref** — same pattern as the prior
-  bullet, re-confirmed this wave; not re-derived line-by-line here (would
-  duplicate the wave-44/wave-46/wave-47 rebases' own work, which this
-  header already supersedes per the compaction rule).
-- **`task-w47-a`** (`030c9170`, "DEC-023: claim-before-send for task
-  reminders, closes CONFIRMED-DEFECT #1, `0232`") — real commit, NOT an
-  ancestor of `main` at this HEAD. `src/server/repo/tasks/reminders.ts:361`
-  — `sendReminderEmails` now claims (`RETURNING` ids) a group's assignment
-  ids in a conditional chunked UPDATE BEFORE mailing, deleting the old
-  post-loop stamp UPDATE, so two overlapping cron ticks can no longer both
-  pass `isReminderDue` and both send, and a crash between the loop and the
-  old stamp write can no longer re-send the whole batch on retry. Not
-  independently re-read for correctness by this task (out of write scope,
-  docs-only) — filed here so the fix is not silently dropped, not
-  adjudicated as CLOSED.
-- **`task-w47-g`** (`9a541796`, "File version mint gets its unique-index
-  contract, DEC-818 amendment") — real commit, NOT an ancestor of `main` at
-  this HEAD. `migrations/0043_file_version_chain_unique.sql` replaces the
-  non-unique `file_previous_file_id_idx` with a UNIQUE index on
-  `previous_file_id`, encoding "at most one row may name a given
-  predecessor" as a DB constraint rather than a JS-computed `versionNo` —
-  closes the CONFIRMED-DEFECT filed by `0235` claim 2 (concurrent
-  re-uploads onto the same chain head could both mint the same version
-  number). Not independently re-read for correctness by this task (docs
-  only) — filed, not adjudicated.
-- **`task-w47-h`** (`416d2eb5`, "Scribe wave 47: rebase eval-findings, file
-  wave-45's 7-item defect ledger") — real commit, NOT an ancestor of
-  `main` at this HEAD. This is a PRIOR rebase of `docs/eval-findings.md`
-  itself (the same lane this task performs), done at wave 47's own runtime
-  against a boundary that has since moved (wave 47's own five product fixes
-  b/c/d/e/f have since merged, described above). Its content is SUPERSEDED
-  by this wave-48 rebase, which was derived fresh from `main` at
-  `243b3094`, not read from `task-w47-h`'s body. Do not merge
-  `task-w47-h`'s copy of this file over this one; if it is ever merged, its
-  version of `docs/eval-findings.md` conflicts with this commit and the
-  conflict resolves to THIS file (the newer measured tree), per DEC-099's
-  "last appended is not newest, rank by newest measured tree" rule.
-- **`task-w48-a`** (`ea772bc8`, "build+test+bundle gate @ `0ecff8aa`, 2 test
-  failures filed, owner wave-49") — real commit, NOT an ancestor of `main`
-  at this HEAD. Filed here for completeness; not independently re-read
-  (docs-only, out of write scope) — the two failures and their wave-49
-  ownership are that lane's own claim, not re-verified or re-counted by
-  this file.
-- **`task-w48-c`** (`2330f7cd`, "verification-log: task-w48-c perf-smoke
-  gate @ `0ecff8aa` (`0242`)") — real commit, NOT an ancestor of `main` at
-  this HEAD. Three `perf:smoke` runs, 117/117 check-rows PASS, 0 FAIL,
-  including the historically marginal rows (reviewer queue, plan progress
-  page 1, plan results page 1, files library page 1, onboarding grid,
-  three portal rows) named in TIER 0's OWNED perf section above — that
-  section's per-row ownership notes are NOT rewritten by this task
-  (docs-only, ownership boundary), but a future rebase should read `0242`
-  directly rather than this summary.
-- **`task-w48-b`, `task-w48-d`** — tip equals `main`'s HEAD exactly (zero
-  commits of their own as of this reading). RUNNING or not yet started;
-  not dead by DEC-069's wave-37 amendment (a same-wave branch at its base
-  may still be working).
-- **`task-w48-f`** — no ref found: `git for-each-ref refs/heads` has no
-  `task-w48-f` entry at this runtime (the field guide names it as the
-  assembler lane; may not have created its branch yet, or already merged —
-  `git log --ancestry-path` was not run for a non-existent ref). Flagged,
-  not triaged.
-- **`task-w48-g`, `task-w48-h`** — no ref exists yet at this runtime (see
-  header). These own the wave-48 triage-closure and stage-1 exit-ledger
-  respectively, per this task's own delegating brief; cited by task id
-  only, per the ownership-boundary rule above.
-- **`task-w48-e`** — this task itself (the eval-findings rebase you are
+### Wave 48 — non-landed lanes
 
-### Wave-45 adjudication ledger — 7 CONFIRMED-DEFECT rows, omitted by the stale wave-44 header, now filed
+- `task-w48-b` (`2c3c4210`) — "DEC-069 gate slot 2/5 J1-J12 walkthrough @
+  243b3094 (FAIL producer)".
+- `task-w48-d` (`edea9219`) — "SPEC §6-9 static audit @ 243b3094".
+- `task-w48-e` (`6b03b916`) — SIBLING rebase of this same file, older
+  boundary (`243b3094`); do not hand-merge both, whichever lands first
+  the other re-derives from the landed tree.
+- `task-w48-g` (`bc04eb75`) — "DEC-069 gate slot 5/5 triage-closure @
+  243b3094 (0245)".
 
-Wave 45 ran six FILE-NEVER-FIX adjudication-only lanes
-(`docs/verification-log/index/0230`-`0237`, all sha `8c194ec9`/`8b65b63a`,
-all `QUALIFYING`, all confirmed ancestors of `main` this wave — MERGED).
-Between them they filed seven CONFIRMED-DEFECT rows. None of the seven
-appear above this paragraph in this file because the header this rebase
-replaces was pinned at `6edb5263`, predating wave 45. Each is now IN
-FLIGHT this wave under the wave-47 branch named in its own task mandate —
-**do not claim any of the seven closed; this rebase runs concurrently with
-the lanes fixing them, it does not adjudicate or fix their scope itself:**
+All four committed, none an ancestor of HEAD.
 
-1. **Cron reminder send-then-stamp race** (owner: `task-w47-a`,
-   "reminders") — `0232` (task-w45-c), CONFIRMED-DEFECT:
-   `src/server/repo/tasks/reminders.ts:416-459` (`sendReminderEmails`)
-   sends mail in a loop THEN writes the `lastRemindedAt` dedupe stamp
-   afterward in a separate chunked UPDATE; no claim-before-send, no
-   per-(assignment,day) unique constraint. An overlapping/retried cron
-   tick can duplicate a send. Fix direction: claim-before-send (conditional
-   UPDATE or a per-(assignment,day) unique ledger row with
-   `onConflictDoNothing`).
-2. **Portal read doors scoped in JS, not SQL** (owner: `task-w47-b`,
-   "portal doors") — `0232` (task-w45-c), CONFIRMED-DEFECT:
-   `getPortalSubmissionDetail` (`src/server/repo/portal/data.ts:208-273`)
-   and `getResourceDownloadScope`
-   (`src/server/repo/portal/resources.ts:117-152`) each run their
-   content-bearing `SELECT` unscoped by `contactId`, then filter ownership
-   afterward in JS. `listDeliverableCandidates`
-   (`src/server/repo/portal/tasks.ts:227-232`, DEC-962-audited) is the
-   counter-example both should converge on.
-3. **Auto-schedule J9 fail-loud invariant, concurrent-write race** (owner:
-   `task-w47-c`, "auto-schedule") — `0233` (task-w45-d), CONFIRMED-DEFECT:
-   `src/server/repo/agenda/auto-schedule.ts:193-198`'s fail-loud accounting
-   invariant is reachable under a concurrent-write race
-   (`auto-schedule.ts:54,64-68,89,107,119-125,143-148,158,177-198`;
-   `payload.ts:59-87`; `schedule.ts:406-416`; `slots.ts:45-79`;
-   `routes/agenda.ts:93`). A new gap, not a re-file of the prior
-   wave-42/43 `autoSchedule320` defect (0213/0215) — that one is already
-   fixed (`auto-schedule.ts` now splits `slotted` by
-   `isDayWithinEventRange` exactly as 0213 prescribed).
-4. **CSV import duplicate-destination column mapping accepted silently**
-   (owner: `task-w47-d`, "import mapping") — `0234` (task-w45-e),
-   CONFIRMED-DEFECT: `src/domain/contacts-parts/import.ts:44-101` refuses
-   nothing when two source columns map to the same destination field —
-   silent last-write-wins.
-5. **Merge preview/execute preflight parity** (owner: `task-w47-e`, "merge
-   preview") — `0234` (task-w45-e), CONFIRMED-DEFECT:
-   `src/routes/api/contacts/merge.ts:41-73` — preview never runs
-   `planMergeFold`/`detectMergeConflicts`, so preview and execute can
-   disagree.
-6. **Per-contact history `events` unbounded** (owner: `task-w47-f`,
-   "history events") — `0234` (task-w45-e), CONFIRMED-DEFECT:
-   `src/server/repo/contacts/history.ts:119-126` — the `events` list is an
-   unbounded `selectDistinct`, no limit/total, unlike the submissions/
-   talks/emails lists in the same claim.
-7. **File version-mint race** (owner: `task-w47-g`, "file version index")
-   — `0235` (task-w45-h), CONFIRMED-DEFECT:
-   `src/server/repo/files-versions.ts:477-511` (`insertFile`) is a plain
-   read-then-write (SELECT predecessor `versionNo`, compute `+1` in JS,
-   separate `db.insert`, no transaction); `src/db/schema/content.ts:47-80`
-   has no `uniqueIndex` backstop on `file` that would refuse two
-   concurrent re-uploads both minting version N. MINTING IS IO; atomic SQL
-   beats read-then-write; a uniqueIndex is a CONTRACT (house rule).
+### Wave 49 — all eight lanes committed, none landed (plan facts only, no verdict carried)
 
-Also filed by wave 45, **not one of the seven CONFIRMED-DEFECT rows** and
-**not assigned a wave-47 owner branch** (no lane in this wave's roster
-claims it) — `0236` (task-w45-f)'s blast-radius finding: independent
-verification found 24 files non-conforming to DEC-068's header contract,
-not the 7 the task named; 17 are mechanically repairable (sha derivable
-from filename), 15 (`0140`-`0157`, pre-dating DEC-068's wave-37
-introduction) carry no sha anywhere and need a DEC ruling (grandfather vs.
-backfill) before repair. Filed as `Owner TBD, wave-46+` at `0236`'s own
-writing; still TBD at this wave's re-glob (no live branch this wave or
-last claims it). UNOWNED, carry forward.
+`task-w49-a` (`22aeb2fc`, likely fixes the item-2 clock test above),
+`task-w49-b` (`e2929273`, CFP field-edit 409 on sibling-rule invalidation,
+DEC-505), `task-w49-c` (`9d870db7`, gate repair: build admin SPA before
+server-boot), `task-w49-d` (`db1dbc49`, public agenda feed reports a row
+ceiling not a count), `task-w49-e` (`1ec6b285`, closes standing
+DEC-099/DEC-068 items, pre-allocated seq `0250`), `task-w49-h` (`0aaf596e`,
+CFP/public-submit integrity adjudication, seq `0251`) — named, not
+independently re-read. `task-w49-f` (`b280d310`) and `task-w49-g`
+(`73c2a306`) each claim to discharge one UNOWNED wave-41 falsifiability
+remainder (see batch-A/batch-B entries above) — **OWNED, not verified by
+this lane**; this task did not re-run either branch's checks, so the
+remainder lists stay UNFALSIFIABLE-but-claimed, not CLOSED, until a
+landing or an independent re-verification says so.
 
 `0230` (task-w45-a, review-integrity) and `0231` (task-w45-b,
 comms-integrity) filed **zero** CONFIRMED-DEFECT rows each (four J4 claims
@@ -989,28 +891,37 @@ re-file either as owed a wave-47 lane; they closed clean. `0237`
 (task-w45-g, slot-claim instrument repair) fixed two DEC-069
 slot-claim-classifier defects directly (no product code) and is MERGED;
 not re-filed here.
-  reading).
-- **`task-w46-a` through `-f`** — tips equal `main`'s HEAD, ancestors,
-  folded into history (their wave-46 scope, if any remained open, is not
-  re-derived by this docs-only lane).
-- **`task-w46-g`** — real commit, NOT an ancestor of `main` at this HEAD;
-  genuinely unmerged, belongs to wave 46's own campaign, not re-derived by
-  this docs-only lane.
+
+### Wave 50 — this wave's own siblings (boundary text: a/b/c/d/e gates, f/g/h adjudications)
+
+`task-w50-a` (`94cff3c8`, frozen-gate build+test+bundle), `task-w50-b`
+(`c69591cc`, frozen-gate walkthrough — FAIL producer, day-label test
+defect, consistent with item 2 above), `task-w50-c` (sha diverged past
+worktree-creation value — a live sibling still committing, perf-smoke
+three-run receipt), `task-w50-d` (`7bbd7b6d`, spec-audit SPEC §6-9),
+`task-w50-f` (`dd95ef4c`, J3 submissions-triage adjudication, docs-only),
+`task-w50-g` (`65e491eb`, J12 data-out adjudication, docs-only) — all
+committed, none an ancestor of HEAD. `task-w50-e`/`task-w50-h` — tip
+equals HEAD exactly (zero commits at this reading), RUNNING per DEC-069
+wave-37, scope triage-closure per the slot roster. `task-w50-i` — this
+task itself. None of these nine's counts, verdicts or RESULT/OPEN ITEMS
+lines are restated or predicted here — named by branch, sha and one-line
+scope only, per this task's own boundary.
+
+### Other live refs (not wave 47-50)
+
 - **`task-w17-i`** (`7b78d8b6`) — STILL UNMERGED, unchanged across many
   waves, but its NAMED SCOPE ("Sign-in page names the event and its open
-  CFP", DEC-716) is now CLOSED-SUPERSEDED — see the DISMISSED
-  review-lens/instrument alarms entry above (`loadSingleEventContext`
-  landed via a different lane). The literal branch ref stays unmerged and
-  stale; do not resurrect it or re-file its scope.
-- **Every other live ref** — `mail-rich-shape-fallback`, `manual-qa`,
-  `task-custodian-w68-4`, `task-w68-b/c/d/e`, `task-w71-a/c/d/e`,
-  `task-w72-a`-`j` — this wave's own `ref-state` run confirms `manual-qa`,
-  `task-custodian-w68-4`, `task-w68-d`, `task-w71-c/d/e` ARE ancestors of
-  `main` (their content already folded into history; stale live refs, not
-  owned scope), while `mail-rich-shape-fallback`, `task-w68-b/c/e`,
-  `task-w71-a`, `task-w72-a`-`j` are NOT ancestors — genuinely unmerged,
-  but belong to waves numbered ahead of wave 48 (68/71/72), a
-  different/later campaign. Flagged, not triaged.
+  CFP", DEC-716) is CLOSED-SUPERSEDED — see the DISMISSED review-lens/
+  instrument alarms entry above (`loadSingleEventContext` landed via a
+  different lane). Do not resurrect the branch or re-file its scope.
+- `manual-qa`, `task-custodian-w68-4`, `task-w68-d`, `task-w71-c/d/e` —
+  ancestors of HEAD (folded into history; stale live refs, not owned
+  scope).
+- `mail-rich-shape-fallback`, `task-w68-b/c/e`, `task-w71-a`,
+  `task-w72-a`-`j` — NOT ancestors, genuinely unmerged, but belong to
+  waves numbered ahead of wave 50 (68/71/72), a different/later campaign.
+  Flagged, not triaged.
 
 ### TIER-1 pointer — `task-w27-g` owns fidelity-recheck verdicts, cite as OWNED
 
