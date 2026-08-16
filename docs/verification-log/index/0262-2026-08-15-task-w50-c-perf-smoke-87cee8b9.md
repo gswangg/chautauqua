@@ -68,7 +68,7 @@ for a reason unrelated to their own handlers, and doing so would
 misrepresent 39 healthy checks as individually broken. Full detail:
 docs/verification-log/task-w50-c-perf-smoke-87cee8b9.md.
 
-RESULT: PARTIAL — run 1 (fresh seed) fully clean, 40/40 check-rows PASS
+RESULT: FAIL — PARTIAL: run 1 (fresh seed) fully clean, 40/40 check-rows PASS
 with wide margin, including all six historically marginal rows and all
 three portal rows; no product regression found in any measured row. Runs 2
 and 3 ERRORED before measuring due to a confirmed, reproducible

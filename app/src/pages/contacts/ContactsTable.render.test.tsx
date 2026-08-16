@@ -192,8 +192,13 @@ describe('ContactsTable column allocation (w20-c, DEC-902)', () => {
     expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-select\s*\{\s*width:\s*26px;\s*\}/);
     expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-company\s*\{\s*width:\s*130px;\s*\}/);
     expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-labels\s*\{\s*width:\s*118px;\s*\}/);
+    // Gate-9 user-filed: the actions column carries a REAL width, not the
+    // `width:1px` auto-layout shrink hack -- under table-layout:fixed that
+    // width is literal and the content bled past the measure. The hack's
+    // signature is now banned outright by test/fixed-table-column-hack.scan.
+    // (`[^}]*` tolerates the explanatory comment inside the block.)
     expect(desktopBlock).toMatch(
-      /\.chq-contacts-table \.chq-contacts-col-actions\s*\{\s*width:\s*1px;\s*white-space:\s*nowrap;\s*\}/,
+      /\.chq-contacts-table \.chq-contacts-col-actions\s*\{[^}]*width:\s*96px;\s*white-space:\s*nowrap;\s*\}/,
     );
 
     // No column class carries a width; Name and email is the sole remainder.

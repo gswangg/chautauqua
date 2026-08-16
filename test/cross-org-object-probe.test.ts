@@ -622,6 +622,7 @@ const CROSS_ORG_LEDGER: LedgerEntry[] = [
   { method: "POST", path: "/api/v1/submissions/:id/content-note", expectedStatus: 404 },
   { method: "POST", path: "/api/v1/submissions/:id/content-status", expectedStatus: 404 },
   { method: "POST", path: "/api/v1/submissions/:id/participants", expectedStatus: 404 },
+  { method: "DELETE", path: "/api/v1/submissions/:id/participants/:participantId", expectedStatus: 404 },
   { method: "PATCH", path: "/api/v1/submissions/:id/participants/:participantId", expectedStatus: 404 },
   { method: "PATCH", path: "/api/v1/task-assignments/:id", expectedStatus: 403 },
   { method: "GET", path: "/api/v1/task-assignments/:id/response", expectedStatus: 404 },

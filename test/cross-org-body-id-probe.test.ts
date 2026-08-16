@@ -563,6 +563,22 @@ const CASES: RouteCase[] = [
     requestPath: `/api/v1/tasks/${IDS.taskB}/assign`,
     body: { contactIds: [IDS.contactA] },
   },
+  // Joined the population in wave 59 (DEC-746 amendment made createTask
+  // accept an optional contactIds subset, so the registration now reads a
+  // body id). Path names org B's event; the body carries org A's real
+  // contact, which filterRosterContactIds refuses before createTask runs.
+  {
+    method: "POST",
+    path: "/api/v1/events/:eventId/tasks",
+    requestPath: `/api/v1/events/${EVENT_B}/tasks`,
+    body: {
+      kind: "general",
+      title: "A task",
+      description: null,
+      required: true,
+      contactIds: [IDS.contactA],
+    },
+  },
   // Joined the population in wave 41 (DEC-027 wave-41 amendment gave the
   // email-log and evaluations export kinds their own surface's filter, so
   // this registration now reads ?contactId=/?planId=). Exercised on the
@@ -624,6 +640,7 @@ const CROSS_ORG_BODY_LEDGER: LedgerEntry[] = [
   { method: "GET", path: "/api/v1/review/plans", expectedStatus: 404 },
   { method: "GET", path: "/api/v1/review/submissions/:id", expectedStatus: 404 },
   { method: "POST", path: "/api/v1/tasks/:id/assign", expectedStatus: 400 },
+  { method: "POST", path: "/api/v1/events/:eventId/tasks", expectedStatus: 400 },
   {
     method: "POST",
     path: "/api/v1/events/:eventId/onboarding/remind",

@@ -231,14 +231,6 @@ const LEGACY_VERDICT_VIOLATIONS: readonly string[] = [
   "docs/verification-log/index/0184-2026-08-15-task-w31-a-files-library-perf-39634fe8.md",
   "docs/verification-log/index/0192-2026-08-15-task-w36-d-spec-audit-f5783479.md",
   "docs/verification-log/index/0195-2026-08-15-task-w36-f-aie-scale-3b3b56c7.md",
-  // wave 49: task-w47-h's 0238 (docs-only scribe/mandate rebase, landed on
-  // main between wave 48's freeze and this branch's cut) ends
-  // `RESULT: NOT QUALIFYING -- ...`, whose first token is `NOT`, not
-  // `PASS`/`FAIL` -- the identical wave-36 shape this ratchet already
-  // tracks. Added per DEC-068's own shrink-only-ratchet rule; this is a
-  // growth because the corpus genuinely grew, not a loosening of the
-  // predicate.
-  "docs/verification-log/index/0238-2026-08-15-task-w47-h-eval-findings-defect-ledger-32921050.md",
   // wave 49: this lane's own 0250 (instrument ledger closure) ends
   // `RESULT: NOT QUALIFYING -- ...`, the same wave-36-trap shape, for the
   // same reason -- a docs+test closure section, not a five-slot gate.

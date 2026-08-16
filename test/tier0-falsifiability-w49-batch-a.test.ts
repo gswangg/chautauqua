@@ -41,9 +41,17 @@ describe("item i: npm run deploy exists (package.json, DEC-358 batch-A)", () => 
     // line. Actually invoking the script would shell out to wrangler
     // against a real Cloudflare account, which STAGE 1 forbids (no secrets/
     // external accounts required to run this repo's code or tests).
+    // The script list is written at npm's `notice` loglevel, so an ambient
+    // `npm_config_loglevel=silent` -- which `npm test --silent` exports into
+    // this process and every child it spawns -- makes `npm run` print
+    // NOTHING and the assertions below vacuously fail. Pin the loglevel for
+    // the child so the probe measures npm's script resolution rather than
+    // how the outer test runner happened to be invoked. Still falsifiable:
+    // delete the deploy script and the list stops containing it.
     const out = execFileSync("npm", ["run"], {
       cwd: REPO_ROOT,
       encoding: "utf-8",
+      env: { ...process.env, npm_config_loglevel: "notice" },
     });
     expect(out).toContain("deploy");
     expect(out).toContain("wrangler d1 migrations apply");

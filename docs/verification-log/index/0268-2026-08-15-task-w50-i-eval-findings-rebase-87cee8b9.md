@@ -92,7 +92,7 @@ $ npm run verification-log:check
 exit 0
 ```
 
-RESULT: NOT QUALIFYING — docs-only scribe/mandate rebase, DEC-069 (a gate
+RESULT: FAIL — NOT QUALIFYING: docs-only scribe/mandate rebase, DEC-069 (a gate
 inside a code wave can never qualify; here, no code wave gate is even
 attempted). `docs/eval-findings.md` rebased to `87cee8b9`; seven wave-45
 defects and three wave-48 gate sections folded into TIER 0 with re-run

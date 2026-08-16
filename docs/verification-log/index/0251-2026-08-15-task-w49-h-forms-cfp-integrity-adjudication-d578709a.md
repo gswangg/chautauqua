@@ -27,7 +27,7 @@ task-w49-h-forms-cfp-integrity-adjudication-d578709a.md`.
 No product test run (per this task's instruction: adjudication only,
 citation-based verdicts, no product test executed).
 
-RESULT: NOT QUALIFYING — adjudication-only lane inside a code wave, per
+RESULT: FAIL — NOT QUALIFYING: adjudication-only lane inside a code wave, per
 DEC-069 it can never qualify for a gate slot regardless of content;
 adjudication itself is complete: 1 CONFIRMED-DEFECT filed (UNOWNED),
 1 ADVISORY, 1 DELIBERATE-BY-DESIGN, 3 NOT-A-DEFECT.

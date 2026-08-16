@@ -8381,7 +8381,7 @@ task-w49-h-forms-cfp-integrity-adjudication-d578709a.md`.
 No product test run (per this task's instruction: adjudication only,
 citation-based verdicts, no product test executed).
 
-RESULT: NOT QUALIFYING — adjudication-only lane inside a code wave, per
+RESULT: FAIL — NOT QUALIFYING: adjudication-only lane inside a code wave, per
 DEC-069 it can never qualify for a gate slot regardless of content;
 adjudication itself is complete: 1 CONFIRMED-DEFECT filed (UNOWNED),
 1 ADVISORY, 1 DELIBERATE-BY-DESIGN, 3 NOT-A-DEFECT.
@@ -8752,7 +8752,7 @@ for a reason unrelated to their own handlers, and doing so would
 misrepresent 39 healthy checks as individually broken. Full detail:
 docs/verification-log/task-w50-c-perf-smoke-87cee8b9.md.
 
-RESULT: PARTIAL — run 1 (fresh seed) fully clean, 40/40 check-rows PASS
+RESULT: FAIL — PARTIAL: run 1 (fresh seed) fully clean, 40/40 check-rows PASS
 with wide margin, including all six historically marginal rows and all
 three portal rows; no product regression found in any measured row. Runs 2
 and 3 ERRORED before measuring due to a confirmed, reproducible
@@ -9438,7 +9438,7 @@ Documented for the record; zero OPEN ITEMS contribution.
 
 ---
 
-RESULT: 1 CONFIRMED-DEFECT (cloneSubmission file-answer aliasing across
+RESULT: FAIL — 1 CONFIRMED-DEFECT (cloneSubmission file-answer aliasing across
 file-kind form-field answers, file.submissionId never re-pointed) filed
 above with file:line and owner `wave-51 lane`; every other adjudicated
 clause (form-answer columns, search/filters, bulk status change including
@@ -9646,7 +9646,7 @@ by those decisions as "stage-1 code correctness, stage-2 wiring" —
 with present. No scope opened here; not re-adjudicated beyond citing the
 governing decisions and clarification.
 
-RESULT: PARTIAL — Q1, Q2, Q4 CLOSE on cited evidence (targeted test runs
+RESULT: FAIL — PARTIAL: Q1, Q2, Q4 CLOSE on cited evidence (targeted test runs
 quoted above: route-authz-enumeration.scan 13/13,
 credential-route-cookie-session.scan 4/4, users-bearer-containment 4/4,
 tokens 19/19, docs-api-manifest.scan 10/10, api-docs-enumerated 4/4,
@@ -9776,7 +9776,7 @@ $ npm run verification-log:check
 exit 0
 ```
 
-RESULT: NOT QUALIFYING — docs-only scribe/mandate rebase, DEC-069 (a gate
+RESULT: FAIL — NOT QUALIFYING: docs-only scribe/mandate rebase, DEC-069 (a gate
 inside a code wave can never qualify; here, no code wave gate is even
 attempted). `docs/eval-findings.md` rebased to `87cee8b9`; seven wave-45
 defects and three wave-48 gate sections folded into TIER 0 with re-run

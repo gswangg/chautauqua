@@ -197,7 +197,7 @@ by those decisions as "stage-1 code correctness, stage-2 wiring" —
 with present. No scope opened here; not re-adjudicated beyond citing the
 governing decisions and clarification.
 
-RESULT: PARTIAL — Q1, Q2, Q4 CLOSE on cited evidence (targeted test runs
+RESULT: FAIL — PARTIAL: Q1, Q2, Q4 CLOSE on cited evidence (targeted test runs
 quoted above: route-authz-enumeration.scan 13/13,
 credential-route-cookie-session.scan 4/4, users-bearer-containment 4/4,
 tokens 19/19, docs-api-manifest.scan 10/10, api-docs-enumerated 4/4,

@@ -184,7 +184,7 @@ Documented for the record; zero OPEN ITEMS contribution.
 
 ---
 
-RESULT: 1 CONFIRMED-DEFECT (cloneSubmission file-answer aliasing across
+RESULT: FAIL — 1 CONFIRMED-DEFECT (cloneSubmission file-answer aliasing across
 file-kind form-field answers, file.submissionId never re-pointed) filed
 above with file:line and owner `wave-51 lane`; every other adjudicated
 clause (form-answer columns, search/filters, bulk status change including
