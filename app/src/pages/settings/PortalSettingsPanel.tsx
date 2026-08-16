@@ -258,9 +258,12 @@ export function PortalSettingsPanel() {
             width="full"
             hint={formErrors.welcomeMessage ? <span role="alert">{formErrors.welcomeMessage}</span> : undefined}
           >
+            {/* G13 fix (frames 09--07/09--13): the welcome note draws ~96px
+                tall -- the shared textarea class, never the 44px single-line
+                input height. */}
             <textarea
               id="chq-portal-welcome"
-              className="chq-input"
+              className="chq-textarea"
               value={form.welcomeMessage}
               onChange={(e) => setForm((current) => ({ ...current, welcomeMessage: e.target.value }))}
               maxLength={MAX_LONG_TEXT_LENGTH}

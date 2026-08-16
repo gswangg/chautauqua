@@ -775,6 +775,16 @@ a:hover {
   color: var(--chq-brand-hover);
 }
 
+/* G13 fix (B8 + DEVIATIONS §2): a disabled link-shaped control reads as
+   unavailable -- muted ink, cursor:default, and NO hover response at all.
+   Without this a disabled destructive Remove rendered pixel-identical to a
+   live one (brand olive, pointer, hover darken). */
+.chq-link-button:disabled,
+.chq-link-button:disabled:hover {
+  color: var(--chq-disabled);
+  cursor: default;
+}
+
 .chq-link-button:focus-visible {
   outline: 2px solid var(--chq-brand);
   outline-offset: 2px;
@@ -1260,9 +1270,15 @@ a:hover {
   color: var(--chq-ink-2);
 }
 
+/* G13 fix (B8): "Selected / active row: #EFEBDF fill plus a 3px olive left
+   edge." The fill (--chq-surface-sunk IS #EFEBDF) is what separates
+   selected from merely hovered; the border replaces 3px of the link's own
+   11px left padding so nothing shifts on selection (DEC-745 edge scan). */
 .chq-rail-link.is-active {
   font-weight: 700;
-  box-shadow: inset 2px 0 0 var(--chq-brand);
+  background: var(--chq-surface-sunk);
+  border-left: 3px solid var(--chq-brand);
+  padding-left: 8px;
   color: var(--chq-ink);
 }
 
@@ -1640,12 +1656,9 @@ a:hover {
   gap: 20px;
 }
 
-.chq-status-filter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+/* .chq-status-filter deleted (G13): its last consumer (ComposeWizard's
+   status strip) was removed by the comms lane; dead rules fail the
+   css-contract scan. */
 
 .chq-forms-field-list {
   width: 100%;
@@ -1804,14 +1817,22 @@ a:hover {
   padding: 0;
 }
 
+/* G13 fix (frames 09--19/09--24): monospace belongs to the secret VALUE
+   only -- the panel's heading, prose and buttons read in the UI face. The
+   frame also draws the reveal panel with an ink left edge, not a uniform
+   tan hairline. */
 .chq-token-reveal {
   background: var(--chq-surface-sunk);
   border: 1px solid var(--chq-rule);
+  border-left: 3px solid var(--chq-ink);
   border-radius: var(--chq-r-card);
   padding: 12px;
-  font-family: monospace;
   font-size: 12px;
   word-break: break-all;
+}
+
+.chq-token-reveal code {
+  font-family: monospace;
 }
 
 .chq-speakers-modal {
@@ -1975,25 +1996,9 @@ a:hover {
   }
 }
 
-/* DEC-894: the stored headshot file's filename + upload date, printed
-   beside the image so an uploaded file reads as a record, not decoration. */
-.chq-contacts-headshot-meta {
-  font-family: var(--chq-font-ui);
-  font-size: 12px;
-  color: var(--chq-muted);
-  margin: 4px 0;
-}
-
-/* DEC-894 amendment: the accepted-types/size hint under the upload control.
-   Always printed (unlike -meta, which needs a stored file); matches the
-   portal's .chq-portal-detail so both surfaces state the contract alike. */
-.chq-contacts-headshot-hint {
-  font-family: var(--chq-font-ui);
-  font-size: 13px;
-  color: var(--chq-muted);
-  line-height: 1.5;
-  margin: 4px 0;
-}
+/* .chq-contacts-headshot-meta / -hint deleted (G13): their consumers left
+   ContactDrawer in the contacts lane's rework; dead rules fail the
+   css-contract scan. */
 
 /* input[type=date]: same border/radius/height/typography as .chq-input
    (already applied via that shared class); this only tunes the native

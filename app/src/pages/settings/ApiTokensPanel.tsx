@@ -186,7 +186,10 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
         </div>
       )}
 
-      <form onSubmit={handleCreate}>
+      {/* G13 fix (B10, frames 09--04/09--16): never a full-width olive bar
+          -- the name field keeps the ~320 name width and the primary sits
+          at its natural width, not stretched across the 820 measure. */}
+      <form onSubmit={handleCreate} className="chq-settings-token-create">
         <label htmlFor="api-token-name">Token name</label>
         <input
           id="api-token-name"

@@ -138,7 +138,7 @@ export function PublicPagesPanel() {
         { key: 'sessions', name: 'Sessions', path: `/e/${event.slug}/sessions`, state: surfaceState(sessionCount) },
         { key: 'speakers', name: 'Speakers', path: `/e/${event.slug}/speakers`, state: surfaceState(speakerCount) },
         { key: 'agenda', name: 'Agenda', path: `/e/${event.slug}/agenda`, state: surfaceState(scheduledCount) },
-        { key: 'schedule', name: 'Schedule', path: `/e/${event.slug}/schedule`, state: surfaceState(scheduledCount) },
+        { key: 'schedule', name: 'Schedule and ICS', path: `/e/${event.slug}/schedule`, state: surfaceState(scheduledCount) },
         { key: 'gallery', name: 'Speaker gallery', path: `/e/${event.slug}/gallery`, state: surfaceState(speakerCount) },
         { key: 'submit', name: 'CFP submit page', path: `/submit/${event.slug}`, state: cfpState(form, Date.now()) },
       ]

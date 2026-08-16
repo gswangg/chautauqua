@@ -705,6 +705,44 @@ describe('TracksRoomsPanel', () => {
     expect(within(section).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
   });
 
+  // G13 fix (frame 09--12, DESIGN-RULINGS error rules 8/11): Done must not
+  // silently revert a dirty row -- it opens a confirm NAMING what will be
+  // discarded; only the dialog's own primary discards and leaves, and its
+  // Cancel keeps the draft on screen.
+  it('Done with a dirty row opens a discard confirm naming the row; Cancel keeps the draft, the primary discards and leaves', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const nameInput = within(section).getByDisplayValue('AI Engineering');
+    fireEvent.change(nameInput, { target: { value: 'AI Engineering v2' } });
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Done' }));
+    const dialog = await screen.findByRole('dialog');
+    // Names the row whose unsaved edit is at stake.
+    expect(dialog).toHaveTextContent('AI Engineering');
+    expect(within(dialog).getByRole('button', { name: 'Discard the edits' })).toBeInTheDocument();
+
+    // Cancel: still editing, draft intact, no silent revert.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(within(section).getByDisplayValue('AI Engineering v2')).toBeInTheDocument();
+
+    // Done again, this time confirming the discard: drafts reset and the
+    // drill closes back to the summary.
+    fireEvent.click(within(section).getByRole('button', { name: 'Done' }));
+    const dialog2 = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog2).getByRole('button', { name: 'Discard the edits' }));
+    await waitFor(() => {
+      expect(within(section).getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    });
+    expect(within(section).queryByDisplayValue('AI Engineering v2')).not.toBeInTheDocument();
+  });
+
   it('the tracks-and-rooms columns split the full 820px measure as two even halves with counts right-flushed (DEC-781)', () => {
     const gridBody = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-tracks-rooms-grid');
     expect(gridBody).toMatch(/display:\s*grid/);

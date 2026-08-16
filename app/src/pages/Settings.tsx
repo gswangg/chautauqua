@@ -58,8 +58,10 @@ export const SECTIONS: SettingsSection[] = [
   { key: 'tracks-rooms', label: 'Tracks and rooms', Panel: TracksRoomsPanel },
   { key: 'public-pages', label: 'Public pages', Panel: PublicPagesPanel },
   { key: 'portal', label: 'Speaker portal', Panel: PortalSettingsPanel },
-  { key: 'people', label: 'People and roles', Panel: PeopleRolesPanel },
+  // G13 fidelity: frames 09--10..16 draw the rail as ... Speaker portal,
+  // Your data, People and roles -- Your data comes BEFORE People and roles.
   { key: 'your-data', label: 'Your data', Panel: YourDataPanel },
+  { key: 'people', label: 'People and roles', Panel: PeopleRolesPanel },
 ];
 
 export function SettingsPage() {

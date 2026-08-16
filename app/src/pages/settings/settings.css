@@ -19,6 +19,10 @@
   --chq-field-w-seats: 110px;
   --chq-field-w-name: 320px;
   --chq-field-w-slug: 420px;
+  /* G13 fix (frame 09--11): Venue draws at 460 (x390->849.5) and Time zone
+     as a 300px select (x390->689.5). */
+  --chq-field-w-venue: 460px;
+  --chq-field-w-timezone: 300px;
 }
 
 .chq-settings-layout {
@@ -61,10 +65,17 @@
   color: var(--chq-ink);
 }
 
+/* B8 (G13 fix): "Selected / active row: #EFEBDF fill plus a 3px olive left
+   edge. The edge is what distinguishes selected from merely hovered." The
+   fill is the token that IS #EFEBDF (--chq-surface-sunk); the border
+   replaces 3px of the link's own 11px left padding so nothing shifts on
+   selection (same shape as .chq-rail-link.is-active, DEC-745 edge scan). */
 .chq-settings-rail-link-active {
   font-weight: 700;
   color: var(--chq-ink);
-  box-shadow: inset 2px 0 0 var(--chq-brand);
+  background: var(--chq-surface-sunk);
+  border-left: 3px solid var(--chq-brand);
+  padding-left: 8px;
 }
 
 .chq-settings-content {
@@ -450,16 +461,26 @@
   gap: 4px;
 }
 
+/* G13 fix (B8: "Select carets: ▾ always sits at the right edge of the
+   control in muted ink"): background-COLOR, never the `background`
+   shorthand -- the shorthand resets background-image and silently erased
+   the shared .chq-select CSS caret (styles.css) on this one select. */
 .chq-settings-people-role {
   min-height: 46px;
   border: 1px solid var(--chq-border);
   border-radius: 4px;
-  background: var(--chq-surface);
+  background-color: var(--chq-surface);
 }
 
 .chq-settings-people-confirm {
   display: flex;
   align-items: center;
+  /* G13 fix (frame 09--24): the inline reset-confirm step used to overflow
+     its 200px actions track leftward across the SCOPE cell -- wrap inside
+     the cell instead of overprinting the neighbouring column. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
   gap: 8px;
   font-size: 13px;
 }
@@ -475,6 +496,33 @@
   font-size: 12px;
   color: var(--chq-muted, var(--chq-ink-2));
   margin: 6px 0 0;
+}
+
+/* G13 fix (B10, frames 09--04/09--16): the token-create form is a
+   content-width field + a natural-width primary -- the panel's default
+   column-stretch made both span the whole 820 measure, the exact
+   full-width-olive-bar phone tell B10 names. Widths through the shared
+   field tokens, never a literal. */
+.chq-settings-token-create .chq-input {
+  width: var(--chq-field-w-name);
+  align-self: flex-start;
+}
+
+.chq-settings-token-create .chq-btn-primary {
+  align-self: flex-start;
+}
+
+/* G13 fix (frame 09--18): the invite dialog's bordered "the account is
+   created straight away" panel -- a quiet 1px bordered box inside the
+   modal body, never the settings definition-grid row it was wrapped in
+   (which scattered the modal's fields across a 170px/1fr/auto grid). */
+.chq-people-invite-note {
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-card);
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  margin: 0;
 }
 
 /* DEC-747 amendment (wave 58): the one-time password on the invite/reset
@@ -960,12 +1008,29 @@
   width: var(--chq-field-w-slug);
 }
 
+.chq-settings-field-venue {
+  width: var(--chq-field-w-venue);
+}
+
+.chq-settings-field-timezone {
+  width: var(--chq-field-w-timezone);
+}
+
 .chq-settings-field-full {
   width: 100%;
 }
 
+/* G13 fix (frames 09--02/09--11, srv1 finding): edit-view field labels are
+   the frames' uppercase micro-label register (11px/700 uppercase over the
+   control), the same register the modals' FormRow labels already use --
+   not the 13px/600 sentence-case body register. */
 .chq-settings-field-label-text {
   display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
 }
 
 .chq-settings-field-optional {

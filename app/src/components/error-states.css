@@ -49,6 +49,14 @@
   flex-direction: column;
   gap: 8px;
 }
+/* G13 fix (frame 09--17): the settings save-rejected banner draws as a
+   bordered box FILLED with the sunk surface token. Scoped variant declared HERE (this file is
+   the vocabulary's single owner -- the error-vocabulary test bans
+   re-declaring these tokens in any other app/src css), same shape as
+   AUTH_CSS's own .chq-auth-card scope on the SSR side. */
+.chq-settings-panel .chq-error-summary {
+  background: var(--chq-surface-sunk);
+}
 .chq-error-summary h2 {
   font-family: var(--chq-font-display);
   font-size: 15px;

@@ -14,7 +14,7 @@ import { apiGet, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { buildEventPatch, type EventSettingsForm } from './formState';
 import { SummarySection } from './SummarySection';
-import { SettingsEditForm, SettingsField, SettingsFieldPair, SettingsSaveButton } from './SettingsEditForm';
+import { SettingsEditForm, SettingsField, SettingsFieldPair, SettingsSaveButton, timezoneOptions } from './SettingsEditForm';
 import { plural } from '../../lib/plural';
 import { dateInputToMs, daysUntil } from '../../lib/dates';
 import { formatEventDayRange } from '../../../../src/lib/event-time';
@@ -355,7 +355,15 @@ export function EventSettingsPanel() {
               problems={errorSummaryProblems}
             />
           ) : null}
-          <SettingsField label="Name" htmlFor={FIELD_IDS.name} width="name" hint={fieldErrorHint('name')}>
+          {/* G13 fix (frame 09--11): the form divides into NAME AND ADDRESS
+              and WHEN AND WHERE, each an uppercase micro-label over the 2px
+              ink rule; drawn field widths are name 420, slug full-measure,
+              venue 460, and Time zone a 300px select AFTER the dates and
+              BEFORE Venue. */}
+          <div className="chq-settings-section-head">
+            <h3 className="chq-section-label">Name and address</h3>
+          </div>
+          <SettingsField label="Name" htmlFor={FIELD_IDS.name} width="slug" hint={fieldErrorHint('name')}>
             <input
               id={FIELD_IDS.name}
               className={fieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
@@ -368,7 +376,7 @@ export function EventSettingsPanel() {
           <SettingsField
             label="Slug"
             htmlFor={FIELD_IDS.slug}
-            width="slug"
+            width="full"
             hint={fieldErrorHint('slug') ?? 'Used in every public URL'}
           >
             <input
@@ -380,6 +388,9 @@ export function EventSettingsPanel() {
               maxLength={MAX_NAME_LENGTH}
             />
           </SettingsField>
+          <div className="chq-settings-section-head">
+            <h3 className="chq-section-label">When and where</h3>
+          </div>
           <SettingsFieldPair>
             <SettingsField
               label="Start date"
@@ -406,7 +417,27 @@ export function EventSettingsPanel() {
               />
             </SettingsField>
           </SettingsFieldPair>
-          <SettingsField label="Venue" htmlFor={FIELD_IDS.location} width="name" hint={fieldErrorHint('location')}>
+          <SettingsField
+            label="Time zone"
+            htmlFor={FIELD_IDS.timezone}
+            width="timezone"
+            hint={fieldErrorHint('timezone')}
+          >
+            <select
+              id={FIELD_IDS.timezone}
+              className={fieldErrors.timezone ? 'chq-select chq-field-invalid' : 'chq-select'}
+              value={form.timezone}
+              onChange={(e) => update('timezone', e.target.value)}
+              aria-invalid={fieldAriaInvalid('timezone')}
+            >
+              {timezoneOptions(form.timezone).map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+          </SettingsField>
+          <SettingsField label="Venue" htmlFor={FIELD_IDS.location} width="venue" hint={fieldErrorHint('location')}>
             <input
               id={FIELD_IDS.location}
               className={fieldErrors.location ? 'chq-input chq-field-invalid' : 'chq-input'}
@@ -414,21 +445,6 @@ export function EventSettingsPanel() {
               onChange={(e) => update('location', e.target.value)}
               aria-invalid={fieldAriaInvalid('location')}
               maxLength={MAX_TEXT_LENGTH}
-            />
-          </SettingsField>
-          <SettingsField
-            label="Time zone"
-            htmlFor={FIELD_IDS.timezone}
-            width="name"
-            hint={fieldErrorHint('timezone')}
-          >
-            <input
-              id={FIELD_IDS.timezone}
-              className={fieldErrors.timezone ? 'chq-input chq-field-invalid' : 'chq-input'}
-              value={form.timezone}
-              onChange={(e) => update('timezone', e.target.value)}
-              aria-invalid={fieldAriaInvalid('timezone')}
-              maxLength={MAX_NAME_LENGTH}
             />
           </SettingsField>
           <SettingsField label="Record prefix" width="name">

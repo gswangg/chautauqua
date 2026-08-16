@@ -10,7 +10,19 @@
 import type { ReactNode } from 'react';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 
-export type SettingsFieldWidth = 'date' | 'seats' | 'name' | 'slug' | 'full';
+export type SettingsFieldWidth = 'date' | 'seats' | 'name' | 'slug' | 'venue' | 'timezone' | 'full';
+
+// G13 fix (frames 09--10/09--11): Time zone is a SELECT with the shared
+// caret, never a free-text input. Options come from the runtime's own IANA
+// table; a stored zone the runtime doesn't list (or an environment without
+// Intl.supportedValuesOf) still renders as a selectable first option so the
+// saved value is never silently dropped.
+export function timezoneOptions(current: string): string[] {
+  const intl = Intl as { supportedValuesOf?: (key: 'timeZone') => string[] };
+  const zones = typeof intl.supportedValuesOf === 'function' ? [...intl.supportedValuesOf('timeZone')] : [];
+  if (current && !zones.includes(current)) zones.unshift(current);
+  return zones;
+}
 
 export interface SettingsEditFormFooter {
   primary: ReactNode;
@@ -33,10 +45,14 @@ export interface SettingsEditFormProps {
 }
 
 export function SettingsEditForm({ onSubmit, consequence, footer, children }: SettingsEditFormProps) {
+  // G13 fix (frames 09--10/09--11, srv8894): the consequence line belongs at
+  // the TOP of the edit view, right-flushed on the title line -- the frames
+  // place it on the H1 baseline, never below the last field. Rendered before
+  // the fields wrapper; every edit view picks this up structurally.
   return (
     <form className="chq-settings-edit-form" onSubmit={onSubmit}>
-      <div className="chq-settings-edit-fields">{children}</div>
       {consequence != null ? <p className="chq-settings-edit-consequence">{consequence}</p> : null}
+      <div className="chq-settings-edit-fields">{children}</div>
       <div className="chq-settings-edit-footer">
         {footer.destructive != null ? (
           <div className="chq-settings-edit-footer-destructive">{footer.destructive}</div>

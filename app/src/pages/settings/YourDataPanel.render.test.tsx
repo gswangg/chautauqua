@@ -65,7 +65,7 @@ describe('YourDataPanel', () => {
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
     );
     expect(within(section).getByRole('link', { name: 'Contacts CSV' })).toBeInTheDocument();
-    expect(within(section).getByRole('button', { name: 'Everything JSON' })).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Everything, JSON' })).toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: 'More export formats' })).not.toBeInTheDocument();
 
     expect(await within(section).findByText('CI pipeline')).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe('YourDataPanel', () => {
       );
     });
     expect(within(section).getByRole('link', { name: 'Contacts CSV' })).toBeInTheDocument();
-    expect(within(section).getByRole('button', { name: 'Everything JSON' })).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Everything, JSON' })).toBeInTheDocument();
     // DEC-728 amendment (wave 15): the section's OWN drill action relabels
     // to 'Back' rather than disappearing. DEC-785 amendment (wave 66): the
     // local summary/edit split ApiTokensPanel used to own is REMOVED --
@@ -157,7 +157,7 @@ describe('YourDataPanel', () => {
       );
 
       const section = await screen.findByRole('region', { name: 'Your data' });
-      fireEvent.click(within(section).getByRole('button', { name: 'Everything JSON' }));
+      fireEvent.click(within(section).getByRole('button', { name: 'Everything, JSON' }));
 
       await waitFor(() => {
         expect(clickSpy).toHaveBeenCalled();
@@ -199,7 +199,7 @@ describe('YourDataPanel', () => {
       );
 
       const section = await screen.findByRole('region', { name: 'Your data' });
-      fireEvent.click(within(section).getByRole('button', { name: 'Everything JSON' }));
+      fireEvent.click(within(section).getByRole('button', { name: 'Everything, JSON' }));
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
