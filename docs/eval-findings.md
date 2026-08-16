@@ -50,6 +50,38 @@ below, per this task's own boundary (a discharge status this lane did not
 itself verify is never restated as closed).
 
 
+## GATE-9 SWEEP VERDICTS (fidelity-gate9/group*.md; orchestrator fixed the BROKEN + 4 regressions, dd72356b deployed + migration 0044)
+
+**Verdicts: 3 PASS (04/06/08) · 2 MINOR (01/10) · 6 MAJOR · 1 BROKEN (03, now FIXED).**
+Orchestrator already fixed+deployed: seeded-plan day-label BROKEN (healing migration
+0044, prod PATCH 200 verified) · bare-page input fill (188px collapse, R-A) · files-table
+26px shared-class pin (05 regression) · notes-rail min-width (05) · reviews col fits the
+recusal label variant.
+
+**SWARM LANE (remaining, with the fleet's proven root causes):**
+1. **Delete-confirm scan is BLIND to generic apiDelete calls** — `apiDelete<{...}>(`
+   defeats the literal `apiDelete(` match; TWO sites ship unconfirmed destructive
+   deletes: SubmissionDetailPage.tsx:704 (Remove co-presenter) and Agenda.tsx:208.
+   Fix the scan to match `apiDelete` bare + add the DEC-941 ConfirmDialogs.
+2. **02: CFP builder regressed to chq-measure-table** (commit 5bbea7ee conflated
+   full-bleed chrome with content measure) — frame 02--04 draws 756 @ x422; restore the
+   reading class.
+3. **11: auth h1 back to 36px** (frame 28px, re-break of a gate-4 closure) — my bare-page
+   fix sets 28px; VERIFY it took across 404/password/expired-claim. Plus carried rhythm
+   items (404 block 166 vs 126; body→links 46.5 vs 26.5 from min-height:44px links).
+4. **03 residue**: plan-editor 400s drop per-field messages (UI says only "Invalid
+   plan"); scorecard rail gutter 36 vs 60; /plans/:id/progress has NO max-width (1532).
+5. **07**: history tab still lacks column heads, filter chips, right-flushed search.
+6. **09**: 9 remaining (per group3 report — field widths beyond dates, footer grammar,
+   portal toggles, embed card anatomy).
+7. **12-home: measure 820 vs frames' 732** (home.css.ts:21 HOME_MEASURE) — the frames
+   draw 732 consistently; align or file a ruling.
+8. **05**: .zip accept-list policy DEC still open.
+Also recorded: 01-overview all four MAJORs closed (MINOR now) · 10-public MINOR ·
+04/06/08 full PASS with clean functional click-throughs · v9 reset flow verified live
+end-to-end minus frame 07 (needs minted token).
+
+
 ## Structure of this document (decomposed, wave 52 — task-custodian-w52-5)
 
 This file was a single 1022-line append-only log and a recurring merge-
