@@ -31,7 +31,7 @@ import { ApiError, errorEnvelope, errorResponse, wantsHtmlResponse } from "../..
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489, DEC_661, DEC_672 } from "../../decisions";
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, measureClassForSurface, navActiveFor, type Surface } from "./shell";
-import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
+import { PUBLIC_PER_PAGE, MAX_PUBLIC_ROWS } from "../../server/repo/public/bounds";
 import { renderSurfaceContent } from "./dispatch";
 import { SpeakerDetailContent, SessionDetailContent } from "./detail";
 import {
@@ -429,7 +429,12 @@ publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
 // DEC-484: honors ?limit= exactly like the HTML dispatch (query.limit ??
 // PUBLIC_PER_PAGE) instead of hard-coding it, and reports page/perPage/total
 // so a feed consumer can tell it's looking at a truncated window. Agenda/
-// schedule are unpaged — page=1, perPage=total=items.length. DEC-489: also
+// schedule are unpaged — page=1, perPage=MAX_PUBLIC_ROWS (the ceiling the
+// repo query actually applies via .limit(MAX_PUBLIC_ROWS), DEC-489 wave-49
+// amendment) — never items.length, which reports 0 for an empty agenda (a
+// divide-by-zero for any consumer deriving a page count from perPage) and
+// would otherwise silently equal the truncated row count at the ceiling,
+// hiding the exact truncation the envelope exists to expose. DEC-489: also
 // honors ?day= on agenda/schedule exactly like dispatch.tsx's HTML cases,
 // filtering `items` before total is computed so the .json twin's reported
 // total matches the HTML page's.
@@ -509,7 +514,7 @@ async function getSurfaceFeedPage(
       // now-defect'd SQL predicate set the previous version applied.
       const q = parseNameQuery(query.q);
       const { items, total } = await getPublicAgenda(db, event, { day: query.day, q });
-      return { items, total, page: 1, perPage: items.length };
+      return { items, total, page: 1, perPage: MAX_PUBLIC_ROWS };
     }
     default: {
       const exhaustive: never = surface;
