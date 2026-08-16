@@ -307,4 +307,48 @@ describe('PlanList (DEC-706/DEC-707 render)', () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  // DEC-147 wave-63 amendment: planNamesRound gates the row's round clause
+  // -- a single-round plan renders no round line at all (not an empty
+  // string in the meta span), while a multi-round plan still shows it.
+  it('renders no round line for a single-round plan', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-organizer', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan()]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope(PROGRESS_ROWS),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <PlanList />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Keynote Track Review')).toBeInTheDocument();
+    expect(screen.queryByText(/Round \d+ of \d+/)).not.toBeInTheDocument();
+  });
+
+  it('renders the round line for a multi-round plan', async () => {
+    const multiRoundPlan = { ...plan(), rounds: 2, currentRound: 1 };
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-organizer', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([multiRoundPlan]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope(PROGRESS_ROWS),
+      [`GET /api/v1/plans/${PLAN_ID}`]: multiRoundPlan,
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <PlanList />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Keynote Track Review')).toBeInTheDocument();
+    expect(screen.getByText(/Round 1 of 2/)).toBeInTheDocument();
+  });
 });

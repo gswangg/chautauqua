@@ -33,6 +33,7 @@ export {
   criteriaForRound,
   roundMetaFor,
   roundLabel,
+  planNamesRound,
 } from "./evaluation/criteria";
 export type {
   RatingCriterionDef,

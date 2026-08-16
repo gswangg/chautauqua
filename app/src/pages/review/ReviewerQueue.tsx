@@ -28,7 +28,7 @@ import { dayLabelEndInstant } from '../../../../src/lib/timezone';
 import { sessionFormatLabel, audienceLevelLabel } from '../../../../src/lib/session-vocabulary';
 // DEC-147 amendment (wave 8, task w8-c): the ONE place a round becomes
 // display copy -- never compose "Round N" inline.
-import { roundLabel } from '../../../../src/domain/evaluation';
+import { planNamesRound, roundLabel } from '../../../../src/domain/evaluation';
 // DEC-845 amendment (wave 38): the queue fetch must always ask for the
 // site-wide page cap, not the 50-row apiList default -- a track scope above
 // MAX_PER_PAGE=200 rows needs "Show all N" to keep paging past row 200, and
@@ -526,7 +526,7 @@ export function ReviewerQueue() {
     // `plan.rounds > 1` gate exactly, so a single-round plan's head reads
     // no differently than before this task.
     const roundName =
-      routeEnvelope && routeEnvelope.rounds > 1
+      routeEnvelope && planNamesRound(routeEnvelope.rounds)
         ? roundLabel(routeEnvelope.planName, routeEnvelope.currentRound, routeEnvelope.roundMeta)
         : null;
     const subtitle = scope

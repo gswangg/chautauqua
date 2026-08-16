@@ -27,7 +27,7 @@ import { MAX_PER_PAGE } from '../../../../src/lib/pagination';
 // DEC-873: the per-criterion weight caption and the "Overall" blend reuse
 // the exact functions the plan editor and server already use, so the
 // reviewer's number and the organizer's number can never disagree.
-import { computeWeightedScore, criterionWeightShares, roundLabel, roundMetaFor } from '../../../../src/domain/evaluation';
+import { computeWeightedScore, criterionWeightShares, planNamesRound, roundLabel, roundMetaFor } from '../../../../src/domain/evaluation';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 import { MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
@@ -424,7 +424,7 @@ export function Scorecard() {
   const scorecardEyebrow = [
     plan.name,
     planTrackScope(plan, trackNameById),
-    plan.rounds > 1 ? roundLabel(plan.name, plan.currentRound, roundMeta) : null,
+    planNamesRound(plan.rounds) ? roundLabel(plan.name, plan.currentRound, roundMeta) : null,
   ]
     .filter((v): v is string => v !== null)
     .join(' · ');

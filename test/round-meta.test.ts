@@ -4,7 +4,7 @@
 // display copy.
 
 import { describe, it, expect } from "vitest";
-import { roundMetaFor, roundLabel } from "../src/domain/evaluation";
+import { roundMetaFor, roundLabel, planNamesRound } from "../src/domain/evaluation";
 
 const plan = { name: "Track Review", openDate: 1000, closeDate: 2000 };
 
@@ -64,5 +64,16 @@ describe("roundLabel (DEC-147 amendment)", () => {
   it("is the one place a round becomes copy -- returns the resolved meta name", () => {
     expect(roundLabel("Track Review", 2, { name: "Round 2" })).toBe("Round 2");
     expect(roundLabel("Track Review", 2, { name: "Final round" })).toBe("Final round");
+  });
+});
+
+describe("planNamesRound (DEC-147 wave-63 amendment)", () => {
+  it("is false for a single-round plan", () => {
+    expect(planNamesRound(1)).toBe(false);
+  });
+
+  it("is true for any plan with more than one round", () => {
+    expect(planNamesRound(2)).toBe(true);
+    expect(planNamesRound(3)).toBe(true);
   });
 });
