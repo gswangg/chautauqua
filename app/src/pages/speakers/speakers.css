@@ -188,14 +188,17 @@
   width: 230px;
 }
 
-/* User-filed (gate-12 era): a task cell with a second line (COMPLETE pill +
-   deliverable filename) middle-aligned its taller content, floating the
-   pill above the siblings' shared line. Top-align every task cell with one
-   fixed offset so all pills share a line no matter how many lines a cell
-   grows; the identity cell keeps its own flow. */
+/* User-filed (gate-12 era, offset re-tuned post-merge): a task cell with a
+   second line (COMPLETE pill + deliverable filename) middle-aligned its
+   taller content, floating the pill above the siblings' shared line.
+   Top-align every task cell with ONE fixed offset so all pills share a line
+   no matter how many lines a cell grows; the identity cell keeps its own
+   flow. The offset centers the ~21px pill in the standard 115px row
+   (identity stack of name/company/status/remind): 46 + 21/2 ~= 57 ~= 115/2.
+   Taller outlier rows keep the shared line rather than re-centering. */
 .chq-speakers-grid td:not(:first-child) {
   vertical-align: top;
-  padding-top: 22px;
+  padding-top: 46px;
 }
 
 /* DEC-730 amendment (wave 39, revised wave 19): the shared .chq-table th
