@@ -17,6 +17,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { lockedFieldName } from "../../src/forms/types";
+import { dayLabelMs } from "../walkthrough-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
@@ -1279,7 +1280,7 @@ async function main(): Promise<void> {
       // full days so the day label is unambiguously in the past regardless
       // of the event's timezone offset from UTC.
       const { status } = await organizer.patchJson<FormRow>(`/api/v1/forms/${formId}`, {
-        closeDate: Date.now() - 2 * 24 * 60 * 60 * 1000,
+        closeDate: dayLabelMs(-2),
       });
       assert(status === 200, `PATCH form closeDate returned ${status}`);
     });

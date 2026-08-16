@@ -352,6 +352,25 @@ export function agendaHtmlContainsBreakLabel(html: string, label: string): boole
 // wave 68) — pure markup helper, kept dependency-free per DEC-062.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// w52-a: DEC-522 amendment — day-label-safe offset clock for walkthrough
+// openDate/closeDate PATCHes.
+// ---------------------------------------------------------------------------
+
+/**
+ * A day-label column (openDate/closeDate) is expanded event-local by
+ * dayLabelStartInstant/dayLabelEndInstant (DEC-522). IANA timezone offsets
+ * from UTC range from -12h to +14h, so any sub-day offset from `Date.now()`
+ * (e.g. "-60s" or "+1h") can still resolve to TODAY's UTC calendar date for
+ * part of every UTC day, making the label a no-op — flooring to UTC midnight
+ * and stepping by WHOLE days is the only offset that is unambiguous across
+ * that entire offset range. Always use this helper (never a raw
+ * `Date.now() +/- ms` expression) to build an openDate/closeDate value.
+ */
+export function dayLabelMs(offsetDays: number): number {
+  return Math.floor(Date.now() / 86_400_000) * 86_400_000 + offsetDays * 86_400_000;
+}
+
 /** Extracts every `id="chq-prog-day-<day>"` section id out of the printable
  * programme's HTML (src/routes/public/programme.tsx ProgrammeDay), in
  * document order, duplicates included — callers that only care about
