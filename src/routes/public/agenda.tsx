@@ -64,6 +64,11 @@ export function AgendaDay(props: {
   // toggle, the phone list's toggle, the rail and ItineraryScript, so the
   // Save control renders in exactly the surfaces where its script does.
   itinerary?: boolean;
+  // DEC-151 (wave-59 amendment): the surface's active narrowing, already
+  // encoded via embedKnobQuery by AgendaContent -- plumbed through (via the
+  // {...props} spreads below) to AgendaDayGrid/AgendaItemList's own
+  // drill-in links. Not consumed here.
+  carry?: string;
 }) {
   // DEC-584 (wave 64 amendment): the heading names the day's own density
   // ("<Weekday D Month> · N sessions · M rooms") rather than the bare day
@@ -165,6 +170,17 @@ export function AgendaContent(props: {
   // with which day's blocks are actually on screen.
   const effectiveActiveDay = activeDay ?? days[0] ?? null;
   const railItems = effectiveActiveDay ? (byDay.get(effectiveActiveDay) ?? []) : [];
+  // DEC-151 (wave-59 amendment): the day/track-highlight/search narrowing a
+  // visitor is currently viewing, re-encoded through the EXISTING
+  // embedKnobQuery encoder for "agenda" (its EMBED_KNOB_TABLE entry:
+  // trackId/day/q/accent -- accent excluded here, it's not a return-carry
+  // param) so a drill into a session detail can restore it via BackLink,
+  // fixing P3 #28 (a Back link that dropped the day and every filter).
+  const detailDayCarry = embedKnobQuery("agenda", {
+    day: activeDay ?? undefined,
+    q: props.q ?? undefined,
+    trackId: props.highlightTrackId ?? undefined,
+  });
   return (
     <>
       <div class="chq-pub-title-row chq-pub-agenda-heading-row">
@@ -276,6 +292,7 @@ export function AgendaContent(props: {
                   highlightTrackId={props.highlightTrackId ?? null}
                   hideHeading={hideDayHeading}
                   itinerary={!props.embed}
+                  carry={detailDayCarry || undefined}
                 />
               ))}
               {nextDay && lastEndMin !== null ? (
@@ -324,8 +341,8 @@ export function AgendaContent(props: {
 // clash marker and the subtitle/rail counts once it reads the stored ids. A
 // day-filtered or row-capped render still never deletes a pick (the merge
 // rule is untouched).
-function ScheduleRow(props: { event: PublicEvent; item: PublicAgendaItem; day: string; base: SurfaceBase }) {
-  const { event, item, day, base } = props;
+function ScheduleRow(props: { event: PublicEvent; item: PublicAgendaItem; day: string; base: SurfaceBase; carry?: string }) {
+  const { event, item, day, base, carry } = props;
   return (
     <div
       class="chq-pub-schedule-row"
@@ -342,7 +359,7 @@ function ScheduleRow(props: { event: PublicEvent; item: PublicAgendaItem; day: s
         <span class="chq-pub-schedule-row-room">{publicRoomLabel(item.roomName)}</span>
       </div>
       <div class="chq-pub-schedule-row-body">
-        <a class="chq-pub-schedule-row-title" href={sessionDetailPath(event, item.submissionId, "schedule", base)}>
+        <a class="chq-pub-schedule-row-title" href={sessionDetailPath(event, item.submissionId, "schedule", base, carry)}>
           {item.title}
         </a>
         <span class="chq-pub-schedule-row-speakers">
@@ -377,6 +394,11 @@ export function ScheduleContent(props: {
   const base: SurfaceBase = props.embed ? "/embed" : "/e";
   const sessionsPath = surfacePath(props.event, "sessions", base);
   const sessionsQs = props.embed ? embedKnobQuery("sessions", { accent: props.accent }) : "";
+  // DEC-151 (wave-59 amendment): "schedule"'s own EMBED_KNOB_TABLE entry is
+  // day/q/accent (no trackId) -- accent excluded here, it's not a
+  // return-carry param -- so only `q` can ever travel back through a
+  // schedule-row drill-in's Back link.
+  const detailRowCarry = embedKnobQuery("schedule", { q: props.q ?? undefined });
   return (
     <>
       <div class="chq-pub-schedule-layout">
@@ -430,7 +452,7 @@ export function ScheduleContent(props: {
                       <span class="chq-pub-schedule-day-count">0</span>
                     </div>
                     {sorted.map((item) => (
-                      <ScheduleRow event={props.event} item={item} day={day} base={base} />
+                      <ScheduleRow event={props.event} item={item} day={day} base={base} carry={detailRowCarry || undefined} />
                     ))}
                   </div>
                 );

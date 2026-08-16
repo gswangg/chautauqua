@@ -7,12 +7,33 @@ import { surfacePath, speakerDetailPath, sessionDetailPath, SURFACE_LABELS, type
 import { TrackChips, FormatChip, SessionDescription, ItineraryToggle, formatDay, speakerInitials } from "./cards";
 import { clockHMM } from "../../domain/clock";
 import { ItineraryScript } from "./agenda";
+import { embedKnobQuery } from "../../lib/embed-knobs";
 
-export function BackLink(props: { event: PublicEvent; from: Surface; base?: SurfaceBase }) {
-  const { event, from, base = "/e" } = props;
+/** DEC-151 (wave-59 amendment): re-encodes the narrowing params the request
+ * that reached this detail page was called with (day/q/trackId/format/
+ * roomId) through the EXISTING embedKnobQuery encoder for `from` -- the
+ * surface's own EMBED_KNOB_TABLE entry decides which of these it actually
+ * declares, so a param `from` does not honor is dropped rather than
+ * emitted. Used by both the /e and /embed detail route handlers
+ * (src/routes/public/index.tsx) so BackLink can restore whichever surface
+ * state (day, search, track highlight/filter, format, room) the visitor
+ * was on -- never a second encoder. */
+export function detailCarry(from: Surface, query: { day?: string; q?: string; trackId?: string; format?: string; roomId?: string }): string | undefined {
+  const value = embedKnobQuery(from, {
+    day: query.day,
+    q: query.q,
+    trackId: query.trackId,
+    format: query.format,
+    roomId: query.roomId,
+  });
+  return value || undefined;
+}
+
+export function BackLink(props: { event: PublicEvent; from: Surface; base?: SurfaceBase; carry?: string }) {
+  const { event, from, base = "/e", carry } = props;
   return (
     <p>
-      <a class="chq-pub-accent-link" href={surfacePath(event, from, base)}>
+      <a class="chq-pub-accent-link" href={surfacePath(event, from, base, carry)}>
         &larr; Back to {SURFACE_LABELS[from]}
       </a>
     </p>
@@ -37,11 +58,12 @@ export function SpeakerDetailContent(props: {
   speaker: PublicSpeakerDetail;
   from: Surface;
   base?: SurfaceBase;
+  carry?: string;
 }) {
-  const { event, speaker, from, base = "/e" } = props;
+  const { event, speaker, from, base = "/e", carry } = props;
   return (
     <>
-      <BackLink event={event} from={from} base={base} />
+      <BackLink event={event} from={from} base={base} carry={carry} />
       <div class="chq-card">
         {speaker.headshotUrl ? (
           <img
@@ -84,7 +106,7 @@ export function SpeakerDetailContent(props: {
           const timeLabel = sessionTimeLabel(s.day, s.startMin, s.endMin);
           return (
             <li>
-              <a href={sessionDetailPath(event, s.id, from, base)}>{s.title}</a>
+              <a href={sessionDetailPath(event, s.id, from, base, carry)}>{s.title}</a>
               {timeLabel ? ` — ${timeLabel}` : ""}
               {s.room ? ` (${s.room})` : ""}
             </li>
@@ -100,8 +122,9 @@ export function SessionDetailContent(props: {
   session: PublicSessionDetail;
   from: Surface;
   base?: SurfaceBase;
+  carry?: string;
 }) {
-  const { event, session, from, base = "/e" } = props;
+  const { event, session, from, base = "/e", carry } = props;
   const timeLabel = sessionTimeLabel(session.day, session.startMin, session.endMin);
   // DEC-672/DEC-683: the itinerary picker is chromeless-closed — /embed's
   // twin of this page never renders the .chq-itinerary-toggle control or
@@ -110,7 +133,7 @@ export function SessionDetailContent(props: {
   const embed = base === "/embed";
   return (
     <>
-      <BackLink event={event} from={from} base={base} />
+      <BackLink event={event} from={from} base={base} carry={carry} />
       <div class="chq-card">
         <TrackChips tracks={session.tracks} />
         <FormatChip format={session.format} />
@@ -132,7 +155,7 @@ export function SessionDetailContent(props: {
           {session.speakers.map((s, i) => (
             <>
               {i > 0 ? ", " : ""}
-              <a href={speakerDetailPath(event, s.contactId, from, base)}>
+              <a href={speakerDetailPath(event, s.contactId, from, base, carry)}>
                 {s.firstName} {s.lastName}
               </a>
             </>

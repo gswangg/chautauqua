@@ -134,17 +134,26 @@ export function validAccent(color: string | undefined): string {
 // "/embed" — an embed's own links must never break out of its iframe.
 export type SurfaceBase = "/e" | "/embed";
 
-export function surfacePath(event: PublicEvent, surface: Surface, base: SurfaceBase = "/e"): string {
-  return `${base}/${event.slug}/${surface}`;
+/** DEC-151 (wave-59 amendment): `carry`, when supplied, is an already-
+ * encoded `k=v&k=v` fragment (an embedKnobQuery result) appended as this
+ * path's query string -- the same idiom detailQs below uses for a drill-in
+ * link. Used by BackLink (src/routes/public/detail.tsx) to restore a
+ * surface's active narrowing (day/q/trackId/format/roomId, or the embed
+ * accent/fields knobs) when a visitor returns from a session/speaker
+ * detail page, on both the /e and /embed bases. */
+export function surfacePath(event: PublicEvent, surface: Surface, base: SurfaceBase = "/e", carry?: string): string {
+  const qs = carry ? `?${carry}` : "";
+  return `${base}/${event.slug}/${surface}${qs}`;
 }
 
 /** Drill-in detail links (DEC-151) carry ?from=<surface> so the detail
  * page's Back link returns to whichever surface it was reached from.
- * DEC-489 (wave-54 amendment): `carry`, when supplied, is an already-
- * encoded `k=v&k=v` fragment (an embedKnobQuery result, e.g. the surface's
- * active `accent`/`fields`) appended after `?from=` so a click into a
- * session/speaker detail from inside an embed keeps the configured knobs
- * instead of reverting to defaults. Never supplied outside /embed. */
+ * DEC-489 (wave-54 amendment), DEC-151 (wave-59 amendment): `carry`, when
+ * supplied, is an already-encoded `k=v&k=v` fragment (an embedKnobQuery
+ * result, e.g. the surface's active `accent`/`fields` embed knobs, or its
+ * day/q/trackId/format/roomId narrowing) appended after `?from=` so a click
+ * into a session/speaker detail keeps the visitor's active surface state --
+ * on BOTH bases, /e and /embed -- instead of reverting to defaults. */
 function detailQs(from: Surface | undefined, carry: string | undefined): string {
   const parts: string[] = [];
   if (from) parts.push(`from=${from}`);

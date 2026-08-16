@@ -201,6 +201,21 @@ export function SessionsContent(props: {
   // carries them at all.
   const activeFieldNames = fields ? (Object.keys(fields) as (keyof CardFields)[]).filter((k) => fields[k]) : [];
   const embedCarryQs = embed ? embedKnobQuery("sessions", { fields: activeFieldNames, accent }) : "";
+  // DEC-151 (wave-59 amendment): the drill-in link into a session detail
+  // carries this surface's active narrowing (day/trackId/format/roomId/q)
+  // PLUS the embed-only fields/accent knobs above, through the SAME
+  // embedKnobQuery encoder, so the detail page's Back link restores exactly
+  // where the visitor was rather than the surface's bare default -- on both
+  // /e and /embed.
+  const detailCardCarryQs = embedKnobQuery("sessions", {
+    trackId: activeTrackId,
+    format: activeFmt,
+    roomId: activeRoom,
+    day: activeDay,
+    q,
+    fields: embed ? activeFieldNames : undefined,
+    accent: embed ? accent : undefined,
+  });
   function filterQs(override: {
     trackId?: string | null;
     format?: string | null;
@@ -389,7 +404,7 @@ export function SessionsContent(props: {
                     fields={fields}
                     embed={embed}
                     itinerary={!embed}
-                    carry={embedCarryQs || undefined}
+                    carry={detailCardCarryQs || undefined}
                   />
                 </>
               );

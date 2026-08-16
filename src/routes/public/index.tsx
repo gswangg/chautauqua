@@ -33,7 +33,7 @@ import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151,
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, measureClassForSurface, navActiveFor, type Surface } from "./shell";
 import { PUBLIC_PER_PAGE, MAX_PUBLIC_ROWS } from "../../server/repo/public/bounds";
 import { renderSurfaceContent } from "./dispatch";
-import { SpeakerDetailContent, SessionDetailContent } from "./detail";
+import { SpeakerDetailContent, SessionDetailContent, detailCarry } from "./detail";
 import {
   parsePage,
   parseTrackId,
@@ -222,9 +222,16 @@ publicRoutes.get("/e/:eventSlug/speakers/:contactId", async (c) => {
   const speaker = await getPublicSpeakerDetail(c.var.db, event, c.req.param("contactId"));
   if (!speaker) return publicNotFound(c, "Speaker not found.");
   const from = isValidFrom(c.req.query("from"), "speakers");
+  const carry = detailCarry(from, {
+    day: c.req.query("day"),
+    q: c.req.query("q"),
+    trackId: c.req.query("trackId"),
+    format: c.req.query("format"),
+    roomId: c.req.query("roomId"),
+  });
   return c.html(
     <PublicShell event={event} active={navActiveFor(from)} title={`${speaker.firstName} ${speaker.lastName} - ${event.name}`} measure="reading">
-      <SpeakerDetailContent event={event} speaker={speaker} from={from} />
+      <SpeakerDetailContent event={event} speaker={speaker} from={from} carry={carry} />
     </PublicShell>,
   );
 });
@@ -236,9 +243,16 @@ publicRoutes.get("/e/:eventSlug/sessions/:sessionId", async (c) => {
   const session = await getPublicSessionDetail(c.var.db, event, c.req.param("sessionId"));
   if (!session) return publicNotFound(c, "Session not found.");
   const from = isValidFrom(c.req.query("from"), "sessions");
+  const carry = detailCarry(from, {
+    day: c.req.query("day"),
+    q: c.req.query("q"),
+    trackId: c.req.query("trackId"),
+    format: c.req.query("format"),
+    roomId: c.req.query("roomId"),
+  });
   return c.html(
     <PublicShell event={event} active={navActiveFor(from)} title={`${session.title} - ${event.name}`} measure="reading">
-      <SessionDetailContent event={event} session={session} from={from} />
+      <SessionDetailContent event={event} session={session} from={from} carry={carry} />
     </PublicShell>,
   );
 });
@@ -341,9 +355,16 @@ publicRoutes.get("/embed/:eventSlug/sessions/:sessionId", async (c) => {
   const session = await getPublicSessionDetail(c.var.db, event, c.req.param("sessionId"));
   if (!session) return publicNotFound(c, "Session not found.");
   const from = isValidFrom(c.req.query("from"), "sessions");
+  const carry = detailCarry(from, {
+    day: c.req.query("day"),
+    q: c.req.query("q"),
+    trackId: c.req.query("trackId"),
+    format: c.req.query("format"),
+    roomId: c.req.query("roomId"),
+  });
   return c.html(
     <EmbedShell event={event} title={`${session.title} - ${event.name}`} accentOverride={parseAccent(c.req.query("accent")) ?? undefined}>
-      <SessionDetailContent event={event} session={session} from={from} base="/embed" />
+      <SessionDetailContent event={event} session={session} from={from} base="/embed" carry={carry} />
     </EmbedShell>,
   );
 });
@@ -355,13 +376,20 @@ publicRoutes.get("/embed/:eventSlug/speakers/:contactId", async (c) => {
   const speaker = await getPublicSpeakerDetail(c.var.db, event, c.req.param("contactId"));
   if (!speaker) return publicNotFound(c, "Speaker not found.");
   const from = isValidFrom(c.req.query("from"), "speakers");
+  const carry = detailCarry(from, {
+    day: c.req.query("day"),
+    q: c.req.query("q"),
+    trackId: c.req.query("trackId"),
+    format: c.req.query("format"),
+    roomId: c.req.query("roomId"),
+  });
   return c.html(
     <EmbedShell
       event={event}
       title={`${speaker.firstName} ${speaker.lastName} - ${event.name}`}
       accentOverride={parseAccent(c.req.query("accent")) ?? undefined}
     >
-      <SpeakerDetailContent event={event} speaker={speaker} from={from} base="/embed" />
+      <SpeakerDetailContent event={event} speaker={speaker} from={from} base="/embed" carry={carry} />
     </EmbedShell>,
   );
 });
