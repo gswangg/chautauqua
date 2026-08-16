@@ -1,9 +1,12 @@
-// DEC-663 regression: the server half of the planned CSV import dry-run.
-// Mirrors test/contacts-import.test.ts's in-memory fake Db (real eq/and/
-// inArray/sql`lower(...)` semantics evaluated structurally — no D1 test
-// harness exists in this repo) so planImportRows/applyImportRows are
-// exercised through the real contactsRoutes sub-app, not a scripted
-// response queue.
+// DEC-663 (wave-64 amendment): the merge-disposition half of the CSV import
+// contract. A merged line patches an organizer-named existing contact
+// (never creates), and the server re-derives every merge choice against the
+// same possible-duplicate candidate set planImportRows would compute rather
+// than trusting the client's line/contactId pairing.
+//
+// Mirrors test/contacts-import-plan.test.ts's in-memory fake Db (real eq/
+// and/inArray/sql`lower(...)` semantics evaluated structurally — no D1 test
+// harness exists in this repo).
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -106,8 +109,6 @@ function makeFakeContactDb() {
     },
     insert(_table: unknown) {
       return {
-        // DEC-491 amendment (wave 47): see the identical comment in
-        // test/contacts-import.test.ts's makeFakeContactDb.
         values: (vals: Record<string, unknown> | Record<string, unknown>[]) => {
           const list = Array.isArray(vals) ? vals : [vals];
           const insertAll = async () => {
@@ -134,10 +135,16 @@ function makeFakeContactDb() {
         },
       };
     },
-    update(_table: unknown) {
+    update(table: unknown) {
       return {
         set: (vals: Record<string, unknown>) => ({
           where: async (cond: unknown) => {
+            // DEC-299's attribution backfill (src/server/repo/attribution.ts)
+            // issues its own update against schema.participant, a table this
+            // contact-only fake never models -- a no-op here, matching "no
+            // never-taken attribution snapshot exists to repair" in a store
+            // with no participant rows at all.
+            if (table !== schema.contact) return;
             rows = rows.map((r) => (evalCond(cond, r) ? { ...r, ...vals } : r));
           },
         }),
@@ -161,6 +168,7 @@ function appWithDbAndAuth(db: AppEnv["Variables"]["db"], auth: AuthInfo) {
 }
 
 const ORGANIZER: AuthInfo = { userId: "u1", role: "organizer", orgId: "org-1" };
+const OTHER_ORG: AuthInfo = { userId: "u2", role: "organizer", orgId: "org-2" };
 
 function seedContact(db: AppEnv["Variables"]["db"], overrides: Record<string, unknown>) {
   return (db as any)
@@ -183,8 +191,45 @@ function seedContact(db: AppEnv["Variables"]["db"], overrides: Record<string, un
     });
 }
 
-describe("POST /api/v1/contacts/import dryRun=true (DEC-663 plan)", () => {
-  it("surfaces a possibleDuplicate for a same-human-second-email row instead of a clean create", async () => {
+const ADA_CSV = "Email,First,Last,Company\nada.lovelace@newmail.example.com,Ada,Lovelace,Analytical Engines Inc\n";
+const MAPPING = { Email: "email", First: "firstName", Last: "lastName", Company: "company" };
+
+describe("POST /api/v1/contacts/import mergeLines (DEC-663 wave-64 amendment)", () => {
+  it("patches the named target, replaces its email, counts as updated, and creates no new row", async () => {
+    const { db, rows } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+    await seedContact(db, {
+      id: "ct_1",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@work.example.com",
+      company: "Analytical Engines Inc",
+      bio: "Mathematician.",
+    });
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({
+        csvText: ADA_CSV,
+        mapping: MAPPING,
+        mergeLines: [{ line: 2, contactId: "ct_1" }],
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { created: number; updated: number; skipped: unknown[] };
+    expect(body.created).toBe(0);
+    expect(body.updated).toBe(1);
+    expect(body.skipped).toEqual([]);
+    expect(rows()).toHaveLength(1);
+    const row = rows()[0] as Record<string, unknown>;
+    expect(row.id).toBe("ct_1");
+    expect(row.email).toBe("ada.lovelace@newmail.example.com");
+    // Untouched columns (bio wasn't in the CSV mapping) are preserved.
+    expect(row.bio).toBe("Mathematician.");
+  });
+
+  it("a later same-email row in the file patches the same merged contact, not a fresh one", async () => {
     const { db, rows } = makeFakeContactDb();
     const app = appWithDbAndAuth(db, ORGANIZER);
     await seedContact(db, {
@@ -195,109 +240,127 @@ describe("POST /api/v1/contacts/import dryRun=true (DEC-663 plan)", () => {
       company: "Analytical Engines Inc",
     });
 
-    const csvText = "Email,First,Last,Company\nada.lovelace@newmail.example.com,Ada,Lovelace,Analytical Engines Inc\n";
-    const mapping = { Email: "email", First: "firstName", Last: "lastName", Company: "company" };
+    const csvText =
+      "Email,First,Last,Company,Bio\n" +
+      "ada.lovelace@newmail.example.com,Ada,Lovelace,Analytical Engines Inc,First pass bio.\n" +
+      "ada.lovelace@newmail.example.com,Ada,Lovelace,Analytical Engines Inc,Second pass bio.\n";
+    const mapping = { ...MAPPING, Bio: "bio" };
 
     const res = await app.request("/api/v1/contacts/import", {
       method: "POST",
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
-      body: JSON.stringify({ csvText, mapping, dryRun: true }),
+      body: JSON.stringify({ csvText, mapping, mergeLines: [{ line: 2, contactId: "ct_1" }] }),
     });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      rows: {
-        action: string;
-        possibleDuplicates?: { contactId: string; name: string; email: string; company?: string | null }[];
-      }[];
-      created: number;
-      updated: number;
-      skipped: number;
-    };
-    expect(body.rows).toHaveLength(1);
-    // Never reported as a clean create -- it must name the possible duplicate.
-    expect(body.rows[0]?.action).toBe("create");
-    expect(body.rows[0]?.possibleDuplicates).toBeDefined();
-    expect(body.rows[0]?.possibleDuplicates?.map((d) => d.contactId)).toEqual(["ct_1"]);
-    const dup = body.rows[0]?.possibleDuplicates?.[0];
-    expect(dup).toEqual({
-      contactId: "ct_1",
-      name: "Ada Lovelace",
-      email: "ada@work.example.com",
-      company: "Analytical Engines Inc",
-    });
-    expect(Object.keys(dup ?? {}).sort()).toEqual(["company", "contactId", "email", "name"]);
-    expect(body.created).toBe(1);
-    expect(body.updated).toBe(0);
-    expect(body.skipped).toBe(0);
-    // No write happened.
+    const body = (await res.json()) as { created: number; updated: number };
+    expect(body.created).toBe(0);
+    // Both rows resolve to an update against the same contact -- counted
+    // per-row (matching applyImportRows' existing within-file-duplicate
+    // convention: two occurrences of the same email are two update events),
+    // never a second created row.
+    expect(body.updated).toBe(2);
     expect(rows()).toHaveLength(1);
+    const row = rows()[0] as Record<string, unknown>;
+    expect(row.bio).toBe("Second pass bio.");
   });
 
-  it("reports a bio overwrite with from/to when the incoming bio would replace a stored non-blank bio", async () => {
+  it("400s when the merge target is unknown", async () => {
+    const { db } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ csvText: ADA_CSV, mapping: MAPPING, mergeLines: [{ line: 2, contactId: "no-such-id" }] }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("400s when the merge target belongs to another org", async () => {
     const { db } = makeFakeContactDb();
     const app = appWithDbAndAuth(db, ORGANIZER);
     await seedContact(db, {
-      id: "ct_bio",
+      id: "ct_foreign",
+      orgId: "org-2",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@other-org.example.com",
+      company: "Analytical Engines Inc",
+    });
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ csvText: ADA_CSV, mapping: MAPPING, mergeLines: [{ line: 2, contactId: "ct_foreign" }] }),
+    });
+    expect(res.status).toBe(400);
+    void OTHER_ORG; // documents the seeded row's org, unused as an auth identity here
+  });
+
+  it("400s when the merged line also appears in skipLines", async () => {
+    const { db } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+    await seedContact(db, {
+      id: "ct_1",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@work.example.com",
+      company: "Analytical Engines Inc",
+    });
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({
+        csvText: ADA_CSV,
+        mapping: MAPPING,
+        skipLines: [2],
+        mergeLines: [{ line: 2, contactId: "ct_1" }],
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("400s when the merged line's own email already resolves to an update", async () => {
+    const { db } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+    await seedContact(db, {
+      id: "ct_email_match",
+      firstName: "Someone",
+      lastName: "Else",
+      email: "ada.lovelace@newmail.example.com",
+    });
+    await seedContact(db, {
+      id: "ct_1",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@work.example.com",
+      company: "Analytical Engines Inc",
+    });
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ csvText: ADA_CSV, mapping: MAPPING, mergeLines: [{ line: 2, contactId: "ct_1" }] }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("400s when the named contact is not a possible duplicate for that row (a stranger id)", async () => {
+    const { db } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+    await seedContact(db, {
+      id: "ct_stranger",
       firstName: "Grace",
       lastName: "Hopper",
       email: "grace@example.com",
-      bio: "Original bio.",
     });
-
-    const csvText = "Email,Bio\ngrace@example.com,New bio text.\n";
-    const mapping = { Email: "email", Bio: "bio" };
 
     const res = await app.request("/api/v1/contacts/import", {
       method: "POST",
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
-      body: JSON.stringify({ csvText, mapping, dryRun: true }),
+      body: JSON.stringify({ csvText: ADA_CSV, mapping: MAPPING, mergeLines: [{ line: 2, contactId: "ct_stranger" }] }),
     });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      rows: { action: string; overwrites?: { field: string; from: string; to: string }[] }[];
-    };
-    expect(body.rows[0]?.action).toBe("update");
-    expect(body.rows[0]?.overwrites).toEqual([{ field: "bio", from: "Original bio.", to: "New bio text." }]);
-  });
-
-  it("dryRun writes nothing -- the contact table is byte-identical afterward", async () => {
-    const { db, rows } = makeFakeContactDb();
-    const app = appWithDbAndAuth(db, ORGANIZER);
-    await seedContact(db, { id: "ct_existing", email: "existing@example.com" });
-    const before = JSON.stringify(rows());
-
-    const csvText = "Email,First,Last\nexisting@example.com,Changed,Name\nbrand.new@example.com,Brand,New\n";
-    const mapping = { Email: "email", First: "firstName", Last: "lastName" };
-
-    const res = await app.request("/api/v1/contacts/import", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
-      body: JSON.stringify({ csvText, mapping, dryRun: true }),
-    });
-    expect(res.status).toBe(200);
-    const after = JSON.stringify(rows());
-    expect(after).toBe(before);
-  });
-
-  it("honours skipLines on the real run: skipped lines are not written and reflected in post-commit counts", async () => {
-    const { db, rows } = makeFakeContactDb();
-    const app = appWithDbAndAuth(db, ORGANIZER);
-
-    // Line numbers: header is line 1, so first data row is line 2, second is line 3.
-    const csvText = "Email,First,Last\nkeep@example.com,Keep,Me\nskip@example.com,Skip,Me\n";
-    const mapping = { Email: "email", First: "firstName", Last: "lastName" };
-
-    const res = await app.request("/api/v1/contacts/import", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
-      body: JSON.stringify({ csvText, mapping, skipLines: [3] }),
-    });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { created: number; updated: number; skipped: { line: number; reason: string }[] };
-    expect(body.created).toBe(1);
-    expect(body.updated).toBe(0);
-    expect(body.skipped).toEqual([{ line: 3, reason: "skipped by organizer" }]);
-    expect(rows()).toHaveLength(1);
-    expect((rows()[0] as { email: string }).email).toBe("keep@example.com");
+    expect(res.status).toBe(400);
   });
 });
