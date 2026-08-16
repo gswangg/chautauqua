@@ -365,6 +365,36 @@ describe('SavedEmbedsPanel', () => {
     expect(snippet).not.toBeNull();
   });
 
+  // DEC-785 amendment (wave 63): the action cluster's DOM order matches the
+  // vendored frame's own order -- docs/design/Chautauqua Settings.dc.html
+  // :157-161 draws Edit, then Get code, then the On/Off toggle, in that
+  // grid-column order. Delete has no control in the frame at all (neither
+  // the row nor the editor footer, :1096-1101, draws one) and is kept as a
+  // real, reachable capability (DELETE /api/v1/embeds/:id) appended after
+  // the frame's own three -- this test pins that ordering, not pixels.
+  it('wave 63: the action cluster is ordered Edit, Get code, Turn off, then Delete last', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+    });
+    renderPanel(['/settings'], undefined, true);
+
+    await waitFor(() => {
+      expect(screen.getByText('Homepage widget')).toBeInTheDocument();
+    });
+
+    const row = screen.getAllByRole('listitem')[0]!;
+    const actionsCell = row.querySelector('.chq-settings-saved-embed-actions') as HTMLElement;
+    expect(actionsCell).not.toBeNull();
+
+    const controlNames = Array.from(actionsCell.querySelectorAll('a, button')).map(
+      (el) => el.textContent?.trim(),
+    );
+    expect(controlNames).toEqual(['Edit', 'Get code', 'Turn off', 'Delete']);
+  });
+
   // w41-h/DEC-785: the row is an explicit grid whose descriptor column can
   // shrink (min-width: 0) and clamps to one line via ellipsis, so a long
   // recipe ('Sessions · iframe · AI Engineering · 6 fields') can never

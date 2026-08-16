@@ -17,6 +17,19 @@
 // (a read, not a write), but Edit/Turn on-off/Delete/Build an embed only
 // render while the caller's own drill is open.
 //
+// DEC-785 amendment (wave 63): the row's anatomy is reconciled against
+// docs/design/Chautauqua Settings.dc.html:150-161 -- name+recipe cell,
+// state pill, action cluster (Edit, Get code, Turn on/off), in that order.
+// One frame field is NOT built: the row's second grid cell, `{{ e.used }}`
+// (:155, sample values "devflowconf.com" / "Notion" / "Not in use"), names
+// where the embed is pasted on the open web -- a fact no endpoint stores
+// (grep src/server/repo/embeds.ts and the schema turns up no referrer/host
+// tracking) and Copy rule 3 forbids asserting what no endpoint stores.
+// Adding that tracking is new backend work outside this task's owned
+// files, so the column is left out rather than invented; this is the
+// pack-disagreement the task instructions call for recording, not an
+// oversight.
+//
 // DEC-785 amendment (wave 15): the read/edit split is no longer a LOCAL
 // toggle -- the caller (PublicPagesPanel) passes `editing`, driven by the
 // SAME section-drill URL state as the rest of the page, so there is one
@@ -212,7 +225,26 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
                 >
                   {embed.enabled ? 'On' : 'Off'}
                 </span>
+                {/* w63-d/DEC-785 amendment (wave 63): action cluster order
+                    matches the frame's own grid --
+                    docs/design/Chautauqua Settings.dc.html:157-161 draws
+                    Edit, Get code, then the On/Off toggle (no "used"
+                    column here -- see the disagreement note above the
+                    return). Delete has no control anywhere in the frame's
+                    saved-embed row OR its editor footer (same file,
+                    :1096-1101 draws only "Turn this embed off" / Cancel /
+                    Save changes), yet DELETE /api/v1/embeds/:id is a real,
+                    reachable endpoint (src/routes/api/embeds.ts:316) --
+                    this is a genuine disagreement the pack does not
+                    settle, so Delete is kept, appended after the frame's
+                    own three actions rather than invented into their
+                    order. */}
                 <span className="chq-settings-saved-embed-actions">
+                  {editing ? (
+                    <Link className="chq-link-button" to={editHref(embed.id)}>
+                      Edit
+                    </Link>
+                  ) : null}
                   <button
                     type="button"
                     className="chq-link-button"
@@ -222,9 +254,6 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
                   </button>
                   {editing ? (
                     <>
-                      <Link className="chq-link-button" to={editHref(embed.id)}>
-                        Edit
-                      </Link>
                       <button
                         type="button"
                         className="chq-link-button"
