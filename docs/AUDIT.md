@@ -150,6 +150,45 @@ public surface uses (`getPublicAgenda` + `getPublicBreaksByDay`), never a new qu
 is the deepest row reachable via pagination or `?limit=`; deeper pages are not offered
 (`hasMore` false past the ceiling), not silently truncated with no signal.
 
+**Public edge cache (DEC-083, wave-70/wave-72 amendments):** every /e/* and
+/embed/* GET is served through `caches.default`, keyed by URL plus a version token
+read from Workers KV (`PUBVER_KEY = "chq:pubver"`). Publishing a change (accepting a
+submission, moving an agenda slot, approving content, disabling an embed — anything
+non-GET/HEAD/OPTIONS that isn't on the `never-public` allowlist) rewrites that token to
+a fresh random value, which is a version swap, not a delete: the old cache key is
+simply never looked up again, so purge is O(1) with no URL enumeration to run. Two
+bounds an operator should know before treating "purge on publish" as instant or as
+scoped:
+
+- **~60s staleness window.** The version token itself is read from KV, and a Workers
+  KV `get` cannot be edge-cached below 60 seconds. A colo that already cached the old
+  token can keep computing the old (now-purged-in-spirit) cache key for up to that
+  window after a publish, so a stale copy can still be served to anonymous visitors for
+  up to ~60 seconds after the bump — this is a property of the KV read path, not of the
+  stored copy's TTL (that TTL is a long 86400s and is safe precisely because the key
+  itself changes on every version bump).
+- **Instance-wide purge blast radius.** `PUBVER_KEY` is ONE key for the whole instance,
+  not per-event and not per-org. A publish on event A's agenda rewrites the same key a
+  publish on event B would rewrite, so it cold-caches every public and embed page of
+  every OTHER event and org on the instance too, not just event A's. This is deliberate
+  at stage 1, not an oversight: scoping the key per event would require resolving a
+  slug (and, for embeds, an embed id) to its owning event on the anonymous read path
+  this cache exists to protect — adding the very D1 lookup the cache is there to avoid
+  — or threading a new context-variable protocol through roughly 40 mutating routes.
+  The public surfaces already meet budget cold (15-98ms measured against a 150ms
+  budget at 2,030 submissions), so the cost of over-purging is lost cache warmth, not a
+  budget miss.
+
+The person who would actually notice either bound — the organizer or speaker who just
+made the change — never does: any request carrying a `chq_session` cookie skips the
+cache read and write entirely and always renders fresh from origin, so both the
+staleness window and the instance-wide blast radius are invisible to a signed-in
+viewer and only ever observable in anonymous traffic. The one request shape that is
+never cached at all, regardless of version or cookie, is /e/:eventSlug/schedule.ics
+carrying an `ids=` query string (even an empty one) — per-recipient/unbounded
+cardinality means it is excluded from `caches.default` outright rather than joining the
+version-salted key space; a bare `schedule.ics` with no `ids` does cache normally.
+
 **Saved embeds (`/embed/e/:embedId`, DEC-785/DEC-822/DEC-839):** the embeds panel under
 `/admin/settings` can save a surface + option recipe as a short embeddable id
 (`src/routes/public/saved-embed.tsx`); `/embed/e/:embedId` resolves it. An unknown id
