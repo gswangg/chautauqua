@@ -366,7 +366,13 @@ export function MergePage() {
             <ConfirmDialog
               title="Merge these records?"
               body="History from the other record moves onto the kept record. The discarded record is deleted. This can't be undone."
-              confirmLabel="Merge"
+              confirmLabel="Merge contacts"
+              weight="irreversible"
+              confirmPhrase={
+                soleDiscard
+                  ? `${soleDiscard.firstName} ${soleDiscard.lastName}`
+                  : discardedContacts.map((c) => `${c.firstName} ${c.lastName}`).join(', ')
+              }
               pending={busy}
               onConfirm={doMerge}
               onCancel={() => setConfirmOpen(false)}

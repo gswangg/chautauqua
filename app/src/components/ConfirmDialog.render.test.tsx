@@ -75,4 +75,98 @@ describe('ConfirmDialog', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onCancel).not.toHaveBeenCalled();
   });
+
+  // DEC-941 (wave-58 amendment): the irreversible weight types the name.
+  describe('irreversible weight', () => {
+    it('keeps the primary disabled until the exact phrase is typed', () => {
+      render(
+        <ConfirmDialog
+          title="Delete this resource?"
+          confirmLabel="Delete resource"
+          weight="irreversible"
+          confirmPhrase="Speaker slides"
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+
+      const primary = screen.getByRole('button', { name: 'Delete resource' });
+      expect(primary).toBeDisabled();
+
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'wrong name' } });
+      expect(primary).toBeDisabled();
+
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Speaker slides' } });
+      expect(primary).not.toBeDisabled();
+    });
+
+    it('matches case-insensitively and trims whitespace', () => {
+      render(
+        <ConfirmDialog
+          title="Delete this resource?"
+          confirmLabel="Delete resource"
+          weight="irreversible"
+          confirmPhrase="Speaker Slides"
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '  speaker slides  ' } });
+      expect(screen.getByRole('button', { name: 'Delete resource' })).not.toBeDisabled();
+    });
+
+    it('leaves Cancel reachable while the primary is locked', () => {
+      const onCancel = vi.fn();
+      render(
+        <ConfirmDialog
+          title="Delete this resource?"
+          confirmLabel="Delete resource"
+          weight="irreversible"
+          confirmPhrase="Speaker slides"
+          onConfirm={vi.fn()}
+          onCancel={onCancel}
+        />,
+      );
+
+      const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
+      expect(cancelBtn).not.toBeDisabled();
+      fireEvent.click(cancelBtn);
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws when the irreversible weight has no confirmPhrase', () => {
+      // Suppress the expected React error boundary console noise.
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      expect(() =>
+        render(
+          <ConfirmDialog
+            title="Delete this resource?"
+            confirmLabel="Delete resource"
+            weight="irreversible"
+            onConfirm={vi.fn()}
+            onCancel={vi.fn()}
+          />,
+        ),
+      ).toThrow(/confirmPhrase/);
+      consoleError.mockRestore();
+    });
+
+    it('throws when confirmPhrase is empty/whitespace-only', () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      expect(() =>
+        render(
+          <ConfirmDialog
+            title="Delete this resource?"
+            confirmLabel="Delete resource"
+            weight="irreversible"
+            confirmPhrase="   "
+            onConfirm={vi.fn()}
+            onCancel={vi.fn()}
+          />,
+        ),
+      ).toThrow(/confirmPhrase/);
+      consoleError.mockRestore();
+    });
+  });
 });
