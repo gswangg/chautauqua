@@ -793,6 +793,7 @@ split, verify against git history if a citation seems to have moved.
 7. [`eval-findings/07-tier1.md`](eval-findings/07-tier1.md) — TIER 1: open items
 8. [`eval-findings/08-tier2.md`](eval-findings/08-tier2.md) — TIER 2: unverified, candidate for re-check
 9. [`eval-findings/09-mobile-queue.md`](eval-findings/09-mobile-queue.md) — Mobile / phone queue
+10. [`eval-findings/10-wave68-receipts.md`](eval-findings/10-wave68-receipts.md) — Wave 68 mandate-hygiene receipts (task-w68-e)
 
 Any citation of the form `docs/eval-findings.md #N` or `docs/eval-findings.md
 Section X` refers to content now living in one of the files above; the
