@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react';
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { AgendaConflict, AgendaRoom, AgendaTrack, PlacedAgendaSession } from './types';
 import { SessionCard } from './SessionCard';
 import { clusterConflictCaption } from './ConflictChip';
@@ -176,6 +176,15 @@ export function DayGrid({
     lanesByRoom.set(key, assignLanes(items));
   }
 
+  // DEC-903 (wave-63 amendment): the placed card currently mid-HTML5-drag,
+  // tracked so (a) that card can take the B8 dragging treatment (opacity
+  // only — no rotate/scale/shadow/border-width change) and (b) its ORIGIN
+  // grid area can paint the well (#EFEBDF fill, 1px dashed #BAB6A6) while
+  // it's away. Set from SessionCard's dragstart via onDragStateChange,
+  // cleared on dragend AND on drop (a drop fires before some browsers'
+  // dragend, so both paths clear it rather than relying on dragend alone).
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
   function durationForDrag(e: DragEvent<Element>): number {
     const raw = e.dataTransfer.getData('application/x-chq-duration-min');
     const parsed = Number(raw);
@@ -188,11 +197,32 @@ export function DayGrid({
 
   function handleDrop(e: DragEvent<Element>, roomId: string | null, rowStartMin: number) {
     e.preventDefault();
+    setDraggingId(null);
     const submissionId = e.dataTransfer.getData('text/plain');
     if (!submissionId) return;
     const duration = durationForDrag(e);
     const startMin = snapToGrid(rowStartMin, dayStartMin, dayEndMin - duration, gridMin);
     onDropPlace(submissionId, roomId, startMin, startMin + duration);
+  }
+
+  /** DEC-903: the same wording the twin cell button uses (occupied vs free),
+   * computed for a PLACED card's own slot so clicking it while armed reads
+   * consistently with clicking the cell underneath it — the click already
+   * places the armed session there (handleCardSelect), this only makes the
+   * accessible name say so. Returns undefined when nothing is armed (leaving
+   * SessionCard's own default name untouched) and also when this card IS the
+   * armed session itself — its own cell already renders as an ordinary free
+   * cell-button with this exact string (occupancyCount excludes the armed
+   * session from its own slot, DEC-769), so overriding here would produce a
+   * second element with the same accessible name. */
+  function armedPlacementLabel(session: PlacedAgendaSession): string | undefined {
+    if (!armed || armed.submissionId === session.submissionId) return undefined;
+    const clashCount = occupancyCount(session.roomId, session.startMin);
+    const roomName = session.roomId === null ? TBD_LABEL : (roomNameById.get(session.roomId) ?? session.roomId);
+    const timeLabel = clockHHMM(session.startMin);
+    return clashCount === 0
+      ? `Place ${armed.ref} at ${timeLabel} in ${roomName}`
+      : `Place ${armed.ref} at ${timeLabel} in ${roomName} — will clash with ${countOf(clashCount, 'session')}`;
   }
 
   /** Counts placed sessions in this room covering this 15-minute row (DEC-570
@@ -419,30 +449,46 @@ export function DayGrid({
         const laned = lanesByRoom.get(roomKey(session.roomId))?.find((l) => l.item.id === session.submissionId);
         const lane = laned?.lane ?? 0;
         const laneCount = laned?.laneCount ?? 1;
+        const isDragging = draggingId === session.submissionId;
         return (
-          <SessionCard
-            key={session.submissionId}
-            session={session}
-            conflicts={conflicts}
-            className="chq-day-grid-placed-card"
-            style={{
-              gridColumn: colIdx + 2,
-              gridRow: `${rowStart} / ${rowEnd}`,
-              // DEC-021 amendment (w6-f): the card sits ~3.5px inset inside
-              // the column divider rather than flush on it — the inset is
-              // carved out of the lane width itself (not a plain margin
-              // added on top) so a laned card's own right edge still lines
-              // up with its lane neighbour instead of overflowing the
-              // column.
-              width: `calc((100% - ${CARD_INSET_PX}px) / ${laneCount})`,
-              marginInlineStart: `calc(${CARD_INSET_PX}px + (100% - ${CARD_INSET_PX}px) / ${laneCount} * ${lane})`,
-            }}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, session.roomId, session.startMin)}
-            onSelect={() => handleCardSelect(session)}
-            selected={armed?.submissionId === session.submissionId}
-            placed
-          />
+          <Fragment key={session.submissionId}>
+            {/* DEC-903 (wave-63 amendment): the dragged card's ORIGIN well —
+                a lower-stacked sibling in the same grid area so it shows
+                through the card above once the card takes opacity .6.
+                Auto z-index (no explicit stacking) keeps it strictly under
+                .chq-day-grid-placed-card's own named overlay tier regardless
+                of DOM order. */}
+            {isDragging && (
+              <div
+                className="chq-day-grid-origin-well"
+                style={{ gridColumn: colIdx + 2, gridRow: `${rowStart} / ${rowEnd}` }}
+              />
+            )}
+            <SessionCard
+              session={session}
+              conflicts={conflicts}
+              className={`chq-day-grid-placed-card${isDragging ? ' chq-session-card-dragging' : ''}`}
+              style={{
+                gridColumn: colIdx + 2,
+                gridRow: `${rowStart} / ${rowEnd}`,
+                // DEC-021 amendment (w6-f): the card sits ~3.5px inset inside
+                // the column divider rather than flush on it — the inset is
+                // carved out of the lane width itself (not a plain margin
+                // added on top) so a laned card's own right edge still lines
+                // up with its lane neighbour instead of overflowing the
+                // column.
+                width: `calc((100% - ${CARD_INSET_PX}px) / ${laneCount})`,
+                marginInlineStart: `calc(${CARD_INSET_PX}px + (100% - ${CARD_INSET_PX}px) / ${laneCount} * ${lane})`,
+              }}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, session.roomId, session.startMin)}
+              onSelect={() => handleCardSelect(session)}
+              selected={armed?.submissionId === session.submissionId}
+              placed
+              armedLabel={armedPlacementLabel(session)}
+              onDragStateChange={(dragging) => setDraggingId(dragging ? session.submissionId : null)}
+            />
+          </Fragment>
         );
       })}
 

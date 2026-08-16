@@ -569,6 +569,29 @@
   color: #565a4b;
 }
 
+/* DEC-903 (wave-63 amendment): B8's drag vocabulary — while a placed card
+   is mid-HTML5-drag it dims to opacity .6 only (no rotate/scale/shadow/
+   border-width change, per the ruling) and its origin cell paints the well
+   below it (see .chq-day-grid-origin-well). No `transition` here: the scan
+   at app/src/interaction-states.scan.test.ts restricts transitioned
+   properties to a colour-only set and this state is driven by React re-render
+   on dragstart/dragend, not a hover/focus pseudo-class, so an instant swap
+   is correct rather than an animated one. */
+.chq-session-card-dragging {
+  opacity: 0.6;
+}
+
+/* DEC-903 (wave-63 amendment): the dragged card's ORIGIN grid area, painted
+   by a lower-stacked sibling in the same cell (see the render-side comment
+   in DayGrid.tsx) so it shows through the dimmed card sitting above it.
+   Fill/border literals match the B8 muted-well pair already used for a
+   flagged break band (.chq-agenda-break-band-flagged), not a fresh literal. */
+.chq-day-grid-origin-well {
+  background: #efebdf;
+  border: 1px dashed #bab6a6;
+  border-radius: var(--chq-r-ctl);
+}
+
 .chq-day-grid-placed-card {
   align-self: stretch;
   justify-self: start;

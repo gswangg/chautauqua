@@ -178,6 +178,50 @@ describe('DayGrid gutter rail (DEC-021 amendment, w6-f)', () => {
   });
 });
 
+// DEC-903 (wave-63 amendment): the B8 drag vocabulary (dragging opacity +
+// origin well) and the armed placed-card accessible name.
+describe('DayGrid drag vocabulary + armed accessible name (DEC-903 amendment)', () => {
+  it('adds the dragging class to the dragged card and paints its origin well on dragstart, clearing both on dragend', () => {
+    const placed: PlacedAgendaSession[] = [session({ submissionId: 'sub-1', roomId: 'room-1', startMin: 540, endMin: 570 })];
+    const { container } = render(<DayGrid {...BASE_PROPS} placed={placed} conflicts={[]} />);
+    const card = container.querySelector('[data-submission-id="sub-1"]') as HTMLElement;
+    expect(card).not.toBeNull();
+    expect(card.classList.contains('chq-session-card-dragging')).toBe(false);
+    expect(container.querySelector('.chq-day-grid-origin-well')).toBeNull();
+
+    const dataTransfer = {
+      setData: () => {},
+      getData: () => '',
+      effectAllowed: '',
+    } as unknown as DataTransfer;
+    fireEvent.dragStart(card, { dataTransfer });
+
+    expect(card.classList.contains('chq-session-card-dragging')).toBe(true);
+    expect(container.querySelector('.chq-day-grid-origin-well')).not.toBeNull();
+
+    fireEvent.dragEnd(card, { dataTransfer });
+
+    expect(card.classList.contains('chq-session-card-dragging')).toBe(false);
+    expect(container.querySelector('.chq-day-grid-origin-well')).toBeNull();
+  });
+
+  it("names the placement consequence on a placed card's aria-label while armed, matching the twin cell button's clash wording", () => {
+    const occupied = session({ submissionId: 'sub-occupied', ref: 'SES-002', title: 'Talk Two', roomId: 'room-1', startMin: 600, endMin: 630 });
+    const armed = { submissionId: 'sub-armed', ref: 'SES-099', title: 'Armed Talk', durationMin: 30 };
+    const { container } = render(<DayGrid {...BASE_PROPS} placed={[occupied]} conflicts={[]} armed={armed} />);
+    const card = container.querySelector('[data-submission-id="sub-occupied"]') as HTMLElement;
+    expect(card.getAttribute('aria-label')).toBe('Place SES-099 at 10:00 in Room One — will clash with 1 session');
+    expect(card.getAttribute('aria-label')).not.toContain('click to select');
+  });
+
+  it('reverts to the default "click to select" name once nothing is armed', () => {
+    const placed = session({ submissionId: 'sub-1', roomId: 'room-1', startMin: 540, endMin: 570 });
+    const { container } = render(<DayGrid {...BASE_PROPS} placed={[placed]} conflicts={[]} armed={null} />);
+    const card = container.querySelector('[data-submission-id="sub-1"]') as HTMLElement;
+    expect(card.getAttribute('aria-label')).toContain('click to select, then choose a new slot');
+  });
+});
+
 describe('DayGrid breaks (DEC-021 amendment, w67-b)', () => {
   it('renders a break band with its label text at the row its start minute implies', () => {
     const { container } = render(<DayGrid {...BASE_PROPS} placed={[]} conflicts={[]} breaks={[breakRow()]} />);
