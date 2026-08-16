@@ -21,13 +21,26 @@ portalResourcesRoutes.get("/resources", async (c) => {
   const contactId = auth.contactId;
   if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
 
-  const data = await getPortalData(c.var.db, contactId, auth.orgId);
-  // DEC-988 (wave-56 amendment): the producer's "Show resources" toggle
-  // must be enforced server-side, not just hidden from navigation — refuse
-  // before any resource read.
-  if (!data.branding.showResources) return portalNotFound(c);
+  // DEC-988 (wave-74 amendment): the producer's "Show resources" toggle is
+  // PER EVENT — filter the speaker's resource groups down to events whose
+  // flag is true. The 404 refusal is keyed on the PERMITTED-EVENT set, not
+  // on the resulting group count: a speaker with zero resources yet, in an
+  // event where the toggle is on, still sees the normal "No resources yet"
+  // empty state (200) — only a speaker with NO permitted event at all is
+  // refused, so nobody is locked out of Event B's resources because Event
+  // A's toggle happens to be off.
+  const [data, allGroups] = await Promise.all([
+    getPortalData(c.var.db, contactId, auth.orgId),
+    getMyResources(c.var.db, contactId, auth.orgId),
+  ]);
+  const permittedEventIds = new Set(
+    Object.entries(data.showResourcesByEventId)
+      .filter(([, allowed]) => allowed)
+      .map(([eventId]) => eventId),
+  );
+  if (permittedEventIds.size === 0) return portalNotFound(c);
+  const groups = allGroups.filter((g) => permittedEventIds.has(g.eventId));
 
-  const groups = await getMyResources(c.var.db, contactId, auth.orgId);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(
@@ -41,13 +54,15 @@ portalResourcesRoutes.get("/resources/:resourceId/download", async (c) => {
   if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
   const resourceId = c.req.param("resourceId");
 
-  // DEC-988 (wave-56 amendment): same server-side refusal as GET /resources
-  // — a direct download link must not survive the section being turned off.
-  const data = await getPortalData(c.var.db, contactId, auth.orgId);
-  if (!data.branding.showResources) return portalNotFound(c);
-
   const scope = await getResourceDownloadScope(c.var.db, resourceId, contactId, auth.orgId);
   if (!scope) throw new ApiError("not_found", "Resource not found");
+
+  // DEC-988 (wave-74 amendment): gate on the RESOURCE's OWN event, not the
+  // portal's single "most recent submission" branding event — a direct
+  // download link must not survive that resource's own event turning the
+  // section off, still before any bytes stream.
+  const data = await getPortalData(c.var.db, contactId, auth.orgId);
+  if (!(data.showResourcesByEventId[scope.eventId] ?? true)) return portalNotFound(c);
 
   const store = makeFileStore(c.env.FILES);
   const obj = await store.get(scope.r2Key);

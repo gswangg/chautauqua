@@ -26,8 +26,9 @@ const BASE_BRANDING = {
   welcomeMessage: null,
   accentColor: null,
   logoUrl: null,
-  showResources: true,
 };
+
+const SHOW_RESOURCES_BY_EVENT_ID = { "evt-1": true };
 
 function noEscape(html: string) {
   // Body markup only -- the composed stylesheet legitimately declares the
@@ -73,6 +74,7 @@ describe("GET /portal — dashboard zero-states render PublicEmptyState (DEC-919
         ...actual,
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
+          showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
           contactName: "Ada Lovelace",
           contactCompany: null,
         })),
@@ -130,6 +132,7 @@ describe("GET /portal/submissions — SubmissionsListPage zero-state (DEC-919 wa
         ...actual,
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
+          showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
           contactName: "Ada Lovelace",
           contactCompany: null,
         })),
@@ -189,6 +192,7 @@ describe("GET /portal/submissions/:id — Slides card zero-state (DEC-919 wave 5
         })),
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
+          showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
           contactName: "Ada Lovelace",
           contactCompany: null,
         })),
@@ -245,6 +249,7 @@ describe("GET /portal/tasks — zero-state carries a true, endpoint-backed reaso
         ...actual,
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
+          showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
           submissions: [],
           tasks: [],
         })),
@@ -293,6 +298,7 @@ describe("GET /portal/tasks — CommentThread zero-state (DEC-919 wave-56 amendm
         ...actual,
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
+          showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
         })),
         getMyTaskAssignments: vi.fn(async () => [
           {
@@ -369,6 +375,7 @@ describe("GET /portal/resources — ResourcesPage zero-state (DEC-919 wave-56 am
         ...actual,
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
+          showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
           contactName: "Ada Lovelace",
         })),
         getMyResources: vi.fn(async () => []),
@@ -414,6 +421,7 @@ describe("GET /portal/submissions/:id/edit — ParticipantsSection zero-state (D
         ...actual,
         getPortalData: vi.fn(async () => ({
           branding: BASE_BRANDING,
+          showResourcesByEventId: SHOW_RESOURCES_BY_EVENT_ID,
           submissions: [],
           tasks: [],
         })),

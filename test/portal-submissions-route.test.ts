@@ -212,12 +212,12 @@ describe("GET /portal/submissions/:id — DEC-777 detail rebuild", () => {
         welcomeMessage: "Welcome to the speaker portal!",
         accentColor: null,
         logoUrl: null,
-        showResources: true,
       },
       submissions: [],
       tasks: [],
       contactName: "Priya Raman",
       contactCompany: null,
+      showResourcesByEventId: { "evt-1": true },
     });
     const app = await buildApp(speakerAuth);
     const res = await app.request("/portal/submissions/sub-mine");
