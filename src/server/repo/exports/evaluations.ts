@@ -13,6 +13,7 @@ import {
   type EvaluationCriterionDef,
 } from "../../../domain/evaluation";
 import { DEC_529, DEC_147, DEC_736 } from "../../../decisions";
+import { parsePlanCriteria, parsePlanScale } from "../../../domain/evaluation/plan-json";
 import { ApiError } from "../../http";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
 import { submittedEvaluationCondition } from "../review/evaluations";
@@ -26,6 +27,14 @@ void DEC_529;
 // through criteriaForRound -- the same door every screen uses -- instead of
 // a per-plan-only criteria map, so a round override changes the export's
 // arithmetic exactly the way it changes /plans/:id/results'.
+// DEC-147 (wave 11 amendment): planBaseCriteria/planScale below are parsed
+// with plan-json.ts's throwing parsePlanCriteria/parsePlanScale, the same
+// doors review/plans.ts and review/evaluations.ts use, so a malformed
+// criteria_json/scale_json row makes this export refuse exactly like
+// /plans/:id/results instead of silently printing a wrong weightedScore --
+// the swallowing try/catch stays only on labelByCriterionId's display label
+// and on the per-row score/weightedScore catches, which cover missing
+// scores, not a malformed plan row.
 void DEC_147;
 // DEC-736 (wave 79 amendment): the export joins contact the same way the
 // screen does and passes resolveReviewerIdentity the same row shape, so the
@@ -238,18 +247,10 @@ export async function exportEvaluations(db: Db, eventId: string, params?: Evalua
     }
     planNames.set(r.planId, r.planName);
     if (!planBaseCriteria.has(r.planId)) {
-      try {
-        planBaseCriteria.set(r.planId, JSON.parse(r.criteriaJson) as EvaluationCriterionDef[]);
-      } catch {
-        planBaseCriteria.set(r.planId, []);
-      }
+      planBaseCriteria.set(r.planId, parsePlanCriteria(r.criteriaJson, r.planId));
     }
     if (!planScale.has(r.planId)) {
-      try {
-        planScale.set(r.planId, JSON.parse(r.scaleJson) as { min: number; max: number });
-      } catch {
-        planScale.set(r.planId, undefined);
-      }
+      planScale.set(r.planId, parsePlanScale(r.scaleJson, r.planId));
     }
   }
 
