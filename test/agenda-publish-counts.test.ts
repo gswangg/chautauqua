@@ -89,6 +89,12 @@ describe("POST /events/:eventId/agenda/publish — truthful counts (DEC-595)", (
         { id: "sub1", seq: 1, title: "Talk 1" },
         { id: "sub2", seq: 2, title: "Talk 2" },
       ], // submissionRows (accepted)
+      // DEC-557 wave-69 amendment: listBreaksForEvent joined getAgendaPayload's
+      // rooms/tracks/accepted Promise.all wave as its 4th member, so its
+      // db.select() lands here — ahead of loadAcceptedSessions' own internal
+      // trackRows/participantRows/slotRows batch. Empty: no breaks, so no
+      // break_overlap conflicts, and the publish counts are unchanged.
+      [], // scheduleBreak (listBreaksForEvent)
       [], // trackRows batch
       [], // participantRows batch
       [
@@ -125,6 +131,7 @@ describe("POST /events/:eventId/agenda/publish — truthful counts (DEC-595)", (
         { id: "sub1", seq: 1, title: "Talk 1" },
         { id: "sub2", seq: 2, title: "Talk 2" },
       ], // submissionRows (accepted)
+      [], // scheduleBreak (listBreaksForEvent) — see DEC-557 note above
       [], // trackRows batch
       [], // participantRows batch
       [
