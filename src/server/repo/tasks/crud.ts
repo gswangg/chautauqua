@@ -360,8 +360,9 @@ export interface UpdateTaskInput {
 
 export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput): Promise<TaskRecord> {
   const now = new Date();
+  let rows: (typeof schema.task.$inferSelect)[];
   try {
-    await db
+    rows = await db
       .update(schema.task)
       .set({
         ...(input.title !== undefined ? { title: input.title } : {}),
@@ -373,7 +374,8 @@ export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput)
         ...(input.instructions !== undefined ? { instructions: input.instructions } : {}),
         updatedAt: now,
       })
-      .where(eq(schema.task.id, taskId));
+      .where(eq(schema.task.id, taskId))
+      .returning();
   } catch (err) {
     if (isUniqueViolation(err, "task.title")) {
       throw new ApiError("invalid", "A task with this title already exists for this event", TASK_TITLE_COLLISION_FIELDS);
@@ -381,7 +383,6 @@ export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput)
     throw err;
   }
 
-  const rows = await db.select().from(schema.task).where(eq(schema.task.id, taskId)).limit(1);
   const row = rows[0];
   if (!row) throw new Error(`updateTask: task ${taskId} not found after update`);
   return toTaskRecord(row);
@@ -469,7 +470,7 @@ export async function updateAssignmentStatus(
   actingUserId: string,
   now: Date,
 ): Promise<AssignmentRecord> {
-  await db
+  const rows = await db
     .update(schema.taskAssignment)
     .set({
       status,
@@ -477,13 +478,8 @@ export async function updateAssignmentStatus(
       completedBy: status === "complete" ? actingUserId : null,
       updatedAt: now,
     })
-    .where(eq(schema.taskAssignment.id, assignmentId));
-
-  const rows = await db
-    .select()
-    .from(schema.taskAssignment)
     .where(eq(schema.taskAssignment.id, assignmentId))
-    .limit(1);
+    .returning();
   const row = rows[0];
   if (!row) throw new Error(`updateAssignmentStatus: assignment ${assignmentId} not found after update`);
   return toAssignmentRecord(row);
