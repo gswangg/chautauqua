@@ -273,6 +273,9 @@ export function FormsPage() {
   }
 
   const receivedText = received === 'loading' || received === 'error' ? '—' : `${received.total} submissions`;
+  // Shared with FieldModal's header line (DEC-650(d)/wave-66 amendment):
+  // the same real count, never a second fetch or a fabricated number.
+  const answeredCount = received === 'loading' || received === 'error' ? null : received.total;
   // Amendment (wave 72): Save is disabled until the strip differs from the
   // loaded form, so it never claims work it has none of.
   const windowDirty =
@@ -431,18 +434,35 @@ export function FormsPage() {
         <FieldModal
           field={modal.field}
           allFields={form.fields}
-          answeredCount={received === 'loading' || received === 'error' ? null : received.total}
+          answeredCount={answeredCount}
           onCancel={() => setModal(null)}
           onSubmit={(input) => handleEditField(modal.field, input)}
+          // DEC-650 (wave-66 amendment): reuse the SAME delete handler
+          // FieldList's row already uses -- close the edit modal first so
+          // the shared ConfirmDialog (below) isn't rendered behind it.
+          onDelete={() => {
+            const field = modal.field;
+            setModal(null);
+            handleDeleteField(field);
+          }}
         />
       )}
 
       {deleteConfirm && !deleteConfirm.conflictMessage && (
         <ConfirmDialog
           title="Delete field"
-          body={`Delete the "${deleteConfirm.field.label}" field? This cannot be undone.`}
+          body={
+            <>
+              <p>{`Delete the "${deleteConfirm.field.label}" field? This cannot be undone.`}</p>
+              {typeof answeredCount === 'number' && answeredCount > 0 && (
+                <p>{`${answeredCount} people have already answered this form — their answers to this question are deleted too.`}</p>
+              )}
+            </>
+          }
           confirmLabel="Delete"
           pending={busy}
+          weight="irreversible"
+          confirmPhrase={deleteConfirm.field.label}
           onConfirm={confirmDeleteField}
           onCancel={() => setDeleteConfirm(null)}
         />
@@ -453,6 +473,8 @@ export function FormsPage() {
           body={deleteConfirm.conflictMessage}
           confirmLabel="Delete anyway"
           pending={busy}
+          weight="irreversible"
+          confirmPhrase={deleteConfirm.field.label}
           onConfirm={confirmDeleteField}
           onCancel={() => setDeleteConfirm(null)}
         />

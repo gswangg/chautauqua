@@ -188,10 +188,15 @@ describe('FormsPage render smoke', () => {
 
     const cancelButton = screen.getByRole('button', { name: 'Cancel' });
     const saveButton = within(dialog).getByRole('button', { name: 'Save' });
+    // DEC-650 (wave-66 amendment): Save/Cancel sit in their own
+    // right-flushed group (chq-forms-field-modal-actions-right) inside the
+    // shared chq-modal-actions footer, so a far-left Delete (edit mode
+    // only) never lands adjacent to them.
     expect(cancelButton).toHaveClass('chq-btn', 'chq-btn-secondary');
-    expect(cancelButton.parentElement).toHaveClass('chq-modal-actions');
+    expect(cancelButton.parentElement).toHaveClass('chq-forms-field-modal-actions-right');
+    expect(cancelButton.parentElement?.parentElement).toHaveClass('chq-modal-actions');
     expect(saveButton).toHaveClass('chq-btn', 'chq-btn-primary');
-    expect(saveButton.parentElement).toHaveClass('chq-modal-actions');
+    expect(saveButton.parentElement).toHaveClass('chq-forms-field-modal-actions-right');
 
     // DEC-378: Escape closes the dialog.
     fireEvent.keyDown(window, { key: 'Escape' });
