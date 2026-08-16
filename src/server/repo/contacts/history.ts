@@ -21,6 +21,14 @@ export const MAX_CONTACT_HISTORY_SUBMISSIONS = 20;
 // truth for "how many total", exactly as submissionsTotal is for submissions.
 export const MAX_CONTACT_HISTORY_EMAILS = 20;
 
+// w47-f (closes CONFIRMED-DEFECT #4, docs/verification-log/index/0234): the
+// "Across your events" distinct-events query was the one unbounded surface
+// left in this file -- same cap idiom as the two lists above. eventsTotal
+// (a separate count(distinct event.id) over the same predicate) is the
+// source of truth for "how many total", exactly as submissionsTotal /
+// emailsTotal are for their lists.
+export const MAX_CONTACT_HISTORY_EVENTS = 20;
+
 export interface ContactHistorySubmission {
   id: string;
   ref: string;
@@ -49,6 +57,9 @@ export interface ContactHistory {
   // emails.length once the list is capped -- mirrors submissionsTotal.
   emailsTotal: number;
   events: string[];
+  // w47-f: total distinct-event count across the full join, distinct from
+  // events.length once the list is capped -- mirrors emailsTotal.
+  eventsTotal: number;
 }
 
 export async function getContactHistory(db: Db, contactId: string): Promise<ContactHistory> {
@@ -116,14 +127,26 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
 
   // w56-c: its OWN distinct query over the full join — capping the
   // submissions list above must never shrink "Across your events".
+  // w47-f: deterministic cap, mirroring the emails cap above — bounded by
+  // the SAME order the drawer renders, with eventsTotal (below) as the only
+  // source of truth for the total.
   const eventRows = await db
     .selectDistinct({ eventName: schema.event.name })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
     .innerJoin(schema.event, eq(schema.event.id, schema.submission.eventId))
     .where(eq(schema.participant.contactId, contactId))
-    .orderBy(asc(schema.event.name));
+    .orderBy(asc(schema.event.name))
+    .limit(MAX_CONTACT_HISTORY_EVENTS);
   const events = eventRows.map((r) => r.eventName);
 
-  return { submissions, submissionsTotal, emails, emailsTotal, events };
+  const [eventsTotalRow] = await db
+    .select({ count: sql<number>`count(distinct ${schema.event.id})` })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+    .innerJoin(schema.event, eq(schema.event.id, schema.submission.eventId))
+    .where(eq(schema.participant.contactId, contactId));
+  const eventsTotal = eventsTotalRow?.count ?? 0;
+
+  return { submissions, submissionsTotal, emails, emailsTotal, events, eventsTotal };
 }

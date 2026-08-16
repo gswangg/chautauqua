@@ -56,6 +56,7 @@ const CONTACT: ContactDetail = {
     emails: [{ id: 'em1', subject: 'Welcome', toEmail: 'priya@example.com', sentAt: 1735689600000 }],
     emailsTotal: 1,
     events: ['DevCon 2025'],
+    eventsTotal: 1,
   },
 };
 
@@ -196,6 +197,38 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     });
 
     expect(within(history).queryByText(/of .* emails?$/)).not.toBeInTheDocument();
+  });
+
+  it('states the events bound above the cap, mirroring the emails line (w47-f)', async () => {
+    const CAPPED_CONTACT: ContactDetail = {
+      ...CONTACT,
+      history: { ...CONTACT.history, eventsTotal: 50 },
+    };
+    mockApi({ 'GET /api/v1/contacts/ct1': CAPPED_CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    const history = await within(dialog).findByRole('region', { name: 'Across your events' });
+
+    await waitFor(() => {
+      expect(within(history).getByText('Showing 1 of 50 events')).toBeInTheDocument();
+    });
+  });
+
+  it('is silent about the events bound when eventsTotal is at or below events.length', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    const history = await within(dialog).findByRole('region', { name: 'Across your events' });
+
+    await waitFor(() => {
+      expect(within(history).getByText('DevCon 2026')).toBeInTheDocument();
+    });
+
+    expect(within(history).queryByText(/of .* events?$/)).not.toBeInTheDocument();
   });
 
   it('exposes Save / Email / Add to event / Cancel as real buttons in one action bar', async () => {

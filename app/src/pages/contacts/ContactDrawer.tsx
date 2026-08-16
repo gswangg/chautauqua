@@ -720,6 +720,11 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                   Showing {contact.history.emails.length} of {countOf(contact.history.emailsTotal, 'email')}
                 </p>
               )}
+              {contact.history.eventsTotal > contact.history.events.length && (
+                <p className="chq-meta">
+                  Showing {contact.history.events.length} of {countOf(contact.history.eventsTotal, 'event')}
+                </p>
+              )}
               {historyRows.map((row) => (
                 <div className="chq-contacts-history-row" key={row.key}>
                   <span className="chq-contacts-history-event">{row.event}</span>

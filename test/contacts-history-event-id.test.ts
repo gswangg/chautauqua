@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "../src/db/schema";
-import { getContactHistory } from "../src/server/repo/contacts/history";
+import { getContactHistory, MAX_CONTACT_HISTORY_EVENTS } from "../src/server/repo/contacts/history";
 import { newId } from "../src/domain/ids";
 import type { Db } from "../src/server/context";
 
@@ -290,5 +290,93 @@ describe("getContactHistory bounds emails and reports the full total (w52-f)", (
     const history = await getContactHistory(db, "contact-1");
     expect(history.emails).toHaveLength(3);
     expect(history.emailsTotal).toBe(3);
+  });
+});
+
+// w47-f (closes CONFIRMED-DEFECT #4, docs/verification-log/index/0234): the
+// "Across your events" distinct-events list is capped at
+// MAX_CONTACT_HISTORY_EVENTS exactly as submissions/emails are capped --
+// eventsTotal is its own count(distinct event.id) over the same predicate
+// as the row query, never events.length, so capping the list can never
+// hide the true total.
+describe("getContactHistory bounds events and reports the full total (w47-f)", () => {
+  it("caps events at MAX_CONTACT_HISTORY_EVENTS, reports the true eventsTotal, and never shrinks submissions/emails totals", async () => {
+    const { db, sqlite } = makeTestDb();
+
+    sqlite
+      .prepare(
+        `insert into contact (id, org_id, first_name, last_name, email, created_at, updated_at) values (?, 'org-1', 'Priya', 'Raman', 'priya@example.com', ?, ?)`,
+      )
+      .run("contact-1", NOW, NOW);
+
+    const totalEvents = MAX_CONTACT_HISTORY_EVENTS + 1;
+    for (let i = 0; i < totalEvents; i++) {
+      const eventId = `event-${i}`;
+      // zero-pad so lexical (name asc) order matches insertion order for
+      // deterministic slicing.
+      const name = `Event ${String(i).padStart(3, "0")}`;
+      sqlite
+        .prepare(
+          `insert into event (id, org_id, name, slug, start_date, end_date, timezone, record_prefix, created_at, updated_at)
+           values (?, 'org-1', ?, ?, '2027-01-01', '2027-01-02', 'UTC', 'SUB', ?, ?)`,
+        )
+        .run(eventId, name, `slug-${i}`, NOW, NOW);
+
+      const subId = `sub-${i}`;
+      sqlite
+        .prepare(
+          `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at)
+           values (?, ?, 1, ?, 'accepted', 'approved', 0, ?, ?)`,
+        )
+        .run(subId, eventId, `Talk ${i}`, NOW + i, NOW + i);
+      sqlite
+        .prepare(
+          `insert into participant (id, submission_id, contact_id, role, "order", visible, created_at, updated_at)
+           values (?, ?, 'contact-1', 'speaker', 0, 1, ?, ?)`,
+        )
+        .run(newId(), subId, NOW + i, NOW + i);
+    }
+
+    const history = await getContactHistory(db, "contact-1");
+    // one distinct event per submission, one over the cap.
+    expect(history.events).toHaveLength(MAX_CONTACT_HISTORY_EVENTS);
+    expect(history.eventsTotal).toBe(totalEvents);
+    // deterministic (event.name asc) order -- the first N of totalEvents.
+    expect(history.events).toEqual(
+      Array.from({ length: MAX_CONTACT_HISTORY_EVENTS }, (_, i) => `Event ${String(i).padStart(3, "0")}`),
+    );
+  });
+
+  it("reports eventsTotal equal to events.length when at or below the cap", async () => {
+    const { db, sqlite } = makeTestDb();
+
+    sqlite
+      .prepare(
+        `insert into contact (id, org_id, first_name, last_name, email, created_at, updated_at) values (?, 'org-1', 'Priya', 'Raman', 'priya@example.com', ?, ?)`,
+      )
+      .run("contact-1", NOW, NOW);
+
+    sqlite
+      .prepare(
+        `insert into event (id, org_id, name, slug, start_date, end_date, timezone, record_prefix, created_at, updated_at)
+         values ('event-1', 'org-1', 'DevFlow Conf 2027', 'slug-e1', '2027-01-01', '2027-01-02', 'UTC', 'SUB', ?, ?)`,
+      )
+      .run(NOW, NOW);
+    sqlite
+      .prepare(
+        `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at)
+         values ('sub-1', 'event-1', 1, 'Keynote', 'accepted', 'approved', 0, ?, ?)`,
+      )
+      .run(NOW, NOW);
+    sqlite
+      .prepare(
+        `insert into participant (id, submission_id, contact_id, role, "order", visible, created_at, updated_at)
+         values (?, 'sub-1', 'contact-1', 'speaker', 0, 1, ?, ?)`,
+      )
+      .run(newId(), NOW, NOW);
+
+    const history = await getContactHistory(db, "contact-1");
+    expect(history.events).toEqual(["DevFlow Conf 2027"]);
+    expect(history.eventsTotal).toBe(1);
   });
 });

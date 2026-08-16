@@ -78,6 +78,9 @@ export interface ContactDetail extends ContactListItem {
     // emails.length once the list is capped -- mirrors submissionsTotal.
     emailsTotal: number;
     events: string[];
+    // w47-f: total distinct-event count across the full join, distinct from
+    // events.length once the list is capped -- mirrors emailsTotal.
+    eventsTotal: number;
   };
 }
 
