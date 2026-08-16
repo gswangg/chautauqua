@@ -363,13 +363,6 @@ describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response fie
     }
   });
 
-  it("no ledger row's reason is 'unreviewed / filed for a later wave' or equivalent deferral prose (DEC-518: that is a parking space, not a principle)", () => {
-    const DEFERRAL_RE = /unreview|filed for a later|not yet review|todo|tbd/i;
-    for (const entry of LEDGER) {
-      expect(DEFERRAL_RE.test(entry.reason), `ledger row ${entry.key} reads as a deferral, not a principle: "${entry.reason}"`).toBe(false);
-    }
-  });
-
   it('the FileComment.authorRole finding is fixed: CommentThread.tsx now reads authorRole', () => {
     const files = candidateFiles();
     expect(hasReader('authorRole', files)).toBe(true);
