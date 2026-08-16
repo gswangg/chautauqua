@@ -151,7 +151,9 @@ describe("GET /portal/preview (DEC-747 findings wave 7 amendment)", () => {
     expect(body).toContain("you would have to be them");
     // A plain link, never a form or button, per the route's no-mutation
     // invariant.
-    expect(body).toMatch(/<a href="\/settings\?section=portal">[^<]*Back to settings<\/a>/);
+    // Gate-11 fleet: the settings SPA lives under /admin — a bare /settings
+    // link 404s live, so the pin follows the working path.
+    expect(body).toMatch(/<a href="\/admin\/settings\?section=portal">[^<]*Back to settings<\/a>/);
   });
 
   it("organizer with no eventId / an eventId belonging to another org: 404, not a crash or another org's data", async () => {

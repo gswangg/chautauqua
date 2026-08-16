@@ -440,7 +440,7 @@ export function PeopleRolesPanel() {
         <p>No people yet.</p>
       ) : (
         <>
-          <div role="table" aria-label="People and roles">
+          <div className="chq-settings-people-table" role="table" aria-label="People and roles">
             <div className="chq-settings-people-header-row" role="row">
               <span role="columnheader">Person</span>
               <span role="columnheader">Role</span>

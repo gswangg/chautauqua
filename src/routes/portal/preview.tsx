@@ -132,7 +132,7 @@ function PreviewPage(props: {
       {/* Frame 10--24, clause 4: a plain link, never a form or button — the
           route's no-mutation invariant (comment block above) stands. */}
       <p class="chq-meta">
-        <a href={`/settings?section=portal`}>&larr; Back to settings</a>
+        <a href={`/admin/settings?section=portal`}>&larr; Back to settings</a>
       </p>
     </PortalLayout>
   );

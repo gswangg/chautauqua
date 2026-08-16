@@ -397,14 +397,18 @@
   font-weight: 700;
 }
 
+/* DEC-902 (w60, gate-11 repair): the four-track grid is declared ONCE on the
+   role="table" wrapper — the header row is a SIBLING of the list, so declaring
+   it on .chq-settings-people-list left var(--chq-people-grid) undefined for
+   the header (invalid grid-template-columns, labels stacked vertically). */
+.chq-settings-people-table {
+  --chq-people-grid: minmax(0, 1fr) 170px 190px 200px;
+}
+
 .chq-settings-people-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  /* DEC-902 (w60): the four-track grid is declared ONCE here and consumed
-     by both .chq-settings-people-header-row and .chq-settings-people-row
-     so the header labels and the data cells can never drift apart again. */
-  --chq-people-grid: minmax(0, 1fr) 170px 190px 200px;
 }
 
 .chq-settings-people-row:last-child {
