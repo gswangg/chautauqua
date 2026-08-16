@@ -36,9 +36,35 @@ function unwrap(rawValue: unknown): unknown {
     : rawValue;
 }
 
-function evalCond(cond: unknown, row: Row): boolean {
+function chunkText(chunk: unknown): string | undefined {
+  return chunk && typeof chunk === "object" && Array.isArray((chunk as { value?: unknown }).value)
+    ? ((chunk as { value: unknown[] }).value[0] as string | undefined)
+    : undefined;
+}
+
+// evalCond takes `allRows` so the raw-sql last-organizer guard built by
+// updateUserRole (DEC-100 amendment, wave 65) can be evaluated: it is a
+// correlated `count(*) > 1` subquery over the WHOLE table, not a per-row
+// column comparison, so it can't be answered from `row` alone.
+function evalCond(cond: unknown, row: Row, allRows: Row[]): boolean {
   const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
+
+  // sql`1 = 1` -- the no-op guard used when the new role IS 'organizer'.
+  if (chunks.length === 1 && chunkText(chunks[0]) === "1 = 1") {
+    return true;
+  }
+
   if (COLUMN_KEYS.has(chunks[1])) {
+    // updateUserRole's last-organizer guard: `(role <> 'organizer' OR
+    // (select count(*) from "user" where "org_id" = ? and "role" =
+    // 'organizer') > 1)`. Recognized by the raw SQL text at chunks[2];
+    // the org id param sits at chunks[3] same as a plain eq().
+    const guardText = chunkText(chunks[2]);
+    if (typeof guardText === "string" && guardText.includes("select count(*)")) {
+      const orgId = unwrap(chunks[3]);
+      const organizerCount = allRows.filter((r) => r.orgId === orgId && r.role === "organizer").length;
+      return row[colKey(chunks[1])] !== "organizer" || organizerCount > 1;
+    }
     // inArray()'s chunks[3] is an array of Param values (DEC-865:
     // getOrgUserById now scopes by inArray(role, ORG_USER_ROLES)); eq()'s
     // chunks[3] is a single Param.
@@ -53,7 +79,7 @@ function evalCond(cond: unknown, row: Row): boolean {
   for (const chunk of chunks) {
     if (chunk && typeof chunk === "object" && Array.isArray((chunk as { queryChunks?: unknown }).queryChunks)) {
       any = true;
-      result = result && evalCond(chunk, row);
+      result = result && evalCond(chunk, row, allRows);
     }
   }
   if (!any) throw new Error("evalCond: no matchable condition found in fake db test helper");
@@ -69,6 +95,10 @@ function project(row: Row, fields?: Record<string, unknown>): Row {
 
 function makeFakeDb() {
   const state: { users: Row[] } = { users: [] };
+  // Tracks every db.select({ count: ... }) aggregate call so tests can
+  // assert the happy path issues no separate count SELECT (the guard now
+  // lives inside the update's own WHERE, not a pre-check).
+  const aggregateSelectCalls: unknown[] = [];
   function rowsFor(table: unknown): Row[] {
     if (table === schema.user) return state.users;
     throw new Error("unexpected table in fake db test helper");
@@ -79,13 +109,15 @@ function makeFakeDb() {
         from(table: unknown) {
           return {
             where(cond: unknown) {
-              const matched = rowsFor(table).filter((r) => evalCond(cond, r));
+              const allRows = rowsFor(table);
+              const matched = allRows.filter((r) => evalCond(cond, r, allRows));
               // countOrgUsers selects { count: sql`count(*)` } -- an
               // aggregate, not a column reference, so it can't go through
               // project()'s per-row column lookup. Detect that shape and
               // return a single aggregate row instead.
               const fieldEntries = fields ? Object.entries(fields) : [];
               const isAggregate = fieldEntries.length === 1 && !COLUMN_KEYS.has(fieldEntries[0]![1]);
+              if (isAggregate) aggregateSelectCalls.push(cond);
               const projected = isAggregate ? [{ [fieldEntries[0]![0]]: matched.length }] : matched.map((r) => project(r, fields));
               return Object.assign(Promise.resolve(projected), {
                 limit(n: number) {
@@ -102,17 +134,18 @@ function makeFakeDb() {
         set(patch: Row) {
           return {
             where(cond: unknown) {
-              for (const r of rowsFor(table)) {
-                if (evalCond(cond, r)) Object.assign(r, patch);
-              }
-              return Promise.resolve();
+              const allRows = rowsFor(table);
+              const matched = allRows.filter((r) => evalCond(cond, r, allRows));
+              for (const r of matched) Object.assign(r, patch);
+              const returning = () => Promise.resolve(matched.map((r) => ({ ...r })));
+              return Object.assign(Promise.resolve(matched.map((r) => ({ ...r }))), { returning });
             },
           };
         },
       };
     },
   };
-  return { db: db as unknown as AppEnv["Variables"]["db"], state };
+  return { db: db as unknown as AppEnv["Variables"]["db"], state, aggregateSelectCalls };
 }
 
 const ORG_A = "org-a";
@@ -232,6 +265,17 @@ describe("PATCH /api/v1/users/:id (DEC-778)", () => {
 
     const stored = state.users.find((u) => u.id === onlyOrganizer.id)!;
     expect(stored.role).toBe("organizer");
+  });
+
+  it("(6b) issues no separate count SELECT on the happy path -- the guard lives in the update's own WHERE", async () => {
+    const { db, state, aggregateSelectCalls } = makeFakeDb();
+    await seedUser(state, { id: "org-admin", role: "organizer" });
+    const secondOrganizer = await seedUser(state, { id: "target-1", role: "organizer", email: "second@example.test" });
+    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
+
+    const res = await patchRole(org, secondOrganizer.id as string, "reviewer");
+    expect(res.status).toBe(200);
+    expect(aggregateSelectCalls.length).toBe(0);
   });
 
   it("(7) rejects a missing CSRF header", async () => {
