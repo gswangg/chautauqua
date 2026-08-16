@@ -52,6 +52,18 @@ export function computeWeightedScore(
         `computeWeightedScore: missing score for criterion "${criterion.id}"`,
       );
     }
+    if (typeof score !== "number" || !Number.isFinite(score)) {
+      // Fail loudly (DEC-241 amendment): a non-numeric value under a
+      // 'rating' criterion id (e.g. a Choice/dropdown pick that leaked
+      // through, or malformed data) must never silently multiply into NaN
+      // and poison the weighted mean -- callers pass only rating criteria
+      // here (see src/routes/review/reviewer.ts, evaluations.ts,
+      // src/server/repo/exports/evaluations.ts), so every id in `criteria`
+      // is expected to carry a real number.
+      throw new Error(
+        `computeWeightedScore: score for criterion "${criterion.id}" must be a finite number, got ${JSON.stringify(score)}`,
+      );
+    }
     if (scale && (score < scale.min || score > scale.max)) {
       throw new Error(
         `computeWeightedScore: score ${score} for criterion "${criterion.id}" is out of scale [${scale.min}, ${scale.max}]`,
