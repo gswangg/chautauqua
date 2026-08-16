@@ -19,6 +19,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { formatDateTime } from '../../lib/dates';
+import { plural, capitalizeFirst, spellCount } from '../../lib/plural';
 import { pipelineCardAge } from './pipeline-age';
 import { sortByFit } from '../../../../src/domain/pipeline-fit';
 import { PIPELINE_RATIONALE_MAX_LEN } from '../../lib/domain-caps';
@@ -69,6 +70,29 @@ function unmatchedFieldErrors(fieldErrors: FieldErrors, labels: Record<string, s
 // affordance ('drag between columns') now that the card itself carries no
 // control -- the back link is a tab switch (DEC-710: ?tab= URL state),
 // never a route navigation, so it clears the same param ContactsApp reads.
+// Frame 08-contacts--14/B7 exemplar: a stage-appropriate heading (never the
+// generic "No one in X") plus a body naming the REAL count of the previous
+// stage, so the empty column reads as a place in a live funnel rather than a
+// dead end.
+const STAGE_EMPTY_HEADINGS: Record<PipelineStage, string> = {
+  identified: 'Nobody has been identified yet',
+  contacted: 'Nobody has been contacted yet',
+  interested: 'No one has said they are interested yet',
+  confirmed: 'Nobody has said yes yet',
+  declined: 'Nobody has declined yet',
+};
+
+function stageEmptyBody(stage: PipelineStage, entries: PipelineEntry[]): string {
+  const idx = PIPELINE_STAGES.indexOf(stage);
+  const prevStage = idx > 0 ? PIPELINE_STAGES[idx - 1] : undefined;
+  if (!prevStage) {
+    return 'Cards land here once someone is added to the pipeline, or you can add someone straight to this stage.';
+  }
+  const prevCount = entries.filter((e) => e.stage === prevStage).length;
+  const countPhrase = `${capitalizeFirst(spellCount(prevCount))} ${plural(prevCount, 'person', 'people')} ${plural(prevCount, 'is', 'are')}`;
+  return `${countPhrase} in ${PIPELINE_STAGE_LABELS[prevStage]}. Cards land here when you move them, or you can add someone straight to this stage.`;
+}
+
 function useBackToDirectory(): () => void {
   const [, setSearchParams] = useSearchParams();
   return () =>
@@ -90,6 +114,11 @@ export function PipelineBoard() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEnroll, setShowEnroll] = useState(false);
+  // Item 5 (frame 08-contacts--14/B7): an empty stage's tertiary "Add
+  // someone to <stage> ›" opens this SAME dialog preset to that stage,
+  // rather than a second enroll path -- the header's own trigger always
+  // resets to the first stage.
+  const [enrollStage, setEnrollStage] = useState<PipelineStage>(PIPELINE_STAGES[0]);
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
   const [phoneStage, setPhoneStage] = useState<PipelineStage>(PIPELINE_STAGES[0]);
   // DEC-803: moving a card into 'declined' asks for a reason first -- the
@@ -177,6 +206,11 @@ export function PipelineBoard() {
     }
   }
 
+  function openEnrollAt(stage: PipelineStage) {
+    setEnrollStage(stage);
+    setShowEnroll(true);
+  }
+
   function moveTo(entry: PipelineEntry, stage: PipelineStage) {
     if (stage === entry.stage) return;
     // DEC-803: declining requires a reason -- ask before persisting anything.
@@ -237,9 +271,16 @@ export function PipelineBoard() {
               page never pairs a "0 people" claim with the loading state.
               w4-c/DEC-898 amendment: names the board's own affordance now
               that the card face carries no stage control of its own. */}
-          {!loading && <span className="chq-contacts-pipeline-caption">{total} people - drag between columns</span>}
+          {!loading && <span className="chq-contacts-pipeline-caption">{total} people · drag between columns</span>}
         </div>
-        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEnroll(true)}>
+        <button
+          type="button"
+          className="chq-btn chq-btn-secondary"
+          onClick={() => {
+            setEnrollStage(PIPELINE_STAGES[0]);
+            setShowEnroll(true);
+          }}
+        >
           Add to the pipeline
         </button>
       </div>
@@ -268,18 +309,29 @@ export function PipelineBoard() {
                 {(() => {
                   const stageEntries = sortByFit(entries.filter((e) => e.stage === stage));
                   if (stageEntries.length === 0) {
-                    // B7 (DEC-678 amendment): 'filtered' -- the column's own
-                    // name/count header stays visible above this (the
-                    // stage split is the excluding facet), tighter spacing,
-                    // and no primary action (moving a card here happens via
-                    // drag or the detail panel's Stage select, not a button
-                    // this empty column would have to invent).
+                    // Item 5 (frame 08-contacts--14, B7 exemplar): the
+                    // column's own name/count header stays visible above
+                    // this (the stage split is the excluding facet), but
+                    // this state also carries a real, honest action -- the
+                    // frame draws a tertiary "Add someone to <stage> ›" that
+                    // opens the SAME Add-to-the-pipeline dialog preset to
+                    // this stage. The shared EmptyState component's
+                    // 'filtered' variant refuses any action prop by
+                    // contract (B7: no primary button over a filter) and
+                    // its 'secondary' slot is a route Link, not an
+                    // onClick -- neither fits an in-page dialog trigger, so
+                    // this composes the same shared classes directly rather
+                    // than stretching EmptyState's contract.
                     return (
-                      <EmptyState
-                        variant="filtered"
-                        what={`No one in ${PIPELINE_STAGE_LABELS[stage]}`}
-                        reason={`Move a card into ${PIPELINE_STAGE_LABELS[stage]} to see it here.`}
-                      />
+                      <div className="chq-empty-block chq-empty-block-filtered chq-contacts-pipeline-column-empty">
+                        <p className="chq-empty-what">{STAGE_EMPTY_HEADINGS[stage]}</p>
+                        <p className="chq-empty-reason">{stageEmptyBody(stage, entries)}</p>
+                        <div className="chq-empty-actions">
+                          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => openEnrollAt(stage)}>
+                            {`Add someone to ${PIPELINE_STAGE_LABELS[stage]} ›`}
+                          </button>
+                        </div>
+                      </div>
                     );
                   }
                   return (
@@ -290,7 +342,6 @@ export function PipelineBoard() {
                           entry={entry}
                           moveError={moveErrors[entry.id]}
                           onOpen={() => setOpenEntryId(entry.id)}
-                          onEditFit={() => setFitEditEntry(entry)}
                         />
                       ))}
                     </ul>
@@ -377,6 +428,7 @@ export function PipelineBoard() {
       {showEnroll && (
         <EnrollDialog
           alreadyEnrolledContactIds={new Set(entries.map((e) => e.contactId))}
+          initialStage={enrollStage}
           onClose={() => setShowEnroll(false)}
           onEnrolled={() => {
             setShowEnroll(false);
@@ -395,6 +447,7 @@ export function PipelineBoard() {
             onClose={() => setOpenEntryId(null)}
             onChanged={reload}
             onMove={(stage) => moveTo(openEntry, stage)}
+            onEditFit={() => setFitEditEntry(openEntry)}
           />
         ) : null;
       })()}
@@ -499,14 +552,22 @@ interface PipelineCardProps {
   entry: PipelineEntry;
   moveError?: FieldErrors;
   onOpen: () => void;
-  onEditFit: () => void;
 }
 
 // DEC-157 amendment (w2-b): the desktop card is drag-only -- the stage
 // control that used to live here moved into EntryDetailPanel, which calls
 // the SAME moveTo/doMove path (PATCH /pipeline/:id) so the decline prompt
 // and optimistic-update/rollback behaviour are unchanged.
-function PipelineCard({ entry, moveError, onOpen, onEditFit }: PipelineCardProps) {
+//
+// Item 7 (frame 08-contacts--04): the card carries NO per-card control at
+// all now, fit editing included -- the frame draws name / company / one
+// line carrying the Fit chip and the reason side by side (upright, not
+// italic) / 'Added N days ago' LAST, with no Edit affordance anywhere on
+// the card face. The fit-only PATCH capability that used to live behind
+// the removed 'Edit'/'Rate' link is still reachable, just moved onto the
+// card's existing click-target -- EntryDetailPanel (opened via the name
+// button below) now carries its own Fit row with the same edit trigger.
+function PipelineCard({ entry, moveError, onOpen }: PipelineCardProps) {
   const age = pipelineCardAge(entry.stage, entry.stageSince, Date.now());
   // DEC-898: reuses the agenda DayGrid drag contract verbatim -- the
   // dragged entry's id in `text/plain`, effectAllowed 'move'.
@@ -529,12 +590,9 @@ function PipelineCard({ entry, moveError, onOpen, onEditFit }: PipelineCardProps
         {entry.firstName} {entry.lastName}
       </button>
       {entry.company && <div className="chq-contacts-pipeline-card-company">{entry.company}</div>}
-      <div className={`chq-contacts-pipeline-card-age${age.stale ? ' chq-contacts-pipeline-card-age-stale' : ''}`}>
-        {age.text}
-      </div>
       {/* DEC-898 amendment (w1-e/B18): the decline reason carries its own
           lead-in so it can never be mistaken for the fit rationale below --
-          the two are visually identical muted italic text with nothing but
+          the two are visually identical muted upright text with nothing but
           position to distinguish them otherwise. */}
       {entry.stage === 'declined' && entry.declineReason && (
         <div className="chq-contacts-pipeline-card-decline-reason">Declined: {entry.declineReason}</div>
@@ -552,11 +610,9 @@ function PipelineCard({ entry, moveError, onOpen, onEditFit }: PipelineCardProps
         </div>
       )}
       {/* DEC-821: fit is a visible state, never blank -- an unrated card
-          still says so, rather than implying a zero. DEC-980: fit is
-          editable after enrolment too -- a quiet affordance beside the
-          pill opens a fit-only PATCH dialog, never a stage control.
-          w4-c: the rationale sits inline in this same row now, beside the
-          fit chip, rather than on its own line below. */}
+          still says so, rather than implying a zero. w4-c: the rationale
+          sits inline in this same row, beside the fit chip. Item 7: upright
+          (not italic), and no per-card Edit link. */}
       <div className="chq-contacts-pipeline-card-fit-row">
         {entry.fitScore !== null ? (
           <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-rated">
@@ -566,9 +622,10 @@ function PipelineCard({ entry, moveError, onOpen, onEditFit }: PipelineCardProps
           <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-unrated">Unrated</span>
         )}
         {entry.rationale && <span className="chq-contacts-pipeline-card-rationale">{entry.rationale}</span>}
-        <button type="button" className="chq-link-button chq-contacts-pipeline-card-fit-edit" onClick={onEditFit}>
-          {entry.fitScore !== null ? 'Edit' : 'Rate'}
-        </button>
+      </div>
+      {/* Item 7: 'Added N days ago' moves LAST, after the fit/reason line. */}
+      <div className={`chq-contacts-pipeline-card-age${age.stale ? ' chq-contacts-pipeline-card-age-stale' : ''}`}>
+        {age.text}
       </div>
     </li>
   );
@@ -577,22 +634,28 @@ function PipelineCard({ entry, moveError, onOpen, onEditFit }: PipelineCardProps
 interface OptionalFieldRowProps {
   label: string;
   htmlFor?: string;
+  // Ruling A21 (item 6): frame 08-contacts--12 preserves the two
+  // right-aligned helper lines -- they say what the field is FOR, which a
+  // bare '· optional' suffix does not. The trailing '· optional' is folded
+  // into this same helper string (lowercase, matching item 7's suffix
+  // convention) rather than living as its own separate span.
+  helper: string;
   children: ReactNode;
 }
 
 // w4-c: the enroll dialog's own field-row shell for FIT / WHY THEM -- keeps
 // the shared FormRow's inline ' · optional' suffix (DEC-685/DEC-909) out of
-// this one dialog and instead right-aligns a lowercase 'optional' helper
-// beside the label, on its own row within the chq-form-row shell FormRow
-// already establishes (same label/control classes, so spacing matches).
-function OptionalFieldRow({ label, htmlFor, children }: OptionalFieldRowProps) {
+// this one dialog and instead right-aligns the real helper line beside the
+// label, on its own row within the chq-form-row shell FormRow already
+// establishes (same label/control classes, so spacing matches).
+function OptionalFieldRow({ label, htmlFor, helper, children }: OptionalFieldRowProps) {
   return (
     <div className="chq-form-row">
       <div className="chq-contacts-pipeline-field-head">
         <label className="chq-form-row-label" htmlFor={htmlFor}>
           {label}
         </label>
-        <span className="chq-contacts-pipeline-field-optional">optional</span>
+        <span className="chq-contacts-pipeline-field-optional">{helper}</span>
       </div>
       <div className="chq-form-row-control">{children}</div>
     </div>
@@ -601,6 +664,10 @@ function OptionalFieldRow({ label, htmlFor, children }: OptionalFieldRowProps) {
 
 interface EnrollDialogProps {
   alreadyEnrolledContactIds: Set<string>;
+  // Item 5: an empty stage's own "Add someone to <stage> ›" opens this
+  // dialog preset to that stage, rather than always defaulting to the
+  // first one.
+  initialStage: PipelineStage;
   onClose: () => void;
   onEnrolled: () => void;
 }
@@ -632,10 +699,10 @@ const ENROLL_FIELD_IDS: Record<string, string> = {
   rationale: 'pipeline-enroll-rationale',
 };
 
-function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: EnrollDialogProps) {
+function EnrollDialog({ alreadyEnrolledContactIds, initialStage, onClose, onEnrolled }: EnrollDialogProps) {
   const [contactId, setContactId] = useState('');
   const [selectedContact, setSelectedContact] = useState<ContactListItem | null>(null);
-  const [stage, setStage] = useState<PipelineStage>('identified');
+  const [stage, setStage] = useState<PipelineStage>(initialStage);
   // DEC-821: fit is optional at enroll time -- '' means "unrated", never a
   // silently-assumed score.
   const [fitScore, setFitScore] = useState('');
@@ -726,11 +793,11 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          {/* w4-c: the no-email footnote moves below the button row, in
-              lowercase -- it's a footnote to the action, not a warning
-              above it. */}
+          {/* w4-c: the no-email footnote moves below the button row -- a
+              footnote to the action, not a warning above it. Item 8 (MINOR):
+              the sentence starts uppercase, matching the frame. */}
           <p className="chq-contacts-pipeline-enroll-consequence">
-            adding writes a move to the activity feed · no email is sent
+            Adding writes a move to the activity feed · no email is sent
           </p>
         </>
       }
@@ -839,23 +906,19 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
           </span>
         )}
       </FormRow>
-      <OptionalFieldRow label="Fit">
+      <OptionalFieldRow label="Fit" helper="Ranks people within a stage · optional">
+        {/* Item 8 (MINOR): frame 08-contacts--12 draws five equal boxes,
+            1-5, with no sixth 'Unrated' option -- fit stays optional in the
+            data model (DEC-821), so clicking the already-selected value
+            clears it back to unrated rather than needing a dedicated box. */}
         <div id="pipeline-enroll-fit-group" className="chq-segmented" role="group" aria-label="Fit">
-          <button
-            type="button"
-            className={fitScore === '' ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
-            aria-pressed={fitScore === ''}
-            onClick={() => setFitScore('')}
-          >
-            Unrated
-          </button>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
               className={fitScore === String(n) ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
               aria-pressed={fitScore === String(n)}
-              onClick={() => setFitScore(String(n))}
+              onClick={() => setFitScore((prev) => (prev === String(n) ? '' : String(n)))}
             >
               {n}
             </button>
@@ -867,7 +930,7 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
           </span>
         )}
       </OptionalFieldRow>
-      <OptionalFieldRow label="Why them" htmlFor="pipeline-enroll-rationale">
+      <OptionalFieldRow label="Why them" htmlFor="pipeline-enroll-rationale" helper="One line · shown on the card">
         <input
           id="pipeline-enroll-rationale"
           type="text"
@@ -975,22 +1038,18 @@ function FitEditDialog({ entry, onClose, onSave }: FitEditDialogProps) {
         />
       )}
       <FormRow label="Fit" optional>
+        {/* Item 8 (MINOR): same five-box, no-sixth-'Unrated'-box control as
+            the Add-to-the-pipeline dialog (frame 08-contacts--12) -- kept
+            consistent across both fit controls. Fit stays optional
+            (DEC-821): clicking the selected value again clears it. */}
         <div id="pipeline-fit-edit-fit-group" className="chq-segmented" role="group" aria-label="Fit">
-          <button
-            type="button"
-            className={fitScore === '' ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
-            aria-pressed={fitScore === ''}
-            onClick={() => setFitScore('')}
-          >
-            Unrated
-          </button>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
               className={fitScore === String(n) ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
               aria-pressed={fitScore === String(n)}
-              onClick={() => setFitScore(String(n))}
+              onClick={() => setFitScore((prev) => (prev === String(n) ? '' : String(n)))}
             >
               {n}
             </button>
@@ -1036,6 +1095,10 @@ interface EntryDetailPanelProps {
   onClose: () => void;
   onChanged: () => void;
   onMove: (stage: PipelineStage) => void;
+  // Item 7: the card face carries no Edit control anymore (frame
+  // 08-contacts--04) -- this panel, reached via the card's own name
+  // button, is the click-target that keeps fit editing reachable.
+  onEditFit: () => void;
 }
 
 // DEC-856: the note writer's own known-field label -- a single-control form
@@ -1048,7 +1111,7 @@ const NOTE_FIELD_LABELS: Record<string, string> = { body: 'Note' };
 // PipelineBoard's own setEntries on every move) so the select always shows
 // the latest confirmed/optimistic stage without this panel duplicating the
 // PATCH request itself.
-function EntryDetailPanel({ entryId, entry, moveError, onClose, onChanged, onMove }: EntryDetailPanelProps) {
+function EntryDetailPanel({ entryId, entry, moveError, onClose, onChanged, onMove, onEditFit }: EntryDetailPanelProps) {
   const [detail, setDetail] = useState<PipelineEntryDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
@@ -1163,6 +1226,28 @@ function EntryDetailPanel({ entryId, entry, moveError, onClose, onChanged, onMov
               ))}
             </div>
           )}
+
+          {/* Item 7: the card face carries no fit-edit control anymore
+              (frame 08-contacts--04) -- this detail panel, reached via the
+              card's own name button, is where the fit-only PATCH dialog
+              (DEC-980) is now triggered from, so the capability stays
+              reachable without a per-card Edit link. */}
+          <div className="chq-contacts-pipeline-detail-fit">
+            <span className="chq-contacts-pipeline-detail-fit-label">Fit</span>
+            {entry.fitScore !== null ? (
+              <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-rated">
+                Fit {entry.fitScore}
+              </span>
+            ) : (
+              <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-unrated">
+                Unrated
+              </span>
+            )}
+            {entry.rationale && <span className="chq-contacts-pipeline-card-rationale">{entry.rationale}</span>}
+            <button type="button" className="chq-link-button chq-contacts-pipeline-card-fit-edit" onClick={onEditFit}>
+              {entry.fitScore !== null ? 'Edit fit' : 'Rate'}
+            </button>
+          </div>
 
           <div className="chq-contacts-pipeline-notes">
             <label className="chq-contacts-import-field" htmlFor="pipeline-detail-note">

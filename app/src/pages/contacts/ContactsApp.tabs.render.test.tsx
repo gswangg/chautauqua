@@ -158,7 +158,13 @@ describe('ContactsApp render smoke: segments tab', () => {
 });
 
 describe('ContactsApp render smoke: ContactDrawer', () => {
-  it('opens a contact with populated bio/social/headshot fields', async () => {
+  // Item 4 (fidelity fix-forward, ruling A20): the drawer's headshot row
+  // (an unframed field with a native file input) was removed -- PROFILE is
+  // bio + links only. This test used to also assert a headshot <img>; that
+  // assertion and the sibling 'headshot upload does not discard unsaved
+  // drawer edits' describe block (which exercised the now-deleted upload
+  // flow end to end) are gone with it.
+  it('opens a contact with populated bio/social fields', async () => {
     mockApi({
       ...baseRoutes(),
       'GET /api/v1/contacts/ct1': FULL_CONTACT,
@@ -181,7 +187,6 @@ describe('ContactsApp render smoke: ContactDrawer', () => {
     });
     expect(within(dialog).getByText('@ada')).toBeInTheDocument();
     expect(within(dialog).getByText('ada-lovelace')).toBeInTheDocument();
-    expect(within(dialog).getByAltText('Ada Lovelace headshot')).toHaveAttribute('src', FULL_CONTACT.headshotUrl);
 
     // Click-to-edit (DEC-616): the value renders as plain text by default;
     // clicking it swaps in an input on the SAME row.
@@ -189,58 +194,6 @@ describe('ContactsApp render smoke: ContactDrawer', () => {
     expect((within(dialog).getByDisplayValue(FULL_CONTACT.bio as string) as HTMLTextAreaElement).value).toBe(
       FULL_CONTACT.bio,
     );
-  });
-});
-
-describe('ContactsApp: headshot upload does not discard unsaved drawer edits (DEC-574)', () => {
-  it('keeps the drawer mounted and a typed-but-unsaved bio after a successful headshot upload', async () => {
-    mockApi({
-      ...baseRoutes(),
-      'GET /api/v1/contacts/ct1': FULL_CONTACT,
-      'POST /api/v1/contacts/ct1/headshot': {
-        ...FULL_CONTACT,
-        headshotUrl: 'https://files.example/ada-headshot-new.png',
-      },
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/contacts']}>
-        <ContactsApp />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Ada Lovelace' }));
-
-    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
-    await waitFor(() => {
-      expect(within(dialog).getByText(FULL_CONTACT.bio as string)).toBeInTheDocument();
-    });
-
-    // Click into the Bio row (DEC-616: value -> input on the SAME row), then
-    // type an edit that is never saved.
-    fireEvent.click(within(dialog).getByText(FULL_CONTACT.bio as string));
-    const bioField = within(dialog).getByDisplayValue(FULL_CONTACT.bio as string);
-    fireEvent.change(bioField, { target: { value: 'An unsaved edit written just before the upload.' } });
-    expect(bioField).toHaveValue('An unsaved edit written just before the upload.');
-
-    const fileInput = within(dialog).getByLabelText('Upload headshot') as HTMLInputElement;
-    const file = new File([new Uint8Array([1, 2, 3])], 'new-headshot.png', { type: 'image/png' });
-    fireEvent.change(fileInput, { target: { files: [file] } });
-
-    // The drawer must still be mounted with the headshot updated...
-    await waitFor(() => {
-      expect(within(dialog).getByAltText('Ada Lovelace headshot')).toHaveAttribute(
-        'src',
-        'https://files.example/ada-headshot-new.png',
-      );
-    });
-    // ...and the unsaved bio edit must still be there — not discarded by a
-    // drawer close-and-reload.
-    expect(screen.getByRole('dialog', { name: 'Contact detail' })).toBeInTheDocument();
-    expect(within(dialog).getByDisplayValue('An unsaved edit written just before the upload.')).toBeInTheDocument();
   });
 });
 
@@ -322,6 +275,10 @@ describe('ContactsApp render smoke: BulkEmailModal over a selection', () => {
     fireEvent.click(bulkButton);
 
     const dialog = await screen.findByRole('dialog', { name: 'Bulk email' });
-    expect(within(dialog).getByText('1 recipient selected')).toBeInTheDocument();
+    // Item 9 (frame 08-contacts--10): the recipient count paragraph is gone
+    // -- the header states WHO instead, via the recipient's actual name in
+    // the modal subtitle.
+    expect(within(dialog).getByText('Email 1 contact', { selector: 'h2' })).toBeInTheDocument();
+    expect(within(dialog).getByText('Ada Lovelace')).toBeInTheDocument();
   });
 });

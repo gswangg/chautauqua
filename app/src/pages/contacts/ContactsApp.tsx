@@ -598,6 +598,9 @@ export function ContactsApp() {
         <BulkEmailModal
           contactIds={selectedIds}
           eventId={eventId}
+          recipientNames={items
+            .filter((c) => selection.selectedIds.has(c.id))
+            .map((c) => `${c.firstName} ${c.lastName}`.trim())}
           onClose={() => {
             setShowBulkEmail(false);
             setSelection((s) => selectionReducer(s, { type: 'CLEAR' }));

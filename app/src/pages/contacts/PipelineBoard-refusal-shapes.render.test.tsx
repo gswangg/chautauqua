@@ -63,6 +63,7 @@ describe('PipelineBoard refusal shapes (DEC-856)', () => {
   it('a fit 400 with {fitScore, rationale} marks both controls and lists two anchors', async () => {
     mockApi({
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': detailStub(),
       'PATCH /api/v1/pipeline/entry-1': {
         status: 400,
         body: errorEnvelope('invalid', 'Validation failed', {
@@ -75,8 +76,13 @@ describe('PipelineBoard refusal shapes (DEC-856)', () => {
     renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
+    // Item 7 (frame 08-contacts--04): the card face carries no per-card
+    // Rate/Edit control anymore -- open the detail panel via the card's own
+    // name button, then trigger the fit dialog from there.
     const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
-    fireEvent.click(within(identifiedColumn).getByRole('button', { name: 'Rate' }));
+    fireEvent.click(within(identifiedColumn).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
+    const detailDialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
+    fireEvent.click(within(detailDialog).getByRole('button', { name: 'Rate' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Rate fit' });
     fireEvent.click(within(dialog).getByRole('button', { name: '3' }));
@@ -186,7 +192,7 @@ describe('PipelineBoard refusal shapes (DEC-856)', () => {
     });
 
     renderBoard();
-    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0 people · drag between columns')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
 

@@ -225,19 +225,40 @@ export function MergePage() {
 
   return (
     <div className="chq-page chq-measure chq-contacts-merge-page">
-      <div className="chq-contacts-merge-topbar">{backLink}</div>
-      <h1 className="chq-page-title">Merge two records</h1>
+      {/* Item 10 (frame 08-contacts--05): one full-width title band --
+          back link + H1 far left, '<N> of <M> pairs' right-flushed on the
+          SAME row -- closed by a single 1px ink rule, replacing the
+          separate left-aligned pair-count paragraph that used to sit
+          further down the page. */}
+      <div className="chq-contacts-merge-titleband">
+        <div className="chq-contacts-merge-titleband-left">
+          {backLink}
+          <h1 className="chq-page-title">Merge two records</h1>
+        </div>
+        {pairPosition && (
+          <p className="chq-contacts-merge-pair-count">
+            {pairPosition.index} of {countOf(pairPosition.total, 'pair')}
+          </p>
+        )}
+      </div>
 
       {loading && <PageSkeleton variant="detail" />}
       {!loading && error && <div className="chq-error">{error}</div>}
 
       {!loading && group && keepContact && (
         <>
-          <p className="chq-contacts-merge-intro">
-            Pick which record to keep. History from the other record moves onto the kept record.
-          </p>
+          {/* Item 10: no intro paragraph -- the frame states nothing here,
+              the compare table and its consequence block below carry the
+              whole story. */}
           {mergeError && <div className="chq-error">{mergeError}</div>}
 
+          {/* Item 10: the radio picks are FUNCTIONAL, not decorative --
+              'Swap which is kept' only ever swaps onto the sole OTHER
+              record in a two-record pair (it has no target when a group
+              is 3+), so for a 3+ duplicate group (DEC-802's "N other
+              records" case) this list is the only way to choose which of
+              three-plus records is kept. Kept as-is; see the fidelity
+              report for the two-record case where it overlaps with Swap. */}
           <div className="chq-contacts-merge-picks">
             {group.contacts.map((c) => (
               <label key={c.id} className="chq-contacts-merge-pick">
@@ -254,19 +275,6 @@ export function MergePage() {
               </label>
             ))}
           </div>
-
-          {pairPosition && (
-            <p className="chq-contacts-merge-pair-count">
-              {pairPosition.index} of {countOf(pairPosition.total, 'pair')}
-            </p>
-          )}
-
-          {/* DEC-992 amendment (wave 4): the combine rule is stated ONCE, in
-              a single tinted box above the compare table -- not one loose
-              footnote per rule trailing the table (the discarded-record
-              deletion fact lives in the confirm dialog below, so it is not
-              repeated here). */}
-          <div className="chq-contacts-merge-rule-box">Labels combine, notes are appended</div>
 
           <div className="chq-contacts-merge-compare-head">
             <span>Field</span>
@@ -312,15 +320,28 @@ export function MergePage() {
             <p className="chq-contacts-merge-compare-empty">Every field already matches — nothing else will change.</p>
           )}
 
-          {impact && keepContact && (
-            <p className="chq-contacts-merge-impact">
-              {countOf(impact.submissions, 'submission')} and {countOf(impact.tasks, 'task')} move to{' '}
-              {keepContact.firstName} {keepContact.lastName}.
-            </p>
-          )}
+          {/* Item 10 (frame 08-contacts--05): ONE #EFEBDF consequence block
+              BELOW the comparison table -- the combine rule and the real
+              submissions/tasks impact used to sit on opposite sides of the
+              table (rule box above, impact line below); the frame draws
+              them as one box after it. The frame's box also states the
+              discarded-record deletion inline (not only in the confirm
+              dialog), so this line now carries it too. */}
+          <div className="chq-contacts-merge-rule-box">
+            <p className="chq-contacts-merge-rule-box-rule">Labels combine, notes are appended</p>
+            {impact && keepContact && (
+              <p className="chq-contacts-merge-impact">
+                {countOf(impact.submissions, 'submission')} and {countOf(impact.tasks, 'task')} move to{' '}
+                {keepContact.firstName} {keepContact.lastName}. The discarded record is deleted.
+              </p>
+            )}
+          </div>
 
           {blocked && <div className="chq-error chq-contacts-merge-blocked">{blocked.message}</div>}
 
+          {/* Item 10: the footer row now carries Merge / 'Swap which is
+              kept' / 'Not a duplicate' TOGETHER -- 'Not a duplicate' used
+              to be stranded below this row as its own element. */}
           <div className="chq-contacts-merge-footer">
             <button
               type="button"
@@ -343,24 +364,20 @@ export function MergePage() {
                 Swap which is kept
               </button>
             )}
+            {/* DEC-734: 'Not a duplicate' -- these records aren't the same
+                person, dismiss the pair (session-only, same mechanism as
+                DuplicatesView's own 'Keep both') and land back on the tab.
+                DEC-992's own reasoning for keeping this a text link, not a
+                boxed chq-btn, stands -- only its position changed. */}
+            <button
+              type="button"
+              className="chq-contacts-merge-not-duplicate"
+              disabled={notDuplicateBusy}
+              onClick={() => notADuplicate(group)}
+            >
+              Not a duplicate
+            </button>
           </div>
-
-          {/* DEC-992 amendment (wave 4): the back link at the top of the
-              page is the ONE cancel path -- no second Cancel button here.
-              'Not a duplicate' is an escape hatch, not a peer of the
-              irreversible Merge primary, so it is a green text link rather
-              than a fourth boxed button. */}
-          {/* DEC-734: 'Not a duplicate' -- these records aren't the same
-              person, dismiss the pair (session-only, same mechanism as
-              DuplicatesView's own 'Keep both') and land back on the tab. */}
-          <button
-            type="button"
-            className="chq-contacts-merge-not-duplicate"
-            disabled={notDuplicateBusy}
-            onClick={() => notADuplicate(group)}
-          >
-            Not a duplicate
-          </button>
 
           {confirmOpen && (
             <ConfirmDialog

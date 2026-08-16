@@ -9,7 +9,7 @@ import { usePendingLabel } from '../components/PendingAction';
 import { DayGrid, type ArmedAgendaSession } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
-import { BreaksPanel, type ScheduleBreakRow } from './agenda/BreaksPanel';
+import { BreaksPanel, weekdayOf, type ScheduleBreakRow } from './agenda/BreaksPanel';
 import { ModalFrame } from '../components/ModalFrame';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
@@ -332,8 +332,16 @@ export function AgendaPage() {
         </div>
       </div>
 
+      {/* G13 (frame 06-agenda--02): the dialog title IS the day-scoped
+          'Breaks on <weekday>' with 'They block every room at once' as its
+          subtitle -- never a bare 'Breaks' with the scope demoted to an
+          in-body micro-label. */}
       {breaksOpen && (
-        <ModalFrame title="Breaks" onClose={() => setBreaksOpen(false)}>
+        <ModalFrame
+          title={activeDay ? `Breaks on ${weekdayOf(activeDay)}` : 'Breaks'}
+          subtitle="They block every room at once"
+          onClose={() => setBreaksOpen(false)}
+        >
           <BreaksPanel
             eventId={eventId}
             day={activeDay}

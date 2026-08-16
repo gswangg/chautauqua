@@ -209,6 +209,14 @@
   z-index: 1;
 }
 
+/* Ruling A25: the "No room yet" TBD column is data-driven and honest (a
+   session genuinely lacking a room mid-planning), not a design mistake —
+   style it as the other room columns with a dashed header rule so it reads
+   as a real, if provisional, column rather than a copy of the real rooms. */
+.chq-day-grid-room-header-tbd {
+  border-bottom-style: dashed;
+}
+
 /* DEC-900 amendment (wave 39, LATTICE): padding/line-height are trimmed to
    fit inside the 22px row floor below (44px per 30-minute pair) — at the
    prior 7px/default-line-height this cell's own min-content (~28px)
@@ -1040,17 +1048,6 @@
 /* Frame 06--02: "Breaks on Tuesday" over "They block every room at once" --
    the section label and a second, quieter line beneath it, same stacked
    idiom as the header/sub pair elsewhere in the panel. */
-.chq-breaks-section-head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.chq-breaks-section-sub {
-  font-size: 13px;
-  color: var(--chq-muted);
-}
-
 .chq-breaks-list {
   list-style: none;
   margin: 0;
@@ -1059,11 +1056,12 @@
   flex-direction: column;
 }
 
+/* B2 + frame 06--02: separator spacing implies a 48px row pitch (was 37px). */
 .chq-breaks-row {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  padding: 6px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--chq-rule);
 }
 
@@ -1151,9 +1149,14 @@
   gap: 2px;
 }
 
+/* B2: field labels are uppercase tracked micro-caps, matching the frame's
+   LABEL / STARTS / MINUTES register (same 11px/600/uppercase idiom as
+   .chq-agenda-clash-note elsewhere in this file). */
 .chq-breaks-field label {
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--chq-muted);
 }
 

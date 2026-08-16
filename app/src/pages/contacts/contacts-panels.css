@@ -115,6 +115,13 @@
   gap: 10px;
 }
 
+/* G13 (frame 08-contacts--14, ruling B7): the per-stage empty block sits
+   inside a narrow kanban column, so it takes a tighter inset than the
+   page-level empty block whose shared classes it composes. */
+.chq-contacts-pipeline-column-empty {
+  padding: 18px 12px;
+}
+
 .chq-contacts-pipeline-card {
   border: 1px solid var(--chq-rule);
   border-radius: var(--chq-r-card, 5px);

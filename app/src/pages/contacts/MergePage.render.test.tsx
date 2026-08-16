@@ -227,8 +227,12 @@ describe('MergePage render (DEC-802: honest discard column head and impact line)
     });
     expect(screen.queryByText('Discard')).not.toBeInTheDocument();
 
+    // Item 10: the impact line now also states the discarded-record
+    // deletion fact inline, in the same consequence box.
     await waitFor(() => {
-      expect(screen.getByText('3 submissions and 1 task move to Jane Doe.')).toBeInTheDocument();
+      expect(
+        screen.getByText('3 submissions and 1 task move to Jane Doe. The discarded record is deleted.'),
+      ).toBeInTheDocument();
     });
   });
 });
@@ -437,8 +441,8 @@ describe('MergePage render (DEC-992: vintage heads, swap control, 3+ group fallb
   });
 });
 
-describe('MergePage render (DEC-992 amendment wave 4: one tinted combine-rule box above the compare table, deletion named in the confirm dialog)', () => {
-  it('states the combine rule exactly once, in a single tinted box positioned before the compare-head, with no trailing footnote paragraphs', async () => {
+describe('MergePage render (item 10, frame 08-contacts--05: one tinted consequence box BELOW the compare table)', () => {
+  it('states the combine rule exactly once, in a single tinted box positioned after the compare table, with no trailing footnote paragraphs', async () => {
     mockApi({
       'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': {
@@ -464,13 +468,39 @@ describe('MergePage render (DEC-992 amendment wave 4: one tinted combine-rule bo
     expect(screen.getAllByText('Labels combine, notes are appended')).toHaveLength(1);
     expect(screen.queryByText(/Labels always combine/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Notes are appended, never chosen/)).not.toBeInTheDocument();
-    expect(screen.queryByText('The discarded record is deleted.')).not.toBeInTheDocument();
+    // No impact data in this fixture -- the deletion sentence lives on the
+    // impact line, so it does not render without one.
+    expect(screen.queryByText(/The discarded record is deleted/)).not.toBeInTheDocument();
 
-    // The rule box sits ABOVE the compare table in DOM order.
+    // Item 10: the consequence box now sits BELOW the compare table in DOM
+    // order (it used to sit above it).
     const compareHead = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
     expect(
-      ruleBox.compareDocumentPosition(compareHead) & Node.DOCUMENT_POSITION_FOLLOWING,
+      compareHead.compareDocumentPosition(ruleBox) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it('folds the discarded-record-deletion fact into the SAME box, on the impact line, when impact data is present', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 1, page: 1, perPage: 20, position: 1 },
+      'GET /api/v1/contacts/merge/preview': {
+        fields: PREVIEW_FIELDS,
+        impact: { submissions: 3, tasks: 1 },
+      },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    const ruleBox = await waitFor(() => document.querySelector('.chq-contacts-merge-rule-box') as HTMLElement);
+    expect(
+      within(ruleBox).getByText('3 submissions and 1 task move to Jane Doe. The discarded record is deleted.'),
+    ).toBeInTheDocument();
+    // Still in the same box as the combine rule -- one consequence block.
+    expect(within(ruleBox).getByText('Labels combine, notes are appended')).toBeInTheDocument();
   });
 
   it('states the discarded record is deleted in the confirm dialog body', async () => {

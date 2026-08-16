@@ -1,9 +1,11 @@
 // Gate-4 BROKEN (three-gate survivor): the contact drawer's headshot file
-// input overflowed the drawer and the 1440 viewport because the record-row
-// value column was a bare `1fr` — its auto min-content floor is the native
-// file input's intrinsic ~284px, so the column could never shrink to the
-// 418px drawer. These assertions pin the two-part fix: minmax(0,1fr) on the
-// grid column and width:100% on the file input inside the upload field.
+// input (since removed per ruling A20/fidelity item 4 — PROFILE is bio +
+// links only) overflowed the drawer and the 1440 viewport because the
+// record-row value column was a bare `1fr` — its auto min-content floor
+// exceeded the 418px drawer at the time. The grid-column fix stands on its
+// own merits (any wide row value could hit the same floor) so this
+// assertion is kept; the file-input-specific assertion was removed with the
+// headshot field itself.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -15,12 +17,6 @@ describe("contact drawer cannot overflow horizontally (gate-4 BROKEN fix)", () =
     const rule = css.match(/\.chq-contacts-record-row \{[\s\S]*?\}/)?.[0] ?? "";
     expect(rule).toContain("grid-template-columns: 130px minmax(0, 1fr)");
     expect(rule).not.toMatch(/grid-template-columns: 130px 1fr;/);
-  });
-
-  it("headshot upload's file input fills its granted column", () => {
-    expect(css).toMatch(/\.chq-contacts-headshot-upload \.chq-file \{[^}]*width: 100%/);
-    const upload = css.match(/\.chq-contacts-headshot-upload \{[\s\S]*?\}/)?.[0] ?? "";
-    expect(upload).toContain("min-width: 0");
   });
 });
 

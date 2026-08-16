@@ -1256,12 +1256,12 @@ describe('AgendaPage breaks disclosure (DEC-021/DEC-900 amendment, wave 72)', ()
 
     fireEvent.click(screen.getByRole('button', { name: 'Breaks ›' }));
 
-    const dialog = screen.getByRole('dialog', { name: 'Breaks' });
+    const dialog = screen.getByRole('dialog', { name: 'Breaks on Monday' });
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Add the break' })).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
-    expect(screen.queryByRole('dialog', { name: 'Breaks' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Breaks on Monday' })).toBeNull();
     expect(document.querySelector('.chq-breaks-panel')).toBeNull();
   });
 
@@ -1282,7 +1282,7 @@ describe('AgendaPage breaks disclosure (DEC-021/DEC-900 amendment, wave 72)', ()
     const dayTabs = document.querySelector('.chq-agenda-day-tabs')!;
 
     fireEvent.click(screen.getByRole('button', { name: 'Breaks ›' }));
-    expect(screen.getByRole('dialog', { name: 'Breaks' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Breaks on Monday' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 
     // After the dialog closes, the day-tab row's sibling is still the grid

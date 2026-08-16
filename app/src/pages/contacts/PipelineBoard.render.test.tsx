@@ -265,7 +265,7 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     renderBoard();
 
     await waitFor(() => {
-      expect(screen.getByText('7 people - drag between columns')).toBeInTheDocument();
+      expect(screen.getByText('7 people · drag between columns')).toBeInTheDocument();
     });
 
     const loadMore = screen.getByRole('button', { name: 'Load more' });
@@ -286,7 +286,7 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     expect(within(desktopBoard()).getByText('Grace Hopper')).toBeInTheDocument();
     expect(within(desktopBoard()).getByText('Alan Turing')).toBeInTheDocument();
     expect(within(desktopBoard()).getByText('Katherine Johnson')).toBeInTheDocument();
-    expect(screen.getByText('7 people - drag between columns')).toBeInTheDocument();
+    expect(screen.getByText('7 people · drag between columns')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Load more' })).toBeInTheDocument();
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -300,7 +300,7 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     renderBoard();
 
     await waitFor(() => {
-      expect(screen.getByText('2 people - drag between columns')).toBeInTheDocument();
+      expect(screen.getByText('2 people · drag between columns')).toBeInTheDocument();
     });
 
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
@@ -373,7 +373,7 @@ describe('PipelineBoard: withholds unmeasured counts during the first load', () 
     expect(document.querySelector('.chq-contacts-pipeline-column-count')).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('2 people - drag between columns')).toBeInTheDocument();
+      expect(screen.getByText('2 people · drag between columns')).toBeInTheDocument();
     });
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
 
@@ -540,11 +540,11 @@ describe('PipelineBoard: fit score + rationale (DEC-821)', () => {
     expect(declineReasons).toHaveLength(1);
     expect(declineReasons[0]?.textContent).toBe('Declined: Went with another speaker');
 
-    // The edit affordance beside the fit chip stays a text link, never
-    // pill/chip chrome, so it doesn't read as a second fit badge.
-    const editLink = within(declinedColumn).getByRole('button', { name: 'Edit' });
-    expect(editLink).toHaveClass('chq-link-button');
-    expect(editLink).not.toHaveClass('chq-pill');
+    // Item 7 (frame 08-contacts--04): the card face carries no per-card
+    // Edit control anymore -- fit editing moved into the detail panel,
+    // reached via the card's own name button.
+    expect(within(declinedColumn).queryByRole('button', { name: 'Edit' })).toBeNull();
+    expect(within(declinedColumn).queryByRole('button', { name: 'Edit fit' })).toBeNull();
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
@@ -572,11 +572,19 @@ describe('PipelineBoard: fit score + rationale (DEC-821)', () => {
 
 // DEC-980: fit is editable after enrolment -- the edit dialog PATCHes
 // without a `stage` key, and the card's pill updates in place with no
-// reload (no second GET /pipeline call).
+// reload (no second GET /pipeline call). Item 7 (frame 08-contacts--04):
+// the trigger moved off the card face into the detail panel (opened via
+// the card's own name button), which is now the click-target this flow
+// starts from.
 describe('PipelineBoard: fit edit after enrolment (DEC-980)', () => {
   it('rates an Unrated card via the edit dialog, PATCHing without a stage and updating in place', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': {
+        entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
+        contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
+        activity: { items: [], total: 0, page: 1, perPage: 200 },
+      },
       'PATCH /api/v1/pipeline/entry-1': {
         ...ENTRY_IDENTIFIED,
         fitScore: 3,
@@ -589,8 +597,12 @@ describe('PipelineBoard: fit edit after enrolment (DEC-980)', () => {
 
     const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
     expect(within(identifiedColumn).getByText('Unrated')).toBeInTheDocument();
+    // No per-card Rate/Edit control on the card face itself.
+    expect(within(identifiedColumn).queryByRole('button', { name: 'Rate' })).toBeNull();
 
-    fireEvent.click(within(identifiedColumn).getByRole('button', { name: 'Rate' }));
+    fireEvent.click(within(identifiedColumn).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
+    const detailDialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
+    fireEvent.click(within(detailDialog).getByRole('button', { name: 'Rate' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Rate fit' });
     fireEvent.click(within(dialog).getByRole('button', { name: '3' }));
@@ -608,8 +620,10 @@ describe('PipelineBoard: fit edit after enrolment (DEC-980)', () => {
     expect(screen.queryByRole('dialog', { name: 'Rate fit' })).not.toBeInTheDocument();
 
     const getCalls = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'GET');
-    // Only the initial GET /pipeline load -- no reload triggered by the edit.
-    expect(getCalls).toHaveLength(1);
+    // Only the initial GET /pipeline load plus the one GET /pipeline/:id
+    // that opening the detail panel triggers -- saving the fit edit itself
+    // reloads neither.
+    expect(getCalls).toHaveLength(2);
 
     const patchCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH');
     expect(patchCall).toBeDefined();
@@ -639,7 +653,7 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
       'GET /api/v1/pipeline': listEnvelope([]),
     });
     renderBoard();
-    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0 people · drag between columns')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     return screen.findByRole('dialog', { name: 'Add to the pipeline' });
   }
@@ -667,10 +681,13 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
     stageButtons.forEach((b) => expect(b).toHaveAttribute('aria-pressed'));
     expect(within(stageGroup).getByRole('button', { name: 'Identified' })).toHaveAttribute('aria-pressed', 'true');
 
+    // Item 8 (MINOR): frame 08-contacts--12 draws five equal boxes, 1-5,
+    // with no sixth 'Unrated' box -- fit starts unrated with nothing
+    // selected (never a synthesized "Unrated" pressed state).
     const fitGroup = within(dialog).getByRole('group', { name: 'Fit' });
     const fitButtons = within(fitGroup).getAllByRole('button');
-    expect(fitButtons.map((b) => b.textContent)).toEqual(['Unrated', '1', '2', '3', '4', '5']);
-    expect(within(fitGroup).getByRole('button', { name: 'Unrated' })).toHaveAttribute('aria-pressed', 'true');
+    expect(fitButtons.map((b) => b.textContent)).toEqual(['1', '2', '3', '4', '5']);
+    fitButtons.forEach((b) => expect(b).toHaveAttribute('aria-pressed', 'false'));
 
     expect(dialog.querySelector('select[aria-label="Starting stage"]')).toBeNull();
     expect(dialog.querySelector('select[aria-label="Fit"]')).toBeNull();
@@ -678,12 +695,13 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
-  // w4-c: the footnote moved below the button row (and to lowercase) so it
-  // reads as a footnote to the action, not a warning above it.
-  it('shows the lowercase consequence sentence below the button row', async () => {
+  // w4-c: the footnote moved below the button row so it reads as a
+  // footnote to the action, not a warning above it. Item 8 (MINOR): the
+  // sentence starts uppercase, matching the frame.
+  it('shows the consequence sentence below the button row', async () => {
     const dialog = await openDialog();
 
-    const consequence = within(dialog).getByText('adding writes a move to the activity feed · no email is sent');
+    const consequence = within(dialog).getByText('Adding writes a move to the activity feed · no email is sent');
     const primary = within(dialog).getByRole('button', { name: 'Add to the pipeline' });
     const position = consequence.compareDocumentPosition(primary);
     // eslint-disable-next-line no-bitwise
@@ -700,7 +718,7 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
     });
 
     renderBoard();
-    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0 people · drag between columns')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
 
@@ -736,7 +754,7 @@ describe('PipelineBoard: enroll picker search (w40-c/DEC-821 amendment)', () => 
     });
 
     renderBoard();
-    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0 people · drag between columns')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     await screen.findByRole('dialog', { name: 'Add to the pipeline' });
 
@@ -761,7 +779,7 @@ describe('PipelineBoard: enroll picker search (w40-c/DEC-821 amendment)', () => 
     });
 
     renderBoard();
-    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0 people · drag between columns')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
 
@@ -814,7 +832,7 @@ describe('PipelineBoard: enroll picker search (w40-c/DEC-821 amendment)', () => 
     });
 
     renderBoard();
-    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0 people · drag between columns')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
 
@@ -1020,7 +1038,7 @@ describe('PipelineBoard: header (w4-c/DEC-898 amendment)', () => {
 
     expect(screen.getByRole('heading', { name: 'Pipeline', level: 1 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '‹ Contacts' })).toBeInTheDocument();
-    expect(screen.getByText('2 people - drag between columns')).toBeInTheDocument();
+    expect(screen.getByText('2 people · drag between columns')).toBeInTheDocument();
     expect(screen.queryByText('Sourcing pipeline')).not.toBeInTheDocument();
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -1032,7 +1050,7 @@ describe('PipelineBoard: header (w4-c/DEC-898 amendment)', () => {
     });
 
     renderBoard();
-    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('0 people · drag between columns')).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: '‹ Contacts' }));
 
@@ -1096,13 +1114,13 @@ function detailStubForActivityTest() {
   };
 }
 
-// B7 (DEC-678 amendment): an empty stage column names the stage via the
-// shared EmptyState 'filtered' variant -- the column's own name/count
-// header stays visible above it, and no button/action renders (moving a
-// card in happens via drag or the detail panel, never a button this empty
-// column would have to invent).
-describe('PipelineBoard: empty stage column (B7/DEC-678 amendment)', () => {
-  it('names the stage in the empty column, keeps the column header above it, and offers no button', async () => {
+// Item 5 (frame 08-contacts--14, B7 exemplar): an empty stage column names
+// the stage via a real heading (never the generic "No one in X"), a body
+// naming the previous stage's REAL live count, and a tertiary "Add someone
+// to <stage> ›" that opens the Add-to-the-pipeline dialog preset to this
+// stage -- the column's own name/count header stays visible above it.
+describe('PipelineBoard: empty stage column (item 5, B7 exemplar)', () => {
+  it('names the stage, states the previous stage\'s real count, keeps the column header above it, and offers the tertiary add action', async () => {
     mockApi({
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
     });
@@ -1114,10 +1132,36 @@ describe('PipelineBoard: empty stage column (B7/DEC-678 amendment)', () => {
     // The column's own name/count header still renders above the message.
     expect(within(contactedColumn).getByText('Contacted')).toBeInTheDocument();
     expect(within(contactedColumn).getByText('0')).toBeInTheDocument();
-    expect(within(contactedColumn).getByText(/No one in Contacted/)).toBeInTheDocument();
-    // No button/no card-column-cards list -- the ul is replaced entirely.
-    expect(contactedColumn.querySelector('button')).toBeNull();
+    // A stage-appropriate heading, never the generic "No one in X".
+    expect(within(contactedColumn).queryByText(/No one in Contacted/)).toBeNull();
+    expect(within(contactedColumn).getByText('Nobody has been contacted yet')).toBeInTheDocument();
+    // Identified (the previous stage) really holds 1 entry (Ada Lovelace).
+    expect(
+      within(contactedColumn).getByText(
+        'One person is in Identified. Cards land here when you move them, or you can add someone straight to this stage.',
+      ),
+    ).toBeInTheDocument();
+    // No card list -- the ul is replaced entirely.
     expect(contactedColumn.querySelector('.chq-contacts-pipeline-column-cards')).toBeNull();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('the tertiary add action opens the Add-to-the-pipeline dialog preset to this stage', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const contactedColumn = document.querySelector('[data-stage="contacted"]') as HTMLElement;
+    fireEvent.click(within(contactedColumn).getByRole('button', { name: 'Add someone to Contacted ›' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+    const stageGroup = within(dialog).getByRole('group', { name: 'Starting stage' });
+    expect(within(stageGroup).getByRole('button', { name: 'Contacted' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(stageGroup).getByRole('button', { name: 'Identified' })).toHaveAttribute('aria-pressed', 'false');
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
