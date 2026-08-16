@@ -9,6 +9,7 @@ import {
   describeImportOverwrites,
   findImportDuplicateCandidates,
   MAX_IMPORT_ROWS,
+  MAX_POSSIBLE_DUPLICATES,
   type ContactRecord,
 } from "../../../domain/contacts";
 import { fullName } from "../../../domain/contacts-parts/types";
@@ -558,12 +559,6 @@ export interface ImportPlanDuplicate {
   email: string;
   company?: string | null;
 }
-
-/** DEC-663 amendment (wave 64): caps possibleDuplicates at this many rows
- * per plan row so a large duplicate cluster never inflates the dry-run
- * payload -- the excess count is still disclosed via
- * ImportPlanRow.possibleDuplicatesMore. */
-export const MAX_POSSIBLE_DUPLICATES = 5;
 
 function toImportPlanDuplicate(c: ContactRecord): ImportPlanDuplicate {
   return { contactId: c.id, name: fullName(c), email: c.email, company: c.company ?? null };

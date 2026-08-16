@@ -34,6 +34,17 @@ export const MAX_IMPORT_CSV_BYTES = 5_000_000;
  * where the file is chosen, not only in the 400 at the end. */
 export const MAX_IMPORT_ROWS = 2000;
 
+/** DEC-663 amendment (wave 64): caps possibleDuplicates at this many rows
+ * per plan row so a large duplicate cluster never inflates the dry-run
+ * payload -- the excess count is still disclosed via
+ * ImportPlanRow.possibleDuplicatesMore.
+ *
+ * DEC-422: lives here (pure core), not in the repo module that applies it —
+ * route/repo modules never hand-declare their own batch/count cap literal;
+ * src/server/repo/contacts/import.ts imports this one from the
+ * src/domain/contacts.ts barrel. */
+export const MAX_POSSIBLE_DUPLICATES = 5;
+
 /**
  * DEC-478 (amendment, wave 47): an import column mapping is INJECTIVE -- no
  * two CSV columns may target the same destination field. mapImportRow below

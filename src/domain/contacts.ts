@@ -49,6 +49,7 @@ export {
 export {
   MAX_IMPORT_CSV_BYTES,
   MAX_IMPORT_ROWS,
+  MAX_POSSIBLE_DUPLICATES,
   mapImportRow,
   importFieldCapViolations,
   validateImportMapping,
