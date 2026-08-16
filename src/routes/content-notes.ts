@@ -95,6 +95,15 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   const [composeSubmission] = await loadComposeSubmissions(c.var.db, scope.eventId, [submissionId]);
   const participants = composeSubmission?.participants ?? [];
 
+  // DEC-547 wave-62 amendment: resolve the pure env/config read this send
+  // path needs BEFORE the first durable write below, so an unconfigured
+  // deployment refuses loudly (500, nothing committed) instead of writing
+  // the note/status move first and only then discovering it can't mail
+  // anyone. Skipped when there are no participants — the zero-recipients
+  // path (DEC-317/DEC-720 amendment, :113 below) never touches mail config
+  // at all, configured or not.
+  const origin = participants.length > 0 ? resolveBaseUrl(c) : null;
+
   // Post the note to the DEC-573 chain thread (writes anchor on the latest
   // file id in the chain, same row /files/:fileId/comments POST writes).
   await insertFileComment(c.var.db, {
@@ -115,7 +124,6 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   }
 
   const kv = c.env.KV as unknown as KVStore;
-  const origin = resolveBaseUrl(c);
   // B9: the note-reply shell names the event in its wordmark/footer
   // (DEC-037 amendment) -- scope already validated auth.orgId owns it above.
   const noteEvent = await getEventForOrg(c.var.db, scope.eventId, auth.orgId);
@@ -134,13 +142,32 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   // DEC-530 wave-42 amendment: resolve every participant's portal link (and
   // mint any claim tokens needed) through ONE batched Promise.all before the
   // send loop, instead of an await-per-participant KV round trip inside it.
-  const portalLinkMap = await resolvePortalLinks(
-    kv,
-    participants.map((p) => ({ contactId: p.contactId, userId: accountMap.get(p.contactId) ?? null })),
-    scope.eventId,
-    origin,
-    true,
-  );
+  //
+  // DEC-547 wave-62 amendment: the note/status writes above are already
+  // durable by the time we get here, so a KV failure in this step must not
+  // 500 — it stays inside the {sent, failed, recipients} envelope, with
+  // every participant reported as failed (DEC-397: no minting happens for
+  // a send that can't proceed, so nothing here needs to be undone).
+  let portalLinkMap: Map<string, string>;
+  try {
+    portalLinkMap = await resolvePortalLinks(
+      kv,
+      participants.map((p) => ({ contactId: p.contactId, userId: accountMap.get(p.contactId) ?? null })),
+      scope.eventId,
+      origin!,
+      true,
+    );
+  } catch (err) {
+    console.error("content-note resolvePortalLinks failed", err);
+    return c.json({
+      sent: 0,
+      failed: participants.map((p) => ({
+        email: p.email,
+        message: err instanceof Error ? err.message : String(err),
+      })),
+      recipients: participants.length,
+    });
+  }
 
   // DEC-238 class 2 (organizer-triggered batch): a bad recipient must not
   // abort the whole send — catch per-recipient, keep going, report partial
