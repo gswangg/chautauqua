@@ -55,6 +55,11 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
   // shared ConfirmDialog rather than firing on click.
   const [pendingDelete, setPendingDelete] = useState<EmailTemplate | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // DEC-856 (wave-13 amendment): POST/PATCH /templates both throw
+  // {name,subject,bodyText}-keyed "Validation failed" refusals -- kept WHOLE
+  // and keyed by the server's own wire keys, cleared at the start of every
+  // save attempt, never collapsed to the shared top-level banner.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function load() {
     setLoading(true);
@@ -76,11 +81,13 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
   function startNew() {
     setEditingId('new');
     setDraft(BLANK_DRAFT);
+    setFieldErrors({});
   }
 
   function startEdit(t: EmailTemplate) {
     setEditingId(t.id);
     setDraft({ name: t.name, subject: t.subject, bodyText: t.bodyText });
+    setFieldErrors({});
   }
 
   // DEC-890 (amendment wave 4): opening Templates preselects the first
@@ -100,6 +107,7 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
   async function save() {
     setSaving(true);
     setError(null);
+    setFieldErrors({});
     try {
       if (editingId === 'new') {
         await apiPost(`/events/${eventId}/templates`, draft);
@@ -109,7 +117,15 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
       setEditingId(null);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save template');
+      // DEC-856 (wave-13 amendment): a fields-bearing refusal renders AT its
+      // own control, never collapsed to the shared top-level banner -- a
+      // field-less refusal (not found, unauthorized) still falls through to
+      // the verbatim `error` banner exactly as before.
+      if (err instanceof ApiError && err.fields) {
+        setFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save template');
+      }
     } finally {
       setSaving(false);
     }
@@ -262,6 +278,11 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                   value={draft.name}
                   onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
                 />
+                {fieldErrors.name && (
+                  <p className="chq-field-error" role="alert">
+                    {fieldErrors.name}
+                  </p>
+                )}
               </label>
             )}
             <label>
@@ -272,6 +293,11 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                 value={draft.subject}
                 onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))}
               />
+              {fieldErrors.subject && (
+                <p className="chq-field-error" role="alert">
+                  {fieldErrors.subject}
+                </p>
+              )}
             </label>
             <label>
               <span className="chq-comms-editor-label">Body</span>
@@ -283,6 +309,11 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                 value={draft.bodyText}
                 onChange={(e) => setDraft((d) => ({ ...d, bodyText: e.target.value }))}
               />
+              {fieldErrors.bodyText && (
+                <p className="chq-field-error" role="alert">
+                  {fieldErrors.bodyText}
+                </p>
+              )}
             </label>
 
             <div className="chq-comms-merge-chips">
