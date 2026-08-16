@@ -8,6 +8,12 @@ import { formatRef, MAX_SUBMISSION_TRACK_IDS } from "../domain/ids";
 import { overCapCountMessage } from "../domain/cap-copy";
 import { dayLabelEndInstant, dayLabelStartInstant } from "./timezone";
 import { parseFormTracks } from "../forms/form-tracks";
+import { DEC_422, DEC_598 } from "../decisions";
+// implements DEC_422/DEC_598's wave-10 amendment (a repeated single-value
+// answer/file part is refused, never merged/dropped) — see
+// readSingleFormValue/readSingleFilePart/extractFileAnswers below.
+void DEC_422;
+void DEC_598;
 
 /** CFP-04 / DEC-522: past form.close_date rejects new submissions. A
  * null/undefined close date means the form never closes. closeDate is a DAY
@@ -126,24 +132,67 @@ export function splitSubmittedName(name: string): { firstName: string; lastName:
   return { firstName: match[1] ?? "", lastName: match[2] ?? "" };
 }
 
+// DEC-422 / DEC-598 (wave-10 amendment): a repeated `field_<id>` part under
+// parseBody({all:true}) is refused outright, never silently merged into
+// "a,b" (the old `String(raw)` behaviour on an array) and never silently
+// dropped (the old `raw instanceof File` check on a File[], which is always
+// false). One house-voice message names what happened and what to do; every
+// door (public submit, save-draft, portal edit, portal task form) surfaces
+// it as a per-field error rather than inventing its own wording.
+export const REPEATED_ANSWER_MESSAGE =
+  "This field was submitted more than once. Please go back and submit it a single time.";
+
+/** DEC-422/DEC-598: reads a single-valued (text/select/textarea) answer part
+ * out of a parseBody({all:true}) body value. A duplicated form part comes
+ * back from Hono as an array — that is refused (`ok: false`) rather than
+ * stringified into a merged "a,b" value. `undefined` (no answer posted) is a
+ * valid, present "no answer" result, matching every other field-kind's
+ * absent-answer handling. */
+export function readSingleFormValue(raw: unknown): { ok: true; value: string | undefined } | { ok: false } {
+  if (Array.isArray(raw)) return { ok: false };
+  if (raw === undefined) return { ok: true, value: undefined };
+  return { ok: true, value: typeof raw === "string" ? raw : String(raw) };
+}
+
+/** DEC-422/DEC-598: reads a single-valued file-kind part. A duplicated file
+ * input comes back from Hono as a File[] under parseBody({all:true}) — that
+ * is refused (`ok: false`) rather than silently dropped (the old
+ * `raw instanceof File` check, always false against an array, which quietly
+ * treated a repeated upload as "nothing selected"). A browser's empty-file
+ * placeholder (no filename / zero bytes) or nothing selected both resolve to
+ * `file: null`, mirroring extractFileAnswers' existing "no answer" case. */
+export function readSingleFilePart(raw: unknown): { ok: true; file: File | null } | { ok: false } {
+  if (Array.isArray(raw)) return { ok: false };
+  if (raw instanceof File && raw.size > 0 && raw.name !== "") return { ok: true, file: raw };
+  return { ok: true, file: null };
+}
+
 /** DEC-040: pulls each file-kind field's uploaded File out of a parsed
  * multipart body. `fieldNameOf` maps a field id to its form input name
  * (kept as a caller-supplied callback rather than importing the view layer,
  * per the pure-core import direction). A field with nothing selected, or a
  * browser's empty-file placeholder (no filename / zero bytes), is simply
  * absent from the result — same "no answer" case forms/validate.ts already
- * handles for every other field kind. */
+ * handles for every other field kind. DEC-422/DEC-598 (wave-10 amendment): a
+ * repeated file part for one field id is refused rather than silently
+ * dropped — its field id is collected in `repeatedFieldIds` so callers can
+ * surface REPEATED_ANSWER_MESSAGE instead of treating the field as
+ * unanswered. */
 export function extractFileAnswers(
   fileFieldIds: string[],
   fieldNameOf: (fieldId: string) => string,
   body: Record<string, unknown>,
-): Record<string, File> {
-  const out: Record<string, File> = {};
+): { files: Record<string, File>; repeatedFieldIds: string[] } {
+  const files: Record<string, File> = {};
+  const repeatedFieldIds: string[] = [];
   for (const fieldId of fileFieldIds) {
     const raw = body[fieldNameOf(fieldId)];
-    if (raw instanceof File && raw.size > 0 && raw.name !== "") {
-      out[fieldId] = raw;
+    const result = readSingleFilePart(raw);
+    if (!result.ok) {
+      repeatedFieldIds.push(fieldId);
+      continue;
     }
+    if (result.file) files[fieldId] = result.file;
   }
-  return out;
+  return { files, repeatedFieldIds };
 }

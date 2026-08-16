@@ -70,7 +70,7 @@ import { validateAnswers } from "../../forms/validate";
 import type { AnswerMap } from "../../forms/types";
 import { parseTaskResponse, serializeTaskResponse } from "../../forms/task-response";
 import { fieldInputName } from "../../views/form-render";
-import { extractFileAnswers } from "../../lib/submit-core";
+import { extractFileAnswers, readSingleFormValue, REPEATED_ANSWER_MESSAGE } from "../../lib/submit-core";
 import {
   assertServedContentTypeHeader,
   contentDispositionAttachment,
@@ -356,13 +356,17 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
   const priorAnswers: AnswerMap = parseTaskResponse(priorAssignment.responseJson, assignmentId);
 
   const fileFields = fields.filter((field) => field.kind === "file");
-  const fileAnswers = extractFileAnswers(
+  const { files: fileAnswers, repeatedFieldIds: repeatedFileFieldIds } = extractFileAnswers(
     fileFields.map((field) => field.id),
     fieldInputName,
     body,
   );
 
+  // DEC-422/DEC-598 (wave-10 amendment): a repeated `field_<id>` part is
+  // refused (never merged into "a,b") — see submit-body.ts's extractAnswers
+  // for the same treatment on the public CFP door.
   const answers: AnswerMap = {};
+  const repeatedFieldIds: string[] = [];
   for (const field of fields) {
     const name = fieldInputName(field.id);
     if (field.kind === "checkbox") {
@@ -371,8 +375,13 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
     }
     if (field.kind === "file") continue; // handled in the upload loop below
     const raw = body[name];
-    if (raw === undefined) continue;
-    answers[field.id] = typeof raw === "string" ? raw : String(raw);
+    const result = readSingleFormValue(raw);
+    if (!result.ok) {
+      repeatedFieldIds.push(field.id);
+      continue;
+    }
+    if (result.value === undefined) continue;
+    answers[field.id] = result.value;
   }
 
   // DEC-040: mirrors the public CFP submit pipeline (src/routes/public/
@@ -395,7 +404,13 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
   // legacy/foreign row) just starts a fresh chain — never a 400 here, this
   // is never a validation error for the speaker.
   const store = makeFileStore(c.env.FILES);
+  // DEC-422/DEC-598 (wave-10 amendment): a repeated text/select answer or a
+  // repeated file part is refused up front with the shared house-voice
+  // message, keyed into the SAME per-field error map that feeds
+  // `mergedErrors` below.
   const fileErrors: Record<string, string> = {};
+  for (const fieldId of repeatedFieldIds) fileErrors[fieldId] = REPEATED_ANSWER_MESSAGE;
+  for (const fieldId of repeatedFileFieldIds) fileErrors[fieldId] = REPEATED_ANSWER_MESSAGE;
   // DEC-040 amendment (wave 74): every file this request writes gets tracked
   // here so a validation failure below can roll them back — mirrors the
   // public CFP path (src/routes/public/submit.tsx) instead of leaking an R2

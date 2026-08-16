@@ -137,30 +137,41 @@ describe("extractFileAnswers (DEC-040 multipart file extraction)", () => {
   it("extracts a File instance for a selected file field", () => {
     const file = new File(["hello"], "slides.pdf", { type: "application/pdf" });
     const result = extractFileAnswers(["f1"], fieldNameOf, { field__f1: file });
-    expect(result).toEqual({ f1: file });
+    expect(result).toEqual({ files: { f1: file }, repeatedFieldIds: [] });
   });
 
   it("omits a field with no value present in the body", () => {
     const result = extractFileAnswers(["f1"], fieldNameOf, {});
-    expect(result).toEqual({});
+    expect(result).toEqual({ files: {}, repeatedFieldIds: [] });
   });
 
   it("omits a browser's empty-file placeholder (no filename, zero bytes)", () => {
     const empty = new File([], "", { type: "application/octet-stream" });
     const result = extractFileAnswers(["f1"], fieldNameOf, { field__f1: empty });
-    expect(result).toEqual({});
+    expect(result).toEqual({ files: {}, repeatedFieldIds: [] });
   });
 
   it("ignores non-File values (e.g. a stray string) for a file field", () => {
     const result = extractFileAnswers(["f1"], fieldNameOf, { field__f1: "not-a-file" });
-    expect(result).toEqual({});
+    expect(result).toEqual({ files: {}, repeatedFieldIds: [] });
   });
 
   it("handles multiple file fields independently", () => {
     const a = new File(["a"], "a.pdf", { type: "application/pdf" });
     const b = new File(["b"], "b.png", { type: "image/png" });
     const result = extractFileAnswers(["f1", "f2"], fieldNameOf, { field__f1: a, field__f2: b });
-    expect(result).toEqual({ f1: a, f2: b });
+    expect(result).toEqual({ files: { f1: a, f2: b }, repeatedFieldIds: [] });
+  });
+
+  // DEC-422/DEC-598 (wave-10 amendment): a repeated file part (a File[] from
+  // parseBody({all:true})) is refused, never silently dropped as "no
+  // answer" — see test/repeated-form-field-refusal.test.ts for the fuller
+  // per-door coverage.
+  it("collects a repeated file field id in repeatedFieldIds instead of silently dropping it", () => {
+    const a = new File(["a"], "a.pdf", { type: "application/pdf" });
+    const b = new File(["b"], "b.pdf", { type: "application/pdf" });
+    const result = extractFileAnswers(["f1"], fieldNameOf, { field__f1: [a, b] });
+    expect(result).toEqual({ files: {}, repeatedFieldIds: ["f1"] });
   });
 });
 

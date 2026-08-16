@@ -170,14 +170,14 @@ describe("extractAnswers (DEC-121 locked email carry-over)", () => {
 
   it("never reads field__email from the body — carries the stored answer so required-validation still passes", () => {
     const stored = { email: "jane@example.test" };
-    const answers = extractAnswers([EMAIL_FIELD], {}, stored);
+    const answers = extractAnswers([EMAIL_FIELD], {}, stored).answers;
     expect(answers.email).toBe("jane@example.test");
   });
 
   it("a body-supplied field__email is ignored, even when present alongside a stored value", () => {
     const body: Record<string, unknown> = { [fieldInputName(EMAIL_FIELD.id)]: "attacker@example.test" };
     const stored = { email: "jane@example.test" };
-    const answers = extractAnswers([EMAIL_FIELD], body, stored);
+    const answers = extractAnswers([EMAIL_FIELD], body, stored).answers;
     expect(answers.email).toBe("jane@example.test");
     expect(answers.email).not.toBe("attacker@example.test");
   });
