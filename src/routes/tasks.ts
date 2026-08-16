@@ -17,6 +17,7 @@ import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DE
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398, DEC_754 } from "../decisions";
 import { FILE_KINDS, isValidFileKind, type FileKind } from "../domain/files";
+import { TASK_KINDS } from "../domain/task-kinds"; // DEC-613 wave-70 amendment
 import { MAX_TASK_INSTRUCTIONS_LENGTH } from "../domain/task-copy";
 import { findFormById } from "../server/repo/forms";
 import {
@@ -75,7 +76,6 @@ void DEC_124;
 
 export const taskRoutes = new Hono<AppEnv>();
 
-const TASK_KINDS = new Set(["general", "file_request", "form"]);
 const ASSIGNMENT_STATUSES = new Set<TaskAssignmentStatus>(["pending", "complete"]);
 
 /** Trims `body.instructions`, treats an empty (post-trim) string as null,
@@ -250,7 +250,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
   const fields: Record<string, string> = {};
 
   const kind = typeof body.kind === "string" ? body.kind : undefined;
-  if (!kind || !TASK_KINDS.has(kind)) {
+  if (!kind || !(TASK_KINDS as readonly string[]).includes(kind)) {
     fields.kind = "Must be one of 'general', 'file_request', 'form'";
   }
 
