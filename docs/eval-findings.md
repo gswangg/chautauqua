@@ -139,7 +139,17 @@ B20, B22.**
 **A. FIDELITY residue (gate-10/11 + delta-6 still-open set):**
 1. §09 settings residue M1/M2/M4/M5/M7/R2 — field widths beyond dates, footer
    grammar, portal toggles, embed card anatomy (measures in fidelity-gate10/
-   group3.md + gate11/group3.md). NOT RE-VERIFIED wave 81 — still OPEN.
+   group3.md + gate11/group3.md).
+1b. **R1 RE-OPENED AS A V12 GAP (user-caught verdict blind spot):** gate-11
+   marked R1 "closed-by-removal" because the ORIGINAL complaint (off-palette
+   #BE123C swatch) was gone — but the removal left a FREE HEX TEXT INPUT for
+   track colour, and the v11/v12 ruling specs the opposite end state:
+   TRACK_SWATCHES — a swatch sits LEFT of the track name in the edit rows,
+   captioned "how a track reads on the agenda and the public pages", offering
+   PALETTE-CONSTRAINED choices (never a free hex, never a red). Build to the
+   ruling. A closed-by-removal verdict must be re-checked against the design's
+   intended end state, not just the original defect text — add that line to
+   the gate-12 brief. NOT RE-VERIFIED wave 81 — still OPEN.
 2. **CLOSED wave 81** — New-contact modal to frame 08--16: email carries WHY
    required (matched/merged), modal closes by naming what it does NOT do
    (directory ≠ event). `app/src/pages/contacts/NewContactModal.tsx:162`
