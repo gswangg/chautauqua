@@ -221,7 +221,10 @@
 }
 
 .chq-submissions-col-select {
-  width: 28px;
+  /* 28px control + the shared .chq-table 16px first-cell inset (user-filed
+     regression: the un-widened track let the checkbox overflow onto REF
+     under table-layout:fixed). */
+  width: 44px;
 }
 
 .chq-submissions-col-ref {

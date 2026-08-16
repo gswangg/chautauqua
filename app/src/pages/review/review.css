@@ -210,8 +210,9 @@
   text-align: left;
 }
 
+/* 44 fit "RANK" only before the shared 16px first-cell inset landed. */
 .chq-review-results-col-rank {
-  width: 44px;
+  width: 56px;
 }
 
 .chq-review-results-col-speaker {

@@ -1382,8 +1382,9 @@ a:hover {
   table-layout: fixed;
 }
 
+/* 18px control + shared .chq-table 16px first-cell inset + air (user-filed). */
 .chq-contacts-table .chq-contacts-col-select {
-  width: 26px;
+  width: 46px;
 }
 
 .chq-contacts-table .chq-contacts-col-company {
