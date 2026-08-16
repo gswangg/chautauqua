@@ -338,9 +338,12 @@ describe("PATCH /api/v1/submissions/:id — revision editorName (DEC-757)", () =
     const { db, inserts } = queueDb([
       [SUBMISSION_ORG_A], // getSubmissionOwnership
       [{ title: "Old Title", description: "Old description" }], // getSubmissionContent (before)
-      [{ count: 1 }], // countRevisions (ensureBaselineRevision, DEC-158 wave-59: already has revisions)
+      // DEC-155 (wave-60): resolveActorName is hoisted into the PATCH's ONE
+      // pre-write read wave, so it is issued BEFORE ensureBaselineRevision's
+      // countRevisions (which runs in the write phase, after the wave).
       [{ email: editor.email, contactId: editor.contactId }], // resolveActorName: user
       [editor.contact], // resolveActorName: contact
+      [{ count: 1 }], // countRevisions (ensureBaselineRevision, DEC-158 wave-59: already has revisions)
       [{ ...DETAIL_ROW, title: "New Title" }], // getSubmissionDetail
       [], // participants
       [], // tracks

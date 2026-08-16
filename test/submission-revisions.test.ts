@@ -118,8 +118,11 @@ describe("PATCH /api/v1/submissions/:id appends submission_revision rows (DEC-15
     const { db: db1, inserts: inserts1 } = fakeDb([
       [SUBMISSION_ORG_A], // getSubmissionOwnership
       [{ title: "Old Title", description: "Old description", createdAt: new Date(500) }], // getSubmissionContent (before)
-      [{ count: 0 }], // countRevisions (ensureBaselineRevision)
+      // DEC-155 (wave-60): resolveActorName is hoisted into the PATCH's ONE
+      // pre-write read wave, so it is issued BEFORE ensureBaselineRevision's
+      // countRevisions (which runs in the write phase, after the wave).
       [{ email: "organizer@example.com", contactId: null }], // resolveActorName
+      [{ count: 0 }], // countRevisions (ensureBaselineRevision)
       [{ ...DETAIL_ROW, title: "Edit One Title", description: "Edit one description" }], // getSubmissionDetail
       [], // participants
       [], // tracks
@@ -151,8 +154,8 @@ describe("PATCH /api/v1/submissions/:id appends submission_revision rows (DEC-15
     const { db: db2, inserts: inserts2 } = fakeDb([
       [SUBMISSION_ORG_A],
       [{ title: "Edit One Title", description: "Edit one description", createdAt: new Date(500) }],
+      [{ email: "organizer@example.com", contactId: null }], // resolveActorName (hoisted, DEC-155)
       [{ count: 2 }], // countRevisions
-      [{ email: "organizer@example.com", contactId: null }],
       [{ ...DETAIL_ROW, title: "Edit Two Title", description: "Edit two description" }],
       [],
       [],

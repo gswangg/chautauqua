@@ -580,8 +580,11 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
     const { db, updates, inserts } = fakeDb([
       [SUBMISSION_ORG_A], // getSubmissionOwnership
       [{ title: "Old Title", description: "Old description" }], // getSubmissionContent (pre-edit snapshot, DEC-158)
-      [{ count: 1 }], // countRevisions (ensureBaselineRevision, DEC-158 wave-59: already has revisions)
+      // DEC-155 (wave-60): resolveActorName is hoisted into the PATCH's ONE
+      // pre-write read wave, so it is issued BEFORE ensureBaselineRevision's
+      // countRevisions (which runs in the write phase, after the wave).
       [{ email: "organizer@example.com", contactId: null }], // resolveActorName (editor_name snapshot, DEC-158)
+      [{ count: 1 }], // countRevisions (ensureBaselineRevision, DEC-158 wave-59: already has revisions)
       [{ ...DETAIL_ROW, title: "New Title", description: "New description" }], // getSubmissionDetail: submission+event
       [], // participants
       [], // tracks
