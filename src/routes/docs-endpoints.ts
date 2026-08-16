@@ -86,6 +86,11 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
         path: "/api/v1/submissions/:id/participants/:participantId",
         role: "organizer (toggle visible, set inviteStatus)",
       },
+      {
+        method: "DELETE",
+        path: "/api/v1/submissions/:id/participants/:participantId",
+        role: "organizer (remove a co-presenter; the lead participant cannot be removed)",
+      },
       { method: "GET", path: "/api/v1/submissions/:id/revisions", role: "organizer" },
       {
         method: "POST",

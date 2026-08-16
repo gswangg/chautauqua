@@ -8,7 +8,7 @@ import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldRole, FormFieldRule } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldId } from "../../forms/types";
 import { DEC_050, DEC_398, DEC_592 } from "../../decisions";
-import { chunkRowsForInsert } from "../../lib/chunk";
+import { chunkIds, chunkRowsForInsert } from "../../lib/chunk";
 import { getFieldOptionsByRole } from "./form-roles";
 
 void DEC_050; // per-form locked field ids ('<formId>:<name>') — see createDefaultForm below
@@ -501,10 +501,16 @@ export async function countAnswersByOptionValue(db: Db, fieldId: string): Promis
  * Returns the number of rows cleared. */
 export async function clearFieldRules(db: Db, fieldIds: string[]): Promise<number> {
   if (fieldIds.length === 0) return 0;
-  await db
-    .update(schema.formField)
-    .set({ ruleJson: null, updatedAt: new Date() })
-    .where(inArray(schema.formField.id, fieldIds));
+  // DEC-078: the sibling list is bounded only by MAX_FORM_FIELDS (200), well
+  // over D1's bound-parameter ceiling, so the UPDATE is batched through the
+  // canonical chunkIds rather than issued as one unbounded inArray.
+  const now = new Date();
+  for (const batch of chunkIds(fieldIds)) {
+    await db
+      .update(schema.formField)
+      .set({ ruleJson: null, updatedAt: now })
+      .where(inArray(schema.formField.id, batch));
+  }
   return fieldIds.length;
 }
 
