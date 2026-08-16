@@ -295,6 +295,25 @@ DEC-604 lets a speaker self-add a co-presenter to their own submission (`portal/
 
 Two rules: **state the opening date only when one is set** — the seeded form has no `open_date`, so with none the heading reads "The call for papers is not open yet" and no date is invented. And **give the visitor something to do** — last year's sessions — since a page with a future date and no action is a dead end. The hub's own listing rule already hides `not_yet_open` events, so anyone here followed a direct link.
 
+## Docs — a new site, and where it stops
+
+`Chautauqua Docs.dc.html` — index, article, phone article, and a screenshot-rules panel. **This is a new route.** `src/routes/docs.tsx` serves only `/docs/api`; a user-facing `/docs` does not exist, so the whole site is new work, not a re-skin.
+
+**Grouped by who you are, not by screen** — Getting started / Running an event / Your contacts / For reviewers / For speakers / Running the software. A reviewer needs two pages and should not wade through agenda documentation to reach them.
+
+**Prose at 680, screenshots at 900.** Text stays at a readable measure while a 1600px screen is legible; on phone, figures go edge to edge with the caption inset. This is the one place in the bundle where content deliberately breaks its own measure.
+
+**Where the docs stop:** `/docs/api` and `/dev/mailbox` remain `TOOLS_CSS` chrome per DEC-382 — this design does **not** revise that the way `GET /` did. So the API reference is styled as a **leaving link** (`↗`, muted) in the header and labelled "Leaves the docs — an operator surface" in the index, rather than presented as another article. The seam is real; the design names it instead of hiding it. If you would rather restyle `/docs/api` into this shell, that is a second revision of DEC-382 and needs saying explicitly.
+
+**Screenshot rules** (the panel beside the frames, and the part most likely to rot):
+
+1. **From the real app, at 1600 × 900** — never a mock, never a hand-drawn diagram. A doc showing a screen that does not exist is worse than no screenshot.
+2. **Seeded data only.** DevFlow Conf 2027 is fictional and stable, so shots stay comparable and nothing real leaks. Re-shoot from a fresh seed rather than editing pixels.
+3. **Full frames, not crops** — the chrome is how a reader locates themselves. Crop only to call out one control, and say so in the caption.
+4. **The caption carries the point.** A reader who skims only captions should still learn the thing.
+5. **No annotation drawn on top.** Arrows and circles rot the moment the UI moves, and cannot be translated or read aloud. Point with words.
+6. **Re-shoot every release.** A stale screenshot is a bug report from your own documentation; the set is seeded, so this is a script.
+
 ## Portal preview — "Open as a speaker"
 
 `GET /portal/preview` (DEC-747) is the Speaker portal settings row's one action, and it is **not an impersonation** — it renders the portal chrome with no speaker attached, which is what makes it safe. Framed at 1600 in the 560 portal column.
@@ -364,6 +383,30 @@ Both rules that matter: the primary **carries the verb** ("Turn it off", "Delete
 3. **Rejected** — email is the username, so a duplicate is refused. Standard error shape, plus a route out that is better than retyping: *Open Sam's row*, since changing an existing person's role is what the organiser actually wanted.
 
 **Do not design a pending-invitation state.** There is no such row: the account is live from creation. A greyed "Invited" row would describe a status the schema does not have, and organisers would wait for an acceptance that cannot arrive.
+
+## Review criteria — Scale or Choice
+
+Each criterion gains a **type**, chosen at creation: **Scale 1–5** (today's behaviour, and the default) or **Choice**, an organiser-defined list of 2–6 options. Framed in the plan editor, the scorecard and the results breakdown.
+
+**Editing** borrows `FieldModal`'s **type select**, but **not its options textarea** — options are editable rows, one per line item, with a drag handle and Remove.
+
+The textarea's real contract is `optionsText.split('\n')`, trimmed, blanks dropped. That is defensible for a CFP field, which allows up to `MAX_FIELD_OPTIONS` (40) and is usually pasted in from a spreadsheet — bulk entry is the point, and 40 rows would be a worse control than 40 lines. A scoring criterion is the opposite case: **two to six short strings whose order is the order reviewers see**. For that, newline-delimited text hides everything that matters — you cannot tell a trailing blank line from nothing, cannot reorder without cut-and-paste, and the 2–6 bound is a sentence the organiser must remember rather than something the control shows.
+
+Rows are also what this system already uses for every other small ordered set: criteria themselves, tracks, rooms, form fields, resources, people. So the criterion options list is `⋮⋮ · [label] · Remove` with a **3 of 6** counter, *Add an option* as a tertiary link, and **Remove disabled at two** — the bound enforced by the control rather than asserted in prose.
+
+This is a deliberate divergence from `FieldModal`, not an oversight, and it is one-way: the CFP field editor keeps its textarea because 40 pasted options is a real case there. If that cap ever drops to single digits, it should switch to rows too.
+
+**Aggregation is the decision that matters: a Choice criterion is unweighted and excluded from the numeric score.** Results show a distribution in the per-criterion breakdown — "Strong 2 · Weak 1" — and the weighted mean is computed over the Scale criteria only. Mapping options to points (Strong = 5, Weak = 3, No = 1) would invent precision the committee never expressed: the gap between "strong" and "weak" is not one-third of the scale, it is a different kind of judgement. If a committee wants arithmetic, that is what Scale is for.
+
+Consequences the frames carry:
+
+- **The weight input disappears for Choice** — not zeroed, not disabled-with-a-zero. A criterion outside the mean has no weight to give, and a visible `0` invites the question of whether it counts a little.
+- **Shares recompute over the Scale criteria alone.** With Relevance ×3 and Depth ×2, the shares read 60% / 40%, not 50% / 33% — the third criterion is not taking 17% invisibly.
+- **The scorecard's overall says what it counts**: "Weighted mean of the two scored criteria · Fit is recorded, not averaged". A number whose denominator is invisible is the thing a reviewer misreads.
+- **The Choice row is a radio row of its options**, same fieldset/legend contract and 44px targets as the numeric scale — stacked rather than inline, because option labels are words of differing length and a five-column row of them would wrap raggedly.
+- **The expanded results band shows each reviewer's pick as text**, in its own column under the criterion name, with the distribution in the footer where the mean sits for scored criteria. The band still repeats the parent table's grid, per B8.
+- **Type is immutable once any evaluation exists** — the same freeze rule as wording and weights, and for the same reason: changing a criterion from Scale to Choice would orphan every score already given against it. The frozen frame's caption now reads "wording, type and weights fixed for this wave". Options stay editable until the freeze, since renaming an option does not invalidate a pick the way changing its type would.
+- **Existing plans are untouched** — a criterion with no type is Scale, so nothing needs migrating.
 
 ## Password reset
 

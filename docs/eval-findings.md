@@ -55,6 +55,68 @@ live tree this task, not inherited from a prior wave's claim:
   (`accept={...}`) and `:168` (`uploadHintText(...)`) derive from — one
   source, cannot drift.
 
+## V12 DESIGN INTAKE (2026-08-16 morning) — authority now design-frames-v12 (158 frames; 13 sections incl. NEW 13-docs)
+
+Vendored: NEW `Chautauqua Docs.dc.html` + changed Review + DESIGN-RULINGS + README
+(all other files byte-identical to v11). verify-frames receipt: 13 sections / 158
+frames, all width flags the known +2px border class. Two additions, both USER-
+COMMISSIONED features — sequenced AFTER the ALL-PASS lane below:
+
+**A. REVIEW CRITERIA — Scale or Choice (in-place edits to the 03 frames + new
+DESIGN-RULINGS §"Review criteria — Scale or Choice"; build to the ruling, it is
+complete and opinionated):**
+- Criterion gains a TYPE at creation: Scale 1-5 (default, today's behavior) or
+  Choice (2-6 organiser-defined options).
+- Editor: FieldModal's type-select grammar but options as EDITABLE ROWS (⋮⋮ ·
+  label · Remove), "3 of 6" counter, Add-an-option tertiary, Remove DISABLED at
+  two (bound in the control, not prose). Deliberate divergence from the CFP
+  textarea — one-way, documented in the ruling.
+- **Aggregation: Choice is UNWEIGHTED and EXCLUDED from the numeric mean.**
+  Results show a distribution ("Strong 2 · Weak 1") in the per-criterion
+  breakdown; weighted mean covers Scale criteria only.
+- Weight input DISAPPEARS for Choice (not zeroed/disabled). Shares recompute
+  over Scale criteria alone. Scorecard overall states its denominator ("Weighted
+  mean of the two scored criteria · Fit is recorded, not averaged").
+- Scorecard: Choice = STACKED radio row of options, same fieldset/legend + 44px
+  contract. Results expanded band: each reviewer's pick as text under the
+  criterion, distribution in the footer, band repeats the parent grid per B8.
+- Type IMMUTABLE once any evaluation exists (same freeze rule; frozen caption
+  now "wording, type and weights fixed for this wave"); options editable until
+  freeze. Existing plans untouched (typeless criterion = Scale — no migration).
+- REGRESSION SENSITIVITY: this touches scoring/aggregation paths that scored
+  91-100 on the interim run — every change needs route tests + the gate-12
+  fleet re-verifies scorecard/results geometry + a results-math test (shares
+  60/40 not 50/33 with a Choice present).
+
+**B. DOCS SITE (NEW ROUTE /docs — frames 13-docs--00..04 + DESIGN-RULINGS
+§"Docs — a new site, and where it stops"). Purpose: submission documentation,
+following the eval's main lines, screenshots from the FROZEN app:**
+- New user-facing site; current src/routes/docs.tsx serves ONLY /docs/api which
+  STAYS TOOLS_CSS chrome (DEC-382 not revised) — the API reference renders as a
+  labelled LEAVING LINK ("Leaves the docs — an operator surface", ↗ muted).
+- IA grouped BY ROLE, not by screen: Getting started / Running an event / Your
+  contacts / For reviewers / For speakers / Running the software.
+- Measures: prose 680, screenshots 900 (the ONE sanctioned measure break);
+  phone: figures edge-to-edge, caption inset. Frames: index (1600), article
+  (1600/640/390), element library (1600).
+- CONTENT: follow the eval's main lines — one article per area family (CFP +
+  submissions; review; speakers + tasks + content; agenda + publish; contacts +
+  pipeline + comms; embeds + public pages; running the software = deploy/seed/
+  auth). Write from the product as it IS (frozen build), house voice, captions
+  carry the point.
+- **SCREENSHOT RULES (verbatim contract, build the shoot as a SCRIPT):** real
+  app at 1600×900 · seeded data only (DevFlow Conf 2027) · full frames not
+  crops · caption carries the point · NO drawn annotations · re-shoot every
+  release. The shoot runs against the FROZEN deployed build at freeze time —
+  docs SHELL + articles can build now with placeholder figure slots; the
+  screenshot script fills them at freeze.
+
+**SEQUENCING (user): ALL-PASS lane items 1-22 FIRST → then A + B-shell in
+parallel → gate-12 fleet (all-PASS target, now including 03 criterion frames +
+13-docs shell) → FREEZE → scripted screenshot shoot + docs content finalize →
+final deploy (carries docs) → final official eval run → submission held for user.**
+
+
 ## ALL-PASS PUSH (USER DIRECTIVE 2026-08-16 morning) — fix EVERY remaining MINOR/BROKEN before the next fidelity fleet; the goal is a fleet verdict as close to all-PASS as possible. THIS LANE PRE-EMPTS ALL OTHER WORK. Freeze + final eval run follow the fleet.
 
 **A. FIDELITY residue (gate-10/11 + delta-6 still-open set):**

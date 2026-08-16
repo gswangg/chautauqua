@@ -121,11 +121,11 @@
             <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Wave 1 results · ranked</span>
             <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Mean of submitted reviews · recusals excluded</span>
           </div>
-          <div style="display:grid; grid-template-columns:44px 1fr 150px 130px 92px 92px auto; gap:16px; padding:9px 0; border-bottom:1px solid #D3CFC0; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+          <div style="display:grid; grid-template-columns:44px 1fr 132px 118px 190px 84px auto; gap:16px; padding:9px 0; border-bottom:1px solid #D3CFC0; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
             <span>Rank</span><span>Submission</span><span>Speaker</span><span>Track</span><span>Score</span><span>Reviews</span><span></span>
           </div>
           <sc-for list="{{ results }}" as="row" hint-placeholder-count="4">
-            <div style="display:grid; grid-template-columns:44px 1fr 150px 130px 92px 92px auto; gap:16px; align-items:center; padding:13px 0; border-bottom:1px solid #E1DDCE">
+            <div style="display:grid; grid-template-columns:44px 1fr 132px 118px 190px 84px auto; gap:16px; align-items:center; padding:13px 0; border-bottom:1px solid #E1DDCE">
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:700">{{ row.rank }}</span>
               <a href="#" style="font-size:14px; font-weight:600; line-height:1.3; color:#1B1D17">{{ row.title }}</a>
               <span style="font-size:13px">{{ row.speaker }}</span>
@@ -140,11 +140,11 @@
           </sc-for>
 
           <div style="background:#FAF8F2; border-top:1px solid #E1DDCE; border-bottom:1px solid #E1DDCE; padding:16px 0">
-            <div style="display:grid; grid-template-columns:44px 1fr 150px 130px 92px 92px auto; gap:16px; padding:0 0 9px; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
-              <span></span><span>Reviewer</span><span>Relevance ×3</span><span>Depth ×2</span><span>Readiness</span><span>Weighted</span><span></span>
+            <div style="display:grid; grid-template-columns:44px 1fr 132px 118px 190px 84px auto; gap:16px; padding:0 0 9px; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+              <span></span><span>Reviewer</span><span>Relevance ×3</span><span>Depth ×2</span><span>Fit · not scored</span><span>Weighted</span><span></span>
             </div>
             <sc-for list="{{ expanded }}" as="e" hint-placeholder-count="3">
-              <div style="display:grid; grid-template-columns:44px 1fr 150px 130px 92px 92px auto; gap:16px; align-items:baseline; padding:11px 0; border-top:1px solid #EDE9DD">
+              <div style="display:grid; grid-template-columns:44px 1fr 132px 118px 190px 84px auto; gap:16px; align-items:baseline; padding:11px 0; border-top:1px solid #EDE9DD">
                 <span></span>
                 <div style="display:flex; flex-direction:column; gap:3px">
                   <span style="font-size:14px; font-weight:600">{{ e.who }}</span>
@@ -152,17 +152,23 @@
                 </div>
                 <span style="{{ e.s1Style }}">{{ e.s1 }}</span>
                 <span style="{{ e.s2Style }}">{{ e.s2 }}</span>
-                <span style="{{ e.s3Style }}">{{ e.s3 }}</span>
+                <span style="{{ e.pickStyle }}">{{ e.pick }}</span>
                 <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:700">{{ e.total }}</span>
                 <span></span>
               </div>
             </sc-for>
-            <div style="display:grid; grid-template-columns:44px 1fr 150px 130px 92px 92px auto; gap:16px; padding:12px 0 0; border-top:1px solid #E1DDCE">
+            <div style="display:grid; grid-template-columns:44px 1fr 132px 118px 190px 84px auto; gap:16px; padding:12px 0 0; border-top:1px solid #E1DDCE">
               <span></span>
               <span style="font-size:12px; color:#565A4B; line-height:1.5">One reviewer recused · their scores are excluded from the mean</span>
               <span></span><span></span>
-              <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#565A4B">Mean</span>
-              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:700">4.5</span>
+              <div style="display:flex; flex-direction:column; gap:3px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#565A4B">Strong 2</span>
+                <span style="font-size:11px; color:#565A4B; line-height:1.45">No average — read the spread</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#565A4B">Mean</span>
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:700">4.5</span>
+              </div>
               <span></span>
             </div>
           </div>
@@ -296,18 +302,27 @@
               <span style="font-size:11px; font-weight:600; color:#565A4B; white-space:nowrap">{{ c.weight }}</span>
             </div>
             <span style="font-size:13px; color:#565A4B; line-height:1.5">{{ c.hint }}</span>
-            <div style="display:flex; gap:7px">
-              <sc-for list="{{ c.scale }}" as="n" hint-placeholder-count="5">
-                <span style="{{ n.style }}">{{ n.value }}</span>
-              </sc-for>
-            </div>
+            <sc-if value="{{ c.isScale }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; gap:7px">
+                <sc-for list="{{ c.scale }}" as="n" hint-placeholder-count="5">
+                  <span style="{{ n.style }}">{{ n.value }}</span>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ c.isChoice }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; flex-direction:column; gap:7px">
+                <sc-for list="{{ c.choices }}" as="o" hint-placeholder-count="3">
+                  <span style="{{ o.style }}">{{ o.label }}</span>
+                </sc-for>
+              </div>
+            </sc-if>
           </div>
         </sc-for>
 
         <div style="padding:18px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:14px">
           <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
             <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Overall</span>
-            <span style="font-size:13px; color:#565A4B; line-height:1.5">Averaged by weight · not editable</span>
+            <span style="font-size:13px; color:#565A4B; line-height:1.5">Weighted mean of the two scored criteria · Fit is recorded, not averaged</span>
             <span style="font-size:12px; color:#565A4B; line-height:1.5">A plain average of 5, 4, 4 would be 4.33</span>
           </div>
           <span style="font-family:'Familjen Grotesk', sans-serif; font-size:34px; font-weight:700; letter-spacing:-0.03em; line-height:1">4.5</span>
@@ -474,20 +489,43 @@
             <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Scoring criteria</span>
             <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Scores average by weight</span>
           </div>
-          <div style="display:grid; grid-template-columns:20px 1fr 260px 132px 62px; gap:16px; padding:11px 0 8px; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
-            <span></span><span>Criterion</span><span>Guidance for reviewers · optional</span><span>Weight</span><span></span>
+          <div style="display:grid; grid-template-columns:20px 1fr 232px 128px 122px 62px; gap:16px; padding:11px 0 8px; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span></span><span>Criterion</span><span>Guidance for reviewers · optional</span><span>Type</span><span>Weight</span><span></span>
           </div>
           <sc-for list="{{ planCriteria }}" as="c" hint-placeholder-count="3">
-            <div style="display:grid; grid-template-columns:20px 1fr 260px 132px 62px; gap:16px; align-items:center; padding:9px 0; border-bottom:1px solid #E1DDCE">
+            <div style="display:grid; grid-template-columns:20px 1fr 232px 128px 122px 62px; gap:16px; align-items:center; padding:9px 0; border-bottom:1px solid #E1DDCE">
               <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
               <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">{{ c.label }}</div>
               <div style="{{ c.hintStyle }}">{{ c.hint }}</div>
-              <div style="display:flex; align-items:center; gap:9px">
-                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; width:62px; display:flex; align-items:center; justify-content:center; font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700">{{ c.weight }}</div>
-                <span style="font-size:13px; color:#565A4B; white-space:nowrap">{{ c.share }}</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 12px; font-size:14px">{{ c.typeLabel }} <span style="color:#565A4B; padding-left:6px">▾</span></div>
+              <div style="{{ c.weightWrap }}">
+                <div style="{{ c.weightBox }}">{{ c.weight }}</div>
+                <span style="{{ c.shareStyle }}">{{ c.share }}</span>
               </div>
               <a href="#" style="font-size:12px; font-weight:700; color:#565A4B">Remove</a>
             </div>
+            <sc-if value="{{ c.isChoice }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid; grid-template-columns:20px 1fr; gap:16px; padding:16px 0 18px; border-bottom:1px solid #E1DDCE">
+                <span></span>
+                <div style="display:flex; flex-direction:column; gap:8px; max-width:520px">
+                  <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px">
+                    <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Options · in the order reviewers see them</span>
+                    <span style="font-size:12px; color:#565A4B">3 of 6</span>
+                  </div>
+                  <sc-for list="{{ c.optionRows }}" as="o" hint-placeholder-count="3">
+                    <div style="display:grid; grid-template-columns:20px 1fr auto; gap:12px; align-items:center">
+                      <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
+                      <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:15px">{{ o.label }}</div>
+                      <span style="{{ o.delStyle }}">Remove</span>
+                    </div>
+                  </sc-for>
+                  <div style="display:flex; align-items:center; gap:14px; padding-top:2px">
+                    <a href="#" style="font-size:13px; font-weight:700">Add an option</a>
+                    <span style="font-size:12px; color:#565A4B; line-height:1.5">Two to six · results show how the picks fell, never an average</span>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
           </sc-for>
           <div style="display:flex; align-items:center; gap:16px; padding:14px 0 0">
             <a href="#" style="font-size:14px; font-weight:700">Add criterion</a>
@@ -567,17 +605,39 @@
           <div style="padding:14px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:8px">
             <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">{{ c.label }}</div>
             <div style="{{ c.hintStyleM }}">{{ c.hint }}</div>
+            <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 13px; font-size:14px">{{ c.typeLabel }} <span style="color:#565A4B; padding-left:6px">▾</span></div>
+            <sc-if value="{{ c.isChoice }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; flex-direction:column; gap:8px; padding-top:6px">
+                <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px">
+                  <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Options</span>
+                  <span style="font-size:12px; color:#565A4B">3 of 6</span>
+                </div>
+                <sc-for list="{{ c.optionRows }}" as="o" hint-placeholder-count="3">
+                  <div style="display:flex; align-items:center; gap:10px">
+                    <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
+                    <div style="flex:1; min-width:0; border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">{{ o.label }}</div>
+                    <span style="{{ o.delStyleM }}">Remove</span>
+                  </div>
+                </sc-for>
+                <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:inline-flex; align-items:center">Add an option</a>
+              </div>
+            </sc-if>
             <div style="display:flex; align-items:center; gap:10px">
-              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Weight</span>
-              <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:44px; width:58px; display:flex; align-items:center; justify-content:center; font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700">{{ c.weight }}</div>
-              <span style="font-size:13px; color:#565A4B">{{ c.share }}</span>
+              <sc-if value="{{ c.isScale }}" hint-placeholder-val="{{ true }}">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Weight</span>
+                <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:44px; width:58px; display:flex; align-items:center; justify-content:center; font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700">{{ c.weight }}</div>
+                <span style="font-size:13px; color:#565A4B">{{ c.share }}</span>
+              </sc-if>
+              <sc-if value="{{ c.isChoice }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:12px; color:#565A4B; line-height:1.5">Recorded as a spread · no weight</span>
+              </sc-if>
               <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; color:#565A4B; min-height:44px; display:flex; align-items:center">Remove</a>
             </div>
           </div>
         </sc-for>
         <div style="padding:14px 0 0; display:flex; flex-direction:column; gap:6px">
           <a href="#" style="font-size:14px; font-weight:700; min-height:44px; display:flex; align-items:center">Add criterion</a>
-          <span style="font-size:12px; color:#565A4B; line-height:1.5">3 of about 7 · scores average by weight</span>
+          <span style="font-size:12px; color:#565A4B; line-height:1.5">3 of about 7 · the two scored ones average by weight</span>
         </div>
         <div style="padding:18px 0 8px; border-bottom:2px solid #1B1D17; display:flex; align-items:baseline; justify-content:space-between">
           <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Reviewers</span>
@@ -630,13 +690,14 @@
         <section>
           <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
             <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Scoring criteria</span>
-            <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase">Locked — 7 reviews scored against these criteria</span>
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase">Locked — wording, type and weights fixed for this wave</span>
           </div>
           <sc-for list="{{ planCriteria }}" as="c" hint-placeholder-count="3">
-            <div style="display:grid; grid-template-columns:1fr 260px 132px; gap:16px; align-items:baseline; padding:14px 0; border-bottom:1px solid #E1DDCE">
+            <div style="display:grid; grid-template-columns:1fr 232px 128px 122px; gap:16px; align-items:baseline; padding:14px 0; border-bottom:1px solid #E1DDCE">
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ c.label }}</span>
               <span style="font-size:13px; color:#565A4B; line-height:1.5">{{ c.hint }}</span>
-              <span style="font-size:13px">Weight {{ c.weight }} · {{ c.share }}</span>
+              <span style="font-size:13px; color:#3F4237">{{ c.typeLabel }}</span>
+              <span style="font-size:13px">{{ c.frozenWeight }}</span>
             </div>
           </sc-for>
           <div style="margin-top:16px; background:#EFEBDF; border-radius:5px; padding:16px 18px; display:flex; align-items:center; gap:16px; flex-wrap:wrap">
@@ -674,21 +735,44 @@
             <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Scoring criteria</span>
             <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Scores average by weight</span>
           </div>
-          <div style="padding:14px 0 4px; font-size:14px; line-height:1.6; color:#3F4237; max-width:60ch">Three to start with. Rename them, change the weights, or remove any you don't want.</div>
-          <div style="display:grid; grid-template-columns:20px 1fr 260px 132px 62px; gap:16px; padding:11px 0 8px; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
-            <span></span><span>Criterion</span><span>Guidance for reviewers · optional</span><span>Weight</span><span></span>
+          <div style="padding:14px 0 4px; font-size:14px; line-height:1.6; color:#3F4237; max-width:60ch">Three to start with — two scored 1–5 and one recorded as a spread. Rename them, change the type or the weights, or remove any you don't want.</div>
+          <div style="display:grid; grid-template-columns:20px 1fr 232px 128px 122px 62px; gap:16px; padding:11px 0 8px; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span></span><span>Criterion</span><span>Guidance for reviewers · optional</span><span>Type</span><span>Weight</span><span></span>
           </div>
           <sc-for list="{{ defaultCriteria }}" as="c" hint-placeholder-count="3">
-            <div style="display:grid; grid-template-columns:20px 1fr 260px 132px 62px; gap:16px; align-items:center; padding:9px 0; border-bottom:1px solid #E1DDCE">
+            <div style="display:grid; grid-template-columns:20px 1fr 232px 128px 122px 62px; gap:16px; align-items:center; padding:9px 0; border-bottom:1px solid #E1DDCE">
               <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
               <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">{{ c.label }}</div>
               <div style="{{ c.hintStyle }}">{{ c.hint }}</div>
-              <div style="display:flex; align-items:center; gap:9px">
-                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; width:62px; display:flex; align-items:center; justify-content:center; font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700">{{ c.weight }}</div>
-                <span style="font-size:13px; color:#565A4B; white-space:nowrap">{{ c.share }}</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 12px; font-size:14px">{{ c.typeLabel }} <span style="color:#565A4B; padding-left:6px">▾</span></div>
+              <div style="{{ c.weightWrap }}">
+                <div style="{{ c.weightBox }}">{{ c.weight }}</div>
+                <span style="{{ c.shareStyle }}">{{ c.share }}</span>
               </div>
               <a href="#" style="font-size:12px; font-weight:700; color:#565A4B">Remove</a>
             </div>
+            <sc-if value="{{ c.isChoice }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid; grid-template-columns:20px 1fr; gap:16px; padding:16px 0 18px; border-bottom:1px solid #E1DDCE">
+                <span></span>
+                <div style="display:flex; flex-direction:column; gap:8px; max-width:520px">
+                  <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px">
+                    <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Options · in the order reviewers see them</span>
+                    <span style="font-size:12px; color:#565A4B">3 of 6</span>
+                  </div>
+                  <sc-for list="{{ c.optionRows }}" as="o" hint-placeholder-count="3">
+                    <div style="display:grid; grid-template-columns:20px 1fr auto; gap:12px; align-items:center">
+                      <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
+                      <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:15px">{{ o.label }}</div>
+                      <span style="{{ o.delStyle }}">Remove</span>
+                    </div>
+                  </sc-for>
+                  <div style="display:flex; align-items:center; gap:14px; padding-top:2px">
+                    <a href="#" style="font-size:13px; font-weight:700">Add an option</a>
+                    <span style="font-size:12px; color:#565A4B; line-height:1.5">Two to six · results show how the picks fell, never an average</span>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
           </sc-for>
           <div style="display:flex; align-items:center; gap:16px; padding:14px 0 0">
             <a href="#" style="font-size:14px; font-weight:700">Add criterion</a>
@@ -910,16 +994,51 @@ const HINT_M = 'border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2;
 const HINT_M_EMPTY = 'border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:14px; color:#565A4B';
 
 // weights are relative integers; the share beside each is computed, never typed
+const W_WRAP = 'display:flex; align-items:center; gap:9px';
+const W_BOX = "border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; width:62px; display:flex; align-items:center; justify-content:center; font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700";
+const W_NONE = 'display:flex; align-items:center; min-height:46px';
+const W_BOX_NONE = 'font-size:13px; color:#565A4B';
+const SHARE = 'font-size:13px; color:#565A4B; white-space:nowrap';
+const SHARE_NONE = 'display:none';
+
+// weights are relative integers over the SCALE criteria only; a Choice criterion is
+// excluded from the mean, so mapping its options to points would invent precision
 function crit(rows) {
-  const total = rows.reduce((sum, r) => sum + r[2], 0);
-  return rows.map(([label, hint, weight]) => ({
-    label,
-    hint: hint || 'Add a line of guidance',
-    hintStyle: hint ? HINT : HINT_EMPTY,
-    hintStyleM: hint ? HINT_M : HINT_M_EMPTY,
-    weight,
-    share: Math.round((weight / total) * 100) + '%',
-  }));
+  const total = rows.reduce((sum, r) => sum + (r[3] === 'choice' ? 0 : r[2]), 0);
+  return rows.map(([label, hint, weight, type, options]) => {
+    const isChoice = type === 'choice';
+    return {
+      label,
+      hint: hint || 'Add a line of guidance',
+      hintStyle: hint ? HINT : HINT_EMPTY,
+      hintStyleM: hint ? HINT_M : HINT_M_EMPTY,
+      isChoice,
+      isScale: !isChoice,
+      typeLabel: isChoice ? 'Choice' : 'Scale 1–5',
+      optionRows: (options ? options.split('\n') : []).map((label, i, all) => ({
+        label,
+        delStyle: all.length > 2 ? 'font-size:12px; font-weight:700; color:#4E5C31' : 'font-size:12px; font-weight:700; color:#8E8A7A',
+        delStyleM: all.length > 2
+          ? 'font-size:13px; font-weight:700; color:#4E5C31; min-height:44px; display:inline-flex; align-items:center'
+          : 'font-size:13px; font-weight:700; color:#8E8A7A; min-height:44px; display:inline-flex; align-items:center',
+      })),
+      weight: isChoice ? 'Not scored' : weight,
+      share: isChoice ? '' : Math.round((weight / total) * 100) + '%',
+      frozenWeight: isChoice ? 'Not scored' : 'Weight ' + weight + ' · ' + Math.round((weight / total) * 100) + '%',
+      weightWrap: isChoice ? W_NONE : W_WRAP,
+      weightBox: isChoice ? W_BOX_NONE : W_BOX,
+      shareStyle: isChoice ? SHARE_NONE : SHARE,
+    };
+  });
+}
+
+// a Choice criterion's options render as the same radio row the numeric scale uses,
+// so the fieldset/legend contract and the 44px target are unchanged
+const OPT_ON = "min-height:44px; display:flex; align-items:center; gap:11px; padding:0 14px; background:#4E5C31; color:#F7F9F0; border-radius:6px; font-size:15px; font-weight:700";
+const OPT_OFF = "min-height:44px; display:flex; align-items:center; gap:11px; padding:0 14px; border:1px solid #BAB6A6; border-radius:6px; font-size:15px; font-weight:500; color:#3F4237";
+
+function choice(options, picked) {
+  return options.map((label, i) => ({ label, style: i === picked ? OPT_ON : OPT_OFF }));
 }
 
 function scale(picked) {
@@ -930,6 +1049,7 @@ const MARK_DONE = 'font-size:11px; font-weight:700; letter-spacing:0.08em; text-
 const MARK_TODO = 'font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#1B1D17';
 const BTN_PRIMARY = 'background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; margin-top:2px';
 const BTN_QUIET = 'border:1px solid #BAB6A6; background:#EFEBDF; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; margin-top:2px';
+const PICK = 'font-size:13px; font-weight:600; color:#3F4237';
 const SC = 'font-family:\'Familjen Grotesk\', sans-serif; font-size:15px; font-weight:600';
 const SC_OUT = 'font-size:13px; color:#8E8A7A';
 
@@ -948,12 +1068,12 @@ class Component extends DCLogic {
       planCriteria: crit([
         ['Relevance to the track', 'Does it belong in AI Engineering?', 3],
         ['Depth and originality', 'New material, not a conference-circuit rerun', 2],
-        ['Speaker readiness', 'Past talks or video, if any', 1],
+        ['Fit for this track', 'Recorded as a spread, not averaged', 0, 'choice', 'Strong fit\nWeak fit\nNo fit'],
       ]),
       defaultCriteria: crit([
         ['Relevance', '', 1],
         ['Depth', '', 1],
-        ['Speaker readiness', '', 1],
+        ['Fit for this track', '', 0, 'choice', 'Strong fit\nWeak fit\nNo fit'],
       ]),
       distributePreview: [
         { name: 'Sam Whitfield', track: 'AI Engineering', delta: '6 → 8 talks', deltaStyle: 'font-size:13px; font-weight:600' },
@@ -988,9 +1108,9 @@ class Component extends DCLogic {
         { name: 'Ines Duarte', track: 'Developer Experience', done: '3 of 6', flag: '3 to go', flagStyle: FLAG_OK },
       ],
       expanded: [
-        { who: 'Sam Whitfield', comment: 'Strong practical content and a clear narrative arc.', s1: '5', s1Style: SC, s2: '5', s2Style: SC, s3: '4', s3Style: SC, total: '4.8' },
-        { who: 'Ana Petrov', comment: 'Useful, though the second half repeats a 2026 talk.', s1: '4', s1Style: SC, s2: '4', s2Style: SC, s3: '5', s3Style: SC, total: '4.2' },
-        { who: 'Devin Cole', comment: 'Recused — works with the speaker.', s1: '—', s1Style: SC_OUT, s2: '—', s2Style: SC_OUT, s3: '—', s3Style: SC_OUT, total: '—' },
+        { who: 'Sam Whitfield', comment: 'Strong practical content and a clear narrative arc.', s1: '5', s1Style: SC, s2: '5', s2Style: SC, pick: 'Strong fit', pickStyle: PICK, total: '5.0' },
+        { who: 'Ana Petrov', comment: 'Useful, though the second half repeats a 2026 talk.', s1: '4', s1Style: SC, s2: '4', s2Style: SC, pick: 'Strong fit', pickStyle: PICK, total: '4.0' },
+        { who: 'Devin Cole', comment: 'Recused — I work with this speaker.', s1: '—', s1Style: SC_OUT, s2: '—', s2Style: SC_OUT, pick: '—', pickStyle: SC_OUT, total: '—' },
       ],
       results: [
         { rank: '1', title: 'Taming 40-Minute CI: Incremental Builds at Monorepo Scale', speaker: 'Priya Raman', track: 'Platform & Infra', score: '4.6', count: '3 reviews' },
@@ -1005,9 +1125,9 @@ class Component extends DCLogic {
         { label: 'Accessibility needs', value: 'None' },
       ],
       criteria: [
-        { label: 'Relevance to the track', hint: 'Does it belong in AI Engineering?', weight: 'Weight 3 · 50%', scale: scale(5) },
-        { label: 'Depth and originality', hint: 'New material, not a conference-circuit rerun', weight: 'Weight 2 · 33%', scale: scale(4) },
-        { label: 'Speaker readiness', hint: 'Past talks or video, if any', weight: 'Weight 1 · 17%', scale: scale(4) },
+        { label: 'Relevance to the track', hint: 'Does it belong in AI Engineering?', weight: 'Weight 3 · 60%', isScale: true, scale: scale(5) },
+        { label: 'Depth and originality', hint: 'New material, not a conference-circuit rerun', weight: 'Weight 2 · 40%', isScale: true, scale: scale(4) },
+        { label: 'Fit for this track', hint: 'Not averaged — the committee reads the spread', weight: 'Not scored', isChoice: true, choices: choice(['Strong fit', 'Weak fit', 'No fit'], 0) },
       ],
     };
   }

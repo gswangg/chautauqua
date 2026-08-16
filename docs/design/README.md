@@ -95,7 +95,7 @@ Nav underline uses `box-shadow: inset 0 -2px 0 #4E5C31`, **not** `border-bottom`
 
 ## Open decisions
 
-**DEC-382 vs. the home page.** `src/routes/tools.css.ts` records that the three operator surfaces (`GET /`, `/docs/api`, `/dev/mailbox`) "are chrome, not designed screens" sharing one `TOOLS_CSS` module. This bundle designs `GET /` as a real public surface, which revises that decision for `/` only — `/docs/api` and `/dev/mailbox` stay chrome. The home page should draw on the public CSS family (`public.css.ts`), not `TOOLS_CSS`.
+**DEC-382 vs. the home page.** `src/routes/tools.css.ts` records that the three operator surfaces (`GET /`, `/docs/api`, `/dev/mailbox`) "are chrome, not designed screens" sharing one `TOOLS_CSS` module. This bundle designs `GET /` as a real public surface, which revises that decision for `/` only — `/docs/api` and `/dev/mailbox` stay chrome — including under the new `/docs` site, which links out to the API reference as a leaving link rather than absorbing it. The home page should draw on the public CSS family (`public.css.ts`), not `TOOLS_CSS`.
 
 **`GET /` is an anonymous event hub, and needs more data than it reads today.** Decisions taken: one org per deployment, so the hub is simply "our events"; a signed-in organiser or reviewer **redirects to `/admin`** and a speaker to `/portal`, so this page only ever renders for anonymous visitors — all of which is new work. `GET /` does not read `c.var.auth` today; it renders the same landing page for everyone. The redirects that already exist are on `/admin` (anonymous → `/login`, speaker → `/portal`) and do not fire on `/`; and it lists **only events with an open CFP or a published programme** — never an unannounced future event, since `/` has no auth.
 
@@ -130,6 +130,7 @@ All 33 routes in `app/src/routeManifest.ts` are covered. File → routes:
 
 | File | Routes / views |
 |---|---|
+| `Chautauqua Docs.dc.html` | `/docs` — index, article, phone article, screenshot rules. **New route.** |
 | `Chautauqua Home.dc.html` | `GET /` — the org's event hub, anonymous only: three states (full hub, between cycles, fresh deploy), each at 900 and 390 |
 | `Chautauqua Overview.dc.html` | `/admin/overview` (desktop + phone), New event modal |
 | `Chautauqua Submissions.dc.html` | `/admin/submissions`, `/admin/submissions/:id`, `/admin/submissions/forms` (+ phone), New submission and Save-view modals |
@@ -464,7 +465,7 @@ One meaning each, consistent across all files: 47 submissions · 23 accepted sub
 
 ## Open decisions
 
-**DEC-382 vs. the home page.** `src/routes/tools.css.ts` records that the three operator surfaces (`GET /`, `/docs/api`, `/dev/mailbox`) "are chrome, not designed screens" sharing one `TOOLS_CSS` module. This bundle designs `GET /` as a real public surface, which revises that decision for `/` only — `/docs/api` and `/dev/mailbox` stay chrome. The home page should draw on the public CSS family (`public.css.ts`), not `TOOLS_CSS`.
+**DEC-382 vs. the home page.** `src/routes/tools.css.ts` records that the three operator surfaces (`GET /`, `/docs/api`, `/dev/mailbox`) "are chrome, not designed screens" sharing one `TOOLS_CSS` module. This bundle designs `GET /` as a real public surface, which revises that decision for `/` only — `/docs/api` and `/dev/mailbox` stay chrome — including under the new `/docs` site, which links out to the API reference as a leaving link rather than absorbing it. The home page should draw on the public CSS family (`public.css.ts`), not `TOOLS_CSS`.
 
 **`GET /` is an anonymous event hub, and needs more data than it reads today.** Decisions taken: one org per deployment, so the hub is simply "our events"; a signed-in organiser or reviewer **redirects to `/admin`** and a speaker to `/portal`, so this page only ever renders for anonymous visitors — all of which is new work. `GET /` does not read `c.var.auth` today; it renders the same landing page for everyone. The redirects that already exist are on `/admin` (anonymous → `/login`, speaker → `/portal`) and do not fire on `/`; and it lists **only events with an open CFP or a published programme** — never an unannounced future event, since `/` has no auth.
 
@@ -500,6 +501,7 @@ The screens are correct as *design*; the numbers on them are illustrative until 
 | File | Shows |
 |---|---|
 | `01-overview.png` | Overview desktop + phone, New event modal |
+| `14-docs.png` | Docs — index, article, phone article, element library, screenshot rules |
 | `12-home.png` | Home — three states at both widths, plus the design-notes panel |
 | `02-submissions.png` | Table, submission detail (desktop + phone), form builder (desktop + phone), 2 modals |
 | `03-review.png` | Organiser view, reviewer scorecard, reviewer queue, plan editor (desktop + phone), criteria frozen, new plan |
