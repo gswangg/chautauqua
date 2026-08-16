@@ -78,6 +78,61 @@ describe('BreaksPanel', () => {
     expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
   });
 
+  // frame 06--02: the section head names the selected day's weekday in
+  // full, with the mandated caption directly beneath it.
+  it("heads the section 'Breaks on <weekday>' with the 'They block every room at once' caption", () => {
+    // DAY = '2026-03-02', a Monday.
+    render(
+      <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Breaks on Monday' })).toBeInTheDocument();
+    expect(screen.getByText('They block every room at once')).toBeInTheDocument();
+  });
+
+  // frame 06--02: the day's break rows read label(+location) / start /
+  // "<N> min" / actions, not one concatenated meta string.
+  it('renders each break row as label(+location), start time, "<N> min", then Edit/Remove', () => {
+    render(
+      <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />,
+    );
+
+    const row = screen.getByText('12:00').closest('.chq-breaks-row') as HTMLElement;
+    expect(within(row).getByText('Lunch · Foyer')).toBeInTheDocument();
+    expect(within(row).getByText('12:00')).toBeInTheDocument();
+    expect(within(row).getByText('60 min')).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+  });
+
+  // frame 06--02: the add row's second mandated copy line, verbatim.
+  it("shows the outside-the-window hint verbatim above the add row's primary", () => {
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} />);
+
+    expect(
+      screen.getByText(
+        "A break outside the day's window is kept but flagged — the grid shows it greyed rather than dropping it.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add the break' })).toBeInTheDocument();
+  });
+
+  // frame 06--02: Label/Starts/Minutes are the three drawn tracks; Location
+  // is app-only and sits on its own line beneath them.
+  it('renders the add row with Label/Starts/Minutes as the drawn grid and Location on its own line', () => {
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} />);
+
+    const grid = document.querySelector('.chq-breaks-add-grid') as HTMLElement;
+    expect(within(grid).getByLabelText('Label')).toBeInTheDocument();
+    expect(within(grid).getByLabelText('Starts')).toBeInTheDocument();
+    expect(within(grid).getByLabelText('Minutes')).toBeInTheDocument();
+    expect(within(grid).queryByLabelText('Location · optional')).not.toBeInTheDocument();
+
+    const locationField = screen.getByLabelText('Location · optional').closest('.chq-breaks-field-location');
+    expect(locationField).not.toBeNull();
+    expect(grid.contains(locationField)).toBe(false);
+  });
+
   it('Add a break POSTs numeric startMin/durationMin parsed from the inputs and the selected day, then calls onChanged', async () => {
     apiPostMock.mockResolvedValueOnce(breakRow());
     const onChanged = vi.fn();
@@ -87,9 +142,9 @@ describe('BreaksPanel', () => {
     // w48-b: the label suffix is now the shared OPTIONAL_SUFFIX (' · optional')
     // rather than the hand-typed '(optional)' literal (DEC-917 amendment).
     fireEvent.change(screen.getByLabelText('Location · optional'), { target: { value: 'Lobby' } });
-    fireEvent.change(screen.getByLabelText('Start time'), { target: { value: '10:15' } });
-    fireEvent.change(screen.getByLabelText('Duration (min)'), { target: { value: '15' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add a break' }));
+    fireEvent.change(screen.getByLabelText('Starts'), { target: { value: '10:15' } });
+    fireEvent.change(screen.getByLabelText('Minutes'), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add the break' }));
 
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
     expect(apiPostMock).toHaveBeenCalledWith(`/events/${EVENT_ID}/breaks`, {
@@ -197,12 +252,12 @@ describe('BreaksPanel', () => {
     render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} />);
 
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Coffee' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add a break' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add the break' }));
 
     const message = await screen.findByText('must be an integer between 0 and 1439');
     expect(message).toBeInTheDocument();
     // Beside the start-time input's field group, not a page-level banner.
-    const startField = screen.getByLabelText('Start time').closest('.chq-breaks-field');
+    const startField = screen.getByLabelText('Starts').closest('.chq-breaks-field');
     expect(startField).toContainElement(message);
     expect(screen.queryByRole('alert', { name: /Invalid break input/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Invalid break input')).not.toBeInTheDocument();
@@ -261,7 +316,7 @@ describe('BreaksPanel', () => {
       render(<BreaksPanel eventId={EVENT_ID} day={null} breaks={[]} outsideWindow={[stranded]} onChanged={() => {}} />);
 
       expect(screen.getByText('Outside the event dates')).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Add a break' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Add the break' })).not.toBeInTheDocument();
       expect(screen.queryByLabelText('Label')).not.toBeInTheDocument();
     });
   });

@@ -1203,7 +1203,7 @@ describe('AgendaPage breaks disclosure (DEC-021/DEC-900 amendment, wave 72)', ()
 
     const dialog = screen.getByRole('dialog', { name: 'Breaks' });
     expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: 'Add a break' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Add the break' })).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog', { name: 'Breaks' })).toBeNull();

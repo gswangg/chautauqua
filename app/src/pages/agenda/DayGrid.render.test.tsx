@@ -208,4 +208,46 @@ describe('DayGrid breaks (DEC-021 amendment, w67-b)', () => {
     );
     expect(container.querySelector('.chq-agenda-break-band')).toBeNull();
   });
+
+  // w61-d: a break whose window falls outside the day's grid is kept, not
+  // dropped -- clamped to the visible rows and flagged, exactly as the
+  // add-row's copy promises.
+  it('clamps a break that starts before the grid to the first visible row and flags it', () => {
+    const { container } = render(
+      <DayGrid
+        {...BASE_PROPS}
+        placed={[]}
+        conflicts={[]}
+        breaks={[breakRow({ startMin: 480, durationMin: 90 })]} // 8:00-9:30, grid starts at 9:00
+      />,
+    );
+    const band = container.querySelector('.chq-agenda-break-band') as HTMLElement;
+    expect(band).not.toBeNull();
+    expect(band.classList.contains('chq-agenda-break-band-flagged')).toBe(true);
+    expect(band.textContent).toContain("outside the day's hours");
+    const expectedRow = String(minutesToGridRow(BASE_PROPS.dayStartMin, BASE_PROPS.dayStartMin, BASE_PROPS.gridMin));
+    expect(band.style.gridRow.split(' / ')[0]).toBe(expectedRow);
+  });
+
+  it('clamps a break that runs past the grid end to the last visible row and flags it', () => {
+    const { container } = render(
+      <DayGrid
+        {...BASE_PROPS}
+        placed={[]}
+        conflicts={[]}
+        breaks={[breakRow({ startMin: 1060, durationMin: 60 })]} // ends at 1120, grid ends at 1080
+      />,
+    );
+    const band = container.querySelector('.chq-agenda-break-band') as HTMLElement;
+    expect(band.classList.contains('chq-agenda-break-band-flagged')).toBe(true);
+    const expectedRowEnd = String(minutesToGridRow(BASE_PROPS.dayEndMin, BASE_PROPS.dayStartMin, BASE_PROPS.gridMin));
+    expect(band.style.gridRow.split(' / ')[1]).toBe(expectedRowEnd);
+  });
+
+  it('does not flag a break entirely inside the day window', () => {
+    const { container } = render(<DayGrid {...BASE_PROPS} placed={[]} conflicts={[]} breaks={[breakRow()]} />);
+    const band = container.querySelector('.chq-agenda-break-band') as HTMLElement;
+    expect(band.classList.contains('chq-agenda-break-band-flagged')).toBe(false);
+    expect(band.textContent).not.toContain("outside the day's hours");
+  });
 });

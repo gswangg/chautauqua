@@ -91,6 +91,28 @@ function minutesToTimeInput(startMin: number): string {
 
 const EMPTY_FORM = { label: '', location: '', startTime: '', durationMin: '' };
 
+// frame 06--02 heads the section "Breaks on Tuesday" -- the full weekday
+// name, not the abbreviated one formatDayLabel renders inline ("Tue 12
+// May") for the outside-window rows. This is a lookup, not a second date
+// formatter: formatDayLabel still owns the one weekday computation (from
+// the literal Y/M/D triple, never a UTC-reinterpreted `new Date(string)`);
+// this just spells its first token out in full.
+const WEEKDAY_FULL_NAMES: Record<string, string> = {
+  Sun: 'Sunday',
+  Mon: 'Monday',
+  Tue: 'Tuesday',
+  Wed: 'Wednesday',
+  Thu: 'Thursday',
+  Fri: 'Friday',
+  Sat: 'Saturday',
+};
+
+function weekdayOf(day: string | null): string {
+  if (!day) return '';
+  const [short] = formatDayLabel(day).split(' ');
+  return (short && WEEKDAY_FULL_NAMES[short]) || short || '';
+}
+
 /** Quiet Breaks section: list for the selected day, an inline add row, and
  * a tertiary Remove per row. No optimistic path (task scope) — every write
  * asks the parent (via onChanged) to refetch the day's shared list. */
@@ -294,8 +316,9 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
 
       {day !== null && (
         <>
-          <div className="chq-section-head">
-            <h2 className="chq-section-label">Breaks</h2>
+          <div className="chq-section-head chq-breaks-section-head">
+            <h2 className="chq-section-label">Breaks on {weekdayOf(day)}</h2>
+            <span className="chq-breaks-section-sub">They block every room at once</span>
           </div>
 
           <ul className="chq-breaks-list">
@@ -306,29 +329,31 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
                   {renderEditForm(b)}
                 </li>
               ) : (
-                <li key={b.id} className="chq-breaks-row">
-                  <span className="chq-breaks-row-time">{clockHHMM(b.startMin)}</span>
-                  <span className="chq-breaks-row-meta">
+                <li key={b.id} className="chq-breaks-row chq-breaks-row-grid">
+                  <span className="chq-breaks-row-label">
                     {b.label}
                     {b.location ? ` · ${b.location}` : ''}
-                    {` · ${b.durationMin} min`}
                   </span>
-                  <button
-                    type="button"
-                    className="chq-btn chq-btn-tertiary"
-                    onClick={() => startEdit(b)}
-                    disabled={removingId === b.id}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="chq-btn chq-btn-tertiary"
-                    onClick={() => setPendingRemove(b)}
-                    disabled={removingId === b.id}
-                  >
-                    Remove
-                  </button>
+                  <span className="chq-breaks-row-time">{clockHHMM(b.startMin)}</span>
+                  <span className="chq-breaks-row-duration">{`${b.durationMin} min`}</span>
+                  <span className="chq-breaks-row-actions">
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-tertiary"
+                      onClick={() => startEdit(b)}
+                      disabled={removingId === b.id}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-tertiary"
+                      onClick={() => setPendingRemove(b)}
+                      disabled={removingId === b.id}
+                    >
+                      Remove
+                    </button>
+                  </span>
                 </li>
               ),
             )}
@@ -391,23 +416,60 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
 
       {day !== null && (
       <div className="chq-breaks-add-row">
-        <div className="chq-breaks-field">
-          <label htmlFor="chq-break-label">Label</label>
-          <input
-            id="chq-break-label"
-            className="chq-input"
-            maxLength={MAX_NAME_LENGTH}
-            placeholder="Lunch"
-            value={form.label}
-            onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
-          />
-          {fieldErrors.label && (
-            <span role="alert" className="chq-field-error">
-              {fieldErrors.label}
-            </span>
-          )}
+        <div className="chq-breaks-add-grid">
+          <div className="chq-breaks-field">
+            <label htmlFor="chq-break-label">Label</label>
+            <input
+              id="chq-break-label"
+              className="chq-input"
+              maxLength={MAX_NAME_LENGTH}
+              placeholder="Lunch"
+              value={form.label}
+              onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
+            />
+            {fieldErrors.label && (
+              <span role="alert" className="chq-field-error">
+                {fieldErrors.label}
+              </span>
+            )}
+          </div>
+          <div className="chq-breaks-field">
+            <label htmlFor="chq-break-start">Starts</label>
+            <input
+              id="chq-break-start"
+              className="chq-input"
+              type="time"
+              value={form.startTime}
+              onChange={(e) => setForm((prev) => ({ ...prev, startTime: e.target.value }))}
+            />
+            {fieldErrors.startMin && (
+              <span role="alert" className="chq-field-error">
+                {fieldErrors.startMin}
+              </span>
+            )}
+          </div>
+          <div className="chq-breaks-field">
+            <label htmlFor="chq-break-duration">Minutes</label>
+            <input
+              id="chq-break-duration"
+              className="chq-input"
+              type="number"
+              min={1}
+              value={form.durationMin}
+              onChange={(e) => setForm((prev) => ({ ...prev, durationMin: e.target.value }))}
+            />
+            {fieldErrors.durationMin && (
+              <span role="alert" className="chq-field-error">
+                {fieldErrors.durationMin}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="chq-breaks-field">
+        {/* Location isn't in the drawn frame (schedule_break has the column,
+           the frame doesn't draw it) -- app-only, so it gets its own
+           full-width line beneath the three drawn tracks rather than a
+           fourth column squeezed into the grid. */}
+        <div className="chq-breaks-field chq-breaks-field-location">
           <label htmlFor="chq-break-location">
             Location
             <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
@@ -421,41 +483,16 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
             onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
           />
         </div>
-        <div className="chq-breaks-field">
-          <label htmlFor="chq-break-start">Start time</label>
-          <input
-            id="chq-break-start"
-            className="chq-input"
-            type="time"
-            value={form.startTime}
-            onChange={(e) => setForm((prev) => ({ ...prev, startTime: e.target.value }))}
-          />
-          {fieldErrors.startMin && (
-            <span role="alert" className="chq-field-error">
-              {fieldErrors.startMin}
-            </span>
-          )}
+        <span className="chq-breaks-outside-hint">
+          A break outside the day&apos;s window is kept but flagged — the grid shows it greyed rather than dropping
+          it.
+        </span>
+        <div className="chq-breaks-add-actions">
+          <button type="button" className="chq-btn chq-btn-primary" onClick={() => void handleAdd()} disabled={adding}>
+            {adding ? 'Adding…' : 'Add the break'}
+          </button>
+          <span className="chq-breaks-cap-hint">Up to {MAX_BREAKS_PER_EVENT} breaks per event</span>
         </div>
-        <div className="chq-breaks-field">
-          <label htmlFor="chq-break-duration">Duration (min)</label>
-          <input
-            id="chq-break-duration"
-            className="chq-input"
-            type="number"
-            min={1}
-            value={form.durationMin}
-            onChange={(e) => setForm((prev) => ({ ...prev, durationMin: e.target.value }))}
-          />
-          {fieldErrors.durationMin && (
-            <span role="alert" className="chq-field-error">
-              {fieldErrors.durationMin}
-            </span>
-          )}
-        </div>
-        <button type="button" className="chq-btn chq-btn-primary" onClick={() => void handleAdd()} disabled={adding}>
-          {adding ? 'Adding…' : 'Add a break'}
-        </button>
-        <span className="chq-breaks-cap-hint">Up to {MAX_BREAKS_PER_EVENT} breaks per event</span>
         {fieldErrors.day && (
           <span role="alert" className="chq-field-error">
             {fieldErrors.day}
