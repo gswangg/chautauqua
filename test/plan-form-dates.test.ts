@@ -13,6 +13,14 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 const ORG_A = "org-1";
 const ORGANIZER: AuthInfo = { userId: "u1", role: "organizer", orgId: ORG_A };
 
+// DEC-522: forms.ts/shared.ts's date doors now require a UTC-midnight day
+// label, not any ms-epoch integer -- these fixtures mint day labels the
+// same way the doors expect, preserving the original numeric ordering
+// (DAY_1 < DAY_2 < DAY_5).
+const DAY_1 = Date.UTC(2027, 0, 1);
+const DAY_2 = Date.UTC(2027, 0, 2);
+const DAY_5 = Date.UTC(2027, 0, 5);
+
 // ---------------------------------------------------------------------
 // Forms surface
 // ---------------------------------------------------------------------
@@ -203,7 +211,7 @@ describe("DEC-517: PATCH /api/v1/forms/:formId date validation", () => {
   });
 
   it("closeDate < openDate (both in body) -> 400 on both fields", async () => {
-    const res = await patchForm({ openDate: 2_000, closeDate: 1_000 });
+    const res = await patchForm({ openDate: DAY_2, closeDate: DAY_1 });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
     expect(body.error.fields?.openDate).toBeTruthy();
@@ -211,8 +219,8 @@ describe("DEC-517: PATCH /api/v1/forms/:formId date validation", () => {
   });
 
   it("only closeDate sent, lands before the STORED openDate -> 400 (merged-state case)", async () => {
-    form = makeForm({ openDate: 5_000 });
-    const res = await patchForm({ closeDate: 1_000 });
+    form = makeForm({ openDate: DAY_5 });
+    const res = await patchForm({ closeDate: DAY_1 });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
     expect(body.error.fields?.openDate).toBeTruthy();
@@ -220,19 +228,27 @@ describe("DEC-517: PATCH /api/v1/forms/:formId date validation", () => {
   });
 
   it("equal dates -> 200 OK", async () => {
-    const res = await patchForm({ openDate: 1_000, closeDate: 1_000 });
+    const res = await patchForm({ openDate: DAY_1, closeDate: DAY_1 });
     expect(res.status).toBe(200);
   });
 
   it("openDate explicitly null, closeDate set -> 200 OK", async () => {
-    form = makeForm({ openDate: 5_000 });
-    const res = await patchForm({ openDate: null, closeDate: 1_000 });
+    form = makeForm({ openDate: DAY_5 });
+    const res = await patchForm({ openDate: null, closeDate: DAY_1 });
     expect(res.status).toBe(200);
   });
 
   it("closeDate explicitly null, openDate set -> 200 OK", async () => {
-    const res = await patchForm({ openDate: 1_000, closeDate: null });
+    const res = await patchForm({ openDate: DAY_1, closeDate: null });
     expect(res.status).toBe(200);
+  });
+
+  it("DEC-522: a sub-day instant (not UTC-midnight) -> 400 on openDate", async () => {
+    const res = await patchForm({ openDate: DAY_1 + 60_000 });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.openDate).toBeTruthy();
+    expect(form.openDate).toBeNull(); // repo.patchForm never called
   });
 });
 
@@ -245,7 +261,7 @@ describe("DEC-517: POST /api/v1/events/:eventId/plans date validation", () => {
   });
 
   it("closeDate < openDate -> 400 on both fields", async () => {
-    const res = await postPlan({ openDate: 2_000, closeDate: 1_000 });
+    const res = await postPlan({ openDate: DAY_2, closeDate: DAY_1 });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
     expect(body.error.fields?.openDate).toBeTruthy();
@@ -253,12 +269,12 @@ describe("DEC-517: POST /api/v1/events/:eventId/plans date validation", () => {
   });
 
   it("equal dates -> 201 OK", async () => {
-    const res = await postPlan({ openDate: 1_000, closeDate: 1_000 });
+    const res = await postPlan({ openDate: DAY_1, closeDate: DAY_1 });
     expect(res.status).toBe(201);
   });
 
   it("either side null -> 201 OK", async () => {
-    const res = await postPlan({ openDate: null, closeDate: 1_000 });
+    const res = await postPlan({ openDate: null, closeDate: DAY_1 });
     expect(res.status).toBe(201);
   });
 });
@@ -272,7 +288,7 @@ describe("DEC-517: PATCH /api/v1/plans/:id date validation", () => {
   });
 
   it("closeDate < openDate (both in body) -> 400 on both fields", async () => {
-    const res = await patchPlan({ openDate: 2_000, closeDate: 1_000 });
+    const res = await patchPlan({ openDate: DAY_2, closeDate: DAY_1 });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
     expect(body.error.fields?.openDate).toBeTruthy();
@@ -280,8 +296,8 @@ describe("DEC-517: PATCH /api/v1/plans/:id date validation", () => {
   });
 
   it("only closeDate sent, lands before the STORED openDate -> 400 (merged-state case)", async () => {
-    plan = makePlan({ openDate: 5_000 });
-    const res = await patchPlan({ closeDate: 1_000 });
+    plan = makePlan({ openDate: DAY_5 });
+    const res = await patchPlan({ closeDate: DAY_1 });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
     expect(body.error.fields?.openDate).toBeTruthy();
@@ -289,13 +305,20 @@ describe("DEC-517: PATCH /api/v1/plans/:id date validation", () => {
   });
 
   it("equal dates -> 200 OK", async () => {
-    const res = await patchPlan({ openDate: 1_000, closeDate: 1_000 });
+    const res = await patchPlan({ openDate: DAY_1, closeDate: DAY_1 });
     expect(res.status).toBe(200);
   });
 
   it("either side explicitly null -> 200 OK", async () => {
-    plan = makePlan({ openDate: 5_000 });
-    const res = await patchPlan({ openDate: null, closeDate: 1_000 });
+    plan = makePlan({ openDate: DAY_5 });
+    const res = await patchPlan({ openDate: null, closeDate: DAY_1 });
     expect(res.status).toBe(200);
+  });
+
+  it("DEC-522: a sub-day instant (not UTC-midnight) -> 400 on closeDate", async () => {
+    const res = await patchPlan({ closeDate: DAY_1 + 60_000 });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.closeDate).toBeTruthy();
   });
 });

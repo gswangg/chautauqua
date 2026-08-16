@@ -15,7 +15,7 @@ import { FORM_FIELD_ROLES } from "../../forms/types";
 import * as repo from "../../server/repo/forms";
 import type { FormFieldRow } from "../../server/repo/forms";
 import { listTracksForEvent } from "../../server/repo/events";
-import { isEpochMs, isEpochOrderValid } from "./validators"; // DEC-517
+import { isDayLabelMs, isEpochOrderValid } from "./validators"; // DEC-517/DEC-522
 import { DEC_300 } from "../../decisions";
 import { countOf } from "../../domain/count-copy";
 import { MAX_FORM_FIELDS } from "../../domain/form-copy";
@@ -105,15 +105,15 @@ formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c)
     }
   }
   if (body.openDate !== undefined) {
-    if (body.openDate !== null && !isEpochMs(body.openDate)) {
-      errors.openDate = "must be a ms-epoch integer";
+    if (body.openDate !== null && !isDayLabelMs(body.openDate)) {
+      errors.openDate = "must be a UTC-midnight day label (ms-epoch multiple of 86400000)"; // DEC-522
     } else {
       patch.openDate = body.openDate;
     }
   }
   if (body.closeDate !== undefined) {
-    if (body.closeDate !== null && !isEpochMs(body.closeDate)) {
-      errors.closeDate = "must be a ms-epoch integer";
+    if (body.closeDate !== null && !isDayLabelMs(body.closeDate)) {
+      errors.closeDate = "must be a UTC-midnight day label (ms-epoch multiple of 86400000)"; // DEC-522
     } else {
       patch.closeDate = body.closeDate;
     }

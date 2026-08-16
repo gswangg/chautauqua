@@ -30,7 +30,7 @@ import {
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
-import { isEpochMs, isEpochOrderValid } from "../api/validators"; // DEC-517
+import { isDayLabelMs, isEpochMs, isEpochOrderValid } from "../api/validators"; // DEC-517/DEC-522
 import { DEC_676, DEC_703 } from "../../decisions";
 
 void DEC_676; // parseCriteriaList's guidance passthrough below
@@ -294,14 +294,16 @@ export function parseMaxEvaluations(body: Record<string, unknown>, errors: Recor
   return raw as number;
 }
 
-/** DEC-509: openDate/closeDate must be a ms-epoch integer, or explicitly
- * null (unset). Absent means "unchanged" on PATCH / "not set" on POST. */
+/** DEC-509/DEC-522: openDate/closeDate must be a UTC-midnight day label
+ * (isDayLabelMs), or explicitly null (unset). Absent means "unchanged" on
+ * PATCH / "not set" on POST. Mirrors the CFP form door (forms.ts) exactly,
+ * per DEC-517's whole point: refuse identically on both surfaces. */
 export function parseEpochMs(body: Record<string, unknown>, key: string, errors: Record<string, string>): number | null | undefined {
   const raw = body[key];
   if (raw === undefined) return undefined;
   if (raw === null) return null;
-  if (!isEpochMs(raw)) {
-    errors[key] = "must be a ms-epoch integer, or null";
+  if (!isDayLabelMs(raw)) {
+    errors[key] = "must be a UTC-midnight day label (ms-epoch multiple of 86400000)"; // DEC-522
     return undefined;
   }
   return raw;
