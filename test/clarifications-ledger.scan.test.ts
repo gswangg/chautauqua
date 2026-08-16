@@ -150,7 +150,7 @@ const LEDGER: LedgerEntry[] = [
   {
     key: "minimum-review-workflow",
     status: "honored",
-    reason: "unreviewed -> approve/maybe/deny is the minimum review workflow.",
+    reason: "no verdict recorded -> approve/maybe/deny is the minimum review workflow status ladder.",
     honored: {
       file: "src/domain/status.ts",
       literal: "export const SUBMISSION_STATUSES",
