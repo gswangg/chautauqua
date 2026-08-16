@@ -186,14 +186,60 @@ export async function runAutoSchedule(
     },
   );
 
-  // DEC-615 (wave 43 amendment): both unplacedReasons and payload.summary
-  // unplaced now derive from the SAME loadAcceptedSessions read and the SAME
-  // isDayWithinEventRange predicate, so after a run they must agree exactly
-  // -- a divergence is a bug, not a display quirk. Fail loudly.
+  // DEC-615 (wave 47 amendment): payload is a SECOND read taken after the
+  // write, over a population any concurrent accept/unaccept/slot edit can
+  // change. A length comparison against that second read let two
+  // compensating differences cancel silently. Reconcile by SET, scoped to
+  // this run's OWN snapshot (accepted, read above) -- an id outside that
+  // snapshot diverging is a benign concurrent edit, not an accounting bug.
+  const snapshotIds = new Set(accepted.map((s) => s.submissionId));
+  const payloadUnplacedIds = new Set(payload.unscheduled.map((s) => s.submissionId));
+  const reasonIds = new Set(unplacedReasons.map((u) => u.submissionId));
+
+  for (const id of payloadUnplacedIds) {
+    if (reasonIds.has(id)) continue;
+    if (snapshotIds.has(id)) {
+      // This id was part of the run's own read -- the reconciliation logic
+      // itself has a genuine accounting bug. Fail loudly.
+      throw new Error(
+        `runAutoSchedule: submission ${id} is unplaced in payload and was part of this run's ` +
+          `own snapshot, but carries no unplaced reason -- reason accounting has diverged from payload classification`,
+      );
+    }
+    // Not in this run's snapshot: another producer added/moved this session
+    // into the unplaced population mid-run. Report it, don't throw.
+    const durationMin = params.defaultDurationMin;
+    unplacedReasons.push({
+      submissionId: id,
+      reason: "changed_during_run",
+      durationMin,
+      detail: describeUnplaced(
+        "changed_during_run",
+        unplacedLabels,
+        { submissionId: id, durationMin },
+      ),
+    });
+    reasonIds.add(id);
+  }
+
+  for (const id of [...reasonIds]) {
+    if (payloadUnplacedIds.has(id)) continue;
+    // Another writer placed (or removed) this id between this run's
+    // reason-building and the payload's second read. Drop the now-stale
+    // entry rather than reporting a session the payload no longer counts
+    // as unplaced.
+    console.warn(`runAutoSchedule: dropping stale unplaced reason for submission ${id} -- placed or removed mid-run`);
+    const idx = unplacedReasons.findIndex((u) => u.submissionId === id);
+    if (idx !== -1) unplacedReasons.splice(idx, 1);
+    reasonIds.delete(id);
+  }
+
+  // Final assertion: the two sets must now agree exactly -- a remaining
+  // mismatch here is still a bug, not a display quirk. Fail loudly.
   if (unplacedReasons.length !== payload.summary.unplaced) {
     throw new Error(
       `runAutoSchedule: unplacedReasons.length (${unplacedReasons.length}) !== ` +
-        `payload.summary.unplaced (${payload.summary.unplaced}) -- reason accounting has diverged from payload classification`,
+        `payload.summary.unplaced (${payload.summary.unplaced}) -- reason accounting has diverged from payload classification after reconciliation`,
     );
   }
 

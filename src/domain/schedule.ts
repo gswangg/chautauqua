@@ -101,7 +101,13 @@ export type UnplacedReason =
   // never touch it (onConflictDoNothing forbids overwriting an existing
   // schedule_slot row per DEC-552/DEC-492), so it is named here instead of
   // silently re-placed or silently dropped.
-  | "slot_outside_event_range";
+  | "slot_outside_event_range"
+  // DEC-615 (wave 47 amendment): the accounting reconciliation in
+  // runAutoSchedule found this id unplaced in the payload's SECOND read
+  // (taken after the write) but not in this run's own reason list or its
+  // read-time snapshot — a concurrent accept/unaccept/slot edit by another
+  // producer changed the population mid-run. Not a bug: re-run to place it.
+  | "changed_during_run";
 
 export interface UnplacedSession {
   submissionId: string;
@@ -138,6 +144,8 @@ export function describeUnplaced(
       return `"${title}" not placed: this run's write cap was reached — re-run auto-schedule to place the rest`;
     case "slot_outside_event_range":
       return `"${title}" not placed: its scheduled day falls outside the event's date range — move it or extend the event's dates`;
+    case "changed_during_run":
+      return `"${title}" not placed: added or rescheduled while this run was in progress — run again to place it`;
   }
 }
 
