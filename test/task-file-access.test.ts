@@ -179,6 +179,7 @@ describe("getTaskFileScope against a fake db (DEC-248 population rule, real impl
       from: () => query,
       innerJoin: () => query,
       where: () => query,
+      orderBy: () => query,
       limit: () => Promise.resolve(rows),
     };
     return query;
@@ -417,6 +418,136 @@ describe("getTaskFileScope precedence: own task_assignment_id beats the reverse 
     expect(scope?.assignmentContactId).toBe("contact-A");
     expect(actual.canAccessTaskFile({ role: "speaker", orgId: "org-a", contactId: "contact-A" }, scope!)).toBe(true);
     expect(actual.canAccessTaskFile({ role: "speaker", orgId: "org-a", contactId: "contact-B" }, scope!)).toBe(false);
+    sqlite.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-558 (wave 75): the fileId-link fallback lookup inside assignmentBy had
+// no `.orderBy(` -- `task_assignment_file_id_idx` is a plain (non-unique)
+// index, so if TWO task_assignment rows both point their `fileId` at the
+// same file (own task_assignment_id absent on both, so the fallback is what
+// resolves it), SQLite's unspecified row order alone decided which
+// speaker's contactId came back. Same authz-outcome bug class as DEC-248.
+// Now pinned to `asc(taskAssignment.id)`: physical insertion order must not
+// change which speaker is granted access.
+// ---------------------------------------------------------------------------
+describe("getTaskFileScope fallback fileId-link determinism (DEC-558, real db)", () => {
+  const DDL = `
+    create table event (
+      id text primary key,
+      org_id text
+    );
+    create table task (
+      id text primary key,
+      event_id text
+    );
+    create table task_assignment (
+      id text primary key,
+      task_id text,
+      contact_id text,
+      status text,
+      file_id text,
+      created_at integer,
+      updated_at integer
+    );
+    create table file (
+      id text primary key,
+      submission_id text,
+      kind text,
+      filename text,
+      r2_key text,
+      size_bytes integer,
+      content_type text,
+      uploaded_by_contact_id text,
+      task_assignment_id text,
+      created_at integer,
+      updated_at integer
+    );
+  `;
+
+  async function makeTestDb() {
+    const { DatabaseSync } = await import("node:sqlite");
+    const { drizzle } = await import("drizzle-orm/sqlite-proxy");
+    const schema = await import("../src/db/schema");
+    const sqlite = new DatabaseSync(":memory:");
+    sqlite.exec(DDL);
+    const db = drizzle(
+      async (sqlText: string, params: unknown[], method: string) => {
+        const stmt = sqlite.prepare(sqlText);
+        stmt.setReturnArrays(true);
+        if (method === "run") {
+          stmt.run(...(params as never[]));
+          return { rows: [] };
+        }
+        const rows = stmt.all(...(params as never[])) as unknown[];
+        return { rows };
+      },
+      { schema },
+    );
+    return { db: db as unknown as import("../src/server/context").Db, sqlite };
+  }
+
+  function seedShared(sqlite: import("node:sqlite").DatabaseSync) {
+    sqlite.prepare(`insert into event (id, org_id) values ('event-1', 'org-a')`).run();
+    sqlite.prepare(`insert into task (id, event_id) values ('task-1', 'event-1')`).run();
+    // Own link absent (task_assignment_id null) -- forces the fallback
+    // fileId-link query to be the sole resolver.
+    sqlite
+      .prepare(
+        `insert into file (id, submission_id, kind, filename, r2_key, size_bytes, content_type, uploaded_by_contact_id, task_assignment_id, created_at, updated_at)
+         values ('file-1', null, 'presentation', 'slides.pptx', 'k', 10, 'application/pdf', null, null, 0, 0)`,
+      )
+      .run();
+  }
+
+  it("resolves to the lowest-id assignment when contact-Z is inserted BEFORE contact-A", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files-authz")>(
+      "../src/server/repo/files-authz",
+    );
+    const { db, sqlite } = await makeTestDb();
+    seedShared(sqlite);
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-Z', 'task-1', 'contact-Z', 'complete', 'file-1', 0, 0)`,
+      )
+      .run();
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-A', 'task-1', 'contact-A', 'complete', 'file-1', 1, 1)`,
+      )
+      .run();
+
+    const scope = await actual.getTaskFileScope(db, "file-1");
+    expect(scope).not.toBeNull();
+    expect(scope?.assignmentContactId).toBe("contact-A");
+    sqlite.close();
+  });
+
+  it("resolves to the SAME lowest-id assignment when contact-A is inserted BEFORE contact-Z (physical order flipped)", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files-authz")>(
+      "../src/server/repo/files-authz",
+    );
+    const { db, sqlite } = await makeTestDb();
+    seedShared(sqlite);
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-A', 'task-1', 'contact-A', 'complete', 'file-1', 0, 0)`,
+      )
+      .run();
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-Z', 'task-1', 'contact-Z', 'complete', 'file-1', 1, 1)`,
+      )
+      .run();
+
+    const scope = await actual.getTaskFileScope(db, "file-1");
+    expect(scope).not.toBeNull();
+    expect(scope?.assignmentContactId).toBe("contact-A");
     sqlite.close();
   });
 });

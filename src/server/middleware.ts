@@ -82,6 +82,8 @@ export async function resolveAuth(
 function drizzleSessionUserLookup(db: Db): SessionUserLookup {
   return {
     async findSessionUser(tokenHash) {
+      // DEC-558: at most one row by construction — `auth_session_token_hash_idx`
+      // is a uniqueIndex on schema.authSession.tokenHash.
       const rows = await db
         .select({
           expiresAt: schema.authSession.expiresAt,
@@ -164,6 +166,8 @@ export async function resolveBearerAuth(
 function drizzleApiTokenUserLookup(db: Db): ApiTokenUserLookup {
   return {
     async findTokenUser(tokenHash) {
+      // DEC-558: at most one row by construction — `api_token_token_hash_idx`
+      // is a uniqueIndex on schema.apiToken.tokenHash.
       const rows = await db
         .select({
           tokenOrgId: schema.apiToken.orgId,

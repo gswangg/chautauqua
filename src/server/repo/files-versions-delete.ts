@@ -95,6 +95,9 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
     }
   }
 
+  // DEC-558: at most one row by construction — `file_previous_file_id_unique`
+  // is a partial uniqueIndex on previousFileId (WHERE previousFileId IS NOT
+  // NULL).
   const successorRows = await db
     .select({ id: schema.file.id })
     .from(schema.file)

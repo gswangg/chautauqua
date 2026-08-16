@@ -390,11 +390,16 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   // — this recheck of just this pair can never fire; kept as a fail-loud
   // invariant (same thrown shape) rather than deleted, so a preflight bug
   // surfaces as a loud error instead of a silently-orphaned login.
+  // DEC-558: `.limit(1)` is safe here even though `user_contact_id_idx` is
+  // a plain (non-unique) index — both queries below are used only via
+  // `.length > 0` (an EXISTS check), never by row identity, so which row
+  // SQLite happens to return when more than one exists is immaterial.
   const keepUserRows = await db
     .select({ id: schema.user.id })
     .from(schema.user)
     .where(eq(schema.user.contactId, keepId))
     .limit(1);
+  // DEC-558: same EXISTS-only reasoning as keepUserRows above.
   const mergeUserRows = await db
     .select({ id: schema.user.id })
     .from(schema.user)
@@ -564,11 +569,16 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   // deleted so it isn't left dangling for (f)'s generic repoint to touch.
   // If only one side is enrolled, there's nothing to reconcile here — (f)'s
   // generic pipeline_entry repoint below handles that case on its own.
+  // DEC-558: at most one row by construction — `pipeline_entry_org_id_contact_id_idx`
+  // is a uniqueIndex on (orgId, contactId), and a contact row belongs to
+  // exactly one org, so filtering on contactId alone still narrows to at
+  // most one pipeline_entry row.
   const keepEntryRows = await db
     .select({ id: schema.pipelineEntry.id, stage: schema.pipelineEntry.stage })
     .from(schema.pipelineEntry)
     .where(eq(schema.pipelineEntry.contactId, keepId))
     .limit(1);
+  // DEC-558: same reasoning as keepEntryRows above.
   const mergeEntryRows = await db
     .select({ id: schema.pipelineEntry.id, stage: schema.pipelineEntry.stage })
     .from(schema.pipelineEntry)

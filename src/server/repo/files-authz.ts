@@ -2,7 +2,7 @@
 // files.ts (contention decomposition) — no behavior change, files.ts
 // re-exports everything below for existing callers.
 
-import { and, eq, type SQL } from "drizzle-orm";
+import { and, asc, eq, type SQL } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { listPlansForEvent, isSubmissionInReviewerScope } from "./review";
@@ -261,6 +261,10 @@ export async function getResourceFileScope(db: Db, fileId: string): Promise<Reso
   const fileRow = fileRows[0];
   if (!fileRow || fileRow.kind !== "resource" || fileRow.submissionId !== null) return null;
 
+  // DEC-558/DEC-248: resource_file_id_idx is a plain (non-unique) index, but
+  // every resource.fileId is written exactly once at resource-creation time
+  // and never repointed (see the function docstring above), so the
+  // population is 1:1 in practice.
   const resourceRows = await db
     .select({ eventOrgId: schema.event.orgId })
     .from(schema.resource)
@@ -350,6 +354,11 @@ export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFile
   // deferred to the call sites: neither lookup is ever meant to run unscoped,
   // so the chain should carry its own `.where(...)` (this is also what keeps
   // the query-scoping invariant honest instead of allowlisted).
+  // DEC-558: `link` is either a primary-key `eq(taskAssignment.id, ...)`
+  // (unambiguous by construction) or the `taskAssignment.fileId` fallback,
+  // which sits on a plain (non-unique) index — so add an explicit total
+  // order (`asc(id)`) rather than relying on which link the caller passes,
+  // keeping this shared helper deterministic regardless of predicate.
   const assignmentBy = (link: SQL) =>
     db
       .select({
@@ -360,6 +369,7 @@ export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFile
       .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
       .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
       .where(link)
+      .orderBy(asc(schema.taskAssignment.id))
       .limit(1);
 
   let assignmentRow: { assignmentContactId: string; orgId: string } | undefined;

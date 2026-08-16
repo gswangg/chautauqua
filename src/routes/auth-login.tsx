@@ -179,6 +179,9 @@ loginRoutes.post("/login", csrfForm, async (c) => {
     );
   }
 
+  // DEC-558: at most one row by construction — `user_email_idx` is a
+  // uniqueIndex on schema.user.email, and `email` above is already
+  // trim().toLowerCase()'d to match how it's stored.
   const rows = await db.select().from(schema.user).where(eq(schema.user.email, email)).limit(1);
   const user = rows[0];
   // DEC-004 (wave 58 amendment): always run exactly one derivation, whether
