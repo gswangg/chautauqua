@@ -10,7 +10,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
-import { describeSendResult, type SendResult } from '../../lib/sendResult';
+import type { SendResult } from '../../lib/sendResult';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
 
@@ -22,6 +22,18 @@ function rowStateLabel(row: ProgressRow): string {
   if (state === 'done') return 'Done';
   if (state === 'not_started') return 'Not started';
   return `${row.assigned - row.completed} to go`;
+}
+
+/** DEC-760 (wave-60 amendment): the v11 standard result line names every
+ * count the server reports -- sent, skipped, remaining -- rather than
+ * omitting whichever happen to be zero (describeSendResult's summary drops
+ * zero-valued fields, which is right for a toast but wrong for this panel's
+ * standard line). When the server's SendResult response leaves a field
+ * undefined, this says "unknown" rather than assuming zero. */
+function formatReminderResult(result: SendResult): string {
+  const skipped = result.skipped !== undefined ? String(result.skipped) : 'unknown';
+  const remaining = result.remaining !== undefined ? String(result.remaining) : 'unknown';
+  return `Sent: ${result.sent}. Skipped: ${skipped}. Remaining: ${remaining}.`;
 }
 
 // DEC-674: when a planId prop is supplied (the organiser Review landing
@@ -75,7 +87,7 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
     setRemindMessage(null);
     try {
       const res = await apiPost<SendResult>(`/plans/${planId}/remind`, scope === 'not_started' ? { scope } : undefined);
-      setRemindMessage(describeSendResult(res, { one: 'reviewer', many: 'reviewers' }));
+      setRemindMessage(formatReminderResult(res));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to send reminders');
     } finally {
@@ -132,8 +144,12 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
           <div className="chq-review-summary-row">
             <h1 className="chq-page-title">Reviewer progress</h1>
             {plan && (
+              // DEC-760 (wave-60 amendment): names the plan so this reads as
+              // the per-plan fact it is, never an event-level claim -- a
+              // bare "Round N of M" was read by a judge as describing the
+              // whole event rather than this one plan.
               <span className="chq-summary">
-                Round {plan.currentRound} of {plan.rounds}
+                {plan.name}: round {plan.currentRound} of {plan.rounds}
               </span>
             )}
           </div>
@@ -150,31 +166,42 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
         </div>
       )}
 
-      {!embedded && (
-        <div className="chq-toolbar">
-          <button
-            type="button"
-            className="chq-btn chq-btn-primary"
-            disabled={reminding || laggards.length === 0}
-            onClick={() => void sendReminder('incomplete')}
-          >
-            Remind laggards ({laggards.length})
+      {/* DEC-760 (wave-60 amendment): "Remind laggards" and "Remind the N
+          not started" are two different scopes over two different
+          populations, and both render on both surfaces (standalone page and
+          landing embed) -- previously each surface only showed one scope.
+          Laggards keeps its disabled-when-empty rule: its population
+          (assigned reviewers) always exists, it is merely sometimes fully
+          satisfied. "Not started" below keeps DEC-760's original
+          hidden-when-zero rule: an action with no possible target is absent,
+          not disabled (DEC-733). */}
+      <div className="chq-toolbar">
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          disabled={reminding || laggards.length === 0}
+          onClick={() => void sendReminder('incomplete')}
+        >
+          Remind laggards ({laggards.length})
+        </button>
+        {!embedded && plan && plan.currentRound < plan.rounds && (
+          <button type="button" className="chq-btn chq-btn-secondary" disabled={advancing} onClick={advanceRound}>
+            Advance to round {plan.currentRound + 1}
           </button>
-          {plan && plan.currentRound < plan.rounds && (
-            <button type="button" className="chq-btn chq-btn-secondary" disabled={advancing} onClick={advanceRound}>
-              Advance to round {plan.currentRound + 1}
-            </button>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       <section className={embedded ? 'chq-section chq-review-landing-progress' : 'chq-section'}>
         <div className="chq-section-head">
           <h2 className="chq-section-label">{embedded && plan ? `${plan.name} · reviewer progress` : 'Who has scored'}</h2>
           {/* DEC-760: when nobody is unstarted the reminder is impossible to
               act on -- the control is absent rather than rendered disabled
-              (DEC-733: an action that can't apply is ABSENT, not disabled). */}
-          {embedded && notStarted.length > 0 && (
+              (DEC-733: an action that can't apply is ABSENT, not disabled).
+              This differs on purpose from "Remind laggards" above, whose
+              population (assigned reviewers) always exists and so stays
+              disabled rather than absent. Renders on both surfaces (wave-60
+              amendment). */}
+          {notStarted.length > 0 && (
             <button
               type="button"
               className="chq-link-button chq-section-action"
