@@ -46,36 +46,36 @@ describe("extractAnswers (portal edit, DEC-109)", () => {
       [fieldInputName(FILE_FIELD.id)]: "malicious-client-supplied-value",
     };
     const stored: AnswerMap = { [FILE_FIELD.id]: "uploads/headshot-abc123.jpg" };
-    const answers = extractAnswers([FILE_FIELD], body, stored);
+    const answers = extractAnswers([FILE_FIELD], body, stored).answers;
     expect(answers[FILE_FIELD.id]).toBe("uploads/headshot-abc123.jpg");
   });
 
   it("yields no key for a file field when no stored answer exists", () => {
-    const answers = extractAnswers([FILE_FIELD], {}, {});
+    const answers = extractAnswers([FILE_FIELD], {}, {}).answers;
     expect(Object.prototype.hasOwnProperty.call(answers, FILE_FIELD.id)).toBe(false);
   });
 
   it("ignores a non-string or empty-string stored file answer", () => {
-    const answers1 = extractAnswers([FILE_FIELD], {}, { [FILE_FIELD.id]: "" });
+    const answers1 = extractAnswers([FILE_FIELD], {}, { [FILE_FIELD.id]: "" }).answers;
     expect(Object.prototype.hasOwnProperty.call(answers1, FILE_FIELD.id)).toBe(false);
 
-    const answers2 = extractAnswers([FILE_FIELD], {}, { [FILE_FIELD.id]: 42 });
+    const answers2 = extractAnswers([FILE_FIELD], {}, { [FILE_FIELD.id]: 42 }).answers;
     expect(Object.prototype.hasOwnProperty.call(answers2, FILE_FIELD.id)).toBe(false);
   });
 
   it("checkbox behavior is unchanged: present body key -> true, absent -> false", () => {
-    const present = extractAnswers([CHECKBOX_FIELD], { [fieldInputName(CHECKBOX_FIELD.id)]: "on" }, {});
+    const present = extractAnswers([CHECKBOX_FIELD], { [fieldInputName(CHECKBOX_FIELD.id)]: "on" }, {}).answers;
     expect(present[CHECKBOX_FIELD.id]).toBe(true);
 
-    const absent = extractAnswers([CHECKBOX_FIELD], {}, {});
+    const absent = extractAnswers([CHECKBOX_FIELD], {}, {}).answers;
     expect(absent[CHECKBOX_FIELD.id]).toBe(false);
   });
 
   it("text behavior is unchanged: reads from body, skips when absent", () => {
-    const withValue = extractAnswers([TEXT_FIELD], { [fieldInputName(TEXT_FIELD.id)]: "hello" }, {});
+    const withValue = extractAnswers([TEXT_FIELD], { [fieldInputName(TEXT_FIELD.id)]: "hello" }, {}).answers;
     expect(withValue[TEXT_FIELD.id]).toBe("hello");
 
-    const withoutValue = extractAnswers([TEXT_FIELD], {}, {});
+    const withoutValue = extractAnswers([TEXT_FIELD], {}, {}).answers;
     expect(Object.prototype.hasOwnProperty.call(withoutValue, TEXT_FIELD.id)).toBe(false);
   });
 });
@@ -92,7 +92,7 @@ describe("extractAnswers + validateAnswers composition (DEC-109)", () => {
 
   it("ok:true when a required file field has a stored answer", () => {
     const stored: AnswerMap = { [FILE_FIELD.id]: "uploads/headshot-abc123.jpg" };
-    const answers = extractAnswers([FILE_FIELD], {}, stored);
+    const answers = extractAnswers([FILE_FIELD], {}, stored).answers;
     const result = validateForEdit([FILE_FIELD], answers);
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -101,7 +101,7 @@ describe("extractAnswers + validateAnswers composition (DEC-109)", () => {
   });
 
   it("ok:true when a required file field has no stored answer (required forced false)", () => {
-    const answers = extractAnswers([FILE_FIELD], {}, {});
+    const answers = extractAnswers([FILE_FIELD], {}, {}).answers;
     const result = validateForEdit([FILE_FIELD], answers);
     expect(result.ok).toBe(true);
   });

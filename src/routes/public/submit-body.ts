@@ -7,7 +7,7 @@ import { parseCookies, newCsrfToken, buildCsrfCookie, isSecureRequest, CSRF_COOK
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
 import { fieldInputName } from "../../views/form-render";
-import { splitSubmittedName } from "../../lib/submit-core";
+import { splitSubmittedName, readSingleFormValue } from "../../lib/submit-core";
 
 // DEC-986 (wave 45 amendment): the public CFP's single Name control posts
 // under this literal name, deliberately NOT `fieldInputName(<a locked field
@@ -32,8 +32,18 @@ export function ensureCsrfCookie(c: {
   };
 }
 
-export function extractAnswers(fields: FormFieldDef[], body: Record<string, unknown>): AnswerMap {
+// DEC-422/DEC-598 (wave-10 amendment): a repeated `field_<id>` part (an
+// array under parseBody({all:true})) is refused, never merged into "a,b" —
+// its field id is collected in `repeatedFieldIds` rather than stringified
+// into `answers`, so callers can surface REPEATED_ANSWER_MESSAGE as a
+// per-field error. Checkbox handling is unchanged (a checkbox's presence,
+// not its value, is the answer).
+export function extractAnswers(
+  fields: FormFieldDef[],
+  body: Record<string, unknown>,
+): { answers: AnswerMap; repeatedFieldIds: string[] } {
   const answers: AnswerMap = {};
+  const repeatedFieldIds: string[] = [];
   for (const field of fields) {
     // File-kind answers are handled separately (extractFileAnswers) since
     // they need async upload + a repo write before they become an answer
@@ -45,10 +55,15 @@ export function extractAnswers(fields: FormFieldDef[], body: Record<string, unkn
       continue;
     }
     const raw = body[name];
-    if (raw === undefined) continue;
-    answers[field.id] = typeof raw === "string" ? raw : String(raw);
+    const result = readSingleFormValue(raw);
+    if (!result.ok) {
+      repeatedFieldIds.push(field.id);
+      continue;
+    }
+    if (result.value === undefined) continue;
+    answers[field.id] = result.value;
   }
-  return answers;
+  return { answers, repeatedFieldIds };
 }
 
 /** DEC-986 (wave 45 amendment): splits the submitted single Name control

@@ -33,6 +33,7 @@ import {
   extractFileAnswers,
 } from "../../lib/submit-core";
 import { NAME_REQUIRED_MESSAGE } from "./submit-body";
+import { REPEATED_ANSWER_MESSAGE } from "../../lib/submit-core";
 import { requestIpFromHeaders } from "../../lib/rate-limit";
 import { checkAndIncrementScopedLimit } from "../../server/repo/rate-limit";
 import { newId, formatRef } from "../../domain/ids";
@@ -160,7 +161,7 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   }
 
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
-  const answers = extractAnswers(fields, body);
+  const { answers, repeatedFieldIds } = extractAnswers(fields, body);
   // DEC-986 (wave 45 amendment): the locked first_name/last_name answers are
   // derived from the single Name control BEFORE validateAnswers runs — see
   // applyNameSplit's own comment for the split rule.
@@ -201,13 +202,19 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   // validation passes), and stand in a placeholder value so validateAnswers'
   // required check sees a present answer for fields with a valid upload.
   const fileFields = fields.filter((field) => field.kind === "file");
-  const fileAnswers = extractFileAnswers(
+  const { files: fileAnswers, repeatedFieldIds: repeatedFileFieldIds } = extractFileAnswers(
     fileFields.map((field) => field.id),
     fieldInputName,
     body,
   );
   const fileValidations: Record<string, ValidUpload> = {};
+  // DEC-422/DEC-598 (wave-10 amendment): a repeated text/select answer or a
+  // repeated file part is refused up front with the shared house-voice
+  // message, keyed into the SAME per-field error map fileErrors already
+  // feeds into `mergedErrors` below — one ErrorSummary, one code path.
   const fileErrors: Record<string, string> = {};
+  for (const fieldId of repeatedFieldIds) fileErrors[fieldId] = REPEATED_ANSWER_MESSAGE;
+  for (const fieldId of repeatedFileFieldIds) fileErrors[fieldId] = REPEATED_ANSWER_MESSAGE;
   // DEC-532: built from the FULL field list — a hidden non-file field can
   // transitively hide a file field.
   const isFieldVisible = makeVisibilityPredicate(fields, answers);

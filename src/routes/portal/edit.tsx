@@ -37,8 +37,12 @@ import {
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
 import { DEC_041, DEC_074, DEC_109, DEC_121, DEC_604 } from "../../decisions";
-import { validateTrackChoice } from "../../lib/submit-core";
+import { validateTrackChoice, readSingleFormValue, REPEATED_ANSWER_MESSAGE } from "../../lib/submit-core";
 import { CO_PRESENTER_ROLE_VALUES, PARTICIPANT_ROLE_OPTIONS } from "../../domain/participant-roles";
+// DEC-598 (wave-10 amendment): trackIds dedupe has ONE owner (public
+// submit-body's extractTrackIds) — the private copy that used to live here
+// is deleted, not re-implemented.
+import { extractTrackIds } from "../public/submit-body";
 
 export const portalEditRoutes = new Hono<AppEnv>();
 
@@ -67,12 +71,16 @@ function ensureCsrfCookie(c: {
   };
 }
 
+// DEC-422/DEC-598 (wave-10 amendment): a repeated `field_<id>` part is
+// refused (never merged into "a,b") — see submit-body.ts's extractAnswers
+// for the same treatment on the public CFP door.
 export function extractAnswers(
   fields: EditableSubmissionData["fields"],
   body: Record<string, unknown>,
   storedAnswers: AnswerMap,
-): AnswerMap {
+): { answers: AnswerMap; repeatedFieldIds: string[] } {
   const answers: AnswerMap = {};
+  const repeatedFieldIds: string[] = [];
   for (const field of fields) {
     const name = fieldInputName(field.id);
     if (field.kind === "checkbox") {
@@ -102,17 +110,15 @@ export function extractAnswers(
       continue;
     }
     const raw = body[name];
-    if (raw === undefined) continue;
-    answers[field.id] = typeof raw === "string" ? raw : String(raw);
+    const result = readSingleFormValue(raw);
+    if (!result.ok) {
+      repeatedFieldIds.push(field.id);
+      continue;
+    }
+    if (result.value === undefined) continue;
+    answers[field.id] = result.value;
   }
-  return answers;
-}
-
-function extractTrackIds(body: Record<string, unknown>): string[] {
-  const raw = body.trackIds;
-  if (raw === undefined) return [];
-  if (Array.isArray(raw)) return raw.map(String);
-  return [String(raw)];
+  return { answers, repeatedFieldIds };
 }
 
 // Exported so a render-parity test (DEC-696) can assert the track fieldset
@@ -424,7 +430,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
   const tracksEditable = canEditTracks(data.form.closeDate, Date.now(), data.form.timezone);
 
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
-  const answers = extractAnswers(data.fields, body, data.answers);
+  const { answers, repeatedFieldIds } = extractAnswers(data.fields, body, data.answers);
   // File fields are read-only here (DEC-041): a missing stored file answer
   // must never be fatal, so required is forced false for file fields only.
   // Public submit's validateAnswers still enforces required files.
@@ -433,20 +439,26 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
     answers,
   );
 
-  const selectedTrackIds = tracksEditable
-    ? Array.from(new Set(extractTrackIds(body)))
-    : data.selectedTrackIds;
+  // DEC-598 (wave-10 amendment): extractTrackIds (public submit-body's ONE
+  // owner) already dedupes — the `Array.from(new Set(...))` crutch this line
+  // used to mask the missing dedupe with is gone.
+  const selectedTrackIds = tracksEditable ? extractTrackIds(body) : data.selectedTrackIds;
   let trackError: string | undefined;
   if (tracksEditable) {
     const trackResult = validateTrackChoice(selectedTrackIds, data.offeredTrackIds);
     if (!trackResult.ok) trackError = trackResult.error;
   }
 
-  if (!validation.ok || trackError) {
+  if (!validation.ok || trackError || repeatedFieldIds.length > 0) {
     const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
     if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
     const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
     const participants = await getPortalParticipants(c.var.db, submissionId);
+    // DEC-422/DEC-598 (wave-10 amendment): a repeated field is refused with
+    // the shared house-voice message, merged alongside any other
+    // per-field validation errors.
+    const mergedErrors = { ...(validation.ok ? {} : validation.errors) };
+    for (const fieldId of repeatedFieldIds) mergedErrors[fieldId] = REPEATED_ANSWER_MESSAGE;
     return c.html(
       <EditPage
         branding={portalData.branding}
@@ -455,7 +467,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
         answers={answers}
         selectedTrackIds={selectedTrackIds}
         csrfToken={csrfToken}
-        errors={validation.ok ? undefined : validation.errors}
+        errors={mergedErrors}
         trackError={trackError}
         editable={true}
         tracksEditable={tracksEditable}

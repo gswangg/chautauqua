@@ -12,7 +12,7 @@ import {
   getFormFields,
   getEventTracks,
 } from "../../server/repo/submit";
-import { formWindowState, resolveOfferedTrackIds } from "../../lib/submit-core";
+import { formWindowState, resolveOfferedTrackIds, REPEATED_ANSWER_MESSAGE } from "../../lib/submit-core";
 import { LOCKED_SPEAKER_FIELDS } from "../../forms/types";
 import { requestIpFromHeaders } from "../../lib/rate-limit";
 import { checkAndIncrementScopedLimit } from "../../server/repo/rate-limit";
@@ -69,9 +69,32 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
   const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id), form.id);
   const tracks = eventTracks.filter((t) => offeredTrackIds.includes(t.id));
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
-  const answers = extractAnswers(fields, body);
+  const { answers, repeatedFieldIds } = extractAnswers(fields, body);
   applyNameSplit(fields, body, answers);
   const selectedTrackIds = extractTrackIds(body);
+
+  // DEC-422/DEC-598 (wave-10 amendment): refuse a repeated field part BEFORE
+  // any KV write — same house-voice message the final-submit door uses,
+  // never merged into "a,b" and never silently written into a 30-day draft
+  // record.
+  if (repeatedFieldIds.length > 0) {
+    const repeatedErrors: Record<string, string> = {};
+    for (const fieldId of repeatedFieldIds) repeatedErrors[fieldId] = REPEATED_ANSWER_MESSAGE;
+    return c.html(
+      <SubmitPage
+        event={event}
+        form={form}
+        fields={fields}
+        tracks={tracks}
+        answers={answers}
+        selectedTrackIds={selectedTrackIds}
+        hasDraft={false}
+        csrfToken={(c.req.header("cookie") && parseCookies(c.req.header("cookie") ?? null)[CSRF_COOKIE_NAME]) || newCsrfToken()}
+        errors={repeatedErrors}
+      />,
+      400,
+    );
+  }
 
   // DEC-422 (wave-54 amendment): bound the trackIds SHAPE before saveDraft
   // ever runs — the cap loop below only ever inspected string answers and
@@ -104,28 +127,18 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
 
   // DEC-422: reject any answer over its field-kind cap before it ever
   // reaches saveDraft — never truncate.
+  // DEC-422/DEC-598 (wave-10 amendment): the old "neither a string nor a
+  // boolean" branch here is now unreachable and deleted — extractAnswers'
+  // readSingleFormValue refuses (rather than stringifies) any array-shaped
+  // repeated part above, before `answers` is ever built, so every value
+  // reaching this loop is already a string or a boolean.
   const fieldCapsById = new Map(fields.map((field) => [field.id, field]));
-  for (const [fieldId, value] of Object.entries(answers)) {
-    if (typeof value === "boolean") continue;
-    if (typeof value !== "string") {
-      // Any answer that is neither a string nor a boolean (e.g. an array or
-      // object slipped in by a hand-crafted request) is refused outright —
-      // never persisted unbounded, never truncated.
-      return c.html(
-        <SubmitPage
-          event={event}
-          form={form}
-          fields={fields}
-          tracks={tracks}
-          answers={answers}
-          selectedTrackIds={selectedTrackIds}
-          hasDraft={false}
-          csrfToken={(c.req.header("cookie") && parseCookies(c.req.header("cookie") ?? null)[CSRF_COOKIE_NAME]) || newCsrfToken()}
-          banner="This draft could not be saved. Try again."
-        />,
-        400,
-      );
-    }
+  for (const [fieldId, rawValue] of Object.entries(answers)) {
+    if (typeof rawValue === "boolean") continue;
+    // AnswerMap is `Record<string, unknown>`; readSingleFormValue guarantees
+    // every non-boolean value here is a string (see the comment above this
+    // loop), so this assertion documents an invariant, not a fallback.
+    const value = rawValue as string;
     const field = fieldCapsById.get(fieldId);
     if (!field) continue;
     const cap = field.kind === "long_text" ? MAX_LONG_TEXT_LENGTH : MAX_TEXT_LENGTH;
