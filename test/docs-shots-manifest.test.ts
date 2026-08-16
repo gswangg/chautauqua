@@ -21,8 +21,10 @@ import {
   DOCS_SHOT_ID_PATTERN,
   DOCS_SHOT_VIEWPORT,
   DOCS_SHOTS,
+  resolveRoleForRoute,
   shotIdMatchesGroup,
 } from "../scripts/docs-shots-lib";
+import { ROUTE_MANIFEST } from "../app/src/routeManifest";
 import { DOCS_ARTICLES } from "../src/routes/docs-content";
 
 /** Every `{ shotId, group }` a `figure` block in DOCS_ARTICLES declares. */
@@ -120,6 +122,40 @@ describe("DOCS_SHOTS reconciled against DOCS_ARTICLES's figure blocks", () => {
     for (const entry of DOCS_SHOTS) {
       expect(groupByShotId.get(entry.id), `shot "${entry.id}" group mismatch`).toBe(entry.group);
     }
+  });
+});
+
+describe("DOCS_SHOTS resolved against the real app/src/routeManifest.ts (DEC-644 wave 7)", () => {
+  it("every DOCS_SHOTS route resolves to exactly one role in ROUTE_MANIFEST", () => {
+    for (const entry of DOCS_SHOTS) {
+      let role: string;
+      try {
+        role = resolveRoleForRoute(entry.route, ROUTE_MANIFEST);
+      } catch (err) {
+        throw new Error(
+          `docs-shots-manifest: shot "${entry.id}" (route "${entry.route}") failed to resolve a role: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+      expect(role, `shot "${entry.id}" (route "${entry.route}") resolved to an unexpected role`).toBeTruthy();
+    }
+  });
+
+  it("negative control: an unknown route throws the 'route not found' message", () => {
+    expect(() => resolveRoleForRoute("/nowhere/at/all", ROUTE_MANIFEST)).toThrow(
+      "docs-shots: route not found in app/src/routeManifest.ts: /nowhere/at/all",
+    );
+  });
+
+  it("negative control: a route present under two different roles throws the 'more than one role' message", () => {
+    const syntheticManifest = [
+      { path: "/dup", role: "organizer" as const },
+      { path: "/dup", role: "reviewer" as const },
+    ];
+    expect(() => resolveRoleForRoute("/dup", syntheticManifest)).toThrow(
+      /docs-shots: route \/dup resolves to more than one role in app\/src\/routeManifest\.ts/,
+    );
   });
 });
 

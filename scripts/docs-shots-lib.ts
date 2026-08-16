@@ -196,3 +196,39 @@ export const DOCS_SHOTS: readonly DocsShotEntry[] = [
 // Conf 2027 check (scripts/docs-shots.ts) probes for; exported so that check
 // and this manifest can never name two different seeded events.
 export const DOCS_SHOTS_EVENT_SLUG = EVENT_SLUG;
+
+/** The four personas a DOCS_SHOTS route can resolve to -- same vocabulary as
+ * app/src/routeManifest.ts's RouteManifestEntry["role"], restated here (not
+ * imported) so this module stays dependency-free (no app/src import; see
+ * this file's header). */
+export type DocsShotRole = "organizer" | "reviewer" | "speaker" | "public";
+
+/**
+ * Resolves the one role a DOCS_SHOTS route needs by looking it up in the
+ * real app/src/routeManifest.ts route table `manifest` (same table
+ * render-sweep drives off), passed in by the caller rather than imported so
+ * this stays a pure function testable without a playwright dependency (DEC-
+ * 644 amendment). Fails loudly rather than guessing: a route absent from
+ * `manifest`, or present under more than one DIFFERENT role (e.g.
+ * `/admin/review/plans/:id`, which PlanEditor and ReviewerQueue both mount
+ * on), cannot be resolved to a single persona and must not be shot from
+ * this manifest without disambiguating first.
+ */
+export function resolveRoleForRoute(
+  route: string,
+  manifest: readonly { readonly path: string; readonly role: DocsShotRole }[],
+): DocsShotRole {
+  const matches = manifest.filter((entry) => entry.path === route);
+  if (matches.length === 0) {
+    throw new Error(`docs-shots: route not found in app/src/routeManifest.ts: ${route}`);
+  }
+  const roles = new Set(matches.map((entry) => entry.role));
+  if (roles.size > 1) {
+    throw new Error(
+      `docs-shots: route ${route} resolves to more than one role in app/src/routeManifest.ts (${[...roles].join(
+        ", ",
+      )}) -- ambiguous, pick a route that names a single persona`,
+    );
+  }
+  return matches[0]!.role;
+}
