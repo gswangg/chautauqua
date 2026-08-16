@@ -14,15 +14,13 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { enumerateRegisteredRoutes } from "./helpers/registered-routes";
 
 const ROUTES_DIR = resolve(fileURLToPath(import.meta.url), "../../src/routes");
-const LOGIN_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/auth-login.tsx");
-const CLAIM_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/auth-claim.tsx");
 // Split out of src/routes/public/submit.tsx purely to reduce merge
 // contention on that file (no behavior change) -- the final-submit and
 // save-draft handlers now live in their own per-route modules.
 const SUBMIT_POST_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/public/submit-post.tsx");
-const SUBMIT_DRAFT_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/public/submit-draft.tsx");
 
 const CSRF_MIDDLEWARE = ["csrfJson", "csrfForm", "csrfFormOrHeader"];
 
@@ -190,49 +188,357 @@ describe("SPEC §6: every mutating route registration carries CSRF middleware (D
   });
 });
 
-describe("SPEC §6: unauthenticated write paths are rate limited (DEC-628)", () => {
-  const loginSource = readFileSync(LOGIN_PATH, "utf-8");
-  const claimSource = readFileSync(CLAIM_PATH, "utf-8");
-  const submitPostSource = readFileSync(SUBMIT_POST_PATH, "utf-8");
-  const submitDraftSource = readFileSync(SUBMIT_DRAFT_PATH, "utf-8");
+// -----------------------------------------------------------------------
+// SPEC §6: every anonymous-reachable mutating door is rate limited
+// (DEC-628, DEC-180 wave-52 amendment).
+//
+// The describe block this replaces asserted the invariant against four
+// hand-typed route literals (POST /login, POST /claim/:token, POST
+// /submit/:eventSlug, POST /submit/:eventSlug/save-draft) — exactly the
+// DEC-550 prose-manifest failure mode (a list that can drift silently the
+// moment a new anonymous mutating door is added; src/routes/auth-reset.tsx's
+// POST /forgot and POST /reset/:token were already budgeted but invisible to
+// that list). This block instead DERIVES the population: every POST/PATCH/
+// PUT/DELETE registration under src/routes/**, reusing
+// test/helpers/registered-routes.ts's enumerateRegisteredRoutes() for the
+// resolved full mounted path (per that helper's own header comment: "any
+// test that needs every route registration, from source, with its resolved
+// full mounted path" should reuse it rather than re-parsing src/routes/** +
+// src/index.ts a second time), joined against this file's own
+// scanRouteRegistrations() (already defined above, module-scope) for the
+// per-registration middleware slice a rate-limit/guard check needs.
+// -----------------------------------------------------------------------
+describe("SPEC §6: anonymous-reachable mutating doors are rate limited (DEC-628, DEC-180 wave-52)", () => {
+  // Guard identifiers that prove a registration is NOT anonymous-reachable:
+  // real role guards harvested from src/server/middleware.ts's own exports
+  // (never hand-typed — a rename here must not silently narrow the
+  // vocabulary), plus the two guards that live outside middleware.ts and are
+  // documented by test/anonymous-route-probe.test.ts as the vocabulary an
+  // anonymous-authz probe in this repo already recognises: requireAuth
+  // (src/routes/portal/tasks/shared.ts, called as the first statement in a
+  // handler body), requireReviewerOrOrganizer (src/routes/review/shared.ts,
+  // same pattern), and speakerGate (src/routes/portal/shared.tsx, applied
+  // mount-level via `<subApp>.use(prefix, speakerGate)` to every portal
+  // sub-app).
+  const middlewareSource = readFileSync(join(ROUTES_DIR, "..", "server", "middleware.ts"), "utf-8");
+  const MIDDLEWARE_GUARD_NAMES: string[] = [];
+  {
+    const re = /export const (require\w+)\b/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(middlewareSource))) {
+      const name = m[1];
+      if (name) MIDDLEWARE_GUARD_NAMES.push(name);
+    }
+  }
+  if (!MIDDLEWARE_GUARD_NAMES.includes("requireOrganizer") || !MIDDLEWARE_GUARD_NAMES.includes("requireCookieSession")) {
+    throw new Error(
+      "src/server/middleware.ts no longer exports requireOrganizer/requireCookieSession the way this scan expects — " +
+        "the guard-harvesting regex has drifted; update it rather than silently narrowing the guard vocabulary.",
+    );
+  }
+  // requireAssignedPlan (src/routes/review/shared.ts) resolves the review
+  // plan AND asserts the caller's own assignment on it in one call, called
+  // as the first statement of a handler body alongside
+  // requireReviewerOrOrganizer -- named by the same DEC-459 vocabulary
+  // test/route-authz-enumeration.scan.test.ts already documents.
+  // requireAuthOr302 (src/routes/account.tsx, local to that file) is named
+  // explicitly by the same DEC-459 doc for the identical reason: a chain-
+  // only scan would miss it.
+  const EXTRA_GUARD_NAMES = [
+    "requireAuth",
+    "requireReviewerOrOrganizer",
+    "requireAssignedPlan",
+    "requireAuthOr302",
+    "speakerGate",
+  ];
+  const GUARD_NAMES = new Set([...MIDDLEWARE_GUARD_NAMES, ...EXTRA_GUARD_NAMES]);
 
-  /** Extracts the source slice for a `<receiver>.post("<path>", ...)`
-   * registration up to its next sibling registration (or EOF), so the slice
-   * covers the whole handler body without needing to balance braces. */
-  function sliceForRoute(source: string, pathLiteral: string): string {
-    const marker = `.post("${pathLiteral}"`;
-    const startIdx = source.indexOf(marker);
+  // Object-level ownership markers (test/route-authz-enumeration.scan.test.ts's
+  // own OWNERSHIP_MARKER vocabulary, DEC-459): requireOwned* / requireEvent /
+  // requireOrgUser presuppose an already-established, org-scoped identity
+  // (they read auth.orgId internally and throw on a missing one) — a route
+  // whose only "guard" is one of these is not anonymous-reachable, but it is
+  // also not proof of a SESSION/ROLE guard the way GUARD_NAMES is, so this
+  // scan tracks it separately rather than folding it into GUARD_NAMES.
+  const OWNERSHIP_MARKER = /^(requireOwned\w*|requireEvent|requireOrgUser)$/;
+  // Guard-shaped identifiers that are NOT auth-related at all (field/body
+  // validators sharing the require* naming convention by coincidence) — the
+  // guard-shaped regex below would otherwise flag these as unrecognised.
+  const KNOWN_NON_GUARD_HELPERS = new Set(["requireString", "requireFullMatch"]);
+  // Ownership evidence that isn't require*-shaped at all — a LOCAL helper
+  // (e.g. src/routes/files.ts's authzSubmissionWrite, which calls
+  // requireAuth(c) internally but is itself the only identifier visible in
+  // a registration's own body slice) can't be enumerated by name file-by-
+  // file, so this scan reuses the exact naming-convention regex
+  // test/route-authz-enumeration.scan.test.ts's OWNERSHIP_MARKER already
+  // established as binding (DEC-459) for this same generalization problem:
+  // requireAuth(, assert*(, authz*(, canAccess*(, c.var.auth,
+  // auth.(userId|orgId|contactId) direct reads.
+  const OWNERSHIP_EVIDENCE = /\brequireAuth\(|\bassert\w*\(|\bauthz\w*\(|\bcanAccess\w*\(|\bc\.var\.auth\b|\bauth\.(?:userId|orgId|contactId)\b/;
+
+  // Deliberate exceptions to "every anonymous-reachable mutating door uses
+  // checkAndIncrementScopedLimit" — each entry must state a reason that is
+  // NOT "it has CSRF middleware" (CSRF proves the request came from our own
+  // page, not that the caller isn't rate-limit-worthy). Identity-keyed
+  // (file/method/path), never line-keyed, mirroring CSRF_EXEMPT above.
+  const RATE_LIMIT_EXEMPT: Array<{ file: string; method: string; path: string; reason: string }> = [
+    {
+      file: "auth-login.tsx",
+      method: "post",
+      path: "/logout",
+      reason:
+        "DEC-459 (wave 35 amendment, cited by test/route-authz-enumeration.scan.test.ts's own PUBLIC_BY_DESIGN " +
+        "ledger for this exact route): self-scoped by possession of the caller's own session cookie — it deletes " +
+        "only the session row matching the presented cookie, if any, never another caller's, and is a no-op for " +
+        "an anonymous caller with no cookie at all. There is no shared budget to protect: a request with no " +
+        "cookie touches no row, and a request with a cookie can only ever burn its own single session.",
+    },
+  ];
+
+  // The population: every real mutating registration (scanRouteRegistrations
+  // already restricts to POST/PATCH/PUT/DELETE on a `<name>Routes.` Hono
+  // sub-app receiver, same convention registered-routes.ts's routeVarNames
+  // check enforces), joined against enumerateRegisteredRoutes() for the
+  // resolved full mounted path.
+  const files = listSourceFiles(ROUTES_DIR);
+  const localRegistrations: RouteRegistration[] = [];
+  for (const file of files) {
+    const source = readFileSync(file, "utf-8");
+    localRegistrations.push(...scanRouteRegistrations(file, source));
+  }
+
+  const resolvedRoutes = enumerateRegisteredRoutes().filter((r) =>
+    ["POST", "PATCH", "PUT", "DELETE"].includes(r.method),
+  );
+
+  interface JoinedRegistration extends RouteRegistration {
+    resolvedPath: string;
+  }
+
+  const joined: JoinedRegistration[] = localRegistrations.map((reg) => {
+    const match = resolvedRoutes.find(
+      (r) => r.file === reg.file && r.line === reg.line && r.method === reg.method.toUpperCase(),
+    );
+    if (!match) {
+      throw new Error(
+        `${relative(ROUTES_DIR, reg.file)}:${reg.line}: scanRouteRegistrations found a mutating registration ` +
+          `(${reg.receiver}.${reg.method}(...)) that enumerateRegisteredRoutes did not — the two scanners' ` +
+          `receiver/Hono-sub-app conventions have drifted apart; investigate rather than silently dropping this row.`,
+      );
+    }
+    return { ...reg, resolvedPath: match.path };
+  });
+
+  it("found a non-trivial mutating registration population (a broken join must fail loudly, not pass vacuously)", () => {
+    expect(joined.length).toBeGreaterThanOrEqual(80);
+  });
+
+  /** True when `identifier` matches the shape of a guard/refusal middleware
+   * name this scan should be able to classify (require*, speakerGate,
+   * guardDevMailbox) but is not in GUARD_NAMES — an unrecognised guard must
+   * fail the scan loudly rather than being silently treated as "doesn't
+   * authenticate" (which would misclassify a genuinely guarded route as
+   * anonymous-reachable) or silently treated as "does authenticate" (which
+   * would hide a real gap). */
+  function assertNoUnrecognisedGuard(slice: string, context: string): void {
+    const guardShaped = /\b(require[A-Z]\w*|speakerGate|guardDevMailbox)\b/g;
+    let m: RegExpExecArray | null;
+    while ((m = guardShaped.exec(slice))) {
+      const name = m[1];
+      if (!name) continue;
+      if (GUARD_NAMES.has(name)) continue;
+      if (name === "guardDevMailbox") continue;
+      if (OWNERSHIP_MARKER.test(name)) continue;
+      if (KNOWN_NON_GUARD_HELPERS.has(name)) continue;
+      throw new Error(
+        `${context}: found guard-shaped identifier '${name}' that isn't in this scan's known GUARD_NAMES, ` +
+          `OWNERSHIP_MARKER, or KNOWN_NON_GUARD_HELPERS — either add it to the right vocabulary or this scan's ` +
+          `assumption about guard-identifier naming has drifted. Refusing to guess.`,
+      );
+    }
+  }
+
+  /** True when `slice` names a guard from GUARD_NAMES (identity/role) or an
+   * ownership marker from OWNERSHIP_MARKER (presupposes an established,
+   * org-scoped identity) — either is sufficient evidence a registration is
+   * not anonymous-reachable. */
+  function slicedGuarded(slice: string): boolean {
+    if ([...GUARD_NAMES].some((name) => new RegExp(`\\b${name}\\b`).test(slice))) return true;
+    if (OWNERSHIP_EVIDENCE.test(slice)) return true;
+    const identifierRegex = /\b(require[A-Z]\w*)\b/g;
+    let m: RegExpExecArray | null;
+    while ((m = identifierRegex.exec(slice))) {
+      const name = m[1];
+      if (name && OWNERSHIP_MARKER.test(name)) return true;
+    }
+    return false;
+  }
+
+  /** Extracts the source slice for a registration up to its next sibling
+   * registration (or EOF) — unlike headerSlice (call site to the handler
+   * arrow's opening brace, sized for middleware-chain detection), this
+   * covers the whole handler BODY, which is where checkAndIncrementScopedLimit
+   * is actually called (mirrors the pre-existing sliceForRoute technique this
+   * describe block replaces). */
+  function bodySliceFor(reg: RouteRegistration, source: string): string {
+    // Locate the call site by (receiver, method, LINE) rather than a
+    // `.method("path"` string marker -- a registration call can wrap its
+    // arguments across multiple lines (e.g. `submissionsRoutes.post(\n
+    // "/submissions/:id/revisions/:revisionId/restore",\n  requireOrganizer,`
+    // in src/routes/api/submissions.ts), which a single-line marker misses
+    // entirely.
+    const callRegex = new RegExp(`\\b${reg.receiver}\\.${reg.method}\\(`, "g");
+    let m: RegExpExecArray | null;
+    let startIdx = -1;
+    while ((m = callRegex.exec(source))) {
+      const line = source.slice(0, m.index).split("\n").length;
+      if (line === reg.line) {
+        startIdx = m.index;
+        break;
+      }
+    }
     if (startIdx === -1) {
-      throw new Error(`Could not find route registration for POST "${pathLiteral}" in source`);
+      throw new Error(
+        `${relative(ROUTES_DIR, reg.file)}:${reg.line}: could not re-find registration call site ` +
+          `'${reg.receiver}.${reg.method}(' at this line for body slicing`,
+      );
     }
     const nextCallRegex = /[A-Za-z_][A-Za-z0-9_]*Routes\.(post|patch|put|delete)\(/g;
-    nextCallRegex.lastIndex = startIdx + marker.length;
+    nextCallRegex.lastIndex = startIdx + `${reg.receiver}.${reg.method}(`.length;
     const nextMatch = nextCallRegex.exec(source);
     return source.slice(startIdx, nextMatch ? nextMatch.index : source.length);
   }
 
+  const mountUseRegex = /([A-Za-z_][A-Za-z0-9_]*Routes)\.use\(\s*"([^"]*)"\s*,\s*([^)]*)\)/g;
+
+  // Mount-level `.use(prefix, guard)` calls, collected across EVERY route
+  // file (not just a registration's own file) — this repo's convention
+  // routinely splits a sub-app's `.use(...)` guard declarations (its own
+  // `index.ts`, e.g. src/routes/api/contacts/index.ts's
+  // `contactsRoutes.use("/contacts", requireOrganizer)`) from its individual
+  // route registrations (sibling files, e.g. crud.ts/bulk-email.ts/
+  // segments.ts on that SAME `contactsRoutes` Hono instance). A same-file-only
+  // check would misclassify every one of those registrations as
+  // anonymous-reachable purely because the guard textually lives elsewhere —
+  // the receiver identifier (not the file) is what identifies "the same
+  // sub-app" here.
+  interface MountUse {
+    receiver: string;
+    prefix: string;
+    useArgs: string;
+    file: string;
+  }
+  const allMountUses: MountUse[] = [];
+  for (const file of files) {
+    const source = readFileSync(file, "utf-8");
+    mountUseRegex.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = mountUseRegex.exec(source))) {
+      const receiver = m[1];
+      const prefix = m[2];
+      const useArgs = m[3];
+      if (receiver === undefined || prefix === undefined || useArgs === undefined) continue;
+      assertNoUnrecognisedGuard(useArgs, `${relative(ROUTES_DIR, file)} (${receiver}.use("${prefix}", ...))`);
+      allMountUses.push({ receiver, prefix, useArgs, file });
+    }
+  }
+
+  /** True when a `.use(prefix, ...)` registration's prefix covers `path` —
+   * `"*"` covers everything; a trailing `/*` covers its base path and
+   * anything under it (this repo's own convention, e.g. `/tracks/*`
+   * covering `/tracks/:trackId`); otherwise an exact match. */
+  function prefixCovers(prefix: string, path: string): boolean {
+    if (prefix === "*") return true;
+    if (prefix.endsWith("/*")) {
+      const base = prefix.slice(0, -2);
+      return path === base || path.startsWith(`${base}/`);
+    }
+    return path === prefix;
+  }
+
+  /** True when some `<sameReceiver>.use(prefix, guard)`, anywhere under
+   * src/routes/**, covers `reg`'s own local path with a real guard from
+   * GUARD_NAMES. */
+  function mountLevelGuardCovers(reg: RouteRegistration): boolean {
+    return allMountUses.some((u) => {
+      if (u.receiver !== reg.receiver) return false;
+      if (!prefixCovers(u.prefix, reg.path)) return false;
+      return slicedGuarded(u.useArgs);
+    });
+  }
+
+  it("every anonymous-reachable mutating door uses checkAndIncrementScopedLimit, or is RATE_LIMIT_EXEMPT with a reason", () => {
+    const failures: string[] = [];
+    for (const reg of joined) {
+      const source = readFileSync(reg.file, "utf-8");
+      // requireAuth/requireReviewerOrOrganizer/requireAssignedPlan are
+      // called as the FIRST STATEMENT of the handler BODY in this repo's
+      // convention (test/anonymous-route-probe.test.ts's own documented
+      // vocabulary), not passed in the Hono middleware chain — headerSlice
+      // (call site to the arrow's opening brace) can't see them, so guard
+      // detection uses the full body slice, a superset of headerSlice.
+      const bodySlice = bodySliceFor(reg, source);
+      assertNoUnrecognisedGuard(bodySlice, `${relative(ROUTES_DIR, reg.file)}:${reg.line}`);
+      const inlineGuarded = slicedGuarded(bodySlice);
+      const mountGuarded = !inlineGuarded && mountLevelGuardCovers(reg);
+      const anonymousReachable = !inlineGuarded && !mountGuarded;
+      if (!anonymousReachable) continue;
+
+      const relFile = relative(ROUTES_DIR, reg.file);
+      const rateLimited = /\bcheckAndIncrementScopedLimit\b/.test(bodySlice);
+      if (rateLimited) continue;
+
+      const exempt = RATE_LIMIT_EXEMPT.find(
+        (e) => e.file === relFile && e.method === reg.method && e.path === reg.path,
+      );
+      if (exempt) {
+        expect(exempt.reason.length).toBeGreaterThan(0);
+        continue;
+      }
+      failures.push(
+        `${relFile}:${reg.line}: ${reg.receiver}.${reg.method}("${reg.resolvedPath}") is anonymous-reachable ` +
+          `(no ${[...GUARD_NAMES].join("/")}) but has no checkAndIncrementScopedLimit and no RATE_LIMIT_EXEMPT entry`,
+      );
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it("every RATE_LIMIT_EXEMPT entry names a real anonymous-reachable registration", () => {
+    for (const exempt of RATE_LIMIT_EXEMPT) {
+      expect(exempt.reason.length).toBeGreaterThan(0);
+      const match = joined.find(
+        (reg) =>
+          relative(ROUTES_DIR, reg.file) === exempt.file &&
+          reg.method === exempt.method &&
+          reg.path === exempt.path,
+      );
+      expect(
+        match,
+        `RATE_LIMIT_EXEMPT names ${exempt.file} ${exempt.method.toUpperCase()} ${exempt.path}, which is not a route registration`,
+      ).toBeDefined();
+    }
+  });
+
   // DEC-948 (amendment): peekScopedLimit/incrementScopedLimit's read-then-write
   // shape let N concurrent requests all read the same pre-increment count and
   // all pass — replaced by the atomic checkAndIncrementScopedLimit, issued
-  // before the password derivation runs.
+  // before the password derivation runs. Kept as explicit named assertions
+  // (not just population membership) because /login's consume-then-refund
+  // shape (DEC-180 wave-29) is the one door in this population where a
+  // missing refund is its own class of bug the population check above can't
+  // see.
   it("POST /login (auth-login.tsx) uses checkAndIncrementScopedLimit (DEC-180 wave-29: consume-then-refund)", () => {
-    const slice = sliceForRoute(loginSource, "/login");
+    const reg = joined.find((r) => relative(ROUTES_DIR, r.file) === "auth-login.tsx" && r.path === "/login");
+    expect(reg, "POST /login registration not found by the derived scan").toBeDefined();
+    const slice = bodySliceFor(reg!, readFileSync(reg!.file, "utf-8"));
     expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
     expect(slice).toMatch(/\brefundScopedLimit\b/);
   });
 
   it("POST /claim/:token (auth-claim.tsx) uses checkAndIncrementScopedLimit", () => {
-    const slice = sliceForRoute(claimSource, "/claim/:token");
-    expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
-  });
-
-  it("POST /submit/:eventSlug (public/submit-post.tsx) uses checkAndIncrementScopedLimit", () => {
-    const slice = sliceForRoute(submitPostSource, "/submit/:eventSlug");
-    expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
-  });
-
-  it("POST /submit/:eventSlug/save-draft (public/submit-draft.tsx) uses checkAndIncrementScopedLimit", () => {
-    const slice = sliceForRoute(submitDraftSource, "/submit/:eventSlug/save-draft");
+    const reg = joined.find((r) => relative(ROUTES_DIR, r.file) === "auth-claim.tsx" && r.path === "/claim/:token");
+    expect(reg, "POST /claim/:token registration not found by the derived scan").toBeDefined();
+    const slice = bodySliceFor(reg!, readFileSync(reg!.file, "utf-8"));
     expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
   });
 });

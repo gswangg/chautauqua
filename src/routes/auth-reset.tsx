@@ -19,7 +19,7 @@ import {
   newResetToken,
 } from "../auth/password-reset";
 import { requestIpFromHeaders } from "../lib/rate-limit";
-import { checkAndIncrementScopedLimit } from "../server/repo/rate-limit";
+import { checkAndIncrementScopedLimit, refundScopedLimit } from "../server/repo/rate-limit";
 import { getAnchorEventForOrg } from "../server/repo/events";
 import { makeMailer } from "../server/context";
 import { resolveBaseUrl } from "../server/origin";
@@ -228,6 +228,27 @@ resetRoutes.get("/reset/:token", async (c) => {
 resetRoutes.post("/reset/:token", csrfForm, async (c) => {
   const token = c.req.param("token");
   const kv = c.env.KV as unknown as KVStore;
+  const db = c.var.db;
+
+  // DEC-949-style consume-then-refund (mirrors POST /claim/:token in
+  // auth-claim.tsx exactly): the per-IP `reset-token` bucket is a FAILURE
+  // budget for guessed tokens, not an admission gate — under local wrangler
+  // dev every client resolves to the literal string "unknown"
+  // (rate-limit.ts's own doc-comment), so an admission-gate shape would
+  // share one counter across every speaker on the box. The unit is spent
+  // unconditionally at admission, then refunded the instant the token is
+  // known to resolve, before it is consulted for anything else — a request
+  // whose token resolves never sees a 429 and leaves the budget untouched
+  // net; a request whose token misses (an attacker guessing) keeps the
+  // spent unit and 429s once the budget is exhausted. Filed as a fix
+  // (wave-52 enumeration): unlike /claim/:token, this route had no
+  // per-token-guess budget at all before this change.
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const resetTokenNow = Date.now();
+  const limit = await checkAndIncrementScopedLimit(db, "reset-token", ip, resetTokenNow, {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: AUTH_RATE_LIMIT_MAX,
+  });
 
   // Validate-then-consume (task-w34-c, reordering the prior consume-first
   // shape): a mismatched confirm or a too-short password re-renders the
@@ -236,10 +257,17 @@ resetRoutes.post("/reset/:token", csrfForm, async (c) => {
   // happens immediately before the write, below.
   const record = await readResetToken(kv, token);
   if (!record) {
+    if (!limit.ok) {
+      return c.html(<ExpiredResetPage />, 429);
+    }
     return c.html(<ExpiredResetPage />, 410);
   }
 
-  const db = c.var.db;
+  // Token resolved: refund the unit just spent so a real speaker with a
+  // real token is never throttled by unrelated failed guesses sharing this
+  // IP bucket.
+  await refundScopedLimit(db, "reset-token", ip, resetTokenNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
+
   const rows = await db.select().from(schema.user).where(eq(schema.user.id, record.userId)).limit(1);
   const user = rows[0];
   if (!user) {
