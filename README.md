@@ -273,10 +273,12 @@ else in the document is machine-checked — read it, don't just trust the badge.
 | Public speaker gallery | `/e/<event-slug>/gallery` |
 | Embeddable widget (any surface, chromeless) | `/embed/<event-slug>/<surface>` |
 | Dev mailbox (**local-dev-only** sink — every sent email, including CFP confirmation and onboarding-task reminder emails, is viewable here; requires `DEV_MODE='1'` — **returns 404 on the live demo at https://chautauqua.cc by design**, DEC-005/DEC-382 amendment) | `/dev/mailbox` |
+| User-facing documentation site (how-to article index) | `/docs` |
+| User-facing documentation site (single article) | `/docs/:slug` |
 | Public API docs (auth, envelopes, endpoint table) | `/docs/api` |
 
 `/dev/mailbox` and `/docs/api` are operator chrome (DEC-382/DEC-582 amendment), not
-part of the user-facing product surfaces above — the `/docs` site (when present) reaches
+part of the user-facing product surfaces above — the `/docs` site is on main and reaches
 `/docs/api` only as a labelled, muted "leaves the docs" link, never as an article.
 
 Seeded demo event slug: `devflow-conf-2027`
