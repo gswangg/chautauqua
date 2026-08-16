@@ -143,6 +143,83 @@ describe('TaskModal: DEC-928 deliverable kind vocabulary', () => {
   });
 });
 
+// DEC-746 (wave-59 amendment): the New task modal's audience picker --
+// 'Everyone accepted' is the default (no contactIds sent, unchanged 'all N'
+// subtitle); choosing 'Only the people I choose' reveals the roster
+// checkbox list and posts exactly the chosen ids with a subtitle naming the
+// chosen count; zero chosen blocks submit; assigneesTruncated withholds the
+// subset choice entirely and states the ceiling.
+describe('TaskModal: DEC-746 audience picker (wave-59 amendment)', () => {
+  const ASSIGNEES = [
+    { contactId: 'contact-1', name: 'Ada Lovelace' },
+    { contactId: 'contact-2', name: 'Grace Hopper' },
+    { contactId: 'contact-3', name: 'Radia Perlman' },
+  ];
+
+  it('defaults to Everyone accepted, posts no contactIds, and keeps the all-N subtitle', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} assignees={ASSIGNEES} />,
+    );
+
+    expect(screen.getByText('Created for all 12 accepted speakers')).toBeInTheDocument();
+    fillTitle('Sign the agreement');
+    fireEvent.click(screen.getByRole('button', { name: 'Create the task' }));
+
+    await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]![0].contactIds).toBeUndefined();
+  });
+
+  it('choosing two people posts exactly those two ids and changes the subtitle', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} assignees={ASSIGNEES} />,
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Only the people I choose' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ada Lovelace' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Radia Perlman' }));
+
+    expect(screen.getByText('Created for the 2 people you choose')).toBeInTheDocument();
+
+    fillTitle('Sign the agreement');
+    fireEvent.click(screen.getByRole('button', { name: 'Create the task' }));
+
+    await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]![0].contactIds).toEqual(['contact-1', 'contact-3']);
+  });
+
+  it('blocks submit when the subset choice is selected but zero people are checked', async () => {
+    const onSubmit = vi.fn();
+    render(
+      <TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} assignees={ASSIGNEES} />,
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Only the people I choose' }));
+    fillTitle('Sign the agreement');
+    fireEvent.click(screen.getByRole('button', { name: 'Create the task' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Choose at least one speaker.')).toBeInTheDocument();
+  });
+
+  it('withholds the subset choice and states the ceiling when assigneesTruncated', () => {
+    render(
+      <TaskModal
+        onCancel={() => {}}
+        onSubmit={vi.fn()}
+        forms={FORMS}
+        acceptedCount={250}
+        assignees={[]}
+        assigneesTruncated
+      />,
+    );
+
+    expect(screen.queryByRole('radio', { name: 'Only the people I choose' })).not.toBeInTheDocument();
+    expect(screen.getByText(/too many speakers to choose from individually/)).toBeInTheDocument();
+  });
+});
+
 // DEC-577: the Kind picker is a .chq-segmented group of real <button>s, not
 // a <select> -- every kind must be reachable by keyboard (native button tab
 // order + Enter/Space activation, no custom key handling needed), and the

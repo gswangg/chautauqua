@@ -182,6 +182,11 @@ export interface NewTaskInput {
   // sent (omitted -- the server treats undefined and "" the same, but the
   // client's own trim keeps the two forms interchangeable at either side).
   instructions?: string;
+  // DEC-746 (wave-59 amendment): CREATE-only. Absent means every accepted
+  // speaker (unchanged default). Present is a non-empty subset of the
+  // event roster, sent only when the modal's subset picker is chosen --
+  // never sent from edit mode (PATCH never touches assignments).
+  contactIds?: string[];
 }
 
 // DEC-398: one entry of the `forms` list additively returned by

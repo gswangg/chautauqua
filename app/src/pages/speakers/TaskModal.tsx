@@ -29,6 +29,21 @@ interface TaskModalProps {
   // DEC-746: createTask always expands to every accepted speaker now -- the
   // subtitle states the count instead of offering an opt-out checkbox.
   acceptedCount: number;
+  // DEC-746 (wave-59 amendment): the roster available to the CREATE-mode
+  // subset picker, {contactId, name}. Only ever read in create mode; edit
+  // mode never touches assignments (PATCH is title/instructions/due
+  // date/required only). Undefined/empty in edit mode, or while the
+  // fetch is in flight, or on a failed fetch (never a silent empty list
+  // presented as "no speakers" -- see assigneesTruncated below for the
+  // over-ceiling case, and OnboardingGrid for the failed-fetch case,
+  // which falls back to offering only "Everyone accepted").
+  assignees?: { contactId: string; name: string }[];
+  // DEC-746 (wave-59 amendment): true when the roster exceeds the
+  // picker's fetch ceiling (MAX_PER_PAGE, 200) -- the subset choice is
+  // withheld entirely rather than showing a truncated list masquerading
+  // as the whole roster, and the modal states the ceiling in one
+  // sentence instead.
+  assigneesTruncated?: boolean;
   // DEC-933: when provided, the modal opens in EDIT mode for this existing
   // task instead of creating a new one. Kind/Form/Deliverable-kind are the
   // task's shape and are fixed in edit mode -- changing kind would orphan
@@ -84,8 +99,23 @@ function deliverableKindLabel(kind: DeliverableKind): string {
   return DELIVERABLE_KIND_LABELS[kind];
 }
 
-export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = null, onRemove }: TaskModalProps) {
+export function TaskModal({
+  onCancel,
+  onSubmit,
+  forms,
+  acceptedCount,
+  assignees = [],
+  assigneesTruncated = false,
+  task = null,
+  onRemove,
+}: TaskModalProps) {
   const isEdit = task !== null;
+  // DEC-746 (wave-59 amendment): CREATE mode only. 'everyone' is the
+  // default and matches the pre-amendment behaviour exactly (absent
+  // contactIds); 'subset' reveals the checkbox picker. Never offered when
+  // assigneesTruncated -- the ceiling refusal takes its place.
+  const [audienceMode, setAudienceMode] = useState<'everyone' | 'subset'>('everyone');
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [kind, setKind] = useState<TaskKind>(task?.kind ?? 'file_request');
   const [title, setTitle] = useState(task?.title ?? '');
   const [instructions, setInstructions] = useState(task?.instructions ?? '');
@@ -126,6 +156,10 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
       setError('Select a form before creating a form task.');
       return;
     }
+    if (!isEdit && audienceMode === 'subset' && selectedContactIds.size === 0) {
+      setError('Choose at least one speaker.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setFieldErrors({});
@@ -138,6 +172,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
         required,
         formId: !isEdit && kind === 'form' ? formId : undefined,
         deliverableKind: !isEdit && kind === 'file_request' ? deliverableKind : undefined,
+        contactIds: !isEdit && audienceMode === 'subset' ? Array.from(selectedContactIds) : undefined,
       });
     } catch (err) {
       if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
@@ -155,7 +190,13 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
       as="form"
       onSubmit={handleSubmit}
       title={isEdit ? 'Edit task' : 'New task'}
-      subtitle={isEdit ? undefined : `Created for all ${acceptedCount} accepted speakers`}
+      subtitle={
+        isEdit
+          ? undefined
+          : audienceMode === 'subset'
+            ? `Created for the ${selectedContactIds.size} people you choose`
+            : `Created for all ${acceptedCount} accepted speakers`
+      }
       onClose={onCancel}
       closeDisabled={submitting}
       modalClassName="chq-speakers-modal"
@@ -303,6 +344,78 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
             {fieldErrors.required}
           </span>
         ) : null}
+
+        {/* DEC-746 (wave-59 amendment): CREATE mode only -- edit mode PATCHes
+            and never touches assignments. Two mutually exclusive choices;
+            no new frame exists for this in the V11 pack, so this reuses the
+            existing chq-speakers-modal-field/chq-check-label vocabulary
+            already spent above (Kind group, Required checkbox). */}
+        {!isEdit && (
+          <div className="chq-speakers-modal-field">
+            <span className="chq-speakers-modal-label" id="task-audience-label">
+              Assign to
+            </span>
+            {assigneesTruncated ? (
+              <p className="chq-meta">
+                This event has too many speakers to choose from individually ({acceptedCount} accepted, more than the
+                200 this picker can list) -- the task will be created for everyone accepted.
+              </p>
+            ) : (
+              <div className="chq-radio-group" role="radiogroup" aria-labelledby="task-audience-label">
+                <label className="chq-check-label">
+                  <input
+                    className="chq-check"
+                    type="radio"
+                    name="task-audience"
+                    checked={audienceMode === 'everyone'}
+                    onChange={() => setAudienceMode('everyone')}
+                  />
+                  {`Everyone accepted (${acceptedCount})`}
+                </label>
+                <label className="chq-check-label">
+                  <input
+                    className="chq-check"
+                    type="radio"
+                    name="task-audience"
+                    checked={audienceMode === 'subset'}
+                    onChange={() => setAudienceMode('subset')}
+                  />
+                  Only the people I choose
+                </label>
+              </div>
+            )}
+            {fieldErrors.contactIds ? (
+              <span role="alert" className="chq-form-row-error">
+                {fieldErrors.contactIds}
+              </span>
+            ) : null}
+          </div>
+        )}
+
+        {!isEdit && !assigneesTruncated && audienceMode === 'subset' && (
+          <div className="chq-speakers-modal-field" role="group" aria-label="Choose speakers">
+            <div className="chq-speakers-audience-list">
+              {assignees.map((a) => (
+                <label key={a.contactId} className="chq-check-label">
+                  <input
+                    className="chq-check"
+                    type="checkbox"
+                    checked={selectedContactIds.has(a.contactId)}
+                    onChange={(e) => {
+                      setSelectedContactIds((current) => {
+                        const next = new Set(current);
+                        if (e.target.checked) next.add(a.contactId);
+                        else next.delete(a.contactId);
+                        return next;
+                      });
+                    }}
+                  />
+                  {a.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
     </ModalFrame>
   );
 }
