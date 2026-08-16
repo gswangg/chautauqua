@@ -13,7 +13,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { agendaHtmlContainsBreakLabel, breaksListContainsId, buildCreateBreakBody } from "../walkthrough-lib";
+import { agendaHtmlContainsBreakLabel, breaksListContainsId, buildCreateBreakBody, dayLabelMs } from "../walkthrough-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
@@ -280,9 +280,11 @@ async function runJ1(organizerJar: CookieJar): Promise<{ eventId: string; slug: 
     JSON.stringify(conditionalField.json),
   );
 
-  // Tracks + closeDate, openDate in the future (not yet open).
-  const openDate = Date.now() + 24 * 60 * 60 * 1000; // +1 day
-  const closeDate = Date.now() + 30 * 24 * 60 * 60 * 1000; // +30 days
+  // Tracks + closeDate, openDate in the future (not yet open). DEC-522:
+  // whole-day offsets via dayLabelMs so the label is unambiguous across the
+  // full IANA timezone offset range.
+  const openDate = dayLabelMs(2); // +2 days
+  const closeDate = dayLabelMs(30); // +30 days
   const patchNotYetOpen = await api(organizerJar, "PATCH", `/api/v1/forms/${formId}`, {
     tracks: trackIds,
     openDate,
@@ -338,8 +340,9 @@ async function runJ1(organizerJar: CookieJar): Promise<{ eventId: string; slug: 
   );
 
   // Open the window (openDate now in the past) — submission should work.
+  // DEC-522: whole-day offset via dayLabelMs (see openDate/closeDate above).
   const patchOpen = await api(organizerJar, "PATCH", `/api/v1/forms/${formId}`, {
-    openDate: Date.now() - 60_000,
+    openDate: dayLabelMs(-2),
   });
   assertStatus("J1 PATCH form (open window)", patchOpen.res, 200, patchOpen.text);
 
@@ -759,8 +762,8 @@ async function runJ5(organizerJar: CookieJar, eventId: string, eventStartDate: s
   const feedbackPlanRes = await api(organizerJar, "POST", `/api/v1/events/${eventId}/plans`, {
     name: "Walkthrough J5 compose feedback plan",
     instructions: "Score each proposal so J5 has feedback to attach to compose previews.",
-    openDate: Date.now() - 24 * 60 * 60 * 1000,
-    closeDate: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    openDate: dayLabelMs(-1),
+    closeDate: dayLabelMs(30),
     filters: {},
     anonymized: true,
     scale: { min: 1, max: 5 },
