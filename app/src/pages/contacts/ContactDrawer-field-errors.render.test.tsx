@@ -29,7 +29,7 @@ const CONTACT: ContactDetail = {
   headshotUrl: null,
   socialLinks: { twitter: '@priya', linkedin: null, github: null, website: null },
   customFields: {},
-  history: { submissions: [], submissionsTotal: 0, emails: [], emailsTotal: 0, events: [] },
+  history: { submissions: [], submissionsTotal: 0, emails: [], emailsTotal: 0, events: [], eventsTotal: 0 },
 };
 
 afterEach(() => {

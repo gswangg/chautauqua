@@ -55,7 +55,7 @@ const FULL_CONTACT: ContactDetail = {
   headshotUrl: 'https://files.example/ada-headshot.png',
   socialLinks: { twitter: '@ada', linkedin: 'ada-lovelace', github: 'adalovelace', website: 'https://ada.example' },
   customFields: {},
-  history: { submissions: [], submissionsTotal: 0, emails: [], emailsTotal: 0, events: [] },
+  history: { submissions: [], submissionsTotal: 0, emails: [], emailsTotal: 0, events: [], eventsTotal: 0 },
 };
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
