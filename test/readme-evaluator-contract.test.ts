@@ -203,6 +203,14 @@ const EXCLUDED = new Set<string>([
   // patterns). The routes themselves are real and tested elsewhere.
   "/e/<event-slug>/schedule.ics",
   "/e/<event-slug>/agenda.ics",
+  // The docs site's article route is a PATTERN, not a literal: docs.tsx's
+  // PUBLIC_ROUTE_GROUPS registers `GET /docs/:slug` and
+  // test/readme-evaluator-surfaces.test.ts requires the evaluator table to
+  // carry that exact token, while ROUTE_MANIFEST holds only the concrete
+  // articles it can actually render-sweep (/docs/start-here). Same shape as
+  // bare /admin above: a real route whose children, not the pattern, are the
+  // manifest literals.
+  "/docs/:slug",
 ]);
 
 describe("README.md 'For evaluators' block is a machine-checked grader contract (DEC-583 wave-36)", () => {

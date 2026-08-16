@@ -140,14 +140,18 @@ export const DOCS_SITE_CSS = `
   /* Search (DEC-382 wave-9 amendment): two drawn placements, one form
      shape. "compact" is the header cluster (:39/:237, min-width 260,
      13px); "large" is the index intro block (:136, max-width 420, 15px).
-     The submit control is a real button sized to a >=44px touch target
-     (DEC-919) -- deliberately taller than the drawn 12px/8px row padding,
-     which describes the placeholder TEXT, not a control. */
+     The submit control sizes to its padding on desktop and picks up the
+     >=44px tap floor on phone only (DEC-367 -- docs/design/README.md:92
+     scopes the floor to phone; desktop rows size to padding instead). */
   .chq-docs-search { display: flex; align-items: center; gap: 6px; border: 1px solid var(--chq-border); border-radius: 4px; background: var(--chq-surface); }
   .chq-docs-search-large { max-width: 420px; padding: 5px 5px 5px 14px; font-size: 15px; }
   .chq-docs-search-compact { min-width: 260px; margin-left: auto; padding: 4px 4px 4px 12px; font-size: 13px; }
-  .chq-docs-search-input { flex: 1; min-width: 0; border: none; background: transparent; font: inherit; color: var(--chq-ink-2); outline: none; }
-  .chq-docs-search-submit { min-height: 44px; min-width: 44px; padding: 6px 14px; border: none; border-radius: 3px; background: var(--chq-ink); color: var(--chq-surface); font-size: 13px; font-weight: 700; letter-spacing: 0.01em; cursor: pointer; }
+  .chq-docs-search-input { flex: 1; min-width: 0; border: none; background: transparent; font: inherit; color: var(--chq-ink-2); }
+  /* DEC-409/DEC-366: the input carries the designed olive ring itself.
+     Suppressing the ring is banned -- this field has no border of its own
+     (the wrapper draws it), so a silenced ring would leave focus invisible. */
+  .chq-docs-search-input:focus-visible { outline: 2px solid var(--chq-brand); outline-offset: 2px; }
+  .chq-docs-search-submit { padding: 6px 14px; border: none; border-radius: 3px; background: var(--chq-ink); color: var(--chq-surface); font-size: 13px; font-weight: 700; letter-spacing: 0.01em; cursor: pointer; }
 
   /* Header search sits before the leaving link, so the leaving link no
      longer needs its own margin-left: auto once a search field is present
@@ -166,6 +170,13 @@ export const DOCS_SITE_CSS = `
     .chq-docs-article-grid { grid-template-columns: 1fr; }
     .chq-docs-article-frame { grid-template-columns: 1fr; padding: 24px 16px 40px; gap: 0; }
     .chq-docs-article-head h1 { font-size: 28px; }
+
+    /* The search submit is a real tap target, so it takes the phone tap
+       floor here (DEC-367) rather than in the base rule. */
+    .chq-docs-search-submit {
+      min-height: 44px;
+      min-width: 44px;
+    }
 
     /* Nav collapses to a single 44px-min '‹ Docs' back link above the H1
        (:168, the phone panel's own header). */
