@@ -86,6 +86,22 @@ live tree this task, not inherited from a prior wave's claim:
   (`accept={...}`) and `:168` (`uploadHintText(...)`) derive from — one
   source, cannot drift.
 
+## DELTA-PROBE 6 (waves 64-72 churn; chautauqua-research/fidelity-delta6/report.md; sha b85dffb1, integrity CLEAN)
+
+**10/10 WORKS, zero BROKEN.** Measured closures to PRUNE: 1b import disposition
+(merge PATCHes updated:1 / import-as-new creates — judge-critical, click-verified) ·
+search submit real 40x40 on-viewport button, pointer-click submits both surfaces ·
+invite dialog = real ModalFrame with DEC-238 receipt vocabulary (no "unknown") ·
+people grid headers/data exact-aligned 310/534/722 · breaks flagged band = dashed
+differential + suffix (wave-66 ruling; "greyed" superseded) · comms expansion heads
++ real template names + 1 caption · overview B8 property-scoped 0.12s with real
+hover deltas · drawer footer inside 1440 AND 1600 · remind receipt "Sent: 2.
+Skipped: 0. Remaining: 0." · FieldModal far-left Delete + sentence · portal preview
+Back link 200 · role-blocked bounce states why. NOTE for wave hygiene: no
+user-DELETE path exists (users API = GET/POST/reset) — fine for product, but probe
+reverts need D1; not a defect.
+
+
 ## INTERIM RUN 2026-08-16T06-09 — **93.8 @ 93.5% coverage, NEW BEST** (was 90.3; matches the 140-turn diagnostic's predicted ceiling exactly). LOSS-MINE + FINAL-FREEZE LANE
 
 Per-area: AIA 100 · EMB 100 · CRM 94.4 · CFP 93.5 · ABS 91.1 · CNT 90.7 · SPK 88.7.
