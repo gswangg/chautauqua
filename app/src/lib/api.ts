@@ -226,5 +226,11 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
     throw new ApiError(res.status, 'internal', `Request failed with status ${res.status}`);
   }
 
+  // DEC-700 (wave-53 amendment): apiUpload is a mutating helper that
+  // deliberately bypasses request() for the multipart content-type, but the
+  // shared signal is owed to every non-GET success, not just request()'s
+  // callers -- see api-mutation-bump.scan.test.ts.
+  bumpMutationVersion();
+
   return body as T;
 }
