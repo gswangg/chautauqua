@@ -146,14 +146,14 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
   it('shows the history timeline and restores a prior revision (CNT-11, DEC-158, DEC-892)', async () => {
     let currentDetail = baseDetail();
     let history = [
-      { id: 'rev-2', at: 1700000200000, kind: 'edited', label: 'Edited by organizer@example.com', detail: 'Original Title' },
-      { id: 'rev-1', at: 1700000100000, kind: 'edited', label: 'Edited by organizer@example.com', detail: 'Original Title' },
-      { id: 'submission:sub-1', at: 1700000000000, kind: 'submitted', label: 'Submitted', detail: null },
+      { id: 'rev-2', at: 1700000200000, kind: 'edited', label: 'Edited by organizer@example.com', detail: 'Original Title', revisionId: 'rev-2' },
+      { id: 'rev-1', at: 1700000100000, kind: 'edited', label: 'Edited by organizer@example.com', detail: 'Original Title', revisionId: 'rev-1' },
+      { id: 'submission:sub-1', at: 1700000000000, kind: 'submitted', label: 'Submitted', detail: null, revisionId: 'rev-0' },
     ];
     const restoreMock = vi.fn(() => {
       currentDetail = { ...currentDetail, description: 'First edit' };
       history = [
-        { id: 'rev-3', at: 1700000300000, kind: 'edited', label: 'Edited by organizer@example.com', detail: 'Original Title' },
+        { id: 'rev-3', at: 1700000300000, kind: 'edited', label: 'Edited by organizer@example.com', detail: 'Original Title', revisionId: 'rev-3' },
         ...history,
       ];
       return currentDetail;
@@ -195,8 +195,11 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
 
     expect(screen.getByRole('button', { name: 'Hide' })).toBeInTheDocument();
 
+    // w59-f (DEC-158 amendment): the newest revision-carrying entry (rev-2)
+    // IS the current content, so it renders 'Current version' with no
+    // button -- the first Restore button belongs to rev-1.
     const restoreButtons = screen.getAllByRole('button', { name: 'Restore' });
-    fireEvent.click(restoreButtons[1]!);
+    fireEvent.click(restoreButtons[0]!);
 
     await waitFor(() => {
       expect(restoreMock).toHaveBeenCalled();

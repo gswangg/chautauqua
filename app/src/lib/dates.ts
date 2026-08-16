@@ -108,6 +108,25 @@ export function formatDateTime(ms: number | null | undefined): string {
 }
 
 /**
+ * w59-f (DEC-158 amendment): formatDateTime's seconds-carrying twin --
+ * "<D> <Mon>, HH:MM:SS" (24-hour) -- for surfaces where two events can land
+ * inside the same minute (e.g. a submission's edit history) and need to
+ * render as distinguishable rows. '—' for null/undefined/NaN/invalid. Use
+ * formatDateTime instead wherever second-level precision isn't load-bearing.
+ */
+export function formatDateTimeWithSeconds(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return '—';
+  const day = date.getDate();
+  const month = SHORT_MONTH_NAMES[date.getMonth()];
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${day} ${month}, ${hh}:${mm}:${ss}`;
+}
+
+/**
  * Format an epoch-ms timestamp as "Tue 11 Aug, 4:12pm" -- weekday, day,
  * short month, 12-hour clock with a lowercase am/pm suffix (no leading
  * zero on the hour, no space before am/pm). '—' for null/undefined/NaN/
