@@ -7,7 +7,7 @@ import type { Hono } from "hono";
 import type { AppEnv } from "../../../server/env";
 import * as schema from "../../../db/schema";
 import { csrfJson } from "../../../server/middleware";
-import { ApiError, parseBoundedIdArray } from "../../../server/http";
+import { ApiError, parseBoundedIdArray, requireAtLeastOneField } from "../../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
 import { overCapFieldMessage, overCapCountMessage } from "../../../domain/cap-copy";
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
@@ -292,6 +292,21 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const body = asRecord(await c.req.json().catch(() => {
       throw new ApiError("invalid", "Invalid JSON body");
     }));
+    // DEC-627 (amendment, wave 6): every field on this PATCH is optional;
+    // an empty body must be refused rather than reaching patchContact as a
+    // no-op.
+    requireAtLeastOneField(body, [
+      "firstName",
+      "lastName",
+      "email",
+      "phone",
+      "company",
+      "title",
+      "bio",
+      "notes",
+      "customFields",
+      "socialLinks",
+    ]);
 
     const fields: Record<string, string> = {};
     const patch: repo.ContactPatch = {};

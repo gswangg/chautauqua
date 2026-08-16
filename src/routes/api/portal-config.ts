@@ -6,7 +6,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, readJsonBody } from "../../server/http";
+import { ApiError, readJsonBody, requireAtLeastOneField } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapFieldMessage } from "../../domain/cap-copy";
 import { makeFileStore, putThenRecord } from "../../server/context";
@@ -297,6 +297,10 @@ portalConfigRoutes.patch("/resources/:resourceId", csrfJson, async (c) => {
   await requireEvent(db, orgId, eventId);
 
   const body = await readJsonBody(c);
+  // DEC-627 (amendment, wave 6): every field on this PATCH is optional; an
+  // empty body must be refused rather than reaching updateResource as a
+  // no-op.
+  requireAtLeastOneField(body, ["title", "content", "position"]);
   const fields: Record<string, string> = {};
 
   const title = body.title;

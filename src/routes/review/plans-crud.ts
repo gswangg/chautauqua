@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
-import { ApiError, readJsonBody } from "../../server/http";
+import { ApiError, readJsonBody, requireAtLeastOneField } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapFieldMessage } from "../../domain/cap-copy";
 import * as repo from "../../server/repo/review";
@@ -115,6 +115,22 @@ reviewPlansCrudRoutes.get("/api/v1/plans/:id", requireOrganizer, async (c) => {
 reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
   const body = await readJsonBody(c);
+  // DEC-627 (amendment, wave 6): every field on this PATCH is optional; an
+  // empty body must be refused rather than reaching updatePlan as a no-op.
+  requireAtLeastOneField(body, [
+    "name",
+    "instructions",
+    "scale",
+    "criteria",
+    "rounds",
+    "roundCriteria",
+    "roundMeta",
+    "maxEvaluations",
+    "openDate",
+    "closeDate",
+    "anonymized",
+    "filters",
+  ]);
   const errors: Record<string, string> = {};
 
   if (body.name !== undefined && typeof body.name === "string" && body.name.length > MAX_NAME_LENGTH) {

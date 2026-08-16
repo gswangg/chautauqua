@@ -16,6 +16,7 @@ import {
   parseBoundedText,
   parseBoundedOptionalText,
   readOptionalJsonBody,
+  requireAtLeastOneField,
 } from "../../server/http";
 import {
   cloneSubmission,
@@ -470,20 +471,19 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
         : Promise.resolve(undefined),
     ]);
 
-  if (
-    Object.keys(fields).length === 0 &&
-    trackIds === undefined &&
-    format === undefined &&
-    audienceLevel === undefined
-  ) {
-    throw new ApiError(
-      "invalid",
-      "At least one of title, description, trackIds, format, or audienceLevel is required",
-      {
-        title: "Provide title, description, trackIds, format, or audienceLevel",
-      },
-    );
-  }
+  // DEC-627 (amendment, wave 6): routed through the shared helper --
+  // `fields` only carries a key when the body actually supplied it (see
+  // the `if (body.title !== undefined)` / `if (body.description !==
+  // undefined)` guards above), so folding it together with the three
+  // already-optional derived values gives requireAtLeastOneField an
+  // accurate "was anything supplied" record without re-deriving one.
+  requireAtLeastOneField({ ...fields, trackIds, format, audienceLevel }, [
+    "title",
+    "description",
+    "trackIds",
+    "format",
+    "audienceLevel",
+  ]);
 
   const before = content;
   if (!before) throw new ApiError("not_found", "Submission not found");

@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import type { AuthInfo } from "../../server/env";
-import { ApiError, readJsonBody } from "../../server/http";
+import { ApiError, readJsonBody, requireAtLeastOneField } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapFieldMessage } from "../../domain/cap-copy";
 import * as schema from "../../db/schema";
@@ -325,6 +325,10 @@ eventsRoutes.patch("/events/:eventId", csrfJson, async (c) => {
   if (!existing) throw new ApiError("not_found", "Event not found");
 
   const body = await readJsonBody(c);
+  // DEC-627 (amendment, wave 6): every field on this PATCH is optional, so
+  // an empty body must be refused up front rather than reaching
+  // updateEvent as a no-op write that still bumps the public cache.
+  requireAtLeastOneField(body, ["name", "slug", "startDate", "endDate", "timezone", "location", "branding"]);
   const fields: Record<string, string> = {};
 
   const name = requireString(body, "name", fields);
@@ -392,7 +396,7 @@ eventsRoutes.patch("/events/:eventId", csrfJson, async (c) => {
   // DEC-519 (wave-11 amendment): a timezone change reaches every scheduled
   // submission's absolute DTSTART/DTEND — bump only when the string
   // actually changed (a same-string PATCH is a no-op), mirroring the
-  // room-rename rule at events.ts:537-539. Explicitly refused: name,
+  // room-rename rule at events.ts:564. Explicitly refused: name,
   // location, startDate, endDate — see DEC-519's wave-11 amendment.
   if (timezone !== undefined && timezone !== existing.timezone) {
     await bumpIcsSequencesForEvent(c.var.db, eventId);
@@ -461,6 +465,9 @@ eventsRoutes.patch("/tracks/:trackId", csrfJson, async (c) => {
   await requireEvent(db, orgId, eventId);
 
   const body = await readJsonBody(c);
+  // DEC-627 (amendment, wave 6): both fields are optional; an empty body
+  // must be refused rather than reaching updateTrack as a no-op write.
+  requireAtLeastOneField(body, ["name", "color"]);
   const fields: Record<string, string> = {};
   const name = requireString(body, "name", fields);
   const color = body.color;
@@ -544,6 +551,9 @@ eventsRoutes.patch("/rooms/:roomId", csrfJson, async (c) => {
   await requireEvent(db, orgId, eventId);
 
   const body = await readJsonBody(c);
+  // DEC-627 (amendment, wave 6): both fields are optional; an empty body
+  // must be refused rather than reaching updateRoom as a no-op write.
+  requireAtLeastOneField(body, ["name", "capacity"]);
   const fields: Record<string, string> = {};
   const name = requireString(body, "name", fields);
   const capacity = body.capacity;

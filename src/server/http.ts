@@ -269,6 +269,33 @@ export async function readJsonBody(c: Context<AppEnv>): Promise<Record<string, u
   return parsed as Record<string, unknown>;
 }
 
+// DEC-627 (amendment, wave 6): the ONE place an all-optional PATCH refuses
+// an empty/no-op body. `supplied` is whatever the caller has already
+// resolved for each recognised field -- either the raw parsed body (when
+// every key maps 1:1 to a body property) or a small record the caller
+// assembles from its own derived values (e.g. a validated sub-object) --
+// and `names` is the closed list of fields this route recognises. A field
+// counts as "supplied" iff its value in `supplied` is not `undefined`;
+// every route calling this must therefore only ever store `undefined` for
+// an absent/not-provided field, never for "present but invalid" (those are
+// caught by the route's own per-field validation, which always runs
+// first). Mirrors the shape submissions.ts's PATCH originated (DEC-627
+// wave-6 amendment): a single shared helper instead of N hand-written
+// "Object.keys(fields).length === 0" ladders (DEC-613's delay-fuse trap).
+export function requireAtLeastOneField(supplied: Record<string, unknown>, names: readonly string[]): void {
+  if (names.length === 0) {
+    throw new Error("requireAtLeastOneField: names must be non-empty");
+  }
+  const anyProvided = names.some((name) => supplied[name] !== undefined);
+  if (anyProvided) return;
+  const first: string = names[0] as string;
+  const last: string = names[names.length - 1] as string;
+  const list = names.length === 1 ? first : `${names.slice(0, -1).join(", ")}, or ${last}`;
+  throw new ApiError("invalid", `At least one of ${list} is required`, {
+    [first]: `Provide ${list}`,
+  });
+}
+
 // DEC-626/DEC-841: a minimal self-contained HTML error page for requests
 // that want an HTML surface -- either marked htmlSurface (plain form posts,
 // including a form post to an /api/v1 path) or any non-API-path GET
