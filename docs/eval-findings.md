@@ -50,6 +50,66 @@ live tree this task, not inherited from a prior wave's claim:
   (`accept={...}`) and `:168` (`uploadHintText(...)`) derive from — one
   source, cannot drift.
 
+## INTERIM RUN 2026-08-16T06-09 — **93.8 @ 93.5% coverage, NEW BEST** (was 90.3; matches the 140-turn diagnostic's predicted ceiling exactly). LOSS-MINE + FINAL-FREEZE LANE
+
+Per-area: AIA 100 · EMB 100 · CRM 94.4 · CFP 93.5 · ABS 91.1 · CNT 90.7 · SPK 88.7.
+**Cluster verdicts by the judges themselves:** push-to-event defect GONE · task
+targeting "created for all N" GONE · bulk-send count mismatch GONE · headshot
+rectangles GONE. The correctness campaign converted directly into score.
+
+**FINAL-FREEZE LANE (highest value first; final full run fires after these):**
+1. **Cluster 1b LANDED THE ONLY REMAINING MAJOR-CLASS DEFECT AGAIN** (SPK major:
+   email-only dedup minted a second Priya) + its cousin (CNT minor: reminders
+   target the duplicate's alternate address). STILL UNCLAIMED after 5+ waves —
+   name+company pre-import disposition, HIGHEST PRIORITY.
+2. **Auto-schedule un-flagged speaker double-bookings** (AIA major, NEW): SES-033
+   CSV-batch session's speakers overlap other placements with no clash flag.
+   ROOT-CAUSE HYPOTHESIS: conflict counting excludes participants by invite
+   status (see rows.ts:214 comment) — CSV-batch speakers are NOT INVITED, so
+   they're invisible to clash detection. Verify + fix + test.
+3. **Public search submit "fix" is WRONG**: the off-screen 1x1 button defeats
+   real pointer clicks (judge's Playwright click timed out AGAIN; only Enter
+   works). An offscreen submit is worse than an overlapped one — make the
+   button visibly clickable (or make the magnifier icon the submit control).
+4. **Contact drawer clipped at right edge** (2 areas, both runs' screenshots):
+   Save button + helper text cut off at viewport edge — regression from recent
+   drawer work; measure at 1440 AND 1600.
+5. **Embed accent color not applied in rendered embed** (EMB minor): builder
+   saves #2563eb, /embed/e/<id> renders no accent. Wire the knob through.
+6. **Track-add confusing validation state** (AIA minor): success + simultaneous
+   "ONE THING NEEDS" error box on tracks-and-rooms panel.
+7. **SEED HYGIENE (cheap, contaminated 3 areas AGAIN — do in seed.ts):**
+   (a) SES-002/SES-032 identical-title conflicting-status pair — make statuses
+   coherent or retitle (P3 #30, still unaddressed);
+   (b) seeded duplicate contact rows (two Priya, two Marcus, PARKER/Parker) are
+   INTENTIONAL CRM-dedup fixtures — but they bleed into ABS/CNT/SPK judgments;
+   consider moving the dupes to a dedicated fixture pair NOT sharing names with
+   the hero speakers;
+   (c) seeded reviewer assignments overlap broadly (Sam track-wide on 3 plans) —
+   judges read it as noise; narrow the seed assignments.
+8. Speaker-blocked admin routes: silent redirect to /portal — add an access
+   message (CNT minor, both runs).
+9. Version history v1/v2 identical minute-granular timestamps (CNT) — same
+   seconds-precision fix as history entries (gate-8 P3 #22 family).
+10. Portal vs organizer co-presenter email asymmetry (ABS minor): portal add
+    sends nothing (honest line), organizer add sends portal invite — judges read
+    the asymmetry as a gap; consider offering the invite send on portal add too
+    OR stating the difference in the organizer flow.
+
+**NON-ACTIONABLE (recorded so nobody chases):** SBEK-PORTAL-BIO-01 is the eval's
+OWN marker — SPK-S2 writes it into Priya's bio via the portal mid-run, then EMB
+judges flag it as residue; it is not in our seeds (grep confirms). Reseed clears
+it between runs; unavoidable within a run. · ABS "scorecard editor numeric-only"
+major asks for configurable field TYPES (dropdown recommendations) — a real
+feature, out of scope for the final hours; noted as roadmap, not a freeze item.
+· turn-cap cannot_judge items unchanged (CFP-04/16/18, CNT-10/14, CRM-11).
+· "12 of 19 placed are public, 7 held back" banner LANDED and now says exactly
+that (AIA minor is the judge disliking the policy, not a silent withhold — the
+withholding-list detail in gate-10 lane item 19 remains nice-to-have).
+
+**Eval budget: spend ≈$490 of $650 after this run. Final full run reserved.**
+
+
 ## GATE-11 SWEEP VERDICTS (fidelity-gate11/group{1,2,3}.md; DEPLOYED sha 6719a2dc, hotfix8 9b18f7ff on top; integrity CLEAN all three)
 
 **Scoreboard: 21 CONFIRMED CLOSED / 2 reopens (both HOTFIXED same hour) / handful of
