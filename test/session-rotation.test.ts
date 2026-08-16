@@ -165,6 +165,12 @@ function makeFakeDb() {
             limit(n: number) {
               return Promise.resolve(matched.slice(0, n).map((r) => project(r, fields)));
             },
+            // findAccountUserIds' user select ends in .orderBy, unlimited
+            // (DEC-456 wave-71 amendment). Ordering is a no-op here: the
+            // fixtures never hold two rows sharing a key.
+            orderBy() {
+              return Promise.resolve(matched.map((r) => project(r, fields)));
+            },
           });
           return {
             where(cond: unknown) {

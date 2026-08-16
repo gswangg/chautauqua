@@ -199,16 +199,17 @@ describe("POST /claim/:token (route-level, DEC-064)", () => {
         select() {
           return {
             from(table: unknown) {
+              const rowsFor = () => {
+                if (table === schema.contact) return Promise.resolve(state.contacts);
+                if (table === schema.user) return Promise.resolve(state.users);
+                if (table === schema.rateLimit) return Promise.resolve([]);
+                throw new Error("unexpected table in fake db select");
+              };
               return {
                 where() {
-                  return {
-                    limit() {
-                      if (table === schema.contact) return Promise.resolve(state.contacts);
-                      if (table === schema.user) return Promise.resolve(state.users);
-                      if (table === schema.rateLimit) return Promise.resolve([]);
-                      throw new Error("unexpected table in fake db select");
-                    },
-                  };
+                  // findAccountUserIds' user select ends in .orderBy (DEC-456
+                  // wave-71 amendment); the others end in .limit.
+                  return { limit: rowsFor, orderBy: rowsFor };
                 },
               };
             },
@@ -430,23 +431,26 @@ describe("POST /claim/:token write-phase reorder (route-level, DEC-064 wave-66 a
             from(table: unknown) {
               return {
                 where(cond: unknown) {
-                  return {
-                    limit() {
-                      if (table === schema.contact) return Promise.resolve([opts.contact]);
-                      if (table === schema.user) {
-                        // findAccountUserId's or(contactId eq, lower(email) eq) —
-                        // real filtering so the concurrency test's loser sees the
-                        // winner's freshly-inserted row once it lands.
-                        void cond;
-                        const match = state.users.find(
-                          (u) => u.contactId === opts.contact.id || u.email.toLowerCase() === opts.contact.email.toLowerCase(),
-                        );
-                        return Promise.resolve(match ? [{ id: match.id }] : []);
-                      }
-                      if (table === schema.rateLimit) return Promise.resolve([]);
-                      throw new Error("unexpected table in fake db select");
-                    },
+                  const rowsFor = () => {
+                    if (table === schema.contact) return Promise.resolve([opts.contact]);
+                    if (table === schema.user) {
+                      // findAccountUserIds' or(contactId eq, lower(email) eq) —
+                      // real filtering so the concurrency test's loser sees the
+                      // winner's freshly-inserted row once it lands. Full
+                      // (id, contactId, email) rows: the DEC-456 wave-71
+                      // amendment's map build reads all three.
+                      void cond;
+                      const matches = state.users.filter(
+                        (u) => u.contactId === opts.contact.id || u.email.toLowerCase() === opts.contact.email.toLowerCase(),
+                      );
+                      return Promise.resolve(matches.map((u) => ({ id: u.id, contactId: u.contactId, email: u.email })));
+                    }
+                    if (table === schema.rateLimit) return Promise.resolve([]);
+                    throw new Error("unexpected table in fake db select");
                   };
+                  // findAccountUserIds' user select ends in .orderBy (DEC-456
+                  // wave-71 amendment); the others end in .limit.
+                  return { limit: rowsFor, orderBy: rowsFor };
                 },
               };
             },

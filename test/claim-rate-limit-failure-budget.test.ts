@@ -48,16 +48,17 @@ function makeFakeDb(opts: { contacts: unknown[]; users: unknown[]; initialRateLi
       select() {
         return {
           from(table: unknown) {
+            const rowsFor = () => {
+              if (table === schema.contact) return Promise.resolve(state.contacts);
+              if (table === schema.user) return Promise.resolve(state.users);
+              if (table === schema.rateLimit) return Promise.resolve([]);
+              throw new Error("unexpected table in fake db select");
+            };
             return {
               where() {
-                return {
-                  limit() {
-                    if (table === schema.contact) return Promise.resolve(state.contacts);
-                    if (table === schema.user) return Promise.resolve(state.users);
-                    if (table === schema.rateLimit) return Promise.resolve([]);
-                    throw new Error("unexpected table in fake db select");
-                  },
-                };
+                // findAccountUserIds' user select ends in .orderBy (DEC-456
+                // wave-71 amendment); the others end in .limit.
+                return { limit: rowsFor, orderBy: rowsFor };
               },
             };
           },

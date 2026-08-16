@@ -92,8 +92,10 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
           }),
         }),
         // findAccountUserIds' single-table select — no accounts in this
-        // fake, so every recipient resolves to a fresh claim link.
-        where: async () => [],
+        // fake, so every recipient resolves to a fresh claim link. The
+        // DEC-456 wave-71 amendment made this query ORDER BY user.id, so
+        // the chain is where -> orderBy.
+        where: () => ({ orderBy: async () => [] }),
       }),
     }),
     update: () => ({

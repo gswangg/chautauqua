@@ -30,6 +30,10 @@ import { firstNameOf } from '../../lib/identity';
 import { DEC_930 } from '../../../../src/decisions';
 import type { SpeakerDetailResponse, SpeakerDetailTaskStatus } from './speakerDetail';
 import { toRows, fromRows, reservedValue, RESERVED_CUSTOM_FIELD_KEYS, RESERVED_CUSTOM_FIELD_LABELS } from '../contacts/customFields';
+// DEC-417/DEC-660: the same cap the Contacts drawer declares on these three
+// reserved fields -- the two surfaces PATCH the same /contacts/:id route, so
+// they must not disagree about the length it enforces.
+import { MAX_TEXT_LENGTH } from '../../lib/text-caps';
 import './speakers.css';
 
 void DEC_930;
@@ -556,6 +560,8 @@ export function SpeakerDetailPage() {
                       <label key={reservedKey} className="chq-speaker-detail-logistics-field">
                         <span className="chq-section-label">{RESERVED_CUSTOM_FIELD_LABELS[reservedKey]}</span>
                         <textarea
+                          className="chq-textarea"
+                          maxLength={MAX_TEXT_LENGTH}
                           value={logisticsDraft[draftKey]}
                           onChange={(e) => setLogisticsDraft({ ...logisticsDraft, [draftKey]: e.target.value })}
                         />

@@ -79,9 +79,9 @@ const ALLOWLIST: Record<string, { count: number; reason: string }> = {
       "'Pick two or more duplicate records...' is an instruction for a page handed no selection, same shape as DeleteSubmissionsPage's -- not a collection, but not in w52-d's named scope to convert either.",
   },
   'pages/speakers/SpeakerDetailPage.tsx': {
-    count: 1,
+    count: 2,
     reason:
-      "the notes field's 'No notes.' line is the one surviving non-collection site -- a single field's absent value, not a zero-row collection; sessions/tasks/files/other-events all converted to EmptyState on w55-c.",
+      "two single-field absent-value lines, neither a zero-row collection: the notes field's 'No notes.', and (DEC-738's wave-71 Logistics section) the one 'Not set.' line shared by the dietary/travel/accessibility rows -- each row is one FIELD of the person's org-wide record, not a list that came back empty. sessions/tasks/files/other-events all converted to EmptyState on w55-c.",
   },
 };
 

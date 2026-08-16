@@ -160,6 +160,9 @@ describe("DEC-930 getSpeakerDetail", () => {
         hasAccount: false,
         phone: null,
         notes: null,
+        // DEC-738 amendment (wave 71): the person's org-wide logistics
+        // facts; blank/absent customFieldsJson projects as {}, never null.
+        customFields: {},
         headshotFileId: null,
       },
       participation: {

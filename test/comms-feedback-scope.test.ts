@@ -150,6 +150,9 @@ describe("buildRenderTargets only renders the composing plan+round's feedback (D
       from: () => emptyChain,
       innerJoin: () => emptyChain,
       where: () => emptyChain,
+      // findAccountUserIds' user select ends in .orderBy (DEC-456 wave-71
+      // amendment).
+      orderBy: () => emptyChain,
       limit: () => emptyChain,
       then: (resolve: (v: unknown[]) => void) => resolve([]),
     };

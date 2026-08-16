@@ -67,6 +67,9 @@ function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
     where: () => chain,
+    // findAccountUserIds' user select ends in .orderBy (DEC-456 wave-71
+    // amendment); ordering is a no-op against a queued row set.
+    orderBy: () => chain,
     limit: async () => rows,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
@@ -399,7 +402,10 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
       [], // fold: pipelineEntry for keepId
       [], // fold: pipelineEntry for mergeId
       [keep], // fold: findContactById(keepId) after merge
-      [{ id: "user-merge" }], // findAccountUserId select below
+      // findAccountUserId select below — the post-merge surviving user row,
+      // repointed to keepId with the cascaded email. Full (id, contactId,
+      // email) shape: findAccountUserIds' map build reads all three.
+      [{ id: "user-merge", contactId: "contact-keep", email: "a@x.com" }],
     ]);
 
     await mergeContacts(db, keep.id, [merge.id]);

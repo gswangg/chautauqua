@@ -217,7 +217,11 @@ describe("public submit confirmation (DEC-098 claim-link scope)", () => {
   });
 
   it("existing user: links /login, no claim URL", async () => {
-    const { db, inserts } = fakeDb(selectQueueFor([{ id: "existing-contact-1" }], [{ id: "user-1" }]));
+    // Full (id, contactId, email) user row: findAccountUserIds' map build
+    // reads all three (DEC-456 wave-71 amendment).
+    const { db, inserts } = fakeDb(
+      selectQueueFor([{ id: "existing-contact-1" }], [{ id: "user-1", contactId: "existing-contact-1", email: "hasaccount@example.com" }]),
+    );
     const res = await run(db, "hasaccount@example.com");
     expect(res.status).toBe(200);
     const html = await res.text();
