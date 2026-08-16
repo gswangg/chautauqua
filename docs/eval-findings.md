@@ -102,12 +102,17 @@ truthful against real screens.**
    into the footer mean slot w/ 16px inset; FieldModal condition row to frame
    ("IS" head, 3-col rule row, "N of 40" counter, "Save the question"/"Delete
    this question" labels); home CTA 120ms colour transition.
-7. **RE-ASSIGNED TO ORCHESTRATOR (STE directive)** — the user directs docs
-   prose to conform to ASD-STE100 Simplified Technical English. An
-   orchestrator agent is rewriting ALL of src/routes/docs-content/*.ts
-   (379 scan violations), FOLDING IN this item's truth fixes. SWARM: do NOT
-   edit docs-content/*.ts until this closes (scan: test/docs-ste.scan.test.ts
-   lands with the rewrite). Original item: §13 docs prose truth: recusal copy — the APP offers Undo (verified 201/204),
+7. **CLOSED (orchestrator agent): docs are ASD-STE100-conformant** — all nine
+   articles rewritten, test/docs-ste.scan.test.ts GREEN (was 379 violation
+   lines), docs suite 110/110 green, tsc green. The three gate-12 prose-truth
+   defects fixed with route-verified semantics: recusal copy now states the
+   REAL rule (undoable from scorecard/queue while the plan is open; organizer-
+   only after — matches recusals.ts isPlanOpen gate), recusal control located
+   on the scorecard with its exact checkbox label, CFP figure-01 says dialog
+   not right-panel. test/docs-prose-truth.test.ts pins the truth. Docs-content
+   ownership RELEASED back to the swarm. (History note: the rewrite's file
+   contents shipped inside commit 38d4bb58 due to a shared-worktree sweep;
+   marker commit aa3d8619 documents it.) — the APP offers Undo (verified 201/204),
    the caption claims "permanent step-aside". FIX THE PROSE to describe the
    real semantics (undoable until the window closes / whatever the route
    actually enforces — read it); recusal control location wording ("on the
