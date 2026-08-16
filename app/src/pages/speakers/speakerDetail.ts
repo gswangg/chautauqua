@@ -72,6 +72,8 @@ export type SpeakerDetailSessionStatus =
   | 'declined'
   | 'waitlisted';
 
+// DEC-930 (see SpeakerDetailSessionStatus above): same leaf-module reasoning
+// applies to the content-status half of this file's re-declared pair.
 export type SpeakerDetailContentStatus = 'pending' | 'approved' | 'changes_requested';
 
 export interface SpeakerDetailScheduled {

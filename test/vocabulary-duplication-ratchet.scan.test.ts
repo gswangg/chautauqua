@@ -29,14 +29,19 @@
 // ACTIVE_INVITE_STATUSES constant, and
 // SCHEDULING_PARTICIPANT_STATUSES/PORTAL_VISIBLE_INVITE_STATUSES in
 // src/domain/acceptance.ts collapsed to one declaration re-exported under
-// the second name). MAX_DUPLICATE_VOCABULARIES is RE-SEEDED at 5, the count
-// this wave measures on its own worktree with same-file grouping turned on
-// -- lower than the stale seed of 4 would suggest is possible only because
-// this note is honest about what changed: the same-file widening surfaced
-// two NEW same-file groups (submission-sort.ts, worklist.ts) that the old
-// exclusion hid, while the two fixes above removed the group the amendment
-// specifically targeted. The next wave's job is to shrink this ratchet, not
-// to raise it.
+// the second name). MAX_DUPLICATE_VOCABULARIES was RE-SEEDED at 5 that
+// wave, the count then measured on its own worktree with same-file
+// grouping turned on.
+//
+// DEC-180 wave-79 amendment: the seed of 5 sat unchanged through waves 76,
+// 77 and 78 -- each one read this file's own closing sentence ("the next
+// wave's job is to shrink this ratchet") and left it as prose. Wave 79
+// collapsed all five groups (see the seeding comment beside
+// MAX_DUPLICATE_VOCABULARIES below for the full list) and RE-SEEDED the
+// constant at 0, the count it measures on this worktree. A ceiling above
+// the truth licenses the next duplicate to land silently instead of
+// failing the scan; read this file's closing sentence as a work item, not
+// as prose, before carrying its number forward again.
 //
 // The two matched shapes:
 //   (1) `export type NAME = 'a' | 'b' | ...;`            (single- or multi-line)
@@ -220,7 +225,7 @@ function relativePath(file: string): string {
   return relative(ROOT, file).split("\\").join("/");
 }
 
-describe("vocabulary duplication ratchet (DEC-180 wave 73, re-seeded wave 75): every non-exempt >=3-member string vocabulary is unique across the tree, same-file or cross-file", () => {
+describe("vocabulary duplication ratchet (DEC-180 wave 73, re-seeded wave 79): every non-exempt >=3-member string vocabulary is unique across the tree, same-file or cross-file", () => {
   const files: string[] = [];
   for (const root of SCAN_ROOTS) listFiles(root, SCAN_ROOTS, files);
 
@@ -283,18 +288,43 @@ describe("vocabulary duplication ratchet (DEC-180 wave 73, re-seeded wave 75): e
     .map(([setKey, decls]) => ({ setKey, decls }))
     .filter((g) => g.decls.length >= 2);
 
-  // Seeded at the count THIS branch (wave 75) re-measures, after: (1)
-  // task-w73-a/-b/-c landed and removed three of the groups the wave-73
-  // seed (4) was measured against, and (2) this lane's own Part 1/Part 2
-  // fixes (src/server/repo/public/gates.ts composing ACTIVE_INVITE_STATUSES
-  // instead of a hand-inlined literal pair, and
-  // SCHEDULING_PARTICIPANT_STATUSES/PORTAL_VISIBLE_INVITE_STATUSES collapsed
-  // to one declaration) plus widening the scan to count same-file groups
-  // (see comment above). May only ever go DOWN -- a future wave that
-  // removes a duplicate must lower this number in the same commit, per the
-  // file header's ratchet note. Do not raise it to make a newly-introduced
-  // duplicate pass; fix the duplicate instead.
-  const MAX_DUPLICATE_VOCABULARIES = 5;
+  // DEC-180 wave-79 amendment: SPENT the ratchet instead of carrying it.
+  // Waves 76, 77 and 78 each re-read the wave-75 note ("The next wave's job
+  // is to shrink this ratchet, not to raise it") and carried the inherited
+  // 5 forward unchanged. Wave 79 collapsed all five groups the seed of 5
+  // was covering:
+  //   - src/domain/status.ts: SubmissionStatus/SUBMISSION_STATUSES same-file
+  //     pair collapsed to one `as const` array + derived type (the
+  //     acceptance.ts:162-171 idiom); app/src/pages/submissions/types.ts's
+  //     own copy of both now re-exports from src/domain/status.ts instead
+  //     of re-listing the six literals a third time.
+  //   - src/domain/submission-sort.ts: SortOrder/SORT_ORDERS same-file pair
+  //     collapsed the same way.
+  //   - app/src/pages/content/worklist.ts: WorklistTab/WORKLIST_TABS
+  //     same-file pair collapsed the same way.
+  //   - src/server/repo/contacts/query.ts's PipelineStageLike (a hand
+  //     re-listed copy of src/server/repo/pipeline.ts's PipelineStage,
+  //     justified by a stale "avoid a module cycle" comment that did not
+  //     hold for a type-only import) now re-exports PipelineStage under its
+  //     existing local name instead.
+  //   - app/src/pages/content/types.ts's CONTENT_STATUS_PRIORITY (same
+  //     three ContentStatus members as CONTENT_STATUSES, in a deliberately
+  //     different display order) and
+  //     app/src/pages/speakers/speakerDetail.ts's SpeakerDetailContentStatus
+  //     (a leaf re-declaration for the same DEC-930 render-test-isolation
+  //     reason as its SpeakerDetailSessionStatus sibling three lines above)
+  //     are genuinely separate vocabularies sharing a member set, not
+  //     re-listed copies -- each now carries its own DEC-180/DEC-930
+  //     citation within six lines, the exemption this file already grants.
+  //
+  // MAX_DUPLICATE_VOCABULARIES is RE-SEEDED AT 0, the count this scan
+  // measures on this worktree at wave 79 (verified by temporarily lowering
+  // the constant to 0 and reading the failure's printed group list, per
+  // this task's own STEP 1 instruction) -- not a number inherited from any
+  // prior wave's note. May only ever go DOWN from here (0 cannot go
+  // lower): a future wave that introduces a genuine duplicate must fix the
+  // duplicate, not raise this constant.
+  const MAX_DUPLICATE_VOCABULARIES = 0;
 
   it(`has at most ${MAX_DUPLICATE_VOCABULARIES} duplicate (non-exempt, same-file or cross-file) vocabulary groups`, () => {
     const details = duplicateGroups

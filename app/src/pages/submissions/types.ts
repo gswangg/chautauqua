@@ -2,23 +2,13 @@
 // form field model). Kept dependency-free so filters/selection/columns stay
 // pure and unit-testable without a DOM.
 
-// DEC-003 submission status literals.
-export type SubmissionStatus =
-  | 'pending'
-  | 'accept_queue'
-  | 'decline_queue'
-  | 'accepted'
-  | 'declined'
-  | 'waitlisted';
-
-export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
-  'pending',
-  'accept_queue',
-  'decline_queue',
-  'accepted',
-  'declined',
-  'waitlisted',
-];
+// DEC-003 submission status literals -- imported from the pure core
+// (src/domain/status.ts) so the SPA's status union can never drift from the
+// server's, same shape as content/types.ts's ContentStatus re-export
+// (DEC-180 wave-79 amendment).
+import type { SubmissionStatus } from '../../../../src/domain/status';
+export type { SubmissionStatus };
+export { SUBMISSION_STATUSES } from '../../../../src/domain/status';
 
 // Speaker-facing views never leak internal queue states (field guide); the
 // admin table shows the real literal as the pill label since organizers need

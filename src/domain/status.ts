@@ -5,22 +5,20 @@
 import { DEC_699 } from "../decisions";
 void DEC_699;
 
-export type SubmissionStatus =
-  | "pending"
-  | "accept_queue"
-  | "decline_queue"
-  | "accepted"
-  | "declined"
-  | "waitlisted";
-
-export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
+// DEC-180 wave-79 amendment: ONE declaration (the array), the type derived
+// from it via `typeof ARR[number]` -- the idiom already in the tree at
+// src/domain/acceptance.ts:162-171 -- instead of a type union and a value
+// array separately re-listing the same six literals.
+export const SUBMISSION_STATUSES = [
   "pending",
   "accept_queue",
   "decline_queue",
   "accepted",
   "declined",
   "waitlisted",
-];
+] as const;
+
+export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 
 /** True for the two final (decided) statuses. */
 export function isDecided(status: SubmissionStatus): boolean {

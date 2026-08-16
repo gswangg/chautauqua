@@ -1,6 +1,10 @@
-export type WorklistTab = 'needs_decision' | 'approved' | 'all';
+// DEC-180 wave-79 amendment: ONE declaration (the array), the type derived
+// via `typeof ARR[number]` -- the idiom already in the tree at
+// src/domain/acceptance.ts:162-171 -- instead of a type union and a value
+// array separately re-listing the same three literals in this same file.
+export const WORKLIST_TABS = ['needs_decision', 'approved', 'all'] as const;
 
-export const WORKLIST_TABS: readonly WorklistTab[] = ['needs_decision', 'approved', 'all'];
+export type WorklistTab = (typeof WORKLIST_TABS)[number];
 
 // DEC-825: one constant owns the predicate. Every tab's filter — the
 // worklist's own list fetch AND each chip's own count fetch — reads its
