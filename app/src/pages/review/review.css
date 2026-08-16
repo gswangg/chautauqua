@@ -690,7 +690,15 @@
   padding: 10px 0;
 }
 
+/* DEC-939 (wave-61 amendment): this row is now a real <fieldset> (the
+   accessibility fix keeps every criterion its own labelled group) --
+   border/margin/min-width are reset to zero first so the UA fieldset
+   chrome never shows through, then the same visual border-bottom this
+   row always had is re-applied. */
 .chq-review-criterion {
+  border: 0;
+  margin: 0;
+  min-width: 0;
   padding: 18px 0;
   border-bottom: 1px solid var(--chq-hairline);
   display: flex;

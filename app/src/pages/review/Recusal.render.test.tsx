@@ -157,7 +157,7 @@ describe('Scorecard recusal control (DEC-271/DEC-939 bare checkbox)', () => {
 
     // DEC-873: the rating control is a segmented radiogroup of buttons,
     // not a number input -- every rating button disables while recused.
-    const ratingButtons = screen.getByRole('radiogroup', { name: 'Quality' }).querySelectorAll('button');
+    const ratingButtons = screen.getByRole('radiogroup', { name: 'Quality (c1)' }).querySelectorAll('button');
     expect(ratingButtons.length).toBeGreaterThan(0);
     ratingButtons.forEach((btn) => expect(btn).toBeDisabled());
     expect(screen.getByRole('button', { name: 'Submit and next' })).toBeDisabled();

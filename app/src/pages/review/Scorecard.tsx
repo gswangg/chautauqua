@@ -57,6 +57,20 @@ function criterionAnchorId(criterionId: string): string {
   return `chq-review-criterion-${criterionId}`;
 }
 
+// DEC-939 (wave-61 amendment, scorecard a11y): the accessible name for a
+// criterion's group (and every control inside it) is derived from BOTH the
+// criterion's own id and its label -- never the label alone, which is
+// user-editable and can collide (or read alike) across criteria. This is
+// what makes two same-labelled rating rows two distinct groups in the
+// accessibility tree instead of one.
+function criterionGroupName(criterion: EvaluationCriterion): string {
+  return `${criterion.label} (${criterion.id})`;
+}
+
+function radioAccessibleName(criterion: EvaluationCriterion, value: number, max: number): string {
+  return `${criterionGroupName(criterion)}: ${value} of ${max}`;
+}
+
 function evaluationRefusalProblems(
   fields: Record<string, string>,
   criteria: EvaluationCriterion[],
@@ -541,7 +555,7 @@ export function Scorecard() {
             />
           )}
           {criteria.map((criterion: EvaluationCriterion) => (
-            <div
+            <fieldset
               key={criterion.id}
               id={criterionAnchorId(criterion.id)}
               className={`chq-review-criterion${ringArmed && focusedId === criterion.id ? ' chq-focused' : ''}${
@@ -553,17 +567,23 @@ export function Scorecard() {
               }`}
               onFocus={() => setFocusedId(criterion.id)}
             >
-              {/* frame 03--01: the weight caption moves onto the criterion's
-                  own name line, right-aligned, with a hairline rule under
-                  that row -- instead of stacking under the label as its own
-                  block. */}
-              <div className="chq-review-criterion-name-row">
-                <label className="chq-review-criterion-label">
+              {/* DEC-939 (wave-61 amendment): one criterion is one real
+                  <fieldset>, and the <legend> below is its visible name --
+                  same anatomy every browser and screen reader already
+                  understands for a labelled group, instead of a bare
+                  aria-label on a div that a two-collision label makes
+                  indistinguishable. The legend stays the fieldset's direct
+                  first child (required for both the border-corner rendering
+                  and the accessible-name computation) and doubles as the
+                  frame's name row -- label on the left, weight caption on
+                  the right -- so the visible layout is unchanged. */}
+              <legend className="chq-review-criterion-name-row">
+                <span className="chq-review-criterion-label">
                   {criterion.label}
                   {criterion.kind === 'text' && !criterion.required && (
                     <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
                   )}
-                </label>
+                </span>
                 {/* DEC-873: weight caption reads the plan editor's own share
                     reader -- criteria with no weight (dropdown/text, or an
                     unweighted rating row) print nothing. */}
@@ -572,7 +592,7 @@ export function Scorecard() {
                     Weight {criterion.weight} · {weightShares[criterion.id]}%
                   </span>
                 )}
-              </div>
+              </legend>
               {/* DEC-676: guidance renders under the label; nothing when absent. */}
               {criterion.guidance && <p className="chq-review-criterion-guidance">{criterion.guidance}</p>}
               {criterion.kind === 'rating' ? (
@@ -620,7 +640,7 @@ export function Scorecard() {
                   return (
                     <div
                       role="radiogroup"
-                      aria-label={criterion.label}
+                      aria-label={criterionGroupName(criterion)}
                       className="chq-review-rating-group"
                       onKeyDown={handleGroupKeyDown}
                     >
@@ -636,6 +656,7 @@ export function Scorecard() {
                             type="button"
                             role="radio"
                             aria-checked={selected}
+                            aria-label={radioAccessibleName(criterion, value, scaleValues.length)}
                             tabIndex={i === rovingIndex ? 0 : -1}
                             className={`chq-review-rating-btn${selected ? ' chq-review-rating-btn-selected' : ''}`}
                             disabled={!!recusal}
@@ -652,6 +673,7 @@ export function Scorecard() {
               ) : criterion.kind === 'dropdown' ? (
                 <select
                   className="chq-select"
+                  aria-label={criterionGroupName(criterion)}
                   value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
                   disabled={!!recusal}
                   onFocus={() => setFocusedId(criterion.id)}
@@ -667,7 +689,7 @@ export function Scorecard() {
               ) : (
                 <textarea
                   className="chq-textarea"
-                  aria-label={criterion.label || 'criterion'}
+                  aria-label={criterionGroupName(criterion)}
                   maxLength={MAX_LONG_TEXT_LENGTH}
                   value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
                   disabled={!!recusal}
@@ -685,7 +707,7 @@ export function Scorecard() {
                   {serverFieldErrors[criterion.id]}
                 </p>
               )}
-            </div>
+            </fieldset>
           ))}
 
           {/* frame 03--01: Overall prints its label and value on ONE line --

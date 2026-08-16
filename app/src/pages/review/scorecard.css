@@ -130,12 +130,18 @@
 /* frame 03--01: the per-criterion weight caption moves onto the name line,
    right-aligned, with a hairline rule under that row -- instead of
    stacking under the label as its own block. */
+/* DEC-939 (wave-61 amendment): this is now a <legend> (the fieldset's
+   direct first child, per the a11y fix) rather than a <div> -- reset the
+   UA legend inline padding/width so it still lays out as the same
+   label-left/weight-right row it always did. */
 .chq-review-criterion-name-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 6px;
+  width: 100%;
+  padding: 0 0 6px;
+  margin: 0;
   border-bottom: 1px solid var(--chq-hairline);
 }
 
