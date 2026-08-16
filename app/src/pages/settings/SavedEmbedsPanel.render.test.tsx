@@ -134,6 +134,47 @@ describe('SavedEmbedsPanel', () => {
     expect(within(row).getByText(/<iframe src="[^"]*\/embed\/e\/emb1"/)).toBeInTheDocument();
   });
 
+  // w4-d/DEC-785 amendment: the bare `<code>` disclosure this row used to
+  // render is now the shared EmbedCodeReadout (also used by EmbedsPanel's
+  // live builder) -- a real URL readout (via Copy URL) and Copy snippet,
+  // not a plain string an organiser has to hand-select.
+  it('w4-d: "Get code" exposes both Copy URL and Copy snippet, and the copy-failure branch renders a selectable field for each', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+    });
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Homepage widget')).toBeInTheDocument();
+    });
+
+    const row = screen.getAllByRole('listitem')[0]!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Get code' }));
+
+    const readout = row.querySelector('.chq-settings-saved-embed-snippet') as HTMLElement;
+    expect(readout).not.toBeNull();
+    expect(within(readout).getByRole('button', { name: 'Copy URL' })).toBeInTheDocument();
+    expect(within(readout).getByRole('button', { name: 'Copy snippet' })).toBeInTheDocument();
+    expect(within(readout).getByText(/<iframe src="[^"]*\/embed\/e\/emb1"/)).toBeInTheDocument();
+
+    fireEvent.click(within(readout).getByRole('button', { name: 'Copy URL' }));
+    await waitFor(() => {
+      expect(within(readout).getByLabelText('URL to copy manually')).toHaveValue(
+        `${window.location.origin}/embed/e/emb1`,
+      );
+    });
+
+    fireEvent.click(within(readout).getByRole('button', { name: 'Copy snippet' }));
+    await waitFor(() => {
+      expect(within(readout).getByLabelText('Snippet to copy manually')).toBeInTheDocument();
+    });
+  });
+
   it('turning a row on calls the real PATCH endpoint directly, with no confirm dialog', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/embeds`]: () =>
@@ -346,9 +387,11 @@ describe('SavedEmbedsPanel', () => {
     expect(row).toHaveClass('chq-settings-saved-embed-row');
 
     const columnCount = gridColumnCount('chq-settings-saved-embed-row');
-    // Direct cells only -- the Get-code snippet, when open, renders as a
+    // Direct cells only -- the Get-code readout, when open, renders as a
     // full-width block beneath the row, not a sixth cell in the grid flow.
-    const directCells = Array.from(row.children).filter((el) => !el.matches('code'));
+    const directCells = Array.from(row.children).filter(
+      (el) => !el.matches('.chq-settings-saved-embed-snippet'),
+    );
     expect(directCells).toHaveLength(columnCount);
 
     const actionsCell = row.querySelector('.chq-settings-saved-embed-actions');

@@ -43,6 +43,7 @@ import { apiDelete, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { buildSnippet, type EmbedFormat, type EmbedOptions, type EmbedSurface } from './embedSnippet';
 import { formatEmbedRecipe } from './embedRecipe';
+import { EmbedCodeReadout } from './EmbedCodeReadout';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PUBLIC_PAGES_STATE_TONE_CLASS } from './publicPagesState';
 
@@ -287,7 +288,9 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
                   ))}
                 </span>
                 {codeOpenId === embed.id ? (
-                  <code className="chq-settings-saved-embed-snippet">{snippet}</code>
+                  <div className="chq-settings-saved-embed-snippet">
+                    <EmbedCodeReadout url={url} snippet={snippet} />
+                  </div>
                 ) : null}
               </li>
             );
