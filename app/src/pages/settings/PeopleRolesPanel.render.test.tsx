@@ -292,7 +292,7 @@ describe('PeopleRolesPanel', () => {
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send invite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
 
     await waitFor(() => {
       expect(screen.getByText('ab12-cd34-ef56')).toBeInTheDocument();
@@ -324,7 +324,7 @@ describe('PeopleRolesPanel', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
-    const sendButton = screen.getByRole('button', { name: 'Send invite' });
+    const sendButton = screen.getByRole('button', { name: 'Create the account' });
     expect(sendButton).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
@@ -339,6 +339,202 @@ describe('PeopleRolesPanel', () => {
     // Blanking the last name back out disables submit again.
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: '   ' } });
     expect(sendButton).toBeDisabled();
+  });
+
+  // DEC-747 amendment (wave 58), item 1: the verb matches the act -- there
+  // is no invitation, the account is created immediately.
+  it('names the primary "Create the account" and states the account is created immediately', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+
+    expect(screen.queryByRole('button', { name: 'Send invitation' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Invite$/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create the account' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/nobody waits for an acceptance that will never come/),
+    ).toBeInTheDocument();
+  });
+
+  // DEC-747 amendment (wave 58), item 2: role is two chips with the
+  // consequence spelled out.
+  it('renders the role field as two chips naming each role\'s consequence', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+
+    const reviewerChip = screen.getByRole('radio', { name: 'Reviewer' });
+    const organizerChip = screen.getByRole('radio', { name: 'Organizer' });
+    expect(reviewerChip).toHaveAttribute('aria-checked', 'true');
+    expect(organizerChip).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(organizerChip);
+    expect(organizerChip).toHaveAttribute('aria-checked', 'true');
+    expect(reviewerChip).toHaveAttribute('aria-checked', 'false');
+
+    expect(
+      screen.getByText(
+        'a reviewer sees only the plans they are assigned to · an organiser sees everything, including this page',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // DEC-747 amendment (wave 58), items 3 + 4: the created screen carries a
+  // 20px-monospace password, a Copy control that reports success/failure,
+  // the closing sentence and the honest email_log gap.
+  it('reveals the created password with a reporting Copy control, the closing note and the email gap', async () => {
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 201,
+        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56' },
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('ab12-cd34-ef56')).toBeInTheDocument();
+    });
+    expect(screen.getByText('ab12-cd34-ef56')).toHaveClass('chq-settings-people-password');
+
+    expect(
+      screen.getByText(
+        'Closing this dialog is the last time you see it — after that only a reset can replace it.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/an org with no events yet gets a working account and no email/)).toBeInTheDocument();
+
+    const copyButton = screen.getByRole('button', { name: 'Copy' });
+    fireEvent.click(copyButton);
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('Copied');
+    });
+    expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument();
+  });
+
+  it('reports a failed clipboard copy rather than failing silently', async () => {
+    vi.stubGlobal('navigator', {});
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 201,
+        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56' },
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('ab12-cd34-ef56')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('Copy failed');
+    });
+    expect(screen.getByLabelText('One-time password to copy manually')).toHaveValue('ab12-cd34-ef56');
+  });
+
+  // DEC-747 amendment (wave 58), item 5: a rejected duplicate offers a
+  // route to the existing row rather than making the organizer retype.
+  it('offers a route to the existing row when the invite is a duplicate email', async () => {
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 409,
+        body: errorEnvelope('conflict', 'A user with this email already exists', { email: 'already in use' }),
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Otherton' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Person' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: OTHER.email } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    const openRowButton = await screen.findByRole('button', { name: `Open ${OTHER.email}'s row` });
+    fireEvent.click(openRowButton);
+
+    // Clicking the escape route closes the invite form and focuses the
+    // existing row.
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+    const otherRow = screen.getByText(OTHER.email).closest('li')!;
+    expect(otherRow).toHaveFocus();
+  });
+
+  // DEC-747 amendment (wave 58), item 6: reset uses the same reveal-once
+  // shape and states the two facts unique to it.
+  it('reveals a reset password with the session-revocation and no-email facts', async () => {
+    mockPeople({
+      'POST /api/v1/users/u-other/reset-password': {
+        status: 200,
+        body: { email: OTHER.email, password: 'zz99-yy88-xx77' },
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    const otherRow = screen.getByText(OTHER.email).closest('li')!;
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Reset password' }));
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Confirm reset' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('zz99-yy88-xx77')).toBeInTheDocument();
+    });
+    expect(screen.getByText('zz99-yy88-xx77')).toHaveClass('chq-settings-people-password');
+    expect(
+      screen.getByText(`Every session signed in as ${OTHER.email} is ended — they are signed out everywhere.`),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Resetting sends no email; pass the new password on yourself.')).toBeInTheDocument();
+    // The reset path never states the invite path's email_log gap.
+    expect(screen.queryByText(/an org with no events yet gets a working account/)).not.toBeInTheDocument();
+  });
+
+  it('does not build a pending-invitation state', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Invited')).not.toBeInTheDocument();
+    expect(screen.queryByText(/pending/i)).not.toBeInTheDocument();
   });
 
   it('leads each directory row with the person\'s name, dropping email to a secondary line', async () => {
