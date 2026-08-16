@@ -3,6 +3,12 @@
 // call resolveReviewerIdentity so they can never disagree. Anonymization
 // hides the SPEAKER from the REVIEWER, never the reviewer's identity from
 // the organiser -- this resolver never withholds identity.
+//
+// ## Amendment (wave 5, sha ee8ceffa): a mononym reviewer (only firstName
+// OR only lastName present -- DEC-986's single public Name control never
+// rejects such a name) is a PERSON, not a missing name (DEC-757). This
+// resolver now delegates to personNameOrEmail and reads the mononym rather
+// than falling through to email.
 
 import { describe, expect, it } from "vitest";
 import { resolveReviewerIdentity } from "../src/domain/review-identity";
@@ -14,13 +20,16 @@ describe("resolveReviewerIdentity", () => {
     );
   });
 
-  it("partial names (only first, only last, or neither) fall back to email", () => {
-    expect(resolveReviewerIdentity({ firstName: "Jamie", lastName: null, email: "jamie@example.com" })).toBe(
-      "jamie@example.com",
+  it("a mononym (only first or only last) reads as the name, not the email (DEC-757 wave-5 amendment)", () => {
+    expect(resolveReviewerIdentity({ firstName: "Prince", lastName: null, email: "prince@example.com" })).toBe(
+      "Prince",
     );
-    expect(resolveReviewerIdentity({ firstName: null, lastName: "Reviewer", email: "jamie@example.com" })).toBe(
-      "jamie@example.com",
+    expect(resolveReviewerIdentity({ firstName: null, lastName: "Prince", email: "prince@example.com" })).toBe(
+      "Prince",
     );
+  });
+
+  it("no name at all falls back to email", () => {
     expect(resolveReviewerIdentity({ email: "jamie@example.com" })).toBe("jamie@example.com");
   });
 

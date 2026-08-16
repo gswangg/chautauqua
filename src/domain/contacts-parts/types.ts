@@ -7,6 +7,8 @@
 // everything here; import from that barrel, not this file, outside of the
 // contacts-parts/* sibling modules themselves.
 
+import { personName } from "../person-name";
+
 /**
  * Sanitizes a stored contact URL for safe public rendering (DEC-322): trims
  * whitespace, returns null for blank input, and parses via the URL
@@ -90,6 +92,10 @@ export function normalizedCompany(company: string | undefined): string {
   return (company ?? "").toLowerCase().trim();
 }
 
+// DEC-613 (wave-5 amendment): one join, one owner -- delegates to
+// src/domain/person-name.ts's personName rather than hand-rolling the
+// `${first} ${last}`.trim() join here too. Output is identical for every
+// input this module ever produced (mononym or both-present).
 export function fullName(c: ContactRecord): string {
-  return `${(c.firstName ?? "").trim()} ${(c.lastName ?? "").trim()}`.trim();
+  return personName(c);
 }
