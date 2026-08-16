@@ -80,7 +80,19 @@ function makeInstrumentedDb(rowsByTable: Map<unknown, unknown[]>, tracker: Track
     self.set = (patch: Record<string, unknown>) => {
       if (isUpdate && table === schema.submission) {
         const row = rowsByTable.get(schema.submission)?.[0] as Record<string, unknown> | undefined;
-        if (row) Object.assign(row, patch);
+        if (row) {
+          for (const [column, value] of Object.entries(patch)) {
+            // Only plain column writes are applied. A SQL-EXPRESSION write
+            // (bumpIcsSequences' `ics_sequence + 1`, DEC-492) arrives as a
+            // drizzle SQL object this fake has no engine to evaluate --
+            // storing it verbatim would put an unserializable, circular
+            // object on the fixture row that getSubmissionDetail then hands
+            // to c.json(). Skipped, so icsSequence keeps its fixture value:
+            // the ics bump is pinned by test/ics-sequence.test.ts, not here.
+            if (value !== null && typeof value === "object" && !(value instanceof Date)) continue;
+            row[column] = value;
+          }
+        }
       }
       return self;
     };
@@ -186,12 +198,15 @@ describe("DEC-155 (wave-60, w60-d): PATCH submission collapses its pre-write rea
     // Wave 1: getSubmissionOwnership (alone, authz gate). Wave 2: the
     // settleInDeclarationOrder call -- trackIds, format, audienceLevel,
     // content, editorName, formatFieldId, audienceLevelFieldId, all 7
-    // simultaneously in flight. Waves 3-7: getSubmissionDetail's own
-    // internal sequential reads (main row, participants, tracks, answers,
-    // answer-files -- historyRows is skipped because there are zero
-    // participants) are untouched by this task's scope and stay serial.
+    // simultaneously in flight. Wave 3: ensureBaselineRevision's
+    // countRevisions SELECT, inside the write phase (a title edit is a
+    // content change, so the DEC-158 baseline-revision path runs). Waves
+    // 4-8: getSubmissionDetail's own internal sequential reads (main row,
+    // participants, tracks, answers, answer-files -- historyRows is skipped
+    // because there are zero participants) are untouched by this task's
+    // scope and stay serial.
     expect(tracker.max).toBeGreaterThanOrEqual(7);
-    expect(tracker.waves).toBe(7);
+    expect(tracker.waves).toBe(8);
   });
 
   it("a description-only edit still overlaps its 2 real hoisted reads (content + editorName)", async () => {
