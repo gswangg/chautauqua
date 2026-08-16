@@ -16,12 +16,14 @@ import { revokeResetTokenForUser } from "../auth/password-reset";
 import { findAccountUserId } from "../server/repo/comms";
 import { requestIpFromHeaders } from "../lib/rate-limit";
 import { checkAndIncrementScopedLimit, refundScopedLimit } from "../server/repo/rate-limit";
+import { isUniqueViolation } from "../server/repo/constraints";
 import { ClaimPage, ExpiredClaimPage, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "./auth-views";
 import { ensureCsrfCookie, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth-helpers";
-import { DEC_949, DEC_014 } from "../decisions";
+import { DEC_949, DEC_014, DEC_064 } from "../decisions";
 
 void DEC_949;
 void DEC_014;
+void DEC_064;
 
 export const claimRoutes = new Hono<AppEnv>();
 
@@ -63,9 +65,11 @@ claimRoutes.post("/claim/:token", csrfForm, async (c) => {
     max: AUTH_RATE_LIMIT_MAX,
   });
 
-  // DEC-064: peek the record without consuming it. Any validation failure
-  // below (short password, duplicate user) must leave the one-time link
-  // claimable — only consume it right before the user insert.
+  // DEC-064 (wave-66 amendment): peek the record without consuming it. Any
+  // validation failure below (short password, duplicate user) must leave
+  // the one-time link claimable. The write phase below no longer treats
+  // consumeClaimToken as the serializer either -- see the note above the
+  // insert.
   const record = await readClaimToken(kv, token);
   if (!record) {
     if (!limit.ok) {
@@ -112,32 +116,54 @@ claimRoutes.post("/claim/:token", csrfForm, async (c) => {
     return c.redirect("/login", 302);
   }
 
-  // Consume immediately before the insert. If another concurrent request
-  // already consumed it (lost race), treat this like an expired link.
-  const consumed = await consumeClaimToken(kv, token);
-  if (!consumed) {
-    throw new ApiError("not_found", "This link is invalid or has expired.");
-  }
-
+  // DEC-064 (wave-66 amendment): the INSERT is the serializer, not the KV
+  // consume. user_email_idx (a global unique index) is what actually makes
+  // a second claim of the same grant impossible under concurrency -- so the
+  // insert runs FIRST, before the token is touched. A unique-constraint
+  // failure here means another request (or another account entirely) won
+  // the email, and is answered with the same /login redirect the
+  // pre-existing-account check above already returns, leaving the grant
+  // unconsumed and the link still usable. Any other insert failure (a D1
+  // transient, etc.) propagates loudly and — because the token is still
+  // unconsumed — a retry with the same link succeeds.
   const passwordHash = await hashPassword(password);
   const now = new Date();
   const userId = newId();
-  await db.insert(schema.user).values({
-    id: userId,
-    orgId: contact.orgId,
-    email: contact.email.toLowerCase(),
-    passwordHash,
-    role: "speaker",
-    contactId: contact.id,
-    createdAt: now,
-    updatedAt: now,
-  });
+  try {
+    await db.insert(schema.user).values({
+      id: userId,
+      orgId: contact.orgId,
+      email: contact.email.toLowerCase(),
+      passwordHash,
+      role: "speaker",
+      contactId: contact.id,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } catch (err) {
+    if (isUniqueViolation(err, "user.email")) {
+      return c.redirect("/login", 302);
+    }
+    throw err;
+  }
+
+  // This request's insert won the race (the unique index above is the only
+  // gate), so it is the one and only winner entitled to consume the grant.
+  // A `false` return here (another request already deleted the KV record,
+  // e.g. a retry of a request whose insert actually succeeded but whose
+  // response was lost) is not fatal -- the user row this request just
+  // created is real and correct, so the claim proceeds to a session
+  // regardless.
+  await consumeClaimToken(kv, token);
 
   // DEC-949 (wave 27 amendment, wired per wave 29): claiming an account sets
   // a fresh credential — any outstanding password-reset grant for this user
   // (mintable only once a matching user row exists, so this is the earliest
   // point userId is known) must not survive it. Not best-effort: a KV error
-  // here propagates.
+  // here propagates. The user row above is a point of no return (DEC-547
+  // doctrine) — a failure past this point never re-runs the insert, it
+  // surfaces to the speaker who can sign in at /login with the password
+  // they just set.
   await revokeResetTokenForUser(kv, userId);
 
   const sessionToken = await issueSessionRevokingAll(db, userId, now);

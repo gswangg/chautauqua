@@ -396,3 +396,249 @@ describe("POST /claim/:token (route-level, DEC-064)", () => {
     });
   });
 });
+
+// DEC-064 (wave-66 amendment): the write phase reorder — insert first,
+// consume the KV grant only after a successful insert. A unique-constraint
+// failure on the insert must not burn the token, and a `false` consume
+// after a winning insert must not be fatal.
+describe("POST /claim/:token write-phase reorder (route-level, DEC-064 wave-66 amendment)", () => {
+  const CONTACT_ID = "ct_2";
+  const ORG_ID = "org_2";
+  const CONTACT_EMAIL = "amendment-speaker@example.test";
+
+  class UniqueViolation extends Error {
+    constructor() {
+      super("UNIQUE constraint failed: user.email");
+    }
+  }
+
+  /** Fake drizzle-style db whose schema.user insert enforces email
+   * uniqueness SYNCHRONOUSLY at `.values()` call time (mirroring the
+   * atomic-upsert fakes in test/auth-rate-limit-atomicity.test.ts), so two
+   * concurrent claim requests racing through the same await-laden pipeline
+   * land on a real, deterministic winner/loser split instead of both
+   * silently succeeding. `insertBehavior` lets a test script a transient
+   * failure on the Nth insert call. */
+  function makeFakeDb(opts: { contact: { id: string; orgId: string; email: string }; insertBehavior?: (attempt: number) => "ok" | "transient" }) {
+    const state = { users: [] as Array<{ id: string; email: string; contactId: string | null }>, sessions: [] as unknown[] };
+    const rateLimitRows = new Map<string, { count: number; expiresAt: number }>();
+    let insertAttempt = 0;
+    return {
+      db: {
+        select() {
+          return {
+            from(table: unknown) {
+              return {
+                where(cond: unknown) {
+                  return {
+                    limit() {
+                      if (table === schema.contact) return Promise.resolve([opts.contact]);
+                      if (table === schema.user) {
+                        // findAccountUserId's or(contactId eq, lower(email) eq) —
+                        // real filtering so the concurrency test's loser sees the
+                        // winner's freshly-inserted row once it lands.
+                        void cond;
+                        const match = state.users.find(
+                          (u) => u.contactId === opts.contact.id || u.email.toLowerCase() === opts.contact.email.toLowerCase(),
+                        );
+                        return Promise.resolve(match ? [{ id: match.id }] : []);
+                      }
+                      if (table === schema.rateLimit) return Promise.resolve([]);
+                      throw new Error("unexpected table in fake db select");
+                    },
+                  };
+                },
+              };
+            },
+          };
+        },
+        insert(table: unknown) {
+          return {
+            values(row: unknown) {
+              if (table === schema.rateLimit) {
+                const vals = row as { key: string; count: number; expiresAt: number };
+                return {
+                  onConflictDoUpdate: () => ({
+                    returning: async () => {
+                      const existing = rateLimitRows.get(vals.key);
+                      if (existing) {
+                        existing.count += 1;
+                        return [{ count: existing.count }];
+                      }
+                      rateLimitRows.set(vals.key, { count: vals.count, expiresAt: vals.expiresAt });
+                      return [{ count: vals.count }];
+                    },
+                    then: (resolve: (v: undefined) => void) => {
+                      const existing = rateLimitRows.get(vals.key);
+                      if (existing) existing.count += 1;
+                      else rateLimitRows.set(vals.key, { count: vals.count, expiresAt: vals.expiresAt });
+                      resolve(undefined);
+                    },
+                  }),
+                };
+              }
+              if (table === schema.user) {
+                insertAttempt += 1;
+                const behavior = opts.insertBehavior ? opts.insertBehavior(insertAttempt) : "ok";
+                if (behavior === "transient") {
+                  return Promise.reject(new Error("D1 transient: connection reset"));
+                }
+                const vals = row as { id: string; email: string; contactId: string | null };
+                const collision = state.users.find((u) => u.email.toLowerCase() === vals.email.toLowerCase());
+                if (collision) {
+                  return Promise.reject(new UniqueViolation());
+                }
+                // Synchronous commit at call time, matching the atomic-upsert
+                // fakes' documented "single-snapshot" shape.
+                state.users.push(vals);
+                return Promise.resolve();
+              }
+              if (table === schema.authSession) {
+                state.sessions.push(row);
+                return Promise.resolve();
+              }
+              throw new Error("unexpected table in fake db insert");
+            },
+          };
+        },
+        delete(table: unknown) {
+          return {
+            where() {
+              if (table === schema.rateLimit) return Promise.resolve();
+              if (table === schema.authSession) return Promise.resolve();
+              throw new Error("unexpected table in fake db delete");
+            },
+          };
+        },
+        update(table: unknown) {
+          return {
+            set() {
+              return {
+                where() {
+                  if (table === schema.rateLimit) return Promise.resolve();
+                  throw new Error("unexpected table in fake db update");
+                },
+              };
+            },
+          };
+        },
+      } as unknown as AppEnv["Variables"]["db"],
+      state,
+    };
+  }
+
+  function buildApp(db: AppEnv["Variables"]["db"], kv: InMemoryKV) {
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", db);
+      await next();
+    });
+    app.route("/", authRoutes);
+    const env = { KV: kv as unknown as AppEnv["Bindings"]["KV"] };
+    return { app, env };
+  }
+
+  async function getCsrf(app: Hono<AppEnv>, env: { KV: AppEnv["Bindings"]["KV"] }, path: string) {
+    const res = await app.request(path, {}, env);
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    const match = setCookie.match(new RegExp(`${CSRF_COOKIE_NAME}=([^;]+)`));
+    if (!match) throw new Error(`no ${CSRF_COOKIE_NAME} cookie set on ${path}`);
+    return { csrf: match[1]!, cookie: `${CSRF_COOKIE_NAME}=${match[1]}` };
+  }
+
+  function postClaimForm(
+    app: Hono<AppEnv>,
+    env: { KV: AppEnv["Bindings"]["KV"] },
+    token: string,
+    cookie: string,
+    fields: Record<string, string>,
+  ) {
+    const form = new URLSearchParams(fields);
+    return app.request(
+      `/claim/${token}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", cookie },
+        body: form.toString(),
+      },
+      env,
+    );
+  }
+
+  it("a transient insert failure leaves the token readable, and a retry with the same link succeeds", async () => {
+    const contact = { id: CONTACT_ID, orgId: ORG_ID, email: CONTACT_EMAIL };
+    const { db } = makeFakeDb({ contact, insertBehavior: (attempt) => (attempt === 1 ? "transient" : "ok") });
+    const kv = new InMemoryKV();
+    const { app, env } = buildApp(db, kv);
+    const token = await createClaimToken(kv, { contactId: CONTACT_ID, eventId: "ev_1" });
+
+    const { csrf, cookie } = await getCsrf(app, env, `/claim/${token}`);
+    const failedRes = await postClaimForm(app, env, token, cookie, {
+      [CSRF_COOKIE_NAME]: csrf,
+      password: "a-valid-password",
+    });
+    expect(failedRes.status).toBe(500);
+
+    // The token was never consumed by the failed attempt (insert ran before
+    // the KV consume, and threw before reaching it).
+    await expect(readClaimToken(kv, token)).resolves.toEqual({
+      contactId: CONTACT_ID,
+      eventId: "ev_1",
+    });
+
+    const { csrf: csrf2, cookie: cookie2 } = await getCsrf(app, env, `/claim/${token}`);
+    const retryRes = await postClaimForm(app, env, token, cookie2, {
+      [CSRF_COOKIE_NAME]: csrf2,
+      password: "a-valid-password",
+    });
+    expect(retryRes.status).toBe(302);
+    expect(retryRes.headers.get("location")).toBe("/portal");
+    await expect(readClaimToken(kv, token)).resolves.toBeNull();
+  });
+
+  it("two concurrent claims on one token produce exactly one user and one /login redirect", async () => {
+    const contact = { id: CONTACT_ID, orgId: ORG_ID, email: CONTACT_EMAIL };
+    const { db, state } = makeFakeDb({ contact });
+    const kv = new InMemoryKV();
+    const { app, env } = buildApp(db, kv);
+    const token = await createClaimToken(kv, { contactId: CONTACT_ID, eventId: "ev_1" });
+
+    const [first, second] = await Promise.all([getCsrf(app, env, `/claim/${token}`), getCsrf(app, env, `/claim/${token}`)]);
+
+    const [resA, resB] = await Promise.all([
+      postClaimForm(app, env, token, first.cookie, { [CSRF_COOKIE_NAME]: first.csrf, password: "a-valid-password" }),
+      postClaimForm(app, env, token, second.cookie, { [CSRF_COOKIE_NAME]: second.csrf, password: "a-valid-password" }),
+    ]);
+
+    const statuses = [resA.status, resB.status].sort();
+    // Exactly one request creates the account (302 -> /portal); the other
+    // loses the unique-email race on the insert and is answered with the
+    // same /login redirect DEC-014's pre-check returns.
+    expect(statuses).toEqual([302, 302]);
+    const locations = [resA.headers.get("location"), resB.headers.get("location")].sort();
+    expect(locations).toEqual(["/login", "/portal"]);
+    expect(state.users).toHaveLength(1);
+  });
+
+  it("the happy path ends in a session cookie plus the /portal redirect", async () => {
+    const contact = { id: CONTACT_ID, orgId: ORG_ID, email: CONTACT_EMAIL };
+    const { db, state } = makeFakeDb({ contact });
+    const kv = new InMemoryKV();
+    const { app, env } = buildApp(db, kv);
+    const token = await createClaimToken(kv, { contactId: CONTACT_ID, eventId: "ev_1" });
+
+    const { csrf, cookie } = await getCsrf(app, env, `/claim/${token}`);
+    const res = await postClaimForm(app, env, token, cookie, {
+      [CSRF_COOKIE_NAME]: csrf,
+      password: "a-valid-password",
+    });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/portal");
+    expect(res.headers.get("set-cookie")).toContain("chq_session=");
+    expect(state.users).toHaveLength(1);
+    expect(state.sessions).toHaveLength(1);
+    await expect(readClaimToken(kv, token)).resolves.toBeNull();
+  });
+});
