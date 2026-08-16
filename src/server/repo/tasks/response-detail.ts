@@ -24,7 +24,9 @@ export interface AssignmentResponseField {
 export interface AssignmentResponseDetail {
   assignmentId: string;
   taskTitle: string;
-  taskKind: string;
+  // DEC-851 wave-5 amendment: taskKind was deleted -- DEC-291's own wire
+  // shape (assignmentId/taskTitle/contact/status/completedAt/fields) never
+  // named it, and ResponseModal.tsx renders taskTitle, never the kind.
   contact: { id: string; name: string; email: string };
   status: string;
   completedAt: number | null;
@@ -49,7 +51,6 @@ export async function getAssignmentResponseDetail(
       completedAt: schema.taskAssignment.completedAt,
       responseJson: schema.taskAssignment.responseJson,
       taskTitle: schema.task.title,
-      taskKind: schema.task.kind,
       formId: schema.task.formId,
       contactId: schema.contact.id,
       firstName: schema.contact.firstName,
@@ -100,7 +101,6 @@ export async function getAssignmentResponseDetail(
   return {
     assignmentId: row.assignmentId,
     taskTitle: row.taskTitle,
-    taskKind: row.taskKind,
     contact: {
       id: row.contactId,
       name: `${row.firstName} ${row.lastName}`.trim(),

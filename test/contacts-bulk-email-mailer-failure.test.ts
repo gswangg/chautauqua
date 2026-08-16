@@ -196,8 +196,8 @@ describe("POST /contacts/bulk-email — partial mailer failure (DEC-238 class 2)
 
     // listEmailBatches groups by COALESCE(batch_id, id) with no special
     // casing for status — the 3 'failed' rows just written collapse into
-    // one batch row with recipientCount 3 and statusCounts { failed: 3 },
-    // the same way a fully-'sent' batch does (test/email-log-batches.test.ts).
+    // one batch row with statusCounts { failed: 3 }, the same way a fully-
+    // 'sent' batch does (test/email-log-batches.test.ts).
     const batchId = failedRows[0].batchId as string;
     function fakeQueryDb(responses: unknown[]): Db {
       let cursor = 0;
@@ -216,13 +216,12 @@ describe("POST /contacts/bulk-email — partial mailer failure (DEC-238 class 2)
     }
 
     const queryDb = fakeQueryDb([
-      [{ batchKey: batchId, subject: "Hi {speaker_name}", sentAt: failedRows[0].sentAt, recipientCount: 3 }],
+      [{ batchKey: batchId, subject: "Hi {speaker_name}", sentAt: failedRows[0].sentAt }],
       [{ count: 1 }],
       [{ batchKey: batchId, status: "failed", n: 3 }],
     ]);
     const result = await listEmailBatches(queryDb, { eventId: "ev1", page: 1, perPage: 20 });
     expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.recipientCount).toBe(3);
     expect(result.items[0]?.statusCounts).toEqual({ failed: 3 });
   });
 });

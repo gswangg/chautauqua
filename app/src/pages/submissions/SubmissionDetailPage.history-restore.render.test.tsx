@@ -27,8 +27,6 @@ function baseDetail(overrides: Partial<Record<string, unknown>> = {}) {
     trackId: null,
     trackIds: [] as string[],
     formId: null,
-    acceptedAt: null,
-    icsSequence: 0,
     createdAt: 1700000000000,
     updatedAt: 1700000000000,
     participants: [],

@@ -28,5 +28,15 @@ export function describeConflicts(
   conflicts: Conflict[],
   labels: ConflictLabels,
 ): DescribedConflict[] {
-  return conflicts.map((c) => ({ ...c, detail: describeConflict(c, labels) }));
+  // DEC-851 wave-5 amendment: speakerContactIds/breakId/breakLabel are
+  // consumed here (by describeConflict, below) but never put back on the
+  // wire object -- they're inputs to `detail`, not facts the client reads
+  // independently.
+  return conflicts.map((c) => ({
+    kind: c.kind,
+    submissionIds: c.submissionIds,
+    day: c.day,
+    roomId: c.roomId,
+    detail: describeConflict(c, labels),
+  }));
 }

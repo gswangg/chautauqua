@@ -205,14 +205,12 @@ describe("listEmailBatches (DEC-603)", () => {
         batchKey: "batch-xyz",
         subject: "You are in!",
         sentAt: 1_700_000_100_000,
-        recipientCount: 3,
         statusCounts: { sent: 3 },
       },
       {
         batchKey: "log-legacy-1",
         subject: "Welcome",
         sentAt: 1_700_000_000_000,
-        recipientCount: 1,
         statusCounts: { sent: 1 },
       },
     ]);

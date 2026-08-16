@@ -142,8 +142,10 @@ export interface SubmissionDetail {
   trackId: string | null;
   trackIds: string[];
   formId: string | null;
-  acceptedAt: number | null;
-  icsSequence: number;
+  // DEC-851 wave-5 amendment: acceptedAt/icsSequence were deleted from this
+  // wire shape -- SubmissionDetailPage.tsx's own decidedLabel reads
+  // updatedAt instead (acceptedAt only fires on the FIRST accept
+  // transition), and icsSequence has no admin-detail reader.
   createdAt: number;
   updatedAt: number;
   participants: SubmissionDetailParticipant[];

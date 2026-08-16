@@ -41,9 +41,10 @@ export interface AgendaConflict {
   submissionIds: string[];
   day: string;
   roomId: string | null;
-  speakerContactIds: string[];
-  breakId: string | null;
-  breakLabel: string | null;
+  // DEC-851 wave-5 amendment: speakerContactIds/breakId/breakLabel were
+  // dropped from this wire shape -- they are describeConflict's inputs on
+  // the server, already folded into `detail` below, and no screen ever
+  // read the raw ids/label independently of that prose.
   detail: string;
 }
 

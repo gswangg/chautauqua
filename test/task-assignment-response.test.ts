@@ -56,7 +56,6 @@ const OWNERSHIP_ROWS: Record<string, AssignmentOwnershipRow> = {
 const DETAIL: AssignmentResponseDetail = {
   assignmentId: ASSIGNMENT_FORM,
   taskTitle: "Hotel stay requirement form",
-  taskKind: "form",
   contact: { id: "contact-1", name: "Ada Lovelace", email: "ada@example.com" },
   status: "complete",
   completedAt: 1700000000000,

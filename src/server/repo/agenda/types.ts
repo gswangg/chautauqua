@@ -3,8 +3,14 @@
 import type { Conflict, UnplacedSession } from "../../../domain/schedule";
 
 /** DEC-557: a Conflict plus its rendered prose, produced by describeConflict
- * — the ONE place a conflict becomes human-readable text. */
-export type DescribedConflict = Conflict & { detail: string };
+ * — the ONE place a conflict becomes human-readable text. speakerContactIds/
+ * breakId/breakLabel are Conflict-internal inputs describeConflict already
+ * folded into `detail`; the wire shape drops them (DEC-851 wave-5
+ * amendment: an unread wire field is a lie) rather than shipping the raw
+ * inputs alongside the prose they were spent to produce. */
+export type DescribedConflict = Omit<Conflict, "speakerContactIds" | "breakId" | "breakLabel"> & {
+  detail: string;
+};
 
 /** DEC-615: an UnplacedSession plus its rendered prose from describeUnplaced
  * and the duration that reason was computed against — the agenda payload's

@@ -256,7 +256,10 @@ export interface EmailBatchRow {
   batchKey: string;
   subject: string;
   sentAt: number;
-  recipientCount: number;
+  // DEC-851 wave-5 amendment: recipientCount (a bare COUNT(*)) was deleted
+  // -- statusCounts already carries the same total as the sum of its own
+  // values, and RecentSends.tsx's sentCountLabel derives from statusCounts,
+  // never a raw recipientCount nobody read.
   statusCounts: Record<string, number>;
   // w41-g (DEC-751 amendment): the template that produced this batch, so
   // Recent Sends can name it instead of leaving a silent gap. A fan-out
@@ -322,7 +325,6 @@ export async function listEmailBatches(db: Db, params: EmailBatchListParams): Pr
       batchKey: BATCH_KEY,
       subject: sql<string>`min(${schema.emailLog.subject})`,
       sentAt: sql<number>`max(${schema.emailLog.sentAt})`,
-      recipientCount: sql<number>`count(*)`,
       templateId: sql<string | null>`min(${schema.emailLog.templateId})`,
     })
     .from(schema.emailLog)
@@ -367,7 +369,6 @@ export async function listEmailBatches(db: Db, params: EmailBatchListParams): Pr
     batchKey: r.batchKey,
     subject: r.subject,
     sentAt: Number(r.sentAt),
-    recipientCount: Number(r.recipientCount),
     statusCounts: statusCountsByBatch.get(r.batchKey) ?? {},
     templateId: r.templateId,
   }));

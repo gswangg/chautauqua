@@ -16,9 +16,6 @@ describe('ConflictChip', () => {
         submissionIds: ['sub-1', 'sub-2'],
         day: '2026-09-01',
         roomId: 'room-1',
-        speakerContactIds: [],
-        breakId: null,
-        breakLabel: null,
         detail: 'Room "Ballroom" double-booked on 2026-09-01 between "Talk One" and "Talk Two"',
       },
     ];
@@ -33,9 +30,6 @@ describe('ConflictChip', () => {
         submissionIds: ['sub-1', 'sub-2'],
         day: '2026-09-01',
         roomId: null,
-        speakerContactIds: ['ct-1'],
-        breakId: null,
-        breakLabel: null,
         detail: 'Speaker(s) Ada Lovelace double-booked on 2026-09-01 between "Talk One" and "Talk Two"',
       },
     ];
@@ -59,9 +53,6 @@ describe('ConflictChip', () => {
         submissionIds: ['sub-1'],
         day: '2026-09-01',
         roomId: 'room-1',
-        speakerContactIds: [],
-        breakId: 'break-1',
-        breakLabel: 'Lunch',
         detail: '"Talk One" is scheduled over the "Lunch" break on 2026-09-01',
       },
     ];
@@ -78,9 +69,6 @@ describe('ConflictChip', () => {
         submissionIds: ['sub-1', 'sub-2'],
         day: '2026-09-01',
         roomId: 'room-1',
-        speakerContactIds: [],
-        breakId: null,
-        breakLabel: null,
         detail: 'Room "Ballroom" double-booked on 2026-09-01 between "Talk One" and "Talk Two"',
       },
       {
@@ -88,9 +76,6 @@ describe('ConflictChip', () => {
         submissionIds: ['sub-1'],
         day: '2026-09-01',
         roomId: 'room-1',
-        speakerContactIds: [],
-        breakId: 'break-1',
-        breakLabel: 'Lunch',
         detail: '"Talk One" is scheduled over the "Lunch" break on 2026-09-01',
       },
     ];
@@ -120,9 +105,6 @@ describe('clusterConflictCaption', () => {
         submissionIds: ['sub-9', 'sub-10'],
         day: '2026-09-01',
         roomId: null,
-        speakerContactIds: ['ct-1'],
-        breakId: null,
-        breakLabel: null,
         detail: 'irrelevant',
       },
     ];
@@ -136,9 +118,6 @@ describe('clusterConflictCaption', () => {
         submissionIds: ['sub-1', 'sub-9'],
         day: '2026-09-01',
         roomId: null,
-        speakerContactIds: ['ct-1'],
-        breakId: null,
-        breakLabel: null,
         detail: 'speaker clash across rooms',
       },
     ];
@@ -152,9 +131,6 @@ describe('clusterConflictCaption', () => {
         submissionIds: ['sub-1', 'sub-2'],
         day: '2026-09-01',
         roomId: 'room-1',
-        speakerContactIds: [],
-        breakId: null,
-        breakLabel: null,
         detail: 'room clash',
       },
       {
@@ -162,9 +138,6 @@ describe('clusterConflictCaption', () => {
         submissionIds: ['sub-1', 'sub-2'],
         day: '2026-09-01',
         roomId: null,
-        speakerContactIds: ['ct-1'],
-        breakId: null,
-        breakLabel: null,
         detail: 'speaker clash',
       },
     ];
@@ -178,9 +151,6 @@ describe('clusterConflictCaption', () => {
         submissionIds: ['sub-1', 'sub-2'],
         day: '2026-09-01',
         roomId: null,
-        speakerContactIds: ['ct-1'],
-        breakId: null,
-        breakLabel: null,
         detail: 'speaker clash',
       },
     ];

@@ -22,7 +22,6 @@ function batch(overrides: Partial<EmailBatchRow> = {}): EmailBatchRow {
     batchKey: 'batch-1',
     subject: 'Page one send',
     sentAt: 1700000000000,
-    recipientCount: 1,
     statusCounts: { sent: 1 },
     templateId: null,
     ...overrides,

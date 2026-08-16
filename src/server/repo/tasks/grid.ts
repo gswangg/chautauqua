@@ -38,8 +38,10 @@ export interface GridCell {
   // DEC-920: the roster's file link must name the file, not say "File" —
   // joined from schema.file in the SAME cells query below (never per-cell).
   fileName: string | null;
-  fileSizeBytes: number | null;
-  lastRemindedAt: number | null;
+  // DEC-851 wave-5 amendment: fileSizeBytes/lastRemindedAt were deleted —
+  // no roster cell ever named a file's size, and the per-cell reminder
+  // dedupe window is computed server-side (src/domain/reminders.ts) from
+  // its own row, never from this wire cell.
   // DEC-801: when this assignment was created — the SPA's overdue.ts feeds
   // this and the task's dueDate through effectiveAssignmentDueDate so the
   // badge/cell can't judge a task late before it was assigned.
@@ -399,8 +401,6 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
               completedAt: schema.taskAssignment.completedAt,
               fileId: schema.taskAssignment.fileId,
               fileName: schema.file.filename,
-              fileSizeBytes: schema.file.sizeBytes,
-              lastRemindedAt: schema.taskAssignment.lastRemindedAt,
               contactId: schema.taskAssignment.contactId,
               createdAt: schema.taskAssignment.createdAt,
             })
@@ -457,8 +457,6 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
         completedAt: r.completedAt ? r.completedAt.getTime() : null,
         fileId: r.fileId,
         fileName: r.fileName,
-        fileSizeBytes: r.fileSizeBytes,
-        lastRemindedAt: r.lastRemindedAt ? r.lastRemindedAt.getTime() : null,
         assignedAt: r.createdAt.getTime(),
       });
     }

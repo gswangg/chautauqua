@@ -52,8 +52,9 @@ export interface OnboardingCell {
   // /grid.ts) so the roster's file link can name the file rather than say
   // "File". Both null exactly when fileId is null.
   fileName: string | null;
-  fileSizeBytes: number | null;
-  lastRemindedAt: number | null;
+  // DEC-851 wave-5 amendment: fileSizeBytes/lastRemindedAt were deleted
+  // from the wire -- no roster cell names a file's size, and the per-cell
+  // reminder dedupe window is computed server-side, never read here.
   // DEC-801: the moment this assignment was created -- fed through
   // effectiveAssignmentDueDate (../../../../src/domain/task-due.ts) so a
   // task cannot be judged late before it was actually assigned.
@@ -161,7 +162,8 @@ export interface AssignmentResponseField {
 export interface AssignmentResponseDetail {
   assignmentId: string;
   taskTitle: string;
-  taskKind: TaskKind;
+  // DEC-851 wave-5 amendment: taskKind was deleted -- DEC-291's own wire
+  // shape never named it, and ResponseModal.tsx renders taskTitle only.
   contact: { id: string; name: string; email: string };
   status: AssignmentStatus;
   completedAt: number | null;
