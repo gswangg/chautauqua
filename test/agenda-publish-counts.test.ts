@@ -102,10 +102,18 @@ describe("POST /events/:eventId/agenda/publish — truthful counts (DEC-595)", (
 
     const res = await postPublish(harness);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { placed: number; public: number; heldBack: number };
+    const body = (await res.json()) as {
+      placed: number;
+      public: number;
+      heldBack: number;
+      heldBackSessions: { submissionId: string; title: string }[];
+    };
     expect(body.placed).toBe(2);
     expect(body.public).toBe(1);
     expect(body.heldBack).toBe(1);
+    // DEC-595 wave-67 amendment: the receipt names the withheld session, not
+    // just its count.
+    expect(body.heldBackSessions).toEqual([{ submissionId: "sub2", title: "Talk 2" }]);
   });
 
   it("reports heldBack=0 when every placed session is publicly visible", async () => {
@@ -129,9 +137,15 @@ describe("POST /events/:eventId/agenda/publish — truthful counts (DEC-595)", (
 
     const res = await postPublish(harness);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { placed: number; public: number; heldBack: number };
+    const body = (await res.json()) as {
+      placed: number;
+      public: number;
+      heldBack: number;
+      heldBackSessions: { submissionId: string; title: string }[];
+    };
     expect(body.placed).toBe(2);
     expect(body.public).toBe(2);
     expect(body.heldBack).toBe(0);
+    expect(body.heldBackSessions).toEqual([]);
   });
 });

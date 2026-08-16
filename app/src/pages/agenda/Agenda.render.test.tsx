@@ -500,7 +500,15 @@ describe('AgendaPage render smoke', () => {
   it('publish toast names the held-back count when heldBack > 0', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      [`POST /api/v1/events/${EVENT_ID}/agenda/publish`]: { placed: 14, public: 12, heldBack: 2 },
+      [`POST /api/v1/events/${EVENT_ID}/agenda/publish`]: {
+        placed: 14,
+        public: 12,
+        heldBack: 2,
+        heldBackSessions: [
+          { submissionId: 'sub-99', title: 'Withheld Talk One' },
+          { submissionId: 'sub-98', title: 'Withheld Talk Two' },
+        ],
+      },
     });
 
     render(
@@ -517,12 +525,23 @@ describe('AgendaPage render smoke', () => {
     await waitFor(() => {
       expect(screen.getByText('Schedule live — 12 of 14 placed sessions are public. 2 held back: content not approved.')).toBeInTheDocument();
     });
+    // DEC-595 wave-67 amendment: the receipt names every withheld session,
+    // each linking to its content editor.
+    const linkOne = screen.getByRole('link', { name: 'Withheld Talk One' });
+    expect(linkOne).toHaveAttribute('href', '/content/sub-99');
+    const linkTwo = screen.getByRole('link', { name: 'Withheld Talk Two' });
+    expect(linkTwo).toHaveAttribute('href', '/content/sub-98');
   });
 
   it('publish toast omits the held-back sentence when heldBack is 0', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      [`POST /api/v1/events/${EVENT_ID}/agenda/publish`]: { placed: 14, public: 14, heldBack: 0 },
+      [`POST /api/v1/events/${EVENT_ID}/agenda/publish`]: {
+        placed: 14,
+        public: 14,
+        heldBack: 0,
+        heldBackSessions: [],
+      },
     });
 
     render(
@@ -540,6 +559,8 @@ describe('AgendaPage render smoke', () => {
       expect(screen.getByText('Schedule live — 14 of 14 placed sessions are public.')).toBeInTheDocument();
     });
     expect(screen.queryByText(/held back/)).toBeNull();
+    // DEC-595 wave-67 amendment: no empty container, no zero-state.
+    expect(screen.queryByText('Held back — content not approved:')).toBeNull();
   });
 
   // DEC-667/SPEC J9: the scheduler warns, never blocks. The toast must not
