@@ -7,6 +7,13 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import type { EvaluationCriterionDef, RoundMetaEntry } from "../../../domain/evaluation";
+import {
+  parsePlanScale,
+  parsePlanCriteria,
+  parsePlanFilters,
+  parseRoundCriteria,
+  parseRoundMeta,
+} from "../../../domain/evaluation/plan-json";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
 
@@ -63,20 +70,18 @@ function toPlanRecord(row: typeof schema.evaluationPlan.$inferSelect, timezone: 
     instructions: row.instructions,
     openDate: row.openDate ? row.openDate.getTime() : null,
     closeDate: row.closeDate ? row.closeDate.getTime() : null,
-    filters: row.filtersJson ? (JSON.parse(row.filtersJson) as { trackIds?: string[] }) : null,
+    filters: parsePlanFilters(row.filtersJson, row.id),
     anonymized: row.anonymized,
-    scale: JSON.parse(row.scaleJson) as { min: number; max: number },
-    criteria: JSON.parse(row.criteriaJson) as EvaluationCriterionDef[],
+    scale: parsePlanScale(row.scaleJson, row.id),
+    criteria: parsePlanCriteria(row.criteriaJson, row.id),
     rounds: row.rounds,
     currentRound: row.currentRound,
-    roundCriteria: row.roundCriteriaJson
-      ? (JSON.parse(row.roundCriteriaJson) as Record<string, EvaluationCriterionDef[]>)
-      : null,
-    // DEC-147 amendment (wave 8, task w8-c): the JSON boundary this task's
-    // house rule points at -- a malformed round_meta_json throws here
-    // (JSON.parse itself throws on bad JSON; roundMetaFor throws on a
-    // well-formed-JSON-but-wrong-shape entry when a caller resolves a round).
-    roundMeta: row.roundMetaJson ? (JSON.parse(row.roundMetaJson) as Record<string, RoundMetaEntry>) : null,
+    roundCriteria: parseRoundCriteria(row.roundCriteriaJson, row.id),
+    // DEC-147 amendment (wave 8, task w8-c; wave 80): the JSON boundary this
+    // task's house rule points at -- a malformed round_meta_json throws here
+    // via plan-json.ts's parseRoundMeta, which reuses roundMetaFor's own
+    // per-field validation rather than duplicating it.
+    roundMeta: parseRoundMeta(row.roundMetaJson, row.id),
     maxEvaluations: row.maxEvaluations,
     anonymizedAt: row.anonymizedAt ? row.anonymizedAt.getTime() : null,
     createdAt: row.createdAt.getTime(),
