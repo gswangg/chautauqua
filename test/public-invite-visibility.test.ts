@@ -51,11 +51,25 @@ describe("DEC-274: session gate vs participant gate", () => {
 });
 
 describe("DEC-108: invite-state gating on public surfaces", () => {
-  it("visibleParticipantConditions body includes the inviteStatus inArray with both literals", () => {
+  // DEC-180 (wave-75 amendment, ruling (a)): the SQL gate COMPOSES the
+  // declared ACTIVE_INVITE_STATUSES constant and must never re-type a second
+  // literal pair — a hand-inlined ['none','accepted'] here would not track a
+  // change to the declared constant. So this scan no longer demands the
+  // literals inline; it demands the inArray narrow on inviteStatus and that
+  // the operand be the shared constant. The MEMBER SET itself is pinned at
+  // runtime (bound-param inspection) by
+  // test/public-gates-active-invite-statuses.test.ts, which is strictly
+  // stronger than a source-text literal match.
+  it("visibleParticipantConditions narrows inviteStatus via the shared ACTIVE_INVITE_STATUSES constant", () => {
     const body = fnBody(gatesSrc, "export function visibleParticipantConditions");
     expect(body).toContain("inArray(schema.participant.inviteStatus,");
-    expect(body).toContain('"none"');
-    expect(body).toContain('"accepted"');
+    expect(body).toContain("ACTIVE_INVITE_STATUSES");
+    // The literals must NOT be re-typed at the gate (DEC-180 ruling (a)).
+    expect(body).not.toContain('"none"');
+    expect(body).not.toContain('"accepted"');
+    // …and the constant is genuinely imported, not a local shadow.
+    expect(gatesSrc).toContain("ACTIVE_INVITE_STATUSES");
+    expect(gatesSrc).toMatch(/import\s*\{[^}]*ACTIVE_INVITE_STATUSES[^}]*\}\s*from/);
   });
 
   it("the hydrateSessions speaker-hydration query gates on visibleParticipantConditions()", () => {

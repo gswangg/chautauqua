@@ -28,6 +28,9 @@ function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
     where: () => chain,
+    // DEC-558 (wave 75): findContactByEmail orders by (createdAt, id) before
+    // .limit(1); a no-op for this fake, but it must exist in the chain.
+    orderBy: () => chain,
     limit: async () => rows,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };

@@ -22,6 +22,11 @@ function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
     where: () => chain,
+    // DEC-558 (wave 75): findContactByEmail now orders by (createdAt, id)
+    // before .limit(1) so a duplicate-email pair resolves deterministically.
+    // Ordering is a no-op for this fake (the queued row sets are already in
+    // the order each scenario intends), it just has to exist in the chain.
+    orderBy: () => chain,
     limit: async () => rows,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };

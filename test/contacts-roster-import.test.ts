@@ -66,6 +66,10 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
     const chain: any = {
       innerJoin: () => chain,
       where: () => chain,
+      // DEC-558 (wave 75): findContactByEmail orders by (createdAt, id)
+      // before .limit(1); a no-op for this fake, but it must exist in the
+      // chain ahead of limit().
+      orderBy: () => chain,
       // DEC-111 amendment (wave 48): getOrCreateTask/getOrCreateFormTaskForm
       // do insert-then-select-limit(1) (task) / select-limit(1)-then-insert
       // (form) lookups keyed by (eventId, title). WHERE is ignored here (see

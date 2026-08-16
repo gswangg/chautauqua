@@ -61,6 +61,9 @@ function fakeDb(seedContacts: unknown[]) {
     const chain: any = {
       innerJoin: () => chain,
       where: () => chain,
+      // DEC-558 (wave 75): findContactByEmail orders by (createdAt, id)
+      // before .limit(1); a no-op for this fake, but it must exist.
+      orderBy: () => chain,
       limit: () => chain,
       then: (resolve: (v: unknown[]) => void) => resolve(rows),
     };
