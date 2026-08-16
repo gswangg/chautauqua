@@ -104,10 +104,10 @@ describe("GET /admin/* -- unknown path is a real 404 (DEC-154/DEC-945)", () => {
     expect(res.headers.get("location")).toBe("/login");
   });
 
-  it("a speaker session hitting an unknown path still redirects to /portal", async () => {
+  it("a speaker session hitting an unknown path still redirects to /portal?from=admin", async () => {
     const app = buildApp({ auth: SPEAKER });
     const res = await app.request("/admin/nope", {}, { ASSETS: fakeAssets() });
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/portal");
+    expect(res.headers.get("location")).toBe("/portal?from=admin");
   });
 });

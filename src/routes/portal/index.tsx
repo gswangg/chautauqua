@@ -266,6 +266,7 @@ function PortalPage(props: {
   deliverables: Map<string, PortalDeliverable | null>;
   submissions: PortalSubmissionListItem[];
   csrfToken: string;
+  showAdminBounceNotice: boolean;
 }) {
   const { branding, contactName, contactCompany } = props.data;
   const { sessions, invitations, taskAssignments, deliverables, submissions, csrfToken } = props;
@@ -306,6 +307,13 @@ function PortalPage(props: {
           body block of the portal home page — it's content, not a tagline
           the header carries on every route. */}
       {branding.welcomeMessage ? <p class="chq-meta">{branding.welcomeMessage}</p> : null}
+      {/* DEC-945 (amendment, wave 69): a role-blocked /admin bounce says why
+          instead of landing a speaker on their portal with no explanation. */}
+      {props.showAdminBounceNotice ? (
+        <p class="chq-meta" role="status">
+          The organizer dashboard isn't part of your speaker portal — this is your home.
+        </p>
+      ) : null}
       <h1 class="chq-portal-hero">
         {countOf(n, "thing")} to do
       </h1>
@@ -512,9 +520,15 @@ function SubmissionsListPage(props: {
   );
 }
 
+// DEC-945 (amendment, wave 69): the only accepted value of ?from= is this one
+// literal — a closed, one-member vocabulary. Anything else (including no
+// param at all) renders no notice, and the raw query value is never echoed.
+const ADMIN_BOUNCE = "admin";
+
 portalRoutes.get("/", async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
+  const showAdminBounceNotice = c.req.query("from") === ADMIN_BOUNCE;
   const [data, sessions, invitations, taskAssignments, submissions] = await Promise.all([
     getPortalData(c.var.db, contactId, auth.orgId),
     getMySessions(c.var.db, contactId, auth.orgId),
@@ -539,6 +553,7 @@ portalRoutes.get("/", async (c) => {
       deliverables={deliverables}
       submissions={submissions}
       csrfToken={csrfToken}
+      showAdminBounceNotice={showAdminBounceNotice}
     />,
   );
 });

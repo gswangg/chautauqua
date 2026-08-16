@@ -148,11 +148,11 @@ describe("GET /admin and /admin/*", () => {
     expect(res.headers.get("location")).toBe("/login");
   });
 
-  it("redirects a speaker session to /portal", async () => {
+  it("redirects a speaker session to /portal?from=admin", async () => {
     const app = buildApp({ auth: SPEAKER });
     const res = await app.request("/admin/submissions", {}, { ASSETS: fakeAssets() });
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/portal");
+    expect(res.headers.get("location")).toBe("/portal?from=admin");
   });
 
   it("serves the admin shell for an organizer session", async () => {
