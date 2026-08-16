@@ -354,7 +354,7 @@ export function PipelineBoard() {
                       {age.text}
                     </div>
                     {entry.stage === 'declined' && entry.declineReason && (
-                      <div className="chq-contacts-pipeline-card-decline-reason">{entry.declineReason}</div>
+                      <div className="chq-contacts-pipeline-card-decline-reason">Declined: {entry.declineReason}</div>
                     )}
                     {/* DEC-856: same per-card attach as the desktop board. */}
                     {entryMoveError && Object.keys(entryMoveError).length > 0 && (
@@ -532,8 +532,12 @@ function PipelineCard({ entry, moveError, onOpen, onEditFit }: PipelineCardProps
       <div className={`chq-contacts-pipeline-card-age${age.stale ? ' chq-contacts-pipeline-card-age-stale' : ''}`}>
         {age.text}
       </div>
+      {/* DEC-898 amendment (w1-e/B18): the decline reason carries its own
+          lead-in so it can never be mistaken for the fit rationale below --
+          the two are visually identical muted italic text with nothing but
+          position to distinguish them otherwise. */}
       {entry.stage === 'declined' && entry.declineReason && (
-        <div className="chq-contacts-pipeline-card-decline-reason">{entry.declineReason}</div>
+        <div className="chq-contacts-pipeline-card-decline-reason">Declined: {entry.declineReason}</div>
       )}
       {/* DEC-856: a rejected move attaches to the card it came from -- the
           rollback above already restored its prior stage, and this names

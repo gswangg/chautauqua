@@ -413,7 +413,9 @@ describe('PipelineBoard: card age + decline reason (DEC-803)', () => {
     renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
-    expect(within(desktopBoard()).getByText('Scheduling conflict')).toBeInTheDocument();
+    // DEC-898 amendment (w1-e/B18): the decline reason carries its own
+    // 'Declined:' lead-in so it can never be read as the fit rationale.
+    expect(within(desktopBoard()).getByText('Declined: Scheduling conflict')).toBeInTheDocument();
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
@@ -498,6 +500,51 @@ describe('PipelineBoard: fit score + rationale (DEC-821)', () => {
     const contactedColumn = document.querySelector('[data-stage="contacted"]') as HTMLElement;
     expect(within(contactedColumn).getByText('Fit 4')).toBeInTheDocument();
     expect(within(contactedColumn).getByText('Keynoted a similar event last year')).toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  // B18/DEC-898 amendment (w1-e): a judge misread a declined card carrying
+  // both fields as "TWO fit badges + TWO rationale paragraphs under one
+  // name" -- there's only ever one of each, but the decline reason and the
+  // fit rationale used to be visually identical muted italic text with
+  // nothing but position telling them apart. This pins one card, one fit
+  // chip, one rationale, one decline reason, with the decline reason
+  // carrying its own label so it can't be mistaken for the rationale.
+  it('renders exactly one fit chip, one rationale, and one labelled decline reason on a declined card', async () => {
+    const declinedWithBoth = {
+      ...ENTRY_IDENTIFIED,
+      id: 'entry-declined-both',
+      stage: 'declined',
+      declineReason: 'Went with another speaker',
+      fitScore: 3,
+      rationale: 'Strong track record on this topic',
+    };
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([declinedWithBoth]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const declinedColumn = document.querySelector('[data-stage="declined"]') as HTMLElement;
+
+    const fitChips = declinedColumn.querySelectorAll('.chq-contacts-pipeline-card-fit');
+    expect(fitChips).toHaveLength(1);
+
+    const rationales = declinedColumn.querySelectorAll('.chq-contacts-pipeline-card-rationale');
+    expect(rationales).toHaveLength(1);
+    expect(rationales[0]?.textContent).toBe('Strong track record on this topic');
+
+    const declineReasons = declinedColumn.querySelectorAll('.chq-contacts-pipeline-card-decline-reason');
+    expect(declineReasons).toHaveLength(1);
+    expect(declineReasons[0]?.textContent).toBe('Declined: Went with another speaker');
+
+    // The edit affordance beside the fit chip stays a text link, never
+    // pill/chip chrome, so it doesn't read as a second fit badge.
+    const editLink = within(declinedColumn).getByRole('button', { name: 'Edit' });
+    expect(editLink).toHaveClass('chq-link-button');
+    expect(editLink).not.toHaveClass('chq-pill');
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
