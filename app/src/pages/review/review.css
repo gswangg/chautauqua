@@ -380,8 +380,25 @@
    top of that grid, not a per-surface variant. Keep additions to this
    file in this clearly separated block (review.css is also touched by
    w25-g's plan editor work). */
+/* wave-64: the disclosure band is a geometry entrance (it opens into
+   existing layout, not just a colour change) -- enter-only, since React
+   unmounts the row instantly on collapse and there is no leave transition
+   to time. Never behind an open modal (this band never appears under
+   one). */
 .chq-review-reviews-row {
   background: var(--chq-surface);
+  animation: chq-band-enter var(--chq-motion-geometry) var(--chq-ease-geometry);
+}
+
+@keyframes chq-band-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .chq-review-reviews-row > td {
@@ -695,22 +712,29 @@
    border/margin/min-width are reset to zero first so the UA fieldset
    chrome never shows through, then the same visual border-bottom this
    row always had is re-applied. */
+/* DEC-383/DEC-989 (wave-64 amendment): margin/padding trade 2px each way
+   so the box's own edges leave room for the outset focus ring below
+   without moving the label/guidance text -- the negative margin cancels
+   the added padding, so a criterion with no ring still sits exactly
+   where it always has. */
 .chq-review-criterion {
   border: 0;
-  margin: 0;
+  margin: 0 -2px;
   min-width: 0;
-  padding: 18px 0;
+  padding: 18px 2px;
   border-bottom: 1px solid var(--chq-hairline);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* DEC-939: focus affordance is an inset ring, never a fill (DEC-383
-   permits inset only) -- a filled band on a static frame reads as one
-   criterion styled unlike its siblings. */
+/* DEC-939/DEC-989 (wave-64 amendment, docs/design/DESIGN-RULINGS.md:113):
+   focus affordance is an OUTSET ring, not inset -- reads as a halo drawn
+   around the criterion rather than a bevel eaten out of it. No fill is
+   painted alongside it (DEC-367 stays type-only), so this remains the
+   sole hover/focus affordance for the row. */
 .chq-review-criterion.chq-focused {
-  box-shadow: inset 0 0 0 2px var(--chq-border-strong);
+  box-shadow: 0 0 0 2px var(--chq-border-strong);
 }
 
 .chq-review-criterion-label {

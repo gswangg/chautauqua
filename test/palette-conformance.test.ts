@@ -128,9 +128,22 @@ describe("palette closure guard (DEC-383)", () => {
     }
   });
 
-  it("no box-shadow declaration in app/src/**/*.css, theme.ts or SSR surface modules lacks inset", () => {
+  // DEC-989 (wave-64 amendment, docs/design/DESIGN-RULINGS.md:113): the
+  // status-cell ring is the ONE named exception to "inset only" -- the
+  // ruling calls for an OUTSET halo, not a bevel, at exactly these two
+  // sites (speakers.css's onboarding-status hover ring, review.css's
+  // scorecard-criterion focus ring). Every other box-shadow in scope stays
+  // inset-only; this allowlist may not spread past its two owning files.
+  const OUTSET_RING_ALLOWLIST_FILES = new Set([
+    join(REPO_ROOT, "app/src/pages/speakers/speakers.css"),
+    join(REPO_ROOT, "app/src/pages/review/review.css"),
+  ]);
+  const OUTSET_RING_VALUE = "0 0 0 2px var(--chq-border-strong)";
+
+  it("no box-shadow declaration in app/src/**/*.css, theme.ts or SSR surface modules lacks inset, except the DEC-989 status-cell ring", () => {
     const shadowRe = /box-shadow\s*:\s*([^;]+);/g;
     const violations: string[] = [];
+    let outsetRingHits = 0;
     for (const file of boxShadowScopeFiles) {
       const clean = stripComments(readFileSync(file, "utf8"));
       let m: RegExpExecArray | null;
@@ -139,11 +152,18 @@ describe("palette closure guard (DEC-383)", () => {
         const value = m[1]!.trim();
         if (value === "none") continue;
         if (!/\binset\b/.test(value)) {
+          if (value === OUTSET_RING_VALUE && OUTSET_RING_ALLOWLIST_FILES.has(file)) {
+            outsetRingHits += 1;
+            continue;
+          }
           violations.push(`${file}: box-shadow: ${value}`);
         }
       }
     }
     expect(violations).toEqual([]);
+    // Exactly one outset ring per owning file -- the allowlist may not
+    // spread to a third site or multiply within either owning file.
+    expect(outsetRingHits).toBe(2);
   });
 
   it("the removed pre-redesign error/conflict palette (#c0392b, #fdecea, red, crimson) does not reappear", () => {

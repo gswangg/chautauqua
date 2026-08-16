@@ -153,12 +153,25 @@ export const THEME_CSS = `
     --chq-destructive: #565A4B;
     --chq-destructive-hover: #1B1D17;
     --chq-border-hover: #8E8A7A;
+    /* wave-64: the three -exit twins (color-exit/appear-exit/geometry-exit)
+       were deleted here and from the SPA's app/src/styles.css in the same
+       commit -- a "leave at half" rule nothing ever called (React unmounts
+       instantly; there is no leave transition to time in either sheet). */
     --chq-motion-color: 120ms;
+    /* wave-64 ledger (DEC-851 in CSS, applied to this sheet's own gaps):
+       --chq-motion-appear and --chq-motion-geometry (with --chq-ease-
+       geometry) have no reader below this line -- kept for DEC-372 token
+       parity with app/src/styles.css, where both are spent (modal/drawer
+       entrances, the review disclosure band, error/result banners). The
+       structural reason they stay unread here rather than being deleted
+       like the -exit trio above: SSR-rendered surfaces (auth/portal/CFP)
+       have no client-side mount/unmount to animate an entrance for --
+       every element they emit is already in the initial HTML response, so
+       there is no "appearing" or "opening" moment for either token to
+       time. Should an SSR surface grow one (e.g. a client-hydrated
+       disclosure), spend the token here instead of adding a new one. */
     --chq-motion-appear: 180ms;
     --chq-motion-geometry: 220ms;
-    --chq-motion-color-exit: 60ms;
-    --chq-motion-appear-exit: 90ms;
-    --chq-motion-geometry-exit: 110ms;
     --chq-ease-state: ease-out;
     --chq-ease-geometry: cubic-bezier(0.2, 0, 0, 1);
   }
@@ -625,9 +638,6 @@ export const THEME_CSS = `
       --chq-motion-color: 0ms;
       --chq-motion-appear: 0ms;
       --chq-motion-geometry: 0ms;
-      --chq-motion-color-exit: 0ms;
-      --chq-motion-appear-exit: 0ms;
-      --chq-motion-geometry-exit: 0ms;
     }
   }
 `;

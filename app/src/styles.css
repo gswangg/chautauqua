@@ -143,17 +143,18 @@
   --chq-destructive-hover: #1b1d17;
   --chq-border-hover: #8e8a7a;
 
-  /* Motion: three enter durations/easings per the B8 table, plus the
-     "leave at half" rule as separate exit tokens so callers never compute
-     half a duration inline. Colour transitions use --chq-ease-state
-     (ease-out); geometry transitions use --chq-ease-geometry (decelerate,
-     no overshoot). Re-bound wholesale under prefers-reduced-motion below. */
+  /* Motion: three enter durations/easings per the B8 table. Colour
+     transitions use --chq-ease-state (ease-out); geometry transitions use
+     --chq-ease-geometry (decelerate, no overshoot). Re-bound wholesale
+     under prefers-reduced-motion below.
+     wave-64: the three -exit twins (color-exit/appear-exit/geometry-exit)
+     were declared for a "leave at half" rule nothing ever called -- React
+     unmounts instantly, so there is no leave transition to time in this
+     codebase. Deleted here and from the DEC-372 SSR twin (theme.ts) in the
+     same commit; a duration nothing can trigger is not a contract. */
   --chq-motion-color: 120ms;
   --chq-motion-appear: 180ms;
   --chq-motion-geometry: 220ms;
-  --chq-motion-color-exit: 60ms;
-  --chq-motion-appear-exit: 90ms;
-  --chq-motion-geometry-exit: 110ms;
   --chq-ease-state: ease-out;
   --chq-ease-geometry: cubic-bezier(0.2, 0, 0, 1);
 }
@@ -842,6 +843,11 @@ a:hover {
   flex-shrink: 0;
 }
 
+/* wave-64: modal-in is a geometry entrance (position + scale, not just a
+   colour) -- enter-only, per the B8 table's own "leave at half" rule,
+   which this codebase never had a leave transition to time (React
+   unmounts instantly). Never behind an open modal (there is none above
+   this one), never on an optimistic write. */
 .chq-modal {
   width: min(560px, 100%);
   max-height: calc(100vh - 80px);
@@ -853,6 +859,18 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  animation: chq-modal-enter var(--chq-motion-geometry) var(--chq-ease-geometry);
+}
+
+@keyframes chq-modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* w15-c: ModalFrame's size="wide" prop -- widens the frame itself for
@@ -877,6 +895,21 @@ a:hover {
   padding: 20px 26px;
   overflow-y: auto;
   z-index: 20;
+  /* wave-64: enter-only slide, same geometry token/easing as .chq-modal
+     above -- the drawer travels in from its own resting edge rather than
+     popping, mirroring the modal's entrance without a shared class. */
+  animation: chq-drawer-enter var(--chq-motion-geometry) var(--chq-ease-geometry);
+}
+
+@keyframes chq-drawer-enter {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* DEC-616 amendment (wave 15): the drawer's action row (Save/Email/Add to
@@ -913,6 +946,10 @@ a:hover {
   color: var(--chq-muted);
 }
 
+/* wave-64: an error/result banner appears in place (no travel), so it
+   uses --chq-motion-appear + --chq-ease-state -- the same "state changed,
+   nothing moved" idiom .chq-loading already uses for its own fade-in,
+   just a different duration token since this isn't the loading tier. */
 .chq-error,
 .chq-error-banner {
   padding: 12px 16px;
@@ -922,6 +959,16 @@ a:hover {
   color: var(--chq-ink);
   font-size: 13px;
   font-weight: 600;
+  animation: chq-appear-fade-in var(--chq-motion-appear) var(--chq-ease-state);
+}
+
+@keyframes chq-appear-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 700px) {
@@ -1346,10 +1393,13 @@ a:hover {
   margin-top: 2px;
 }
 
+/* wave-64: same in-place appear idiom as .chq-error above -- a send/add
+   result line replaces nothing and travels nowhere, it just shows up. */
 .chq-add-to-event-result,
 .chq-bulk-email-result {
   font-size: 13px;
   color: var(--chq-muted);
+  animation: chq-appear-fade-in var(--chq-motion-appear) var(--chq-ease-state);
 }
 
 .chq-co-presenter-results {
@@ -1940,8 +1990,5 @@ a:hover {
     --chq-motion-color: 0ms;
     --chq-motion-appear: 90ms;
     --chq-motion-geometry: 90ms;
-    --chq-motion-color-exit: 0ms;
-    --chq-motion-appear-exit: 90ms;
-    --chq-motion-geometry-exit: 90ms;
   }
 }
