@@ -472,7 +472,7 @@ export function findConflicts(placed: PlacedSession[], blocks: ScheduleBlock[] =
 export function scheduleSummary(
   placed: PlacedSession[],
   totalAccepted: number,
-  conflicts: Conflict[] = findConflicts(placed),
+  conflicts: Conflict[],
 ): { unplaced: number; conflicts: number; placed: number; total: number } {
   const placedIds = new Set(placed.map((p) => p.submissionId));
   return {

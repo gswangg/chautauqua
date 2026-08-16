@@ -32,8 +32,9 @@ import type {
 
 /** DEC-557 (wave 69 amendment): the ONE place a ScheduleBreak row becomes
  * the ScheduleBlock shape findConflicts needs. `endMin` is derived, never
- * stored twice. */
-function toScheduleBlocks(breaks: ScheduleBreak[]): ScheduleBlock[] {
+ * stored twice. Exported (DEC-370 wave-71 amendment) so overview.ts's
+ * conflict wave can reuse this exact conversion instead of a second copy. */
+export function toScheduleBlocks(breaks: ScheduleBreak[]): ScheduleBlock[] {
   return breaks.map((b) => ({
     breakId: b.id,
     label: b.label,

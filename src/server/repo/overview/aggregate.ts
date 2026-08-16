@@ -2,8 +2,6 @@
 // against row arrays — see test/overview.test.ts. Split out of overview.ts
 // (which grew past 800 lines and became a merge-conflict hotspot).
 
-import type { PlacedSession } from "../../../domain/schedule";
-import { findConflicts } from "../../../domain/schedule";
 import { assignmentDaysLate, effectiveAssignmentDueDayLabel } from "../../../domain/task-due";
 import type {
   OverviewPayload,
@@ -31,14 +29,17 @@ export function aggregateTriageCounts(
 /** Agenda numbers: unplaced accepted submissions (DEC-370 wave-56
  * amendment: a SQL NOT EXISTS(schedule_slot) count, computed by the caller
  * — never a JS filter over a materialized accepted-id array) + schedule
- * conflicts (delegated to src/domain/schedule.ts findConflicts, DEC-010). */
+ * conflicts (DEC-370 wave-71 amendment: the caller passes the ALREADY
+ * computed, break-aware findConflicts(placed, blocks) result — computed
+ * exactly once per payload and shared with the agendaWork rows below, never
+ * recomputed here blind to the event's breaks). */
 export function computeAgendaSummary(
   unplacedCount: number,
-  placed: PlacedSession[],
+  conflictCount: number,
 ): OverviewPayload["agenda"] {
   return {
     unplaced: unplacedCount,
-    conflicts: findConflicts(placed).length,
+    conflicts: conflictCount,
   };
 }
 

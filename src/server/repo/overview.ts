@@ -29,6 +29,7 @@ import { answerFieldRoleCondition } from "./form-roles";
 import { loadTrackNamesBySubmission } from "./submission-tracks";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS, MAX_AGENDA_SCAN } from "./agenda";
 import { listBreaksForEvent } from "./breaks";
+import { toScheduleBlocks } from "./agenda/payload";
 import { ApiError } from "../http";
 import { overdueAssignmentConditions } from "./tasks/crud";
 import { visibleSessionConditions } from "./public/gates";
@@ -370,21 +371,42 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
   // buildPlacementSuggestion call further down this function — never a
   // second lead-only lookup.
   let speakersBySubmission: Map<string, string[]> = new Map();
+  // DEC-370 (wave-71 amendment): the event's breaks are read here, joined
+  // into the same wave as the placed-session slot read (both need only
+  // eventId, and this is the earliest point conflicts get computed) — ONE
+  // breaks read for the whole function, reused below by both the
+  // conflicts wave and the §04 nextFreeSlot suggestion code, which no
+  // longer re-reads it in the Phase 3 wave further down.
+  let breaks: Awaited<ReturnType<typeof listBreaksForEvent>> = [];
   {
-    const slotRows = await db
-      .select({
-        submissionId: schema.scheduleSlot.submissionId,
-        roomId: schema.scheduleSlot.roomId,
-        day: schema.scheduleSlot.day,
-        startMin: schema.scheduleSlot.startMin,
-        endMin: schema.scheduleSlot.endMin,
-        seq: schema.submission.seq,
-        title: schema.submission.title,
-      })
-      .from(schema.scheduleSlot)
-      .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-      .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
-      .limit(MAX_AGENDA_SCAN + 1);
+    // Both elements are wrapped as their own async calls (never a bare
+    // `db.select()` chain alongside an async-function element) so BOTH
+    // resolve via the native-Promise fast path Promise.all uses — a raw
+    // thenable chain mixed with a wrapped async call resolves out of
+    // array-literal order (the thenable's own PromiseResolveThenableJob
+    // gets queued a tick later than an already-native Promise's direct
+    // .then()), which silently reverses the fake-db test harnesses'
+    // response-queue cursor. See test/overview*.test.ts's response arrays,
+    // which assume array-literal order.
+    const [slotRows, breaksRows] = await Promise.all([
+      (async () =>
+        db
+          .select({
+            submissionId: schema.scheduleSlot.submissionId,
+            roomId: schema.scheduleSlot.roomId,
+            day: schema.scheduleSlot.day,
+            startMin: schema.scheduleSlot.startMin,
+            endMin: schema.scheduleSlot.endMin,
+            seq: schema.submission.seq,
+            title: schema.submission.title,
+          })
+          .from(schema.scheduleSlot)
+          .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+          .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+          .limit(MAX_AGENDA_SCAN + 1))(),
+      listBreaksForEvent(db, eventId),
+    ]);
+    breaks = breaksRows;
 
     if (slotRows.length > MAX_AGENDA_SCAN) {
       throw new ApiError(
@@ -434,14 +456,19 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
       speakerContactIds: speakersBySubmission.get(s.submissionId) ?? [],
     }));
   }
-  const agenda = computeAgendaSummary(unplacedCount, placed);
-  // NOTE (task w69-a scope): this overview worklist's own conflicts are
-  // deliberately NOT threaded with `blocked` breaks (unlike the agenda
-  // payload's findConflicts calls) — app/src/pages/overview/types.ts's
-  // AgendaConflict.kind is still the pre-break two-member union and is out
-  // of this task's scope (app/ is off-limits). Widening this call to emit
-  // break_overlap here is future work paired with that client type.
-  const conflicts = findConflicts(placed);
+  // DEC-370 (wave-71 amendment): the event's breaks feed conflict detection
+  // here too, matching agenda/payload.ts's findConflicts(placedSessions,
+  // blocks) — computed exactly ONCE and shared by both the summary count
+  // (agenda.conflicts) and the agendaWork rows below, never recomputed
+  // blind to breaks a second time.
+  const blocks = toScheduleBlocks(breaks);
+  const blocked: BlockedInterval[] = breaks.map((b) => ({
+    day: b.day,
+    startMin: b.startMin,
+    endMin: b.startMin + b.durationMin,
+  }));
+  const conflicts = findConflicts(placed, blocks);
+  const agenda = computeAgendaSummary(unplacedCount, conflicts.length);
   const placedById = new Map(placed.map((p) => [p.submissionId, p]));
 
   // --- Unplaced rows (DEC-370 wave-56 amendment): unplacedDetailRows is
@@ -474,7 +501,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
   // above (no await between them), and the three lookups they feed are
   // mutually independent of each other's results — one more Promise.all
   // wave, in the original leadSpeaker -> room -> format-answer call order.
-  const [{ nameById: leadSpeakerNameById }, roomNameById, formatAnswerRows, breaks] =
+  const [{ nameById: leadSpeakerNameById }, roomNameById, formatAnswerRows] =
     await Promise.all([
       fetchLeadSpeakers(db, [...leadSpeakerIds]),
       (async () => {
@@ -514,19 +541,13 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
         }
         return rows;
       })(),
-      // DEC-010 amendment (wave 66): the event's breaks, loaded ONCE here —
-      // never per-suggestion below — and threaded as `blocked` into every
-      // §04 nextFreeSlot call so a "Place at HH:MM"/"Move REF to HH:MM"
-      // suggestion never names a break window.
-      listBreaksForEvent(db, eventId),
     ]);
 
-  const blocked: BlockedInterval[] = breaks.map((b) => ({
-    day: b.day,
-    startMin: b.startMin,
-    endMin: b.startMin + b.durationMin,
-  }));
-
+  // DEC-010 amendment (wave 66) / DEC-370 (wave-71 amendment): `blocked` was
+  // built above (right after `placed`), from the ONE breaks read this
+  // function makes — reused here for the §04 nextFreeSlot suggestion calls
+  // so a "Place at HH:MM"/"Move REF to HH:MM" suggestion never names a
+  // break window, with no second breaks query.
   const formatLabelByUnplacedId = new Map<string, string | null>();
   for (const r of formatAnswerRows) {
     const parsed: unknown = JSON.parse(r.valueJson);

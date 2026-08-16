@@ -111,7 +111,7 @@ describe("scheduleSummary", () => {
       startMin: 570,
       endMin: 630,
     });
-    const summary = scheduleSummary([a, b], 5);
+    const summary = scheduleSummary([a, b], 5, findConflicts([a, b]));
     expect(summary.unplaced).toBe(3);
     expect(summary.conflicts).toBe(1);
   });
