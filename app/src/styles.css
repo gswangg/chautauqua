@@ -855,11 +855,14 @@ a:hover {
   cursor: pointer;
 }
 
+/* User-filed + frame 09--07 (v12): the chip ON-state fills OLIVE with
+   on-brand text — the ink fill predated the redesign (DEC-730's vocabulary:
+   filled olive = on/confirmed; ink is reserved for outlined caps states). */
 .chq-pill.is-active,
 .chq-pill.active {
-  border-color: var(--chq-ink);
-  background: var(--chq-ink);
-  color: var(--chq-on-ink);
+  border-color: var(--chq-brand);
+  background: var(--chq-brand);
+  color: var(--chq-on-brand);
 }
 
 .chq-chipstrip {

@@ -173,7 +173,14 @@ export function PublicPagesPanel() {
                 <a className="chq-settings-inline-action" href={row.path}>
                   View
                 </a>
-                <button type="button" className="chq-link-button" onClick={() => setEmbedOpenState(true)}>
+                {/* User-filed (gate-12 era): View and Embed code sit in ONE
+                    row — one action typography (the 12px/700 inline-action),
+                    never two link styles side by side. */}
+                <button
+                  type="button"
+                  className="chq-link-button chq-settings-inline-action"
+                  onClick={() => setEmbedOpenState(true)}
+                >
                   Embed code
                 </button>
               </li>

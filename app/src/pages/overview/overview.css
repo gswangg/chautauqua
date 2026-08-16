@@ -310,6 +310,10 @@
   gap: 14px;
   margin-top: 11px;
   align-self: flex-start;
+  /* User-filed (gate-12 era): same class as the gate-9 .chq-overview-row-
+     actions fix — without this, the bare Read-the-abstract link stretches
+     and its text rides the top edge beside the filled buttons. */
+  align-items: center;
   font-size: 13px;
   font-weight: 700;
 }
