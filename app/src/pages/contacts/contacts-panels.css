@@ -652,6 +652,15 @@
   font-weight: 600;
 }
 
+/* w47-e: the merge-conflict preflight banner. chq-error already carries the
+   banner surface; this modifier is layout only -- it sits directly above the
+   footer whose primary is disabled while `blocked` is set, so it keeps the
+   page column's rhythm without introducing a second error palette (same
+   shape as .chq-review-incomplete-notice). */
+.chq-contacts-merge-blocked {
+  margin-top: 4px;
+}
+
 /* DEC-684: the merge page itself — full-page surface (NO chq-scrim/
    ModalFrame), mock "Duplicates · merge" (desktop) / "Merge · 390" (phone)
    frames. Breadcrumb back to Contacts · Duplicates, page title, the same
