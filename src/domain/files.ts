@@ -113,6 +113,16 @@ const ALL_UPLOAD_EXTENSIONS: readonly string[] = [
   ...Object.keys(ZIP_EXT_CONTENT_TYPE),
 ];
 
+// DEC-879 (wave-54 amendment): the public CFP file field binds three call
+// sites — src/views/form-render.tsx's `accept` attribute AND its
+// uploadHintText call, and src/routes/public/submit-post.tsx's
+// validateUpload call — to the SAME FileKind, so the picker, the visible
+// hint, and the server never disagree on what's admitted (a zip archive was
+// excluded from the picker's `accept` while the hint and the server both
+// accepted it). All three sites must use this constant rather than a
+// hand-typed "handout" literal.
+export const CFP_FILE_FIELD_KIND: FileKind = "handout";
+
 /** Every extension validateUpload accepts for the given kind, for UI hints
  * (accept attr, help text) — never used to bypass validateUpload itself,
  * which stays the single source of truth. DEC-879: video is admitted only

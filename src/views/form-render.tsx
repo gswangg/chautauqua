@@ -6,7 +6,7 @@
 
 import type { FormFieldDef, AnswerMap } from "../forms/types";
 import { lockedFieldName } from "../forms/types";
-import { allowedUploadExtensions, uploadHintText } from "../domain/files";
+import { allowedUploadExtensions, uploadHintText, CFP_FILE_FIELD_KIND } from "../domain/files";
 import { RULE_MATCH_JS } from "../forms/rule-match";
 import { resolvedTextCap } from "../forms/validate";
 import { OPTIONAL_SUFFIX } from "../domain/form-copy";
@@ -121,7 +121,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
           id={name}
           name={name}
           data-field-id={field.id}
-          accept={allowedUploadExtensions().map((e) => `.${e}`).join(",")}
+          accept={allowedUploadExtensions(CFP_FILE_FIELD_KIND).map((e) => `.${e}`).join(",")}
           aria-invalid={ariaInvalid}
         />
       );
@@ -165,7 +165,7 @@ export function FormField(props: { field: FormFieldDef; value: unknown; error?: 
       {/* CFP file fields always upload as kind:'handout' (src/routes/public/submit.tsx)
           — the hint must not advertise the recording-only video tier (its cap
           is derived from VIDEO_MAX_BYTES, see src/domain/files.ts). */}
-      {field.kind === "file" ? <p class="help">{uploadHintText("handout")}</p> : null}
+      {field.kind === "file" ? <p class="help">{uploadHintText(CFP_FILE_FIELD_KIND)}</p> : null}
       {error ? (
         // DEC-367: errors are distinguished by type (weight/marker), never
         // by colour -- no semantic red anywhere in the palette.

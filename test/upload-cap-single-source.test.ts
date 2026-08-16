@@ -73,6 +73,19 @@ function listUploadSurfaceFiles(): string[] {
   });
 }
 
+/** All argument strings (trimmed) passed to every call of `fnName(...)` in
+ * `text`. A crude regex, not a parser -- fine for this scan's simple call
+ * shapes (a bare identifier, a string literal, or no arg at all). */
+function extractKindArgs(text: string, fnName: string): string[] {
+  const re = new RegExp(`${fnName}\\(([^)]*)\\)`, "g");
+  const args: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    args.push(m[1]!.trim());
+  }
+  return args;
+}
+
 interface ScanResult {
   file: string;
   violations: string[];
@@ -116,6 +129,28 @@ function scanFileContent(relPath: string, content: string): string[] {
     const derivesFromAllowed = ALLOWED_DERIVATION_IDENTIFIERS.some((id) => line.includes(id));
     if (!derivesFromAllowed) {
       violations.push(`${relPath}: hand-typed size-cap text (${trimmed}) does not derive from an exported *_MAX_BYTES constant or hint-text helper`);
+    }
+  }
+
+  // DEC-879 (wave-54 amendment): the picker's accept list and its visible
+  // hint text must name the SAME FileKind -- a bare no-arg
+  // allowedUploadExtensions() beside a kinded uploadHintText('handout') call
+  // (or vice versa, or two different kind expressions) filters a type out of
+  // the picker that the hint and the server both admit. This is decided
+  // textually: the kind expression passed to allowedUploadExtensions must be
+  // identical to every kind expression passed to uploadHintText in the same
+  // file.
+  if (acceptMatch && acceptMatch[1]!.includes("allowedUploadExtensions")) {
+    const acceptKindArgs = extractKindArgs(acceptMatch[1]!, "allowedUploadExtensions");
+    const hintKindArgs = extractKindArgs(content, "uploadHintText");
+    if (acceptKindArgs.length > 0 && hintKindArgs.length > 0) {
+      const acceptKind = acceptKindArgs[0]!;
+      const mismatched = hintKindArgs.find((h) => h !== acceptKind);
+      if (mismatched !== undefined) {
+        violations.push(
+          `${relPath}: allowedUploadExtensions kind arg (${JSON.stringify(acceptKind)}) does not match sibling uploadHintText kind arg (${JSON.stringify(mismatched)})`,
+        );
+      }
     }
   }
 
@@ -170,6 +205,39 @@ describe("upload accepted-type/size-cap vocabulary has one source (DEC-020, CNT-
     const violations = scanFileContent("fixtures/synthetic-bad-cap.tsx", drifting);
     expect(violations.length).toBeGreaterThan(0);
     expect(violations.some((v) => v.includes("hand-typed size-cap text"))).toBe(true);
+  });
+
+  it("fails the scan when the accept kind arg doesn't match uploadHintText's sibling kind arg", () => {
+    const drifting = `
+      import { allowedUploadExtensions, uploadHintText } from '../../../src/domain/files';
+      export function Bad() {
+        return (
+          <>
+            <input type="file" accept={allowedUploadExtensions().map((e) => '.' + e).join(',')} />
+            <span>{uploadHintText('handout')}</span>
+          </>
+        );
+      }
+    `;
+    const violations = scanFileContent("fixtures/synthetic-bad-kind-mismatch.tsx", drifting);
+    expect(violations.length).toBeGreaterThan(0);
+    expect(violations.some((v) => v.includes("does not match sibling uploadHintText"))).toBe(true);
+  });
+
+  it("passes the scan when the accept kind arg textually matches uploadHintText's sibling kind arg", () => {
+    const clean = `
+      import { allowedUploadExtensions, uploadHintText, CFP_FILE_FIELD_KIND } from '../../../src/domain/files';
+      export function Good() {
+        return (
+          <>
+            <input type="file" accept={allowedUploadExtensions(CFP_FILE_FIELD_KIND).map((e) => '.' + e).join(',')} />
+            <span>{uploadHintText(CFP_FILE_FIELD_KIND)}</span>
+          </>
+        );
+      }
+    `;
+    const violations = scanFileContent("fixtures/synthetic-good-kind-match.tsx", clean);
+    expect(violations).toEqual([]);
   });
 
   it("passes the scan on a synthetic surface that derives both from the exported vocabulary", () => {
