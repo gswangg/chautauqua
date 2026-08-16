@@ -160,6 +160,10 @@ export function EventSettingsPanel() {
 
   useEffect(() => {
     if (!eventId) return;
+    // DEC-856 (wave 71 amendment): clear the page-level banner before the
+    // read is issued -- so a stale refusal never sits beside a later
+    // successful reload (TracksRoomsPanel's shape).
+    setError(undefined);
     apiGet<EventDetail>(`/events/${eventId}`)
       .then((event) => {
         const f = toForm(event);
@@ -170,6 +174,7 @@ export function EventSettingsPanel() {
   }, [eventId]);
 
   useEffect(() => {
+    setError(undefined);
     apiGet<MailStatus>('/mail-status')
       .then((status) => setMailStatus(status))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load mail status'));

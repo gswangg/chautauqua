@@ -91,6 +91,11 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
 
   function load() {
     if (!eventId) return;
+    // DEC-856 (wave 71 amendment): clear the page-level banner at the
+    // start of load, before any read is issued -- so a stale refusal
+    // never sits beside a later successful reload (TracksRoomsPanel's
+    // shape). load() runs both at mount and after every mutation.
+    setError(undefined);
     apiList<SavedEmbed>(`/events/${eventId}/embeds`)
       .then((res) => setEmbeds(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load saved embeds'));

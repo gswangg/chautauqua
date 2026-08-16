@@ -151,6 +151,10 @@ export function EmbedsPanel() {
 
   useEffect(() => {
     if (!eventId) return;
+    // DEC-856 (wave 71 amendment): clear the page-level banner before any
+    // read is issued -- so a stale refusal never sits beside a later
+    // successful reload (TracksRoomsPanel's shape).
+    setLoadError(undefined);
     apiGet<EventDetail>(`/events/${eventId}`)
       .then(setEvent)
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Failed to load event'));
@@ -164,6 +168,10 @@ export function EmbedsPanel() {
   // editing an existing embed starts from its real saved recipe.
   useEffect(() => {
     if (!eventId || !embedIdParam) return;
+    // DEC-856 (wave 71 amendment): clear the page-level banner before the
+    // read is issued -- so a stale refusal never sits beside a later
+    // successful reload (TracksRoomsPanel's shape).
+    setLoadError(undefined);
     apiList<SavedEmbedRow>(`/events/${eventId}/embeds`)
       .then((res) => {
         const found = res.items.find((row) => row.id === embedIdParam);
