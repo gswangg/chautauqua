@@ -36,7 +36,14 @@ export async function getEventInfo(db: Db, eventId: string): Promise<EventInfo |
 }
 
 /** True iff `roomId` names a room row belonging to `eventId` (DEC-073:
- * room writes/reads must be event-scoped to avoid cross-org room leaks). */
+ * room writes/reads must be event-scoped to avoid cross-org room leaks).
+ *
+ * ONE OWNER (DEC-248 amendment, wave 4): this is the single declaration of
+ * the room-ownership predicate under src/ — the agenda repo is the room's
+ * home surface. Every other site that needs "does this room belong to this
+ * event" imports it from here (or the agenda index barrel); do not add a
+ * second copy. test/room-ownership-one-owner.test.ts scans for exactly one
+ * exported `roomBelongsToEvent` under src/. */
 export async function roomBelongsToEvent(db: Db, roomId: string, eventId: string): Promise<boolean> {
   const rows = await db
     .select({ id: schema.room.id })

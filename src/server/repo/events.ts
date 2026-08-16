@@ -645,6 +645,10 @@ export async function createRoom(
   return created;
 }
 
+// Not routed through roomBelongsToEvent (DEC-248): this fetches and returns
+// the FULL room record (plus a scheduleSlot count join) for a room known to
+// belong to eventId, it isn't a boolean membership check — different
+// semantics from the ownership predicate.
 export async function getRoomForEvent(db: Db, roomId: string, eventId: string): Promise<RoomRecord | null> {
   const rows = await db
     .select()
