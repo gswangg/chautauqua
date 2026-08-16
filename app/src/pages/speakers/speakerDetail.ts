@@ -29,6 +29,22 @@ export interface SpeakerDetailParticipation {
   inviteStatus: InviteStatus;
 }
 
+// DEC-936: the person-level rollup -- the single shared status when every
+// participation on this contact agrees, else the literal 'mixed' plus one
+// row per submission so the header can never assert a status the roster
+// beneath it contradicts.
+export interface SpeakerDetailParticipationRollupRow {
+  participantId: string;
+  submissionId: string;
+  ref: string;
+  inviteStatus: InviteStatus;
+}
+
+export interface SpeakerDetailParticipationRollup {
+  status: InviteStatus | 'mixed';
+  bySubmission: SpeakerDetailParticipationRollupRow[];
+}
+
 // DEC-930: SubmissionStatus/ContentStatus are re-declared here as plain
 // string unions (not imported from submissions/types.ts or content/types.ts)
 // so this file stays a leaf the render test can import without pulling in
@@ -93,6 +109,7 @@ export interface SpeakerDetailCounts {
 export interface SpeakerDetailResponse {
   contact: SpeakerDetailContact;
   participation: SpeakerDetailParticipation;
+  participationRollup: SpeakerDetailParticipationRollup;
   sessions: SpeakerDetailSession[];
   tasks: SpeakerDetailTask[];
   counts: SpeakerDetailCounts;

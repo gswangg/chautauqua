@@ -840,6 +840,21 @@
   margin: 0;
 }
 
+/* DEC-936: the person-level participation rollup line -- a status chip plus,
+   only when the rollup disagrees with itself, a quiet per-session
+   breakdown so the header never contradicts the roster beneath it. */
+.chq-speaker-detail-participation-rollup {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chq-speaker-detail-participation-rollup-breakdown {
+  color: var(--chq-ink-2);
+  font-size: 12px;
+}
+
 .chq-speaker-detail-actions {
   display: flex;
   align-items: center;
