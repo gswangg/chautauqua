@@ -113,6 +113,38 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       skipLines = body.skipLines as number[];
     }
 
+    // DEC-663 (wave-64 amendment): mergeLines mirrors the skipLines shape
+    // check above -- an array of { line, contactId }, bounded the same way,
+    // with contactId itself bounded (never trusted past 64 chars) and no
+    // line repeated. The SEMANTIC re-derivation (candidate/org/email
+    // checks) happens inside applyImportRows, against the DB, not here.
+    let mergeLines: { line: number; contactId: string }[] = [];
+    if (body.mergeLines !== undefined) {
+      const invalid = () =>
+        new ApiError("invalid", "Validation failed", {
+          mergeLines: "must be an array of { line: integer, contactId: string }, line values unique",
+        });
+      if (!Array.isArray(body.mergeLines) || body.mergeLines.length > MAX_IMPORT_ROWS) {
+        throw invalid();
+      }
+      const seenLines = new Set<number>();
+      for (const entry of body.mergeLines) {
+        if (
+          !isPlainObject(entry) ||
+          typeof entry.line !== "number" ||
+          !Number.isInteger(entry.line) ||
+          typeof entry.contactId !== "string" ||
+          entry.contactId.trim() === "" ||
+          entry.contactId.length > 64
+        ) {
+          throw invalid();
+        }
+        if (seenLines.has(entry.line)) throw invalid();
+        seenLines.add(entry.line);
+      }
+      mergeLines = body.mergeLines as { line: number; contactId: string }[];
+    }
+
     // DEC-810: an eventId means every imported contact not already on the
     // roster gets pushed on with one shared session title -- rejected loudly
     // up front (before parsing/writing anything) rather than an invented
@@ -222,7 +254,7 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       return c.json(plan);
     }
 
-    const result = await repo.applyImportRows(c.var.db, orgId, rows, { skipLines });
+    const result = await repo.applyImportRows(c.var.db, orgId, rows, { skipLines, mergeLines });
 
     if (eventId === undefined) {
       return c.json({ created: result.created, updated: result.updated, skipped: result.skipped });

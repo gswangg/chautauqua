@@ -11,6 +11,7 @@ import {
   MAX_IMPORT_ROWS,
   type ContactRecord,
 } from "../../../domain/contacts";
+import { fullName } from "../../../domain/contacts-parts/types";
 import { ApiError } from "../../http";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { customFieldsJsonOf } from "./crud";
@@ -175,6 +176,13 @@ async function flushContactUpdates(db: Db, rows: ContactCommitRow[]): Promise<vo
       .onConflictDoUpdate({
         target: schema.contact.id,
         set: {
+          // DEC-663 (wave-64 amendment): email is now part of the SET list
+          // -- a plain (non-merge) update's commit row still carries the
+          // base row's UNCHANGED email through (applyCommitPatch never
+          // touches it), so this is a same-value no-op for every row except
+          // a merge line, where it's the whole point: the CSV row's email
+          // REPLACES the target's stored email.
+          email: sql`excluded.email`,
           firstName: sql`excluded.first_name`,
           lastName: sql`excluded.last_name`,
           phone: sql`excluded.phone`,
@@ -207,7 +215,7 @@ export async function applyImportRows(
   db: Db,
   orgId: string,
   rows: { line: number; parsed: Record<string, unknown>; capViolations?: Record<string, string> }[],
-  opts?: { skipLines?: number[] },
+  opts?: { skipLines?: number[]; mergeLines?: { line: number; contactId: string }[] },
 ): Promise<ImportResult> {
   if (rows.length > MAX_IMPORT_ROWS) {
     throw new ApiError(
@@ -269,6 +277,104 @@ export async function applyImportRows(
   // for a skipped line).
   const skipLineSet = new Set(opts?.skipLines ?? []);
 
+  // DEC-663 (wave-64 amendment): a merged line does NOT create -- it patches
+  // an organizer-named existing contact through the SAME resolveImportUpsert
+  // update path an email match would take, with the CSV row's email
+  // REPLACING the target's stored email. The server never trusts the
+  // client's merge choice: every merged line is re-derived against the same
+  // possible-duplicate candidate set planImportRows would compute, and any
+  // mismatch (unknown/foreign contact, a line also marked skip, a line whose
+  // email already resolves to an update) throws before ANY write below.
+  const mergeLines = opts?.mergeLines ?? [];
+  const mergeLineMap = new Map<number, string>();
+  for (const { line, contactId } of mergeLines) {
+    mergeLineMap.set(line, contactId);
+  }
+  if (mergeLines.length > 0) {
+    const rowsByLine = new Map<number, { parsed: Record<string, unknown> }>();
+    for (const r of rows) rowsByLine.set(r.line, r);
+
+    const mergeTargetIds = [...new Set(mergeLines.map((m) => m.contactId))];
+    const mergeTargetById = new Map<string, ContactRow>();
+    for (const batch of chunkIds(mergeTargetIds)) {
+      const existing = await db
+        .select()
+        .from(schema.contact)
+        .where(and(eq(schema.contact.orgId, orgId), inArray(schema.contact.id, batch)));
+      for (const raw of existing as (typeof schema.contact.$inferSelect)[]) {
+        const row = toRow(raw);
+        mergeTargetById.set(row.id, row);
+      }
+    }
+
+    // Same candidate idiom as planImportRows: every org contact whose last
+    // name (lowercased) appears among the merged lines' rows, chunked over
+    // those distinct last names (DEC-356 — cost proportional to the merge
+    // set, never a whole-org scan).
+    const mergeLastNames = new Set<string>();
+    for (const { line } of mergeLines) {
+      const parsed = rowsByLine.get(line)?.parsed;
+      const lastName = typeof parsed?.lastName === "string" ? parsed.lastName.trim().toLowerCase() : "";
+      if (lastName !== "") mergeLastNames.add(lastName);
+    }
+    const mergeNameCandidates: ContactRecord[] = [];
+    for (const batch of chunkIds([...mergeLastNames])) {
+      const found = await selectContactsWhere(db, orgId, inArray(sql`lower(${schema.contact.lastName})`, batch));
+      mergeNameCandidates.push(...found);
+    }
+
+    for (const { line, contactId } of mergeLines) {
+      const row = rowsByLine.get(line);
+      if (!row) {
+        throw new ApiError("invalid", `Line ${line} is not part of this import batch`, {
+          mergeLines: `line ${line}: unknown row`,
+        });
+      }
+      if (skipLineSet.has(line)) {
+        throw new ApiError("invalid", `Line ${line} cannot be both skipped and merged`, {
+          mergeLines: `line ${line}: also present in skipLines`,
+        });
+      }
+      const target = mergeTargetById.get(contactId);
+      if (!target) {
+        throw new ApiError("invalid", `Line ${line}: merge target contact ${contactId} was not found`, {
+          mergeLines: `line ${line}: unknown contact`,
+        });
+      }
+      const email = typeof row.parsed.email === "string" ? row.parsed.email : undefined;
+      if (email && email.trim() !== "" && isValidEmail(email) && byEmail.has(normalizeEmail(email))) {
+        throw new ApiError(
+          "invalid",
+          `Line ${line} already matches an existing contact by email; it resolves to an update, not a merge`,
+          { mergeLines: `line ${line}: resolves to an update` },
+        );
+      }
+      const candidates = findImportDuplicateCandidates(
+        {
+          firstName: typeof row.parsed.firstName === "string" ? row.parsed.firstName : undefined,
+          lastName: typeof row.parsed.lastName === "string" ? row.parsed.lastName : undefined,
+          company: typeof row.parsed.company === "string" ? row.parsed.company : undefined,
+          email: email ?? "",
+        },
+        mergeNameCandidates,
+      );
+      if (!candidates.some((c) => c.id === contactId)) {
+        throw new ApiError(
+          "invalid",
+          `Line ${line}: contact ${contactId} is not a possible duplicate for this row`,
+          { mergeLines: `line ${line}: not a candidate` },
+        );
+      }
+      // Validated: fold this merge target into the same pre-pass maps the
+      // main commit loop below already reads, so the merge branch there
+      // needs no extra query.
+      existingById.set(target.id, target);
+      if (target.customFieldsJson) {
+        existingCustomFieldsById.set(target.id, JSON.parse(target.customFieldsJson) as Record<string, string>);
+      }
+    }
+  }
+
   const addContactId = (id: string) => {
     if (!seenContactIds.has(id)) {
       seenContactIds.add(id);
@@ -311,8 +417,44 @@ export async function applyImportRows(
       continue;
     }
     const key = normalizeEmail(email);
-    const existingId = byEmail.get(key);
     const normalizedParsed = { ...parsed, email: key };
+
+    const mergeTargetId = mergeLineMap.get(line);
+    if (mergeTargetId !== undefined) {
+      // DEC-663 (wave-64 amendment): validated above against the same
+      // possible-duplicate candidate set planImportRows uses -- patches the
+      // named contact through the same resolveImportUpsert update path a
+      // real email match would take, then forces the CSV row's email onto
+      // the commit row (resolveImportUpsert's patch never carries email —
+      // see applyCommitPatch's doc comment).
+      const decision = resolveImportUpsert(
+        mergeTargetId,
+        normalizedParsed as Partial<ContactRecord>,
+        existingCustomFieldsById.get(mergeTargetId),
+      );
+      if (decision.action !== "update") {
+        throw new Error("applyImportRows: merge line resolved to create — unreachable (existingId always defined)");
+      }
+      const base = pendingById.get(mergeTargetId) ?? (existingById.has(mergeTargetId) ? commitRowFromExisting(existingById.get(mergeTargetId)!) : undefined);
+      if (!base) {
+        throw new Error(`applyImportRows: merge target ${mergeTargetId} missing from pre-pass`);
+      }
+      const patched = applyCommitPatch(base, decision.patch, now);
+      pendingById.set(mergeTargetId, { ...patched, email: key });
+      updated++;
+      addContactId(mergeTargetId);
+      byEmail.set(key, mergeTargetId);
+      if (decision.patch.title !== undefined || decision.patch.company !== undefined) {
+        attributionUpdates.push({
+          contactId: mergeTargetId,
+          title: decision.patch.title ?? null,
+          company: decision.patch.company ?? null,
+        });
+      }
+      continue;
+    }
+
+    const existingId = byEmail.get(key);
     const decision = resolveImportUpsert(
       existingId,
       normalizedParsed as Partial<ContactRecord>,
@@ -402,6 +544,31 @@ export interface ImportPlanOverwrite {
   to: string;
 }
 
+/** DEC-663 amendment (wave 64): the wire shape of a possible-duplicate
+ * match -- a narrow projection of ContactRecord, never the full record.
+ * `possibleDuplicates` must carry ONLY these four fields; bio/notes/
+ * customFields (and everything else on ContactRecord) never reach the wire.
+ * The only reader (app/src/pages/contacts/ImportWizard.tsx) prints
+ * `contactId`/`name`, which this record now actually carries -- the prior
+ * `ContactRecord[]` shape left both undefined at render time (DEC-663
+ * wave-64 fix). */
+export interface ImportPlanDuplicate {
+  contactId: string;
+  name: string;
+  email: string;
+  company?: string | null;
+}
+
+/** DEC-663 amendment (wave 64): caps possibleDuplicates at this many rows
+ * per plan row so a large duplicate cluster never inflates the dry-run
+ * payload -- the excess count is still disclosed via
+ * ImportPlanRow.possibleDuplicatesMore. */
+export const MAX_POSSIBLE_DUPLICATES = 5;
+
+function toImportPlanDuplicate(c: ContactRecord): ImportPlanDuplicate {
+  return { contactId: c.id, name: fullName(c), email: c.email, company: c.company ?? null };
+}
+
 export interface ImportPlanRow {
   line: number;
   email: string;
@@ -409,7 +576,10 @@ export interface ImportPlanRow {
   reason?: string;
   contactId?: string;
   overwrites?: ImportPlanOverwrite[];
-  possibleDuplicates?: ContactRecord[];
+  possibleDuplicates?: ImportPlanDuplicate[];
+  /** DEC-663 amendment (wave 64): count of possible-duplicate matches beyond
+   * the MAX_POSSIBLE_DUPLICATES cap; omitted (never 0) when there is none. */
+  possibleDuplicatesMore?: number;
   /** DEC-417 (amendment): target -> overBudgetBy message, from
    * importFieldCapViolations -- present (action: "skip") whenever this row
    * would mint/patch a contact over a per-column cap the hand-typed drawer
@@ -567,7 +737,12 @@ export async function planImportRows(
         line,
         email: key,
         action: "create",
-        ...(duplicates.length > 0 ? { possibleDuplicates: duplicates } : {}),
+        ...(duplicates.length > 0
+          ? { possibleDuplicates: duplicates.slice(0, MAX_POSSIBLE_DUPLICATES).map(toImportPlanDuplicate) }
+          : {}),
+        ...(duplicates.length > MAX_POSSIBLE_DUPLICATES
+          ? { possibleDuplicatesMore: duplicates.length - MAX_POSSIBLE_DUPLICATES }
+          : {}),
       });
       // DEC-663 amendment (wave 61): register this create's resolved values
       // under the normalized email so a LATER row in this same file with
