@@ -19,7 +19,8 @@ import type { Db } from "../src/server/context";
 type Marker =
   | { __marker: "eq"; col: unknown; val: unknown }
   | { __marker: "and"; conds: unknown[] }
-  | { __marker: "inArray"; col: unknown; vals: readonly unknown[] };
+  | { __marker: "inArray"; col: unknown; vals: readonly unknown[] }
+  | { __marker: "sql"; values: unknown[] };
 
 vi.mock("drizzle-orm", async (importOriginal) => {
   const actual = await importOriginal<typeof import("drizzle-orm")>();
@@ -28,6 +29,12 @@ vi.mock("drizzle-orm", async (importOriginal) => {
     eq: (col: unknown, val: unknown): Marker => ({ __marker: "eq", col, val }),
     and: (...conds: unknown[]): Marker => ({ __marker: "and", conds }),
     inArray: (col: unknown, vals: readonly unknown[]): Marker => ({ __marker: "inArray", col, vals }),
+    // DEC-962 (wave 47 amendment): getPortalSubmissionDetail now composes a
+    // correlated sql`exists (...)` (submissionOwnedByContact) into its
+    // WHERE — captured the same way test/portal-batched-scope.test.ts
+    // captures fileSubmissionOwnedByContact: every interpolated expression
+    // in call order, evaluated by evalWhereCond below.
+    sql: (_strings: TemplateStringsArray, ...values: unknown[]): Marker => ({ __marker: "sql", values }),
   };
 });
 
@@ -84,16 +91,43 @@ function evalJoinCond(cond: unknown, rec: Rec, joinRow: Record<string, unknown>,
   throw new Error(`fake db: unsupported join condition ${JSON.stringify(cond)}`);
 }
 
-function evalWhereCond(cond: unknown, rec: Rec): boolean {
+function evalWhereCond(cond: unknown, rec: Rec, dataByTag: Record<string, Record<string, unknown>[]>): boolean {
   const m = cond as Marker;
   if (m.__marker === "eq") {
     const info = colInfo(m.col);
     return rec[info.tag]?.[info.key] === m.val;
   }
-  if (m.__marker === "and") return m.conds.every((c) => evalWhereCond(c, rec));
+  if (m.__marker === "and") return m.conds.every((c) => evalWhereCond(c, rec, dataByTag));
   if (m.__marker === "inArray") {
     const info = colInfo(m.col);
     return m.vals.includes(rec[info.tag]?.[info.key]);
+  }
+  if (m.__marker === "sql") {
+    // DEC-962 (wave 47 amendment): this file's only sql`` predicate is
+    // getPortalSubmissionDetail's submissionOwnedByContact(contactId),
+    // recognized by schema.participant.contactId among the interpolated
+    // expressions (same recognition technique as
+    // test/portal-batched-scope.test.ts).
+    if (m.values.some((v) => v === schema.participant.contactId)) {
+      const contactIdLiteral = m.values.find((v) => typeof v === "string" && tryColInfo(v) === null) as
+        | string
+        | undefined;
+      const inArrayMarker = m.values.find(
+        (v) => v && typeof v === "object" && (v as Marker).__marker === "inArray",
+      ) as { __marker: "inArray"; col: unknown; vals: readonly unknown[] } | undefined;
+      const participants = dataByTag.participant ?? [];
+      const submissionId = rec.submission?.id;
+      return participants.some((p) => {
+        if (p.submissionId !== submissionId) return false;
+        if (p.contactId !== contactIdLiteral) return false;
+        if (inArrayMarker) {
+          const info = colInfo(inArrayMarker.col);
+          if (!inArrayMarker.vals.includes(p[info.key])) return false;
+        }
+        return true;
+      });
+    }
+    throw new Error(`fake db: unsupported sql predicate ${JSON.stringify(m.values)}`);
   }
   throw new Error(`fake db: unsupported where condition ${JSON.stringify(cond)}`);
 }
@@ -155,12 +189,12 @@ function makeDb(dataByTag: Record<string, Record<string, unknown>[]>) {
         return chain;
       },
       limit: async (n: number) => {
-        const filtered = whereCond ? records.filter((r) => evalWhereCond(whereCond, r)) : records;
+        const filtered = whereCond ? records.filter((r) => evalWhereCond(whereCond, r, dataByTag)) : records;
         return project(filtered, fields).slice(0, n);
       },
       then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
         try {
-          const filtered = whereCond ? records.filter((r) => evalWhereCond(whereCond, r)) : records;
+          const filtered = whereCond ? records.filter((r) => evalWhereCond(whereCond, r, dataByTag)) : records;
           resolve(project(filtered, fields));
         } catch (e) {
           if (reject) reject(e);
