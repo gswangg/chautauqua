@@ -27,6 +27,11 @@ export const task = sqliteTable(
     // from `description`, shown on the speaker's own task row, never
     // required.
     instructions: text("instructions"),
+    // migrations/0045 (DEC-746 wave-77 amendment): 'everyone' | 'targeted'
+    // — see src/domain/task-kinds.ts's TASK_AUDIENCES. 'targeted' means this
+    // task was created for an explicit contactIds subset and must NOT be
+    // back-filled onto newly-active contacts at acceptance (DEC-932).
+    audience: text("audience").notNull().default("everyone"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

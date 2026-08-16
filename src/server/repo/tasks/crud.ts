@@ -10,9 +10,12 @@ import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
 import { isUniqueViolation } from "../constraints";
-import { DEC_528, DEC_556, DEC_801 } from "../../../decisions";
+import { DEC_528, DEC_556, DEC_746, DEC_801 } from "../../../decisions";
 import { ASSIGNED_LATE_GRACE_DAYS, overdueDayCutoff } from "../../../domain/task-due";
 import type { FileKind } from "../../../domain/files";
+import { DEFAULT_TASK_AUDIENCE, type TaskAudience } from "../../../domain/task-kinds";
+
+void DEC_746; // wave-77 amendment: task.audience is stamped here, per input.contactIds.
 
 void DEC_801; // overdueAssignmentConditions below composes the DEC-801 grace window.
 
@@ -43,6 +46,12 @@ export interface CreateTaskInput {
   // Absent means every accepted speaker, byte-for-byte the original
   // behavior.
   contactIds?: string[];
+  // DEC-746 (wave-77 amendment): the caller (routes/tasks.ts) stamps
+  // 'targeted' when contactIds is present, DEFAULT_TASK_AUDIENCE otherwise.
+  // Omitted means DEFAULT_TASK_AUDIENCE ('everyone'), matching the schema
+  // column's own default -- callers that don't care about audience (tests,
+  // getOrCreateTask's default-onboarding-template path) need not thread it.
+  audience?: TaskAudience;
 }
 
 export interface TaskRecord {
@@ -320,6 +329,7 @@ export async function createTask(db: Db, eventId: string, input: CreateTaskInput
       formId: input.formId ?? null,
       deliverableKind: input.deliverableKind ?? null,
       instructions: input.instructions ?? null,
+      audience: input.audience ?? DEFAULT_TASK_AUDIENCE,
       createdAt: now,
       updatedAt: now,
     });

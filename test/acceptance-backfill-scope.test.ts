@@ -100,7 +100,10 @@ function fakeDb(seed: {
     event: [...seed.event] as any[],
     submission: [...seed.submission] as any[],
     participant: [...seed.participant] as any[],
-    task: [...(seed.task ?? [])] as any[],
+    // DEC-746 (wave-77 amendment): default audience='everyone' for seeded
+    // task rows that don't specify it, mirroring the real column default --
+    // status.ts's back-fill select now filters on task.audience.
+    task: (seed.task ?? []).map((t) => ({ audience: "everyone", ...(t as object) })) as any[],
     taskAssignment: [...(seed.taskAssignment ?? [])] as any[],
     form: [] as any[],
     formField: [] as any[],
@@ -150,7 +153,13 @@ function fakeDb(seed: {
         const write = async () => {
           const rows = Array.isArray(vals) ? vals : [vals];
           const arr = stateArrayFor(table);
-          if (arr) arr.push(...rows.map((r) => ({ ...(r as object) })));
+          // DEC-746 (wave-77 amendment): mirror the real audience='everyone'
+          // column default for schema.task inserts that don't set it.
+          if (arr) {
+            arr.push(
+              ...rows.map((r) => (table === schema.task ? { audience: "everyone", ...(r as object) } : { ...(r as object) })),
+            );
+          }
         };
         return {
           then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),

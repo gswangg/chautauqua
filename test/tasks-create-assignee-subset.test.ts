@@ -95,6 +95,7 @@ create table task (
   form_id text,
   deliverable_kind text,
   instructions text,
+  audience text,
   created_at integer,
   updated_at integer,
   unique (event_id, title)
