@@ -130,6 +130,36 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
     expect(body.role).toBe(nonDefault.value);
     expect(body.title).toBe('Panel: Priya');
   });
+
+  // DEC-829 (wave-59 amendment): the success link must carry the selected
+  // target event id so /speakers resolves to that event, not whatever
+  // event happens to be current -- ?eventId is the first step of the SPA's
+  // current-event resolution order (app/src/lib/useCurrentEvent.ts).
+  it('the "View in Speakers" success link carries the selected event id', async () => {
+    mockApi({
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'DevFlow Conf 2027' }]),
+      'GET /api/v1/contacts/ct-1': NO_HISTORY,
+      'POST /api/v1/contacts/ct-1/add-to-event': { status: 201, body: { submissionId: 'sub-1' } },
+    });
+
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('Session title'), { target: { value: 'Keynote: Priya' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add them' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'View in Speakers' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('link', { name: 'View in Speakers' })).toHaveAttribute('href', '/speakers?eventId=ev-1');
+  });
 });
 
 describe('AddToEventModal defaults to the event in context (DEC-795)', () => {

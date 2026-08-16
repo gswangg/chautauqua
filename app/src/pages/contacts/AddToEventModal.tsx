@@ -200,7 +200,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
           {/* DEC-834 / DEC-837: the router's basename is already '/admin' -- a
               `to` starting with '/admin/speakers' resolves to
               '/admin/admin/speakers' and 404s. */}
-          <Link to="/speakers">View in Speakers</Link>
+          <Link to={`/speakers?eventId=${eventId}`}>View in Speakers</Link>
         </div>
       )}
     </ModalFrame>
