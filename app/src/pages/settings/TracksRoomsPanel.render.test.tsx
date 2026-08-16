@@ -363,7 +363,7 @@ describe('TracksRoomsPanel', () => {
     // DEC-941: Remove opens the shared ConfirmDialog naming the track
     // first -- the DELETE only fires from the dialog's own confirm control.
     const dialog = screen.getByRole('dialog', { name: 'Remove this track?' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove track' }));
 
     await waitFor(() => {
       expect(within(trackRow).getByText('AI track review')).toBeInTheDocument();
@@ -398,7 +398,7 @@ describe('TracksRoomsPanel', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Remove this track?' });
     expect(within(dialog).getByText(/AI Engineering/)).toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove track' }));
 
     await waitFor(() => {
       expect(
@@ -461,7 +461,7 @@ describe('TracksRoomsPanel', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Remove this room?' });
     expect(within(dialog).getByText(/Main Stage/)).toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove room' }));
 
     await waitFor(() => {
       expect(

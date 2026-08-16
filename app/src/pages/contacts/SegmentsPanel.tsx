@@ -161,7 +161,7 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
         <ConfirmDialog
           title="Delete this segment"
           body={`Delete "${pendingDelete.name}"? This cannot be undone.`}
-          confirmLabel="Delete"
+          confirmLabel="Delete segment"
           pending={busy}
           onConfirm={() => remove(pendingDelete.id)}
           onCancel={() => setPendingDelete(null)}

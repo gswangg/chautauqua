@@ -312,7 +312,7 @@ describe('SavedEmbedsPanel', () => {
       fetchMock.mock.calls.find(([input]) => String(input).includes('/api/v1/embeds/emb1')),
     ).toBeUndefined();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete embed' }));
 
     await waitFor(() => {
       const [, deleteInit] =

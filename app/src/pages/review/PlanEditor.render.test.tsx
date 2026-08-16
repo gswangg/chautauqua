@@ -481,7 +481,7 @@ describe('PlanEditor render smoke', () => {
       false,
     );
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove reviewer' }));
 
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(

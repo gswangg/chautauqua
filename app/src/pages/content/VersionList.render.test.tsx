@@ -185,7 +185,7 @@ describe('VersionList', () => {
       expect(dialog).toBeInTheDocument();
       expect(within(dialog).getByText(/slides-v1\.pdf/)).toBeInTheDocument();
 
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete version' }));
 
       await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
       expect(fetchMock).toHaveBeenCalledWith(
@@ -240,7 +240,7 @@ describe('VersionList', () => {
       fireEvent.click(deleteButtons[0]!);
       const dialog = screen.getByRole('dialog');
       expect(dialog).toBeInTheDocument();
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete version' }));
       await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(2));
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/files/v2'),

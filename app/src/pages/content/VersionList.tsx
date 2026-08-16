@@ -170,7 +170,7 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
         <ConfirmDialog
           title="Delete this version?"
           body={`"${pendingDelete.filename}" is the live file for this deliverable -- removing it changes what the speaker's portal and the public event page resolve to. This can't be undone.`}
-          confirmLabel="Delete"
+          confirmLabel="Delete version"
           pending={deleting}
           onConfirm={() => void confirmDelete()}
           onCancel={() => setPendingDelete(null)}
