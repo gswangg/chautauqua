@@ -17,8 +17,11 @@ import type { DocsArticle } from "../src/routes/docs-content/types";
 
 const CONTENT_DIR = resolve(fileURLToPath(import.meta.url), "../../src/routes/docs-content");
 
-// Files in this directory that are infrastructure, not articles.
-const NON_ARTICLE_FILES = new Set(["index.ts", "types.ts", "groups.ts"]);
+// Files in this directory that are infrastructure, not articles. nav.ts
+// and where-next.ts are article FURNITURE (task-w4-b: side nav, Where-next
+// closer, pager) -- pure data/derivation modules with no DocsArticle
+// export of their own.
+const NON_ARTICLE_FILES = new Set(["index.ts", "types.ts", "groups.ts", "nav.ts", "where-next.ts"]);
 
 /** Finds the single DocsArticle-shaped named export of a dynamically
  * imported module (an object carrying `slug`, `group`, `title`). */

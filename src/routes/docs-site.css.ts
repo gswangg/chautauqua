@@ -66,9 +66,33 @@ export const DOCS_SITE_CSS = `
   .chq-docs-article-title { font-family: var(--chq-font-display); font-size: 17px; font-weight: 600; letter-spacing: -0.015em; color: var(--chq-ink); text-decoration: none; }
   .chq-docs-article-blurb { font-size: 14px; line-height: 1.55; color: var(--chq-muted); }
 
-  /* Article page */
-  .chq-docs-article-body { max-width: 1000px; margin-inline: auto; padding: 34px 34px 48px; display: flex; flex-direction: column; gap: 26px; }
+  /* Article page: 216px nav column + fluid article column (frame's
+     grid-template-columns:216px minmax(0, 1fr), :44). */
+  .chq-docs-article-frame { max-width: 1240px; margin-inline: auto; width: 100%; padding: 34px 34px 48px; display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 44px; align-items: start; }
+  .chq-docs-article-body { min-width: 0; display: flex; flex-direction: column; gap: 26px; }
   .chq-docs-article-head { max-width: 680px; display: flex; flex-direction: column; gap: 10px; }
+
+  /* Sticky grouped side nav (:46-55). Selected/unselected styles at
+     :354-355: selected carries an inset olive rule and bold weight,
+     unselected is regular weight at the same left padding. */
+  .chq-docs-nav { position: sticky; top: 0; display: flex; flex-direction: column; gap: 22px; }
+  .chq-docs-nav-group { display: flex; flex-direction: column; gap: 2px; }
+  .chq-docs-nav-group-label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--chq-muted); padding: 0 0 6px; }
+  .chq-docs-nav-link { padding: 7px 0 7px 11px; font-size: 14px; font-weight: 500; color: var(--chq-ink-2); text-decoration: none; }
+  .chq-docs-nav-link-active { font-weight: 700; color: var(--chq-ink); box-shadow: inset 2px 0 0 var(--chq-brand); }
+
+  .chq-docs-phone-back { display: none; }
+
+  /* Where next: closes every article, 150px/1fr grid (:328-337). */
+  .chq-docs-where-next { max-width: 680px; display: flex; flex-direction: column; gap: 0; padding-top: 6px; }
+  .chq-docs-where-next-row { display: grid; grid-template-columns: 150px 1fr; gap: 18px; align-items: baseline; padding: 13px 0; border-bottom: 1px solid var(--chq-hairline); }
+  .chq-docs-where-next-where { font-size: 15px; font-weight: 700; color: var(--chq-ink); text-decoration: none; }
+  .chq-docs-where-next-what { font-size: 15px; line-height: 1.6; color: var(--chq-ink-2); }
+
+  /* Prev/next pager: top rule, prev left, next pushed right (:341-345). */
+  .chq-docs-pager { max-width: 680px; border-top: 1px solid var(--chq-rule); padding-top: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .chq-docs-pager-prev { font-size: 15px; font-weight: 700; color: var(--chq-ink); text-decoration: none; }
+  .chq-docs-pager-next { margin-left: auto; font-size: 15px; font-weight: 700; color: var(--chq-ink); text-decoration: none; }
   .chq-docs-article-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--chq-muted); }
   .chq-docs-article-head h1 { margin: 0; font-family: var(--chq-font-display); font-size: 38px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; }
   .chq-docs-article-head p { margin: 0; font-size: 17px; line-height: 1.65; color: var(--chq-ink-2); }
@@ -96,8 +120,22 @@ export const DOCS_SITE_CSS = `
     .chq-docs-body { padding: 24px 16px 40px; gap: 24px; }
     .chq-docs-intro h1 { font-size: 30px; }
     .chq-docs-article-grid { grid-template-columns: 1fr; }
-    .chq-docs-article-body { padding: 24px 16px 40px; }
+    .chq-docs-article-frame { grid-template-columns: 1fr; padding: 24px 16px 40px; gap: 0; }
     .chq-docs-article-head h1 { font-size: 28px; }
+
+    /* Nav collapses to a single 44px-min '‹ Docs' back link above the H1
+       (:168, the phone panel's own header). */
+    .chq-docs-nav { display: none; }
+    .chq-docs-phone-back {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--chq-ink);
+      text-decoration: none;
+      margin-bottom: 4px;
+    }
 
     /* The one sanctioned measure break itself breaks further on phone:
        edge to edge (no side gutter) with the caption inset back to the
