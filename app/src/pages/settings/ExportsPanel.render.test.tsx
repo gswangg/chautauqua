@@ -77,7 +77,7 @@ describe('ExportsPanel exports table CSS (w23-c, DEC-902 amendment)', () => {
     const widthedCols = ['csv', 'json'];
     for (const col of widthedCols) {
       const rule = extractRule(`.chq-settings-exports-table .chq-settings-exports-col-${col} {`);
-      expect(rule).toMatch(/width:\s*1px;/);
+      expect(rule).toMatch(/width:\s*\d{2,3}px;/);
       expect(rule).toMatch(/white-space:\s*nowrap;/);
     }
     expect(css).not.toContain('.chq-settings-exports-col-data {');

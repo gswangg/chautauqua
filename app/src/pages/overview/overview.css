@@ -302,6 +302,10 @@
   display: flex;
   gap: 14px;
   align-self: center;
+  /* User-filed (gate-9): without this, flex-stretch makes the bare Open
+     link as tall as the filled Approve beside it with its text pinned to
+     the top edge — the two read vertically misaligned. */
+  align-items: center;
   font-size: 13px;
   font-weight: 700;
 }

@@ -353,12 +353,13 @@ export function PeopleRolesPanel() {
                     </span>
                     <div className="chq-settings-people-actions" role="cell">
                       {isSelf ? (
-                        <>
-                          <span className="chq-settings-row-hint">You cannot remove or demote yourself</span>
-                          <a className="chq-link-button" href="/account/password">
-                            Change password
-                          </a>
-                        </>
+                        // User-filed (gate-9): the in-row guard sentence made
+                        // this cell double-wide and broke the row grid; the
+                        // screen's consequence line and the disabled select's
+                        // title carry the rule — the row keeps one action.
+                        <a className="chq-link-button" href="/account/password">
+                          Change password
+                        </a>
                       ) : resetTargetId === user.id ? (
                         <span className="chq-settings-people-confirm">
                           Reset {user.email}&apos;s password?
@@ -387,10 +388,6 @@ export function PeopleRolesPanel() {
           </div>
           <p className="chq-settings-people-total">
             Showing {users.length} of {total}
-          </p>
-          <p className="chq-settings-people-closing-note">
-            You cannot remove or demote yourself &middot; a reviewer&apos;s scope limits which tracks they are
-            assigned
           </p>
         </>
       )}

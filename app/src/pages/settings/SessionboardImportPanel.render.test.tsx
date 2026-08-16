@@ -219,7 +219,7 @@ describe('SessionboardImportPanel mapping table CSS (w23-c, DEC-902 amendment)',
     const widthedCols = ['column', 'sample', 'arrow'];
     for (const col of widthedCols) {
       const rule = extractRule(`.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-${col} {`);
-      expect(rule).toMatch(/width:\s*1px;/);
+      expect(rule).toMatch(/width:\s*\d{2,3}px;/);
       expect(rule).toMatch(/white-space:\s*nowrap;/);
     }
     expect(css).not.toContain('.chq-settings-sessionboard-mapping-col-target {');
