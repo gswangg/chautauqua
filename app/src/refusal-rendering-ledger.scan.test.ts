@@ -106,12 +106,16 @@ const LEDGER: Record<string, LedgerEntry> = {
     test: 'pages/review/planEditor-refusal-shapes.test.ts',
   },
 
-  // OFF-LIMITS this wave: task-w53-e (96ebfe2f, committed-unmerged) owns
-  // FormsPage.tsx's `?cascade=1` refusal UI (DEC-505's own PATCH-conflict
-  // half). Filed as owed rather than fixed here per the delegated scope.
+  // DEC-099 (wave-76 amendment): re-derived against main. The `?cascade=1`
+  // refusal UI is present (FormsPage.tsx PATCH- and DELETE-side conflict
+  // confirms). FormsPage.edit-cascade.render.test.tsx proves the server's
+  // own conflict message reaches the DOM for the PATCH-side edit-cascade
+  // confirm, but the DELETE-side conflict confirm (deleteConfirm.conflict
+  // Message / "Delete field anyway") has no such proof yet -- filed owed
+  // with the same generic reason its siblings carry.
   'pages/forms/FormsPage.tsx': {
     verdict: 'owed',
-    reason: 'owned by task-w53-e (?cascade=1 refusal UI); ledger row filed, proof pending that branch landing',
+    reason: 'wave-55 ledger established; refusal-shapes test not yet written',
   },
 
   'components/EventSwitcher.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },

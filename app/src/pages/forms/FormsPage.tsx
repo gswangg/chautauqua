@@ -24,7 +24,7 @@ type ModalState = { mode: 'create' } | { mode: 'edit'; field: FormField } | null
 
 // DEC-631: the field's own delete confirm, and (if the server reports a
 // 409 conflict) a second confirm rendering the server's message with a
-// "Delete anyway" retry that cascades.
+// "Delete field anyway" retry that cascades.
 type DeleteConfirmState = { field: FormField; conflictMessage?: string } | null;
 
 // DEC-505 (wave-53 amendment): the PATCH-side sibling of DeleteConfirmState.
@@ -459,7 +459,7 @@ export function FormsPage() {
               )}
             </>
           }
-          confirmLabel="Delete"
+          confirmLabel="Delete field"
           pending={busy}
           weight="irreversible"
           confirmPhrase={deleteConfirm.field.label}
@@ -471,7 +471,7 @@ export function FormsPage() {
         <ConfirmDialog
           title="Delete field"
           body={deleteConfirm.conflictMessage}
-          confirmLabel="Delete anyway"
+          confirmLabel="Delete field anyway"
           pending={busy}
           weight="irreversible"
           confirmPhrase={deleteConfirm.field.label}
@@ -484,7 +484,7 @@ export function FormsPage() {
         <ConfirmDialog
           title="Confirm field change"
           body={editCascadeConfirm.message}
-          confirmLabel="Change anyway"
+          confirmLabel="Change field anyway"
           pending={editCascadeBusy}
           onConfirm={confirmEditCascade}
           onCancel={() => setEditCascadeConfirm(null)}
