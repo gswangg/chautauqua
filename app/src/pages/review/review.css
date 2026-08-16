@@ -1083,6 +1083,14 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  /* User-filed (gate-12 era): without an explicit span, grid auto-placement
+     dropped this block into the vacated 132px weight track (the weight
+     input disappears for Choice), cramming the option rows into a thin
+     right-hand column. The ruling draws options as a full-width sub-list
+     UNDER the criterion — span from the label track to the weight track,
+     leaving the drag and Remove columns pinned. */
+  grid-column: 2 / -2;
+  grid-row: 2;
 }
 
 .chq-review-criterion-option-row {
