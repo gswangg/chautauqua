@@ -163,12 +163,12 @@ describe('ImportWizard w49-f: review table shows only the losing rows by default
 
     expect(screen.queryByRole('button', { name: 'Show all 3 rows' })).not.toBeInTheDocument();
 
-    // The irreversibility line and "A bulk import cannot be undone" survive.
-    expect(screen.getByText('A bulk import cannot be undone.')).toBeInTheDocument();
+    // The irreversibility line survives.
+    expect(screen.getByText('Importing cannot be undone in bulk — a skipped row can be imported later.')).toBeInTheDocument();
   });
 
   it('the bulk import irreversibility line still renders exactly once with rows hidden', async () => {
     await previewMixedPlan();
-    expect(screen.getAllByText('A bulk import cannot be undone.')).toHaveLength(1);
+    expect(screen.getAllByText('Importing cannot be undone in bulk — a skipped row can be imported later.')).toHaveLength(1);
   });
 });

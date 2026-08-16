@@ -846,62 +846,67 @@
   white-space: nowrap;
 }
 
-/* w15-c: minmax(0, 1fr), not a bare 1fr -- a bare 1fr track still carries a
-   min-content floor, and the long "Full name (splits into first / last)"
-   <option> text was that floor, pushing both tracks to ~288px and
-   overflowing the modal's content box (same root cause as the headshot-
-   overflow fix). minmax(0, 1fr) lets each track shrink below its content's
-   natural width; the select itself gets max-width: 100% below so it clips
-   instead of forcing the track wider. */
+/* G13 (frame 08-contacts--03): the match step is a full-width row list --
+   column name over its sample on the left, an → glyph mid-row, one select
+   right-flushed -- never a two-up grid of bordered cards. */
 .chq-contacts-import-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.chq-contacts-import-column-block {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-  border: 1px solid var(--chq-rule);
-  border-radius: var(--chq-r-card, 5px);
-  background: var(--chq-surface);
+}
+
+.chq-contacts-import-column-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-rule);
   min-width: 0;
 }
 
-.chq-contacts-import-column-block select {
-  max-width: 100%;
+.chq-contacts-import-column-id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-contacts-import-column-arrow {
+  flex: none;
+  color: var(--chq-muted);
+  font-size: 15px;
+}
+
+/* Frame draws the select at 262px, right-flushed. max-width lets it shrink
+   inside the modal's content box rather than forcing an overflow (the long
+   "Full name (splits into first / last)" option was once that floor). */
+.chq-contacts-import-column-select {
+  flex: none;
+  width: 262px;
+  max-width: 48%;
+}
+
+/* Dashed skip register IN the select's place (frame 08--03): an unmapped
+   column's select reads 'Skip this column' inside a dashed outline --
+   deliberate, reversible -- not a missing render. */
+.chq-contacts-import-column-select.is-skipped {
+  border-style: dashed;
+  border-color: var(--chq-muted);
+  color: var(--chq-muted);
+  background: transparent;
 }
 
 .chq-contacts-import-column-header {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .chq-contacts-import-column-sample {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--chq-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Dashed skip affordance, same visual family as the unrated-fit pill
-   (DEC-821): dashed outline reads as a deliberate, reversible state, not a
-   missing render. */
-.chq-contacts-import-column-skip {
-  align-self: flex-start;
-  background: transparent;
-  border: 1px dashed var(--chq-muted);
-  border-radius: var(--chq-r-ctl, 4px);
-  color: var(--chq-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  cursor: pointer;
 }
 
 .chq-contacts-import-column-skip[aria-pressed='true'] {
@@ -939,6 +944,30 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* G13 (frame 08-contacts--13, ruling B5 'two counts as a heading'): the dry
+   run's counts ARE the step's heading -- sentence case at heading size --
+   with the file · rows · match-key line as its sub. */
+.chq-contacts-import-review-heading {
+  margin: 0;
+  font-family: var(--chq-font-display);
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.chq-contacts-import-review-sub {
+  margin: -8px 0 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* G13 (frame 08-contacts--13): the '‹ Match the columns' return path above
+   the heading -- a tertiary link, left-flushed, never a boxed button. */
+.chq-contacts-import-review-back {
+  align-self: flex-start;
+  padding-left: 0;
 }
 
 .chq-contacts-import-review-table {

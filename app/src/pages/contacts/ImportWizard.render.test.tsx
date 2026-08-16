@@ -422,7 +422,7 @@ describe('ImportWizard: B5 review step (DEC-663 amendment)', () => {
     await pasteCsvAndPreview();
     await screen.findByText('205 new · 9 updated');
 
-    const lines = screen.getAllByText('A bulk import cannot be undone.');
+    const lines = screen.getAllByText('Importing cannot be undone in bulk — a skipped row can be imported later.');
     expect(lines).toHaveLength(1);
     const line = lines[0]!;
 
@@ -536,34 +536,44 @@ describe('ImportWizard: w1-i step 2 "Match columns" screen', () => {
     expect(screen.queryByLabelText('Or paste CSV text')).not.toBeInTheDocument();
   });
 
-  it('pairs each column\'s header with a sample value from the file, above its target select', async () => {
+  // G13 (frame 08-contacts--03): one full-width row per column -- name over
+  // sample left, → mid-row, the select right-flushed with HUMAN option
+  // labels; the unmapped state is the select itself in the dashed skip
+  // register ('Skip this column' as its empty option), never an extra
+  // button.
+  it('pairs each column\'s header with a sample value from the file, beside its target select', async () => {
     render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
 
     const emailSelect = await screen.findByLabelText('Map column Email');
-    const emailBlock = emailSelect.closest('.chq-contacts-import-column-block');
-    expect(emailBlock).not.toBeNull();
-    expect(within(emailBlock as HTMLElement).getByText('Email')).toBeInTheDocument();
-    expect(within(emailBlock as HTMLElement).getByText('john@example.com')).toBeInTheDocument();
-    expect(within(emailBlock as HTMLElement).getByRole('button', { name: 'Skip this column' })).toBeInTheDocument();
+    const emailRow = emailSelect.closest('.chq-contacts-import-column-row');
+    expect(emailRow).not.toBeNull();
+    expect(within(emailRow as HTMLElement).getByText('Email', { selector: '.chq-contacts-import-column-header' })).toBeInTheDocument();
+    expect(within(emailRow as HTMLElement).getByText('john@example.com')).toBeInTheDocument();
+    // Human option labels, machine values (the wire contract is untouched).
+    expect(within(emailRow as HTMLElement).getByRole('option', { name: 'First name' })).toHaveValue('firstName');
+    expect(within(emailRow as HTMLElement).getByRole('option', { name: 'Skip this column' })).toHaveValue('');
+    expect(within(emailRow as HTMLElement).queryByRole('option', { name: '(ignore)' })).not.toBeInTheDocument();
+    expect(within(emailRow as HTMLElement).queryByRole('button', { name: 'Skip this column' })).not.toBeInTheDocument();
 
     const companySelect = screen.getByLabelText('Map column Company');
-    const companyBlock = companySelect.closest('.chq-contacts-import-column-block');
-    expect(within(companyBlock as HTMLElement).getByText('Company')).toBeInTheDocument();
-    expect(within(companyBlock as HTMLElement).getByText('Acme')).toBeInTheDocument();
+    const companyRow = companySelect.closest('.chq-contacts-import-column-row');
+    expect(within(companyRow as HTMLElement).getByText('Company', { selector: '.chq-contacts-import-column-header' })).toBeInTheDocument();
+    expect(within(companyRow as HTMLElement).getByText('Acme')).toBeInTheDocument();
   });
 
-  it('the "skip this column" affordance clears that column\'s mapping', async () => {
+  it('choosing "Skip this column" clears that column\'s mapping and the select takes the dashed skip register', async () => {
     render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
 
     const emailSelect = (await screen.findByLabelText('Map column Email')) as HTMLSelectElement;
     expect(emailSelect.value).toBe('email');
+    expect(emailSelect).not.toHaveClass('is-skipped');
 
-    const emailBlock = emailSelect.closest('.chq-contacts-import-column-block') as HTMLElement;
-    fireEvent.click(within(emailBlock).getByRole('button', { name: 'Skip this column' }));
+    fireEvent.change(emailSelect, { target: { value: '' } });
 
     expect(emailSelect.value).toBe('');
+    expect(emailSelect).toHaveClass('is-skipped');
   });
 
   it('the primary\'s label carries the row count on step 2', async () => {
@@ -605,9 +615,15 @@ describe('ImportWizard: w15-c step-named title + wide frame', () => {
     expect(modal).toHaveClass('is-wide');
   });
 
-  it('the columns grid uses minmax(0, 1fr) tracks so a long option can\'t force overflow', () => {
-    const body = topLevelRuleBody(CSS, '.chq-contacts-import-columns');
-    expect(body).toMatch(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  // G13 (frame 08-contacts--03): full-width rows, not a two-up card grid --
+  // and the right-flushed select carries a max-width so a long option text
+  // can't force the modal's content box to overflow (the old grid's
+  // minmax(0, 1fr) served the same purpose).
+  it('the columns list stacks full-width rows and bounds the select against overflow', () => {
+    const listBody = topLevelRuleBody(CSS, '.chq-contacts-import-columns');
+    expect(listBody).toMatch(/flex-direction:\s*column/);
+    const selectBody = topLevelRuleBody(CSS, '.chq-contacts-import-column-select');
+    expect(selectBody).toMatch(/max-width:/);
   });
 });
 
