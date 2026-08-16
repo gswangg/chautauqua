@@ -211,9 +211,11 @@ function PlanSection({
           variant="fresh"
           what={
             cappedOut > 0
-              ? `${countOf(cappedOut, 'talk')} still in your scope already ${
-                  cappedOut === 1 ? 'has' : 'have'
-                } a full set of reviews.`
+              ? `${countOf(cappedOut, 'talk')} still in your scope already ${plural(
+                  cappedOut,
+                  'has',
+                  'have',
+                )} a full set of reviews.`
               : 'Nothing left in your queue. Nicely done.'
           }
           action={null}
@@ -382,9 +384,11 @@ function PlanSection({
                     it's short because the cap already covered these. */}
                 {cappedOut > 0 && (
                   <span className="chq-review-queue-footer-note">
-                    {`${countOf(cappedOut, 'talk')} in your scope already ${
-                      cappedOut === 1 ? 'has' : 'have'
-                    } a full set of reviews`}
+                    {`${countOf(cappedOut, 'talk')} in your scope already ${plural(
+                      cappedOut,
+                      'has',
+                      'have',
+                    )} a full set of reviews`}
                   </span>
                 )}
               </div>
