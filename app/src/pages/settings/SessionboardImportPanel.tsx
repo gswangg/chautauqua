@@ -25,7 +25,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { parseCsv } from '../contacts/csv';
-import { MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
+import { MAX_IMPORT_CSV_BYTES } from '../../lib/domain-caps';
 import { formatBytes } from '../../../../src/domain/files';
 
 export type SessionboardEntity = 'contacts' | 'submissions' | 'tracks' | 'participants';

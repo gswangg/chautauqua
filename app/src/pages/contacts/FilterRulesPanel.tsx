@@ -17,7 +17,8 @@
 // exists to populate a dropdown from.
 import { activeRules } from './segments';
 import type { SegmentRule } from './types';
-import { SEGMENT_STANDARD_FIELDS, MAX_SEGMENT_RULES } from '../../../../src/domain/contacts';
+import { SEGMENT_STANDARD_FIELDS } from '../../../../src/domain/contacts';
+import { MAX_SEGMENT_RULES } from '../../lib/domain-caps';
 import { DEC_868 } from '../../../../src/decisions';
 
 void DEC_868;
