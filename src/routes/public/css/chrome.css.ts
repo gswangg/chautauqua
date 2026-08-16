@@ -112,14 +112,19 @@ export const CHROME_CSS = `
      room 105, + 4 * 10px gaps) -- 17px over. Both this box and .chq-pub-
      select below now declare a fixed width instead of sizing to content, so
      the row's worst case (all five controls present) sums to
-     190 + 4*140 + 40 = 790, under 820 with margin. */
+     190 + 4*140 + 40 = 790, under 820 with margin.
+     DEC-919 amendment (wave 69): .chq-pub-search narrowed 190px -> 150px to
+     make room for the now-visible .chq-pub-search-submit button (40px)
+     butted to its right edge -- the pair still spends exactly the 190px
+     this budget already allotted, so the 790 total above (and the 820
+     one-row ceiling) is unchanged. */
   /* DEC-919 amendment (wave 4, task-w4-f): the filter-bar controls (search
      input + every .chq-pub-select) share ONE control vocabulary with the
      rest of the frame -- var(--chq-r-ctl) radius, 1px var(--chq-border),
      var(--chq-surface) fill -- never the pill radius, which is reserved for
      the SELECTED state (.chq-pub-activefilters-chip below). */
   .chq-pub-search {
-    width: 190px;
+    width: 150px;
     height: 40px;
     border: 1px solid var(--chq-border);
     border-radius: var(--chq-r-ctl);
@@ -127,6 +132,44 @@ export const CHROME_CSS = `
     padding: 0 14px;
     font-size: 13px;
     color: var(--chq-ink);
+  }
+
+  /* DEC-919 amendment (wave 69): PublicSearchBox's submit is a real,
+     clickable control now (see filters.tsx) -- butted flush to
+     .chq-pub-search's right edge with no left border (one continuous seam,
+     not two boxes with a gap), sharing the same 1px var(--chq-border) /
+     var(--chq-r-ctl) / var(--chq-surface) vocabulary as every other filter
+     control but rounding only the RIGHT corners (the input owns the left
+     corners). The theme-wide button[type=submit]:not([class*="chq-btn-"])
+     rule (theme.ts) would otherwise paint this brand-filled with square
+     corners and a left border seam -- this selector matches its
+     specificity (element + attribute + class) and wins on source order
+     (PUBLIC_CSS is inlined after THEME_CSS, see shell.tsx) to override it.
+     B8: colour-only hover, no size/border-width/shadow change. */
+  button.chq-pub-search-submit[type=submit] {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--chq-border);
+    border-left: none;
+    border-radius: 0 var(--chq-r-ctl) var(--chq-r-ctl) 0;
+    background-color: var(--chq-surface);
+    color: var(--chq-ink);
+    transition: background-color var(--chq-motion-color);
+  }
+  button.chq-pub-search-submit[type=submit]:hover {
+    background-color: var(--chq-surface-sunk);
+  }
+  button.chq-pub-search-submit[type=submit]:active {
+    background-color: var(--chq-surface-sunk);
+  }
+  button.chq-pub-search-submit[type=submit] svg {
+    width: 16px;
+    height: 16px;
   }
 
   /* DEC-990 amendment (wave 64): the speakers surface's ONE facet -- a

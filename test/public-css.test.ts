@@ -136,9 +136,11 @@ describe("PUBLIC_CSS search box (DEC-919 amendment, wave 40): one compact input 
     expect(PUBLIC_CSS).toMatch(/\.chq-pub-filter-row\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*\}/);
   });
 
-  it("declares .chq-pub-search sized as a compact ~190x40 input (task-w5-a: shrunk from 259 so the filter row's 5 controls fit within 820)", () => {
-    expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*width:\s*190px;[^}]*\}/);
+  it("declares .chq-pub-search sized as a compact ~150x40 input, plus a 40px visible submit button butted to it (task-w5-a: shrunk from 259 so the filter row's 5 controls fit within 820; DEC-919 wave-69 amendment: the pair still sums to the same 190 the budget allotted)", () => {
+    expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*width:\s*150px;[^}]*\}/);
     expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*height:\s*40px;[^}]*\}/);
+    expect(PUBLIC_CSS).toMatch(/button\.chq-pub-search-submit\[type=submit\]\s*\{[^}]*width:\s*40px;[^}]*\}/);
+    expect(PUBLIC_CSS).toMatch(/button\.chq-pub-search-submit\[type=submit\]\s*\{[^}]*height:\s*40px;[^}]*\}/);
   });
 });
 

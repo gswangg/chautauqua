@@ -229,34 +229,30 @@ describe("DEC-919 amendment (wave 40): public search is one compact input in ONE
   // cannot serve a second .text() read of the same cached Response body), so
   // every assertion for a given surface is made against the one response.
   for (const path of ROW_SURFACES) {
-    it(`GET ${path} emits exactly one <form role="search">, exactly one .chq-pub-filter-row, and no visible 'Search' button text`, async () => {
+    it(`GET ${path} emits exactly one <form role="search">, exactly one .chq-pub-filter-row, and a real clickable search submit button (DEC-919 wave-69 amendment)`, async () => {
       const app = buildApp();
       const res = await app.request(path);
       expect(res.status).toBe(200);
       const html = await res.text();
       expect(countMatches(html, /<form\b[^>]*\brole="search"/g)).toBe(1);
       expect(countMatches(html, /class="chq-pub-filter-row"/g)).toBe(1);
-      // The only 'Search' button in the document is the visually-hidden
-      // submit control PublicSearchBox emits -- no plain, visible
-      // <button type="submit">Search</button> anywhere in the page.
-      expect(html).not.toMatch(/<button type="submit">Search<\/button>/);
-      const submitButtons = [...html.matchAll(/<button\b[^>]*type="submit"[^>]*>Search<\/button>/g)];
-      for (const m of submitButtons) {
-        expect(m[0]).toContain("chq-visually-hidden");
-      }
+      // PublicSearchBox's submit is a real, clickable, non-hidden button now
+      // (DEC-919 wave-69 amendment) -- a pointer must be able to hit it.
+      expect(html).toContain('<button class="chq-pub-search-submit" type="submit" aria-label="Search">');
+      expect(html).not.toMatch(/<button class="chq-visually-hidden" type="submit">Search<\/button>/);
     });
   }
 
-  it("GET /e/conf/speakers renders no visible 'Search' button text (submit control is visually hidden)", async () => {
+  it("GET /e/conf/speakers (fresh empty, total 0: no filter bar at all) never renders the old visually-hidden submit pattern", async () => {
     const app = buildApp();
     const res = await app.request("/e/conf/speakers");
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).not.toMatch(/<button type="submit">Search<\/button>/);
-    const submitButtons = [...html.matchAll(/<button\b[^>]*type="submit"[^>]*>Search<\/button>/g)];
-    for (const m of submitButtons) {
-      expect(m[0]).toContain("chq-visually-hidden");
-    }
+    // total: 0 on this mock means the surface is 'fresh' and hides the
+    // whole filter bar (search box included) -- see public-search-submit
+    // .test.ts for coverage of the visible submit button when the search
+    // form IS rendered.
+    expect(html).not.toMatch(/<button class="chq-visually-hidden" type="submit">Search<\/button>/);
   });
 });
 
