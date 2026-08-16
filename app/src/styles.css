@@ -287,6 +287,13 @@ a:hover {
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--chq-ink);
+  /* User-filed (gate-12 era): the frame leaves the wordmark on its default
+     line box (~1.2em) beside a line-height:1 nav, so flex centers two
+     unequal boxes and the wordmark reads a hair off-center. Tighten to the
+     same glyph-height box; the 1px nudge centers the lowercase x-height
+     mass (only 'h'/'t' ascend, 'q' descends) against the nav's midline. */
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 /* DEC-369 amendment (wave 22): the fitted 10.625px gap and +13px margin-left
