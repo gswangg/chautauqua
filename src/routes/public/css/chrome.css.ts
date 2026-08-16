@@ -14,11 +14,17 @@ export const CHROME_CSS = `
      string to the DOM verbatim, so quoting would be safe here too, but we
      keep the unquoted convention from THEME_CSS/shell.tsx for consistency
      across every SSR surface stylesheet. */
-  /* DEC-919 amendment (wave 40): a .chq-visually-hidden element is off-
-     screen but still in the a11y tree and still reachable/focusable -- used
-     for PublicSearchBox's label and submit button, which must announce
-     themselves to assistive tech and keep the form usable without JS while
-     never drawing a visible label/button next to the compact input.
+  /* DEC-919 amendment (wave 40; corrected wave 74): a .chq-visually-hidden
+     element is off-screen but still in the a11y tree and still
+     reachable/focusable -- used for PublicSearchBox's label (its submit
+     button has been a real, visible, clickable button since wave 69, never
+     visually-hidden -- a pointer must be able to hit it directly) and for
+     the auto-submitting select forms' labels/submit buttons (PublicFilterSelectForm,
+     agenda-controls.tsx), which must announce themselves to assistive tech
+     and keep the form usable without JS while never drawing a visible
+     label/button next to the select -- their onchange="this.form.submit()"
+     is the visible/pointer-reachable path (DEC-919's hidden-submit
+     exemption).
      DEC-919 amendment (wave 59): the old recipe (position:absolute with no
      offset) keeps its STATIC in-flow position -- for the search submit that
      landed it one pixel inside #chq-pub-search-q's right edge, intercepting

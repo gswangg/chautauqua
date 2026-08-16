@@ -6,7 +6,7 @@ import type { PublicEvent, PublicSpeakerWithSessions, PublicTrack } from "../../
 import { speakerDetailPath, surfacePath } from "./shell";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 import { speakerInitials } from "./cards";
-import { PublicSearchBox } from "./filters";
+import { PublicFilterSelectForm, PublicSearchBox } from "./filters";
 import { PublicEmptyState } from "./empty-state";
 import { countOf } from "../../domain/count-copy";
 import { embedKnobQuery } from "../../lib/embed-knobs";
@@ -61,19 +61,27 @@ function SpeakerViewToggle(props: {
   );
 }
 
-/** DEC-990 amendment (wave 64): the ONE facet for the speakers surface — a
+/** DEC-919 (wave-74 amendment): the ONE facet for the speakers surface — a
  * quiet `All tracks ▾` select rather than a pill bar (the roster has no
  * "day"/"format" axes to justify one, and a directory-length track list
- * would make a pill row wrap badly). A plain GET form (no JS required to
- * narrow — selecting and pressing the visually-hidden submit works exactly
- * like PublicSearchBox's own form), carrying `q`/`limit` forward as hidden
- * inputs so switching tracks never drops an active search or a configured
- * page size. `.chq-pub-select` is the DEC-919 select markup's class name;
- * PublicFilterSelects (a shared component) was not on main yet when this was
- * written, so the markup/classes are inlined here rather than inventing a
- * second visual language — a future consolidation into a shared component
- * should keep these exact class names. */
-function TrackFacetSelect(props: {
+ * would make a pill row wrap badly). Renders the shared `PublicFilterSelectForm`
+ * (`./filters`) rather than a hand-inlined copy: the wave-40/wave-64 inline
+ * version predated that shared component and its visually-hidden submit had
+ * no `onchange` auto-submit, making the control unreachable by a pointer
+ * (DEC-919's hidden-submit exemption is licensed by the select's change
+ * event, which this copy never wired). `q`/`limit` still carry forward as
+ * hidden inputs so switching tracks never drops an active search or a
+ * configured page size. */
+function trackFacetHidden(q: string | null, limit: number | null | undefined) {
+  return (
+    <>
+      {q ? <input type="hidden" name="q" value={q} /> : null}
+      {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+    </>
+  );
+}
+
+function TrackFacet(props: {
   action: string;
   tracks: PublicTrack[];
   activeTrackId: string | null;
@@ -83,26 +91,14 @@ function TrackFacetSelect(props: {
   const { action, tracks, activeTrackId, q, limit } = props;
   if (tracks.length === 0) return null;
   return (
-    <form class="chq-pub-select-form" method="get" action={action}>
-      <label class="chq-visually-hidden" for="chq-pub-track-select">
-        Track
-      </label>
-      <select class="chq-pub-select" id="chq-pub-track-select" name="trackId">
-        <option value="" selected={activeTrackId === null}>
-          All tracks
-        </option>
-        {tracks.map((t) => (
-          <option value={t.id} selected={activeTrackId === t.id}>
-            {t.name}
-          </option>
-        ))}
-      </select>
-      {q ? <input type="hidden" name="q" value={q} /> : null}
-      {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
-      <button class="chq-visually-hidden" type="submit">
-        Filter
-      </button>
-    </form>
+    <PublicFilterSelectForm
+      action={action}
+      name="trackId"
+      allLabel="All tracks"
+      options={tracks.map((t) => ({ value: t.id, label: t.name }))}
+      activeValue={activeTrackId}
+      hidden={trackFacetHidden(q, limit)}
+    />
   );
 }
 
@@ -240,7 +236,7 @@ export function SpeakersContent(props: {
                 </>
               }
             />
-            <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
+            <TrackFacet action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
           </>
         ) : null}
         <SpeakerViewToggle event={event} active="speakers" q={q} trackId={trackId} limit={limit} base={base} />
@@ -323,7 +319,7 @@ export function GalleryContent(props: {
                 </>
               }
             />
-            <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
+            <TrackFacet action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
           </>
         ) : null}
         <SpeakerViewToggle event={event} active="gallery" q={q} trackId={trackId} limit={limit} base={base} />
