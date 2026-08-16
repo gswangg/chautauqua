@@ -9,6 +9,10 @@ import { speakerInitials } from "./cards";
 import { PublicSearchBox } from "./filters";
 import { PublicEmptyState } from "./empty-state";
 import { countOf } from "../../domain/count-copy";
+import { embedKnobQuery } from "../../lib/embed-knobs";
+import { DEC_489 } from "../../decisions";
+
+void DEC_489;
 
 /** DEC-990 Amendment (wave 40): "a toggle with two identical halves is not a
  * toggle" -- this is now a single joined segmented control (one wrapper, two
@@ -139,10 +143,10 @@ function SpeakerHeadshotLink(props: { href: string; sp: PublicSpeakerWithSession
  * list` in public.css.ts owns the row grid + rule). Distinct anatomy from
  * the grid tile below: the list always shows sessions, the grid never
  * does. */
-function SpeakerListRow(props: { event: PublicEvent; sp: PublicSpeakerWithSessions; embed?: boolean }) {
-  const { event, sp, embed } = props;
+function SpeakerListRow(props: { event: PublicEvent; sp: PublicSpeakerWithSessions; embed?: boolean; carry?: string }) {
+  const { event, sp, embed, carry } = props;
   const base = embed ? "/embed" : "/e";
-  const href = speakerDetailPath(event, sp.contactId, "speakers", base);
+  const href = speakerDetailPath(event, sp.contactId, "speakers", base, carry);
   return (
     <li class="chq-pub-speaker-list-row">
       <div class="chq-pub-speaker-list-photo">
@@ -167,10 +171,10 @@ function SpeakerListRow(props: { event: PublicEvent; sp: PublicSpeakerWithSessio
  * (headshot + name + title/company, EMB-12), no session list. Lives in
  * `.chq-pub-speaker-grid.chq-pub-gallery-grid`, six ~184px square columns
  * (public.css.ts). */
-function SpeakerGridTile(props: { event: PublicEvent; sp: PublicSpeakerWithSessions; embed?: boolean }) {
-  const { event, sp, embed } = props;
+function SpeakerGridTile(props: { event: PublicEvent; sp: PublicSpeakerWithSessions; embed?: boolean; carry?: string }) {
+  const { event, sp, embed, carry } = props;
   const base = embed ? "/embed" : "/e";
-  const href = speakerDetailPath(event, sp.contactId, "gallery", base);
+  const href = speakerDetailPath(event, sp.contactId, "gallery", base, carry);
   return (
     <div class="chq-pub-speaker-card">
       <SpeakerHeadshotLink href={href} sp={sp} />
@@ -193,8 +197,11 @@ export function SpeakersContent(props: {
   perPage?: number;
   limit?: number | null;
   embed?: boolean;
+  // DEC-489 (wave-54 amendment): the /embed-only accent knob, carried
+  // forward onto Show-more and drill-in hrefs — see SessionsContent.
+  accent?: string | null;
 }) {
-  const { event, speakers, total, page, q, tracks, activeTrackId, perPage, limit, embed } = props;
+  const { event, speakers, total, page, q, tracks, activeTrackId, perPage, limit, embed, accent } = props;
   // DEC-433/477: parsePage clamps to MAX_PUBLIC_PAGE; stop offering
   // 'Show more' once there is no further page to link to, or once the
   // cumulative row ceiling (MAX_PUBLIC_ROWS) has already been reached.
@@ -202,10 +209,14 @@ export function SpeakersContent(props: {
   const base = embed ? "/embed" : "/e";
   const basePath = surfacePath(event, "speakers", base);
   const trackId = activeTrackId ?? null;
+  // DEC-489 (wave-54 amendment): the surface's active `accent` knob (the
+  // table lists no `fields` on speakers/gallery). Never emitted outside
+  // /embed -- accent is a configured-embed knob, not a user filter.
+  const embedCarryQs = embed ? embedKnobQuery("speakers", { accent }) : "";
   // DEC-289/DEC-489/DEC-990 amendment (wave 64): carry `limit`/`trackId`
   // forward exactly like SessionsContent's carryQs, so a configured embed
   // (or an active track facet) does not lose either on page 2.
-  const carryQs = `${limit ? `limit=${limit}&` : ""}${trackId ? `trackId=${encodeURIComponent(trackId)}&` : ""}`;
+  const carryQs = `${limit ? `limit=${limit}&` : ""}${trackId ? `trackId=${encodeURIComponent(trackId)}&` : ""}${embedCarryQs ? `${embedCarryQs}&` : ""}`;
   // DEC-919 (wave 47 amendment): 'fresh' -- no q/trackId facet in flight AND
   // total is 0 -- drops the search box + track facet select (nothing to
   // narrow yet) and never offers an escape link. Any facet in flight with
@@ -252,7 +263,7 @@ export function SpeakersContent(props: {
           </p>
           <ul class="chq-pub-speaker-list">
             {speakers.map((sp) => (
-              <SpeakerListRow event={event} sp={sp} embed={embed} />
+              <SpeakerListRow event={event} sp={sp} embed={embed} carry={embedCarryQs || undefined} />
             ))}
           </ul>
         </>
@@ -279,15 +290,19 @@ export function GalleryContent(props: {
   perPage?: number;
   limit?: number | null;
   embed?: boolean;
+  // DEC-489 (wave-54 amendment): see SpeakersContent above.
+  accent?: string | null;
 }) {
-  const { event, speakers, total, page, q, tracks, activeTrackId, perPage, limit, embed } = props;
+  const { event, speakers, total, page, q, tracks, activeTrackId, perPage, limit, embed, accent } = props;
   // DEC-433/477: see SpeakersContent above.
   const hasMore = hasMorePages(speakers.length, total, page, perPage ?? PUBLIC_PER_PAGE);
   const base = embed ? "/embed" : "/e";
   const basePath = surfacePath(event, "gallery", base);
   const trackId = activeTrackId ?? null;
+  // DEC-489 (wave-54 amendment): see SpeakersContent above.
+  const embedCarryQs = embed ? embedKnobQuery("gallery", { accent }) : "";
   // DEC-289/DEC-489/DEC-990 amendment (wave 64): see SpeakersContent above.
-  const carryQs = `${limit ? `limit=${limit}&` : ""}${trackId ? `trackId=${encodeURIComponent(trackId)}&` : ""}`;
+  const carryQs = `${limit ? `limit=${limit}&` : ""}${trackId ? `trackId=${encodeURIComponent(trackId)}&` : ""}${embedCarryQs ? `${embedCarryQs}&` : ""}`;
   // DEC-919 (wave 47 amendment): see SpeakersContent above -- the DEC-593
   // gallery twin gets the identical fresh/filtered split.
   const anyFilterActive = Boolean(q || trackId);
@@ -331,7 +346,7 @@ export function GalleryContent(props: {
           </p>
           <div class="chq-pub-speaker-grid chq-pub-gallery-grid">
             {speakers.map((sp) => (
-              <SpeakerGridTile event={event} sp={sp} embed={embed} />
+              <SpeakerGridTile event={event} sp={sp} embed={embed} carry={embedCarryQs || undefined} />
             ))}
           </div>
         </>

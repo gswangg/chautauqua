@@ -139,13 +139,37 @@ export function surfacePath(event: PublicEvent, surface: Surface, base: SurfaceB
 }
 
 /** Drill-in detail links (DEC-151) carry ?from=<surface> so the detail
- * page's Back link returns to whichever surface it was reached from. */
-export function sessionDetailPath(event: PublicEvent, sessionId: string, from?: Surface, base: SurfaceBase = "/e"): string {
-  return `${base}/${event.slug}/sessions/${sessionId}${from ? `?from=${from}` : ""}`;
+ * page's Back link returns to whichever surface it was reached from.
+ * DEC-489 (wave-54 amendment): `carry`, when supplied, is an already-
+ * encoded `k=v&k=v` fragment (an embedKnobQuery result, e.g. the surface's
+ * active `accent`/`fields`) appended after `?from=` so a click into a
+ * session/speaker detail from inside an embed keeps the configured knobs
+ * instead of reverting to defaults. Never supplied outside /embed. */
+function detailQs(from: Surface | undefined, carry: string | undefined): string {
+  const parts: string[] = [];
+  if (from) parts.push(`from=${from}`);
+  if (carry) parts.push(carry);
+  return parts.length > 0 ? `?${parts.join("&")}` : "";
 }
 
-export function speakerDetailPath(event: PublicEvent, contactId: string, from?: Surface, base: SurfaceBase = "/e"): string {
-  return `${base}/${event.slug}/speakers/${contactId}${from ? `?from=${from}` : ""}`;
+export function sessionDetailPath(
+  event: PublicEvent,
+  sessionId: string,
+  from?: Surface,
+  base: SurfaceBase = "/e",
+  carry?: string,
+): string {
+  return `${base}/${event.slug}/sessions/${sessionId}${detailQs(from, carry)}`;
+}
+
+export function speakerDetailPath(
+  event: PublicEvent,
+  contactId: string,
+  from?: Surface,
+  base: SurfaceBase = "/e",
+  carry?: string,
+): string {
+  return `${base}/${event.slug}/speakers/${contactId}${detailQs(from, carry)}`;
 }
 
 export function isValidFrom(raw: string | undefined, fallback: Surface): Surface {

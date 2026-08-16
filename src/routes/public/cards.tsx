@@ -242,6 +242,10 @@ export function SessionCard(props: {
   // DEC-594: chromeless /embed rendering — the title link must stay inside
   // /embed/... rather than break out to the full-chrome /e/... page.
   embed?: boolean;
+  // DEC-489 (wave-54 amendment): the surface's active fields/accent knobs
+  // (an embedKnobQuery result), carried onto the drill-in link so opening a
+  // session from inside an embed keeps its configured knobs.
+  carry?: string;
 }) {
   const { session, event } = props;
   const fields = props.fields ?? ALL_FIELDS_ON;
@@ -252,7 +256,7 @@ export function SessionCard(props: {
       <div class="chq-pub-session-body">
         <a
           class="chq-pub-session-title"
-          href={sessionDetailPath(event, session.id, props.from, props.embed ? "/embed" : "/e")}
+          href={sessionDetailPath(event, session.id, props.from, props.embed ? "/embed" : "/e", props.carry)}
         >
           {session.title}
         </a>

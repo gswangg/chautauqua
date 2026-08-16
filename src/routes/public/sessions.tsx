@@ -21,7 +21,10 @@ import { PublicEmptyState } from "./empty-state";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 import { capitalizeFirst, countOf, plural, spellCount } from "../../domain/count-copy";
 import { eventDays } from "../../domain/event-days";
-import { DEC_919 } from "../../decisions";
+import { embedKnobQuery } from "../../lib/embed-knobs";
+import { DEC_919, DEC_489 } from "../../decisions";
+
+void DEC_489;
 
 void DEC_919;
 
@@ -136,6 +139,11 @@ export function SessionsContent(props: {
   // pills and 'Show more' link must all stay inside /embed/... instead of
   // pointing at the full-chrome /e/... surface.
   embed?: boolean;
+  // DEC-489 (wave-54 amendment): the /embed-only accent knob — carried
+  // forward onto every href this surface renders (filterQs/Show-more,
+  // drill-ins) so page 2 of a customer's iframe doesn't revert to the
+  // default accent. Never supplied by the /e/ route.
+  accent?: string | null;
   // DEC-683: rail data. Both are only ever supplied when !embed — dispatch.tsx
   // skips the queries entirely for /embed rather than fetching-then-hiding.
   dayCounts?: { day: string; count: number }[];
@@ -159,6 +167,7 @@ export function SessionsContent(props: {
     limit,
     fields,
     embed,
+    accent,
     dayCounts,
     cfpWindow,
   } = props;
@@ -183,6 +192,15 @@ export function SessionsContent(props: {
   // other two filters is currently active, overriding only its own axis.
   // `null` in an override clears that axis (the "All ..." chip); `undefined`
   // means "leave the active value alone".
+  // DEC-489 (wave-54 amendment): the surface's `fields`/`accent` knobs,
+  // carried forward onto every href filterQs composes (chips, Show-more)
+  // when this render is inside /embed — the receiving route parses both
+  // (dispatch.tsx), so a page-2 or filtered click must not silently revert
+  // to the default fields/accent. Never emitted outside /embed: `fields`/
+  // `accent` are configured-embed knobs, not user filters, so /e/ never
+  // carries them at all.
+  const activeFieldNames = fields ? (Object.keys(fields) as (keyof CardFields)[]).filter((k) => fields[k]) : [];
+  const embedCarryQs = embed ? embedKnobQuery("sessions", { fields: activeFieldNames, accent }) : "";
   function filterQs(override: {
     trackId?: string | null;
     format?: string | null;
@@ -202,6 +220,7 @@ export function SessionsContent(props: {
     if (roomId) parts.push(`roomId=${encodeURIComponent(roomId)}`);
     if (query) parts.push(`q=${encodeURIComponent(query)}`);
     if (limit) parts.push(`limit=${limit}`);
+    if (embedCarryQs) parts.push(embedCarryQs);
     return parts.length > 0 ? `?${parts.join("&")}` : "";
   }
   // v7 filter bar: each select form carries every OTHER active param as
@@ -363,7 +382,15 @@ export function SessionsContent(props: {
               return (
                 <>
                   {showHeadingHere ? <h2 class="chq-pub-sessions-day-heading">{formatDay(s.day as string)}</h2> : null}
-                  <SessionCard session={s} event={event} from="sessions" fields={fields} embed={embed} itinerary={!embed} />
+                  <SessionCard
+                    session={s}
+                    event={event}
+                    from="sessions"
+                    fields={fields}
+                    embed={embed}
+                    itinerary={!embed}
+                    carry={embedCarryQs || undefined}
+                  />
                 </>
               );
             });
