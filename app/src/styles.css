@@ -301,10 +301,13 @@ a:hover {
   color: var(--chq-ink);
   /* User-filed (gate-12 era): the frame leaves the wordmark on its default
      line box (~1.2em) beside a line-height:1 nav, so flex centers two
-     unequal boxes and the wordmark reads a hair off-center. Tighten to the
-     same glyph-height box; the 1px nudge centers the lowercase x-height
-     mass (only 'h'/'t' ascend, 'q' descends) against the nav's midline. */
-  line-height: 1;
+     unequal boxes and the wordmark reads a hair off-center. Tighten to a
+     near-glyph-height box; the 1px nudge centers the lowercase x-height
+     mass (only 'h'/'t' ascend, 'q' descends) against the nav's midline.
+     1.08, not 1: DEC-991 (wave-27 amendment) bans line-height <= 1 on the
+     display face; 1.08 is the ruled floor, and its leading splits evenly
+     so the user-tuned optical center below is unchanged. */
+  line-height: 1.08;
   /* -2.5px: -1.75px matched the ink-measured x-height band centers, but
      the bold lowercase mass + q descender still read low to the eye —
      user-tuned a final 0.75px above metric center (gate-12 era). */

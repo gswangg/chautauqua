@@ -871,6 +871,33 @@
   font-size: 12px;
 }
 
+/* DEC-738 amendment (wave 75): the bio/social links the speaker wrote
+   through their portal profile -- read-only here, closed by the 'Edit in
+   contact record' link (the CRM contact drawer stays the one edit
+   surface). */
+.chq-speaker-detail-portal-bio {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.chq-speaker-detail-portal-bio-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+.chq-speaker-detail-portal-bio-links {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+}
+
 .chq-speaker-detail-actions {
   display: flex;
   align-items: center;

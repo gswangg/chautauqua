@@ -551,6 +551,14 @@
   color: var(--chq-ink);
 }
 
+/* The author's role, a parenthetical beside the name in the comment
+   byline. Rides .chq-meta's 12px muted; the nowrap keeps "(Reviewer)"
+   from breaking away from its author when the byline wraps. */
+.chq-role-label {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
 .chq-content-comment-body {
   font-size: 14px;
   line-height: 1.55;

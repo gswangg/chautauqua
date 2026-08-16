@@ -556,9 +556,9 @@ ${ERROR_STATES_CSS}
   padding: 0;
 }
 .chq-portal-not-shown-chip {
-  border: 1px solid var(--chq-border, #d0d5dd);
+  border: 1px solid var(--chq-border);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 13px;
-  color: var(--chq-text-muted, #555);
+  color: var(--chq-muted);
 }`;

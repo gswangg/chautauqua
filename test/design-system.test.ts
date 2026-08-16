@@ -138,15 +138,19 @@ describe("design system token parity (DEC-367/372)", () => {
   });
 });
 
-describe(".chq-pill active state is ink-filled, not olive (DEC-372)", () => {
-  it("styles.css .chq-pill.is-active/.active use the ink fill", () => {
+// DEC-372 originally ruled the pill on-state ink-filled; superseded by the
+// user-filed v12 fix per frame 09--07 and DEC-730's control vocabulary
+// (filled OLIVE = on/confirmed; ink is reserved for outlined caps states),
+// which repainted .chq-pill.is-active to the brand fill.
+describe(".chq-pill active state is olive-filled (DEC-730 vocabulary, frame 09--07 v12; supersedes DEC-372's ink fill)", () => {
+  it("styles.css .chq-pill.is-active/.active use the brand fill", () => {
     const css = readFileSync(STYLES_CSS_PATH, "utf8");
     const m = css.match(/\.chq-pill\.is-active,\s*\n\.chq-pill\.active\s*\{([^}]*)\}/);
     expect(m).not.toBeNull();
     const body = m![1];
-    expect(body).toMatch(/background:\s*var\(--chq-ink\)/);
-    expect(body).toMatch(/color:\s*var\(--chq-on-ink\)/);
-    expect(body).toMatch(/border-color:\s*var\(--chq-ink\)/);
+    expect(body).toMatch(/background:\s*var\(--chq-brand\)/);
+    expect(body).toMatch(/color:\s*var\(--chq-on-brand\)/);
+    expect(body).toMatch(/border-color:\s*var\(--chq-brand\)/);
   });
 });
 

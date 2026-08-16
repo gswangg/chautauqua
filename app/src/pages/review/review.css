@@ -196,12 +196,13 @@
   font-size: 14px;
 }
 
-/* DEC-902 wave-21 amendment: the frame's ONE grid -- 44px 1fr 150px 130px
-   92px 92px auto -- repeats across the head, the rows and the expanded
-   band (docs/design/Chautauqua Review.dc.html:124,128,143,147,160
-   `grid-template-columns:44px 1fr 150px 130px 92px 92px auto`). Title
+/* DEC-902 wave-21 amendment: the frame's ONE grid -- 44px 1fr 132px 118px
+   190px 84px auto in the V12 cut -- repeats across the head, the rows and
+   the expanded band (docs/design/Chautauqua Review.dc.html:124,128,143,147,160
+   `grid-template-columns:44px 1fr 132px 118px 190px 84px auto`). Title
    is the single remainder column; Decision hugs its two buttons at 1px
-   (DEC-902 wave-20 sub-rule 4) rather than sizing from the frame's `auto`. */
+   (DEC-902 wave-20 sub-rule 4) rather than sizing from the frame's `auto`;
+   the per-column widths below stay on their user-filed gate-9 fits. */
 /* Title deliberately carries no width declaration -- it is the single
    remainder column (DEC-902 wave-20 sub-rule 3). This width-less rule exists
    so css-contract.scan.test.ts's DEC-976 "every className has a matching
@@ -919,11 +920,14 @@
    (a "Weight" label vs. a full number input) drifted out of alignment
    between the header and the body rows even though both declared the
    same template. */
-/* DEC-745 (wave-22 amendment): docs/design/Chautauqua Review.dc.html:477
-   `grid-template-columns:20px 1fr 260px 132px 62px`
-   (head) / :474 (rows) give this row the frame's exact five tracks -- drag
-   20px / Criterion (remainder) / Guidance 260px / Weight 132px / Remove
-   62px, gap 16. The drag column is a pinned 20px, not `auto`: an `auto`
+/* DEC-745 (wave-22 amendment): docs/design/Chautauqua Review.dc.html:492
+   `grid-template-columns:20px 1fr 232px 128px 122px 62px`
+   (head) / :496 (rows). The V12 re-cut draws SIX tracks there, adding the
+   122px TYPE cell (Scale-or-Choice intake); the unlocked editor and its
+   header keep the pre-V12 five-track shape -- drag 20px / Criterion
+   (remainder) / Guidance 260px / Weight 132px / Remove 62px, gap 16 --
+   until the Scale-or-Choice editor lands its type column (the readonly
+   row below already carries it). The drag column is a pinned 20px, not `auto`: an `auto`
    track sizes from that row's OWN content, and a locked row's blank handle
    cell differs in content from an unlocked row's handle button, which is
    exactly the drift this column exists to prevent (see the paragraph
@@ -1150,7 +1154,7 @@
   padding-bottom: 14px;
 }
 
-/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:533
+/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:571
    `grid-template-columns:1fr 190px 130px auto`
    gives this row four tracks -- name+email (remainder) / track 190px /
    load 130px / Remove (auto, sized to its own button content, which is
@@ -1278,7 +1282,7 @@
   color: var(--chq-ink-2);
 }
 
-/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:520
+/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:558
    `grid-template-columns:1fr 120px 150px`
    gives this preview three tracks -- reviewer 1fr / track 120px / talks
    150px ('6 -> 8 talks'). This previews an irreversible bulk write, so the
@@ -1821,7 +1825,7 @@
 
 /* REVIEW PACK frame 03-03 (DEC-874 wave-65 amendment; DEC-745 wave-22
    amendment): the row's grid column-2 action fills its fixed 176px track
-   (docs/design/Chautauqua Review.dc.html:370
+   (docs/design/Chautauqua Review.dc.html:385
    `grid-template-columns:1fr 176px`) -- the frame's button spans
    the column rather than sizing from its own label, which is what let
    'Score' vs 'Continue' vs the recusal reason stagger the queue's right

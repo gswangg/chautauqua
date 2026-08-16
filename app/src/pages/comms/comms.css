@@ -414,6 +414,20 @@
   font-weight: 600;
 }
 
+/* The "Won't be sent" note row (a recipient the send will skip): the
+   caps flag stacks above the reason on the field row's own rhythm, and
+   the reason reads as metadata, not body copy. */
+.chq-comms-preview-skip {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-comms-preview-skip-flag {
+  /* Keep the caps flag on its own glyph-width line inside the field's
+     column flex, never stretched across the row. */
+  align-self: flex-start;
+}
+
 .chq-comms-preview-subject {
   font-family: var(--chq-font-display);
   font-size: 17px;
