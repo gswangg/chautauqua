@@ -136,6 +136,21 @@ describe('VersionList', () => {
     expect(document.querySelector('.chq-empty')).not.toBeInTheDocument();
   });
 
+  // DEC-158 (wave 78): a deliverable's own version chain is SUCCESSIVE
+  // STATES OF ONE OBJECT, so the meta line must render second-level
+  // precision -- two versions uploaded 30 seconds apart (same minute) must
+  // still produce DISTINCT meta strings, never collapsing to one label.
+  it('renders distinct meta strings for two versions uploaded 30 seconds apart in the same minute', () => {
+    const t1 = Date.UTC(2027, 2, 1, 12, 0, 0); // 2027-03-01T12:00:00Z
+    const t2 = t1 + 30_000; // same minute, 30s later
+    const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: t1, previousFileId: null, versionNo: 1 });
+    const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: t2, previousFileId: 'v1', versionNo: 2 });
+    render(<VersionList versions={[v2, v1]} onDeleted={() => {}} />);
+    const metas = document.querySelectorAll('.chq-content-version-info .chq-version-meta');
+    expect(metas).toHaveLength(2);
+    expect(metas[0]!.textContent).not.toEqual(metas[1]!.textContent);
+  });
+
   // w1-h reskin: every version, including prior ones, must stay downloadable
   // and the current version must be marked distinctly (via type, DEC-367).
   it('keeps a Download link on every version and marks only the current one is-current', () => {

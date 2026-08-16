@@ -91,10 +91,15 @@ export function formatDateOnly(ms: number | null | undefined): string {
 
 /**
  * Format an epoch-ms timestamp as "<D> <Mon>, HH:MM" (24-hour) for display;
- * '—' for null/undefined/NaN/invalid. Use for true instants (createdAt,
- * updatedAt, sentAt, uploadedAt, etc.) rendered in the viewer's local
- * timezone. DEC-545/DEC-907: this is the ONE date-time formatter in the
- * SPA -- pages must never call toLocaleString directly.
+ * '—' for null/undefined/NaN/invalid. Use for LISTS OF DIFFERENT OBJECTS
+ * (createdAt, updatedAt, sentAt, uploadedAt, etc. across distinct rows --
+ * FilesLibrary, RecentSends, ApiTokensPanel, ContactDrawer), rendered in the
+ * viewer's local timezone. DEC-545/DEC-907: this is the ONE date-time
+ * formatter in the SPA -- pages must never call toLocaleString directly.
+ * DEC-158: a surface rendering SUCCESSIVE STATES OF ONE OBJECT (a single
+ * object's own version/edit history, where two states can land in the same
+ * minute and must still read as distinguishable rows) must use
+ * formatDateTimeWithSeconds below instead.
  */
 export function formatDateTime(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
@@ -108,11 +113,19 @@ export function formatDateTime(ms: number | null | undefined): string {
 }
 
 /**
- * w59-f (DEC-158 amendment): formatDateTime's seconds-carrying twin --
- * "<D> <Mon>, HH:MM:SS" (24-hour) -- for surfaces where two events can land
- * inside the same minute (e.g. a submission's edit history) and need to
- * render as distinguishable rows. '—' for null/undefined/NaN/invalid. Use
- * formatDateTime instead wherever second-level precision isn't load-bearing.
+ * w59-f (DEC-158 amendment, whole population closed wave 78):
+ * formatDateTime's seconds-carrying twin -- "<D> <Mon>, HH:MM:SS" (24-hour)
+ * -- for the RULE, not an example: a surface renders SUCCESSIVE STATES OF
+ * ONE OBJECT (an object's own version/edit-history rows, as opposed to a
+ * list of DIFFERENT objects) where two states can land inside the same
+ * minute and must still render as distinguishable rows. Current readers:
+ * SubmissionDetailPage.tsx (a submission's own decision/edit history),
+ * VersionList.tsx (a deliverable's own version chain), and this function's
+ * SSR twin formatEventDateTimeWithSeconds (src/lib/event-time.ts), read by
+ * the portal's VersionHistory (src/routes/portal/tasks/views.tsx) for a task
+ * assignment's own file-version chain. '—' for null/undefined/NaN/invalid.
+ * Use formatDateTime instead for any list of DIFFERENT objects, where
+ * minute-granularity stays the rule.
  */
 export function formatDateTimeWithSeconds(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
