@@ -58,6 +58,12 @@ describe('ContactsApp: DEC-662 import wizard event preselect from ?eventId=', ()
       target: { value: 'firstName,lastName,email\nA,B,a@example.com' },
     });
 
+    // DEC-290 (wave-59 amendment): the eventId is a candidate, not an
+    // instruction -- the opt-in checkbox names the preselected event, and
+    // the session-title field only appears once it is ticked.
+    const checkbox = await screen.findByLabelText('Also add these people to Known Conf as accepted speakers');
+    fireEvent.click(checkbox);
+
     await waitFor(() => {
       expect(screen.getByLabelText('Session title for this batch')).toBeInTheDocument();
     });

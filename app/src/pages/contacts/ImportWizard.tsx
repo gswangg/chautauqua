@@ -4,6 +4,12 @@ import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, F
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
 import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856 } from '../../../../src/decisions';
+// DEC-290 (wave-59 amendment): a supplied eventId is a CANDIDATE, not an
+// instruction -- the wizard's session-title requirement, request keys and
+// blocker hint below all hang off the 'Also add these people to <event> as
+// accepted speakers' opt-in (attachToEvent) being explicitly turned on.
+// This amendment lives in decisions/DEC-290.md; no src/decisions.ts export
+// exists for DEC-290 to compile-check against (never hand-add one here).
 import { countOf, plural, thingsNeedFixingHeading } from '../../lib/plural';
 import { validateImportMapping } from '../../../../src/domain/contacts';
 import { MAX_IMPORT_ROWS, MAX_IMPORT_CSV_BYTES } from '../../lib/domain-caps';
@@ -11,10 +17,11 @@ import { formatBytes } from '../../../../src/domain/files';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 import './contacts-panels.css';
 
-// Compile-checked dependency marker: when `eventId` is set, this wizard
-// collects a required `sessionTitle` for the batch (in the same step the
-// event is already chosen) rather than letting the server invent an
-// 'Invited: <name>' title per contact (DEC-810).
+// Compile-checked dependency marker: when `eventId` is set AND the
+// DEC-290 attach-to-event opt-in is on, this wizard collects a required
+// `sessionTitle` for the batch (in the same step the event is already
+// chosen) rather than letting the server invent an 'Invited: <name>' title
+// per contact (DEC-810).
 void DEC_810;
 // DEC-575 (wave 28 amendment): a file whose rows are partly unusable (no
 // email -- the dedupe key) offers a pre-mapping partial import instead of
@@ -44,11 +51,16 @@ interface Props {
   onClose: () => void;
   onImported: () => void;
   // DEC-290: when set (e.g. the Speakers roster importer), the import is
-  // additionally scoped to this event -- the server pushes every imported
-  // contact onto the event's roster and reports `addedToEvent` back. Absent
-  // this prop, behavior is unchanged from the CRM-only import (today's
+  // OPTIONALLY additionally scoped to this event -- gated behind the
+  // explicit 'Also add these people to <event>' opt-in (wave-59 amendment)
+  // -- and when the opt-in is on, the server pushes every imported contact
+  // onto the event's roster and reports `addedToEvent` back. Absent this
+  // prop, behavior is unchanged from the CRM-only import (today's
   // ContactsApp call site).
   eventId?: string;
+  // DEC-290 (wave-59 amendment): the event's display name for the opt-in
+  // checkbox label; falls back to 'this event' when absent.
+  eventName?: string;
 }
 
 // Behaviour frozen (DEC-366): CSV column mapping and the set-based import
@@ -84,13 +96,20 @@ function formatRowList(lines: number[]): string {
   return `${shown.join(', ')}, and ${more} more`;
 }
 
-export function ImportWizard({ onClose, onImported, eventId }: Props) {
+export function ImportWizard({ onClose, onImported, eventId, eventName }: Props) {
   const [csvText, setCsvText] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  // DEC-810: when this import is scoped to an event, the whole batch shares
-  // one session title -- collected here, in the step where the event is
-  // already chosen (the eventId prop), never invented server-side.
+  // DEC-290 (wave-59 amendment): a supplied eventId is a CANDIDATE, not an
+  // instruction -- unchecked by default, this is the ONE control every
+  // add-to-event behaviour below (the session-title field, its
+  // required-ness, the preview guard, the request keys, the disabled-
+  // primary blocker hint) hangs off.
+  const [attachToEvent, setAttachToEvent] = useState(false);
+  // DEC-810: when this import is scoped to an event AND attachToEvent is
+  // on, the whole batch shares one session title -- collected here, in the
+  // step where the event is already chosen (the eventId prop), never
+  // invented server-side.
   const [sessionTitle, setSessionTitle] = useState('');
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [plannedRequest, setPlannedRequest] = useState<PlannedRequest | null>(null);
@@ -344,7 +363,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   }
 
   async function runPreview() {
-    if (eventId && sessionTitle.trim() === '') {
+    if (eventId && attachToEvent && sessionTitle.trim() === '') {
       setError('Enter a session title for this batch.');
       return;
     }
@@ -360,7 +379,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       const request: PlannedRequest = {
         csvText: expandedCsvText,
         mapping: expanded.mapping,
-        ...(eventId ? { eventId, sessionTitle: sessionTitle.trim() } : {}),
+        ...(eventId && attachToEvent ? { eventId, sessionTitle: sessionTitle.trim() } : {}),
       };
       const res = await apiPost<ImportPlan>('/contacts/import', { ...request, dryRun: true });
       setPlan(res);
@@ -440,7 +459,12 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       <button
         type="button"
         className="chq-btn chq-btn-primary"
-        disabled={busy || dataRows.length === 0 || (!!eventId && sessionTitle.trim() === '') || !!mappingValidationError}
+        disabled={
+          busy ||
+          dataRows.length === 0 ||
+          (!!eventId && attachToEvent && sessionTitle.trim() === '') ||
+          !!mappingValidationError
+        }
         onClick={runPreview}
       >
         Import {countOf(dataRows.length, 'row')}
@@ -451,7 +475,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       {/* w40-h: names the blocker on the disabled primary instead of leaving
           an unexplained disabled button -- disappears the moment the field
           that unblocks it is filled. */}
-      {!!eventId && sessionTitle.trim() === '' && (
+      {!!eventId && attachToEvent && sessionTitle.trim() === '' && (
         <span className="chq-contacts-import-blocker">Add a session title for this batch to preview</span>
       )}
     </>
@@ -624,11 +648,31 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
             </div>
           )}
 
-          {/* DEC-810: the session title is collected here, in the match
-              panel, once the event is already chosen (eventId) and a
-              header row is parsed -- not in step 1's file/paste screen,
-              which has no other event-scoped state. */}
+          {/* DEC-290 (wave-59 amendment): a supplied eventId is a
+              CANDIDATE, not an instruction -- this unchecked-by-default
+              opt-in is the one control every add-to-event behaviour below
+              hangs off (the session-title field, its required-ness, the
+              preview guard, the request keys, the disabled-primary blocker
+              hint). With it off the request carries neither eventId nor
+              sessionTitle and the import writes contacts only. */}
           {eventId && (
+            <label className="chq-checkbox-label" htmlFor="import-attach-to-event">
+              <input
+                id="import-attach-to-event"
+                className="chq-check"
+                type="checkbox"
+                checked={attachToEvent}
+                onChange={(e) => setAttachToEvent(e.target.checked)}
+              />
+              Also add these people to {eventName ?? 'this event'} as accepted speakers
+            </label>
+          )}
+
+          {/* DEC-810: the session title is collected here, in the match
+              panel, once the event is already chosen (eventId) AND the
+              DEC-290 opt-in above is on -- not in step 1's file/paste
+              screen, which has no other event-scoped state. */}
+          {eventId && attachToEvent && (
             <FormRow
               label="Session title for this batch"
               htmlFor="import-session-title"

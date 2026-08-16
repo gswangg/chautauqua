@@ -362,6 +362,9 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
 
     const preview = await screen.findByRole('button', { name: 'Import 2 rows' });
+    // DEC-290: the eventId is a candidate, not an instruction -- the
+    // session-title requirement only kicks in once the opt-in is ticked.
+    fireEvent.click(screen.getByLabelText('Also add these people to this event as accepted speakers'));
     expect(preview).toBeDisabled();
 
     const titleInput = screen.getByLabelText('Session title for this batch');
@@ -387,6 +390,7 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
 
     const preview = await screen.findByRole('button', { name: 'Import 2 rows' });
+    fireEvent.click(screen.getByLabelText('Also add these people to this event as accepted speakers'));
     expect(preview).toBeDisabled();
     expect(screen.getByText('Add a session title for this batch to preview')).toBeInTheDocument();
 
@@ -395,6 +399,30 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
 
     expect(preview).not.toBeDisabled();
     expect(screen.queryByText('Add a session title for this batch to preview')).not.toBeInTheDocument();
+  });
+
+  // DEC-290 (wave-59 amendment): a supplied eventId is a CANDIDATE, not an
+  // instruction -- with the attach-to-event opt-in left unticked, the
+  // import writes contacts only: no eventId, no sessionTitle, and the
+  // primary is enabled with an empty title.
+  it('with an eventId supplied and the attach-to-event box unticked, the dry-run body carries neither eventId nor sessionTitle, and the primary is enabled', async () => {
+    const fetchMock = mockApi({ 'POST /api/v1/contacts/import': PLAN });
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+
+    const preview = await screen.findByRole('button', { name: 'Import 2 rows' });
+    expect(preview).not.toBeDisabled();
+    expect(screen.queryByLabelText('Session title for this batch')).not.toBeInTheDocument();
+
+    fireEvent.click(preview);
+    await screen.findByText('1 new · 1 updated');
+
+    const postCall = fetchMock.mock.calls.find(([input]) =>
+      (typeof input === 'string' ? input : input.toString()).includes('/contacts/import'),
+    );
+    const body = JSON.parse((postCall![1]?.body as string) ?? '{}');
+    expect(body).not.toHaveProperty('eventId');
+    expect(body).not.toHaveProperty('sessionTitle');
   });
 });
 
@@ -469,12 +497,14 @@ describe('ImportWizard: w15-c step-named title + wide frame', () => {
     expect(screen.queryByLabelText('Session title for this batch')).not.toBeInTheDocument();
   });
 
-  it('step 2 renders the "Match the columns" title and the session-title field', async () => {
+  it('step 2 renders the "Match the columns" title and the session-title field once the attach-to-event opt-in is ticked', async () => {
     render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
 
     await screen.findByLabelText('Map column Email');
     expect(screen.getByText('Match the columns')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Session title for this batch')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Also add these people to this event as accepted speakers'));
     expect(screen.getByLabelText('Session title for this batch')).toBeInTheDocument();
   });
 
