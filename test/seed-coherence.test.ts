@@ -917,3 +917,74 @@ describe("seed coherence (task w26-j, DEC-739 amendment): public speaker bios an
     ).toBe(true);
   });
 });
+
+// DEC-522 (wave 52 amendment): "the seed mints day labels" — form
+// open_date/close_date, evaluation_plan open_date/close_date, and task
+// due_date are UTC-midnight day-label instants, not arbitrary points in
+// time. dayLabelToYmd reads the UTC calendar date of the stored value, so a
+// label minted straight from a sub-day SEED_NOW would drift to the wrong
+// day for part of every UTC day the seed is run in. This block enumerates
+// every emitted day-label column (never a hand-picked sample) and asserts
+// each value falls exactly on a UTC day boundary, plus that the default
+// CFP form's window still straddles "now" so the fix can't silently close
+// the demo CFP.
+describe("seed day labels (DEC-522)", () => {
+  const DAY_MS = 86_400_000;
+
+  it("every form open_date/close_date is a UTC-midnight instant", () => {
+    const rows = parseInserts(sql, "form");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      for (const col of ["open_date", "close_date"] as const) {
+        const raw = row[col];
+        if (raw === null || raw === undefined) continue;
+        const value = Number(raw);
+        expect(Number.isFinite(value), `form.${col} '${raw}' is not numeric`).toBe(true);
+        expect(value % DAY_MS, `form.${col}=${value} is not a UTC-midnight day label`).toBe(0);
+      }
+    }
+  });
+
+  it("every evaluation_plan open_date/close_date is a UTC-midnight instant", () => {
+    const rows = parseInserts(sql, "evaluation_plan");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      for (const col of ["open_date", "close_date"] as const) {
+        const raw = row[col];
+        if (raw === null || raw === undefined) continue;
+        const value = Number(raw);
+        expect(Number.isFinite(value), `evaluation_plan.${col} '${raw}' is not numeric`).toBe(true);
+        expect(value % DAY_MS, `evaluation_plan.${col}=${value} is not a UTC-midnight day label`).toBe(0);
+      }
+    }
+  });
+
+  it("every task due_date is a UTC-midnight instant", () => {
+    const rows = parseInserts(sql, "task");
+    expect(rows.length).toBeGreaterThan(0);
+    let sawNonNull = false;
+    for (const row of rows) {
+      const raw = row.due_date;
+      if (raw === null || raw === undefined) continue;
+      sawNonNull = true;
+      const value = Number(raw);
+      expect(Number.isFinite(value), `task.due_date '${raw}' is not numeric`).toBe(true);
+      expect(value % DAY_MS, `task.due_date=${value} is not a UTC-midnight day label`).toBe(0);
+    }
+    expect(sawNonNull, "no seeded task carries a non-null due_date to check").toBe(true);
+  });
+
+  it("the default CFP form's window still straddles now (open in the past, close in the future)", () => {
+    const rows = parseInserts(sql, "form");
+    const defaultForm = rows.find((r) => r.is_default === "1" || r.is_default === "TRUE" || r.is_default === "true");
+    expect(defaultForm, "no default CFP form found").toBeTruthy();
+    const openDate = Number(defaultForm!.open_date);
+    const closeDate = Number(defaultForm!.close_date);
+    // A generous window (well beyond the +/-1 day flooring effect) around
+    // "now" -- the seed's own offsets are -12/+18 days, so a few minutes of
+    // test-run skew never threatens this assertion.
+    const now = Date.now();
+    expect(openDate, `default form open_date (${openDate}) is not before now (${now})`).toBeLessThan(now);
+    expect(closeDate, `default form close_date (${closeDate}) is not after now (${now})`).toBeGreaterThan(now);
+  });
+});
