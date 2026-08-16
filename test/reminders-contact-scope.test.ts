@@ -147,7 +147,17 @@ function fakeDb(seed: {
   }
 
   function mergeCtx(ctx: CtxEntry[]): any {
-    return ctx.reduce((acc, e) => ({ ...acc, ...e.row }), {});
+    const merged: any = ctx.reduce((acc, e) => ({ ...acc, ...e.row }), {});
+    // DEC-023 wave-47 amendment: the real listOutstandingForEvent select
+    // aliases schema.taskAssignment.id AS assignmentId (distinct from the
+    // merged `id`, which the taskAssignment/task/event/contact spread order
+    // above resolves to contact.id) — sendReminderEmails' new claim step
+    // needs the genuine assignment id to build its WHERE inArray, so this
+    // one alias is threaded through explicitly rather than requiring every
+    // fixture to literally carry a duplicate `assignmentId` key.
+    const assignmentEntry = ctx.find((e) => e.table === schema.taskAssignment);
+    if (assignmentEntry) merged.assignmentId = assignmentEntry.row.id;
+    return merged;
   }
 
   function contactIdOf(ctxList: CtxEntry[]): string {
@@ -269,11 +279,22 @@ function fakeDb(seed: {
         where: (cond: unknown) => {
           const write = async () => {
             const arr = stateArrayFor(table) ?? [];
+            const matched: any[] = [];
             for (const row of arr) {
-              if (evalCond(cond, [{ table, row }])) Object.assign(row, patch);
+              if (evalCond(cond, [{ table, row }])) {
+                Object.assign(row, patch);
+                matched.push(row);
+              }
             }
+            return matched;
           };
-          return { then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject) };
+          return {
+            then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
+            returning: async (cols: { id: unknown }) => {
+              const matched = await write();
+              return matched.map((row) => ({ id: row.id }));
+            },
+          };
         },
       }),
     }),

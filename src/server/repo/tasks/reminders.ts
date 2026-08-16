@@ -3,7 +3,7 @@
 // for contention decomposition (no behavior change) — see repo/tasks.ts's
 // barrel header.
 
-import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
@@ -352,9 +352,29 @@ export function buildReminderMessage(
   return { subject: `Action needed: outstanding tasks for ${eventName}`, text };
 }
 
-/** Sends one reminder email per contact via `mailer`, stamps
- * last_reminded_at on every assignment included in that email. Used by
- * both the bulk 'remind now' endpoint (taskIds optional filter, ignores the
+/** Sends one reminder email per contact via `mailer`. DEC-023 amendment
+ * (closes CONFIRMED-DEFECT #1, docs/verification-log/index/0232): the
+ * dedupe stamp is now a CLAIM issued BEFORE the mail loop, not a record
+ * written after it — two overlapping calls (e.g. two overlapping cron
+ * ticks) racing this function each claim only the assignment ids their own
+ * conditional UPDATE actually won (`.returning()`), so at most one of them
+ * sends to a given contact, and a crash between the claim and the send
+ * leaves the assignment claimed (no re-send this tick) rather than
+ * unclaimed-but-already-mailed (guaranteed re-send next tick, the old
+ * defect). `claimCutoff` reproduces the caller's own dedupe gate at claim
+ * time: the due-date cron passes `now - DEDUPE_WINDOW_MS` so a claim only
+ * wins rows that are still due for a reminder by the same rule
+ * isReminderDue already applied to select the group; `remindNow` passes
+ * `null` (DEC-319: an explicit organizer action deliberately ignores the
+ * dedupe window) so its claim is unconditional — still idempotent under
+ * retry (a second call simply re-claims and re-sends, exactly today's
+ * remindNow behavior) without being gated on `lastRemindedAt`.
+ *
+ * A group with a mailer failure releases its claimed ids back to each
+ * assignment's pre-claim `lastRemindedAt` (available on the OutstandingRow
+ * already loaded into `outstandingByContact`), so today's "failed sends
+ * retry on the next tick" behavior survives the claim. Used by both the
+ * bulk 'remind now' endpoint (taskIds optional filter, ignores the
  * due-date/dedupe gate — an explicit organizer action) and, filtered through
  * planReminders, the due-date cron (never triggered by a status change —
  * DEC-009). */
@@ -370,6 +390,7 @@ async function sendReminderEmails(
   kv: KVStore,
   origin: string,
   mintClaimTokens: boolean,
+  claimCutoff: Date | null,
 ): Promise<{ sent: number; failed: { email: string; message: string }[] }> {
   let sent = 0;
   // DEC-238: a send failure for one recipient must not abort the batch —
@@ -384,12 +405,45 @@ async function sendReminderEmails(
   // batch into one row.
   const batchId = newId();
 
+  // Pre-claim lastRemindedAt per assignment id, so a failed send can be
+  // released back to exactly what it held before this call claimed it.
+  const preClaimLastReminded = new Map<string, Date | null>();
+  for (const rows of outstandingByContact.values()) {
+    for (const r of rows) preClaimLastReminded.set(r.assignmentId, r.lastRemindedAt);
+  }
+
+  // DEC-023 amendment: claim BEFORE the mail loop — a conditional chunked
+  // UPDATE per group of assignment ids, collecting only the ids this call's
+  // own WHERE actually matched (RETURNING) into `claimedIds`. A group whose
+  // claim loses every one of its assignments to a concurrent claimant is
+  // dropped from the send set entirely (not counted in `sent`).
+  const allAssignmentIds = groups.flatMap((group) => group.assignments.map((a) => a.assignmentId));
+  const claimedIds = new Set<string>();
+  for (const chunk of chunkIds(allAssignmentIds)) {
+    const claimedRows = await db
+      .update(schema.taskAssignment)
+      .set({ lastRemindedAt: now, updatedAt: now })
+      .where(
+        and(
+          inArray(schema.taskAssignment.id, chunk),
+          claimCutoff
+            ? or(isNull(schema.taskAssignment.lastRemindedAt), lte(schema.taskAssignment.lastRemindedAt, claimCutoff))
+            : undefined,
+        ),
+      )
+      .returning({ id: schema.taskAssignment.id });
+    for (const row of claimedRows) claimedIds.add(row.id);
+  }
+
+  const claimedGroups = groups.filter((group) => group.assignments.some((a) => claimedIds.has(a.assignmentId)));
+  if (claimedGroups.length === 0) return { sent: 0, failed: [] };
+
   // DEC-530: resolve every recipient's account identity in one batched query
   // instead of per-recipient (the capped group is bounded, so this stays a
   // single round trip regardless of group count).
   const accountMap = await findAccountUserIds(
     db,
-    groups.map((group) => {
+    claimedGroups.map((group) => {
       const rows = outstandingByContact.get(group.contactId) ?? [];
       const first = rows[0];
       return { contactId: group.contactId, email: first?.email ?? "" };
@@ -401,19 +455,18 @@ async function sendReminderEmails(
   // send loop, instead of an await-per-recipient KV round trip inside it.
   const portalLinkMap = await resolvePortalLinks(
     kv,
-    groups.map((group) => ({ contactId: group.contactId, userId: accountMap.get(group.contactId) ?? null })),
+    claimedGroups.map((group) => ({ contactId: group.contactId, userId: accountMap.get(group.contactId) ?? null })),
     eventId,
     origin,
     mintClaimTokens,
   );
 
-  // wave-48 amendment: accumulate the assignment ids of every successfully
-  // emailed recipient here — the loop body performs NO db await — then issue
-  // one chunked UPDATE after the loop instead of one sequential UPDATE per
-  // recipient interleaved with the mail sends.
-  const sentAssignmentIds: string[] = [];
+  // Ids to release back to their pre-claim lastRemindedAt on a mailer
+  // failure, accumulated across the loop and applied after it (grouped by
+  // the value being restored, since a chunked UPDATE carries one SET value).
+  const toRelease = new Map<string, string[]>(); // key: "null" | epoch-ms string -> assignment ids
 
-  for (const group of groups) {
+  for (const group of claimedGroups) {
     const rows = outstandingByContact.get(group.contactId) ?? [];
     if (rows.length === 0) continue;
     const first = rows[0];
@@ -444,18 +497,28 @@ async function sendReminderEmails(
     } catch (err) {
       console.error("reminder email failed for", first.email, err);
       failed.push({ email: first.email, message: err instanceof Error ? err.message : String(err) });
+      for (const a of group.assignments) {
+        if (!claimedIds.has(a.assignmentId)) continue;
+        const preClaim = preClaimLastReminded.get(a.assignmentId) ?? null;
+        const key = preClaim ? String(preClaim.getTime()) : "null";
+        const idsForKey = toRelease.get(key) ?? [];
+        idsForKey.push(a.assignmentId);
+        toRelease.set(key, idsForKey);
+      }
       continue;
     }
 
-    for (const a of group.assignments) sentAssignmentIds.push(a.assignmentId);
     sent += 1;
   }
 
-  for (const batch of chunkIds(sentAssignmentIds)) {
-    await db
-      .update(schema.taskAssignment)
-      .set({ lastRemindedAt: now, updatedAt: now })
-      .where(inArray(schema.taskAssignment.id, batch));
+  for (const [key, ids] of toRelease) {
+    const restoreValue = key === "null" ? null : new Date(Number(key));
+    for (const chunk of chunkIds(ids)) {
+      await db
+        .update(schema.taskAssignment)
+        .set({ lastRemindedAt: restoreValue })
+        .where(inArray(schema.taskAssignment.id, chunk));
+    }
   }
 
   return { sent, failed };
@@ -528,6 +591,7 @@ export async function remindNow(
     kv,
     origin,
     true,
+    null,
   );
   return { ...result, skipped: chosen.skipped, remaining: chosen.remaining };
 }
@@ -749,6 +813,7 @@ export async function sendDueRemindersForEvent(
     kv,
     origin,
     true,
+    new Date(now.getTime() - DEDUPE_WINDOW_MS),
   );
   return result.sent;
 }

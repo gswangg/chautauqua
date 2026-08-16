@@ -98,9 +98,20 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
     }),
     update: () => ({
       set: (values: unknown) => ({
-        where: async () => {
-          updateCalls.push(values);
-        },
+        where: (cond: unknown) => ({
+          then: (resolve: (v: unknown) => void) => {
+            updateCalls.push(values);
+            resolve(undefined);
+          },
+          // Dumb mock (per this file's own convention above): ignores `cond`
+          // and claims the whole fixture set, matching the unconditional
+          // accept every other chain link in this fake already does.
+          returning: async () => {
+            updateCalls.push(values);
+            void cond;
+            return rows.map((r) => ({ id: r.assignmentId }));
+          },
+        }),
       }),
     }),
   } as unknown as Db;
