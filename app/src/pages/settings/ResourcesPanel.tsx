@@ -1,8 +1,10 @@
 // Resources (w4-h, DEC-047; folded into Speaker portal's read view w3-c,
 // DEC-747): wiki page list/create/edit/delete plus file-resource upload.
 // Rendered as a fragment (no own <section>/h2) inside PortalSettingsPanel's
-// Resources row -- 'Add a resource' toggles both add-forms; a wiki row's
-// 'Replace' opens its inline edit form (title + content). A file row's
+// Resources row -- 'Add a resource' opens the shared ModalFrame with two
+// exclusive kind chips (DEC-047 wave-64 amendment: File / Wiki page; only
+// the selected kind's fields render, one primary submit carrying the verb).
+// A wiki row's 'Replace' opens its inline edit form (title + content). A file row's
 // 'Rename' opens the same inline form limited to the title input -- title
 // and position are editable for any resource kind (DEC-029 amendment), but
 // there is still no server endpoint that replaces a file's bytes, and
@@ -25,17 +27,22 @@
 // mirroring the CRUD view's own link) with no add/delete control at all;
 // the default (unset) keeps the existing local summary/edit split used
 // inside PortalSettingsPanel's own edit branch.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { validateResourceForm, validateResourceTitleForm, type ResourceForm, type ResourceFormErrors } from './formState';
 import { validateUpload, uploadHintText, allowedUploadExtensions } from '../../../../src/domain/files';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { countOf } from '../../lib/plural';
 import { MAX_NAME_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../../../src/forms/validate';
 import { MARKDOWN_SYNTAX_HINT } from '../../lib/markdown-hint';
 import './settings-lists.css';
+
+/** The two kinds the store can carry (DEC-733: no third 'link' chip -- the
+ * frame's 'File/Link' is not a real store kind). */
+type AddResourceKind = 'wiki' | 'file';
 
 interface Resource {
   id: string;
@@ -65,6 +72,9 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
   const [adding, setAdding] = useState(false);
+  // DEC-047 wave-64 amendment: the add form is one modal with two exclusive
+  // kinds -- only the selected kind's fields render.
+  const [addingKind, setAddingKind] = useState<AddResourceKind>('wiki');
   const [newResource, setNewResource] = useState<ResourceForm>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<ResourceFormErrors>({});
   const [editing, setEditing] = useState<Record<string, ResourceForm>>({});
@@ -93,11 +103,11 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
-  async function addResource() {
-    if (!eventId) return;
+  async function addResource(): Promise<boolean> {
+    if (!eventId) return false;
     const errors = validateResourceForm(newResource);
     setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) return false;
     try {
       await apiPost(`/events/${eventId}/resources`, {
         title: newResource.title,
@@ -105,25 +115,27 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
       });
       setNewResource(EMPTY_FORM);
       reload(eventId);
+      return true;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to add resource');
+      return false;
     }
   }
 
-  async function uploadFileResource() {
-    if (!eventId) return;
+  async function uploadFileResource(): Promise<boolean> {
+    if (!eventId) return false;
     if (fileTitle.trim().length === 0) {
       setFileError('Title is required');
-      return;
+      return false;
     }
     if (!fileToUpload) {
       setFileError('File is required');
-      return;
+      return false;
     }
     const check = validateUpload({ filename: fileToUpload.name, sizeBytes: fileToUpload.size, kind: 'handout' });
     if (!check.ok) {
       setFileError(`${check.message} ${uploadHintText('handout')} The typed Title is kept; nothing was uploaded.`);
-      return;
+      return false;
     }
     setFileError(undefined);
     const form = new FormData();
@@ -134,9 +146,17 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
       setFileTitle('');
       setFileToUpload(null);
       reload(eventId);
+      return true;
     } catch (err) {
       setFileError(err instanceof ApiError ? err.message : 'Failed to upload resource');
+      return false;
     }
+  }
+
+  async function handleAddSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const ok = addingKind === 'wiki' ? await addResource() : await uploadFileResource();
+    if (ok) setAdding(false);
   }
 
   function startEdit(resource: Resource) {
@@ -316,58 +336,105 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
         })}
       </ul>
 
-      {adding ? (
-        <div className="chq-settings-portal-resource-add">
-          <h3>Add a wiki page</h3>
-          <input
-            className="chq-input"
-            placeholder="Title"
-            value={newResource.title}
-            onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
-            maxLength={MAX_NAME_LENGTH}
-          />
-          {fieldErrors.title ? <span role="alert">{fieldErrors.title}</span> : null}
-          <textarea
-            className="chq-textarea"
-            placeholder="Content"
-            value={newResource.content}
-            onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
-            maxLength={MAX_RICH_TEXT_LENGTH}
-          />
-          {fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
-          <span className="chq-settings-markdown-hint">{MARKDOWN_SYNTAX_HINT}</span>
-          <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addResource()}>
-            Add wiki page
-          </button>
+      <button type="button" className="chq-settings-portal-add-resource" onClick={() => setAdding(true)}>
+        Add a resource
+      </button>
 
-          <h3>Upload a file</h3>
-          <input
-            className="chq-input"
-            placeholder="Title"
-            value={fileTitle}
-            onChange={(e) => setFileTitle(e.target.value)}
-            maxLength={MAX_NAME_LENGTH}
-          />
-          <input
-            className="chq-file"
-            type="file"
-            accept={allowedUploadExtensions('handout').map((e) => `.${e}`).join(',')}
-            onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
-          />
-          <span className="chq-upload-caps">{uploadHintText('handout')}</span>
-          {fileError ? <span role="alert">{fileError}</span> : null}
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void uploadFileResource()}>
-            Upload file
-          </button>
+      {adding && (
+        <ModalFrame
+          as="form"
+          onSubmit={handleAddSubmit}
+          title="Add a resource"
+          onClose={() => setAdding(false)}
+          actions={
+            <>
+              <button type="submit" className="chq-btn chq-btn-primary">
+                {addingKind === 'wiki' ? 'Add wiki page' : 'Upload file'}
+              </button>
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setAdding(false)}>
+                Cancel
+              </button>
+            </>
+          }
+        >
+          <FormRow
+            label="Title"
+            htmlFor="resource-title"
+            error={addingKind === 'wiki' ? fieldErrors.title : undefined}
+          >
+            <input
+              id="resource-title"
+              className="chq-input"
+              placeholder="Title"
+              value={addingKind === 'wiki' ? newResource.title : fileTitle}
+              onChange={(e) =>
+                addingKind === 'wiki'
+                  ? setNewResource({ ...newResource, title: e.target.value })
+                  : setFileTitle(e.target.value)
+              }
+              maxLength={MAX_NAME_LENGTH}
+            />
+          </FormRow>
 
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setAdding(false)}>
-            Done
-          </button>
-        </div>
-      ) : (
-        <button type="button" className="chq-settings-portal-add-resource" onClick={() => setAdding(true)}>
-          Add a resource
-        </button>
+          <div className="chq-form-row">
+            <span className="chq-form-row-label" id="resource-kind-label">
+              Kind
+            </span>
+            <div className="chq-form-row-control">
+              <div className="chq-segmented" role="group" aria-label="Kind">
+                <button
+                  type="button"
+                  className={addingKind === 'file' ? 'chq-btn chq-settings-kind-selected' : 'chq-btn chq-btn-secondary'}
+                  aria-pressed={addingKind === 'file'}
+                  onClick={() => setAddingKind('file')}
+                >
+                  File
+                </button>
+                <button
+                  type="button"
+                  className={addingKind === 'wiki' ? 'chq-btn chq-settings-kind-selected' : 'chq-btn chq-btn-secondary'}
+                  aria-pressed={addingKind === 'wiki'}
+                  onClick={() => setAddingKind('wiki')}
+                >
+                  Wiki page
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {addingKind === 'wiki' ? (
+            <FormRow
+              label="Content"
+              htmlFor="resource-content"
+              error={fieldErrors.content}
+              help={<span className="chq-settings-markdown-hint">{MARKDOWN_SYNTAX_HINT}</span>}
+            >
+              <textarea
+                id="resource-content"
+                className="chq-textarea"
+                placeholder="Content"
+                value={newResource.content}
+                onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
+                maxLength={MAX_RICH_TEXT_LENGTH}
+              />
+            </FormRow>
+          ) : (
+            <FormRow
+              label="File"
+              htmlFor="resource-file"
+              error={fileError}
+              help={<span className="chq-upload-caps">{uploadHintText('handout')}</span>}
+            >
+              <input
+                id="resource-file"
+                className="chq-file"
+                type="file"
+                accept={allowedUploadExtensions('handout').map((e) => `.${e}`).join(',')}
+                onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
+              />
+            </FormRow>
+          )}
+        </ModalFrame>
       )}
 
       {pendingDelete && (
