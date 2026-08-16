@@ -560,6 +560,31 @@
   width: 100%;
 }
 
+/* DEC-603 (wave-56 amendment): a bare layout wrapper carrying no rules of
+   its own -- it exists only so its child .chq-comms-batch-col-heads-row can
+   inherit the --chq-comms-batch-grid/--chq-comms-batch-gap custom
+   properties .chq-comms-batch declares (both classes are on this element),
+   the same inheritance the real per-batch wrapper below relies on. */
+.chq-comms-batch-col-heads {
+  display: block;
+}
+
+/* DEC-603 (wave-56 amendment, frame :634-636): the History tab's own column
+   heads -- WHEN / SUBJECT / RECIPIENTS / TEMPLATE / (blank) -- over the
+   SAME --chq-comms-batch-grid the batch rows below use (inherited from the
+   .chq-comms-batch wrapper this head row is nested in too), so heads and
+   cells cannot drift out of alignment. A 2px ink rule, heavier than the
+   1px hairline every other row divider uses, marks it as a head. */
+.chq-comms-batch-col-heads-row {
+  padding: 0 0 9px;
+  border-bottom: 2px solid var(--chq-ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
 /* The "N sent" column (third of the five). A real class hook rather than a
    positional `.chq-comms-batch-row > span:nth-child(3)` selector -- the same
    reason .chq-comms-history-row's nth-child rule was deleted in the DEC-976
@@ -1212,4 +1237,26 @@
    block. .chq-btn already zeroes text-decoration for anchor-as-button. */
 .chq-comms-history-export {
   flex: 0 0 auto;
+}
+
+/* DEC-603 (wave-56 amendment, frame :625-631): the chips row, bounded by a
+   hairline top and bottom -- 'All sends' plus one chip per template
+   (rendered with the shared .chq-pill/.is-active vocabulary, DEC-372,
+   the same idiom every other page's filter-chip row already uses), the
+   search input pushed right into the same row. */
+.chq-comms-history-chips {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-top: 1px solid var(--chq-hairline);
+  border-bottom: 1px solid var(--chq-hairline);
+  padding: 12px 0;
+  flex-wrap: wrap;
+}
+
+.chq-comms-history-chips .chq-comms-history-search {
+  margin-left: auto;
+  min-width: 230px;
+  width: auto;
+  max-width: none;
 }

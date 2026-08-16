@@ -50,6 +50,11 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
     batchIdRaw !== undefined
       ? parseBoundedText(batchIdRaw, "batchId", { max: 64, required: false })
       : undefined;
+  const templateIdRaw = c.req.query("templateId") || undefined;
+  const templateId =
+    templateIdRaw !== undefined
+      ? parseBoundedText(templateIdRaw, "templateId", { max: 64, required: false })
+      : undefined;
 
   // DEC-905: epoch-ms lower bound on sentAt, backing the Comms head's "N
   // sent in the last 7 days" -- fails loudly on a malformed value rather
@@ -82,7 +87,7 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
     if (batchId !== undefined) {
       throw new ApiError("invalid", "batchId cannot be combined with groupBy=batch", { groupBy: "batchId" });
     }
-    const { items, total } = await listEmailBatches(c.var.db, { eventId, q, since, page, perPage });
+    const { items, total } = await listEmailBatches(c.var.db, { eventId, q, since, templateId, page, perPage });
     return c.json({ items, total, page, perPage });
   }
 
@@ -93,6 +98,7 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
     q,
     batchKey: batchId,
     since,
+    templateId,
     page,
     perPage,
   });

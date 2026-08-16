@@ -50,6 +50,25 @@ export function HistoryTab({
   // -- read once on arrival so the matching batch lands already expanded.
   const [searchParams, setSearchParams] = useSearchParams();
   const expandBatchKey = searchParams.get('batch');
+  // DEC-603 (wave-56 amendment, frame :625-631): the chips row's active
+  // facet -- carried in the existing ?tab= search params (as `templateId`)
+  // so a reload keeps the facet, the same way `batch` already survives a
+  // reload above.
+  const templateId = searchParams.get('templateId') || '';
+
+  function selectTemplate(next: string) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next) params.set('templateId', next);
+      else params.delete('templateId');
+      return params;
+    });
+    setPage(1);
+  }
+
+  // DEC-603 (wave-56 amendment): 'All sends' plus one chip per template,
+  // sorted by name.
+  const templateChips = Object.entries(templatesById).sort(([, a], [, b]) => a.localeCompare(b));
 
   // B7 (DEC-678 amendment): the same tab-switch path Comms.tsx's own
   // "All history" link uses in reverse -- ?tab= on this same route, never a
@@ -70,6 +89,7 @@ export function HistoryTab({
     params.set('page', String(page));
     params.set('perPage', String(PER_PAGE));
     if (q.trim()) params.set('q', q.trim());
+    if (templateId) params.set('templateId', templateId);
     apiList<EmailBatchRow>(`/events/${eventId}/email-log?${params.toString()}`)
       .then((res) => {
         setItems(res.items);
@@ -80,7 +100,7 @@ export function HistoryTab({
         setLoading(false);
         setLoaded(true);
       });
-  }, [eventId, q, page]);
+  }, [eventId, q, page, templateId]);
 
   // DEC-603 amendment (wave 18): the head mirrors TemplatesTab's exactly --
   // a breadcrumb back to Compose, the page title, and a count/rhythm line --
@@ -119,7 +139,30 @@ export function HistoryTab({
 
       {error && <div className="chq-error-banner">{error}</div>}
 
-      <div className="chq-toolbar">
+      {/* DEC-603 (wave-56 amendment, frame :625-631): 'All sends' plus one
+          chip per template, sorted by name -- the active chip is the
+          filled/inverted state. The existing search input moves INTO this
+          row, pushed right. */}
+      <div className="chq-comms-history-chips">
+        <button
+          type="button"
+          className={templateId === '' ? 'chq-pill is-active' : 'chq-pill'}
+          aria-pressed={templateId === ''}
+          onClick={() => selectTemplate('')}
+        >
+          All sends
+        </button>
+        {templateChips.map(([id, name]) => (
+          <button
+            key={id}
+            type="button"
+            className={templateId === id ? 'chq-pill is-active' : 'chq-pill'}
+            aria-pressed={templateId === id}
+            onClick={() => selectTemplate(id)}
+          >
+            {name}
+          </button>
+        ))}
         <input
           className="chq-input chq-comms-history-search"
           type="search"
@@ -153,11 +196,26 @@ export function HistoryTab({
           }}
         />
       )}
+      {/* DEC-603 (wave-56 amendment): a template chip that excludes every
+          send (no search text applied) names the CHIP as the excluding
+          facet and offers an escape that clears exactly that facet -- the
+          same B7 `variant="filtered"` idiom the search case above uses. */}
+      {!loading && loaded && items.length === 0 && q.trim() === '' && templateId !== '' && (
+        <EmptyState
+          variant="filtered"
+          what="No sends match this template."
+          reason={`No sends match “${templatesById[templateId] ?? templateId}”.`}
+          escape={{
+            label: 'Clear the filter',
+            onClick: () => selectTemplate(''),
+          }}
+        />
+      )}
       {/* B7 (DEC-678 amendment): totally fresh (never sent anything, no
-          search applied) REPLACES the batch table entirely -- it never
-          renders RecentSends' own section head/table chrome over zero
-          rows. */}
-      {!loading && loaded && items.length === 0 && q.trim() === '' && (
+          search or chip filter applied) REPLACES the batch table entirely --
+          it never renders RecentSends' own section head/table chrome over
+          zero rows. */}
+      {!loading && loaded && items.length === 0 && q.trim() === '' && templateId === '' && (
         <EmptyState
           variant="fresh"
           what="Nothing has been sent yet"
@@ -173,6 +231,7 @@ export function HistoryTab({
           templatesById={templatesById}
           expandBatchKey={expandBatchKey}
           rhythm={rhythm ?? null}
+          columnHeads
         />
       )}
 

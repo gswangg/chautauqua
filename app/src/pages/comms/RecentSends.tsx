@@ -190,6 +190,13 @@ export interface RecentSendsProps {
    * re-derives it from `batches`. `null` (or omitted) withholds the
    * subtitle entirely, matching the "not loaded yet" case. */
   rhythm?: SendRhythm | null;
+  /** DEC-603 (wave-56 amendment): when true, emits a column-head row (WHEN /
+   * SUBJECT / RECIPIENTS / TEMPLATE / blank) over the SAME
+   * --chq-comms-batch-grid the batch rows use (so heads and cells cannot
+   * drift), and suppresses this component's own "Recent sends" section
+   * head. Only the History tab's frame draws these heads (frame
+   * :634-636); the Compose mount is unchanged (default false). */
+  columnHeads?: boolean;
 }
 
 export function RecentSends({
@@ -201,6 +208,7 @@ export function RecentSends({
   templatesById,
   batchesLoaded,
   rhythm,
+  columnHeads = false,
 }: RecentSendsProps) {
   const [expanded, setExpanded] = useState<string | null>(expandBatchKey ?? null);
   const [recipients, setRecipients] = useState<Record<string, RecipientsState>>({});
@@ -249,17 +257,34 @@ export function RecentSends({
 
   return (
     <div className="chq-comms-recent-sends">
-      <div className="chq-section-head">
-        <div className="chq-comms-recent-sends-head-titles">
-          <span className="chq-section-label">Recent sends</span>
-          {subtitle && <p className="chq-comms-recent-sends-subtitle">{subtitle}</p>}
+      {!columnHeads && (
+        <div className="chq-section-head">
+          <div className="chq-comms-recent-sends-head-titles">
+            <span className="chq-section-label">Recent sends</span>
+            {subtitle && <p className="chq-comms-recent-sends-subtitle">{subtitle}</p>}
+          </div>
+          {onSeeAll && (
+            <button type="button" className="chq-link-button" onClick={() => onSeeAll()}>
+              All history
+            </button>
+          )}
         </div>
-        {onSeeAll && (
-          <button type="button" className="chq-link-button" onClick={() => onSeeAll()}>
-            All history
-          </button>
-        )}
-      </div>
+      )}
+
+      {/* DEC-603 (wave-56 amendment, frame :634-636): the History tab's own
+          column-head row, over the SAME --chq-comms-batch-grid the rows
+          below use, so heads and cells cannot drift out of alignment. */}
+      {columnHeads && rows.length > 0 && (
+        <div className="chq-comms-batch-col-heads chq-comms-batch">
+          <div className="chq-comms-batch-row chq-comms-batch-col-heads-row">
+            <span>When</span>
+            <span>Subject</span>
+            <span>Recipients</span>
+            <span>Template</span>
+            <span aria-hidden="true" />
+          </div>
+        </div>
+      )}
 
       {batchesLoaded && rows.length === 0 && (
         <EmptyState variant="fresh" what="No emails sent yet." action={null} />

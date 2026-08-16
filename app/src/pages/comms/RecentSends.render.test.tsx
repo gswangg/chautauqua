@@ -539,3 +539,37 @@ describe('comms.css: the expanded recipients band inherits the batch row\'s grid
     expect(commsCss).toMatch(/\n\.chq-comms-recipient-row\s*\{/);
   });
 });
+
+// DEC-603 (wave-56 amendment, frame :634-636): the History tab's optional
+// column-head row -- WHEN / SUBJECT / RECIPIENTS / TEMPLATE / (blank) over
+// the SAME grid the batch rows use, and it suppresses this component's own
+// "Recent sends" section head. Default (Compose mount) is unchanged.
+describe('columnHeads (DEC-603, wave-56 amendment)', () => {
+  it('defaults to false: no head row, "Recent sends" section head still renders', () => {
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} batchesLoaded templatesById={{}} />);
+    expect(screen.getByText('Recent sends')).toBeInTheDocument();
+    expect(document.querySelector('.chq-comms-batch-col-heads-row')).toBeNull();
+  });
+
+  it('when true: emits exactly one head row naming the five columns and suppresses the "Recent sends" section head', () => {
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} batchesLoaded templatesById={{}} columnHeads />);
+    expect(screen.queryByText('Recent sends')).not.toBeInTheDocument();
+    const headRow = document.querySelector('.chq-comms-batch-col-heads-row') as HTMLElement;
+    expect(headRow).toBeInTheDocument();
+    const cells = batchRowCells(headRow).map((el) => el.textContent);
+    expect(cells).toEqual(['When', 'Subject', 'Recipients', 'Template', '']);
+  });
+
+  it('the head row shares the SAME grid template as the batch rows (heads and cells cannot drift)', () => {
+    const headRowBody = ruleBodyFor(commsCss, '.chq-comms-batch-col-heads-row {');
+    // The head row rule itself carries no grid-template-columns -- it
+    // inherits .chq-comms-batch-row's `display: grid; grid-template-columns:
+    // var(--chq-comms-batch-grid)` by also carrying that class.
+    expect(headRowBody).not.toMatch(/grid-template-columns/);
+  });
+
+  it('withholds the head row entirely when there are no batches (nothing to head)', () => {
+    render(<RecentSends eventId={EVENT_ID} batches={[]} batchesLoaded templatesById={{}} columnHeads />);
+    expect(document.querySelector('.chq-comms-batch-col-heads-row')).toBeNull();
+  });
+});
