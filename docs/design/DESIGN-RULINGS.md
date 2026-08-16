@@ -213,6 +213,24 @@ Framed in **eight** places, one per failure shape rather than one per form — t
 12. **Server-only errors are not the form's fault.** A slug clash or a concurrent edit could not have been caught client-side, so the message says what happened out there — "already taken by another event in this org", "someone else may have edited this speaker" — rather than blaming the input.
 13. **Pre-flight the irreversible.** Sending cannot be undone, so unresolvable merge fields are caught at step 3 with a per-recipient list and a *Place on the agenda ›* link out. The caption says why the interruption is worth it: "this is the last point at which it is cheap to fix".
 
+## Speaker portal — adding a co-presenter
+
+DEC-604 lets a speaker self-add a co-presenter to their own submission (`portal/edit.tsx` → `addCoPresenter`). It shipped without a frame, so the build rendered a bare stack of labels and inputs. Two frames now cover it, inside the portal's own edit screen rather than as a separate page.
+
+**Three facts the form must state, because none is visible from the fields:**
+
+1. **Nobody is emailed.** `addCoPresenter` writes a participant row and returns — the route comment is explicit that nothing here sends mail. So: "No email goes to them — tell them yourself." A speaker who assumes an invitation went out will not follow up.
+2. **They are not published.** A co-presenter is recorded on the session but stays off the public site until the organiser publishes them, and each existing row repeats it in muted text.
+3. **The window is the form's close date**, not acceptance — `canEditSubmission` gates on it, so the header says "You can change this until the form closes on 16 Aug". This replaces an earlier sub-line, "Edits are live on the public pages straight away", which contradicted rule 2 on the same screen.
+
+**Desktop is drawn, not just ruled.** B6 rules the portal as the same column centred at 560 — true of the read-only screens, but the edit view is the one portal page with a form, so it has its own 1600 frame. Three things change with the width, all from the B10 form spec: first and last name go **two-up** (they are read as one thing), email pairs with the role select at 190, and the footer becomes a **right-flushed row** — Cancel then Save changes — instead of the phone's stacked action bar. *Add co-presenter* is left-aligned at its natural width inside its section, so it never competes with the page's Save.
+
+**It is one view, not a second route.** `EditSubmissionView` renders the field set and then `<ParticipantsSection/>` (edit.tsx:217), so Participants sits **below** title, abstract and session length on the same `/portal/submissions/:id/edit` page — the frame shows the composed page rather than the section alone. The failure state re-renders that same section: list, "Add a co-presenter" heading and the no-email note are always emitted (edit.tsx:463-476); only field errors are added.
+
+**Structure:** existing participants first as a short list with role and status, *then* the add form — the list is what a speaker checks before typing, and putting it second invites duplicate entries. First and last name sit two-up (they are read as one thing), email and role take the full measure. The submit is **secondary**, not primary: adding a co-presenter is an aside within the edit screen, whose primary action is Save changes.
+
+**Duplicate is a server-only error.** The unique index on the join table (`migrations/0019`) is the arbiter, so the client cannot pre-empt it — the second frame shows the rejection in the standard shape: banner naming what did *not* happen, the email field marked, the API's own message, and "Everything you typed is still below."
+
 ## Password reset
 
 **This is proposed new work — no reset flow exists.** `src/auth/` holds `cookies.ts`, `tokens.ts` (session and API tokens) and `claim.ts`. There is no forgot-password route and no reset token; the comment at `src/server/auth-session.ts:14` treats *claim* and *account password change* as the only password-reset paths, and a claim token is minted for a contact by an organiser's send, not requested by the person who forgot.

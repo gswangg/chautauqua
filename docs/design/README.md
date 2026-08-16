@@ -37,7 +37,7 @@ Two caveats: the mocks show static states (no real hover/focus animation), and l
 | Ink | `#1B1D17` | Primary text, 2px section rules, inverted panels |
 | Ink text secondary | `#3F4237` | Body copy |
 | Muted | `#565A4B` | Metadata, labels, captions (5.2:1 on paper — this is the floor) |
-| Disabled | `#7D7869` | Inert controls, undeletable rows (darkened from `#8E8A7A` by DEC-436's wave-25 amendment to clear 3:1 against `#DDD8C8` and the page grounds) |
+| Disabled | `#8E8A7A` | Inert controls, undeletable rows |
 | Hairline | `#E1DDCE` | Row dividers |
 | Rule | `#D3CFC0` | Table top/bottom rules, frame borders |
 | Border | `#BAB6A6` | Input and secondary-button borders |

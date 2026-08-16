@@ -50,6 +50,21 @@ below, per this task's own boundary (a discharge status this lane did not
 itself verify is never restated as closed).
 
 
+## V10 DESIGN INTAKE (2026-08-16) — authority now design-frames-v10 (137 frames)
+
+One-section handoff: the PORTAL CO-PRESENTER form (DEC-604's unframed bare stack) is now
+framed — composed INSIDE /portal/submissions/:id/edit (one view, not a route), existing
+participants listed FIRST, add-form second, submit is SECONDARY (the page's primary stays
+Save changes). Three mandatory copy facts: "No email goes to them — tell them yourself" ·
+co-presenters stay unpublished until the organiser publishes ("repeated per row, muted") ·
+window line "You can change this until the form closes on <date>" REPLACES the old
+"Edits are live on the public pages straight away" sub-line (which contradicted fact 2).
+Desktop 1600 frame (10--23): names two-up, email + 190px role select paired, footer
+right-flushed Cancel + Save changes; Add co-presenter left-aligned natural width.
+Duplicate = server-only rejection in the standard error shape (frame 10--22). SWARM:
+build portal edit to these two frames.
+
+
 ## GATE-9 SWEEP VERDICTS (fidelity-gate9/group*.md; orchestrator fixed the BROKEN + 4 regressions, dd72356b deployed + migration 0044)
 
 **Verdicts: 3 PASS (04/06/08) · 2 MINOR (01/10) · 6 MAJOR · 1 BROKEN (03, now FIXED).**
