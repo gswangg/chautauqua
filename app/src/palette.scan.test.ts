@@ -106,6 +106,16 @@ const ALLOWLIST = new Set<string>(
     '#EDE9DD',
     '#DDD8C8',
     '#A8A392',
+    // DEC-383 (wave-58 amendment) B8 "Interaction-states standard"
+    // (docs/design/DESIGN-RULINGS.md:108-177) button hover/active table --
+    // the pressed and secondary-hover tiers this ruling adds, not
+    // previously declared anywhere in the token set.
+    '#33401A', // --chq-brand-active (primary :active)
+    '#E4DFD2', // --chq-secondary-hover
+    '#DCD6C6', // --chq-secondary-active
+    '#8E8A7A', // --chq-border-hover (input hover border; same value the
+    // README's superseded pre-DEC-436 disabled tone used, now reused for a
+    // different token per the B8 table's "Inputs and selects" row)
   ].map((h) => h.toLowerCase()),
 );
 

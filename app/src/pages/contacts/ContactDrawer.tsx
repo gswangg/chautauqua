@@ -738,7 +738,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             <div className="chq-contacts-drawer-actions">
               <button
                 type="button"
-                className="chq-btn chq-btn-tertiary chq-contacts-delete-trigger"
+                className="chq-btn chq-btn-destructive-tertiary chq-contacts-delete-trigger"
                 onClick={() => {
                   setDeleteError(null);
                   setShowDeleteConfirm(true);
