@@ -450,7 +450,12 @@ async function main(): Promise<void> {
       id: formId,
       event_id: eventId,
       title: "Call for Proposals",
-      description: "Default CFP form for " + fixture.event.name,
+      // DEC-731 (wave 8 amendment): form.description IS the submitter-
+      // facing intro (repo/forms.ts:66 -> submit-views.tsx:511-523), not an
+      // administrative label -- this was a seed defect, not a binding one.
+      description:
+        `Three tracks, five formats, no account needed. We email you a portal link, and you can edit your ` +
+        `submission until the call closes.`,
       is_default: true,
       close_date: dayLabel(18),
       // DEC-887 amendment (task w40-a): the original open_date of

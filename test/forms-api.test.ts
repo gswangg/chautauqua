@@ -191,8 +191,9 @@ vi.mock("../src/server/repo/forms", async () => {
       formId === "form-1" && orgId === "org-1" ? FORM : null,
     ),
     getOrCreateForm: vi.fn(async () => ({ form: FORM, fields: [] })),
-    patchForm: vi.fn(async (_db: unknown, _formId: string, patch: { tracks?: string[] | null }) => ({
+    patchForm: vi.fn(async (_db: unknown, _formId: string, patch: { title?: string; tracks?: string[] | null }) => ({
       ...FORM,
+      title: patch.title !== undefined ? patch.title : FORM.title,
       // Mirrors repo.patchForm's real storage coercion: [] and null both
       // collapse to null (offer-all) once round-tripped through tracksJson.
       tracks: patch.tracks !== undefined ? (patch.tracks && patch.tracks.length > 0 ? patch.tracks : null) : FORM.tracks,
@@ -303,6 +304,36 @@ describe("PATCH /api/v1/forms/:formId openDate/closeDate order (DEC-517/DEC-731)
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
     expect(body.error.fields?.openDate).toBeDefined();
     expect(body.error.fields?.closeDate).toBeDefined();
+  });
+});
+
+// PATCH /api/v1/forms/:formId title (DEC-731, wave 8 amendment): "Form
+// name" (form.title) joins the accepted PATCH fields -- a title-only PATCH
+// round-trips, and an empty title is refused with the same fields.title
+// grammar as intro.
+describe("PATCH /api/v1/forms/:formId title (DEC-731)", () => {
+  it("accepts a title-only PATCH and round-trips it", async () => {
+    const app = await buildFormsApp(ORGANIZER);
+    const res = await app.request("/api/v1/forms/form-1", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ title: "DevFlow CFP" }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { title: string };
+    expect(body.title).toBe("DevFlow CFP");
+  });
+
+  it("rejects an empty title with fields.title", async () => {
+    const app = await buildFormsApp(ORGANIZER);
+    const res = await app.request("/api/v1/forms/form-1", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ title: "" }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.title).toBeDefined();
   });
 });
 
