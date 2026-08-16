@@ -64,7 +64,19 @@
   --chq-type-page-title-size: 36px;
   --chq-type-page-title-weight: 700;
   --chq-type-page-title-tracking: -0.04em;
-  --chq-type-page-title-phone-size: 25px;
+  /* README's typography table gives a 25-27px RANGE for "Page title
+     (phone)", not a single number (DEC-851 w2). The vendored 390px-frame
+     comps resolve it: every top-level nav page's <h1> at that width --
+     Agenda, Comms, Content, Submissions (each `docs/design/Chautauqua
+     *.dc.html`, width:390px frame) -- renders 27px; 25px only appears on
+     second-level drill-in titles (Templates, History, Roster, Files) that
+     also share the .chq-page-title class but sit one level in. Since the
+     class is used for both today, and the live rule below already spelled
+     27px before this token existed, 27 is the number that matches both the
+     vendored frame AND the shipped behaviour (DEC-582: the frame in the
+     repo outranks a measurement of it) -- so the TOKEN is corrected to
+     match, not the rendered rule. */
+  --chq-type-page-title-phone-size: 27px;
 
   --chq-type-overview-headline-size: 44px;
   --chq-type-overview-headline-weight: 700;
@@ -399,7 +411,7 @@ a:hover {
   }
 
   .chq-page-title {
-    font-size: 27px;
+    font-size: var(--chq-type-page-title-phone-size);
   }
 
   .chq-page {
@@ -479,9 +491,9 @@ a:hover {
 .chq-page-title {
   margin: 0;
   font-family: var(--chq-font-display);
-  font-size: 36px;
-  font-weight: 700;
-  letter-spacing: -0.04em;
+  font-size: var(--chq-type-page-title-size);
+  font-weight: var(--chq-type-page-title-weight);
+  letter-spacing: var(--chq-type-page-title-tracking);
   color: var(--chq-ink);
 }
 

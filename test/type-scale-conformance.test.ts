@@ -112,22 +112,52 @@ describe("type-scale conformance (DEC-643)", () => {
     expect(undeclared).toEqual([]);
   });
 
-  // Reverse direction, scoped to the roles this wave actually migrates (step 2
-  // of the mandate: "replace the literals in the five key-role rules"). The
-  // full typography table also seeds page-title/page-title-phone/body/meta/
-  // micro tokens for pages this wave deliberately does not touch (task's
-  // FILES YOU OWN excludes every other page CSS) -- those stay declared but
-  // legitimately unreferenced until a later wave migrates their pages, so
-  // they are not asserted against here.
-  const MIGRATED_ROLE_TOKEN_PREFIXES = [
-    "--chq-type-overview-headline",
-    "--chq-type-section-label",
-    "--chq-type-deadline-label",
-    "--chq-type-deadline-value",
-    "--chq-type-row-title",
+  // Reverse direction, over EVERY declared --chq-type-* token (DEC-851 w2
+  // amendment: the declared-with-no-reader rule now runs on CSS custom
+  // properties too, same as it runs on settings/query knobs). A token that
+  // is not yet referenced anywhere in app/src must be named in the ledger
+  // below with a real product reason -- "not migrated yet" is not a
+  // product reason, it is a schedule, so ledger reasons may not cite a
+  // wave or a branch (checked below). The ledger is asserted in BOTH
+  // directions: an entry whose token IS now referenced is exactly as
+  // wrong as a referenced-nowhere token missing from the ledger, so a
+  // migration that lands must delete its ledger row in the same change.
+  const UNREFERENCED_TOKENS_PENDING: { token: string; reason: string }[] = [
+    {
+      token: "--chq-type-body-size",
+      reason:
+        "Body copy (15-16px, README typography table) is spelled as a bare literal at dozens of paragraph/description sites across every page's CSS; migrating the role means touching every one of those sites, not this token's declaration.",
+    },
+    {
+      token: "--chq-type-body-weight",
+      reason:
+        "Same body role as --chq-type-body-size: body text's 400 weight is implicit (the CSS default) at almost every call site rather than spelled, so there is no single rule to point the token at yet.",
+    },
+    {
+      token: "--chq-type-micro-size",
+      reason:
+        "Micro labels (10-11px uppercase tags: status pills, badges, the 'no red' lateness/clash indicators) are a distinct literal at each component that draws one; no shared .chq-* class exists yet to hold this token's reference.",
+    },
+    {
+      token: "--chq-type-micro-tracking",
+      reason: "Same micro-label role as --chq-type-micro-size: no shared rule exists yet to carry the reference.",
+    },
+    {
+      token: "--chq-type-micro-weight",
+      reason: "Same micro-label role as --chq-type-micro-size: no shared rule exists yet to carry the reference.",
+    },
   ];
 
-  it("every --chq-type-* token for a role migrated this wave is referenced somewhere in app/src", () => {
+  it("ledger reasons name a product reason, not a schedule", () => {
+    for (const { token, reason } of UNREFERENCED_TOKENS_PENDING) {
+      expect(reason, `${token}: ledger reason reads like a schedule`).not.toMatch(/task-w\d+-[a-z]/i);
+      expect(reason.toLowerCase(), `${token}: ledger reason names a wave instead of a product reason`).not.toMatch(
+        /\bwave\b/,
+      );
+    }
+  });
+
+  it("every declared --chq-type-* token is either referenced in app/src or carries a ledger entry -- never both, never neither", () => {
     const appFiles = glob(join(REPO_ROOT, "app/src"), [".css", ".ts", ".tsx"]);
     const referenced = new Set<string>();
     for (const file of appFiles) {
@@ -136,11 +166,21 @@ describe("type-scale conformance (DEC-643)", () => {
         referenced.add(m[1]!);
       }
     }
-    const migratedTokens = Array.from(DECLARED_TYPE_TOKENS).filter((t) =>
-      MIGRATED_ROLE_TOKEN_PREFIXES.some((prefix) => t.startsWith(prefix)),
-    );
-    expect(migratedTokens.length).toBeGreaterThan(0);
-    const unreferenced = migratedTokens.filter((t) => !referenced.has(t));
-    expect(unreferenced).toEqual([]);
+    const ledgered = new Set(UNREFERENCED_TOKENS_PENDING.map((e) => e.token));
+
+    // Direction 1: every declared token is referenced XOR ledgered.
+    for (const token of DECLARED_TYPE_TOKENS) {
+      const isReferenced = referenced.has(token);
+      const isLedgered = ledgered.has(token);
+      expect(
+        isReferenced !== isLedgered,
+        `${token}: referenced=${isReferenced}, ledgered=${isLedgered} -- must be exactly one of the two`,
+      ).toBe(true);
+    }
+
+    // Direction 2: every ledger entry names a real declared token (no stale rows).
+    for (const token of ledgered) {
+      expect(DECLARED_TYPE_TOKENS.has(token), `${token}: ledgered but not declared in styles.css`).toBe(true);
+    }
   });
 });
