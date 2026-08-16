@@ -1474,7 +1474,9 @@
 
 .chq-review-editor-title-input:hover {
   border-color: var(--chq-rule);
-}
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: var(--chq-ink);
+  }
 
 /* DEC-409: no outline suppression here -- the shared `:focus-visible` ring
    in styles.css still applies; this just adds the border/background cue. */

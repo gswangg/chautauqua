@@ -337,7 +337,9 @@
 
 .chq-contacts-pipeline-enroll-result:hover {
   background: var(--chq-surface-sunk);
-}
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: var(--chq-ink);
+  }
 
 /* The chosen row keeps the ink fill the rest of the app uses for a selected
    chip (styles.css .chq-pill.is-active), so the selection reads at a glance

@@ -79,7 +79,9 @@
 .chq-eventswitcher-menu-btn[aria-expanded='true'] {
   border-color: var(--chq-border);
   background: var(--chq-surface-sunk);
-}
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: var(--chq-ink);
+  }
 
 .chq-eventswitcher-menu {
   position: absolute;
@@ -113,7 +115,9 @@
 
 .chq-eventswitcher-menu-item:hover {
   background: var(--chq-surface-sunk);
-}
+    /* a:hover-proof (user-filed): label never repaints on hover — see test/filled-control-hover-label.scan.test.ts */
+    color: var(--chq-ink);
+  }
 
 .chq-eventswitcher-menu-item.is-current {
   color: var(--chq-brand);
