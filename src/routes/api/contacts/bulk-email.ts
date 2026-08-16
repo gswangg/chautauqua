@@ -196,21 +196,6 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw bulkEmailMergeFieldError(preflightResult.missing, targets, targets.length);
     }
 
-    // DEC-397 wave-62 amendment (MINT ONLY WHAT THE MESSAGE CARRIES): mint a
-    // claim credential only if the send actually references {portal_link} —
-    // an unused mint is destructive (it revokes/replaces any prior grant)
-    // for no delivery benefit. (Unlike content-notes.ts and reminders.ts,
-    // which always embed the link in their fixed body text, this template
-    // is organizer-authored and may omit it entirely.)
-    const needsPortalLink = templateUsesMergeField(subject, "portal_link") || templateUsesMergeField(bodyText, "portal_link");
-    if (needsPortalLink) {
-      await applyMintedPortalLinks(kv, recipients, event.id, origin, targets);
-    }
-    const result = preflightRender(targets, subject, bodyText);
-    if (!result.ok) {
-      throw bulkEmailMergeFieldError(result.missing, targets, targets.length);
-    }
-
     // DEC-238 wave-14 amendment: bulk-email is the SAME dedupe class as
     // compose/send (src/routes/comms/send.ts:110-139) — mirrored here, not
     // reinvented. Stage 1 (intra-batch): collapse to the FIRST rendered
@@ -220,11 +205,16 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     // any surviving entry whose (email, subject) was already sent within
     // COMPOSE_DEDUPE_WINDOW_MS (src/domain/comms-dedupe.ts) — the one
     // window, never a second literal.
+    //
+    // DEC-397 wave-62 amendment (MINT ONLY WHAT SHIPS): dedupe keys are
+    // computed on the UNMINTED render (preflightResult), never on a
+    // post-mint render — a claim token is never part of the dedupe
+    // identity.
     void DEC_238;
     const seenAddresses = new Set<string>();
     let intraBatchSkipped = 0;
-    const afterIntraBatch: typeof result.rendered = [];
-    for (const rendered of result.rendered) {
+    const afterIntraBatch: typeof preflightResult.rendered = [];
+    for (const rendered of preflightResult.rendered) {
       const addressKey = rendered.email.trim().toLowerCase();
       if (seenAddresses.has(addressKey)) {
         intraBatchSkipped += 1;
@@ -240,14 +230,39 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       dedupeCutoff(Date.now()),
     );
     let crossCallSkipped = 0;
-    const toSend: typeof result.rendered = [];
+    const toSendKeys: typeof preflightResult.rendered = [];
     for (const rendered of afterIntraBatch) {
       if (recentlySent.has(dedupeKey(rendered.email, rendered.subject))) {
         crossCallSkipped += 1;
         continue;
       }
-      toSend.push(rendered);
+      toSendKeys.push(rendered);
     }
+
+    // DEC-397 wave-62 amendment (MINT ONLY WHAT SHIPS): mint a claim
+    // credential only for recipients that survived both dedupe stages —
+    // createClaimToken supersedes any prior grant onto a fresh 48h TTL, so
+    // minting for a skipped recipient would revoke their live,
+    // already-delivered portal link and never deliver the replacement.
+    // Only if the send actually references {portal_link} do we mint at all.
+    // (Unlike content-notes.ts and reminders.ts, which always embed the
+    // link in their fixed body text, this template is organizer-authored
+    // and may omit it entirely.) Targets/recipients are narrowed to
+    // toSendKeys' contactIds before minting, then just those targets are
+    // re-rendered (preflightRender is pure, so this extra pass costs no
+    // IO).
+    const needsPortalLink = templateUsesMergeField(subject, "portal_link") || templateUsesMergeField(bodyText, "portal_link");
+    const toSendContactIds = new Set(toSendKeys.map((r) => r.contactId));
+    const toSendTargets = targets.filter((t) => toSendContactIds.has(t.contactId));
+    const toSendRecipients = recipients.filter((r) => toSendContactIds.has(r.contactId));
+    if (needsPortalLink && toSendTargets.length > 0) {
+      await applyMintedPortalLinks(kv, toSendRecipients, event.id, origin, toSendTargets);
+    }
+    const finalResult = preflightRender(toSendTargets, subject, bodyText);
+    if (!finalResult.ok) {
+      throw bulkEmailMergeFieldError(finalResult.missing, toSendTargets, toSendTargets.length);
+    }
+    const toSend = finalResult.rendered;
 
     const { makeMailer } = await import("../../../server/context");
     // DEC-603: one id per fan-out call, shared by every recipient in this
