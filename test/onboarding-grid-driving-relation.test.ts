@@ -18,6 +18,24 @@ describe("getOnboardingGrid driving relation (DEC-829 wave-29)", () => {
     expect(src).not.toMatch(/\.from\(schema\.contact\)/);
   });
 
+  // DEC-370 (wave-62 amendment) collapsed the former sequential `const
+  // totalRows = await ...` declarations into destructured Promise.all waves
+  // (`const [totalRows, contactRows, overdueCountRows] = await
+  // Promise.all([...])`), so these blocks can no longer be sliced from a
+  // `const <name>` anchor. Each query is instead isolated by its OWN
+  // terminal clause and read back to the `.select(` that opens it — which
+  // keeps every assertion below scoped to exactly one query rather than to
+  // a whole wave (a wave-wide slice would pass if ANY sibling drove from
+  // participant, which is not what DEC-829 requires).
+  function queryBlockEndingAt(marker: string): string {
+    const end = src.indexOf(marker);
+    expect(end, `driving-relation scan anchor not found: ${marker}`).toBeGreaterThan(-1);
+    expect(src.indexOf(marker, end + 1), `driving-relation scan anchor is not unique: ${marker}`).toBe(-1);
+    const start = src.lastIndexOf(".select(", end);
+    expect(start).toBeGreaterThan(-1);
+    return src.slice(start, end + marker.length);
+  }
+
   it("drives totalRows/contactRows/speakersCountRows from schema.participant, joined to schema.submission and schema.contact", () => {
     // Three `.from(schema.participant)` call sites: totalRows, contactRows,
     // speakersCountRows. (The unrelated participation/roster queries further
@@ -27,17 +45,22 @@ describe("getOnboardingGrid driving relation (DEC-829 wave-29)", () => {
     const fromParticipantBlocks = src.split(".from(schema.participant)").length - 1;
     expect(fromParticipantBlocks).toBeGreaterThanOrEqual(3);
 
-    const totalRowsBlock = src.slice(src.indexOf("const totalRows"), src.indexOf("const total ="));
+    // totalRows: the wave-2 COUNT, the only query whose where clause is
+    // `whereExpr` alone with nothing chained after it.
+    const totalRowsBlock = queryBlockEndingAt(".where(whereExpr),");
     expect(totalRowsBlock).toContain(".from(schema.participant)");
     expect(totalRowsBlock).toContain("schema.submission.id");
     expect(totalRowsBlock).toContain("schema.contact.id");
 
-    const contactRowsBlock = src.slice(src.indexOf("const contactRows"), src.indexOf("const rowsByContact"));
+    // contactRows: the only grouped page SELECT.
+    const contactRowsBlock = queryBlockEndingAt(".groupBy(schema.contact.id)");
     expect(contactRowsBlock).toContain(".from(schema.participant)");
     expect(contactRowsBlock).toContain("schema.submission.id");
     expect(contactRowsBlock).toContain("schema.contact.id");
 
-    const speakersBlock = src.slice(src.indexOf("const speakersCountRows"), src.indexOf("const speakersCount ="));
+    // speakersCountRows: the only query gated by the bare roster predicate
+    // (the participation query below ANDs it inside `and(inArray(...), ...)`).
+    const speakersBlock = queryBlockEndingAt(".where(rosterParticipantConditions(eventId))");
     expect(speakersBlock).toContain(".from(schema.participant)");
     expect(speakersBlock).toContain("schema.submission.id");
     expect(speakersBlock).toContain("schema.contact.id");

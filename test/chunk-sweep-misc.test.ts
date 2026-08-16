@@ -50,8 +50,15 @@ describe("DEC-104 chunk sweep — misc lane", () => {
     // chunkIds. The taskIds list is bounded by "tasks in one event" (never
     // unboundedly grown per request) so it's ANDed in unchunked alongside the
     // chunked contactId batch.
+    // DEC-370 (wave-62): the former `for (const batch of chunkIds(...))`
+    // loop is now one concurrent Promise.all wave built from the SAME
+    // chunkIds batches — `contactBatches.map((batch) => ...)`. What DEC-340
+    // requires is unchanged and still asserted: the contactId bind is a
+    // chunkIds batch, never the raw page list.
     expect((src.match(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/g) ?? []).length).toBe(1);
-    expect(src).toMatch(/for \(const batch of chunkIds\(contactIdsInOrder\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.contactId, batch\)/);
+    expect(src).not.toContain("inArray(schema.taskAssignment.contactId, contactIdsInOrder)");
+    expect(src).toMatch(/const contactBatches = [\s\S]*?chunkIds\(contactIdsInOrder\)/);
+    expect(src).toMatch(/contactBatches\.map\(\(batch\) =>[\s\S]*?inArray\(schema\.taskAssignment\.contactId, batch\)/);
   });
 
   it("crud.ts: createTaskAssignments no longer passes the raw contactIds list to inArray", () => {

@@ -246,6 +246,17 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
       "per the adjacent DEC-104 comment.",
   ],
   [
+    "src/server/repo/tasks/grid.ts",
+    "batch",
+    "getOnboardingGrid's participation and cell queries bind `batch` from " +
+      "`contactBatches.map((batch) => ...)`, and contactBatches is " +
+      "`chunkIds(contactIdsInOrder)` computed once above -- chunk-bound one " +
+      "indirection away, same shape as the submissions/list.ts `batch` entry " +
+      "above. DEC-370's wave-62 amendment turned the two former `for (const " +
+      "batch of chunkIds(...))` loops into one concurrent Promise.all wave, " +
+      "which changes WHEN the batches issue, never how they are bounded.",
+  ],
+  [
     "src/server/repo/tasks/reminders.ts",
     "taskIdChunk",
     "taskIdChunk iterates idChunksOrUndefined(taskIds), which delegates to " +

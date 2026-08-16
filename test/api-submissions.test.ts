@@ -49,11 +49,16 @@ describe("parseListQuery (DEC-013 pagination + DEC-016 filters)", () => {
     expect(() => parseListQuery({ status: "pending,bogus,declined" })).toThrow("bogus");
   });
 
-  it("parses all four DEC-016 sorts and falls back to newest", () => {
+  // DEC-843 (wave-62 amendment): a sort token is a filter token — an
+  // unrecognised `?sort=` throws naming the token instead of silently
+  // falling back to 'newest', exactly like the status sibling above.
+  // Absent/empty still means the documented default.
+  it("parses all four DEC-016 sorts, defaults to newest when absent, and throws on an unknown token", () => {
     for (const sort of SORT_ORDERS) {
       expect(parseListQuery({ sort }).sort).toBe(sort);
     }
-    expect(parseListQuery({ sort: "bogus" }).sort).toBe("newest");
+    expect(parseListQuery({}).sort).toBe("newest");
+    expect(() => parseListQuery({ sort: "bogus" })).toThrow("bogus");
   });
 
   it("reads trackId and includeAnswers=1", () => {
