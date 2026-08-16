@@ -33,6 +33,7 @@ const NON_ARTICLE_FILES = new Set([
   "nav.ts",
   "where-next.ts",
   "search.ts",
+  "technical-names.ts", // STE rule-1.5 declaration module, not an article
 ]);
 
 /** Finds the single DocsArticle-shaped named export of a dynamically
