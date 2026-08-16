@@ -307,3 +307,73 @@ restated claim, a citation re-run at this wave's own runtime.
   not carry a stale verdict for this row until a merged boundary's own
   perf-smoke reading closes it by name.
 
+### Wave 62 closures (task-w62-j, MANDATE HYGIENE lane, docs only) — `main` `80a3eac3` ("scribe wave 61")
+
+Per DEC-069, wave 62 is a code wave; this is its docs-only lane, no gate
+ran, no `docs/verification-log/index/` section filed. Five named items
+re-read directly against the tree at this task's own runtime (not
+inherited from the mandate description) and recorded CLOSED-WITH-RECEIPT.
+Original item text is annotated in place in `docs/eval-findings.md`
+(GATE-8/GATE-9 sections) where a prior open item existed; this entry is
+the canonical receipt list.
+
+1. **`updateContentStatus` re-scopes on `eventId`** — CLOSED.
+   `src/server/repo/files-content-status.ts:45-54` — the DEC-962 wave-58
+   amendment comment at `:40-44` states the rule; the function signature
+   takes `eventId` as its second parameter (`:47`) and the `UPDATE ...
+   WHERE` clause ANDs `eq(schema.submission.eventId, eventId)` with the
+   submission-id predicate (`:54`) rather than trusting the caller's prior
+   ownership check alone — matches the bulk twin's shape already CLOSED
+   in an earlier wave.
+2. **CSV-import event coupling is now an explicit opt-in (DEC-810)** —
+   CLOSED for part (a) of GATE-8 P1 cluster 1 only (see annotation on that
+   item in `docs/eval-findings.md`; part (b), dedup-blindness, is untouched
+   and stays open). `app/src/pages/contacts/ImportWizard.tsx:108`
+   (`attachToEvent` state), `:382` (submit body spreads `eventId`/
+   `sessionTitle` only when `eventId && attachToEvent`), plus the
+   surrounding gates at `:366,465,478,664,675`.
+3. **Public agenda's track control states its verb** — CLOSED (GATE-8 P3
+   item 29). `src/routes/public/agenda-controls.tsx:180,198,209` — visible
+   label "Highlight a track", empty-option copy repeats it, action button
+   itself reads "Highlight".
+4. **Tracks/rooms Remove and co-presenter Remove both open ConfirmDialog**
+   — CLOSED, 2 of 3 GATE-9 "THREE destructive actions... NO confirm" sites
+   (embed "Turn off" untouched, stays open).
+   `app/src/pages/settings/TracksRoomsPanel.tsx:790` (DEC-941 comment
+   `:128`) and `app/src/pages/submissions/SubmissionDetailPage.tsx:1849`
+   (DEC-941 comment `:367`).
+5. **ProgressPanel carries the `chq-measure` token** — CLOSED (GATE-10
+   reopen row 2), source-verified only (no render gate this lane).
+   `app/src/pages/review/ProgressPanel.tsx:122` (loading branch) and
+   `:133` (`wrapperProps`, non-embedded loaded branch), comment at `:131`.
+
+**Two DO-NOT-CHASE rulings, GATE-8 P3, evidence re-read this wave:**
+
+(a) **Item 30 (SES-002/SES-032 identical-title collision) does not
+reproduce.** `scripts/seed.ts:133-160` (`SYNTH_TOPICS`, 27 entries) maps
+1:1 index-for-index onto `synthTitle(i)` (`:254-258`; the comment at
+`:162-165` states `additionalCount === SYNTH_TOPICS.length`, so `i %
+SYNTH_TOPICS.length === i` for every seeded row) — every synthesized
+submission title is distinct by construction. The three hand-authored
+fixture talk titles in `docs/fixtures/sample-data.json` ("Taming
+40-Minute CI: Incremental Builds at Monorepo Scale", "Your AI Pair
+Programmer Is Lying to You: Verification Patterns That Scale", "Docs That
+Answer Back: Retrieval-Grounded Documentation Sites") collide with none of
+the synthesized titles either. A live re-observation against an actual
+judge run is required before spending a lane on this — do not file a DEC
+assuming intentional duplication from this reading alone.
+
+(b) **Item 20 (deliverable-kind taxonomy lacks Headshot) is weakened by
+design, not closed.** `src/routes/files.ts:72-77`
+(`LIBRARY_KIND_TOKENS = [...FILE_KINDS, HEADSHOT_KIND]`, comment names
+DEC-773) deliberately keeps the upload-time `FILE_KINDS` vocabulary
+separate from the library `?kind=` filter token, which already accepts
+`'headshot'`. `src/server/repo/profile.ts:207-242`
+(`completeProfileTaskForContact`) already closes a profile/headshot task
+when the profile is saved, independent of the deliverable-kind taxonomy
+gap. `HEADSHOT_KIND` itself is declared at
+`src/server/repo/files-library.ts:32` (re-declared for the SPA at
+`app/src/pages/content/types.ts:42`) — a module this lane does not own; a
+future lane revisiting this item must coordinate with `files-library.ts`'s
+owner before touching the constant.
+
