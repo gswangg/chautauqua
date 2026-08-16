@@ -279,3 +279,144 @@ describe("getTaskFileScope against a fake db (DEC-248 population rule, real impl
     expect(scope).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// DEC-248 wave-70 amendment: the file's OWN task_assignment_id must be
+// authoritative over the reverse task_assignment.fileId link when the two
+// links name DIFFERENT assignments (different speakers). Exercised against a
+// real (in-memory) SQLite engine via node:sqlite + drizzle-orm's sqlite-proxy
+// driver -- same technique as test/file-version-identity.test.ts -- so
+// "physical row order" is a real, independent variable a fake row-array
+// mock can't represent: the two assignment rows are inserted in each
+// possible order across two test cases, and both must resolve to the SAME
+// speaker (the file's own link), proving the old or()+limit(1)-with-no-
+// orderBy query (whose winner SQLite alone decided) is gone.
+// ---------------------------------------------------------------------------
+describe("getTaskFileScope precedence: own task_assignment_id beats the reverse fileId link (DEC-248, real db)", () => {
+  const DDL = `
+    create table event (
+      id text primary key,
+      org_id text
+    );
+    create table task (
+      id text primary key,
+      event_id text
+    );
+    create table task_assignment (
+      id text primary key,
+      task_id text,
+      contact_id text,
+      status text,
+      file_id text,
+      created_at integer,
+      updated_at integer
+    );
+    create table file (
+      id text primary key,
+      submission_id text,
+      kind text,
+      filename text,
+      r2_key text,
+      size_bytes integer,
+      content_type text,
+      uploaded_by_contact_id text,
+      task_assignment_id text,
+      created_at integer,
+      updated_at integer
+    );
+  `;
+
+  async function makeTestDb() {
+    const { DatabaseSync } = await import("node:sqlite");
+    const { drizzle } = await import("drizzle-orm/sqlite-proxy");
+    const schema = await import("../src/db/schema");
+    const sqlite = new DatabaseSync(":memory:");
+    sqlite.exec(DDL);
+    const db = drizzle(
+      async (sqlText: string, params: unknown[], method: string) => {
+        const stmt = sqlite.prepare(sqlText);
+        stmt.setReturnArrays(true);
+        if (method === "run") {
+          stmt.run(...(params as never[]));
+          return { rows: [] };
+        }
+        const rows = stmt.all(...(params as never[])) as unknown[];
+        return { rows };
+      },
+      { schema },
+    );
+    return { db: db as unknown as import("../src/server/context").Db, sqlite };
+  }
+
+  // Seeds the shared fixture: event/task/file rows are identical across both
+  // orderings; only the INSERT ORDER of the two conflicting task_assignment
+  // rows (A = the file's own link, B = a second assignment whose fileId also
+  // points at the file) differs between the two test cases.
+  function seedShared(sqlite: import("node:sqlite").DatabaseSync) {
+    sqlite.prepare(`insert into event (id, org_id) values ('event-1', 'org-a')`).run();
+    sqlite.prepare(`insert into task (id, event_id) values ('task-1', 'event-1')`).run();
+    // The file's OWN link names assignment-A.
+    sqlite
+      .prepare(
+        `insert into file (id, submission_id, kind, filename, r2_key, size_bytes, content_type, uploaded_by_contact_id, task_assignment_id, created_at, updated_at)
+         values ('file-1', null, 'presentation', 'slides.pptx', 'k', 10, 'application/pdf', null, 'assignment-A', 0, 0)`,
+      )
+      .run();
+  }
+
+  it("resolves to speaker A (the file's own link) when B is inserted BEFORE A", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files-authz")>(
+      "../src/server/repo/files-authz",
+    );
+    const { db, sqlite } = await makeTestDb();
+    seedShared(sqlite);
+    // B first: a second assignment whose reverse fileId link also names this file.
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-B', 'task-1', 'contact-B', 'complete', 'file-1', 0, 0)`,
+      )
+      .run();
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-A', 'task-1', 'contact-A', 'complete', null, 1, 1)`,
+      )
+      .run();
+
+    const scope = await actual.getTaskFileScope(db, "file-1");
+    expect(scope).not.toBeNull();
+    expect(scope?.assignmentContactId).toBe("contact-A");
+    expect(actual.canAccessTaskFile({ role: "speaker", orgId: "org-a", contactId: "contact-A" }, scope!)).toBe(true);
+    expect(actual.canAccessTaskFile({ role: "speaker", orgId: "org-a", contactId: "contact-B" }, scope!)).toBe(false);
+    sqlite.close();
+  });
+
+  it("resolves to speaker A (the file's own link) when A is inserted BEFORE B", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files-authz")>(
+      "../src/server/repo/files-authz",
+    );
+    const { db, sqlite } = await makeTestDb();
+    seedShared(sqlite);
+    // A first this time -- physical order flipped; the outcome must not change.
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-A', 'task-1', 'contact-A', 'complete', null, 0, 0)`,
+      )
+      .run();
+    sqlite
+      .prepare(
+        `insert into task_assignment (id, task_id, contact_id, status, file_id, created_at, updated_at)
+         values ('assignment-B', 'task-1', 'contact-B', 'complete', 'file-1', 1, 1)`,
+      )
+      .run();
+
+    const scope = await actual.getTaskFileScope(db, "file-1");
+    expect(scope).not.toBeNull();
+    expect(scope?.assignmentContactId).toBe("contact-A");
+    expect(actual.canAccessTaskFile({ role: "speaker", orgId: "org-a", contactId: "contact-A" }, scope!)).toBe(true);
+    expect(actual.canAccessTaskFile({ role: "speaker", orgId: "org-a", contactId: "contact-B" }, scope!)).toBe(false);
+    sqlite.close();
+  });
+});

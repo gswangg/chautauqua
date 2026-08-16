@@ -2,7 +2,7 @@
 // files.ts (contention decomposition) — no behavior change, files.ts
 // re-exports everything below for existing callers.
 
-import { and, eq, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { listPlansForEvent, isSubmissionInReviewerScope } from "./review";
@@ -111,6 +111,9 @@ export interface FileScope {
  * NULL always have file.submissionId null and are served by
  * getTaskFileScope below instead — the two populations are disjoint on
  * that discriminator. */
+// DEC-248 wave-70 amendment sibling check: getFileScope's own .limit(1)
+// selects on schema.file.id (the table's primary key) — a single-column
+// equality on a unique key, so it's already deterministic; no change needed.
 export async function getFileScope(db: Db, fileId: string): Promise<FileScope | null> {
   const fileRows = await db
     .select({
@@ -232,6 +235,16 @@ export interface ResourceFileScope {
  * it). Organizers whose org owns the resource's event may serve it —
  * mirrors src/server/repo/portal.ts's getResourceDownloadScope, which is
  * the speaker-side counterpart for the same underlying resource/file rows. */
+// DEC-248 wave-70 amendment sibling check: getResourceFileScope's first
+// .limit(1) (on schema.file.id) is deterministic — unique key. Its second
+// .limit(1) (schema.resource, eq(resource.fileId, fileId)) sits on
+// resource_file_id_idx, a plain (non-unique) index, so DB schema alone
+// doesn't prove one row — but every resource.fileId is written exactly once,
+// from a freshly minted file id at resource-creation time (createFileResource
+// -> insertResourceFile), and no code path ever repoints an existing
+// resource's fileId at another file or vice versa, so the population is 1:1
+// in practice. Left unchanged; flagging here per DEC-248's instruction to
+// re-read siblings rather than silently leaving the gap unstated.
 export async function getResourceFileScope(db: Db, fileId: string): Promise<ResourceFileScope | null> {
   const fileRows = await db
     .select({
@@ -291,13 +304,22 @@ export interface TaskFileScope {
 /** Authz scope for GET /files/:fileId when the file is a task-assignment
  * upload: DEC-248 population is submissionId-null + referenced by a
  * task_assignment, of ANY kind (not restricted to 'handout'). Two disjoint
- * links can name that task_assignment: the plain-upload path (~/upload)
- * writes task_assignment.fileId pointing AT the file, while the kind='form'
+ * links can name a task_assignment: the plain-upload path (~/upload) writes
+ * task_assignment.fileId pointing AT the file, while the kind='form'
  * onboarding-field path (~/form, DEC-248 amendment wave 10) writes the
  * file's own task_assignment_id pointing back at its assignment (the field
  * answer only ever stores the file id inline in response_json, never a
- * reverse-joinable column on task_assignment). Either link resolves the same
- * assignment -> task -> event join for orgId. Per DEC-549 the discriminator
+ * reverse-joinable column on task_assignment). These links are NOT
+ * guaranteed to resolve the same assignment — a stale/reassigned
+ * task_assignment.fileId can point at a file whose taskAssignmentId now
+ * names a different assignment (different speaker). DEC-248 wave-70
+ * amendment: the file's OWN task_assignment_id is authoritative (it's the
+ * column the file's uploader/owner actually set); the reverse fileId link
+ * is only a fallback for files with no taskAssignmentId of their own (the
+ * plain ~/upload path never sets it). We therefore query id=taskAssignmentId
+ * FIRST when present, and only fall back to the fileId=... query when that
+ * lookup returns nothing — never a single or() with no total order, whose
+ * winner SQLite is free to pick arbitrarily. Per DEC-549 the discriminator
  * for the ~/upload path is the uploading task's deliverable_kind at upload
  * time: task.deliverable_kind NULL means the resulting file always has
  * submissionId null and is served here; task.deliverable_kind declared
@@ -323,21 +345,27 @@ export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFile
   const fileRow = fileRows[0];
   if (!fileRow || fileRow.submissionId !== null) return null;
 
-  const assignmentRows = await db
-    .select({
-      assignmentContactId: schema.taskAssignment.contactId,
-      orgId: schema.event.orgId,
-    })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-    .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
-    .where(
-      fileRow.taskAssignmentId
-        ? or(eq(schema.taskAssignment.fileId, fileId), eq(schema.taskAssignment.id, fileRow.taskAssignmentId))
-        : eq(schema.taskAssignment.fileId, fileId),
-    )
-    .limit(1);
-  const assignmentRow = assignmentRows[0];
+  const assignmentSelect = () =>
+    db
+      .select({
+        assignmentContactId: schema.taskAssignment.contactId,
+        orgId: schema.event.orgId,
+      })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+      .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id));
+
+  let assignmentRow: { assignmentContactId: string; orgId: string } | undefined;
+  if (fileRow.taskAssignmentId) {
+    const ownRows = await assignmentSelect()
+      .where(eq(schema.taskAssignment.id, fileRow.taskAssignmentId))
+      .limit(1);
+    assignmentRow = ownRows[0];
+  }
+  if (!assignmentRow) {
+    const fallbackRows = await assignmentSelect().where(eq(schema.taskAssignment.fileId, fileId)).limit(1);
+    assignmentRow = fallbackRows[0];
+  }
   if (!assignmentRow) return null;
 
   return {
