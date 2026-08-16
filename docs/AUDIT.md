@@ -208,6 +208,23 @@ ships a custom element with an origin-validated `src`, a sandboxed iframe, and
 `test/embed-element.test.ts`. The plain `<iframe>` snippet remains available as the
 unhardened fallback, not the only option.
 
+**Edge-cache purge bound and its blast radius (DEC-083):** publish-affecting writes purge
+/e/* and /embed/* by bumping a version token in KV, not by enumerating URLs. That purge
+is bounded, not instant: Workers KV's read-side `cacheTtl` floors at
+`PUBLIC_VERSION_STALENESS_SECONDS` (60s), so a colo already holding the pre-bump token can
+keep serving the old cached page for up to that window (DEC-083's wave-26 amendment); a
+signed-in viewer never hits this window because `publicCacheMiddleware` skips the cache
+entirely for any request carrying the session cookie. Separately, and by ruling rather than
+oversight (DEC-083's wave-70 amendment), the version key itself is ONE key for the whole
+instance (`PUBVER_KEY`, `src/server/pubcache.ts`) — a successful mutation on any event
+cold-caches the public/embed pages of every event in the instance, not just the one that
+changed. Stage 1 keeps this: per-event scoping needs either a slug→event (and
+embedId→event) resolution added to the anonymous read path the cache exists to protect, or
+a context-variable protocol threaded through roughly 40 mutating routes, and the measured
+public surface still passes its budget cold (15-98ms adjusted against a 150ms budget at
+2,030 submissions — `docs/eval-findings.md`'s "PROD-LIKE LOAD TEST" section) — so the cost
+is a warmth loss, not a budget violation.
+
 ## J11 — Reuse the network (`/admin/contacts`)
 
 Org-level contact directory, search, segments/rules, merge, CSV import/export across
