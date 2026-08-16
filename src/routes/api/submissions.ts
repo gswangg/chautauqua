@@ -42,6 +42,7 @@ import {
   OVER_CAP,
   getParticipantCount,
   getParticipantOwnership,
+  removeParticipantRow,
   getParticipantRow,
   getSubmissionLeadParticipantId,
   inviteParticipant,
@@ -632,6 +633,39 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
 
   return c.json(result, 201);
 });
+
+// DELETE /api/v1/submissions/:id/participants/:participantId — remove a
+// co-presenter from a submission (user-filed, gate-8 cycle: the detail
+// page's Remove action shipped with no server half — its render test mocks
+// the API, so the missing route only surfaced live on prod). The LEAD is
+// never removable here (same protection as the PATCH sibling's role guard);
+// recording a decline is the PATCH route's inviteStatus job — this removes
+// the row outright.
+submissionsRoutes.delete(
+  "/submissions/:id/participants/:participantId",
+  requireOrganizer,
+  csrfJson,
+  async (c) => {
+    const auth = requireAuth(c);
+    const id = c.req.param("id");
+    const participantId = c.req.param("participantId");
+    const ownership = await getSubmissionOwnership(c.var.db, id);
+    if (!ownership) throw new ApiError("not_found", "Submission not found");
+    if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
+    const scope = await getParticipantOwnership(c.var.db, participantId);
+    if (!scope || scope.submissionId !== id) {
+      throw new ApiError("not_found", "Participant not found on this submission");
+    }
+    const leadId = await getSubmissionLeadParticipantId(c.var.db, id);
+    if (participantId === leadId) {
+      throw new ApiError("invalid", "The lead participant cannot be removed", {
+        role: "Cannot remove the lead",
+      });
+    }
+    const deleted = await removeParticipantRow(c.var.db, participantId, id);
+    return c.json({ deleted });
+  },
+);
 
 interface ParticipantVisibilityBody {
   visible?: unknown;

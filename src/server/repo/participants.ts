@@ -7,7 +7,7 @@
 // source-scan test in test/api-participants.test.ts (DEC-009-style
 // tripwire).
 
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -374,4 +374,20 @@ export async function getParticipantRow(db: Db, participantId: string): Promise<
     visible: row.visible,
     inviteStatus: row.inviteStatus,
   };
+}
+
+/** Removes a participant row outright, scoped to its submission (user-filed,
+ * gate-8 cycle: the detail page's Remove shipped with no server half). The
+ * lead-protection decision belongs to the ROUTE (same split as the role
+ * retarget guard above) — this is the bare scoped delete. Returns the
+ * number of rows removed (0 when the scope missed). */
+export async function removeParticipantRow(
+  db: Db,
+  participantId: string,
+  submissionId: string,
+): Promise<number> {
+  const result = await db
+    .delete(schema.participant)
+    .where(and(eq(schema.participant.id, participantId), eq(schema.participant.submissionId, submissionId)));
+  return result.meta?.changes ?? 0;
 }

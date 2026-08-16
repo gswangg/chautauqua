@@ -43,6 +43,7 @@ function makeChain(rows: unknown[]) {
     from: () => chain,
     innerJoin: () => chain,
     where: () => chain,
+    orderBy: () => chain,
     limit: async () => rows,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
@@ -60,7 +61,14 @@ function fakeDb(selectQueue: unknown[][], insertReturning?: unknown[]) {
   let call = 0;
   const inserts: any[] = [];
   const updates: any[] = [];
+  const deletes: any[] = [];
   const db = {
+    delete: (table: unknown) => ({
+      where: async (cond: unknown) => {
+        deletes.push({ table, cond });
+        return { meta: { changes: 1 } };
+      },
+    }),
     select: () => {
       const rows = selectQueue[call] ?? [];
       call += 1;
@@ -84,7 +92,7 @@ function fakeDb(selectQueue: unknown[][], insertReturning?: unknown[]) {
       }),
     }),
   };
-  return { db: db as unknown as AppEnv["Variables"]["db"], inserts, updates };
+  return { db: db as unknown as AppEnv["Variables"]["db"], inserts, updates, deletes };
 }
 
 function appWithDbAndAuth(db: AppEnv["Variables"]["db"], auth: AuthInfo | undefined) {
@@ -423,5 +431,52 @@ describe("product principle 4: no mailer import reachable from the participant-i
       expect(source, `${path} must not import from mail/`).not.toMatch(/from ["'].*\/mail\//);
       expect(source, `${path} must not reference Mailer`).not.toMatch(/Mailer/);
     }
+  });
+});
+
+// User-filed (gate-8 cycle): the detail page's Remove co-presenter action
+// shipped with no server half — DELETE /submissions/:id/participants/:pid
+// did not exist and the SPA render test mocks the API, so it only surfaced
+// live. These pin the route: scoped delete, lead protection, 404 scoping.
+describe("DELETE /api/v1/submissions/:id/participants/:participantId", () => {
+  function deleteRequest(path: string) {
+    return new Request(`http://local${path}`, {
+      method: "DELETE",
+      headers: { "x-chq-csrf": "1" },
+    });
+  }
+
+  const P_LEAD = { id: "p-lead", submissionId: "sub-1", orgId: ORG_A };
+  const P_CO = { id: "p-co", submissionId: "sub-1", orgId: ORG_A };
+  const LEAD_ROLE_ROWS = [
+    { id: "p-lead", role: "speaker" },
+    { id: "p-co", role: "co_presenter" },
+  ];
+
+  it("removes a co-presenter and reports the deleted count", async () => {
+    const { db, deletes } = fakeDb([[SUBMISSION_ORG_A], [P_CO], LEAD_ROLE_ROWS]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(deleteRequest("/api/v1/submissions/sub-1/participants/p-co"));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ deleted: 1 });
+    expect(deletes.length).toBe(1);
+  });
+
+  it("refuses to remove the lead participant with a named field error", async () => {
+    const { db, deletes } = fakeDb([[SUBMISSION_ORG_A], [P_LEAD], LEAD_ROLE_ROWS]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(deleteRequest("/api/v1/submissions/sub-1/participants/p-lead"));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.role).toBe("Cannot remove the lead");
+    expect(deletes.length).toBe(0);
+  });
+
+  it("404s a participant that belongs to a different submission", async () => {
+    const { db, deletes } = fakeDb([[SUBMISSION_ORG_A], [{ id: "p-x", submissionId: "sub-OTHER", orgId: ORG_A }]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(deleteRequest("/api/v1/submissions/sub-1/participants/p-x"));
+    expect(res.status).toBe(404);
+    expect(deletes.length).toBe(0);
   });
 });
