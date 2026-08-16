@@ -3,6 +3,7 @@
 // (contention-hotspot decomposition; behavior-preserving).
 
 import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { id, createdAt, updatedAt } from "./common";
 
 export const portalSettings = sqliteTable(
@@ -73,7 +74,13 @@ export const file = sqliteTable(
   },
   (t) => ({
     file_submission_id_idx: index("file_submission_id_idx").on(t.submissionId),
-    file_previous_file_id_idx: index("file_previous_file_id_idx").on(t.previousFileId),
+    // DEC-818 amendment: the chain invariant is "at most one row may name a
+    // given predecessor" — a concurrent re-upload against the same head must
+    // be refused at the door, not renumbered. Partial (previous_file_id IS
+    // NOT NULL) so chain roots (previousFileId=null) don't collide.
+    file_previous_file_id_unique: uniqueIndex("file_previous_file_id_unique")
+      .on(t.previousFileId)
+      .where(sql`${t.previousFileId} is not null`),
     file_uploaded_by_contact_id_idx: index("file_uploaded_by_contact_id_idx").on(t.uploadedByContactId),
     file_task_assignment_id_idx: index("file_task_assignment_id_idx").on(t.taskAssignmentId),
   }),
