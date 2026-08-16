@@ -79,8 +79,13 @@ export function readStatusTokens(raw: string | string[] | undefined): Submission
  * different row sets between the two, and a typo can never silently widen
  * the filter to "every status". contentStatus tokens go through
  * readContentStatusTokens below with the same loud-on-unknown-token
- * contract (DEC-843 amendment, w38). Clamp rule per DEC-480 delegated to
- * clampPage/clampPerPage -- no local copy.
+ * contract (DEC-843 amendment, w38). `sort` goes through readSortToken
+ * below with the same loud-on-unknown-token contract (DEC-843 amendment,
+ * w62) — an unrecognised sort token throws rather than silently falling
+ * back to 'newest', since the list and its CSV export share this exact
+ * reader and a silent fallback would let the export's row order silently
+ * diverge from what its query string asked for. Clamp rule per DEC-480
+ * delegated to clampPage/clampPerPage -- no local copy.
  */
 export interface ListQueryInput {
   page?: string;
@@ -114,6 +119,23 @@ export function readReuploadedToken(raw: string | undefined): boolean | null {
  * parseListQuery, so a typo (e.g. `?contentStatus=aproved`) can never
  * silently widen the filter to "every content status" on either surface.
  */
+/**
+ * Reads the `sort` query token per the DEC-843 amendment (w62): modelled
+ * exactly on readStatusTokens above. Absent or empty resolves to the
+ * documented default 'newest'; any token outside SORT_ORDERS THROWS a plain
+ * Error naming the token — this is the ONE reader parseListQuery uses, so
+ * the list route and its CSV export (exports.ts) can never silently
+ * reorder a token neither of them recognised into the default order.
+ */
+export function readSortToken(raw: string | undefined): SortOrder {
+  if (raw === undefined || raw.trim().length === 0) return "newest";
+  const token = raw.trim();
+  if (!(SORT_ORDERS as readonly string[]).includes(token)) {
+    throw new Error(`Unknown sort '${token}'`);
+  }
+  return token as SortOrder;
+}
+
 export function readContentStatusTokens(raw: string | undefined): ContentStatus[] {
   const tokens = (raw ?? "")
     .split(",")
@@ -145,10 +167,7 @@ export function parseListQuery(raw: ListQueryInput): ParsedListQuery {
 
   const trackId = boundedQueryString(raw.trackId, "trackId", MAX_FILTER_ID_LENGTH);
 
-  const sort: SortOrder =
-    raw.sort && (SORT_ORDERS as readonly string[]).includes(raw.sort)
-      ? (raw.sort as SortOrder)
-      : "newest";
+  const sort = readSortToken(raw.sort);
 
   const includeAnswers = raw.includeAnswers === "1";
 
