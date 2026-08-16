@@ -22,6 +22,7 @@ import {
 } from "../../server/repo/submit";
 import { findAccountUserId } from "../../server/repo/comms";
 import { commitSubmissionDelete } from "../../server/repo/submission-delete";
+import { deleteContact } from "../../server/repo/contacts/crud";
 import { validateAnswers } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName } from "../../forms/types";
@@ -124,13 +125,16 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   //      spoofable, so an attacker can rotate it to bypass the IP budget
   //      while hammering the same address. That second check runs later,
   //      once `email` is known (just above the first write) — see there.
-  // DEC-072 (wave-58 amendment)/DEC-949: this IP-keyed check is a FAILURE
-  // budget, not an identity budget — it stays UNREFUNDED on any later
-  // failure. requestIpFromHeaders collapses every untrustworthy/absent
-  // header to the single bucket "unknown" (DEC-949), so refunding here
-  // would let an attacker who never presents a real IP spend the same
-  // never-decrementing bucket forever; the guard only works because it
-  // never gives units back.
+  // DEC-072 (wave-67 amendment): this IP-keyed check is a FAILURE budget,
+  // not an identity budget — it stays UNREFUNDED on any later failure.
+  // requestIpFromHeaders (src/lib/rate-limit.ts, see its own doc comment)
+  // is only "unknown" when BOTH headers are absent; a present
+  // x-forwarded-for is returned verbatim and is client-controlled, so an
+  // attacker can rotate it across distinct spoofed values to walk this
+  // budget across distinct buckets instead of exhausting a single one.
+  // Refunding here would make that rotation free, letting the attacker
+  // burn an unlimited number of never-decrementing buckets at zero cost;
+  // the guard only works because it never gives units back.
   const kv = c.env.KV as unknown as DraftKVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const rate = await checkAndIncrementScopedLimit(db, "submit", ip, Date.now(), {
@@ -384,6 +388,18 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
     (r): r is PromiseRejectedResult => r.status === "rejected",
   );
   if (firstRejection !== undefined) {
+    // DEC-713 (wave-67 amendment): no submission row exists yet on this
+    // path, but `createContact` above already minted a contact row for a
+    // never-before-seen email — clean it up before the best-effort R2
+    // sweep, mirroring the DB-write-phase catch below. A pre-existing
+    // contact (contactIsFresh === false) is never touched.
+    if (contactIsFresh) {
+      try {
+        await deleteContact(db, contactId);
+      } catch (cleanupErr) {
+        console.error("submit upload: contact cleanup failed", cleanupErr);
+      }
+    }
     try {
       await Promise.all(minted.map((m) => fileStore.delete(m.r2Key)));
     } catch (cleanupErr) {
@@ -400,9 +416,11 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
 
   // The DB write phase is one committed unit: any failure past this point
   // (including a thrown error from any of these repo calls) deletes every
-  // R2 object just written above and the submission row it created (via the
-  // same cascade delete the admin session-delete route uses), then rethrows
-  // so the failure is loud rather than leaving an orphaned row or R2 object.
+  // R2 object just written above, the submission row it created (via the
+  // same cascade delete the admin session-delete route uses), and — DEC-713
+  // wave-67 amendment — the CRM contact row this request minted, if any
+  // (contactIsFresh; a pre-existing contact is never touched), then
+  // rethrows so the failure is loud rather than leaving an orphaned row.
   let submission: { id: string; seq: number } | undefined;
   try {
     submission = await createSubmission(db, { eventId: event.id, formId: form.id, title, description });
@@ -428,12 +446,24 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
 
     await upsertSubmissionAnswers(db, submission.id, cleaned);
   } catch (err) {
-    // DEC-713 (wave 21): a rollback is still an ordering — commit the row
-    // delete first, then best-effort clean up the R2 objects (DEC-530: the
-    // cleanup still fans out in parallel), and always rethrow the original
-    // error rather than letting cleanup failure mask it.
+    // DEC-713 (wave 21, amended wave 67): a rollback is still an ordering —
+    // commit the submission cascade first (this also removes any
+    // `participant` row this request just created, so a freshly-minted
+    // contact is never referenced by a dangling participant when the
+    // contact delete below runs), then delete the contact row THIS
+    // REQUEST minted (contactIsFresh, never a pre-existing contact), then
+    // best-effort clean up the R2 objects (DEC-530: the cleanup still fans
+    // out in parallel), then refund the budget, and always rethrow the
+    // original error rather than letting any cleanup failure mask it.
     if (submission !== undefined) {
       await commitSubmissionDelete(db, event.id, [submission.id]);
+    }
+    if (contactIsFresh) {
+      try {
+        await deleteContact(db, contactId);
+      } catch (cleanupErr) {
+        console.error("submit rollback: contact cleanup failed", cleanupErr);
+      }
     }
     try {
       await Promise.all(preparedFiles.map((pf) => fileStore.delete(pf.r2Key)));
