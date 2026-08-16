@@ -130,3 +130,65 @@ export function enumerateRegisteredRoutes(): RegisteredRoute[] {
   }
   return registeredRoutes;
 }
+
+let cachedRoutes: RegisteredRoute[] | null = null;
+function allRoutes(): RegisteredRoute[] {
+  if (!cachedRoutes) cachedRoutes = enumerateRegisteredRoutes();
+  return cachedRoutes;
+}
+
+/** DEC-817 (wave-53 amendment): resolves a client-declared request (method +
+ * path, as written by the SPA's api* helpers or a render test's mockApi key)
+ * against the registered route table. Semantics fixed by the decision so
+ * every lane that implements this reaches byte-identical behavior:
+ *   - method is upper-cased.
+ *   - `?...`/`#...` is stripped from clientPath.
+ *   - every `${...}` span is replaced with the literal segment `:param`.
+ *   - compared segment-wise against every same-method registration: a
+ *     registered `:name` segment matches any one client segment; a
+ *     registered `*` (or a trailing `/*`) matches all remaining segments;
+ *     every other segment must match exactly.
+ *   - first match wins; undefined when none match.
+ */
+export function resolveRegisteredRoute(method: string, clientPath: string): RegisteredRoute | undefined {
+  const upperMethod = method.toUpperCase();
+  const withoutHash = clientPath.split("#")[0]!;
+  const withoutQuery = withoutHash.split("?")[0]!;
+  const normalized = withoutQuery.replace(/\$\{[^}]*\}/g, ":param");
+  const clientSegments = normalized.split("/").filter((s) => s.length > 0);
+
+  for (const route of allRoutes()) {
+    if (route.method !== upperMethod) continue;
+    const routeSegments = route.path.split("/").filter((s) => s.length > 0);
+
+    let matched = true;
+    let ri = 0;
+    let ci = 0;
+    while (ri < routeSegments.length) {
+      const rSeg = routeSegments[ri]!;
+      if (rSeg === "*") {
+        // Matches all remaining client segments (including zero).
+        ri++;
+        ci = clientSegments.length;
+        continue;
+      }
+      if (ci >= clientSegments.length) {
+        matched = false;
+        break;
+      }
+      const cSeg = clientSegments[ci]!;
+      if (rSeg.startsWith(":")) {
+        // matches any one client segment
+      } else if (rSeg !== cSeg) {
+        matched = false;
+        break;
+      }
+      ri++;
+      ci++;
+    }
+    if (matched && ci === clientSegments.length) {
+      return route;
+    }
+  }
+  return undefined;
+}
