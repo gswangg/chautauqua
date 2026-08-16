@@ -146,10 +146,14 @@ describe("POST /api/v1/users", () => {
       body: JSON.stringify({ email: "new@org.test", role: "reviewer" }),
     });
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { id: string; email: string; role: string; password: string };
+    const body = (await res.json()) as { id: string; email: string; role: string; password: string; welcomeEmail: string };
     expect(body.email).toBe("new@org.test");
     expect(body.role).toBe("reviewer");
     expect(body.password).toMatch(/^[a-z2-7]{4}-[a-z2-7]{4}-[a-z2-7]{4}$/);
+    // DEC-238 (wave 65 amendment): this org has no events (mocked
+    // getAnchorEventForOrg returns undefined above), so no welcome notice
+    // was attempted.
+    expect(body.welcomeEmail).toBe("not_sent_no_event");
   });
 
   it("400s on a missing email or bad role", async () => {

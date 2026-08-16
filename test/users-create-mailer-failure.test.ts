@@ -72,9 +72,12 @@ describe("POST /api/v1/users — welcome-notice mailer failure is best-effort (D
       body: JSON.stringify({ email: "new@org.test", role: "reviewer" }),
     });
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { id: string; email: string; role: string; password: string };
+    const body = (await res.json()) as { id: string; email: string; role: string; password: string; welcomeEmail: string };
     expect(body.email).toBe("new@org.test");
     expect(body.password).toMatch(/^[a-z2-7]{4}-[a-z2-7]{4}-[a-z2-7]{4}$/);
     expect(mailerSendMock).toHaveBeenCalledTimes(1);
+    // DEC-238 (wave 65 amendment): the mailer threw, so the 201 body must
+    // say so rather than pretend the notice sent.
+    expect(body.welcomeEmail).toBe("not_sent_failed");
   });
 });
