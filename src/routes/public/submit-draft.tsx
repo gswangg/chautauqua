@@ -23,7 +23,7 @@ import { parseCookies, newCsrfToken, buildDraftCookie, isSecureRequest, CSRF_COO
 import { publicNotFound } from "./not-found";
 import { ClosedPage, NotYetOpenPage, SubmitPage } from "./submit-views";
 import { extractAnswers, extractTrackIds, applyNameSplit } from "./submit-body";
-import { emailBudgetOk } from "./submit-guards";
+import { emailBudgetOk, refundEmailBudget } from "./submit-guards";
 
 export const publicSubmitDraftRoutes = new Hono<AppEnv>();
 
@@ -52,6 +52,10 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
   // x-forwarded-for is client-supplied and not a trustworthy identity, so an
   // attacker can rotate it to bypass the IP budget while hammering one
   // address's draft slot.
+  // DEC-072 (wave-58 amendment)/DEC-949: IP-keyed, stays UNREFUNDED — same
+  // reasoning as final-submit's "submit" scope (see submit-post.tsx): it's a
+  // FAILURE budget over the single "unknown" bucket every untrustworthy/
+  // absent IP collapses to, and refunding it would stop it being a guard.
   const kv = c.env.KV as unknown as DraftKVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const rate = await checkAndIncrementScopedLimit(db, "draft", ip, Date.now(), {
@@ -150,9 +154,12 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
   // final-submit (see the comment above the per-IP check). A draft posted
   // before the submitter has typed an email skips this check entirely and
   // behaves exactly as before.
+  // DEC-072 (wave-58 amendment): read the clock once so a refund below (if
+  // saveDraft fails) lands in the exact same window bucket as this spend.
+  const budgetNow = Date.now();
   const draftEmail = String(answers[LOCKED_SPEAKER_FIELDS[2]] ?? "").trim().toLowerCase();
   if (draftEmail) {
-    const draftEmailRateOk = await emailBudgetOk(db, "draft-email", draftEmail, 30);
+    const draftEmailRateOk = await emailBudgetOk(db, "draft-email", draftEmail, 30, budgetNow);
     if (!draftEmailRateOk) {
       return c.html(
         <SubmitPage
@@ -181,7 +188,20 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
   const cookieName = draftCookieName(form.id);
   const token = cookies[cookieName] ?? newDraftToken();
   const savedAt = Date.now();
-  await saveDraft(kv, token, { formId: form.id, answers, savedAt });
+  // DEC-072 (wave-58 amendment): saveDraft's KV put is the one write on this
+  // path after the draft-email spend above — unlike submit-post there was no
+  // pre-existing try/catch-rethrow shape here, so this one is added rather
+  // than leaving the question open. A rejected put is our own transient
+  // failure, not submitter abuse; refund only if the identity-keyed budget
+  // was actually spent (draftEmail present) before rethrowing unmodified.
+  try {
+    await saveDraft(kv, token, { formId: form.id, answers, savedAt });
+  } catch (err) {
+    if (draftEmail) {
+      await refundEmailBudget(db, "draft-email", draftEmail, budgetNow);
+    }
+    throw err;
+  }
 
   if (!cookies[cookieName]) {
     c.header(
