@@ -68,9 +68,6 @@ describe('DayGrid clash cards', () => {
         submissionIds: ['sub-1', 'sub-2'],
         day: '2026-08-13',
         roomId: 'room-1',
-        speakerContactIds: [],
-        breakId: null,
-        breakLabel: null,
         detail: 'room clash',
       },
       {
@@ -78,9 +75,6 @@ describe('DayGrid clash cards', () => {
         submissionIds: ['sub-1', 'sub-2'],
         day: '2026-08-13',
         roomId: null,
-        speakerContactIds: ['ct-1'],
-        breakId: null,
-        breakLabel: null,
         detail: 'speaker clash',
       },
     ];
@@ -101,9 +95,6 @@ describe('DayGrid clash cards', () => {
         submissionIds: ['sub-1', 'sub-2'],
         day: '2026-08-13',
         roomId: 'room-1',
-        speakerContactIds: [],
-        breakId: null,
-        breakLabel: null,
         detail: 'room clash',
       },
     ];

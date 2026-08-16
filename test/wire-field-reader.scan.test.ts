@@ -7,15 +7,17 @@
 // with `perDropdown` -- either the server is computing something nobody can
 // see, or a screen is missing a fact it was promised.
 //
-// SCOPE (bounded on purpose, per this task's own mandate): exactly
-// app/src/pages/review/types.ts, app/src/pages/contacts/types.ts and
-// app/src/pages/content/types.ts. For every field declared on a
-// RESPONSE-shaped `interface` in those three files, this scan asserts at
-// least one reader exists somewhere under app/src -- a property access
-// (`x.field`), a destructure (`{ field }`/`{ other, field }`), or a quoted
-// string key (`'field'`/`"field"`). Request-only / SPA-internal-draft types
-// (documented as such in their own file, e.g. PlanDraft) are excluded from
-// the population with a written reason, never silently skipped.
+// SCOPE (DEC-851 wave-5 amendment: derive the population, don't hand-list
+// it -- a hand-limited schedule is not a principle): every `app/src/pages/
+// **/types.ts` module, discovered by a directory walk (sorted, so a failure
+// is stable across runs), not the three files this scan used to name by
+// hand. For every field declared on a RESPONSE-shaped `interface` in any of
+// those files, this scan asserts at least one reader exists somewhere under
+// app/src -- a property access (`x.field`), a destructure (`{ field }`/
+// `{ other, field }`), or a quoted string key (`'field'`/`"field"`).
+// Request-only / SPA-internal-draft types (documented as such in their own
+// file, e.g. PlanDraft) are excluded from the population with a written
+// reason, never silently skipped.
 //
 // VERDICT KEY:
 //   'read'      -- a reader exists; this row exists so the ledger stays a
@@ -37,11 +39,25 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(HERE); // test/ -> repo root
 const APP_SRC_DIR = join(ROOT, 'app', 'src');
 
-const TARGET_FILES = [
-  'app/src/pages/review/types.ts',
-  'app/src/pages/contacts/types.ts',
-  'app/src/pages/content/types.ts',
-];
+/** Every `app/src/pages/<page>/types.ts` module, discovered by a walk (not
+ * hand-listed) and sorted so a broken walk fails the same way every run. */
+function findPagesTypesFiles(): string[] {
+  const pagesDir = join(APP_SRC_DIR, 'pages');
+  const out: string[] = [];
+  for (const pageName of readdirSync(pagesDir).sort()) {
+    const pageDir = join(pagesDir, pageName);
+    if (!statSync(pageDir).isDirectory()) continue;
+    const typesFile = join(pageDir, 'types.ts');
+    try {
+      if (statSync(typesFile).isFile()) out.push(relPath(typesFile));
+    } catch {
+      // no types.ts in this page directory -- not every page has one.
+    }
+  }
+  return out;
+}
+
+const TARGET_FILES = findPagesTypesFiles();
 
 // ---------------------------------------------------------------------------
 // A tiny string/comment-aware scanner: strips comments, then splits an
@@ -284,6 +300,42 @@ interface LedgerEntry {
 
 const LEDGER: LedgerEntry[] = [
   {
+    key: 'app/src/pages/comms/types.ts#EmailLogDetail.bodyHtml',
+    verdict: 'exempt',
+    reason:
+      "DEC-833's own text is explicit that GET .../email-log/:emailId 'returns the full stored row' as the audit record ('it is shown as sent, including for a failed attempt') -- the route (src/routes/comms/email-log.ts) deliberately spreads the whole row rather than a narrowed projection, so deleting bodyHtml here would contradict the ruling's own full-row API contract. What DEC-833/DEC-846 mandate for DISPLAY is narrower: 'renders the stored subject and body verbatim' names bodyText only, and RecentSends.tsx's disclosure does exactly that -- rendering a second, HTML-vs-plaintext toggle inside the SPA's audit disclosure (the dev mailbox at src/routes/dev/mailbox.tsx already owns that view, unredacted, dev-only) is a distinct product surface no decision or design mock asks for.",
+  },
+  {
+    key: 'app/src/pages/comms/types.ts#EmailLogDetail.icsText',
+    verdict: 'exempt',
+    reason:
+      "same DEC-833 'full stored row is the audit record' rationale as bodyHtml above -- the API contract intentionally returns it, but no decision or design mock asks the SPA's 'Show what was sent' disclosure to render a raw ICS body or offer a download; that surface already exists, dev-only, at src/routes/dev/mailbox.tsx's calendar-invite download link.",
+  },
+  {
+    key: 'app/src/pages/comms/types.ts#EmailLogDetail.icsFilename',
+    verdict: 'exempt',
+    reason:
+      "same DEC-833 'full stored row' rationale as icsText immediately above -- it names the file icsText would download as, so it stands or falls with that field's own exemption; no SPA surface downloads the ICS body this filename would label.",
+  },
+  {
+    key: 'app/src/pages/overview/types.ts#SpeakersAggregate.contactsOwing',
+    verdict: 'exempt',
+    reason:
+      "DEC-370's own text names the v1 aggregate keys (including speakers, which carries this field) as 'RETAINED verbatim so the nav badge (DEC-369) and any other reader keep working' -- a payload-stability contract, not an oversight. overdueAssignments (this interface's sibling field) IS read by useNavExceptions.ts; contactsOwing has no design mock asking for a second, distinct roster-population number on Overview's nav badge or headline, so wiring one would be inventing a UI fact DEC-370 never asked for.",
+  },
+  {
+    key: 'app/src/pages/overview/types.ts#ContentAggregate.awaitingApproval',
+    verdict: 'exempt',
+    reason:
+      "same DEC-370 'v1 aggregate keys RETAINED verbatim' rationale as SpeakersAggregate.contactsOwing above -- content.awaitingApproval is one of the same named-and-retained v1 keys, kept for payload-contract stability rather than because a v2 screen currently displays it (contentApproval.total, a distinct v2 field, is what Overview's own worklist section reads instead).",
+  },
+  {
+    key: 'app/src/pages/speakers/types.ts#OnboardingGridCounts.outstandingContacts',
+    verdict: 'exempt',
+    reason:
+      "DEC-340 names counts:{speakers, outstandingRequired, overdue, outstandingContacts} as the binding GET .../onboarding wire contract, and DEC-776 rules outstandingContacts governs the SAME chase-predicate population as outstandingRequired/the portal task list -- it is a contractually-named aggregate, not a display number the header row was ever asked to print alongside 'N accepted / M tasks open / K overdue' (OnboardingGrid.tsx renders exactly those three, by DEC-776's own text).",
+  },
+  {
     key: 'app/src/pages/review/types.ts#ResultsRow.perCriterion',
     verdict: 'exempt',
     reason:
@@ -318,8 +370,13 @@ const LEDGER: LedgerEntry[] = [
 describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response field with no reader is a lie', () => {
   const population = scanPopulation();
 
-  it('tripwire: the three target files declare at least 60 response-shaped fields, never hardcoded', () => {
-    expect(population.length).toBeGreaterThanOrEqual(60);
+  // DEC-851 wave-5 amendment: the population is now a directory walk of all
+  // nine app/src/pages/**/types.ts modules (was three, hand-listed) -- the
+  // tripwire is raised proportionally (measured population is 645) so a
+  // broken walk (e.g. one that silently falls back to zero, or only finds
+  // a handful of pages) fails loudly instead of passing vacuously.
+  it('tripwire: the nine app/src/pages/**/types.ts modules declare at least 500 response-shaped fields, never hardcoded', () => {
+    expect(population.length).toBeGreaterThanOrEqual(500);
   });
 
   it('the excluded-interfaces list only names interfaces that actually exist in the target files (an exclusion for a dead name hides nothing)', () => {

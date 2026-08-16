@@ -113,7 +113,7 @@ describe("DEC-291 getAssignmentResponseDetail", () => {
     const detail = await getAssignmentResponseDetail(db, ASSIGNMENT_ID);
     expect(detail).not.toBeNull();
     expect(detail?.taskTitle).toBe("Hotel stay requirement form");
-    expect(detail?.taskKind).toBe("form");
+    expect(detail).not.toHaveProperty("taskKind");
     expect(detail?.contact).toEqual({ id: CONTACT_ID, name: "Ada Lovelace", email: "ada@example.com" });
     expect(detail?.completedAt).toBe(1700000000000);
     expect(detail?.fields).toEqual([

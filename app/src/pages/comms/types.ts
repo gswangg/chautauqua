@@ -140,7 +140,9 @@ export interface EmailBatchRow {
   batchKey: string;
   subject: string;
   sentAt: number;
-  recipientCount: number;
+  // DEC-851 wave-5 amendment: recipientCount was deleted from the wire --
+  // statusCounts already carries the same total, and no screen read the
+  // raw count independently of it.
   statusCounts: Record<string, number>;
   // w41-g (DEC-751 amendment): the template that produced this batch, or
   // null for a hand-written send with no template. Paired with the

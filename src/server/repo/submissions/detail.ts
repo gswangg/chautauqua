@@ -47,8 +47,13 @@ export interface SubmissionDetail {
   contentStatus: string;
   trackIds: string[];
   formId: string | null;
-  acceptedAt: number | null;
-  icsSequence: number;
+  // DEC-851 wave-5 amendment: acceptedAt/icsSequence were deleted from this
+  // admin detail wire shape -- SubmissionDetailPage.tsx:957-960 already
+  // documents why the rail reads `updatedAt` for the decided-date label
+  // instead (acceptedAt only ever fires on the FIRST accept transition, so
+  // it goes stale on a later re-decide, while updatedAt is bumped on every
+  // status write); icsSequence is a comms-send concern (RenderedRecipientIcs
+  // .sequence, DEC-051) with no admin-detail surface naming it.
   createdAt: number;
   updatedAt: number;
   participants: SubmissionDetailParticipant[];
@@ -136,8 +141,6 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       description: schema.submission.description,
       status: schema.submission.status,
       contentStatus: schema.submission.contentStatus,
-      acceptedAt: schema.submission.acceptedAt,
-      icsSequence: schema.submission.icsSequence,
       createdAt: schema.submission.createdAt,
       updatedAt: schema.submission.updatedAt,
       recordPrefix: schema.event.recordPrefix,
@@ -239,8 +242,6 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
     contentStatus: row.contentStatus,
     trackIds,
     formId: row.formId,
-    acceptedAt: row.acceptedAt ? row.acceptedAt.getTime() : null,
-    icsSequence: row.icsSequence,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
     participants: participantRows.map((p) => {

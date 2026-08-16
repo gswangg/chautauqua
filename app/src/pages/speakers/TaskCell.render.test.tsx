@@ -21,8 +21,6 @@ function makeCell(overrides: Partial<OnboardingCell> = {}): OnboardingCell {
     completedAt: null,
     fileId: null,
     fileName: null,
-    fileSizeBytes: null,
-    lastRemindedAt: null,
     assignedAt: 0,
     ...overrides,
   };

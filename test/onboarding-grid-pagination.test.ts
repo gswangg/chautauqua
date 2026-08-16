@@ -219,9 +219,9 @@ describe("getOnboardingGrid (DEC-340)", () => {
     // Deliberately more cell rows than contacts, to prove `total` isn't
     // derived from assignment-row count.
     const cellRows = [
-      { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
-      { assignmentId: "a2", taskId: "task-2", status: "complete", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
-      { assignmentId: "a3", taskId: "task-3", status: "pending", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
+      { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, fileName: null, contactId: "c1", createdAt: new Date(500_000) },
+      { assignmentId: "a2", taskId: "task-2", status: "complete", completedAt: null, fileId: null, fileName: null, contactId: "c1", createdAt: new Date(500_000) },
+      { assignmentId: "a3", taskId: "task-3", status: "pending", completedAt: null, fileId: null, fileName: null, contactId: "c1", createdAt: new Date(500_000) },
     ];
     const { db } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 1 }], contacts, OVERDUE_COUNT_ROW, [participationRow("c1")], cellRows]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
@@ -303,9 +303,13 @@ describe("getOnboardingGrid (DEC-340)", () => {
   });
 
   // DEC-920: the cells select joins schema.file so the grid can name the
-  // file, not just flag its presence -- filename/size come back on the same
-  // cellRows call, and a cell with no fileId carries null for both.
-  it("cells carry the joined filename/size for an assignment with a file, and null for one without (DEC-920)", async () => {
+  // file, not just flag its presence -- filename comes back on the same
+  // cellRows call, and a cell with no fileId carries null.
+  //
+  // DEC-851 wave-5 amendment: fileSizeBytes/lastRemindedAt no longer land
+  // on the wire cell (no roster screen ever read either), so this test only
+  // asserts the filename join that DEC-920 actually wired a reader for.
+  it("cells carry the joined filename for an assignment with a file, and null for one without (DEC-920)", async () => {
     const contacts = [contactRow("c1", "Ada", "Lovelace")];
     const cellRows = [
       {
@@ -315,8 +319,6 @@ describe("getOnboardingGrid (DEC-340)", () => {
         completedAt: null,
         fileId: "file-1",
         fileName: "slides.pdf",
-        fileSizeBytes: 2048,
-        lastRemindedAt: null,
         contactId: "c1",
         createdAt: new Date(500_000),
       },
@@ -327,8 +329,6 @@ describe("getOnboardingGrid (DEC-340)", () => {
         completedAt: null,
         fileId: null,
         fileName: null,
-        fileSizeBytes: null,
-        lastRemindedAt: null,
         contactId: "c1",
         createdAt: new Date(500_000),
       },
@@ -337,8 +337,8 @@ describe("getOnboardingGrid (DEC-340)", () => {
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     const cellWithFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a1");
     const cellWithoutFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a2");
-    expect(cellWithFile).toMatchObject({ fileId: "file-1", fileName: "slides.pdf", fileSizeBytes: 2048 });
-    expect(cellWithoutFile).toMatchObject({ fileId: null, fileName: null, fileSizeBytes: null });
+    expect(cellWithFile).toMatchObject({ fileId: "file-1", fileName: "slides.pdf" });
+    expect(cellWithoutFile).toMatchObject({ fileId: null, fileName: null });
   });
 
   // DEC-920: a non-null fileId whose file row didn't resolve through the
@@ -354,8 +354,6 @@ describe("getOnboardingGrid (DEC-340)", () => {
         completedAt: null,
         fileId: "missing-file",
         fileName: null,
-        fileSizeBytes: null,
-        lastRemindedAt: null,
         contactId: "c1",
         createdAt: new Date(500_000),
       },
@@ -370,7 +368,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
   it("the cells query count does not grow with the number of roster rows on the page", async () => {
     const contacts = [contactRow("c1", "Ada", "Lovelace"), contactRow("c2", "Grace", "Hopper"), contactRow("c3", "Rosa", "Parks")];
     const cellRows = [
-      { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
+      { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, fileName: null, contactId: "c1", createdAt: new Date(500_000) },
     ];
     const participations = [participationRow("c1"), participationRow("c2"), participationRow("c3")];
     const { calls } = await (async () => {

@@ -134,7 +134,6 @@ describe('CommsPage render smoke', () => {
             batchKey: 'batch-1',
             subject: 'You are in!',
             sentAt: 1700000000000,
-            recipientCount: 3,
             statusCounts: { sent: 3 },
           },
         ]);
@@ -181,7 +180,6 @@ describe('CommsPage render smoke', () => {
               batchKey: 'batch-1',
               subject: 'You are in!',
               sentAt: 1700000000000,
-              recipientCount: 3,
               statusCounts: { sent: 3 },
             },
           ]);
@@ -442,7 +440,6 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
       id: `batch-${n}`,
       subject: `Send #${n}`,
       sentAt: 1700000000000 + n,
-      recipientCount: n,
       statusCounts: n % 2 === 0 ? { failed: n } : { sent: n },
       toEmail: `recipient-${n}@example.com`,
       status: n % 2 === 0 ? 'failed' : 'sent',

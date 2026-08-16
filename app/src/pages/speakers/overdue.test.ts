@@ -14,7 +14,7 @@ describe('isCellOverdue', () => {
   it('is false when the task has no due date', () => {
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 },
         task({ dueDate: null }),
         NOW,
         UTC,
@@ -25,7 +25,7 @@ describe('isCellOverdue', () => {
   it('is false when the assignment is complete, even if past due', () => {
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'complete', completedAt: NOW - 1, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 't1', assignmentId: 'a1', status: 'complete', completedAt: NOW - 1, fileId: null, fileName: null, assignedAt: 0 },
         task({ dueDate: NOW - 100 }),
         NOW,
         UTC,
@@ -36,7 +36,7 @@ describe('isCellOverdue', () => {
   it('is true when pending and the due day has fully elapsed', () => {
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 },
         task({ dueDate: Date.UTC(2024, 0, 15) }),
         NOW,
         UTC,
@@ -47,7 +47,7 @@ describe('isCellOverdue', () => {
   it('is false when pending but due date is in the future', () => {
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 },
         task({ dueDate: NOW + 100 }),
         NOW,
         UTC,
@@ -58,7 +58,7 @@ describe('isCellOverdue', () => {
   it('is false for an unknown task', () => {
     expect(
       isCellOverdue(
-        { taskId: 'missing', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 'missing', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 },
         undefined,
         NOW,
         UTC,
@@ -73,7 +73,7 @@ describe('isCellOverdue', () => {
     const assignedAt = NOW - DAY;
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt },
         task({ dueDate: assignedAt - 5 * DAY }),
         NOW,
         UTC,
@@ -85,7 +85,7 @@ describe('isCellOverdue', () => {
     const assignedAt = NOW - 8 * DAY;
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt },
         task({ dueDate: assignedAt - 5 * DAY }),
         NOW,
         UTC,
@@ -109,7 +109,7 @@ describe('isCellOverdue', () => {
     expect(dueDate < laterSameUtcDay).toBe(true); // the old raw compare's verdict
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt },
         task({ dueDate }),
         laterSameUtcDay,
         'America/Los_Angeles',
@@ -123,7 +123,7 @@ describe('isCellOverdue', () => {
     const afterLocalDayEnds = Date.UTC(2024, 0, 17, 9, 0, 0); // past 08:00 UTC PST rollover
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt },
         task({ dueDate }),
         afterLocalDayEnds,
         'America/Los_Angeles',

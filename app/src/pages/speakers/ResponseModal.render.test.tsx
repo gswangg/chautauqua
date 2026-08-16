@@ -13,7 +13,6 @@ function makeDetail(overrides: Partial<AssignmentResponseDetail> = {}): Assignme
   return {
     assignmentId: 'as1',
     taskTitle: 'Flight reimbursement form',
-    taskKind: 'form',
     contact: { id: 'c1', name: 'Ada Lovelace', email: 'ada@example.com' },
     status: 'complete',
     completedAt: 1700000000000,

@@ -151,3 +151,40 @@ describe('PreviewPane: attachIcs honesty (DEC-732) -- the ics footnote blocks de
     expect(screen.getByText(/gets no calendar invite/)).toBeInTheDocument();
   });
 });
+
+// wave-60 amendment (DEC-238, P1 cluster 4): src/routes/comms/preview.ts
+// stamps each item with its own willSend/skipReason disposition specifically
+// so this component can render a per-row skip badge without re-deriving the
+// dedupe decision client-side -- this locks that the badge actually renders,
+// with the same reason wording the send-report's skipped list uses.
+describe('PreviewPane: per-item skip badge (DEC-238 wave-60 amendment)', () => {
+  const DUPLICATE_IN_BATCH: RenderedRecipient = {
+    ...NO_SLOT,
+    willSend: false,
+    skipReason: 'duplicate_in_batch',
+  };
+
+  const ALREADY_SENT: RenderedRecipient = {
+    ...NO_SLOT,
+    willSend: false,
+    skipReason: 'already_sent_recently',
+    retryAtIso: '2028-05-11T15:00:00.000Z',
+  };
+
+  it('shows no skip badge for a recipient this render will actually send to', () => {
+    render(<PreviewPane item={{ ...NO_SLOT, willSend: true }} />);
+    expect(screen.queryByText(/Won.t be sent/)).not.toBeInTheDocument();
+  });
+
+  it("shows 'Won't be sent' with the duplicate-in-batch reason", () => {
+    render(<PreviewPane item={DUPLICATE_IN_BATCH} />);
+    expect(screen.getByText(/Won.t be sent/)).toBeInTheDocument();
+    expect(screen.getByText(/Same message, same address, already in this batch\./)).toBeInTheDocument();
+  });
+
+  it("shows 'Won't be sent' with the already-sent-recently reason", () => {
+    render(<PreviewPane item={ALREADY_SENT} />);
+    expect(screen.getByText(/Won.t be sent/)).toBeInTheDocument();
+    expect(screen.getByText(/Already sent within the hour\./)).toBeInTheDocument();
+  });
+});

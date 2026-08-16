@@ -310,8 +310,6 @@ const ONBOARDING_GRID = {
           completedAt: null,
           fileId: null,
           fileName: null,
-          fileSizeBytes: null,
-          lastRemindedAt: null,
         },
       ],
     },
@@ -366,8 +364,6 @@ describe("DEC-239/DEC-340: GET /api/v1/events/:eventId/onboarding vs OnboardingG
       "completedAt",
       "fileId",
       "fileName",
-      "fileSizeBytes",
-      "lastRemindedAt",
       "status",
       "taskId",
     ]);

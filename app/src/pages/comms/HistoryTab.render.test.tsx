@@ -21,7 +21,6 @@ function batch(overrides: Partial<EmailBatchRow> = {}): EmailBatchRow {
     batchKey: 'batch-1',
     subject: 'You are in!',
     sentAt: 1700000000000,
-    recipientCount: 2,
     statusCounts: { sent: 2 },
     templateId: null,
     ...overrides,
@@ -226,7 +225,7 @@ describe('HistoryTab', () => {
         let calls = 0;
         return () => {
           calls += 1;
-          return calls === 1 ? listEnvelope([batch({ recipientCount: 1, statusCounts: { failed: 1 } })]) : listEnvelope([logRow({ status: 'failed' })]);
+          return calls === 1 ? listEnvelope([batch({ statusCounts: { failed: 1 } })]) : listEnvelope([logRow({ status: 'failed' })]);
         };
       })(),
       [`GET /api/v1/events/${EVENT_ID}/email-log/log-1`]: { status: 500, body: { error: { code: 'internal_error', message: 'Failed to load what was sent' } } },
