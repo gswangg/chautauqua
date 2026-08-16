@@ -630,6 +630,12 @@ interface LedgerEntry {
 
 const LEDGER: LedgerEntry[] = [
   {
+    key: 'app/src/pages/review/types.ts#ReviewerQueueItem.ratingsCount',
+    verdict: 'exempt',
+    reason:
+      "design-frames-v12 03-review--03 draws the reviewer queue row as exactly three lines (ref/state eyebrow, title, format meta) at a constant 103px pitch -- the DEC-239/DEC-251 'N ratings so far' fourth line was unframed and the G13 fidelity gate removed it. The field itself stays on the wire because buildReviewerQueue (src/domain/evaluation.ts) is ORDERED by it (fewest-ratings-first with completed sunk last); it is the payload's own sort-key fact, not a display obligation any frame or ruling asks the row to print.",
+  },
+  {
     key: 'app/src/pages/comms/types.ts#EmailLogDetail.bodyHtml',
     verdict: 'exempt',
     reason:
@@ -796,12 +802,12 @@ describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response fie
     expect(commentThread!.src.includes('c.authorRole')).toBe(true);
   });
 
-  it('the ReviewerQueueItem.ratingsCount finding is fixed: ReviewerQueue.tsx now reads ratingsCount (DEC-239/DEC-251 re-closure)', () => {
+  it('ReviewerQueueItem.ratingsCount is unread again by design: G13 lane-D removed the unframed fourth line (03-review--03), and the ledger carries its exemption', () => {
     const files = candidateFiles();
-    expect(hasReader('ratingsCount', files)).toBe(true);
+    expect(hasReader('ratingsCount', files)).toBe(false);
     const reviewerQueue = files.find((f) => f.path === 'app/src/pages/review/ReviewerQueue.tsx');
     expect(reviewerQueue, 'ReviewerQueue.tsx not found under app/src').toBeTruthy();
-    expect(reviewerQueue!.src.includes('item.ratingsCount')).toBe(true);
+    expect(reviewerQueue!.src.includes('item.ratingsCount')).toBe(false);
   });
 
   it('latestFileVersionNo was deleted from ContentSubmissionListItem (the other real closure this task made -- server projection matched to the wire deletion)', () => {

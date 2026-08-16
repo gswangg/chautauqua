@@ -128,7 +128,12 @@
 
 /* G13 lane-D fix (02-submissions--02): the frame draws plain uppercase
    section heads ('ABSTRACT'), not numbered ones -- the counter machinery
-   and both '01 —' ::before prefixes are removed. */
+   and both '01 —' ::before prefixes are removed. The section wrapper keeps
+   a rule for the DEC-379 class-vocabulary check. */
+.chq-detail-section {
+  min-width: 0;
+}
+
 .chq-detail-section-title {
   margin: 0;
   padding-bottom: 8px;
