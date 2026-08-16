@@ -36,6 +36,11 @@ export default defineConfig({
       // vitest.config.ts, so the derived predicate in test/test-tiers.test.ts
       // calls it SLOW -- same shape as the two entries above.
       "app/src/pages/review/planEditor-refusal-shapes.test.ts",
+      // w53-e (DEC-700 amendment): same shape again -- plain-.test.ts name,
+      // but its behavioural half renderHook()s useMutationVersion, so
+      // vitest.config.ts pins it to jsdom and the derived predicate in
+      // test/test-tiers.test.ts calls it SLOW.
+      "app/src/lib/api-mutation-bump.scan.test.ts",
       "test/itinerary-script-persistence.test.ts",
       "test/embed-element.test.ts",
       "test/gate4-residue-closure.test.ts",
