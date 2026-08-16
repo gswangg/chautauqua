@@ -165,10 +165,13 @@
   content: 'Stale · ';
 }
 
+/* DEC-898 amendment (w1-e/B18): not italic -- the fit rationale below is the
+   card's one italic 'why them' treatment, so the decline reason (which now
+   carries its own 'Declined:' lead-in text) reads as a distinct, labelled
+   fact rather than a second copy of the same visual shape. */
 .chq-contacts-pipeline-card-decline-reason {
   font-size: 12px;
   color: var(--chq-muted);
-  font-style: italic;
 }
 
 /* DEC-856 (wave-65 amendment): a refused move attaches to the card it came
