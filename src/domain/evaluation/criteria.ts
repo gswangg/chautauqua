@@ -16,6 +16,13 @@ import { overCapFieldMessage } from "../cap-copy";
 // share display, and default-plan criteria -- see normalizeGuidance,
 // criterionWeightShares, DEFAULT_PLAN_CRITERIA below.
 import { DEC_676 } from "../../decisions";
+// DEC-147 amendment (wave 80): criteriaForRound's internal JSON.parse moves
+// through plan-json.ts's validated parser. plan-json.ts imports roundMetaFor
+// from this module (to reuse its validation rather than duplicate it) --
+// this import is the other half of that cycle. Both sides only reference
+// the other's exports inside function bodies, never at module-evaluation
+// time, so the cycle resolves safely.
+import { parseRoundCriteria } from "./plan-json";
 
 void DEC_676;
 
@@ -289,7 +296,14 @@ export function criteriaForRound(
   round: number,
 ): EvaluationCriterionDef[] {
   if (!overridesJson) return base;
-  const parsed = JSON.parse(overridesJson) as Record<string, EvaluationCriterionDef[]>;
+  // DEC-147 amendment (wave 80): the internal parse moves through
+  // plan-json.ts's ONE validated home for evaluation_plan's JSON columns --
+  // a well-formed-but-wrong-shape override entry now throws PlanJsonError
+  // here rather than silently reaching computeWeightedScore as NaN. This
+  // function's exported signature is unchanged (frozen this wave); no
+  // planId is in scope at this call site, so the round being resolved
+  // stands in for it.
+  const parsed = parseRoundCriteria(overridesJson, `round ${round}`) ?? {};
   const forRound = parsed[String(round)];
   return forRound ?? base;
 }

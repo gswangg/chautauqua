@@ -7,6 +7,7 @@ import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
 import type { EvaluationCriterionDef } from "../../../domain/evaluation";
+import { parsePlanCriteria, parsePlanScale } from "../../../domain/evaluation/plan-json";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
 import { MAX_PLAN_SUBMISSION_SCAN } from "./submissions";
@@ -457,9 +458,9 @@ export async function listPlanCriteriaByIds(db: Db, planIds: string[]): Promise<
   const result = new Map<string, PlanCriteriaInfo>();
   for (const r of rows) {
     result.set(r.id, {
-      criteria: JSON.parse(r.criteriaJson) as EvaluationCriterionDef[],
+      criteria: parsePlanCriteria(r.criteriaJson, r.id),
       roundCriteriaJson: r.roundCriteriaJson,
-      scale: JSON.parse(r.scaleJson) as { min: number; max: number },
+      scale: parsePlanScale(r.scaleJson, r.id),
     });
   }
   return result;
