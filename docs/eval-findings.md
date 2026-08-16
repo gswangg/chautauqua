@@ -86,7 +86,9 @@ complete and opinionated):**
 - REGRESSION SENSITIVITY: this touches scoring/aggregation paths that scored
   91-100 on the interim run — every change needs route tests + the gate-12
   fleet re-verifies scorecard/results geometry + a results-math test (shares
-  60/40 not 50/33 with a Choice present).
+  60/40 not 50/33 with a Choice present). USER RULING: the feature SHIPS in the
+  final build — no hold-out. If gate-12 finds it wobbly, FIX FORWARD (>12h of
+  runway remain); do not park it.
 
 **B. DOCS SITE (NEW ROUTE /docs — frames 13-docs--00..04 + DESIGN-RULINGS
 §"Docs — a new site, and where it stops"). Purpose: submission documentation,
