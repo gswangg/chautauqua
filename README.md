@@ -91,6 +91,9 @@ failure it causes if missing:
   behaviour, not breakage.
 - `send_email` binding, `MAIL_FROM_EMAIL` — required for real outbound email;
   see "Stage-2 platform wiring" in `docs/AUDIT.md`.
+- Bindings `wrangler.jsonc` declares and the deployed origin must actually
+  have provisioned: the D1 database, the KV namespace, the `chautauqua-files`
+  R2 bucket, and the `send_email` binding above.
 
 `.dev.vars.example` (copied to your gitignored `.dev.vars` on first `predev`
 run) ships `PUBLIC_BASE_URL=http://localhost:8787` so emailed links
@@ -269,7 +272,7 @@ else in the document is machine-checked — read it, don't just trust the badge.
 | Printable programme (print-first, all days) | `/e/<event-slug>/programme` |
 | Public speaker gallery | `/e/<event-slug>/gallery` |
 | Embeddable widget (any surface, chromeless) | `/embed/<event-slug>/<surface>` |
-| Dev mailbox (dev-only email sink — every sent email, including CFP confirmation and onboarding-task reminder emails, is viewable here; requires `DEV_MODE='1'` — **404s by design on the deployed instance**, DEC-005/DEC-382 amendment) | `/dev/mailbox` |
+| Dev mailbox (**local-dev-only** sink — every sent email, including CFP confirmation and onboarding-task reminder emails, is viewable here; requires `DEV_MODE='1'` — **returns 404 on the live demo at https://chautauqua.cc by design**, DEC-005/DEC-382 amendment) | `/dev/mailbox` |
 | Public API docs (auth, envelopes, endpoint table) | `/docs/api` |
 
 `/dev/mailbox` and `/docs/api` are operator chrome (DEC-382/DEC-582 amendment), not
