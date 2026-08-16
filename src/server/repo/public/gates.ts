@@ -13,6 +13,7 @@
 // a speaker.
 
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
+import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import * as schema from "../../../db/schema";
 
 /**
@@ -28,16 +29,18 @@ export function visibleSessionConditions() {
 
 /**
  * Participant-only visibility gate (DEC-274, DEC-108): participant.visible=1
- * AND participant.invite_status IN ('none','accepted') — 'none' is the
- * never-invited (solo/no-coordination) case, 'accepted' is invite-accepted;
- * any other invite state must never make a participant publicly visible.
- * Callers must join `participant` for this to apply.
+ * AND participant.invite_status IN ACTIVE_INVITE_STATUSES ('none','accepted')
+ * — 'none' is the never-invited (solo/no-coordination) case, 'accepted' is
+ * invite-accepted; any other invite state must never make a participant
+ * publicly visible. Composes the declared constant (src/domain/acceptance.ts)
+ * rather than re-typing the literal pair — DEC-180 wave-75 amendment: a
+ * hand-inlined SQL literal here would silently stop tracking a change to the
+ * declared constant. Callers must join `participant` for this to apply.
  */
 export function visibleParticipantConditions() {
   return and(
     eq(schema.participant.visible, true),
-    // two literals, bounded — DEC-104-exempt
-    inArray(schema.participant.inviteStatus, ["none", "accepted"]),
+    inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES as readonly string[]),
   );
 }
 

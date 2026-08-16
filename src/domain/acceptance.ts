@@ -140,28 +140,35 @@ export function isActiveParticipant(inviteStatus: string): boolean {
 }
 
 /**
- * DEC-974 amendment: the NOT-DECLINED population an ORGANISER surface (the
- * conflict engine's speaker set, the admin agenda card, the results
- * page/export) uses — 'none' or 'invited' or 'accepted', excluding only
- * 'declined'. An organiser-added co-presenter is minted at inviteStatus
- * 'invited' (participants.ts) and must still be visible for scheduling and
- * results purposes: an invited-but-not-yet-accepted person still cannot be
- * in two rooms at once, and still spoke on the session for results purposes.
- * Deliberately distinct from ACTIVE_INVITE_STATUSES, which gates WRITE
- * access (portal editing, file uploads, task planning, compose recipients)
- * and public-facing visibility — those surfaces must NOT show or act on an
- * invite that hasn't been accepted yet.
+ * DEC-974 amendment / DEC-317: the NOT-DECLINED population — 'none' or
+ * 'invited' or 'accepted', excluding only 'declined'. Serves two named
+ * readers with distinct intents that DEC-180's wave-75 amendment identified
+ * as the SAME member set: (1) the ORGANISER surface (conflict engine's
+ * speaker set, admin agenda card, results page/export) — an organiser-added
+ * co-presenter is minted at inviteStatus 'invited' (participants.ts) and
+ * must still be visible for scheduling/results purposes, since an
+ * invited-but-not-yet-accepted person still cannot be in two rooms at once
+ * and still spoke on the session; (2) portal/file READ access — a
+ * participant may still SEE their submission while an invite is outstanding
+ * (write access is gated separately by ACTIVE_INVITE_STATUSES, a strict
+ * subset that excludes 'invited'). One declaration; PORTAL_VISIBLE_INVITE_STATUSES
+ * is a re-export of the same array under its portal-facing name so each call
+ * site can use the name matching its own reader without a second
+ * declaration to drift. Deliberately distinct from ACTIVE_INVITE_STATUSES,
+ * which gates WRITE access (portal editing, file uploads, task planning,
+ * compose recipients) and public-facing visibility — those surfaces must NOT
+ * show or act on an invite that hasn't been accepted yet.
  */
 export const SCHEDULING_PARTICIPANT_STATUSES = ["none", "invited", "accepted"] as const satisfies readonly InviteStatus[];
 
 /**
- * DEC-317: participant invite state gates portal and file access on two
- * levels — read=not-declined (a participant may still SEE their submission
- * while an invite is outstanding), write=active (only ACTIVE_INVITE_STATUSES
- * may edit/upload). "invited" participants are portal-visible (read) but not
- * active (no write); "declined" participants are excluded from both.
+ * DEC-317 / DEC-180 wave-75 amendment: re-export of SCHEDULING_PARTICIPANT_STATUSES
+ * under the name portal/file read-access call sites use. Same declaration,
+ * same array reference — see the doc comment above for why the two names
+ * exist and what would make them diverge (they must not; a divergence would
+ * need a new, differently-named constant, not a change to either of these).
  */
-export const PORTAL_VISIBLE_INVITE_STATUSES = ["none", "accepted", "invited"] as const satisfies readonly InviteStatus[];
+export const PORTAL_VISIBLE_INVITE_STATUSES = SCHEDULING_PARTICIPANT_STATUSES;
 
 export interface PlanAcceptanceInput {
   submissionId: string;
