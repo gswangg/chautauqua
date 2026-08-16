@@ -526,29 +526,6 @@ export function ResultsTable({
                   </td>
                 </tr>
               )}
-              {/* DEC-241/DEC-737/DEC-851 (w3-c): the aggregate Choice
-                 distribution for this submission -- one line per dropdown
-                 criterion, in the criterion's own declared option order,
-                 grammar "Strong 2 · Weak 1". Choice never contributes to the
-                 numeric mean (aggregateSubmission/aggregateEvaluations are
-                 untouched); this reads only row.perDropdown, the server's
-                 own aggregate. Rendered as the band's first row when present
-                 -- the individual reviewer rows below it no longer claim
-                 chq-review-band-first in that case. */}
-              {expanded && evaluations && evaluations.length > 0 && dropdownCriteria.length > 0 && (
-                <tr className="chq-review-reviews-row chq-review-band-first chq-review-dropdown-distribution">
-                  <td colSpan={columnCount} className="chq-review-reviews-detail">
-                    <div className="chq-review-dropdown-distribution-list">
-                      {dropdownCriteria.map((c) => (
-                        <span key={c.id} className="chq-review-dropdown-distribution-item">
-                          <strong>{c.label}:</strong>{' '}
-                          {formatDropdownDistribution(row.perDropdown[c.id]?.counts, c.options ?? [])}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              )}
               {/* DEC-633 amendment (wave 25/A27+B8): each evaluation is its
                  own real <tr> in the results table so the browser aligns it
                  to the header columns -- no hand-copied grid template. */}
@@ -560,8 +537,12 @@ export function ResultsTable({
                     key={`${ev.planId}-${ev.round}-${i}`}
                     className={
                       'chq-review-reviews-row' +
-                      (i === 0 && dropdownCriteria.length === 0 ? ' chq-review-band-first' : '') +
-                      (i === evaluations.length - 1 && row.recusals === 0 ? ' chq-review-band-last' : '')
+                      (i === 0 ? ' chq-review-band-first' : '') +
+                      (i === evaluations.length - 1 &&
+                      row.recusals === 0 &&
+                      dropdownCriteria.length === 0
+                        ? ' chq-review-band-last'
+                        : '')
                     }
                   >
                     <td data-label="Rank" className="chq-review-reviews-cell" />
@@ -594,13 +575,44 @@ export function ResultsTable({
                     <td data-label="Decision" className="chq-review-reviews-cell" />
                   </tr>
                 ))}
-              {expanded && evaluations && evaluations.length > 0 && row.recusals > 0 && (
-                <tr className="chq-review-reviews-row chq-review-band-last chq-review-reviews-recusal-footer">
-                  <td colSpan={columnCount} className="chq-review-reviews-detail">
-                    {countOf(row.recusals, 'reviewer')} recused · their scores are excluded from the mean
-                  </td>
-                </tr>
-              )}
+              {/* DEC-241 amendment (wave 7, sha ddc9a7d9): DESIGN-RULINGS.md
+                 -- "the distribution [sits] in the footer where the mean
+                 sits for scored criteria" -- one footer row after the
+                 reviewer rows, not a separate row ahead of them. Carries
+                 the recusal sentence (when any reviewer recused) and the
+                 Choice distribution (when the round has a dropdown
+                 criterion), reading only row.perDropdown, the server's own
+                 aggregate -- aggregateSubmission/aggregateEvaluations are
+                 untouched. */}
+              {expanded &&
+                evaluations &&
+                evaluations.length > 0 &&
+                (dropdownCriteria.length > 0 || row.recusals > 0) && (
+                  <tr className="chq-review-reviews-row chq-review-band-last chq-review-reviews-recusal-footer">
+                    <td colSpan={columnCount} className="chq-review-reviews-detail">
+                      {row.recusals > 0 && (
+                        <p className="chq-review-reviews-recusal-sentence">
+                          {countOf(row.recusals, 'reviewer')} recused · their scores are excluded from the mean
+                        </p>
+                      )}
+                      {dropdownCriteria.length > 0 && (
+                        <div className="chq-review-dropdown-distribution-list">
+                          {dropdownCriteria.map((c) => (
+                            <span key={c.id} className="chq-review-dropdown-distribution-item">
+                              <span className="chq-review-dropdown-distribution-value">
+                                <strong>{c.label}:</strong>{' '}
+                                {formatDropdownDistribution(row.perDropdown[c.id]?.counts, c.options ?? [])}
+                              </span>
+                              <span className="chq-review-dropdown-distribution-caption">
+                                No average — read the spread
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
               </Fragment>
               );
             })}
