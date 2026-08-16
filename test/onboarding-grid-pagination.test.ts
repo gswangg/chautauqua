@@ -126,8 +126,14 @@ function sqlTextOf(cond: unknown): { sql: string; params: unknown[] } {
 }
 
 describe("getOnboardingGrid (DEC-340)", () => {
-  it("returns an empty envelope with no per-page queries when the event has no tasks", async () => {
-    const { db, calls } = fakeDb([[], EVENT_ROW]);
+  // DEC-829 (wave-59 amendment): a zero-task event must NOT short-circuit --
+  // the roster (rows/total/counts.speakers) is driven by
+  // rosterParticipantConditions alone, independent of whether any task rows
+  // exist. With no contacts on the roster either, this is still an empty
+  // envelope, but it's reached by running every query (cellRows is the only
+  // one skipped, guarded by taskIds.length > 0), not by an early return.
+  it("returns an empty envelope by running every query (not an early return) when the event has no tasks", async () => {
+    const { db, calls } = fakeDb([[], EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     expect(result).toEqual({
       tasks: [],
@@ -135,10 +141,10 @@ describe("getOnboardingGrid (DEC-340)", () => {
       total: 0,
       page: 1,
       perPage: 50,
-      counts: { speakers: 0, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+      counts: { speakers: 5, outstandingRequired: 2, overdue: 1, outstandingContacts: 3 },
       timezone: "America/New_York",
     });
-    expect(calls.length).toBe(2);
+    expect(calls.length).toBe(7);
   });
 
   it("page 2 uses offset=perPage and returns rows in the page-contact declared order (disjoint from page 1's canned set)", async () => {

@@ -197,10 +197,6 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     throw new Error(`onboarding grid: event ${eventId} has no record prefix/timezone`);
   }
 
-  if (tasks.length === 0) {
-    return { tasks: [], rows: [], total: 0, page: params.page, perPage: params.perPage, counts: emptyCounts, timezone };
-  }
-
   // DEC-829 (widens DEC-754), wave-29 TIER-0 amendment: the base row
   // condition used to be a correlated EXISTS against `contact` (this is the
   // defect docs/verification-log.md:3750-3759 measured — it forces the
