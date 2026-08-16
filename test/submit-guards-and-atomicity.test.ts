@@ -88,6 +88,10 @@ function fakeDb(selectQueue: unknown[][]) {
         };
       },
     }),
+    // DEC-072 (wave-58 amendment): a failure past the budget spend now
+    // refunds it via db.update(...).set(...).where(...) before rethrowing
+    // -- a no-op stub so that refund doesn't throw here.
+    update: () => ({ set: () => ({ where: async () => {} }) }),
     delete: () => ({ where: async () => {} }),
   };
   return { db: db as unknown as AppEnv["Variables"]["db"], inserts };

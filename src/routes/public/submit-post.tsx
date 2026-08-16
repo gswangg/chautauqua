@@ -55,7 +55,7 @@ import {
   type ConfirmationState,
 } from "./submit-views";
 import { extractAnswers, extractTrackIds, applyNameSplit } from "./submit-body";
-import { emailBudgetOk, isSameOriginSubmitPost } from "./submit-guards";
+import { emailBudgetOk, refundEmailBudget, isSameOriginSubmitPost } from "./submit-guards";
 import { trackChoiceMessage } from "./submit-messages";
 
 export const publicSubmitPostRoutes = new Hono<AppEnv>();
@@ -124,6 +124,13 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   //      spoofable, so an attacker can rotate it to bypass the IP budget
   //      while hammering the same address. That second check runs later,
   //      once `email` is known (just above the first write) — see there.
+  // DEC-072 (wave-58 amendment)/DEC-949: this IP-keyed check is a FAILURE
+  // budget, not an identity budget — it stays UNREFUNDED on any later
+  // failure. requestIpFromHeaders collapses every untrustworthy/absent
+  // header to the single bucket "unknown" (DEC-949), so refunding here
+  // would let an attacker who never presents a real IP spend the same
+  // never-decrementing bucket forever; the guard only works because it
+  // never gives units back.
   const kv = c.env.KV as unknown as DraftKVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const rate = await checkAndIncrementScopedLimit(db, "submit", ip, Date.now(), {
@@ -282,7 +289,12 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   // never touches storage, but the submitter's just-typed answers survive
   // into the re-rendered page (unlike the pre-parse IP check, which
   // necessarily renders empty).
-  const emailRateOk = await emailBudgetOk(db, "submit-email", email, 10);
+  // DEC-072 (wave-58 amendment): the spend and every possible refund of it
+  // below must share the exact same window bucket, so the clock is read
+  // once here rather than letting emailBudgetOk/refundEmailBudget each call
+  // Date.now() independently.
+  const budgetNow = Date.now();
+  const emailRateOk = await emailBudgetOk(db, "submit-email", email, 10, budgetNow);
   if (!emailRateOk) {
     return c.html(
       <SubmitPage
@@ -377,6 +389,11 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
     } catch (cleanupErr) {
       console.error("submit upload: R2 cleanup failed", cleanupErr);
     }
+    // DEC-072 (wave-58 amendment): the per-email budget was already spent
+    // above for this attempt; an R2 rejection is a failure on our own side,
+    // not a submitter abusing the endpoint, so give the unit back before
+    // rethrowing (login-ip's refund at auth-login.tsx:213 is the precedent).
+    await refundEmailBudget(db, "submit-email", email, budgetNow);
     throw firstRejection.reason;
   }
   const preparedFiles: { fieldId: string; file: File; r2Key: string; validated: ValidUpload }[] = minted;
@@ -423,6 +440,10 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
     } catch (cleanupErr) {
       console.error("submit rollback: R2 cleanup failed", cleanupErr);
     }
+    // DEC-072 (wave-58 amendment): same reasoning as the R2 fan-out
+    // rejection above — the DB write phase failing is our own transient
+    // failure, not submitter abuse, so refund the unit before rethrowing.
+    await refundEmailBudget(db, "submit-email", email, budgetNow);
     throw err;
   }
 

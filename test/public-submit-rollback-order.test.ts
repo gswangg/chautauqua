@@ -81,6 +81,12 @@ function fakeDb(selectQueue: unknown[][]) {
         };
       },
     }),
+    // DEC-072 (wave-58 amendment): a failed DB write phase now refunds the
+    // submit-email budget via db.update(...).set(...).where(...) before
+    // rethrowing -- a no-op stub so that refund doesn't throw here (this
+    // file's assertions are about rollback ORDER, not the rate-limit
+    // counter; see test/submit-email-budget-refund.test.ts for that).
+    update: () => ({ set: () => ({ where: async () => {} }) }),
     delete: () => ({ where: async () => {} }),
   };
   return { db: db as unknown as AppEnv["Variables"]["db"], inserts };
