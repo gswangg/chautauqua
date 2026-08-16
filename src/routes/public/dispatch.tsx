@@ -46,6 +46,11 @@ export async function renderSurfaceContent(
     embed?: boolean;
     format?: string;
     roomId?: string;
+    // DEC-489 (wave-54 amendment): /embed-only knob — accent is the
+    // <iframe>'s own accent override, never rendered on /e/ (which carries
+    // the event's stored branding instead). Only index.tsx's /embed HTML
+    // route ever supplies a non-null value here.
+    accent?: string | null;
   },
 ): Promise<{ title: string; content: unknown }> {
   switch (surface) {
@@ -119,6 +124,7 @@ export async function renderSurfaceContent(
             limit={query.limit ?? null}
             fields={query.fields}
             embed={query.embed}
+            accent={query.accent ?? null}
             dayCounts={dayCounts}
             cfpWindow={cfpWindow}
           />
@@ -154,6 +160,7 @@ export async function renderSurfaceContent(
             perPage={perPage}
             limit={query.limit ?? null}
             embed={query.embed}
+            accent={query.accent ?? null}
           />
         ),
       };
@@ -185,6 +192,7 @@ export async function renderSurfaceContent(
             perPage={perPage}
             limit={query.limit ?? null}
             embed={query.embed}
+            accent={query.accent ?? null}
           />
         ),
       };

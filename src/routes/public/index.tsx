@@ -310,6 +310,10 @@ publicRoutes.get("/embed/:eventSlug/:surface", async (c) => {
     fields: surfaceParam === "sessions" ? parseSessionListFields(c.req.query("fields")) : parseCardFields(c.req.query("fields")),
     format: c.req.query("format"),
     roomId: c.req.query("roomId"),
+    // DEC-489 (wave-54 amendment): /embed-only knob — the /e/ HTML route
+    // above never supplies this; the event's stored branding is the
+    // accent there.
+    accent: parseAccent(c.req.query("accent")),
     // DEC-594 (EMB-7): every link/form rendered by this dispatch (currently
     // sessions' search form, track-filter pills, and drill-in title links)
     // must stay inside /embed/... rather than breaking out to the
