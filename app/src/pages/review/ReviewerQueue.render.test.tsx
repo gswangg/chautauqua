@@ -551,6 +551,82 @@ describe('"Score the next one" plan-scoped title-row shortcut (REVIEW PACK frame
   });
 });
 
+// DEC-346 (wave-74 amendment): the cap filter can empty or shorten a queue
+// without anything being wrong -- `cappedOut` names how many of this
+// reviewer's own scoped submissions were dropped for already having a full
+// set of reviews, so the empty/short states say why instead of reading like
+// a broken assignment.
+describe('ReviewerQueue cappedOut messaging (DEC-346 wave-74 amendment)', () => {
+  it('renders the cap-explaining empty state, not the generic "nothing left", when items and recused are both empty but cappedOut > 0', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...queueEnvelope([]),
+        open: true,
+        recused: [],
+        cappedOut: 3,
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('3 talks still in your scope already have a full set of reviews.')).toBeInTheDocument();
+    // The EmptyState body (this section's own "why is this empty" copy)
+    // must not fall back to the generic congratulatory sentence -- the
+    // title-row h1 above the section is a separate element with its own
+    // scoreLeft-driven copy and is out of this test's scope.
+    expect(document.querySelector('.chq-empty-what')).toHaveTextContent(
+      '3 talks still in your scope already have a full set of reviews.',
+    );
+  });
+
+  it('renders the singular form for cappedOut === 1', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...queueEnvelope([]),
+        open: true,
+        recused: [],
+        cappedOut: 1,
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('1 talk still in your scope already has a full set of reviews.')).toBeInTheDocument();
+  });
+
+  it('renders a quiet cappedOut line beside the footer count when the queue is non-empty', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...queueEnvelope([queueItem()]),
+        open: true,
+        recused: [],
+        cappedOut: 2,
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('A Talk')).toBeInTheDocument();
+    expect(screen.getByText('2 talks in your scope already have a full set of reviews')).toBeInTheDocument();
+  });
+
+  it('renders neither cap line when cappedOut is 0', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...queueEnvelope([queueItem()]),
+        open: true,
+        recused: [],
+        cappedOut: 0,
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('A Talk')).toBeInTheDocument();
+    expect(screen.queryByText(/already (has|have) a full set of reviews/)).not.toBeInTheDocument();
+  });
+});
+
 // DEC-845 amendment (wave 38): a reviewer scope of 250 actionable
 // submissions -- the h1 must read the TRUE 250 (not the 200-row page 1
 // clamp), and "Show all 250" must page past row 200 to actually render

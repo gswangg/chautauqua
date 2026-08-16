@@ -131,6 +131,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     open: boolean;
     recused: unknown[];
     viewerIsOrganizer: boolean;
+    cappedOut: number;
   }) =>
     c.json({
       items: fields.items,
@@ -149,6 +150,13 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
       // who is viewing -- the SPA must never infer this from row presence
       // (a closed plan with zero submissions would fool that).
       viewerIsOrganizer: fields.viewerIsOrganizer,
+      // DEC-346 (wave-74 amendment): the count of this reviewer's own scoped
+      // submissions the cap filter below (:242, needsMoreRatings) removed
+      // from `items` -- so an empty/short queue can say WHY instead of
+      // reading like a broken assignment. A subtraction of two arrays
+      // already in memory (scopedActionable.length - queueItems.length),
+      // never a new query.
+      cappedOut: fields.cappedOut,
       recused: fields.recused,
       planName: plan.name,
       scopeTrackName,
@@ -168,7 +176,15 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   // queue rows while the per-submission detail behind them still loads.
   const planOpen = isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone);
   if (auth.role !== "organizer" && !planOpen) {
-    return shapeQueueEnvelope({ items: [], total: 0, unscoredTotal: 0, open: false, recused: [], viewerIsOrganizer: false });
+    return shapeQueueEnvelope({
+      items: [],
+      total: 0,
+      unscoredTotal: 0,
+      open: false,
+      recused: [],
+      viewerIsOrganizer: false,
+      cappedOut: 0,
+    });
   }
 
   const scopedIds = scoped.map((s) => s.id);
@@ -337,6 +353,11 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     open: planOpen,
     recused: recusedOut,
     viewerIsOrganizer: auth.role === "organizer",
+    // DEC-346 (wave-74 amendment): scopedActionable is this reviewer's whole
+    // scope minus their own recusals (partitionRecused above); queueItems is
+    // the same set after the cap filter. The difference is exactly the rows
+    // the cap removed -- both arrays already resolved above, no new query.
+    cappedOut: scopedActionable.length - queueItems.length,
   });
 });
 
@@ -521,7 +542,11 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
   if (!existing) {
     const ratingsCount = await repo.countEvaluationsForSubmission(c.var.db, plan.id, submissionId, round);
     if (!needsMoreRatings({ ratingsCount }, plan.maxEvaluations ?? undefined)) {
-      throw new ApiError("conflict", "This submission has reached its evaluation cap");
+      // DEC-346 (wave-74 amendment): same words the queue's own empty/short
+      // state uses for this reason ("full set of reviews") -- a reviewer who
+      // deep-links a capped-out submission and one who reads their queue
+      // hear the identical sentence.
+      throw new ApiError("conflict", "This submission already has its full set of reviews");
     }
   }
 
