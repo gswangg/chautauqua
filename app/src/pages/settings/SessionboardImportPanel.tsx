@@ -6,15 +6,17 @@
 // Independent of the server task (task-w5-b): this file mocks the network
 // in its render test and builds strictly to the DEC-613 wire shape.
 //
-// Three steps, matching the visual grammar of "Import CSV · step 2 of 3" in
-// docs/design/Chautauqua Contacts.dc.html (lines 248-269): (1) choose the
-// Sessionboard entity + paste/upload its CSV export, (2) a mapping table of
-// `column | sample value | -> | target field`, the target picker a styled
-// .chq-segmented pill group (never a bare <select>) and the file input the
-// shared styled .chq-file control (never a raw input[type=file]), (3) a
-// dry-run report that prints only the numbers the server's report
-// contains, then an explicit "Import N rows" confirm that re-posts with
-// dryRun:false through the same planner.
+// Three steps (V11 frame 09--25, docs/design/DESIGN-RULINGS.md:356, DEC-613
+// wave-64 amendment): "Choose file · Review what will change · Done".
+// Step 1: choose the Sessionboard entity + paste/upload its CSV export.
+// Step 2 is the disposition review: the mapping table of `column | sample
+// value | -> | target field` (the target picker a styled .chq-segmented
+// pill group, never a bare <select>, and the file input the shared styled
+// .chq-file control, never a raw input[type=file]) AND the dry-run report
+// that prints only the numbers the server's report contains, next to an
+// explicit "Import N rows" confirm. Step 3 is reserved for the applied
+// result, once dryRun:false has actually re-posted through the same
+// planner -- nothing is written before that.
 //
 // DEC-614: this build only ships Sessionboard's CSV/XLSX export path
 // (layer 1). The REST-API-token path (layer 2) is named in prose next to
@@ -87,7 +89,11 @@ export function SessionboardImportPanel() {
   const dataRows = rows ? rows.slice(1) : [];
   const parseError = typeof parsed === 'string' ? parsed : null;
 
-  const step = finalReport ? 3 : dryRunReport ? 3 : header.length > 0 ? 2 : 1;
+  // Step 2 is the disposition review: the mapping table AND the dry-run
+  // report both live here (DEC-613 wave-64 amendment) -- step 3 is reserved
+  // for the applied result, once the operator has confirmed on the last
+  // step. Nothing before step 3 has written anything.
+  const step = finalReport ? 3 : header.length > 0 ? 2 : 1;
 
   function resetForNewEntity(next: SessionboardEntity) {
     setEntity(next);
@@ -244,7 +250,7 @@ export function SessionboardImportPanel() {
               Choose file
             </li>
             <li className={`chq-step${step > 2 ? ' is-done' : step === 2 ? ' is-current' : ''}`}>
-              Match columns
+              Review what will change
             </li>
             <li className={`chq-step${step === 3 ? ' is-current' : ''}`}>Done</li>
           </ol>
@@ -265,6 +271,10 @@ export function SessionboardImportPanel() {
               ))}
             </div>
           </fieldset>
+
+          <p className="chq-settings-sessionboard-readonly-note">
+            Sessionboard is read-only to us — importing never writes anything back.
+          </p>
 
           <p className="chq-settings-sessionboard-size-hint">
             Up to {formatBytes(MAX_IMPORT_CSV_BYTES)} of CSV.
@@ -368,6 +378,9 @@ export function SessionboardImportPanel() {
                 <button type="button" className="chq-btn chq-btn-secondary" disabled={busy} onClick={() => void runDryRun()}>
                   {busy ? 'Checking…' : 'Preview import (dry run)'}
                 </button>
+                <p className="chq-settings-sessionboard-nothing-written-note">
+                  Nothing is written until you confirm on the last step.
+                </p>
               </div>
             </>
           )}
