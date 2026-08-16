@@ -32,6 +32,7 @@ import { PublicEmptyState } from "../public/empty-state";
 import { ensureCsrfCookie } from "./tasks/shared";
 import { DEC_747, DEC_322 } from "../../decisions";
 import { safeImageSrc } from "../../domain/brand-url";
+import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
 void DEC_322;
 
@@ -217,7 +218,7 @@ portalPreviewRoutes.get("/preview", async (c) => {
     <PreviewPage
       branding={branding}
       resources={resources}
-      showResources={settings?.showResources ?? true}
+      showResources={settings?.showResources ?? DEFAULT_PORTAL_SETTINGS.showResources}
       csrfToken={csrfToken}
     />,
   );

@@ -13,6 +13,7 @@ import { assertServedContentTypeHeader, contentDispositionAttachment, isImageCon
 import { requireAuth, ensureCsrfCookie } from "./shared";
 import { portalNotFound } from "../shared";
 import { ResourcesPage } from "./views";
+import { DEFAULT_PORTAL_SETTINGS } from "../../../domain/portal-settings";
 
 export const portalResourcesRoutes = new Hono<AppEnv>();
 
@@ -62,7 +63,7 @@ portalResourcesRoutes.get("/resources/:resourceId/download", async (c) => {
   // download link must not survive that resource's own event turning the
   // section off, still before any bytes stream.
   const data = await getPortalData(c.var.db, contactId, auth.orgId);
-  if (!(data.showResourcesByEventId[scope.eventId] ?? true)) return portalNotFound(c);
+  if (!(data.showResourcesByEventId[scope.eventId] ?? DEFAULT_PORTAL_SETTINGS.showResources)) return portalNotFound(c);
 
   const store = makeFileStore(c.env.FILES);
   const obj = await store.get(scope.r2Key);

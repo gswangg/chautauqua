@@ -5,6 +5,7 @@
 import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import { id, createdAt, updatedAt } from "./common";
+import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
 export const portalSettings = sqliteTable(
   "portal_settings",
@@ -14,7 +15,7 @@ export const portalSettings = sqliteTable(
     logoUrl: text("logo_url"),
     accentColor: text("accent_color"),
     welcomeMessage: text("welcome_message"),
-    showResources: integer("show_resources", { mode: "boolean" }).notNull().default(true),
+    showResources: integer("show_resources", { mode: "boolean" }).notNull().default(DEFAULT_PORTAL_SETTINGS.showResources),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
