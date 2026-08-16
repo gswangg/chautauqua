@@ -1162,6 +1162,14 @@ a:hover {
   white-space: nowrap;
 }
 
+/* User-filed (gate-9): the shared middle alignment centers single-line
+   cells (labels dash, Open) against two-line COMPANY cells, so the row's
+   content floats at mixed heights. First lines share a baseline instead —
+   the same register the review results table uses. */
+.chq-contacts-table td {
+  vertical-align: baseline;
+}
+
 .chq-contacts-add-to-event-modal,
 .chq-contacts-bulk-email-modal,
 .chq-contacts-new-contact-modal {
