@@ -97,9 +97,14 @@ const LEDGER: Record<string, LedgerEntry> = {
     verdict: 'proven',
     test: 'pages/contacts/ImportWizard-refusal-shapes.render.test.tsx',
   },
+  // DEC-505 wave-13 amendment (task-w13-a): compose-refusal-shapes.test.ts
+  // is a legitimate SOURCE-grep (it proves every fields-map shape gets a
+  // named resolution branch in ComposeWizard.tsx) but it never renders the
+  // component, so it cannot prove a server refusal reaches the DOM. The DOM
+  // proof lives in the new render test below.
   'pages/comms/ComposeWizard.tsx': {
     verdict: 'proven',
-    test: 'pages/comms/compose-refusal-shapes.test.ts',
+    test: 'pages/comms/ComposeWizard-refusal-shapes.render.test.tsx',
   },
   'pages/review/PlanEditor.tsx': {
     verdict: 'proven',
@@ -171,6 +176,80 @@ function findStaleLedgerRows(population: string[], ledgerKeys: string[]): string
 
 const DEC_ID_RE = /DEC-\d+/;
 
+/** Finds every `errorEnvelope(...)` call in `src` and returns each call's
+ * full character span `[start, end)` (start at `errorEnvelope`, end at the
+ * matching close-paren) alongside the raw argument-list text between the
+ * parens. Paren-balancing is quote-aware (a `(` or `)` inside a string
+ * literal never counts), matching the balanced-paren extraction style
+ * `compose-refusal-shapes.test.ts` already uses for its own source slices. */
+function findErrorEnvelopeCalls(src: string): { start: number; end: number; args: string }[] {
+  const calls: { start: number; end: number; args: string }[] = [];
+  const CALL_RE = /errorEnvelope\s*\(/g;
+  let m: RegExpExecArray | null;
+  while ((m = CALL_RE.exec(src))) {
+    const openParenIdx = m.index + m[0].length - 1;
+    let depth = 1;
+    let i = openParenIdx + 1;
+    let quote: string | null = null;
+    for (; i < src.length && depth > 0; i++) {
+      const ch = src[i];
+      if (quote) {
+        if (ch === '\\') {
+          i++; // skip escaped char
+        } else if (ch === quote) {
+          quote = null;
+        }
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === '`') {
+        quote = ch;
+      } else if (ch === '(') {
+        depth++;
+      } else if (ch === ')') {
+        depth--;
+      }
+    }
+    const end = i; // one past the matching close-paren
+    calls.push({ start: m.index, end, args: src.slice(openParenIdx + 1, end - 1) });
+  }
+  return calls;
+}
+
+/** Every quoted string literal (single or double quoted, non-empty) found
+ * in `text`, unquoted. */
+function stringLiterals(text: string): string[] {
+  const LITERAL_RE = /'([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\.[^"\\]*)*)"/g;
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = LITERAL_RE.exec(text))) {
+    const lit = m[1] ?? m[2] ?? '';
+    if (lit.trim().length > 0) out.push(lit);
+  }
+  return out;
+}
+
+/** Returns a human-readable reason a `proven` citation FAILS the DOM-proof
+ * bar, or `null` if it passes. The bar: at least one `errorEnvelope(...)`
+ * call exists, and at least one quoted string literal inside that call's
+ * argument list (the server's own `message` or one of its `fields` values)
+ * reoccurs verbatim OUTSIDE every errorEnvelope call span in the same file
+ * (i.e. in an assertion, not just in the mock setup echoing itself). */
+function provenReasonNotSatisfied(testSrc: string): string | null {
+  const calls = findErrorEnvelopeCalls(testSrc);
+  if (calls.length === 0) return 'contains no errorEnvelope( call';
+
+  const outsideCallsText = calls
+    .slice()
+    .sort((a, b) => a.start - b.start)
+    .reduceRight((remaining, call) => remaining.slice(0, call.start) + remaining.slice(call.end), testSrc);
+
+  const carriedLiterals = new Set(calls.flatMap((c) => stringLiterals(c.args)));
+  for (const literal of carriedLiterals) {
+    if (outsideCallsText.includes(literal)) return null;
+  }
+  return 'has no errorEnvelope(...) string literal asserted verbatim outside the call itself';
+}
+
 describe('refusal-rendering ledger: every mutating SPA component maps to a proof or a filed gap (DEC-505)', () => {
   const population = derivePopulation(APP_SRC);
   const ledgerKeys = Object.keys(LEDGER);
@@ -191,7 +270,7 @@ describe('refusal-rendering ledger: every mutating SPA component maps to a proof
     expect(stale, `ledger rows naming a component no longer in the population:\n${stale.join('\n')}`).toEqual([]);
   });
 
-  it('every `proven` row cites a test file that exists and actually imports the named component', () => {
+  it('every `proven` row cites a test file that exists, references the named component, calls errorEnvelope(, and asserts one of its own string literals verbatim elsewhere in the file', () => {
     const offenders: string[] = [];
     for (const [component, entry] of Object.entries(LEDGER)) {
       if (entry.verdict !== 'proven') continue;
@@ -204,7 +283,10 @@ describe('refusal-rendering ledger: every mutating SPA component maps to a proof
       const componentName = component.split('/').pop()!.replace(/\.tsx$/, '');
       if (!testSrc.includes(componentName)) {
         offenders.push(`${component}: cited test ${entry.test} never references ${componentName}`);
+        continue;
       }
+      const reason = provenReasonNotSatisfied(testSrc);
+      if (reason) offenders.push(`${component}: cited test ${entry.test} ${reason}`);
     }
     expect(offenders, offenders.join('\n')).toEqual([]);
   });
@@ -254,5 +336,110 @@ describe('refusal-rendering ledger: every mutating SPA component maps to a proof
     expect(MUTATING_CALL_RE.test(withGenericCall)).toBe(true);
     const importOnly = `import { apiPost } from '../../lib/api';`;
     expect(MUTATING_CALL_RE.test(importOnly)).toBe(false);
+  });
+
+  it('[negative control] the proven-row predicate flags a fixture whose mock string never re-appears, and does not flag a conforming one', () => {
+    // A source-grep style fixture: mocks an errorEnvelope but only ever
+    // asserts a DIFFERENT string against the DOM -- exactly the shape
+    // compose-refusal-shapes.test.ts was cited under before this wave (zero
+    // `render(` calls, so nothing downstream of the mock is ever checked).
+    const nonConforming = `
+      const body = errorEnvelope('invalid', 'A server message never re-asserted', { foo: 'also never re-asserted' });
+      mockApi({ 'POST /api/v1/x': { status: 400, body } });
+      render(createElement(Widget));
+      expect(screen.getByText('Widget')).toBeInTheDocument();
+    `;
+    expect(provenReasonNotSatisfied(nonConforming)).not.toBeNull();
+
+    // A conforming fixture: one of the errorEnvelope literals (a fields
+    // value here) is asserted verbatim against the rendered DOM elsewhere
+    // in the file, exactly like TracksRoomsPanel-refusal-shapes and the new
+    // ComposeWizard-refusal-shapes.render.test.tsx.
+    const conforming = `
+      const body = errorEnvelope('invalid', 'Validation failed', { name: 'S1 - Intro to Rust' });
+      mockApi({ 'POST /api/v1/x': { status: 400, body } });
+      render(createElement(Widget));
+      expect(await screen.findByText('S1 - Intro to Rust')).toBeInTheDocument();
+    `;
+    expect(provenReasonNotSatisfied(conforming)).toBeNull();
+
+    // A pure source-grep fixture (zero errorEnvelope calls at all) is
+    // flagged too -- the exact shape the old ComposeWizard citation was.
+    const sourceGrepOnly = `
+      const source = readFileSync('ComposeWizard.tsx', 'utf8');
+      expect(source).toContain("'no eligible recipients'");
+    `;
+    expect(provenReasonNotSatisfied(sourceGrepOnly)).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// KNOWN_OWED: every ledger key whose verdict is `owed`, hand-transcribed and
+// checked in both directions against the ledger itself -- modelled on
+// test/clarifications-ledger.scan.test.ts:490-498. Sibling lanes that clear
+// a row from `owed` to `proven`/`exempt` must delete that row's key here too
+// (a merge-time touch-up, same as the ledger row itself).
+// ---------------------------------------------------------------------------
+const KNOWN_OWED: string[] = [
+  'components/EventSwitcher.tsx',
+  'pages/Agenda.tsx',
+  'pages/Overview.tsx',
+  'pages/agenda/BreaksPanel.tsx',
+  'pages/comms/TemplatesTab.tsx',
+  'pages/contacts/AddToEventModal.tsx',
+  'pages/contacts/BulkEmailModal.tsx',
+  'pages/contacts/ContactDrawer.tsx',
+  'pages/contacts/ContactsApp.tsx',
+  'pages/contacts/DuplicateEmailNotice.tsx',
+  'pages/contacts/DuplicatesView.tsx',
+  'pages/contacts/MergePage.tsx',
+  'pages/contacts/NewContactModal.tsx',
+  'pages/contacts/SegmentsPanel.tsx',
+  'pages/content/ContentApp.tsx',
+  'pages/content/DeliverableDetail.tsx',
+  'pages/content/FilesLibrary.tsx',
+  'pages/content/VersionList.tsx',
+  'pages/forms/FormsPage.tsx',
+  'pages/overview/AgendaWorkSection.tsx',
+  'pages/review/ProgressPanel.tsx',
+  'pages/review/ResultsTable.tsx',
+  'pages/review/ReviewerQueue.tsx',
+  'pages/review/Scorecard.tsx',
+  'pages/settings/ApiTokensPanel.tsx',
+  'pages/settings/CallForPapersPanel.tsx',
+  'pages/settings/EventSettingsPanel.tsx',
+  'pages/settings/PeopleRolesPanel.tsx',
+  'pages/settings/PortalSettingsPanel.tsx',
+  'pages/settings/ResourcesPanel.tsx',
+  'pages/settings/SessionboardImportPanel.tsx',
+  'pages/speakers/OnboardingGrid.tsx',
+  'pages/speakers/RosterPanel.tsx',
+  'pages/speakers/SpeakerDetailPage.tsx',
+  'pages/submissions/DeleteSubmissionsPage.tsx',
+  'pages/submissions/SubmissionDetailPage.tsx',
+  'pages/submissions/SubmissionsTable.tsx',
+  'pages/submissions/ViewTabs.tsx',
+].sort();
+
+describe('KNOWN_OWED tracks exactly the ledger rows verdict `owed` (DEC-180 wave-13 amendment)', () => {
+  const owedRowKeys = Object.entries(LEDGER)
+    .filter(([, entry]) => entry.verdict === 'owed')
+    .map(([component]) => component)
+    .sort();
+
+  it('is itself sorted (a diff-stable population, not a hand-ordered list)', () => {
+    expect(KNOWN_OWED).toEqual([...KNOWN_OWED].sort());
+  });
+
+  it('every `owed` ledger row is present in KNOWN_OWED', () => {
+    const known = new Set(KNOWN_OWED);
+    const missing = owedRowKeys.filter((k) => !known.has(k));
+    expect(missing, `owed rows missing from KNOWN_OWED:\n${missing.join('\n')}`).toEqual([]);
+  });
+
+  it('every KNOWN_OWED entry names a ledger row whose verdict is actually `owed`', () => {
+    const owed = new Set(owedRowKeys);
+    const stale = KNOWN_OWED.filter((k) => !owed.has(k));
+    expect(stale, `KNOWN_OWED entries with no matching \`owed\` ledger row:\n${stale.join('\n')}`).toEqual([]);
   });
 });
