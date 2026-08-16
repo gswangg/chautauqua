@@ -101,6 +101,73 @@ report.json` → areas[].defects + items[].
 12. Out-of-queue reviewer gets bare "Submission not found" — keep the 404-shape but
     say "not in your queue" when the submission exists but isn't assigned.
 
+**P2 PROMOTION (user directive 2026-08-15: ALL correctness issues get fixed —
+clusters first, then everything):**
+13. **History Restore has no visible effect** (CNT, final run): Restore on the
+    earlier history entry was clicked and the abstract still contained the later
+    edit's sentence. Either restore is broken or the UI never refetches — root-cause
+    it; a control that reports nothing and changes nothing is broken either way.
+
+**P3 — COMPLETE REMAINING CORRECTNESS SET (user directive: document + mandate ALL;
+fix after P1 clusters and P2; each needs measured closure):**
+14. Co-presenter identity inconsistent across views: portal shows "Marcus Okafor —
+    CO-PRESENTER" while organizer submissions list + review results render the
+    participant set differently — one identity rendering per person everywhere.
+15. Deadline day-boundary wording: close saved as 30 Apr 2027 23:59 but the public
+    hub renders "CLOSES THU 29 APR · 259 DAYS LEFT" — the countdown/day label
+    crosses the timezone boundary. Align every surface on the event timezone.
+16. Reviewer scope layering: assigning a narrower "One submission" scope neither
+    supersedes nor warns about the reviewer's existing broader track-wide assignment
+    on the same plan — the effective queue changes silently. Warn or merge scopes.
+17. Reviewer progress header "Round 1 of 1" while the event has six plans — the
+    denominator is wrong or the copy claims a rounds model that doesn't exist.
+18. Scorecard a11y: the two numeric 1-5 criteria rows are exposed near-identically
+    and the accessibility tree DEDUPES them into one set — give each criterion a
+    distinct accessible group/name (fieldset/legend or labelled radiogroup).
+19. Publish-flow withholding is silent: 7 of 19 placed sessions were absent from
+    the public agenda because of per-session content gating — publishing must SAY
+    "N placed sessions are not public yet (unapproved content)" with the list.
+20. Deliverable-kind taxonomy lacks Photo/Headshot while the Files library filters
+    by a Headshot type — a headshot request must be mis-tagged today. Add the kind.
+21. Speakers dashboard per-task filter narrows nothing visible ("Showing 16 of 16 ·
+    task X" with all 8 columns still shown) — filtering by task should collapse to
+    that task's column (or rows with it), not just retitle the header.
+22. History entries indistinguishable: two same-author edits logged with identical
+    timestamp (minute-granular) and identical description — add seconds + a
+    changed-fields summary so Restore has something to aim at.
+23. Add-to-event duplicate guard: for a contact already on the event the dialog
+    says "already on this event — 2 sessions" and still mints another session on
+    confirm — that path needs an explicit "add ANOTHER session" confirm, not a
+    relabel.
+24. Contact drawer scoping clarity: org-level record mixes event-scoped rows
+    ("THIS EVENT" role/year) into what reads as a cross-event record, and the save
+    affordance is ambiguous — label the event-scoped block explicitly.
+25. Comms recipient dedupe: recipient selection is submission-scoped so one person
+    appears N times (Priya twice for SES-001/SES-003) in a people-email — dedupe
+    recipients by contact for speaker-audience sends (one email per person).
+26. Participation status coherence: roster shows CONFIRMED (SES-001) + NOT INVITED
+    chips per submission while the speaker-record header shows a single NOT
+    INVITED — define the person-level rollup and make both surfaces agree.
+27. Public session/agenda cards omit speaker job title/company that speaker detail
+    renders — CHECK AGAINST v11 frames first (the session-tag meta line is ruled);
+    if frames omit it, this is a forfeit note, not a fix.
+28. Back-to-Agenda loses context: returning from a session detail lands on the
+    default first day, dropping the day/filter the visitor was on — preserve via
+    query params (?day=), consistent with the ?ids= hydration pattern.
+29. Agenda "Highlight a track" highlights while the sessions list's same-looking
+    track control FILTERS — the split is designed (frames call it Highlight) but
+    verify the control labels state their verb; if both just say the track name,
+    label the agenda one "Highlight".
+30. Seed near-duplicate submissions (SES-002 vs SES-032, identical title, different
+    speaker, conflicting statuses Pending/Declined): if intentional CRM-dedup
+    fixture, file the DEC saying so and make the statuses coherent; judges read it
+    as data corruption in THREE areas' runs.
+
+**Budget note (user, 2026-08-15): eval ceiling raised to $650** (spend ≈$440).
+Plan of record: ONE interim full official run after the P1 clusters land, ONE
+final full run on the finished build as the submission number. AIA-only re-run
+SKIPPED as redundant (same-day 100.0 measurement exists).
+
 **Already covered by the V11 lane (do NOT double-file):** Remind-laggards(0)
 active-no-op (DEC-760 hidden-not-disabled) · skeleton flash "0 files · 0 B" (250ms
 first-paint spec) · reminder-throttle visibility (result-panel spec).
