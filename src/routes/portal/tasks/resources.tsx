@@ -11,6 +11,7 @@ import { makeFileStore } from "../../../server/context";
 import { getMyResources, getPortalData, getResourceDownloadScope } from "../../../server/repo/portal";
 import { assertServedContentTypeHeader, contentDispositionAttachment, isImageContentType } from "../../../domain/files";
 import { requireAuth, ensureCsrfCookie } from "./shared";
+import { portalNotFound } from "../shared";
 import { ResourcesPage } from "./views";
 
 export const portalResourcesRoutes = new Hono<AppEnv>();
@@ -24,7 +25,7 @@ portalResourcesRoutes.get("/resources", async (c) => {
   // DEC-988 (wave-56 amendment): the producer's "Show resources" toggle
   // must be enforced server-side, not just hidden from navigation — refuse
   // before any resource read.
-  if (!data.branding.showResources) return c.text("Not found", 404);
+  if (!data.branding.showResources) return portalNotFound(c);
 
   const groups = await getMyResources(c.var.db, contactId, auth.orgId);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
@@ -43,7 +44,7 @@ portalResourcesRoutes.get("/resources/:resourceId/download", async (c) => {
   // DEC-988 (wave-56 amendment): same server-side refusal as GET /resources
   // — a direct download link must not survive the section being turned off.
   const data = await getPortalData(c.var.db, contactId, auth.orgId);
-  if (!data.branding.showResources) return c.text("Not found", 404);
+  if (!data.branding.showResources) return portalNotFound(c);
 
   const scope = await getResourceDownloadScope(c.var.db, resourceId, contactId, auth.orgId);
   if (!scope) throw new ApiError("not_found", "Resource not found");

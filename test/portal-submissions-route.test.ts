@@ -62,6 +62,19 @@ vi.mock("../src/server/repo/portal-edit", () => ({
   getPortalParticipants: vi.fn(async () => []),
 }));
 
+// DEC-945 (wave-65 amendment): the 404 exercised below now renders via
+// portalNotFound (src/routes/portal/shared.tsx), which resolves its eyebrow
+// via resolveNotFoundEyebrow(c.var.db) -- this suite's db fake is `{}`, so
+// the real resolver would throw. Stubbed since the eyebrow lookup is not
+// this suite's concern.
+vi.mock("../src/server/not-found", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/not-found")>("../src/server/not-found");
+  return {
+    ...actual,
+    resolveNotFoundEyebrow: vi.fn(async () => "Not found"),
+  };
+});
+
 const speakerAuth: AuthInfo = { userId: "u-1", role: "speaker", orgId: "org-1", contactId: "ct-1" };
 
 async function buildApp(auth: AuthInfo | undefined) {

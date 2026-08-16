@@ -25,6 +25,19 @@ import type { PortalInvitation, PortalSession, PortalTaskAssignment } from "../s
 
 let mockShowResources = true;
 
+// DEC-945 (wave-65 amendment): the two showResources=false 404s below now
+// render via portalNotFound (src/routes/portal/shared.tsx), which resolves
+// its eyebrow via resolveNotFoundEyebrow(c.var.db) -- this suite's db fake
+// is `{}`, so the real resolver would throw. Stubbed since the eyebrow
+// lookup is not this suite's concern.
+vi.mock("../src/server/not-found", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/not-found")>("../src/server/not-found");
+  return {
+    ...actual,
+    resolveNotFoundEyebrow: vi.fn(async () => "Not found"),
+  };
+});
+
 vi.mock("../src/server/repo/portal", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
   return {
@@ -130,8 +143,11 @@ describe("DEC-988: showResources server-side reader", () => {
     const app = await buildResourcesApp();
     const res = await app.request("/portal/resources");
     expect(res.status).toBe(404);
+    // DEC-945 (wave-65 amendment): the refusal now renders the shared
+    // branded 404 card (portalNotFound), not a bare text/plain body.
+    expect(res.headers.get("content-type")).toContain("text/html");
     const body = await res.text();
-    expect(body).toBe("Not found");
+    expect(body).toContain("That page isn");
   });
 
   it("showResources=false: GET /portal/resources/:id/download is 404 before the download-scope query", async () => {
