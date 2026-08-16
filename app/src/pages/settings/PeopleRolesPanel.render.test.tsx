@@ -99,7 +99,10 @@ describe('PeopleRolesPanel', () => {
 
     const selfRow = screen.getByText(SELF.email).closest('li')!;
     expect(within(selfRow).getByRole('combobox', { name: `Role for ${SELF.email}` })).toBeDisabled();
-    expect(selfRow).toHaveTextContent('You cannot remove or demote yourself');
+    // User-filed (gate-9): the in-row guard sentence broke the row grid —
+    // the reason now lives on the disabled select's title and the screen's
+    // consequence line, and the row keeps one action.
+    expect(within(selfRow).getByTitle('You cannot remove or demote yourself')).toBeDisabled();
     expect(within(selfRow).queryByRole('button', { name: 'Reset password' })).not.toBeInTheDocument();
 
     const otherRow = screen.getByText(OTHER.email).closest('li')!;
@@ -119,7 +122,7 @@ describe('PeopleRolesPanel', () => {
     const selfRow = screen.getByText(SELF.email).closest('li')!;
     const roleSelect = within(selfRow).getByRole('combobox', { name: `Role for ${SELF.email}` });
     expect(roleSelect).toBeDisabled();
-    expect(within(selfRow).getByText('You cannot remove or demote yourself')).toBeInTheDocument();
+    expect(within(selfRow).getByTitle('You cannot remove or demote yourself')).toBeInTheDocument();
 
     const otherRow = screen.getByText(OTHER.email).closest('li')!;
     expect(within(otherRow).getByRole('combobox', { name: `Role for ${OTHER.email}` })).not.toBeDisabled();

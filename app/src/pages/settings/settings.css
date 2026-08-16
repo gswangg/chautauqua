@@ -764,11 +764,20 @@
    :978-1001 4-track row (identity, role, scope, actions). */
 .chq-settings-people-row {
   display: grid;
-  grid-template-columns: 1fr 170px 190px auto;
+  /* User-filed (gate-9): each row is its OWN grid, so an `auto` last track
+     sizes per-row — the organizer row's wider actions cell shrank its 1fr
+     identity (email wrapped) and shifted every column off the other rows'.
+     A fixed track keeps all rows on one geometry. */
+  grid-template-columns: minmax(0, 1fr) 170px 190px 200px;
   gap: 18px;
   align-items: center;
   padding: 12px 0;
   border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-settings-people-actions {
+  justify-self: end;
+  text-align: right;
 }
 
 .chq-settings-people-identity {
