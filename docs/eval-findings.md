@@ -87,9 +87,13 @@ truthful against real screens.**
    `description` string (bind the real CFP intro field).
 4. §09 M2 destructive footer: implement "Close the form now" (09--10 far-left
    destructive — small, well-defined: sets close to now via existing PATCH).
-   "Archive this event" (09--11) is a NEW capability — DO NOT build it in the
-   freeze window; recorded as a documented deviation (roadmap) unless the user
-   says otherwise.
+   **"Archive this event" (09--11): USER RULING (2026-08-16) — DEFERRED
+   INDEFINITELY, build only on a real customer request. NO reference to event
+   archiving may appear in the implementation or the docs (verified zero
+   exist; the codebase's ARCHIVE_* symbols are the unrelated bulk-ZIP caps).
+   Frame 09--11's Archive control is a STANDING DEVIATION: the design keeps
+   it, the app omits it, and fidelity audits must NOT re-flag its absence —
+   cite this ruling instead.**
 5. §08 new-contact modal residue: primary verb "Add the contact", subtitle
    ("Added to the org, not to an event"), two-up name row per frame (not 506w
    stacked singles), neutral placeholders (not example people).
