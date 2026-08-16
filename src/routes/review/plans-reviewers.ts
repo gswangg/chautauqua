@@ -13,11 +13,12 @@ import { ApiError, parseBoundedIdArray, readJsonBody } from "../../server/http";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import type { PlanReviewerRecord } from "../../server/repo/review/reviewers";
-import { DEC_572, DEC_623, DEC_659, DEC_924 } from "../../decisions";
+import { DEC_354, DEC_572, DEC_623, DEC_659, DEC_924 } from "../../decisions";
 import { currentAuth, requireOwnedPlan } from "./shared";
 
 export const reviewPlansReviewersRoutes = new Hono<AppEnv>();
 
+void DEC_354; // POST /plans/:id/reviewers (amendment, wave 61): scopeAdvisory computed below -- never a refusal, never a silent supersede
 void DEC_572; // /plans/:id/scope-preview: true count + bounded preview before a track-scope fan-out below
 void DEC_623; // POST /plans/:id/reviewers: submissionId resolved through findSubmissionIdByRefOrId below
 void DEC_659; // GET + POST /plans/:id/reviewers: trackName/submissionRef/submissionTitle labels below
@@ -59,6 +60,53 @@ async function decorateReviewerRows(db: Db, rows: PlanReviewerRecord[]): Promise
     submissionRef: r.submissionId !== null ? (submissionLabelById.get(r.submissionId)?.ref ?? null) : null,
     submissionTitle: r.submissionId !== null ? (submissionLabelById.get(r.submissionId)?.title ?? null) : null,
   }));
+}
+
+/** DEC-354 (amendment, wave 61): a narrower reviewer scope laid over a
+ * broader one is an advisory, never a silent supersede and never a refusal.
+ * `existingRows` is the userId's plan_reviewer rows read BEFORE this POST's
+ * write (never after -- a just-inserted row must not advise against itself).
+ * `newRows` is every {trackId, submissionId} pair this POST is about to
+ * write (already resolved to internal ids). Reuses ONE extra query
+ * (getTrackIdsBySubmissionIds) at most, for the submissionId rows' track
+ * membership -- never a query per row. */
+async function computeScopeAdvisory(
+  db: Db,
+  existingRows: PlanReviewerRecord[],
+  userId: string,
+  newRows: { trackId: string | null; submissionId: string | null }[],
+): Promise<string | null> {
+  const mine = existingRows.filter((r) => r.userId === userId);
+  const hasAllScope = mine.some((r) => r.trackId === null && r.submissionId === null);
+  if (hasAllScope) {
+    return "This reviewer already holds an all-submissions (plan-wide) assignment on this plan -- their effective queue is the union of all their rows, not narrowed by this new assignment.";
+  }
+
+  const existingTrackIds = new Set(
+    mine.filter((r) => r.trackId !== null && r.submissionId === null).map((r) => r.trackId as string),
+  );
+  if (existingTrackIds.size === 0) return null;
+
+  const submissionIdsToCheck = [
+    ...new Set(newRows.filter((r) => r.submissionId !== null).map((r) => r.submissionId as string)),
+  ];
+  if (submissionIdsToCheck.length === 0) return null;
+
+  const trackIdsBySubmission = await repo.getTrackIdsBySubmissionIds(db, submissionIdsToCheck);
+  let coveringTrackId: string | null = null;
+  for (const submissionId of submissionIdsToCheck) {
+    const tracks = trackIdsBySubmission.get(submissionId) ?? [];
+    const hit = tracks.find((t) => existingTrackIds.has(t));
+    if (hit) {
+      coveringTrackId = hit;
+      break;
+    }
+  }
+  if (coveringTrackId === null) return null;
+
+  const trackNames = await repo.getTrackNamesByIds(db, [coveringTrackId]);
+  const trackName = trackNames.get(coveringTrackId) ?? "(removed)";
+  return `This reviewer already holds a track-wide assignment on "${trackName}" that covers at least one of these submissions -- their effective queue is the union of all their rows, not narrowed by this new assignment.`;
 }
 
 reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer, csrfJson, async (c) => {
@@ -104,6 +152,13 @@ reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer,
     // otherwise resolve to two identical addReviewers inputs and double up
     // the 201 body even though addReviewers itself now writes one row.
     const resolvedSubmissionIds = [...new Set(inputs.map((input) => resolvedByInput.get(input) as string))];
+    const existingRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
+    const scopeAdvisory = await computeScopeAdvisory(
+      c.var.db,
+      existingRows,
+      body.userId,
+      resolvedSubmissionIds.map((submissionId) => ({ trackId: null, submissionId })),
+    );
     const created = await repo.addReviewers(
       c.var.db,
       plan.id,
@@ -114,7 +169,7 @@ reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer,
       })),
     );
     const items = await decorateReviewerRows(c.var.db, created);
-    return c.json({ items, total: items.length }, 201);
+    return c.json({ items, total: items.length, scopeAdvisory }, 201);
   }
 
   // DEC-354: reject a trackId/submissionId that does not belong to the
@@ -154,6 +209,9 @@ reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer,
     }
   }
 
+  const existingRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
+  const scopeAdvisory = await computeScopeAdvisory(c.var.db, existingRows, body.userId, [{ trackId, submissionId }]);
+
   // DEC-924 (amendment, wave 47): addReviewer (singular) is retired -- the
   // single-pair path routes through the same set-based addReviewers with a
   // one-element array, keeping the wire contract (a single created object,
@@ -162,7 +220,7 @@ reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer,
   if (!created) throw new Error("addReviewers: insert did not persist");
   const [decorated] = await decorateReviewerRows(c.var.db, [created]);
   if (!decorated) throw new Error("decorateReviewerRows: did not return a row for the created reviewer");
-  return c.json(decorated, 201);
+  return c.json({ ...decorated, scopeAdvisory }, 201);
 });
 
 // DEC-572: preview a plan_reviewer track-scope assignment BEFORE it fans out

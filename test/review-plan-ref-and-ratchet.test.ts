@@ -68,6 +68,10 @@ vi.mock("../src/server/repo/review", async () => {
     }),
     requireOrgUser: vi.fn(async () => ({ role: "reviewer", email: "rev@org.test" })),
     trackExistsInEvent: vi.fn(async () => true),
+    // DEC-354 (amendment, wave 61): the scopeAdvisory pre-read -- no
+    // existing plan_reviewer rows in this fixture, so always empty.
+    listReviewerRowsForPlan: vi.fn(async () => []),
+    getTrackIdsBySubmissionIds: vi.fn(async () => new Map()),
     findSubmissionIdByRefOrId: vi.fn(async (_db: unknown, eventId: string, input: string) => {
       if (eventId !== plan.eventId) return null;
       if (input === submission.id || input === submission.ref) return submission.id;

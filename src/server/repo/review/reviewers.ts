@@ -309,6 +309,28 @@ export async function countAssignedReviewersForSubmission(
   return assignedPairs.size;
 }
 
+/** DEC-354 (amendment, wave 61): the track-membership half of the
+ * scope-overlap advisory in POST /plans/:id/reviewers -- ONE query over the
+ * caller's own submissionIds set (never a query per row), returning each
+ * submission's distinct trackIds so the route can test whether a new
+ * submissionId row falls inside a track the same userId already scopes. */
+export async function getTrackIdsBySubmissionIds(db: Db, submissionIds: string[]): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (submissionIds.length === 0) return map;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+      .from(schema.submissionTrack)
+      .where(inArray(schema.submissionTrack.submissionId, batch));
+    for (const row of rows) {
+      const list = map.get(row.submissionId) ?? [];
+      list.push(row.trackId);
+      map.set(row.submissionId, list);
+    }
+  }
+  return map;
+}
+
 export async function listPlanIdsForReviewer(db: Db, userId: string): Promise<string[]> {
   const rows = await db
     .select({ planId: schema.planReviewer.planId })

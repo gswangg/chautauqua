@@ -936,6 +936,16 @@
   margin: 0 0 10px;
 }
 
+/* DEC-354 (amendment, wave 61): the scope-overlap advisory beside the
+   reviewer list -- a quiet notice, NOT an error banner (nothing failed),
+   so it deliberately shares the muted caption look above rather than any
+   .chq-field-error/.chq-error-summary styling. */
+.chq-review-scope-advisory {
+  font-size: 13px;
+  color: var(--chq-muted);
+  margin: 0 0 10px;
+}
+
 .chq-review-criterion-weight {
   display: flex;
   align-items: center;
