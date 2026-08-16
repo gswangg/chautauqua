@@ -255,6 +255,18 @@ Cross-org access returns 404, never 403, so an attacker can't distinguish "not y
 "doesn't exist" (`test/exports-cross-org.test.ts`). Bearer tokens cannot mint further
 tokens (DEC-027).
 
+## Docs site (`GET /docs`, `GET /docs/:slug`)
+
+DEC-382 wave-3 amendment: a new, designed, public, no-login site — grouped by
+who you are (`DOCS_GROUP_META`), articles derived from `DOCS_ARTICLES`
+(`src/routes/docs-content`). `GET /docs` (`/docs`) is the index; `GET /docs/:slug`
+(one concrete example seeded in `app/src/routeManifest.ts`:
+`/docs/start-here`) renders one article. `/docs/api` stays `TOOLS_CSS`
+chrome per the base DEC-382 decision and is linked from the docs header as a
+labelled leaving link, not folded into this site. An unknown slug 404s
+through the same `publicNotFound` card every other public surface uses,
+never a redirect.
+
 ## Admin shell / auth (`/login`, `/logout`, `/forgot`, `/account/password`, `/admin/*`)
 
 Session login, self-service password change (any authenticated role), and the SPA

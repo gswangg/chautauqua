@@ -125,6 +125,11 @@ const PUBLIC_BY_DESIGN: { pattern: string; reason: string }[] = [
       "DEC-056: 'public, no-login API docs page at GET /docs/api ... it documents no secrets so it's safe to be public' (src/routes/docs.tsx header comment).",
   },
   {
+    pattern: "/docs/:slug",
+    reason:
+      "DEC-382 wave-3 amendment: the public docs site (src/routes/docs-site.tsx) -- an unknown slug renders publicNotFound, which reads the same anonymous db.select as every other public SSR 404 (resolveNotFoundEyebrow, src/server/not-found.tsx) to draw its eyebrow. No session by design, same as every other public surface's 404.",
+  },
+  {
     pattern: "/login",
     reason:
       "DEC-012: SSR login page, must be reachable while anonymous by definition (src/routes/auth.tsx header comment).",
