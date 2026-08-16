@@ -1,112 +1,43 @@
-// Client-side CSV helpers for the contact-import wizard (J11, DEC-026). The
-// app package builds against its own tsconfig (app/tsconfig.json, "include":
-// ["src"]) and cannot import src/lib/csv.ts across the package boundary, so
-// this mirrors its RFC 4180 behavior at the level the wizard needs: enough
-// to preview + map columns client-side. The server (src/lib/csv.ts +
-// src/domain/contacts.ts's mapImportRow) is the authority for the actual
-// import; this is best-effort preview parsing only, matching
-// upload-validation.ts's "mirror the server, server wins" pattern.
-
-/**
- * Parses RFC 4180 CSV text into rows of string fields. Handles quoted
- * fields (embedded commas/newlines, doubled "" escapes), CRLF/LF/bare-CR
- * line endings, and strips a leading BOM. A single trailing blank line is
- * dropped so `"a,b\n"` parses to one row, not two.
- */
-export function parseCsv(text: string): string[][] {
-  if (text.startsWith('﻿')) {
-    text = text.slice(1);
-  }
-
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let inQuotes = false;
-
-  const n = text.length;
-  let i = 0;
-  while (i < n) {
-    const c = text[i];
-
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i += 2;
-          continue;
-        }
-        inQuotes = false;
-        i++;
-        continue;
-      }
-      field += c;
-      i++;
-      continue;
-    }
-
-    if (c === '"' && field === '') {
-      inQuotes = true;
-      i++;
-      continue;
-    }
-    if (c === ',') {
-      row.push(field);
-      field = '';
-      i++;
-      continue;
-    }
-    if (c === '\r' && text[i + 1] === '\n') {
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = '';
-      i += 2;
-      continue;
-    }
-    if (c === '\n' || c === '\r') {
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = '';
-      i++;
-      continue;
-    }
-    field += c;
-    i++;
-  }
-
-  if (inQuotes) {
-    throw new Error('Unterminated quoted field in CSV');
-  }
-
-  if (field !== '' || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-
-  return rows;
-}
-
-/** Standard target fields the mapping wizard offers, plus free-form 'custom.<key>'.
- * Kept exactly aligned with the server's pure-core mapImportRow
- * (src/domain/contacts.ts) target-field switch, which throws on an
- * unrecognized target (P1 fix, w1-f) — phone and bio are supported there
- * (DEC-290), so they're offered here too. */
-export const STANDARD_IMPORT_FIELDS = ['firstName', 'lastName', 'email', 'company', 'title', 'phone', 'bio'] as const;
-export type StandardImportField = (typeof STANDARD_IMPORT_FIELDS)[number];
+// Client-side helpers for the contact-import wizard (J11, DEC-026).
+//
+// DEC-011/DEC-179/DEC-478 amendment (wave 65): parseCsv, toCsv and
+// mapImportRow used to be reimplemented here, justified by a comment
+// claiming the app package "cannot import src/domain/csv.ts across the
+// package boundary" -- that premise was false (app/tsconfig.json's
+// "include" already lists "../src/domain/**/*.ts", and this file's own
+// consumer, ImportWizard.tsx, already imports validateImportMapping
+// straight from the domain). The two copies had diverged: this file's
+// parser threw a bare Error with no line number where the domain's throws
+// CsvParseError naming the line, and this file's mapImportRow accepted
+// custom.<key> targets the domain's rejected against a stale hand-listed
+// switch. This file now re-exports the domain's parseCsv (src/domain/csv.ts)
+// and mapImportRow/STANDARD_IMPORT_FIELDS (src/domain/contacts-parts/import.ts)
+// directly -- there is exactly ONE implementation of each, used by both the
+// wizard's client-side preview and the server's actual import. The wizard
+// serializes its preview -> commit payload with toCsvVerbatim (also
+// src/domain/csv.ts), never toCsv (DEC-179): this app re-parses its own
+// output, and toCsv's formula-injection apostrophe would corrupt it.
+//
+// What stays here, and why (client-side by REASON, not by accident): the
+// server never runs FULL_NAME_TARGET/splitFullName/expandFullNameMapping or
+// suggestMapping -- they only ever rewrite a request BEFORE it is sent, so
+// they have no server-side counterpart to converge with.
+export { parseCsv, toCsvVerbatim } from '../../../../src/domain/csv';
+export { mapImportRow, STANDARD_IMPORT_FIELDS } from '../../../../src/domain/contacts-parts/import';
 
 /**
  * P1 fix (w1-f): a fixture/export CSV frequently carries one combined "name"
  * column (e.g. docs/fixtures/speakers.csv's `name` header, "Priya Raman")
  * rather than separate first/last columns. The server's mapImportRow
- * (src/domain/contacts.ts) only understands firstName/lastName/email/
- * company/title targets — there's no wire-level "split this value" target —
- * so a wizard user mapping a combined name column to just "firstName" (the
- * only option that reads like a name field) silently dropped the surname on
- * every imported row. This client-only pseudo-target lets the wizard offer
- * "Full name (splits into first / last)"; expandFullNameMapping() below
- * rewrites the CSV + mapping into columns the server already supports
- * *before* the request is sent, so no server/domain change is needed.
+ * (src/domain/contacts-parts/import.ts) only understands the
+ * STANDARD_IMPORT_FIELDS targets -- there's no wire-level "split this value"
+ * target -- so a wizard user mapping a combined name column to just
+ * "firstName" (the only option that reads like a name field) silently
+ * dropped the surname on every imported row. This client-only pseudo-target
+ * lets the wizard offer "Full name (splits into first / last)";
+ * expandFullNameMapping() below rewrites the CSV + mapping into columns the
+ * server already supports *before* the request is sent, so no server/domain
+ * change is needed.
  */
 export const FULL_NAME_TARGET = 'fullName';
 
@@ -120,19 +51,6 @@ export function splitFullName(value: string): { firstName: string; lastName: str
   const idx = trimmed.indexOf(' ');
   if (idx === -1) return { firstName: trimmed, lastName: '' };
   return { firstName: trimmed.slice(0, idx).trim(), lastName: trimmed.slice(idx + 1).trim() };
-}
-
-/** RFC 4180 serializer (mirrors parseCsv's dialect): quotes a field only
- * when it contains a comma, quote, or newline, doubling embedded quotes. */
-function csvField(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
-export function toCsv(rows: string[][]): string {
-  return rows.map((row) => row.map(csvField).join(',')).join('\n') + '\n';
 }
 
 /**
@@ -184,77 +102,13 @@ export function expandFullNameMapping(
   return { header: nextHeader, rows: nextRows, mapping: nextMapping };
 }
 
-export interface MappedContactRow {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  company?: string;
-  title?: string;
-  phone?: string;
-  bio?: string;
-  customFields?: Record<string, string>;
-}
-
-/**
- * Applies a column -> target-field mapping (target is a StandardImportField
- * or 'custom.<name>') to one parsed CSV row, mirroring the wire semantics of
- * src/domain/contacts.ts's mapImportRow: unmapped columns are ignored, and a
- * missing/blank mapped email yields {} so the caller can skip the row.
- */
-export function mapImportRow(mapping: Record<string, string>, header: string[], row: string[]): MappedContactRow {
-  const result: MappedContactRow = {};
-  const customFields: Record<string, string> = {};
-  let hasCustom = false;
-
-  for (let i = 0; i < header.length; i++) {
-    const column = header[i];
-    if (column === undefined) continue;
-    const target = mapping[column];
-    if (!target) continue;
-    const value = row[i] ?? '';
-
-    if (target.startsWith('custom.')) {
-      const key = target.slice('custom.'.length);
-      customFields[key] = value;
-      hasCustom = true;
-      continue;
-    }
-
-    if (target === FULL_NAME_TARGET) {
-      const { firstName, lastName } = splitFullName(value);
-      if (firstName) result.firstName = firstName;
-      if (lastName) result.lastName = lastName;
-      continue;
-    }
-
-    if ((STANDARD_IMPORT_FIELDS as readonly string[]).includes(target)) {
-      (result as Record<string, string>)[target] = value;
-    } else {
-      throw new Error(`mapImportRow: unknown target field "${target}"`);
-    }
-  }
-
-  if (hasCustom) result.customFields = customFields;
-
-  if (!result.email || result.email.trim() === '') {
-    return {};
-  }
-
-  return result;
-}
-
-/** True when a mapping wizard row (post mapImportRow) has no usable data — used to compute "skipped" preview counts. */
-export function isEmptyMappedRow(row: MappedContactRow): boolean {
-  return Object.keys(row).length === 0;
-}
-
 function normalizeHeaderName(col: string): string {
   return col.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 /** column-name aliases (normalized: lowercase, non-alnum stripped) that
  * should auto-map to each standard field. */
-const FIELD_ALIASES: Record<StandardImportField, string[]> = {
+const FIELD_ALIASES: Record<string, string[]> = {
   firstName: ['firstname', 'first', 'fname', 'givenname'],
   lastName: ['lastname', 'last', 'lname', 'surname', 'familyname'],
   email: ['email', 'emailaddress', 'e-mail', 'mail'],
@@ -282,9 +136,7 @@ export function suggestMapping(header: string[]): Record<string, string> {
   const mapping: Record<string, string> = {};
   for (const col of header) {
     const normalized = normalizeHeaderName(col);
-    const match = (Object.entries(FIELD_ALIASES) as [StandardImportField, string[]][]).find(([, aliases]) =>
-      aliases.includes(normalized),
-    );
+    const match = Object.entries(FIELD_ALIASES).find(([, aliases]) => aliases.includes(normalized));
     if (match) {
       mapping[col] = match[0];
     } else if (FULL_NAME_ALIASES.includes(normalized)) {

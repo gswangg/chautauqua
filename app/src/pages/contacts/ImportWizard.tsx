@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiPost, ApiError } from '../../lib/api';
-import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
+import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsvVerbatim, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { usePendingLabel } from '../../components/PendingAction';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
@@ -191,9 +191,15 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   const badRows = useMemo(() => {
     if (header.length === 0) return [];
     const autoMapping = suggestMapping(header);
+    // DEC-011/DEC-478 (wave-65 amendment): the domain's mapImportRow has no
+    // concept of FULL_NAME_TARGET (that pseudo-target is client-only, see
+    // ./csv.ts), so a fullName-mapped column must run through
+    // expandFullNameMapping FIRST -- the same two steps runPreview's own
+    // POST body already runs below -- before mapImportRow ever sees it.
+    const expanded = expandFullNameMapping(header, allDataRows, autoMapping);
     const bad: number[] = [];
-    allDataRows.forEach((row, i) => {
-      const mapped = mapImportRow(autoMapping, header, row);
+    expanded.rows.forEach((row, i) => {
+      const mapped = mapImportRow(expanded.mapping, expanded.header, row);
       if (!mapped.email) bad.push(i + 2); // +2: header is line 1, first data row is line 2.
     });
     return bad;
@@ -248,10 +254,15 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   }, [mapping]);
 
   const dedupeCount = useMemo(() => {
+    // DEC-011/DEC-478 (wave-65 amendment): same expand-then-map order as
+    // badRows above -- mapImportRow (domain) throws on the FULL_NAME_TARGET
+    // pseudo-target unless expandFullNameMapping has already rewritten it
+    // into firstName/lastName columns.
+    const expanded = expandFullNameMapping(header, dataRows, mapping);
     const seen = new Set<string>();
     let dupes = 0;
-    for (const row of dataRows) {
-      const mapped = mapImportRow(mapping, header, row);
+    for (const row of expanded.rows) {
+      const mapped = mapImportRow(expanded.mapping, expanded.header, row);
       if (!mapped.email) continue;
       if (seen.has(mapped.email)) dupes += 1;
       else seen.add(mapped.email);
@@ -393,7 +404,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
       // Split any full-name-mapped column into first/last before the
       // server ever sees it (see expandFullNameMapping in ./csv.ts).
       const expanded = expandFullNameMapping(header, dataRows, mapping);
-      const expandedCsvText = toCsv([expanded.header, ...expanded.rows]);
+      const expandedCsvText = toCsvVerbatim([expanded.header, ...expanded.rows]);
       const request: PlannedRequest = {
         csvText: expandedCsvText,
         mapping: expanded.mapping,

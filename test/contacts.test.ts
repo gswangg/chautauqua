@@ -7,6 +7,7 @@ import {
   mapImportRow,
   mergedInviteStatus,
   mergedParticipantVisible,
+  STANDARD_IMPORT_FIELDS,
   type ContactRecord,
   type SegmentRule,
 } from "../src/domain/contacts";
@@ -595,5 +596,20 @@ describe("mapImportRow", () => {
     const row = ["   ", "Jane", "Doe", "", ""];
     const result = mapImportRow(mapping, header, row);
     expect(result).toEqual({});
+  });
+
+  // DEC-478 (amendment, wave 65): mapImportRow's accepted-target set is
+  // DERIVED from STANDARD_IMPORT_FIELDS (there is no second, hand-listed
+  // switch anymore -- see src/domain/contacts-parts/import.ts). This proves
+  // the two can never diverge: every member of the ONE list is accepted,
+  // and nothing outside it (plus 'custom.*') is.
+  it("accepts every STANDARD_IMPORT_FIELDS target and rejects one that isn't in the list", () => {
+    for (const field of STANDARD_IMPORT_FIELDS) {
+      const result = mapImportRow({ Email: "email", Col: field }, ["Email", "Col"], ["a@example.com", "value"]);
+      expect(result).toHaveProperty(field, "value");
+    }
+    expect(() => mapImportRow({ Email: "email", Col: "notAStandardField" }, ["Email", "Col"], ["a@example.com", "value"])).toThrow(
+      /unknown target field/,
+    );
   });
 });
