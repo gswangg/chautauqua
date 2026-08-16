@@ -282,11 +282,13 @@ function PlanSection({
               )}
               {/* DEC-239/DEC-251 (w1-d re-closure): the queue's own
                   fewest-ratings-first order is invisible without the count
-                  it's ordered by -- "N rating(s) so far" names why this row
-                  is where it is, never a bare list with no explanation. Its
-                  own class (not .chq-review-plan-meta) so it stays a
-                  separately countable fact from the format/audienceLevel
-                  meta line above. */}
+                  it's ordered by -- countOf(ratingsCount, 'rating') plus
+                  "so far" names why this row is where it is, never a bare
+                  list with no explanation. The count goes through countOf()
+                  rather than a hand-written parenthetical so DEC-957's one
+                  count grammar still holds here. Its own class (not
+                  .chq-review-plan-meta) so it stays a separately countable
+                  fact from the format/audienceLevel meta line above. */}
               <p className="chq-review-queue-ratings-count">
                 {countOf(item.ratingsCount, 'rating')} so far
               </p>
