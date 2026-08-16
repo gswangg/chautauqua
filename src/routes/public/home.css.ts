@@ -87,14 +87,16 @@ export const HOME_CSS = `
   }
 
   /* DEC-582 (wave-11 amendment): the frame's "API docs ›" tertiary anchor
-     next to the fresh-deploy Sign in (:284-287 desktop, :313-314 phone) --
-     44px is the frame's OWN minimum across both breakpoints (46px desktop,
-     44px phone), so this rule pins the floor rather than either sample.
+     next to the fresh-deploy Sign in (:284-287 desktop, :313-314 phone).
      Kept OUT of the .chq-home-action-primary/-secondary/-quiet motion
      family above -- that trio's selector list is pinned exactly by
      test/public-home-motion.test.ts, and a bare colour hover here needs no
-     transition contract of its own. */
-  .chq-home-action-tertiary { font-size: 14px; font-weight: 700; padding: 0 8px; min-height: 44px; display: flex; align-items: center; white-space: nowrap; color: var(--chq-ink-strong); text-decoration: none; }
+     transition contract of its own.
+     The 44px tap floor is NOT declared here: DEC-367 (wave-57 amendment) puts
+     it inside @media (max-width: 700px) in every SSR CSS module -- desktop
+     sizes from padding, like its bare-text sibling .chq-home-action-quiet.
+     The phone floor is re-asserted in this module's phone block below. */
+  .chq-home-action-tertiary { font-size: 14px; font-weight: 700; padding: 0 8px; display: flex; align-items: center; white-space: nowrap; color: var(--chq-ink-strong); text-decoration: none; }
   a.chq-home-action-tertiary:hover { color: var(--chq-brand); }
 
   .chq-home-row-published { padding: 18px 0; }
@@ -136,6 +138,9 @@ export const HOME_CSS = `
       justify-content: center;
       margin-top: 2px;
     }
+    /* DEC-367 (wave-57 amendment): the tertiary anchor's tap floor is
+       phone-only -- centred flex, not padding. DEC-582's "API docs ›". */
+    .chq-home-action-tertiary { min-height: 44px; }
 
     .chq-home-archive-row {
       grid-template-columns: 1fr auto;
