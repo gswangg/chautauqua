@@ -50,6 +50,55 @@ live tree this task, not inherited from a prior wave's claim:
   (`accept={...}`) and `:168` (`uploadHintText(...)`) derive from — one
   source, cannot drift.
 
+## GATE-11 SWEEP VERDICTS (fidelity-gate11/group{1,2,3}.md; DEPLOYED sha 6719a2dc, hotfix8 9b18f7ff on top; integrity CLEAN all three)
+
+**Scoreboard: 21 CONFIRMED CLOSED / 2 reopens (both HOTFIXED same hour) / handful of
+new smalls.** Every overnight closure claim was independently measured; zero eval-hack
+drift found. Confirmed closed and PRUNED from open lists: saved-view delete E2E ·
+scorecard gutter 60px + real fieldsets · DEC-354 advisory · DEC-596 assigned-reviewer
+denominator · out-of-queue named refusal · DEC-892/158 history diff + working Restore
+(identical-restore 400) · DEC-760 both scopes both surfaces · /plans/:id/progress
+measure (DEC-989, unexpectedly closed) · DEC-746 subset targeting (2-of-2 assignments
+measured) · P3#21 column collapse · DEC-936 rollup ("Mixed" + per-submission detail) ·
+DEC-899 server placed% · DEC-701 occupied-slot click lands+flags · DEC-238 preview==
+send==history ("14 sent" consistent) · Sessionboard step-2 (hand-map imports fine) ·
+embed Turn-off confirm+blast radius · DEC-290 opt-in (no eventId in body) · DEC-829 ·
+co-presenter widths 256/256/322 · DEC-151 back-carry · designed disabled-embed blank ·
+search submit fixed · reset-password facts + Copy + 20px mono · TYPE-THE-NAME confirm
+weight (case-insensitive gate) · invite flow verb/chips/Copy/last-time line · M10-1
+co-presenter Remove confirms · M08-2 leaked string gone. B8 tokens: SSR buttons +
+SPA .chq-btn/input family CONFIRMED at 120ms property-scoped with reduced-motion 0ms.
+
+**ORCHESTRATOR HOTFIX8 (9b18f7ff, deployed 21e5f4db):** DEC-902 header grid var moved
+to the role=table wrapper (header was a SIBLING outside .chq-settings-people-list —
+undefined var, labels stacked vertically, visibly worse than pre-fix) · portal-preview
+Back link /admin prefix (bare /settings 404s live; test pin updated to working path).
+
+**SWARM LANE — new smalls from the sweep (all need measured closure):**
+1. Remind result line renders literal "Skipped: unknown." — remind envelope has
+   failed[] but no skipped count; client prints "unknown". Either count skips in the
+   envelope or render only what exists. (group1)
+2. Comms batch history row: TEMPLATE cell renders "—" after a template-based send
+   (NEW regression) + row omits the skipped count DEC-238 standardized. (group2)
+3. API-tokens row MISSING from Your data edit view — revoke unreachable there (NEW,
+   group3). Deep-linked ?section=portal&edit=1 shows resources read-only until
+   Change clicked (group3). "Import 1 rows" plural (group3).
+4. Breaks flagged band: class + suffix land but bg/label BYTE-IDENTICAL to normal
+   bands — the grey treatment never renders (group2). Plus no Done control, extra
+   Location row vs frame 06--02.
+5. Photo/Headshot deliverable kind STILL OPEN (FILE_KINDS files.ts:15) — P3 #20.
+6. 07 history expansion band still open (RECIPIENT/RESULT heads, refs); col heads +
+   right-flushed search CLOSED, caption 3x→2x (finish to 1x).
+7. FieldModal residue: title "Edit field" vs frame, raw eq/ne/in operator tokens,
+   footer Save+Cancel only (no far-left Delete), width 520 vs 560. (group1)
+8. Dark-on-dark CTA hover PRECISED: a:hover was narrowed to :not(.chq-btn) but
+   .chq-home-action-primary lacks .chq-btn — add the class or scope the selector.
+   12-home 820-vs-732 + CFP 820-vs-756 rulings STILL unfiled. Overview button
+   family + nav links still transition-less (B8 gap); overview primary no hover bg.
+9. STILL OPEN unchanged: §09 M1/M2/M4/M5/M7/R2 · new-contact modal vs 08--16 ·
+   invite still inline (dialog form factor).
+
+
 ## GATE-10 SWEEP VERDICTS (fidelity-gate10/group{1,2,3}.md; snapshot d3c0c518, isolated servers 8894-6, integrity CLEAN all three)
 
 **Verdicts: 2 PASS (04, 11) · 3 MINOR (01, 05→08, 10) · 5 MAJOR (02, 03, 06, 07, 09)
