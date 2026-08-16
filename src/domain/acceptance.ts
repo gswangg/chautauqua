@@ -3,6 +3,7 @@
 // the returned descriptors; this module performs no I/O and no email.
 
 import { isIsoDate } from "./iso-date";
+import type { InviteStatus } from "./invite-status"; // DEC-789 wave-73 amendment
 
 // Re-exported from the pure vocabulary module (DEC-613 wave-70 amendment) —
 // the ONE set shared with src/routes/tasks.ts, src/server/repo/portal/tasks.ts,
@@ -126,7 +127,7 @@ export const FORM_TASK_FIELD_SPECS: Readonly<Record<string, readonly FormTaskFie
  * onboarding-task planning / public visibility) iff their invite is either
  * unsent ('none') or accepted ('accepted') — never 'invited' or 'declined'.
  */
-export const ACTIVE_INVITE_STATUSES = ["none", "accepted"] as const;
+export const ACTIVE_INVITE_STATUSES = ["none", "accepted"] as const satisfies readonly InviteStatus[];
 
 export function isActiveParticipant(inviteStatus: string): boolean {
   return (ACTIVE_INVITE_STATUSES as readonly string[]).includes(inviteStatus);
@@ -145,7 +146,7 @@ export function isActiveParticipant(inviteStatus: string): boolean {
  * and public-facing visibility — those surfaces must NOT show or act on an
  * invite that hasn't been accepted yet.
  */
-export const SCHEDULING_PARTICIPANT_STATUSES = ["none", "invited", "accepted"] as const;
+export const SCHEDULING_PARTICIPANT_STATUSES = ["none", "invited", "accepted"] as const satisfies readonly InviteStatus[];
 
 /**
  * DEC-317: participant invite state gates portal and file access on two
@@ -154,7 +155,7 @@ export const SCHEDULING_PARTICIPANT_STATUSES = ["none", "invited", "accepted"] a
  * may edit/upload). "invited" participants are portal-visible (read) but not
  * active (no write); "declined" participants are excluded from both.
  */
-export const PORTAL_VISIBLE_INVITE_STATUSES = ["none", "accepted", "invited"] as const;
+export const PORTAL_VISIBLE_INVITE_STATUSES = ["none", "accepted", "invited"] as const satisfies readonly InviteStatus[];
 
 export interface PlanAcceptanceInput {
   submissionId: string;

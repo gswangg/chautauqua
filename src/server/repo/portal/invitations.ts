@@ -6,9 +6,10 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { touchSubmissions } from "../submissions/touch";
+import type { InviteStatus as SharedInviteStatus } from "../../../domain/invite-status"; // DEC-789 wave-73 amendment
 
 export type InviteAction = "accept" | "decline";
-export type InviteStatus = "none" | "invited" | "accepted" | "declined";
+export type InviteStatus = SharedInviteStatus;
 
 /** Pure transition rule: only a participant row currently 'invited' may be
  * responded to — accepted/declined/none rows are terminal or not-yet-invited

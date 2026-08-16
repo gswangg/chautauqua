@@ -11,11 +11,12 @@ import { formatRef } from "../../../domain/ids";
 import { likeContains } from "../like";
 import { chaseableContactExistsForTaskEvent, overdueAssignmentConditions, rosterParticipantConditions } from "./crud";
 import { ASSIGNED_LATE_GRACE_DAYS, overdueDayCutoff } from "../../../domain/task-due";
+import type { InviteStatus as SharedInviteStatus } from "../../../domain/invite-status"; // DEC-789 wave-73 amendment
 
 // DEC-789 closed set (mirrors the participant.invite_status column comment
 // in db/schema.ts and the app/src/pages/speakers/types.ts InviteStatus type
 // the SPA writes through PATCH /submissions/:id/participants/:participantId).
-export type GridInviteStatus = "none" | "invited" | "accepted" | "declined";
+export type GridInviteStatus = SharedInviteStatus;
 
 export interface GridTask {
   id: string;

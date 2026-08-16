@@ -60,20 +60,18 @@ export interface OnboardingCell {
   assignedAt: number;
 }
 
-// DEC-789: closed set written by PATCH /api/v1/submissions/:id/participants/
-// :participantId (task-w3-c, mocked here — this file never imports that
-// route). ONE exported label vocabulary; every call site reads
-// INVITE_STATUS_LABELS[status], never a literal string per site.
-export type InviteStatus = 'none' | 'invited' | 'accepted' | 'declined';
-
-export const INVITE_STATUSES: readonly InviteStatus[] = ['none', 'invited', 'accepted', 'declined'];
-
-export const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
-  none: 'Not invited',
-  invited: 'Invited',
-  accepted: 'Confirmed',
-  declined: 'Declined',
-};
+// DEC-789 wave-73 amendment: re-exported from the pure core
+// (src/domain/invite-status.ts) so the invite-status vocabulary and its
+// label map can never desync between the roster, the speaker detail page,
+// and the submission detail page — same relative-import idiom as
+// TASK_KINDS above. Closed set written by PATCH
+// /api/v1/submissions/:id/participants/:participantId (task-w3-c, mocked
+// here — this file never imports that route). ONE exported label
+// vocabulary; every call site reads INVITE_STATUS_LABELS[status], never a
+// literal string per site.
+import type { InviteStatus } from '../../../../src/domain/invite-status';
+export type { InviteStatus };
+export { INVITE_STATUSES, INVITE_STATUS_LABELS } from '../../../../src/domain/invite-status';
 
 // DEC-936: one participation this roster row covers -- a contact can carry
 // more than one accepted participation in the same event (co-speaker on
