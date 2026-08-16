@@ -137,7 +137,7 @@ describe("DEC-919: one filter idiom on every public surface", () => {
     for (const form of [sessionsForm, speakersForm]) {
       expect(form).toContain('<label class="chq-visually-hidden" for="chq-pub-search-q">Search</label>');
       expect(form).toContain('<input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q"');
-      expect(form).toContain('placeholder="Search"');
+      expect(form).toContain('placeholder="Search sessions or speakers…"'); // G13 (frame 10--00)
       // DEC-919 amendment (wave 69): the submit is a real, visible button now.
       expect(form).toContain('<button class="chq-pub-search-submit" type="submit" aria-label="Search">');
       expect(form).not.toContain('<button class="chq-visually-hidden" type="submit">Search</button>');

@@ -116,7 +116,10 @@ function SpeakerHeadshotLink(props: { href: string; sp: PublicSpeakerWithSession
     // <img> to supply one via `alt`. The headshot <img>'s alt already names
     // the link in the other branch, so the aria-label is only needed on the
     // fallback path.
-    <a href={href} aria-label={sp.headshotUrl ? undefined : `${sp.firstName} ${sp.lastName}`}>
+    // G13 (frames 10--10/11, MINOR): the class kills the UA link underline
+    // that propagated onto the initials monogram of a photo-less fallback
+    // (cards.css.ts) -- the frame draws no underline on the placeholder.
+    <a class="chq-pub-headshot-link" href={href} aria-label={sp.headshotUrl ? undefined : `${sp.firstName} ${sp.lastName}`}>
       {sp.headshotUrl ? (
         <img src={sp.headshotUrl} alt={`${sp.firstName} ${sp.lastName}`} loading="lazy" width="96" height="96" />
       ) : (
@@ -177,7 +180,11 @@ function SpeakerGridTile(props: { event: PublicEvent; sp: PublicSpeakerWithSessi
       <a class="chq-pub-speaker-name" href={href}>
         {sp.firstName} {sp.lastName}
       </a>
-      <p class="chq-pub-speaker-role">{[sp.title, sp.company].filter(Boolean).join(", ")}</p>
+      {/* G13 (frame 10--11, MAJOR): the grid tile's subtitle is the company
+          ALONE -- one line on every card. Role + company wrapped to two
+          lines on half the tiles and made the grid baseline ragged; the
+          list row above keeps the fuller role, company line. */}
+      <p class="chq-pub-speaker-role">{sp.company ?? ""}</p>
     </div>
   );
 }

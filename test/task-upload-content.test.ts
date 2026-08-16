@@ -234,7 +234,7 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
     expect(res.headers.get("content-type")).toMatch(/text\/html/);
     const html = await res.text();
     expect(html).not.toContain('"error":{"code"');
-    expect(html).toContain("My Tasks");
+    expect(html).toContain("Your tasks"); // G13 (frame 10--05): H1 voice matches the chrome
     expect(html).toContain('role="alert"');
     expect(html).toMatch(/isn(&#39;|')t allowed|not an accepted/i);
   });

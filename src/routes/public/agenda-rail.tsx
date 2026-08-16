@@ -34,8 +34,12 @@ function ScheduleRailSection(props: { event: PublicEvent }) {
     <section class="chq-pub-rail-section">
       <h2 class="chq-pub-rail-heading">Your schedule</h2>
       <div class="chq-pub-rail-body">
+        {/* G13 (frames 10--00/01/12, MAJOR): the scripted span carries the
+            COUNT ALONE -- "4 saved in this browser · no account needed" --
+            never "4 picked" butted against " saved ...", the run-on the
+            audit measured. ItineraryScript writes only the numeral. */}
         <span class="chq-pub-rail-caption">
-          <span id="chq-ics-count">0 picked</span> · saved in this browser, no account needed
+          <span id="chq-ics-count">0</span> saved in this browser · no account needed
         </span>
         <a id="chq-ics-link" class="chq-pub-itinerary-cta" href={`/e/${event.slug}/schedule.ics`} aria-disabled="true">
           Download .ics
@@ -201,13 +205,16 @@ export function AgendaRail(props: {
           section (PRINT eyebrow, matching every other section's
           heading/body vocabulary) rather than a bare out-link -- and names
           what it links to instead of leaving that to the link text alone. */}
+      {/* G13 (frames 10--01/02, MAJOR): the frames draw the description
+          FIRST and the link beneath it, in the B8 tertiary register
+          (rail.css.ts) -- not link-then-caption. */}
       <section class="chq-pub-rail-section">
         <h2 class="chq-pub-rail-heading">Print</h2>
         <div class="chq-pub-rail-body">
+          <span class="chq-pub-rail-caption">A one-page version of all three days.</span>
           <a class="chq-pub-rail-programme-link" href={`/e/${event.slug}/programme`}>
             Printable programme ›
           </a>
-          <span class="chq-pub-rail-caption">A one-page version of all three days.</span>
         </div>
       </section>
     </aside>
@@ -231,7 +238,7 @@ export function ScheduleRail(props: { event: PublicEvent; embed?: boolean }) {
         <h2 class="chq-pub-rail-heading">Take it with you</h2>
         <div class="chq-pub-rail-body">
           <span class="chq-pub-rail-caption">
-            <span id="chq-ics-count">0 picked</span> saved in this browser · no account needed
+            <span id="chq-ics-count">0</span> saved in this browser · no account needed
           </span>
           {/* DEC-672: the .ics download always targets the real /e/... route
               (never /embed/...ics, which doesn't exist) -- inside /embed
@@ -256,6 +263,9 @@ export function ScheduleRail(props: { event: PublicEvent; embed?: boolean }) {
           0 overlaps
         </h2>
         <div class="chq-pub-rail-body" id="chq-schedule-overlaps-body" />
+        {/* G13 (frame 10--12, MINOR): the frame closes the overlap rail
+            with this reassurance line. */}
+        <span class="chq-pub-rail-caption">Both are kept — nothing is removed for you.</span>
       </section>
     </aside>
   );

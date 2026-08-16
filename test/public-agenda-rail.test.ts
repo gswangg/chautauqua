@@ -156,7 +156,9 @@ describe("DEC-683 amendment (wave 67-d): public agenda rail + Save persistence",
 
     // "Your schedule" -- the exact ids ItineraryScript drives.
     expect(html).toContain('id="chq-ics-count"');
-    expect(html).toContain("0 picked");
+    // G13 (frames 10--00/01/12): the scripted span carries the count alone;
+    // the caption reads "<n> saved in this browser · no account needed".
+    expect(html).toContain('<span id="chq-ics-count">0</span> saved in this browser');
     expect(html).toContain('id="chq-ics-link"');
     expect(html).toContain('href="/e/conf/schedule.ics"');
     expect(html).toContain('aria-disabled="true"');

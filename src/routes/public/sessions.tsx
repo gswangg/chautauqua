@@ -46,8 +46,11 @@ function ScheduleRailSection(props: { event: PublicEvent }) {
     <section class="chq-pub-rail-section">
       <h2 class="chq-pub-rail-heading">Your schedule</h2>
       <div class="chq-pub-rail-body">
+        {/* G13 (frame 10--00, MAJOR): the scripted span carries the COUNT
+            ALONE -- '4 saved in this browser · no account needed' -- never
+            '4 picked' butted against the caption text. */}
         <span class="chq-pub-rail-caption">
-          <span id="chq-ics-count">0 picked</span> · saved in this browser, no account needed
+          <span id="chq-ics-count">0</span> saved in this browser · no account needed
         </span>
         <a id="chq-ics-link" class="chq-pub-itinerary-cta" href={`/e/${event.slug}/schedule.ics`} aria-disabled="true">
           Download .ics
@@ -361,9 +364,11 @@ export function SessionsContent(props: {
               cases -- replaces the wave-44 single-sentence-no-split row. */}
           {items.length === 0 ? (
             isFresh ? (
+              // G13 (frame 10--20): headline carries no trailing period at
+              // the page-title scale (empty.css.ts).
               <PublicEmptyState
                 variant="fresh"
-                what="The programme is not out yet."
+                what="The programme is not out yet"
                 reason="Sessions appear here once the schedule is published."
               />
             ) : (

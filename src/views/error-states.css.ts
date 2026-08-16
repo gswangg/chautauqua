@@ -50,6 +50,12 @@ export const ERROR_STATES_CSS = `
      problem, each anchor pointing at the offending field's own id. The
      field itself keeps its own .chq-field-error message too (the summary
      orients, the field repairs). */
+  /* G13 note (frame 10--21): the frame draws the summary as a FILLED panel
+     (surface-sunk, ~6px radius, no bullets, olive links) -- but this
+     vocabulary is property-parity-locked to the SPA sheet
+     (test/error-vocabulary-parity.scan.test.ts), which another lane owns
+     this freeze, so the panel restyle is deferred; only the markup order
+     and the em-dash separator moved (submit-views.tsx). */
   .chq-error-summary { border: 1px solid var(--chq-ink); border-left: 3px solid var(--chq-ink); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
   .chq-error-summary h2 { font-family: var(--chq-font-display); font-size: 15px; font-weight: 800; letter-spacing: -0.01em; margin: 0; color: var(--chq-ink); }
   .chq-error-summary p { margin: 0; font-size: 13px; color: var(--chq-ink-2); line-height: 1.5; }

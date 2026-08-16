@@ -164,7 +164,7 @@ export function SessionDetailContent(props: {
         {session.description ? <p>{session.description}</p> : null}
         {!embed ? (
           <p>
-            <span id="chq-ics-count">0 picked</span> ·{" "}
+            <span id="chq-ics-count">0</span> saved in this browser ·{" "}
             <a id="chq-ics-link" class="chq-pub-itinerary-cta" href={`/e/${event.slug}/schedule.ics`} aria-disabled="true">
               Download .ics
             </a>

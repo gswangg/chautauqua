@@ -117,8 +117,11 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
      border, the active half filled --chq-ink with --chq-paper text. */
   .chq-pub-view-toggle {
     display: inline-flex;
+    /* G13 (frames 10--10/11, MAJOR): the frame draws the control-radius
+       box (~5px), not a pill, at the toolbar's 40px control height with
+       the active segment filled to full height. */
     border: 1px solid var(--chq-border);
-    border-radius: var(--chq-r-pill);
+    border-radius: var(--chq-r-ctl);
     overflow: hidden;
   }
   .chq-pub-view-toggle-option {
@@ -126,6 +129,7 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     align-items: center;
     justify-content: center;
     padding: 0 16px;
+    min-height: 42px;
     font-size: 13px;
     font-weight: 500;
     color: var(--chq-ink-2);
@@ -228,6 +232,11 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   @media (max-width: 700px) {
     .chq-pub-view-toggle-option { min-height: 44px; }
   }
+
+  /* G13 (frames 10--10/11, MINOR): the headshot link must not propagate the
+     UA underline onto a photo-less card's initials monogram -- the frame
+     draws the placeholder with no underline. */
+  .chq-pub-headshot-link { text-decoration: none; }
 
   /* w9-b: SpeakerDetailContent's headshot/fallback box (detail.tsx) -- the
      shared .chq-pub-headshot-fallback rule above already supplies

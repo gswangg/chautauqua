@@ -548,16 +548,6 @@ export const THEME_CSS = `
      (.chq-steps/.chq-step, .chq-bulkbar, .chq-rail, .chq-panel,
      .chq-scrim) live only in app/src/styles.css, owned by the admin SPA
      shell lane; nothing under src/views/ needs them today. */
-  .chq-bar {
-    height: 5px;
-    border-radius: var(--chq-r-pill);
-    background: var(--chq-hairline);
-    overflow: hidden;
-  }
-  .chq-bar-fill {
-    height: 100%;
-    background: var(--chq-brand);
-  }
   .chq-kv {
     display: flex;
     flex-direction: column;

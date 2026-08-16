@@ -77,7 +77,7 @@ describe("DEC-919 (wave 44): sessions surface stops restating its count", () => 
     // PublicEmptyState now names the actual reason (nothing published yet)
     // instead of the old generic "No sessions to show yet." sentence.
     const html = render({ items: [], total: 0 });
-    expect(html).toContain("The programme is not out yet.");
+    expect(html).toContain("The programme is not out yet");
     expect(html).not.toContain("No sessions to show yet.");
   });
 });

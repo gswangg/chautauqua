@@ -162,10 +162,13 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
-    background: var(--chq-surface-sunk);
+    /* G13 (frames 10--01/03, MINOR): the frame sets break rows as caps text
+       on the page ground -- no surface fill. The row's own hairline (the
+       shared .chq-pub-agenda-day-row border) is the only rule drawn. */
+    background: none;
     border-bottom: none;
     font-size: 11px;
-    padding: 2px 6px;
+    padding: 2px 0;
   }
   /* DEC-851 amendment (wave 5): the matching block's own highlight state --
      the 3px olive (--chq-brandable-accent) left edge is spent HERE ONLY,
@@ -296,6 +299,11 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     align-items: center;
     justify-content: center;
     padding: 0 8px;
+    /* G13 (frame 10--01, BROKEN): with no vertical padding the segment
+       collapsed to the 17px line box and the active fill clipped to the
+       cap height. The frame draws ~38px segments with the active one
+       filled to full height. */
+    min-height: 38px;
     font-size: 13px;
     font-weight: 500;
     border: none;
@@ -331,18 +339,32 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
      ".chq-itinerary-toggle" itself is behavior-critical, read by inline JS
      in agenda.tsx's ItineraryScript, and stays unchanged). */
   .chq-pub-itinerary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  /* G13 (frames 10--00/01/12, MAJOR): Download .ics is the rail's one
+     action and the frames draw it as the filled olive PRIMARY at natural
+     width (~112x33), not a full-rail-width sunk secondary with a 17px line
+     box. align-self keeps it at content width inside the rail's column
+     flexbox. Hover re-asserts color (a:hover-proof, B8: fill darkens, the
+     label never repaints). */
   .chq-pub-itinerary-cta {
-    border: 1px solid var(--chq-border);
-    border-radius: var(--chq-r-card);
-    background: var(--chq-surface-sunk);
+    border: none;
+    border-radius: var(--chq-r-ctl);
+    background: var(--chq-brand);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0 16px;
+    align-self: flex-start;
+    padding: 8px 16px;
     font-size: 13px;
     font-weight: 600;
     text-decoration: none;
-    color: var(--chq-ink-2);
+    color: var(--chq-on-brand);
+  }
+  /* Anchor-qualified (a.…) so it outranks theme.ts's generic
+     a:not(.chq-btn):hover -- the label must never repaint link-olive on
+     the darkening fill (test/on-brand-anchor-hover.scan.test.ts). */
+  a.chq-pub-itinerary-cta:hover {
+    background: var(--chq-brand-hover);
+    color: var(--chq-on-brand);
   }
   .chq-pub-itinerary-cta[aria-disabled=true] { opacity: 0.5; pointer-events: none; }
 

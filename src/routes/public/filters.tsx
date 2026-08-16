@@ -38,7 +38,7 @@ export function PublicSearchBox(props: { action: string; q: string | null; hidde
         type="search"
         name="q"
         value={q ?? ""}
-        placeholder="Search"
+        placeholder="Search sessions or speakers…"
         maxlength={MAX_PUBLIC_QUERY_VALUE_LENGTH}
       />
       {hidden as any}

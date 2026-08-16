@@ -160,7 +160,9 @@ export function EditPage(props: {
   return (
     <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
-      <h1 class="chq-portal-hero">Edit submission</h1>
+      {/* G13 (frames 10--09/22/23): the frames title this page 'Edit your
+          session' at both widths. */}
+      <h1 class="chq-portal-hero">Edit your session</h1>
       {/* DEC-604 (wave-56 amendment): the window is the FORM's close date,
           not acceptance — canEditSubmission gates on it, so the header
           states the deadline the speaker is actually working against.
@@ -182,7 +184,7 @@ export function EditPage(props: {
           defensively so a future re-upload path here never silently repeats
           the exact urlencoded-drops-files bug this wave fixed on the portal
           task form. */}
-      <form method="post" action={`/portal/submissions/${props.submissionId}/edit`} enctype="multipart/form-data">
+      <form id="chq-portal-edit-form" method="post" action={`/portal/submissions/${props.submissionId}/edit`} enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <div class="chq-section-label">Session</div>
         <FormFieldsSection fields={data.fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
@@ -230,12 +232,6 @@ export function EditPage(props: {
               {f.label}: {String(answers[f.id] ?? "No file uploaded")} (read-only)
             </p>
           ))}
-        <div class="chq-portal-actions">
-          <a class="chq-btn chq-btn-secondary" href={`/portal/submissions/${props.submissionId}`}>
-            Cancel
-          </a>
-          <button type="submit" class="chq-btn chq-btn-primary">Save changes</button>
-        </div>
       </form>
       <FieldRulesScript fields={data.fields} />
       <ParticipantsSection
@@ -245,6 +241,21 @@ export function EditPage(props: {
         errors={participantErrors}
         values={participantValues}
       />
+      {/* G13 (frames 10--09/23, MAJOR): the Save/Cancel row is the page's
+          TERMINAL element -- below the co-presenter block, never 65px above
+          a section the speaker must still fill in -- preceded by a 1px rule
+          and carrying the consequence line the frame draws. The submit
+          stays bound to the edit form via the form attribute (the
+          participants section carries its own form between the two). */}
+      <div class="chq-portal-actions-footer">
+        <span class="chq-portal-actions-note">Title and abstract show on the public pages · co-presenters do not</span>
+        <div class="chq-portal-actions">
+          <a class="chq-btn chq-btn-secondary" href={`/portal/submissions/${props.submissionId}`}>
+            Cancel
+          </a>
+          <button type="submit" form="chq-portal-edit-form" class="chq-btn chq-btn-primary">Save changes</button>
+        </div>
+      </div>
     </PortalLayout>
   );
 }
@@ -270,7 +281,13 @@ function ParticipantsSection(props: {
   const isDuplicate = errors?.email === CO_PRESENTER_DUPLICATE_MESSAGE;
   return (
     <section aria-label="Participants" class="chq-section">
-      <div class="chq-section-label">Participants</div>
+      {/* G13 (frames 10--09/22/23): 'ON THIS SESSION' with the count
+          right-flushed against the measure -- never a bare 'PARTICIPANTS'
+          with no count. */}
+      <div class="chq-section-label chq-portal-session-label">
+        <span>On this session</span>
+        <span class="chq-portal-session-count">{participants.length}</span>
+      </div>
       {isDuplicate ? (
         <div class="chq-error-summary" role="alert">
           <h2>Co-presenter not added</h2>
@@ -285,21 +302,29 @@ function ParticipantsSection(props: {
           reason="Anyone presenting this session with you appears here."
         />
       ) : (
-        <ul>
+        // G13 (frames 10--09/22/23, MAJOR): ruled rows, never a UA-bulleted
+        // list -- name flush left, role as a right-side micro-label, a 1px
+        // hairline per row (portal.css.ts).
+        <ul class="chq-portal-participants">
           {participants.map((p) => (
-            <li>
-              {p.name} — <span class="chq-flag">{p.roleLabel}</span>
+            <li class="chq-portal-participant-row">
+              <span class="chq-portal-participant-name">{p.name}</span>
+              <span class="chq-flag">{p.roleLabel}</span>
               {!p.visible ? (
-                <span class="chq-portal-sub"> — Not yet on the public site. Your organiser publishes co-presenters.</span>
+                <span class="chq-portal-sub chq-portal-participant-sub">Not yet on the public site. Your organiser publishes co-presenters.</span>
               ) : null}
             </li>
           ))}
         </ul>
       )}
-      <h3 class="chq-portal-field-label">Add a co-presenter</h3>
+      {/* G13 (frames 10--09/23): the co-presenter block is a real section --
+          same 2px-ruled label register as the section heads above it (it was
+          the one section head on the page without a rule) -- and the note
+          carries the frame's wording, which states the immediacy. */}
+      <h3 class="chq-section-label">Add a co-presenter</h3>
       <p class="chq-portal-sub">
-        Added to this session. Your organiser puts co-presenters on the public site. No email goes to them — tell
-        them yourself.
+        Adding them puts a row in the list above straight away. No email goes to them — tell them yourself, and
+        your organiser decides when co-presenters appear on the public site.
       </p>
       <form
         method="post"
@@ -347,13 +372,21 @@ function ParticipantsSection(props: {
               Email
             </label>
             <input id="cp-email" class="chq-input" type="email" name="email" value={values?.email ?? ""} maxLength={MAX_TEXT_LENGTH} />
+            {/* G13 (frame 10--23, MINOR): the one place the form says the
+                email resolves against the org's contacts rather than
+                creating a stranger. */}
+            <p class="help">Matches an existing contact if we have one</p>
             {errors?.email ? (
               <p role="alert" class="chq-field-error">
                 {errors.email}
               </p>
             ) : null}
           </div>
-          <div class="chq-portal-copresenter-role">
+          {/* G13 (frames 10--22/23, MAJOR): chq-field gives the ROLE wrapper
+              the same label-above-control stacking its three siblings get --
+              as a bare div its label rendered inline and shoved the select
+              off the shared row. */}
+          <div class="chq-field chq-portal-copresenter-role">
             <label class="chq-portal-field-label" for="cp-role">
               Role
             </label>

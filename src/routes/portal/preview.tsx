@@ -48,18 +48,24 @@ function PreviewResourceRow(props: { resource: ResourceRecord }) {
   const { resource } = props;
   return (
     <div class="chq-portal-row">
-      <span class="chq-portal-row-title">{resource.title}</span>
+      <div class="chq-portal-row-head">
+        <span class="chq-portal-row-title">{resource.title}</span>
+        {/* DEC-733 says an action that cannot apply to a row is ABSENT, never
+            disabled — but Download is not inapplicable here, it is a real
+            speaker control this preview cannot exercise because there is no
+            speaker session to download as. Rendering it disabled shows the
+            organizer the control that exists for the speaker, rather than
+            silently dropping it, so DEC-747's frame ruling names this the one
+            sanctioned disabled control on the surface.
+            G13 (frame 10--24, MAJOR) + DEVIATIONS §2: a disabled link-shaped
+            control keeps NO surface -- muted text, no box, right-flushed on
+            the title's own line -- never a full-column filled secondary
+            (full-column buttons are phone anatomy). */}
+        <button type="button" class="chq-portal-preview-download" disabled aria-disabled="true" title="Preview only — sign in as this speaker to download">
+          Download
+        </button>
+      </div>
       <span class="chq-portal-due">{resourceKindLabel(resource.kind)}</span>
-      {/* DEC-733 says an action that cannot apply to a row is ABSENT, never
-          disabled — but Download is not inapplicable here, it is a real
-          speaker control this preview cannot exercise because there is no
-          speaker session to download as. Rendering it disabled shows the
-          organizer the control that exists for the speaker, rather than
-          silently dropping it, so DEC-747's frame ruling names this the one
-          sanctioned disabled control on the surface. */}
-      <button type="button" class="chq-btn-secondary" disabled aria-disabled="true" title="Preview only — sign in as this speaker to download">
-        Download
-      </button>
     </div>
   );
 }
@@ -79,7 +85,10 @@ function PreviewPage(props: {
   // ORGANIZER'S own name; DEC-747's amendment doesn't say, so this states
   // the truth the banner already states.)
   return (
-    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName="Preview (no speaker)">
+    // G13 (frame 10--24): the identity slot reads 'PREVIEW · NO SPEAKER'
+    // (the header cluster is the 11px caps register); headerSignOut off --
+    // the preview page keeps exactly one form (the shared footer sign-out).
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName="Preview · no speaker" headerSignOut={false}>
       {/* Below this point: no form, no button, no link that mutates
           anything, and nothing scoped to a contact. PortalLayout's own
           footer sign-out control is standard /portal/* chrome (DEC-154,
@@ -97,7 +106,12 @@ function PreviewPage(props: {
         To see a real speaker's portal, you would have to be them — this preview shows the configuration, not a
         person's data.
       </p>
-      {props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
+      {/* G13 (frame 10--24, MAJOR): the previewed portal opens the way the
+          speaker's own portal opens -- an H1 'Welcome' with the configured
+          welcome message as its lede, never a 13px meta line with no H1 on
+          the page at all. */}
+      <h1 class="chq-portal-hero">Welcome</h1>
+      {props.branding.welcomeMessage ? <p class="chq-portal-lede">{props.branding.welcomeMessage}</p> : null}
       <section aria-label="Resources" class="chq-section">
         <div class="chq-section-label">Resources</div>
         {!props.showResources ? (

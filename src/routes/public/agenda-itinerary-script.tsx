@@ -44,7 +44,7 @@ export function ItineraryScript(props: { eventSlug: string }) {
   function updateLink(ids){
     var link = document.getElementById('chq-ics-link');
     var count = document.getElementById('chq-ics-count');
-    if (count) { count.textContent = ids.length + ' picked'; }
+    if (count) { count.textContent = String(ids.length); }
     if (!link) return;
     if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
     link.removeAttribute('aria-disabled');
@@ -102,7 +102,7 @@ export function ItineraryScript(props: { eventSlug: string }) {
       Array.prototype.forEach.call(rows, function(r){ if (r.style.display !== 'none') { visibleCount += 1; } });
       group.style.display = visibleCount === 0 ? 'none' : '';
       var countEl = group.querySelector('.chq-pub-schedule-day-count');
-      if (countEl) { countEl.textContent = String(visibleCount); }
+      if (countEl) { countEl.textContent = visibleCount + (visibleCount === 1 ? ' session' : ' sessions'); }
     });
     if (subtitleEl) {
       var overlapWord = overlap.pairCount === 1 ? 'overlap' : 'overlaps';

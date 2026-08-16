@@ -10,7 +10,7 @@
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
 import { makeVisibilityPredicate } from "../../forms/visibility";
-import { formatEventDateTime } from "../../lib/event-time";
+import { formatEventDate, formatEventDateTime } from "../../lib/event-time";
 import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
 import { FormFieldsSection, FieldRulesScript, fieldInputName, FormField } from "../../views/form-render";
 import { countOf, thingsNeedFixingHeading } from "../../domain/count-copy";
@@ -89,19 +89,20 @@ export function ClosedPage(props: { event: EventRow; form: FormRow }) {
       <div class="chq-cfp-closed chq-bare-page">
         <span class="chq-cfp-meta">{props.event.name}</span>
         <h1 class="chq-pub-surface-title">The call for papers has closed</h1>
+        {/* G13 (frame 10--17, MAJOR): the body ends on thanks -- never
+            'reach out to the organizers' on a page that gives the visitor
+            no address (B7 rule 2). One link, the frame's. */}
         <p role="alert" class="chq-cfp-closed-body">
-          Submissions for this event closed on{" "}
+          Submissions closed on{" "}
           {formatEventDateTime(
             props.form.closeDate ? dayLabelEndInstant(props.form.closeDate, props.event.timezone) : 0,
             props.event.timezone,
           )}
-          . Thanks for your
-          interest — please reach out to the organizers directly if you have questions.
+          . Thanks for your interest in {props.event.name}.
         </p>
         <div class="chq-cfp-links">
           {/* w5-c: frame copy for the CFP-closed dead-end. */}
           <a href={`/e/${props.event.slug}/sessions`}>Browse the sessions &rsaquo;</a>
-          <a href="/">All events &rsaquo;</a>
         </div>
       </div>
     </PageShell>
@@ -113,18 +114,29 @@ export function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
     <PageShell title={`Submissions not yet open - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
       <div class="chq-cfp-closed chq-bare-page">
         <span class="chq-cfp-meta">{props.event.name}</span>
-        <h1 class="chq-pub-surface-title">Submissions aren't open yet</h1>
-        <p role="alert" class="chq-cfp-closed-body">
-          Submissions open{" "}
-          {formatEventDateTime(
-            props.form.openDate ? dayLabelStartInstant(props.form.openDate, props.event.timezone) : 0,
-            props.event.timezone,
-          )}
-          . Please check back then.
-        </p>
+        {/* G13 (frame 10--25, MAJOR) + DESIGN-RULINGS 'CFP -- the third
+            window state': the heading LEADS with the date the form opens,
+            never an apology -- the dateless wording is reserved for a form
+            with no open_date set. One link giving the visitor something to
+            do now. */}
+        {props.form.openDate ? (
+          <>
+            <h1 class="chq-pub-surface-title">
+              The call for papers opens on{" "}
+              {formatEventDate(dayLabelStartInstant(props.form.openDate, props.event.timezone), props.event.timezone)}
+            </h1>
+            <p role="alert" class="chq-cfp-closed-body">
+              Nothing to do until then — come back once the form is open.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 class="chq-pub-surface-title">Submissions aren't open yet</h1>
+            <p role="alert" class="chq-cfp-closed-body">Please check back later.</p>
+          </>
+        )}
         <div class="chq-cfp-links">
-          <a href={`/e/${props.event.slug}/sessions`}>Browse the programme &rsaquo;</a>
-          <a href="/">All events &rsaquo;</a>
+          <a href={`/e/${props.event.slug}/sessions`}>Browse the sessions &rsaquo;</a>
         </div>
       </div>
     </PageShell>
@@ -336,18 +348,22 @@ export function ErrorSummary(props: { problems: ErrorSummaryProblem[] }) {
   if (problems.length === 0) return null;
   const n = problems.length;
   return (
+    // G13 (frame 10--21, MAJOR): problem list FIRST, the reassurance line
+    // closing the panel, and each problem as 'Label — message' (em dash),
+    // never 'Label: message'. Panel/link treatment lives in
+    // error-states.css.ts.
     <div class="chq-error-summary" role="alert">
       <h2>{thingsNeedFixingHeading(n, "before this can be sent")}</h2>
-      <p>Nothing was lost. Everything you typed is still below.</p>
       <ul>
         {problems.map((p) => (
           <li>
             <a class="chq-error-summary-link" href={`#${p.id}`}>
-              {p.label}: {p.message}
+              {p.label} — {p.message}
             </a>
           </li>
         ))}
       </ul>
+      <p>Nothing was lost. Everything you typed is still below.</p>
     </div>
   );
 }
@@ -735,6 +751,11 @@ export function ConfirmationPage(props: {
         <div class="chq-cfp-confirm-actions">
           {props.state === "has-account" ? (
             <p>
+              {/* G13 (frame 10--19, MAJOR): the line that motivates the
+                  primary -- the reader is never handed a Log in button with
+                  no statement that an account exists. */}
+              You already have an account here.
+              <br />
               <a class="chq-btn chq-btn-primary" href="/login">
                 Log in to track it
               </a>
@@ -742,7 +763,10 @@ export function ConfirmationPage(props: {
           ) : props.state === "pending-existing-contact" ? (
             <>
               {props.emailDelivered ? (
-                <p>A password-setup link was emailed to {props.submittedEmail}.</p>
+                // G13 (frame 10--18, MINOR): the confirmation body above
+                // already names the address -- never state it twice in
+                // consecutive sentences.
+                <p>That email includes a link to set a password.</p>
               ) : (
                 <p>
                   We couldn't email a password-setup link this time. If you already set one up, log in below; otherwise ask the

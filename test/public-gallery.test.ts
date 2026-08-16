@@ -39,11 +39,13 @@ function speaker(overrides: Partial<PublicSpeakerWithSessions>): PublicSpeakerWi
 }
 
 describe("DEC-593: real speaker gallery (EMB-12/EMB-16)", () => {
-  it("a gallery card exposes name, title and company", () => {
+  // G13 (frame 10--11): the grid tile's subtitle is the company ALONE --
+  // one line on every card -- while the list row keeps role, company.
+  it("a gallery card exposes name and company (never the wrapping role clause)", () => {
     const html = String(GalleryContent({ event: EVENT, speakers: [speaker({})], total: 1, page: 1, q: null }));
     expect(html).toContain("Ada");
     expect(html).toContain("Lovelace");
-    expect(html).toContain("Chief Engineer");
+    expect(html).not.toContain("Chief Engineer");
     expect(html).toContain("Analytical Engines Inc");
   });
 
@@ -88,6 +90,9 @@ describe("DEC-593: real speaker gallery (EMB-12/EMB-16)", () => {
     };
 
     expect(extract(galleryHtml, "chq-pub-speaker-name")).toBe(extract(directoryHtml, "chq-pub-speaker-name"));
-    expect(extract(galleryHtml, "chq-pub-speaker-role")).toBe(extract(directoryHtml, "chq-pub-speaker-role"));
+    // G13 (frame 10--11): the tile subtitle is the company alone; the
+    // directory row keeps the fuller role, company clause.
+    expect(extract(galleryHtml, "chq-pub-speaker-role")).toBe(sp.company);
+    expect(extract(directoryHtml, "chq-pub-speaker-role")).toContain(sp.company);
   });
 });

@@ -58,7 +58,9 @@ export function VersionHistory(props: { assignmentId: string; versions: FileVers
   const { assignmentId, versions, timezone } = props;
   return (
     <section aria-label="Version history">
-      <h4>Version history</h4>
+      {/* G13 (frame 10--05, MAJOR): the section-label register (11px caps
+          over a 2px rule), not a bare 16px h4 with margin 0. */}
+      <h4 class="chq-portal-subsection-label">Version history</h4>
       <ul class="chq-portal-versions">
         {versions.map((v) => (
           <li class="chq-portal-version-row">
@@ -92,7 +94,7 @@ export function CommentThread(props: {
   const { assignmentId, comments, csrfToken, timezone, draftBody, error } = props;
   return (
     <section aria-label="Comments">
-      <h4>Comments</h4>
+      <h4 class="chq-portal-subsection-label">Comments</h4>
       {comments.length === 0 ? (
         <PublicEmptyState
           variant="fresh"
@@ -397,7 +399,6 @@ export function TasksPage(props: {
     uploadedAssignmentId,
     newSeriesAssignmentId,
   } = props;
-  const doneCount = assignments.filter((a) => a.status === "complete").length;
   const uploadedAssignment = uploadedAssignmentId
     ? assignments.find((a) => a.id === uploadedAssignmentId)
     : undefined;
@@ -406,8 +407,11 @@ export function TasksPage(props: {
     : undefined;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
+      {/* G13 (frame 10--05, MINOR): the page's own chrome says '‹ Your
+          portal' -- the H1 keeps the same voice ('Your tasks'), and the
+          undrawn progress bar is gone (the frame draws none). */}
       <PortalBackLink to="/portal" />
-      <h1 class="chq-portal-hero">My Tasks</h1>
+      <h1 class="chq-portal-hero">Your tasks</h1>
       {uploadedAssignment ? (
         <p role="status" class="chq-portal-detail">
           Received your file for "{uploadedAssignment.title}". The session is off the public schedule pending the
@@ -419,19 +423,6 @@ export function TasksPage(props: {
           Received your file for "{newSeriesAssignment.title}" as a new version series — it didn't continue your
           previous upload's history because it names a different session.
         </p>
-      ) : null}
-      {assignments.length > 0 ? (
-        <div class="chq-portal-progress">
-          <span class="chq-portal-progress-label">
-            {doneCount} of {assignments.length} done
-          </span>
-          <div class="chq-bar">
-            <div
-              class="chq-bar-fill"
-              style={`width: ${Math.round((doneCount / assignments.length) * 100)}%`}
-            ></div>
-          </div>
-        </div>
       ) : null}
       {assignments.length === 0 ? (
         <PublicEmptyState

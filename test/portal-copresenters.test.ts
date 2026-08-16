@@ -130,7 +130,7 @@ describe("EditPage co-presenter frame (DEC-604 wave-56 amendment)", () => {
 
   it("states the no-email fact verbatim, dropping the old passive wording", () => {
     const html = render();
-    expect(html).toContain("No email goes to them — tell them yourself.");
+    expect(html).toContain("No email goes to them — tell them yourself, and");
     expect(html).not.toContain("They will not receive an email or invitation.");
   });
 

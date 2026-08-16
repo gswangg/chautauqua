@@ -105,17 +105,21 @@ describe("DEC-961: confirmation edit-until sentence + way-forward links", () => 
   });
 });
 
-describe("DEC-961: ClosedPage / NotYetOpenPage way-forward links", () => {
-  it("ClosedPage ends with links to the programme and all events", () => {
+// G13 (frames 10--17/25): the frames draw ONE way-forward link -- the
+// event's own sessions -- never a second 'All events' escape (DEC-961's
+// two-link shape is superseded by the frame authority).
+describe("DEC-961 (amended G13): ClosedPage / NotYetOpenPage way-forward link", () => {
+  it("ClosedPage ends with the one sessions link", () => {
     const html = ClosedPage({ event: EVENT_ROW, form: FORM_ROW_WITH_CLOSE }).toString();
     expect(html).toMatch(/href="\/e\/test-conf\/sessions"/);
-    expect(html).toMatch(/href="\/"/);
+    expect(html).not.toMatch(/href="\/">/);
   });
 
-  it("NotYetOpenPage ends with links to the programme and all events", () => {
+  it("NotYetOpenPage leads with the open date and ends with the one sessions link", () => {
     const html = NotYetOpenPage({ event: EVENT_ROW, form: FORM_ROW_WITH_OPEN }).toString();
+    expect(html).toContain("The call for papers opens on");
     expect(html).toMatch(/href="\/e\/test-conf\/sessions"/);
-    expect(html).toMatch(/href="\/"/);
+    expect(html).not.toMatch(/href="\/">/);
   });
 });
 
