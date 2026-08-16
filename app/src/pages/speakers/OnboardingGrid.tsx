@@ -88,11 +88,26 @@ interface PendingWriteFailure {
 
 const WRITE_FAILURE_CAUSE = 'Someone else may have edited this speaker.';
 
-function cellFailureMessage(speakerName: string, taskTitle: string): string {
+// DEC-856 (wave-13 amendment): a bound ApiError carries the server's own
+// wording (and, where the row has no separate field to show it, the first
+// `fields` entry) inside the existing "speaker · task" naming frame --
+// never collapsed to the generic WRITE_FAILURE_CAUSE sentence, matching
+// Agenda.tsx:182 ("Placement failed: ${err.message}").
+function serverRefusalDetail(err: unknown): string | null {
+  if (!(err instanceof ApiError)) return null;
+  const fieldDetail = err.fields ? Object.values(err.fields)[0] : undefined;
+  return fieldDetail && fieldDetail !== err.message ? `${err.message} (${fieldDetail})` : err.message;
+}
+
+function cellFailureMessage(speakerName: string, taskTitle: string, err: unknown): string {
+  const detail = serverRefusalDetail(err);
+  if (detail) return `${speakerName} · ${taskTitle}: ${detail}`;
   return `${speakerName} · ${taskTitle} didn't save. ${WRITE_FAILURE_CAUSE}`;
 }
 
-function participationFailureMessage(speakerName: string): string {
+function participationFailureMessage(speakerName: string, err: unknown): string {
+  const detail = serverRefusalDetail(err);
+  if (detail) return `${speakerName}: ${detail}`;
   return `${speakerName} didn't save. ${WRITE_FAILURE_CAUSE}`;
 }
 
@@ -451,11 +466,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
       setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
-    } catch {
+    } catch (err) {
       setGrid(previous);
       setPendingFailure({
         assignmentId,
-        message: cellFailureMessage(speakerName, taskTitle),
+        message: cellFailureMessage(speakerName, taskTitle, err),
         retry: () => {
           void applyCellStatus(assignmentId, desired, speakerName, taskTitle);
         },
@@ -517,12 +532,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/submissions/${submissionId}/participants/${participantId}`, { inviteStatus: desired });
       setPendingFailure((prev) => (prev && prev.participantId === participantId ? null : prev));
-    } catch {
+    } catch (err) {
       setGrid(previous);
       setPendingFailure({
         assignmentId: null,
         participantId,
-        message: participationFailureMessage(speakerName),
+        message: participationFailureMessage(speakerName, err),
         retry: () => {
           void applyInviteStatus(contactId, submissionId, participantId, desired, speakerName);
         },
@@ -667,12 +682,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
       setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
-    } catch {
+    } catch (err) {
       setGrid(previousGrid);
       setResponseDetail(previousDetail);
       setPendingFailure({
         assignmentId,
-        message: cellFailureMessage(speakerName, taskTitle),
+        message: cellFailureMessage(speakerName, taskTitle, err),
         retry: () => {
           void applyResponseStatus(assignmentId, desired, speakerName, taskTitle);
         },

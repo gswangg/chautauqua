@@ -305,9 +305,10 @@ describe('OnboardingGrid: DEC-599/DEC-694 reopen from response modal', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Reopen this task' })).toBeInTheDocument();
     });
-    expect(
-      screen.getByText("Ada Lovelace · Hotel stay requirement form didn't save. Someone else may have edited this speaker."),
-    ).toBeInTheDocument();
+    // DEC-856 (wave-13 amendment): the bound ApiError's own message ('boom')
+    // now reaches the banner inside the naming frame -- never collapsed to
+    // the generic "didn't save" sentence.
+    expect(screen.getByText('Ada Lovelace · Hotel stay requirement form: boom')).toBeInTheDocument();
   });
 });
 
@@ -582,9 +583,9 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
     await waitFor(() => {
       expect(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Confirmed' })).toBeInTheDocument();
     });
-    expect(
-      screen.getByText("Ada Lovelace didn't save. Someone else may have edited this speaker."),
-    ).toBeInTheDocument();
+    // DEC-856 (wave-13 amendment): the bound ApiError's own message ('boom')
+    // now reaches the banner -- never collapsed to the generic sentence.
+    expect(screen.getByText('Ada Lovelace: boom')).toBeInTheDocument();
   });
 
   it('joins the invite-status selection into the grid request as an additional query param, composing with other filters', async () => {
@@ -1616,9 +1617,10 @@ describe('OnboardingGrid: DEC-265 rolled-back cell write announces itself', () =
     await waitFor(() => {
       expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent('Pending · not saved');
     });
-    expect(
-      screen.getByText("Grace Hopper · Sign speaker agreement didn't save. Someone else may have edited this speaker."),
-    ).toBeInTheDocument();
+    // DEC-856 (wave-13 amendment): the bound ApiError's own message ('boom')
+    // now reaches the banner inside the naming frame -- never collapsed to
+    // the generic "didn't save" sentence.
+    expect(screen.getByText('Grace Hopper · Sign speaker agreement: boom')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload the grid' })).toBeInTheDocument();
   });
