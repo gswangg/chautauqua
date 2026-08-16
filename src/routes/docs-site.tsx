@@ -54,6 +54,46 @@ void DEC_382;
 void DEC_518;
 void DEC_613;
 
+// DEC-650 amendment (USER RULING 2026-08-16, two-tier docs vocabulary):
+// article prose carries exactly two inline spans -- `code` for
+// machine-literal text (commands, URLs, file names, column names) and
+// **bold** for an on-screen control or label named as a thing to find.
+// This parser is deliberately minimal and escape-safe: an unpaired
+// backtick or ** renders as-is, spans never nest, and an empty span
+// (``/****) is not a span. Applied to prose text, list items,
+// standfirsts, figure captions and search snippets -- never to headings,
+// titles, or code blocks (already monospace whole).
+export type DocsInlineSegment = { kind: "text" | "code" | "strong"; text: string };
+
+const DOCS_INLINE_SPAN_RE = /`([^`]+)`|\*\*([^*]+)\*\*/g;
+
+export function docsInlineSegments(text: string): DocsInlineSegment[] {
+  const segments: DocsInlineSegment[] = [];
+  let last = 0;
+  for (const m of text.matchAll(DOCS_INLINE_SPAN_RE)) {
+    const idx = m.index!;
+    if (idx > last) segments.push({ kind: "text", text: text.slice(last, idx) });
+    if (m[1] !== undefined) {
+      segments.push({ kind: "code", text: m[1] });
+    } else {
+      segments.push({ kind: "strong", text: m[2]! });
+    }
+    last = idx + m[0].length;
+  }
+  if (last < text.length) segments.push({ kind: "text", text: text.slice(last) });
+  return segments;
+}
+
+function DocsInline(props: { text: string }) {
+  return (
+    <>
+      {docsInlineSegments(props.text).map((seg) =>
+        seg.kind === "code" ? <code>{seg.text}</code> : seg.kind === "strong" ? <strong>{seg.text}</strong> : seg.text,
+      )}
+    </>
+  );
+}
+
 // Real GET form (no-JS-correct: this IS how ?q= reaches the server), a
 // named `q` input, and a submit control with a real >=44px touch target --
 // the DEC-919 "off-screen/1px submit" defect does not repeat here. `size`
@@ -122,14 +162,20 @@ function DocsBlockView(props: { block: DocsBlock }) {
     return <h2 class="chq-docs-h2">{block.text}</h2>;
   }
   if (block.kind === "prose") {
-    return <p class="chq-docs-prose">{block.text}</p>;
+    return (
+      <p class="chq-docs-prose">
+        <DocsInline text={block.text} />
+      </p>
+    );
   }
   if (block.kind === "list") {
     if (block.ordered) {
       return (
         <ol class="chq-docs-list">
           {block.items.map((item) => (
-            <li>{item}</li>
+            <li>
+              <DocsInline text={item} />
+            </li>
           ))}
         </ol>
       );
@@ -137,7 +183,9 @@ function DocsBlockView(props: { block: DocsBlock }) {
     return (
       <ul class="chq-docs-list">
         {block.items.map((item) => (
-          <li>{item}</li>
+          <li>
+            <DocsInline text={item} />
+          </li>
         ))}
       </ul>
     );
@@ -195,7 +243,9 @@ function DocsBlockView(props: { block: DocsBlock }) {
             alt=""
           />
         </div>
-        <figcaption class="chq-docs-figure-caption">{block.caption}</figcaption>
+        <figcaption class="chq-docs-figure-caption">
+          <DocsInline text={block.caption} />
+        </figcaption>
       </figure>
     );
   }
@@ -204,7 +254,9 @@ function DocsBlockView(props: { block: DocsBlock }) {
       <div class="chq-docs-figure-frame">
         <span class="chq-docs-figure-placeholder">screenshot &middot; {block.shotId}</span>
       </div>
-      <figcaption class="chq-docs-figure-caption">{block.caption}</figcaption>
+      <figcaption class="chq-docs-figure-caption">
+        <DocsInline text={block.caption} />
+      </figcaption>
     </figure>
   );
 }
@@ -318,7 +370,9 @@ function DocsSearchResults(props: { q: string; hits: DocsSearchHit[] }) {
             {hit.title}
           </a>
           <span class="chq-docs-article-blurb">{DOCS_GROUP_META[hit.group].label}</span>
-          <span class="chq-docs-article-blurb">{hit.snippet}</span>
+          <span class="chq-docs-article-blurb">
+            <DocsInline text={hit.snippet} />
+          </span>
         </div>
       ))}
     </div>
@@ -383,7 +437,9 @@ function DocsIndexPage(props: { q?: string; hits?: DocsSearchHit[] }) {
                             <a class="chq-docs-article-title" href={`/docs/${article.slug}`}>
                               {article.title}
                             </a>
-                            <span class="chq-docs-article-blurb">{article.standfirst}</span>
+                            <span class="chq-docs-article-blurb">
+                              <DocsInline text={article.standfirst} />
+                            </span>
                           </div>
                         ))}
                         {groupId === "running-the-software" ? <DocsApiLeavingRow /> : null}
@@ -424,7 +480,9 @@ function DocsArticlePage(props: { article: DocsArticle }) {
               <div class="chq-docs-article-head">
                 <span class="chq-docs-article-eyebrow">{meta.label}</span>
                 <h1>{article.title}</h1>
-                <p>{article.standfirst}</p>
+                <p>
+                  <DocsInline text={article.standfirst} />
+                </p>
               </div>
               {article.blocks.map((block) => (
                 <DocsBlockView block={block} />

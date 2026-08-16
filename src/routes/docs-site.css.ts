@@ -118,6 +118,20 @@ export const DOCS_SITE_CSS = `
   .chq-docs-deflist-term { margin: 0; font-size: 15px; font-weight: 600; color: var(--chq-ink); }
   .chq-docs-deflist-definition { margin: 0; font-size: 15px; line-height: 1.6; color: var(--chq-ink-2); }
 
+  /* Inline code span -- DEC-650 amendment (USER RULING 2026-08-16,
+     two-tier docs vocabulary): machine-literal text inside prose, list
+     items, standfirsts and captions. Quiet, not a highlighter: the same
+     mono stack the code block uses, a subtle sunk surface, small radius.
+     Scoped to the prose-bearing contexts so the code BLOCK's own <code>
+     child keeps the block's styling untouched. */
+  .chq-docs-prose code, .chq-docs-list code, .chq-docs-figure-caption code, .chq-docs-article-head p code, .chq-docs-article-blurb code {
+    font-family: ui-monospace, monospace;
+    font-size: 0.9em;
+    background: var(--chq-surface-sunk);
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+
   /* Code block -- for something the reader will copy, never rendered as
      prose or a bulleted list. */
   .chq-docs-code { max-width: 680px; margin: 0; border: 1px solid var(--chq-rule); border-radius: 5px; background: var(--chq-surface); padding: 14px 16px; overflow-x: auto; font-family: ui-monospace, monospace; font-size: 13px; line-height: 1.7; color: var(--chq-ink-2); white-space: pre; }

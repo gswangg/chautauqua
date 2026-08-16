@@ -10,7 +10,7 @@ export const reviewingStartToFinish: DocsArticle = {
     { kind: "heading", text: "Your queue" },
     {
       kind: "prose",
-      text: "When you log in as a reviewer, your queue holds the submissions an organizer assigned to you on a review plan — no others. The event's full set of submissions is never shown; you see only your assigned set.",
+      text: "When you log in as a reviewer, your queue holds the submissions an organizer assigned to you on a review plan, and no others. The event's full set of submissions is never shown; you see only your assigned set.",
     },
     {
       kind: "prose",
@@ -20,7 +20,7 @@ export const reviewingStartToFinish: DocsArticle = {
       kind: "figure",
       shotId: "for-reviewers-reviewing-start-to-finish-01",
       caption:
-        "The reviewer queue. Each row shows your status for that submission — scored, with your score, or not scored — but not how many ratings it has from other reviewers. Start at the top and score in order.",
+        "The reviewer queue. Each row shows your status for that submission (scored, with your score, or not scored) but not how many ratings it has from other reviewers. Start at the top and score in order.",
     },
     { kind: "heading", text: "The scorecard" },
     {
@@ -30,18 +30,18 @@ export const reviewingStartToFinish: DocsArticle = {
     { kind: "heading", text: "Anonymization" },
     {
       kind: "prose",
-      text: "If the plan is anonymized, the server strips the speaker's name and other identifying details — their company, the titles of their past talks — before the submission reaches your screen. The stripping happens on the server, not in your browser, so the removed data is never in the page at all. Score the text in front of you; every other reviewer on the plan sees the same text.",
+      text: "If the plan is anonymized, the server strips the speaker's name and other identifying details (their company, the titles of their past talks) before the submission reaches your screen. The stripping happens on the server, not in your browser, so the removed data is never in the page at all. Score the text in front of you; every other reviewer on the plan sees the same text.",
     },
     { kind: "heading", text: "Recusal" },
     {
       kind: "prose",
-      text: "A recusal removes the submission from your queue immediately. If you have a conflict of interest — you know the speaker, or you work with them — open the submission and check 'Recuse me from this one' on the scorecard. The submission moves to the recused rows at the end of your queue. Your rating is no longer needed for the plan, and the plan never assigns that submission to you again.",
+      text: "A recusal removes the submission from your queue immediately. If you have a conflict of interest (you know the speaker, or you work with them), open the submission and check **Recuse me from this one** on the scorecard. The submission moves to the recused rows at the end of your queue. Your rating is no longer needed for the plan, and the plan never assigns that submission to you again.",
     },
     {
       kind: "figure",
       shotId: "for-reviewers-reviewing-start-to-finish-02",
       caption:
-        "A recused submission is marked RECUSED in your queue, and your assigned and progress numbers adjust to match. While the plan is open, you can undo the recusal from the scorecard or from the queue; after the plan closes, only an organizer can undo it.",
+        "A recused submission is marked **RECUSED** in your queue, and your assigned and progress numbers adjust to match. While the plan is open, you can undo the recusal from the scorecard or from the queue; after the plan closes, only an organizer can undo it.",
     },
   ],
 };

@@ -10,7 +10,7 @@ export const callForPapersAndSubmissions: DocsArticle = {
     { kind: "heading", text: "The form builder" },
     {
       kind: "prose",
-      text: "A call-for-papers form is built from fields. Title, description, track, and format come built in; beyond those you can add custom questions — 'short text', 'long text', 'single choice', or 'multiple choice' — and mark any of them required. The form also carries the set of tracks it offers.",
+      text: "A call-for-papers form is built from fields. Title, description, track, and format come built in; beyond those you can add custom questions and mark any of them required. A question's kind is one of **Short text**, **Long text**, **Single choice**, **Checkbox**, **Number**, or **File**. The form also carries the set of tracks it offers.",
     },
     {
       kind: "prose",
@@ -30,26 +30,26 @@ export const callForPapersAndSubmissions: DocsArticle = {
     { kind: "heading", text: "Triage and the status pipeline" },
     {
       kind: "prose",
-      text: "Every submission starts as pending. Triage moves it into accept_queue or decline_queue — not decisions, just the direction triage points — and the final step moves a queued submission to accepted or declined. A sixth status, waitlisted, is a hold rather than a decision; a waitlisted submission can still move to either final status later.",
+      text: "Every submission starts as pending. Triage moves it into the accept queue or the decline queue — not decisions, just the direction triage points. The final step moves a queued submission to accepted or declined. A sixth status, waitlisted, is a hold rather than a decision; a waitlisted submission can still move to either final status later.",
     },
     {
       kind: "list",
       items: [
-        "pending — the submission arrived and is not yet triaged.",
-        "accept_queue / decline_queue — the direction triage points, not a decision.",
-        "accepted / declined — the decision. Accepting a submission turns on the speaker portal and the onboarding tasks for its speakers.",
-        "waitlisted — a hold. The submission can still move to accepted or declined.",
+        "**Pending** — the submission arrived and is not yet triaged.",
+        "**Accept queue** / **Decline queue** — the direction triage points, not a decision.",
+        "**Accepted** / **Declined** — the decision. Accepting a submission turns on the speaker portal and the onboarding tasks for its speakers.",
+        "**Waitlisted** — a hold. The submission can still move to accepted or declined.",
       ],
     },
     {
       kind: "prose",
-      text: "Statuses move in both directions, and a submission can move between any of them at any time. That freedom is safe because a decision never sends email on its own — moving a submission to accepted or declined changes its status and nothing else. Notifying the speaker is always a separate, deliberate step, so you can accept a whole batch first and then send the accept emails together at a time you choose.",
+      text: "Statuses move in both directions, and a submission can move between any of them at any time. That freedom is safe because a decision never sends email on its own: moving a submission to accepted or declined changes its status and nothing else. Notifying the speaker is always a separate, deliberate step, so you can accept a whole batch first and then send the accept emails together at a time you choose.",
     },
     {
       kind: "figure",
       shotId: "running-an-event-call-for-papers-and-submissions-02",
       caption:
-        "The submissions worklist: every submission for the event, with its status shown as a pill. Select a batch and apply one status change to all of them at once — a status change here never sends email.",
+        "The submissions worklist: every submission for the event, with its status shown as a pill. Select a batch and apply one status change to all of them at once. A status change here never sends email.",
     },
   ],
 };

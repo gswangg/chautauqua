@@ -5,7 +5,7 @@ export const embedsAndPublicPages: DocsArticle = {
   group: "running-an-event",
   title: "Embeds and public pages",
   standfirst:
-    "The public hub, the public surfaces, and the embeds on other sites all apply the same three conditions — accepted, visible, and content-approved. No surface applies a weaker set.",
+    "The public hub, the public surfaces, and the embeds on other sites all apply the same three conditions: accepted, visible, and content-approved. No surface applies a weaker set.",
   blocks: [
     { kind: "heading", text: "The public hub" },
     {
@@ -20,12 +20,12 @@ export const embedsAndPublicPages: DocsArticle = {
     { kind: "heading", text: "The surfaces" },
     {
       kind: "prose",
-      text: "Sessions, speakers, and gallery are searchable lists with a track filter. The agenda is the day-by-day schedule with a track highlight rather than a filter — every session stays in view, and the highlight only marks one track's sessions. The schedule page is a smaller version of the agenda with no track control, and the programme is a different surface: one print-first page that shows the full event.",
+      text: "Sessions, speakers, and gallery are searchable lists with a track filter. The agenda is the day-by-day schedule with a track highlight rather than a filter: every session stays in view, and the highlight only marks one track's sessions. The schedule page is a smaller version of the agenda with no track control, and the programme is a different surface: one print-first page that shows the full event.",
     },
     { kind: "heading", text: "What a visitor sees" },
     {
       kind: "prose",
-      text: "Public surfaces need no login, and none of them shows content an organizer did not approve. A session appears only after its submission is accepted and its content approved; a speaker appears only while their participation is active. A submission still in review, or one without approved content, is simply absent — it does not appear with a pending mark.",
+      text: "Public surfaces need no login, and none of them shows content an organizer did not approve. A session appears only after its submission is accepted and its content approved; a speaker appears only while their participation is active. A submission still in review, or one without approved content, is simply absent; it does not appear with a pending mark.",
     },
     { kind: "heading", text: "Saved embeds" },
     {

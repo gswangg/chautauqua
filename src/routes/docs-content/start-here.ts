@@ -5,7 +5,7 @@ export const startHere: DocsArticle = {
   group: "getting-started",
   title: "Start here",
   standfirst:
-    "Chautauqua runs a conference's speaker pipeline from start to end — the call for papers, review and scoring, the accept and decline decisions, and the speaker portal that follows. This page shows you the system in 20 minutes.",
+    "Chautauqua runs a conference's speaker pipeline from start to end: the call for papers, review and scoring, the accept and decline decisions, and the speaker portal that follows. This page shows you the system in 20 minutes.",
   blocks: [
     {
       kind: "prose",
@@ -15,10 +15,10 @@ export const startHere: DocsArticle = {
     {
       kind: "list",
       items: [
-        "Organizer — makes the call for papers, does triage, sets up review plans, runs tasks and comms, and publishes the agenda. The organizer has the admin login and sees every event they have access to.",
-        "Reviewer — scores an assigned set of submissions against a plan's scorecard. A reviewer has a login but sees only the review queue and their own scores, never the full admin console.",
-        "Speaker — sends a submission, and if the event accepts it, uses the speaker portal: status, tasks, due dates, and their bio. The portal link signs them in, so no account is needed.",
-        "Public — anyone who reads the published agenda, the session pages, or the speaker directory. The public does not log in and sees only the content an organizer set to visible.",
+        "**Organizer** — makes the call for papers, does triage, sets up review plans, runs tasks and comms, and publishes the agenda. The organizer has the admin login and sees every event they have access to.",
+        "**Reviewer** — scores an assigned set of submissions against a plan's scorecard. A reviewer has a login but sees only the review queue and their own scores, never the full admin console.",
+        "**Speaker** — sends a submission, and if the event accepts it, uses the speaker portal: status, tasks, due dates, and their bio. The portal link signs them in, so no account is needed.",
+        "**Public** — anyone who reads the published agenda, the session pages, or the speaker directory. The public does not log in and sees only the content an organizer set to visible.",
       ],
     },
     { kind: "heading", text: "The first 20 minutes for an organizer" },
@@ -33,7 +33,7 @@ export const startHere: DocsArticle = {
         "Build the call-for-papers form: choose the built-in fields you need, add your custom questions, and set the open and close dates of the submission period.",
         "Publish the form's public link and send it out. Submissions can start arriving immediately, each with the pending status.",
         "Set up a review plan once submissions arrive: assign the reviewers, choose a scorecard, and divide the submissions across the plan.",
-        "Do triage while reviews come in: move submissions from pending into the accept queue or the decline queue, then make the decision. A decision never sends email — you choose when to send the notification.",
+        "Do triage while reviews come in: move submissions from pending into the accept queue or the decline queue, then make the decision. A decision never sends email. You choose when to send the notification.",
       ],
     },
     {
@@ -44,7 +44,7 @@ export const startHere: DocsArticle = {
     },
     {
       kind: "prose",
-      text: "Each of those areas has its own article — the form builder, multi-round reviews, tasks and file uploads, the published agenda — and this page is just the starting point.",
+      text: "Each of those areas has its own article: the form builder, multi-round reviews, tasks and file uploads, the published agenda. This page is just the starting point.",
     },
   ],
 };

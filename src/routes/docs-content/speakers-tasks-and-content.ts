@@ -10,7 +10,7 @@ export const speakersTasksAndContent: DocsArticle = {
     { kind: "heading", text: "The roster" },
     {
       kind: "prose",
-      text: "The speaker roster lists every person attached to an accepted submission for the event — one row per person, not per session. A co-presenter on two accepted submissions appears once, with both submissions listed. You can also add a speaker directly here, without the call-for-papers form; use that for a speaker who did not come through the call for papers.",
+      text: "The speaker roster lists every person attached to an accepted submission for the event: one row per person, not per session. A co-presenter on two accepted submissions appears once, with both submissions listed. You can also add a speaker directly here, without the call-for-papers form; use that for a speaker who did not come through the call for papers.",
     },
     {
       kind: "figure",
@@ -21,11 +21,11 @@ export const speakersTasksAndContent: DocsArticle = {
     { kind: "heading", text: "Tasks: all accepted speakers, or a selected group" },
     {
       kind: "prose",
-      text: "A task is something you need from an accepted speaker by a due date — a bio, a signed agreement, slides. When you create one, you choose who gets it, once: every speaker accepted at that moment, or a group you select. That selection never changes afterward — the task stays with the people you selected, and speakers accepted later are not added.",
+      text: "A task is something you need from an accepted speaker by a due date: a bio, a signed agreement, slides. When you create one, you choose who gets it, once: every speaker accepted at that moment, or a group you select. That selection never changes afterward. The task stays with the people you selected, and speakers accepted later are not added.",
     },
     {
       kind: "prose",
-      text: "Tasks accumulate as onboarding continues. Each shows as open or completed, and an overdue task gets a clear flag — it never drops out of view after its due date.",
+      text: "Tasks accumulate as onboarding continues. Each shows as open or completed, and an overdue task gets a clear flag; it never drops out of view after its due date.",
     },
     {
       kind: "figure",
@@ -41,7 +41,7 @@ export const speakersTasksAndContent: DocsArticle = {
     { kind: "heading", text: "Reviewing content" },
     {
       kind: "prose",
-      text: "The content review is not the accept-and-decline decision. It records whether a submission's public content — the title, the description, the attached deliverables — is ready to go public. The content status moves through its small set of statuses as an organizer reviews it. A content status change never sends email on its own; telling the speaker is a separate, deliberate step.",
+      text: "The content review is not the accept-and-decline decision. It records whether a submission's public content (the title, the description, the attached deliverables) is ready to go public. The content status moves through its small set of statuses as an organizer reviews it. A content status change never sends email on its own; telling the speaker is a separate, deliberate step.",
     },
     {
       kind: "figure",

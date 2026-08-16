@@ -29,6 +29,15 @@ function unescapeHtml(s: string): string {
     .replace(/&#39;/g, "'");
 }
 
+// DEC-650 amendment (USER RULING 2026-08-16): article prose may carry the
+// two inline spans `code` and **bold**, which the renderer emits as
+// <code>/<strong> elements. Mirror that expansion so the raw source
+// strings can still be substring-matched against the (unescaped) rendered
+// body. Text without markers passes through unchanged.
+function renderInline(s: string): string {
+  return s.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+}
+
 function buildApp() {
   const app = new Hono<AppEnv>();
   app.use("*", async (c, next) => {
@@ -84,13 +93,15 @@ describe("GET /docs/:slug", () => {
       expect(res.status).toBe(200);
       const body = unescapeHtml(await res.text());
       expect(body).toContain(article.title);
-      expect(body).toContain(article.standfirst);
+      expect(body).toContain(renderInline(article.standfirst));
       for (const block of article.blocks) {
-        if (block.kind === "heading" || block.kind === "prose") {
+        if (block.kind === "heading") {
           expect(body).toContain(block.text);
+        } else if (block.kind === "prose") {
+          expect(body).toContain(renderInline(block.text));
         } else if (block.kind === "list") {
           for (const item of block.items) {
-            expect(body).toContain(item);
+            expect(body).toContain(renderInline(item));
           }
         } else if (block.kind === "aside") {
           expect(body).toContain(block.label);
@@ -106,7 +117,7 @@ describe("GET /docs/:slug", () => {
           }
         } else {
           expect(body).toContain(block.shotId);
-          expect(body).toContain(block.caption);
+          expect(body).toContain(renderInline(block.caption));
         }
       }
     }
