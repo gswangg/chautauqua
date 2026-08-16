@@ -102,14 +102,32 @@ export async function listSubmissionHistory(db: Db, submissionId: string): Promi
     revisionId: baseline?.id ?? null,
   });
 
-  for (const r of revisions) {
+  // DEC-892 wave-61 amendment: `detail` must say WHAT changed, not repeat the
+  // title (two same-author description edits used to log two indistinguishable
+  // rows). listRevisions returns newest-first; sort ascending so each
+  // non-baseline revision can be diffed against its immediate predecessor.
+  // The wave-59 baseline (AS_SUBMITTED_EDITOR) guarantees every edit has one.
+  const ascending = [...revisions].sort((a, b) => a.createdAt - b.createdAt);
+  for (let i = 0; i < ascending.length; i++) {
+    const r = ascending[i]!;
     if (r.editorName === AS_SUBMITTED_EDITOR) continue;
+    const prev = ascending[i - 1]!;
+    const titleChanged = r.title !== prev.title;
+    const descriptionChanged = r.description !== prev.description;
+    const detail =
+      titleChanged && descriptionChanged
+        ? "Title and description changed"
+        : titleChanged
+          ? "Title changed"
+          : descriptionChanged
+            ? "Description changed"
+            : "No text change";
     entries.push({
       id: r.id,
       at: new Date(r.createdAt),
       kind: "edited",
       label: `Edited by ${r.editorName}`,
-      detail: r.title,
+      detail,
       revisionId: r.id,
     });
   }
