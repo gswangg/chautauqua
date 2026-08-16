@@ -65,12 +65,17 @@ live tree this task, not inherited from a prior wave's claim:
    modal closes by naming what it does NOT do (directory ≠ event).
 3. FieldModal residue: dialog title per frame (not "Edit field"), operator tokens
    read as words (not raw eq/ne/in), card width 520 → 560.
-4. ~~12-home 820→732~~ **ON HOLD (user, wave-78): the 732/756 frames are suspected
-   ABERRANT** — the system's canonical measure is 820 (DEC-744/DEC-808) and these
-   are the only two frames deviating, with no ruling. The design agent is asked to
-   confirm-or-correct the frames. DO NOT change HOME_MEASURE or the builder measure
-   until the next handoff answers; app stays at 820.
-5. (merged into 4 — same hold.)
+4. **RESOLVED by design agent (wave-78): 732/756 are CONTENT boxes inside the
+   standard 820 container** — the frames pad internally (820−2×44=732 home;
+   820−2×32=756 builder). The frames are NOT aberrant and the measure does NOT
+   change. THE REAL FIX: keep HOME_MEASURE/container at 820 and add the frame's
+   internal horizontal padding so the CONTENT box lands at 732 (home hub) and
+   756 (CFP builder reading column). Closure evidence = content-box width, not
+   container width.
+5. **FLEET METHOD RULE (add to every future audit brief): compare LIKE boxes** —
+   a frame scan yields the CONTENT box; measure the app's content box (text run),
+   not its declared container, before calling a deviation. The 820-vs-732 and
+   820-vs-756 "reopens" at gates 9-11 were this artifact.
 6. Home CTA dark-on-dark hover: .chq-home-action-primary must keep its on-brand
    label on hover (add .chq-btn or scope theme.ts a:hover away from it). VERIFY
    with computed style — this was still live at gate-11.
