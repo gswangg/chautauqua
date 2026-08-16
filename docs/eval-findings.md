@@ -103,11 +103,19 @@ rectangles GONE. The correctness campaign converted directly into score.
    was measured against the PRE-wave-64 build. REMAINING: runtime click-verify
    at the final-freeze probe (wizard step 2 shows the disposition for a
    same-name-different-email row; merge path patches, not creates).
-2. **Auto-schedule un-flagged speaker double-bookings** (AIA major, NEW): SES-033
-   CSV-batch session's speakers overlap other placements with no clash flag.
-   ROOT-CAUSE HYPOTHESIS: conflict counting excludes participants by invite
-   status (see rows.ts:214 comment) — CSV-batch speakers are NOT INVITED, so
-   they're invisible to clash detection. Verify + fix + test.
+2. ~~Auto-schedule un-flagged double-bookings~~ **RESOLVED BY ANALYSIS
+   (orchestrator, wave-71): NO ENGINE BUG.** The invite-status hypothesis is
+   REFUTED: pushContactsToEvent mints inviteStatus='none' (push.ts:80), which is
+   IN SCHEDULING_PARTICIPANT_STATUSES (acceptance.ts:148), and both the placer
+   (domain/schedule.ts speakerIndex + speaker_double_booked reason) and the
+   renderer (rows.ts:216, DEC-974 — in the interim build) see those speakers.
+   The judge's "double-booked Priya" was TWO DIFFERENT CONTACT ROWS (seed Priya
+   vs the CSV-minted alternate-email Priya) — the engine correctly keys by
+   contactId; distinct rows are not provably one person. Root cause IS cluster
+   1b (now built: pre-import disposition w64) + vestigial near-dup seeds (now
+   removed, DEC-823 w70). NO further fix; do NOT invent a same-name soft-clash
+   heuristic without a design frame. Expect this major to vanish on the final
+   run via the 1b warning + cleaned seeds.
 3. **Public search submit "fix" is WRONG**: the off-screen 1x1 button defeats
    real pointer clicks (judge's Playwright click timed out AGAIN; only Enter
    works). An offscreen submit is worse than an overlapped one — make the
