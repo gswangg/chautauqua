@@ -50,6 +50,20 @@ export function SettingsEditForm({ onSubmit, consequence, footer, children }: Se
   );
 }
 
+// DEC-896 amendment (wave 68): the shared footer owns the SLOTS, but not
+// (until now) the WORDS -- three panels rendered a bare "Save" where the
+// vendored frame's every drawn edit-view footer reads "Save changes"
+// (docs/design/Chautauqua Settings.dc.html:687, 777, 858, 939, 1010, 1100,
+// 1204, 1261). This is the ONE place either string lives; adopt it as
+// `footer.primary` instead of writing the label at the call site.
+export function SettingsSaveButton({ pending }: { pending: boolean }) {
+  return (
+    <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
+      {pending ? 'Saving…' : 'Save changes'}
+    </button>
+  );
+}
+
 export interface SettingsFieldProps {
   label: string;
   htmlFor?: string;

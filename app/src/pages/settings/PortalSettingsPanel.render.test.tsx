@@ -198,7 +198,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
 
     const welcome = await screen.findByLabelText('Welcome note');
     fireEvent.change(welcome, { target: { value: 'Hello there' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     await waitFor(() => {
       const putCalls = fetchMock.mock.calls.filter(
@@ -228,7 +228,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
 
     const accent = await screen.findByLabelText('Accent colour');
     fireEvent.change(accent, { target: { value: 'nope' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Must be a hex color like #336699');
@@ -261,7 +261,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
 
     const welcome = await screen.findByLabelText('Welcome note');
     fireEvent.change(welcome, { target: { value: 'Hello there' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     await waitFor(() => {
       const putCalls = fetchMock.mock.calls.filter(
@@ -308,7 +308,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       expect(footer).not.toBeNull();
       expect(footer.querySelector('.chq-settings-edit-footer-destructive')).toBeNull();
       const secondaryButton = within(footer).getByRole('button', { name: 'Cancel' });
-      const primaryButton = within(footer).getByRole('button', { name: 'Save' });
+      const primaryButton = within(footer).getByRole('button', { name: 'Save changes' });
       const order = Array.from(footer.querySelectorAll('button'));
       expect(order.indexOf(secondaryButton as HTMLButtonElement)).toBeLessThan(
         order.indexOf(primaryButton as HTMLButtonElement),

@@ -17,7 +17,7 @@ import { copyText } from '../../lib/clipboard';
 import { formWindowState } from '../../../../src/lib/submit-core';
 import { dayLabelEndInstant } from '../../../../src/lib/timezone';
 import { SummarySection } from './SummarySection';
-import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEditForm';
+import { SettingsEditForm, SettingsField, SettingsFieldPair, SettingsSaveButton } from './SettingsEditForm';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
 import { DEC_888 } from '../../../../src/decisions';
@@ -356,11 +356,7 @@ export function CallForPapersPanel() {
             receivedTotal !== null ? `${countOf(receivedTotal, 'submission')} received · changes do not affect them` : undefined
           }
           footer={{
-            primary: (
-              <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            ),
+            primary: <SettingsSaveButton pending={saving} />,
             secondary: (
               <button type="button" className="chq-btn chq-btn-secondary" onClick={closeEdit} disabled={saving}>
                 Cancel

@@ -133,7 +133,7 @@ describe('CallForPapersPanel', () => {
       },
     });
 
-    fireEvent.click(within(section).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(section).getByRole('button', { name: 'Save changes' }));
 
     await waitFor(() => {
       expect(within(section).getByRole('button', { name: 'Edit the form' })).toBeInTheDocument();
@@ -273,7 +273,7 @@ describe('CallForPapersPanel', () => {
       // No destructive control on this panel -- only secondary then primary.
       expect(footer.querySelector('.chq-settings-edit-footer-destructive')).toBeNull();
       const secondaryButton = within(footer).getByRole('button', { name: 'Cancel' });
-      const primaryButton = within(footer).getByRole('button', { name: 'Save' });
+      const primaryButton = within(footer).getByRole('button', { name: 'Save changes' });
       const order = Array.from(footer.querySelectorAll('button'));
       expect(order.indexOf(secondaryButton as HTMLButtonElement)).toBeLessThan(
         order.indexOf(primaryButton as HTMLButtonElement),

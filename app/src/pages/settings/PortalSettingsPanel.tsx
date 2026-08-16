@@ -28,7 +28,7 @@ import { apiGet, apiList, apiPut, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ResourcesPanel } from './ResourcesPanel';
 import { SummarySection } from './SummarySection';
-import { SettingsEditForm, SettingsField } from './SettingsEditForm';
+import { SettingsEditForm, SettingsField, SettingsSaveButton } from './SettingsEditForm';
 import { countOf } from '../../lib/plural';
 import {
   buildPortalSettingsPayload,
@@ -234,11 +234,7 @@ export function PortalSettingsPanel() {
             void handleSave();
           }}
           footer={{
-            primary: (
-              <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            ),
+            primary: <SettingsSaveButton pending={saving} />,
             secondary: (
               <button type="button" className="chq-btn chq-btn-secondary" onClick={closeEdit} disabled={saving}>
                 Cancel
