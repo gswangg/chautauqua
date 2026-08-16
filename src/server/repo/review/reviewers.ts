@@ -233,6 +233,82 @@ export async function getReviewerScopeTrackIds(db: Db, planId: string, userId: s
   return resolveReviewerScopeTrackIds(rows);
 }
 
+/** DEC-596: the organiser's "Reviews · N of M in" denominator counts
+ * ASSIGNED reviewers, never the evaluation rows they may or may not have
+ * submitted yet -- a submission with an assigned-but-unscored reviewer must
+ * read "0 of 1", not "0 of 0". Distinct (planId, userId) pairs whose scope
+ * COVERS this submission: an all-scope row (trackId+submissionId both
+ * null), a track row whose trackId matches one of this submission's
+ * submission_track rows, or a submissionId row naming it directly -- minus
+ * any pair with a recusal for (plan, submission, user).
+ *
+ * Two queries: ONE joined plan_reviewer read (LEFT JOIN submission_track on
+ * this submission's id, so the track-scope match happens in SQL rather than
+ * a separate submission-tracks read), and ONE recusal read scoped to this
+ * submission. Never a query per reviewer. */
+export async function countAssignedReviewersForSubmission(
+  db: Db,
+  eventId: string,
+  submissionId: string,
+  planId?: string,
+): Promise<number> {
+  const planScope = planId
+    ? eq(schema.planReviewer.planId, planId)
+    : eq(schema.evaluationPlan.eventId, eventId);
+
+  const rows = await db
+    .select({
+      planId: schema.planReviewer.planId,
+      userId: schema.planReviewer.userId,
+      trackId: schema.planReviewer.trackId,
+      submissionId: schema.planReviewer.submissionId,
+      matchedTrackId: schema.submissionTrack.trackId,
+    })
+    .from(schema.planReviewer)
+    .innerJoin(schema.evaluationPlan, eq(schema.evaluationPlan.id, schema.planReviewer.planId))
+    .leftJoin(
+      schema.submissionTrack,
+      and(
+        eq(schema.submissionTrack.submissionId, submissionId),
+        eq(schema.submissionTrack.trackId, schema.planReviewer.trackId),
+      ),
+    )
+    .where(planScope)
+    .limit(MAX_REVIEWER_SCOPE_ROWS + 1);
+
+  if (rows.length > MAX_REVIEWER_SCOPE_ROWS) {
+    throw new ApiError(
+      "invalid",
+      `This event would scan more than ${MAX_REVIEWER_SCOPE_ROWS} plan_reviewer rows -- narrow the plan's track filter first`,
+    );
+  }
+
+  const covering = rows.filter((r) => {
+    const allScope = r.trackId === null && r.submissionId === null;
+    const trackScope = r.matchedTrackId !== null && r.matchedTrackId !== undefined;
+    const submissionScope = r.submissionId === submissionId;
+    return allScope || trackScope || submissionScope;
+  });
+
+  const assignedPairs = new Map<string, { planId: string; userId: string }>();
+  for (const r of covering) {
+    assignedPairs.set(`${r.planId}|${r.userId}`, { planId: r.planId, userId: r.userId });
+  }
+
+  const recusalRows = await db
+    .select({ planId: schema.reviewRecusal.planId, userId: schema.reviewRecusal.userId })
+    .from(schema.reviewRecusal)
+    .where(eq(schema.reviewRecusal.submissionId, submissionId));
+
+  for (const r of recusalRows) {
+    const key = `${r.planId}|${r.userId}`;
+    if (planId && r.planId !== planId) continue;
+    if (assignedPairs.has(key)) assignedPairs.delete(key);
+  }
+
+  return assignedPairs.size;
+}
+
 export async function listPlanIdsForReviewer(db: Db, userId: string): Promise<string[]> {
   const rows = await db
     .select({ planId: schema.planReviewer.planId })

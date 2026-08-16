@@ -335,6 +335,10 @@ export function SubmissionDetailPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [evaluations, setEvaluations] = useState<SubmissionReviewItem[]>([]);
+  // DEC-596: assigned REVIEWERS, not evaluation rows -- the server always
+  // sends this on GET /submissions/:id/evaluations; no client fallback to
+  // evaluations.length (that fallback is how the two arithmetics diverged).
+  const [assignedReviewers, setAssignedReviewers] = useState<number>(0);
   const [evaluationsError, setEvaluationsError] = useState<string | null>(null);
   // DEC-737 (wave 2 amendment): per-criterion detail is collapsed behind a
   // quiet per-row disclosure, closed by default -- same rule the results
@@ -395,7 +399,11 @@ export function SubmissionDetailPage() {
     if (!id) return;
     setEvaluationsError(null);
     apiList<SubmissionReviewItem>(`/submissions/${id}/evaluations`)
-      .then((res) => setEvaluations(res.items))
+      .then((res) => {
+        setEvaluations(res.items);
+        if (res.assigned === undefined) throw new Error('evaluations envelope missing assigned');
+        setAssignedReviewers(res.assigned);
+      })
       .catch((err) => setEvaluationsError(err instanceof ApiError ? err.message : 'Failed to load reviews'));
   }, [id]);
 
@@ -1144,7 +1152,7 @@ export function SubmissionDetailPage() {
 
           <section className="chq-detail-section chq-detail-reviews">
             <h2 className="chq-detail-section-title">
-              Reviews &middot; {evaluations.filter((ev) => ev.submittedAt !== null).length} of {evaluations.length} in
+              Reviews &middot; {evaluations.filter((ev) => ev.submittedAt !== null).length} of {assignedReviewers} in
             </h2>
             <div className="chq-detail-section-body">
               {evaluationsError && <div className="chq-error-banner">{evaluationsError}</div>}

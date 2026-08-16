@@ -11,6 +11,7 @@ import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import * as evaluationsRepo from "../src/server/repo/review/evaluations";
+import * as reviewersRepo from "../src/server/repo/review/reviewers";
 
 const ORG_A = "org-a";
 const ORG_B = "org-b";
@@ -86,6 +87,21 @@ vi.mock("../src/server/repo/review/evaluations", async () => {
 // DEC-763: getPlanForOrg backs the ?planId= ownership check -- plan-1
 // belongs to event-1/ORG_A (the submission's own event/org); plan-9 exists
 // but under a different event, so it must 404 rather than silently scope.
+// DEC-596: `assigned` is the reviewer-assignment count, computed
+// independently of listEvaluationsForSubmission's rows -- mocked separately
+// so a test can prove assigned > items.length for an assigned-but-unscored
+// reviewer without needing a real DB in this route-level suite (the SQL
+// itself is exercised in test/count-assigned-reviewers.test.ts).
+vi.mock("../src/server/repo/review/reviewers", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/review/reviewers")>(
+    "../src/server/repo/review/reviewers",
+  );
+  return {
+    ...actual,
+    countAssignedReviewersForSubmission: vi.fn(async () => 3),
+  };
+});
+
 vi.mock("../src/server/repo/review/plans", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/review/plans")>(
     "../src/server/repo/review/plans",
@@ -129,6 +145,7 @@ describe("DEC-596/DEC-723/DEC-736: GET /api/v1/submissions/:id/evaluations", () 
         criteria: Array<{ id: string; label: string; kind: string; weight: number }>;
         score: number | null;
       }>;
+      assigned: number;
     };
     expect(body.items).toHaveLength(2);
     expect(body.items[0]).toMatchObject({
@@ -227,6 +244,28 @@ describe("DEC-596/DEC-723/DEC-736: GET /api/v1/submissions/:id/evaluations", () 
     const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
     const res = await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations?planId=does-not-exist`);
     expect(res.status).toBe(404);
+  });
+
+  it("DEC-596: `assigned` (reviewer count) rides the envelope and can exceed items.length -- an assigned-but-unscored reviewer is still counted", async () => {
+    vi.mocked(reviewersRepo.countAssignedReviewersForSubmission).mockResolvedValue(3);
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: unknown[]; assigned: number };
+    expect(body.items).toHaveLength(2);
+    expect(body.assigned).toBe(3);
+    expect(body.assigned).toBeGreaterThan(body.items.length);
+  });
+
+  it("DEC-596: passes the submission's own eventId, submissionId, and ?planId= through to countAssignedReviewersForSubmission", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations?planId=plan-1`);
+    expect(reviewersRepo.countAssignedReviewersForSubmission).toHaveBeenCalledWith(
+      expect.anything(),
+      "event-1",
+      SUBMISSION_ID,
+      "plan-1",
+    );
   });
 
   it("401s when unauthenticated", async () => {
