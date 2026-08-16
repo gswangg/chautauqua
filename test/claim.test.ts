@@ -82,6 +82,27 @@ describe("claim token flow", () => {
     const b = await createClaimToken(kv, { contactId: "c2", eventId: "e1" });
     expect(a).not.toBe(b);
   });
+
+  it("DEC-014: a malformed claim blob behaves exactly as a missing token, for both readClaimToken and consumeClaimToken", async () => {
+    const kv = new InMemoryKV();
+    const token = "tok-legacy";
+    const hash = await hashClaimToken(token);
+    // Legacy/malformed shape: no eventId at all.
+    await kv.put(claimKvKey(hash), JSON.stringify({ contactId: "c1" }));
+
+    await expect(readClaimToken(kv, token)).resolves.toBeNull();
+    await expect(consumeClaimToken(kv, token)).resolves.toBeNull();
+    // consumeClaimToken must also clean up the unusable record, same as a
+    // 404 on a truly-missing token would leave nothing behind.
+    expect(kv.has(claimKvKey(hash))).toBe(false);
+  });
+
+  it("parseClaimRecord rejects garbage JSON", async () => {
+    const { parseClaimRecord } = await import("../src/auth/claim");
+    expect(parseClaimRecord("not json")).toBeNull();
+    expect(parseClaimRecord(JSON.stringify({ contactId: "c1" }))).toBeNull();
+    expect(parseClaimRecord(JSON.stringify({ contactId: "", eventId: "e1" }))).toBeNull();
+  });
 });
 
 // DEC-949 (wave 18 amendment): a grant is SINGLE-ACTIVE per (contactId,

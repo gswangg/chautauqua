@@ -176,9 +176,6 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
     }
   }
 
-  // Track selection is stored in the same draft answers blob under a
-  // reserved key so it survives resume, without becoming a fake form field.
-  (answers as Record<string, unknown>).__trackIds = selectedTrackIds;
   // Drafts never persist file selections (DEC-040): file answers are
   // extracted only at final submit, so `answers` here already omits them.
 
@@ -193,7 +190,7 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
   // failure, not submitter abuse; refund only if the identity-keyed budget
   // was actually spent (draftEmail present) before rethrowing unmodified.
   try {
-    await saveDraft(kv, token, { formId: form.id, answers, savedAt });
+    await saveDraft(kv, token, { formId: form.id, answers, savedAt, trackIds: selectedTrackIds });
   } catch (err) {
     if (draftEmail) {
       await refundEmailBudget(db, "draft-email", draftEmail, budgetNow);
