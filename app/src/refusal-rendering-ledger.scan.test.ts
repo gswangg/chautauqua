@@ -151,10 +151,22 @@ const LEDGER: Record<string, LedgerEntry> = {
   'pages/speakers/OnboardingGrid.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
   'pages/speakers/RosterPanel.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
   'pages/speakers/SpeakerDetailPage.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
-  'pages/submissions/DeleteSubmissionsPage.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
-  'pages/submissions/SubmissionDetailPage.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
-  'pages/submissions/SubmissionsTable.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
-  'pages/submissions/ViewTabs.tsx': { verdict: 'owed', reason: 'wave-55 ledger established; refusal-shapes test not yet written' },
+  'pages/submissions/DeleteSubmissionsPage.tsx': {
+    verdict: 'proven',
+    test: 'pages/submissions/DeleteSubmissionsPage-refusal-shapes.render.test.tsx',
+  },
+  'pages/submissions/SubmissionDetailPage.tsx': {
+    verdict: 'proven',
+    test: 'pages/submissions/SubmissionDetailPage-refusal-shapes.render.test.tsx',
+  },
+  'pages/submissions/SubmissionsTable.tsx': {
+    verdict: 'proven',
+    test: 'pages/submissions/SubmissionsTable-refusal-shapes.render.test.tsx',
+  },
+  'pages/submissions/ViewTabs.tsx': {
+    verdict: 'proven',
+    test: 'pages/submissions/ViewTabs-refusal-shapes.render.test.tsx',
+  },
 };
 
 /** Population members with no ledger row at all. */
