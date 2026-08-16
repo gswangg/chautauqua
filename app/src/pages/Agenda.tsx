@@ -102,6 +102,10 @@ export function AgendaPage() {
   });
   const [publishing, setPublishing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // DEC-595 wave-67 amendment: the publish receipt's held-back count is a
+  // dead end without the names -- this persists (unlike the transient toast)
+  // so an organizer can act on it, and is cleared by the next publish.
+  const [heldBackSessions, setHeldBackSessions] = useState<{ submissionId: string; title: string }[]>([]);
   const [armed, setArmed] = useState<ArmedAgendaSession | null>(null);
   // DEC-941: the click/keyboard "Unschedule" button (armed bar) is
   // irreversible, so it opens the shared ConfirmDialog naming the session
@@ -272,12 +276,15 @@ export function AgendaPage() {
     setPublishing(true);
     setError(null);
     try {
-      const result = await apiPost<{ placed: number; public: number; heldBack: number }>(
-        `/events/${eventId}/agenda/publish`,
-        {},
-      );
+      const result = await apiPost<{
+        placed: number;
+        public: number;
+        heldBack: number;
+        heldBackSessions: { submissionId: string; title: string }[];
+      }>(`/events/${eventId}/agenda/publish`, {});
       const base = `Schedule live — ${result.public} of ${result.placed} placed sessions are public.`;
       setToast(result.heldBack > 0 ? `${base} ${result.heldBack} held back: content not approved.` : base);
+      setHeldBackSessions(result.heldBack > 0 ? result.heldBackSessions : []);
     } catch (err) {
       setError(err instanceof ApiError ? `Publish failed: ${err.message}` : 'Publish failed');
     } finally {
@@ -360,6 +367,21 @@ export function AgendaPage() {
           <button type="button" className="chq-link-button" onClick={() => setToast(null)} aria-label="Dismiss">
             &times;
           </button>
+        </div>
+      )}
+      {/* DEC-595 wave-67 amendment: names every withheld session so the
+         organizer can act on it -- persistent (survives toast dismissal),
+         renders nothing when there is nothing withheld. */}
+      {heldBackSessions.length > 0 && (
+        <div className="chq-attention-frame chq-agenda-held-back">
+          <p>Held back — content not approved:</p>
+          <ul>
+            {heldBackSessions.map((s) => (
+              <li key={s.submissionId}>
+                <Link to={`/content/${s.submissionId}`}>{s.title}</Link>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

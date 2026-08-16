@@ -162,23 +162,34 @@ export async function listSlotsOutsideWindow(
   };
 }
 
-/** DEC-595: counts how many of `submissionIds` pass the SAME public
+/** DEC-595: resolves the subset of `submissionIds` that pass the SAME public
  * visibility gate (src/server/repo/public/gates.ts's visibleSessionConditions
  * — accepted + content-approved) every other gated read uses. Placed
  * sessions are already status='accepted' (loadAcceptedSessions filters on
  * it), so in practice this narrows on content_status='approved' — but the
- * gate is imported, never re-derived, per the one-predicate rule. */
-export async function countPubliclyVisible(db: Db, eventId: string, submissionIds: string[]): Promise<number> {
-  if (submissionIds.length === 0) return 0;
-  let total = 0;
+ * gate is imported, never re-derived, per the one-predicate rule. Returns a
+ * Set so both the count (`.size`) and the held-back complement (DEC-595 wave
+ * 67 amendment: publish must NAME withheld sessions) derive from the SAME
+ * query — no second predicate. */
+export async function publiclyVisibleIds(db: Db, eventId: string, submissionIds: string[]): Promise<Set<string>> {
+  const visible = new Set<string>();
+  if (submissionIds.length === 0) return visible;
   for (const batch of chunkIds(submissionIds)) {
     const rows = await db
       .select({ id: schema.submission.id })
       .from(schema.submission)
       .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, batch), visibleSessionConditions()));
-    total += rows.length;
+    for (const r of rows) visible.add(r.id);
   }
-  return total;
+  return visible;
+}
+
+/** DEC-595: counts how many of `submissionIds` pass the public gate. Thin
+ * wrapper over publiclyVisibleIds — kept for callers that only need the
+ * count. */
+export async function countPubliclyVisible(db: Db, eventId: string, submissionIds: string[]): Promise<number> {
+  const visible = await publiclyVisibleIds(db, eventId, submissionIds);
+  return visible.size;
 }
 
 /** Refreshed { conflicts, summary } only — used after PUT/DELETE slot writes,

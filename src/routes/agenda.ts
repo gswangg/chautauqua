@@ -10,7 +10,7 @@ import { ApiError, readJsonBody, readOptionalJsonBody } from "../server/http";
 import { MINUTES_PER_DAY } from "../domain/schedule";
 import { settleInDeclarationOrder } from "../lib/settle";
 import {
-  countPubliclyVisible,
+  publiclyVisibleIds,
   DEFAULT_AUTO_SCHEDULE_PARAMS,
   getAgendaPayload,
   getConflictsAndSummary,
@@ -155,12 +155,21 @@ agendaRoutes.post("/events/:eventId/agenda/publish", requireOrganizer, csrfJson,
 
   const payload = await getAgendaPayload(c.var.db, eventId, event);
   const placed = payload.placed.length;
-  const publicCount = await countPubliclyVisible(
+  const visible = await publiclyVisibleIds(
     c.var.db,
     eventId,
     payload.placed.map((s) => s.submissionId),
   );
-  return c.json({ placed, public: publicCount, heldBack: placed - publicCount });
+  const publicCount = visible.size;
+  // DEC-595 wave-67 amendment: the receipt must NAME withheld sessions, not
+  // just count them. heldBackSessions is derived from the SAME visible-id
+  // set above (payload.placed minus visible) — no second predicate — and is
+  // bounded by payload.placed, which getAgendaPayload already loaded in full
+  // for this event, so this is not a new unbounded surface.
+  const heldBackSessions = payload.placed
+    .filter((s) => !visible.has(s.submissionId))
+    .map((s) => ({ submissionId: s.submissionId, title: s.title }));
+  return c.json({ placed, public: publicCount, heldBack: placed - publicCount, heldBackSessions });
 });
 
 interface AutoScheduleBody {

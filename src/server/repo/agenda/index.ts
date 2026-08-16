@@ -44,6 +44,7 @@ export {
   getAgendaPayload,
   listSlotsOutsideWindow,
   countPubliclyVisible,
+  publiclyVisibleIds,
   getConflictsAndSummary,
 } from "./payload";
 

@@ -1238,3 +1238,15 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* ---------------------------------------------------------------------- */
+/* Publish receipt: named held-back sessions (DEC-595 wave-67 amendment)   */
+/* ---------------------------------------------------------------------- */
+
+/* Persists below the transient publish toast, naming every withheld
+   session -- shares .chq-attention-frame's box for the frame itself; this
+   class only tightens the list spacing inside it. */
+.chq-agenda-held-back ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
