@@ -131,55 +131,68 @@ export function enumerateRegisteredRoutes(): RegisteredRoute[] {
   return registeredRoutes;
 }
 
-/** DEC-817 (wave-53 amendment): resolves a client-declared target (a path a
- * caller intends to hit, e.g. from an SPA `apiPost` call, an SSR `<form
- * action>`, or a `mockApi()` key) against every registered route, so any
- * surface that declares a server target can be checked for existence against
- * the SAME enumerator that already walks source for registrations.
+
+// The enumeration walks every route source file, so callers that resolve
+// hundreds/thousands of declared targets (the SPA api*-call scan, the SSR
+// declared-target scan, the mockApi-key scan) share one scan instead of
+// re-parsing src/routes/** per lookup.
+let cachedRoutes: RegisteredRoute[] | null = null;
+function allRoutes(): RegisteredRoute[] {
+  if (!cachedRoutes) cachedRoutes = enumerateRegisteredRoutes();
+  return cachedRoutes;
+}
+
+/** DEC-817 (wave-53 amendment): resolves a client-declared target (method +
+ * the path a caller intends to hit, as written by the SPA's api* helpers, an
+ * SSR `<form action>`/`href` literal, or a render test's `mockApi()` key)
+ * against the registered route table, so any surface that declares a server
+ * target is checked for existence against the SAME enumerator that walks
+ * source for registrations.
  *
- * Semantics fixed by DEC-817 so every lane implements this identically:
- * - upper-case the method
- * - strip `?...`/`#...` from clientPath
- * - replace every `${...}` span with `:param`
- * - compare segment-wise against every same-method registration where a
- *   registered `:name` segment matches any one client segment, a registered
- *   `*` (or trailing `/*`) matches all remaining segments, and every other
- *   segment must match exactly
- * - first match wins; undefined when none match
+ * Semantics fixed by the decision so every lane reaches identical behavior:
+ *   - method is upper-cased.
+ *   - `?...`/`#...` is stripped from clientPath.
+ *   - every `${...}` span is replaced with the literal segment `:param`.
+ *   - compared segment-wise against every same-method registration: a
+ *     registered `:name` segment matches any one client segment; a
+ *     registered `*` (or a trailing `/*`) matches all remaining segments
+ *     (possibly zero); every other segment must match exactly.
+ *   - first match wins; undefined when none match.
  */
 export function resolveRegisteredRoute(method: string, clientPath: string): RegisteredRoute | undefined {
   const upperMethod = method.toUpperCase();
-  const withoutQueryOrHash = clientPath.replace(/[?#].*$/, "");
-  const normalized = withoutQueryOrHash.replace(/\$\{[^}]*\}/g, ":param");
+  const withoutHash = clientPath.split("#")[0]!;
+  const withoutQuery = withoutHash.split("?")[0]!;
+  const normalized = withoutQuery.replace(/\$\{[^}]*\}/g, ":param");
   const clientSegments = normalized.split("/").filter((s) => s.length > 0);
 
-  const routes = enumerateRegisteredRoutes();
-  for (const route of routes) {
+  for (const route of allRoutes()) {
     if (route.method !== upperMethod) continue;
     const routeSegments = route.path.split("/").filter((s) => s.length > 0);
 
     let matched = true;
+    let ri = 0;
     let ci = 0;
-    for (let ri = 0; ri < routeSegments.length; ri++) {
-      const rseg = routeSegments[ri]!;
-      if (rseg === "*" || (rseg.startsWith(":") && rseg.endsWith("*"))) {
-        // trailing wildcard matches all remaining client segments (possibly zero)
+    while (ri < routeSegments.length) {
+      const rSeg = routeSegments[ri]!;
+      // `*` and Hono's named-wildcard `:name*` both swallow the rest.
+      if (rSeg === "*" || (rSeg.startsWith(":") && rSeg.endsWith("*"))) {
+        ri++;
         ci = clientSegments.length;
-        matched = true;
-        break;
+        continue;
       }
       if (ci >= clientSegments.length) {
         matched = false;
         break;
       }
-      if (rseg.startsWith(":")) {
-        ci++;
-        continue;
-      }
-      if (rseg !== clientSegments[ci]) {
+      const cSeg = clientSegments[ci]!;
+      if (rSeg.startsWith(":")) {
+        // matches any one client segment
+      } else if (rSeg !== cSeg) {
         matched = false;
         break;
       }
+      ri++;
       ci++;
     }
     if (matched && ci === clientSegments.length) {
