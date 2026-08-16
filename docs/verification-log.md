@@ -7585,3 +7585,128 @@ briefing (`reviewer queue`, `plan progress (page 1)`, `plan results (page
 measure comfortably under budget in every run — no regression found on
 fresh measurement.
 OPEN ITEMS: 0
+## 2026-08-15 task-w48-f — render-sweep @ 243b3094
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+Advisory lane (DEC-069 w48): the scope literal `render-sweep` classifies to
+null under `classifyScope` (`scripts/exit-predicate.ts:145`) by design —
+this is not one of DEC-069's five slots; it runs alongside the frozen
+wave's slots per the wave-39 amendment. FROZEN WAVE (DEC-069 w48): this
+lane wrote nothing under `src/**`, `app/src/**`, `migrations/**` or
+`package.json` — any contrast/overflow FAIL found here would be FILED
+with its selector, route and CSS file:line plus `owner: wave-49 lane`,
+never fixed in this worktree (DEC-453). No such FAIL was found this run.
+
+STEP 0 sync-then-measure: branched directly off `main`'s tip `243b3094`
+(post task-w47-e merge). Bounded poll (max 10, ~5s apart) of every live
+`task-w47-*` ref against `HEAD` via `git merge-base --is-ancestor`: after
+10 iterations three refs remained non-ancestor — `task-w47-a`
+(`030c9170`, claim-before-send task-reminder fix), `task-w47-g`
+(`9a541796`, file-version mint unique-index contract) and `task-w47-h`
+(`416d2eb5`, scribe wave-47 field-guide/ledger commit) — none landed on
+`main` as of this measurement; per DEC-069 w48 the branch condition is
+delegated to the measuring lane, not decided here, so the sweep proceeds
+against `HEAD` as measured. `npx tsx scripts/ref-state.ts` receipt
+(verbatim):
+
+DEC-644 three-sha boundary: HEAD `243b3094dcc4dd9125dc01f9cec01dc396251e89`;
+newest first-parent product-code-bearing sha
+`243b3094dcc4dd9125dc01f9cec01dc396251e89`; every live ref (`main`,
+`manual-qa`, `task-custodian-w68-4`, `task-w46-g`, `task-w47-b`,
+`task-w47-c`, `task-w47-d`, `task-w47-e`, `task-w47-f`, `task-w48-b`,
+`task-w48-d`, `task-w48-e`, `task-w48-f`, `task-w68-d`, `task-w71-c`,
+`task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git
+merge-base --is-ancestor`. NON-ancestor refs (NOT confirmed via `git
+merge-base --is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`,
+`task-w47-a`, `task-w47-g`, `task-w47-h`, `task-w48-a`, `task-w48-c`,
+`task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`
+through `task-w72-j`.
+
+MEASURED_SHA = `243b3094`.
+
+`npx playwright install chromium` — no-op (already present), run outside
+the lock. Ran the sweep inside one acquisition of the default test lock:
+`sh scripts/with-test-lock.sh sh -c 'npm run db:migrate && npm run predev
+&& npm run seed && npm run gate:render-sweep'`. The gate booted its own
+migrated+seeded `wrangler dev` (`scripts/render-sweep.ts:1187-1215`)
+internally via `findFreePort()` on port **49512** (self-selected, no
+manual pin needed — recorded here as the port this lane owned; no
+collision possible with the 8787/8788/8799/8878 walkthrough/perf/dev
+lanes observed running concurrently on this machine). Exit code **0**
+(`gate:render-sweep OK`).
+
+This run matters more than usual this wave: wave 47 lands an `app/src`
+change (CSV duplicate-destination mapping disclosure in the import
+wizard) and wave 46 changed the public speaker detail header, so the
+desktop pass, the BLOCKING `MOBILE_ROUTE_MANIFEST`/
+`ADMIN_MOBILE_ROUTE_MANIFEST` phone passes (`MIN_TAP_TARGET_PX = 44`,
+`scripts/render-sweep-lib.ts:258`; page-level horizontal-overflow check
+at `scripts/render-sweep-lib.ts:265-286`) and the named-pair contrast
+probe (`NAMED_CONTRAST_SELECTOR`, `scripts/render-sweep-contrast.ts:43`)
+were run as live regression detectors, not formalities.
+
+### Per-pass PASS/FAIL table (all seven passes, verbatim score lines)
+
+| pass | scope | result |
+|---|---|---|
+| desktop route sweep | 200 + non-empty content + zero console/pageerror, `app/src/routeManifest.ts` | 60/60 PASS |
+| public mobile (390x844) — `MOBILE_ROUTE_MANIFEST` | blocking | 26/26 PASS |
+| admin mobile (390x844) — `ADMIN_MOBILE_ROUTE_MANIFEST` | ADMIN_MOBILE_PASS_BLOCKING=true | 28/28 PASS |
+| font-floor (10px min) | advisory | 114/114 PASS |
+| type-role (/admin/overview desktop) | advisory | 7/7 PASS |
+| contrast (WCAG AA) | advisory, incl. NAMED_CONTRAST_SELECTOR | 60/60 PASS (1 EXEMPT-BY-RULE row) |
+| interaction-state (B8 focus/hover/disabled) | advisory | 3/3 PASS |
+
+Zero FAIL rows across all seven passes (`grep -n FAIL` on the full sweep
+log matched nothing).
+
+DEC-253 mobile pass detail (390px, both `MOBILE_ROUTE_MANIFEST` public
+routes and `ADMIN_MOBILE_ROUTE_MANIFEST` admin routes, both re-verified
+after wave 46's public speaker-detail header change and wave 47's CSV
+import-wizard change): every row reported `overflowPx=0` (no page-level
+horizontal overflow on any route in either manifest, including
+`/e/devflow-conf-2027/speakers/seed_contact_0001` and
+`/admin/speakers/seed_contact_0001`) and every row with an interactive
+control reported `minControlPx>=44` (several rows measured 46), meeting
+the `MIN_TAP_TARGET_PX` floor (`scripts/render-sweep-lib.ts:258`); rows
+with no measurable control (e.g. `/`, `/docs/api`, `/dev/mailbox`,
+`/portal/preview`, `/embed/devflow-conf-2027/schedule`,
+`/submit/devflow-conf-2027`) report `minControlPx=-` and are still PASS.
+26/26 public-mobile blocking rows PASS, 28/28 admin-mobile blocking rows
+PASS — zero BLOCKING FAIL rows on either manifest.
+
+Contrast pass detail: `/admin/speakers` and
+`/admin/speakers/seed_contact_0001` both carry the measured
+`NAMED-PAIR .chq-participation-menu-caret` row (`span.chq-
+participation-menu-caret ratio=6.82 fg=rgb(247,249,240)
+bg=rgb(78,92,49) PASS`, `scripts/render-sweep-contrast.ts:43`) — PASS,
+not folded blindly into the count without inspection.
+`/admin/review/plans/seed_evaluation_plan_0001` carries one
+`EXEMPT-BY-RULE (WCAG 2.1 SC 1.4.3, inactive component):
+label.chq-review-checkbox-label ratio=3.09` row per DEC-426 — reported
+here as EXEMPT, not as an unqualified PASS and not folded into the FAIL
+count.
+
+Interaction-state pass (3/3, all PASS): `.chq-content-row` hover,
+`.chq-review-field-disabled .chq-review-checkbox-label` disabled,
+`.chq-cfp-step-next` focus.
+
+Console/pageerror: zero `console`/`pageerror` events collected across
+every route on both desktop and 390px mobile viewport passes (no
+non-zero counts observed in the sweep output for any manifest entry).
+
+Full per-row tables and detail:
+`docs/verification-log/task-w48-f-render-sweep-243b3094.md`.
+
+RESULT: PASS — exit code 0, all seven render-sweep passes clean (desktop
+60/60, public mobile 26/26 blocking, admin mobile 28/28 blocking,
+font-floor 114/114, type-role 7/7, contrast 60/60 with one correctly-
+reported EXEMPT-BY-RULE row, interaction-state 3/3); zero console/
+pageerror on either viewport; wave 46's public speaker-detail header and
+wave 47's CSV import-wizard change both re-verified clean; frozen-wave
+scope (`src/**` `app/src/**` `migrations/**` `package.json`) left
+untouched.
+OPEN ITEMS: 0
