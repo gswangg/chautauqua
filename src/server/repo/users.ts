@@ -148,11 +148,34 @@ export async function updateUserPasswordHash(db: Db, userId: string, passwordHas
   await db.update(schema.user).set({ passwordHash, updatedAt: new Date() }).where(eq(schema.user.id, userId));
 }
 
-/** Updates a user's role (DEC-778 role change). Caller is responsible for
- * every guard (org scope, self-service refusal, last-organizer refusal) --
- * this just writes the column. */
-export async function updateUserRole(db: Db, userId: string, role: string): Promise<void> {
-  await db.update(schema.user).set({ role, updatedAt: new Date() }).where(eq(schema.user.id, userId));
+/** Updates a user's role (DEC-778 role change), scoped to orgId in its own
+ * WHERE (DEC-962 shape -- this can no longer rely on a caller-side lookup
+ * having already scoped the row) and refusing a last-organizer demotion
+ * atomically (DEC-100 amendment, wave 65): count-then-write on "at least one
+ * organizer exists" lets two concurrent demotions of two DIFFERENT
+ * organizers both observe count 2 and both admit, leaving zero organizers.
+ * The WHERE instead carries a correlated `count(*) > 1` over the org's
+ * current organizer rows, applied only when the row being updated is
+ * currently an organizer and the new role is not 'organizer' -- so a
+ * same-role or non-organizer-target write is never blocked by it. Caller is
+ * still responsible for every other guard (self-service refusal, unknown
+ * role, 404 on missing/cross-org id). Returns undefined when the WHERE
+ * matched no row -- either the id/org didn't match, or the last-organizer
+ * guard refused; the route can't tell which without a prior lookup, so it
+ * looks the target up first and treats an empty result as the guard firing
+ * (DEC-948's pattern: the echo comes from the write). */
+export async function updateUserRole(db: Db, userId: string, orgId: string, role: string): Promise<OrgUserRecord | undefined> {
+  const lastOrganizerGuard =
+    role === "organizer"
+      ? sql`1 = 1`
+      : sql`(${schema.user.role} <> 'organizer' OR (select count(*) from "user" where "org_id" = ${orgId} and "role" = 'organizer') > 1)`;
+  const rows = await db
+    .update(schema.user)
+    .set({ role, updatedAt: new Date() })
+    .where(and(eq(schema.user.id, userId), eq(schema.user.orgId, orgId), lastOrganizerGuard))
+    .returning();
+  const row = rows[0];
+  return row ? toOrgUserRecord(row) : undefined;
 }
 
 /** Deletes every auth_session row for a user — used on password reset/

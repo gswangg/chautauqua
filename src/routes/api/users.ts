@@ -174,7 +174,10 @@ usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, requireCo
 // silently no-op'ing: unknown role (400), target outside the caller's org
 // (404, matches getOrgUserById's cross-org-hides-as-missing behavior), the
 // caller targeting themselves (409 -- privilege changes are not self-service),
-// and demoting the org's last remaining organizer (409). Sessions are NOT
+// and demoting the org's last remaining organizer (409, DEC-100 amendment
+// wave 65: the refusal is now enforced atomically inside updateUserRole's
+// WHERE, not by a count-then-write pre-check that two concurrent demotions
+// of two different organizers could both slip past). Sessions are NOT
 // revoked -- a role change is not a compromise.
 usersRoutes.patch("/api/v1/users/:id", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const auth = currentAuth(c);
@@ -192,14 +195,10 @@ usersRoutes.patch("/api/v1/users/:id", requireOrganizer, requireCookieSession, c
     throw new ApiError("conflict", "You cannot change your own role");
   }
 
-  if (target.role === "organizer" && role !== "organizer") {
-    const organizerCount = await repo.countOrgUsers(c.var.db, auth.orgId, "organizer");
-    if (organizerCount <= 1) {
-      throw new ApiError("conflict", "Cannot remove the organization's last organizer");
-    }
+  const updated = await repo.updateUserRole(c.var.db, target.id, auth.orgId, role);
+  if (!updated) {
+    throw new ApiError("conflict", "Cannot remove the organization's last organizer");
   }
 
-  await repo.updateUserRole(c.var.db, target.id, role);
-
-  return c.json({ id: target.id, email: target.email, role }, 200);
+  return c.json({ id: updated.id, email: updated.email, role: updated.role }, 200);
 });
