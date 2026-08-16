@@ -113,6 +113,20 @@ following the eval's main lines, screenshots from the FROZEN app:**
   docs SHELL + articles can build now with placeholder figure slots; the
   screenshot script fills them at freeze.
 
+**DOCS CONTENT CORRECTNESS (orchestrator, pre-shoot check):** the CFP article's
+second figure (shotId running-an-event-call-for-papers-and-submissions-02)
+captions "The pipeline board: submissions grouped by status. Dragging a card…"
+— NO SUCH SCREEN EXISTS. The only board is the CONTACTS sourcing pipeline
+(PipelineBoard, /admin/contacts?tab=pipeline — contacts, not submissions).
+Screenshot rule #1 forbids shooting fiction. FIX THE ARTICLE: either re-target
+this figure to the real submissions LIST (status pills + bulk status change,
+which the surrounding prose can describe truthfully) or move board prose to a
+contacts article. Every OTHER caption was checked against real screens and is
+shootable: overview / portal tasks / portal profile / form builder with field
+settings open / reviewer queue / recusal. The shoot script lands at
+scripts/docs-shots.mjs (orchestrator) — wire its output dir to however the
+shell serves shotIds.
+
 **SEQUENCING (user): ALL-PASS lane items 1-22 FIRST → then A + B-shell in
 parallel → gate-12 fleet (all-PASS target, now including 03 criterion frames +
 13-docs shell) → FREEZE → scripted screenshot shoot + docs content finalize →
