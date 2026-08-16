@@ -63,11 +63,10 @@ export interface ContentSubmissionListItem {
   title: string;
   contentStatus: ContentStatus;
   speakers: { contactId: string; name: string }[];
-  deliverableCounts: Record<FileKind, number>;
   // v4 mock worklist column (DEC-692): the submission's most-recently
   // uploaded deliverable, or null when nothing has been uploaded yet — the
   // absent state renders honestly ('No files yet'), never inferred client
-  // side from deliverableCounts.
+  // side.
   latestFile: { filename: string; kind: FileKind; versionCount: number; uploadedAt: number } | null;
   // DEC-881: the single re-uploaded predicate (latest deliverable file's
   // version_no > 1), computed server-side once and read here — never
