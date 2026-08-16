@@ -19,23 +19,26 @@
 //     row (the parent submission has results; only ITS reviews list is
 //     momentarily empty/loading), not the table's own zero-row state.
 //
-// ALLOWLIST holds exactly the files named by task-w47-c's own scope, each
-// with a one-line reason, and is checked for EXISTENCE only (the named file
-// must still be among the files this scan visits) -- deliberately NOT for
-// "still violates", per DEC-678's wave-47 amendment, so a parallel branch
-// that fixes one of these out from under this scan does not flip it red for
-// having "nothing left to allow".
+// This scan walks all of app/src (never a hand-list, per house convention),
+// matching its sibling b7-empty-collection.scan.test.ts: the rule is about a
+// SHAPE (a table's loaded zero-row state), and a shape does not respect a
+// directory boundary. A thirty-wave-old ALLOWLIST used to exempt two files
+// "being converted to EmptyState on a parallel branch this wave" (wave 47)
+// and was checked for EXISTENCE only, per DEC-678's wave-47 amendment -- a
+// schedule, not a principle, that could never lapse. DEC-678's wave-77
+// amendment removed the mechanism outright: both named files are re-derived
+// against the current tree like every other file this scan visits.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const PAGES_ROOT = join(HERE, 'pages');
+const SRC_ROOT = HERE;
 
-/** Every *.tsx file under app/src/pages, excluding test files, keyed by its
- * path relative to app/src/pages (posix separators). */
-function allPageFiles(root: string): string[] {
+/** Every *.tsx file under app/src, excluding test files, keyed by its path
+ * relative to app/src (posix separators). */
+function allSourceFiles(root: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile() || !entry.name.endsWith('.tsx')) continue;
@@ -46,17 +49,7 @@ function allPageFiles(root: string): string[] {
   return out.sort();
 }
 
-const PAGE_FILES = allPageFiles(PAGES_ROOT);
-
-// Files whose remaining `chq-empty`/"No .../Nothing ..." <td> markup is
-// deliberately out of this scan's authority: each is being converted to
-// EmptyState on a parallel branch this same wave (per the wave-47 field
-// guide finding), and re-flagging it here would only ever be redundant with
-// (or, worse, contradict) that branch's own fix.
-const ALLOWLIST: Record<string, string> = {
-  'content/SessionList.tsx': 'being converted to EmptyState on a parallel branch this wave',
-  'content/FilesLibrary.tsx': 'being converted to EmptyState on a parallel branch this wave',
-};
+const SOURCE_FILES = allSourceFiles(SRC_ROOT);
 
 /** Strips balanced `{...}` JSX expression segments (including
  * `{/* comment *\/}` blocks, which are themselves `{...}`) from a <td>'s
@@ -168,20 +161,32 @@ function scanFile(relFile: string, source: string): Offense[] {
 }
 
 describe('DEC-678 B7 rule 6: a loaded, empty row set never renders as a bare <td> apology', () => {
-  it('visits at least 15 page files (vacuous-scan tripwire)', () => {
-    expect(PAGE_FILES.length).toBeGreaterThanOrEqual(15);
+  it('visits at least 90 source files (vacuous-scan tripwire)', () => {
+    expect(SOURCE_FILES.length).toBeGreaterThanOrEqual(90);
   });
 
-  it('every ALLOWLIST entry names a file this scan actually visits (dead-config tripwire)', () => {
-    for (const file of Object.keys(ALLOWLIST)) {
-      expect(PAGE_FILES, `${file} is not among the files this scan visits`).toContain(file);
+  it('visits exactly the same files as its sibling b7-empty-collection scan', () => {
+    // Each scan computes its own walk (no shared helper, per the serial-write
+    // scan's standing argument against factoring test walkers into shared
+    // code) -- this asserts the two populations agree without coupling their
+    // implementations.
+    const siblingRoot = HERE;
+    function siblingAllSourceFiles(root: string): string[] {
+      const out: string[] = [];
+      for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+        if (!entry.isFile() || !entry.name.endsWith('.tsx')) continue;
+        if (entry.name.includes('.test.')) continue;
+        const full = join(entry.parentPath, entry.name);
+        out.push(relative(root, full).split(sep).join('/'));
+      }
+      return out.sort();
     }
+    expect(siblingAllSourceFiles(siblingRoot).length).toBe(SOURCE_FILES.length);
   });
 
-  for (const relFile of PAGE_FILES) {
-    if (ALLOWLIST[relFile]) continue;
+  for (const relFile of SOURCE_FILES) {
     it(`${relFile}: no <td className="chq-empty"> and no <td colSpan> reading "No…"/"Nothing…"`, () => {
-      const source = readFileSync(join(PAGES_ROOT, relFile), 'utf8');
+      const source = readFileSync(join(SRC_ROOT, relFile), 'utf8');
       const offenses = scanFile(relFile, source);
       expect(
         offenses,
