@@ -301,6 +301,17 @@ interface SkippedPath {
   text: string; // raw source text at the site, truncated to a readable length
 }
 
+// DEC-967 wave-62 amendment: the ONLY place a `SkippedPath` is turned into an
+// UNRESOLVABLE_PATHS ledger key -- deliberately excludes `line` so the key
+// is location-independent (surviving lines inserted/removed above the
+// exempted call) while still discriminating on file + reason + the exact
+// exempted expression text (so a renamed/removed expression produces a
+// DIFFERENT key and falls out of the ledger, per the falsifiability controls
+// below).
+function buildUnresolvableKey(s: SkippedPath): string {
+  return `${s.file} ${s.reason}: ${s.text}`;
+}
+
 function truncate(text: string, max = 80): string {
   const t = text.trim();
   return t.length > max ? `${t.slice(0, max)}...` : t;
@@ -658,22 +669,84 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
   // trailing suffix is erased/invisible); the interpolated portion is a
   // client-built query string (page/filter params), never a route segment,
   // in every case below, confirmed by reading each call site.
+  //
+  // DEC-967 wave-62 amendment: entries below are keyed STRUCTURALLY -- file
+  // path plus reason plus the exact exempted source expression -- never by
+  // line number. A line number drifts every time a line is inserted or
+  // removed above the exempted call (this ledger was mechanically re-pinned
+  // twice already: a9ccba63 re-pinned PlanEditor.tsx:823 -> 872, and once
+  // more the wave before that), and a drifted pin silently exempts whatever
+  // expression now happens to sit at that line number instead of the one a
+  // human actually adjudicated. buildUnresolvableKey (below) is the ONLY
+  // place either side of the comparison is built, so the ledger and the
+  // scan's own output can never diverge in shape.
   const UNRESOLVABLE_PATHS: string[] = [
-    "app/src/pages/comms/ComposeWizard.tsx:139 interpolation-erased: /events/${eventId}/submissions${qs}",
-    "app/src/pages/contacts/MergePage.tsx:98 interpolation-erased: /contacts/duplicates${query}",
-    "app/src/pages/review/PlanEditor.tsx:872 interpolation-erased: /plans/${planId}/assignments/distribute/preview${qs}",
-    "app/src/pages/submissions/SubmissionDetailPage.tsx:464 interpolation-erased: /events/${detail.eventId}/submissions${buildSubmissionsQuery(listFilters)}",
-    "app/src/pages/submissions/SubmissionsTable.tsx:148 interpolation-erased: /events/${eventId}/submissions${qs}",
+    "app/src/pages/comms/ComposeWizard.tsx interpolation-erased: /events/${eventId}/submissions${qs}",
+    "app/src/pages/contacts/MergePage.tsx interpolation-erased: /contacts/duplicates${query}",
+    "app/src/pages/review/PlanEditor.tsx interpolation-erased: /plans/${planId}/assignments/distribute/preview${qs}",
+    "app/src/pages/submissions/SubmissionDetailPage.tsx interpolation-erased: /events/${detail.eventId}/submissions${buildSubmissionsQuery(listFilters)}",
+    "app/src/pages/submissions/SubmissionsTable.tsx interpolation-erased: /events/${eventId}/submissions${qs}",
   ];
 
   it("every path this scan could not statically resolve is recorded, not silently dropped (no growth beyond UNRESOLVABLE_PATHS)", () => {
-    const observed = skippedPaths.map((s) => `${s.file}:${s.line} ${s.reason}: ${s.text}`).sort();
+    const observedKeys = skippedPaths.map(buildUnresolvableKey);
+    const observedLines = skippedPaths.map((s) => `${s.file}:${s.line} ${s.reason}: ${s.text}`).sort();
     // eslint-disable-next-line no-console
-    console.log(`spa-mutation-contract: ${observed.length} skipped path(s):\n${observed.join("\n")}`);
+    console.log(`spa-mutation-contract: ${observedLines.length} skipped path(s):\n${observedLines.join("\n")}`);
+
+    const ledgerSet = new Set(UNRESOLVABLE_PATHS);
+    const unlisted = observedKeys.filter((k) => !ledgerSet.has(k)).sort();
     expect(
-      observed,
-      `paths this scan could not statically resolve to a literal, method-checkable route path (add UNRESOLVABLE_PATHS entries with a written reason, or fix the call site to use a literal path):\n${observed.join("\n")}`,
-    ).toEqual([...UNRESOLVABLE_PATHS].sort());
+      unlisted,
+      `paths this scan could not statically resolve to a literal, method-checkable route path, and that are NOT named in UNRESOLVABLE_PATHS (add an entry with a written reason, or fix the call site to use a literal path):\n${unlisted.join("\n")}`,
+    ).toEqual([]);
+
+    const observedSet = new Set(observedKeys);
+    const stale = UNRESOLVABLE_PATHS.filter((k) => !observedSet.has(k)).sort();
+    expect(
+      stale,
+      `UNRESOLVABLE_PATHS entries the scan no longer produces (the call site was fixed, removed, or renamed) -- delete this line:\n${stale.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  // DEC-967 wave-62 falsifiability controls: the ledger re-key must be
+  // provably location-independent (blank lines inserted above an exempted
+  // expression don't break the match) AND provably still discriminating (a
+  // renamed/removed expression falls OUT of the ledger). Both are exercised
+  // against a real UNRESOLVABLE_PATHS entry (ComposeWizard.tsx's), not a
+  // synthetic file name, so a future edit to normalizePath/buildUnresolvableKey
+  // that broke the real ledger's shape would fail here too.
+  it("falsifiability: a blank line inserted above an exempted expression does not break the ledger match", () => {
+    const expr = "apiGet(`/events/${eventId}/submissions${qs}`);";
+    const withoutBlankLine = expr;
+    const withBlankLines = `\n\n\n${expr}`;
+    const file = "app/src/pages/comms/ComposeWizard.tsx";
+
+    const r1 = findMutationCalls(file, withoutBlankLine);
+    const r2 = findMutationCalls(file, withBlankLines);
+    expect(r1.skippedPaths).toHaveLength(1);
+    expect(r2.skippedPaths).toHaveLength(1);
+
+    // Sanity: the raw line number DID move -- this is exactly the drift that
+    // used to break a line-keyed ledger.
+    expect(r1.skippedPaths[0]!.line).not.toBe(r2.skippedPaths[0]!.line);
+
+    const key1 = buildUnresolvableKey(r1.skippedPaths[0]!);
+    const key2 = buildUnresolvableKey(r2.skippedPaths[0]!);
+    expect(key1).toBe(key2);
+    expect(UNRESOLVABLE_PATHS).toContain(key1);
+  });
+
+  it("falsifiability: renaming or removing an exempted expression drops it out of the ledger", () => {
+    const file = "app/src/pages/comms/ComposeWizard.tsx";
+    const renamed = "apiGet(`/events/${eventId}/submissionsRenamed${qs}`);";
+    const rRenamed = findMutationCalls(file, renamed);
+    expect(rRenamed.skippedPaths).toHaveLength(1);
+    expect(UNRESOLVABLE_PATHS).not.toContain(buildUnresolvableKey(rRenamed.skippedPaths[0]!));
+
+    const removed = 'apiGet("/events/fixed-id/submissions");';
+    const rRemoved = findMutationCalls(file, removed);
+    expect(rRemoved.skippedPaths).toHaveLength(0);
   });
 
   it("positive control: a non-literal path argument is recorded in skippedPaths with reason non-literal-path, not silently dropped", () => {
