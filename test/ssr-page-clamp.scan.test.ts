@@ -145,9 +145,18 @@ const NAMED_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
     "routes/docs-site.css.ts::.chq-docs-body",
     "DEC-382 (wave-3 amendment): the docs index shell must contain the sanctioned 900px figure (900 + 2x34px gutter), so it cannot come under the clamp the way the auth card did",
   ],
+  // Wave 4 (task-w4-b) moved this row's SELECTOR, not its ruling: the
+  // article page gained the frame's 216px nav column
+  // (docs/design/Chautauqua Docs.dc.html:44), so the clamp now sits on the
+  // two-column shell .chq-docs-article-frame and .chq-docs-article-body is
+  // the unclamped fluid column inside it. 1240 is the drawn frame value and
+  // still the same argument: 1240 - 68px gutter - 216px nav - 44px gap
+  // leaves 912px, enough to CONTAIN the sanctioned 900px figure. The old
+  // .chq-docs-article-body row is GONE, not kept alongside -- it no longer
+  // declares a clamp, so leaving it would be a stale row.
   [
-    "routes/docs-site.css.ts::.chq-docs-article-body",
-    "DEC-382 (wave-3 amendment): the docs article shell must contain the sanctioned 900px figure (900 + 2x34px gutter), so it cannot come under the clamp the way the auth card did",
+    "routes/docs-site.css.ts::.chq-docs-article-frame",
+    "DEC-382 (wave-3 amendment): the docs article shell must contain the sanctioned 900px figure alongside the frame's 216px nav column, so it cannot come under the clamp the way the auth card did",
   ],
 ]);
 
@@ -190,8 +199,15 @@ describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
       "views/bare-page.css.ts::.chq-bare-page",
       "routes/docs-site.css.ts::.chq-docs-figure",
       "routes/docs-site.css.ts::.chq-docs-body",
-      "routes/docs-site.css.ts::.chq-docs-article-body",
+      "routes/docs-site.css.ts::.chq-docs-article-frame",
     ]);
+
+    // The selector that moved still exists and still carries the drawn
+    // 1240px clamp, and the column inside it is genuinely unclamped -- so
+    // the row above is tracking a real declaration, not a renamed ghost.
+    const frameDecls = findMaxWidthDeclarations(extractCssText(join(SRC, "routes/docs-site.css.ts")));
+    expect(frameDecls.find((d) => d.selector === ".chq-docs-article-frame")?.px).toBe(1240);
+    expect(frameDecls.find((d) => d.selector === ".chq-docs-article-body")).toBeUndefined();
 
     // The docs prose measure stays at 680 -- the break is granted to the
     // figure and its containers, never to the text.

@@ -24,7 +24,8 @@ export const DOCS_GROUPS = [
 export type DocsGroupId = (typeof DOCS_GROUPS)[number];
 
 // DEC-650 (wave-4 amendment): the drawn element library
-// (docs/design/Chautauqua Docs.dc.html:226-346) is a CLOSED set of nine
+// (docs/design/Chautauqua Docs.dc.html:226-346) `Docs · the element
+// library` is a CLOSED set of nine
 // block kinds -- "Nothing outside this set may appear in an article" -- so
 // this union is the whole vocabulary an article file may use. heading and
 // list grew additive, optional members (never a breaking change to an
