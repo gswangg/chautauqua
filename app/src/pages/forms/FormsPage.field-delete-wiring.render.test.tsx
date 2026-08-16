@@ -75,7 +75,7 @@ describe('FieldModal Delete -> shared irreversible ConfirmDialog (DEC-650 wave-6
     await waitFor(() => expect(screen.getByText('Co-speaker email')).toBeInTheDocument());
 
     const modal = await openEditModalFor('Co-speaker email');
-    const deleteBtn = within(modal).getByRole('button', { name: 'Delete' });
+    const deleteBtn = within(modal).getByRole('button', { name: 'Delete this question' });
     fireEvent.click(deleteBtn);
 
     // The edit modal is gone -- Delete does not stack a second dialog on

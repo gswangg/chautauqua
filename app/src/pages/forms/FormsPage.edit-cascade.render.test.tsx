@@ -107,7 +107,7 @@ describe('FormsPage edit-field cascade confirm (DEC-505 wave-53 amendment)', () 
     const fetchMock = mockApi(baseRoutes(patchHandler));
 
     const dialog = await openEditModalForTalkLength();
-    const saveButton = within(dialog).getByRole('button', { name: 'Save' });
+    const saveButton = within(dialog).getByRole('button', { name: 'Save the question' });
     fireEvent.click(saveButton);
 
     const confirmDialog = await screen.findByRole('dialog', { name: 'Confirm field change' });
@@ -160,7 +160,7 @@ describe('FormsPage edit-field cascade confirm (DEC-505 wave-53 amendment)', () 
     mockApi(baseRoutes(patchHandler));
 
     const dialog = await openEditModalForTalkLength();
-    const saveButton = within(dialog).getByRole('button', { name: 'Save' });
+    const saveButton = within(dialog).getByRole('button', { name: 'Save the question' });
     fireEvent.click(saveButton);
 
     await waitFor(() => {

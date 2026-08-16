@@ -169,12 +169,12 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
               onClick={onDelete}
               disabled={submitting}
             >
-              Delete
+              Delete this question
             </button>
           )}
           <div className="chq-forms-field-modal-actions-right">
             <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Save'}
+              {submitting ? 'Saving...' : 'Save the question'}
             </button>
             <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
               Cancel
@@ -269,31 +269,39 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
 
         {/* DEC-650(a): the rule reads as a SENTENCE -- leading copy, then the
             trigger/condition/value controls inline -- and the off case is
-            STATED, never implied by an empty select. */}
+            STATED, never implied by an empty select.
+            DEC-650 (wave 8, frame 02--10 :700-717): the sentence + caption
+            are a fixed intro (the caption is not conditional on whether a
+            trigger is chosen), and Field/Is/Value share ONE grid row
+            (.chq-forms-rule-row, :704) rather than stacking as separate
+            full-width FormRows. CSS Grid keeps all three column tracks
+            allocated per grid-template-columns regardless of how many
+            children are actually rendered inside the row, so the Value
+            column's track stays reserved -- never collapsing -- even while
+            no trigger is chosen and it renders no control. */}
         <fieldset className="chq-forms-rule-builder">
           <legend>Conditional visibility</legend>
           <p className="chq-forms-rule-sentence">Only show this question when…</p>
-          <FormRow label="Field" htmlFor="field-rule-trigger">
-            <select
-              id="field-rule-trigger"
-              className="chq-select"
-              value={rule.fieldId}
-              onChange={(e) => setTrigger(e.target.value)}
-            >
-              <option value="">Always visible</option>
-              {candidates.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </FormRow>
-          {rule.fieldId.length === 0 && (
-            <p className="chq-meta">Leave it off and the question always shows.</p>
-          )}
-          {rule.fieldId.length > 0 && (
-            <>
-              <FormRow label="Condition" htmlFor="field-rule-op">
+          <p className="chq-meta">Leave it off and the question always shows.</p>
+          <div className="chq-forms-rule-row">
+            <FormRow label="Field" htmlFor="field-rule-trigger">
+              <select
+                id="field-rule-trigger"
+                className="chq-select"
+                value={rule.fieldId}
+                onChange={(e) => setTrigger(e.target.value)}
+              >
+                <option value="">Always visible</option>
+                {candidates.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </FormRow>
+
+            {rule.fieldId.length > 0 && (
+              <FormRow label="Is" htmlFor="field-rule-op">
                 <select
                   id="field-rule-op"
                   className="chq-select"
@@ -307,88 +315,88 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
                   ))}
                 </select>
               </FormRow>
+            )}
 
-              {valueControl === 'boolean' && (
-                <FormRow label="Value" htmlFor="field-rule-value">
-                  <select
-                    id="field-rule-value"
-                    className="chq-select"
-                    value={rule.value}
-                    onChange={(e) => setRule({ ...rule, value: e.target.value })}
-                  >
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
-                </FormRow>
-              )}
+            {rule.fieldId.length > 0 && valueControl === 'boolean' && (
+              <FormRow label="Value" htmlFor="field-rule-value">
+                <select
+                  id="field-rule-value"
+                  className="chq-select"
+                  value={rule.value}
+                  onChange={(e) => setRule({ ...rule, value: e.target.value })}
+                >
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </FormRow>
+            )}
 
-              {valueControl === 'number' && (
-                <FormRow label="Value" htmlFor="field-rule-value">
-                  <input
-                    id="field-rule-value"
-                    className="chq-input"
-                    type="number"
-                    value={rule.value}
-                    onChange={(e) => setRule({ ...rule, value: e.target.value })}
-                  />
-                </FormRow>
-              )}
+            {rule.fieldId.length > 0 && valueControl === 'number' && (
+              <FormRow label="Value" htmlFor="field-rule-value">
+                <input
+                  id="field-rule-value"
+                  className="chq-input"
+                  type="number"
+                  value={rule.value}
+                  onChange={(e) => setRule({ ...rule, value: e.target.value })}
+                />
+              </FormRow>
+            )}
 
-              {valueControl === 'options' && rule.op !== 'in' && (
-                <FormRow label="Value" htmlFor="field-rule-value">
-                  <select
-                    id="field-rule-value"
-                    className="chq-select"
-                    value={rule.value}
-                    onChange={(e) => setRule({ ...rule, value: e.target.value })}
-                  >
-                    <option value="">Select an option</option>
-                    {(trigger?.options ?? []).map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
-                </FormRow>
-              )}
+            {rule.fieldId.length > 0 && valueControl === 'options' && rule.op !== 'in' && (
+              <FormRow label="Value" htmlFor="field-rule-value">
+                <select
+                  id="field-rule-value"
+                  className="chq-select"
+                  value={rule.value}
+                  onChange={(e) => setRule({ ...rule, value: e.target.value })}
+                >
+                  <option value="">Select an option</option>
+                  {(trigger?.options ?? []).map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </FormRow>
+            )}
 
-              {valueControl === 'options' && rule.op === 'in' && (
-                <fieldset className="chq-forms-rule-options">
-                  <legend>Value (any of)</legend>
-                  {(trigger?.options ?? []).map((o) => {
-                    const selected = rule.value
-                      .split(',')
-                      .map((v) => v.trim())
-                      .filter((v) => v.length > 0);
-                    return (
-                      <label key={o} className="chq-checkbox-label">
-                        <input
-                          className="chq-check"
-                          type="checkbox"
-                          checked={selected.includes(o)}
-                          onChange={(e) => toggleOptionValue(o, e.target.checked)}
-                        />
-                        {o}
-                      </label>
-                    );
-                  })}
-                </fieldset>
-              )}
+            {rule.fieldId.length > 0 && valueControl === 'options' && rule.op === 'in' && (
+              <fieldset className="chq-forms-rule-options">
+                <legend>Value (any of)</legend>
+                {(trigger?.options ?? []).map((o) => {
+                  const selected = rule.value
+                    .split(',')
+                    .map((v) => v.trim())
+                    .filter((v) => v.length > 0);
+                  return (
+                    <label key={o} className="chq-checkbox-label">
+                      <input
+                        className="chq-check"
+                        type="checkbox"
+                        checked={selected.includes(o)}
+                        onChange={(e) => toggleOptionValue(o, e.target.checked)}
+                      />
+                      {o}
+                    </label>
+                  );
+                })}
+              </fieldset>
+            )}
 
-              {valueControl === 'text' && (
-                <FormRow label={`Value${rule.op === 'in' ? ' (comma-separated)' : ''}`} htmlFor="field-rule-value">
-                  <input
-                    id="field-rule-value"
-                    className="chq-input"
-                    type="text"
-                    value={rule.value}
-                    onChange={(e) => setRule({ ...rule, value: e.target.value })}
-                    placeholder="Keynote"
-                  />
-                </FormRow>
-              )}
-            </>
-          )}
+            {rule.fieldId.length > 0 && valueControl === 'text' && (
+              <FormRow label={`Value${rule.op === 'in' ? ' (comma-separated)' : ''}`} htmlFor="field-rule-value">
+                <input
+                  id="field-rule-value"
+                  className="chq-input"
+                  type="text"
+                  value={rule.value}
+                  onChange={(e) => setRule({ ...rule, value: e.target.value })}
+                  placeholder="Keynote"
+                />
+              </FormRow>
+            )}
+          </div>
         </fieldset>
     </ModalFrame>
   );

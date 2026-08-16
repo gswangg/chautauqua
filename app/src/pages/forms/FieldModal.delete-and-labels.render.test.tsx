@@ -42,7 +42,7 @@ describe('FieldModal condition select vocabulary (DEC-650 wave-66)', () => {
       <FieldModal field={FORMAT} allFields={ALL_FIELDS} onCancel={() => {}} onSubmit={async () => {}} />,
     );
     fireEvent.change(screen.getByLabelText('Field', { selector: 'select' }), { target: { value: TITLE.id } });
-    const opSelect = screen.getByLabelText('Condition', { selector: 'select' });
+    const opSelect = screen.getByLabelText('Is', { selector: 'select' });
     const optionLabels = Array.from(opSelect.querySelectorAll('option')).map((o) => o.textContent);
     expect(optionLabels).toEqual(['is', 'is not', 'is one of']);
     expect(optionLabels).not.toContain('eq');
@@ -67,12 +67,12 @@ describe('FieldModal condition select vocabulary (DEC-650 wave-66)', () => {
 describe('FieldModal footer Delete (DEC-650 wave-66)', () => {
   it('renders no Delete control when creating a new field', () => {
     render(<FieldModal allFields={ALL_FIELDS} onCancel={() => {}} onSubmit={async () => {}} />);
-    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete this question' })).not.toBeInTheDocument();
   });
 
   it('renders no Delete control when editing without an onDelete handler', () => {
     render(<FieldModal field={FORMAT} allFields={ALL_FIELDS} onCancel={() => {}} onSubmit={async () => {}} />);
-    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete this question' })).not.toBeInTheDocument();
   });
 
   it('renders a far-left Delete when editing with onDelete, and calls the passed-in handler on click', () => {
@@ -80,7 +80,7 @@ describe('FieldModal footer Delete (DEC-650 wave-66)', () => {
     render(
       <FieldModal field={FORMAT} allFields={ALL_FIELDS} onCancel={() => {}} onSubmit={async () => {}} onDelete={onDelete} />,
     );
-    const deleteBtn = screen.getByRole('button', { name: 'Delete' });
+    const deleteBtn = screen.getByRole('button', { name: 'Delete this question' });
     expect(deleteBtn).toBeInTheDocument();
     fireEvent.click(deleteBtn);
     expect(onDelete).toHaveBeenCalledTimes(1);

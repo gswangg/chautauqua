@@ -80,7 +80,7 @@ describe('FieldModal field rows (DEC-958)', () => {
     );
     fireEvent.change(screen.getByLabelText('Kind', { selector: 'select' }), { target: { value: 'dropdown' } });
     fireEvent.change(screen.getByLabelText('Field', { selector: 'select' }), { target: { value: FORMAT.id } });
-    fireEvent.change(screen.getByLabelText('Condition', { selector: 'select' }), { target: { value: 'in' } });
+    fireEvent.change(screen.getByLabelText('Is', { selector: 'select' }), { target: { value: 'in' } });
 
     expect(container.querySelectorAll('.chq-field').length).toBe(0);
   });

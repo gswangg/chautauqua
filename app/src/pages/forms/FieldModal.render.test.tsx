@@ -83,7 +83,7 @@ describe('FieldModal rule-value control (DEC-681)', () => {
     fireEvent.change(valueSelect, { target: { value: 'true' } });
     expect(valueSelect).toHaveValue('true');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save the question' }));
     await vi.waitFor(() => expect(captured).toBeDefined());
     expect(captured?.rule).toEqual({ fieldId: ATTENDING.id, op: 'eq', value: 'true' });
   });
@@ -109,7 +109,7 @@ describe('FieldModal rule-value control (DEC-681)', () => {
     renderModal(async () => {});
     selectTrigger(FORMAT.id);
     fireEvent.change(screen.getByLabelText('Value', { selector: 'select' }), { target: { value: 'Workshop' } });
-    fireEvent.change(screen.getByLabelText('Condition', { selector: 'select' }), { target: { value: 'in' } });
+    fireEvent.change(screen.getByLabelText('Is', { selector: 'select' }), { target: { value: 'in' } });
 
     // Options control is now a checkbox list, not a single select, and the
     // eq-picked value did not survive the op swap.
@@ -147,7 +147,7 @@ describe('FieldModal kind vocabulary (DEC-762)', () => {
     renderModal(async () => {});
     fireEvent.change(screen.getByLabelText('Label', { selector: 'input' }), { target: { value: 'Track' } });
     fireEvent.change(screen.getByLabelText('Kind', { selector: 'select' }), { target: { value: 'dropdown' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save the question' }));
     expect(await screen.findByText(`${FIELD_KIND_LABELS.dropdown} fields need at least one option.`)).toBeInTheDocument();
   });
 });
@@ -164,10 +164,13 @@ describe('FieldModal conditional-visibility sentence + required guard (DEC-650)'
     expect(screen.getByText('Leave it off and the question always shows.')).toBeInTheDocument();
   });
 
-  it('does not state the off case once a trigger is set', () => {
+  // DEC-650 (wave 8, frame 02--10 :700-702 amendment): the caption is a
+  // fixed intro line under the sentence, not conditional on whether a
+  // trigger is chosen -- it stays put once a trigger is set too.
+  it('still states the off case once a trigger is set (fixed intro caption)', () => {
     renderModal(async () => {});
     selectTrigger(FORMAT.id);
-    expect(screen.queryByText('Leave it off and the question always shows.')).not.toBeInTheDocument();
+    expect(screen.getByText('Leave it off and the question always shows.')).toBeInTheDocument();
   });
 
   it('disables Required and captions why once a rule is set', () => {
@@ -194,7 +197,7 @@ describe('FieldModal conditional-visibility sentence + required guard (DEC-650)'
     selectTrigger(FORMAT.id);
     fireEvent.change(screen.getByLabelText('Value', { selector: 'select' }), { target: { value: 'Workshop' } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save the question' }));
     await vi.waitFor(() => expect(captured).toBeDefined());
     expect(captured?.required).toBe(false);
     expect(captured?.rule).toEqual({ fieldId: FORMAT.id, op: 'eq', value: 'Workshop' });

@@ -51,7 +51,7 @@ describe('FieldModal dropdown options cap (MAX_FIELD_OPTIONS)', () => {
     fireEvent.change(screen.getByLabelText(/Options \(one per line\)/, { selector: 'textarea' }), {
       target: { value: options },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save the question' }));
 
     expect(await screen.findByText(`Max ${MAX_FIELD_OPTIONS} options`)).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
