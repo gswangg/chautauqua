@@ -61,3 +61,33 @@ export function needsMoreRatings(
   if (cap === undefined) return true;
   return item.ratingsCount < cap;
 }
+
+/**
+ * DEC-707 (wave-74 amendment): a reviewer's "assigned" denominator must
+ * honor the plan's per-submission evaluation cap, or a submission already
+ * saturated by OTHER reviewers is permanently "assigned but unreachable" --
+ * `completed` can never reach it (the actionable queue,
+ * src/routes/review/reviewer.ts, already refuses to let this reviewer rate
+ * it), so `reviewerProgressState` never returns 'done' and
+ * `/plans/:id/remind` nags a reviewer with nothing left to do.
+ *
+ * Kept iff this reviewer has already rated it (their own completed work
+ * must never be evicted from the denominator -- `completed <= assigned`
+ * stays an invariant), OR the submission still needsMoreRatings under the
+ * cap. Reuses needsMoreRatings (not a re-typed `>=`) so the actionable
+ * queue and this denominator can never drift apart. With no cap, returns
+ * `assigned` unchanged (byte-identical -- regression pin).
+ */
+export function assignedExcludingSaturated<T extends { id: string }>(
+  assigned: T[],
+  ratingsBySubmissionId: Map<string, number>,
+  ratedByThisReviewer: Set<string>,
+  maxEvaluations?: number,
+): T[] {
+  if (maxEvaluations === undefined) return assigned;
+  return assigned.filter((item) => {
+    if (ratedByThisReviewer.has(item.id)) return true;
+    const ratingsCount = ratingsBySubmissionId.get(item.id) ?? 0;
+    return needsMoreRatings({ ratingsCount }, maxEvaluations);
+  });
+}

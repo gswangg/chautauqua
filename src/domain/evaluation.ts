@@ -48,7 +48,7 @@ export type {
 
 export { isPlanOpen } from "./evaluation/plan-window";
 
-export { buildReviewerQueue, needsMoreRatings } from "./evaluation/queue";
+export { buildReviewerQueue, needsMoreRatings, assignedExcludingSaturated } from "./evaluation/queue";
 export type { ReviewerQueueItem, OrderedReviewerQueueItem } from "./evaluation/queue";
 
 export {
