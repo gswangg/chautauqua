@@ -10,9 +10,19 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
-import type { SendResult } from '../../lib/sendResult';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
+
+/** DEC-238 (wave-66 amendment): POST /plans/:id/remind's CLOSED response
+ * vocabulary -- sent/skipped/remaining are ALWAYS present (never the loose
+ * shared SendResult's optional fields), so this panel never has to guess
+ * "unknown" for a number the server always reports. */
+interface ReminderResult {
+  sent: number;
+  skipped: number;
+  remaining: number;
+  failed?: { email: string; message: string }[];
+}
 
 /** DEC-707: the row-level state label -- DONE / N TO GO / NOT STARTED,
  * counts on one line (never a separate "not done" flag layered on top of a
@@ -24,16 +34,17 @@ function rowStateLabel(row: ProgressRow): string {
   return `${row.assigned - row.completed} to go`;
 }
 
-/** DEC-760 (wave-60 amendment): the v11 standard result line names every
- * count the server reports -- sent, skipped, remaining -- rather than
- * omitting whichever happen to be zero (describeSendResult's summary drops
- * zero-valued fields, which is right for a toast but wrong for this panel's
- * standard line). When the server's SendResult response leaves a field
- * undefined, this says "unknown" rather than assuming zero. */
-function formatReminderResult(result: SendResult): string {
-  const skipped = result.skipped !== undefined ? String(result.skipped) : 'unknown';
-  const remaining = result.remaining !== undefined ? String(result.remaining) : 'unknown';
-  return `Sent: ${result.sent}. Skipped: ${skipped}. Remaining: ${remaining}.`;
+/** DEC-760 (wave-60 amendment)/DEC-238 (wave-66 amendment): the v11 standard
+ * result line names every count the server reports -- sent, skipped,
+ * remaining -- always present per the CLOSED ReminderResult vocabulary, plus
+ * a failure clause when the server reports any. */
+function formatReminderResult(result: ReminderResult): string {
+  const parts = [`Sent: ${result.sent}.`, `Skipped: ${result.skipped}.`, `Remaining: ${result.remaining}.`];
+  const failedCount = result.failed?.length ?? 0;
+  if (failedCount > 0) {
+    parts.push(`Failed: ${failedCount}.`);
+  }
+  return parts.join(' ');
 }
 
 // DEC-674: when a planId prop is supplied (the organiser Review landing
@@ -86,7 +97,7 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
     setError(null);
     setRemindMessage(null);
     try {
-      const res = await apiPost<SendResult>(`/plans/${planId}/remind`, scope === 'not_started' ? { scope } : undefined);
+      const res = await apiPost<ReminderResult>(`/plans/${planId}/remind`, scope === 'not_started' ? { scope } : undefined);
       setRemindMessage(formatReminderResult(res));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to send reminders');

@@ -29,6 +29,8 @@ import { contentDispositionAttachment } from "../../domain/files";
 import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
+import { loadRecentlySent } from "../../server/repo/comms";
+import { dedupeCutoff, dedupeKey } from "../../domain/comms-dedupe";
 import { DEC_238, DEC_466, DEC_535, DEC_707, DEC_708 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
@@ -43,7 +45,7 @@ import {
 
 export const reviewPlansProgressRoutes = new Hono<AppEnv>();
 
-void DEC_238; // /plans/:id/remind: per-recipient catch, {sent,failed} 200 below
+void DEC_238; // /plans/:id/remind: per-recipient catch, {sent,failed} 200 below; wave-66 amendment: loadRecentlySent/dedupeCutoff/dedupeKey dedupe the batch before it sends
 void DEC_466; // /plans/:id/progress bounded below via the blessed JS-slice (DEC-461(e))
 void DEC_535; // /plans/:id/remind: laggard list capped via capById below
 void DEC_707; // GET /plans/:id/progress + POST /plans/:id/remind: scope selection via selectRemindTargets, round via parseRoundQuery, queue link + name via resolveBaseUrl/batchUserDisplayNames below
@@ -314,6 +316,26 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   const queueUrl = `${resolveBaseUrl(c)}/admin/review/plans/${plan.id}`;
   const closeDateClause = plan.closeDate !== null ? ` (closes ${formatCalendarDate(plan.closeDate)})` : "";
 
+  // DEC-238 (wave-66 amendment): the SAME constant subject string is used to
+  // build the dedupe keys below AND to address the mailer.send call further
+  // down -- one variable, never two literals that could drift apart.
+  const reminderSubject = `Reminder: ${plan.name} review queue`;
+
+  // DEC-238 (wave-66 amendment): a reminder is a send -- reuse the SAME
+  // shared dedupe primitives compose/send already uses (loadRecentlySent,
+  // dedupeCutoff, dedupeKey) rather than hand-rolling a second window. Keyed
+  // on (event, lower(email), the constant per-plan reminder subject) so a
+  // second "Remind laggards" click inside the hour skips instead of
+  // re-mailing.
+  const recentlySent = await loadRecentlySent(
+    c.var.db,
+    plan.eventId,
+    capped.map((l) => ({ email: l.email, subject: reminderSubject })),
+    dedupeCutoff(Date.now()),
+  );
+  const attempted = capped.filter((l) => !recentlySent.has(dedupeKey(l.email, reminderSubject)));
+  const skipped = capped.filter((l) => recentlySent.has(dedupeKey(l.email, reminderSubject)));
+
   const reminded: string[] = [];
   const failed: { email: string; message: string }[] = [];
 
@@ -324,7 +346,7 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // (DEC-923), never here.
   const mailer = makeMailer(c.var.db, c.env);
 
-  for (const laggard of capped) {
+  for (const laggard of attempted) {
     try {
       const name = nameByUserId.get(laggard.userId) ?? laggard.email;
       const text = `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}"${closeDateClause}. Review here: ${queueUrl}`;
@@ -332,7 +354,7 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
       // intentionally excludes rows like this one.
       await mailer.send({
         to: { email: laggard.email, name },
-        subject: `Reminder: ${plan.name} review queue`,
+        subject: reminderSubject,
         text,
         html: renderEmailHtml(text, {
           eventName: remindEvent?.name ?? null,
@@ -347,5 +369,5 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
       failed.push({ email: laggard.email, message: err instanceof Error ? err.message : String(err) });
     }
   }
-  return c.json({ reminded, sent: reminded.length, failed, remaining });
+  return c.json({ reminded, sent: reminded.length, skipped: skipped.length, failed, remaining });
 });
