@@ -24,11 +24,13 @@
 // source lines.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
 import { ComposeWizard } from './pages/comms/ComposeWizard';
 import { CallForPapersPanel } from './pages/settings/CallForPapersPanel';
 import { BulkActionBar } from './pages/submissions/BulkActionBar';
+import { DeliverableDetail } from './pages/content/DeliverableDetail';
+import { SubmissionDetailPage } from './pages/submissions/SubmissionDetailPage';
 import { listEnvelope, mockApi } from './test-utils/mockApi';
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
@@ -174,8 +176,55 @@ describe('turn-diet honesty: BulkActionBar', () => {
 // bordered buttons) into the submission's own existing editor
 // (`?edit=1`) and history (`?history=1`) -- pure navigation, no api* call,
 // no state pre-fill of its own. Already proven by
-// DeliverableDetail.render.test.tsx:464-483 (asserts both hrefs).
-//
+// DeliverableDetail.render.test.tsx:464-483 (asserts both hrefs); proven
+// here by mounting with ONLY read routes registered (no mutating route at
+// all) and asserting zero PATCH/POST/DELETE calls landed by the time the
+// header and action row have rendered.
+describe('turn-diet honesty: DeliverableDetail quiet action row', () => {
+  it('issues zero mutating calls on mount', async () => {
+    const SUBMISSION_ID = 'sub-honesty-deliverable';
+    const fetchMock = mockApi({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope([]),
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-901',
+        updatedAt: 1700000300000,
+        participants: [{ name: 'Ada Lovelace', contactId: 'contact-ada' }],
+        slot: null,
+      },
+      'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+      // Deliberately NO PATCH/POST/DELETE route registered: a premature
+      // mutating call on mount would throw "no route registered".
+    });
+
+    render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('link', { name: /Edit title and abstract/ })).toHaveAttribute(
+      'href',
+      `/submissions/${SUBMISSION_ID}?edit=1`,
+    );
+    expect(screen.getByRole('link', { name: /Revision history/ })).toHaveAttribute(
+      'href',
+      `/submissions/${SUBMISSION_ID}?history=1`,
+    );
+
+    const mutatingCalls = fetchMock.mock.calls.filter(([, init]) =>
+      ['PATCH', 'POST', 'DELETE'].includes((init as RequestInit | undefined)?.method ?? ''),
+    );
+    expect(mutatingCalls.length).toBe(0);
+  });
+});
+
 // VERDICT: LEGITIMATE, no fix needed (SubmissionDetailPage.tsx inline
 // title/abstract + tracks editors). `?edit=1` prefills the editor from the
 // submission's OWN current title/description (showing existing data, not
@@ -187,9 +236,129 @@ describe('turn-diet honesty: BulkActionBar', () => {
 // route registered so a premature PATCH would throw) and
 // SubmissionDetailPage.render.test.tsx:1685-1801 (title/abstract editor:
 // exactly one PATCH on Enter-submit, zero on a bare textarea Enter, zero
-// on Escape; tracks editor: same Enter-submits-the-real-form shape).
-describe('turn-diet honesty: DeliverableDetail + SubmissionDetailPage (citation-only, see comments above)', () => {
-  it('has no additional assertion to add -- existing coverage is exhaustive', () => {
-    expect(true).toBe(true);
+// on Escape; tracks editor: same Enter-submits-the-real-form shape); this
+// file adds a standalone tripwire with its own fixture setup, gating on
+// mockApi's "no route registered" throw the same way the sites above do.
+describe('turn-diet honesty: SubmissionDetailPage inline title/abstract + tracks editors', () => {
+  const SUB_ID = 'sub-honesty-detail';
+
+  function baseDetail(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      id: SUB_ID,
+      eventId: 'evt-honesty',
+      ref: 'S-900',
+      title: 'Original Title',
+      description: 'Original description',
+      status: 'pending',
+      contentStatus: 'pending',
+      trackId: null,
+      trackIds: [] as string[],
+      formId: null,
+      acceptedAt: null,
+      icsSequence: 0,
+      createdAt: 1700000000000,
+      updatedAt: 1700000000000,
+      participants: [],
+      answers: {},
+      slot: null as { day: string; startMin: number; endMin: number; roomName: string | null } | null,
+      ...overrides,
+    };
+  }
+
+  function readRoutes(overrides: Record<string, unknown> = {}) {
+    return {
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail(),
+      [`GET /api/v1/events/evt-honesty`]: { id: 'evt-honesty', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-honesty/tracks`]: {
+        items: [{ id: 't1', name: 'Frontend' }],
+        total: 1,
+        page: 1,
+        perPage: 20,
+      },
+      [`GET /api/v1/events/evt-honesty/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      ...overrides,
+    };
+  }
+
+  function renderPage(initialPath: string) {
+    render(
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('the title/abstract editor issues exactly one PATCH on an explicit form submit', async () => {
+    const fetchMock = mockApi(
+      readRoutes({
+        [`PATCH /api/v1/submissions/${SUB_ID}`]: { status: 200, body: baseDetail({ title: 'New Title' }) },
+      }),
+    );
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    const titleInput = await screen.findByLabelText('Title');
+    fireEvent.change(titleInput, { target: { value: 'New Title' } });
+    fireEvent.submit((titleInput as HTMLInputElement).closest('form') as HTMLFormElement);
+
+    await waitFor(() => {
+      const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+      expect(patchCalls).toHaveLength(1);
+    });
+  });
+
+  it('a bare Enter in the abstract textarea issues zero requests', async () => {
+    // No PATCH route registered at all -- a premature save would throw.
+    mockApi(readRoutes());
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    const abstractField = await screen.findByLabelText('Abstract');
+    fireEvent.keyDown(abstractField, { key: 'Enter', code: 'Enter' });
+
+    // Still on the editor, still the original text -- no submit happened.
+    expect(screen.getByLabelText('Abstract')).toHaveValue('Original description');
+  });
+
+  it('Escape while editing issues zero requests and returns to the read view', async () => {
+    // No PATCH route registered at all -- a premature save would throw.
+    mockApi(readRoutes());
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    const titleInput = await screen.findByLabelText('Title');
+    fireEvent.change(titleInput, { target: { value: 'Should not be saved' } });
+    fireEvent.keyDown(titleInput, { key: 'Escape', code: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Title')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('Original description')).toBeInTheDocument();
+  });
+
+  it('the tracks editor has the same Enter-submits-the-real-form shape: exactly one PATCH', async () => {
+    const fetchMock = mockApi(
+      readRoutes({
+        [`PATCH /api/v1/submissions/${SUB_ID}`]: { status: 200, body: baseDetail({ trackIds: ['t1'] }) },
+      }),
+    );
+
+    renderPage(`/submissions/${SUB_ID}`);
+
+    await screen.findByRole('heading', { name: /^Session details/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit tracks' }));
+
+    const editor = document.getElementById('submission-track-editor') as HTMLElement;
+    const checkbox = within(editor).getByRole('checkbox', { name: 'Frontend' });
+    fireEvent.click(checkbox);
+    fireEvent.submit(editor);
+
+    await waitFor(() => {
+      const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+      expect(patchCalls).toHaveLength(1);
+    });
   });
 });

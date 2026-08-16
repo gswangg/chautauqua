@@ -68,11 +68,6 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const [templateName, setTemplateName] = useState<string>('');
   const [subject, setSubject] = useState('');
   const [bodyText, setBodyText] = useState('');
-  // w12-c: names the template the turn-diet effect (below) applied on its
-  // own, so the disclosure line can say exactly which one -- cleared the
-  // moment the organizer touches the template picker themselves, manual
-  // picks disclose nothing (the dropdown itself is the disclosure).
-  const [autoAppliedTemplateName, setAutoAppliedTemplateName] = useState<string | null>(null);
   const [includeFeedback, setIncludeFeedback] = useState(false);
   // DEC-682: a decision mailer must never invent/leak another plan's or
   // round's feedback -- the organizer names exactly which plan (and,
@@ -888,11 +883,6 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               onChange={(e) => {
                 const id = e.target.value;
                 const found = templates.find((t) => t.id === id);
-                // w12-c: a manual pick (or an explicit "Write from scratch")
-                // supersedes the turn-diet auto-apply -- the disclosure line
-                // names what got applied automatically, not what the
-                // organizer just chose themselves.
-                setAutoAppliedTemplateName(null);
                 if (found) {
                   // DEC-832: copy the template's text into the composer's
                   // own fields, then clear the selection — the dropdown
