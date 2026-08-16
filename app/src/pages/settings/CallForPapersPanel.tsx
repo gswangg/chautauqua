@@ -20,10 +20,11 @@ import { SummarySection } from './SummarySection';
 import { SettingsEditForm, SettingsField, SettingsFieldPair, SettingsSaveButton } from './SettingsEditForm';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
-import { DEC_888 } from '../../../../src/decisions';
-import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
+import { DEC_888, DEC_731 } from '../../../../src/decisions';
+import { MAX_LONG_TEXT_LENGTH, MAX_NAME_LENGTH } from '../../../../src/forms/validate';
 
 void DEC_888;
+void DEC_731;
 
 const SECTION_KEY = 'cfp';
 
@@ -86,6 +87,7 @@ interface CfpField {
 interface CfpForm {
   id: string;
   eventId: string;
+  title: string;
   intro?: string | null;
   openDate?: number | null;
   closeDate?: number | null;
@@ -111,6 +113,7 @@ export function CallForPapersPanel() {
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [form, setForm] = useState<CfpForm | null>(null);
   const [tracks, setTracks] = useState<EventTrack[]>([]);
+  const [title, setTitle] = useState('');
   const [intro, setIntro] = useState('');
   const [openDate, setOpenDate] = useState('');
   const [closeDate, setCloseDate] = useState('');
@@ -147,6 +150,7 @@ export function CallForPapersPanel() {
         setEvent(ev);
         setForm(formResult);
         setTracks(tracksResult.items);
+        setTitle(formResult.title);
         setIntro(formResult.intro ?? '');
         setOpenDate(msToDateInput(formResult.openDate ?? null));
         setCloseDate(msToDateInput(formResult.closeDate ?? null));
@@ -178,12 +182,14 @@ export function CallForPapersPanel() {
     setFieldErrors({});
     try {
       const updated = await apiPatch<CfpForm>(`/forms/${form.id}`, {
+        title,
         intro: intro.trim().length > 0 ? intro : null,
         openDate: dateInputToMs(openDate),
         closeDate: dateInputToMs(closeDate),
         tracks: selectedTracks,
       });
       setForm(updated);
+      setTitle(updated.title);
       setSaved(true);
       closeEdit();
     } catch (err) {
@@ -362,62 +368,81 @@ export function CallForPapersPanel() {
                 Cancel
               </button>
             ),
-          }}
-        >
-          <SettingsField label="Intro text" width="full">
-            <textarea
-              className="chq-textarea"
-              value={intro}
-              onChange={(e) => {
-                setIntro(e.target.value);
-                setSaved(false);
-              }}
-              maxLength={MAX_LONG_TEXT_LENGTH}
-            />
-          </SettingsField>
-          {event && editWindowState ? (
-            <p role="status" className="chq-settings-row">
-              {callStateLabel(editWindowState, dateInputToMs(closeDate))}
-            </p>
-          ) : null}
-          <SettingsFieldPair>
-            <SettingsField label="Opens" htmlFor="cfp-open-date" width="date">
-              <DateField
-                id="cfp-open-date"
-                value={openDate}
-                onChange={(next) => {
-                  setOpenDate(next);
-                  setSaved(false);
-                  setFieldErrors((prev) => ({ ...prev, openDate: '' }));
-                }}
-              />
-              {fieldErrors.openDate ? <span className="chq-field-error">{fieldErrors.openDate}</span> : null}
-            </SettingsField>
-            <SettingsField label="Closes" htmlFor="cfp-close-date" width="date">
-              <DateField
-                id="cfp-close-date"
-                value={closeDate}
-                onChange={(next) => {
-                  setCloseDate(next);
-                  setSaved(false);
-                  setFieldErrors((prev) => ({ ...prev, closeDate: '' }));
-                }}
-              />
-              {fieldErrors.closeDate ? <span className="chq-field-error">{fieldErrors.closeDate}</span> : null}
-            </SettingsField>
-          </SettingsFieldPair>
-          {event ? (
-            <div className="chq-settings-row">
-              {editWindowState === 'open' ? (
+            // Frame 09--10 (`Chautauqua Settings.dc.html:684`): "Close the
+            // form now" sits far left in the footer, not a mid-form row.
+            // DEC-731 (wave-44 amendment): a window has ONE possible next
+            // move, so this renders only while the call is actually open --
+            // never disabled-with-a-reason, since there IS no reason, the
+            // action is simply not the current move.
+            destructive:
+              editWindowState === 'open' ? (
                 <button
                   type="button"
-                  className="chq-btn chq-btn-secondary"
+                  className="chq-link-button"
                   disabled={saving}
                   onClick={() => void handleWindowNow('closeDate')}
                 >
-                  Close the call now
+                  Close the form now
                 </button>
-              ) : (
+              ) : undefined,
+          }}
+        >
+          <div className="chq-settings-edit-section">
+            <div className="chq-settings-section-head">
+              <h2>When it runs</h2>
+            </div>
+            {event && editWindowState ? (
+              <p role="status" className="chq-settings-row">
+                {callStateLabel(editWindowState, dateInputToMs(closeDate))}
+              </p>
+            ) : null}
+            <SettingsFieldPair>
+              <SettingsField label="Opens" htmlFor="cfp-open-date" width="date">
+                <DateField
+                  id="cfp-open-date"
+                  value={openDate}
+                  onChange={(next) => {
+                    setOpenDate(next);
+                    setSaved(false);
+                    setFieldErrors((prev) => ({ ...prev, openDate: '' }));
+                  }}
+                />
+                {fieldErrors.openDate ? <span className="chq-field-error">{fieldErrors.openDate}</span> : null}
+              </SettingsField>
+              <SettingsField label="Closes" htmlFor="cfp-close-date" width="date">
+                <DateField
+                  id="cfp-close-date"
+                  value={closeDate}
+                  onChange={(next) => {
+                    setCloseDate(next);
+                    setSaved(false);
+                    setFieldErrors((prev) => ({ ...prev, closeDate: '' }));
+                  }}
+                />
+                {fieldErrors.closeDate ? <span className="chq-field-error">{fieldErrors.closeDate}</span> : null}
+              </SettingsField>
+            </SettingsFieldPair>
+            {/* DEC-731 (wave 8 amendment): the frame draws Time zone as a
+                select, but event.timezone already has ONE writer
+                (EventSettingsPanel's PATCH /api/v1/events/:eventId, which
+                also bumps ics_sequence for every calendar subscriber and
+                cold-caches every public page). A second writer here would
+                let one Save issue two PATCHes with partial-failure
+                semantics against the repo's most blast-heavy field. The
+                frame's label/position/measure bind; the affordance does
+                not -- this is a read-only fact plus a deep link, not a
+                second control. Documented deviation, do not re-file. */}
+            {event ? (
+              <SettingsField label="Time zone" width="date" hint={
+                <a href="?section=event&edit=1" className="chq-settings-inline-action">
+                  Change it in Event settings
+                </a>
+              }>
+                <input className="chq-input" readOnly value={event.timezone} aria-readonly="true" />
+              </SettingsField>
+            ) : null}
+            {event && editWindowState !== 'open' ? (
+              <div className="chq-settings-row">
                 <button
                   type="button"
                   className="chq-btn chq-btn-secondary"
@@ -426,9 +451,57 @@ export function CallForPapersPanel() {
                 >
                   Open the call now
                 </button>
-              )}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="chq-settings-edit-section">
+            <div className="chq-settings-section-head">
+              <h2>What submitters read</h2>
             </div>
-          ) : null}
+            <SettingsField label="Form name" htmlFor="cfp-title" width="slug">
+              <input
+                id="cfp-title"
+                className="chq-input"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setSaved(false);
+                }}
+                maxLength={MAX_NAME_LENGTH}
+              />
+              {fieldErrors.title ? <span className="chq-field-error">{fieldErrors.title}</span> : null}
+            </SettingsField>
+            <SettingsField
+              label="Intro shown above the form"
+              width="full"
+              hint="Takes the full measure · about three lines on the public form"
+            >
+              <textarea
+                className="chq-textarea"
+                value={intro}
+                onChange={(e) => {
+                  setIntro(e.target.value);
+                  setSaved(false);
+                }}
+                maxLength={MAX_LONG_TEXT_LENGTH}
+              />
+            </SettingsField>
+          </div>
+
+          <div className="chq-settings-edit-section">
+            <div className="chq-settings-section-head">
+              <h2>Questions · {form.fields?.length ?? 0}</h2>
+              <a href="/submissions/forms" className="chq-settings-inline-action">
+                Open the form builder ›
+              </a>
+            </div>
+            <p className="chq-settings-row-hint">
+              Adding, reordering and removing questions happens in the builder — this page owns the window and the
+              wording around the form.
+            </p>
+          </div>
+
           <div className="chq-settings-row">
             <span className="chq-settings-row-label">Tracks offered</span>
             <div className="chq-settings-row-value chq-settings-row-value-stack">

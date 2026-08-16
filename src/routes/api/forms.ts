@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError, requireAtLeastOneField } from "../../server/http";
-import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
+import { MAX_LONG_TEXT_LENGTH, MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapCountMessage } from "../../domain/cap-copy";
 import { validateFieldDefInput, validateRuleReference, isPermutation, type FieldDefInput } from "../../forms/builder";
 import type { FormFieldDef, FormFieldRole, FormFieldRule } from "../../forms/types";
@@ -93,11 +93,23 @@ formsRoutes.patch("/api/v1/forms/:formId", requireOrganizer, csrfJson, async (c)
   });
   // DEC-627 (amendment, wave 6): every field on this PATCH is optional; an
   // empty body must be refused rather than reaching patchForm as a no-op.
-  requireAtLeastOneField(body, ["intro", "openDate", "closeDate", "tracks"]);
+  requireAtLeastOneField(body, ["title", "intro", "openDate", "closeDate", "tracks"]);
 
   const errors: Record<string, string> = {};
   const patch: repo.FormPatch = {};
 
+  // DEC-731 (wave 8 amendment): "Form name" is the frame's plain-language
+  // label for form.title -- the same field the public submit view reads as
+  // the page title. Non-empty, same length cap grammar as intro.
+  if (body.title !== undefined) {
+    if (typeof body.title !== "string" || body.title.trim().length === 0) {
+      errors.title = "must be a non-empty string";
+    } else if (body.title.length > MAX_NAME_LENGTH) {
+      errors.title = `must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
+    } else {
+      patch.title = body.title;
+    }
+  }
   if (body.intro !== undefined) {
     if (body.intro !== null && typeof body.intro !== "string") {
       errors.intro = "must be a string";

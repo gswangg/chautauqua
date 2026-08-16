@@ -32,6 +32,7 @@ function mockCfp(overrides: Record<string, unknown> = {}) {
     [`GET /api/v1/events/${EVENT_ID}/forms`]: {
       id: 'form1',
       eventId: EVENT_ID,
+      title: 'Speak at DevCon',
       intro: 'Tell us about your talk.',
       openDate: 1767225600000, // 2026-01-01T00:00:00Z
       closeDate: 1769904000000, // 2026-02-01T00:00:00Z
@@ -121,6 +122,7 @@ describe('CallForPapersPanel', () => {
       [`PATCH /api/v1/forms/form1`]: {
         id: 'form1',
         eventId: EVENT_ID,
+        title: 'Speak at DevCon',
         intro: 'Updated intro.',
         openDate: 1767225600000,
         closeDate: 1769904000000,
@@ -167,6 +169,92 @@ describe('CallForPapersPanel', () => {
     expect(section.querySelector('fieldset')).toBeNull();
   });
 
+  // task-w8-d/DEC-731 (wave 8 amendment, frame 09--10): the edit body's
+  // three named sections -- read-only Time zone + deep link, editable Form
+  // name, and a Questions head naming the form's real field count with a
+  // link to the builder.
+  it('renders the When it runs / What submitters read / Questions sections from frame 09--10', async () => {
+    mockCfp();
+    render(
+      <MemoryRouter>
+        <CallForPapersPanel />
+      </MemoryRouter>,
+    );
+    const section = await screen.findByRole('region', { name: 'Call for papers' });
+    await waitFor(() => {
+      expect(within(section).getByText(`${window.location.origin}/submit/devcon-2026`)).toBeInTheDocument();
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Edit the form' }));
+
+    await waitFor(() => {
+      expect(within(section).getByText('When it runs')).toBeInTheDocument();
+    });
+    expect(within(section).getByText('What submitters read')).toBeInTheDocument();
+    // 3 fields in the fixture (Title/Format/Audience level).
+    expect(within(section).getByText('Questions · 3')).toBeInTheDocument();
+
+    // Time zone: a read-only value, never a second writer for
+    // event.timezone (DEC-731).
+    const tzInput = within(section).getByDisplayValue('UTC') as HTMLInputElement;
+    expect(tzInput).toHaveAttribute('readonly');
+    expect(within(section).getByRole('link', { name: 'Change it in Event settings' })).toHaveAttribute(
+      'href',
+      '?section=event&edit=1',
+    );
+
+    // Form name: editable, bound to form.title.
+    expect(within(section).getByDisplayValue('Speak at DevCon')).toBeInTheDocument();
+
+    expect(within(section).getByRole('link', { name: 'Open the form builder ›' })).toHaveAttribute(
+      'href',
+      '/submissions/forms',
+    );
+  });
+
+  it('saves the Form name field on Save changes', async () => {
+    mockCfp();
+    render(
+      <MemoryRouter>
+        <CallForPapersPanel />
+      </MemoryRouter>,
+    );
+    const section = await screen.findByRole('region', { name: 'Call for papers' });
+    await waitFor(() => {
+      expect(within(section).getByText(`${window.location.origin}/submit/devcon-2026`)).toBeInTheDocument();
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Edit the form' }));
+
+    const titleInput = await within(section).findByDisplayValue('Speak at DevCon');
+    fireEvent.change(titleInput, { target: { value: 'DevCon CFP' } });
+
+    const fetchMock = mockCfp({
+      [`PATCH /api/v1/forms/form1`]: {
+        id: 'form1',
+        eventId: EVENT_ID,
+        title: 'DevCon CFP',
+        intro: 'Tell us about your talk.',
+        openDate: 1767225600000,
+        closeDate: 1769904000000,
+        tracks: ['trk1'],
+        fields: [
+          { id: 'f1', label: 'Title', locked: true },
+          { id: 'f2', label: 'Format', locked: false },
+          { id: 'f3', label: 'Audience level', locked: false },
+        ],
+      },
+    });
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => {
+      expect(within(section).getByRole('button', { name: 'Edit the form' })).toBeInTheDocument();
+    });
+    const patchCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/api/v1/forms/form1'));
+    expect(patchCall).toBeDefined();
+    const sentBody = JSON.parse((patchCall![1] as RequestInit).body as string) as { title?: string };
+    expect(sentBody.title).toBe('DevCon CFP');
+  });
+
   // DEC-731 amendment: exactly one window action renders, chosen by the
   // call's current live state -- never both side by side.
   it('renders only "Open the call now" when the call is closed', async () => {
@@ -185,7 +273,7 @@ describe('CallForPapersPanel', () => {
     await waitFor(() => {
       expect(within(section).getByRole('button', { name: 'Open the call now' })).toBeInTheDocument();
     });
-    expect(within(section).queryByRole('button', { name: 'Close the call now' })).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Close the form now' })).not.toBeInTheDocument();
   });
 
   it('renders only "Open the call now" when the call is not yet open', async () => {
@@ -194,6 +282,7 @@ describe('CallForPapersPanel', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: {
         id: 'form1',
         eventId: EVENT_ID,
+        title: 'Speak at DevCon',
         intro: 'Tell us about your talk.',
         openDate: farFuture,
         closeDate: farFuture + 1000 * 60 * 60 * 24 * 7,
@@ -215,15 +304,16 @@ describe('CallForPapersPanel', () => {
     await waitFor(() => {
       expect(within(section).getByRole('button', { name: 'Open the call now' })).toBeInTheDocument();
     });
-    expect(within(section).queryByRole('button', { name: 'Close the call now' })).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Close the form now' })).not.toBeInTheDocument();
   });
 
-  it('renders only "Close the call now" when the call is open', async () => {
+  it('renders only "Close the form now" (footer, far left) when the call is open', async () => {
     const now = Date.now();
     mockCfp({
       [`GET /api/v1/events/${EVENT_ID}/forms`]: {
         id: 'form1',
         eventId: EVENT_ID,
+        title: 'Speak at DevCon',
         intro: 'Tell us about your talk.',
         openDate: now - 1000 * 60 * 60 * 24,
         closeDate: now + 1000 * 60 * 60 * 24 * 30,
@@ -243,9 +333,12 @@ describe('CallForPapersPanel', () => {
     fireEvent.click(within(section).getByRole('button', { name: 'Edit the form' }));
 
     await waitFor(() => {
-      expect(within(section).getByRole('button', { name: 'Close the call now' })).toBeInTheDocument();
+      expect(within(section).getByRole('button', { name: 'Close the form now' })).toBeInTheDocument();
     });
     expect(within(section).queryByRole('button', { name: 'Open the call now' })).not.toBeInTheDocument();
+    const footer = section.querySelector('.chq-settings-edit-footer') as HTMLElement;
+    const closeBtn = within(footer).getByRole('button', { name: 'Close the form now' });
+    expect(closeBtn.closest('.chq-settings-edit-footer-destructive')).not.toBeNull();
   });
 
   // DEC-896 amendment (wave 26): the shared settings edit shell.
@@ -292,6 +385,7 @@ describe('CallForPapersPanel', () => {
         [`GET /api/v1/events/${EVENT_ID}/forms`]: {
           id: 'form1',
           eventId: EVENT_ID,
+          title: 'Speak at DevCon',
           intro: 'Tell us about your talk.',
           openDate: now - 1000 * 60 * 60 * 24,
           closeDate: now + 1000 * 60 * 60 * 24 * 30,
@@ -314,6 +408,7 @@ describe('CallForPapersPanel', () => {
         [`GET /api/v1/events/${EVENT_ID}/forms`]: {
           id: 'form1',
           eventId: EVENT_ID,
+          title: 'Speak at DevCon',
           intro: 'Tell us about your talk.',
           openDate: now - 1000 * 60 * 60 * 24,
           closeDate: now,
@@ -323,6 +418,7 @@ describe('CallForPapersPanel', () => {
         [`PATCH /api/v1/forms/form1`]: {
           id: 'form1',
           eventId: EVENT_ID,
+          title: 'Speak at DevCon',
           intro: 'Tell us about your talk.',
           openDate: now - 1000 * 60 * 60 * 24,
           closeDate: now,

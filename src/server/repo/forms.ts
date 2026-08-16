@@ -338,6 +338,7 @@ export async function findFormById(db: Db, formId: string): Promise<FormRow | nu
 }
 
 export interface FormPatch {
+  title?: string;
   intro?: string | null;
   openDate?: number | null;
   closeDate?: number | null;
@@ -348,6 +349,7 @@ export async function patchForm(db: Db, formId: string, patch: FormPatch): Promi
   await db
     .update(schema.form)
     .set({
+      title: patch.title !== undefined ? patch.title : undefined,
       description: patch.intro !== undefined ? patch.intro : undefined,
       openDate: patch.openDate !== undefined ? (patch.openDate === null ? null : new Date(patch.openDate)) : undefined,
       closeDate: patch.closeDate !== undefined ? (patch.closeDate === null ? null : new Date(patch.closeDate)) : undefined,

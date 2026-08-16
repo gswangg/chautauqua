@@ -331,6 +331,17 @@
   margin: 0;
 }
 
+/* task-w8-d/DEC-731 (frame 09--10): a multi-section edit body (Call for
+   papers) reuses the same .chq-settings-section-head 2px-rule vocabulary
+   for its INNER section heads, nested one level deeper than the panel's
+   own top-level head -- the descendant selector above already covers it,
+   this class just gives each section its own vertical rhythm. */
+.chq-settings-edit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .chq-settings-section-action {
   font-size: 13px;
   font-weight: 700;
