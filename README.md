@@ -33,8 +33,10 @@ No login needed for the public surfaces: [event hub](https://chautauqua.cc/) ·
 The deployed instance sends **real email** from `hello@chautauqua.cc` via the
 Cloudflare Email Service `send_email` Worker binding (DEC-996 amendment, wave
 57; no API key, no secret), including `.ics` calendar invites as a raw MIME
-part. `/dev/mailbox` (the local dev email sink) is deliberately **not**
-mounted in production.
+part. `/dev/mailbox` (the local dev email sink) only mounts when
+`DEV_MODE='1'` — it is deliberately unset on this deployed instance, so
+`/dev/mailbox` is expected to 404 there (DEC-005/DEC-382 amendment); it is
+not a broken link.
 
 ## Quickstart
 
@@ -72,6 +74,23 @@ R2 bucket, the `send_email` binding, the `chautauqua.cc` custom domain), so it
 must never run from an untrusted context.
 
 Test policy: workers run targeted tests (`npm run test:targeted -- <paths>`); the full suite is serialized through `scripts/with-test-lock.sh` (`npm test`).
+
+**Deploy parity checklist** — variables `wrangler.jsonc`'s `vars` block must
+carry for a deployed origin to behave like the local one, each with the
+failure it causes if missing:
+
+- `PUBLIC_BASE_URL` (**required**) — `resolveBaseUrl`/`resolveBaseUrlForCron`
+  (`src/server/origin.ts`) fail loudly without it: emailed links
+  (claim/portal/reset) can't be built, and bulk email sends 500 rather than
+  silently emailing a broken/local host. This is load-bearing, not a
+  footnote — `wrangler.jsonc` already sets it to `https://chautauqua.cc` for
+  the live deploy target; any new deployed origin must set its own.
+- `DEV_MODE` — must stay **unset** on a deployed origin. Its only effect is
+  mounting `/dev/mailbox` (see "For evaluators" below); leaving it unset is
+  what makes `/dev/mailbox` 404 in production, which is the designed
+  behaviour, not breakage.
+- `send_email` binding, `MAIL_FROM_EMAIL` — required for real outbound email;
+  see "Stage-2 platform wiring" in `docs/AUDIT.md`.
 
 `.dev.vars.example` (copied to your gitignored `.dev.vars` on first `predev`
 run) ships `PUBLIC_BASE_URL=http://localhost:8787` so emailed links
@@ -250,8 +269,12 @@ else in the document is machine-checked — read it, don't just trust the badge.
 | Printable programme (print-first, all days) | `/e/<event-slug>/programme` |
 | Public speaker gallery | `/e/<event-slug>/gallery` |
 | Embeddable widget (any surface, chromeless) | `/embed/<event-slug>/<surface>` |
-| Dev mailbox (dev-only email sink — every sent email, including CFP confirmation and onboarding-task reminder emails, is viewable here) | `/dev/mailbox` |
+| Dev mailbox (dev-only email sink — every sent email, including CFP confirmation and onboarding-task reminder emails, is viewable here; requires `DEV_MODE='1'` — **404s by design on the deployed instance**, DEC-005/DEC-382 amendment) | `/dev/mailbox` |
 | Public API docs (auth, envelopes, endpoint table) | `/docs/api` |
+
+`/dev/mailbox` and `/docs/api` are operator chrome (DEC-382/DEC-582 amendment), not
+part of the user-facing product surfaces above — the `/docs` site (when present) reaches
+`/docs/api` only as a labelled, muted "leaves the docs" link, never as an article.
 
 Seeded demo event slug: `devflow-conf-2027`
 
