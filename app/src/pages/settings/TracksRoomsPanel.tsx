@@ -54,15 +54,31 @@ function unownedFieldEntries(
 // so the palette a track can be given and the palette the picker offers
 // can never desync. Colors drawn from the product palette, never an
 // off-palette literal like the old raw <input type="color"> default.
+// USER-FILED + frame 09--12 (v12): the redesigned track palette is the
+// SYSTEM'S OWN tokens used categorically — the frame's three drawn swatches
+// pixel-sample to exactly #4E5C31 / #1B1D17 / #8E8A7A (README §Colour rows
+// Brand olive / Ink / the stone grey); two more README tokens extend the set
+// for events with more tracks. Never a Tailwind stock colour, never a red.
 export const TRACK_SWATCHES = [
-  { value: '#4338ca', label: 'Indigo' },
-  { value: '#0f766e', label: 'Teal' },
-  { value: '#b45309', label: 'Amber' },
-  { value: '#be123c', label: 'Rose' },
-  { value: '#4d7c0f', label: 'Olive' },
-  { value: '#1d4ed8', label: 'Blue' },
+  { value: '#4E5C31', label: 'Olive' },
+  { value: '#1B1D17', label: 'Ink' },
+  { value: '#8E8A7A', label: 'Stone' },
+  { value: '#565A4B', label: 'Moss' },
+  { value: '#BAB6A6', label: 'Sand' },
 ] as const;
 void DEC_888;
+
+// Cycle helpers for the swatch-as-control (frame 09--12): advance to the
+// next palette entry; an unknown stored colour re-enters the palette at
+// its first entry rather than throwing — the next save then persists a
+// palette member.
+function nextSwatch(current: string): string {
+  const i = TRACK_SWATCHES.findIndex((s) => s.value === current);
+  return TRACK_SWATCHES[(i + 1) % TRACK_SWATCHES.length]!.value;
+}
+function swatchLabel(current: string): string {
+  return TRACK_SWATCHES.find((s) => s.value === current)?.label ?? 'Custom';
+}
 
 const SECTION_KEY = 'tracks-rooms';
 
@@ -461,10 +477,20 @@ export function TracksRoomsPanel() {
                     />
                   ) : null}
                   <span className="chq-settings-edit-row-value">
-                    <span
-                      className="chq-color-swatch"
+                    {/* Frame 09--12: the swatch sits LEFT of the name and IS
+                        the control — no separate picker row (DESIGN-RULINGS
+                        "belongs beside the name rather than in a separate
+                        picker"). Selecting cycles the token palette in
+                        place, so nothing appears or resizes on pick. */}
+                    <button
+                      id={`chq-track-color-${track.id}`}
+                      type="button"
+                      className="chq-color-swatch chq-swatch-cycle"
                       style={{ background: draft.color }}
-                      aria-hidden="true"
+                      aria-label={`Track colour for ${track.name}: ${swatchLabel(draft.color)}. Select to change.`}
+                      onClick={() =>
+                        setTrackDrafts((prev) => ({ ...prev, [track.id]: { ...draft, color: nextSwatch(draft.color) } }))
+                      }
                     />
                     <input
                       id={`chq-track-name-${track.id}`}
@@ -477,27 +503,6 @@ export function TracksRoomsPanel() {
                       aria-invalid={rowErrors.name ? 'true' : undefined}
                       maxLength={MAX_NAME_LENGTH}
                     />
-                    <div
-                      id={`chq-track-color-${track.id}`}
-                      className="chq-swatch-picker"
-                      role="radiogroup"
-                      aria-label={`Track color for ${track.name}`}
-                    >
-                      {TRACK_SWATCHES.map((swatch) => (
-                        <button
-                          key={swatch.value}
-                          type="button"
-                          role="radio"
-                          className="chq-color-swatch chq-swatch-picker-option"
-                          style={{ background: swatch.value }}
-                          aria-checked={draft.color === swatch.value}
-                          aria-label={swatch.label}
-                          onClick={() =>
-                            setTrackDrafts((prev) => ({ ...prev, [track.id]: { ...draft, color: swatch.value } }))
-                          }
-                        />
-                      ))}
-                    </div>
                   </span>
                   <span className="chq-settings-edit-row-meta">{track.submissionCount} submissions</span>
                   <span className="chq-settings-edit-row-actions">
@@ -583,20 +588,14 @@ export function TracksRoomsPanel() {
                 />
               </SettingsField>
               <div className="chq-settings-row">
-                <div id="chq-new-track-color" className="chq-swatch-picker" role="radiogroup" aria-label="Track color">
-                  {TRACK_SWATCHES.map((swatch) => (
-                    <button
-                      key={swatch.value}
-                      type="button"
-                      role="radio"
-                      className="chq-color-swatch chq-swatch-picker-option"
-                      style={{ background: swatch.value }}
-                      aria-checked={newTrack.color === swatch.value}
-                      aria-label={swatch.label}
-                      onClick={() => setNewTrack({ ...newTrack, color: swatch.value })}
-                    />
-                  ))}
-                </div>
+                <button
+                  id="chq-new-track-color"
+                  type="button"
+                  className="chq-color-swatch chq-swatch-cycle"
+                  style={{ background: newTrack.color }}
+                  aria-label={`Track colour: ${swatchLabel(newTrack.color)}. Select to change.`}
+                  onClick={() => setNewTrack({ ...newTrack, color: nextSwatch(newTrack.color) })}
+                />
                 <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void addTrack()}>
                   Add track
                 </button>

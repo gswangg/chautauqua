@@ -193,18 +193,20 @@ describe('TracksRoomsPanel', () => {
       within(mainStageRow.querySelector('.chq-settings-edit-row-seats') as HTMLElement).getByDisplayValue('900'),
     ).toBeInTheDocument();
 
-    // The existing AI Engineering row's own radiogroup reflects its loaded
-    // color (#4f46e5 isn't one of the enumerated swatches, so nothing is
-    // checked); the Platform row (null color) checks TRACK_SWATCHES[0] --
-    // and no bare <input type="color"> remains anywhere.
+    // DEC-888 amended (user-filed + frame 09--12): the swatch itself is the
+    // one control -- a cycle button left of the name, no radiogroup, no
+    // separate picker row. The Platform row (null color) defaults to
+    // TRACK_SWATCHES[0]; clicking advances to the next palette entry; no
+    // bare <input type="color"> remains anywhere.
     const platformInput = within(section).getByLabelText('Track name for Platform');
-    const platformRow = platformInput.closest('.chq-settings-edit-row')!;
-    const swatchGroup = within(platformRow as HTMLElement).getByRole('radiogroup', {
-      name: 'Track color for Platform',
-    });
-    const options = within(swatchGroup).getAllByRole('radio');
-    expect(options[0]).toHaveAttribute('aria-checked', 'true');
-    expect(options[0]).toHaveStyle({ background: TRACK_SWATCHES[0].value });
+    const platformRow = platformInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    const cycle = within(platformRow).getByRole('button', { name: /Track colour for Platform: Olive/ });
+    expect(cycle).toHaveStyle({ background: TRACK_SWATCHES[0].value });
+    fireEvent.click(cycle);
+    expect(
+      within(platformRow).getByRole('button', { name: /Track colour for Platform: Ink/ }),
+    ).toHaveStyle({ background: TRACK_SWATCHES[1].value });
+    expect(within(platformRow).queryByRole('radiogroup')).not.toBeInTheDocument();
     expect(section.querySelector('input[type="color"]')).not.toBeInTheDocument();
   });
 
@@ -576,9 +578,9 @@ describe('TracksRoomsPanel', () => {
     await waitFor(() => {
       expect(within(trackRow).getAllByText('Must be a hex color like #336699').length).toBeGreaterThan(0);
     });
-    // The color control on the failing row is marked invalid...
-    const colorGroup = within(trackRow).getByRole('radiogroup', { name: 'Track color for AI Engineering' });
-    expect(colorGroup).toHaveAttribute('id', 'chq-track-color-trk1');
+    // The color control on the failing row is the cycle swatch...
+    const colorCycle = within(trackRow).getByRole('button', { name: /^Track colour for AI Engineering/ });
+    expect(colorCycle).toHaveAttribute('id', 'chq-track-color-trk1');
 
     // ...and the sibling row (Platform) carries no error at all.
     const platformInput = within(section).getByLabelText('Track name for Platform');
@@ -729,14 +731,14 @@ describe('TracksRoomsPanel', () => {
     expect(rowBody).not.toMatch(/grid-template-columns/);
   });
 
-  it('.chq-settings-track-edit-row reproduces the frame\'s tracks columns minus the non-functional drag handle (1fr 150px auto)', () => {
+  it('.chq-settings-track-edit-row: frame tracks columns with a FIXED actions track (user-filed: auto resized when dirty Save/Cancel appeared)', () => {
     const body = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-track-edit-row');
-    expect(body).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*150px\s*auto/);
+    expect(body).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*150px\s*200px/);
   });
 
-  it('.chq-settings-room-edit-row reproduces the frame\'s rooms columns minus the non-functional drag handle (1fr 110px 150px auto)', () => {
+  it('.chq-settings-room-edit-row: frame rooms columns with a FIXED actions track (same user-filed geometry rule)', () => {
     const body = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-room-edit-row');
-    expect(body).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*110px\s*150px\s*auto/);
+    expect(body).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*110px\s*150px\s*200px/);
   });
 
   it('applies the track and room width hooks alongside the shared row class', async () => {

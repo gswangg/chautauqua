@@ -5,59 +5,59 @@ export const agendaAndPublishing: DocsArticle = {
   group: "running-an-event",
   title: "Agenda and publishing",
   standfirst:
-    "Building the schedule is placing accepted sessions into rooms and time slots — by hand, by drag, or by letting auto-schedule fill what it can — and publishing is the one step that decides what a visitor actually sees.",
+    "You build the schedule when you place accepted sessions into rooms and time slots. You can place a session by hand, by drag, or with auto-schedule. The publish step decides what a visitor sees.",
   blocks: [
     { kind: "heading", text: "Tracks and rooms" },
     {
       kind: "prose",
-      text: "Before you can place anything, the event needs its tracks and rooms defined — tracks group sessions by theme, rooms are where sessions actually get placed. Renaming a room doesn't detach anything already scheduled into it; the placement follows the room.",
+      text: "Before you can place a session, the event needs its tracks and rooms. Tracks group sessions by theme. Rooms are the places where you put sessions. If you rename a room, the sessions that are scheduled in it stay in place. The placement follows the room.",
     },
     { kind: "heading", text: "The day grid" },
     {
       kind: "prose",
-      text: "The grid lays out one day at a time, rooms across the top and time running down. An unplaced session sits in a tray beside the grid until you place it, either by dragging it onto a slot or by arming it with a click and then clicking the slot you want — the same result either way, so placement never requires a mouse that can drag.",
+      text: "The grid shows one day at a time, with the rooms across the top and the time down the side. An unplaced session sits in a tray beside the grid. To place the session, drag it onto a slot. Or click the session to arm it, then click the slot that you want. Both methods give the same result. Placement never requires a mouse that can drag.",
     },
     {
       kind: "figure",
       shotId: "running-an-event-agenda-and-publishing-01",
       caption:
-        "The day grid: rooms across the top, sessions placed into time slots, and the unplaced tray waiting beside it.",
+        "The day grid: the rooms across the top, the sessions placed into time slots, and the tray of unplaced sessions beside the grid.",
     },
     { kind: "heading", text: "Conflicts" },
     {
       kind: "prose",
-      text: "Placing two sessions with the same speaker at overlapping times, or double-booking a room, doesn't get blocked outright — it gets flagged. A conflict chip marks the affected cards so you can see the collision and decide whether to move something or leave it, rather than the grid silently refusing the placement.",
+      text: "The grid does not block a conflict. If two sessions with the same speaker overlap in time, or if a room is double-booked, a conflict chip marks the affected cards. You see the collision and you decide: move a session, or leave it. The grid never refuses the placement silently.",
     },
     { kind: "heading", text: "Breaks" },
     {
       kind: "prose",
-      text: "A break — lunch, a coffee gap, the end-of-day close — isn't scoped to one room. Adding one blocks that time band across every room at once, since a break is a fact about the day, not about a single track's schedule.",
+      text: "A break is not scoped to one room. Examples are lunch, a coffee gap, and the close of the day. When you add a break, it blocks that time band in every room at once. A break is a fact about the day, not about the schedule of one track.",
     },
     {
       kind: "figure",
       shotId: "running-an-event-agenda-and-publishing-02",
-      caption: "Adding a break: one band, blocking the same time slot in every room for the day.",
+      caption: "A new break: one band that blocks the same time slot in every room for the day.",
     },
     { kind: "heading", text: "Auto-schedule" },
     {
       kind: "prose",
-      text: "Auto-schedule fills as many unplaced sessions as it reasonably can in one pass and reports back exactly what happened: how many it placed, how many it couldn't and why (no rooms configured, no slot free, and so on), and that any conflicts already on the grid before the run were left in place rather than caused by it. It's a bulk first draft, not a black box — the same room and track constraints you'd hit placing by hand still apply.",
+      text: "Auto-schedule fills as many unplaced sessions as it can in one pass. Then it reports what happened: how many sessions it placed, how many it could not place, and the reason. For example, no rooms are configured, or no slot is free. The report also states that conflicts from before the run stay in place — the run did not cause them. Auto-schedule is a bulk first draft. The same room and track constraints as in placement by hand apply.",
     },
     { kind: "heading", text: "Publishing" },
     {
       kind: "prose",
-      text: "Publishing is the switch that makes the schedule public. It doesn't publish every placed session unconditionally: a session whose content hasn't been approved yet is held back, even if it's sitting in a room on the grid. The confirmation names all three counts — how many sessions are public, how many were held back, and why — so a held-back session is never a silent gap.",
+      text: "The publish step is the switch that makes the schedule public. It does not publish every placed session without checks. It holds back a session whose content is not yet approved, even if the session sits in a room on the grid. The confirmation names all three counts: how many sessions are public, how many are held back, and the reason. A held-back session is never a silent gap.",
     },
     {
       kind: "figure",
       shotId: "running-an-event-agenda-and-publishing-03",
       caption:
-        "The publish confirmation: total placed, how many went public, and the held-back count with its reason.",
+        "The publish confirmation: the total placed count, the count that went public, and the held-back count with its reason.",
     },
     { kind: "heading", text: "Calendar feeds" },
     {
       kind: "prose",
-      text: "Once published, the public schedule offers a .ics feed a visitor can subscribe to from their own calendar app. Moving a session to a different room or time after publishing bumps that entry's sequence rather than creating a duplicate, so a calendar that already imported the feed updates the existing entry instead of doubling it.",
+      text: "After you publish, the public schedule offers a .ics feed. A visitor can subscribe to the feed from their own calendar app. If you move a session to a different room or time after you publish, the feed increases the sequence number of that entry. It does not create a duplicate entry. A calendar that already imported the feed updates the existing entry.",
     },
   ],
 };

@@ -5,43 +5,43 @@ export const reviewingStartToFinish: DocsArticle = {
   group: "for-reviewers",
   title: "Reviewing, start to finish",
   standfirst:
-    "Your queue is exactly what you've been assigned, sorted so the submissions with the fewest ratings so far come first. Score with the plan's scorecard, and step aside from anything you shouldn't be scoring.",
+    "Your queue holds only the submissions that are assigned to you. The submissions with the fewest ratings come first. Score each submission with the scorecard of the plan. If you have a conflict of interest, recuse yourself on the scorecard.",
   blocks: [
     { kind: "heading", text: "Your queue" },
     {
       kind: "prose",
-      text: "When you log in as a reviewer, your queue holds exactly the submissions an organizer assigned you on a review plan — nothing more. You never see the whole submission pool, only your slice of it.",
+      text: "When you log in as a reviewer, your queue holds exactly the submissions that an organizer assigned to you on a review plan. You never see the whole submission pool. You see only your assigned set.",
     },
     {
       kind: "prose",
-      text: "The queue is sorted fewest-ratings-first: whichever of your assigned submissions currently has the fewest scores from anyone on the plan appears at the top. That ordering exists so that, across a whole team of reviewers working in parallel, no submission is left thin on ratings just because reviewers keep picking from the top of an unsorted list.",
+      text: "The queue puts the submission with the fewest ratings first. The count includes the scores from every reviewer on the plan. This order has a purpose. When a team of reviewers works in parallel, the order makes sure that no submission stays short of ratings.",
     },
     {
       kind: "figure",
       shotId: "for-reviewers-reviewing-start-to-finish-01",
       caption:
-        "The reviewer queue: each row shows your own status for that submission — scored (with your score) or not yet — not a shared rating count. Work down the list rather than picking around.",
+        "The reviewer queue. Each row shows your own status for that submission: scored, with your score, or not scored yet. The row does not show a shared rating count. Start at the top of the list and score the submissions in order.",
     },
     { kind: "heading", text: "The scorecard" },
     {
       kind: "prose",
-      text: "Opening a submission from your queue puts you on its scorecard — the set of criteria the organizer defined for this review plan. Criteria can be a numeric scale or a set of choices; some plans weight criteria differently when they compute an overall score. Enter your scores and, where the plan allows it, written comments, then submit.",
+      text: "When you open a submission from your queue, you land on its scorecard. The scorecard holds the criteria that the organizer defined for this review plan. A criterion can be a numeric scale or a set of choices. Some plans give different weights to the criteria when they compute an overall score. Enter your scores and, if the plan allows them, add written comments. Then submit.",
     },
     { kind: "heading", text: "Anonymization" },
     {
       kind: "prose",
-      text: "If the plan is anonymized, the speaker's name and any identifying details (company, prior talk titles) are stripped out before the submission ever reaches your screen — this happens on the server, not by hiding fields client-side, so there's nothing in the page for you to inspect around. Score what's in front of you; it's the same text every other reviewer on the plan sees.",
+      text: "If the plan is anonymized, the server removes the name of the speaker and other identifying details before the submission reaches your screen. These details include the company of the speaker and the titles of their past talks. The removal happens on the server, not in your browser, so the page contains no hidden fields. Score the text in front of you. Every other reviewer on the plan sees the same text.",
     },
     { kind: "heading", text: "Recusal" },
     {
       kind: "prose",
-      text: "If you have a conflict of interest on a submission — you know the speaker, you work together, anything that should keep you from scoring it — open the submission and declare the conflict on its scorecard. It then sits in your queue as recused and stops needing your rating; it doesn't get reassigned to you later.",
+      text: "A recusal removes the submission from your queue immediately. If you have a conflict of interest on a submission, open the submission. A conflict of interest means, for example, that you know the speaker or that you work together. Check 'Recuse me from this one' on the scorecard. The submission then moves to the recused rows at the end of your queue. The plan no longer needs your rating for it, and it does not assign the submission to you again.",
     },
     {
       kind: "figure",
       shotId: "for-reviewers-reviewing-start-to-finish-02",
       caption:
-        "Recusing from a submission: it's marked RECUSED in your queue and your assigned/progress counts adjust to match. You can undo it from the scorecard or the queue while the plan is still open; once the plan closes only an organizer can undo it.",
+        "A recused submission is marked RECUSED in your queue, and your assigned and progress counts adjust to match. While the plan is open, you can undo the recusal from the scorecard or from the queue. After the plan closes, only an organizer can undo it.",
     },
   ],
 };

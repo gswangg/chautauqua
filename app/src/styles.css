@@ -1695,9 +1695,12 @@ a:hover {
 .chq-color-swatch {
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  /* Frame 09--12: track swatches are rounded SQUARES, not dots. */
+  border-radius: 6px;
   border: 1px solid var(--chq-border);
   cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
 }
 
 .chq-token-reveal {

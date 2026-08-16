@@ -1169,12 +1169,16 @@
    different column counts (frame: tracks `1fr 150px auto`, rooms
    `1fr 110px 150px auto`; the leading 20px drag column is not
    reproduced, there is no reorder endpoint). */
+/* User-filed (same class as the people-row fix): an `auto` actions track
+   resizes when the dirty-only Save/Cancel pair appears, shifting the whole
+   row on first edit. Fixed tracks hold the geometry; the cluster
+   right-aligns inside via justify-self. */
 .chq-settings-track-edit-row {
-  grid-template-columns: minmax(0, 1fr) 150px auto;
+  grid-template-columns: minmax(0, 1fr) 150px 200px;
 }
 
 .chq-settings-room-edit-row {
-  grid-template-columns: minmax(0, 1fr) 110px 150px auto;
+  grid-template-columns: minmax(0, 1fr) 110px 150px 200px;
 }
 
 .chq-settings-edit-row-value {
@@ -1210,25 +1214,15 @@
   display: flex;
   align-items: center;
   justify-self: end;
+  /* User-filed: the cluster rendered "SaveCancelRemove" — links need air. */
+  gap: 14px;
 }
 
-/* task-w17-f/DEC-888: swatch picker -- the SAME TRACK_SWATCHES
-   enumeration supplies these buttons, the new-track default, and the
-   .chq-color-swatch preview, so the palette can never desync. */
-.chq-swatch-picker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.chq-swatch-picker-option {
-  padding: 0;
-  border: 1px solid var(--chq-border);
-}
-
-.chq-swatch-picker-option[aria-checked='true'] {
-  outline: 2px solid var(--chq-ink);
-  outline-offset: 2px;
+/* DEC-888 (amended, user-filed + frame 09--12): the swatch itself is the
+   control — no separate picker row. Cycling swaps only background, so the
+   pick never moves layout. */
+.chq-swatch-cycle {
+  transition: background-color var(--chq-motion-color) var(--chq-ease-state);
 }
 
 /* task-w17-f/DEC-888: CFP 'Tracks offered' row -- the settings row
