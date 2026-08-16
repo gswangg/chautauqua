@@ -360,8 +360,116 @@ describe('TracksRoomsPanel', () => {
     expect(removeButton).not.toBeDisabled();
     fireEvent.click(removeButton);
 
+    // DEC-941: Remove opens the shared ConfirmDialog naming the track
+    // first -- the DELETE only fires from the dialog's own confirm control.
+    const dialog = screen.getByRole('dialog', { name: 'Remove this track?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
     await waitFor(() => {
       expect(within(trackRow).getByText('AI track review')).toBeInTheDocument();
+    });
+  });
+
+  // DEC-941: deleteTrack/deleteRoom are irreversible, so Remove opens the
+  // shared ConfirmDialog naming the track/room first -- the DELETE only
+  // fires from the dialog's own confirm control, never straight off the
+  // row button (BreaksPanel.render.test.tsx:165 is the pattern).
+  it('track Remove asks for confirmation naming the track, then DELETEs and reloads', async () => {
+    const fetchMock = mockTracksRooms({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([
+        { id: 'trk1', name: 'AI Engineering', color: '#4f46e5', submissionCount: 0 },
+      ]),
+      'DELETE /api/v1/tracks/trk1': { status: 200, body: { deleted: 1 } },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
+    const trackRow = trackNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    fireEvent.click(within(trackRow).getByRole('button', { name: 'Remove' }));
+
+    expect(
+      fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE'),
+    ).toBe(false);
+    const dialog = await screen.findByRole('dialog', { name: 'Remove this track?' });
+    expect(within(dialog).getByText(/AI Engineering/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([url, init]) =>
+            (init as RequestInit | undefined)?.method === 'DELETE' && String(url).includes('/tracks/trk1'),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it('cancelling the track Remove confirmation fires no DELETE and keeps the track', async () => {
+    const fetchMock = mockTracksRooms({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([
+        { id: 'trk1', name: 'AI Engineering', color: '#4f46e5', submissionCount: 0 },
+      ]),
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
+    const trackRow = trackNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    fireEvent.click(within(trackRow).getByRole('button', { name: 'Remove' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Remove this track?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Remove this track?' })).not.toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE'),
+    ).toBe(false);
+    expect(within(section).getByLabelText('Track name for AI Engineering')).toBeInTheDocument();
+  });
+
+  it('room Remove asks for confirmation naming the room, then DELETEs and reloads', async () => {
+    const fetchMock = mockTracksRooms({
+      [`GET /api/v1/events/${EVENT_ID}/rooms`]: listEnvelope([
+        { id: 'rm1', name: 'Main Stage', capacity: 900, sessionCount: 0 },
+      ]),
+      'DELETE /api/v1/rooms/rm1': { status: 200, body: { deleted: 1 } },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const roomNameInput = within(section).getByLabelText('Room name for Main Stage');
+    const roomRow = roomNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    fireEvent.click(within(roomRow).getByRole('button', { name: 'Remove' }));
+
+    expect(
+      fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE'),
+    ).toBe(false);
+    const dialog = await screen.findByRole('dialog', { name: 'Remove this room?' });
+    expect(within(dialog).getByText(/Main Stage/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([url, init]) =>
+            (init as RequestInit | undefined)?.method === 'DELETE' && String(url).includes('/rooms/rm1'),
+        ),
+      ).toBe(true);
     });
   });
 

@@ -1030,8 +1030,11 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
     expect(screen.queryByRole('button', { name: 'Unschedule' })).toBeNull();
   });
 
-  it('clicking Unschedule fires the DELETE for the armed session and toasts its ref', async () => {
-    mockApi({
+  // DEC-941: clicking Unschedule opens a confirm dialog naming the session
+  // and slot first -- the DELETE only fires from the dialog's own confirm
+  // control, never straight off the armed-bar button.
+  it('clicking Unschedule asks for confirmation first, then DELETEs and toasts its ref', async () => {
+    const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
       'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
     });
@@ -1048,11 +1051,39 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'S-001: Overlapping Talk A (conflict)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Unschedule' }));
 
+    expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Unschedule session' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unschedule session' }));
+
     await waitFor(() => {
       expect(screen.getByText('Unscheduled S-001.')).toBeInTheDocument();
     });
     // The armed bar clears along with the placement.
     expect(screen.queryByText(/Placing S-001/)).toBeNull();
+  });
+
+  it('cancelling the Unschedule confirmation fires no DELETE and keeps the session placed', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-001: Overlapping Talk A (conflict)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unschedule' }));
+    const dialog = screen.getByRole('dialog', { name: 'Unschedule this session?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(false);
+    expect(screen.getByRole('button', { name: 'S-001: Overlapping Talk A (conflict)' })).toBeInTheDocument();
   });
 
   // No mouse/pointer event anywhere in this test — only .focus() (the
@@ -1085,9 +1116,9 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
 
     fireEvent.click(unscheduleBtn);
 
-    await waitFor(() => {
-      expect(screen.getByText('Unscheduled S-001.')).toBeInTheDocument();
-    });
+    // DEC-941: keyboard activation reaches the confirm dialog; the DELETE
+    // itself is covered by the confirm-flow tests above.
+    expect(screen.getByRole('dialog', { name: 'Unschedule this session?' })).toBeInTheDocument();
   });
 });
 

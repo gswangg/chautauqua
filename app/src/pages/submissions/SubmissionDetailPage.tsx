@@ -16,6 +16,7 @@ import { formatSubmissionScheduleLine } from './schedule';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { buildSubmissionsQuery, parseSubmissionsQuery } from './filters';
 import { countOf } from '../../lib/plural';
 import './detail.css';
@@ -354,6 +355,10 @@ export function SubmissionDetailPage() {
   const [audienceLevelPending, setAudienceLevelPending] = useState(false);
   const [audienceLevelError, setAudienceLevelError] = useState<string | null>(null);
   const [removingParticipantId, setRemovingParticipantId] = useState<string | null>(null);
+  // DEC-941: 'Remove' is irreversible, so it opens the shared ConfirmDialog
+  // naming the participant first -- the DELETE only fires from the
+  // dialog's own confirm control, never straight off the row button.
+  const [pendingRemoveParticipant, setPendingRemoveParticipant] = useState<SubmissionDetailParticipant | null>(null);
   const [makingCoPresenterId, setMakingCoPresenterId] = useState<string | null>(null);
   // DEC-958 (wave 66 amendment): the WHOLE err.fields map from each of the
   // page's other write paths, keyed by the server's own wire keys -- same
@@ -713,6 +718,7 @@ export function SubmissionDetailPage() {
       }
     } finally {
       setRemovingParticipantId(null);
+      setPendingRemoveParticipant(null);
     }
   }
 
@@ -1485,7 +1491,7 @@ export function SubmissionDetailPage() {
                                       type="button"
                                       className="chq-link-button"
                                       disabled={removingParticipantId === p.id}
-                                      onClick={() => removeParticipant(p)}
+                                      onClick={() => setPendingRemoveParticipant(p)}
                                     >
                                       Remove
                                     </button>
@@ -1806,6 +1812,17 @@ export function SubmissionDetailPage() {
           Delete this session
         </Link>
       </div>
+
+      {pendingRemoveParticipant && (
+        <ConfirmDialog
+          title="Remove this participant?"
+          body={<p>{pendingRemoveParticipant.name} will be removed from this session. This cannot be undone.</p>}
+          confirmLabel="Remove participant"
+          pending={removingParticipantId === pendingRemoveParticipant.id}
+          onConfirm={() => void removeParticipant(pendingRemoveParticipant)}
+          onCancel={() => setPendingRemoveParticipant(null)}
+        />
+      )}
     </div>
   );
 }

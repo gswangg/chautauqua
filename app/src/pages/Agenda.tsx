@@ -10,6 +10,7 @@ import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
 import { BreaksPanel, type ScheduleBreakRow } from './agenda/BreaksPanel';
 import { ModalFrame } from '../components/ModalFrame';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
 import type { AgendaPayload, DescribedUnplaced, RefreshedConflictsSummary, UnplacedReason } from './agenda/types';
 import { formatDayLabel } from '../lib/dates';
@@ -94,6 +95,11 @@ export function AgendaPage() {
   const [publishing, setPublishing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [armed, setArmed] = useState<ArmedAgendaSession | null>(null);
+  // DEC-941: the click/keyboard "Unschedule" button (armed bar) is
+  // irreversible, so it opens the shared ConfirmDialog naming the session
+  // and the slot it's giving up first -- drag-drop-onto-the-tray stays the
+  // established instant gesture (the drop IS the deliberate second action).
+  const [pendingUnschedule, setPendingUnschedule] = useState<ArmedAgendaSession | null>(null);
   // DEC-021/DEC-900 amendment (wave 72): the breaks editor is a disclosure
   // on the head row, not a band that displaces the canvas -- opens the ONE
   // shared dialog frame (ModalFrame, DEC-651) rather than its own inline
@@ -193,7 +199,16 @@ export function AgendaPage() {
    * path), then clears the arming so the bar returns to its idle state. */
   function handleUnscheduleArmed() {
     if (!armed) return;
-    const submissionId = armed.submissionId;
+    // DEC-941: names the confirm dialog rather than firing the DELETE
+    // straight off the click -- the dialog's own confirm control calls
+    // handleUnschedule.
+    setPendingUnschedule(armed);
+  }
+
+  function confirmUnschedule() {
+    if (!pendingUnschedule) return;
+    const submissionId = pendingUnschedule.submissionId;
+    setPendingUnschedule(null);
     setArmed(null);
     void handleUnschedule(submissionId);
   }
@@ -440,6 +455,27 @@ export function AgendaPage() {
           )}
         </>
       )}
+
+      {pendingUnschedule &&
+        (() => {
+          const placedSession = agenda?.placed.find((s) => s.submissionId === pendingUnschedule.submissionId) ?? null;
+          const slotClause = placedSession
+            ? ` from ${resolveRoomName(agenda?.rooms ?? [], placedSession.roomId)} at ${clockHHMM(placedSession.startMin)}`
+            : '';
+          return (
+            <ConfirmDialog
+              title="Unschedule this session?"
+              body={
+                <p>
+                  {pendingUnschedule.ref} will be removed{slotClause}. This cannot be undone.
+                </p>
+              }
+              confirmLabel="Unschedule session"
+              onConfirm={confirmUnschedule}
+              onCancel={() => setPendingUnschedule(null)}
+            />
+          );
+        })()}
     </div>
   );
 }
