@@ -132,7 +132,10 @@ describe("PUT /submissions/:id/slot onto a break (DEC-010 warn-never-block)", ()
     const writeChain: any = {
       values: () => writeChain,
       set: () => writeChain,
-      onConflictDoUpdate: async () => undefined,
+      // DEC-519 wave-6 amendment: upsertSlot gates its ics bump on
+      // `.returning()` having a row -- this fake reports one, since the
+      // no-op differential itself is not the thing under test here.
+      onConflictDoUpdate: () => ({ returning: async () => [{ id: "slot-1" }] }),
       where: async () => undefined,
     };
     const db = {

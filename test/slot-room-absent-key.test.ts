@@ -22,7 +22,13 @@ function makeDb() {
     },
     onConflictDoUpdate: (opts: { set: unknown }) => {
       updateSets.push(opts.set);
-      return Promise.resolve(undefined);
+      // DEC-519 wave-6 amendment: upsertSlot now gates the bump on
+      // `.returning()` having a row. This fake db's whole point is
+      // exercising the tri-state roomId `set` shape (a genuine change in
+      // every case here), so `.returning()` reports one row -- these tests
+      // are not about the no-op differential itself (that's
+      // test/ics-sequence-bumps.test.ts's job).
+      return { returning: () => Promise.resolve([{ id: "slot-1" }]) };
     },
   };
 
