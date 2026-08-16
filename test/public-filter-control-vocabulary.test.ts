@@ -48,10 +48,15 @@ describe("task-w4-f: public filter-bar control vocabulary (DEC-919 amendment)", 
     expect(r).toMatch(/color:\s*var\(--chq-on-ink-muted\);/);
   });
 
-  it("task-w5-a's fixed 190/40 search-box and 140/40 select dimensions are unchanged (one-row-at-820 contract)", () => {
+  it("task-w5-a's fixed search-box+submit (150+40=190) and 140/40 select dimensions are unchanged (one-row-at-820 contract; DEC-919 wave-69 amendment narrowed the input to make room for a visible submit button)", () => {
     const search = rule(CHROME_CSS, "chq-pub-search");
-    expect(search).toMatch(/width:\s*190px;/);
+    expect(search).toMatch(/width:\s*150px;/);
     expect(search).toMatch(/height:\s*40px;/);
+    const submitRe = /button\.chq-pub-search-submit\[type=submit\]\s*\{([^}]*)\}/;
+    const submitMatch = CHROME_CSS.match(submitRe);
+    if (!submitMatch) throw new Error("no rule found for button.chq-pub-search-submit[type=submit]");
+    expect(submitMatch[1]).toMatch(/width:\s*40px;/);
+    expect(submitMatch[1]).toMatch(/height:\s*40px;/);
     const select = rule(CHROME_CSS, "chq-pub-select");
     expect(select).toMatch(/width:\s*140px;/);
     expect(select).toMatch(/height:\s*40px;/);

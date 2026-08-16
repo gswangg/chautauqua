@@ -16,18 +16,15 @@
 // parser reads (never a copied number).
 import { MAX_PUBLIC_QUERY_VALUE_LENGTH } from "../../server/repo/public/bounds";
 
-/** The one keyword-search markup (DEC-919 amendment, wave 40): one compact
- * input at the head of the surface's single .chq-pub-filter-row, with no
- * visible label and no visible submit button — the row reads as one
- * narrowing gesture, not a labelled form stacked above pill navs. The label
- * and submit button are still emitted (visually hidden via
- * .chq-visually-hidden) so the form still works without JS and still
- * announces itself to assistive tech: a search form with no submit control
- * at all is a keyboard trap for anyone who cannot press Enter. `hidden`
- * carries whatever the caller's other active params are (trackId/format/
- * roomId/day/limit, ...) as already-built `<input type="hidden">` elements —
- * PublicSearchBox does not know each surface's knob table, it only renders
- * what it's handed. */
+/** The one keyword-search markup (DEC-919 amendment, wave 40; amended again
+ * wave 69): one compact input at the head of the surface's single
+ * .chq-pub-filter-row, with no visible label (announced to assistive tech
+ * via .chq-visually-hidden) but a real, visible, clickable submit button —
+ * a pointer must be able to hit it directly, not just Enter from the
+ * input. `hidden` carries whatever the caller's other active params are
+ * (trackId/format/roomId/day/limit, ...) as already-built
+ * `<input type="hidden">` elements — PublicSearchBox does not know each
+ * surface's knob table, it only renders what it's handed. */
 export function PublicSearchBox(props: { action: string; q: string | null; hidden?: unknown }) {
   const { action, q, hidden } = props;
   return (
@@ -45,8 +42,11 @@ export function PublicSearchBox(props: { action: string; q: string | null; hidde
         maxlength={MAX_PUBLIC_QUERY_VALUE_LENGTH}
       />
       {hidden as any}
-      <button class="chq-visually-hidden" type="submit">
-        Search
+      <button class="chq-pub-search-submit" type="submit" aria-label="Search">
+        <svg aria-hidden="true" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
       </button>
     </form>
   );

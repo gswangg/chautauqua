@@ -180,8 +180,12 @@ export function ItinerarySearchForm(props: {
           Highlight a track
         </label>
         {/* onchange auto-submits (no JS fallback needed: the visually-hidden
-            submit button below still works without JS, same idiom as
-            PublicSearchBox's hidden submit). */}
+            submit button below still works without JS). DEC-919 amendment
+            (wave 69): PublicSearchBox's own submit is now a real, visible
+            button (a pointer must be able to click it directly) -- this
+            track-highlight form's submit stays visually-hidden, since its
+            primary gesture is the select's onchange, not a click on this
+            button. */}
         {/* DEC-851 amendment (wave 5): the control itself is one of the
             highlight's three visible consequences -- it inverts dark (near-
             black fill, cream text) with its caret whenever a track is set,
