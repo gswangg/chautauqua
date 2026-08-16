@@ -112,11 +112,13 @@ function postRequest(path: string, body?: unknown) {
 }
 
 describe("PATCH /api/v1/submissions/:id appends submission_revision rows (DEC-158)", () => {
-  it("two successive edits produce two attributed revision rows", async () => {
-    // Edit 1: "Old Title"/"Old description" -> "Edit One Title"/"Edit one description"
+  it("the first edit of a never-edited submission also stamps a baseline (AS_SUBMITTED_EDITOR) row", async () => {
+    // Edit 1: "Old Title"/"Old description" -> "Edit One Title"/"Edit one description".
+    // countRevisions reports 0 -> ensureBaselineRevision fires.
     const { db: db1, inserts: inserts1 } = fakeDb([
       [SUBMISSION_ORG_A], // getSubmissionOwnership
-      [{ title: "Old Title", description: "Old description" }], // getSubmissionContent (before)
+      [{ title: "Old Title", description: "Old description", createdAt: new Date(500) }], // getSubmissionContent (before)
+      [{ count: 0 }], // countRevisions (ensureBaselineRevision)
       [{ email: "organizer@example.com", contactId: null }], // resolveActorName
       [{ ...DETAIL_ROW, title: "Edit One Title", description: "Edit one description" }], // getSubmissionDetail
       [], // participants
@@ -127,8 +129,16 @@ describe("PATCH /api/v1/submissions/:id appends submission_revision rows (DEC-15
       patchRequest("/api/v1/submissions/sub-1", { title: "Edit One Title", description: "Edit one description" }),
     );
     expect(res1.status).toBe(200);
-    expect(inserts1).toHaveLength(1);
+    expect(inserts1).toHaveLength(2);
     expect(inserts1[0].vals).toMatchObject({
+      submissionId: "sub-1",
+      editorUserId: null,
+      editorName: "As submitted",
+      title: "Old Title",
+      description: "Old description",
+      createdAt: new Date(500),
+    });
+    expect(inserts1[1].vals).toMatchObject({
       submissionId: "sub-1",
       editorUserId: "u-organizer-a",
       editorName: "organizer@example.com",
@@ -136,10 +146,12 @@ describe("PATCH /api/v1/submissions/:id appends submission_revision rows (DEC-15
       description: "Edit one description",
     });
 
-    // Edit 2: "Edit One Title" -> "Edit Two Title"
+    // Edit 2: "Edit One Title" -> "Edit Two Title". countRevisions now
+    // reports 1 (baseline + edit-1 already exist) -> no second baseline.
     const { db: db2, inserts: inserts2 } = fakeDb([
       [SUBMISSION_ORG_A],
-      [{ title: "Edit One Title", description: "Edit one description" }],
+      [{ title: "Edit One Title", description: "Edit one description", createdAt: new Date(500) }],
+      [{ count: 2 }], // countRevisions
       [{ email: "organizer@example.com", contactId: null }],
       [{ ...DETAIL_ROW, title: "Edit Two Title", description: "Edit two description" }],
       [],
@@ -278,6 +290,25 @@ describe("POST /api/v1/submissions/:id/revisions/:revisionId/restore (DEC-158)",
     expect(res.status).toBe(403);
     expect(inserts).toHaveLength(0);
   });
+
+  // DEC-158 wave-59 amendment: restoring a revision whose content already
+  // equals the current row (most commonly the newest one) is a guaranteed
+  // no-op — refuse loudly instead of a silent unchanged 200.
+  it("400s restoring a revision identical to the current content", async () => {
+    const { db, inserts, updates } = fakeDb([
+      [SUBMISSION_ORG_A], // getSubmissionOwnership
+      [{ id: "rev-2", editorName: "organizer@example.com", title: "Current Title", description: "Current description", createdAt: new Date(2000) }], // getRevision
+      [{ title: "Current Title", description: "Current description" }], // getSubmissionContent (before)
+    ]);
+    const res = await appWithDbAndAuth(db, ORGANIZER_A).request(
+      postRequest("/api/v1/submissions/sub-1/revisions/rev-2/restore"),
+    );
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.message).toBe("This version is identical to what is there now — nothing to restore.");
+    expect(updates).toHaveLength(0);
+    expect(inserts).toHaveLength(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -289,6 +320,7 @@ describe("POST /api/v1/submissions/:id/revisions/:revisionId/restore (DEC-158)",
 function makeTableFakeDb(data: {
   submissionRows: unknown[];
   contactRows: unknown[];
+  revisionCountRows?: unknown[];
 }) {
   const updates: Array<{ table: unknown; values: Record<string, unknown> }> = [];
   const inserts: Array<{ table: unknown; values: Record<string, unknown> }> = [];
@@ -297,6 +329,10 @@ function makeTableFakeDb(data: {
     if (table === schema.submission) return data.submissionRows;
     if (table === schema.contact) return data.contactRows;
     if (table === schema.submissionAnswer) return [];
+    // countRevisions (ensureBaselineRevision) — default to "already has
+    // revisions" so tests that don't care about the baseline path don't
+    // have to supply this.
+    if (table === schema.submissionRevision) return data.revisionCountRows ?? [{ count: 1 }];
     throw new Error("fake db: unexpected table in select");
   }
 
@@ -366,6 +402,39 @@ describe("portal-edit locked-field sync appends a submission_revision (DEC-158)"
     expect(revisionInsert!.values).toMatchObject({
       submissionId: "s1",
       editorUserId: null,
+      editorName: "Jane Doe",
+      title: "New Title",
+      description: "New description",
+    });
+  });
+
+  it("also stamps a baseline row on a never-edited submission (DEC-158 wave-59)", async () => {
+    const { db, inserts } = makeTableFakeDb({
+      submissionRows: [{ title: "Old Title", description: "Old description", createdAt: new Date(700) }],
+      contactRows: [{ firstName: "Jane", lastName: "Doe" }],
+      revisionCountRows: [{ count: 0 }],
+    });
+
+    await saveSubmissionEdits(
+      db,
+      "s1",
+      "c1",
+      { title: "New Title", description: "New description" },
+      null,
+      [],
+    );
+
+    const revisionInserts = inserts.filter((i) => i.table === schema.submissionRevision);
+    expect(revisionInserts).toHaveLength(2);
+    expect(revisionInserts[0]!.values).toMatchObject({
+      submissionId: "s1",
+      editorUserId: null,
+      editorName: "As submitted",
+      title: "Old Title",
+      description: "Old description",
+      createdAt: new Date(700),
+    });
+    expect(revisionInserts[1]!.values).toMatchObject({
       editorName: "Jane Doe",
       title: "New Title",
       description: "New description",

@@ -18,7 +18,7 @@
 import { and, eq, gte } from "drizzle-orm";
 import * as schema from "../../../db/schema";
 import type { Db } from "../../context";
-import { listRevisions } from "../revisions";
+import { AS_SUBMITTED_EDITOR, listRevisions } from "../revisions";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
 
 export interface SubmissionHistoryEntry {
@@ -27,6 +27,11 @@ export interface SubmissionHistoryEntry {
   kind: "submitted" | "edited" | "reviewed" | "emailed";
   label: string;
   detail: string | null;
+  // DEC-158 wave-59 amendment: the submission_revision row this entry maps
+  // to (for `submitted`/`edited`), null for kinds with no revision (reviewed
+  // /emailed) and for a `submitted` entry when no baseline revision exists
+  // yet (nothing has been edited).
+  revisionId: string | null;
 }
 
 /** Newest-first (`at` desc, `id` asc tiebreak) timeline for a submission's
@@ -82,21 +87,30 @@ export async function listSubmissionHistory(db: Db, submissionId: string): Promi
 
   const entries: SubmissionHistoryEntry[] = [];
 
+  // DEC-158 wave-59 amendment: a baseline revision (editorName ===
+  // AS_SUBMITTED_EDITOR) is the pre-any-edit snapshot — it IS the `submitted`
+  // moment, not a separate edit, so it's excluded from the edited loop below
+  // and its id is attached to the `submitted` entry instead.
+  const baseline = revisions.find((r) => r.editorName === AS_SUBMITTED_EDITOR) ?? null;
+
   entries.push({
     id: `submission:${submissionRow.id}`,
     at: submissionRow.createdAt,
     kind: "submitted",
     label: "Submitted",
     detail: submissionRow.externalRef ? `Imported via ${submissionRow.externalRef.split(":")[0]}` : null,
+    revisionId: baseline?.id ?? null,
   });
 
   for (const r of revisions) {
+    if (r.editorName === AS_SUBMITTED_EDITOR) continue;
     entries.push({
       id: r.id,
       at: new Date(r.createdAt),
       kind: "edited",
       label: `Edited by ${r.editorName}`,
       detail: r.title,
+      revisionId: r.id,
     });
   }
 
@@ -117,6 +131,7 @@ export async function listSubmissionHistory(db: Db, submissionId: string): Promi
       kind: "reviewed",
       label: `Reviewed — ${r.planName}`,
       detail: reviewerLabel,
+      revisionId: null,
     });
   }
 
@@ -127,6 +142,7 @@ export async function listSubmissionHistory(db: Db, submissionId: string): Promi
       kind: "emailed",
       label: "Emailed",
       detail: r.subject,
+      revisionId: null,
     });
   }
 

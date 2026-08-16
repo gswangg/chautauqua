@@ -25,6 +25,38 @@ export interface RevisionSummary {
   createdAt: number;
 }
 
+// DEC-158 wave-59 amendment: the newest revision row was always the
+// POST-edit snapshot, and the content a submission was submitted with was
+// never stored — the first edit destroyed it. AS_SUBMITTED_EDITOR is the
+// sentinel editorName that marks a baseline (pre-any-edit) revision row;
+// src/server/repo/submissions/history.ts reads it as the discriminator to
+// suppress a redundant "Edited by As submitted" timeline entry and instead
+// attach the baseline's id to the existing `submitted` history entry.
+export const AS_SUBMITTED_EDITOR = "As submitted";
+
+/** Inserts the submission's original (pre-any-edit) title/description as
+ * revision #1, but ONLY if the submission has no revisions yet — a second
+ * call (e.g. from a later edit) is a no-op. Must be called with the
+ * PRE-edit content and the submission's own createdAt, immediately before
+ * the caller's own appendSubmissionRevision for the actual edit. */
+export async function ensureBaselineRevision(
+  db: Db,
+  submissionId: string,
+  baseline: { title: string; description: string | null; at: Date },
+): Promise<void> {
+  const existing = await countRevisions(db, submissionId);
+  if (existing > 0) return;
+  await db.insert(schema.submissionRevision).values({
+    id: newId(),
+    submissionId,
+    editorUserId: null,
+    editorName: AS_SUBMITTED_EDITOR,
+    title: baseline.title,
+    description: baseline.description,
+    createdAt: baseline.at,
+  });
+}
+
 /** Snapshots the POST-edit state of a submission's title/description. */
 export async function appendSubmissionRevision(db: Db, input: AppendRevisionInput): Promise<string> {
   const id = newId();

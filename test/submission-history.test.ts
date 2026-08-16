@@ -128,6 +128,31 @@ describe("listSubmissionHistory (DEC-892)", () => {
     expect(reviewed?.detail).toBe("Jane Reviewer");
   });
 
+  // DEC-158 wave-59 amendment: a baseline (AS_SUBMITTED_EDITOR) revision row
+  // must not surface as its own "Edited by As submitted" entry — instead its
+  // id is folded into the `submitted` entry's revisionId, and every other
+  // entry carries revisionId: null.
+  it("folds a baseline revision's id into the submitted entry, not a separate edited entry", async () => {
+    const db = fakeDb([
+      [{ id: "sub-1", createdAt: new Date(500), externalRef: null }],
+      [
+        { id: "rev-2", editorName: "organizer@example.com", title: "Edited Title", description: "d2", createdAt: new Date(3000) },
+        { id: "rev-1", editorName: "As submitted", title: "Original Title", description: "d1", createdAt: new Date(500) },
+      ],
+      [],
+      [],
+    ]);
+
+    const entries = await listSubmissionHistory(db, "sub-1");
+
+    expect(entries.map((e) => e.kind)).toEqual(["edited", "submitted"]);
+    expect(entries.find((e) => e.id === "rev-1")).toBeUndefined();
+    const submitted = entries.find((e) => e.kind === "submitted");
+    expect(submitted?.revisionId).toBe("rev-1");
+    const edited = entries.find((e) => e.kind === "edited");
+    expect(edited?.revisionId).toBe("rev-2");
+  });
+
   it("surfaces the import source on the submitted entry when external_ref is set", async () => {
     const db = fakeDb([
       [{ id: "sub-1", createdAt: new Date(1000), externalRef: "sessionize:abc123" }],
