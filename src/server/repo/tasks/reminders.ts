@@ -30,6 +30,7 @@ import { ASSIGNED_LATE_GRACE_DAYS, effectiveAssignmentDueDayLabel } from "../../
 import { ApiError } from "../../http";
 import { zonedMinutesToUtc } from "../../../lib/timezone";
 import { chaseableContactExists } from "./crud";
+import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../../lib/fanout";
 
 // DEC-319 wave-56 amendment: hard ceiling on the single-event outstanding
 // scan below — a per-event reminder pass should never be reading past this
@@ -466,50 +467,69 @@ async function sendReminderEmails(
   // the value being restored, since a chunked UPDATE carries one SET value).
   const toRelease = new Map<string, string[]>(); // key: "null" | epoch-ms string -> assignment ids
 
-  for (const group of claimedGroups) {
-    const rows = outstandingByContact.get(group.contactId) ?? [];
-    if (rows.length === 0) continue;
-    const first = rows[0];
-    if (!first) continue;
+  // Groups with no outstanding rows (or an empty first row) never reach the
+  // mailer at all -- filtered out here, exactly as the old loop's `continue`
+  // skipped them before attempting a send, so they can never show up in
+  // `sent` or `failed`.
+  // The `!portalLink` check stays OUTSIDE the per-recipient failure unit
+  // (unlike the mailer.send call): resolvePortalLinks having no entry for a
+  // claimed group is an internal invariant violation, not a per-recipient
+  // mail failure, so it must still throw and abort the whole call rather
+  // than land in `failed[]`.
+  const sendable = claimedGroups
+    .map((group) => {
+      const rows = outstandingByContact.get(group.contactId) ?? [];
+      const first = rows[0];
+      if (!first) return null;
+      const portalLink = portalLinkMap.get(group.contactId);
+      if (!portalLink) throw new Error(`no portal link resolved for contactId ${group.contactId}`);
+      return { group, first, portalLink };
+    })
+    .filter((x): x is { group: (typeof claimedGroups)[number]; first: OutstandingRow; portalLink: string } => x !== null);
 
-    const portalLink = portalLinkMap.get(group.contactId);
-    if (!portalLink) throw new Error(`no portal link resolved for contactId ${group.contactId}`);
+  // DEC-530 wave-70 amendment: up to MAIL_FANOUT_CONCURRENCY sends in
+  // flight at once; results come back in INPUT order so sent/failed/
+  // toRelease below reconstruct exactly what the old sequential loop
+  // produced.
+  const results = await mapWithConcurrency(sendable, MAIL_FANOUT_CONCURRENCY, async ({ group, first, portalLink }) => {
     const { subject, text: reminderText } = buildReminderMessage(
       eventName,
       eventTimezone,
       group.assignments,
       portalLink,
     );
+    await mailer.send({
+      to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
+      subject,
+      text: reminderText,
+      html: renderEmailHtml(reminderText, {
+        eventName,
+        reason: `you have outstanding tasks for ${eventName}`,
+      }),
+      eventId,
+      contactId: group.contactId,
+      batchId,
+    });
+  });
 
-    try {
-      await mailer.send({
-        to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
-        subject,
-        text: reminderText,
-        html: renderEmailHtml(reminderText, {
-          eventName,
-          reason: `you have outstanding tasks for ${eventName}`,
-        }),
-        eventId,
-        contactId: group.contactId,
-        batchId,
-      });
-    } catch (err) {
-      console.error("reminder email failed for", first.email, err);
-      failed.push({ email: first.email, message: err instanceof Error ? err.message : String(err) });
-      for (const a of group.assignments) {
-        if (!claimedIds.has(a.assignmentId)) continue;
-        const preClaim = preClaimLastReminded.get(a.assignmentId) ?? null;
-        const key = preClaim ? String(preClaim.getTime()) : "null";
-        const idsForKey = toRelease.get(key) ?? [];
-        idsForKey.push(a.assignmentId);
-        toRelease.set(key, idsForKey);
-      }
-      continue;
+  results.forEach((result, i) => {
+    const { group, first } = sendable[i]!;
+    if (result.status === "fulfilled") {
+      sent += 1;
+      return;
     }
-
-    sent += 1;
-  }
+    const err = result.reason;
+    console.error("reminder email failed for", first.email, err);
+    failed.push({ email: first.email, message: err instanceof Error ? err.message : String(err) });
+    for (const a of group.assignments) {
+      if (!claimedIds.has(a.assignmentId)) continue;
+      const preClaim = preClaimLastReminded.get(a.assignmentId) ?? null;
+      const key = preClaim ? String(preClaim.getTime()) : "null";
+      const idsForKey = toRelease.get(key) ?? [];
+      idsForKey.push(a.assignmentId);
+      toRelease.set(key, idsForKey);
+    }
+  });
 
   for (const [key, ids] of toRelease) {
     const restoreValue = key === "null" ? null : new Date(Number(key));

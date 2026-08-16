@@ -21,6 +21,7 @@ import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
 import { dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
 import { DEC_238, DEC_846 } from "../../decisions";
+import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../lib/fanout";
 import {
   requireFullMatch,
   resolveComposeInput,
@@ -193,56 +194,63 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
   // DEC-238 class 2 (organizer-triggered batch): a bad recipient must not
   // abort the whole send — catch per-recipient, keep going, and report the
   // partial outcome in the 200 response rather than surfacing a 500.
-  const failed: { email: string; message: string }[] = [];
-  for (const rendered of toSend) {
-    try {
-      // DEC-547 amendment (wave 43): the ICS construction (and its
-      // resolveIcsOrganizerEmail(c.env) config read, which can throw when
-      // mail isn't configured) now runs INSIDE this per-recipient try —
-      // previously it ran before the try, so an unconfigured deployment
-      // 500'd on the very first recipient instead of landing in `failed[]`.
-      let ics: { filename: string; content: string } | undefined;
-      if (icsMap) {
-        const slot = icsMap.get(rendered.submissionId)!;
-        const submission = submissionById.get(rendered.submissionId)!;
-        ics = {
-          filename: `chq-${rendered.submissionId}.ics`,
-          content: buildIcsEvent(
-            {
-              uidSubmissionId: rendered.submissionId,
-              sequence: slot.icsSequence,
-              title: submission.title,
-              startUtc: zonedMinutesToUtc(slot.day, slot.startMin, event.timezone),
-              endUtc: zonedMinutesToUtc(slot.day, slot.endMin, event.timezone),
-              location: slot.roomName ?? undefined,
-              dtstamp: new Date(),
-            },
-            {
-              method: "REQUEST",
-              organizer: { name: event.name, email: resolveIcsOrganizerEmail(c.env) },
-              attendee: { name: rendered.name, email: rendered.email },
-            },
-          ),
-        };
-      }
-      const attempt = {
-        to: { email: rendered.email, name: rendered.name },
-        subject: rendered.subject,
-        text: rendered.text,
-        html: renderEmailHtml(rendered.text, composeEmailShellOptions(event)),
-        ics,
-        templateId,
-        eventId,
-        contactId: rendered.contactId,
-        batchId,
+  // DEC-530 wave-70 amendment: up to MAIL_FANOUT_CONCURRENCY sends are now
+  // in flight at once instead of one strictly-sequential await per
+  // recipient. mapWithConcurrency never rejects and returns results in
+  // INPUT order, so the failed[] accounting below reconstructs byte-for-byte
+  // what the old sequential try/catch loop produced.
+  const results = await mapWithConcurrency(toSend, MAIL_FANOUT_CONCURRENCY, async (rendered) => {
+    // DEC-547 amendment (wave 43): the ICS construction (and its
+    // resolveIcsOrganizerEmail(c.env) config read, which can throw when
+    // mail isn't configured) runs INSIDE this per-recipient unit — an
+    // unconfigured deployment must land in `failed[]`, never 500.
+    let ics: { filename: string; content: string } | undefined;
+    if (icsMap) {
+      const slot = icsMap.get(rendered.submissionId)!;
+      const submission = submissionById.get(rendered.submissionId)!;
+      ics = {
+        filename: `chq-${rendered.submissionId}.ics`,
+        content: buildIcsEvent(
+          {
+            uidSubmissionId: rendered.submissionId,
+            sequence: slot.icsSequence,
+            title: submission.title,
+            startUtc: zonedMinutesToUtc(slot.day, slot.startMin, event.timezone),
+            endUtc: zonedMinutesToUtc(slot.day, slot.endMin, event.timezone),
+            location: slot.roomName ?? undefined,
+            dtstamp: new Date(),
+          },
+          {
+            method: "REQUEST",
+            organizer: { name: event.name, email: resolveIcsOrganizerEmail(c.env) },
+            attendee: { name: rendered.name, email: rendered.email },
+          },
+        ),
       };
-      await mailer.send(attempt);
-    } catch (err) {
+    }
+    const attempt = {
+      to: { email: rendered.email, name: rendered.name },
+      subject: rendered.subject,
+      text: rendered.text,
+      html: renderEmailHtml(rendered.text, composeEmailShellOptions(event)),
+      ics,
+      templateId,
+      eventId,
+      contactId: rendered.contactId,
+      batchId,
+    };
+    await mailer.send(attempt);
+  });
+  const failed: { email: string; message: string }[] = [];
+  results.forEach((result, i) => {
+    if (result.status === "rejected") {
       // DEC-923: the mailer itself logs the failed attempt (status
       // 'failed') before rethrowing — no route-level duplicate write.
+      const rendered = toSend[i]!;
+      const err = result.reason;
       failed.push({ email: rendered.email, message: err instanceof Error ? err.message : String(err) });
     }
-  }
+  });
 
   // Bump ics_sequence exactly once per submission per send call — after
   // every recipient of every submission has been sent the CURRENT stored

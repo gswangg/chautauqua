@@ -33,6 +33,7 @@ import { loadRecentlySent } from "../../server/repo/comms";
 import { dedupeCutoff, dedupeKey } from "../../domain/comms-dedupe";
 import { DEC_238, DEC_466, DEC_535, DEC_707, DEC_708 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
+import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../lib/fanout";
 import {
   parseRoundQuery,
   ratingCriteria,
@@ -346,28 +347,35 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // (DEC-923), never here.
   const mailer = makeMailer(c.var.db, c.env);
 
-  for (const laggard of attempted) {
-    try {
-      const name = nameByUserId.get(laggard.userId) ?? laggard.email;
-      const text = `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}"${closeDateClause}. Review here: ${queueUrl}`;
-      // DEC-191: reviewers are users, not contacts; per-contact email history
-      // intentionally excludes rows like this one.
-      await mailer.send({
-        to: { email: laggard.email, name },
-        subject: reminderSubject,
-        text,
-        html: renderEmailHtml(text, {
-          eventName: remindEvent?.name ?? null,
-          reason: `you're a reviewer with outstanding evaluations in "${plan.name}"`,
-        }),
-        eventId: plan.eventId,
-        contactId: null,
-        batchId,
-      });
+  // DEC-530 wave-70 amendment: up to MAIL_FANOUT_CONCURRENCY sends in
+  // flight at once; results come back in INPUT order so reminded[]/failed[]
+  // below reconstruct exactly what the old sequential loop produced.
+  const results = await mapWithConcurrency(attempted, MAIL_FANOUT_CONCURRENCY, async (laggard) => {
+    const name = nameByUserId.get(laggard.userId) ?? laggard.email;
+    const text = `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}"${closeDateClause}. Review here: ${queueUrl}`;
+    // DEC-191: reviewers are users, not contacts; per-contact email history
+    // intentionally excludes rows like this one.
+    await mailer.send({
+      to: { email: laggard.email, name },
+      subject: reminderSubject,
+      text,
+      html: renderEmailHtml(text, {
+        eventName: remindEvent?.name ?? null,
+        reason: `you're a reviewer with outstanding evaluations in "${plan.name}"`,
+      }),
+      eventId: plan.eventId,
+      contactId: null,
+      batchId,
+    });
+  });
+  results.forEach((result, i) => {
+    const laggard = attempted[i]!;
+    if (result.status === "fulfilled") {
       reminded.push(laggard.userId);
-    } catch (err) {
-      failed.push({ email: laggard.email, message: err instanceof Error ? err.message : String(err) });
+      return;
     }
-  }
+    const err = result.reason;
+    failed.push({ email: laggard.email, message: err instanceof Error ? err.message : String(err) });
+  });
   return c.json({ reminded, sent: reminded.length, skipped: skipped.length, failed, remaining });
 });

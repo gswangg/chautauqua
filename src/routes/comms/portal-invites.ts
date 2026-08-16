@@ -18,6 +18,7 @@ import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
 import { describeUnresolvedSelection } from "../../lib/refusal-copy"; // DEC-856
+import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../lib/fanout";
 
 export const portalInvitesRoutes = new Hono<AppEnv>();
 
@@ -84,8 +85,10 @@ portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrgani
     email: "",
     message: `${m.name} has no email address on file`,
   }));
-  let sent = 0;
-  for (const r of rendered) {
+  // DEC-530 wave-70 amendment: up to MAIL_FANOUT_CONCURRENCY sends in
+  // flight at once; results come back in INPUT order so the accounting
+  // below reconstructs exactly what the old sequential loop produced.
+  const results = await mapWithConcurrency(rendered, MAIL_FANOUT_CONCURRENCY, async (r) => {
     const attempt = {
       to: { email: r.email, name: r.name },
       subject: r.subject,
@@ -98,15 +101,20 @@ portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrgani
       contactId: r.contactId,
       batchId,
     };
-    try {
-      await mailer.send(attempt);
+    await mailer.send(attempt);
+  });
+  let sent = 0;
+  results.forEach((result, i) => {
+    if (result.status === "fulfilled") {
       sent += 1;
-    } catch (err) {
-      // DEC-923: the mailer itself logs the failed attempt before
-      // rethrowing — no route-level duplicate write.
-      failed.push({ email: r.email, message: err instanceof Error ? err.message : String(err) });
+      return;
     }
-  }
+    // DEC-923: the mailer itself logs the failed attempt before
+    // rethrowing — no route-level duplicate write.
+    const r = rendered[i]!;
+    const err = result.reason;
+    failed.push({ email: r.email, message: err instanceof Error ? err.message : String(err) });
+  });
 
   return c.json({ sent, skipped: 0, failed });
 });

@@ -22,6 +22,7 @@ import { currentOrgId, asRecord } from "./shared";
 import { newId } from "../../../domain/ids";
 import { dedupeCutoff, dedupeKey } from "../../../domain/comms-dedupe";
 import { DEC_766, DEC_238 } from "../../../decisions";
+import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../../lib/fanout";
 
 void DEC_766;
 
@@ -279,7 +280,10 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     // from UnconfiguredMailer.send inside the try/catch below, not here.
     const mailer = makeMailer(c.var.db, c.env);
 
-    for (const rendered of toSend) {
+    // DEC-530 wave-70 amendment: up to MAIL_FANOUT_CONCURRENCY sends in
+    // flight at once; results come back in INPUT order so failed[] below
+    // reconstructs exactly what the old sequential loop produced.
+    const results = await mapWithConcurrency(toSend, MAIL_FANOUT_CONCURRENCY, async (rendered) => {
       const attempt = {
         to: { email: rendered.email, name: rendered.name },
         subject: rendered.subject,
@@ -292,15 +296,18 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
         contactId: rendered.contactId,
         batchId,
       };
-      try {
-        await mailer.send(attempt);
-      } catch (err) {
-        console.error("CRM bulk email failed for", rendered.email, err);
+      await mailer.send(attempt);
+    });
+    results.forEach((result, i) => {
+      if (result.status === "rejected") {
+        const rendered = toSend[i]!;
+        console.error("CRM bulk email failed for", rendered.email, result.reason);
         // DEC-923: the mailer itself logs the failed attempt before
         // rethrowing — no route-level duplicate write.
+        const err = result.reason;
         failed.push({ email: rendered.email, message: err instanceof Error ? err.message : String(err) });
       }
-    }
+    });
 
     // DEC-949 amendment: the send response must never carry rendered bodies
     // (they contain live claim tokens minted above) -- only the SPA-consumed
