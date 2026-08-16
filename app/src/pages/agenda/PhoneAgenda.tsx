@@ -4,6 +4,7 @@ import { buildPhoneSlots } from './phoneSlots';
 import { clockHHMM } from '../../lib/clock';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import { countOf } from '../../lib/plural';
+import { usePendingLabel } from '../../components/PendingAction';
 
 interface Armed {
   submissionId: string;
@@ -76,6 +77,14 @@ export function PhoneAgenda({
   const [activeRoomId, setActiveRoomId] = useState<string | null>(rooms[0]?.id ?? TBD_ROOM_ID);
   const [armed, setArmed] = useState<Armed | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // DEC-733 (V11 pending grammar): same auto-schedule operation as the
+  // desktop Agenda header button, wired here from the same
+  // `autoScheduling` prop the parent already threads down.
+  const autoSchedulePendingLabel = usePendingLabel({
+    pending: autoScheduling,
+    restLabel: 'Auto-schedule',
+    participle: 'Auto-scheduling',
+  });
 
   useEscapeKey(sheetOpen, () => setSheetOpen(false));
 
@@ -250,11 +259,11 @@ export function PhoneAgenda({
           </button>
           <button
             type="button"
-            className="chq-btn chq-btn-primary chq-phone-footer-btn"
+            className={`chq-btn chq-btn-primary chq-phone-footer-btn ${autoSchedulePendingLabel.buttonProps.className}`.trim()}
             onClick={onAutoSchedule}
-            disabled={autoScheduling}
+            disabled={autoSchedulePendingLabel.buttonProps.disabled}
           >
-            {autoScheduling ? 'Auto-scheduling...' : 'Auto-schedule'}
+            {autoSchedulePendingLabel.label}
           </button>
         </div>
       </div>
