@@ -239,14 +239,27 @@ describe("DEC-562: JS re-aggregation sorts gain the contact-id tiebreak (byte-id
     ];
     const leadCandidatesB = [...leadCandidatesA].reverse();
 
+    // DEC-370/DEC-338 (w61-i): listEventDeliverableFiles now issues its reads
+    // as two Promise.all waves rather than one strict ladder, so the
+    // db.select() CLAIM order (this fake claims a response slot at select()
+    // call time, per the file-header comment) no longer matches the old
+    // top-to-bottom source order. Measured order for kinds:[] is: event row,
+    // kindCounts' deliverable group-by (wave 1), the deliverable-roots page
+    // query (wave 1), the headshot-roots page query (wave 1), kindCounts'
+    // headshot count (wave 1's own second internal read, resumed after its
+    // first await lands), the chain-tip size sum (wave 2), the page's
+    // lead-speaker rows (wave 2), then the page's own chain resolution
+    // (wave 2) — batchContactNames issues no statement here since this
+    // fixture's uploadedByContactId/headshot rows never populate a
+    // non-empty contactIds set.
     async function run(leadRows: unknown[]) {
       const db = makeFakeDb([
         [{ recordPrefix: "SES" }], // event prefix
         [], // DEC-902 kindCounts: deliverable `group by kind` — unseeded here (not asserted)
-        [], // DEC-902 kindCounts: headshot dedupe-by-id group — unseeded here (not asserted)
         [pageRow], // matching deliverable chain roots (bounded scan)
-        [{ sum: 0 }], // DEC-773 amendment (w29-b): totalSizeBytes chain-tip SUM aggregate — unseeded here (not asserted)
         [], // ALL matching headshot roots — kinds:[] queries both branches; none seeded here
+        [], // DEC-902 kindCounts: headshot dedupe-by-id group — unseeded here (not asserted)
+        [{ sum: 0 }], // DEC-773 amendment (w29-b): totalSizeBytes chain-tip SUM aggregate — unseeded here (not asserted)
         leadRows, // lead-speaker candidate rows (per-page)
         [fileRow], // per-page chain resolution (loadDeliverableChains, now page-scoped)
       ]);
