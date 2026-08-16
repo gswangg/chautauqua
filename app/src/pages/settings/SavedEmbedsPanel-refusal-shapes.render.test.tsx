@@ -56,6 +56,8 @@ describe('SavedEmbedsPanel refusal shapes (DEC-856)', () => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
+    const dialog1 = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog1).getByRole('button', { name: 'Turn it off' }));
 
     const message = await screen.findByText('Must be true or false');
     expect(message).toHaveAttribute('role', 'alert');
@@ -78,6 +80,8 @@ describe('SavedEmbedsPanel refusal shapes (DEC-856)', () => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
+    const dialog2 = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog2).getByRole('button', { name: 'Turn it off' }));
 
     const message = await screen.findByText('surface: must be a known public surface');
     expect(message).toHaveAttribute('role', 'alert');
@@ -100,6 +104,8 @@ describe('SavedEmbedsPanel refusal shapes (DEC-856)', () => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
+    const dialog3 = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog3).getByRole('button', { name: 'Turn it off' }));
 
     expect(await screen.findByText('Failed to update saved embed')).toBeInTheDocument();
   });

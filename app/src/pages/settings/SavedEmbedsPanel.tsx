@@ -63,6 +63,13 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
   const [codeOpenId, setCodeOpenId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<SavedEmbed | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // DEC-941: turning a saved embed OFF stops a PUBLIC URL from serving on
+  // whatever page it's pasted into -- an effect the organiser cannot see
+  // from here, so it is routed through ConfirmDialog at the default
+  // reversible weight (one sentence, no typed phrase; nothing is deleted).
+  // Turning it back ON stays a direct click.
+  const [pendingToggleOff, setPendingToggleOff] = useState<SavedEmbed | null>(null);
+  const [togglingOff, setTogglingOff] = useState(false);
   // DEC-856 (wave 67 amendment): PATCH /embeds/:id's only named key on this
   // panel's writers is `enabled` (the toggle) -- any other key the server
   // ever throws here has no control on this row and renders labelled,
@@ -105,6 +112,16 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
       } else {
         setError(err instanceof ApiError ? err.message : 'Failed to update saved embed');
       }
+    }
+  }
+
+  async function handleConfirmToggleOff(embed: SavedEmbed) {
+    setTogglingOff(true);
+    try {
+      await handleToggle(embed);
+    } finally {
+      setTogglingOff(false);
+      setPendingToggleOff(null);
     }
   }
 
@@ -208,7 +225,13 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
                       <Link className="chq-link-button" to={editHref(embed.id)}>
                         Edit
                       </Link>
-                      <button type="button" className="chq-link-button" onClick={() => void handleToggle(embed)}>
+                      <button
+                        type="button"
+                        className="chq-link-button"
+                        onClick={() =>
+                          embed.enabled ? setPendingToggleOff(embed) : void handleToggle(embed)
+                        }
+                      >
                         {embed.enabled ? 'Turn off' : 'Turn on'}
                       </button>
                       <button type="button" className="chq-link-button" onClick={() => setPendingDelete(embed)}>
@@ -259,6 +282,17 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
           pending={deleting}
           onConfirm={() => void handleDelete(pendingDelete)}
           onCancel={() => setPendingDelete(null)}
+        />
+      ) : null}
+
+      {pendingToggleOff ? (
+        <ConfirmDialog
+          title={`Turn off ${pendingToggleOff.name}?`}
+          body={`The /embed/e/${pendingToggleOff.id} permalink stops serving this surface. The saved recipe, its name and its code survive -- Turn on puts it back.`}
+          confirmLabel="Turn it off"
+          pending={togglingOff}
+          onConfirm={() => void handleConfirmToggleOff(pendingToggleOff)}
+          onCancel={() => setPendingToggleOff(null)}
         />
       ) : null}
     </section>

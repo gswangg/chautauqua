@@ -17,6 +17,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ContactDrawer } from './ContactDrawer';
 import { mockApi, errorEnvelope } from '../../test-utils/mockApi';
+import { resetEventsCacheForTests } from '../../lib/useCurrentEvent';
 import type { ContactDetail } from './types';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -63,6 +64,8 @@ const CONTACT: ContactDetail = {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.localStorage.clear();
+  resetEventsCacheForTests();
 });
 
 describe('ContactDrawer render (DEC-616 record view)', () => {
@@ -77,7 +80,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     });
 
     const heads = dialog.querySelectorAll('.chq-contacts-record-group-head .chq-section-label');
-    expect(Array.from(heads).map((el) => el.textContent)).toEqual(['Contact', 'Profile', 'This event', 'Notes']);
+    expect(Array.from(heads).map((el) => el.textContent)).toEqual(['Contact', 'Profile', 'On this event', 'Notes']);
 
     // Every group head carries the shared 2px-ink section rule.
     const body = topLevelRuleBody(SHARED_CSS, '.chq-section-head');
@@ -390,9 +393,10 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
       expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
     });
 
-    // All three live inside the "This event" group.
+    // All three live inside the event-scoped group (falls back to 'On this
+    // event' when the drawer has no resolved current-event name).
     const thisEventGroup = within(dialog)
-      .getByText('This event')
+      .getByText('On this event')
       .closest('.chq-contacts-record-group') as HTMLElement;
     expect(within(thisEventGroup).getByText('Dietary')).toBeInTheDocument();
     expect(within(thisEventGroup).getByText('Travel')).toBeInTheDocument();
@@ -462,6 +466,65 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     const body = topLevelRuleBody(SHARED_CSS, '.chq-contacts-drawer-actions');
     expect(body).toMatch(/position:\s*sticky/);
     expect(body).toMatch(/bottom:\s*0/);
+  });
+});
+
+describe('ContactDrawer event-scoped group (DEC-941)', () => {
+  it('falls back to "On this event" with a caption naming the split, when no current event resolves', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    const group = within(dialog).getByText('On this event').closest('.chq-contacts-record-group') as HTMLElement;
+    expect(
+      within(group).getByText(
+        "These facts belong to this event only — everything above is this person's org-wide record.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(dialog).getByText("Saves both the org-wide record and this event's facts"),
+    ).toBeInTheDocument();
+  });
+
+  it('titles the group with the resolved current event name', async () => {
+    window.localStorage.setItem('chq.currentEventId', 'ev-1');
+    mockApi({
+      'GET /api/v1/contacts/ct1': CONTACT,
+      'GET /api/v1/events': { items: [{ id: 'ev-1', name: 'DevCon 2026' }], total: 1, page: 1, perPage: 50 },
+    });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    let groupHead: HTMLElement;
+    await waitFor(() => {
+      const heads = dialog.querySelectorAll('.chq-contacts-record-group-head .chq-section-label');
+      const found = Array.from(heads).find((el) => el.textContent === 'DevCon 2026');
+      expect(found).toBeDefined();
+      groupHead = found as HTMLElement;
+    });
+    expect(within(dialog).queryByText('On this event')).not.toBeInTheDocument();
+
+    const group = groupHead!.closest('.chq-contacts-record-group') as HTMLElement;
+    expect(
+      within(group).getByText(
+        "These facts belong to this event only — everything above is this person's org-wide record.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(dialog).getByText("Saves both the org-wide record and DevCon 2026's facts"),
+    ).toBeInTheDocument();
   });
 });
 
