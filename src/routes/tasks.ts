@@ -305,6 +305,38 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
     }
   }
 
+  // DEC-746 (wave 59 amendment): contactIds is OPTIONAL -- absent means
+  // every accepted speaker (today's behavior, unchanged); present must be a
+  // non-empty array of ids that all belong to this event's roster. Parsed
+  // and resolved BEFORE createTask so a refused request writes nothing.
+  let resolvedContactIds: string[] | undefined;
+  if (fields.contactIds === undefined && body.contactIds !== undefined) {
+    if (Array.isArray(body.contactIds) && body.contactIds.length === 0) {
+      fields.contactIds = "A task must be for at least one person";
+    } else {
+      let parsedContactIds: string[];
+      try {
+        parsedContactIds = parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: 200 }); // DEC-182
+      } catch (err) {
+        if (err instanceof ApiError) {
+          fields.contactIds = err.fields?.contactIds ?? err.message;
+          parsedContactIds = [];
+        } else {
+          throw err;
+        }
+      }
+      if (fields.contactIds === undefined) {
+        const rosterIds = await filterRosterContactIds(c.var.db, eventId, parsedContactIds);
+        const notOnRoster = parsedContactIds.filter((id) => !rosterIds.has(id));
+        if (notOnRoster.length > 0) {
+          fields.contactIds = `${notOnRoster.length} of ${parsedContactIds.length} contacts are not on this event's roster -- they must be participants on an accepted submission of this event`;
+        } else {
+          resolvedContactIds = parsedContactIds;
+        }
+      }
+    }
+  }
+
   if (Object.keys(fields).length > 0) {
     throw new ApiError("invalid", "Invalid task", fields);
   }
@@ -318,6 +350,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
     formId,
     deliverableKind,
     instructions,
+    contactIds: resolvedContactIds,
   };
   const created = await createTask(c.var.db, eventId, input);
   return c.json(created, 201);

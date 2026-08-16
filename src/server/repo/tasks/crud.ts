@@ -36,6 +36,13 @@ export interface CreateTaskInput {
   // CNT-01 (migrations/0036): a free-text brief for the assignee, distinct
   // from `description`. null clears/omits it.
   instructions?: string | null;
+  // DEC-746 (wave 59 amendment, REVERSES the original "creation always
+  // expands" clause): when present, the caller has already validated this
+  // is a non-empty array of ids that all pass filterRosterContactIds for
+  // this event -- createTask assigns exactly this set instead of expanding.
+  // Absent means every accepted speaker, byte-for-byte the original
+  // behavior.
+  contactIds?: string[];
 }
 
 export interface TaskRecord {
@@ -323,9 +330,13 @@ export async function createTask(db: Db, eventId: string, input: CreateTaskInput
     throw err;
   }
 
-  // DEC-746: createTask always expands to every accepted speaker (with an
-  // active invite, per DEC-283/DEC-278) -- there is no longer an opt-out.
-  const contactIds = await listAcceptedContactIds(db, eventId);
+  // DEC-746 (wave 59 amendment, REVERSES the original always-expand
+  // clause): input.contactIds, when present, is an explicit non-empty
+  // roster subset the caller (routes/tasks.ts) has already validated via
+  // filterRosterContactIds -- use it as-is. Absent still expands to every
+  // accepted speaker (with an active invite, per DEC-283/DEC-278),
+  // byte-for-byte the original behavior.
+  const contactIds = input.contactIds ?? (await listAcceptedContactIds(db, eventId));
   await createTaskAssignments(db, id, contactIds, now);
 
   const rows = await db.select().from(schema.task).where(eq(schema.task.id, id)).limit(1);
