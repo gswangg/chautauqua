@@ -7,7 +7,7 @@
 // (/admin/submissions/forms); this panel only links there rather than
 // re-implementing it. Zero new server endpoints.
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { DateField } from '../../components/DateField';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiList, apiPatch, ApiError } from '../../lib/api';
@@ -438,7 +438,13 @@ export function CallForPapersPanel() {
                   Change it in Event settings
                 </a>
               }>
-                <input className="chq-input" readOnly value={event.timezone} aria-readonly="true" />
+                <input
+                  id="cfp-timezone-readonly"
+                  className="chq-input"
+                  readOnly
+                  value={event.timezone}
+                  aria-readonly="true"
+                />
               </SettingsField>
             ) : null}
             {event && editWindowState !== 'open' ? (
@@ -492,9 +498,9 @@ export function CallForPapersPanel() {
           <div className="chq-settings-edit-section">
             <div className="chq-settings-section-head">
               <h2>Questions · {form.fields?.length ?? 0}</h2>
-              <a href="/submissions/forms" className="chq-settings-inline-action">
+              <Link to="/submissions/forms" className="chq-settings-inline-action">
                 Open the form builder ›
-              </a>
+              </Link>
             </div>
             <p className="chq-settings-row-hint">
               Adding, reordering and removing questions happens in the builder — this page owns the window and the

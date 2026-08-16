@@ -396,7 +396,8 @@
 
 /* DEC-597 (wave 8 amendment): NewContactModal's frame 08--16 two-up rows --
    First/Last share one row, Company/Title share a second, Email stays full
-   width between them (docs/design/Chautauqua Contacts.dc.html:821-845). */
+   width between them (docs/design/Chautauqua Contacts.dc.html:821-845
+   `grid-template-columns:1fr 1fr; gap:16px`). */
 .chq-contacts-new-contact-row-2up {
   display: grid;
   grid-template-columns: 1fr 1fr;

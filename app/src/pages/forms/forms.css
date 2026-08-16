@@ -351,7 +351,7 @@
   justify-content: space-between;
   margin: 2px -26px -20px;
   padding: 16px 26px;
-  background: var(--chq-paper-2, #efebdf);
+  background: var(--chq-surface-sunk);
   border-top: 1px solid var(--chq-rule);
 }
 

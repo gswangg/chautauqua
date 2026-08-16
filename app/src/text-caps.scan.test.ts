@@ -68,6 +68,12 @@ const EXEMPTIONS: Exemption[] = [
     reason: 'read-only copy-fallback echo of an already-validated public link, not user input',
   },
   {
+    file: 'pages/settings/CallForPapersPanel.tsx',
+    control: 'cfp-timezone-readonly',
+    reason:
+      'read-only echo of event.timezone, whose ONE writer is EventSettingsPanel (PATCH /api/v1/events/:eventId) per the DEC-731 wave-8 deviation recorded at this control -- this panel never submits it, so no capping route reaches this field',
+  },
+  {
     file: 'pages/settings/PortalSettingsPanel.tsx',
     control: 'chq-portal-accent-color',
     reason: 'validated as hex color format (isValidHexColor), not length-capped',
