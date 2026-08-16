@@ -261,6 +261,12 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   // /reset/:token is single-use and excluded in test/audit-claims.test.ts.
   { path: "/forgot", role: "public" },
   { path: "/docs/api", role: "public" },
+  // DEC-382 wave-3 amendment: the public docs site (src/routes/docs-site.tsx)
+  // -- the index and one concrete article slug ("start-here",
+  // src/routes/docs-content/start-here.ts) so the sweep visits a real
+  // article, not just the index shell.
+  { path: "/docs", role: "public" },
+  { path: "/docs/start-here", role: "public" },
   // w45-a: guardDevMailbox (src/server/app.ts) redirects an anonymous
   // visitor to /login and requires role 'organizer' -- this row was
   // declaring role: "public" but no anonymous visitor can actually reach
