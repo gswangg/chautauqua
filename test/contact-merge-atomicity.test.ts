@@ -60,6 +60,7 @@ function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
     where: () => chain,
+    orderBy: () => chain,
     limit: async () => rows,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };

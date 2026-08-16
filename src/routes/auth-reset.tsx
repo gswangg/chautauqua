@@ -110,6 +110,9 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
   // best-effort email send) that must NEVER change the response — the
   // exact same <CheckEmailPage> is returned at the bottom of this handler
   // regardless of which branch below runs.
+  // DEC-558 (wave 79): at most one row by construction — `user_email_idx` is
+  // a uniqueIndex on schema.user.email, and normalizedEmail is lowercased
+  // above to match how it's stored.
   const rows = await db.select().from(schema.user).where(eq(schema.user.email, normalizedEmail)).limit(1);
   const user = rows[0];
 

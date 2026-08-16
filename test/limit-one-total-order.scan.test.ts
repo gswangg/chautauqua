@@ -52,6 +52,50 @@ import { join } from "node:path";
  */
 
 const SRC_ROOT = join(__dirname, "..", "src");
+const SCHEMA_DIR = join(__dirname, "..", "src", "db", "schema");
+
+// DEC-558 (wave 79 amendment): a bare `DEC-\d{3}` in the six lines above a
+// `.limit(1)` chain used to be enough, on its own, to waive the chain --
+// which meant ANY comment citing ANY DEC number (and nearly every comment
+// in this codebase cites one) could exempt a genuinely unordered chain.
+// Narrowed so a DEC citation only exempts when the same six-line window
+// ALSO either (a) names a real `uniqueIndex(...)` declared in
+// src/db/schema/** (reusing test/limit-one-index-citation.scan.test.ts's
+// read-the-schema-as-text derivation -- duplicated here, ~10 lines, rather
+// than imported, so this file has no cross-test-file coupling; see that
+// file for the canonical population and its own citation-correctness
+// checks) or (b) explicitly states an ordering (`orderBy`/`ORDER BY`).
+function deriveUniqueIndexNames(): Set<string> {
+  const names = new Set<string>();
+  const re = /uniqueIndex\(\s*"([a-zA-Z0-9_]+)"/g;
+  for (const file of listSourceFiles(SCHEMA_DIR)) {
+    const src = readFileSync(file, "utf8");
+    let m: RegExpExecArray | null;
+    re.lastIndex = 0;
+    while ((m = re.exec(src))) {
+      if (m[1]) names.add(m[1]);
+    }
+  }
+  return names;
+}
+
+const UNIQUE_INDEX_NAMES = deriveUniqueIndexNames();
+
+/** True when `context` (the six-line window above a chain, or the leading
+ * comment swept into the statement bounds) names a declared uniqueIndex, or
+ * states an explicit ordering. Checked as a literal substring match against
+ * every declared uniqueIndex name (not constrained to the `*_idx` naming
+ * convention Part 1's scan targets) -- some real uniqueIndex declarations
+ * are named e.g. `file_previous_file_id_unique`, without an `_idx` suffix,
+ * and a citation of that name is exactly as valid a claim as one that ends
+ * in `_idx`. */
+function namesUniqueIndexOrOrdering(context: string): boolean {
+  if (/\.orderBy\(|ORDER BY/.test(context)) return true;
+  for (const name of UNIQUE_INDEX_NAMES) {
+    if (context.includes(name)) return true;
+  }
+  return false;
+}
 
 // DEC-558: this ceiling only ever decreases. It was seeded at the count this
 // branch measured against src/ as of wave 73 (177 total `.limit(1)` call
@@ -69,6 +113,26 @@ const SRC_ROOT = join(__dirname, "..", "src");
 // (outside src/server/repo/** entirely), src/server/repo/contacts/** and
 // src/server/repo/files*.ts (task-w75-b), src/server/repo/portal/**
 // (task-w74-b), and src/server/repo/review/** (task-w74-a/-c).
+//
+// Wave 79 (task-w79-b, DEC-558 amendment): narrowed hasDecCitation (below)
+// to require a named uniqueIndex or an explicit ordering alongside the DEC
+// number, not a bare DEC number alone -- a bare DEC-NNN citation used to
+// exempt a chain regardless of what the comment actually argued. Measured
+// against this worktree's src/ under the narrowed rule, BEFORE any src/
+// fix: 22 (up from 17), because 8 real sites had only ever been waived by
+// the bare-DEC-number loophole (contacts/merge.ts EXISTS-only reasoning
+// with no `.orderBy`, files-authz.ts's "1:1 in practice" note on a plain
+// index, and a stale lookup in auth-reset.tsx that had no uniqueness
+// reasoning at all). Each was resolved the honest way this same wave: an
+// `.orderBy(schema.<table>.id)` added to genuinely EXISTS-only chains
+// (contacts/merge.ts) so the candidate set has a real total order even
+// though row identity was already never observed, and a real uniqueIndex
+// name added to the citing comment where DEC-558 reasoning already argued
+// for one but didn't name it in the six-line citation window (auth-reset.
+// tsx: user_email_idx; contacts/merge.ts: pipeline_entry_org_id_contact_id_
+// idx). That brought the measured count back down to 17 -- the same 17
+// sites wave 75 left to sibling lanes (see above), now re-verified honest
+// under the narrowed rule rather than merely uncounted. Ceiling held at 17.
 const MAX_UNORDERED_LIMIT_ONE = 17;
 
 function listSourceFiles(dir: string): string[] {
@@ -208,7 +272,10 @@ function findUnorderedLimitOneChains(source: string, file: string): LimitOneChai
     const sourceLines = source.split("\n");
     const contextStart = Math.max(0, chainStartLine - 1 - 6);
     const contextLines = sourceLines.slice(contextStart, chainStartLine - 1).join("\n");
-    const hasDecCitation = DEC_CITATION_RE.test(contextLines) || DEC_CITATION_RE.test(rawChainText.slice(0, codeOffset));
+    const leadingCommentText = rawChainText.slice(0, codeOffset);
+    const hasDecCitation =
+      (DEC_CITATION_RE.test(contextLines) && namesUniqueIndexOrOrdering(contextLines)) ||
+      (DEC_CITATION_RE.test(leadingCommentText) && namesUniqueIndexOrOrdering(leadingCommentText));
 
     if (hasOrderBy || hasPrimaryKeyPredicate || hasDecCitation) continue;
 

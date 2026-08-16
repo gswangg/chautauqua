@@ -398,12 +398,16 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
     .select({ id: schema.user.id })
     .from(schema.user)
     .where(eq(schema.user.contactId, keepId))
+    .orderBy(schema.user.id)
     .limit(1);
-  // DEC-558: same EXISTS-only reasoning as keepUserRows above.
+  // DEC-558: same EXISTS-only reasoning as keepUserRows above -- .orderBy is
+  // a total order over the (never-observed) candidate set, added wave 79 so
+  // this chain's DEC-558 exemption is checkable, not just asserted.
   const mergeUserRows = await db
     .select({ id: schema.user.id })
     .from(schema.user)
     .where(eq(schema.user.contactId, mergeId))
+    .orderBy(schema.user.id)
     .limit(1);
   if (keepUserRows.length > 0 && mergeUserRows.length > 0) {
     throw new ApiError("conflict", "Both contacts have a login account; remove one account before merging");
@@ -426,6 +430,7 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
     .select({ id: schema.user.id, contactId: schema.user.contactId })
     .from(schema.user)
     .where(sql`lower(${schema.user.email}) = ${mergedEmailLower}`)
+    .orderBy(schema.user.id)
     .limit(1);
   const owner = emailConflictRows[0];
   if (owner && emailConflictsWithOtherAccount(owner.contactId, keepId, mergeId)) {
@@ -578,7 +583,8 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
     .from(schema.pipelineEntry)
     .where(eq(schema.pipelineEntry.contactId, keepId))
     .limit(1);
-  // DEC-558: same reasoning as keepEntryRows above.
+  // DEC-558: same `pipeline_entry_org_id_contact_id_idx` uniqueIndex
+  // reasoning as keepEntryRows above.
   const mergeEntryRows = await db
     .select({ id: schema.pipelineEntry.id, stage: schema.pipelineEntry.stage })
     .from(schema.pipelineEntry)

@@ -224,6 +224,7 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     const chain: any = {
       from: () => chain,
       where: () => chain,
+      orderBy: () => chain,
       limit: async () => rows,
       then: (resolve: (v: unknown[]) => void) => resolve(rows),
     };
