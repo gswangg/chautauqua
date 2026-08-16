@@ -46,6 +46,7 @@ function fakeDb(selectQueue: unknown[][], capturedWheres: unknown[]) {
 }
 
 const PLAN_CRITERIA = JSON.stringify([{ id: "cri_1", label: "Clarity", kind: "rating", weight: 1 }]);
+const PLAN_SCALE = JSON.stringify({ min: 1, max: 5 });
 
 function evaluationRows() {
   return [
@@ -54,6 +55,7 @@ function evaluationRows() {
       planName: "Program Committee",
       criteriaJson: PLAN_CRITERIA,
       roundCriteriaJson: null,
+      scaleJson: PLAN_SCALE,
       seq: 1,
       title: "Talk One",
       reviewerEmail: "reviewer1@example.com",

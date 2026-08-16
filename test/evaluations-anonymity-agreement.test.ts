@@ -50,6 +50,7 @@ function evaluationExportRow() {
     planName: "Program Committee",
     criteriaJson: JSON.stringify([{ id: "c1", label: "Clarity", kind: "rating", weight: 1 }]),
     roundCriteriaJson: null,
+    scaleJson: JSON.stringify({ min: 1, max: 5 }),
     seq: 1,
     title: "Talk One",
     reviewerEmail: REVIEWER_EMAIL,
