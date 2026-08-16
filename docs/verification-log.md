@@ -7509,6 +7509,118 @@ vs the 300 kB budget, informational only); at 0ecff8aa, all eight live
 task-w47-* refs remained NON-ancestor after the full 10-attempt bounded
 poll (named above), proceeding per instructions without blocking.
 OPEN ITEMS: 2
+## 2026-08-15 task-w48-b — walkthrough @ 243b3094
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DEC-644 three-sha boundary (STEP 0, DEC-069 w48): `git merge --no-edit
+main` first reported "Already up to date" against `main`'s tip at that
+moment (`0ecff8aa`, "scribe wave 48"). A first bounded poll (max 10,
+~30s each, ~5 minutes total) for live `task-w47-*` refs (`refs/heads/
+task-w47-a`..`task-w47-h`) as non-ancestors of HEAD found all 8 refs
+non-ancestor at every one of the 10 polls (10/10 retries exhausted, no
+re-merge attempted mid-poll). Re-running `git merge --no-edit main`
+after that poll picked up 5 newly-landed merges (`main` had advanced:
+`task-w47-b/c/d/e/f` landed on `main` while the first poll ran). A
+second bounded poll (max 10, ~30s each, re-merging `main` each
+iteration) for the remaining live `task-w47-*` refs (`task-w47-a`,
+`task-w47-g`, `task-w47-h`) found all three still non-ancestor at all
+10 polls — exhausted (10/10 retries), search answered per DEC-069:
+these three lanes have not landed on `main` as of this measurement, so
+this gate proceeds without waiting further. `npx tsx
+scripts/ref-state.ts` receipt (verbatim, taken after the final
+re-merge):
+
+```
+DEC-644 three-sha boundary: HEAD `243b3094dcc4dd9125dc01f9cec01dc396251e89`; newest first-parent product-code-bearing sha `243b3094dcc4dd9125dc01f9cec01dc396251e89`; every live ref (`main`, `manual-qa`, `task-custodian-w68-4`, `task-w46-g`, `task-w47-b`, `task-w47-c`, `task-w47-d`, `task-w47-e`, `task-w47-f`, `task-w48-a`, `task-w48-b`, `task-w48-c`, `task-w48-d`, `task-w68-d`, `task-w71-c`, `task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git merge-base --is-ancestor`. NON-ancestor refs (NOT confirmed via `git merge-base --is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`, `task-w47-a`, `task-w47-g`, `task-w47-h`, `task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`, `task-w72-b`, `task-w72-c`, `task-w72-d`, `task-w72-e`, `task-w72-f`, `task-w72-g`, `task-w72-h`, `task-w72-i`, `task-w72-j`.
+```
+
+MEASURED_SHA = `243b3094` (HEAD before this task's own commit).
+
+Full detail: docs/verification-log/task-w48-b-walkthrough-243b3094.md
+
+Ran the DEC-069 required section-2 persona walkthrough inside one
+acquisition of the default `/tmp/chq-test.lock` (DEC-644): `db:migrate`
+(42 migrations applied — matches wave-44's count, not the 43 the brief
+flagged as expected from `migrations/0043_*`; the wave-47 lanes that
+would add it, `task-w47-a`/`g`/`h`, are the same three refs the STEP 0
+poll found unlanded, so the mismatch is consistent, not a surprise) ->
+`predev` -> `seed` -> `npx wrangler dev --port 8787` (backgrounded; port
+8787 chosen — not 8791 — because `.dev.vars`'s `PUBLIC_BASE_URL=
+http://localhost:8787` (DEC-296) is loopback in this wave (unlike
+wave-44's non-loopback `wrangler.jsonc` default), so the walkthrough's
+own w37-d pre-flight aborts on any other port; confirmed via one prior
+run on port 8791 that failed its pre-flight with an explicit
+`PUBLIC_BASE_URL mismatch (DEC-296)` error before any check ran, then
+re-ran the full recipe on 8787 inside a second, fresh lock acquisition)
+-> polled `http://localhost:8787/login` until ready (1 poll) -> `npx
+tsx scripts/walkthrough.ts --url http://localhost:8787` -> killed the
+port-8787 server afterward. Single successful (non-aborted) run on
+8787, one discarded pre-flight-aborted attempt on 8791 beforehand (not
+counted as a check failure — it never reached any J1-J12 assertion).
+
+Summary quoted verbatim (all six DEC-089/DEC-062 areas ran in fixed
+order producer -> review -> speaker -> public -> data -> scale, per
+scripts/walkthrough-lib.ts:15):
+
+```
+Summary:
+  FAIL producer
+  PASS review
+  PASS speaker
+  PASS public
+  PASS data
+  PASS scale
+
+walkthrough FAILED
+```
+
+Per-area PASS/FAIL line count (verbatim `grep -n "^PASS \|^FAIL "` over
+the Summary block, plus the module's own first-fatal-assert line for
+the failing area since `scripts/walkthrough/producer.ts` aborts on its
+first failed `assertTrue`/`assertStatus` rather than continuing):
+
+- producer: 1 FAIL line (`FAIL producer`, Summary block). The module
+  aborted at its first fatal assertion, transcript line 17 (this doc):
+  `FAILED: J1 open submit page has the submission form` / `expected the
+  submission form once the window is open` (scripts/walkthrough/
+  producer.ts:350-354) — after successfully creating the CFP form,
+  tracks, and PATCHing the window closed then open (all prior J1 steps
+  passed), `GET /submit/<slug>` on the now-open window does not render
+  `name="field__title"` in the response body. Owner: wave-49 lane.
+- review: 1 PASS line (`PASS review`, transcript line 43) — all 20
+  checks in the area passed, including the DEC-175 existence-hiding
+  pairs and the DEC-039 cross-org 404/403 checks.
+- speaker: 1 PASS line (`PASS speaker`, transcript line 116) — portal,
+  onboarding tasks incl. DEC-111 self-healed form tasks, invite flow,
+  ad hoc form-task creation/assignment all passed.
+- public: 1 PASS line (`PASS public`, transcript line 153) — all J9
+  (agenda scheduling) and J10 (public surfaces, embeds, schedule.ics,
+  DEC-274 hidden-participant gate, DEC-108 invite-visibility gate)
+  checks passed.
+- data: 1 PASS line (`PASS data`, transcript line 179) — all J11
+  (contacts, CSV import, segments, bulk email + cap, dashboard stats)
+  and J12 (bearer tokens, exports, cross-org 404, /docs/api) checks
+  passed.
+- scale: 7 PASS lines (`PASS step1`..`PASS step6`, `PASS scale`,
+  transcript lines 183-198) against 110 fresh contacts/submissions —
+  bulk accept of 110 ids in 95ms, email-log unchanged (no auto-email on
+  bulk status change), exactly-once re-accept, purge-refresh probe.
+
+RESULT: FAIL — producer area (J1) fails at product sha `243b3094`: the
+CFP open-window submit page (`GET /submit/<slug>` after `PATCH
+/api/v1/forms/:id` with `openDate` in the past) does not render the
+submission form fields, transcript line 17 (docs/verification-log/
+task-w48-b-walkthrough-243b3094.md:17). The other five areas
+(review/speaker/public/data/scale) all PASS unaffected — they run
+against pre-seeded fixture data and do not depend on the producer
+module's own J1 form-creation output. No product edits made in this
+task (frozen wave per this task's brief, docs/** only).
+OPEN ITEMS: 1 — owner: wave-49 lane; investigate why the open-window
+`/submit/<slug>` page omits `name="field__title"` (scripts/walkthrough/
+producer.ts:350-354); filed here, not fixed (frozen wave).
 ## 2026-08-15 task-w48-c — perf-smoke @ 0ecff8aa
 
 QUALIFYING
@@ -7585,6 +7697,130 @@ briefing (`reviewer queue`, `plan progress (page 1)`, `plan results (page
 measure comfortably under budget in every run — no regression found on
 fresh measurement.
 OPEN ITEMS: 0
+## 2026-08-15 task-w48-d — spec-audit @ 243b3094
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DEC-644 wave-48 three-sha boundary: worktree cut at `0ecff8aa` (main's tip
+when the worktree was created); bounded-poll (6 iterations x 15s) for the
+live `task-w47-*` refs did not converge all of them to ancestor before the
+bound was exhausted — `task-w47-a`, `task-w47-g`, `task-w47-h` remained
+non-ancestor of `main` after the poll (`task-w47-b/c/d/e/f` landed during
+the poll). Synced this worktree to `main`'s post-poll tip via
+`git fetch <main-repo> main && git merge --ff-only FETCH_HEAD`
+(`0ecff8aa..243b3094`, fast-forward). `npx tsx scripts/ref-state.ts` receipt
+(verbatim) at that tip: DEC-644 three-sha boundary: HEAD
+`243b3094dcc4dd9125dc01f9cec01dc396251e89`; newest first-parent
+product-code-bearing sha `243b3094dcc4dd9125dc01f9cec01dc396251e89`; every
+live ref (`main`, `manual-qa`, `task-custodian-w68-4`, `task-w46-g`,
+`task-w47-b`, `task-w47-c`, `task-w47-d`, `task-w47-e`, `task-w47-f`,
+`task-w48-a`, `task-w48-b`, `task-w48-c`, `task-w48-d`, `task-w68-d`,
+`task-w71-c`, `task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via
+`git merge-base --is-ancestor`; NON-ancestor refs (not confirmed):
+`mail-rich-shape-fallback`, `task-w17-i`, `task-w47-a`, `task-w47-g`,
+`task-w47-h`, `task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`,
+`task-w72-a..j`. MEASURED_SHA = `243b3094dcc4dd9125dc01f9cec01dc396251e89`.
+
+§8/§9 re-derivation at this boundary (nine checks, extending
+`0223-...-task-w44-d-spec-audit-6edb5263.md`):
+
+(1) `package.json`'s scripts block re-read directly this wave: `dev` =
+`wrangler dev`; `db:migrate` = `wrangler d1 migrations apply chautauqua
+--local`; `seed` = `tsx scripts/seed.ts && wrangler d1 execute chautauqua
+--local --file=.seed.sql && tsx scripts/seed-r2.ts`; `deploy` = `wrangler d1
+migrations apply chautauqua --remote && wrangler deploy` — all four match
+SPEC.md §8's recipe verbatim.
+
+(2) `test/spec9-invariants.test.ts`'s four named `describe(` blocks
+(close-date lock, speaker isolation, hidden-speaker exclusion, decision
+never auto-emails) all still present unchanged. RE-RUNNING the file this
+wave (not done by prior audits, which cited block presence only) surfaces a
+GENUINE, REPRODUCIBLE failure: `> an ACCEPTED speaker keeps editing past
+close` fails its first assertion — `canEditSubmission("pending", now -
+24h, now, "America/Los_Angeles")` returns `true`, expected `false`. Root
+cause traced to `src/lib/timezone.ts`'s `dayLabelToYmd`/`dayLabelEndInstant`
+(DEC-522: closeDate is a DAY LABEL, not an instant) combined with the
+test's `closeDate = now - 24*60*60*1000` fixture: at real wall-clock times
+where UTC has already rolled to the next calendar day but
+America/Los_Angeles (UTC-7 in August) has not, `now - 24h`'s UTC calendar
+day is still "today" in LA's day-label expansion, so
+`dayLabelEndInstant` lands AFTER `now` and `isFormClosed` returns `false`.
+This is time-of-day-dependent (reproduces deterministically right now,
+2026-08-15 ~20:56 America/New_York / 2026-08-16 00:56 UTC; would not
+reproduce at every wall-clock hour) — confirmed by running the file twice
+in isolation, same failure both times. `git diff --stat 6edb5263..HEAD --
+test/spec9-invariants.test.ts src/domain/edit-lock.ts src/lib/submit-core.ts
+src/lib/timezone.ts` is EMPTY: this bug pre-dates wave 48 (present at least
+since the wave-44 boundary) and was never caught because no prior spec-audit
+lane re-ran the suite, only cited block presence. Per DEC-453 (FILE, NEVER
+FIX) this lane does not touch the test fixture or `src/lib/timezone.ts` —
+filed for the owning triage lane: the test fixture should mint `closeDate`
+via a real day-label (e.g. `dayLabelOfInstant`-style truncation in the
+target zone) rather than a raw `now - 24h` instant offset.
+
+(3) FK-index cross-check: `git diff --stat 6edb5263..HEAD -- src/db/schema
+migrations` is EMPTY at MEASURED_SHA — the wave-47 migration
+(`migrations/0043_file_version_chain_unique.sql`, a partial unique index on
+`file.previous_file_id` per a DEC-818 amendment) has NOT landed on `main`
+as of this audit's post-poll sync: it lives on `task-w47-g`
+(`git diff --stat 243b3094..task-w47-g -- migrations src/db/schema` shows
+exactly `migrations/0043_file_version_chain_unique.sql` +
+`src/db/schema/content.ts`), which remained non-ancestor after the bounded
+poll exhausted. Informational only (not part of the measured tree, does
+not change this audit's own diff-empty finding): read for completeness —
+the migration (`DROP INDEX file_previous_file_id_idx; CREATE UNIQUE INDEX
+file_previous_file_id_unique ON file (previous_file_id) WHERE
+previous_file_id IS NOT NULL`) and the schema declaration
+(`uniqueIndex("file_previous_file_id_unique").on(t.previousFileId).where(sql
+`${t.previousFileId} is not null`)`) AGREE with each other, and the branch
+also adds `test/file-version-chain-unique.test.ts` (153 lines, new) as a
+uniqueIndex CONTRACT test — so once landed the contract is covered. Not
+adjudicated by this lane; flagged for the next spec-audit to re-check once
+`task-w47-g` (or its content) lands.
+
+(4) `app/src/App.tsx` — still route-code-split (`lazy(pageLoaders.X)` for
+all 15 top-level pages), no `manualChunks` anywhere under `app/` or
+`vite.config.ts`.
+
+(5) `< 300 KB gz` measured FIRST-HAND this wave inside one
+`sh scripts/with-test-lock.sh sh -c 'npm run build && npm run bundle:check'`
+acquisition: `Entry bundle: index-oGwNuBcd.js + index-DpG2gFFa.css = 69.20
+kB gzip (budget 300.00 kB)` / `bundle:check PASSED` — own-measured, zero
+drift from the `6edb5263` boundary's `69.20 kB` reading despite the
+wave-45..48 contacts/import/merge/portal/auto-schedule churn (none of it
+touches client bundle inputs).
+
+(6) parameterized queries only: grepped `src/server/repo/**` for raw-SQL
+string interpolation outside the Drizzle `sql` tag — every hit
+(`participants.ts:109`, `events.ts:358,622`, `portal-edit.ts:522`,
+`submissions/seq.ts:15`) is a `sql<number>`...`` template with `${...}`
+placeholders bound to Drizzle column/table references, not raw string
+concatenation. Zero hits outside the tag, including in wave-47's
+`files-versions.ts` (unchanged in scope at this boundary — its rewrite
+lives on the not-yet-landed `task-w47-g`).
+
+(7) no HTML content type served: `assertServedContentTypeHeader`
+(`src/domain/files.ts:539-548`) unchanged, still called at
+`src/routes/files.ts:695` before every served file response.
+
+(8) secrets via `wrangler secret`; `.dev.vars` still gitignored
+(`.gitignore:9`).
+
+(9) `docs/eval-rubric/*.yaml` coverage: 7 yaml files (same count as every
+prior audit since `task-w25-e`); `test/rubric-coverage-enumeration.scan.test.ts`
+(15 tests) GREEN — re-run this wave, not just cited.
+
+Full detail: `docs/verification-log/task-w48-d-spec-audit-243b3094.md`.
+
+RESULT: FAIL — item (2) above: a named SPEC §9 close-date-lock invariant
+test (`test/spec9-invariants.test.ts`) is observed, first-hand, failing
+reproducibly at MEASURED_SHA due to a pre-existing (pre-dates wave 48,
+diff-empty back to `6edb5263`) time-of-day-dependent fixture bug never
+previously caught because no prior spec-audit lane re-ran the suite. All
+other eight checks PASS with no defects found.
+OPEN ITEMS: 1
 ## 2026-08-15 task-w48-f — render-sweep @ 243b3094
 
 QUALIFYING
@@ -7710,120 +7946,6 @@ wave 47's CSV import-wizard change both re-verified clean; frozen-wave
 scope (`src/**` `app/src/**` `migrations/**` `package.json`) left
 untouched.
 OPEN ITEMS: 0
-
-## 2026-08-15 task-w48-b — walkthrough @ 243b3094
-
-QUALIFYING
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-DEC-644 three-sha boundary (STEP 0, DEC-069 w48): `git merge --no-edit
-main` first reported "Already up to date" against `main`'s tip at that
-moment (`0ecff8aa`, "scribe wave 48"). A first bounded poll (max 10,
-~30s each, ~5 minutes total) for live `task-w47-*` refs (`refs/heads/
-task-w47-a`..`task-w47-h`) as non-ancestors of HEAD found all 8 refs
-non-ancestor at every one of the 10 polls (10/10 retries exhausted, no
-re-merge attempted mid-poll). Re-running `git merge --no-edit main`
-after that poll picked up 5 newly-landed merges (`main` had advanced:
-`task-w47-b/c/d/e/f` landed on `main` while the first poll ran). A
-second bounded poll (max 10, ~30s each, re-merging `main` each
-iteration) for the remaining live `task-w47-*` refs (`task-w47-a`,
-`task-w47-g`, `task-w47-h`) found all three still non-ancestor at all
-10 polls — exhausted (10/10 retries), search answered per DEC-069:
-these three lanes have not landed on `main` as of this measurement, so
-this gate proceeds without waiting further. `npx tsx
-scripts/ref-state.ts` receipt (verbatim, taken after the final
-re-merge):
-
-```
-DEC-644 three-sha boundary: HEAD `243b3094dcc4dd9125dc01f9cec01dc396251e89`; newest first-parent product-code-bearing sha `243b3094dcc4dd9125dc01f9cec01dc396251e89`; every live ref (`main`, `manual-qa`, `task-custodian-w68-4`, `task-w46-g`, `task-w47-b`, `task-w47-c`, `task-w47-d`, `task-w47-e`, `task-w47-f`, `task-w48-a`, `task-w48-b`, `task-w48-c`, `task-w48-d`, `task-w68-d`, `task-w71-c`, `task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git merge-base --is-ancestor`. NON-ancestor refs (NOT confirmed via `git merge-base --is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`, `task-w47-a`, `task-w47-g`, `task-w47-h`, `task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`, `task-w72-b`, `task-w72-c`, `task-w72-d`, `task-w72-e`, `task-w72-f`, `task-w72-g`, `task-w72-h`, `task-w72-i`, `task-w72-j`.
-```
-
-MEASURED_SHA = `243b3094` (HEAD before this task's own commit).
-
-Full detail: docs/verification-log/task-w48-b-walkthrough-243b3094.md
-
-Ran the DEC-069 required section-2 persona walkthrough inside one
-acquisition of the default `/tmp/chq-test.lock` (DEC-644): `db:migrate`
-(42 migrations applied — matches wave-44's count, not the 43 the brief
-flagged as expected from `migrations/0043_*`; the wave-47 lanes that
-would add it, `task-w47-a`/`g`/`h`, are the same three refs the STEP 0
-poll found unlanded, so the mismatch is consistent, not a surprise) ->
-`predev` -> `seed` -> `npx wrangler dev --port 8787` (backgrounded; port
-8787 chosen — not 8791 — because `.dev.vars`'s `PUBLIC_BASE_URL=
-http://localhost:8787` (DEC-296) is loopback in this wave (unlike
-wave-44's non-loopback `wrangler.jsonc` default), so the walkthrough's
-own w37-d pre-flight aborts on any other port; confirmed via one prior
-run on port 8791 that failed its pre-flight with an explicit
-`PUBLIC_BASE_URL mismatch (DEC-296)` error before any check ran, then
-re-ran the full recipe on 8787 inside a second, fresh lock acquisition)
--> polled `http://localhost:8787/login` until ready (1 poll) -> `npx
-tsx scripts/walkthrough.ts --url http://localhost:8787` -> killed the
-port-8787 server afterward. Single successful (non-aborted) run on
-8787, one discarded pre-flight-aborted attempt on 8791 beforehand (not
-counted as a check failure — it never reached any J1-J12 assertion).
-
-Summary quoted verbatim (all six DEC-089/DEC-062 areas ran in fixed
-order producer -> review -> speaker -> public -> data -> scale, per
-scripts/walkthrough-lib.ts:15):
-
-```
-Summary:
-  FAIL producer
-  PASS review
-  PASS speaker
-  PASS public
-  PASS data
-  PASS scale
-
-walkthrough FAILED
-```
-
-Per-area PASS/FAIL line count (verbatim `grep -n "^PASS \|^FAIL "` over
-the Summary block, plus the module's own first-fatal-assert line for
-the failing area since `scripts/walkthrough/producer.ts` aborts on its
-first failed `assertTrue`/`assertStatus` rather than continuing):
-
-- producer: 1 FAIL line (`FAIL producer`, Summary block). The module
-  aborted at its first fatal assertion, transcript line 17 (this doc):
-  `FAILED: J1 open submit page has the submission form` / `expected the
-  submission form once the window is open` (scripts/walkthrough/
-  producer.ts:350-354) — after successfully creating the CFP form,
-  tracks, and PATCHing the window closed then open (all prior J1 steps
-  passed), `GET /submit/<slug>` on the now-open window does not render
-  `name="field__title"` in the response body. Owner: wave-49 lane.
-- review: 1 PASS line (`PASS review`, transcript line 43) — all 20
-  checks in the area passed, including the DEC-175 existence-hiding
-  pairs and the DEC-039 cross-org 404/403 checks.
-- speaker: 1 PASS line (`PASS speaker`, transcript line 116) — portal,
-  onboarding tasks incl. DEC-111 self-healed form tasks, invite flow,
-  ad hoc form-task creation/assignment all passed.
-- public: 1 PASS line (`PASS public`, transcript line 153) — all J9
-  (agenda scheduling) and J10 (public surfaces, embeds, schedule.ics,
-  DEC-274 hidden-participant gate, DEC-108 invite-visibility gate)
-  checks passed.
-- data: 1 PASS line (`PASS data`, transcript line 179) — all J11
-  (contacts, CSV import, segments, bulk email + cap, dashboard stats)
-  and J12 (bearer tokens, exports, cross-org 404, /docs/api) checks
-  passed.
-- scale: 7 PASS lines (`PASS step1`..`PASS step6`, `PASS scale`,
-  transcript lines 183-198) against 110 fresh contacts/submissions —
-  bulk accept of 110 ids in 95ms, email-log unchanged (no auto-email on
-  bulk status change), exactly-once re-accept, purge-refresh probe.
-
-RESULT: FAIL — producer area (J1) fails at product sha `243b3094`: the
-CFP open-window submit page (`GET /submit/<slug>` after `PATCH
-/api/v1/forms/:id` with `openDate` in the past) does not render the
-submission form fields, transcript line 17 (docs/verification-log/
-task-w48-b-walkthrough-243b3094.md:17). The other five areas
-(review/speaker/public/data/scale) all PASS unaffected — they run
-against pre-seeded fixture data and do not depend on the producer
-module's own J1 form-creation output. No product edits made in this
-task (frozen wave per this task's brief, docs/** only).
-OPEN ITEMS: 1 — owner: wave-49 lane; investigate why the open-window
-`/submit/<slug>` page omits `name="field__title"` (scripts/walkthrough/
-producer.ts:350-354); filed here, not fixed (frozen wave).
-
 ## 2026-08-15 task-w48-g — triage-closure @ 243b3094
 
 QUALIFYING
@@ -7942,132 +8064,6 @@ with real fix commits already written on unmerged wave-47 branches
 14 population rows are CLOSED with a falsifying test at MEASURED_SHA;
 `0236` and `0237`'s OPEN ITEMs are both CLOSED at MEASURED_SHA.
 OPEN ITEMS: 3
-
-## 2026-08-15 task-w48-d — spec-audit @ 243b3094
-
-QUALIFYING
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-DEC-644 wave-48 three-sha boundary: worktree cut at `0ecff8aa` (main's tip
-when the worktree was created); bounded-poll (6 iterations x 15s) for the
-live `task-w47-*` refs did not converge all of them to ancestor before the
-bound was exhausted — `task-w47-a`, `task-w47-g`, `task-w47-h` remained
-non-ancestor of `main` after the poll (`task-w47-b/c/d/e/f` landed during
-the poll). Synced this worktree to `main`'s post-poll tip via
-`git fetch <main-repo> main && git merge --ff-only FETCH_HEAD`
-(`0ecff8aa..243b3094`, fast-forward). `npx tsx scripts/ref-state.ts` receipt
-(verbatim) at that tip: DEC-644 three-sha boundary: HEAD
-`243b3094dcc4dd9125dc01f9cec01dc396251e89`; newest first-parent
-product-code-bearing sha `243b3094dcc4dd9125dc01f9cec01dc396251e89`; every
-live ref (`main`, `manual-qa`, `task-custodian-w68-4`, `task-w46-g`,
-`task-w47-b`, `task-w47-c`, `task-w47-d`, `task-w47-e`, `task-w47-f`,
-`task-w48-a`, `task-w48-b`, `task-w48-c`, `task-w48-d`, `task-w68-d`,
-`task-w71-c`, `task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via
-`git merge-base --is-ancestor`; NON-ancestor refs (not confirmed):
-`mail-rich-shape-fallback`, `task-w17-i`, `task-w47-a`, `task-w47-g`,
-`task-w47-h`, `task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`,
-`task-w72-a..j`. MEASURED_SHA = `243b3094dcc4dd9125dc01f9cec01dc396251e89`.
-
-§8/§9 re-derivation at this boundary (nine checks, extending
-`0223-...-task-w44-d-spec-audit-6edb5263.md`):
-
-(1) `package.json`'s scripts block re-read directly this wave: `dev` =
-`wrangler dev`; `db:migrate` = `wrangler d1 migrations apply chautauqua
---local`; `seed` = `tsx scripts/seed.ts && wrangler d1 execute chautauqua
---local --file=.seed.sql && tsx scripts/seed-r2.ts`; `deploy` = `wrangler d1
-migrations apply chautauqua --remote && wrangler deploy` — all four match
-SPEC.md §8's recipe verbatim.
-
-(2) `test/spec9-invariants.test.ts`'s four named `describe(` blocks
-(close-date lock, speaker isolation, hidden-speaker exclusion, decision
-never auto-emails) all still present unchanged. RE-RUNNING the file this
-wave (not done by prior audits, which cited block presence only) surfaces a
-GENUINE, REPRODUCIBLE failure: `> an ACCEPTED speaker keeps editing past
-close` fails its first assertion — `canEditSubmission("pending", now -
-24h, now, "America/Los_Angeles")` returns `true`, expected `false`. Root
-cause traced to `src/lib/timezone.ts`'s `dayLabelToYmd`/`dayLabelEndInstant`
-(DEC-522: closeDate is a DAY LABEL, not an instant) combined with the
-test's `closeDate = now - 24*60*60*1000` fixture: at real wall-clock times
-where UTC has already rolled to the next calendar day but
-America/Los_Angeles (UTC-7 in August) has not, `now - 24h`'s UTC calendar
-day is still "today" in LA's day-label expansion, so
-`dayLabelEndInstant` lands AFTER `now` and `isFormClosed` returns `false`.
-This is time-of-day-dependent (reproduces deterministically right now,
-2026-08-15 ~20:56 America/New_York / 2026-08-16 00:56 UTC; would not
-reproduce at every wall-clock hour) — confirmed by running the file twice
-in isolation, same failure both times. `git diff --stat 6edb5263..HEAD --
-test/spec9-invariants.test.ts src/domain/edit-lock.ts src/lib/submit-core.ts
-src/lib/timezone.ts` is EMPTY: this bug pre-dates wave 48 (present at least
-since the wave-44 boundary) and was never caught because no prior spec-audit
-lane re-ran the suite, only cited block presence. Per DEC-453 (FILE, NEVER
-FIX) this lane does not touch the test fixture or `src/lib/timezone.ts` —
-filed for the owning triage lane: the test fixture should mint `closeDate`
-via a real day-label (e.g. `dayLabelOfInstant`-style truncation in the
-target zone) rather than a raw `now - 24h` instant offset.
-
-(3) FK-index cross-check: `git diff --stat 6edb5263..HEAD -- src/db/schema
-migrations` is EMPTY at MEASURED_SHA — the wave-47 migration
-(`migrations/0043_file_version_chain_unique.sql`, a partial unique index on
-`file.previous_file_id` per a DEC-818 amendment) has NOT landed on `main`
-as of this audit's post-poll sync: it lives on `task-w47-g`
-(`git diff --stat 243b3094..task-w47-g -- migrations src/db/schema` shows
-exactly `migrations/0043_file_version_chain_unique.sql` +
-`src/db/schema/content.ts`), which remained non-ancestor after the bounded
-poll exhausted. Informational only (not part of the measured tree, does
-not change this audit's own diff-empty finding): read for completeness —
-the migration (`DROP INDEX file_previous_file_id_idx; CREATE UNIQUE INDEX
-file_previous_file_id_unique ON file (previous_file_id) WHERE
-previous_file_id IS NOT NULL`) and the schema declaration
-(`uniqueIndex("file_previous_file_id_unique").on(t.previousFileId).where(sql
-`${t.previousFileId} is not null`)`) AGREE with each other, and the branch
-also adds `test/file-version-chain-unique.test.ts` (153 lines, new) as a
-uniqueIndex CONTRACT test — so once landed the contract is covered. Not
-adjudicated by this lane; flagged for the next spec-audit to re-check once
-`task-w47-g` (or its content) lands.
-
-(4) `app/src/App.tsx` — still route-code-split (`lazy(pageLoaders.X)` for
-all 15 top-level pages), no `manualChunks` anywhere under `app/` or
-`vite.config.ts`.
-
-(5) `< 300 KB gz` measured FIRST-HAND this wave inside one
-`sh scripts/with-test-lock.sh sh -c 'npm run build && npm run bundle:check'`
-acquisition: `Entry bundle: index-oGwNuBcd.js + index-DpG2gFFa.css = 69.20
-kB gzip (budget 300.00 kB)` / `bundle:check PASSED` — own-measured, zero
-drift from the `6edb5263` boundary's `69.20 kB` reading despite the
-wave-45..48 contacts/import/merge/portal/auto-schedule churn (none of it
-touches client bundle inputs).
-
-(6) parameterized queries only: grepped `src/server/repo/**` for raw-SQL
-string interpolation outside the Drizzle `sql` tag — every hit
-(`participants.ts:109`, `events.ts:358,622`, `portal-edit.ts:522`,
-`submissions/seq.ts:15`) is a `sql<number>`...`` template with `${...}`
-placeholders bound to Drizzle column/table references, not raw string
-concatenation. Zero hits outside the tag, including in wave-47's
-`files-versions.ts` (unchanged in scope at this boundary — its rewrite
-lives on the not-yet-landed `task-w47-g`).
-
-(7) no HTML content type served: `assertServedContentTypeHeader`
-(`src/domain/files.ts:539-548`) unchanged, still called at
-`src/routes/files.ts:695` before every served file response.
-
-(8) secrets via `wrangler secret`; `.dev.vars` still gitignored
-(`.gitignore:9`).
-
-(9) `docs/eval-rubric/*.yaml` coverage: 7 yaml files (same count as every
-prior audit since `task-w25-e`); `test/rubric-coverage-enumeration.scan.test.ts`
-(15 tests) GREEN — re-run this wave, not just cited.
-
-Full detail: `docs/verification-log/task-w48-d-spec-audit-243b3094.md`.
-
-RESULT: FAIL — item (2) above: a named SPEC §9 close-date-lock invariant
-test (`test/spec9-invariants.test.ts`) is observed, first-hand, failing
-reproducibly at MEASURED_SHA due to a pre-existing (pre-dates wave 48,
-diff-empty back to `6edb5263`) time-of-day-dependent fixture bug never
-previously caught because no prior spec-audit lane re-ran the suite. All
-other eight checks PASS with no defects found.
-OPEN ITEMS: 1
-
 ## 2026-08-15 task-w49-e — instrument ledger closure @ 8adffaa4
 
 NOT QUALIFYING (code wave — DEC-069: a gate inside a code wave can never qualify)
@@ -8204,7 +8200,6 @@ doc's current text; this task's scope explicitly bars changing
 for a future wave to either fix the code to match the doc or amend the doc
 to match the code -- whichever is judged correct is a design call this
 lane does not make).
-
 ## 2026-08-15 task-w49-h — forms/CFP-integrity adjudication @ d578709a
 
 NOT QUALIFYING (adjudication-only lane inside a code wave — DEC-069: a gate
@@ -8239,7 +8234,379 @@ DEC-069 it can never qualify for a gate slot regardless of content;
 adjudication itself is complete: 1 CONFIRMED-DEFECT filed (UNOWNED),
 1 ADVISORY, 1 DELIBERATE-BY-DESIGN, 3 NOT-A-DEFECT.
 OPEN ITEMS: 1
+## 2026-08-15 task-w50-a — build+test+bundle @ 87cee8b9
 
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+Step 0 sync-then-measure: `git merge --no-edit main` in this worktree (cut
+directly from `main` tip) reported "Already up to date." on every attempt.
+`npx tsx scripts/ref-state.ts` receipt (verbatim):
+
+DEC-644 three-sha boundary: HEAD `87cee8b9fec30d190f93156c99ddf7011b68bc92`;
+newest first-parent product-code-bearing sha
+`c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`; every live ref (`main`,
+`manual-qa`, `task-custodian-w68-4`, `task-w47-a`, `task-w47-g`, `task-w47-h`,
+`task-w48-a`, `task-w48-c`, `task-w48-f`, `task-w49-f`, `task-w49-g`,
+`task-w50-a`, `task-w50-b`, `task-w68-d`, `task-w71-c`, `task-w71-d`,
+`task-w71-e`) confirmed an ancestor of HEAD via `git merge-base
+--is-ancestor`. NON-ancestor refs (NOT confirmed via `git merge-base
+--is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`, `task-w48-b`,
+`task-w48-d`, `task-w48-e`, `task-w48-g`, `task-w49-a`, `task-w49-b`,
+`task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-h`, `task-w68-b`,
+`task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`, `task-w72-b`,
+`task-w72-c`, `task-w72-d`, `task-w72-e`, `task-w72-f`, `task-w72-g`,
+`task-w72-h`, `task-w72-i`, `task-w72-j`.
+
+Individual `git merge-base --is-ancestor <sha> HEAD` re-check for every
+`task-w49-*` ref (never a glob over `.git/refs/heads/*`, never the
+`.git/packed-refs` `refs/heads/main` line): `task-w49-a` NOT-ANCESTOR,
+`task-w49-b` NOT-ANCESTOR, `task-w49-c` NOT-ANCESTOR, `task-w49-d`
+NOT-ANCESTOR, `task-w49-e` NOT-ANCESTOR, `task-w49-f` ANCESTOR, `task-w49-g`
+ANCESTOR, `task-w49-h` NOT-ANCESTOR. Bounded poll: 3 attempts of `git merge
+--no-edit main` (each "Already up to date."), ~5s apart; no change across
+attempts. Per instructions, proceeding without blocking: `task-w49-a`,
+`task-w49-b`, `task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-h` are
+named as still non-ancestor of HEAD.
+
+MEASURED_SHA = `git rev-parse --short HEAD` = `87cee8b9` (taken after the
+last sync, before this commit; no product-code commit landed on `main`
+during the heavy phase — no freeze violation).
+
+`npm run build` (worker `tsc --noEmit`, app `tsc --noEmit -p
+app/tsconfig.json`, then `vite build --config app/vite.config.ts`): clean,
+BUILD_EXIT=0.
+
+Full suite run inside one lock acquisition per DEC-644 (`sh
+scripts/with-test-lock.sh sh -c 'npm run build; echo "BUILD_EXIT=$?"; npx
+vitest run; echo "VITEST_EXIT=$?"; npm run bundle:check; echo
+"BUNDLE_EXIT=$?"'`, all three commands run unconditionally with `;`, never
+`&&`, never nesting `npm test`/`test:full` inside the wrapper):
+
+```
+BUILD_EXIT=0
+ Test Files  13 failed | 1104 passed (1117)
+      Tests  19 failed | 12163 passed (12182)
+     Errors  1 error
+VITEST_EXIT=1
+Entry bundle: index-07JDGepC.js + index-DpG2gFFa.css = 69.20 kB gzip (budget 300.00 kB)
+bundle:check PASSED
+BUNDLE_EXIT=0
+```
+
+All three commands ran unconditionally inside the single lock acquisition;
+the `vitest run` non-zero exit did not suppress the subsequent
+`bundle:check` reading (DEC-644 w50).
+
+DEFECTS FILED (owner: wave-51 lane, per DEC-453 — this frozen gate lane does
+not fix, files only):
+
+1. `src/server/repo/tasks/reminders.ts:434` — `TypeError: db.update(...)
+   .set(...).where(...).returning is not a function` inside
+   `sendReminderEmails`, called from `remindNow` (:582) and
+   `sendDueRemindersForEvent` (:804). Single root cause, 12 failing tests
+   across 9 files: `test/reminder-drafts.test.ts:269`,
+   `test/reminder-portal-link.test.ts:219,231,253`,
+   `test/reminders-batched-stamp.test.ts:204`,
+   `test/reminders-portal-link-batched.test.ts:215` (plus 1 unhandled
+   rejection from the same call site), `test/reminders-timezone.test.ts:191,
+   239,270`, `test/tasks-due-reminders-mailer-failure.test.ts:173`,
+   `test/tasks-remind-now-mailer-failure.test.ts` (2 tests). The claim-write
+   at `reminders.ts:434` calls `.returning({ id: schema.taskAssignment.id
+   })` on an update chain the test doubles/driver do not implement.
+   `test/chunk-sweep-misc.test.ts:72` independently asserts the source at
+   this location should read `for (const batch of
+   chunkIds(sentAssignmentIds)) { ... inArray(schema.taskAssignment.id,
+   batch)` (a chunked, `inArray`-batched update with no `.returning()`) but
+   the file instead now reads the DEC-023 barrel-header comment followed by
+   a non-chunked `.returning()` call — i.e. the batching/chunking shape the
+   scan test expects was replaced by a single unchunked update using
+   `.returning()`, which is unsupported by the exercised db path. Fix
+   belongs in `src/server/repo/tasks/reminders.ts` (restore
+   `chunkIds`-batched `inArray` update, or make `.returning()` supported by
+   whatever db shim these tests exercise).
+
+2. `test/login-account-budget.test.ts:251` — failing test: "DEC-072
+   wave-66: login-account restores a spoof-proof per-account budget beside
+   the (email,ip) pair budget > DEC-072 wave-38: with the account budget
+   exhausted, a WRONG password from a fresh IP still 429s (the budget still
+   throttles brute force)". `expect(wrongFromFreshIp.status).toBe(429)` got
+   `401` instead — the per-account budget documented at DEC-072 is no
+   longer throttling a fresh-IP attempt once the account budget is
+   exhausted. Fix belongs in the login-account-budget enforcement path
+   (src/routes/auth-login.tsx and/or its rate-limit helper) or, if the test
+   itself is stale relative to a since-landed DEC-072 amendment, in
+   `test/login-account-budget.test.ts:251`.
+
+3. `test/schema-migration-parity.scan.test.ts:355` — same root cause as
+   `migrations/0043_file_version_chain_unique.sql` and
+   `0000_secret_matthew_murdock.sql`'s `file_previous_file_id_idx` /
+   `file_previous_file_id_unique` declaring indexes with no matching
+   `src/db/schema/**.ts` declaration. Per wave-49 field-guide finding (DEC-
+   358), this defect is task-w47-g's (`9a541796`, adds
+   `migrations/0043_file_version_chain_unique.sql`), committed but still
+   unmerged into `main`; re-measured here, not re-fixed, per DEC-358 w49
+   ("a row owned by a committed-but-unmerged branch is re-measured, never
+   re-fixed").
+
+4. `test/unique-index-guard-coverage.scan.test.ts:114` — same root cause as
+   item 3 (`file_previous_file_id_unique` has no ALLOWLIST entry); also
+   task-w47-g's, re-measured not re-fixed.
+
+5. `test/spec9-invariants.test.ts:131` — `canEditSubmission("accepted",
+   pastClose, now, "America/Los_A...")` expected `false`, got `true`. Per
+   the wave-49 field-guide finding (DEC-522), this is a clock-dependent
+   test defect, not a product regression: the test feeds `Date.now() - 24h`
+   where `isFormClosed` requires a DAY LABEL, and `dayLabelToYmd` reads the
+   UTC calendar date, so this row is red for ~7 hours of every UTC day.
+   Re-measured true at this wall-clock time; fix belongs in
+   `test/spec9-invariants.test.ts` (freeze `now`/day label per the pattern
+   at `test/edit-lock.test.ts:9-11`), not in
+   `src/domain/edit-lock.ts`.
+
+6. `test/verification-log-verdict-contract.test.ts:248` — the shrink-only
+   ratchet's known-offenders set gained one new member not yet in
+   `LEGACY_VERDICT_VIOLATIONS`:
+   `docs/verification-log/index/0238-2026-08-15-task-w47-h-eval-findings-defect-ledger-32921050.md`.
+
+7. `test/verification-log-verdict-contract.test.ts:259` — the same file
+   (`0238-...-task-w47-h-...md`) carries a RESULT line whose token is
+   `NOT` (i.e. reads `RESULT: NOT ...` rather than `PASS`/`FAIL`), which
+   `verdictToken` cannot classify as PASS or FAIL. Both item 6 and item 7
+   trace to the same file; fix belongs in either amending
+   `0238-...md`'s RESULT line to end PASS/FAIL, or adding it to
+   `LEGACY_VERDICT_VIOLATIONS` if it is deliberately non-conforming.
+
+RESULT: FAIL — BUILD_EXIT=0, VITEST_EXIT=1 (19/12182 tests failed across 13
+files, 1 additional unhandled-rejection error, all 7 root causes filed
+above, owner: wave-51 lane), BUNDLE_EXIT=0 (bundle:check PASSED, entry
+bundle 69.20 kB gzip vs 300 kB budget — ran unconditionally inside the same
+lock acquisition despite the vitest failure, per DEC-644 w50). No freeze
+violation observed: no product-code commit landed on `main` during the
+heavy phase.
+OPEN ITEMS: 7
+## 2026-08-15 task-w50-b — J1-J12 persona walkthrough @ 87cee8b9
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+STEP 0 (DEC-069 w50, identical procedure to task-w50-a). `git merge
+--no-edit main` inside the worktree reported "Already up to date" (worktree
+was branched from `main` tip `87cee8b9` moments earlier). `npx tsx
+scripts/ref-state.ts` receipt (verbatim):
+
+```
+DEC-644 three-sha boundary: HEAD `87cee8b9fec30d190f93156c99ddf7011b68bc92`;
+newest first-parent product-code-bearing sha
+`c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`; every live ref (`main`,
+`manual-qa`, `task-custodian-w68-4`, `task-w47-a`, `task-w47-g`,
+`task-w47-h`, `task-w48-a`, `task-w48-c`, `task-w48-f`, `task-w49-f`,
+`task-w49-g`, `task-w50-a`, `task-w50-b`, `task-w68-d`, `task-w71-c`,
+`task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git
+merge-base --is-ancestor`. NON-ancestor refs (NOT confirmed via `git
+merge-base --is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`,
+`task-w48-b`, `task-w48-d`, `task-w48-e`, `task-w48-g`, `task-w49-a`,
+`task-w49-b`, `task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-h`,
+`task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`,
+`task-w72-b`, `task-w72-c`, `task-w72-d`, `task-w72-e`, `task-w72-f`,
+`task-w72-g`, `task-w72-h`, `task-w72-i`, `task-w72-j`.
+```
+
+Individually re-checked `task-w49-a` via `git merge-base --is-ancestor
+task-w49-a HEAD` on a 10-attempt ~30s-spaced bounded poll; the poll ran to
+4 attempts (all `no`) before the shell tool's own 2-minute timeout cut the
+loop short. `git merge main` re-run afterward still reported "Already up
+to date" (no new commits landed on `main` during the poll window), so the
+straggler set is unchanged from the receipt above. Per DEC-358 w49 this is
+named rather than re-polled to exhaustion: `task-w49-a`, `task-w49-b`,
+`task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-h` remain non-ancestor
+of `main`/HEAD at measurement time.
+
+MEASURED_SHA = `87cee8b9` (`git rev-parse --short HEAD` after the last
+sync; unchanged by the poll since no merge occurred).
+
+Full detail: none (docs-only summary below is sufficient per the task
+brief's "detail doc optional").
+
+Ran the DEC-069 required section-2 six-area persona walkthrough inside one
+acquisition of `/tmp/chq-test.lock` via `sh scripts/with-test-lock.sh sh -c
+'./scratch-heavy.sh'` (the wrapper script, itself product-inert, ran and
+was deleted before commit): `npm run build` (public/admin/ is gitignored,
+so this runs first per DEC-268) -> `npm run db:migrate` -> `npm run seed`
+-> `.dev.vars` created locally (gitignored, matching
+`.dev.vars.example`: `DEV_MODE=1`, `PUBLIC_BASE_URL=http://localhost:8787`
+— none existed in the worktree, and without it `wrangler.jsonc`'s
+non-loopback `PUBLIC_BASE_URL` (`https://chautauqua.cc`) would not match
+the loopback origin the walkthrough was pointed at, so the walkthrough's
+own pre-flight would refuse the mismatch) -> `npx wrangler dev --port
+8787` (backgrounded, held inside the same lock acquisition) -> polled
+`http://localhost:8787/` until ready -> `npm run walkthrough -- --url
+http://localhost:8787` -> server killed afterward, still inside the lock.
+Single run, no retries.
+
+Summary quoted verbatim (all six DEC-089/DEC-062 areas ran in fixed order
+producer -> review -> speaker -> public -> data -> scale, per
+scripts/walkthrough-lib.ts:15):
+
+```
+Summary:
+  FAIL producer
+  PASS review
+  PASS speaker
+  PASS public
+  PASS data
+  PASS scale
+
+walkthrough FAILED
+```
+
+Per-area PASS/FAIL:
+- producer: FAIL. Verbatim failure line: `FAILED: J1 open submit page has
+  the submission form` / `expected the submission form once the window is
+  open`, assertion at `scripts/walkthrough/producer.ts:350-353`. Root
+  cause traced to `scripts/walkthrough/producer.ts:341-343`, which PATCHes
+  the form's `openDate` to `Date.now() - 60_000` — a raw epoch-ms
+  *instant* 60s in the past. Per `src/lib/submit-core.ts:28-34` and
+  `src/lib/timezone.ts:103-121`, `openDate`/`closeDate` are DAY LABELS
+  (UTC midnight of the intended calendar day), not instants:
+  `dayLabelToYmd` extracts only the UTC calendar date from the given ms
+  value and `dayLabelStartInstant` expands that date to event-local
+  00:00. The seed event's timezone is `America/Los_Angeles`
+  (`scripts/seed.ts:383`, UTC-7 in August). This walkthrough ran at
+  `2026-08-16T01:19:28Z`: `Date.now() - 60_000` still falls on UTC day
+  `2026-08-16`, so the derived openDate resolves to LA-local midnight of
+  that day = `2026-08-16T07:00:00Z` — over 5.5 hours AFTER the actual
+  `now` used for the `formWindowState` comparison, so the gate correctly
+  (per its own DAY LABEL contract) still reads `not_yet_open`. This
+  reproduces deterministically in the ~7-hour UTC window before LA
+  midnight catches up to the current UTC day (roughly 00:00-07:00 UTC)
+  and is silent for the rest of the day — the same clock/day-label
+  mismatch class already adjudicated as a TEST DEFECT, NOT A PRODUCT
+  REGRESSION for `test/spec9-invariants.test.ts:131` (DEC-522 w49 field
+  guide finding), here reproduced in a second, previously-unfiled
+  location (`scripts/walkthrough/producer.ts:342`). Per DEC-453/DEC-069
+  w50 this frozen lane files, not fixes, and does not touch `scripts/`.
+- review: PASS (`PASS review`, all 20 checks incl. DEC-175 existence-hiding
+  and DEC-039 cross-org 404/403 pairs).
+- speaker: PASS (`PASS speaker`).
+- public: PASS (`PASS public`).
+- data: PASS (`PASS data`).
+- scale: PASS (`PASS scale`; `PASS step1`..`PASS step6` against 110 fresh
+  contacts, bulk accept of 110 ids in 91ms, email-log unchanged, exactly-once
+  re-accept, purge-refresh probe all held).
+
+Named row — authenticated `GET /admin` SPA-shell assertion: ABSENT.
+`scripts/walkthrough/producer.ts` contains exactly one `/admin` fetch,
+at line 1065 (`const adminRes = await fetch(\`${BASE_URL}/admin\`, {
+redirect: "manual" })`), asserted at line 1066 against the *anonymous*
+302 (`DEC-175 unauthenticated GET /admin`). A repo-wide grep of
+`scripts/walkthrough/*.ts` and `scripts/walkthrough.ts` for
+`/admin`-adjacent SPA-shell assertions (`"/admin"`, `` /admin` ``, "SPA
+shell", "Admin SPA", "bundle missing") found no second occurrence and no
+authenticated-session GET of `/admin` anywhere in the walkthrough. `git
+log --oneline --all -- scripts/walkthrough/producer.ts` shows no
+wave-49 branch touching this file, so per DEC-358 w49 there is no existing
+owner to name; this is filed here as a new gap rather than re-filed under
+a nonexistent branch. docs/clarifications.md:26 calls the admin UI the
+priority surface, so the walkthrough currently never renders it under an
+authenticated session — a gate covering the priority surface only at the
+anonymous-redirect layer.
+
+RESULT: FAIL — producer area fails at product sha `87cee8b9` (test
+defect in `scripts/walkthrough/producer.ts:342`, day-label/instant
+mismatch, not a product regression; frozen wave per this task's brief,
+docs/** only, no product or scripts/ edits made). All other five areas
+pass.
+OPEN ITEMS: 2
+1. `scripts/walkthrough/producer.ts:342` feeds a raw instant
+   (`Date.now() - 60_000`) as `openDate` where `formWindowState`
+   (`src/lib/submit-core.ts:35`) requires a DAY LABEL — fails
+   deterministically in the pre-LA-midnight UTC window (owner: wave-51
+   lane; fix by passing a DAY-LABEL instant, e.g. UTC midnight of
+   yesterday, matching the DEC-522 pattern already applied elsewhere).
+2. No walkthrough module asserts that an authenticated `GET /admin`
+   renders the SPA shell — only the anonymous 302 at
+   `scripts/walkthrough/producer.ts:1065-1066` is covered (owner:
+   wave-51 lane; no existing wave-49 branch claims this scope).
+## 2026-08-15 task-w50-c — perf-smoke @ 87cee8b9
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+TIER-0 MEASUREMENT LANE, LOG-ONLY (DEC-644, DEC-453, DEC-069), sequence 0262
+(pre-allocated, DEC-068 wave-50). FROZEN GATE LANE. STEP 0: worktree cut
+directly at `main` tip `87cee8b9` ("scribe wave 50"). `npx tsx
+scripts/ref-state.ts` found the seven live `task-w49-*` refs
+(`-a`,`-b`,`-c`,`-d`,`-e`,`-f`,`-h`; `-g` already an ancestor) NON-ancestor;
+ran the bounded 10-attempt poll and every check reported the same
+NON-ancestor state — per DEC-069 w48/w50's finding this lane delegated the
+branch condition to the measuring lane and proceeded at its own tip rather
+than blocking. STEP 0b precondition: `grep -c PERF_SPEAKER
+scripts/perf-seed.ts` = 13 (inserts at lines 608, 627, 643, 659, identical
+to every prior lane's receipt) — the documented recipe alone reaches every
+check including the three portal rows; no local-D1 fixup applied.
+
+### Ref-state receipt (verbatim)
+
+DEC-644 three-sha boundary: HEAD `87cee8b9fec30d190f93156c99ddf7011b68bc92`;
+newest first-parent product-code-bearing sha
+`c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`; every live ref (`main`,
+`manual-qa`, `task-custodian-w68-4`, `task-w47-a`, `task-w47-g`,
+`task-w47-h`, `task-w48-a`, `task-w48-c`, `task-w48-f`, `task-w49-g`,
+`task-w50-a`, `task-w50-b`, `task-w50-c`, `task-w68-d`, `task-w71-c`,
+`task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git
+merge-base --is-ancestor`. NON-ancestor refs (NOT confirmed via `git
+merge-base --is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`,
+`task-w48-b`, `task-w48-d`, `task-w48-e`, `task-w48-g`, `task-w49-a`,
+`task-w49-b`, `task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-f`,
+`task-w49-h`, `task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`,
+`task-w72-a`, `task-w72-b`, `task-w72-c`, `task-w72-d`, `task-w72-e`,
+`task-w72-f`, `task-w72-g`, `task-w72-h`, `task-w72-i`, `task-w72-j`.
+
+### Three-run result
+
+**Run 1: 40/40 check-rows PASS, zero FAIL (fresh seed).** Runs 2 and 3:
+both ERRORED before producing any row (`Error: fetchPendingSubmissionIds:
+expected at least 1000 pending submissions, got 200`,
+`scripts/perf-smoke.ts:270`), byte-identical both times. Named rows (run 1
+only, adjusted p95, budget(read)=50ms unless noted): `reviewer queue`
+25.7ms PASS. `plan progress (page 1)` 22.6ms PASS. `plan results (page 1)`
+18.6ms PASS. `files library (page 1)` 12.2ms PASS. `onboarding grid`
+20.6ms PASS. Three portal rows: `portal home` 15.2ms, `portal tasks`
+8.8ms, `portal submission detail` 14.8ms — all PASS. `bulk status change`
+(budget(write)=100ms) 33.3ms PASS in run 1, and is also the row whose
+own non-idempotent write is the confirmed root cause blocking runs 2/3
+from measuring anything.
+
+Root cause (CONFIRMED-DEFECT, filed per DEC-453, not fixed — HARD SCOPE
+forbids touching `scripts/`): `scripts/perf-smoke.ts:962-972` ("bulk
+status change") alternates a 1000-id batch `accept_queue`<->`pending` via
+`alternateByIteration` (`scripts/perf-smoke-lib.ts:226-231`) once per call,
+but `WARMUP_ITERATIONS + MEASURED_ITERATIONS` = `5 + 30` = 35
+(`scripts/perf-smoke.ts:70-71`) is odd, so the batch ends each run parked
+at `accept_queue` instead of restored to `pending` — breaking the
+comment's own stated intent ("repeatable forever") and starving the next
+invocation's `fetchPendingSubmissionIds` (`scripts/perf-smoke.ts:270`,
+itself a correct fail-loudly guard) of pending rows. Reproduced
+deterministically across two consecutive invocations against the same
+booted server/seeded D1. Owner: wave-51 lane.
+
+This lane does not file all 40 rows individually as 40 separate
+CONFIRMED-DEFECT rows — 39 of them never got a chance to run in runs 2/3
+for a reason unrelated to their own handlers, and doing so would
+misrepresent 39 healthy checks as individually broken. Full detail:
+docs/verification-log/task-w50-c-perf-smoke-87cee8b9.md.
+
+RESULT: PARTIAL — run 1 (fresh seed) fully clean, 40/40 check-rows PASS
+with wide margin, including all six historically marginal rows and all
+three portal rows; no product regression found in any measured row. Runs 2
+and 3 ERRORED before measuring due to a confirmed, reproducible
+perf-smoke harness repeatability defect (not a product regression).
+OPEN ITEMS: 1 (perf-smoke harness repeatability defect,
+`scripts/perf-smoke.ts:70-71,962-972`, owner wave-51 lane)
 ## 2026-08-15 task-w50-d — spec-audit §6/§7/§8/§9 @ 87cee8b9
 
 QUALIFYING
@@ -8517,921 +8884,6 @@ tests green; §9's spec9-invariants.test.ts 4/5 green, 1 pre-known
 clock-dependent test-instrument defect re-confirmed, not product). No new
 CONFIRMED-DEFECT rows filed this wave.
 OPEN ITEMS: 0
-
-## 2026-08-15 task-w50-a — build+test+bundle @ 87cee8b9
-
-QUALIFYING
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-Step 0 sync-then-measure: `git merge --no-edit main` in this worktree (cut
-directly from `main` tip) reported "Already up to date." on every attempt.
-`npx tsx scripts/ref-state.ts` receipt (verbatim):
-
-DEC-644 three-sha boundary: HEAD `87cee8b9fec30d190f93156c99ddf7011b68bc92`;
-newest first-parent product-code-bearing sha
-`c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`; every live ref (`main`,
-`manual-qa`, `task-custodian-w68-4`, `task-w47-a`, `task-w47-g`, `task-w47-h`,
-`task-w48-a`, `task-w48-c`, `task-w48-f`, `task-w49-f`, `task-w49-g`,
-`task-w50-a`, `task-w50-b`, `task-w68-d`, `task-w71-c`, `task-w71-d`,
-`task-w71-e`) confirmed an ancestor of HEAD via `git merge-base
---is-ancestor`. NON-ancestor refs (NOT confirmed via `git merge-base
---is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`, `task-w48-b`,
-`task-w48-d`, `task-w48-e`, `task-w48-g`, `task-w49-a`, `task-w49-b`,
-`task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-h`, `task-w68-b`,
-`task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`, `task-w72-b`,
-`task-w72-c`, `task-w72-d`, `task-w72-e`, `task-w72-f`, `task-w72-g`,
-`task-w72-h`, `task-w72-i`, `task-w72-j`.
-
-Individual `git merge-base --is-ancestor <sha> HEAD` re-check for every
-`task-w49-*` ref (never a glob over `.git/refs/heads/*`, never the
-`.git/packed-refs` `refs/heads/main` line): `task-w49-a` NOT-ANCESTOR,
-`task-w49-b` NOT-ANCESTOR, `task-w49-c` NOT-ANCESTOR, `task-w49-d`
-NOT-ANCESTOR, `task-w49-e` NOT-ANCESTOR, `task-w49-f` ANCESTOR, `task-w49-g`
-ANCESTOR, `task-w49-h` NOT-ANCESTOR. Bounded poll: 3 attempts of `git merge
---no-edit main` (each "Already up to date."), ~5s apart; no change across
-attempts. Per instructions, proceeding without blocking: `task-w49-a`,
-`task-w49-b`, `task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-h` are
-named as still non-ancestor of HEAD.
-
-MEASURED_SHA = `git rev-parse --short HEAD` = `87cee8b9` (taken after the
-last sync, before this commit; no product-code commit landed on `main`
-during the heavy phase — no freeze violation).
-
-`npm run build` (worker `tsc --noEmit`, app `tsc --noEmit -p
-app/tsconfig.json`, then `vite build --config app/vite.config.ts`): clean,
-BUILD_EXIT=0.
-
-Full suite run inside one lock acquisition per DEC-644 (`sh
-scripts/with-test-lock.sh sh -c 'npm run build; echo "BUILD_EXIT=$?"; npx
-vitest run; echo "VITEST_EXIT=$?"; npm run bundle:check; echo
-"BUNDLE_EXIT=$?"'`, all three commands run unconditionally with `;`, never
-`&&`, never nesting `npm test`/`test:full` inside the wrapper):
-
-```
-BUILD_EXIT=0
- Test Files  13 failed | 1104 passed (1117)
-      Tests  19 failed | 12163 passed (12182)
-     Errors  1 error
-VITEST_EXIT=1
-Entry bundle: index-07JDGepC.js + index-DpG2gFFa.css = 69.20 kB gzip (budget 300.00 kB)
-bundle:check PASSED
-BUNDLE_EXIT=0
-```
-
-All three commands ran unconditionally inside the single lock acquisition;
-the `vitest run` non-zero exit did not suppress the subsequent
-`bundle:check` reading (DEC-644 w50).
-
-DEFECTS FILED (owner: wave-51 lane, per DEC-453 — this frozen gate lane does
-not fix, files only):
-
-1. `src/server/repo/tasks/reminders.ts:434` — `TypeError: db.update(...)
-   .set(...).where(...).returning is not a function` inside
-   `sendReminderEmails`, called from `remindNow` (:582) and
-   `sendDueRemindersForEvent` (:804). Single root cause, 12 failing tests
-   across 9 files: `test/reminder-drafts.test.ts:269`,
-   `test/reminder-portal-link.test.ts:219,231,253`,
-   `test/reminders-batched-stamp.test.ts:204`,
-   `test/reminders-portal-link-batched.test.ts:215` (plus 1 unhandled
-   rejection from the same call site), `test/reminders-timezone.test.ts:191,
-   239,270`, `test/tasks-due-reminders-mailer-failure.test.ts:173`,
-   `test/tasks-remind-now-mailer-failure.test.ts` (2 tests). The claim-write
-   at `reminders.ts:434` calls `.returning({ id: schema.taskAssignment.id
-   })` on an update chain the test doubles/driver do not implement.
-   `test/chunk-sweep-misc.test.ts:72` independently asserts the source at
-   this location should read `for (const batch of
-   chunkIds(sentAssignmentIds)) { ... inArray(schema.taskAssignment.id,
-   batch)` (a chunked, `inArray`-batched update with no `.returning()`) but
-   the file instead now reads the DEC-023 barrel-header comment followed by
-   a non-chunked `.returning()` call — i.e. the batching/chunking shape the
-   scan test expects was replaced by a single unchunked update using
-   `.returning()`, which is unsupported by the exercised db path. Fix
-   belongs in `src/server/repo/tasks/reminders.ts` (restore
-   `chunkIds`-batched `inArray` update, or make `.returning()` supported by
-   whatever db shim these tests exercise).
-
-2. `test/login-account-budget.test.ts:251` — failing test: "DEC-072
-   wave-66: login-account restores a spoof-proof per-account budget beside
-   the (email,ip) pair budget > DEC-072 wave-38: with the account budget
-   exhausted, a WRONG password from a fresh IP still 429s (the budget still
-   throttles brute force)". `expect(wrongFromFreshIp.status).toBe(429)` got
-   `401` instead — the per-account budget documented at DEC-072 is no
-   longer throttling a fresh-IP attempt once the account budget is
-   exhausted. Fix belongs in the login-account-budget enforcement path
-   (src/routes/auth-login.tsx and/or its rate-limit helper) or, if the test
-   itself is stale relative to a since-landed DEC-072 amendment, in
-   `test/login-account-budget.test.ts:251`.
-
-3. `test/schema-migration-parity.scan.test.ts:355` — same root cause as
-   `migrations/0043_file_version_chain_unique.sql` and
-   `0000_secret_matthew_murdock.sql`'s `file_previous_file_id_idx` /
-   `file_previous_file_id_unique` declaring indexes with no matching
-   `src/db/schema/**.ts` declaration. Per wave-49 field-guide finding (DEC-
-   358), this defect is task-w47-g's (`9a541796`, adds
-   `migrations/0043_file_version_chain_unique.sql`), committed but still
-   unmerged into `main`; re-measured here, not re-fixed, per DEC-358 w49
-   ("a row owned by a committed-but-unmerged branch is re-measured, never
-   re-fixed").
-
-4. `test/unique-index-guard-coverage.scan.test.ts:114` — same root cause as
-   item 3 (`file_previous_file_id_unique` has no ALLOWLIST entry); also
-   task-w47-g's, re-measured not re-fixed.
-
-5. `test/spec9-invariants.test.ts:131` — `canEditSubmission("accepted",
-   pastClose, now, "America/Los_A...")` expected `false`, got `true`. Per
-   the wave-49 field-guide finding (DEC-522), this is a clock-dependent
-   test defect, not a product regression: the test feeds `Date.now() - 24h`
-   where `isFormClosed` requires a DAY LABEL, and `dayLabelToYmd` reads the
-   UTC calendar date, so this row is red for ~7 hours of every UTC day.
-   Re-measured true at this wall-clock time; fix belongs in
-   `test/spec9-invariants.test.ts` (freeze `now`/day label per the pattern
-   at `test/edit-lock.test.ts:9-11`), not in
-   `src/domain/edit-lock.ts`.
-
-6. `test/verification-log-verdict-contract.test.ts:248` — the shrink-only
-   ratchet's known-offenders set gained one new member not yet in
-   `LEGACY_VERDICT_VIOLATIONS`:
-   `docs/verification-log/index/0238-2026-08-15-task-w47-h-eval-findings-defect-ledger-32921050.md`.
-
-7. `test/verification-log-verdict-contract.test.ts:259` — the same file
-   (`0238-...-task-w47-h-...md`) carries a RESULT line whose token is
-   `NOT` (i.e. reads `RESULT: NOT ...` rather than `PASS`/`FAIL`), which
-   `verdictToken` cannot classify as PASS or FAIL. Both item 6 and item 7
-   trace to the same file; fix belongs in either amending
-   `0238-...md`'s RESULT line to end PASS/FAIL, or adding it to
-   `LEGACY_VERDICT_VIOLATIONS` if it is deliberately non-conforming.
-
-RESULT: FAIL — BUILD_EXIT=0, VITEST_EXIT=1 (19/12182 tests failed across 13
-files, 1 additional unhandled-rejection error, all 7 root causes filed
-above, owner: wave-51 lane), BUNDLE_EXIT=0 (bundle:check PASSED, entry
-bundle 69.20 kB gzip vs 300 kB budget — ran unconditionally inside the same
-lock acquisition despite the vitest failure, per DEC-644 w50). No freeze
-violation observed: no product-code commit landed on `main` during the
-heavy phase.
-OPEN ITEMS: 7
-
-## 2026-08-15 task-w50-b — J1-J12 persona walkthrough @ 87cee8b9
-
-QUALIFYING
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-STEP 0 (DEC-069 w50, identical procedure to task-w50-a). `git merge
---no-edit main` inside the worktree reported "Already up to date" (worktree
-was branched from `main` tip `87cee8b9` moments earlier). `npx tsx
-scripts/ref-state.ts` receipt (verbatim):
-
-```
-DEC-644 three-sha boundary: HEAD `87cee8b9fec30d190f93156c99ddf7011b68bc92`;
-newest first-parent product-code-bearing sha
-`c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`; every live ref (`main`,
-`manual-qa`, `task-custodian-w68-4`, `task-w47-a`, `task-w47-g`,
-`task-w47-h`, `task-w48-a`, `task-w48-c`, `task-w48-f`, `task-w49-f`,
-`task-w49-g`, `task-w50-a`, `task-w50-b`, `task-w68-d`, `task-w71-c`,
-`task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git
-merge-base --is-ancestor`. NON-ancestor refs (NOT confirmed via `git
-merge-base --is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`,
-`task-w48-b`, `task-w48-d`, `task-w48-e`, `task-w48-g`, `task-w49-a`,
-`task-w49-b`, `task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-h`,
-`task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`,
-`task-w72-b`, `task-w72-c`, `task-w72-d`, `task-w72-e`, `task-w72-f`,
-`task-w72-g`, `task-w72-h`, `task-w72-i`, `task-w72-j`.
-```
-
-Individually re-checked `task-w49-a` via `git merge-base --is-ancestor
-task-w49-a HEAD` on a 10-attempt ~30s-spaced bounded poll; the poll ran to
-4 attempts (all `no`) before the shell tool's own 2-minute timeout cut the
-loop short. `git merge main` re-run afterward still reported "Already up
-to date" (no new commits landed on `main` during the poll window), so the
-straggler set is unchanged from the receipt above. Per DEC-358 w49 this is
-named rather than re-polled to exhaustion: `task-w49-a`, `task-w49-b`,
-`task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-h` remain non-ancestor
-of `main`/HEAD at measurement time.
-
-MEASURED_SHA = `87cee8b9` (`git rev-parse --short HEAD` after the last
-sync; unchanged by the poll since no merge occurred).
-
-Full detail: none (docs-only summary below is sufficient per the task
-brief's "detail doc optional").
-
-Ran the DEC-069 required section-2 six-area persona walkthrough inside one
-acquisition of `/tmp/chq-test.lock` via `sh scripts/with-test-lock.sh sh -c
-'./scratch-heavy.sh'` (the wrapper script, itself product-inert, ran and
-was deleted before commit): `npm run build` (public/admin/ is gitignored,
-so this runs first per DEC-268) -> `npm run db:migrate` -> `npm run seed`
--> `.dev.vars` created locally (gitignored, matching
-`.dev.vars.example`: `DEV_MODE=1`, `PUBLIC_BASE_URL=http://localhost:8787`
-— none existed in the worktree, and without it `wrangler.jsonc`'s
-non-loopback `PUBLIC_BASE_URL` (`https://chautauqua.cc`) would not match
-the loopback origin the walkthrough was pointed at, so the walkthrough's
-own pre-flight would refuse the mismatch) -> `npx wrangler dev --port
-8787` (backgrounded, held inside the same lock acquisition) -> polled
-`http://localhost:8787/` until ready -> `npm run walkthrough -- --url
-http://localhost:8787` -> server killed afterward, still inside the lock.
-Single run, no retries.
-
-Summary quoted verbatim (all six DEC-089/DEC-062 areas ran in fixed order
-producer -> review -> speaker -> public -> data -> scale, per
-scripts/walkthrough-lib.ts:15):
-
-```
-Summary:
-  FAIL producer
-  PASS review
-  PASS speaker
-  PASS public
-  PASS data
-  PASS scale
-
-walkthrough FAILED
-```
-
-Per-area PASS/FAIL:
-- producer: FAIL. Verbatim failure line: `FAILED: J1 open submit page has
-  the submission form` / `expected the submission form once the window is
-  open`, assertion at `scripts/walkthrough/producer.ts:350-353`. Root
-  cause traced to `scripts/walkthrough/producer.ts:341-343`, which PATCHes
-  the form's `openDate` to `Date.now() - 60_000` — a raw epoch-ms
-  *instant* 60s in the past. Per `src/lib/submit-core.ts:28-34` and
-  `src/lib/timezone.ts:103-121`, `openDate`/`closeDate` are DAY LABELS
-  (UTC midnight of the intended calendar day), not instants:
-  `dayLabelToYmd` extracts only the UTC calendar date from the given ms
-  value and `dayLabelStartInstant` expands that date to event-local
-  00:00. The seed event's timezone is `America/Los_Angeles`
-  (`scripts/seed.ts:383`, UTC-7 in August). This walkthrough ran at
-  `2026-08-16T01:19:28Z`: `Date.now() - 60_000` still falls on UTC day
-  `2026-08-16`, so the derived openDate resolves to LA-local midnight of
-  that day = `2026-08-16T07:00:00Z` — over 5.5 hours AFTER the actual
-  `now` used for the `formWindowState` comparison, so the gate correctly
-  (per its own DAY LABEL contract) still reads `not_yet_open`. This
-  reproduces deterministically in the ~7-hour UTC window before LA
-  midnight catches up to the current UTC day (roughly 00:00-07:00 UTC)
-  and is silent for the rest of the day — the same clock/day-label
-  mismatch class already adjudicated as a TEST DEFECT, NOT A PRODUCT
-  REGRESSION for `test/spec9-invariants.test.ts:131` (DEC-522 w49 field
-  guide finding), here reproduced in a second, previously-unfiled
-  location (`scripts/walkthrough/producer.ts:342`). Per DEC-453/DEC-069
-  w50 this frozen lane files, not fixes, and does not touch `scripts/`.
-- review: PASS (`PASS review`, all 20 checks incl. DEC-175 existence-hiding
-  and DEC-039 cross-org 404/403 pairs).
-- speaker: PASS (`PASS speaker`).
-- public: PASS (`PASS public`).
-- data: PASS (`PASS data`).
-- scale: PASS (`PASS scale`; `PASS step1`..`PASS step6` against 110 fresh
-  contacts, bulk accept of 110 ids in 91ms, email-log unchanged, exactly-once
-  re-accept, purge-refresh probe all held).
-
-Named row — authenticated `GET /admin` SPA-shell assertion: ABSENT.
-`scripts/walkthrough/producer.ts` contains exactly one `/admin` fetch,
-at line 1065 (`const adminRes = await fetch(\`${BASE_URL}/admin\`, {
-redirect: "manual" })`), asserted at line 1066 against the *anonymous*
-302 (`DEC-175 unauthenticated GET /admin`). A repo-wide grep of
-`scripts/walkthrough/*.ts` and `scripts/walkthrough.ts` for
-`/admin`-adjacent SPA-shell assertions (`"/admin"`, `` /admin` ``, "SPA
-shell", "Admin SPA", "bundle missing") found no second occurrence and no
-authenticated-session GET of `/admin` anywhere in the walkthrough. `git
-log --oneline --all -- scripts/walkthrough/producer.ts` shows no
-wave-49 branch touching this file, so per DEC-358 w49 there is no existing
-owner to name; this is filed here as a new gap rather than re-filed under
-a nonexistent branch. docs/clarifications.md:26 calls the admin UI the
-priority surface, so the walkthrough currently never renders it under an
-authenticated session — a gate covering the priority surface only at the
-anonymous-redirect layer.
-
-RESULT: FAIL — producer area fails at product sha `87cee8b9` (test
-defect in `scripts/walkthrough/producer.ts:342`, day-label/instant
-mismatch, not a product regression; frozen wave per this task's brief,
-docs/** only, no product or scripts/ edits made). All other five areas
-pass.
-OPEN ITEMS: 2
-1. `scripts/walkthrough/producer.ts:342` feeds a raw instant
-   (`Date.now() - 60_000`) as `openDate` where `formWindowState`
-   (`src/lib/submit-core.ts:35`) requires a DAY LABEL — fails
-   deterministically in the pre-LA-midnight UTC window (owner: wave-51
-   lane; fix by passing a DAY-LABEL instant, e.g. UTC midnight of
-   yesterday, matching the DEC-522 pattern already applied elsewhere).
-2. No walkthrough module asserts that an authenticated `GET /admin`
-   renders the SPA shell — only the anonymous 302 at
-   `scripts/walkthrough/producer.ts:1065-1066` is covered (owner:
-   wave-51 lane; no existing wave-49 branch claims this scope).
-
-## 2026-08-15 task-w50-f — J3 submissions-triage adjudication @ 87cee8b9
-
-NOT QUALIFYING (docs-only — DEC-069)
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-DOCS-ONLY ADJUDICATION (DEC-358 w50: J3 area no wave has ever owned). This
-lane wrote nothing under `src/**`, `app/src/**`, `migrations/**` or
-`package.json` (DEC-069 w50 freeze) — every clause below is read from the
-tree at `87cee8b9` and, where the evidence standard calls for a test, an
-EXISTING test was run (no new test files added to the worktree; running a
-new ad-hoc test in this frozen wave would still be a src-adjacent write and
-this lane's scope is adjudication, not fixing). Defects are FILED with
-file:line + `owner: wave-51 lane`, never fixed here (DEC-453).
-
-MEASURED_SHA = `87cee8b9` (`git -C
-/Users/wednesdayniemeyer/Documents/gniemeyer/Projects/chautauqua-wt/task-w50-f
-rev-parse HEAD` = `87cee8b9fec30d190f93156c99ddf7011b68bc92`, worktree
-branched directly off `main`'s tip, no other wave-50 lane's commits present
-in this worktree at measurement time).
-
-Population read (SPEC.md:108-112, J3): "any form answer as a column, saved
-views, search, filters by track/format/status, bulk select -> bulk status
-change... Status pipeline: pending -> accept-queue/decline-queue ->
-accepted/declined... Manual session creation and cloning for invited
-talks." Files read: `src/routes/api/submissions.ts`,
-`src/server/repo/submissions/create.ts`, `src/server/repo/submissions/
-query.ts`, `src/server/repo/submissions/status.ts`, `src/routes/api/
-views.ts`, `src/server/repo/views.ts`, `app/src/pages/submissions/**`
-(columns.ts, ViewTabs.tsx, SubmissionsTable.tsx), `src/server/repo/
-files-authz.ts`, `src/routes/public/submit-post.tsx`, `src/db/schema/
-content.ts`.
-
----
-
-CLAUSE: any form answer as a column. `app/src/pages/submissions/
-columns.ts:deriveColumnsFromFormFields` derives one ColumnDef per current
-custom (non-locked) form field; `visibleColumns` filters the derived list
-by a caller-supplied id set. CLOSES clean — no defect found in this
-clause on its own.
-
-CLAUSE: search / filters by track/format/status. `src/server/repo/
-submissions/query.ts:73-157` (`parseListQuery`) bounds `q`
-(MAX_SEARCH_QUERY_LENGTH), `trackId` (MAX_FILTER_ID_LENGTH), and validates
-status tokens against `SUBMISSION_STATUSES` — read-side bounding per
-DEC-417 (line 11: `void DEC_417`). Already covered by existing DEC
-machinery; not re-adjudicated here as new territory.
-
-CLAUSE: status pipeline pending -> accept-queue/decline-queue ->
-accepted/declined, bulk select -> bulk status change.
-`POST /api/v1/events/:eventId/submissions/status`
-(`src/routes/api/submissions.ts:729-742`) calls
-`updateSubmissionStatuses` (`src/server/repo/submissions/status.ts:506`).
-
-NAMED QUESTION (2): is bulk status change set-based and provably free of a
-mailer import? YES on both counts.
-  - Set-based: `updateSubmissionStatuses` chunks the id lookup
-    (`chunkIds(ids)` + `inArray`, lines 516-526), routes rows in-memory into
-    at most three disjoint id lists (planIds/stampIds/restIds, lines
-    537-574), and issues chunked batch UPDATEs/one set-based participant
-    SELECT for onboarding planning (lines 576-589) — no per-row loop issuing
-    its own DB round trip.
-  - No mailer import: `status.ts:8-24`'s import list has no `mail` module
-    specifier, and `test/status-change-mail-ledger.scan.test.ts` — a
-    file-level static scan of every `src/routes/**` file for the
-    co-occurrence of a STATUS_WRITER identifier (including
-    `updateSubmissionStatuses`, ledgered at line 136) and a mailer identifier
-    (`makeMailer`/`mailer.send`/an import from `.../mail/`) — asserts the
-    population of route files matching BOTH equals a fixed, reasoned
-    2-entry ledger (`content-notes.ts`, `tasks.ts`; neither is
-    `submissions.ts`). Ran it plus the two clone tests that also touch this
-    surface:
-
-    `npx vitest run test/status-change-mail-ledger.scan.test.ts
-    test/clone-participants.test.ts test/clone-submission-write-burst.test.ts`
-    -> `Test Files  3 passed (3)` / `Tests  9 passed (9)`.
-
-  CLAUSE CLOSES: not a defect. A revert that made `submissions.ts` both
-  a status-writer AND a mailer-importer would fail
-  `status-change-mail-ledger.scan.test.ts`'s
-  "population... equals the ledger exactly" assertion
-  (`test/status-change-mail-ledger.scan.test.ts:214-237`).
-
-CLAUSE: manual session creation. `createSubmission`
-(`src/server/repo/submissions/create.ts:98-141`) — optional contact,
-`status` defaults to `'pending'`. Reachable from
-`src/routes/api/submissions.ts` (organizer POST). No defect found.
-
-CLAUSE: cloning for invited talks.
-`cloneSubmission` (`src/server/repo/submissions/create.ts:175-263`).
-
-NAMED QUESTION (1): does the verbatim `submission_answer` copy for a
-`file`-kind form field alias/expose/allow mutation of the original's
-uploaded file, and does file authz resolve through the answer or through
-`file.submissionId`?
-
-CONFIRMED-DEFECT. Evidence:
-  - A `file`-kind answer's `valueJson` IS the uploaded file's row id, not a
-    copy of file bytes or a submission-scoped pointer:
-    `src/routes/public/submit-post.tsx:399-409` inserts the file row with
-    `submissionId: submission.id` (the ORIGINAL submission) via
-    `insertAttachmentFile`, then `cleaned[pf.fieldId] = fileId;` — the
-    answer literally stores the file's id.
-  - `cloneSubmission`'s answer-copy block
-    (`src/server/repo/submissions/create.ts:214-228`) selects
-    `{formFieldId, valueJson}` from `submission_answer` and re-inserts every
-    row verbatim onto the new submission id, with no branch on the source
-    field's `kind` — a `file`-kind answer's `valueJson` (the original
-    fileId) is copied unchanged. No new `file` row is minted for the
-    clone (confirmed also by `test/clone-participants.test.ts:176-179`'s
-    assertion that `schema.file` is never inserted by `cloneSubmission`) and
-    `file.submissionId` on the referenced row is never updated to point at
-    the clone.
-  - File authz resolves exclusively through `file.submissionId`, never
-    through any `submission_answer` row: `getFileScope`
-    (`src/server/repo/files-authz.ts:113-141`) loads the file by `fileId`,
-    reads `fileRow.submissionId` (line 122, the ORIGINAL submission, per the
-    point above), and calls `getSubmissionScope(db, fileRow.submissionId)`
-    (line 129) to build the read/write participant populations used by
-    `canAccessFile` (lines 149-168). The clone's own participant list
-    (independently copied/filterable by `cloneSubmission`'s DEC-275 active-
-    only rule, lines 230-260) is never consulted for this file.
-
-  Consequence: the clone's copied answer still names the original file, but
-  access to that file is gated on the ORIGINAL submission's participant
-  population, not the clone's — a participant added to the clone after
-  cloning (and never invited to the original) sees the answer but cannot
-  download the file `canAccessFile` denies them (`readParticipantContactIds`
-  come from the original); conversely a participant removed from the clone
-  but still active on the original retains access via the original's scope.
-  The two submissions silently diverge on who may read/write a file the
-  clone's own answer still references, and `file.submissionId` is never
-  re-pointed or the row re-copied. This is the identical failure shape to
-  the field guide's MERGE REPOINTS, DELETE NULLS finding (DEC-979) — a
-  clone should re-point or refuse, not silently alias.
-  FILE:LINE: `src/server/repo/submissions/create.ts:214-228`,
-  `src/server/repo/files-authz.ts:113-141`,
-  `src/routes/public/submit-post.tsx:399-409`.
-  OWNER: wave-51 lane.
-
-CLAUSE: saved views (create/list/delete; DEC-031/DEC-904/DEC-422/DEC-975).
-
-NAMED QUESTION (3): what happens to a saved view whose config names a
-`formFieldId` that has since been deleted?
-
-`isValidSavedViewConfig` (`src/server/repo/views.ts:38-58`) validates
-`columns` as an array of bounded strings — it never checks a column id
-against the live form-field population (no DB read at all; the function
-takes no `db` argument). Nothing at write time or read time refuses a
-config naming a now-deleted field. Consumption-side:
-`app/src/pages/submissions/ViewTabs.tsx`'s `onApply(view.config)` feeds
-`config.columns` straight into the page's visible-field-id set, and
-`visibleColumns(columns, visibleFieldIds)` (`app/src/pages/submissions/
-columns.ts:31-35`) filters the CURRENT `columns` list (derived fresh from
-the CURRENT live form fields via `deriveColumnsFromFormFields`) by that id
-set — a stale id simply matches nothing in the current list and is dropped.
-RESULT: silent narrowing (a smaller-than-saved column set), never a throw,
-never a refusal, never a visible "missing field" indicator. FILE:LINE:
-`src/server/repo/views.ts:38-58`, `app/src/pages/submissions/
-columns.ts:31-35`, `app/src/pages/submissions/ViewTabs.tsx` (`onApply`
-call site). NOT adjudicated as a defect: no DEC or SPEC clause requires a
-refusal or a stale-field indicator here, and the failure mode is silent
-data narrowing (fewer columns shown), not silent data exposure/mutation —
-distinguishable from the file-clone finding above. Documented for the
-record per the task's named-question requirement; zero OPEN ITEMS
-contribution.
-
-NAMED QUESTION (4): is there any way to EDIT a saved view, or only
-create/delete, and does SPEC require one?
-
-Only create/delete. `src/server/repo/views.ts` exports exactly
-`listSavedViews`, `countSavedViews`, `countSavedViewsCreatedBy`,
-`createSavedView`, `getSavedViewOwnership`, `deleteSavedView` — no
-update/patch function. `src/routes/api/views.ts` registers exactly three
-routes: `GET /events/:eventId/views` (line 40), `POST
-/events/:eventId/views` (line 61), `DELETE /views/:id` (line 106) — no
-PATCH/PUT. SPEC.md:108-112 (J3) names "saved views" as a bare noun phrase
-with no edit/rename verb attached, unlike its explicit "bulk select ->
-bulk status change" phrasing elsewhere in the same clause. NOT adjudicated
-as a defect: SPEC does not require an edit path (a user can already
-delete-and-recreate to the same effect, and DEC-031/DEC-904/DEC-422/DEC-975
-— the four DECs governing this surface — say nothing about edit either).
-Documented for the record; zero OPEN ITEMS contribution.
-
----
-
-RESULT: 1 CONFIRMED-DEFECT (cloneSubmission file-answer aliasing across
-file-kind form-field answers, file.submissionId never re-pointed) filed
-above with file:line and owner `wave-51 lane`; every other adjudicated
-clause (form-answer columns, search/filters, bulk status change including
-the DEC-009 no-mailer invariant, manual session creation, saved-view
-stale-column-id handling, saved-view edit-path absence) closes clean or is
-a documented non-defect finding with no SPEC/DEC requirement violated.
-OPEN ITEMS: 1
-
-## 2026-08-15 task-w50-g — J12 data-out adjudication @ 87cee8b9
-
-NOT QUALIFYING (docs-only — DEC-069)
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-Docs-only adjudication lane (DEC-099 w50): scope classifies to no slot —
-not one of the five QUALIFYING claimants (build+test+bundle / walkthrough
-/ perf-smoke / spec-audit / triage-closure). Touched nothing outside
-`docs/**` (DEC-069 w50); no `src/**`, `app/src/**`, `migrations/**` or
-`package.json` write in this worktree. Defects below are FILED, not
-fixed (DEC-453), owner `wave-51 lane`.
-
-Worktree branched from `main` tip `87cee8b9` (post scribe-wave-50 commit)
-via `git worktree add`; no fetch/merge performed; `HEAD` at adjudication
-time is `87cee8b9` (`git rev-parse --short=8 HEAD`). No other lane's
-scope was read as authoritative beyond files cited by path below.
-
-Population per SPEC.md:177-181 (J12 "the data stays theirs"): exports
-everywhere CSV+JSON (submissions, speakers, evaluations, agenda, email
-log — plus `contacts`, a sixth kind added post-J11), a REST API at
-`/api/v1` with bearer tokens the admin SPA itself consumes, and an
-optional one-way Airtable sync.
-
-### Q1 — every SPEC-named export kind reachable in both format=csv and format=json, same row cap, same attachment disposition
-
-CONFIRMED via source read + targeted test run, not asserted.
-
-`src/server/repo/exports/kinds.ts:6` — `EXPORT_KINDS = ["submissions",
-"speakers", "evaluations", "agenda", "email-log", "contacts"]` — a
-superset of SPEC's five named kinds (submissions, speakers, evaluations,
-agenda, email log); `contacts` is an additional J11/DEC-671 kind, not a
-gap.
-
-`src/routes/api/exports.ts:71-200` (single handler,
-`GET /api/v1/events/:eventId/export/:kind`) builds ONE `table` via
-`buildExport(...)` (line 169) BEFORE branching on `format`
-(`c.req.query("format")`, lines 81-84, 192-200) — the truncation refusal
-at lines 178-190 (`table.truncated` → `ApiError("invalid", ...
-${EXPORT_MAX_ROWS}-row cap...)`) runs identically for both formats
-because it executes before the `if (format === "json")` branch at line
-192. `EXPORT_MAX_ROWS` (`src/server/repo/exports/table.ts:24`) = 20000,
-enforced once per-kind inside each kind's own row query (e.g.
-`src/server/repo/exports/submissions.ts:111,116`;
-`speakers.ts:63,68`; `evaluations.ts:170,174`; `agenda.ts:79,83`;
-`email-log.ts:60,64`; `contacts.ts:100,104` — each `.limit(EXPORT_MAX_ROWS
-+ 1)` then `if (rows.length > EXPORT_MAX_ROWS)` sets `truncated`), so the
-cap is a single population-level fact both formats read, not two
-separately-enforced caps that could drift.
-
-Attachment disposition: CSV branch (`exports.ts:197-200`) sets
-`Content-Disposition: attachment` via `contentDispositionAttachment(
-\`${kind}.csv\`)`; JSON branch (`exports.ts:192-195`) sets the SAME
-header via `contentDispositionAttachment(\`${kind}.json\`)` before
-`c.json(table.records)`. Both call the same `contentDispositionAttachment`
-helper (`src/domain/files.ts`), differing only in the file extension
-argument — no separate disposition logic exists for JSON.
-
-The showflow export (`exports.ts:54-69`,
-`GET /api/v1/events/:eventId/exports/showflow.csv`) is CSV-only by design
-(DEC-055 — "a separate fixed-column surface on its own route", not one of
-the six `EXPORT_KINDS`) — outside this clause's population, not a gap in
-it.
-
-Targeted test run (`npx vitest run test/audit-claims.test.ts`, this
-worktree): `docs/AUDIT.md J12 export-kind claims vs EXPORT_KINDS`
-describe block passed 3/3 — "every EXPORT_KINDS value is named in
-backticks in the J12 section" and "no backticked kind-shaped token ...
-names a kind absent from EXPORT_KINDS" both green, so the six kinds
-above are also the six the docs claim, mechanically checked, not by
-inspection.
-
-RULING: clause CLOSES. Reachable in both formats, identical cap
-(pre-format-branch), identical disposition mechanism.
-
-### Q2 — bearer-token path org-scoping + closed set of cookie-session-only routes
-
-CONFIRMED via existing scan tests, cited not re-derived.
-
-Org scoping on every route the bearer path can reach:
-`src/server/middleware.ts:145-162` (`resolveBearerAuth`) re-resolves the
-minting user on EVERY request (no cached privilege on the token row
-itself) and sets `auth.orgId = user.orgId` (line 159) — every downstream
-handler's org-scoping check (`auth.orgId`) is therefore live per-request,
-not a snapshot. `test/route-authz-enumeration.scan.test.ts` (13/13
-passed, this run) derives EVERY route registration under `src/routes/**`
-text-at-test-time and classifies GUARDED (names a role guard, a mount-
-level guard, or an object-level ownership marker) / PUBLIC_BY_DESIGN /
-GAP, failing on any GAP — this population is not bearer-vs-cookie
-filtered, i.e. it covers every route a bearer token could reach (bearer
-auth sets the identical `auth` shape cookie auth does; there is no
-bearer-only route).
-
-Closed set of cookie-session-only (credential-bearing) routes:
-`test/credential-route-cookie-session.scan.test.ts` (4/4 passed, this
-run) derives the credential-bearing population from
-`src/routes/api/**` at test time via capability markers
-(`generatePassword(`, `updateUserPasswordHash(`, `hashPassword(`,
-`newApiToken(`, `updateUserRole(`) — not a hand list — and asserts every
-member's registration text names `requireCookieSession`. Its tripwire
-test ("derived population contains the four named routes") pins the
-closed set to exactly `POST /api/v1/users`, `POST
-/api/v1/users/:id/reset-password`, `PATCH /api/v1/users/:id`, `POST
-/api/v1/tokens` (`grep -c requireCookieSession src/routes/api/*.ts`
-independently confirms only `tokens.ts` and `users.ts` reference the
-guard). A negative control asserts `POST /api/v1/contacts` — a bearer-
-reachable, non-credential route — is correctly excluded from the
-population, so the derivation isn't over-broad.
-
-`test/users-bearer-containment.test.ts` (4/4 passed, this run) drives
-the real `usersRoutes` sub-app with `auth.viaBearer = true` and asserts
-403 on both credential routes, 2xx for the cookie-session equivalent —
-this is the executable proof the scan's static claim actually holds at
-request time, not just in source text.
-
-RULING: clause CLOSES on both sub-questions — org scoping is live
-per-request (not cached on the token) and the cookie-session-only set is
-provably closed by a derived (not hand-listed) scan plus a request-level
-containment test.
-
-### Q3 — POST /api/v1/tokens has no per-org cap on api_token rows
-
-CONFIRMED-DEFECT.
-
-`src/routes/api/tokens.ts:64-94` (`POST /api/v1/tokens` handler): after
-`requireOrganizer, requireCookieSession, csrfJson` and a `name` length
-check (`MAX_NAME_LENGTH`, line 72), the handler unconditionally
-`INSERT`s a new `schema.apiToken` row (lines 80-89) — no `COUNT(*) FROM
-api_token WHERE org_id = ?` guard precedes the insert, unlike the
-sibling credential-bearing route `POST /api/v1/users`
-(`src/routes/api/users.ts` — an ANALOGOUS per-org population guarded at
-`countOrgUsers`, `src/server/repo/users.ts:72`, read at
-`src/routes/api/users.ts:62,185` before insert). No test in this
-worktree (`grep -rn "MAX_.*TOKEN\|tokens.*cap" test/`) exercises a token-
-count cap; `test/tokens.test.ts` (19/19 passed, this run) covers name
-validation, prefix, list pagination and deletion, never a create-time cap.
-
-Adjudicated against the STAGE principle ("A UNIVERSAL NEEDS A POPULATION
-/ UNBOUNDED SURFACE NEVER PAGED"): the GET list (line 23-62) IS correctly
-paged (`clampPage`/`listPerPage`), so the read side is not the gap named
-here — the write side is. An organizer-authenticated, CSRF-protected
-actor can grow `api_token` without bound for their own org; this is a
-narrower risk class than an attacker-controlled unbounded surface (it is
-self-inflicted storage/DoS by a privileged actor, same trust level as
-`POST /api/v1/users`, which DOES cap), but the sibling route's cap is
-direct evidence the codebase already treats "unbounded organizer-created
-rows of a credential-bearing kind" as a defect class worth guarding, and
-`tokens.ts` does not follow its own sibling's pattern. Ruled a real gap,
-not deliberate — nothing in `decisions/` or `docs/clarifications.md`
-names a token-count exemption, and the silence is inconsistent with the
-users precedent rather than a considered choice.
-
-CONFIRMED-DEFECT: `src/routes/api/tokens.ts:64-94` — POST /api/v1/tokens
-has no per-org row-count cap, unlike the analogous `POST /api/v1/users`
-(`countOrgUsers` guard). Owner: wave-51 lane.
-
-### Q4 — published API surface vs the real composed route table
-
-CONFIRMED via two independent bidirectional scans, both re-run this wave.
-
-`test/docs-api-manifest.scan.test.ts` (10/10 passed, this run) diffs
-`API_DOC_ENDPOINTS` (`src/routes/docs-endpoints.ts`, the single source
-`docs.tsx` renders from) against `enumerateRegisteredRoutes()` — a real
-router scan — in both directions (undocumented-live, stale-doc,
-stale-omission), plus a floor tripwire (>=100 live, >=80 documented) so
-neither side can quietly go empty.
-
-`test/api-docs-enumerated.test.ts` (4/4 passed, this run) independently
-diffs `ROUTE_GROUPS` (`src/routes/docs.tsx`) against `app.routes` — the
-actual mounted Hono app exported by `src/index.ts` — again bidirectional,
-with a >=100-route floor and a closed, reasoned
-`UNDOCUMENTED_BY_DESIGN` allowlist (currently just `GET /api/v1`, the
-meta endpoint).
-
-`test/audit-claims.test.ts`'s two DEC-618 describe blocks (23/23 passed
-across the whole file, this run) add a THIRD independent direction:
-`docs/AUDIT.md`'s prose route claims (both bare `` `/path` `` and
-`` `METHOD /path` `` forms) are resolved against `ROUTE_MANIFEST` and the
-composed app respectively, so prose documentation (not just the
-structured `docs.tsx`/`docs-endpoints.ts` pair) is mechanically checked
-too.
-
-RULING: clause CLOSES. Three independent, router-derived (never
-hand-mirrored) bidirectional scans exist and were green this run; the
-published API cannot drift from the implementation without one of these
-three failing by name.
-
-### Q5 — Airtable sync
-
-DEFERRED-STAGE-2, per `docs/clarifications.md:22-23` ("Airtable:
-nice-to-have, not a minus if unused. Read-only is fine ... Never the
-primary DB."). Code exists (`src/sync/airtable.ts`,
-`DEC_435`/`DEC_450`/`DEC_725` in `src/decisions-data/`) and is described
-by those decisions as "stage-1 code correctness, stage-2 wiring" —
-`src/server/env.ts:27-33` gates it behind optional `AIRTABLE_TOKEN`/
-`AIRTABLE_BASE_ID`/`AIRTABLE_ORG_ID` secrets that STAGE 1 forbids running
-with present. No scope opened here; not re-adjudicated beyond citing the
-governing decisions and clarification.
-
-RESULT: PARTIAL — Q1, Q2, Q4 CLOSE on cited evidence (targeted test runs
-quoted above: route-authz-enumeration.scan 13/13,
-credential-route-cookie-session.scan 4/4, users-bearer-containment 4/4,
-tokens 19/19, docs-api-manifest.scan 10/10, api-docs-enumerated 4/4,
-audit-claims 23/23 — 77/77 total, all green this run); Q3 is a
-CONFIRMED-DEFECT (`src/routes/api/tokens.ts:64-94`, owner wave-51 lane);
-Q5 is DEFERRED-STAGE-2 per clarifications, no scope opened.
-OPEN ITEMS: 1
-
-## 2026-08-15 task-w50-c — perf-smoke @ 87cee8b9
-
-QUALIFYING
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-TIER-0 MEASUREMENT LANE, LOG-ONLY (DEC-644, DEC-453, DEC-069), sequence 0262
-(pre-allocated, DEC-068 wave-50). FROZEN GATE LANE. STEP 0: worktree cut
-directly at `main` tip `87cee8b9` ("scribe wave 50"). `npx tsx
-scripts/ref-state.ts` found the seven live `task-w49-*` refs
-(`-a`,`-b`,`-c`,`-d`,`-e`,`-f`,`-h`; `-g` already an ancestor) NON-ancestor;
-ran the bounded 10-attempt poll and every check reported the same
-NON-ancestor state — per DEC-069 w48/w50's finding this lane delegated the
-branch condition to the measuring lane and proceeded at its own tip rather
-than blocking. STEP 0b precondition: `grep -c PERF_SPEAKER
-scripts/perf-seed.ts` = 13 (inserts at lines 608, 627, 643, 659, identical
-to every prior lane's receipt) — the documented recipe alone reaches every
-check including the three portal rows; no local-D1 fixup applied.
-
-### Ref-state receipt (verbatim)
-
-DEC-644 three-sha boundary: HEAD `87cee8b9fec30d190f93156c99ddf7011b68bc92`;
-newest first-parent product-code-bearing sha
-`c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`; every live ref (`main`,
-`manual-qa`, `task-custodian-w68-4`, `task-w47-a`, `task-w47-g`,
-`task-w47-h`, `task-w48-a`, `task-w48-c`, `task-w48-f`, `task-w49-g`,
-`task-w50-a`, `task-w50-b`, `task-w50-c`, `task-w68-d`, `task-w71-c`,
-`task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git
-merge-base --is-ancestor`. NON-ancestor refs (NOT confirmed via `git
-merge-base --is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`,
-`task-w48-b`, `task-w48-d`, `task-w48-e`, `task-w48-g`, `task-w49-a`,
-`task-w49-b`, `task-w49-c`, `task-w49-d`, `task-w49-e`, `task-w49-f`,
-`task-w49-h`, `task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`,
-`task-w72-a`, `task-w72-b`, `task-w72-c`, `task-w72-d`, `task-w72-e`,
-`task-w72-f`, `task-w72-g`, `task-w72-h`, `task-w72-i`, `task-w72-j`.
-
-### Three-run result
-
-**Run 1: 40/40 check-rows PASS, zero FAIL (fresh seed).** Runs 2 and 3:
-both ERRORED before producing any row (`Error: fetchPendingSubmissionIds:
-expected at least 1000 pending submissions, got 200`,
-`scripts/perf-smoke.ts:270`), byte-identical both times. Named rows (run 1
-only, adjusted p95, budget(read)=50ms unless noted): `reviewer queue`
-25.7ms PASS. `plan progress (page 1)` 22.6ms PASS. `plan results (page 1)`
-18.6ms PASS. `files library (page 1)` 12.2ms PASS. `onboarding grid`
-20.6ms PASS. Three portal rows: `portal home` 15.2ms, `portal tasks`
-8.8ms, `portal submission detail` 14.8ms — all PASS. `bulk status change`
-(budget(write)=100ms) 33.3ms PASS in run 1, and is also the row whose
-own non-idempotent write is the confirmed root cause blocking runs 2/3
-from measuring anything.
-
-Root cause (CONFIRMED-DEFECT, filed per DEC-453, not fixed — HARD SCOPE
-forbids touching `scripts/`): `scripts/perf-smoke.ts:962-972` ("bulk
-status change") alternates a 1000-id batch `accept_queue`<->`pending` via
-`alternateByIteration` (`scripts/perf-smoke-lib.ts:226-231`) once per call,
-but `WARMUP_ITERATIONS + MEASURED_ITERATIONS` = `5 + 30` = 35
-(`scripts/perf-smoke.ts:70-71`) is odd, so the batch ends each run parked
-at `accept_queue` instead of restored to `pending` — breaking the
-comment's own stated intent ("repeatable forever") and starving the next
-invocation's `fetchPendingSubmissionIds` (`scripts/perf-smoke.ts:270`,
-itself a correct fail-loudly guard) of pending rows. Reproduced
-deterministically across two consecutive invocations against the same
-booted server/seeded D1. Owner: wave-51 lane.
-
-This lane does not file all 40 rows individually as 40 separate
-CONFIRMED-DEFECT rows — 39 of them never got a chance to run in runs 2/3
-for a reason unrelated to their own handlers, and doing so would
-misrepresent 39 healthy checks as individually broken. Full detail:
-docs/verification-log/task-w50-c-perf-smoke-87cee8b9.md.
-
-RESULT: PARTIAL — run 1 (fresh seed) fully clean, 40/40 check-rows PASS
-with wide margin, including all six historically marginal rows and all
-three portal rows; no product regression found in any measured row. Runs 2
-and 3 ERRORED before measuring due to a confirmed, reproducible
-perf-smoke harness repeatability defect (not a product regression).
-OPEN ITEMS: 1 (perf-smoke harness repeatability defect,
-`scripts/perf-smoke.ts:70-71,962-972`, owner wave-51 lane)
-
-## 2026-08-15 task-w50-h — tier-1 fidelity recheck @ 87cee8b9
-
-NOT QUALIFYING (docs-only — DEC-069)
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-Advisory lane, docs-only (DEC-069 w50 / DEC-099 w50): re-derives the six
-named sub-clauses of `docs/eval-findings.md` TIER 1 item 3 (Comms
-templates-grid overlap, Comms History-tab chrome, Content upload-reject
-modal, Content content-detail container, Review results-head, Review
-plan-editor footer) at this task's own runtime, boundary `87cee8b9`. Read
-`docs/verification-log/task-w27-g-fidelity-recheck-ceda66f2.md` in full
-first per the task brief's mandate (not just the eval-findings pointer
-note), plus `docs/verification-log/task-w42-f-tier-1-fidelity-recheck-
-824aac9b.md`, which had already re-derived the same six clauses once. All
-six confirmed CLOSED, unchanged since `824aac9b`, each with a quoted
-`path:line` pair (tree + vendored `docs/design/*.dc.html`, README-wins
-rule not invoked — no frame/README conflict found) plus a named render
-test that would fail on revert. Full detail:
-`docs/verification-log/task-w50-h-tier-1-fidelity-recheck-87cee8b9.md`.
-No file under `src/**`, `app/src/**`, `migrations/**` or `package.json`
-touched (DEC-453 FILE, NEVER FIX; scope classifies to no slot, DEC-099
-w50). The admin Speakers toolbar right-cluster row is VOID per this task's
-brief and was not re-filed or touched.
-
-RESULT: PASS (all six sub-clauses CLOSED, zero CONFIRMED-DEFECT rows)
-
-OPEN ITEMS: 0
-
-## 2026-08-15 task-w50-i — eval-findings rebase @ 87cee8b9
-
-NOT QUALIFYING (docs-only — DEC-069)
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-DOCS ONLY (DEC-358 w41/w50, DEC-069, DEC-099 w50): no file under `src/`,
-`app/src/`, `migrations/`, `scripts/`, or `package.json` was touched;
-`docs/eval-findings.md` and this index entry are the only edits. This is
-the sole editing owner of `docs/eval-findings.md` this wave; scope
-classifies to no five-slot gate.
-
-Step 0 sync-then-measure: `git merge --no-edit main` in this worktree (cut
-directly from `main` tip) reported "Already up to date." `npx tsx
-scripts/ref-state.ts` receipt (verbatim): DEC-644 three-sha boundary — HEAD
-`87cee8b9fec30d190f93156c99ddf7011b68bc92`; newest first-parent
-product-code-bearing sha `c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`;
-ancestors of HEAD: `main`, `manual-qa`, `task-custodian-w68-4`,
-`task-w47-a`, `task-w47-g`, `task-w47-h`, `task-w48-a`, `task-w48-c`,
-`task-w48-f`, `task-w50-e`, `task-w50-h`, `task-w50-i`, `task-w68-d`,
-`task-w71-c`, `task-w71-d`, `task-w71-e`. NON-ancestors: `mail-rich-shape-fallback`,
-`task-w17-i`, `task-w48-b`, `task-w48-d`, `task-w48-e`, `task-w48-g`,
-`task-w49-a` through `-h`, `task-w50-a`, `task-w50-b`, `task-w50-c`,
-`task-w50-d`, `task-w50-f`, `task-w50-g`, `task-w68-b`, `task-w68-c`,
-`task-w68-e`, `task-w71-a`, `task-w72-a` through `-j`. `git for-each-ref
---format='%(refname:short) %(objectname:short)' refs/heads` (46 live
-branches) plus `git merge-base --is-ancestor <ref> HEAD` re-run
-individually for every ref (never a `.git/refs/heads/*` glob, never the
-`.git/packed-refs` `refs/heads/main` line) confirms the same split.
-
-MEASURED_SHA = `git rev-parse --short HEAD` = `87cee8b9` (taken before
-this commit).
-
-**REBASE per DEC-358 w27/w31/w35/w37/w39/w41/w45/w46/w48/w50:** the pinned
-mandate (`32921050`, wave 47/task-w47-h) is now three waves stale;
-replaced (not prepended) with a header derived at this task's own
-runtime. Folded the `32921050`..`87cee8b9` range in:
-
-- **All seven wave-45 CONFIRMED-DEFECT rows CLOSED.** Every `task-w47-a`
-  through `-g` owning branch confirmed an ancestor of HEAD; each item's
-  falsifying check re-run directly against the live tree this task (not
-  restated from the branch's own commit message) — reminder claim-before-
-  send (`test/reminders-claim-before-send.test.ts` 2/2), portal doors SQL
-  scoping (`test/portal-detail-download-scope-sql.test.ts` 4/4,
-  `test/portal-resources-scope.test.ts` 2/2), auto-schedule accounting
-  race (`test/auto-schedule-unplaced-reconciliation.test.ts` 2/2), CSV
-  import duplicate-destination mapping
-  (`test/contacts-import-mapping-injective.test.ts` 6/6), merge
-  preview/execute parity (`test/contacts-merge-preview-parity.test.ts`
-  3/3), contact-history `events` bound
-  (`test/contacts-history-event-id.test.ts` 6/6), file version-mint race
-  (`test/file-version-chain-unique.test.ts` 2/2). `0236`'s 24-file
-  blast-radius finding stays UNOWNED (re-glob: still true).
-- **Wave-48's three landed gate sections folded in**: `0240`
-  (build+test+bundle, FAIL, 2 items), `0242` (perf-smoke, PASS 117/117),
-  `0244` (render-sweep, PASS all seven passes). `0240`'s item 1
-  (DEC-818's cited migration) is now CLOSED — the file landed via
-  `task-w47-g` (`test/decision-path-references.scan.test.ts` 2/2, re-run
-  this task). `0240`'s item 2 (`test/spec9-invariants.test.ts:131`)
-  RECLASSIFIED as a TEST DEFECT (DEC-522 w49 finding), independently
-  reconfirmed this task by re-running the suite: at this runtime line 131
-  (`"pending"`) failed rather than line 133 (`"accepted"`) as `0240`
-  reported — same UTC-day-label clock-boundary defect, different
-  assertion; `src/domain/edit-lock.ts:22`'s DEC-041 carve-out itself is
-  unchanged. Not re-filed as a product regression; owner stays wave-51.
-- **Every "file X exists" claim in the document re-globbed
-  programmatically this runtime**: 169 distinct backtick-quoted file-path
-  citations resolved (exact path or unique basename match) — all 169
-  found on disk, zero false claims carried forward. No "does not exist"
-  claim is currently carried (both prior absence claims were already
-  closed by wave-46).
-- **IN FLIGHT rebuilt purely from `.git` ref state**: wave-48's four
-  non-landed lanes (`-b`/`-d`/`-e`/`-g`), all eight wave-49 lanes (none
-  landed — `task-w49-f`/`task-w49-g` claim to discharge the UNOWNED
-  wave-41 falsifiability batch-A/batch-B remainders respectively, named as
-  OWNED-BUT-UNMERGED since this lane did not itself re-run their checks),
-  and this wave's own siblings (`task-w50-a`..`-h`, none an ancestor
-  except `-e`/`-h` which are RUNNING with zero commits) are each named by
-  branch, sha and one-line scope — no counts, verdicts or RESULT/OPEN
-  ITEMS lines restated or predicted for any of them, per this task's own
-  boundary.
-
-Net: `docs/eval-findings.md` went from 923 to 892 lines while folding in
-seven newly-closed defects, three wave-48 gate sections, and 17 named
-branches across waves 48-50 that the prior header did not carry.
-
-```
-$ npm run verification-log:assemble
-```
-```
-$ npm run verification-log:check
-exit 0
-```
-
-RESULT: NOT QUALIFYING — docs-only scribe/mandate rebase, DEC-069 (a gate
-inside a code wave can never qualify; here, no code wave gate is even
-attempted). `docs/eval-findings.md` rebased to `87cee8b9`; seven wave-45
-defects and three wave-48 gate sections folded into TIER 0 with re-run
-falsifying checks; IN FLIGHT rebuilt from live `.git` ref state naming
-every wave-48/49/50 non-landed branch.
-
-OPEN ITEMS: 0 (this lane files no new CONFIRMED-DEFECT of its own; the one
-item it reclassifies — `test/spec9-invariants.test.ts:131`'s clock
-dependency — remains counted at `0240`'s own filing, owner wave-51, not
-re-filed here as a new item)
-
 ## 2026-08-15 task-w50-e — triage-closure @ 87cee8b9
 
 QUALIFYING
@@ -9648,3 +9100,538 @@ admin-Speakers-toolbar row remains VOID and was not re-filed, per this
 task's own instruction.
 
 OPEN ITEMS: 2
+## 2026-08-15 task-w50-f — J3 submissions-triage adjudication @ 87cee8b9
+
+NOT QUALIFYING (docs-only — DEC-069)
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DOCS-ONLY ADJUDICATION (DEC-358 w50: J3 area no wave has ever owned). This
+lane wrote nothing under `src/**`, `app/src/**`, `migrations/**` or
+`package.json` (DEC-069 w50 freeze) — every clause below is read from the
+tree at `87cee8b9` and, where the evidence standard calls for a test, an
+EXISTING test was run (no new test files added to the worktree; running a
+new ad-hoc test in this frozen wave would still be a src-adjacent write and
+this lane's scope is adjudication, not fixing). Defects are FILED with
+file:line + `owner: wave-51 lane`, never fixed here (DEC-453).
+
+MEASURED_SHA = `87cee8b9` (`git -C
+/Users/wednesdayniemeyer/Documents/gniemeyer/Projects/chautauqua-wt/task-w50-f
+rev-parse HEAD` = `87cee8b9fec30d190f93156c99ddf7011b68bc92`, worktree
+branched directly off `main`'s tip, no other wave-50 lane's commits present
+in this worktree at measurement time).
+
+Population read (SPEC.md:108-112, J3): "any form answer as a column, saved
+views, search, filters by track/format/status, bulk select -> bulk status
+change... Status pipeline: pending -> accept-queue/decline-queue ->
+accepted/declined... Manual session creation and cloning for invited
+talks." Files read: `src/routes/api/submissions.ts`,
+`src/server/repo/submissions/create.ts`, `src/server/repo/submissions/
+query.ts`, `src/server/repo/submissions/status.ts`, `src/routes/api/
+views.ts`, `src/server/repo/views.ts`, `app/src/pages/submissions/**`
+(columns.ts, ViewTabs.tsx, SubmissionsTable.tsx), `src/server/repo/
+files-authz.ts`, `src/routes/public/submit-post.tsx`, `src/db/schema/
+content.ts`.
+
+---
+
+CLAUSE: any form answer as a column. `app/src/pages/submissions/
+columns.ts:deriveColumnsFromFormFields` derives one ColumnDef per current
+custom (non-locked) form field; `visibleColumns` filters the derived list
+by a caller-supplied id set. CLOSES clean — no defect found in this
+clause on its own.
+
+CLAUSE: search / filters by track/format/status. `src/server/repo/
+submissions/query.ts:73-157` (`parseListQuery`) bounds `q`
+(MAX_SEARCH_QUERY_LENGTH), `trackId` (MAX_FILTER_ID_LENGTH), and validates
+status tokens against `SUBMISSION_STATUSES` — read-side bounding per
+DEC-417 (line 11: `void DEC_417`). Already covered by existing DEC
+machinery; not re-adjudicated here as new territory.
+
+CLAUSE: status pipeline pending -> accept-queue/decline-queue ->
+accepted/declined, bulk select -> bulk status change.
+`POST /api/v1/events/:eventId/submissions/status`
+(`src/routes/api/submissions.ts:729-742`) calls
+`updateSubmissionStatuses` (`src/server/repo/submissions/status.ts:506`).
+
+NAMED QUESTION (2): is bulk status change set-based and provably free of a
+mailer import? YES on both counts.
+  - Set-based: `updateSubmissionStatuses` chunks the id lookup
+    (`chunkIds(ids)` + `inArray`, lines 516-526), routes rows in-memory into
+    at most three disjoint id lists (planIds/stampIds/restIds, lines
+    537-574), and issues chunked batch UPDATEs/one set-based participant
+    SELECT for onboarding planning (lines 576-589) — no per-row loop issuing
+    its own DB round trip.
+  - No mailer import: `status.ts:8-24`'s import list has no `mail` module
+    specifier, and `test/status-change-mail-ledger.scan.test.ts` — a
+    file-level static scan of every `src/routes/**` file for the
+    co-occurrence of a STATUS_WRITER identifier (including
+    `updateSubmissionStatuses`, ledgered at line 136) and a mailer identifier
+    (`makeMailer`/`mailer.send`/an import from `.../mail/`) — asserts the
+    population of route files matching BOTH equals a fixed, reasoned
+    2-entry ledger (`content-notes.ts`, `tasks.ts`; neither is
+    `submissions.ts`). Ran it plus the two clone tests that also touch this
+    surface:
+
+    `npx vitest run test/status-change-mail-ledger.scan.test.ts
+    test/clone-participants.test.ts test/clone-submission-write-burst.test.ts`
+    -> `Test Files  3 passed (3)` / `Tests  9 passed (9)`.
+
+  CLAUSE CLOSES: not a defect. A revert that made `submissions.ts` both
+  a status-writer AND a mailer-importer would fail
+  `status-change-mail-ledger.scan.test.ts`'s
+  "population... equals the ledger exactly" assertion
+  (`test/status-change-mail-ledger.scan.test.ts:214-237`).
+
+CLAUSE: manual session creation. `createSubmission`
+(`src/server/repo/submissions/create.ts:98-141`) — optional contact,
+`status` defaults to `'pending'`. Reachable from
+`src/routes/api/submissions.ts` (organizer POST). No defect found.
+
+CLAUSE: cloning for invited talks.
+`cloneSubmission` (`src/server/repo/submissions/create.ts:175-263`).
+
+NAMED QUESTION (1): does the verbatim `submission_answer` copy for a
+`file`-kind form field alias/expose/allow mutation of the original's
+uploaded file, and does file authz resolve through the answer or through
+`file.submissionId`?
+
+CONFIRMED-DEFECT. Evidence:
+  - A `file`-kind answer's `valueJson` IS the uploaded file's row id, not a
+    copy of file bytes or a submission-scoped pointer:
+    `src/routes/public/submit-post.tsx:399-409` inserts the file row with
+    `submissionId: submission.id` (the ORIGINAL submission) via
+    `insertAttachmentFile`, then `cleaned[pf.fieldId] = fileId;` — the
+    answer literally stores the file's id.
+  - `cloneSubmission`'s answer-copy block
+    (`src/server/repo/submissions/create.ts:214-228`) selects
+    `{formFieldId, valueJson}` from `submission_answer` and re-inserts every
+    row verbatim onto the new submission id, with no branch on the source
+    field's `kind` — a `file`-kind answer's `valueJson` (the original
+    fileId) is copied unchanged. No new `file` row is minted for the
+    clone (confirmed also by `test/clone-participants.test.ts:176-179`'s
+    assertion that `schema.file` is never inserted by `cloneSubmission`) and
+    `file.submissionId` on the referenced row is never updated to point at
+    the clone.
+  - File authz resolves exclusively through `file.submissionId`, never
+    through any `submission_answer` row: `getFileScope`
+    (`src/server/repo/files-authz.ts:113-141`) loads the file by `fileId`,
+    reads `fileRow.submissionId` (line 122, the ORIGINAL submission, per the
+    point above), and calls `getSubmissionScope(db, fileRow.submissionId)`
+    (line 129) to build the read/write participant populations used by
+    `canAccessFile` (lines 149-168). The clone's own participant list
+    (independently copied/filterable by `cloneSubmission`'s DEC-275 active-
+    only rule, lines 230-260) is never consulted for this file.
+
+  Consequence: the clone's copied answer still names the original file, but
+  access to that file is gated on the ORIGINAL submission's participant
+  population, not the clone's — a participant added to the clone after
+  cloning (and never invited to the original) sees the answer but cannot
+  download the file `canAccessFile` denies them (`readParticipantContactIds`
+  come from the original); conversely a participant removed from the clone
+  but still active on the original retains access via the original's scope.
+  The two submissions silently diverge on who may read/write a file the
+  clone's own answer still references, and `file.submissionId` is never
+  re-pointed or the row re-copied. This is the identical failure shape to
+  the field guide's MERGE REPOINTS, DELETE NULLS finding (DEC-979) — a
+  clone should re-point or refuse, not silently alias.
+  FILE:LINE: `src/server/repo/submissions/create.ts:214-228`,
+  `src/server/repo/files-authz.ts:113-141`,
+  `src/routes/public/submit-post.tsx:399-409`.
+  OWNER: wave-51 lane.
+
+CLAUSE: saved views (create/list/delete; DEC-031/DEC-904/DEC-422/DEC-975).
+
+NAMED QUESTION (3): what happens to a saved view whose config names a
+`formFieldId` that has since been deleted?
+
+`isValidSavedViewConfig` (`src/server/repo/views.ts:38-58`) validates
+`columns` as an array of bounded strings — it never checks a column id
+against the live form-field population (no DB read at all; the function
+takes no `db` argument). Nothing at write time or read time refuses a
+config naming a now-deleted field. Consumption-side:
+`app/src/pages/submissions/ViewTabs.tsx`'s `onApply(view.config)` feeds
+`config.columns` straight into the page's visible-field-id set, and
+`visibleColumns(columns, visibleFieldIds)` (`app/src/pages/submissions/
+columns.ts:31-35`) filters the CURRENT `columns` list (derived fresh from
+the CURRENT live form fields via `deriveColumnsFromFormFields`) by that id
+set — a stale id simply matches nothing in the current list and is dropped.
+RESULT: silent narrowing (a smaller-than-saved column set), never a throw,
+never a refusal, never a visible "missing field" indicator. FILE:LINE:
+`src/server/repo/views.ts:38-58`, `app/src/pages/submissions/
+columns.ts:31-35`, `app/src/pages/submissions/ViewTabs.tsx` (`onApply`
+call site). NOT adjudicated as a defect: no DEC or SPEC clause requires a
+refusal or a stale-field indicator here, and the failure mode is silent
+data narrowing (fewer columns shown), not silent data exposure/mutation —
+distinguishable from the file-clone finding above. Documented for the
+record per the task's named-question requirement; zero OPEN ITEMS
+contribution.
+
+NAMED QUESTION (4): is there any way to EDIT a saved view, or only
+create/delete, and does SPEC require one?
+
+Only create/delete. `src/server/repo/views.ts` exports exactly
+`listSavedViews`, `countSavedViews`, `countSavedViewsCreatedBy`,
+`createSavedView`, `getSavedViewOwnership`, `deleteSavedView` — no
+update/patch function. `src/routes/api/views.ts` registers exactly three
+routes: `GET /events/:eventId/views` (line 40), `POST
+/events/:eventId/views` (line 61), `DELETE /views/:id` (line 106) — no
+PATCH/PUT. SPEC.md:108-112 (J3) names "saved views" as a bare noun phrase
+with no edit/rename verb attached, unlike its explicit "bulk select ->
+bulk status change" phrasing elsewhere in the same clause. NOT adjudicated
+as a defect: SPEC does not require an edit path (a user can already
+delete-and-recreate to the same effect, and DEC-031/DEC-904/DEC-422/DEC-975
+— the four DECs governing this surface — say nothing about edit either).
+Documented for the record; zero OPEN ITEMS contribution.
+
+---
+
+RESULT: 1 CONFIRMED-DEFECT (cloneSubmission file-answer aliasing across
+file-kind form-field answers, file.submissionId never re-pointed) filed
+above with file:line and owner `wave-51 lane`; every other adjudicated
+clause (form-answer columns, search/filters, bulk status change including
+the DEC-009 no-mailer invariant, manual session creation, saved-view
+stale-column-id handling, saved-view edit-path absence) closes clean or is
+a documented non-defect finding with no SPEC/DEC requirement violated.
+
+OPEN ITEMS: 1
+## 2026-08-15 task-w50-g — J12 data-out adjudication @ 87cee8b9
+
+NOT QUALIFYING (docs-only — DEC-069)
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+Docs-only adjudication lane (DEC-099 w50): scope classifies to no slot —
+not one of the five QUALIFYING claimants (build+test+bundle / walkthrough
+/ perf-smoke / spec-audit / triage-closure). Touched nothing outside
+`docs/**` (DEC-069 w50); no `src/**`, `app/src/**`, `migrations/**` or
+`package.json` write in this worktree. Defects below are FILED, not
+fixed (DEC-453), owner `wave-51 lane`.
+
+Worktree branched from `main` tip `87cee8b9` (post scribe-wave-50 commit)
+via `git worktree add`; no fetch/merge performed; `HEAD` at adjudication
+time is `87cee8b9` (`git rev-parse --short=8 HEAD`). No other lane's
+scope was read as authoritative beyond files cited by path below.
+
+Population per SPEC.md:177-181 (J12 "the data stays theirs"): exports
+everywhere CSV+JSON (submissions, speakers, evaluations, agenda, email
+log — plus `contacts`, a sixth kind added post-J11), a REST API at
+`/api/v1` with bearer tokens the admin SPA itself consumes, and an
+optional one-way Airtable sync.
+
+### Q1 — every SPEC-named export kind reachable in both format=csv and format=json, same row cap, same attachment disposition
+
+CONFIRMED via source read + targeted test run, not asserted.
+
+`src/server/repo/exports/kinds.ts:6` — `EXPORT_KINDS = ["submissions",
+"speakers", "evaluations", "agenda", "email-log", "contacts"]` — a
+superset of SPEC's five named kinds (submissions, speakers, evaluations,
+agenda, email log); `contacts` is an additional J11/DEC-671 kind, not a
+gap.
+
+`src/routes/api/exports.ts:71-200` (single handler,
+`GET /api/v1/events/:eventId/export/:kind`) builds ONE `table` via
+`buildExport(...)` (line 169) BEFORE branching on `format`
+(`c.req.query("format")`, lines 81-84, 192-200) — the truncation refusal
+at lines 178-190 (`table.truncated` → `ApiError("invalid", ...
+${EXPORT_MAX_ROWS}-row cap...)`) runs identically for both formats
+because it executes before the `if (format === "json")` branch at line
+192. `EXPORT_MAX_ROWS` (`src/server/repo/exports/table.ts:24`) = 20000,
+enforced once per-kind inside each kind's own row query (e.g.
+`src/server/repo/exports/submissions.ts:111,116`;
+`speakers.ts:63,68`; `evaluations.ts:170,174`; `agenda.ts:79,83`;
+`email-log.ts:60,64`; `contacts.ts:100,104` — each `.limit(EXPORT_MAX_ROWS
++ 1)` then `if (rows.length > EXPORT_MAX_ROWS)` sets `truncated`), so the
+cap is a single population-level fact both formats read, not two
+separately-enforced caps that could drift.
+
+Attachment disposition: CSV branch (`exports.ts:197-200`) sets
+`Content-Disposition: attachment` via `contentDispositionAttachment(
+\`${kind}.csv\`)`; JSON branch (`exports.ts:192-195`) sets the SAME
+header via `contentDispositionAttachment(\`${kind}.json\`)` before
+`c.json(table.records)`. Both call the same `contentDispositionAttachment`
+helper (`src/domain/files.ts`), differing only in the file extension
+argument — no separate disposition logic exists for JSON.
+
+The showflow export (`exports.ts:54-69`,
+`GET /api/v1/events/:eventId/exports/showflow.csv`) is CSV-only by design
+(DEC-055 — "a separate fixed-column surface on its own route", not one of
+the six `EXPORT_KINDS`) — outside this clause's population, not a gap in
+it.
+
+Targeted test run (`npx vitest run test/audit-claims.test.ts`, this
+worktree): `docs/AUDIT.md J12 export-kind claims vs EXPORT_KINDS`
+describe block passed 3/3 — "every EXPORT_KINDS value is named in
+backticks in the J12 section" and "no backticked kind-shaped token ...
+names a kind absent from EXPORT_KINDS" both green, so the six kinds
+above are also the six the docs claim, mechanically checked, not by
+inspection.
+
+RULING: clause CLOSES. Reachable in both formats, identical cap
+(pre-format-branch), identical disposition mechanism.
+
+### Q2 — bearer-token path org-scoping + closed set of cookie-session-only routes
+
+CONFIRMED via existing scan tests, cited not re-derived.
+
+Org scoping on every route the bearer path can reach:
+`src/server/middleware.ts:145-162` (`resolveBearerAuth`) re-resolves the
+minting user on EVERY request (no cached privilege on the token row
+itself) and sets `auth.orgId = user.orgId` (line 159) — every downstream
+handler's org-scoping check (`auth.orgId`) is therefore live per-request,
+not a snapshot. `test/route-authz-enumeration.scan.test.ts` (13/13
+passed, this run) derives EVERY route registration under `src/routes/**`
+text-at-test-time and classifies GUARDED (names a role guard, a mount-
+level guard, or an object-level ownership marker) / PUBLIC_BY_DESIGN /
+GAP, failing on any GAP — this population is not bearer-vs-cookie
+filtered, i.e. it covers every route a bearer token could reach (bearer
+auth sets the identical `auth` shape cookie auth does; there is no
+bearer-only route).
+
+Closed set of cookie-session-only (credential-bearing) routes:
+`test/credential-route-cookie-session.scan.test.ts` (4/4 passed, this
+run) derives the credential-bearing population from
+`src/routes/api/**` at test time via capability markers
+(`generatePassword(`, `updateUserPasswordHash(`, `hashPassword(`,
+`newApiToken(`, `updateUserRole(`) — not a hand list — and asserts every
+member's registration text names `requireCookieSession`. Its tripwire
+test ("derived population contains the four named routes") pins the
+closed set to exactly `POST /api/v1/users`, `POST
+/api/v1/users/:id/reset-password`, `PATCH /api/v1/users/:id`, `POST
+/api/v1/tokens` (`grep -c requireCookieSession src/routes/api/*.ts`
+independently confirms only `tokens.ts` and `users.ts` reference the
+guard). A negative control asserts `POST /api/v1/contacts` — a bearer-
+reachable, non-credential route — is correctly excluded from the
+population, so the derivation isn't over-broad.
+
+`test/users-bearer-containment.test.ts` (4/4 passed, this run) drives
+the real `usersRoutes` sub-app with `auth.viaBearer = true` and asserts
+403 on both credential routes, 2xx for the cookie-session equivalent —
+this is the executable proof the scan's static claim actually holds at
+request time, not just in source text.
+
+RULING: clause CLOSES on both sub-questions — org scoping is live
+per-request (not cached on the token) and the cookie-session-only set is
+provably closed by a derived (not hand-listed) scan plus a request-level
+containment test.
+
+### Q3 — POST /api/v1/tokens has no per-org cap on api_token rows
+
+CONFIRMED-DEFECT.
+
+`src/routes/api/tokens.ts:64-94` (`POST /api/v1/tokens` handler): after
+`requireOrganizer, requireCookieSession, csrfJson` and a `name` length
+check (`MAX_NAME_LENGTH`, line 72), the handler unconditionally
+`INSERT`s a new `schema.apiToken` row (lines 80-89) — no `COUNT(*) FROM
+api_token WHERE org_id = ?` guard precedes the insert, unlike the
+sibling credential-bearing route `POST /api/v1/users`
+(`src/routes/api/users.ts` — an ANALOGOUS per-org population guarded at
+`countOrgUsers`, `src/server/repo/users.ts:72`, read at
+`src/routes/api/users.ts:62,185` before insert). No test in this
+worktree (`grep -rn "MAX_.*TOKEN\|tokens.*cap" test/`) exercises a token-
+count cap; `test/tokens.test.ts` (19/19 passed, this run) covers name
+validation, prefix, list pagination and deletion, never a create-time cap.
+
+Adjudicated against the STAGE principle ("A UNIVERSAL NEEDS A POPULATION
+/ UNBOUNDED SURFACE NEVER PAGED"): the GET list (line 23-62) IS correctly
+paged (`clampPage`/`listPerPage`), so the read side is not the gap named
+here — the write side is. An organizer-authenticated, CSRF-protected
+actor can grow `api_token` without bound for their own org; this is a
+narrower risk class than an attacker-controlled unbounded surface (it is
+self-inflicted storage/DoS by a privileged actor, same trust level as
+`POST /api/v1/users`, which DOES cap), but the sibling route's cap is
+direct evidence the codebase already treats "unbounded organizer-created
+rows of a credential-bearing kind" as a defect class worth guarding, and
+`tokens.ts` does not follow its own sibling's pattern. Ruled a real gap,
+not deliberate — nothing in `decisions/` or `docs/clarifications.md`
+names a token-count exemption, and the silence is inconsistent with the
+users precedent rather than a considered choice.
+
+CONFIRMED-DEFECT: `src/routes/api/tokens.ts:64-94` — POST /api/v1/tokens
+has no per-org row-count cap, unlike the analogous `POST /api/v1/users`
+(`countOrgUsers` guard). Owner: wave-51 lane.
+
+### Q4 — published API surface vs the real composed route table
+
+CONFIRMED via two independent bidirectional scans, both re-run this wave.
+
+`test/docs-api-manifest.scan.test.ts` (10/10 passed, this run) diffs
+`API_DOC_ENDPOINTS` (`src/routes/docs-endpoints.ts`, the single source
+`docs.tsx` renders from) against `enumerateRegisteredRoutes()` — a real
+router scan — in both directions (undocumented-live, stale-doc,
+stale-omission), plus a floor tripwire (>=100 live, >=80 documented) so
+neither side can quietly go empty.
+
+`test/api-docs-enumerated.test.ts` (4/4 passed, this run) independently
+diffs `ROUTE_GROUPS` (`src/routes/docs.tsx`) against `app.routes` — the
+actual mounted Hono app exported by `src/index.ts` — again bidirectional,
+with a >=100-route floor and a closed, reasoned
+`UNDOCUMENTED_BY_DESIGN` allowlist (currently just `GET /api/v1`, the
+meta endpoint).
+
+`test/audit-claims.test.ts`'s two DEC-618 describe blocks (23/23 passed
+across the whole file, this run) add a THIRD independent direction:
+`docs/AUDIT.md`'s prose route claims (both bare `` `/path` `` and
+`` `METHOD /path` `` forms) are resolved against `ROUTE_MANIFEST` and the
+composed app respectively, so prose documentation (not just the
+structured `docs.tsx`/`docs-endpoints.ts` pair) is mechanically checked
+too.
+
+RULING: clause CLOSES. Three independent, router-derived (never
+hand-mirrored) bidirectional scans exist and were green this run; the
+published API cannot drift from the implementation without one of these
+three failing by name.
+
+### Q5 — Airtable sync
+
+DEFERRED-STAGE-2, per `docs/clarifications.md:22-23` ("Airtable:
+nice-to-have, not a minus if unused. Read-only is fine ... Never the
+primary DB."). Code exists (`src/sync/airtable.ts`,
+`DEC_435`/`DEC_450`/`DEC_725` in `src/decisions-data/`) and is described
+by those decisions as "stage-1 code correctness, stage-2 wiring" —
+`src/server/env.ts:27-33` gates it behind optional `AIRTABLE_TOKEN`/
+`AIRTABLE_BASE_ID`/`AIRTABLE_ORG_ID` secrets that STAGE 1 forbids running
+with present. No scope opened here; not re-adjudicated beyond citing the
+governing decisions and clarification.
+
+RESULT: PARTIAL — Q1, Q2, Q4 CLOSE on cited evidence (targeted test runs
+quoted above: route-authz-enumeration.scan 13/13,
+credential-route-cookie-session.scan 4/4, users-bearer-containment 4/4,
+tokens 19/19, docs-api-manifest.scan 10/10, api-docs-enumerated 4/4,
+audit-claims 23/23 — 77/77 total, all green this run); Q3 is a
+CONFIRMED-DEFECT (`src/routes/api/tokens.ts:64-94`, owner wave-51 lane);
+Q5 is DEFERRED-STAGE-2 per clarifications, no scope opened.
+OPEN ITEMS: 1
+## 2026-08-15 task-w50-h — tier-1 fidelity recheck @ 87cee8b9
+
+NOT QUALIFYING (docs-only — DEC-069)
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+Advisory lane, docs-only (DEC-069 w50 / DEC-099 w50): re-derives the six
+named sub-clauses of `docs/eval-findings.md` TIER 1 item 3 (Comms
+templates-grid overlap, Comms History-tab chrome, Content upload-reject
+modal, Content content-detail container, Review results-head, Review
+plan-editor footer) at this task's own runtime, boundary `87cee8b9`. Read
+`docs/verification-log/task-w27-g-fidelity-recheck-ceda66f2.md` in full
+first per the task brief's mandate (not just the eval-findings pointer
+note), plus `docs/verification-log/task-w42-f-tier-1-fidelity-recheck-
+824aac9b.md`, which had already re-derived the same six clauses once. All
+six confirmed CLOSED, unchanged since `824aac9b`, each with a quoted
+`path:line` pair (tree + vendored `docs/design/*.dc.html`, README-wins
+rule not invoked — no frame/README conflict found) plus a named render
+test that would fail on revert. Full detail:
+`docs/verification-log/task-w50-h-tier-1-fidelity-recheck-87cee8b9.md`.
+No file under `src/**`, `app/src/**`, `migrations/**` or `package.json`
+touched (DEC-453 FILE, NEVER FIX; scope classifies to no slot, DEC-099
+w50). The admin Speakers toolbar right-cluster row is VOID per this task's
+brief and was not re-filed or touched.
+
+RESULT: PASS (all six sub-clauses CLOSED, zero CONFIRMED-DEFECT rows)
+
+OPEN ITEMS: 0
+## 2026-08-15 task-w50-i — eval-findings rebase @ 87cee8b9
+
+NOT QUALIFYING (docs-only — DEC-069)
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DOCS ONLY (DEC-358 w41/w50, DEC-069, DEC-099 w50): no file under `src/`,
+`app/src/`, `migrations/`, `scripts/`, or `package.json` was touched;
+`docs/eval-findings.md` and this index entry are the only edits. This is
+the sole editing owner of `docs/eval-findings.md` this wave; scope
+classifies to no five-slot gate.
+
+Step 0 sync-then-measure: `git merge --no-edit main` in this worktree (cut
+directly from `main` tip) reported "Already up to date." `npx tsx
+scripts/ref-state.ts` receipt (verbatim): DEC-644 three-sha boundary — HEAD
+`87cee8b9fec30d190f93156c99ddf7011b68bc92`; newest first-parent
+product-code-bearing sha `c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`;
+ancestors of HEAD: `main`, `manual-qa`, `task-custodian-w68-4`,
+`task-w47-a`, `task-w47-g`, `task-w47-h`, `task-w48-a`, `task-w48-c`,
+`task-w48-f`, `task-w50-e`, `task-w50-h`, `task-w50-i`, `task-w68-d`,
+`task-w71-c`, `task-w71-d`, `task-w71-e`. NON-ancestors: `mail-rich-shape-fallback`,
+`task-w17-i`, `task-w48-b`, `task-w48-d`, `task-w48-e`, `task-w48-g`,
+`task-w49-a` through `-h`, `task-w50-a`, `task-w50-b`, `task-w50-c`,
+`task-w50-d`, `task-w50-f`, `task-w50-g`, `task-w68-b`, `task-w68-c`,
+`task-w68-e`, `task-w71-a`, `task-w72-a` through `-j`. `git for-each-ref
+--format='%(refname:short) %(objectname:short)' refs/heads` (46 live
+branches) plus `git merge-base --is-ancestor <ref> HEAD` re-run
+individually for every ref (never a `.git/refs/heads/*` glob, never the
+`.git/packed-refs` `refs/heads/main` line) confirms the same split.
+
+MEASURED_SHA = `git rev-parse --short HEAD` = `87cee8b9` (taken before
+this commit).
+
+**REBASE per DEC-358 w27/w31/w35/w37/w39/w41/w45/w46/w48/w50:** the pinned
+mandate (`32921050`, wave 47/task-w47-h) is now three waves stale;
+replaced (not prepended) with a header derived at this task's own
+runtime. Folded the `32921050`..`87cee8b9` range in:
+
+- **All seven wave-45 CONFIRMED-DEFECT rows CLOSED.** Every `task-w47-a`
+  through `-g` owning branch confirmed an ancestor of HEAD; each item's
+  falsifying check re-run directly against the live tree this task (not
+  restated from the branch's own commit message) — reminder claim-before-
+  send (`test/reminders-claim-before-send.test.ts` 2/2), portal doors SQL
+  scoping (`test/portal-detail-download-scope-sql.test.ts` 4/4,
+  `test/portal-resources-scope.test.ts` 2/2), auto-schedule accounting
+  race (`test/auto-schedule-unplaced-reconciliation.test.ts` 2/2), CSV
+  import duplicate-destination mapping
+  (`test/contacts-import-mapping-injective.test.ts` 6/6), merge
+  preview/execute parity (`test/contacts-merge-preview-parity.test.ts`
+  3/3), contact-history `events` bound
+  (`test/contacts-history-event-id.test.ts` 6/6), file version-mint race
+  (`test/file-version-chain-unique.test.ts` 2/2). `0236`'s 24-file
+  blast-radius finding stays UNOWNED (re-glob: still true).
+- **Wave-48's three landed gate sections folded in**: `0240`
+  (build+test+bundle, FAIL, 2 items), `0242` (perf-smoke, PASS 117/117),
+  `0244` (render-sweep, PASS all seven passes). `0240`'s item 1
+  (DEC-818's cited migration) is now CLOSED — the file landed via
+  `task-w47-g` (`test/decision-path-references.scan.test.ts` 2/2, re-run
+  this task). `0240`'s item 2 (`test/spec9-invariants.test.ts:131`)
+  RECLASSIFIED as a TEST DEFECT (DEC-522 w49 finding), independently
+  reconfirmed this task by re-running the suite: at this runtime line 131
+  (`"pending"`) failed rather than line 133 (`"accepted"`) as `0240`
+  reported — same UTC-day-label clock-boundary defect, different
+  assertion; `src/domain/edit-lock.ts:22`'s DEC-041 carve-out itself is
+  unchanged. Not re-filed as a product regression; owner stays wave-51.
+- **Every "file X exists" claim in the document re-globbed
+  programmatically this runtime**: 169 distinct backtick-quoted file-path
+  citations resolved (exact path or unique basename match) — all 169
+  found on disk, zero false claims carried forward. No "does not exist"
+  claim is currently carried (both prior absence claims were already
+  closed by wave-46).
+- **IN FLIGHT rebuilt purely from `.git` ref state**: wave-48's four
+  non-landed lanes (`-b`/`-d`/`-e`/`-g`), all eight wave-49 lanes (none
+  landed — `task-w49-f`/`task-w49-g` claim to discharge the UNOWNED
+  wave-41 falsifiability batch-A/batch-B remainders respectively, named as
+  OWNED-BUT-UNMERGED since this lane did not itself re-run their checks),
+  and this wave's own siblings (`task-w50-a`..`-h`, none an ancestor
+  except `-e`/`-h` which are RUNNING with zero commits) are each named by
+  branch, sha and one-line scope — no counts, verdicts or RESULT/OPEN
+  ITEMS lines restated or predicted for any of them, per this task's own
+  boundary.
+
+Net: `docs/eval-findings.md` went from 923 to 892 lines while folding in
+seven newly-closed defects, three wave-48 gate sections, and 17 named
+branches across waves 48-50 that the prior header did not carry.
+
+```
+$ npm run verification-log:assemble
+```
+```
+$ npm run verification-log:check
+exit 0
+```
+
+RESULT: NOT QUALIFYING — docs-only scribe/mandate rebase, DEC-069 (a gate
+inside a code wave can never qualify; here, no code wave gate is even
+attempted). `docs/eval-findings.md` rebased to `87cee8b9`; seven wave-45
+defects and three wave-48 gate sections folded into TIER 0 with re-run
+falsifying checks; IN FLIGHT rebuilt from live `.git` ref state naming
+every wave-48/49/50 non-landed branch.
+
+OPEN ITEMS: 0 (this lane files no new CONFIRMED-DEFECT of its own; the one
+item it reclassifies — `test/spec9-invariants.test.ts:131`'s clock
+dependency — remains counted at `0240`'s own filing, owner wave-51, not
+re-filed here as a new item)
