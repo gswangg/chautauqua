@@ -78,7 +78,7 @@ describe('DEC-941 (wave 68): every ConfirmDialog primary names its object, not a
     // serves both a track and a room from one dialog) must still be
     // recorded, not silently skipped.
     expect(skipped).toContain(
-      "pages/settings/TracksRoomsPanel.tsx:803:pendingDelete.kind === 'track' ? 'Remove track' : 'Remove room'",
+      "pages/settings/TracksRoomsPanel.tsx:809:pendingDelete.kind === 'track' ? 'Remove track' : 'Remove room'",
     );
   });
 
