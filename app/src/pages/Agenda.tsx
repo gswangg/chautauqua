@@ -5,6 +5,7 @@ import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { useIsPhone } from '../lib/useIsPhone';
 import { useEscapeKey } from '../lib/useEscapeKey';
 import { PageSkeleton } from '../components/PageSkeleton';
+import { usePendingLabel } from '../components/PendingAction';
 import { DayGrid, type ArmedAgendaSession } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
@@ -91,6 +92,14 @@ export function AgendaPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoScheduling, setAutoScheduling] = useState(false);
+  // DEC-733 (V11 pending grammar): auto-schedule is one of the four slow
+  // operations. The placement algorithm doesn't report incremental
+  // progress, so this is the single unmoving line ("Auto-scheduling…").
+  const autoSchedulePendingLabel = usePendingLabel({
+    pending: autoScheduling,
+    restLabel: 'Auto-schedule',
+    participle: 'Auto-scheduling',
+  });
   const [publishing, setPublishing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [armed, setArmed] = useState<ArmedAgendaSession | null>(null);
@@ -317,8 +326,13 @@ export function AgendaPage() {
               Breaks ›
             </button>
           )}
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={handleAutoSchedule} disabled={autoScheduling || !agenda}>
-            {autoScheduling ? 'Auto-scheduling...' : 'Auto-schedule'}
+          <button
+            type="button"
+            className={`chq-btn chq-btn-secondary ${autoSchedulePendingLabel.buttonProps.className}`.trim()}
+            onClick={handleAutoSchedule}
+            disabled={autoSchedulePendingLabel.buttonProps.disabled || !agenda}
+          >
+            {autoSchedulePendingLabel.label}
           </button>
           <button type="button" className="chq-btn chq-btn-primary" onClick={handlePublish} disabled={publishing || !agenda}>
             {publishing ? 'Publishing...' : 'Publish schedule'}

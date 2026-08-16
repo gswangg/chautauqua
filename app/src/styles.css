@@ -616,6 +616,14 @@ a:hover {
   background: var(--chq-secondary-active);
 }
 
+/* DEC-733 (V11 pending grammar): the button that started a slow operation
+   becomes its own progress indicator -- rest colour, `cursor:progress`,
+   no spinner glyph, no new transition (the existing colour-only
+   transition on .chq-btn already covers hover/active). */
+.chq-btn-pending {
+  cursor: progress;
+}
+
 .chq-btn-tertiary {
   font-family: inherit;
   background: none;

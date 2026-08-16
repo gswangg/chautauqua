@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiPost, ApiError } from '../../lib/api';
 import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
+import { usePendingLabel } from '../../components/PendingAction';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
 import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856 } from '../../../../src/decisions';
 // DEC-290 (wave-59 amendment): a supplied eventId is a CANDIDATE, not an
@@ -121,6 +122,17 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   const [showAllRows, setShowAllRows] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [busy, setBusy] = useState(false);
+  // DEC-733 (V11 pending grammar): csv-import is one of the four slow
+  // operations -- the commit button becomes its own progress indicator.
+  // The total row count is known up front from the accepted plan; the
+  // server does not report incremental progress, so this is the
+  // known-total form ("Importing 214 rows…"), not a live "N of M".
+  const importPendingLabel = usePendingLabel({
+    pending: busy,
+    restLabel: `Import ${countOf(plan ? plan.rows.length - skipLines.size : 0, 'row')}`,
+    participle: 'Importing',
+    total: plan ? plan.rows.length - skipLines.size : undefined,
+  });
   const [error, setError] = useState<string | null>(null);
   // DEC-856: the server's fields map from the last preview/commit refusal,
   // read once per matcher below instead of re-parsed per render. Cleared
@@ -447,8 +459,13 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     </button>
   ) : plan ? (
     <>
-      <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={runCommit}>
-        Import {countOf(plan.rows.length - skipLines.size, 'row')}
+      <button
+        type="button"
+        className={`chq-btn chq-btn-primary ${importPendingLabel.buttonProps.className}`.trim()}
+        disabled={importPendingLabel.buttonProps.disabled}
+        onClick={runCommit}
+      >
+        {importPendingLabel.label}
       </button>
       <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
         Cancel

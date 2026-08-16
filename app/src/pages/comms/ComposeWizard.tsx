@@ -10,6 +10,7 @@ import {
   selectionReducer,
 } from '../submissions/selection';
 import { PreviewPane } from './PreviewPane';
+import { usePendingLabel } from '../../components/PendingAction';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { SendFailures } from '../../components/SendFailures';
@@ -87,6 +88,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const [previewPlan, setPreviewPlan] = useState<ComposePreviewPlan>({ willSend: 0, skipped: [] });
   const [previewIndex, setPreviewIndex] = useState(0);
   const [busy, setBusy] = useState(false);
+  // DEC-733 (V11 pending grammar): bulk-send is one of the four slow
+  // operations -- the Send button becomes its own progress indicator
+  // rather than a spinner. No live incremental count comes back from
+  // /compose/send (it resolves once with the final tally), so this
+  // renders the single-line "Sending…" form (no done/total).
+  const sendPendingLabel = usePendingLabel({
+    pending: busy,
+    restLabel: `Send ${countOf(previewPlan.willSend, 'email')}`,
+    participle: 'Sending',
+  });
   const [error, setError] = useState<string | null>(null);
   const [capMessage, setCapMessage] = useState<string | null>(null);
   // DEC-051: submission ids the server rejected as "not scheduled" when
@@ -1258,8 +1269,8 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <div className="chq-comms-preview-actions">
             <button
               type="button"
-              className="chq-btn chq-btn-primary"
-              disabled={busy || icsUnscheduledIds !== null}
+              className={`chq-btn chq-btn-primary ${sendPendingLabel.buttonProps.className}`.trim()}
+              disabled={sendPendingLabel.buttonProps.disabled || icsUnscheduledIds !== null}
               onClick={() => void send()}
             >
               {/* wave-60 amendment (DEC-238, P1 cluster 4): the button names
@@ -1267,8 +1278,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                   dedupe plan preview computed -- never the raw
                   (contact,submission) expansion (preview.length), which is
                   what produced "Send 36 emails" against a 6-sent history
-                  row. */}
-              Send {countOf(previewPlan.willSend, 'email')}
+                  row. DEC-733: while sending, the label itself becomes the
+                  progress indicator (usePendingLabel) instead. */}
+              {sendPendingLabel.label}
             </button>
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('preview')}>
               Back to the preview

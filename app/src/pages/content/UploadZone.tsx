@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react';
 import { validateUpload, uploadHintText, allowedUploadExtensions } from '../../../../src/domain/files';
 import type { FileKind } from './types';
 import { UploadRejectedModal } from './UploadRejectedModal';
+import { usePendingLabel } from '../../components/PendingAction';
 
 interface UploadZoneProps {
   kind: FileKind;
@@ -46,6 +47,16 @@ export function UploadZone({ kind, sessionTitle, replacesFileId, onUpload }: Upl
   const [pending, setPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
+  // DEC-733 (V11 pending grammar): file-upload is one of the four slow
+  // operations. There is no incremental byte count, so this stays the
+  // single unmoving line ("Uploading…") -- no done/total. The label
+  // replaces the dashed strip's own prompt text (the strip IS the
+  // button here, opened via the visually-hidden file input's <label>).
+  const uploadPendingLabel = usePendingLabel({
+    pending,
+    restLabel: 'Drop a file to upload for the speaker',
+    participle: 'Uploading',
+  });
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -108,8 +119,11 @@ export function UploadZone({ kind, sessionTitle, replacesFileId, onUpload }: Upl
           error -- the prompt and the caps text share this one line, the
           label wraps the whole line so a click anywhere in it opens the
           (visually hidden) file input below. */}
-      <label htmlFor={inputId} className="chq-content-upload-label">
-        <span className="chq-content-upload-prompt">Drop a file to upload for the speaker</span>
+      <label
+        htmlFor={inputId}
+        className={`chq-content-upload-label ${uploadPendingLabel.buttonProps.className}`.trim()}
+      >
+        <span className="chq-content-upload-prompt">{uploadPendingLabel.label}</span>
         <span className="chq-upload-caps chq-content-upload-caps">{uploadHintText(kind)}</span>
       </label>
       <input
@@ -119,10 +133,9 @@ export function UploadZone({ kind, sessionTitle, replacesFileId, onUpload }: Upl
         className="chq-file chq-content-upload-input"
         accept={allowedUploadExtensions(kind).map((e) => `.${e}`).join(',')}
         aria-label={replacesFileId ? `Replace ${kind}` : `Upload ${kind}`}
-        disabled={pending}
+        disabled={uploadPendingLabel.buttonProps.disabled}
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />
-      {pending && <span>Uploading…</span>}
       {message && (
         <span className="chq-error" role="alert">
           {message}
