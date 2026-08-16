@@ -23,7 +23,11 @@ void DEC_582;
 // CONTENT box is therefore 820 - 2x44 = 732, centred, not the fleet's shared
 // 34px-minimum expression (which has no source in the frame).
 const HOME_CHROME_GUTTER = "padding-inline: 44px;";
-const HOME_BODY_MEASURE = "max-width: 820px; margin-inline: auto; padding-inline: 44px;";
+// Gate-12 group1: width:100% is load-bearing — .chq-home-shell is a column
+// flex parent, and without it the body shrink-wraps to its content (measured
+// 646px/content 558) instead of filling to the 820 clamp (content 732 after
+// the 44px pads, matching the frames' padded content box).
+const HOME_BODY_MEASURE = "max-width: 820px; width: 100%; margin-inline: auto; padding-inline: 44px;";
 
 export const HOME_CSS = `
   .chq-home-shell { display: flex; flex-direction: column; }

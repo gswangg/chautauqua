@@ -69,6 +69,11 @@
   max-width: var(--chq-measure);
   margin: 0 auto;
   width: 100%;
+  /* Gate-12 group1 (design-agent box-model ruling): the frame's builder
+     content box is 756 INSIDE the 820 measure (x422-1178 at 1600) — the
+     container keeps the system measure and pads 32px each side. */
+  padding-inline: 32px;
+  box-sizing: border-box;
 }
 
 /* Opens / Closes / Received three-cell strip. */

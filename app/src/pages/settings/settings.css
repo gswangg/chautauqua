@@ -1185,6 +1185,16 @@
   white-space: nowrap;
 }
 
+/* Gate-12 §09 M1: each edit-row input fills its OWN grid track (name -> the
+   minmax(0,1fr) column, capacity -> the 110px column). Bare chq-input's
+   intrinsic ~178px both overflowed the 110px seats track and under-filled
+   the name track. Spans hold exactly one input each (TracksRoomsPanel). */
+.chq-settings-edit-row-value .chq-input,
+.chq-settings-edit-row-seats .chq-input {
+  width: 100%;
+  min-width: 0;
+}
+
 .chq-settings-edit-row-actions {
   display: flex;
   align-items: center;
