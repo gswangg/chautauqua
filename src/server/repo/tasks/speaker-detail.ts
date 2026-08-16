@@ -14,6 +14,7 @@ import { formatRef } from "../../../domain/ids";
 import { overdueAssignmentConditions, rosterParticipantConditions } from "./crud";
 import { safeExternalUrl } from "../../../domain/contacts";
 import { parseSocialLinks } from "../profile";
+import { parseContactCustomFields } from "../contacts/crud";
 import { DEC_930, DEC_738 } from "../../../decisions";
 
 void DEC_930; // this file is the ONE bounded GET DEC-930 mandates.
@@ -369,7 +370,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       hasAccount: contactRow.userId != null,
       phone: contactRow.phone,
       notes: contactRow.notes,
-      customFields: contactRow.customFieldsJson ? (JSON.parse(contactRow.customFieldsJson) as Record<string, string>) : {},
+      customFields: parseContactCustomFields(contactRow.customFieldsJson),
       // DEC-773 amendment (w32-e): headshotFileId is the single home for the
       // file id, always written together with headshotUrl (profile.ts's
       // setContactHeadshot, contacts/merge.ts, scripts/seed.ts) -- a non-null

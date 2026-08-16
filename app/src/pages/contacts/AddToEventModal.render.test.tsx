@@ -28,6 +28,7 @@ function detailWithSubmissions(submissions: ContactDetail['history']['submission
   return {
     ...CONTACT,
     socialLinks: { twitter: '', linkedin: '', github: '', website: '' },
+    customFields: {},
     history: { submissions, submissionsTotal: submissions.length, emails: [], emailsTotal: 0, events: [], eventsTotal: 0 },
   };
 }

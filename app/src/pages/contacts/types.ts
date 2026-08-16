@@ -68,7 +68,11 @@ export interface ContactDetail extends ContactListItem {
   // beside the image in the Contacts drawer. null when there is no headshot.
   headshotFile?: { filename: string; uploadedAt: number } | null;
   socialLinks: ContactSocialLinks;
-  customFields?: Record<string, string>;
+  // DEC-738 (wave-77 amendment): the server always emits an object here
+  // (src/server/repo/contacts/crud.ts's parseContactCustomFields never
+  // returns null/undefined) -- this type describes what the wire actually
+  // produces, not a defensive superset.
+  customFields: Record<string, string>;
   history: {
     submissions: ContactSubmissionHistory[];
     // w56-c: total submission count across ALL events, distinct from

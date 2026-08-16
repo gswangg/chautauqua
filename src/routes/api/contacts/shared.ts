@@ -49,9 +49,10 @@ export function serializeContact(row: repo.ContactRow) {
     bio: row.bio,
     headshotUrl: row.headshotUrl,
     notes: row.notes,
-    // customFieldsJson has no declared parser yet (unlike social_links_json's
-    // parseSocialLinks) -- left as a hand-parse this wave per DEC-152 scope.
-    customFields: row.customFieldsJson ? JSON.parse(row.customFieldsJson) : null,
+    // DEC-738 (wave-77 amendment): routed through the declared parser --
+    // always an object, never null (parseContactCustomFields treats
+    // null/undefined/empty as {}).
+    customFields: repo.parseContactCustomFields(row.customFieldsJson),
     // DEC-152 (wave-76 amendment): route through the declared parser so this
     // is no longer the last hand-parse of social_links_json on the wire --
     // always returns all four keys as strings, never null.

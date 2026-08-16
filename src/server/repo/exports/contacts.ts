@@ -22,7 +22,7 @@ import { asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { type ExportTable, EXPORT_MAX_ROWS, buildTable } from "./table";
-import { selectFilteredContactRows } from "../contacts/crud";
+import { selectFilteredContactRows, parseContactCustomFields } from "../contacts/crud";
 import type { ParsedContactListQuery } from "../contacts/query";
 import type { ContactRow } from "../contacts/rows";
 import { contactLabels } from "../../../domain/contact-labels";
@@ -77,7 +77,7 @@ export async function exportContacts(db: Db, orgId: string, params?: ParsedConta
         company: r.company,
         title: r.title,
         createdAt: new Date(r.createdAt).toISOString(),
-        customFields: r.customFieldsJson ? (JSON.parse(r.customFieldsJson) as Record<string, string>) : {},
+        customFields: parseContactCustomFields(r.customFieldsJson),
       }),
     );
     return buildTable([...CONTACTS_HEADER], outRows);
@@ -109,7 +109,7 @@ export async function exportContacts(db: Db, orgId: string, params?: ParsedConta
     rowToCsvRow({
       ...r,
       createdAt: r.createdAt.toISOString(),
-      customFields: r.customFieldsJson ? (JSON.parse(r.customFieldsJson) as Record<string, string>) : {},
+      customFields: parseContactCustomFields(r.customFieldsJson),
     }),
   );
 
