@@ -9,6 +9,7 @@ import { and, eq, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import type { FormFieldRole } from "../../forms/types";
+import { parseFieldOptions } from "../../forms/field-json";
 
 /** A SQL condition, usable in a submission_answer WHERE clause, selecting
  * only rows whose form_field carries the given role. Parameterised via
@@ -41,5 +42,9 @@ export async function getFieldOptionsByRole(db: Db, eventId: string, role: FormF
     .limit(1);
   const row = rows[0];
   if (!row) return null;
-  return row.optionsJson ? (JSON.parse(row.optionsJson) as string[]) : [];
+  // This reader's contract distinguishes "no field of that role" (null,
+  // above) from "field exists but has no options" ([]) -- the empty-array
+  // answer stays visible here at the call site rather than being baked into
+  // a second parser alongside parseFieldOptions' shared `undefined` answer.
+  return parseFieldOptions(row.optionsJson, `role:${role}`) ?? [];
 }
