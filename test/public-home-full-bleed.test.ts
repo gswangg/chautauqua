@@ -24,21 +24,24 @@ describe("DEC-582 Amendment (wave 48): .chq-home-shell is full bleed, not a 900p
     expect(shell).not.toMatch(/max-width\s*:\s*900px/);
   });
 
-  it("the header, body and footer each run their own rule edge to edge and share one padding-inline measure expression", () => {
+  it("header and footer are full-bleed chrome (44px gutters, no max-width); the body is an 820 container whose content box is 732 (820 - 2x44)", () => {
     const header = rule(".chq-home-header");
     const body = rule(".chq-home-body");
     const footer = rule(".chq-home-footer");
 
-    // Full bleed: none of the three carry a max-width constraining the rule
-    // itself -- only their content is constrained, via padding-inline.
-    for (const block of [header, body, footer]) {
+    // Full bleed: header/footer carry no max-width -- the vendored frame
+    // (docs/design/Chautauqua Home.dc.html:33, :101) runs them edge to edge
+    // with 44px gutters, not a centred 820.
+    for (const block of [header, footer]) {
       expect(block).not.toMatch(/max-width\s*:/);
+      expect(block).toMatch(/padding-inline:\s*44px;/);
     }
 
-    const measureRe = /padding-inline:\s*max\(34px,\s*calc\(\(100%\s*-\s*820px\)\s*\/\s*2\)\);/;
-    expect(header).toMatch(measureRe);
-    expect(body).toMatch(measureRe);
-    expect(footer).toMatch(measureRe);
+    // The body is the frame's 820 CONTAINER (:38 max-width:820px; margin:0
+    // auto; padding:36px 44px 40px); its CONTENT box is 820 - 2x44 = 732.
+    expect(body).toMatch(/max-width:\s*820px;/);
+    expect(body).toMatch(/margin-inline:\s*auto;/);
+    expect(body).toMatch(/padding-inline:\s*44px;/);
 
     // The footer's sunk fill (background) still spans edge to edge -- it
     // lives on the full-bleed rule, not on some inner wrapper.
