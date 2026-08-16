@@ -57,7 +57,7 @@
    redistributed the 1000px surplus across every other track. */
 .chq-content-worklist-table thead th:first-child,
 .chq-content-worklist-table tbody td:first-child {
-  width: 26px;
+  width: 42px /* 26px control + the shared .chq-table 16px first-cell inset */;
 }
 
 .chq-content-row {

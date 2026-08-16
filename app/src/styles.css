@@ -841,6 +841,21 @@ a:hover {
   background: var(--chq-surface-sunk);
 }
 
+/* User-filed (gate-12 era, general rule): any .chq-table row can carry the
+   hover/state fill above, so content must never touch the fill's edges —
+   the first and last cells carry the 16px inset the review plan-rows
+   already use. Narrow first columns (e.g. the worklist checkbox column)
+   size themselves as width INCLUDING this padding. */
+.chq-table th:first-child,
+.chq-table td:first-child {
+  padding-left: 16px;
+}
+
+.chq-table th:last-child,
+.chq-table td:last-child {
+  padding-right: 16px;
+}
+
 .chq-pill {
   display: inline-flex;
   align-items: center;
