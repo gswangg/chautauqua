@@ -202,57 +202,56 @@ export interface ContactReferenceRows {
  * query yields both the first 5 rows to name and the exact remainder count
  * — never a second query, never a query per row (DEC-078/DEC-418). */
 export async function listContactReferenceRows(db: Db, contactId: string): Promise<ContactReferenceRows> {
-  const submissionRows = await db
-    .select({
-      id: schema.submission.id,
-      seq: schema.submission.seq,
-      title: schema.submission.title,
-      eventName: schema.event.name,
-      recordPrefix: schema.event.recordPrefix,
-      total: sql<number>`count(*) over ()`,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .where(eq(schema.participant.contactId, contactId))
-    .orderBy(schema.submission.id)
-    .limit(6);
-
-  const taskRows = await db
-    .select({
-      id: schema.task.id,
-      title: schema.task.title,
-      eventName: schema.event.name,
-      total: sql<number>`count(*) over ()`,
-    })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-    .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
-    .where(eq(schema.taskAssignment.contactId, contactId))
-    .orderBy(schema.task.id)
-    .limit(6);
-
-  const pipelineRows = await db
-    .select({
-      id: schema.pipelineEntry.id,
-      stage: schema.pipelineEntry.stage,
-      total: sql<number>`count(*) over ()`,
-    })
-    .from(schema.pipelineEntry)
-    .where(eq(schema.pipelineEntry.contactId, contactId))
-    .orderBy(schema.pipelineEntry.id)
-    .limit(6);
-
-  const userRows = await db
-    .select({
-      id: schema.user.id,
-      email: schema.user.email,
-      total: sql<number>`count(*) over ()`,
-    })
-    .from(schema.user)
-    .where(eq(schema.user.contactId, contactId))
-    .orderBy(schema.user.id)
-    .limit(6);
+  const [submissionRows, taskRows, pipelineRows, userRows] = await Promise.all([
+    db
+      .select({
+        id: schema.submission.id,
+        seq: schema.submission.seq,
+        title: schema.submission.title,
+        eventName: schema.event.name,
+        recordPrefix: schema.event.recordPrefix,
+        total: sql<number>`count(*) over ()`,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+      .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+      .where(eq(schema.participant.contactId, contactId))
+      .orderBy(schema.submission.id)
+      .limit(6),
+    db
+      .select({
+        id: schema.task.id,
+        title: schema.task.title,
+        eventName: schema.event.name,
+        total: sql<number>`count(*) over ()`,
+      })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+      .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
+      .where(eq(schema.taskAssignment.contactId, contactId))
+      .orderBy(schema.task.id)
+      .limit(6),
+    db
+      .select({
+        id: schema.pipelineEntry.id,
+        stage: schema.pipelineEntry.stage,
+        total: sql<number>`count(*) over ()`,
+      })
+      .from(schema.pipelineEntry)
+      .where(eq(schema.pipelineEntry.contactId, contactId))
+      .orderBy(schema.pipelineEntry.id)
+      .limit(6),
+    db
+      .select({
+        id: schema.user.id,
+        email: schema.user.email,
+        total: sql<number>`count(*) over ()`,
+      })
+      .from(schema.user)
+      .where(eq(schema.user.contactId, contactId))
+      .orderBy(schema.user.id)
+      .limit(6),
+  ]);
 
   const remainder = (total: number | undefined) => Math.max(Number(total ?? 0) - 5, 0);
 
@@ -483,8 +482,10 @@ export async function selectFilteredContactRows(
   const sorted = await scanAndFilterContacts(db, orgId, params);
   const ids = (limit !== undefined ? sorted.slice(0, limit) : sorted).map((r) => r.id);
   const fullRowsById = new Map<string, ContactRow>();
-  for (const batch of chunkIds(ids)) {
-    const rows = await db.select().from(schema.contact).where(inArray(schema.contact.id, batch));
+  const batches = await Promise.all(
+    chunkIds(ids).map((batch) => db.select().from(schema.contact).where(inArray(schema.contact.id, batch))),
+  );
+  for (const rows of batches) {
     for (const row of rows) {
       const mapped = toRow(row);
       fullRowsById.set(mapped.id, mapped);
@@ -508,17 +509,18 @@ export async function listContactsForOrg(db: Db, orgId: string, params: ParsedCo
   if (params.segmentId === null && params.rules.length === 0) {
     // Default directory/search/sort/paging path: two SQL statements, no
     // whole-org materialization (DEC-333 scale rule).
-    const totalRows = await db.select({ count: sql<number>`count(*)` }).from(schema.contact).where(whereExpr);
-    const total = Number(totalRows[0]?.count ?? 0);
-
     const offset = (params.page - 1) * params.perPage;
-    const rows = await db
-      .select()
-      .from(schema.contact)
-      .where(whereExpr)
-      .orderBy(orderByForSort(params.sort))
-      .limit(params.perPage)
-      .offset(offset);
+    const [totalRows, rows] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(schema.contact).where(whereExpr),
+      db
+        .select()
+        .from(schema.contact)
+        .where(whereExpr)
+        .orderBy(orderByForSort(params.sort))
+        .limit(params.perPage)
+        .offset(offset),
+    ]);
+    const total = Number(totalRows[0]?.count ?? 0);
     return { items: rows.map(toRow), total };
   }
 
@@ -539,8 +541,10 @@ export async function listContactsForOrg(db: Db, orgId: string, params: ParsedCo
   // paged order (DEC-554: never widen the scan itself back into full rows).
   const pageIds = page.map((r) => r.id);
   const fullRowsById = new Map<string, ContactRow>();
-  for (const batch of chunkIds(pageIds)) {
-    const rows = await db.select().from(schema.contact).where(inArray(schema.contact.id, batch));
+  const batches = await Promise.all(
+    chunkIds(pageIds).map((batch) => db.select().from(schema.contact).where(inArray(schema.contact.id, batch))),
+  );
+  for (const rows of batches) {
     for (const row of rows) {
       const mapped = toRow(row);
       fullRowsById.set(mapped.id, mapped);
