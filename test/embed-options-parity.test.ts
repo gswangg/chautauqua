@@ -340,7 +340,11 @@ describe("DEC-822/DEC-839: saved-embed options round-trip", () => {
     expect(body.error.fields).toHaveProperty("trackId");
   });
 
-  it("a disabled embed returns an empty 200 without touching the render pipeline", async () => {
+  // DEC-822 wave-59 amendment: the disabled blank is a MINIMAL designed
+  // document (one quiet line), not a literal empty body. Status, cache
+  // headers and the "render pipeline is never touched" guarantee are
+  // unchanged -- the blank renders with no event lookup at all.
+  it("a disabled embed returns a minimal designed 200 without touching the render pipeline", async () => {
     const app = buildApp();
     const createRes = await app.request(`/api/v1/events/${EVENT_ID}/embeds`, {
       method: "POST",
@@ -352,7 +356,7 @@ describe("DEC-822/DEC-839: saved-embed options round-trip", () => {
 
     const res = await app.request(`/embed/e/${embed.id}`);
     expect(res.status).toBe(200);
-    expect(await res.text()).toBe("");
+    expect(await res.text()).toContain("This embed has been turned off.");
     expect(renderSurfaceContentMock).not.toHaveBeenCalled();
   });
 });

@@ -113,9 +113,14 @@ describe("item 1: saved embeds exist and resolve for real (DEC-785/DEC-822)", ()
     const notFound = await request("/embed/e/does-not-exist");
     expect(notFound.status).toBe(404);
 
+    // DEC-822 wave-59 amendment: the disabled blank is a MINIMAL designed
+    // document (one quiet line), not a literal empty body -- and it still
+    // names neither the event nor the surface.
     const disabled = await request(`/embed/e/${DISABLED_EMBED.id}`);
     expect(disabled.status).toBe(200);
-    expect(await disabled.text()).toBe("");
+    const disabledHtml = await disabled.text();
+    expect(disabledHtml).toContain("This embed has been turned off.");
+    expect(disabledHtml).not.toContain(EVENT.name);
 
     const enabled = await request(`/embed/e/${ENABLED_EMBED.id}`);
     expect(enabled.status).toBe(200);

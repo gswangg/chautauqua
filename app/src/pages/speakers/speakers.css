@@ -748,6 +748,25 @@
   color: var(--chq-ink-2);
 }
 
+/* DEC-746 (wave-59 amendment): the New-task audience choice
+   (Everyone accepted / Just some of them). A vertical stack of
+   .chq-check-label rows -- structure only, no new colour or type; each row
+   already carries its own 44px touch target above. */
+.chq-radio-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The subset picker's roster. Capped so a long roster scrolls inside the
+   modal rather than pushing the modal's own actions off-screen; the rows
+   are .chq-check-label, so no per-row rules are needed here. */
+.chq-speakers-audience-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
 /* DEC-930: per-speaker detail page (SpeakerDetailPage.tsx). The grid's own
    name cell becomes a Link into this page -- keep the link visually a
    title, not a generic anchor. */

@@ -352,6 +352,16 @@
   color: var(--chq-ink);
 }
 
+/* DEC-158 (wave-59 amendment): the newest revision renders a caption
+   ("Current version") where every older entry renders a Restore button --
+   a statement of fact, not an action that could change anything. Sized to
+   the tertiary button it stands in for so the column does not jump. */
+.chq-submission-history-current {
+  font-size: 13px;
+  color: var(--chq-muted);
+  white-space: nowrap;
+}
+
 .chq-detail-section-body {
   padding-top: 14px;
 }
