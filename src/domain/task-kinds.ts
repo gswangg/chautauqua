@@ -20,3 +20,15 @@ export type TaskKind = (typeof TASK_KINDS)[number];
 // caller sees the same refusal at the same count no matter which door it
 // used.
 export const MAX_TASK_ASSIGNEES = 200;
+
+// DEC-746 (wave-77 amendment): task.audience is a real, defaulted column —
+// 'targeted' when createTask received an explicit contactIds subset,
+// 'everyone' otherwise. DEC-932's acceptance back-fill (status.ts) filters
+// its driving select to audience = DEFAULT_TASK_AUDIENCE so a task an
+// organizer deliberately targeted at a subset never silently becomes
+// universal at the next acceptance.
+export const TASK_AUDIENCES = ['everyone', 'targeted'] as const;
+
+export type TaskAudience = (typeof TASK_AUDIENCES)[number];
+
+export const DEFAULT_TASK_AUDIENCE: TaskAudience = 'everyone';

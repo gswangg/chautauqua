@@ -95,7 +95,9 @@ function fakeDb(seed: {
     event: [...seed.event] as any[],
     submission: [...seed.submission] as any[],
     participant: [...seed.participant] as any[],
-    task: [...(seed.task ?? [])] as any[],
+    // DEC-746 (wave-77 amendment): default audience='everyone' for seeded
+    // task rows that don't specify it, mirroring the real column default.
+    task: (seed.task ?? []).map((t) => ({ audience: "everyone", ...(t as object) })) as any[],
     taskAssignment: [...(seed.taskAssignment ?? [])] as any[],
     form: [] as any[],
     formField: [] as any[],
@@ -151,7 +153,17 @@ function fakeDb(seed: {
           const rows = Array.isArray(vals) ? vals : [vals];
           insertCalls.push({ table, rowCount: rows.length });
           const arr = stateArrayFor(table);
-          if (arr) arr.push(...rows.map((r) => ({ ...(r as object) })));
+          // DEC-746 (wave-77 amendment): mirrors the real DB's
+          // audience='everyone' column default (src/db/schema/tasks.ts) for
+          // inserts into schema.task that don't set it explicitly (e.g.
+          // getOrCreateTask's default-onboarding-template path) -- without
+          // this, status.ts's backfill filter (audience = DEFAULT_TASK_
+          // AUDIENCE) would wrongly exclude every fake-db-seeded task row.
+          if (arr) {
+            arr.push(
+              ...rows.map((r) => (table === schema.task ? { audience: "everyone", ...(r as object) } : { ...(r as object) })),
+            );
+          }
         };
         return {
           then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),

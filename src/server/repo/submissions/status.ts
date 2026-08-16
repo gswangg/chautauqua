@@ -21,7 +21,10 @@ import { isValidStatusLiteral } from "./query";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ApiError } from "../../http";
 import { MAX_TASK_ASSIGNMENT_WRITES, maxUnitsForTaskAssignmentWrites } from "../tasks/crud";
-import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521, DEC_556, DEC_932 } from "../../../decisions";
+import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521, DEC_556, DEC_746, DEC_932 } from "../../../decisions";
+import { DEFAULT_TASK_AUDIENCE } from "../../../domain/task-kinds";
+
+void DEC_746; // wave-77 amendment: the back-fill below filters to audience = DEFAULT_TASK_AUDIENCE.
 
 void DEC_079; // planning-before-commit acceptance ordering + chunked/batched bulk status changes below
 void DEC_111; // form-task tasks get real backing forms, self-healed when formId is null
@@ -310,7 +313,17 @@ async function planAndPersistOnboardingTasks(
   // pairs restricted to those task ids and exactly these contacts, ONE
   // chunked insert (DEC-528) of the missing pairs. Never UPDATE/DELETE an
   // existing row — a completed assignment stays complete.
-  const eventTaskRows = await db.select({ id: schema.task.id }).from(schema.task).where(eq(schema.task.eventId, eventId));
+  //
+  // DEC-746 (wave-77 amendment): this back-fill ranges over EVERYONE-tasks
+  // only -- a task created for an explicit contactIds subset (audience=
+  // 'targeted') must NOT be silently widened onto every newly-active
+  // contact here. Filtered at the driving select so downstream logic (the
+  // existing-pairs probe, the missing-rows build, the cap check) all
+  // operate on the correctly-scoped set.
+  const eventTaskRows = await db
+    .select({ id: schema.task.id })
+    .from(schema.task)
+    .where(and(eq(schema.task.eventId, eventId), eq(schema.task.audience, DEFAULT_TASK_AUDIENCE)));
   const eventTaskIds = eventTaskRows.map((r) => r.id);
   if (eventTaskIds.length === 0) return;
 
