@@ -212,36 +212,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setTemplateId(found.id);
   }, [templates]);
 
-  // w12-c (DEC-967 amendment, turn diet): step 2 must not arrive blank when
-  // there's an obvious starting point -- the server's own first template.
-  // Keyed on the loaded template list (not the ?ids=/?template= arrival
-  // effects above, which own their own lines and never re-sort `templates`
-  // either): once templates have loaded and the wizard is sitting on step 2
-  // with nothing typed or picked yet, apply templates[0] through the exact
-  // path the <select>'s onChange already runs. Guarded by a ref so it only
-  // ever fires once -- an organizer who clears the fields back to blank by
-  // hand must not have them silently refilled.
-  const appliedDefaultTemplateRef = useRef(false);
-  useEffect(() => {
-    if (appliedDefaultTemplateRef.current) return;
-    // The ?template= arrival effect above runs first in this same commit
-    // (declaration order) and flips its own ref the instant it applies a
-    // template -- reading it here (rather than subject/bodyText, which
-    // won't reflect that effect's setState until the next render) is what
-    // stops this effect from clobbering an explicit ?template= landing back
-    // to blank.
-    if (appliedTemplateParam.current) return;
-    if (step !== 'template') return;
-    if (subject !== '' || bodyText !== '') return;
-    const found = templates[0];
-    if (!found) return;
-    appliedDefaultTemplateRef.current = true;
-    setTemplateName(found.name);
-    setSubject(found.subject);
-    setBodyText(found.bodyText);
-    setTemplateId('');
-    setAutoAppliedTemplateName(found.name);
-  }, [templates, step, subject, bodyText]);
+  // w12-c's templates[0] auto-apply is REMOVED (user ruling, gate-9): an
+  // eval turn-diet must never degrade the real product, and silently
+  // pre-filling the composer made the "Write from scratch" label lie —
+  // ruling A19's own default is "No template — write it here". Step 2 now
+  // arrives blank; picking a template is one explicit select.
 
   useEffect(() => {
     apiList<EvaluationPlan>(`/events/${eventId}/plans`)
@@ -951,14 +926,6 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               ))}
             </select>
           </FormRow>
-          {/* w12-c (DEC-967 amendment, turn diet): the effect above applied
-              templates[0] without asking -- this line is the disclosure,
-              never hidden behind the dropdown's own state. */}
-          {autoAppliedTemplateName && (
-            <p className="chq-comms-panel-note">
-              Applied &quot;{autoAppliedTemplateName}&quot; automatically &mdash; change it above or edit freely.
-            </p>
-          )}
           <FormRow label="Subject" htmlFor="compose-subject">
             <input id="compose-subject" className="chq-input" maxLength={MAX_TEXT_LENGTH} value={subject} onChange={(e) => setSubject(e.target.value)} />
           </FormRow>

@@ -1592,12 +1592,12 @@ describe('ComposeWizard partial-send way out on the blocked banner (DEC-793 amen
   });
 });
 
-// w12-c (DEC-967 amendment, turn diet): step 2 arrives already composed from
-// the server's first template, disclosed in a panel note, and every step
-// advances on Enter via its own existing primary -- step 4's Send stays
-// click-only.
+// w12-c's auto-apply is REMOVED (user ruling, gate-9): an eval turn-diet
+// must never degrade the real product — silently pre-filling the composer
+// made "Write from scratch" lie. Step 2 arrives BLANK (ruling A19's own
+// default); Enter-advance keeps working; step 4's Send stays click-only.
 describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
-  it('auto-applies the first template on arrival at step 2, discloses it, and Next is enabled without typing', async () => {
+  it('arrives at step 2 with a BLANK composer, no auto-apply disclosure, and Next disabled', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
@@ -1617,14 +1617,13 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
 
     const subject = await screen.findByLabelText('Subject');
-    // The server's order is the order -- templates[0] (Acceptance), never
-    // re-sorted by name.
+    expect(subject).toHaveValue('');
+    expect(screen.getByLabelText('Body')).toHaveValue('');
+    expect(screen.queryByText(/Applied .* automatically/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next: preview' })).toBeDisabled();
+    // Picking a template is one explicit select — then Next enables.
+    fireEvent.change(screen.getByLabelText(/^Template/), { target: { value: 'tpl-1' } });
     await waitFor(() => expect(subject).toHaveValue('You are in'));
-    expect(screen.getByLabelText('Body')).toHaveValue('Congrats {speaker_name}');
-
-    // Disclosed, not hidden.
-    expect(screen.getByText(/Applied "Acceptance" automatically/)).toBeInTheDocument();
-
     expect(screen.getByRole('button', { name: 'Next: preview' })).not.toBeDisabled();
   });
 
@@ -1671,6 +1670,7 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
 
     const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(screen.getByLabelText(/^Template/), { target: { value: 'tpl-1' } });
     await waitFor(() => expect(subject).toHaveValue('You are in'));
 
     fireEvent.keyDown(subject, { key: 'Enter' });
@@ -1697,6 +1697,7 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.change(await screen.findByLabelText(/^Template/), { target: { value: 'tpl-1' } });
     await waitFor(() => expect(screen.getByLabelText('Subject')).toHaveValue('You are in'));
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
