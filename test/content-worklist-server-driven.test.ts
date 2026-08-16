@@ -365,7 +365,7 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
     expect(sql).not.toContain('"file"."version_no"');
   });
 
-  it("reports reuploaded=true and latestFileVersionNo=2 for a submission whose latest file's version_no is 2", async () => {
+  it("reports reuploaded=true for a submission whose latest file's version_no is 2", async () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
@@ -404,11 +404,10 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
 
     const result = await listSubmissions(db, EVENT_ID, baseParams());
 
-    expect(result.items[0]!.latestFileVersionNo).toBe(2);
     expect(result.items[0]!.reuploaded).toBe(true);
   });
 
-  it("reports reuploaded=false and latestFileVersionNo=1 for a submission with only its original upload", async () => {
+  it("reports reuploaded=false for a submission with only its original upload", async () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
@@ -436,11 +435,10 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
 
     const result = await listSubmissions(db, EVENT_ID, baseParams());
 
-    expect(result.items[0]!.latestFileVersionNo).toBe(1);
     expect(result.items[0]!.reuploaded).toBe(false);
   });
 
-  it("reports reuploaded=false and latestFileVersionNo=null for a submission with no files", async () => {
+  it("reports reuploaded=false for a submission with no files", async () => {
     const responses = [
       [{ recordPrefix: "SES" }],
       [{ count: 1 }],
@@ -456,7 +454,6 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
 
     const result = await listSubmissions(db, EVENT_ID, baseParams());
 
-    expect(result.items[0]!.latestFileVersionNo).toBeNull();
     expect(result.items[0]!.reuploaded).toBe(false);
   });
 });

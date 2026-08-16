@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatRelative } from '../../lib/dates';
 import { useMe } from '../../lib/useMe';
-import { countOf } from '../../lib/plural';
+import { countOf, capitalizeFirst } from '../../lib/plural';
 import { EmptyState } from '../../components/EmptyState';
 import { SendFailures } from '../../components/SendFailures';
 import { MAX_COMMENT_BODY_LENGTH } from '../../lib/file-caps';
@@ -13,6 +13,15 @@ import type { FileComment } from './types';
  * idiom as forms/FieldList.tsx's local formatThousands). */
 function formatThousands(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// DEC-020's own header ("author name + role"): the wire has always carried
+// authorRole (FileComment, src/routes/api/files-comments.ts) but nothing
+// rendered it -- a portal speaker note (no linked user) has authorRole
+// null and must render with no label at all, never a fabricated "(unknown)".
+const COMMENT_ROLE_LABELS: Record<string, string> = { organizer: 'Organizer', reviewer: 'Reviewer' };
+function commentRoleLabel(role: string): string {
+  return COMMENT_ROLE_LABELS[role] ?? capitalizeFirst(role);
 }
 
 interface SendResult {
@@ -73,6 +82,9 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
                 <span className="chq-comment-author chq-content-comment-author">
                   {me && c.authorUserId === me.userId ? 'You' : c.authorName}
                 </span>
+                {c.authorRole && (
+                  <span className="chq-role-label chq-meta"> ({commentRoleLabel(c.authorRole)})</span>
+                )}
                 <span className="chq-comment-version chq-meta">v{c.versionNumber}</span>
                 <span className="chq-comment-date chq-meta"> · {formatRelative(c.createdAt, now)}</span>
               </div>

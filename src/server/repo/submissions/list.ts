@@ -93,10 +93,13 @@ export interface SubmissionListItem {
   createdAt: number;
   deliverableCounts: Record<FileKind, number>;
   latestFile: { filename: string; kind: FileKind; versionCount: number; uploadedAt: number } | null;
-  // DEC-881: latest deliverable file's stored version_no (DEC-818 identity,
-  // not a chain-length count), and the single re-uploaded predicate derived
-  // from it — null/false when the submission has no deliverable files yet.
-  latestFileVersionNo: number | null;
+  // DEC-881: the single re-uploaded predicate (latest deliverable file's
+  // stored version_no, DEC-818 identity, > 1) — false when the submission
+  // has no deliverable files yet. w1-d/DEC-851 amendment: the raw version_no
+  // itself used to ride the wire alongside this boolean with no reader
+  // anywhere under app/src (latestFileByKind's per-kind summary superseded
+  // it for display) -- removed from the wire; still computed as a local
+  // below to derive this boolean.
   reuploaded: boolean;
   // w5-i (DEC-708 amendment scope): a per-kind latest version_no, so the
   // worklist's Latest file column can print a per-kind summary ("Slides v3 ·
@@ -542,7 +545,6 @@ export async function listSubmissions(
       createdAt: r.createdAt.getTime(),
       deliverableCounts: deliverableCountsBySubmission.get(r.id) ?? zeroDeliverableCounts(),
       latestFile: latestFileBySubmission.get(r.id) ?? null,
-      latestFileVersionNo,
       latestFileByKind: latestFileByKindBySubmission.get(r.id) ?? {},
       reuploaded: latestFileVersionNo !== null && latestFileVersionNo > 1,
       scheduled: scheduledBySubmission.get(r.id) ?? null,

@@ -280,6 +280,16 @@ function PlanSection({
                     .join(' · ')}
                 </p>
               )}
+              {/* DEC-239/DEC-251 (w1-d re-closure): the queue's own
+                  fewest-ratings-first order is invisible without the count
+                  it's ordered by -- "N rating(s) so far" names why this row
+                  is where it is, never a bare list with no explanation. Its
+                  own class (not .chq-review-plan-meta) so it stays a
+                  separately countable fact from the format/audienceLevel
+                  meta line above. */}
+              <p className="chq-review-queue-ratings-count">
+                {countOf(item.ratingsCount, 'rating')} so far
+              </p>
             </div>
             {/* DEC-857/DEC-874/REVIEW PACK 03-03: the action names what it
                 actually offers -- a scored row already took the action, so
