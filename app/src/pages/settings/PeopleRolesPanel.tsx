@@ -31,7 +31,7 @@ import { useMe } from '../../lib/useMe';
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
 import { capitalizeFirst } from '../../lib/plural';
-import { MAX_EMAIL_LENGTH } from '../../../../src/domain/email';
+import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
 
 const SECTION_KEY = 'people';
 

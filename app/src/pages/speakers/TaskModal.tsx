@@ -15,7 +15,7 @@ import { ApiError } from '../../lib/api';
 // The instructions textarea reads the SAME cap the server enforces
 // (src/routes/tasks.ts's parseInstructions) so the control can never drift
 // from the rule that actually validates it.
-import { MAX_TASK_INSTRUCTIONS_LENGTH } from '../../../../src/domain/task-copy';
+import { MAX_TASK_INSTRUCTIONS_LENGTH } from '../../lib/domain-caps';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 
 interface TaskModalProps {

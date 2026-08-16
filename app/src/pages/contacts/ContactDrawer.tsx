@@ -12,10 +12,9 @@ import {
 } from '../../../../src/domain/contact-labels';
 import {
   HEADSHOT_EXTENSIONS,
-  HEADSHOT_DOWNSCALE_EDGE_PX,
-  HEADSHOT_DOWNSCALE_QUALITY,
   headshotHintText,
 } from '../../../../src/domain/files';
+import { HEADSHOT_DOWNSCALE_EDGE_PX, HEADSHOT_DOWNSCALE_QUALITY } from '../../lib/domain-caps';
 import { BulkEmailModal } from './BulkEmailModal';
 import { AddToEventModal } from './AddToEventModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';

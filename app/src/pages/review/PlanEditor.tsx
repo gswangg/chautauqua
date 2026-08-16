@@ -47,8 +47,8 @@ import {
   criterionWeightShares,
   DEFAULT_PLAN_CRITERIA,
   isPlanOpen,
-  MAX_CRITERION_GUIDANCE_LENGTH,
 } from '../../../../src/domain/evaluation';
+import { MAX_CRITERION_GUIDANCE_LENGTH } from '../../lib/domain-caps';
 import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124, DEC_958 } from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
 // w40-e/DEC-745 amendment: the reviewer roster is the ONE place an
