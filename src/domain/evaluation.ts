@@ -32,6 +32,7 @@ export {
   MIN_CRITERION_OPTIONS,
   MAX_CRITERION_OPTIONS,
   MAX_CRITERION_GUIDANCE_LENGTH,
+  CRITERION_KIND_LABELS,
   normalizeGuidance,
   validateEvaluationScores,
   criterionWeightShares,

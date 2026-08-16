@@ -61,6 +61,7 @@ import { countOf } from '../../lib/plural';
 // truncate at listPerPage's default.
 import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
 import { MAX_PLAN_CRITERIA, MIN_CRITERION_OPTIONS, MAX_CRITERION_OPTIONS } from '../../lib/batch-caps';
+import { CRITERION_KIND_LABELS } from '../../lib/criterion-kind';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
@@ -1504,7 +1505,7 @@ export function PlanEditor() {
               this caption now only appears while locked. */}
           {activeRoundIsLocked && (
             <p className="chq-review-section-caption">
-              Wording, weights and the scale are fixed for the rest of this wave.
+              Wording, type and weights are fixed for the rest of this wave.
             </p>
           )}
 
@@ -1664,11 +1665,21 @@ export function PlanEditor() {
                       <span />
                       <span>{criterion.label}</span>
                       <span>{criterion.guidance ?? ''}</span>
-                      {/* w5-e: KIND column dropped. */}
+                      {/* DEC-613/DEC-882 (wave 7): the KIND column, dropped
+                          at w5-e, is restored here as the frame's TYPE cell
+                          (Chautauqua Review.dc.html:696-701,
+                          `{{ c.typeLabel }}`) -- a locked criterion states
+                          its type in the same vocabulary as the
+                          Add-criterion picker. */}
+                      <span>{CRITERION_KIND_LABELS[criterion.kind]}</span>
                       <span>
-                        {criterion.kind === 'rating' && shares[criterion.id] !== undefined
-                          ? `Weight ${criterion.weight} · ${shares[criterion.id]}%`
-                          : ''}
+                        {criterion.kind === 'rating'
+                          ? shares[criterion.id] !== undefined
+                            ? `Weight ${criterion.weight} · ${shares[criterion.id]}%`
+                            : ''
+                          : /* frame :1130 `weight: 'Not scored'` -- dropdown/text criteria
+                               carry no weight, so the readout says so rather than blanking. */
+                            'Not scored'}
                       </span>
                       <span />
                     </div>
@@ -1979,7 +1990,7 @@ export function PlanEditor() {
                           setPickingKind(false);
                         }}
                       >
-                        Rating
+                        {CRITERION_KIND_LABELS.rating}
                       </button>
                       <button
                         type="button"
@@ -1989,7 +2000,7 @@ export function PlanEditor() {
                           setPickingKind(false);
                         }}
                       >
-                        Dropdown
+                        {CRITERION_KIND_LABELS.dropdown}
                       </button>
                       <button
                         type="button"
@@ -1999,7 +2010,7 @@ export function PlanEditor() {
                           setPickingKind(false);
                         }}
                       >
-                        Text
+                        {CRITERION_KIND_LABELS.text}
                       </button>
                       <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setPickingKind(false)}>
                         Cancel
