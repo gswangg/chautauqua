@@ -12,7 +12,7 @@ import type { AppEnv } from "../../server/env";
 import { requireOrganizer } from "../../server/middleware";
 import { ApiError, parseBoundedText } from "../../server/http";
 import * as schema from "../../db/schema";
-import { toCsv } from "../../lib/csv";
+import { toCsv } from "../../domain/csv";
 import { buildExport, buildShowflowExport, isExportKind, EXPORT_MAX_ROWS, type EmailLogExportParams, type EvaluationsExportParams } from "../../server/repo/exports";
 import { contentDispositionAttachment } from "../../domain/files";
 import { parseListQuery } from "../../server/repo/submissions/query";

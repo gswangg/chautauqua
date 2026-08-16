@@ -23,7 +23,7 @@
 import { describe, expect, it } from "vitest";
 import { asc, desc } from "drizzle-orm";
 import * as schema from "../src/db/schema";
-import { toCsv } from "../src/lib/csv";
+import { toCsv } from "../src/domain/csv";
 import { buildExport, buildShowflowExport } from "../src/server/repo/exports";
 import { shapeAgendaExport, type AgendaExportInput } from "../src/server/repo/exports/agenda";
 import { shapeShowflowExport, type ShowflowExportInput } from "../src/server/repo/exports/showflow";

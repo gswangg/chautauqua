@@ -1,15 +1,14 @@
 // Zero-dependency RFC 4180 CSV utilities (DEC-011).
 //
 // Pure module: no node:/cloudflare imports, only plain JS/TS + Web APIs, per
-// the pure-core rule (DEC-002). Used by contact import (J11, via
-// mapColumns) and every CSV export surface (J12, via toCsv).
+// the pure-core rule (DEC-002). Used by every CSV export surface (J12, via
+// toCsv) and by CSV parsing at import boundaries (J11, via parseCsv).
 
 /**
  * Thrown when parseCsv encounters input that cannot be parsed as valid CSV
- * (e.g. an unterminated quoted field), or when mapColumns is given a
- * mapping that references a header that does not exist. External input at
- * this boundary gets a real, actionable error rather than silent
- * truncation or a best-effort guess.
+ * (e.g. an unterminated quoted field). External input at this boundary gets
+ * a real, actionable error rather than silent truncation or a best-effort
+ * guess.
  */
 export class CsvParseError extends Error {
   /** 1-based line number where the problem was detected, if known. */
@@ -154,37 +153,4 @@ function formatCell(cell: string | number | null): string {
     return '"' + text.replace(/"/g, '""') + '"';
   }
   return text;
-}
-
-/**
- * Builds a row-mapper for column-mapped CSV import (J11 contact import).
- *
- * `mapping` maps target field name -> source column header name. Given the
- * parsed header row, returns a function that projects a data row into a
- * `{ targetField: value }` object. Throws CsvParseError immediately (at
- * build time, not per-row) if `mapping` references a header not present in
- * `header`.
- */
-export function mapColumns(
-  header: string[],
-  mapping: Record<string, string>,
-): (row: string[]) => Record<string, string> {
-  const indices: Record<string, number> = {};
-  for (const [target, sourceHeader] of Object.entries(mapping)) {
-    const idx = header.indexOf(sourceHeader);
-    if (idx === -1) {
-      throw new CsvParseError(
-        `Column mapping references missing header "${sourceHeader}"`,
-      );
-    }
-    indices[target] = idx;
-  }
-
-  return (row: string[]) => {
-    const result: Record<string, string> = {};
-    for (const [target, idx] of Object.entries(indices)) {
-      result[target] = row[idx] ?? "";
-    }
-    return result;
-  };
 }

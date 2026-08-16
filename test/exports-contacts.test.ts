@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { buildExport, CONTACTS_HEADER, exportContacts } from "../src/server/repo/exports";
 import * as schema from "../src/db/schema";
-import { toCsv } from "../src/lib/csv";
+import { toCsv } from "../src/domain/csv";
 import type { AppEnv } from "../src/server/env";
 
 function makeChain(rows: unknown[], whereLog?: unknown[]) {

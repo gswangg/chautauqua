@@ -24,7 +24,7 @@ import {
   resolveReviewerScopeTrackIds,
   formatReviewerScopeLabel,
 } from "../../domain/evaluation";
-import { toCsv } from "../../lib/csv";
+import { toCsv } from "../../domain/csv";
 import { contentDispositionAttachment } from "../../domain/files";
 import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";

@@ -2,7 +2,7 @@
 //
 // The repo emits five structured text formats, each with its own hard-won
 // private escaper: ICS (src/mail/ics.ts), MIME (src/mail/email-binding.ts),
-// XML (src/routes/public/feeds.ts), CSV (src/lib/csv.ts) and Markdown->HTML
+// XML (src/routes/public/feeds.ts), CSV (src/domain/csv.ts) and Markdown->HTML
 // (src/lib/markdown.ts). SECOND READER INHERITS NO MANNERS applies here as
 // SECOND WRITER: a future wave that hand-rolls a second ICS/CSV/XML builder
 // inherits none of the first's escaping rules (control-byte stripping, CRLF
@@ -142,7 +142,7 @@ const FORMAT_OWNERS: FormatOwner[] = [
   { label: "ICS (BEGIN:VCALENDAR)", signature: /BEGIN:VCALENDAR/, ownerRel: "src/mail/ics.ts" },
   { label: "MIME (multipart/alternative)", signature: /multipart\/alternative/, ownerRel: "src/mail/email-binding.ts" },
   { label: "XML (<?xml version)", signature: /<\?xml version/, ownerRel: "src/routes/public/feeds.ts" },
-  { label: "CSV row serializer (export function toCsv)", signature: /export function toCsv/, ownerRel: "src/lib/csv.ts" },
+  { label: "CSV row serializer (export function toCsv)", signature: /export function toCsv/, ownerRel: "src/domain/csv.ts" },
   { label: "Markdown->HTML (export function renderMarkdown)", signature: /export function renderMarkdown/, ownerRel: "src/lib/markdown.ts" },
 ];
 
@@ -196,7 +196,7 @@ interface ContentTypeRule {
 
 const CONTENT_TYPE_RULES: ContentTypeRule[] = [
   { label: "text/calendar", contentType: /text\/calendar/, ownerRel: "src/mail/ics.ts" },
-  { label: "text/csv", contentType: /text\/csv/, ownerRel: "src/lib/csv.ts" },
+  { label: "text/csv", contentType: /text\/csv/, ownerRel: "src/domain/csv.ts" },
   { label: "application/xml or text/xml", contentType: /(application|text)\/xml/, ownerRel: "src/routes/public/feeds.ts" },
 ];
 

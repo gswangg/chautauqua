@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CsvParseError, mapColumns, parseCsv, toCsv } from "../src/lib/csv";
+import { CsvParseError, parseCsv, toCsv } from "../src/domain/csv";
 
 describe("parseCsv - golden RFC 4180 samples", () => {
   it("parses a simple unquoted CSV", () => {
@@ -164,35 +164,5 @@ describe("toCsv", () => {
     it("leaves negative numeric cells unchanged", () => {
       expect(toCsv([[-42]])).toBe("-42");
     });
-  });
-});
-
-describe("mapColumns", () => {
-  const header = ["First Name", "Last Name", "Email Address", "Company"];
-  const mapping = {
-    firstName: "First Name",
-    lastName: "Last Name",
-    email: "Email Address",
-  };
-
-  it("maps a data row from source headers to target fields", () => {
-    const mapper = mapColumns(header, mapping);
-    expect(mapper(["Ada", "Lovelace", "ada@example.com", "Analytical Engines"])).toEqual({
-      firstName: "Ada",
-      lastName: "Lovelace",
-      email: "ada@example.com",
-    });
-  });
-
-  it("defaults missing trailing row cells to an empty string", () => {
-    const mapper = mapColumns(header, { company: "Company" });
-    expect(mapper(["Ada", "Lovelace"])).toEqual({ company: "" });
-  });
-
-  it("throws when the mapping references a header not present in the CSV", () => {
-    expect(() => mapColumns(header, { phone: "Phone Number" })).toThrow(CsvParseError);
-    expect(() => mapColumns(header, { phone: "Phone Number" })).toThrow(
-      /Phone Number/,
-    );
   });
 });
