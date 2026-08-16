@@ -85,7 +85,11 @@
 
 .chq-submissions-filterbar-select {
   min-height: 26px;
-  padding: 5px 12px;
+  /* User-filed (gate-12 era): the shorthand clobbered .chq-select's 36px
+     padding-right caret reserve, running the label under the caret
+     ("Newest fi▾t"). The pill keeps its tighter left inset; the right
+     inset clears the caret band (glyphs end at calc(100% - 14px)). */
+  padding: 5px 30px 5px 12px;
   border-radius: var(--chq-r-pill);
   font-size: 12px;
 }

@@ -1152,8 +1152,10 @@
 
 .chq-review-cap-input input {
   /* w51/DEC-840 amendment: 64px clipped the "No cap" placeholder to "No…"
-     (gate-3 report) -- wide enough for the full placeholder text. */
-  width: 92px;
+     (gate-3 report). User-filed (gate-12 era): 92px fit the text but not
+     the text PLUS the native number stepper, which overlapped the
+     placeholder's tail — sized for both. */
+  width: 118px;
 }
 
 .chq-review-distribute-summary {
