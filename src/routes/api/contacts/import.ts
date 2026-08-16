@@ -13,6 +13,7 @@ import { parseCsv } from "../../../lib/csv";
 import {
   mapImportRow,
   importFieldCapViolations,
+  validateImportMapping,
   MAX_IMPORT_CSV_BYTES as DOMAIN_MAX_IMPORT_CSV_BYTES,
 } from "../../../domain/contacts"; // DEC-422 (amendment, wave 59)
 import { DEC_290, DEC_604, DEC_810 } from "../../../decisions";
@@ -72,6 +73,19 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", "Validation failed", { mapping: "required, column -> field" });
     }
     const mapping = body.mapping as Record<string, string>;
+    // DEC-478 (amendment, wave 47): a mapping is INJECTIVE -- no two columns
+    // may target the same field. Checked before any parse/plan/write so a
+    // refused import touches no storage. validateImportMapping throws a
+    // plain Error (pure core, see its doc comment); wrapped here into the
+    // house ApiError envelope, naming the offending columns/target on the
+    // `mapping` field.
+    try {
+      validateImportMapping(mapping);
+    } catch (err) {
+      throw new ApiError("invalid", err instanceof Error ? err.message : "Invalid column mapping", {
+        mapping: err instanceof Error ? err.message : "invalid",
+      });
+    }
 
     // DEC-290: an optional eventId puts every imported/updated contact (not
     // already on the roster) onto the event, riding the existing add-to-event

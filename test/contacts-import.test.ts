@@ -341,4 +341,47 @@ describe("POST /api/v1/contacts/import (P1: silent non-persistence repro)", () =
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe("invalid");
   });
+
+  // DEC-478 (amendment, wave 47): a mapping is INJECTIVE -- refused before
+  // any parse/plan/write (validateImportMapping runs right after the
+  // isPlainObject check, before parseCsv even touches csvText), naming both
+  // offending columns and the shared target on the `mapping` field, and
+  // touching no storage.
+  it("DEC-478 (wave 47): refuses a mapping with two columns aimed at the same target, before any write", async () => {
+    const { db, rows } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({
+        csvText: "Email,E-mail\na@example.com,alt@example.com\n",
+        mapping: { Email: "email", "E-mail": "email" },
+      }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
+    expect(body.error.code).toBe("invalid");
+    expect(body.error.fields?.mapping).toContain("Email");
+    expect(body.error.fields?.mapping).toContain("E-mail");
+    expect(rows()).toHaveLength(0);
+  });
+
+  it("DEC-478 (wave 47): a mapping with distinct targets (including several custom.* keys) still imports", async () => {
+    const { db, rows } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({
+        csvText: "Email,Track,Badge\ndistinct@example.com,Keynotes,VIP\n",
+        mapping: { Email: "email", Track: "custom.track", Badge: "custom.badge" },
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { created: number; updated: number };
+    expect(body).toEqual({ created: 1, updated: 0, skipped: [] });
+    expect(rows()).toHaveLength(1);
+  });
 });
