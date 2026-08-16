@@ -115,7 +115,10 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
   }
 
   const Wrapper = embedded ? Fragment : 'div';
-  const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page' };
+  // DEC-989 (wave-56 amendment): the non-embedded wrapper carries the same
+  // chq-measure (820) token as this component's own loading branch above --
+  // an unmeasured root rendered /plans/:id/progress unclamped.
+  const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page chq-measure' };
 
   return (
     <Wrapper {...wrapperProps}>
