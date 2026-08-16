@@ -807,3 +807,5 @@ Any citation of the form `docs/eval-findings.md #N` or `docs/eval-findings.md
 Section X` refers to content now living in one of the files above; the
 mandate-item numbers and section letters embedded in the prose are
 unchanged (grep `docs/eval-findings/*.md` for the item/section token).
+
+11. [`eval-findings/14-wave72-receipts.md`](eval-findings/14-wave72-receipts.md) — Wave 72 mandate-hygiene receipts + rebuilt in-flight census (task-w72-p)
