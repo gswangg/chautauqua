@@ -138,6 +138,44 @@ SWARM: P0 BROKEN items first, then reopens 2-7, then v11 baseline order. Closure
 against design-frames-v11 with measures.
 
 
+## PROD-LIKE LOAD TEST (2026-08-16 overnight; chautauqua-perf worker on REAL D1, 2,030 submissions / 202k rows; full report chautauqua-research/perf-remote/report.md)
+
+Public surface: ALL PASS with margin at 2k scale (15-98ms adjusted vs 150ms).
+No errors, no timeouts, no unbounded growth anywhere. Root cause of everything
+slow: worker→D1 round-trip amplification (~10-30ms per query over the wire vs
+~0.1ms locally) — CONFIRMED against prod itself read-only: event overview ~192ms
+median at only 30 submissions, so latency is ROUND-TRIP-COUNT-driven, not
+scale-driven. Local perfbox numbers hid this entirely.
+
+**P1-PERF (judge/user-visible high-frequency writes, stable across cold+warm
+runs — audit each route's sequential query chain; batch write-side effects with
+db.batch, parallelize validation reads):**
+- submission PATCH (description edit): **~533ms adjusted** (every field save)
+- schedule slot PUT: **~450ms** (every agenda drag/tap placement, agenda.ts:47)
+- rating PUT: **~200ms** (every scorecard score click)
+- task assignment check-off: **~140ms**
+
+**P2-PERF (multi-query authed reads 95-353ms; wave-batch like overview.ts's
+DEC-370 Promise.all pattern — overview itself is already batched and bounded
+by per-wave RTT + session-auth queries):** reviewer queue (~155) · plan progress
+(~160-167) · plan results (~100-135) · portal home (~107-121) / portal submission
+detail (~107-353, high variance) · onboarding grid 800×5 (~142-225) · files
+library (~117-145) · event overview (~250-262).
+
+**P3-PERF (informational, do NOT burn lanes):** bulk status 1000 ids ~890ms and
+schedule.ics 150 ids ~450ms are API extremes — the SPA sends ≤1 page of ids and
+.ics is capped at 300; the bulk path is ALREADY set-based+chunked (ID_CHUNK_SIZE
+~90; cost = chunk-count × RTT, not N+1). The 50/100ms budgets are LOCAL-calibrated;
+remote runs need a separate budget profile rather than "fixes" to meet local
+numbers. PUBLIC_BASE_URL is load-bearing on deployed origins (resolveBaseUrl
+fails loudly; bulk-email 500s without it) — now on the deploy parity checklist.
+
+Perf env kept alive for post-fix re-verification (config: g10base/wrangler.perf.jsonc).
+NO-REGRESSION RULE applies: perf fixes must not change route semantics; every
+P1-perf closure needs a before/after measurement on the perf env AND green route
+tests.
+
+
 ## GATE-8 LOSS-MINE, ITEMIZED (runs 2026-08-15T07-46 [89.0] + T13-02 [90.3 final], both vs prod) — CORRECTNESS LANE
 
 Every major-severity judge defect across BOTH runs traces to four clusters. These are
