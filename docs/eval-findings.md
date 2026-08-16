@@ -183,7 +183,10 @@ real-organizer correctness bugs (user directive: fidelity + correctness focus); 
 them is justified on product grounds alone. Evidence: `killmysaas-evals/runs/<ts>/
 report.json` → areas[].defects + items[].
 
-**P1 CLUSTERS (all four produced MAJOR defects):**
+**P1 CLUSTERS (all four produced MAJOR defects). STATUS wave-63: 1a/2/3/4 landed
+(DEC-290 opt-in attach, DEC-829 roster visibility, DEC-746 subset picker, DEC-238
+shared dedupe plan) — 1b below is the ONLY P1 remnant, THREE WAVES UNCLAIMED,
+TOP PRIORITY for the next wave:**
 1. **CSV import: event coupling + dedup blindness** (hit in CRM AND SPK AND CNT — one
    cluster, three areas' judgments contaminated). (a) The wizard REQUIRES "Session
    title for this batch" and silently attaches every imported org-level contact to a
