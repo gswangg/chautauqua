@@ -12,7 +12,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import type { SubmissionStatus } from "../../../domain/status";
-import { answerFieldRoleCondition } from "../form-roles";
+import { answerFieldRoleCondition, roleAnswerMap } from "../form-roles";
 import { speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
 
@@ -46,7 +46,7 @@ export async function getMySubmissions(db: Db, contactId: string, orgId: string)
     .orderBy(desc(schema.submission.createdAt));
 
   const ids = rows.map((r) => r.id);
-  const formatBySubmission = new Map<string, string | null>();
+  let formatBySubmission = new Map<string, string | null>();
   if (ids.length > 0) {
     // DEC-962 audit: `ids` is derived from the `rows` query above, which
     // already carries contactId/orgId in its own WHERE, but that scoping is
@@ -68,10 +68,7 @@ export async function getMySubmissions(db: Db, contactId: string, orgId: string)
           eq(schema.event.orgId, orgId),
         ),
       );
-    for (const r of formatRows) {
-      const parsed: unknown = JSON.parse(r.valueJson);
-      formatBySubmission.set(r.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
-    }
+    formatBySubmission = roleAnswerMap(formatRows);
   }
 
   const trackNames = await loadTrackNamesBySubmission(db, ids);

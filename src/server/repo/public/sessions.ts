@@ -11,7 +11,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { DEC_258 } from "../../../decisions";
-import { answerFieldRoleCondition } from "../form-roles";
+import { answerFieldRoleCondition, roleAnswerMap } from "../form-roles";
 import { likeContains } from "../like";
 import { visibleParticipantConditions, visibleSessionConditions, slotWithinEventRange } from "./gates";
 import type { PublicEvent, PublicTrack } from "./event";
@@ -481,11 +481,7 @@ export async function hydrateSessions(
       );
     formatRows.push(...batchRows);
   }
-  const formatBySubmission = new Map<string, string | null>();
-  for (const r of formatRows) {
-    const parsed: unknown = JSON.parse(r.valueJson);
-    formatBySubmission.set(r.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
-  }
+  const formatBySubmission = roleAnswerMap(formatRows);
 
   return ids
     .map((id) => subById.get(id))

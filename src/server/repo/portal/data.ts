@@ -8,7 +8,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import type { SubmissionStatus } from "../../../domain/status";
 import { PORTAL_VISIBLE_INVITE_STATUSES } from "../../../domain/acceptance";
-import { answerFieldRoleCondition } from "../form-roles";
+import { answerFieldRoleCondition, roleAnswerLabel } from "../form-roles";
 import { isOwnedByContact, speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
 import { safeImageSrc } from "../../../domain/brand-url";
@@ -354,8 +354,7 @@ export async function getPortalSubmissionDetail(
     loadTrackNamesBySubmission(db, [submissionId]),
   ]);
 
-  const formatParsed: unknown = formatRows[0] ? JSON.parse(formatRows[0].valueJson) : null;
-  const format = typeof formatParsed === "string" && formatParsed.length > 0 ? formatParsed : null;
+  const format = formatRows[0] ? roleAnswerLabel(formatRows[0].valueJson) : null;
 
   const participantContactIds = participantRows.map((p) => p.contactId);
   // DEC-962 (wave 47 amendment; DEC-370 wave-62 amendment): submissionOwnedByContact

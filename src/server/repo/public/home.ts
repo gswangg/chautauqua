@@ -125,6 +125,15 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
           .groupBy(schema.submission.eventId);
   const trackCountByEventId = new Map(trackCountRows.map((r) => [r.eventId, Number(r.count)]));
 
+  // DEC-592 (Amendment, wave 80): count only the value_json shapes
+  // src/server/repo/form-roles.ts's roleAnswerLabel() maps to a non-null
+  // label -- a stored JSON string that is not "" (every other value_json
+  // shape -- '""', 'null', a number, an array, an object -- is a
+  // non-answer there and must not inflate this count). A role answer's
+  // value_json is single-select-dropdown text, never containing an
+  // embedded, unescaped '"', so "starts and ends with a quote, and isn't
+  // exactly the empty-string literal" exactly mirrors roleAnswerLabel's
+  // JS-side check without pulling every row back to run it in JS.
   const formatCountRows =
     visibleEventIds.length === 0
       ? []
@@ -140,6 +149,7 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
               inArray(schema.submission.eventId, visibleEventIds),
               answerFieldRoleCondition("session_format"),
               visibleSessionConditions(),
+              sql`${schema.submissionAnswer.valueJson} LIKE '"%"' AND ${schema.submissionAnswer.valueJson} != '""'`,
             ),
           )
           .groupBy(schema.submission.eventId);
