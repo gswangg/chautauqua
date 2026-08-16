@@ -149,7 +149,13 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
               inArray(schema.submission.eventId, visibleEventIds),
               answerFieldRoleCondition("session_format"),
               visibleSessionConditions(),
-              sql`${schema.submissionAnswer.valueJson} LIKE '"%"' AND ${schema.submissionAnswer.valueJson} != '""'`,
+              // DEC-506/DEC-511: every hand-written LIKE in the repo layer
+              // pairs the keyword with ESCAPE '\\'. The pattern here is a
+              // fixed literal containing no backslash, so naming `\` the
+              // escape character leaves the predicate's meaning untouched
+              // (the `%` stays a wildcard -- only `\%` would be literal);
+              // it keeps this template inside the ONE sanctioned idiom.
+              sql`${schema.submissionAnswer.valueJson} LIKE '"%"' ESCAPE '\\' AND ${schema.submissionAnswer.valueJson} != '""'`,
             ),
           )
           .groupBy(schema.submission.eventId);
