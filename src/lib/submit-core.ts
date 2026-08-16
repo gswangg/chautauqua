@@ -7,6 +7,7 @@
 import { formatRef, MAX_SUBMISSION_TRACK_IDS } from "../domain/ids";
 import { overCapCountMessage } from "../domain/cap-copy";
 import { dayLabelEndInstant, dayLabelStartInstant } from "./timezone";
+import { parseFormTracks } from "../forms/form-tracks";
 
 /** CFP-04 / DEC-522: past form.close_date rejects new submissions. A
  * null/undefined close date means the form never closes. closeDate is a DAY
@@ -90,16 +91,15 @@ export function validateTrackChoice(
   return { ok: true };
 }
 
-/** Resolves the offered track ids for a form: form.tracks_json (parsed)
- * when present and non-empty, else every event track id (DEC-015). */
+/** Resolves the offered track ids for a form: form.tracks_json (parsed via
+ * the ONE validated parseFormTracks, DEC-015 wave-80 amendment) when
+ * present and non-empty, else every event track id (DEC-015). */
 export function resolveOfferedTrackIds(
   tracksJson: string | null | undefined,
   eventTrackIds: string[],
+  formId: string,
 ): string[] {
-  if (!tracksJson) return eventTrackIds;
-  const parsed = JSON.parse(tracksJson) as unknown;
-  if (!Array.isArray(parsed) || parsed.length === 0) return eventTrackIds;
-  return parsed.filter((v): v is string => typeof v === "string");
+  return parseFormTracks(tracksJson, formId) ?? eventTrackIds;
 }
 
 /** DEC-003 display ref for the next submission in an event. Seq allocation
