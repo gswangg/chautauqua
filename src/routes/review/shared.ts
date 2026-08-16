@@ -20,6 +20,7 @@ import {
   MAX_PLAN_ROUNDS,
   MAX_PLAN_CRITERIA,
   MAX_CRITERION_OPTIONS,
+  MIN_CRITERION_OPTIONS,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type DropdownCriterionDef,
@@ -142,6 +143,14 @@ export function parseCriteriaList(
       // options, this one did not.
       if (c.options.length > MAX_CRITERION_OPTIONS) {
         errors[errKey] = `criterion "${c.id}" (dropdown) has ${overCapCountMessage(c.options.length, MAX_CRITERION_OPTIONS, "option")}`; // DEC-422 grammar
+        return undefined;
+      }
+      // DEC-422 (amendment, wave 2, Scale-or-Choice v12 ruling): a Choice
+      // criterion is "an organiser-defined list of 2-6 options" -- the
+      // dropdown-branch check above already guards the empty-array case,
+      // but a single-option criterion was still legal on the wire.
+      if (c.options.length < MIN_CRITERION_OPTIONS) {
+        errors[errKey] = `criterion "${c.id}" (dropdown) requires at least ${MIN_CRITERION_OPTIONS} options`;
         return undefined;
       }
       if ((c.options as string[]).some((o) => o.length > MAX_NAME_LENGTH)) {

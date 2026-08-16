@@ -176,6 +176,33 @@ describe("DEC-123 plan criteria/scale immutability guard (task w14-m)", () => {
     const res = await patchPlan({ scale: { min: 0, max: 10 } });
     expect(res.status).toBe(200);
   });
+
+  // DEC-123 (amendment, wave 2, Scale-or-Choice v12 ruling): the v12
+  // ruling's freeze rule is "the plan PATCH refuses a criterion TYPE change
+  // once any evaluation exists" -- a kind flip is a criteria shape change
+  // like any other, already covered by plans-crud.ts's whole-array
+  // deepEqual guard (:157-170); this test exists so a refactor of that
+  // guard can never narrow it to skip a kind-only diff.
+  it("flipping a criterion's kind from rating to dropdown on an evaluation-bearing plan returns 409", async () => {
+    hasEvaluations = true;
+    const res = await patchPlan({
+      criteria: [{ id: "c1", label: "Quality", kind: "dropdown", options: ["low", "high"] }],
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("conflict");
+  });
+
+  it("editing a Choice criterion's OPTIONS on an unfrozen (zero-evaluation) plan succeeds", async () => {
+    plan = makePlan({
+      criteria: [{ id: "d1", label: "Choice", kind: "dropdown", options: ["low", "high"] }],
+    });
+    hasEvaluations = false;
+    const res = await patchPlan({
+      criteria: [{ id: "d1", label: "Choice", kind: "dropdown", options: ["low", "medium", "high"] }],
+    });
+    expect(res.status).toBe(200);
+  });
 });
 
 describe("DEC-213 per-round criteria freeze guard (task w22-c)", () => {

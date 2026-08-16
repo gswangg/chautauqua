@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
-import { MAX_PLAN_CRITERIA, MAX_CRITERION_OPTIONS } from "../src/domain/evaluation";
+import { MAX_PLAN_CRITERIA, MAX_CRITERION_OPTIONS, MIN_CRITERION_OPTIONS } from "../src/domain/evaluation";
 // DEC-422 amendment: the refusal copy is the ONE cap grammar from
 // cap-copy.ts, so these assertions compose the expected string the same way
 // the route does rather than hand-writing a second copy of the prose.
@@ -195,5 +195,26 @@ describe("DEC-422 (amendment, wave 2): parseCriteriaList enforces MAX_PLAN_CRITE
     const criteria = Array.from({ length: MAX_PLAN_CRITERIA }, (_, i) => ratingCriterion(`c${i}`));
     const res = await patchPlan({ roundCriteria: { "2": criteria } });
     expect(res.status).toBe(200);
+  });
+
+  // DEC-422 (amendment, wave 2, Scale-or-Choice v12 ruling): "an
+  // organiser-defined list of 2-6 options" -- MIN_CRITERION_OPTIONS is the
+  // other half of the bound MAX_CRITERION_OPTIONS already covered above.
+  it("POST rejects a dropdown criterion with fewer than MIN_CRITERION_OPTIONS options", async () => {
+    const options = Array.from({ length: MIN_CRITERION_OPTIONS - 1 }, (_, i) => `opt-${i}`);
+    const criteria = [{ id: "d1", label: "Dropdown", kind: "dropdown", options }];
+    const res = await createPlan({ name: "Plan", scale: { min: 1, max: 5 }, criteria });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.criteria).toBe(
+      `criterion "d1" (dropdown) requires at least ${MIN_CRITERION_OPTIONS} options`,
+    );
+  });
+
+  it("POST accepts a dropdown criterion at exactly MIN_CRITERION_OPTIONS options", async () => {
+    const options = Array.from({ length: MIN_CRITERION_OPTIONS }, (_, i) => `opt-${i}`);
+    const criteria = [{ id: "d1", label: "Dropdown", kind: "dropdown", options }];
+    const res = await createPlan({ name: "Plan", scale: { min: 1, max: 5 }, criteria });
+    expect(res.status).toBe(201);
   });
 });
