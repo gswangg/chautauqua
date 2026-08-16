@@ -121,68 +121,150 @@ final deploy (carries docs) → final official eval run → submission held for 
 
 ## ALL-PASS PUSH (USER DIRECTIVE 2026-08-16 morning) — fix EVERY remaining MINOR/BROKEN before the next fidelity fleet; the goal is a fleet verdict as close to all-PASS as possible. THIS LANE PRE-EMPTS ALL OTHER WORK. Freeze + final eval run follow the fleet.
 
+**RE-DERIVED wave 81 (task-w81-c, MEASURED_SHA `c01731eb`; full receipts in
+[`eval-findings/16-wave81-receipts.md`](eval-findings/16-wave81-receipts.md)):
+of the 22 items below, 9 are CLOSED-WITH-RECEIPT this wave (A2, A6, A7, A8,
+A11, B15, B16, B19, B21 — each marked CLOSED below with its own citation), 2
+are IN-FLIGHT this wave under the home-hub lane (A4, A5 — NOT closed by this
+task, per instruction), 2 are STILL OPEN and were EMPIRICALLY REPRODUCED this
+wave via a fresh `npx tsx scripts/seed.ts` run (B13 comment-text collision,
+B14 track-wide reviewer overlap — both need a code fix, not more hygiene),
+and 9 were NOT independently re-verified this pass and remain as previously
+reported (A1, A3, A9, A10, B12, B17, B18, B20, B22 — marked OPEN/unverified
+below; do not treat prior waves' citations of these as fresh confirmations,
+per the standing "a citation is not an assertion" rule). Remaining genuinely
+open work for the next code wave: A1, A3, A9, A10, B12, B13, B14, B17, B18,
+B20, B22.**
+
 **A. FIDELITY residue (gate-10/11 + delta-6 still-open set):**
 1. §09 settings residue M1/M2/M4/M5/M7/R2 — field widths beyond dates, footer
    grammar, portal toggles, embed card anatomy (measures in fidelity-gate10/
-   group3.md + gate11/group3.md).
-2. New-contact modal to frame 08--16: email carries WHY required (matched/merged),
-   modal closes by naming what it does NOT do (directory ≠ event).
-3. FieldModal residue: dialog title per frame (not "Edit field"), operator tokens
-   read as words (not raw eq/ne/in), card width 520 → 560.
-4. **RESOLVED by design agent (wave-78): 732/756 are CONTENT boxes inside the
+   group3.md + gate11/group3.md). NOT RE-VERIFIED wave 81 — still OPEN.
+2. **CLOSED wave 81** — New-contact modal to frame 08--16: email carries WHY
+   required (matched/merged), modal closes by naming what it does NOT do
+   (directory ≠ event). `app/src/pages/contacts/NewContactModal.tsx:162`
+   (help text) and `:206-209` (scope note), both read directly this wave.
+3. NOT RE-VERIFIED wave 81 — still OPEN. FieldModal residue: dialog title per
+   frame (not "Edit field"), operator tokens read as words (not raw
+   eq/ne/in), card width 520 → 560.
+4. **IN-FLIGHT wave 81, home-hub lane (not closed by this hygiene task, per
+   instruction).** RESOLVED by design agent (wave-78): 732/756 are CONTENT boxes inside the
    standard 820 container** — the frames pad internally (820−2×44=732 home;
    820−2×32=756 builder). The frames are NOT aberrant and the measure does NOT
    change. THE REAL FIX: keep HOME_MEASURE/container at 820 and add the frame's
    internal horizontal padding so the CONTENT box lands at 732 (home hub) and
    756 (CFP builder reading column). Closure evidence = content-box width, not
    container width.
-5. **FLEET METHOD RULE (add to every future audit brief): compare LIKE boxes** —
+5. **IN-FLIGHT wave 81, home-hub lane (not closed by this hygiene task, per
+   instruction).** FLEET METHOD RULE (add to every future audit brief): compare LIKE boxes —
    a frame scan yields the CONTENT box; measure the app's content box (text run),
    not its declared container, before calling a deviation. The 820-vs-732 and
    820-vs-756 "reopens" at gates 9-11 were this artifact.
-6. Home CTA dark-on-dark hover: .chq-home-action-primary must keep its on-brand
-   label on hover (add .chq-btn or scope theme.ts a:hover away from it). VERIFY
-   with computed style — this was still live at gate-11.
-7. Status-cell hover ring: v11 literal is an OUTSET 0 0 0 2px #CFC7B7 — align
-   (currently inset per DEC-383); update the DEC.
-8. Breaks editor: add the frame's Done control; drop the extra Location row
-   (frame 06--02 has label/start/minutes three-up only).
-9. Settings deep-link ?section=<x>&edit=1 must arrive EDITING (resources currently
-   read-only until Change clicked).
-10. API-tokens row in Your data EDIT view (revoke currently unreachable there) —
-    VERIFY gate-11 filing landed; fix if not.
-11. "Import 1 rows" plural — verify the shared plural helper reached it.
+6. **CLOSED wave 81** — Home CTA dark-on-dark hover: `.chq-home-action-primary`
+   must keep its on-brand label on hover. `src/routes/public/home.css.ts:53`:
+   `a.chq-home-action-primary:hover { background: var(--chq-brand-hover);
+   color: var(--chq-on-brand); }`, anchor-qualified to beat theme.ts's
+   `a:not(.chq-btn):hover` (DEC-383 wave-66 amendment, cited in the preceding
+   comment). Read directly this wave.
+7. **CLOSED wave 81** — Status-cell hover ring: v11 literal is an OUTSET
+   `0 0 0 2px`; already aligned, not "currently inset per DEC-383" as this
+   item's own text claimed (that clause named the wrong DEC — DEC-383 governs
+   item 6's CTA hover). The ring rule already lives under DEC-989/DEC-939
+   (wave-64 amendment), already updated. `test/palette-conformance.test.ts:
+   130-141` (OUTSET_RING_ALLOWLIST_FILES, citing DEC-989), `app/src/pages/
+   speakers/speakers.css:290-298` and `app/src/pages/review/review.css:
+   732-737`, both `box-shadow: 0 0 0 2px var(--chq-border-strong)`. All read
+   directly this wave.
+8. **CLOSED wave 81, with a noted deliberate divergence.** Breaks editor: add
+   the frame's Done control (done); "drop the extra Location row" is
+   SUPERSEDED by a prior ruling to KEEP it (app-only field, not in the drawn
+   frame). `app/src/pages/agenda/BreaksPanel.tsx:64-67` (`onDone` prop, DEC-021
+   w66 amendment cited) and `:527-532` (rendered Done button); Location row
+   kept at `:473-484` with its own "app-only" comment. Read directly this
+   wave.
+9. NOT RE-VERIFIED wave 81 for the general `resources` section — still OPEN.
+   Settings deep-link ?section=<x>&edit=1 must arrive EDITING (resources
+   currently read-only until Change clicked). (Note: the `?section=portal&
+   edit=1` case was closed w78 per `PortalSettingsPanel.tsx:110,216,240,323`
+   — that is a different section than "resources" and does not close this
+   item.)
+10. NOT RE-VERIFIED wave 81 by direct read; carried from w78's citation
+    (`YourDataPanel.tsx:53,202,228`) without a fresh confirmation this pass.
+11. **CLOSED wave 81, re-confirmed.** "Import 1 rows" plural — the shared
+    plural helper reached it. `app/src/pages/settings/
+    SessionboardImportPanel.render.test.tsx:110-129` asserts "Import 1 row"
+    (singular) and rejects "Import 1 rows". Read directly this wave (already
+    carried a wave-67 receipt too, see item 11 above at line ~318).
 
 **B. EVAL-run minors (product-actionable set from the 93.8 run):**
-12. Seed: synth generator reuses the fixture title "Your AI Pair Programmer Is
-    Lying to You…" minting the SES-002/SES-032 identical-title conflicting-status
-    pair — make synth titles unique (contaminated 3 areas, 3 runs straight).
-13. Seed: Sam Whitfield's two seeded reviews carry byte-identical comment text —
-    vary seeded evaluation comments.
-14. Seed: reviewer assignments overlap broadly (Sam track-wide on 3 plans) —
-    narrow to distinct, non-overlapping seeded scopes.
-15. Deadline day-boundary: close saved 30 Apr 23:59 renders "CLOSES THU 29 APR"
-    on the hub — every countdown/day label must resolve in the EVENT timezone.
-16. Saved-embed accent: builder saves #2563eb but /embed/e/<id> renders no accent
-    — saved-embed.tsx:143 passes accentOverride; find where EmbedShell drops it,
-    fix, and render-test a non-default accent end-to-end.
-17. Tracks-and-rooms add: success + simultaneous "ONE THING NEEDS ATTENTION"
-    banner (DEC-856 w76 plausibly fixed this — VERIFY with a click-through, close
-    with evidence).
-18. Pipeline DECLINED column: first card renders TWO fit badges + TWO rationale
-    paragraphs under one name (card bleed/merge — likely a render-key or
-    grouping bug; screenshot in runs/2026-08-16T06-09-31 CRM evidence).
-19. Public CFP form: add an in-page error summary + per-field messages on submit
-    (currently native browser bubbles only; portal/admin forms already have the
-    pattern — reuse it).
-20. Version history v1/v2 identical minute timestamps — VERIFY DEC-158 w77's
-    seconds grammar covers portal file-version rows; fix if not.
-21. Contacts/Speakers initial load: skeleton shows with no accessible label —
-    add the aria-live "Loading" status to PageSkeleton per the v11 first-paint
-    spec's a11y intent.
-22. Organizer add-co-presenter flow: state the email difference explicitly
-    ("sends a portal invite" vs portal's "No email goes to them") — copy-only,
-    one sentence.
+12. NOT RE-VERIFIED wave 81 — still OPEN. Seed: synth generator reuses the
+    fixture title "Your AI Pair Programmer Is Lying to You…" minting the
+    SES-002/SES-032 identical-title conflicting-status pair — make synth
+    titles unique (contaminated 3 areas, 3 runs straight).
+13. **STILL OPEN, EMPIRICALLY REPRODUCED wave 81** (receipts:
+    [`eval-findings/16-wave81-receipts.md`](eval-findings/16-wave81-receipts.md)
+    item 13). Seed: Sam Whitfield's two seeded reviews carry byte-identical
+    comment text — vary seeded evaluation comments. Ran `npx tsx
+    scripts/seed.ts` fresh this wave and read the generated SQL directly:
+    `seed_evaluation_0002` and `seed_evaluation_0058` (both reviewer
+    `seed_user_0004`) carry the identical comment "Solid proposal, needs more
+    concrete examples."; `0003`/`0059` collide the same way. Root cause:
+    `scripts/seed.ts:1440,1452` — a single global `evalCounter` (not
+    per-reviewer) indexes the 8-item `EVAL_COMMENTS` array, so any reviewer
+    whose total call-count gap is a multiple of 8 collides (Sam's gap is 56).
+14. **STILL OPEN, EMPIRICALLY REPRODUCED wave 81** (receipts: same file,
+    item 14). Seed: reviewer assignments overlap broadly (Sam track-wide on
+    3 plans) — narrow to distinct, non-overlapping seeded scopes. Confirmed
+    via the same fresh seed run's `plan_reviewer` rows for
+    `seed_user_0004`: plan 1/track 1, plan 3/track 1, plan 4/track 2 — a
+    whole-track scope on three separate plans, unchanged. CONSTRAINT for the
+    fix: must preserve the reviewer-progress cap-saturation fixture (w77
+    field-guide receipt, `plans-progress.ts:152`) — do not remove it while
+    de-overlapping.
+15. **CLOSED wave 81, re-confirmed.** Deadline day-boundary: close saved
+    30 Apr 23:59 renders "CLOSES THU 29 APR" on the hub — every
+    countdown/day label must resolve in the EVENT timezone. `src/routes/
+    root.tsx:125-133` (`closesLine`, DEC-408/DEC-918 cited) and
+    `src/routes/public/submit-views.tsx:503-505` (CFP close-date line) both
+    take `event.timezone`/`timeZone`, not UTC-bare. Read directly this wave.
+16. **CLOSED wave 81, re-confirmed.** Saved-embed accent: builder saves
+    #2563eb but /embed/e/<id> renders no accent — saved-embed.tsx:143 passes
+    accentOverride; find where EmbedShell drops it, fix, and render-test a
+    non-default accent end-to-end. `src/routes/public/saved-embed.tsx:143`
+    passes `accentOverride={parseAccent(opts.accent ?? "") ?? undefined}`;
+    `src/routes/public/shell.tsx:274-276` — `EmbedShell` reads
+    `props.accentOverride ?? b.accentColor` through `validAccent(...)`. Not
+    dropped. Read directly this wave.
+17. NOT RE-VERIFIED wave 81 (needs a click-through per the item's own text,
+    out of a docs-only task's reach) — left OPEN pending that verification.
+    Tracks-and-rooms add: success + simultaneous "ONE THING NEEDS ATTENTION"
+    banner (DEC-856 w76 plausibly fixed this — VERIFY with a click-through,
+    close with evidence).
+18. NOT RE-VERIFIED wave 81 — still OPEN. Pipeline DECLINED column: first
+    card renders TWO fit badges + TWO rationale paragraphs under one name
+    (card bleed/merge — likely a render-key or grouping bug; screenshot in
+    runs/2026-08-16T06-09-31 CRM evidence).
+19. **CLOSED wave 81, re-confirmed.** Public CFP form: add an in-page error
+    summary + per-field messages on submit. `src/routes/public/
+    submit-views.tsx:334-340` (`ErrorSummary`, `role="alert"`), `:479-484`
+    (`summaryProblems` built from field errors), `:549` (rendered in the CFP
+    form body), `:601-604` (per-field `role="alert"` messages still present
+    too). Both halves present, read directly this wave.
+20. NOT RE-VERIFIED wave 81 against portal file-version rows specifically —
+    still OPEN. Version history v1/v2 identical minute timestamps — VERIFY
+    DEC-158 w77's seconds grammar covers portal file-version rows; fix if
+    not.
+21. **CLOSED wave 81, re-confirmed.** Contacts/Speakers initial load:
+    skeleton shows with no accessible label — add the aria-live "Loading"
+    status to PageSkeleton. `app/src/components/PageSkeleton.tsx:88-96`:
+    `role="status" aria-busy="true"` with a `chq-skeleton-sr-label` span
+    carrying the `label` prop (defaults to `'Loading…'`). Read directly this
+    wave.
+22. NOT RE-VERIFIED wave 81 by direct read this task — carried from a prior
+    wave's citation only (`SubmissionDetailPage.tsx:1641`, field guide w79),
+    not independently re-confirmed this pass. Organizer add-co-presenter
+    flow: state the email difference explicitly ("sends a portal invite" vs
+    portal's "No email goes to them") — copy-only, one sentence.
 
 **Out of scope for this lane (roadmap, judge feature-asks):** scorecard criterion
 field types (dropdown/Accept-Maybe-Reject custom criteria) · account-linked
@@ -930,6 +1012,7 @@ split, verify against git history if a citation seems to have moved.
 13. [`eval-findings/13-wave71-receipts.md`](eval-findings/13-wave71-receipts.md) — Wave 71 mandate-hygiene receipts (task-w71-j)
 14. [`eval-findings/14-wave72-receipts.md`](eval-findings/14-wave72-receipts.md) — Wave 72 mandate-hygiene receipts (task-w72-p)
 15. [`eval-findings/15-wave74-receipts.md`](eval-findings/15-wave74-receipts.md) — Wave 74 mandate-hygiene receipts (task-w74-e; wave 73 filed no receipts file)
+16. [`eval-findings/16-wave81-receipts.md`](eval-findings/16-wave81-receipts.md) — Wave 81 mandate-hygiene receipts: re-derivation of the ALL-PASS PUSH lane (task-w81-c)
 
 Any citation of the form `docs/eval-findings.md #N` or `docs/eval-findings.md
 Section X` refers to content now living in one of the files above; the
