@@ -14,6 +14,7 @@ import { SessionboardImportPanel } from './SessionboardImportPanel';
 import { mockApi } from '../../test-utils/mockApi';
 import { MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
 import { formatBytes } from '../../../../src/domain/files';
+import { SB_TARGET_FIELDS, type SbEntity } from '../../../../src/domain/sessionboard';
 
 const EVENT_ID = 'evt-sbimport-render';
 const ENDPOINT = `POST /api/v1/events/${EVENT_ID}/import/sessionboard`;
@@ -200,6 +201,75 @@ describe('SessionboardImportPanel', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('pre-selects the auto-mapped targets when a fresh CSV parses (DEC-613 amendment, task-w60-b)', () => {
+    render(<SessionboardImportPanel />);
+
+    fireEvent.change(screen.getByLabelText(/Or paste the exported CSV text/), {
+      target: { value: 'Record ID,Email,First Name\nsb-1,ada@example.com,Ada' },
+    });
+
+    const idPicker = screen.getByRole('group', { name: 'Map column Record ID' });
+    expect(within(idPicker).getByRole('button', { name: 'externalId (Record ID)' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const emailPicker = screen.getByRole('group', { name: 'Map column Email' });
+    expect(within(emailPicker).getByRole('button', { name: 'email' })).toHaveAttribute('aria-pressed', 'true');
+    const firstNamePicker = screen.getByRole('group', { name: 'Map column First Name' });
+    expect(within(firstNamePicker).getByRole('button', { name: 'firstName' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('hand-mapping one column does not unmap the auto-mapped rest (DEC-613)', () => {
+    render(<SessionboardImportPanel />);
+
+    fireEvent.change(screen.getByLabelText(/Or paste the exported CSV text/), {
+      target: { value: 'Record ID,Email,Company\nsb-1,ada@example.com,Acme' },
+    });
+
+    // "Company" has no alias match -- hand-map it to `company`.
+    const companyPicker = screen.getByRole('group', { name: 'Map column Company' });
+    fireEvent.click(within(companyPicker).getByRole('button', { name: 'company' }));
+
+    // The auto-mapped externalId/email columns stay mapped.
+    const idPicker = screen.getByRole('group', { name: 'Map column Record ID' });
+    expect(within(idPicker).getByRole('button', { name: 'externalId (Record ID)' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const emailPicker = screen.getByRole('group', { name: 'Map column Email' });
+    expect(within(emailPicker).getByRole('button', { name: 'email' })).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
+describe('SessionboardImportPanel mapping picker (DEC-613 amendment, task-w60-b)', () => {
+  const ENTITY_BUTTON_LABEL: Record<SbEntity, string> = {
+    contacts: 'Contacts',
+    submissions: 'Submissions',
+    tracks: 'Tracks',
+    participants: 'Participants',
+  };
+
+  for (const entity of Object.keys(ENTITY_BUTTON_LABEL) as SbEntity[]) {
+    it(`renders exactly SB_TARGET_FIELDS.${entity} as pills, in order`, () => {
+      render(<SessionboardImportPanel />);
+      fireEvent.click(screen.getByRole('button', { name: ENTITY_BUTTON_LABEL[entity] }));
+      fireEvent.change(screen.getByLabelText(/Or paste the exported CSV text/), {
+        target: { value: 'Col A\nvalue1' },
+      });
+
+      const picker = screen.getByRole('group', { name: 'Map column Col A' });
+      const rendered = within(picker)
+        .getAllByRole('button')
+        .map((b) => b.textContent)
+        .filter((t) => t !== 'Ignore')
+        .map((t) => (t === 'externalId (Record ID)' ? 'externalId' : t));
+      expect(rendered).toEqual([...SB_TARGET_FIELDS[entity]]);
+    });
+  }
 });
 
 describe('SessionboardImportPanel mapping table CSS (w23-c, DEC-902 amendment)', () => {
