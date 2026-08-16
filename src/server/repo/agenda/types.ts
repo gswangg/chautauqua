@@ -61,5 +61,8 @@ export interface AgendaPayload {
    * isDayWithinEventRange predicate (runAutoSchedule asserts this equality
    * and throws on divergence). */
   unplacedReasons: DescribedUnplaced[];
-  summary: { unplaced: number; conflicts: number };
+  // DEC-899: placed/total are the SAME numerator/denominator the SPA's
+  // "P% placed" reads — computed once here (domain/schedule.ts's
+  // scheduleSummary), never re-derived client-side from placed.length.
+  summary: { unplaced: number; conflicts: number; placed: number; total: number };
 }

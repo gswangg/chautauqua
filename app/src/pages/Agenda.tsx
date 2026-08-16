@@ -59,16 +59,15 @@ function resolveRoomName(rooms: AgendaPayload['rooms'], roomId: string | null): 
   return rooms.find((r) => r.id === roomId)?.name ?? roomId;
 }
 
-/** DEC-899/900: the summary's "% placed" is derived from the same placed +
- * unscheduled counts the rest of the page renders (never a server-supplied
- * shortcut field) so the printed percentage always matches the arithmetic a
- * reader could do themselves from what's on screen. Zero total sessions
- * reads as 0% rather than dividing by zero. */
+/** DEC-899: every number in the header line — unplaced, conflicts and the
+ * placed percentage — reads from `agenda.summary`, the ONE server-computed
+ * source, so the printed percentage can never diverge from the counts
+ * sitting next to it (never re-derived client-side from placed.length /
+ * unscheduled.length). Zero total sessions reads as 0% rather than dividing
+ * by zero. */
 function placedPercent(agenda: AgendaPayload | null): number {
-  if (!agenda) return 0;
-  const total = agenda.placed.length + agenda.unscheduled.length;
-  if (total === 0) return 0;
-  return Math.round((agenda.placed.length / total) * 100);
+  if (!agenda || agenda.summary.total === 0) return 0;
+  return Math.round((agenda.summary.placed / agenda.summary.total) * 100);
 }
 
 /** DEC-667: when a run places nothing, name why from the typed reasons the

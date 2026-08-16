@@ -19,7 +19,7 @@ function basePayload(): AgendaPayload {
     ],
     conflicts: [],
     unplacedReasons: [],
-    summary: { unplaced: 1, conflicts: 0 },
+    summary: { unplaced: 1, conflicts: 0, placed: 0, total: 1 },
   };
 }
 
@@ -114,10 +114,10 @@ describe('reconcileConflictsSummary', () => {
           detail: 'double-booked',
         },
       ],
-      summary: { unplaced: 0, conflicts: 1 },
+      summary: { unplaced: 0, conflicts: 1, placed: 1, total: 1 },
     });
     expect(next.conflicts).toHaveLength(1);
-    expect(next.summary).toEqual({ unplaced: 0, conflicts: 1 });
+    expect(next.summary).toEqual({ unplaced: 0, conflicts: 1, placed: 1, total: 1 });
     expect(next.unscheduled).toBe(state.unscheduled);
   });
 });

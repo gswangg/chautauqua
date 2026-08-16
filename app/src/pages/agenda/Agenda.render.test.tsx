@@ -73,7 +73,7 @@ function agendaPayload() {
       },
     ],
     unplacedReasons: [],
-    summary: { unplaced: 1, conflicts: 1 },
+    summary: { unplaced: 1, conflicts: 1, placed: 2, total: 3 },
   };
 }
 
@@ -154,10 +154,12 @@ describe('AgendaPage render smoke', () => {
 
     expect(screen.getByRole('tab', { name: 'Mon 1 Jun' })).toBeInTheDocument();
 
-    // Fixture is summary: { unplaced: 1, conflicts: 1 } -- both singular;
-    // placed% derives from placed.length / (placed.length + unscheduled.length).
+    // Fixture is summary: { unplaced: 1, conflicts: 1, placed: 2, total: 3 }
+    // -- both count words singular; DEC-899: the percentage is read straight
+    // from summary.placed/summary.total (2/3 = 67%), never re-derived
+    // client-side from placed.length/unscheduled.length.
     const summary = document.querySelector('.chq-agenda-head .chq-agenda-summary');
-    expect(summary?.textContent).toMatch(/^1 unplaced · 1 conflict · \d+% placed$/);
+    expect(summary?.textContent).toBe('1 unplaced · 1 conflict · 67% placed');
     expect(screen.getByText('1 conflict')).toBeInTheDocument();
     expect(screen.queryByText('1 conflicts')).toBeNull();
 
@@ -181,10 +183,39 @@ describe('AgendaPage render smoke', () => {
     expect(headActions.textContent).toBe('Breaks ›Auto-schedulePublish schedule');
   });
 
+  // DEC-899: gate-8 P2 #10 -- a judge saw the header's percentage move
+  // 84%->79% with identical counts because it was re-derived client-side
+  // from placed.length/(placed.length+unscheduled.length) instead of read
+  // from the server's summary. This fixture deliberately makes the two
+  // arithmetics disagree (placed.length/unscheduled.length would say 50%,
+  // summary.placed/summary.total says 90%) so the test can only pass if
+  // the header reads summary.placed/summary.total, never the arrays.
+  it('reads the placed percentage from summary.placed/summary.total, never from placed.length/unscheduled.length', async () => {
+    const payload = agendaPayload();
+    payload.summary = { unplaced: 1, conflicts: 1, placed: 9, total: 10 };
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
+    });
+
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    const summary = document.querySelector('.chq-agenda-head .chq-agenda-summary');
+    // placed.length (2) / (placed.length + unscheduled.length) (3) would be
+    // 67% -- if this reads 67% the header is re-deriving client-side again.
+    expect(summary?.textContent).toBe('1 unplaced · 1 conflict · 90% placed');
+  });
+
   // DEC-791: plural grammar when there are 2+ conflicts.
   it('renders "2 conflicts" (plural) in the summary line when the conflict count is 2', async () => {
     const payload = agendaPayload();
-    payload.summary = { unplaced: 0, conflicts: 2 };
+    payload.summary = { unplaced: 0, conflicts: 2, placed: 3, total: 3 };
 
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
@@ -281,7 +312,7 @@ describe('AgendaPage render smoke', () => {
   it('accepts a drop directly on an already-occupied placed card (not just the empty cell beneath it)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2 } } },
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2, placed: 3, total: 3 } } },
     });
 
     render(
@@ -344,7 +375,7 @@ describe('AgendaPage render smoke', () => {
   it('arms a session by click and places it via a keyboard-operable cell button', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1, placed: 3, total: 3 } } },
     });
 
     render(
@@ -387,7 +418,7 @@ describe('AgendaPage render smoke', () => {
   it('placement toast names the ref, room and start time with no clash clause when conflicts are unchanged', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1, placed: 3, total: 3 } } },
     });
 
     render(
@@ -413,7 +444,7 @@ describe('AgendaPage render smoke', () => {
   it('placement toast appends a new-clash clause only when the refreshed conflict count grows', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2 } } },
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2, placed: 3, total: 3 } } },
     });
 
     render(
@@ -439,7 +470,7 @@ describe('AgendaPage render smoke', () => {
   it('unschedule toast names the ref', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
+      'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0, placed: 1, total: 3 } } },
     });
 
     render(
@@ -522,7 +553,7 @@ describe('AgendaPage render smoke', () => {
         ...agendaPayload(),
         unscheduled: [],
         unplacedReasons: [],
-        summary: { unplaced: 0, conflicts: 1 },
+        summary: { unplaced: 0, conflicts: 1, placed: 3, total: 3 },
       },
     });
 
@@ -552,7 +583,7 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
       [`POST /api/v1/events/${EVENT_ID}/agenda/auto-schedule`]: {
         ...agendaPayload(),
-        summary: { unplaced: 1, conflicts: 1 },
+        summary: { unplaced: 1, conflicts: 1, placed: 2, total: 3 },
         unplacedReasons: [
           { submissionId: 'sub-3', reason: 'no_rooms_configured', durationMin: 30, detail: 'No rooms configured.' },
         ],
@@ -583,7 +614,7 @@ describe('AgendaPage render smoke', () => {
   it('arms a session, exposes an occupied cell as a clash-naming button, and places it there on click', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 3 } } },
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 3, placed: 3, total: 3 } } },
     });
 
     render(
@@ -888,7 +919,7 @@ function twoRoomPayload() {
     unscheduled: [],
     conflicts: [],
     unplacedReasons: [],
-    summary: { unplaced: 0, conflicts: 0 },
+    summary: { unplaced: 0, conflicts: 0, placed: 2, total: 2 },
   };
 }
 
@@ -896,7 +927,7 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
   it('arming a placed session and clicking a different room occupied cell issues the slot PUT with THAT cell startMin', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: twoRoomPayload(),
-      'PUT /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
+      'PUT /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1, placed: 2, total: 2 } } },
     });
 
     render(
@@ -967,7 +998,7 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
           conflicts: [
             { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-5'], detail: 'Solo Talk A and Room B Talk overlap in Room B.' },
           ],
-          summary: { unplaced: 0, conflicts: 1 },
+          summary: { unplaced: 0, conflicts: 1, placed: 2, total: 2 },
         },
       },
     });
@@ -1036,7 +1067,7 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
   it('clicking Unschedule asks for confirmation first, then DELETEs and toasts its ref', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
+      'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0, placed: 1, total: 3 } } },
     });
 
     render(
@@ -1096,7 +1127,7 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
   it('the Unschedule button is keyboard-reachable and activates without any pointer event', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
+      'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0, placed: 1, total: 3 } } },
     });
 
     render(
@@ -1255,7 +1286,7 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
     stubPhoneMatchMedia();
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1, placed: 3, total: 3 } } },
     });
 
     render(
@@ -1337,7 +1368,7 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
     stubPhoneMatchMedia();
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
-      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2 } } },
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2, placed: 3, total: 3 } } },
     });
 
     render(

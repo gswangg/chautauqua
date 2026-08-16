@@ -409,17 +409,23 @@ export function findConflicts(placed: PlacedSession[]): Conflict[] {
 }
 
 /**
- * Live "N unplaced · M conflicts" counter inputs.
+ * Live "N unplaced · M conflicts · P% placed" counter inputs. DEC-899: the
+ * placed numerator/denominator are computed HERE (server-side), from the
+ * same `placed` set and `totalAccepted` denominator every other field on
+ * this summary already uses — never re-derived client-side, so the printed
+ * percentage can never diverge from the counts sitting next to it.
  */
 export function scheduleSummary(
   placed: PlacedSession[],
   totalAccepted: number,
   conflicts: Conflict[] = findConflicts(placed),
-): { unplaced: number; conflicts: number } {
+): { unplaced: number; conflicts: number; placed: number; total: number } {
   const placedIds = new Set(placed.map((p) => p.submissionId));
   return {
     unplaced: totalAccepted - placedIds.size,
     conflicts: conflicts.length,
+    placed: placedIds.size,
+    total: totalAccepted,
   };
 }
 
