@@ -17,6 +17,7 @@ import { LOCKED_SPEAKER_FIELDS } from "../../forms/types";
 import { requestIpFromHeaders } from "../../lib/rate-limit";
 import { checkAndIncrementScopedLimit } from "../../server/repo/rate-limit";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
+import { MAX_SUBMISSION_TRACK_IDS } from "../../domain/ids";
 import { saveDraft, newDraftToken, draftCookieName, type KVStore as DraftKVStore } from "../../lib/draft";
 import { parseCookies, newCsrfToken, buildDraftCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import { publicNotFound } from "./not-found";
@@ -70,11 +71,59 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
   applyNameSplit(fields, body, answers);
   const selectedTrackIds = extractTrackIds(body);
 
+  // DEC-422 (wave-54 amendment): bound the trackIds SHAPE before saveDraft
+  // ever runs — the cap loop below only ever inspected string answers and
+  // silently skipped everything else, so an unauthenticated POST could
+  // persist an arbitrarily large trackIds array into a 30-day KV record
+  // (only the 100 MB body ceiling bounded it). This checks SIZE only: an
+  // array over MAX_SUBMISSION_TRACK_IDS entries, or any entry longer than
+  // MAX_TEXT_LENGTH, is refused outright. It deliberately does NOT validate
+  // trackId membership against the event's offered tracks — task-w49-h
+  // already ruled membership is not owed on the draft path.
+  if (
+    selectedTrackIds.length > MAX_SUBMISSION_TRACK_IDS ||
+    selectedTrackIds.some((id) => id.length > MAX_TEXT_LENGTH)
+  ) {
+    return c.html(
+      <SubmitPage
+        event={event}
+        form={form}
+        fields={fields}
+        tracks={tracks}
+        answers={answers}
+        selectedTrackIds={selectedTrackIds}
+        hasDraft={false}
+        csrfToken={(c.req.header("cookie") && parseCookies(c.req.header("cookie") ?? null)[CSRF_COOKIE_NAME]) || newCsrfToken()}
+        banner="Too many track selections. Try again."
+      />,
+      400,
+    );
+  }
+
   // DEC-422: reject any answer over its field-kind cap before it ever
   // reaches saveDraft — never truncate.
   const fieldCapsById = new Map(fields.map((field) => [field.id, field]));
   for (const [fieldId, value] of Object.entries(answers)) {
-    if (typeof value !== "string") continue;
+    if (typeof value === "boolean") continue;
+    if (typeof value !== "string") {
+      // Any answer that is neither a string nor a boolean (e.g. an array or
+      // object slipped in by a hand-crafted request) is refused outright —
+      // never persisted unbounded, never truncated.
+      return c.html(
+        <SubmitPage
+          event={event}
+          form={form}
+          fields={fields}
+          tracks={tracks}
+          answers={answers}
+          selectedTrackIds={selectedTrackIds}
+          hasDraft={false}
+          csrfToken={(c.req.header("cookie") && parseCookies(c.req.header("cookie") ?? null)[CSRF_COOKIE_NAME]) || newCsrfToken()}
+          banner="This draft could not be saved. Try again."
+        />,
+        400,
+      );
+    }
     const field = fieldCapsById.get(fieldId);
     if (!field) continue;
     const cap = field.kind === "long_text" ? MAX_LONG_TEXT_LENGTH : MAX_TEXT_LENGTH;
