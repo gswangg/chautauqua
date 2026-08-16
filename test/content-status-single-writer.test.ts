@@ -11,6 +11,7 @@
 // optionally flips content-status, and optionally mails — untouched here.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { CONTENT_STATUSES } from "../src/domain/content-status";
 import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { readdirSync, readFileSync } from "node:fs";
@@ -176,7 +177,15 @@ describe("POST /api/v1/submissions/:id/content-status (single route)", () => {
     );
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { message: string } };
-    expect(body.error.message).toContain("contentStatus must be 'pending', 'approved' or 'changes_requested'");
+    // DEC-003 (wave-73 amendment): the refusal copy is COMPOSED from
+    // CONTENT_STATUSES rather than hand-listing the members, so this asserts
+    // the message names every member of the live vocabulary — the property
+    // this test has always been about ("naming all three settable values") —
+    // instead of pinning the exact prose the ruling replaced.
+    expect(body.error.message).toContain("contentStatus must be");
+    for (const status of CONTENT_STATUSES) {
+      expect(body.error.message).toContain(`'${status}'`);
+    }
     expect(readContentStatus(sqlite, "sub-2")).toBe("pending");
   });
 

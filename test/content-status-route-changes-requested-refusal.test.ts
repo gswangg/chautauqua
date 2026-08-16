@@ -11,6 +11,7 @@
 // content-note path, which remains a deliberate note+email action.
 
 import { describe, expect, it, vi } from "vitest";
+import { CONTENT_STATUSES } from "../src/domain/content-status";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
@@ -75,7 +76,14 @@ describe("POST /api/v1/submissions/:id/content-status (DEC-720 wave-32 amendment
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; message: string } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.message).toContain("contentStatus must be 'pending', 'approved' or 'changes_requested'");
+    // DEC-003 (wave-73 amendment): the refusal copy is COMPOSED from
+    // CONTENT_STATUSES rather than hand-listing the members, so assert the
+    // message names every member of the live vocabulary rather than pinning
+    // the exact prose the ruling replaced.
+    expect(body.error.message).toContain("contentStatus must be");
+    for (const status of CONTENT_STATUSES) {
+      expect(body.error.message).toContain(`'${status}'`);
+    }
   });
 
   it("still 200s on 'pending'", async () => {
