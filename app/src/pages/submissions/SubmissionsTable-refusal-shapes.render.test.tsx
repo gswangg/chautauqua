@@ -24,6 +24,12 @@ afterEach(() => {
 
 function baseRoutes(overrides: Record<string, unknown> = {}) {
   return {
+    // DEC-975/DEC-851 (wave 12, merged alongside this file): SubmissionsTable
+    // mounts ViewTabs, which calls useMe() to gate the saved-view Delete
+    // control. Without this route mockApi throws an UNHANDLED rejection --
+    // the assertions below still pass, so the only signal is Vitest's
+    // "3 unhandled errors" line. Every render of this table needs it.
+    'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
     [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
     [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
     [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
