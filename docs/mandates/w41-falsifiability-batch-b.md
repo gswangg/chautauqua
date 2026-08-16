@@ -116,35 +116,106 @@ file under GAPS for either.
 
 ## STILL UNFALSIFIABLE
 
-Verbatim carry-forward of `DO-NOT-RE-FILE` claims not reached this wave
-(not one of the eight discharged above; not re-checked beyond the
-citations already in the block): `answerFieldRoleCondition` missing event
+Verbatim carry-forward of `DO-NOT-RE-FILE` claims not reached that wave,
+now adjudicated by `task-w49-g` (DEC-358: this branch is the owner named
+by the census, not a re-filing). `answerFieldRoleCondition` missing event
 join — DISMISSED, DEC-592 wave-18 amendment
-(`src/server/repo/form-roles.ts:16`);
-`countEvaluationsBySubmission`'s whole-plan map — DISMISSED, DEC-449;
-reviewer plan window on lone-submission read + file authz
-(`src/routes/review/reviewer.ts:288`,
-`src/server/repo/files-authz.ts:185-209`, DEC-018); `task-w14-d` AUTH_CSS
-`.chq-field-invalid` cascade (`app/src/components/error-states.css:31`,
-DEC-124 wave-14 amendment); `task-w15-c/d` `updateEvent` slug guard
-(`src/server/repo/events.ts:224-259`, DEC-111); `task-w15-d` sessionboard
-participant cap (`src/server/repo/import/sessionboard.ts:620-627`,
-DEC-604); `task-w15-b` send.ts intra-batch collapse
-(`src/routes/comms/send.ts:125-138`, DEC-238); `task-w8-c` review round
-name+window (`app/src/pages/review/ReviewerQueue.tsx:31,508`); `task-w8-d`
-compose step-1 slot+footer
-(`app/src/pages/comms/ComposeWizard.tsx:713-716,1226-1230`); `task-w8-b`
-Submissions→Comms `?ids=` handoff
-(`app/src/pages/submissions/BulkActionBar.tsx:77`); `task-w8-e` Comms
-History pager (`app/src/pages/comms/HistoryTab.tsx:42-160`); `task-w10-b`
-MERGED; `task-w17-b` perf-seed/perf-smoke harness bugs MERGED
-(`956fe263`); `task-w23-e` frame-citation quoting audit MERGED
-(`c0fe6948`); `task-w18-b/c/d/e/f/g` (reviewer-scope, compose defaults,
-History Export, files-library table-layout, templates Delete,
-ENVELOPE_ALLOWLIST) all MERGED between `956fe263` and `39ac22d0`;
-`task-w23-f` MERGED via `f519f562` (DEC-902 column contract + DEC-937
-review phone label). This remainder is still UNFALSIFIABLE — owner: next
-falsifiability-batch lane.
+(`src/server/repo/form-roles.ts:16`); `countEvaluationsBySubmission`'s
+whole-plan map — DISMISSED, DEC-449. Neither dismissal is reopened here
+per task-w49-g's instructions.
+
+**DISCHARGED — w49-g, all four server-side items re-confirmed TRUE at
+runtime; three already had a real, exercised, non-tautological check
+in-tree (re-confirmed passing, not re-filed as gaps), one gained a new
+independent DB-level check:**
+
+- `task-w15-c/d` reviewer plan window on lone-submission read
+  (`src/routes/review/reviewer.ts:288-334`) + file-authz twin
+  (`src/server/repo/files-authz.ts:185-209`, DEC-018) — FALSIFYING CHECK
+  (pre-existing, re-confirmed): `test/review-plan-window-reads.test.ts`
+  (`describe("DEC-018 (wave-10): review-plan window gates detail GET +
+  recusal writes")` and `describe("reviewerCanAccessSubmissionFile —
+  DEC-018 ...")`) — a real Hono app + a fake queue-shaped db, exercising
+  both the route's 409 and `reviewerCanAccessSubmissionFile`'s
+  true/false directly across closed/not-yet-open/unbounded windows.
+- `task-w15-c/d` `updateEvent` slug guard (`src/server/repo/events.ts:224-259`,
+  DEC-111) — FALSIFYING CHECK: `test/events-update-slug-race.test.ts`
+  (pre-existing, route-level, a fake thrown error mimicking the D1 shape)
+  PLUS new `test/tier0-falsifiability-w49-batch-b.test.ts`
+  (`describe("DEC-111: updateEvent slug guard -- real sqlite UNIQUE index,
+  not a mocked error shape")`) — calls the real (unmocked) `updateEvent`
+  against a real `node:sqlite` `DatabaseSync` with the actual
+  `event_slug_idx` UNIQUE index, so the translated `ApiError('invalid',
+  {slug: ...})` is driven by a genuine SQLite constraint violation, not a
+  fabricated error object. Confirmed falsifying: reverting the
+  try/catch translation (verified at runtime, then reverted) surfaces the
+  raw `DrizzleQueryError`/SQLite cause instead.
+- `task-w15-d` sessionboard participant cap
+  (`src/server/repo/import/sessionboard.ts:620-627`, DEC-604) —
+  FALSIFYING CHECK (pre-existing, re-confirmed):
+  `test/sessionboard-participant-cap.test.ts` — exercises
+  `applySessionboardPlans` directly (both the real-run and dryRun paths)
+  against `MAX_PARTICIPANTS_PER_SUBMISSION`.
+- `task-w15-b` send.ts intra-batch dedupe collapse
+  (`src/routes/comms/send.ts:125-138`, DEC-238) — FALSIFYING CHECK
+  (pre-existing, re-confirmed): `test/comms-send-dedupe.test.ts`
+  (`describe("... intra-batch dedupe (DEC-238 wave-15 amendment)")`) —
+  a real Hono app against the real send route, three scenarios: same
+  address+subject collapses to one send; a different per-submission
+  subject sends both; the intra-batch stage runs before the cross-call
+  window stage.
+
+**DISCHARGED — w49-g, UI items, with remaining budget after the four
+server-side items:**
+
+- `task-w8-b` Submissions→Comms `?ids=` handoff
+  (`app/src/pages/submissions/BulkActionBar.tsx:77`) — FALSIFYING CHECK
+  (pre-existing, re-confirmed): emit side,
+  `app/src/pages/submissions/BulkActionBar.render.test.tsx`'s
+  `it('links "Email these N submissions" to
+  /comms?tab=compose&ids=<selection>')`; receive side,
+  `app/src/pages/comms/ComposeWizard.idsParam.render.test.tsx`'s
+  `describe('ComposeWizard ?ids= landing')` (hydration, over-cap
+  truncation, garbage-id tolerance).
+- `task-w8-e` Comms History pager (`app/src/pages/comms/HistoryTab.tsx:42-160`)
+  — FALSIFYING CHECK (pre-existing, re-confirmed):
+  `app/src/pages/comms/HistoryTab.render.test.tsx`'s `it('paginates: shows
+  the summary, Previous disabled on page 1, Next fetches page 2, and a new
+  search returns to page 1')` — drives the real component's
+  Previous/Next buttons and asserts the real fetch calls carry `page=2`/
+  `page=1`.
+- `task-w8-c` review round name+window
+  (`app/src/pages/review/ReviewerQueue.tsx:31,508-516`) — NEW FALSIFYING
+  CHECK: `app/src/w49-batch-b.render.test.tsx`,
+  `describe('ReviewerQueue plan-scoped subtitle: round name + window
+  (DEC-147/DEC-522)')` — no prior render-test fixture ever set
+  `rounds > 1`, so the round-name branch of the subtitle was never
+  actually rendered before this check. Two tests: a `rounds: 2` envelope
+  renders both the round's resolved name AND the closes-in-N-days window
+  in scope→round→window order; a `rounds: 1` envelope with the identical
+  `roundMeta` present never composes the round name in, proving the gate
+  is live, not decorative.
+- `task-w8-d` compose step-1 slot+footer
+  (`app/src/pages/comms/ComposeWizard.tsx:713-716,1226-1230`) — the
+  step-1 slot half (`"1. Pick submissions"`) was already asserted present
+  in five existing tests (`ComposeWizard.idsParam.render.test.tsx`,
+  `Comms.render.test.tsx`, `ComposeWizard.render.test.tsx`,
+  `ComposeWizard.templateParam.render.test.tsx`). The footer half
+  (`:1226-1230`, the send-step per-row unscheduled-recipient list) had
+  only a NEGATIVE assertion (`ComposeWizard.render.test.tsx:1289`,
+  `queryByText(/have no slot yet/)).not.toBeInTheDocument()` for the
+  all-scheduled case) — nothing positively asserted the footer's actual
+  content. NEW FALSIFYING CHECK: `app/src/w49-batch-b.render.test.tsx`,
+  `describe('ComposeWizard attachIcs footer: names the exact unscheduled
+  rows (DEC-954)')` — two recipients, exactly one unscheduled; asserts the
+  send-step footer names that row's ref (`DFC-014`) and name (`Priya
+  Raman`) and does NOT name the scheduled row's ref/name.
+
+Nothing remains undischarged from this list except the two already-ruled
+DISMISSED items above (never reopened) and the `task-w10-b`/`task-w17-b`/
+`task-w23-e`/`task-w18-b..g`/`task-w23-f` lines, which this mandate's own
+prior text already recorded as MERGED (verified again this wave, not
+re-checked beyond that citation).
 
 ## GAPS FOR THE NEXT CODE WAVE
 
