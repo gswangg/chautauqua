@@ -42,8 +42,6 @@ const ALLOWLIST: Record<string, string> = {
     "SPA-only (DEC-575 wave-28 amendment): file-level summary 'kept' paragraph, same reasoning as -heading.",
   ".chq-form-row-error":
     "SPA-only: ModalFrame's FormRow error text sits alongside .chq-field-error as an equivalent hook for the wrapper pattern; the SSR module has no FormRow concept.",
-  ".chq-settings-panel .chq-error-summary":
-    "SPA-only (G13, frame 09--17): the settings save-rejected banner draws FILLED with the sunk surface token; the SSR side carries its own scoped fill variant (.chq-auth-card .chq-error-summary in AUTH_CSS), and .chq-settings-panel does not exist on the SSR surfaces.",
   "fieldset.chq-field-invalid":
     "SSR-only: the public CFP builder groups radio/checkbox options in a <fieldset>, which needs padding-left reset to 0 (no left padding to preserve); the SPA has no fieldset-based invalid control.",
 };

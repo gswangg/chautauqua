@@ -41,21 +41,22 @@
    problem, each anchor pointing at the offending field's own id. Mirrors
    src/routes/public/cfp.css.ts's .chq-error-summary family so the public
    CFP builder and the admin SPA share one visual contract. */
+/* G13 (frame 10--21): the summary is a FILLED panel -- sunk-surface fill,
+   card radius, no bullet markers, olive anchors with no underline -- over
+   the 1px ink border + 3px ink left edge the standard names. The settings
+   banner's own scoped fill (frame 09--17) went with it: the fill is the
+   shared vocabulary's now, not a per-surface override. Kept identical to
+   src/views/error-states.css.ts, which this file is property-parity locked
+   to (test/error-vocabulary-parity.scan.test.ts). */
 .chq-error-summary {
   border: 1px solid var(--chq-ink);
   border-left: 3px solid var(--chq-ink);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface-sunk);
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-/* G13 fix (frame 09--17): the settings save-rejected banner draws as a
-   bordered box FILLED with the sunk surface token. Scoped variant declared HERE (this file is
-   the vocabulary's single owner -- the error-vocabulary test bans
-   re-declaring these tokens in any other app/src css), same shape as
-   AUTH_CSS's own .chq-auth-card scope on the SSR side. */
-.chq-settings-panel .chq-error-summary {
-  background: var(--chq-surface-sunk);
 }
 .chq-error-summary h2 {
   font-family: var(--chq-font-display);
@@ -73,7 +74,8 @@
 }
 .chq-error-summary ul {
   margin: 0;
-  padding-left: 18px;
+  padding-left: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -81,7 +83,8 @@
 .chq-error-summary-link {
   font-size: 13px;
   font-weight: 700;
-  color: var(--chq-ink);
+  color: var(--chq-brand);
+  text-decoration: none;
 }
 
 /* DEC-575 (wave 28 amendment): the file-level, pre-mapping variant of the

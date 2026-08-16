@@ -40,13 +40,21 @@
    chrome at rest.
    w6-h (DEC-369 amendment): this IS the name+caret group now (a bare
    24x23 button that used to hold only the caret glyph put its 2px focus
-   ring around stray ink) -- inline-flex the two children with a real
-   >=44px tap target, so the ring frames the whole visible control. */
+   ring around stray ink) -- inline-flex the two children so the ring
+   frames the whole visible control.
+   G13 (frames 01-overview--00, 02-submissions--00, 05-content--00,
+   06-agenda--00, 08-contacts--00): the >=44px tap floor this rule carried
+   at every width made THIS button the tallest thing in .chq-header, and
+   15 + 44 + 15 + 1 drove the admin header to 75px against the 59.5px every
+   admin frame draws (the reviewer header, which has no event switcher,
+   already measured 60px exactly). DEC-367's wave-57 amendment and
+   docs/design/README.md:92 both put the tap floor on PHONE only -- desktop
+   controls size to their padding -- so it moves into the phone block at
+   the foot of this file, the same treatment auth.css.ts already carries. */
 .chq-eventswitcher-menu-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 44px;
   background: none;
   border: 1px solid transparent;
   border-radius: var(--chq-r-ctl);
@@ -126,5 +134,11 @@
 @media (max-width: 700px) {
   .chq-eventswitcher-name {
     max-width: 160px;
+  }
+  /* The tap floor lives here, on phone, per docs/design/README.md:92 and
+     DEC-367's wave-57 amendment -- never in the base rule, where it sets
+     the height of the whole admin header. */
+  .chq-eventswitcher-menu-btn {
+    min-height: 44px;
   }
 }

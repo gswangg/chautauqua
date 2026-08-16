@@ -862,9 +862,18 @@ a:hover {
   border-bottom: 1px solid var(--chq-hairline);
 }
 
+/* G13 (frame 08-contacts--00, sampled at x=300: css y 312->314 #1B1D17,
+   with no rule above the headings): the shared table's head row closes with
+   ONE 2px ink rule and opens with nothing. The pair of #D3CFC0 hairlines
+   here was the pre-frame treatment. DEC-730's wave-39 amendment already
+   ruled this for the onboarding grid -- "the header row closes with a 1px
+   hairline where every section rule in this design language is 2px ink;
+   the design README states one 2px rule per section and that the rule IS
+   the section header" -- and this is the shared class every other table
+   page inherits. */
 .chq-table th {
-  border-top: 1px solid var(--chq-rule);
-  border-bottom: 1px solid var(--chq-rule);
+  border-top: none;
+  border-bottom: 2px solid var(--chq-ink);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
