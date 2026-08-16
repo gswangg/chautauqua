@@ -31,6 +31,7 @@ afterEach(() => {
 describe('SubmissionsPage render smoke', () => {
   it('mounts without throwing and renders seeded column headers', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: {
         id: 'form-1',
@@ -79,6 +80,7 @@ describe('SubmissionsPage render smoke', () => {
 
   it('renders track names (not a count) and answerDisplayText output for a toggled-on custom column', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: {
         id: 'form-1',
@@ -141,6 +143,7 @@ describe('SubmissionsPage render smoke', () => {
 
   it('auto-shows the Format column for a form with a "Session format" dropdown (DEC-249)', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: {
         id: 'form-1',
@@ -185,6 +188,7 @@ describe('SubmissionsPage render smoke', () => {
 
   it('New submission modal (DEC-598, closes CNT-D6) renders Track checkboxes (multi-select, DEC-579) and a Format select', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([
         { id: 'trk1', name: 'Keynotes', color: '#4f46e5' },
         { id: 'trk2', name: 'Workshops', color: '#16a34a' },
@@ -241,6 +245,7 @@ describe('SubmissionsPage render smoke', () => {
 
   it('shows the bulk-bar batch-size constraint copy once a row is selected', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
@@ -289,6 +294,7 @@ describe('SubmissionsPage render smoke', () => {
 
   it('save-view dialog (DEC-610) validates an empty name and POSTs the trimmed name on save', async () => {
     const fetchMock = mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
       // DEC-678 B7 (wave 46): a real row keeps the ViewTabs chrome (and its
@@ -352,6 +358,7 @@ describe('SubmissionsPage render smoke', () => {
 
   it('phone triage (DEC-610): Accept on a pending row optimistically updates status and rolls back loudly on failure', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
@@ -532,6 +539,7 @@ describe('SubmissionsTable zero-row state (DEC-678 B7)', () => {
     ];
 
     mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([]),
@@ -580,6 +588,7 @@ describe('SubmissionsTable zero-row state (DEC-678 B7)', () => {
 
   it('fresh: no facet in flight drops the filter chrome and renders exactly one primary action', async () => {
     mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([]),
