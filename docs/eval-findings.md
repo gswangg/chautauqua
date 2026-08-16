@@ -1,29 +1,34 @@
-# Eval findings — rebased 2026-08-16 (harness-wave-1 counter reset, task-w1-f)
+# Eval findings — rebased 2026-08-16 (harness-wave-2, task-w2-f)
 
-Verified against `main`/HEAD `5458bda3` ("merge task-w1-c"), MEASURED_SHA
-`5458bda33d7a2ab3f6713c1e2d9580659f1fc188`, derived AT THIS TASK'S OWN
-RUNTIME (DEC-069 wave-17/wave-37, DEC-358 rebase rule, DEC-702; this is
-a DOCS-ONLY lane — no gate ran, no `docs/verification-log/index/`
-section filed, per DEC-069). The HARNESS branch-name counter has reset
-to `task-w1-*` while the tree itself is at wave-82+ vintage — a "wave
-N" token anywhere below (including in this header's own history) is a
-HARNESS LABEL for when a lane ran, not a claim about the tree's age;
-read the MEASURED_SHA, not the number, when weighing a citation. This
-task is a MANDATE HYGIENE task only: it re-verifies five specific
-ALL-PASS-lane items (see the new
-`docs/eval-findings/17-wave1-receipts.md`) and rebuilds the IN FLIGHT
-census; it does not re-derive TIER 0-2 in full and does not re-run the
-wave-57 GATE-9/GATE-10 falsifying checks (those sections below are
-carried unchanged from their own last-stated runtime).
+Verified against `main`/HEAD `1cac107d` ("merge task-w1-d"), MEASURED_SHA
+`1cac107dc1a954f54de8d3103a852a077b20fac6`, derived AT THIS TASK'S OWN
+RUNTIME (DEC-069, DEC-358 rebase rule inc. its wave-2 amendment, DEC-702;
+this is a DOCS-ONLY lane — no gate ran, no
+`docs/verification-log/index/` section filed, per DEC-069). The HARNESS
+branch-name counter is on its second `task-w2-*` cycle while the tree
+itself is at wave-82+ vintage — a "wave N" token anywhere below
+(including in this header's own history) is a HARNESS LABEL for when a
+lane ran, not a claim about the tree's age; read the MEASURED_SHA, not
+the number, when weighing a citation. This task is a MANDATE HYGIENE
+task only: it re-derives the ALL-PASS block's status (closing six items
+with fresh receipts, demoting the pre-emption banner), records the
+DEC-358 wave-2 DO-NOT-CHASE ruling for P3 #27, and rebuilds the IN
+FLIGHT census (see the new
+`docs/eval-findings/17-wave2-receipts.md`); it does not re-derive TIER
+0-2 in full and does not re-run the wave-57 GATE-9/GATE-10 falsifying
+checks (those sections below are carried unchanged from their own
+last-stated runtime).
 
-COMPACTION per DEC-358's rebase rule: the wave-74 header (pinned to
-`ba170df7`, stale) is REPLACED by this one. No per-item citation below
-this header is deleted except where this task's own five re-
-verifications close/narrow an ALL-PASS item (marked inline below, full
-receipts in `docs/eval-findings/17-wave1-receipts.md`); the full TIER
-0-2 body, and the GATE-8/9/10 sections, were not re-derived this task
-(out of scope) and are carried unchanged — treat their own file:line
-citations as of THEIR last stated runtime, not this one's.
+COMPACTION per DEC-358's rebase rule: the wave-1 header (pinned to
+`5458bda3`) is REPLACED by this one; the branches it named as merged
+since the prior (wave-74/`ba170df7`) header are confirmed still ancestors
+of `main` and are not re-listed. No per-item citation below this header
+is deleted except where this task's own six re-verifications
+close/narrow an ALL-PASS item (marked inline below, full receipts in
+`docs/eval-findings/17-wave2-receipts.md`); the full TIER 0-2 body, and
+the GATE-8/9/10 sections, were not re-derived this task (out of scope)
+and are carried unchanged — treat their own file:line citations as of
+THEIR last stated runtime, not this one's.
 
 ## Recent review-lens findings — re-derived wave 57 (task-w57-e, at MEASURED_SHA `50c3fcc4`)
 
@@ -138,38 +143,56 @@ parallel → gate-12 fleet (all-PASS target, now including 03 criterion frames +
 final deploy (carries docs) → final official eval run → submission held for user.**
 
 
-## ALL-PASS PUSH (USER DIRECTIVE 2026-08-16 morning) — fix EVERY remaining MINOR/BROKEN before the next fidelity fleet; the goal is a fleet verdict as close to all-PASS as possible. THIS LANE PRE-EMPTS ALL OTHER WORK. Freeze + final eval run follow the fleet.
+## ALL-PASS PUSH (USER DIRECTIVE 2026-08-16 morning) — fix EVERY remaining MINOR/BROKEN before the next fidelity fleet; the goal is a fleet verdict as close to all-PASS as possible. STATUS RE-DERIVED task-w2-f: of the 22 items below, 12 are CLOSED, 2 are OWNED by the home-hub lane (in flight, not closed), 2 are STILL OPEN (seed hygiene, need a code fix), 1 needs a click-through only (no code lane, not a code fix), and 5 remain genuinely NOT RE-VERIFIED. This banner no longer claims to PRE-EMPT ALL OTHER WORK — that claim was true when 0/22 were closed and is false at 12/22 with only 5 truly unknown; treat this as one open lane among several, not a blocker on everything else. Freeze + final eval run follow the fleet.
 
 **RE-DERIVED wave 81 (task-w81-c, MEASURED_SHA `c01731eb`; full receipts in
 [`eval-findings/16-wave81-receipts.md`](eval-findings/16-wave81-receipts.md)):
-of the 22 items below, 9 are CLOSED-WITH-RECEIPT this wave (A2, A6, A7, A8,
-A11, B15, B16, B19, B21 — each marked CLOSED below with its own citation), 2
-are IN-FLIGHT this wave under the home-hub lane (A4, A5 — NOT closed by this
-task, per instruction), 2 are STILL OPEN and were EMPIRICALLY REPRODUCED this
-wave via a fresh `npx tsx scripts/seed.ts` run (B13 comment-text collision,
-B14 track-wide reviewer overlap — both need a code fix, not more hygiene),
-and 9 were NOT independently re-verified this pass and remain as previously
-reported (A1, A3, A9, A10, B12, B17, B18, B20, B22 — marked OPEN/unverified
-below; do not treat prior waves' citations of these as fresh confirmations,
-per the standing "a citation is not an assertion" rule). Remaining genuinely
-open work for the next code wave: A1, A3, A9, A10, B12, B13, B14, B17, B18,
-B20, B22.**
+9 CLOSED-WITH-RECEIPT (A2, A6, A7, A8, A11, B15, B16, B19, B21), 2 IN-FLIGHT
+under the home-hub lane (A4, A5), 2 STILL OPEN and EMPIRICALLY REPRODUCED via
+a fresh `npx tsx scripts/seed.ts` run (B13, B14 — both need a code fix), 9 NOT
+independently re-verified that wave (A1, A3, A9, A10, B12, B17, B18, B20,
+B22).**
 
 **RE-VERIFIED task-w1-f (MEASURED_SHA `5458bda3`; full receipts in
 [`eval-findings/17-wave1-receipts.md`](eval-findings/17-wave1-receipts.md)):
-five of the nine items the wave-81 pass had left "NOT RE-VERIFIED" are now
-resolved with fresh citations — **A9 CLOSED/NARROWED** (the `resources`
-half is the same `?section=portal&edit=1` drill w78 already closed; no
-independent `resources` deep-link target exists to be open), **B12
-CLOSED, NOT A DEFECT** (reinstates the wave-62 ruling — 27 `SYNTH_TOPICS`
-= `additionalCount`, every synth title distinct, no fixture collision),
-**B17 NO CODE LANE** (all six `TracksRoomsPanel` write functions already
-clear the error banner first; needs a click-through, not a fix), **B20
-CLOSED** (`views.tsx:67` already renders through the seconds-carrying
-formatter), and **P3 #23 CLOSED by DEC-795** (the advisory is present, a
-second session is deliberately legitimate, no disabling logic exists to
-be broken). Remaining genuinely open/unverified from the wave-81 set: A1,
-A3, A10, B13, B14, B18, B22.**
+closed 4 more of the 9 wave-81 left "NOT RE-VERIFIED" — A9, B12 (not a
+defect), B17 (no code lane, needs a click-through only), B20 — plus P3 #23
+(outside the 22-item list, closed by DEC-795). Remaining after that pass: A1,
+A3, A10, B13, B14, B18, B22 open/unverified.**
+
+**RE-DERIVED task-w2-f (MEASURED_SHA `1cac107d`; full receipts in
+[`eval-findings/17-wave2-receipts.md`](eval-findings/17-wave2-receipts.md)):
+re-read A9, B12, B17, B20 directly this task (fresh citations, not inherited
+from task-w1-f's claim) — all four reconfirm the same verdicts: **A9
+CLOSED** (DEC-785's wave-66 nesting: `ResourcesPanel.tsx:23-26` renders its
+full CRUD surface inside `PortalSettingsPanel`'s `edit=1` branch at
+`PortalSettingsPanel.tsx:110,216,240,323` — no second drill exists), **B12
+CLOSED, NOT A DEFECT** (`scripts/seed.ts:133-159,254-258,1109` — 27
+`SYNTH_TOPICS` = `additionalCount`, every synth title distinct), **B17 NO
+CODE LANE** (`TracksRoomsPanel.tsx` six write functions all call
+`setError(undefined)` first: `:208,234,269,287,313,351` — needs a
+click-through, not a fix), **B20 CLOSED** (`views.tsx:67` renders every
+version row through `formatEventDateTimeWithSeconds`). Also closed this
+task, both OUTSIDE the 22-item list and previously carried only as prose:
+**P3 #26 CLOSED** (participation rollup — DEC-936's shape is live at
+`src/server/repo/tasks/grid.ts:64,174-175,283,370`, confirmed closed at
+gate-11) and **P3 #23 reconfirmed CLOSED by DEC-795**
+(`AddToEventModal.tsx:20,76,184`). Status of the 22-item list after this
+pass: **12 CLOSED** (A2, A6, A7, A8, A9, A11, B12, B15, B16, B19, B20,
+B21), **1 NO-CODE-LANE** — resolved but needs a click-through, not a code
+fix (B17), **2 IN-FLIGHT** (A4, A5, home-hub lane, not touched by this
+docs task), **2 STILL OPEN** needing a code fix (B13, B14, seed hygiene —
+see item text below), and **remaining NOT RE-VERIFIED, still genuinely
+unknown** (A1, A3, A10, B18, B22) — do not treat these five as either
+closed or reproduced; the next lane that reads them owes a fresh
+citation, per the standing "a citation is not an assertion" rule.**
+
+Also recorded and DO-NOT-CHASE (DEC-358 wave-2 amendment,
+`decisions/DEC-358.md:142-144`, verbatim): **P3 #27** — "public session/
+agenda cards should carry speaker job title and company... is a design
+question... FORFEIT NOTE, not a fix — do not spend a lane on it." No frame
+draws title/company on a card and the session-tag meta line is already
+ruled; do not re-file.
 
 **A. FIDELITY residue (gate-10/11 + delta-6 still-open set):**
 1. §09 settings residue M1/M2/M4/M5/M7/R2 — field widths beyond dates, footer
@@ -1086,6 +1109,7 @@ split, verify against git history if a citation seems to have moved.
 15. [`eval-findings/15-wave74-receipts.md`](eval-findings/15-wave74-receipts.md) — Wave 74 mandate-hygiene receipts (task-w74-e; wave 73 filed no receipts file)
 16. [`eval-findings/16-wave81-receipts.md`](eval-findings/16-wave81-receipts.md) — Wave 81 mandate-hygiene receipts: re-derivation of the ALL-PASS PUSH lane (task-w81-c)
 17. [`eval-findings/17-wave1-receipts.md`](eval-findings/17-wave1-receipts.md) — Harness-wave-1 (counter reset) mandate-hygiene receipts: five ALL-PASS closures (A9, B12, B17, B20, P3#23) + rebuilt in-flight census (task-w1-f)
+18. [`eval-findings/17-wave2-receipts.md`](eval-findings/17-wave2-receipts.md) — Harness-wave-2 mandate-hygiene receipts: ALL-PASS block re-derivation (A9, B12, B17, B20, P3#23, P3#26 CLOSED; P3#27 DO-NOT-CHASE recorded) + rebuilt in-flight census, 23 branches still not ancestors of `main` (task-w2-f)
 
 Any citation of the form `docs/eval-findings.md #N` or `docs/eval-findings.md
 Section X` refers to content now living in one of the files above; the
