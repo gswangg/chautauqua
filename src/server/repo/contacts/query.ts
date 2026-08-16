@@ -4,6 +4,7 @@
 
 import type { ContactRecord, SegmentRule } from "../../../domain/contacts";
 import type { ContactRow } from "./rows";
+import type { PipelineStage } from "../pipeline";
 import { clampPage, clampPerPage } from "../../../lib/pagination";
 import { boundedQueryString, MAX_SEARCH_QUERY_LENGTH, MAX_FILTER_ID_LENGTH } from "../../../lib/query-bounds";
 import { DEC_843 } from "../../../decisions";
@@ -186,9 +187,14 @@ export function buildMergeRepointOps(keepId: string, mergeId: string): MergeRepo
   }));
 }
 
-/** Local union, not imported from ./pipeline, to avoid a module cycle
- * (pipeline.ts's PipelineStage is structurally identical). */
-export type PipelineStageLike = "identified" | "contacted" | "interested" | "confirmed" | "declined";
+/** DEC-180 wave-79 amendment: re-exported from ../pipeline's PipelineStage
+ * (the ONE declared pipeline-stage vocabulary) under this module's own name
+ * rather than re-listed as a second copy. The prior comment's stated reason
+ * ("avoid a module cycle") did not hold: this is a type-only import, erased
+ * before runtime, so it cannot create a require() cycle even though
+ * contacts/merge.ts (a consumer of this file) is reachable from pipeline.ts
+ * transitively. */
+export type PipelineStageLike = PipelineStage;
 
 const PIPELINE_STAGE_RANK: Record<PipelineStageLike, number> = {
   identified: 0,

@@ -17,7 +17,11 @@ export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
 };
 
 // Worklist ordering (SPEC §2.3 — worklist, not report): items needing action
-// surface first, approved sinks to the bottom.
+// surface first, approved sinks to the bottom. DEC-180 wave-79 amendment:
+// same three ContentStatus members as CONTENT_STATUSES (src/domain/content-status.ts)
+// but a DIFFERENT, deliberate order (a display priority, not the canonical
+// set) -- a genuinely separate vocabulary from the same member set, not a
+// re-listed copy, so it is cited here rather than collapsed.
 export const CONTENT_STATUS_PRIORITY: readonly ContentStatus[] = ['changes_requested', 'pending', 'approved'];
 
 // DEC-003 file kind literals — imported from the pure core (src/domain/files.ts)
