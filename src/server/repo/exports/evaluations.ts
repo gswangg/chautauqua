@@ -4,7 +4,14 @@ import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
-import { computeWeightedScore, criteriaForRound, type EvaluationCriterionDef } from "../../../domain/evaluation";
+import {
+  computeWeightedScore,
+  criteriaForRound,
+  parseEvaluationScoresJson,
+  numericScoresFor,
+  EvaluationScoresJsonError,
+  type EvaluationCriterionDef,
+} from "../../../domain/evaluation";
 import { DEC_529, DEC_147, DEC_736 } from "../../../decisions";
 import { ApiError } from "../../http";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
@@ -187,6 +194,7 @@ export async function exportEvaluations(db: Db, eventId: string, params?: Evalua
 
   const rows = await db
     .select({
+      id: schema.evaluation.id,
       planId: schema.evaluationPlan.id,
       planName: schema.evaluationPlan.name,
       criteriaJson: schema.evaluationPlan.criteriaJson,
@@ -251,7 +259,21 @@ export async function exportEvaluations(db: Db, eventId: string, params?: Evalua
   const criteriaForRoundCache = new Map<string, EvaluationCriterionDef[]>();
 
   const exportRows: EvaluationExportRow[] = rows.map((r) => {
-    const scores = JSON.parse(r.scoresJson) as Record<string, unknown>;
+    // DEC-212 (wave 7 amendment): the ONE validated reader for this column
+    // -- matches the four sibling reads in review/evaluations.ts. A row
+    // whose scores_json fails the column's contract is tolerated per the
+    // policy stated below (weightedScore, blank cells) rather than 500ing
+    // the whole export; any OTHER error still propagates.
+    let scores: Record<string, number | string>;
+    try {
+      scores = parseEvaluationScoresJson(r.scoresJson, r.id);
+    } catch (err) {
+      if (err instanceof EvaluationScoresJsonError) {
+        scores = {};
+      } else {
+        throw err;
+      }
+    }
     const roundKey = `${r.planId}:${r.round}`;
     let roundCriteria = criteriaForRoundCache.get(roundKey);
     if (!roundCriteria) {
@@ -269,7 +291,8 @@ export async function exportEvaluations(db: Db, eventId: string, params?: Evalua
       const ratingCriteria = roundCriteria
         .filter((c) => c.kind === "rating" && typeof c.weight === "number")
         .map((c) => ({ id: c.id, label: c.label, weight: c.weight as number }));
-      const score = computeWeightedScore(scores as Record<string, number>, ratingCriteria, planScale.get(r.planId));
+      const numericScores = numericScoresFor(scores, ratingCriteria, r.id);
+      const score = computeWeightedScore(numericScores, ratingCriteria, planScale.get(r.planId));
       weightedScore = String(score);
     } catch {
       weightedScore = "";
