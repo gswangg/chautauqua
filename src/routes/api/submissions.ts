@@ -35,6 +35,7 @@ import {
 import { CONTENT_STATUSES, isValidContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
 import { settleInDeclarationOrder } from "../../lib/settle";
 import { isActiveParticipant } from "../../domain/acceptance";
+import { INVITE_STATUSES } from "../../domain/invite-status"; // DEC-789 wave-73 amendment
 import { plural } from "../../domain/count-copy";
 import { overCapCountMessage, participantCapRefusalMessage } from "../../domain/cap-copy";
 import {
@@ -784,7 +785,7 @@ interface ParticipantVisibilityBody {
 
 // DEC-789 write half: the closed invite-status vocabulary the roster UI
 // (task w3-h) reads from and writes back through this same PATCH.
-const INVITE_STATUS_VALUES = new Set(["none", "invited", "accepted", "declined"]);
+const INVITE_STATUS_VALUES: ReadonlySet<string> = new Set(INVITE_STATUSES);
 
 // PATCH /api/v1/submissions/:id/participants/:participantId — toggle a
 // participant's public visibility. (w12-c PLANNER item #2: previously

@@ -93,8 +93,11 @@ export interface SubmissionsFilterState {
   includeAnswers: boolean;
 }
 
-// DEC-070: invite_status literal on a participant.
-export type InviteStatus = 'none' | 'invited' | 'accepted' | 'declined';
+// DEC-070 / DEC-789 wave-73 amendment: invite_status literal on a
+// participant, re-exported from the pure core (src/domain/invite-status.ts)
+// so it never desyncs from the roster's vocabulary.
+import type { InviteStatus } from '../../../../src/domain/invite-status';
+export type { InviteStatus };
 
 // GET /api/v1/submissions/:id (src/server/repo/submissions.ts SubmissionDetail).
 export interface SubmissionDetailParticipant {

@@ -18,6 +18,7 @@ import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398, DEC_754 } from "../decisions";
 import { FILE_KINDS, isValidFileKind, type FileKind } from "../domain/files";
 import { TASK_KINDS } from "../domain/task-kinds"; // DEC-613 wave-70 amendment
+import { INVITE_STATUSES, isInviteStatus, type InviteStatus } from "../domain/invite-status"; // DEC-789 wave-73 amendment
 import { MAX_TASK_INSTRUCTIONS_LENGTH } from "../domain/task-copy";
 import { findFormById } from "../server/repo/forms";
 import {
@@ -190,18 +191,14 @@ export function parseOnboardingGridQuery(raw: Record<string, string | undefined>
     }
   }
 
-  // DEC-789: closed set, mirroring the participant.invite_status column.
-  let inviteStatus: "none" | "invited" | "accepted" | "declined" | null = null;
+  // DEC-789 wave-73 amendment: closed set, mirroring the participant.invite_status
+  // column, validated against the one shared vocabulary rather than a hand-typed list.
+  let inviteStatus: InviteStatus | null = null;
   if (raw.inviteStatus !== undefined && raw.inviteStatus !== "") {
-    if (
-      raw.inviteStatus === "none" ||
-      raw.inviteStatus === "invited" ||
-      raw.inviteStatus === "accepted" ||
-      raw.inviteStatus === "declined"
-    ) {
+    if (typeof raw.inviteStatus === "string" && isInviteStatus(raw.inviteStatus)) {
       inviteStatus = raw.inviteStatus;
     } else {
-      fields.inviteStatus = "Must be one of 'none', 'invited', 'accepted', 'declined'";
+      fields.inviteStatus = `Must be one of ${INVITE_STATUSES.map((s) => `'${s}'`).join(", ")}`;
     }
   }
 

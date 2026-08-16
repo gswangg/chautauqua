@@ -30,6 +30,9 @@ import {
   type SubmissionStatus,
   type Track,
 } from './types';
+// DEC-789 wave-73 amendment: the roster's invite-status label vocabulary
+// wins -- this page no longer keeps a private, disagreeing copy.
+import { INVITE_STATUS_LABELS } from '../../../../src/domain/invite-status';
 // DEC-761: code that depends on a decision must reference its constant.
 import { DEC_733, DEC_761, DEC_784, DEC_900, DEC_958, DEC_998 } from '../../../../src/decisions';
 // DEC-784/DEC-604: role is picked from the SAME imported vocabulary
@@ -160,13 +163,6 @@ const DECISION_ACTION_LABELS: Record<DecidableStatus, string> = {
   accepted: 'Accept',
   declined: 'Decline',
   waitlisted: 'Waitlist',
-};
-
-const INVITE_STATUS_LABELS: Record<InviteStatus, string> = {
-  none: 'None',
-  invited: 'Invited',
-  accepted: 'Accepted',
-  declined: 'Declined',
 };
 
 function InviteStatusChip({ status }: { status: InviteStatus }) {
