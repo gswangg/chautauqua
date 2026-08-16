@@ -3,7 +3,7 @@
 // — no behavior change, files-versions.ts re-exports everything below for
 // existing callers.
 
-import { eq } from "drizzle-orm";
+import { asc, eq, type SQL } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -34,6 +34,13 @@ export interface FileDeleteScope {
    * this is the newest link in its own version chain (DEC-713: a speaker may
    * only delete the LATEST version they uploaded). */
   isLatestInChain: boolean;
+  /** DEC-713 wave-78 amendment: non-null iff this file is a task-assignment
+   * upload (submissionId null) resolved via the same taskAssignmentId-first,
+   * fileId-fallback lookup getTaskFileScope uses — lets the route branch
+   * between the submission population (submissionId set) and the
+   * task-assignment population (this field set) without re-querying. Always
+   * null for the submission population. */
+  assignmentContactId: string | null;
 }
 
 /** Loads everything the DEC-713 delete route needs to authz + act on a file
@@ -49,6 +56,7 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
       r2Key: schema.file.r2Key,
       previousFileId: schema.file.previousFileId,
       uploadedByContactId: schema.file.uploadedByContactId,
+      taskAssignmentId: schema.file.taskAssignmentId,
     })
     .from(schema.file)
     .where(eq(schema.file.id, fileId))
@@ -69,6 +77,7 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
   let status: string | null = null;
   let formCloseDate: number | null = null;
   let timezone: string | null = null;
+  let assignmentContactId: string | null = null;
   if (fileRow.submissionId) {
     const subRows = await db
       .select({
@@ -92,6 +101,42 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
       status = sub.status;
       formCloseDate = sub.formCloseDate ? sub.formCloseDate.getTime() : null;
       timezone = sub.timezone;
+    }
+  } else {
+    // DEC-713 wave-78 amendment: submissionId null — this may be a
+    // task-assignment upload (kind IN FILE_KINDS, e.g. a plain 'handout'
+    // task upload) rather than an undeletable orphan. Resolve eventId/orgId
+    // through the SAME links, in the SAME order, as getTaskFileScope
+    // (files-authz.ts): the file's own taskAssignmentId first, then a
+    // fallback on taskAssignment.fileId — never a single or() with no total
+    // order.
+    const assignmentBy = (link: SQL) =>
+      db
+        .select({
+          assignmentContactId: schema.taskAssignment.contactId,
+          eventId: schema.task.eventId,
+          orgId: schema.event.orgId,
+        })
+        .from(schema.taskAssignment)
+        .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+        .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
+        .where(link)
+        .orderBy(asc(schema.taskAssignment.id))
+        .limit(1);
+
+    let assignmentRow: { assignmentContactId: string; eventId: string; orgId: string } | undefined;
+    if (fileRow.taskAssignmentId) {
+      const ownRows = await assignmentBy(eq(schema.taskAssignment.id, fileRow.taskAssignmentId));
+      assignmentRow = ownRows[0];
+    }
+    if (!assignmentRow) {
+      const fallbackRows = await assignmentBy(eq(schema.taskAssignment.fileId, fileId));
+      assignmentRow = fallbackRows[0];
+    }
+    if (assignmentRow) {
+      orgId = assignmentRow.orgId;
+      eventId = assignmentRow.eventId;
+      assignmentContactId = assignmentRow.assignmentContactId;
     }
   }
 
@@ -118,6 +163,7 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
     formCloseDate,
     timezone,
     isLatestInChain: successorRows.length === 0,
+    assignmentContactId,
   };
 }
 
