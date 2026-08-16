@@ -271,6 +271,10 @@ export interface ReviewerQueueEnvelope {
   page: number;
   perPage: number;
   open: boolean;
+  // DEC-018 (wave-58 amendment): server-set from auth.role -- the SPA must
+  // never infer this from row presence (a closed plan with zero submissions
+  // would fool that).
+  viewerIsOrganizer: boolean;
   recused: RecusalItem[];
   // DEC-845: the plan's own facts, carried on the queue envelope so the
   // scoped header renders from this one fetch. scopeTrackName is the

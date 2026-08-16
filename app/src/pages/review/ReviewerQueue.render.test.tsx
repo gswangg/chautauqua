@@ -150,6 +150,49 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
     });
   });
 
+  // DEC-018 (wave-58 amendment): the queue's closed-plan dead end is a
+  // reviewer-only voice -- a reviewer sees the "not currently open" message
+  // and no rows.
+  it('shows the reviewer dead end and no rows for a reviewer on a closed plan', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...queueEnvelope([]),
+        open: false,
+        viewerIsOrganizer: false,
+        recused: [],
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('This review plan is not currently open.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('This plan is closed. You are seeing it as an organiser — reviewers cannot score it now.'),
+    ).not.toBeInTheDocument();
+  });
+
+  // The organiser voice: the same closed plan still renders its full queue
+  // rows (server-admitted, same as the submission detail route), with a
+  // muted note naming what they're seeing instead of the reviewer dead end.
+  it('shows the organiser note and still renders queue rows for an organizer on a closed plan', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...queueEnvelope([queueItem({ submissionId: 'sub-closed-1', title: 'Closed Plan Talk' })]),
+        open: false,
+        viewerIsOrganizer: true,
+        recused: [],
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('Closed Plan Talk')).toBeInTheDocument();
+    expect(
+      screen.getByText('This plan is closed. You are seeing it as an organiser — reviewers cannot score it now.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('This review plan is not currently open.')).not.toBeInTheDocument();
+  });
+
   it('shows "Showing 5 of N" / "Show all N" once the combined items+recused count exceeds 5, and reveals the rest on click', async () => {
     const items = Array.from({ length: 4 }, (_, i) => queueItem({ submissionId: `sub-${i}`, ref: `S-00${i}`, title: `Talk ${i}` }));
     const recused = [

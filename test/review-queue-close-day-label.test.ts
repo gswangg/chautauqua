@@ -94,16 +94,22 @@ describe("DEC-522: reviewer queue open/close day-label gating", () => {
     expect(body.total).toBeGreaterThan(0);
   });
 
-  it("is empty/closed the instant after end-of-day Pacific on the close day (2027-03-02T08:00:01Z)", async () => {
+  // DEC-018 (wave-58 amendment): an organizer is exempt from the plan-open
+  // gate (same predicate as the plan-detail route), so the closed-plan
+  // instant flips `open` false but does NOT empty the organizer's rows --
+  // that emptying only applies to a reviewer, covered separately in
+  // test/review-closed-plan-organizer.test.ts.
+  it("flips `open` false but still returns the organizer's rows the instant after end-of-day Pacific on the close day (2027-03-02T08:00:01Z)", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(Date.UTC(2027, 2, 2, 8, 0, 1));
 
     const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
     const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { items: unknown[]; total: number; open: boolean };
+    const body = (await res.json()) as { items: unknown[]; total: number; open: boolean; viewerIsOrganizer: boolean };
     expect(body.open).toBe(false);
-    expect(body.items).toEqual([]);
-    expect(body.total).toBe(0);
+    expect(body.viewerIsOrganizer).toBe(true);
+    expect(body.items.length).toBeGreaterThan(0);
+    expect(body.total).toBeGreaterThan(0);
   });
 });

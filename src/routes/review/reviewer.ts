@@ -126,6 +126,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     unscoredTotal: number;
     open: boolean;
     recused: unknown[];
+    viewerIsOrganizer: boolean;
   }) =>
     c.json({
       items: fields.items,
@@ -138,6 +139,12 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
       page,
       perPage,
       open: fields.open,
+      // DEC-018 (wave-58 amendment): server-set from auth.role, threaded
+      // through this single shaper so the closed-plan early return below and
+      // the full-queue result at the bottom of the route cannot disagree on
+      // who is viewing -- the SPA must never infer this from row presence
+      // (a closed plan with zero submissions would fool that).
+      viewerIsOrganizer: fields.viewerIsOrganizer,
       recused: fields.recused,
       planName: plan.name,
       scopeTrackName,
@@ -151,8 +158,13 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
       roundMeta: roundMetaFor(plan, plan.roundMeta, plan.currentRound),
     });
 
-  if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
-    return shapeQueueEnvelope({ items: [], total: 0, unscoredTotal: 0, open: false, recused: [] });
+  // DEC-018 (wave-58 amendment): mirrors the plan-detail route's exemption at
+  // :333 below ("Organizers are exempt (same as the queue)") -- the two must
+  // admit the same viewers, or a producer opening a closed plan gets zero
+  // queue rows while the per-submission detail behind them still loads.
+  const planOpen = isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone);
+  if (auth.role !== "organizer" && !planOpen) {
+    return shapeQueueEnvelope({ items: [], total: 0, unscoredTotal: 0, open: false, recused: [], viewerIsOrganizer: false });
   }
 
   const scopedIds = scoped.map((s) => s.id);
@@ -314,7 +326,14 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     })
     .filter((item): item is NonNullable<typeof item> => item !== undefined);
 
-  return shapeQueueEnvelope({ items: pagedItems, total, unscoredTotal, open: true, recused: recusedOut });
+  return shapeQueueEnvelope({
+    items: pagedItems,
+    total,
+    unscoredTotal,
+    open: planOpen,
+    recused: recusedOut,
+    viewerIsOrganizer: auth.role === "organizer",
+  });
 });
 
 reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
@@ -325,11 +344,12 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   if (!planId) throw new ApiError("invalid", "planId query param is required");
   const plan = await requireAssignedPlan(c, planId);
 
-  // DEC-018 (wave-10 amendment): the review-plan window that already gates
-  // the queue and the score PUT must also gate a lone submission read -- a
-  // closed (or not-yet-open) plan means a reviewer can't see scope-checked
-  // detail either. Organizers are exempt (same as the queue). Checked before
-  // the scope lookup so a closed plan never does scope work.
+  // DEC-018 (wave-10 amendment, matched by wave-58 amendment at :154 above):
+  // the review-plan window that already gates the queue and the score PUT
+  // must also gate a lone submission read -- a closed (or not-yet-open) plan
+  // means a reviewer can't see scope-checked detail either. Organizers are
+  // exempt (same predicate as the queue's early-return above). Checked
+  // before the scope lookup so a closed plan never does scope work.
   if (auth.role !== "organizer" && !isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
     throw new ApiError("conflict", "This review plan is not currently open");
   }

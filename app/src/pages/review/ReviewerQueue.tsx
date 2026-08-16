@@ -77,6 +77,10 @@ function PlanSection({
   const [total, setTotal] = useState(0);
   const [perPage, setPerPage] = useState(MAX_PER_PAGE);
   const [open, setOpen] = useState(true);
+  // DEC-018 (wave-58 amendment): server-set, never inferred from row
+  // presence -- a closed plan with zero submissions would fool a
+  // rows-based guess. Threaded straight off the envelope (see load() below).
+  const [viewerIsOrganizer, setViewerIsOrganizer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [undoingId, setUndoingId] = useState<string | null>(null);
@@ -98,6 +102,7 @@ function PlanSection({
       .then((res) => {
         setItems(res.items);
         setOpen(res.open);
+        setViewerIsOrganizer(res.viewerIsOrganizer);
         setRecused(res.recused);
         setTotal(res.total);
         setPerPage(res.perPage);
@@ -174,8 +179,18 @@ function PlanSection({
         vanishing -- this list is rendered exactly as delivered and must
         never be re-sorted here.
       */}
-      {!open && !error && <p className="chq-empty">This review plan is not currently open.</p>}
-      {open && items.length === 0 && recused.length === 0 && !error && (
+      {/* DEC-018 (wave-58 amendment): a closed plan's dead end is a reviewer
+          concern only -- an organizer viewing the same closed plan gets a
+          muted note above the (still-rendered) list instead, naming what
+          they're seeing, since the queue route now admits them same as the
+          plan detail route always did. */}
+      {!open && !error && !viewerIsOrganizer && <p className="chq-empty">This review plan is not currently open.</p>}
+      {!open && !error && viewerIsOrganizer && (
+        <p className="chq-empty">
+          This plan is closed. You are seeing it as an organiser — reviewers cannot score it now.
+        </p>
+      )}
+      {(open || viewerIsOrganizer) && items.length === 0 && recused.length === 0 && !error && (
         <EmptyState variant="fresh" what="Nothing left in your queue. Nicely done." action={null} />
       )}
       {/* DEC-874: recused submissions render INLINE in this same ordered
