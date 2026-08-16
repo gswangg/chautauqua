@@ -1000,10 +1000,11 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
     expect(JSON.parse(postCall[1]!.body as string)).toEqual({ contactId: 'c-2', role: 'moderator' });
   });
 
-  // DEC-900 (wave 25 amendment): the Role column reads LEAD / CO-PRESENTER
-  // -- never the raw stored role key (speaker/co-presenter/moderator/
-  // panelist).
-  it('renders participant roles as LEAD / CO-PRESENTER, never the raw stored role key', async () => {
+  // DEC-604 (wave 67 amendment): LEAD is a position (the resolved lead
+  // participant), and every other row's Role column reads
+  // participantRoleLabel(p.role).toUpperCase() -- never the raw stored role
+  // key, and never collapsed to a binary LEAD / CO-PRESENTER.
+  it('renders the lead as LEAD and a moderator as MODERATOR, never the raw stored role key nor collapsed to CO-PRESENTER', async () => {
     const detail = baseDetail({
       participants: [
         {
@@ -1048,9 +1049,84 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
     await openSessionDetails();
     const table = document.querySelector('.chq-participants-table') as HTMLElement;
     expect(within(table).getByText('LEAD')).toBeInTheDocument();
-    expect(within(table).getByText('CO-PRESENTER')).toBeInTheDocument();
+    expect(within(table).getByText('MODERATOR')).toBeInTheDocument();
+    expect(within(table).queryByText('CO-PRESENTER')).not.toBeInTheDocument();
     expect(within(table).queryByText('speaker')).not.toBeInTheDocument();
     expect(within(table).queryByText('moderator')).not.toBeInTheDocument();
+  });
+
+  it('renders every non-lead role through participantRoleLabel: panelist, co-presenter, and a free-text role uppercased rather than collapsed', async () => {
+    const detail = baseDetail({
+      participants: [
+        {
+          id: 'p1',
+          contactId: 'c1',
+          name: 'Jamie Speaker',
+          email: 'jamie@example.com',
+          title: null,
+          company: null,
+          role: 'speaker',
+          order: 0,
+          visible: true,
+          inviteStatus: 'accepted',
+        },
+        {
+          id: 'p2',
+          contactId: 'c2',
+          name: 'Riley Panelist',
+          email: 'riley@example.com',
+          title: null,
+          company: null,
+          role: 'panelist',
+          order: 1,
+          visible: true,
+          inviteStatus: 'none',
+        },
+        {
+          id: 'p3',
+          contactId: 'c3',
+          name: 'Casey Co',
+          email: 'casey@example.com',
+          title: null,
+          company: null,
+          role: 'co-presenter',
+          order: 2,
+          visible: true,
+          inviteStatus: 'none',
+        },
+        {
+          id: 'p4',
+          contactId: 'c4',
+          name: 'Morgan Wrangler',
+          email: 'morgan@example.com',
+          title: null,
+          company: null,
+          role: 'keynote wrangler',
+          order: 3,
+          visible: true,
+          inviteStatus: 'none',
+        },
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
+    });
+    await openSessionDetails();
+    const table = document.querySelector('.chq-participants-table') as HTMLElement;
+    expect(within(table).getByText('LEAD')).toBeInTheDocument();
+    expect(within(table).getByText('PANELIST')).toBeInTheDocument();
+    expect(within(table).getByText('CO-PRESENTER')).toBeInTheDocument();
+    expect(within(table).getByText('KEYNOTE WRANGLER')).toBeInTheDocument();
   });
 });
 
@@ -1258,11 +1334,13 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(screen.getByLabelText('Audience level')).toBeInTheDocument();
     expect(screen.getByLabelText('Search contacts')).toBeInTheDocument();
 
-    // Role cells read LEAD / CO-PRESENTER, never the raw stored role key.
+    // Role cells: LEAD is a position, every other row reads
+    // participantRoleLabel(p.role).toUpperCase() -- never the raw stored
+    // role key, and never collapsed to CO-PRESENTER.
     const table = screen.getByRole('table');
     const rows = within(table).getAllByRole('row').slice(1); // drop header row
     expect(within(rows[0]!).getByText('LEAD')).toBeInTheDocument();
-    expect(within(rows[1]!).getByText('CO-PRESENTER')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('PANELIST')).toBeInTheDocument();
     expect(within(rows[1]!).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
     expect(within(rows[1]!).getByRole('button', { name: 'Make co-presenter' })).toBeInTheDocument();
     // The lead row carries neither tertiary action.
@@ -1342,12 +1420,14 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(screen.queryByRole('heading', { name: 'Format' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Audience level' })).not.toBeInTheDocument();
 
-    // A lead and a co-presenter each render a role chip in the ROLE column.
+    // A lead and a moderator each render a role chip in the ROLE column;
+    // the chip class derivation is unchanged (lead vs. non-lead), but the
+    // moderator's text reads its own label, never CO-PRESENTER.
     const table = screen.getByRole('table');
     const rows = within(table).getAllByRole('row').slice(1);
     const leadChip = within(rows[0]!).getByText('LEAD');
     expect(leadChip).toHaveClass('chq-role-chip', 'chq-role-chip-lead');
-    const coChip = within(rows[1]!).getByText('CO-PRESENTER');
+    const coChip = within(rows[1]!).getByText('MODERATOR');
     expect(coChip).toHaveClass('chq-role-chip', 'chq-role-chip-co');
   });
 
