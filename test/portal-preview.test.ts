@@ -118,7 +118,7 @@ describe("GET /portal/preview (DEC-747 findings wave 7 amendment)", () => {
     expect(body).toContain("Travel info");
   });
 
-  it("organizer: renders zero mutating controls — no form other than the shared sign-out form, no upload/edit/decision button or link", async () => {
+  it("organizer: renders zero mutating controls — no form other than the shared sign-out form, no upload/edit/decision button or link, and the one Download button per resource is disabled (DEC-733 exception)", async () => {
     const app = buildApp(ORGANIZER);
     const res = await app.request(`/portal/preview?eventId=${EVENT_ID}`);
     const body = await res.text();
@@ -128,12 +128,30 @@ describe("GET /portal/preview (DEC-747 findings wave 7 amendment)", () => {
     const formMatches = body.match(/<form/g) ?? [];
     expect(formMatches.length).toBe(1);
     expect(body).toContain('action="/logout"');
-    // Exactly one button on the page: the shared chrome's own Sign out
-    // control. No upload/edit/accept/decline button or link anywhere.
+    // Two buttons: the shared chrome's own Sign out control, plus one
+    // disabled Download per resource row (the fixture has one resource).
+    // DEC-747's frame ruling names this the one sanctioned disabled
+    // control on the surface — DEC-733's absent-not-disabled rule does not
+    // apply because the capability genuinely exists for the speaker.
     const buttonMatches = body.match(/<button/g) ?? [];
-    expect(buttonMatches.length).toBe(1);
+    expect(buttonMatches.length).toBe(2);
     expect(body).toContain(">Sign out<");
+    expect(body).toMatch(/<button[^>]*disabled[^>]*>\s*Download\s*<\/button>/);
     expect(body).not.toMatch(/<a [^>]*>\s*(Upload|Edit submission|Accept|Decline)/);
+  });
+
+  it("organizer: renders the 'Not shown here' section, the honest impersonation-truth sentence, and a plain link back to settings", async () => {
+    const app = buildApp(ORGANIZER);
+    const res = await app.request(`/portal/preview?eventId=${EVENT_ID}`);
+    const body = await res.text();
+    expect(body).toContain("Not shown here");
+    expect(body).toContain("Their submissions");
+    expect(body).toContain("Their tasks");
+    expect(body).toContain("Their uploaded files");
+    expect(body).toContain("you would have to be them");
+    // A plain link, never a form or button, per the route's no-mutation
+    // invariant.
+    expect(body).toMatch(/<a href="\/settings\?section=portal">[^<]*Back to settings<\/a>/);
   });
 
   it("organizer with no eventId / an eventId belonging to another org: 404, not a crash or another org's data", async () => {

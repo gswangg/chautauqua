@@ -540,4 +540,25 @@ export const PORTAL_CSS = `
     min-width: 140px;
   }
 ${EMPTY_CSS}
-${ERROR_STATES_CSS}`;
+${ERROR_STATES_CSS}
+
+/* DEC-747 (frame 10--24 amendment, wave 60): /portal/preview's "Not shown
+   here" section — a plain chip list, no interaction, composing
+   THEME_CSS's .chq-chipstrip visual language without importing app/src's
+   client-only classes (this is an SSR surface). Tail growth per task
+   w60-h; expect a tail overlap with w60-g's own portal.css.ts growth. */
+.chq-portal-not-shown-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.chq-portal-not-shown-chip {
+  border: 1px solid var(--chq-border, #d0d5dd);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: var(--chq-text-muted, #555);
+}`;
