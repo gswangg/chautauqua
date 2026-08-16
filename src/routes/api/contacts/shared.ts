@@ -10,6 +10,7 @@ import type { Db } from "../../../server/context";
 import type { SegmentRule } from "../../../domain/contacts";
 import { chunkIds } from "../../../lib/chunk";
 import { overBudgetBy } from "../../../domain/count-copy";
+import { parseSocialLinks } from "../../../server/repo/profile";
 
 export function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;
@@ -48,8 +49,13 @@ export function serializeContact(row: repo.ContactRow) {
     bio: row.bio,
     headshotUrl: row.headshotUrl,
     notes: row.notes,
+    // customFieldsJson has no declared parser yet (unlike social_links_json's
+    // parseSocialLinks) -- left as a hand-parse this wave per DEC-152 scope.
     customFields: row.customFieldsJson ? JSON.parse(row.customFieldsJson) : null,
-    socialLinks: row.socialLinksJson ? JSON.parse(row.socialLinksJson) : null,
+    // DEC-152 (wave-76 amendment): route through the declared parser so this
+    // is no longer the last hand-parse of social_links_json on the wire --
+    // always returns all four keys as strings, never null.
+    socialLinks: parseSocialLinks(row.socialLinksJson),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

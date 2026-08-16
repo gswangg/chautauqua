@@ -47,7 +47,7 @@ const CONTACT: ContactDetail = {
   notes: null,
   bio: null,
   headshotUrl: null,
-  socialLinks: { twitter: '@priya', linkedin: null, github: null, website: null },
+  socialLinks: { twitter: '@priya', linkedin: '', github: '', website: '' },
   customFields: {},
   history: {
     submissions: [

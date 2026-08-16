@@ -27,6 +27,7 @@ const CONTACT: ContactListItem = {
 function detailWithSubmissions(submissions: ContactDetail['history']['submissions']): ContactDetail {
   return {
     ...CONTACT,
+    socialLinks: { twitter: '', linkedin: '', github: '', website: '' },
     history: { submissions, submissionsTotal: submissions.length, emails: [], emailsTotal: 0, events: [], eventsTotal: 0 },
   };
 }
