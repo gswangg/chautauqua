@@ -82,7 +82,7 @@ async function fetchAdminShell(c: { env: { ASSETS?: Fetcher }; req: { url: strin
 rootRoutes.get("/admin", async (c) => {
   const auth = c.var.auth;
   if (!auth) return c.redirect("/login", 302);
-  if (auth.role === "speaker") return c.redirect("/portal", 302);
+  if (auth.role === "speaker") return c.redirect("/portal?from=admin", 302);
   return fetchAdminShell(c);
 });
 
@@ -93,7 +93,7 @@ rootRoutes.get("/admin/*", async (c) => {
   }
   const auth = c.var.auth;
   if (!auth) return c.redirect("/login", 302);
-  if (auth.role === "speaker") return c.redirect("/portal", 302);
+  if (auth.role === "speaker") return c.redirect("/portal?from=admin", 302);
   // DEC-154/DEC-945 (amendment, wave 53): an unknown /admin path is a real,
   // chromeless 404 -- checked AFTER the anon/speaker redirects above (an
   // unauthenticated /admin/nope must still 302 to /login, never leak route
