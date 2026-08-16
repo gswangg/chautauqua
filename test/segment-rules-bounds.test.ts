@@ -182,3 +182,66 @@ describe("MAX_SEGMENT_RULES bounds the segment rule set (DEC-417 wave-31 amendme
     expect(body.error.fields?.rules).toBe(overCapCountMessage(MAX_SEGMENT_RULES + 1, MAX_SEGMENT_RULES, "rule"));
   });
 });
+
+// DEC-554 (amendment, wave 11): isValidSegmentRule (parse time) previously
+// only checked `typeof field === "string"`, so a rule referencing an
+// unrecognized field passed the parser and threw an unnamed TypeError from
+// fieldValue (match time) instead of a named 400 -- an unnamed 500 on the
+// contacts list and the bulk-email recipient count. The write path
+// (POST/PATCH /segments) already routed an unresolvable field through
+// assertRulesResolvable -> matchesSegment -> fieldValue
+// (src/routes/api/contacts/segments.ts:52-55, :81-89), so this exercises
+// that door still refuses the same set after fieldValue and
+// isValidSegmentRule were unified onto isSegmentField.
+describe("segment rule field vocabulary (DEC-554 amendment, wave 11)", () => {
+  it("POST /api/v1/segments: an unknown rule field 400s naming it, writes nothing", async () => {
+    const db = fakeDb([]);
+    const app = appWithDb(db, ORGANIZER_A);
+
+    const res = await app.request("http://local/api/v1/segments", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ name: "Bad field segment", rules: [{ field: "nickname", op: "eq", value: "a" }] }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
+    expect(body.error.code).toBe("invalid");
+    expect(body.error.fields?.rules).toMatch(/nickname/);
+  });
+
+  it("PATCH /api/v1/segments/:id: an unknown rule field (malformed custom.<key>) 400s, not a 500", async () => {
+    const existingSegment = {
+      id: "seg-1",
+      orgId: ORG_A,
+      name: "Existing",
+      rulesJson: "[]",
+      createdAt: new Date(1000),
+      updatedAt: new Date(1000),
+    };
+    // findSegmentForOrg (src/server/repo/contacts/segments.ts) issues
+    // select().from(schema.segment).where(...).limit(1) -- this fakeDb
+    // returns the single seeded segment row for any select/from/where/limit
+    // chain, matching segment-rules-bounds.test.ts's contacts fakeDb shape.
+    const chain: any = {
+      from: () => chain,
+      where: () => chain,
+      orderBy: () => chain,
+      limit: () => chain,
+      then: (resolve: (v: unknown[]) => void) => resolve([existingSegment]),
+    };
+    const db = { select: (_cols?: unknown) => chain } as unknown as AppEnv["Variables"]["db"];
+    const app = appWithDb(db, ORGANIZER_A);
+
+    const res = await app.request(`http://local/api/v1/segments/${existingSegment.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ rules: [{ field: "custom.", op: "eq", value: "a" }] }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
+    expect(body.error.code).toBe("invalid");
+    expect(body.error.fields?.rules).toBeTruthy();
+  });
+});
