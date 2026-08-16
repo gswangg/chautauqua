@@ -30,7 +30,12 @@ function makeFakeDb(responses: unknown[][]) {
     const log: { method: string; args: unknown[] }[] = [];
     calls.push(log);
     const obj: any = {};
-    const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select"];
+    // "leftJoin" is here for the same reason "innerJoin" is: exportEvaluations
+    // left-joins schema.contact (DEC-736 wave-79) so resolveReviewerIdentity
+    // sees the organiser screen's row shape. The chain double must accept
+    // every builder method the repo actually calls, or the query dies here
+    // rather than in the code under test.
+    const passthrough = ["from", "where", "innerJoin", "leftJoin", "orderBy", "limit", "offset", "select"];
     for (const m of passthrough) {
       obj[m] = (...args: unknown[]) => {
         log.push({ method: m, args });
