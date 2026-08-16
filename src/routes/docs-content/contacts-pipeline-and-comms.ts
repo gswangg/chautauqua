@@ -30,7 +30,7 @@ export const contactsPipelineAndComms: DocsArticle = {
     { kind: "heading", text: "The sourcing pipeline" },
     {
       kind: "prose",
-      text: "The pipeline is a board for the persons that you contact as possible speakers. It is not the accept and decline flow of the call for papers: you use it before a person sends a submission. When you enroll a contact, the card goes into Identified. From there, the card moves through Contacted, Interested, and Confirmed, or to Declined. You move a card with a drag or with its Move-to control, and the Move-to control is the step that saves the change. Each card can have a fit score, a recorded cause, and a note log. Thus, the card shows why it is where it is.",
+      text: "The pipeline is a board for the persons that you contact as possible speakers. It is not the accept and decline flow of the call for papers: you use it before a person sends a submission. When you enroll a contact, the card goes into Identified. From there, the card moves through Contacted, Interested, and Confirmed, or to Declined. You move a card with a drag or with its Move-to control, and the Move-to control is the step that saves the change. Each card can have a fit score, a recorded cause, and a note log, and thus the card shows why it is where it is.",
     },
     {
       kind: "figure",
