@@ -508,6 +508,14 @@
   margin: 0;
 }
 
+/* The value line of one distribution item: the criterion label plus its
+   counts. Carries the item's ink and the same 1.45 leading as the caption
+   below it, so the two lines of an item read as one stacked unit. */
+.chq-review-dropdown-distribution-value {
+  color: var(--chq-ink);
+  line-height: 1.45;
+}
+
 .chq-review-dropdown-distribution-caption {
   display: block;
   font-size: 11px;

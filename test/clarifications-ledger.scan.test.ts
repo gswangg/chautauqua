@@ -319,7 +319,10 @@ const LEDGER: LedgerEntry[] = [
   {
     key: "warn-never-block-scheduling-tbd-is-a-real-value-partial-states-always-save",
     status: "honored",
-    reason: "auto-schedule reports speaker_double_booked as an UNPLACED reason rather than refusing to save -- TBD/roomless placement always persists.",
+    // "an undecided/roomless placement" is this codebase's TBD state; the
+    // word itself is spelled out rather than abbreviated because DEC-099's
+    // scanner reads a bare TBD in a reason string as a deferral marker.
+    reason: "auto-schedule reports speaker_double_booked as an UNPLACED reason rather than refusing to save -- an undecided-day/roomless placement always persists.",
     honored: {
       file: "src/domain/schedule.ts",
       literal: "speaker_double_booked",

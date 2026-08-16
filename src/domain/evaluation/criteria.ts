@@ -92,11 +92,12 @@ export interface TextCriterionDef {
 
 export type EvaluationCriterionDef = RatingCriterionDef | DropdownCriterionDef | TextCriterionDef;
 
-// DEC-613 (wave 7): one criterion-type vocabulary. The design frame writes
-// `typeLabel: isChoice ? 'Choice' : 'Scale 1–5'` for its Add-criterion picker
-// and locked-criteria readout (docs/design/Chautauqua Review.dc.html:1017,
-// :696-701) -- storage words 'rating'/'dropdown'/'text' never reach the UI.
-// En dash (U+2013) in "Scale 1–5" exactly as the frame writes it.
+// DEC-613 (wave 7): one criterion-type vocabulary. The Add-criterion picker
+// and locked-criteria readout in the design frame
+// (docs/design/Chautauqua Review.dc.html:1017, :696-701) write
+// `typeLabel: isChoice ? 'Choice' : 'Scale 1–5'` -- storage words
+// 'rating'/'dropdown'/'text' never reach the UI. En dash (U+2013) in
+// "Scale 1–5" exactly as the frame writes it.
 export const CRITERION_KIND_LABELS: Record<EvaluationCriterionDef["kind"], string> = {
   rating: "Scale 1–5",
   dropdown: "Choice",
