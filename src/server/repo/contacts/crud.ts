@@ -6,7 +6,7 @@ import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId, formatRef } from "../../../domain/ids";
-import { matchesSegment, tokenizeContactQuery, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
+import { matchesSegment, tokenizeContactQuery, parseSegmentRulesJson, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
 import { findSegmentForOrg } from "./segments";
 import { toRow, MAX_CONTACT_DIRECTORY_SCAN, type ContactRow } from "./rows";
 import { compareContacts, type ParsedContactListQuery } from "./query";
@@ -451,7 +451,7 @@ async function scanAndFilterContacts(db: Db, orgId: string, params: ParsedContac
   if (params.segmentId) {
     const segment = await findSegmentForOrg(db, params.segmentId, orgId);
     if (!segment) throw new Error(`segment ${params.segmentId} not found for org ${orgId}`);
-    const segmentRules = JSON.parse(segment.rulesJson) as SegmentRule[];
+    const segmentRules = parseSegmentRulesJson(segment.rulesJson, segment.id);
     filtered = filtered.filter((r) => matchesSegment(segmentRules, r as ContactRecord));
   }
   if (params.rules.length > 0) {

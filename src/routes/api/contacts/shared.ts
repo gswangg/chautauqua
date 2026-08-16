@@ -7,7 +7,7 @@ import { ApiError } from "../../../server/http";
 import * as repo from "../../../server/repo/contacts";
 import * as schema from "../../../db/schema";
 import type { Db } from "../../../server/context";
-import type { SegmentRule } from "../../../domain/contacts";
+import { parseSegmentRulesJson } from "../../../domain/contacts";
 import { chunkIds } from "../../../lib/chunk";
 import { overBudgetBy } from "../../../domain/count-copy";
 import { parseSocialLinks } from "../../../server/repo/profile";
@@ -66,7 +66,7 @@ export function serializeSegment(row: repo.SegmentRow) {
   return {
     id: row.id,
     name: row.name,
-    rules: JSON.parse(row.rulesJson) as SegmentRule[],
+    rules: parseSegmentRulesJson(row.rulesJson, row.id),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

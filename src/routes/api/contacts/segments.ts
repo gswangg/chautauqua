@@ -9,7 +9,7 @@ import { ApiError, parseBoundedText } from "../../../server/http";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
 import { overCapCountMessage } from "../../../domain/cap-copy";
 import * as repo from "../../../server/repo/contacts";
-import { matchesSegment, MAX_SEGMENT_RULES, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
+import { matchesSegment, MAX_SEGMENT_RULES, parseSegmentRulesJson, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
 import { clampPage, listPerPage } from "../../../lib/pagination";
 import { DEC_711, DEC_864 } from "../../../decisions";
 import { currentOrgId, asRecord, checkLen, serializeSegment, requireOwnedSegment } from "./shared";
@@ -144,7 +144,7 @@ export function registerSegmentRoutes(contactsRoutes: Hono<AppEnv>): void {
     // not one whole-directory scan per segment (the same matchesSegment the
     // paged list applies at crud.ts, so a rail caption and the filtered
     // list it drills into stay the same arithmetic fact).
-    const ruleSets = items.map((item) => JSON.parse(item.rulesJson) as SegmentRule[]);
+    const ruleSets = items.map((item) => parseSegmentRulesJson(item.rulesJson, item.id));
     const counts = await repo.countContactsForSegmentRules(c.var.db, orgId, ruleSets);
     const serialized = items.map((item, i) => ({ ...serializeSegment(item), count: counts[i]! }));
     return c.json({ items: serialized, total, page, perPage });

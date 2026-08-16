@@ -86,6 +86,40 @@ function matchesRule(rule: SegmentRule, contact: ContactRecord): boolean {
   }
 }
 
+const SEGMENT_RULE_OPS = new Set(["eq", "ne", "contains"]);
+
+function isValidSegmentRule(value: unknown): value is SegmentRule {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.field === "string" &&
+    typeof v.op === "string" &&
+    SEGMENT_RULE_OPS.has(v.op) &&
+    typeof v.value === "string"
+  );
+}
+
+/**
+ * Parses and validates a segment's stored rules_json (DEC-026), the same
+ * shape the write path (POST/PATCH /segments) already enforces. Fails
+ * loudly rather than letting a malformed row reach matchesRule as an
+ * unnamed TypeError (e.g. rule.value.toLowerCase() on a non-string) or
+ * .every on a non-array.
+ */
+export function parseSegmentRulesJson(raw: string, segmentId: string): SegmentRule[] {
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed)) {
+    throw new Error(`segment ${segmentId}.rules_json: expected an array`);
+  }
+  if (parsed.length > MAX_SEGMENT_RULES) {
+    throw new Error(`segment ${segmentId}.rules_json: exceeds MAX_SEGMENT_RULES (${MAX_SEGMENT_RULES})`);
+  }
+  if (!parsed.every(isValidSegmentRule)) {
+    throw new Error(`segment ${segmentId}.rules_json: rule does not match { field: string, op: 'eq'|'ne'|'contains', value: string }`);
+  }
+  return parsed;
+}
+
 /**
  * AND semantics across all rules, case-insensitive comparisons. Custom
  * fields are addressable as 'custom.<key>'. field === 'any' (DEC-149)

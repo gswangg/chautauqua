@@ -44,6 +44,7 @@ export {
   tokenizeContactQuery,
   SEGMENT_STANDARD_FIELDS,
   matchesSegment,
+  parseSegmentRulesJson,
 } from "./contacts-parts/segments";
 
 export type { StandardImportField } from "./contacts-parts/import";
