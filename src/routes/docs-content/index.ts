@@ -11,6 +11,8 @@ import { startHere } from "./start-here";
 import { callForPapersAndSubmissions } from "./call-for-papers-and-submissions";
 import { reviewingStartToFinish } from "./reviewing-start-to-finish";
 import { yourSpeakerPortal } from "./your-speaker-portal";
+import { contactsPipelineAndComms } from "./contacts-pipeline-and-comms";
+import { runningTheSoftware } from "./running-the-software";
 import type { DocsArticle } from "./types";
 
 export const DOCS_ARTICLES: readonly DocsArticle[] = [
@@ -18,6 +20,8 @@ export const DOCS_ARTICLES: readonly DocsArticle[] = [
   callForPapersAndSubmissions,
   reviewingStartToFinish,
   yourSpeakerPortal,
+  contactsPipelineAndComms,
+  runningTheSoftware,
 ];
 
 export { DOCS_GROUPS } from "./types";

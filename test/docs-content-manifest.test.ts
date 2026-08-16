@@ -91,6 +91,15 @@ describe("docs content manifest (DEC-518: derived, not hand-mirrored)", () => {
     }
   });
 
+  it("every declared group has at least one article", () => {
+    const groupsWithArticles = new Set(DOCS_ARTICLES.map((a) => a.group));
+    for (const group of DOCS_GROUPS) {
+      expect(groupsWithArticles.has(group), `DOCS_GROUPS declares "${group}" but no article in DOCS_ARTICLES has that group`).toBe(
+        true,
+      );
+    }
+  });
+
   it("every figure's shotId matches <group>-<slug>-nn and its own article's group/slug", () => {
     const shotIdPattern = /^([a-z-]+)-([a-z0-9-]+)-(\d{2})$/;
     for (const article of DOCS_ARTICLES) {
