@@ -272,6 +272,19 @@ const SEED_NOW: number = process.env.CHQ_SEED_NOW
     })()
   : Date.now();
 const DAY_MS = 86_400_000;
+// DEC-522 (wave 52 amendment): day-label columns (form open_date/close_date,
+// evaluation_plan open_date/close_date, task due_date) store a UTC-midnight
+// instant, not an arbitrary point in time — dayLabelToYmd reads the UTC
+// calendar date of the stored value, so a label minted straight from
+// SEED_NOW (a sub-day instant) resolves to the wrong day for part of every
+// UTC day it's seeded in. SEED_TODAY floors SEED_NOW to the start of its own
+// UTC day; dayLabel(offsetDays) mints every day-label value from that floor,
+// preserving DEC-591's one-clock rule (still derived from SEED_NOW, just
+// floored to a real day boundary first).
+const SEED_TODAY = Math.floor(SEED_NOW / DAY_MS) * DAY_MS;
+function dayLabel(offsetDays: number): number {
+  return SEED_TODAY + offsetDays * DAY_MS;
+}
 // BASE_TS anchors created_at/updated_at/sent_at rows 120 days before SEED_NOW,
 // so the seed's history reads as "the past" relative to whenever it's run.
 const BASE_TS = SEED_NOW - 120 * DAY_MS;
@@ -439,7 +452,7 @@ async function main(): Promise<void> {
       title: "Call for Proposals",
       description: "Default CFP form for " + fixture.event.name,
       is_default: true,
-      close_date: SEED_NOW + 18 * DAY_MS,
+      close_date: dayLabel(18),
       // DEC-887 amendment (task w40-a): the original open_date of
       // SEED_NOW + 1 day left /submit/<slug> reading "Submissions aren't
       // open yet" for every judge who opens the demo on delivery day, while
@@ -450,7 +463,7 @@ async function main(): Promise<void> {
       // delivery day; the "not yet published" state DEC-887 originally
       // wanted is demonstrated instead by a DISABLED saved embed below, a
       // surface that is genuinely switchable.
-      open_date: SEED_NOW - 12 * DAY_MS,
+      open_date: dayLabel(-12),
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -1391,8 +1404,8 @@ async function main(): Promise<void> {
       // DEC-591: the grading window is expressed as a SEED_NOW offset (opens
       // 30 days before, closes 25 days after) so the reviewer window always
       // spans 'now' regardless of when the seed is actually run.
-      open_date: SEED_NOW - 30 * DAY_MS,
-      close_date: SEED_NOW + 25 * DAY_MS,
+      open_date: dayLabel(-30),
+      close_date: dayLabel(25),
       filters_json: null,
       anonymized: false,
       scale_json: JSON.stringify({ min: 1, max: 5 }),
@@ -1686,8 +1699,8 @@ async function main(): Promise<void> {
       instructions: "Score each Developer Experience proposal on content quality and delivery.",
       // DEC-591/DEC-668: both bounds land before SEED_NOW so this plan
       // reads as closed regardless of when the seed is run.
-      open_date: SEED_NOW - 60 * DAY_MS,
-      close_date: SEED_NOW - 10 * DAY_MS,
+      open_date: dayLabel(-60),
+      close_date: dayLabel(-10),
       filters_json: null,
       anonymized: false,
       scale_json: JSON.stringify({ min: 1, max: 5 }),
@@ -1764,8 +1777,8 @@ async function main(): Promise<void> {
       // DEC-591/DEC-836: bounds straddle SEED_NOW (distinct from plan 1's
       // -30/+25 window) so this plan reads as open regardless of when the
       // seed is run, giving the Review landing a second open row.
-      open_date: SEED_NOW - 10 * DAY_MS,
-      close_date: SEED_NOW + 40 * DAY_MS,
+      open_date: dayLabel(-10),
+      close_date: dayLabel(40),
       filters_json: null,
       anonymized: false,
       scale_json: JSON.stringify({ min: 1, max: 5 }),
@@ -1869,8 +1882,8 @@ async function main(): Promise<void> {
       // DEC-591/DEC-848: bounds straddle SEED_NOW, distinct from plan 1's
       // -30/+25 and plan 3's -10/+40 windows, so this plan too reads as
       // open regardless of when the seed is run.
-      open_date: SEED_NOW - 5 * DAY_MS,
-      close_date: SEED_NOW + 35 * DAY_MS,
+      open_date: dayLabel(-5),
+      close_date: dayLabel(35),
       filters_json: null,
       anonymized: false,
       scale_json: JSON.stringify({ min: 1, max: 5 }),
@@ -1994,7 +2007,7 @@ async function main(): Promise<void> {
     // a deliverable upload) — this stays defensive for any future
     // file_request default task.
     const deliverableKind = tpl.kind === "file_request" ? "presentation" : null;
-    const dueDate = SEED_NOW + dueOffsetDaysFromSeedNow[i]! * DAY_MS;
+    const dueDate = dayLabel(dueOffsetDaysFromSeedNow[i]!);
     if (dueDate >= EVENT_START_MS) {
       throw new Error(
         `seed: default onboarding task "${tpl.title}" due date (${new Date(dueDate).toISOString()}) ` +
@@ -2029,7 +2042,7 @@ async function main(): Promise<void> {
   // a fourth distinct past-due offset for the DEC-646 staggered-lateness
   // proof, which enumerates exactly {1, 2, 4} days late.
   const deliverableTaskId = seedId("task", DEFAULT_ONBOARDING_TASKS.length + 1);
-  const deliverableTaskDueDate = SEED_NOW - 4 * DAY_MS;
+  const deliverableTaskDueDate = dayLabel(-4);
   if (deliverableTaskDueDate >= EVENT_START_MS) {
     throw new Error(
       `seed: file_request deliverable task due date (${new Date(deliverableTaskDueDate).toISOString()}) ` +
@@ -3067,7 +3080,7 @@ async function main(): Promise<void> {
   const UPCOMING_TASK_INDEXES = [2, 4];
   const upcomingTaskTitles = UPCOMING_TASK_INDEXES.map((idx) => DEFAULT_ONBOARDING_TASKS[idx]!.title);
   const nearestUpcomingDueDate = Math.min(
-    ...UPCOMING_TASK_INDEXES.map((idx) => SEED_NOW + dueOffsetDaysFromSeedNow[idx]! * DAY_MS),
+    ...UPCOMING_TASK_INDEXES.map((idx) => dayLabel(dueOffsetDaysFromSeedNow[idx]!)),
   );
   const batchTaskList = upcomingTaskTitles.join(", ");
   const batchDueDate = formatCalendarDate(nearestUpcomingDueDate);
