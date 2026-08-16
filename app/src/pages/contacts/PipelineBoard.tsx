@@ -1060,6 +1060,7 @@ function EntryDetailPanel({ entryId, entry, moveError, onClose, onChanged, onMov
   const [loadingMoreActivity, setLoadingMoreActivity] = useState(false);
 
   function reload() {
+    setError(null);
     return apiGet<PipelineEntryDetail>(`/pipeline/${entryId}`)
       .then((d) => {
         setDetail(d);
@@ -1073,6 +1074,7 @@ function EntryDetailPanel({ entryId, entry, moveError, onClose, onChanged, onMov
   function loadMoreActivity() {
     const nextPage = activityPage + 1;
     setLoadingMoreActivity(true);
+    setError(null);
     return apiGet<PipelineEntryDetail>(`/pipeline/${entryId}?page=${nextPage}`)
       .then((d) => {
         // Append, never replace -- mirrors the board's own loadMore.

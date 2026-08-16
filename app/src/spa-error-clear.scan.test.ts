@@ -1,23 +1,24 @@
-// DEC-856 amendment (wave 71): a settings panel's page-level error banner
-// (a lone `useState<string | undefined>`/`useState<string | null>` set from
-// an API read's `.catch` and rendered under `role="alert"`) is a SCANNED
-// class, not a per-panel rediscovery. Wave 69 fixed TracksRoomsPanel.tsx one
-// panel at a time -- the CLEAR lives in the code path that triggers a
-// reload (either the reload function clears itself before its own reads,
-// or every one of its callers clears `error` before invoking it) -- and the
-// shape survived unfixed in PortalSettingsPanel/PublicPagesPanel/
-// SavedEmbedsPanel because nothing scanned for it: a load path that never
-// clears leaves one transient failure bannering the panel PERMANENTLY,
-// beside every later successful load.
+// DEC-856 amendment (wave 76): the page-level error-banner clear scan is a
+// SPA-WIDE population, not a per-directory rediscovery. Wave 71 scoped this
+// scan to app/src/pages/settings/ on the (unstated) premise that the defect
+// class lived there -- but app/src/pages/review/ResultsTable.tsx (fixed
+// wave 72, outside that directory) proved the premise wrong: a lone
+// `useState<string | undefined>`/`useState<string | null>` set from an API
+// read's `.catch` and rendered under `role="alert"` that never clears before
+// its next reload is a shape that recurs anywhere in the SPA tree, not just
+// settings panels. This file supersedes and replaces
+// app/src/pages/settings/settings-error-clear.scan.test.ts (deleted this
+// wave) by walking the whole of app/src instead of one directory.
 //
-// This scan walks every .tsx under app/src/pages/settings/ (excluding
-// *.test.tsx), finds each qualifying page-level error state (single string
-// useState, rendered near a `role="alert"`), locates every "loader block"
-// (function/useCallback/useEffect body) whose text contains an API read's
-// `.catch` feeding that state's setter, and requires EITHER (a) the block
-// clears the setter (`setter(undefined)`/`setter(null)`) before its own
-// first `apiGet/apiList/apiPost/apiPatch/apiPut/apiDelete/apiUpload` call,
-// OR (b) the block is a NAMED function/useCallback and every call site that
+// This scan recursively walks every .tsx/.ts file under app/src (excluding
+// node_modules/dist/.wrangler/build and *.test.ts/*.test.tsx), finds each
+// qualifying page-level error state (single string useState, rendered near
+// a `role="alert"`), locates every "loader block" (function/useCallback/
+// useEffect body) whose text contains an API read's `.catch` feeding that
+// state's setter, and requires EITHER (a) the block clears the setter
+// (`setter(undefined)`/`setter(null)`) before its own first
+// `apiGet/apiList/apiPost/apiPatch/apiPut/apiDelete/apiUpload` call, OR
+// (b) the block is a NAMED function/useCallback and every call site that
 // invokes it elsewhere in the file clears the setter first (the
 // TracksRoomsPanel/ResourcesPanel `reload(id)` shape) -- with one narrow
 // exemption for a mount-only effect whose entire body is just an early
@@ -25,17 +26,21 @@
 // stale error in that shape, so no clear is required there).
 //
 // Deliberately a lightweight, comment-stripped text scan -- no new parser
-// dependency (same precedent as test/serial-write-scan.test.ts and this
-// directory's own nested-edit-drill.scan.test.ts). Two-directional, same
-// shape as those: an unlisted, unexempt offender fails naming file/loader;
-// an EXEMPTIONS entry matching no offender ALSO fails ("stale entry --
-// delete this line"), so a later fix can't leave rot behind.
+// dependency (same precedent as test/serial-write-scan.test.ts). Two-
+// directional, same shape as those: an unlisted, unexempt offender fails
+// naming file/loader; an EXEMPTIONS entry matching no offender ALSO fails
+// ("stale entry -- delete this line"), so a later fix can't leave rot
+// behind. Every EXEMPTIONS `reason` must explain why the loader/setter pair
+// genuinely has no prior render that could have left a stale banner -- a
+// bare "unreviewed" reason is forbidden this wave (see DEC-518, task-w76-b,
+// which prosecutes exactly that shape of exemption).
 
 import { describe, expect, it } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const SETTINGS_DIR = join(__dirname);
+const SRC_DIR = join(__dirname);
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.wrangler', 'build']);
 
 /** Strips `//` and `/* *\/` comments, preserving newlines and string/
  * template literal contents -- same shape as test/serial-write-scan.test.ts's
@@ -188,7 +193,8 @@ interface Offender {
 
 /** Deliberate exceptions. Every entry must name why the loader/setter pair
  * for that file is exempt. An entry matching no real offender fails the
- * "no stale entries" test below. */
+ * "no stale entries" test below. A bare 'unreviewed' reason is forbidden
+ * this wave (DEC-518). */
 const EXEMPTIONS: { file: string; loader: string; setter: string; reason: string }[] = [];
 
 function scanFile(file: string, rawSrc: string): Offender[] {
@@ -299,25 +305,43 @@ function scanFile(file: string, rawSrc: string): Offender[] {
   return offenders;
 }
 
-function listSettingsFiles(): string[] {
-  return readdirSync(SETTINGS_DIR)
-    .filter((f) => f.endsWith('.tsx') && !f.includes('.test.'))
-    .sort();
+/** Recursively lists every .tsx/.ts source file under app/src (relative
+ * path from app/src), excluding node_modules/dist/.wrangler/build and any
+ * *.test.ts/*.test.tsx file. */
+function listSpaFiles(): string[] {
+  const out: string[] = [];
+  function walk(dir: string, rel: string) {
+    for (const entry of readdirSync(dir).sort()) {
+      const abs = join(dir, entry);
+      const relPath = rel ? `${rel}/${entry}` : entry;
+      const st = statSync(abs);
+      if (st.isDirectory()) {
+        if (SKIP_DIRS.has(entry)) continue;
+        walk(abs, relPath);
+        continue;
+      }
+      if (!/\.(tsx|ts)$/.test(entry)) continue;
+      if (/\.test\.(tsx|ts)$/.test(entry)) continue;
+      out.push(relPath);
+    }
+  }
+  walk(SRC_DIR, '');
+  return out;
 }
 
 function scanAll(): Offender[] {
   const offenders: Offender[] = [];
-  for (const f of listSettingsFiles()) {
-    const raw = readFileSync(join(SETTINGS_DIR, f), 'utf8');
+  for (const f of listSpaFiles()) {
+    const raw = readFileSync(join(SRC_DIR, f), 'utf8');
     offenders.push(...scanFile(f, raw));
   }
   return offenders;
 }
 
-describe('settings page-level error banners always clear on reload (DEC-856 amendment, wave 71)', () => {
+describe('SPA-wide page-level error banners always clear on reload (DEC-856 amendment, wave 76)', () => {
   it('the scan is not vacuous: walks a non-trivial file set', () => {
-    const files = listSettingsFiles();
-    expect(files.length).toBeGreaterThan(10);
+    const files = listSpaFiles();
+    expect(files.length).toBeGreaterThan(40);
   });
 
   it('every page-level error state either self-clears before its own reads, or every one of its callers clears it first', () => {
@@ -333,7 +357,7 @@ describe('settings page-level error banners always clear on reload (DEC-856 amen
             `${o.file} / ${o.loader} (setter ${o.setter}): ${o.detail}. Clear the setter at the start of the ` +
             `load/refetch (before the reads are issued), following TracksRoomsPanel's shape -- or add a ` +
             `{ file, loader, setter, reason } line to EXEMPTIONS in ` +
-            `app/src/pages/settings/settings-error-clear.scan.test.ts naming why this one is exempt.`,
+            `app/src/spa-error-clear.scan.test.ts naming why this one is exempt.`,
         )
         .join('\n'),
     ).toEqual([]);
@@ -351,7 +375,7 @@ describe('settings page-level error banners always clear on reload (DEC-856 amen
         .map(
           (e) =>
             `${e.file} / ${e.loader} (setter ${e.setter}): stale EXEMPTIONS entry -- delete this line ` +
-            `(app/src/pages/settings/settings-error-clear.scan.test.ts) -- no matching offender was found.`,
+            `(app/src/spa-error-clear.scan.test.ts) -- no matching offender was found.`,
         )
         .join('\n'),
     ).toEqual([]);

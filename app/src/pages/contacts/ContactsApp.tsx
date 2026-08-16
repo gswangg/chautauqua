@@ -238,12 +238,14 @@ export function ContactsApp() {
   }, []);
 
   useEffect(() => {
+    setError(null);
     apiGet<ContactStats>('/contacts/stats')
       .then(setStats)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load stats'));
   }, [refreshKey]);
 
   useEffect(() => {
+    setError(null);
     apiList<Segment>('/segments')
       .then((res) => setSegments(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load segments'))
@@ -254,6 +256,7 @@ export function ContactsApp() {
   // Duplicates tab lists from (findDuplicateGroupsForOrg's own order),
   // bounded to a small page rather than a second definition of "top pairs".
   useEffect(() => {
+    setError(null);
     apiList<DuplicateGroup>(`/contacts/duplicates?perPage=${RAIL_DUPLICATE_PREVIEW}`)
       .then((res) => {
         setDuplicatePreview(res.items);
