@@ -7,13 +7,16 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { ApiError } from "../http";
 import { chunkIds } from "../../lib/chunk";
+import { CONTENT_STATUSES, type ContentStatus } from "../../domain/content-status";
 
 // ---------------------------------------------------------------------------
 // Content status (organizer approval)
 // ---------------------------------------------------------------------------
 
-export const CONTENT_STATUSES = ["pending", "approved", "changes_requested"] as const;
-export type ContentStatus = (typeof CONTENT_STATUSES)[number];
+// DEC-003 wave-73 amendment: CONTENT_STATUSES/ContentStatus now live in
+// src/domain/content-status.ts (pure core, importable from the SPA); this
+// module re-exports them verbatim so none of its importers change.
+export { CONTENT_STATUSES, type ContentStatus };
 
 export function isValidContentStatus(value: unknown): value is ContentStatus {
   return typeof value === "string" && (CONTENT_STATUSES as readonly string[]).includes(value);
