@@ -61,6 +61,11 @@ interface BreaksPanelProps {
    * shared list (both this panel and DayGrid's bands pick up the change in
    * the same tick). */
   onChanged: () => void;
+  /** DEC-021 amendment (w66, gate-11 sweep item 4): the panel had no way to
+   * signal "I'm finished here" separate from the modal frame's own X close
+   * — this renders a right-flushed secondary Done button at the panel's
+   * foot, wired by the caller to the same dismiss the frame's onClose uses. */
+  onDone: () => void;
 }
 
 interface BreakFieldErrors {
@@ -116,7 +121,7 @@ function weekdayOf(day: string | null): string {
 /** Quiet Breaks section: list for the selected day, an inline add row, and
  * a tertiary Remove per row. No optimistic path (task scope) — every write
  * asks the parent (via onChanged) to refetch the day's shared list. */
-export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: BreaksPanelProps) {
+export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, onDone }: BreaksPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<BreakFieldErrors>({});
@@ -517,6 +522,12 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
           onCancel={() => setPendingRemove(null)}
         />
       )}
+
+      <div className="chq-breaks-panel-foot">
+        <button type="button" className="chq-btn chq-btn-secondary" onClick={onDone}>
+          Done
+        </button>
+      </div>
     </section>
   );
 }
