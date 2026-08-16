@@ -205,6 +205,19 @@ async function parseAudienceLevelField(db: Db, eventId: string, raw: unknown): P
 // at all (no-op); parseFormatField/parseAudienceLevelField above have
 // already 400'd when the event's form has no such field, so a non-null
 // resolved fieldId here is guaranteed whenever value !== undefined.
+// DEC-155 (wave-60 amendment): the actual submission_answer write, once a
+// field id is already known — split out of writeRoleAnswer below so the
+// PATCH handler can hoist its getEventFieldIdByRole lookup into the
+// pre-write read wave and hand this the resolved id directly, instead of
+// looking it up again inside the strictly-sequential write phase.
+async function applyRoleAnswer(db: Db, submissionId: string, fieldId: string, value: string | null): Promise<void> {
+  if (value === null) {
+    await deleteSubmissionAnswer(db, submissionId, fieldId);
+  } else {
+    await upsertSubmissionAnswers(db, submissionId, { [fieldId]: value });
+  }
+}
+
 async function writeRoleAnswer(
   db: Db,
   eventId: string,
@@ -219,11 +232,7 @@ async function writeRoleAnswer(
       [key]: "Not configured",
     });
   }
-  if (value === null) {
-    await deleteSubmissionAnswer(db, submissionId, fieldId);
-  } else {
-    await upsertSubmissionAnswers(db, submissionId, { [fieldId]: value });
-  }
+  await applyRoleAnswer(db, submissionId, fieldId, value);
 }
 
 // GET /api/v1/events/:eventId/submissions
@@ -387,14 +396,26 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
     }); // DEC-124
   }
 
-  // DEC-598 (wave-34 amendment): trackIds/format/audienceLevel below (plus
-  // the DEC-158 pre-edit content snapshot) are four independent reads —
-  // none consumes another's result, and all sit behind the ownership check
-  // above that has already resolved — issued as ONE wave via
+  // DEC-598 (wave-34 amendment) / DEC-155 (wave-60 amendment, P1-PERF): the
+  // whole PATCH pre-write read waterfall collapses into ONE wave —
+  // trackIds/format/audienceLevel validation, the DEC-158 pre-edit content
+  // snapshot, resolveActorName (the acting user's display name, needed only
+  // if this edit turns out to change title/description, but it depends on
+  // nothing the write produces so it's hoisted rather than paid for
+  // sequentially after the write) and the two writeRoleAnswer field-id
+  // lookups (session_format/audience_level — the ONLY read writeRoleAnswer
+  // used to do, now resolved here so the write phase below has no read left
+  // in it). None of these seven consume another's result, and all sit
+  // behind the ownership check above that has already resolved — issued via
   // settleInDeclarationOrder (never Promise.all, which would reject with
   // whichever settles first and silently change which field error the
   // caller sees). Rejections are re-thrown in DECLARATION order: trackIds,
-  // format, audienceLevel, then getSubmissionContent.
+  // format, audienceLevel, content, editorName, formatFieldId,
+  // audienceLevelFieldId — unchanged from before for the first four; the
+  // three appended reads never throw an ApiError a caller could observe
+  // instead (resolveActorName throws only on a broken invariant;
+  // getEventFieldIdByRole never throws, it returns null), so appending them
+  // cannot change which field error wins.
   // DEC-598: trackIds is a full-set replace, and an empty array is a valid
   // "remove every track" request — unlike parseBoundedIdArray (used for the
   // bulk-status ids array), an empty trackIds array must NOT 400.
@@ -402,18 +423,41 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   // as the POST create route.
   // DEC-900 amendment (findings wave 13): audienceLevel mirrors format
   // exactly — same field-options validation, same CLEAR-on-null semantics.
-  const [trackIds, format, audienceLevel, content] = await settleInDeclarationOrder([
-    body.trackIds !== undefined
-      ? parseTrackIdsField(c.var.db, ownership.eventId, body.trackIds)
-      : Promise.resolve(undefined),
-    body.format !== undefined ? parseFormatField(c.var.db, ownership.eventId, body.format) : Promise.resolve(undefined),
-    body.audienceLevel !== undefined
-      ? parseAudienceLevelField(c.var.db, ownership.eventId, body.audienceLevel)
-      : Promise.resolve(undefined),
-    // DEC-158 (CNT-11): snapshot the pre-edit content so we can tell whether
-    // this PATCH actually changed title/description before appending history.
-    getSubmissionContent(c.var.db, id),
-  ]);
+  const [trackIds, format, audienceLevel, content, editorName, formatFieldId, audienceLevelFieldId] =
+    await settleInDeclarationOrder([
+      body.trackIds !== undefined
+        ? parseTrackIdsField(c.var.db, ownership.eventId, body.trackIds)
+        : Promise.resolve(undefined),
+      body.format !== undefined
+        ? parseFormatField(c.var.db, ownership.eventId, body.format)
+        : Promise.resolve(undefined),
+      body.audienceLevel !== undefined
+        ? parseAudienceLevelField(c.var.db, ownership.eventId, body.audienceLevel)
+        : Promise.resolve(undefined),
+      // DEC-158 (CNT-11): snapshot the pre-edit content so we can tell
+      // whether this PATCH actually changed title/description before
+      // appending history.
+      getSubmissionContent(c.var.db, id),
+      // DEC-757: the editor's display name for the revision row, hoisted —
+      // it's a read of the acting user, not of anything this PATCH writes.
+      // Gated on title/description having been SUPPLIED at all (same
+      // condition `fields` below is populated under) rather than on
+      // whether they'll turn out to actually differ from `before` (which
+      // isn't known until `content` — one of this very wave's other
+      // slots — resolves): an empty patch (the fail-loud 400 below) or a
+      // trackIds/format/audienceLevel-only patch must never pay for this
+      // read, and must never surface a broken-invariant Error out of this
+      // wave ahead of that 400.
+      body.title !== undefined || body.description !== undefined
+        ? resolveActorName(c.var.db, auth.userId)
+        : Promise.resolve(undefined),
+      body.format !== undefined
+        ? getEventFieldIdByRole(c.var.db, ownership.eventId, "session_format")
+        : Promise.resolve(undefined),
+      body.audienceLevel !== undefined
+        ? getEventFieldIdByRole(c.var.db, ownership.eventId, "audience_level")
+        : Promise.resolve(undefined),
+    ]);
 
   if (
     Object.keys(fields).length === 0 &&
@@ -440,7 +484,11 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   const newTitle = fields.title ?? before.title;
   const newDescription = fields.description !== undefined ? fields.description : before.description;
   if (newTitle !== before.title || newDescription !== before.description) {
-    const editorName = await resolveActorName(c.var.db, auth.userId);
+    // editorName was resolved above, in the hoisted read wave — DEC-155.
+    // Guaranteed non-undefined here: this branch is only reachable when
+    // fields.title or fields.description is set, which is exactly the
+    // condition that wave slot was resolved under.
+    if (editorName === undefined) throw new Error("PATCH submission: editorName missing after title/description edit");
     await appendSubmissionRevision(c.var.db, {
       submissionId: id,
       editorUserId: auth.userId,
@@ -459,15 +507,23 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
     await replaceSubmissionTracks(c.var.db, id, trackIds);
   }
 
-  // DEC-755: format has no submission column — the same submission_answer
-  // writer POST create uses (writeRoleAnswer deletes the row on null).
+  // DEC-755/DEC-155: format has no submission column — the same
+  // submission_answer writer POST create uses. The field id was already
+  // resolved above in the hoisted read wave (parseFormatField already
+  // confirmed a session_format field exists on this event's default form,
+  // so formatFieldId is guaranteed non-null here — see writeRoleAnswer's
+  // own doc comment for the identical guarantee it relies on).
   if (format !== undefined) {
-    await writeRoleAnswer(c.var.db, ownership.eventId, id, "session_format", format);
+    if (!formatFieldId) throw new Error("PATCH submission: session_format field id missing after validation passed");
+    await applyRoleAnswer(c.var.db, id, formatFieldId, format);
   }
-  // DEC-900 amendment (findings wave 13): audienceLevel through the same
-  // generalized writer, keyed on the audience_level-role field.
+  // DEC-900 amendment (findings wave 13) / DEC-155: audienceLevel through
+  // the same generalized writer, keyed on the audience_level-role field,
+  // field id resolved above in the hoisted read wave.
   if (audienceLevel !== undefined) {
-    await writeRoleAnswer(c.var.db, ownership.eventId, id, "audience_level", audienceLevel);
+    if (!audienceLevelFieldId)
+      throw new Error("PATCH submission: audience_level field id missing after validation passed");
+    await applyRoleAnswer(c.var.db, id, audienceLevelFieldId, audienceLevel);
   }
 
   const detail = await getSubmissionDetail(c.var.db, id);
