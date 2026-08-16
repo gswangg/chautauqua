@@ -20,10 +20,13 @@ portalResourcesRoutes.get("/resources", async (c) => {
   const contactId = auth.contactId;
   if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
 
-  const [data, groups] = await Promise.all([
-    getPortalData(c.var.db, contactId, auth.orgId),
-    getMyResources(c.var.db, contactId, auth.orgId),
-  ]);
+  const data = await getPortalData(c.var.db, contactId, auth.orgId);
+  // DEC-988 (wave-56 amendment): the producer's "Show resources" toggle
+  // must be enforced server-side, not just hidden from navigation — refuse
+  // before any resource read.
+  if (!data.branding.showResources) return c.text("Not found", 404);
+
+  const groups = await getMyResources(c.var.db, contactId, auth.orgId);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(
@@ -36,6 +39,11 @@ portalResourcesRoutes.get("/resources/:resourceId/download", async (c) => {
   const contactId = auth.contactId;
   if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
   const resourceId = c.req.param("resourceId");
+
+  // DEC-988 (wave-56 amendment): same server-side refusal as GET /resources
+  // — a direct download link must not survive the section being turned off.
+  const data = await getPortalData(c.var.db, contactId, auth.orgId);
+  if (!data.branding.showResources) return c.text("Not found", 404);
 
   const scope = await getResourceDownloadScope(c.var.db, resourceId, contactId, auth.orgId);
   if (!scope) throw new ApiError("not_found", "Resource not found");

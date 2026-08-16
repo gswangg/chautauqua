@@ -53,7 +53,12 @@ function PreviewResourceRow(props: { resource: ResourceRecord }) {
   );
 }
 
-function PreviewPage(props: { branding: PortalBrandingChrome; resources: ResourceRecord[]; csrfToken: string }) {
+function PreviewPage(props: {
+  branding: PortalBrandingChrome;
+  resources: ResourceRecord[];
+  showResources: boolean;
+  csrfToken: string;
+}) {
   // DEC-820: every PortalLayout call site names who is signed in, so no
   // portal page can ship anonymous. This page is the one call site whose
   // viewer is NOT a speaker -- an organizer previewing their own portal
@@ -77,7 +82,14 @@ function PreviewPage(props: { branding: PortalBrandingChrome; resources: Resourc
       {props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
       <section aria-label="Resources" class="chq-section">
         <div class="chq-section-label">Resources</div>
-        {props.resources.length === 0 ? (
+        {!props.showResources ? (
+          // DEC-988 (wave-56 amendment): the preview must show what the
+          // speaker sees -- when the section is off, the speaker never
+          // reaches this section at all, so the preview replaces its body
+          // with a single organizer-facing explanation rather than the
+          // resource list.
+          <p class="chq-meta">Hidden from speakers by the Speaker portal "Show resources" setting.</p>
+        ) : props.resources.length === 0 ? (
           // DEC-919: an SSR zero-collection branch renders PublicEmptyState,
           // never a bare <p> -- 'fresh' because a preview has no filter to
           // clear, so it takes no escape link.
@@ -165,5 +177,12 @@ portalPreviewRoutes.get("/preview", async (c) => {
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
 
-  return c.html(<PreviewPage branding={branding} resources={resources} csrfToken={csrfToken} />);
+  return c.html(
+    <PreviewPage
+      branding={branding}
+      resources={resources}
+      showResources={settings?.showResources ?? true}
+      csrfToken={csrfToken}
+    />,
+  );
 });

@@ -191,8 +191,12 @@ function scheduledSubline(eventName: string, sessions: PortalSession[]): string 
   return `${eventName} · you speak ${formatPlacement(placed.day!, placed.startMin!, placed.roomName)}`;
 }
 
-function SessionCard(props: { session: PortalSession; deliverable: PortalDeliverable | null }) {
-  const { session: s, deliverable } = props;
+function SessionCard(props: {
+  session: PortalSession;
+  deliverable: PortalDeliverable | null;
+  showResources: boolean;
+}) {
+  const { session: s, deliverable, showResources } = props;
   const metaParts = [
     s.trackName,
     s.acceptedAt !== null ? `accepted ${formatEventDate(s.acceptedAt, s.timezone)}` : null,
@@ -217,7 +221,9 @@ function SessionCard(props: { session: PortalSession; deliverable: PortalDeliver
       ))}
       <div class="chq-portal-actions">
         <a href="/portal/tasks" class="chq-btn chq-btn-secondary">Upload again</a>
-        <a href="/portal/resources" class="chq-btn chq-btn-secondary">Read notes</a>
+        {showResources ? (
+          <a href="/portal/resources" class="chq-btn chq-btn-secondary">Read notes</a>
+        ) : null}
       </div>
     </div>
   );
@@ -284,8 +290,12 @@ function PortalPage(props: {
       </span>
       {/* w15-b: /portal/resources must stay reachable even when the
           speaker has no accepted session (so no "Read notes" link renders
-          in a Your session card) — the footer is the always-present path. */}
-      <a href="/portal/resources" class="chq-portal-footer-resources">Resources</a>
+          in a Your session card) — the footer is the always-present path
+          WHEN the section is on (DEC-988 wave-56 amendment: the producer's
+          "Show resources" toggle suppresses this link entirely). */}
+      {branding.showResources ? (
+        <a href="/portal/resources" class="chq-portal-footer-resources">Resources</a>
+      ) : null}
       <a href="/portal/profile" class="chq-portal-footer-profile">Profile</a>
     </div>
   );
@@ -348,7 +358,11 @@ function PortalPage(props: {
           />
         ) : (
           sessions.map((s) => (
-            <SessionCard session={s} deliverable={deliverables.get(s.submissionId) ?? null} />
+            <SessionCard
+              session={s}
+              deliverable={deliverables.get(s.submissionId) ?? null}
+              showResources={branding.showResources}
+            />
           ))
         )}
       </section>
