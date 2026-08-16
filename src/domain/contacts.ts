@@ -51,4 +51,5 @@ export {
   MAX_IMPORT_ROWS,
   mapImportRow,
   importFieldCapViolations,
+  validateImportMapping,
 } from "./contacts-parts/import";

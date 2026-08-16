@@ -5,7 +5,7 @@ import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
 import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856 } from '../../../../src/decisions';
 import { countOf, plural, thingsNeedFixingHeading } from '../../lib/plural';
-import { MAX_IMPORT_ROWS, MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
+import { MAX_IMPORT_ROWS, MAX_IMPORT_CSV_BYTES, validateImportMapping } from '../../../../src/domain/contacts';
 import { formatBytes } from '../../../../src/domain/files';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 import './contacts-panels.css';
@@ -195,6 +195,20 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   // sourced from plan.updated). The footer below must say only what this
   // number measured -- an in-file collision, last row wins -- and stay
   // silent when there isn't one.
+  // DEC-478 (amendment, wave 47): the SAME pure-core rule the server door
+  // enforces (validateImportMapping) -- never a second copy of the "no two
+  // columns may target one field" check -- run inline as the mapping is
+  // edited so the offending pair is named and Continue is blocked before
+  // the organizer ever reaches the dry run.
+  const mappingValidationError = useMemo(() => {
+    try {
+      validateImportMapping(mapping);
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Invalid column mapping';
+    }
+  }, [mapping]);
+
   const dedupeCount = useMemo(() => {
     const seen = new Set<string>();
     let dupes = 0;
@@ -425,7 +439,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       <button
         type="button"
         className="chq-btn chq-btn-primary"
-        disabled={busy || dataRows.length === 0 || (!!eventId && sessionTitle.trim() === '')}
+        disabled={busy || dataRows.length === 0 || (!!eventId && sessionTitle.trim() === '') || !!mappingValidationError}
         onClick={runPreview}
       >
         Import {countOf(dataRows.length, 'row')}
@@ -595,6 +609,17 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           {mappingFieldError && (
             <div className="chq-error" id="import-mapping-error" role="alert">
               {mappingFieldError}
+            </div>
+          )}
+
+          {/* DEC-478 (amendment, wave 47): the SAME injectivity rule the
+              server door enforces, run inline as the mapping is edited --
+              never a second copy -- naming the duplicated target and both
+              offending columns, blocking Continue (see the primary button's
+              disabled expression) before a dry run is ever attempted. */}
+          {!mappingFieldError && mappingValidationError && (
+            <div className="chq-error" id="import-mapping-duplicate-error" role="alert">
+              {mappingValidationError}
             </div>
           )}
 

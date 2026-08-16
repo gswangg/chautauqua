@@ -35,6 +35,46 @@ export const MAX_IMPORT_CSV_BYTES = 5_000_000;
 export const MAX_IMPORT_ROWS = 2000;
 
 /**
+ * DEC-478 (amendment, wave 47): an import column mapping is INJECTIVE -- no
+ * two CSV columns may target the same destination field. mapImportRow below
+ * walks the header left to right and assigns by plain assignment, so a
+ * mapping with two columns pointed at one destination silently keeps the
+ * RIGHTMOST value and drops the other -- last-write-wins, exactly the silent
+ * fallback the house rule forbids, and invisible in the preview because the
+ * preview runs the same fold. This is the ONE place the injectivity rule
+ * lives (called from the server door AND the SPA's mapping step, never
+ * duplicated) -- throws (never coerces, never silently drops, never
+ * auto-renames) naming BOTH offending columns and the shared target.
+ * custom.<key> targets are compared by their full target string ("custom.foo")
+ * so two columns aimed at the same custom key are refused too. Keys mapped
+ * to ""/undefined are ignored (they mean "skip this column", not a target).
+ *
+ * Throws a plain Error, not ApiError: this module is pure core (no node:/cf
+ * imports, per the file header) and is imported directly by the SPA
+ * (app/tsconfig.json includes ../src/domain/**\/*.ts but NOT src/server/**),
+ * so it cannot import src/server/http.ts (which pulls in Cloudflare Workers
+ * ambient types via ./env, unavailable in the app's TS project) -- matching
+ * the existing mapImportRow's own "throw Error, route wraps it" pattern
+ * immediately below. The route layer (src/routes/api/contacts/import.ts)
+ * catches this and wraps it in ApiError('invalid', message, { mapping:
+ * message }); the message alone already names both offending columns and
+ * the shared target for either caller.
+ */
+export function validateImportMapping(mapping: Record<string, string>): void {
+  const columnsByTarget = new Map<string, string>();
+  for (const [column, target] of Object.entries(mapping)) {
+    if (!target) continue;
+    const existing = columnsByTarget.get(target);
+    if (existing !== undefined) {
+      throw new Error(
+        `Columns "${existing}" and "${column}" are both mapped to "${target}" -- point one of them elsewhere or skip it.`,
+      );
+    }
+    columnsByTarget.set(target, column);
+  }
+}
+
+/**
  * Maps an already-parsed CSV row into a partial ContactRecord using a
  * csvColumn -> targetField mapping. Targets are the standard fields
  * (email, firstName, lastName, company, title, phone, bio) plus 'custom.<key>'.
