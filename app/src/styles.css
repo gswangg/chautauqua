@@ -1366,6 +1366,16 @@ a:hover {
   color: var(--chq-muted);
 }
 
+/* DEC-597 (wave-64 amendment): the closing line of the New-contact modal,
+   naming what creating a contact does NOT do (put them on an event). Same
+   quiet muted register as the duplicate hint above -- it states scope, it
+   does not report a failure. */
+.chq-contacts-new-contact-scope-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 /* DEC-788 amendment (wave 8): the shared duplicate-email forward path
    (app/src/pages/contacts/DuplicateEmailNotice.tsx) rendered under a 409's
    .chq-error. It's the resolution of a refusal, not a second error, so it

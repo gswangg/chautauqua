@@ -1132,6 +1132,16 @@
   padding: 0;
 }
 
+/* DEC-888 (wave-64 amendment): the ONE caption that sits between an edit
+   section's header row and its list -- e.g. what a track's swatch colour is
+   for. Quiet and muted like .chq-settings-note (styles.css), never a row of
+   its own, so it reads as section prose rather than as a list item. */
+.chq-settings-section-caption {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin: 0 0 8px;
+}
+
 .chq-settings-edit-row {
   display: grid;
   gap: 16px;

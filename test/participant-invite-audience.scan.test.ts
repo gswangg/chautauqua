@@ -52,7 +52,20 @@ const EVERY_PARTICIPANT_AUDIENCE: Record<string, string> = {
     "write path: touchSubmissionsForContacts resolves participant.contactId -> participant.submissionId to find which submissions to re-stamp after a contact rename -- every participant row denormalizes the SAME contact name into the pushed Speakers cell regardless of invite status, so this is not an eligibility read.",
 };
 
+// `acceptedSpeakerConditions` (src/server/repo/tasks/crud.ts) is on this
+// list because it IS an invite-status audience declaration by construction:
+// it ANDs `inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES])`
+// into every query that composes it. Before the wave-64 files-library split
+// its callers sat in the 837-line src/server/repo/files-library.ts, which
+// declared the audience by containing the ACTIVE_INVITE_STATUSES literal for
+// a DIFFERENT read in the same file; the split moved the headshot reads into
+// files-library-query.ts / files-library-resolve.ts, severing them from that
+// incidental literal without changing a single predicate. Naming the helper
+// here keeps the scan exactly as strong (the helper cannot declare anything
+// but the ACTIVE audience) instead of minting exemptions for reads that are,
+// in fact, filtered.
 const AUDIENCE_MARKERS = [
+  "acceptedSpeakerConditions",
   "ACTIVE_INVITE_STATUSES",
   "PORTAL_VISIBLE_INVITE_STATUSES",
   "visibleParticipantConditions",
