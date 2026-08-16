@@ -927,6 +927,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                   setSubject(found.subject);
                   setBodyText(found.bodyText);
                   setTemplateId('');
+                } else if (id === '') {
+                  // User-filed (gate-9): with the w12-c auto-apply having
+                  // pre-filled the composer, the dropdown already READS
+                  // "Write from scratch" while holding template text — so an
+                  // EXPLICIT scratch pick must mean what it says: empty the
+                  // composer, not just the selection.
+                  setTemplateName('');
+                  setTemplateId('');
+                  setSubject('');
+                  setBodyText('');
                 } else {
                   setTemplateName('');
                   setTemplateId(id);

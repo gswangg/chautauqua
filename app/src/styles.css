@@ -1156,7 +1156,9 @@ a:hover {
 }
 
 .chq-contacts-table .chq-contacts-col-actions {
-  width: 1px;
+  /* User-filed (gate-9): width:1px shrink-hack is literal under
+     table-layout:fixed — content overflowed the table by ~19px. */
+  width: 96px;
   white-space: nowrap;
 }
 

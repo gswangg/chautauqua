@@ -890,7 +890,7 @@
 }
 
 .chq-comms-templates-table .chq-comms-templates-col-last-used {
-  width: 1px;
+  width: 96px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 

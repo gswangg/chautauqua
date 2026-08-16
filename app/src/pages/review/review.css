@@ -218,7 +218,12 @@
 }
 
 .chq-review-results-col-decision {
-  width: 1px;
+  /* User-filed (gate-9): width:1px is the AUTO-layout shrink-to-content
+     hack — under this table's table-layout:fixed it is taken literally,
+     the column got ~16px and the Accept/Decline pair bled 147px past the
+     measure. A fixed table needs the real width of the widest variant
+     (Accept + gap + Decline); Title is the remainder column and absorbs. */
+  width: 190px;
   white-space: nowrap;
 }
 

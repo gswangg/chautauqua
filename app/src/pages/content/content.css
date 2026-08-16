@@ -876,7 +876,7 @@
 /* Trailing actions column hugs its content (Download link) instead of
    claiming the remainder now that table-layout is fixed. */
 .chq-content-files-table .chq-content-files-col-actions {
-  width: 1px;
+  width: 150px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 
@@ -908,11 +908,12 @@
   width: 152px;
 }
 
-/* Trailing actions column hugs its content (Approve/Open) instead of
-   claiming the remainder now that table-layout is fixed; Session (no
-   width class) is the sole remainder column. */
+/* User-filed (gate-9): under table-layout:fixed a width:1px column is
+   1px — the shrink-to-content reading only holds for AUTO layout, so the
+   Approve/Open pair overflowed the table by ~145px. Real width of the
+   widest variant; Session (no width class) stays the remainder column. */
 .chq-content-worklist-table .chq-content-worklist-col-actions {
-  width: 1px;
+  width: 182px;
   white-space: nowrap;
 }
 

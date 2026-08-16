@@ -948,7 +948,7 @@
    (no class hook, matching .chq-comms-compose-col-title's precedent); Skip
    this row hugs its single checkbox. */
 .chq-contacts-import-review-col-line {
-  width: 1px;
+  width: 56px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 
@@ -957,7 +957,7 @@
 }
 
 .chq-contacts-import-review-col-skip {
-  width: 1px;
+  width: 112px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 

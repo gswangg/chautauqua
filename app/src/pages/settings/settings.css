@@ -474,12 +474,12 @@
 }
 
 .chq-settings-exports-table .chq-settings-exports-col-csv {
-  width: 1px;
+  width: 64px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 
 .chq-settings-exports-table .chq-settings-exports-col-json {
-  width: 1px;
+  width: 64px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 
@@ -502,7 +502,7 @@
 }
 
 .chq-settings-tokens-table .chq-settings-tokens-col-actions {
-  width: 1px;
+  width: 88px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 
@@ -569,17 +569,17 @@
 }
 
 .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-column {
-  width: 1px;
+  width: 180px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 
 .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-sample {
-  width: 1px;
+  width: 240px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 
 .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-arrow {
-  width: 1px;
+  width: 36px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
 }
 
