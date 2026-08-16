@@ -386,16 +386,26 @@ export function DayGrid({
           conflict engine, unscheduled tray, or state.ts's placement
           arithmetic. */}
       {dayBreaks.map((brk) => {
-        const rowStart = minutesToGridRow(brk.startMin, dayStartMin, gridMin);
-        const rowEnd = gridRowEnd(brk.startMin + brk.durationMin, dayStartMin, gridMin);
+        const brkEndMin = brk.startMin + brk.durationMin;
+        // DEC-021 amendment (w61-d): a break added before the event's dates
+        // moved (or edited past the day's window) is never dropped from the
+        // grid -- it is kept but flagged, clamped to the visible rows so it
+        // paints inside the grid rather than spilling into a row that
+        // doesn't exist, and muted per the B8 vocabulary rather than reading
+        // as a normal band.
+        const flagged = brk.startMin < dayStartMin || brkEndMin > dayEndMin;
+        const clampedStart = Math.max(brk.startMin, dayStartMin);
+        const clampedEnd = Math.min(brkEndMin, dayEndMin);
+        const rowStart = minutesToGridRow(clampedStart, dayStartMin, gridMin);
+        const rowEnd = gridRowEnd(clampedEnd, dayStartMin, gridMin);
         return (
           <div
             key={`break-${brk.id}`}
-            className="chq-agenda-break-band"
+            className={`chq-agenda-break-band${flagged ? ' chq-agenda-break-band-flagged' : ''}`}
             style={{ gridColumn: `2 / span ${columns.length}`, gridRow: `${rowStart} / ${rowEnd}` }}
           >
             <span className="chq-agenda-break-band-label">
-              {`${clockHHMM(brk.startMin)} · ${brk.label}${brk.location ? ` · ${brk.location}` : ''} · ${brk.durationMin} min`}
+              {`${clockHHMM(brk.startMin)} · ${brk.label}${brk.location ? ` · ${brk.location}` : ''} · ${brk.durationMin} min${flagged ? ' · outside the day\'s hours' : ''}`}
             </span>
           </div>
         );

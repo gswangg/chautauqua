@@ -557,6 +557,18 @@
   color: var(--chq-muted);
 }
 
+/* DEC-021 amendment (w61-d): a break clamped to the visible grid because
+   its own window fell outside the day's start/end -- kept, never dropped,
+   just muted so it reads as flagged rather than a normal band (B8
+   vocabulary: #EFEBDF fill / #565A4B ink). */
+.chq-agenda-break-band-flagged {
+  background: #efebdf;
+}
+
+.chq-agenda-break-band-flagged .chq-agenda-break-band-label {
+  color: #565a4b;
+}
+
 .chq-day-grid-placed-card {
   align-self: stretch;
   justify-self: start;
@@ -999,6 +1011,20 @@
   margin-bottom: 16px;
 }
 
+/* Frame 06--02: "Breaks on Tuesday" over "They block every room at once" --
+   the section label and a second, quieter line beneath it, same stacked
+   idiom as the header/sub pair elsewhere in the panel. */
+.chq-breaks-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-breaks-section-sub {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 .chq-breaks-list {
   list-style: none;
   margin: 0;
@@ -1015,10 +1041,40 @@
   border-bottom: 1px solid var(--chq-rule);
 }
 
+/* Frame 06--02's day-scoped row grid: label / start / minutes / actions,
+   the same four-track shape the frame draws (1fr 110px 96px auto). The
+   stranded outside-window rows keep the plain flex .chq-breaks-row above
+   (they carry an extra day cell the frame doesn't draw). */
+.chq-breaks-row-grid {
+  display: grid;
+  grid-template-columns: 1fr 110px 96px auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.chq-breaks-row-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
 .chq-breaks-row-time {
   font-variant-numeric: tabular-nums;
   color: var(--chq-muted);
   font-size: 13px;
+}
+
+.chq-breaks-row-duration {
+  font-variant-numeric: tabular-nums;
+  color: var(--chq-muted);
+  font-size: 13px;
+}
+
+.chq-breaks-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
 }
 
 .chq-breaks-row-meta {
@@ -1038,10 +1094,36 @@
 
 .chq-breaks-add-row {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+/* Frame 06--02's add-row grid: Label / Starts / Minutes (1fr 110px 96px). */
+.chq-breaks-add-grid {
+  display: grid;
+  grid-template-columns: 1fr 110px 96px;
+  gap: 14px;
+}
+
+/* Location has no drawn track (schedule_break has the column, the frame
+   doesn't) -- app-only, so it renders on its own full-width line beneath
+   the three drawn tracks rather than inside the grid. */
+.chq-breaks-field-location {
+  width: 100%;
+}
+
+.chq-breaks-outside-hint {
+  font-size: 13px;
+  color: var(--chq-muted);
+  line-height: 1.55;
+}
+
+.chq-breaks-add-actions {
+  display: flex;
+  align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding-top: 10px;
 }
 
 .chq-breaks-field {
