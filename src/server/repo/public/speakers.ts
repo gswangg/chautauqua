@@ -11,9 +11,10 @@ import type { PublicSpeaker } from "./sessions";
 import { boundedRowLimit, boundedWindow } from "./bounds";
 import { likeContains } from "../like";
 
-// Compile-checked dependency marker: every speaker title/company read below
-// comes from participant.title_at_time/org_at_time (DEC-258's frozen
-// snapshot), never the live contact — no fallback.
+// Compile-checked dependency marker (DEC-258, wave-75 amendment): this
+// module renders a PERSON (the speakers list / gallery row), never a
+// PARTICIPATION, so title/company below come from the live contact record,
+// never participant.title_at_time/org_at_time — no fallback either way.
 void DEC_258;
 // DEC-418 part 2: the page bound is applied to the distinct-contact id
 // query, NEVER to the fanned-out (speaker x session) hydration rows — a
@@ -35,6 +36,15 @@ export interface PublicSpeakersPage {
  * optional case-insensitive name-search filter over first/last/full name,
  * applied server-side so both the directory and gallery search forms stay
  * JS-free GETs.
+ *
+ * DEC-258 wave-75 amendment: the frozen-snapshot rule is PERSON-vs-
+ * PARTICIPATION, stated as a predicate, not a list of pages. A surface whose
+ * unit of rendering is a PERSON (this list, the gallery it feeds, and the
+ * speaker detail header in detail.ts) reads `contact.title`/`contact.company`
+ * — deterministic, null when the CRM has none, never borrowed from a talk. A
+ * surface whose unit of rendering is a PARTICIPATION (session cards in
+ * sessions.ts, agenda blocks, the .ics speaker line, the CSV/JSON exports)
+ * keeps `participant.titleAtTime`/`orgAtTime` unchanged.
  *
  * DEC-418 part 2: two-step so the page bound is never applied to the
  * fanned-out (one row per speaker x session) hydration rows. Step 1 selects
@@ -124,8 +134,13 @@ export async function getPublicSpeakers(
         contactId: schema.contact.id,
         firstName: schema.contact.firstName,
         lastName: schema.contact.lastName,
-        title: schema.participant.titleAtTime,
-        company: schema.participant.orgAtTime,
+        // DEC-258 wave-75 amendment: this row renders a PERSON (the
+        // directory / gallery), so title/company are the live contact
+        // record, not the per-submission frozen snapshot — see the
+        // per-session PARTICIPATION reads in sessions.ts:412-413, which
+        // stay on participant.titleAtTime/orgAtTime unchanged.
+        title: schema.contact.title,
+        company: schema.contact.company,
         headshotUrl: schema.contact.headshotUrl,
         bio: schema.contact.bio,
         submissionId: schema.submission.id,
