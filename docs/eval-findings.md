@@ -98,7 +98,12 @@ truthful against real screens.**
    into the footer mean slot w/ 16px inset; FieldModal condition row to frame
    ("IS" head, 3-col rule row, "N of 40" counter, "Save the question"/"Delete
    this question" labels); home CTA 120ms colour transition.
-7. §13 docs prose truth: recusal copy — the APP offers Undo (verified 201/204),
+7. **RE-ASSIGNED TO ORCHESTRATOR (STE directive)** — the user directs docs
+   prose to conform to ASD-STE100 Simplified Technical English. An
+   orchestrator agent is rewriting ALL of src/routes/docs-content/*.ts
+   (379 scan violations), FOLDING IN this item's truth fixes. SWARM: do NOT
+   edit docs-content/*.ts until this closes (scan: test/docs-ste.scan.test.ts
+   lands with the rewrite). Original item: §13 docs prose truth: recusal copy — the APP offers Undo (verified 201/204),
    the caption claims "permanent step-aside". FIX THE PROSE to describe the
    real semantics (undoable until the window closes / whatever the route
    actually enforces — read it); recusal control location wording ("on the
