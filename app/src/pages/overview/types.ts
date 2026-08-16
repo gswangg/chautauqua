@@ -64,6 +64,14 @@ export interface ConflictResolution {
   label: string;
 }
 
+// DEC-615 (wave 71 amendment): closed vocabulary mirroring
+// src/domain/schedule.ts's ConflictKind — re-exported from the
+// schedule-vocabulary crossing module so this type can never drift from
+// the server union (this file had hand-written its own copy, which is
+// exactly the drift DEC-615 exists to prevent).
+import type { ConflictKind } from '../../lib/schedule-vocabulary';
+export type { ConflictKind };
+
 export interface AgendaConflict {
   day: string;
   startMin: number;
@@ -72,11 +80,7 @@ export interface AgendaConflict {
   // (the server is the authority — scheduling.ts emits `null` when the
   // conflicting assignment carries no roomId).
   roomName: string | null;
-  // DEC-557 (wave 69 amendment): widened to match the server's Conflict
-  // union (src/domain/schedule.ts) after break_overlap started flowing
-  // through OverviewPayloadV2's agendaWork.conflicts — a compile-only
-  // widening, no render behavior change in this task's scope.
-  kind: 'room_overlap' | 'speaker_overlap' | 'break_overlap';
+  kind: ConflictKind;
   entries: AgendaConflictEntry[];
   resolution: ConflictResolution | null;
 }
