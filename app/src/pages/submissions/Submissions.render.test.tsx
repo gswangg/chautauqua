@@ -594,7 +594,7 @@ describe('SubmissionsTable zero-row state (DEC-678 B7)', () => {
     // The facet is cleared back to DEFAULT_FILTER_STATE -- with no other
     // facet in flight the query is now unfiltered, and since the mocked
     // list is still empty this resolves to the 'fresh' zero-row state.
-    expect(await screen.findByText('No submissions yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No submissions yet')).toBeInTheDocument();
   });
 
   it('fresh: no facet in flight drops the filter chrome and renders exactly one primary action', async () => {
@@ -612,7 +612,7 @@ describe('SubmissionsTable zero-row state (DEC-678 B7)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('No submissions yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No submissions yet')).toBeInTheDocument();
 
     // Filter chrome (ViewTabs + FilterBarSearchSort + FilterBar), column
     // picker and pager are all gone.
@@ -623,9 +623,11 @@ describe('SubmissionsTable zero-row state (DEC-678 B7)', () => {
     expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 
-    // Exactly one primary action -- the page header's existing "New
-    // submission" button, which already opens NewSubmissionModal. 'fresh'
-    // never renders `escape`, and EmptyState throws if a caller tries.
+    // G13 lane-D fix (02-submissions--08, B7 rule 3): the fresh block
+    // carries the frame's own primary and tertiary actions; the header's
+    // "New submission" button still renders exactly once.
     expect(screen.getAllByRole('button', { name: 'New submission' })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Open the form now' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add one by hand ›' })).toBeInTheDocument();
   });
 });

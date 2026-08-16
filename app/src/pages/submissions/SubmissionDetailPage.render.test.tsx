@@ -1581,22 +1581,16 @@ describe('SubmissionDetailPage render: DEC-900 frame 02 anatomy fixes', () => {
       expect(screen.getByText('Original description')).toBeInTheDocument();
     });
 
-    // jsdom doesn't compute ::before content, so this asserts the source
-    // rule itself carries the numeral/dash/text as three separate literal
-    // pieces (' ', '\2014', ' ') rather than a single glued string -- the
-    // exact bug DEC-900 names ('counter(...) " —"' gluing the dash to the
-    // numeral).
+    // G13 lane-D fix (02-submissions--02): the frame draws plain uppercase
+    // section heads with NO numeral prefix -- the counter machinery is gone
+    // from detail.css entirely.
     const fs = await import('node:fs');
     const path = await import('node:path');
     const cssPath = path.resolve(__dirname, 'detail.css');
     const css = fs.readFileSync(cssPath, 'utf8');
     const contentRules = css.match(/content:\s*counter\([^;]+;/g) ?? [];
-    expect(contentRules.length).toBeGreaterThan(0);
-    for (const rule of contentRules) {
-      // The numeral and the em dash must be separate string literals, not
-      // a single "01 —" (or worse, "01—") glued token.
-      expect(rule).toMatch(/counter\([^)]+\)\s+'[^']*'\s+'\\2014'\s+'[^']*'/);
-    }
+    expect(contentRules).toHaveLength(0);
+    expect(css).not.toMatch(/counter-(reset|increment):\s*chq-detail-section/);
   });
 
   it('uses the ‹ glyph (never U+2190) for every back/all-submissions link on the page', async () => {

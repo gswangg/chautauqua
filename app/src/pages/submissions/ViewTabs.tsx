@@ -166,6 +166,9 @@ function SaveViewDialog({ filters, tracks, pending, count, onCancel, onSave }: S
       subtitle={summarizeFilters(filters, tracks)}
       onClose={onCancel}
       closeDisabled={pending}
+      /* G13 lane-D fix (02-submissions--07): the frame draws this card at
+         440, not the shared 560. */
+      modalClassName="chq-submissions-save-view-modal"
       actions={
         <>
           <button type="submit" className="chq-btn chq-btn-primary" disabled={pending || atCap}>
@@ -178,12 +181,14 @@ function SaveViewDialog({ filters, tracks, pending, count, onCancel, onSave }: S
       }
     >
       {error && <div className="chq-error">{error}</div>}
-      {/* DEC-976/DEC-379: the cap caption reuses chq-meta, the existing
-          in-dialog caption face (same shape as FieldModal.tsx's "N of MAX
-          options"), rather than minting a one-off class. */}
-      <p className="chq-meta">
-        {count} of {MAX_SAVED_VIEWS_PER_EVENT} saved views
-      </p>
+      {/* G13 lane-D fix (02-submissions--07): the frame draws NO cap line in
+          the normal state -- the caption appears only at the cap, where the
+          disabled Save needs its reason stated. */}
+      {atCap && (
+        <p className="chq-meta">
+          {count} of {MAX_SAVED_VIEWS_PER_EVENT} saved views
+        </p>
+      )}
       <FormRow label="Name it" htmlFor="save-view-name">
         <input
           id="save-view-name"

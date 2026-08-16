@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 // DEC-755: createSubmission below no longer needs a follow-up apiPatch call
 // now that trackIds/format ride the create POST body directly.
 import { apiList, apiGet, ApiError, apiPost } from '../../lib/api';
-import { formatDate } from '../../lib/dates';
+import { formatDate, formatDateOnly } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
 import { chunkSelection } from './bulk';
@@ -89,6 +89,11 @@ export function SubmissionsTable() {
   const [total, setTotal] = useState(0);
   // null while in flight or on failure -- never a fabricated number.
   const [pendingTotal, setPendingTotal] = useState<number | null>(null);
+  // G13 lane-D (02-submissions--08/09): the CFP's open date (fresh empty
+  // state) and the event's unfiltered submission count (triage-cleared
+  // state) -- both null until their reads resolve.
+  const [formOpenDate, setFormOpenDate] = useState<number | null>(null);
+  const [allTotal, setAllTotal] = useState<number | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [visibleFieldIds, setVisibleFieldIds] = useState<Set<string>>(new Set());
@@ -119,8 +124,14 @@ export function SubmissionsTable() {
     if (!eventId) return;
     // GET /events/:id/forms returns the default form OBJECT (not a list); its
     // custom columns come from the form's own `fields` array.
-    apiGet<{ fields: FormField[] }>(`/events/${eventId}/forms`)
-      .then((res) => setFormFields(res.fields ?? []))
+    apiGet<{ fields: FormField[]; openDate: number | null }>(`/events/${eventId}/forms`)
+      .then((res) => {
+        setFormFields(res.fields ?? []);
+        // G13 lane-D (02-submissions--08): the fresh empty state's reason
+        // line states when the CFP opens -- read off the same form object,
+        // never fabricated.
+        setFormOpenDate(res.openDate ?? null);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load form fields'));
   }, [eventId]);
 
@@ -165,6 +176,12 @@ export function SubmissionsTable() {
     apiList<SubmissionListItem>(`/events/${eventId}/submissions?status=pending&perPage=1`)
       .then((res) => setPendingTotal(res.total))
       .catch(() => setPendingTotal(null));
+    // G13 lane-D (02-submissions--09): the triage-cleared state asserts
+    // "All N submissions have a decision" -- N is the UNFILTERED count,
+    // which no other fetch on this page carries.
+    apiList<SubmissionListItem>(`/events/${eventId}/submissions?perPage=1`)
+      .then((res) => setAllTotal(res.total))
+      .catch(() => setAllTotal(null));
   }, [eventId, refreshToken]);
 
   const pageIds = items.map((item) => item.id);
@@ -276,15 +293,31 @@ export function SubmissionsTable() {
   const showEmpty = loaded && !loading && items.length === 0;
   const activeFacet = showEmpty ? describeActiveFacet(filters, tracks) : null;
   const showChrome = !showEmpty || activeFacet !== null;
+  // G13 lane-D fix (02-submissions--09): zero rows under ONLY the pending
+  // status facet, with submissions on the event and none of them pending,
+  // is the framed triage-cleared success state -- not a filter failure.
+  const triageCleared =
+    showEmpty &&
+    filters.q.trim().length === 0 &&
+    !filters.trackId &&
+    filters.status.length === 1 &&
+    filters.status[0] === 'pending' &&
+    pendingTotal === 0 &&
+    allTotal !== null &&
+    allTotal > 0;
 
   return (
     <div className="chq-page chq-submissions-page chq-measure-table">
       <div className="chq-submissions-head">
         <div className="chq-submissions-head-titles">
           <h1 className="chq-page-title">Submissions</h1>
-          <span className="chq-summary">
-            {total} total{pendingTotal !== null ? ` · ${pendingTotal} awaiting triage` : ''}
-          </span>
+          {/* G13 lane-D fix (01-overview--06): the count appears once the
+              list read resolves -- never '0 total' while rows are loading. */}
+          {loaded && (
+            <span className="chq-summary">
+              {total} total{pendingTotal !== null ? ` · ${pendingTotal} awaiting triage` : ''}
+            </span>
+          )}
         </div>
         <div className="chq-submissions-head-actions">
           <Link to="/submissions/forms" className="chq-btn chq-btn-secondary">
@@ -360,12 +393,40 @@ export function SubmissionsTable() {
       />
 
       {showEmpty ? (
-        <EmptyState
-          variant={activeFacet ? 'filtered' : 'fresh'}
-          what={activeFacet ? 'No submissions match the current filters.' : 'No submissions yet.'}
-          reason={activeFacet?.reason}
-          escape={activeFacet ? { label: 'Clear filter', onClick: () => setFilters(activeFacet.cleared) } : null}
-        />
+        triageCleared ? (
+          /* G13 lane-D fix (02-submissions--09, B7): the framed
+             triage-cleared state -- a success report, not a filter failure.
+             No escape link (clearing the filter is not the point) and the
+             one action leads to the next queue. */
+          <EmptyState
+            variant="fresh"
+            what="Nothing left to triage"
+            reason={`All ${allTotal} submissions have a decision.`}
+            secondary={{ label: 'Go to content ›', to: '/content' }}
+          />
+        ) : activeFacet ? (
+          <EmptyState
+            variant="filtered"
+            what="No submissions match the current filters."
+            reason={activeFacet.reason}
+            escape={{ label: 'Clear filter', onClick: () => setFilters(activeFacet.cleared) }}
+          />
+        ) : (
+          /* G13 lane-D fix (02-submissions--08, B7 rule 3): heading without
+             the trailing period, the CFP-open reason when a date is set,
+             and the frame's two actions. */
+          <EmptyState
+            variant="fresh"
+            what="No submissions yet"
+            reason={
+              formOpenDate !== null && formOpenDate > Date.now()
+                ? `The call for papers opens on ${formatDateOnly(formOpenDate)}. Anything submitted after that appears here for triage.`
+                : undefined
+            }
+            action={{ label: 'Open the form now', to: '/submissions/forms' }}
+            secondary={{ label: 'Add one by hand ›', onClick: () => setShowNewModal(true) }}
+          />
+        )
       ) : (
       <div className="chq-submissions-table-wrap">
         <table className="chq-table chq-submissions-table">
@@ -496,7 +557,10 @@ export function SubmissionsTable() {
       </div>
       )}
 
-      {showChrome && (
+      {/* G13 lane-D fix (01-overview--06): no pagination summary while the
+          list is still loading -- 'Showing 0 of 0' over a skeleton asserts
+          a count not yet measured. */}
+      {showChrome && loaded && (
       <div className="chq-submissions-pagination">
         <span className="chq-submissions-pagination-summary">
           {paginationSummary(filters.page, filters.perPage, total)}
