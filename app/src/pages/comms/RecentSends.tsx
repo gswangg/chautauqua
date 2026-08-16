@@ -56,6 +56,10 @@ function SendDetailDisclosure({
     setOpen(next);
     if (next && !detail && !loading) {
       setLoading(true);
+      // DEC-856: clear at the start of the read that can replace it -- a
+      // retry (reopen after a failed fetch, since !detail stays true) must
+      // not keep a stale refusal on screen once it settles.
+      setError(null);
       apiGet<EmailLogDetail>(`/events/${eventId}/email-log/${emailId}`)
         .then((res) => setDetail(res))
         .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load what was sent'))

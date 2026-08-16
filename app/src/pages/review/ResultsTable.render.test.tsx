@@ -957,6 +957,63 @@ describe('ResultsTable sort honesty (DEC-737)', () => {
   });
 });
 
+// DEC-856: a page-level error banner gets the same clear path
+// decideError already gets (cleared at the head of decide()) -- a fresh
+// read that can replace the error must clear it BEFORE that read's outcome
+// lands, so a transient failure never survives underneath a later,
+// successful load.
+describe('ResultsTable clears the results-load error banner on a later successful read (DEC-856)', () => {
+  it('clears the round-1 failure banner and renders rows once round 2 loads successfully', async () => {
+    const twoRoundPlan = { ...plan(), rounds: 2, currentRound: 1 };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const url = new URL(rawUrl, 'http://localhost');
+      if (url.pathname === `/api/v1/plans/${PLAN_ID}`) {
+        return new Response(JSON.stringify(twoRoundPlan), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url.pathname === `/api/v1/plans/${PLAN_ID}/results`) {
+        const round = url.searchParams.get('round');
+        if (round === '1') {
+          return new Response(JSON.stringify(errorEnvelope('internal', 'Results failed')), {
+            status: 500,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify(listEnvelope([resultsRow()])), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      throw new Error(`unexpected fetch: ${url.pathname}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // Round 1's read fails -- the refusal banner renders.
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Results failed');
+    });
+    expect(screen.queryByText(/A Great Talk/)).not.toBeInTheDocument();
+
+    // Switching to round 2 re-reads -- a correct, freshly loaded page must
+    // not render underneath a stale refusal.
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
 // DEC-902 (wave-21 amendment): the frame's seven-track grid -- 44px 1fr
 // 150px 130px 92px 92px auto (Rank/Title/Speaker/Track/Score/Reviews/
 // Decision) -- is pinned as fixed table layout, not left to auto-layout

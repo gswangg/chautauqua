@@ -132,6 +132,9 @@ export function ResultsTable({
   useEffect(() => {
     if (!planId) return;
     setLoading(true);
+    // DEC-856: clear at the start of a read that can replace the error --
+    // matches decide()'s setDecideError(null) at its own head.
+    setError(null);
     apiGet<EvaluationPlan>(`/plans/${planId}`)
       .then((planRes) => {
         setPlan(planRes);
@@ -159,6 +162,12 @@ export function ResultsTable({
   useEffect(() => {
     if (!planId || round === null) return;
     const requestId = ++resultsRequestIdRef.current;
+    // DEC-856: clear at the start of the read this request represents -- a
+    // fresh page/sort/round request may replace a prior refusal. This runs
+    // synchronously for every new request (not just the one whose response
+    // eventually wins), so it never races the DEC-737 stale-response guard
+    // below, which only gates the SET of a new error/rows.
+    setError(null);
     const params = new URLSearchParams();
     params.set('round', String(round));
     if (sort) {

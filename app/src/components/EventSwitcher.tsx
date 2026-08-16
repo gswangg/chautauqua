@@ -180,6 +180,8 @@ export function EventSwitcher() {
     // must not act while identity is still loading, and a reviewer session
     // must never issue this request at all (it would 403 on first paint).
     if (loading || me?.role !== 'organizer') return;
+    // DEC-856: clear at the start of the read that can replace it.
+    setError(null);
     // DEC-024 amendment (wave 51): the shared cache means the page pays
     // one /events round trip even when useCurrentEvent is also mounted.
     loadEventsOnce()
