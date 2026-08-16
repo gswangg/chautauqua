@@ -167,7 +167,7 @@ async function authzSubmissionWrite(c: Context<AppEnv>, submissionId: string) {
 // -----------------------------------------------------------------------
 fileApiRoutes.post("/submissions/:id/files", csrfJson, async (c) => {
   const submissionId = c.req.param("id");
-  const { auth } = await authzSubmissionWrite(c, submissionId);
+  const { auth, scope } = await authzSubmissionWrite(c, submissionId);
 
   const body = await c.req.parseBody();
   const file = body["file"];
@@ -234,7 +234,7 @@ fileApiRoutes.post("/submissions/:id/files", csrfJson, async (c) => {
   // this reopen silent (the speaker portal's identical upload discloses it,
   // this route didn't) — the 201 now carries `contentReviewReopened` so the
   // caller can render the same disclosure.
-  const { reopened } = await reopenContentReview(c.var.db, submissionId);
+  const { reopened } = await reopenContentReview(c.var.db, scope.eventId, submissionId);
 
   return c.json(
     {
@@ -307,7 +307,7 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
     );
   }
 
-  await updateContentStatus(c.var.db, submissionId, body.contentStatus);
+  await updateContentStatus(c.var.db, scope.eventId, submissionId, body.contentStatus);
   return c.json({ id: submissionId, contentStatus: body.contentStatus });
 });
 

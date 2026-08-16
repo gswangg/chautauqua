@@ -35,12 +35,23 @@ export function isValidContentStatus(value: unknown): value is ContentStatus {
 export const PENDING_CONTENT_STATUS: ContentStatus = "pending";
 
 /** Organizer-only content approval; DEC-009 invariant — this module MUST
- * NEVER import a mailer. Status changes never send email. */
-export async function updateContentStatus(db: Db, submissionId: string, contentStatus: ContentStatus): Promise<void> {
+ * NEVER import a mailer. Status changes never send email.
+ *
+ * DEC-962 wave-58 amendment: scoped on eventId in the WHERE, matching the
+ * bulk twin below — every submission WRITE in this module carries scope of
+ * its own rather than depending on a caller's prior ownership check. Both
+ * callers (files.ts, content-notes.ts) already hold eventId from their own
+ * getSubmissionScope lookup. */
+export async function updateContentStatus(
+  db: Db,
+  eventId: string,
+  submissionId: string,
+  contentStatus: ContentStatus,
+): Promise<void> {
   await db
     .update(schema.submission)
     .set({ contentStatus, updatedAt: new Date() })
-    .where(eq(schema.submission.id, submissionId));
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.id, submissionId)));
 }
 
 /** Bulk content-status write (DEC-568): the only way to move a batch of
@@ -101,13 +112,20 @@ export async function updateContentStatuses(
  * this call's WHERE actually matched a row (i.e. the submission moved
  * approved/changes_requested -> pending), false when it was already
  * 'pending' (idempotent no-op) or doesn't exist. Callers use this to
- * disclose the reopen at the point of upload rather than leaving it silent. */
-export async function reopenContentReview(db: Db, submissionId: string): Promise<{ reopened: boolean }> {
+ * disclose the reopen at the point of upload rather than leaving it silent.
+ *
+ * DEC-962 wave-58 amendment: takes eventId and scopes on it — both callers
+ * (files.ts's organizer upload, portal/tasks.tsx's speaker upload) already
+ * hold eventId from their own scope lookup (getSubmissionScope /
+ * getAssignmentScope), so this carries scope of its own rather than
+ * depending on the caller's prior authz check alone. */
+export async function reopenContentReview(db: Db, eventId: string, submissionId: string): Promise<{ reopened: boolean }> {
   const rows = await db
     .update(schema.submission)
     .set({ contentStatus: PENDING_CONTENT_STATUS, updatedAt: new Date() })
     .where(
       and(
+        eq(schema.submission.eventId, eventId),
         eq(schema.submission.id, submissionId),
         inArray(schema.submission.contentStatus, ["approved", "changes_requested"]),
       ),

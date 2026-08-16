@@ -139,34 +139,34 @@ describe("reopenContentReview (DEC-020 amendment, w60-a)", () => {
 
   it("approved -> pending", async () => {
     seedSubmission(sqlite, "sub-1", 1, "approved");
-    await reopenContentReview(db, "sub-1");
+    await reopenContentReview(db, EVENT_ID, "sub-1");
     expect(readContentStatus(sqlite, "sub-1")).toBe("pending");
   });
 
   it("changes_requested -> pending", async () => {
     seedSubmission(sqlite, "sub-2", 2, "changes_requested");
-    await reopenContentReview(db, "sub-2");
+    await reopenContentReview(db, EVENT_ID, "sub-2");
     expect(readContentStatus(sqlite, "sub-2")).toBe("pending");
   });
 
   it("pending -> stays pending (idempotent, not a read-then-write no-op that errors)", async () => {
     seedSubmission(sqlite, "sub-3", 3, "pending");
-    await reopenContentReview(db, "sub-3");
+    await reopenContentReview(db, EVENT_ID, "sub-3");
     expect(readContentStatus(sqlite, "sub-3")).toBe("pending");
   });
 
   it("a second call is idempotent (approved -> pending -> pending)", async () => {
     seedSubmission(sqlite, "sub-4", 4, "approved");
-    await reopenContentReview(db, "sub-4");
+    await reopenContentReview(db, EVENT_ID, "sub-4");
     expect(readContentStatus(sqlite, "sub-4")).toBe("pending");
-    await reopenContentReview(db, "sub-4");
+    await reopenContentReview(db, EVENT_ID, "sub-4");
     expect(readContentStatus(sqlite, "sub-4")).toBe("pending");
   });
 
   it("never touches a different submission's row", async () => {
     seedSubmission(sqlite, "sub-5", 5, "approved");
     seedSubmission(sqlite, "sub-6", 6, "approved");
-    await reopenContentReview(db, "sub-5");
+    await reopenContentReview(db, EVENT_ID, "sub-5");
     expect(readContentStatus(sqlite, "sub-5")).toBe("pending");
     expect(readContentStatus(sqlite, "sub-6")).toBe("approved");
   });
@@ -176,7 +176,7 @@ describe("reopenContentReview (DEC-020 amendment, w60-a)", () => {
     const before = sqlite.prepare(`select updated_at from submission where id = ?`).get("sub-7") as {
       updated_at: number;
     };
-    await reopenContentReview(db, "sub-7");
+    await reopenContentReview(db, EVENT_ID, "sub-7");
     const after = sqlite.prepare(`select updated_at from submission where id = ?`).get("sub-7") as {
       updated_at: number;
     };

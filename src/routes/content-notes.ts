@@ -107,7 +107,7 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   // DEC-720: never sets 'approved', never mails on approval — status only
   // moves (to changes_requested) when the caller explicitly asked for that.
   if (requestChanges) {
-    await updateContentStatus(c.var.db, submissionId, "changes_requested");
+    await updateContentStatus(c.var.db, scope.eventId, submissionId, "changes_requested");
   }
 
   if (participants.length === 0) {

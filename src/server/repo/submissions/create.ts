@@ -147,16 +147,23 @@ export interface UpdateSubmissionFieldsInput {
 
 /** CNT-09: organizer edit of title/description (route: PATCH
  * /api/v1/submissions/:id in routes/api/submissions.ts). Only the fields
- * present in `fields` are updated; updatedAt is always bumped. */
+ * present in `fields` are updated; updatedAt is always bumped.
+ *
+ * DEC-962 wave-58 amendment: scoped on eventId in the WHERE — both callers
+ * (routes/api/submissions.ts's PATCH and revision-restore handlers) already
+ * hold eventId from their own getSubmissionOwnership lookup, so this write
+ * carries scope of its own rather than depending on the caller's prior
+ * ownership check alone. */
 export async function updateSubmissionFields(
   db: Db,
+  eventId: string,
   submissionId: string,
   fields: UpdateSubmissionFieldsInput,
 ): Promise<void> {
   await db
     .update(schema.submission)
     .set({ ...fields, updatedAt: new Date() })
-    .where(eq(schema.submission.id, submissionId));
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.id, submissionId)));
 }
 
 /**

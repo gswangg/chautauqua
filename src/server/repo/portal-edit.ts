@@ -243,6 +243,14 @@ export async function saveSubmissionEdits(
     .limit(1);
   const contactBefore = contactBeforeRows[0];
 
+  // DEC-962 wave-58 amendment: this write's ownership key is contactId, not
+  // eventId — the portal's per-speaker isolation boundary (same one
+  // loadEditableSubmission's own read query joins on, DEC-962 wave-47
+  // amendment), not the organizer's per-event boundary files-content-
+  // status.ts's writes use. The predicate is carried in the WHERE itself as
+  // a correlated EXISTS over participant, mirroring the wave-47 read-side
+  // idiom, rather than trusting the caller's prior loadEditableSubmission
+  // check alone.
   await db
     .update(schema.submission)
     .set({
@@ -250,7 +258,12 @@ export async function saveSubmissionEdits(
       description: typeof description === "string" ? description : undefined,
       updatedAt: now,
     })
-    .where(eq(schema.submission.id, submissionId));
+    .where(
+      and(
+        eq(schema.submission.id, submissionId),
+        sql`exists (select 1 from ${schema.participant} where ${schema.participant.submissionId} = ${schema.submission.id} and ${schema.participant.contactId} = ${contactId} and ${inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES)})`,
+      ),
+    );
 
   // DEC-121: edits to the locked speaker name fields land on the contact
   // record (J2/J7 — the producer's shared record), never on
