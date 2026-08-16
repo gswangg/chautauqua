@@ -1,54 +1,62 @@
-# Eval findings — rebased 2026-08-15 (wave 50, task-w50-i)
+# Eval findings — rebased 2026-08-15 (wave 57, task-w57-e)
 
-Verified against `main`/HEAD `87cee8b9fec30d190f93156c99ddf7011b68bc92`
-("scribe wave 50"), MEASURED_SHA `87cee8b9`, derived AT THIS TASK'S OWN
-RUNTIME (DEC-069 wave-17/wave-37, DEC-358 rebase rule) by running, in
-order: `git merge --no-edit main` (worktree cut directly from `main`'s
-tip — reported "Already up to date"); `npx tsx scripts/ref-state.ts`;
-`git for-each-ref --format='%(refname:short) %(objectname:short)'
-refs/heads` (46 live branches) plus `git merge-base --is-ancestor <ref>
-HEAD` for every one, run individually (never a `.git/refs/heads/*` glob,
-never the `.git/packed-refs` `refs/heads/main` line). `ref-state`'s
-receipt, verbatim: DEC-644 three-sha boundary — HEAD `87cee8b9`; newest
-first-parent product-code-bearing sha `c6f5ab28ccf4c4a06096f95a460a66ad0be0687b`;
-ancestors of HEAD: `main`, `manual-qa`, `task-custodian-w68-4`,
-`task-w47-a`, `task-w47-g`, `task-w47-h`, `task-w48-a`, `task-w48-c`,
-`task-w48-f`, `task-w50-e`, `task-w50-h`, `task-w50-i`, `task-w68-d`,
-`task-w71-c`, `task-w71-d`, `task-w71-e`. NON-ancestors: `mail-rich-shape-fallback`,
-`task-w17-i`, `task-w48-b`, `task-w48-d`, `task-w48-e`, `task-w48-g`,
-`task-w49-a` through `-h`, `task-w50-a`, `task-w50-b`, `task-w50-c`,
-`task-w50-d`, `task-w50-f`, `task-w50-g`, `task-w68-b`, `task-w68-c`,
-`task-w68-e`, `task-w71-a`, `task-w72-a` through `-j`. **The pinned mandate
-(`32921050`, wave 47/task-w47-h) is now confirmed an ancestor of HEAD** —
-every wave-47 branch (`-a` through `-h`) landed since that pin; see the new
-TIER 0 "Landed since the wave-47 boundary" subsection.
+Verified against `main`/HEAD `50c3fcc4d63239784fdd237f7340a3f648934e31`
+("merge-train w56 repair: portal-edit mock passthrough + Review
+frame-citation drift"), MEASURED_SHA `50c3fcc4`, derived AT THIS TASK'S
+OWN RUNTIME (DEC-069 wave-17/wave-37, DEC-358 rebase rule; this is a
+DOCS-ONLY wave-57 code-wave lane — no gate ran, no `docs/verification-log/
+index/` section filed, per DEC-069). This wave is a MANDATE
+RE-DERIVATION only: it re-runs the four "Recent review-lens findings"
+falsifying checks and the GATE-9 SWEEP VERDICTS census against the live
+tree (see the GATE-9 section below) rather than re-deriving TIER 0-2 in
+full. **The reflog holds multiple campaigns sharing this DEC corpus and
+this task-id namespace** — `task-custodian-w68-4` and `task-w72-a`
+through `-j` exist locally as leftover worktrees from an earlier,
+already-further-along campaign (reached wave 72) and are NOT part of
+this campaign's queue; flagged, not triaged, same as prior waves. Note
+for the NEXT rebase: `main` was observed to advance past this
+MEASURED_SHA (to `590083ed...`, a direct "Gate-8 loss-mine itemized"
+commit) while this task was still reading the tree — normal churn in a
+live swarm, not a correction to the sha pinned above, which is the sha
+this task's own file:line reads were taken against.
 
-COMPACTION per DEC-358's rebase rule: the wave-47 header is REPLACED by
-this one, not prepended (three waves stale: it predated wave 48's battery
-sections and every wave-49 lane). No per-item citation is deleted, only
-re-homed/compacted. Re-glob receipt (programmatic, this runtime): every
-backtick-quoted file-path citation in this document (169 distinct paths)
-was resolved against the working tree by exact path or, where a citation
-uses a bare filename inside a list, by unique basename match; **all 169
-resolved to a real file — zero false "exists" claims carried forward.**
-No "does not exist" claim is currently carried in this document (the two
-prior absence claims, `localhost:8799` and `TBD`, were themselves CLOSED
-by wave-46/task-w46-f and are cited as closures, not re-asserted as
-absences needing re-globbing).
+COMPACTION per DEC-358's rebase rule: the wave-50 header (pinned to
+`87cee8b9`, seven waves stale) is REPLACED by this one. No per-item
+citation is deleted; the full TIER 0-2 body below this header was not
+re-derived this wave (out of this task's scope) and is carried
+unchanged — treat its own file:line citations as of ITS last stated
+runtime, not this one's.
 
-**This wave's own addition — folding the wave-47/48 range in.** All seven
-wave-45 CONFIRMED-DEFECT rows the wave-47 header carried as IN FLIGHT are
-now CLOSED: every `task-w47-a`..`-g` owning branch is a confirmed ancestor
-of this HEAD, and this task independently re-ran each item's falsifying
-check against the live tree (not inherited) — see the new TIER 0
-subsection below, which also folds in wave-48's three landed gate
-sections (`0240` build+test+bundle, `0242` perf-smoke, `0244`
-render-sweep) and reconciles `0240`'s two filed OPEN ITEMS against the
-current tree. Wave 49's eight lanes and wave 50's non-scribe siblings are
-NOT ancestors of this HEAD — named as OWNED-BUT-UNMERGED in IN FLIGHT
-below, per this task's own boundary (a discharge status this lane did not
-itself verify is never restated as closed).
+## Recent review-lens findings — re-derived wave 57 (task-w57-e, at MEASURED_SHA `50c3fcc4`)
 
+Four items a reviewer re-filed as open; each re-run directly against the
+live tree this task, not inherited from a prior wave's claim:
+
+- **Evaluations CSV export excludes unsubmitted drafts** — CLOSED, read
+  directly at `src/server/repo/exports/evaluations.ts:11,156`: imports
+  `submittedEvaluationCondition` from `../review/evaluations` and pushes
+  it into the query's `conditions` array, same predicate `/plans/:id/
+  results` uses (DEC-873).
+- **Embed `fields`/`accent` carry** — CLOSED, read directly:
+  `src/routes/public/sessions.tsx:203` calls `embedKnobQuery("sessions",
+  { fields: activeFieldNames, accent })`; `src/routes/public/
+  speakers.tsx:215,303` and `src/routes/public/agenda.tsx:379` call it
+  with `{ accent }` only. This is NOT a partial fix — `EMBED_KNOB_TABLE`
+  in `src/lib/embed-knobs.ts:41-56` declares `fields` for the `sessions`
+  surface only; speakers/gallery/agenda never declared it, so their
+  links correctly omit it.
+- **Anonymous draft `__trackIds` cap** — CLOSED, read directly:
+  `src/routes/public/submit-draft.tsx:74-83` refuses (400, re-rendering
+  the form) any `selectedTrackIds` array longer than
+  `MAX_SUBMISSION_TRACK_IDS` or containing an entry longer than
+  `MAX_TEXT_LENGTH`, before the value ever reaches `saveDraft`'s KV
+  write at `:176`. (Membership-against-offered-tracks is deliberately
+  still not checked — task-w49-h's ruling, unchanged.)
+- **CFP `.zip` accept-vs-hint disagreement** — CLOSED, read directly:
+  `src/domain/files.ts:124` (`CFP_FILE_FIELD_KIND`) is the single
+  constant both consumers in `src/views/form-render.tsx:124`
+  (`accept={...}`) and `:168` (`uploadHintText(...)`) derive from — one
+  source, cannot drift.
 
 ## GATE-8 LOSS-MINE, ITEMIZED (runs 2026-08-15T07-46 [89.0] + T13-02 [90.3 final], both vs prod) — CORRECTNESS LANE
 
@@ -305,25 +313,57 @@ Orchestrator already fixed+deployed: seeded-plan day-label BROKEN (healing migra
 26px shared-class pin (05 regression) · notes-rail min-width (05) · reviews col fits the
 recusal label variant.
 
-**SWARM LANE (remaining, with the fleet's proven root causes):**
-1. **Delete-confirm scan is BLIND to generic apiDelete calls** — `apiDelete<{...}>(`
-   defeats the literal `apiDelete(` match; TWO sites ship unconfirmed destructive
-   deletes: SubmissionDetailPage.tsx:704 (Remove co-presenter) and Agenda.tsx:208.
-   Fix the scan to match `apiDelete` bare + add the DEC-941 ConfirmDialogs.
-2. **02: CFP builder regressed to chq-measure-table** (commit 5bbea7ee conflated
-   full-bleed chrome with content measure) — frame 02--04 draws 756 @ x422; restore the
-   reading class.
-3. **11: auth h1 back to 36px** (frame 28px, re-break of a gate-4 closure) — my bare-page
-   fix sets 28px; VERIFY it took across 404/password/expired-claim. Plus carried rhythm
-   items (404 block 166 vs 126; body→links 46.5 vs 26.5 from min-height:44px links).
-4. **03 residue**: plan-editor 400s drop per-field messages (UI says only "Invalid
-   plan"); scorecard rail gutter 36 vs 60; /plans/:id/progress has NO max-width (1532).
-5. **07**: history tab still lacks column heads, filter chips, right-flushed search.
-6. **09**: 9 remaining (per group3 report — field widths beyond dates, footer grammar,
-   portal toggles, embed card anatomy).
-7. **12-home: measure 820 vs frames' 732** (home.css.ts:21 HOME_MEASURE) — the frames
-   draw 732 consistently; align or file a ruling.
-8. **05**: .zip accept-list policy DEC still open.
+**SWARM LANE (remaining, with the fleet's proven root causes) — STATUS RE-DERIVED
+wave 57 (task-w57-e), each row read directly against the tree at MEASURED_SHA
+`50c3fcc4` this task's own runtime; branch names, never wave numbers:**
+1. **Delete-confirm scan is BLIND to generic apiDelete calls** — OWNED, `task-w56-a`
+   (`72ecc759`, "DEC-941: fix delete-confirm scan blindness, guard three unconfirmed
+   deletes"), committed, NOT YET an ancestor of `main`. Do not re-file; do not
+   re-derive the scan fix until this branch lands or an independent lane re-reads it.
+2. **02: CFP builder regressed to chq-measure-table** — NOT-A-DEFECT, adjudicated
+   wave 56 (DEC-989 amendment): `docs/design/README.md:409,413,423,425` — the
+   frames' own width IS the drawing width (820), and the CFP builder already
+   conforms. Do not re-chase this row against a 756/732 ruler.
+3. **11: auth h1** — CLOSED by measurement (28px at both `src/routes/auth.css.ts:65`
+   and `src/views/bare-page.css.ts:37`, wave-56 closure, unchanged this reading).
+   The two carried rhythm numbers (404 block 166 vs 126; body→links 46.5 vs 26.5) are
+   OWNED, `task-w57-a` this wave — this task did not re-run a render measurement to
+   confirm the rhythm numbers themselves closed (no gate in a docs-only lane); the
+   CSS at `src/routes/auth.css.ts:74-84` now states `h1->body ~19px, body->links
+   ~26px` explicitly, which reads consistent with a closure but is not itself a
+   pixel measurement — next lane to touch this row should re-run the render sweep
+   before restating it CLOSED.
+4. **03 residue**: plan-editor 400 field messages + `/plans/:id/progress` max-width —
+   OWNED, `task-w56-e` (`b581dd8a`, "Review surface: DEC-124 save err.fields walk,
+   DEC-989 ProgressPanel measure, widen page-measure scan"), committed, NOT YET an
+   ancestor of `main`. Scorecard rail gutter 36 vs 60 — OWNED, `task-w57-b`
+   (`2304bbd6`, "Scorecard grid gap: 36px -> 60px, exact-sum identity with
+   --chq-measure-wide (DEC-939 wave-57)"), committed, NOT YET an ancestor of `main`.
+5. **07**: history tab column heads/filter chips/right-flushed search — OWNED,
+   `task-w56-d` (`0259ef82`, "DEC-603: build Comms History tab to its drawn desktop
+   frame"), committed, NOT YET an ancestor of `main`.
+6. **09**: re-checked sub-clause by sub-clause this wave, not carried whole. The
+   shared shell exists and is consumed broadly: `app/src/pages/settings/
+   SettingsEditForm.tsx` renders a `.chq-settings-edit-footer` with
+   `-destructive`/`-secondary`/`-primary` slots (`app/src/pages/settings/
+   settings.css:964-980`), and `SettingsEditForm`/`SettingsField` are imported by
+   `CallForPapersPanel.tsx`, `EventSettingsPanel.tsx`, `PeopleRolesPanel.tsx`,
+   `PortalSettingsPanel.tsx` and `TracksRoomsPanel.tsx` (five B10 panels, grepped
+   directly). Field widths beyond dates: a scan-lock test exists and asserts against
+   the real stylesheet, `app/src/pages/settings/settings-field-width.test.ts` (B10
+   "field width follows content, not the column" — content-sized grid tracks, no
+   `1fr`/`%` on a paired field). Portal toggles: `showResources` is a real bound
+   control at `app/src/pages/settings/PortalSettingsPanel.tsx:47,54,62,298`. NOT
+   re-checked this wave (do not treat as closed or open — undetermined): footer
+   *grammar* (exact wording, as opposed to the shell/slots existing) and "embed card
+   anatomy". Carry only those two forward.
+7. **12-home: measure 820 vs frames' 732** — NOT-A-DEFECT, adjudicated wave 56
+   (DEC-989 amendment, same ruling as row 2): `docs/design/README.md:409,413,423,425`.
+   Do not re-file.
+8. **05**: .zip accept-list policy — CLOSED wave 54 (DEC-879), re-confirmed this
+   wave: `src/domain/files.ts:124` (`CFP_FILE_FIELD_KIND`) is the single source both
+   `src/views/form-render.tsx:124` and `:168` derive from — see "Recent review-lens
+   findings" above for the full receipt. Do not re-file.
 Also recorded: 01-overview all four MAJORs closed (MINOR now) · 10-public MINOR ·
 04/06/08 full PASS with clean functional click-throughs · v9 reset flow verified live
 end-to-end minus frame 07 (needs minted token).
