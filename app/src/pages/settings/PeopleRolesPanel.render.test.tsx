@@ -600,6 +600,92 @@ describe('PeopleRolesPanel', () => {
     expect(screen.queryByText(/pending/i)).not.toBeInTheDocument();
   });
 
+  // DEC-747 amendment (wave 67): the invite flow is a dialog, not an
+  // inline strip (frames 09--18/19/20).
+  it('opens a dialog when "Invite someone" is clicked', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('First name')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Last name')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Email')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Create the account' })).toBeInTheDocument();
+  });
+
+  // DEC-747 amendment (wave 67): the created/reveal state is the SAME
+  // dialog's second step, not a sibling of the dialog.
+  it('renders the created/reveal state inside the same dialog as the invite form', async () => {
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 201,
+        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56', welcomeEmail: 'not_sent_no_event' },
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('ab12-cd34-ef56')).toBeInTheDocument();
+    });
+
+    // Exactly one dialog, and the reveal is inside it (not a sibling).
+    const dialogs = screen.getAllByRole('dialog');
+    expect(dialogs).toHaveLength(1);
+    expect(within(dialogs[0]!).getByText('ab12-cd34-ef56')).toBeInTheDocument();
+    // The form step is gone -- this is the dialog's second step, not an
+    // additional dialog stacked on top of the form.
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+
+    // Closing the dialog (Done) is still the last time the password is seen.
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('ab12-cd34-ef56')).not.toBeInTheDocument();
+  });
+
+  // DEC-747 amendment (wave 67): the reset-password reveal is a distinct
+  // per-row affordance (frame 09--24) that keeps its inline site -- it must
+  // not move into a dialog.
+  it('keeps the reset-password reveal inline, not inside a dialog', async () => {
+    mockPeople({
+      'POST /api/v1/users/u-other/reset-password': {
+        status: 200,
+        body: { email: OTHER.email, password: 'zz99-yy88-xx77' },
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    const otherRow = screen.getByText(OTHER.email).closest('li')!;
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Reset password' }));
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Confirm reset' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('zz99-yy88-xx77')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('leads each directory row with the person\'s name, dropping email to a secondary line', async () => {
     mockPeople();
     renderPanel(['/settings?section=people&edit=1']);
