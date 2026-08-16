@@ -123,20 +123,26 @@ vi.mock("../src/server/repo/forms", async () => {
   };
 });
 
-vi.mock("../src/server/repo/portal-edit", () => ({
-  loadEditableSubmission: vi.fn(async (): Promise<EditableSubmissionData | null> => ({
-    submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },
-    form: { id: "f1", closeDate: null, timezone: "America/Los_Angeles" },
-    fields: [
-      { id: "first_name", section: "speaker", kind: "text", label: "First name", required: true, position: 0 },
-    ] as FormFieldDef[],
-    answers: { first_name: "Jane" },
-    offeredTrackIds: [],
-    allTracks: [],
-    selectedTrackIds: [],
-  })),
-  getPortalParticipants: vi.fn(async () => []),
-}));
+vi.mock("../src/server/repo/portal-edit", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/portal-edit")>(
+    "../src/server/repo/portal-edit",
+  );
+  return {
+    ...actual,
+    loadEditableSubmission: vi.fn(async (): Promise<EditableSubmissionData | null> => ({
+      submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },
+      form: { id: "f1", closeDate: null, timezone: "America/Los_Angeles" },
+      fields: [
+        { id: "first_name", section: "speaker", kind: "text", label: "First name", required: true, position: 0 },
+      ] as FormFieldDef[],
+      answers: { first_name: "Jane" },
+      offeredTrackIds: [],
+      allTracks: [],
+      selectedTrackIds: [],
+    })),
+    getPortalParticipants: vi.fn(async () => []),
+  };
+});
 
 vi.mock("../src/server/repo/profile", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/profile")>("../src/server/repo/profile");

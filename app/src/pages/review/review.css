@@ -185,7 +185,7 @@
 
 /* DEC-902 wave-21 amendment: the frame's ONE grid -- 44px 1fr 150px 130px
    92px 92px auto -- repeats across the head, the rows and the expanded
-   band (docs/design/Chautauqua Review.dc.html:117,121,136,140,153
+   band (docs/design/Chautauqua Review.dc.html:124,128,143,147,160
    `grid-template-columns:44px 1fr 150px 130px 92px 92px auto`). Title
    is the single remainder column; Decision hugs its two buttons at 1px
    (DEC-902 wave-20 sub-rule 4) rather than sizing from the frame's `auto`. */
@@ -826,7 +826,7 @@
    (a "Weight" label vs. a full number input) drifted out of alignment
    between the header and the body rows even though both declared the
    same template. */
-/* DEC-745 (wave-22 amendment): docs/design/Chautauqua Review.dc.html:470
+/* DEC-745 (wave-22 amendment): docs/design/Chautauqua Review.dc.html:477
    `grid-template-columns:20px 1fr 260px 132px 62px`
    (head) / :474 (rows) give this row the frame's exact five tracks -- drag
    20px / Criterion (remainder) / Guidance 260px / Weight 132px / Remove
@@ -989,7 +989,7 @@
   padding-bottom: 14px;
 }
 
-/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:526
+/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:533
    `grid-template-columns:1fr 190px 130px auto`
    gives this row four tracks -- name+email (remainder) / track 190px /
    load 130px / Remove (auto, sized to its own button content, which is
@@ -1115,7 +1115,7 @@
   color: var(--chq-ink-2);
 }
 
-/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:513
+/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:520
    `grid-template-columns:1fr 120px 150px`
    gives this preview three tracks -- reviewer 1fr / track 120px / talks
    150px ('6 -> 8 talks'). This previews an irreversible bulk write, so the
@@ -1629,7 +1629,7 @@
 
 /* REVIEW PACK frame 03-03 (DEC-874 wave-65 amendment; DEC-745 wave-22
    amendment): the row's grid column-2 action fills its fixed 176px track
-   (docs/design/Chautauqua Review.dc.html:363
+   (docs/design/Chautauqua Review.dc.html:370
    `grid-template-columns:1fr 176px`) -- the frame's button spans
    the column rather than sizing from its own label, which is what let
    'Score' vs 'Continue' vs the recusal reason stagger the queue's right
