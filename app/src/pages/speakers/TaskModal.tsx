@@ -93,6 +93,7 @@ const DELIVERABLE_KIND_LABELS: Record<DeliverableKind, string> = {
   poster: 'Poster',
   handout: 'Handout',
   recording: 'Recording',
+  photo: 'Photo / headshot',
 };
 
 function deliverableKindLabel(kind: DeliverableKind): string {

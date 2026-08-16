@@ -33,7 +33,7 @@ const baseItem: ContentSubmissionListItem = {
     { contactId: 'c1', name: 'Ada Lovelace' },
     { contactId: 'c2', name: 'Grace Hopper' },
   ],
-  deliverableCounts: { presentation: 2, poster: 0, handout: 1, recording: 0 },
+  deliverableCounts: { presentation: 2, poster: 0, handout: 1, recording: 0, photo: 0 },
   latestFile: { filename: 'slides.pdf', kind: 'presentation', versionCount: 2, uploadedAt: 1700000000000 },
   latestFileVersionNo: 2,
   latestFileByKind: { presentation: 2 },

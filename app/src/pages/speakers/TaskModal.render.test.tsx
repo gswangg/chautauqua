@@ -125,6 +125,15 @@ describe('TaskModal: DEC-928 deliverable kind vocabulary', () => {
     expect(DELIVERABLE_KINDS).toEqual(FILE_KINDS);
   });
 
+  // DEC-879 (wave-67 amendment): 'photo' is the missing deliverable kind for
+  // a headshot/photo file request -- the picker offers it with its own
+  // label, distinct from a Handout.
+  it('offers a Photo / headshot option', () => {
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+
+    expect(screen.getByText('Photo / headshot')).toBeInTheDocument();
+  });
+
   // Ruling A15 (DEC-662 amendment, wave 25): kind drives real downstream
   // behaviour (only upload-kind tasks get a File link), so the picked value
   // must actually ride along in the create payload the modal posts --

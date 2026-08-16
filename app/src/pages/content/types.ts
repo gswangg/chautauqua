@@ -31,6 +31,7 @@ export const DELIVERABLE_LABELS: Record<FileKind, string> = {
   poster: 'Poster',
   handout: 'Handout',
   recording: 'Recording',
+  photo: 'Photo / headshot',
 };
 
 // DEC-773: the files library is ONE list — a headshot is a file kind, not a
