@@ -454,6 +454,12 @@ const PUBLIC_BY_DESIGN: LedgerEntry[] = [
   { file: "src/routes/dev/mailbox.tsx", method: "GET", path: "/dev/mailbox/:emailId", reason: "same DEV_MODE gate" },
   // src/routes/docs.tsx
   { file: "src/routes/docs.tsx", method: "GET", path: "/docs/api", reason: "DEC-056: public no-login API docs page; documents no secrets" },
+  // src/routes/docs-site.tsx -- DEC-382 (wave-3 amendment): the public docs
+  // site. Reads no request-scoped data at all: every article is compiled
+  // from the in-repo DOCS_GROUPS manifest, so there is no row, session or
+  // tenant for a guard to scope. An unknown slug is a 404, never a redirect.
+  { file: "src/routes/docs-site.tsx", method: "GET", path: "/docs", reason: "DEC-382 (wave-3 amendment): public no-login documentation index; renders the in-repo DOCS_GROUPS manifest only, no request-scoped or tenant data" },
+  { file: "src/routes/docs-site.tsx", method: "GET", path: "/docs/:slug", reason: "DEC-382 (wave-3 amendment): public no-login documentation article; renders in-repo article content only, 404s an unknown slug, no request-scoped or tenant data" },
   // src/routes/root.tsx
   { file: "src/routes/root.tsx", method: "GET", path: "/admin", reason: "redirects to /login when !auth, /portal when role==='speaker'; otherwise proxies the SPA shell, which itself calls org-scoped /api/v1/* endpoints" },
   { file: "src/routes/root.tsx", method: "GET", path: "/admin/*", reason: "same redirect pattern; /admin/assets/* bypasses to the ASSETS binding (static JS/CSS, no data)" },

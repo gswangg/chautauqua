@@ -137,6 +137,13 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   // and therefore not sweepable (see test/audit-claims.test.ts).
   { path: "/forgot", role: "public" },
   { path: "/docs/api", role: "public" },
+  // DEC-382 (wave-3 amendment) parity: the public docs site is a phone
+  // surface in its own right -- the design pack carries a "phone article"
+  // frame, and the ruling states that on phone figures go edge-to-edge with
+  // the caption inset. So the 390x844 pass visits the index and one real
+  // article, matching ROUTE_MANIFEST's two /docs rows.
+  { path: "/docs", role: "public" },
+  { path: "/docs/start-here", role: "public" },
   // w45-a: /dev/mailbox and /dev/mailbox/:id removed from here — they were
   // declared role: "public" but guardDevMailbox actually requires role
   // 'organizer' and redirects anonymous visitors to /login, so an anonymous

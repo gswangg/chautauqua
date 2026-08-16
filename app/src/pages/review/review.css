@@ -1632,7 +1632,7 @@
   cursor: pointer;
 }
 
-.chq-review-choice-option input[type='radio'] {
+.chq-review-choice-input {
   cursor: pointer;
   flex: none;
 }

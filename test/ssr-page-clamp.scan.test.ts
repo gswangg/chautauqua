@@ -130,6 +130,25 @@ const NAMED_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
     "views/bare-page.css.ts::.chq-bare-page",
     "DEC-945 (wave-48 amendment): the bare reading-page shell IS the reading measure (820px, no card chrome) -- not a hand-copy of it",
   ],
+  // DEC-382 (wave-3 amendment) / DESIGN-RULINGS.md "Docs -- a new site, and
+  // where it stops": "Prose at 680, screenshots at 900 ... This is the one
+  // place in the bundle where content deliberately breaks its own measure."
+  // The docs site's PROSE is clamped to 680 (.chq-docs-prose/-h2/-list/
+  // -article-head/-intro/-empty, all well under 800 and so not listed here);
+  // only the sanctioned figure measure and the two shells that must be wide
+  // enough to CONTAIN it sit over the clamp.
+  [
+    "routes/docs-site.css.ts::.chq-docs-figure",
+    "DEC-382 (wave-3 amendment): the sanctioned 900px screenshot measure -- the one deliberate measure break in the bundle, so a 1600x900 shot is legible",
+  ],
+  [
+    "routes/docs-site.css.ts::.chq-docs-body",
+    "DEC-382 (wave-3 amendment): the docs index shell must contain the sanctioned 900px figure (900 + 2x34px gutter), so it cannot come under the clamp the way the auth card did",
+  ],
+  [
+    "routes/docs-site.css.ts::.chq-docs-article-body",
+    "DEC-382 (wave-3 amendment): the docs article shell must contain the sanctioned 900px figure (900 + 2x34px gutter), so it cannot come under the clamp the way the auth card did",
+  ],
 ]);
 
 describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
@@ -161,10 +180,25 @@ describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
   // wave-48 amendment adds exactly one new entry -- .chq-bare-page, the
   // 820px reading shell, which IS the reading measure rather than a
   // hand-copy of it. So the map holds exactly one row, not zero and not two.
-  it("NAMED_EXCEPTIONS holds exactly the bare-page entry, and its selector still exists", () => {
+  //
+  // Wave 3 (DEC-382 amendment) adds the docs site's three: the sanctioned
+  // 900px screenshot measure and the two shells that must contain it. The
+  // list stays CLOSED and enumerated here -- a fifth row means a fifth
+  // ruling, not a widening allowlist.
+  it("NAMED_EXCEPTIONS holds exactly the bare-page and docs-site entries, and their selectors still exist", () => {
     expect([...NAMED_EXCEPTIONS.keys()]).toEqual([
       "views/bare-page.css.ts::.chq-bare-page",
+      "routes/docs-site.css.ts::.chq-docs-figure",
+      "routes/docs-site.css.ts::.chq-docs-body",
+      "routes/docs-site.css.ts::.chq-docs-article-body",
     ]);
+
+    // The docs prose measure stays at 680 -- the break is granted to the
+    // figure and its containers, never to the text.
+    const docsCss = extractCssText(join(SRC, "routes/docs-site.css.ts"));
+    const docsDecls = findMaxWidthDeclarations(docsCss);
+    expect(docsDecls.find((d) => d.selector === ".chq-docs-prose")?.px).toBe(680);
+    expect(docsDecls.find((d) => d.selector === ".chq-docs-figure")?.px).toBe(900);
 
     const bareCss = extractCssText(BARE_PAGE_CSS_FILE);
     const bareDeclarations = findMaxWidthDeclarations(bareCss);

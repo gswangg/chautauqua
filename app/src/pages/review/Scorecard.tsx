@@ -30,6 +30,7 @@ import { MAX_PER_PAGE } from '../../../../src/lib/pagination';
 import { computeWeightedScore, criterionWeightShares, planNamesRound, roundLabel, roundMetaFor } from '../../../../src/domain/evaluation';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 import { MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
+import { plural } from '../../lib/plural';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import type {
   EvaluationCriterion,
@@ -430,7 +431,7 @@ export function Scorecard() {
     choiceCriteria.length > 0
       ? ` · Weighted mean of the ${ratingCriteria.length} scored criteria · ${choiceCriteria
           .map((c) => c.label)
-          .join(', ')} ${choiceCriteria.length > 1 ? 'are' : 'is'} recorded, not averaged`
+          .join(', ')} ${plural(choiceCriteria.length, 'is', 'are')} recorded, not averaged`
       : '';
 
   // DEC-831: eyebrow names plan · track · round (round only when the plan
@@ -712,6 +713,7 @@ export function Scorecard() {
                         <input
                           id={inputId}
                           type="radio"
+                          className="chq-review-choice-input"
                           name={criterionAnchorId(criterion.id)}
                           aria-label={choiceOptionAccessibleName(criterion, opt)}
                           checked={scores[criterion.id] === opt}
