@@ -197,23 +197,50 @@ describe("DEC-702 (wave 1a): seed_user_0004's whole-track reviewer scope is narr
     expect(reviewerIds.size).toBe(2);
   });
 
-  // Documents (does not silently permit growth of) the remaining gap: no
-  // reviewer besides seed_user_0004 was narrowed, since plan 3's own locked
-  // four-reviewer requirement puts every reviewer's floor at two plans and
-  // any further reduction would require touching plan 1's or plan 2's own
-  // structure, out of this task's scope. This test pins today's actual
-  // counts so a future change is a deliberate, reviewed edit rather than a
-  // silent drift.
-  it("(known gap, flagged for a future wave) reviewerB/C/D each still hold whole-track scope on exactly three plans", () => {
+});
+
+describe("DEC-702 (wave 10 amendment): every seeded reviewer's whole-track scope is held to the structural floor of two plans", () => {
+  // Plan 3 ("Late-Stage Program Review") requires all four reviewer
+  // personas as distinct plan_reviewer rows for DEC-854's
+  // four-distinct-reviewer distribute-preview fixture
+  // (test/seed-coherence.test.ts's ">=4 distinct reviewer user ids on plan
+  // 0003" check) -- there is no 5th reviewer persona to substitute in. That
+  // puts every reviewer's FLOOR at TWO whole-track-scoped plans, not one:
+  // plan 3 plus whichever other plan carries that reviewer's own
+  // load-bearing role (seed_user_0004: plan 1's own "partial 7-of-10 queue"
+  // persona story; seed_user_0005/0006: plan 4's DEC-707 cap-saturation
+  // pair; seed_user_0007: plan 2's fully-closed, 100%-evaluated plan). This
+  // is a structural floor, not an unfinished narrowing: going below two for
+  // any reviewer would require either dropping them from plan 3 (breaking
+  // DEC-854) or inventing a 5th persona, both out of scope.
+  it("no seeded reviewer holds whole-track (track_id non-null) plan_reviewer scope on more than two plans", () => {
     const planReviewers = parseInserts(sql, "plan_reviewer").filter((pr) => pr.track_id !== null);
+    expect(planReviewers.length).toBeGreaterThan(0);
+
+    // The reviewer population is DERIVED from the parsed plan_reviewer rows
+    // themselves (DEC-180: a hand-listed population is not a population),
+    // never a hand-listed ["seed_user_0005", ...] array.
     const planIdsByReviewer = new Map<string, Set<string>>();
     for (const row of planReviewers) {
       const set = planIdsByReviewer.get(row.user_id!) ?? new Set<string>();
       set.add(row.plan_id!);
       planIdsByReviewer.set(row.user_id!, set);
     }
-    for (const reviewerId of ["seed_user_0005", "seed_user_0006", "seed_user_0007"]) {
-      expect(planIdsByReviewer.get(reviewerId)?.size).toBe(3);
+    expect(planIdsByReviewer.size).toBeGreaterThanOrEqual(4);
+
+    for (const [reviewerId, planIds] of planIdsByReviewer) {
+      expect(
+        planIds.size,
+        `expected reviewer ${reviewerId} to hold whole-track scope on at most two plans, got ${[...planIds].join(", ")}`,
+      ).toBeLessThanOrEqual(2);
     }
+  });
+
+  it("plan 3 still carries all four reviewer personas (DEC-854's fixture the floor rests on)", () => {
+    const plans = parseInserts(sql, "evaluation_plan");
+    const plan3 = plans.find((p) => p.name === "Late-Stage Program Review")!;
+    const planReviewers = parseInserts(sql, "plan_reviewer").filter((pr) => pr.plan_id === plan3.id);
+    const reviewerIds = new Set(planReviewers.map((pr) => pr.user_id));
+    expect(reviewerIds.size).toBeGreaterThanOrEqual(4);
   });
 });

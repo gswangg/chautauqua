@@ -1377,16 +1377,31 @@ async function main(): Promise<void> {
     }),
   );
 
-  const reviewerAssignments = [
-    { userId: reviewerUserId, trackIndex: 0 },
-    { userId: reviewerBUserId, trackIndex: 1 },
-    { userId: reviewerCUserId, trackIndex: 2 },
-    { userId: reviewerDUserId, trackIndex: 1 },
-  ];
-  reviewerAssignments.forEach((ra, i) => {
+  // DEC-702 (amendment, wave 10): plan_reviewer ids are minted sequentially
+  // across every plan below (rather than each section hand-computing its own
+  // offset into a shared id space) now that plan 1's own row count varies
+  // with the floor-of-two narrowing -- a hand-computed offset is exactly the
+  // kind of thing that silently collides when an earlier section's row count
+  // changes.
+  let planReviewerSeq = 0;
+  function nextPlanReviewerId(): string {
+    planReviewerSeq += 1;
+    return seedId("plan_reviewer", planReviewerSeq);
+  }
+
+  // DEC-702 (amendment, wave 10): every reviewer's whole-track (track_id
+  // non-null) scope is held to a floor of two plans -- plan 3 (DEC-854's
+  // four-distinct-reviewer fixture, which has no 5th persona to substitute)
+  // plus each reviewer's own load-bearing plan. reviewerUserId's own plan is
+  // plan 1 (its "partial 7-of-10 queue" persona story), so plan 1 only
+  // whole-track-scopes reviewerUserId here -- reviewerB/C/D's own
+  // load-bearing plans are elsewhere (plan 4's DEC-707 cap-saturation pair
+  // for B/C, plan 2's fully-closed plan for D; see those sections below).
+  const reviewerAssignments = [{ userId: reviewerUserId, trackIndex: 0 }];
+  reviewerAssignments.forEach((ra) => {
     statements.push(
       insertStmt("plan_reviewer", {
-        id: seedId("plan_reviewer", i + 1),
+        id: nextPlanReviewerId(),
         plan_id: evalPlanId,
         user_id: ra.userId,
         track_id: trackIds[ra.trackIndex]!,
@@ -1395,6 +1410,28 @@ async function main(): Promise<void> {
       }),
     );
   });
+  // DEC-702 (amendment, wave 10): reviewerB gets a PLAN-WIDE (track_id NULL,
+  // per migrations/0004's documented plan_reviewer scope semantics -- null
+  // track_id + null submission_id = all plan submissions) presence row here
+  // rather than a second whole-track row, so it does not count toward its
+  // own <=2 whole-track-scope floor (reviewerB's two whole-track plans are
+  // plan 3 and plan 4, below) while still giving
+  // test/seed-coherence.test.ts's DEC-836 "at least one reviewer scoped to
+  // every open plan" check a reviewer present on all three simultaneously
+  // open plans (1, 3, 4) -- narrowing every reviewer's WHOLE-TRACK scope to
+  // two plans each means no single reviewer is whole-track-scoped to all
+  // three anymore, so that invariant needs a non-whole-track row to still
+  // hold.
+  statements.push(
+    insertStmt("plan_reviewer", {
+      id: nextPlanReviewerId(),
+      plan_id: evalPlanId,
+      user_id: reviewerBUserId,
+      track_id: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
 
   // ~40 evaluation rows: the reviewer persona (track 0) only clears 7 of
   // 10 submissions, leaving their queue/progress view genuinely
@@ -1708,7 +1745,7 @@ async function main(): Promise<void> {
   plan2ReviewerAssignments.forEach((ra, i) => {
     statements.push(
       insertStmt("plan_reviewer", {
-        id: seedId("plan_reviewer", 4 + i + 1),
+        id: nextPlanReviewerId(),
         plan_id: evalPlan2Id,
         user_id: ra.userId,
         track_id: trackIds[ra.trackIndex]!,
@@ -1797,7 +1834,7 @@ async function main(): Promise<void> {
   // mock (see that comment below).
   statements.push(
     insertStmt("plan_reviewer", {
-      id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 1),
+      id: nextPlanReviewerId(),
       plan_id: evalPlan3Id,
       user_id: reviewerUserId,
       track_id: trackIds[1]!,
@@ -1807,12 +1844,13 @@ async function main(): Promise<void> {
   );
   // DEC-875 (wave 42 amendment): a second, distinct reviewer scoped to the
   // same track/plan so the multi-reviewer distribute preview has >=2
-  // reviewer identities to distribute across on this plan (reviewerB is
-  // otherwise only scoped to plan 1/track 1, so reusing them here on
-  // track 0 doesn't collide with any other plan_reviewer row).
+  // reviewer identities to distribute across on this plan (reviewerB's other
+  // scopes are plan 1's plan-wide presence row and plan 4/track 1, so
+  // reusing them here on track 0 doesn't collide with any other
+  // plan_reviewer row).
   statements.push(
     insertStmt("plan_reviewer", {
-      id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 3),
+      id: nextPlanReviewerId(),
       plan_id: evalPlan3Id,
       user_id: reviewerBUserId,
       track_id: trackIds[0]!,
@@ -1845,7 +1883,7 @@ async function main(): Promise<void> {
   // wave rather than decided here.
   statements.push(
     insertStmt("plan_reviewer", {
-      id: seedId("plan_reviewer", 10),
+      id: nextPlanReviewerId(),
       plan_id: evalPlan3Id,
       user_id: reviewerCUserId,
       track_id: trackIds[0]!,
@@ -1855,7 +1893,7 @@ async function main(): Promise<void> {
   );
   statements.push(
     insertStmt("plan_reviewer", {
-      id: seedId("plan_reviewer", 11),
+      id: nextPlanReviewerId(),
       plan_id: evalPlan3Id,
       user_id: reviewerDUserId,
       track_id: trackIds[1]!,
@@ -1944,7 +1982,7 @@ async function main(): Promise<void> {
   // pair.
   statements.push(
     insertStmt("plan_reviewer", {
-      id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 2),
+      id: nextPlanReviewerId(),
       plan_id: evalPlan4Id,
       user_id: reviewerCUserId,
       track_id: trackIds[1]!,
@@ -1957,13 +1995,13 @@ async function main(): Promise<void> {
   // reviewerC saturates (cap of 1, see above) are genuinely "assigned but
   // unreachable" for THIS reviewer -- the seed-reachable case for
   // assignedExcludingSaturated. reviewerB is not otherwise scoped to plan
-  // 4/track 1 (their only other scoping is plan 1/track 1 and plan 3/track
-  // 0, both different plans), so this row doesn't collide with any existing
-  // plan_reviewer pair. Index 12 is the next unused seedId("plan_reviewer",
-  // N) -- 1..11 are all already spent above.
+  // 4/track 1 (their other scoping is plan 1's plan-wide presence row and
+  // plan 3/track 0), so this row doesn't collide with any existing
+  // plan_reviewer pair. Ids are minted sequentially via nextPlanReviewerId()
+  // now, so there is no hand-computed offset to keep in sync here.
   statements.push(
     insertStmt("plan_reviewer", {
-      id: seedId("plan_reviewer", 12),
+      id: nextPlanReviewerId(),
       plan_id: evalPlan4Id,
       user_id: reviewerBUserId,
       track_id: trackIds[1]!,
