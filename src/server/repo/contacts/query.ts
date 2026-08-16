@@ -6,6 +6,9 @@ import type { ContactRecord, SegmentRule } from "../../../domain/contacts";
 import type { ContactRow } from "./rows";
 import { clampPage, clampPerPage } from "../../../lib/pagination";
 import { boundedQueryString, MAX_SEARCH_QUERY_LENGTH, MAX_FILTER_ID_LENGTH } from "../../../lib/query-bounds";
+import { DEC_843 } from "../../../decisions";
+
+void DEC_843; // wave-63 amendment: contacts directory `sort` token is loud, modelled on readStatusTokens
 
 export interface ParsedContactListQuery {
   page: number;
@@ -14,6 +17,22 @@ export interface ParsedContactListQuery {
   segmentId: string | null;
   sort: "name" | "recent";
   rules: SegmentRule[];
+}
+
+/**
+ * Reads the directory's `sort` token per the DEC-843 wave-63 amendment:
+ * modelled byte-for-byte on readStatusTokens/readReuploadedToken in
+ * submissions/query.ts. Absent or blank-after-trim defaults to "name";
+ * "name"/"recent" return themselves; anything else THROWS a plain Error
+ * naming the token (loud) rather than silently falling back to "name" --
+ * this module is pure/db-free, so a plain Error, not ApiError.
+ */
+export function readContactSortToken(raw: string | undefined): "name" | "recent" {
+  if (raw === undefined || raw.trim().length === 0) return "name";
+  const token = raw.trim();
+  if (token === "name") return "name";
+  if (token === "recent") return "recent";
+  throw new Error(`Unknown sort '${token}'`);
 }
 
 /** DEC-013 pagination parsing, DEC-026 filters (q, segmentId, sort
@@ -32,7 +51,7 @@ export function parseContactListQuery(
 
   const segmentId = boundedQueryString(raw.segmentId, "segmentId", MAX_FILTER_ID_LENGTH);
 
-  const sort = raw.sort === "recent" ? "recent" : "name";
+  const sort = readContactSortToken(raw.sort);
 
   return { page, perPage, q, segmentId, sort, rules };
 }

@@ -7,6 +7,7 @@ import {
   resolveImportUpsert,
   type ContactRow,
 } from "../src/server/repo/contacts";
+import { readContactSortToken } from "../src/server/repo/contacts/query";
 import * as schema from "../src/db/schema";
 import { preflightRender, type RenderTarget } from "../src/domain/compose";
 import type { AppEnv } from "../src/server/env";
@@ -57,13 +58,32 @@ describe("parseContactListQuery (DEC-013 pagination + DEC-026 filters)", () => {
   it("reads segmentId and the two sort orders", () => {
     expect(parseContactListQuery({ segmentId: "seg_1" }).segmentId).toBe("seg_1");
     expect(parseContactListQuery({ sort: "recent" }).sort).toBe("recent");
-    expect(parseContactListQuery({ sort: "bogus" }).sort).toBe("name");
+  });
+
+  it("throws loudly on an unknown sort token (DEC-843 wave-63 amendment)", () => {
+    expect(() => parseContactListQuery({ sort: "bogus" })).toThrow("Unknown sort 'bogus'");
   });
 
   it("defaults rules to [] and threads a passed-in rules array through unchanged (DEC-149)", () => {
     expect(parseContactListQuery({})).toMatchObject({ rules: [] });
     const rules = [{ field: "any", op: "contains" as const, value: "ada" }];
     expect(parseContactListQuery({}, rules)).toMatchObject({ rules });
+  });
+});
+
+describe("readContactSortToken (DEC-843 wave-63 amendment)", () => {
+  it("returns 'name' for undefined and for blank-after-trim", () => {
+    expect(readContactSortToken(undefined)).toBe("name");
+    expect(readContactSortToken("   ")).toBe("name");
+  });
+
+  it("returns 'name' and 'recent' for their own tokens", () => {
+    expect(readContactSortToken("name")).toBe("name");
+    expect(readContactSortToken("recent")).toBe("recent");
+  });
+
+  it("throws a plain Error naming an unknown token", () => {
+    expect(() => readContactSortToken("recnet")).toThrow("Unknown sort 'recnet'");
   });
 });
 
