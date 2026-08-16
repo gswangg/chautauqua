@@ -518,14 +518,35 @@ found" is itself a citation.
     `app/src/phone-block-visibility.test.ts:109-121` (DEC-621). Already
     exempt from the UNFALSIFIABLE label (cited inline in the source batch).
 
-  **STILL UNFALSIFIABLE (batch A remainder, not reached that wave) — owner:
-  a wave-45 lane, not re-pointed at wave-41 any longer (that lane closed):**
-  saved embeds exist — `src/db/schema/embed.ts`,
-  `src/routes/public/saved-embed.tsx`. `npm run deploy` exists —
+  **DISCHARGED wave-46 (`task-w46-f`, DEC-358 amendment): four items from the
+  batch-A remainder below, each with a real exercised falsifying check
+  written after confirming the claim true at this worker's own runtime.**
+  Saved embeds exist — `src/db/schema/embed.ts`,
+  `src/routes/public/saved-embed.tsx` — CONFIRMED TRUE. FALSIFYING CHECK:
+  `test/tier0-falsifiability-w46.test.ts` (schema columns + a real
+  `GET /embed/e/:embedId` request through `publicRoutes`: unknown 404s,
+  disabled is an empty 200 per DEC-822, enabled renders the event name).
+  `/account/password` has real Cancel + 820 bare-page column —
+  `src/routes/account.tsx:139-144` — CONFIRMED TRUE. FALSIFYING CHECK:
+  `test/tier0-falsifiability-w46.test.ts` (renders `PasswordPage`, asserts
+  a real `<a href={backHref}>Cancel</a>`, and that `BARE_PAGE_CSS`'s
+  `.chq-bare-page` rule carries `max-width: 820px`). Overview §01
+  skips-last-hour caption — `app/src/pages/Overview.tsx:325` — CONFIRMED
+  TRUE. FALSIFYING CHECK:
+  `app/src/pages/Overview.caption.w46.render.test.tsx` (mounts the real
+  `OverviewPage`; caption renders with ≥1 overdue row, is absent at zero).
+  Home footer media rule — `src/routes/public/home.css.ts:72-76` —
+  CONFIRMED TRUE. FALSIFYING CHECK: `test/tier0-falsifiability-w46.test.ts`
+  (asserts the `@media (max-width: 700px)` block's `.chq-home-footer` rule
+  is present and differs from the base rule, and that `root.tsx` actually
+  renders a `<footer class="chq-home-footer">` the rule targets).
+
+  **STILL UNFALSIFIABLE (batch A remainder, the four items above now
+  discharged — see wave-46 entry) — owner: a wave-47+ lane, branch to be
+  named:**
+  `npm run deploy` exists —
   `package.json:21`. Settings edit-view field widths are tokens —
-  `app/src/pages/settings/settings.css:17-22` (DEC-896). `/account/password`
-  has real Cancel + 820 bare-page column — `src/routes/account.tsx:139-144`.
-  Overview §01 skips-last-hour caption — `app/src/pages/Overview.tsx:325`.
+  `app/src/pages/settings/settings.css:17-22` (DEC-896).
   Phone agenda N-aware clash caption —
   `app/src/pages/agenda/PhoneAgenda.tsx:186`. Phone agenda "Place here
   anyway" — `:167-176,199-208`. Phone password fixed footer + Cancel —
@@ -574,7 +595,8 @@ actual defect (coverage gaps only, per the mandate's own text). Do not
 re-file these eight as UNFALSIFIABLE.
 
 **STILL UNFALSIFIABLE (batch B remainder, not reached that wave) — owner: a
-wave-45 lane, not re-pointed at wave-41 any longer (that lane closed):**
+wave-47+ lane, branch to be named (wave-46, `task-w46-f`: an owner line
+names a BRANCH, not a wave — no wave-45 branch ever covered this):**
 `answerFieldRoleCondition` missing event join — DISMISSED, DEC-592 wave-18
 amendment (`src/server/repo/form-roles.ts:16`);
 `countEvaluationsBySubmission`'s whole-plan map — DISMISSED, DEC-449;
