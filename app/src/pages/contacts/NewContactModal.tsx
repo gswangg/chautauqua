@@ -210,9 +210,12 @@ export function NewContactModal({ onClose, onCreated }: Props) {
       )}
       {/* DEC-597 (wave 64 amendment): the modal closes by naming what it does
           not do -- adding someone here does not put them on an event; "Add
-          to an event" on their directory row is the separate act. */}
+          to an event" on their directory row is the separate act. G13
+          (frame 08-contacts--16): the frame's exact sentence, with the
+          control's name in bold. */}
       <p className="chq-contacts-new-contact-scope-note">
-        Adding a contact here does not put them on an event — use &ldquo;Add to an event&rdquo; on their row for that.
+        This adds someone to your directory. To put them on an event, use <strong>Add to an event</strong> on their
+        row afterwards.
       </p>
     </ModalFrame>
   );

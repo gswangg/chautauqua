@@ -93,12 +93,12 @@ describe('NewContactModal copy (DEC-597 wave 64 amendment)', () => {
     expect(helpText?.textContent).toMatch(/matched and merged/);
   });
 
-  it('closes by naming that adding a contact does not put them on an event', () => {
+  it('closes by naming the directory scope and the separate Add-to-an-event act (frame 08--16 copy)', () => {
     mockApi({});
     renderModal();
 
-    expect(screen.getByText(/does not put them on an event/)).toBeInTheDocument();
-    expect(screen.getByText(/Add to an event/)).toBeInTheDocument();
+    expect(screen.getByText(/This adds someone to your directory/)).toBeInTheDocument();
+    expect(screen.getByText('Add to an event', { selector: 'strong' })).toBeInTheDocument();
   });
 });
 
@@ -121,7 +121,7 @@ describe('NewContactModal frame 08--16 anatomy (DEC-597 wave 8 amendment)', () =
   it('keeps the closing scope note distinct from the subtitle', () => {
     mockApi({});
     renderModal();
-    expect(screen.getByText(/does not put them on an event/)).toBeInTheDocument();
+    expect(screen.getByText(/This adds someone to your directory/)).toBeInTheDocument();
   });
 
   it('uses neutral, non-example placeholders for all five fields', () => {
