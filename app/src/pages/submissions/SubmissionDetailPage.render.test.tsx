@@ -2053,6 +2053,70 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
     expect(screen.queryByText(/Audience level update failed/)).not.toBeInTheDocument();
   });
 
+  // DEC-941: Remove is irreversible, so it opens the shared ConfirmDialog
+  // naming the participant first -- the DELETE only fires from the
+  // dialog's own confirm control, never straight off the row button
+  // (BreaksPanel.render.test.tsx:165 is the pattern).
+  it('Remove asks for confirmation naming the participant, then DELETEs', async () => {
+    const detail = baseDetail({ participants: twoParticipants() });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`DELETE /api/v1/submissions/${SUB_ID}/participants/p2`]: { status: 200, body: { deleted: 1 } },
+    });
+
+    renderPage();
+    await openSessionDetails();
+    await waitFor(() => {
+      expect(screen.getAllByText('Riley Moderator').length).toBeGreaterThan(0);
+    });
+
+    const table = document.getElementById('submission-participants-table') as HTMLElement;
+    const row = within(table).getByText('Riley Moderator').closest('tr') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Remove this participant?' });
+    expect(within(dialog).getByText(/Riley Moderator/)).toBeInTheDocument();
+    // Still in the table -- no optimistic removal, no DELETE, until confirmed.
+    expect(within(table).getByText('Riley Moderator')).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove participant' }));
+
+    await waitFor(() => {
+      expect(within(table).queryByText('Riley Moderator')).not.toBeInTheDocument();
+    });
+  });
+
+  it('cancelling the participant Remove confirmation fires no DELETE and keeps the row', async () => {
+    const detail = baseDetail({ participants: twoParticipants() });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+    await openSessionDetails();
+    await waitFor(() => {
+      expect(screen.getAllByText('Riley Moderator').length).toBeGreaterThan(0);
+    });
+
+    const table = document.getElementById('submission-participants-table') as HTMLElement;
+    const row = within(table).getByText('Riley Moderator').closest('tr') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Remove this participant?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Remove this participant?' })).not.toBeInTheDocument();
+    expect(within(table).getByText('Riley Moderator')).toBeInTheDocument();
+  });
+
   it('marks the participant row (not the bare sentence) on a named-field remove refusal, labelling an unrecognised key', async () => {
     const detail = baseDetail({ participants: twoParticipants() });
     mockApi({
@@ -2078,6 +2142,11 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
     const table = document.getElementById('submission-participants-table') as HTMLElement;
     const row = within(table).getByText('Riley Moderator').closest('tr') as HTMLElement;
     fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+
+    // DEC-941: Remove opens the shared ConfirmDialog naming the participant
+    // first -- the DELETE only fires from the dialog's own confirm control.
+    const dialog = await screen.findByRole('dialog', { name: 'Remove this participant?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove participant' }));
 
     await waitFor(() => {
       expect(within(table).getByText('participantId: Cannot remove this participant')).toBeInTheDocument();

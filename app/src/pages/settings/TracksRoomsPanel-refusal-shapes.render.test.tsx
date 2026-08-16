@@ -52,10 +52,15 @@ async function openEdit() {
   return section;
 }
 
+// DEC-941: Remove opens the shared ConfirmDialog naming the track/room
+// first -- these helpers also drive the dialog's own confirm control so
+// the DELETE this suite's mocks expect actually fires.
 async function removeTrack(section: HTMLElement) {
   const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
   const trackRow = trackNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
   fireEvent.click(within(trackRow).getByRole('button', { name: 'Remove' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Remove this track?' });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
   return trackRow;
 }
 
@@ -63,6 +68,8 @@ async function removeRoom(section: HTMLElement) {
   const roomNameInput = within(section).getByLabelText('Room name for Main Stage');
   const roomRow = roomNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
   fireEvent.click(within(roomRow).getByRole('button', { name: 'Remove' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Remove this room?' });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
   return roomRow;
 }
 

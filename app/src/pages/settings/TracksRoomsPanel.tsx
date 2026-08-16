@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import {
@@ -123,6 +124,13 @@ export function TracksRoomsPanel() {
   // rendered as a list under the failing row instead of the bare message.
   const [trackDeleteBlockers, setTrackDeleteBlockers] = useState<Record<string, Record<string, string>>>({});
   const [roomDeleteBlockers, setRoomDeleteBlockers] = useState<Record<string, Record<string, string>>>({});
+
+  // DEC-941: Remove is irreversible, so it opens the shared ConfirmDialog
+  // naming the track/room first -- the DELETE only fires from the dialog's
+  // own confirm control, never straight off the row button.
+  const [pendingDelete, setPendingDelete] = useState<{ kind: 'track'; track: Track } | { kind: 'room'; room: Room } | null>(
+    null,
+  );
   // w4-e/DEC-815 amendment: the add form is revealed from a tertiary action
   // on the section head, not shown open-by-default with a filled primary --
   // one filled primary per view (the footer's Done/Save) is the invariant.
@@ -250,7 +258,11 @@ export function TracksRoomsPanel() {
     setTrackRowErrors((prev) => ({ ...prev, [track.id]: {} }));
   }
 
-  async function deleteTrack(track: Track) {
+  function deleteTrack(track: Track) {
+    setPendingDelete({ kind: 'track', track });
+  }
+
+  async function confirmDeleteTrack(track: Track) {
     if (!eventId) return;
     try {
       await apiDelete(`/tracks/${track.id}`);
@@ -262,6 +274,8 @@ export function TracksRoomsPanel() {
       } else {
         setError(err instanceof ApiError ? err.message : 'Failed to delete track');
       }
+    } finally {
+      setPendingDelete(null);
     }
   }
 
@@ -323,7 +337,11 @@ export function TracksRoomsPanel() {
     setRoomRowErrors((prev) => ({ ...prev, [room.id]: {} }));
   }
 
-  async function deleteRoom(room: Room) {
+  function deleteRoom(room: Room) {
+    setPendingDelete({ kind: 'room', room });
+  }
+
+  async function confirmDeleteRoom(room: Room) {
     if (!eventId) return;
     try {
       await apiDelete(`/rooms/${room.id}`);
@@ -335,6 +353,8 @@ export function TracksRoomsPanel() {
       } else {
         setError(err instanceof ApiError ? err.message : 'Failed to delete room');
       }
+    } finally {
+      setPendingDelete(null);
     }
   }
 
@@ -765,6 +785,25 @@ export function TracksRoomsPanel() {
           ) : null}
         </SettingsEditForm>
       </SummarySection>
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={pendingDelete.kind === 'track' ? 'Remove this track?' : 'Remove this room?'}
+          body={
+            <p>
+              {pendingDelete.kind === 'track' ? pendingDelete.track.name : pendingDelete.room.name} will be removed.
+              This cannot be undone.
+            </p>
+          }
+          confirmLabel="Remove"
+          onConfirm={() =>
+            void (pendingDelete.kind === 'track'
+              ? confirmDeleteTrack(pendingDelete.track)
+              : confirmDeleteRoom(pendingDelete.room))
+          }
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </>
   );
 }
