@@ -896,13 +896,18 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     }
 
     const TASK_ROWS = [{ id: "task-1", kind: "general", title: "Sign W9", dueDate: null, required: true }];
+    // DEC-370 (wave-62 amendment): getOnboardingGrid's reads now issue in
+    // three concurrent waves (WAVE 1 = tasks/event/speakers/counts, WAVE 2 =
+    // total/contacts/overdue, WAVE 3 = participations+cells), so this
+    // call-order-based queue is ordered 0=tasks, 1=event, 2=speakers,
+    // 3=counts, 4=total, 5=contacts, 6=overdue.
     const gridDb = fakeGridDb([
       TASK_ROWS, // tasks
       [{ recordPrefix: "SES", timezone: "America/New_York" }], // DEC-801: event row (recordPrefix + timezone), resolved once
-      [{ count: 0 }], // total
-      [], // contacts page (empty; unrelated to the counts aggregate)
       [{ count: 5 }], // DEC-754: speakers roster COUNT(*) (own query now)
       [{ outstandingRequired: 0, outstandingContacts: 3 }], // counts
+      [{ count: 0 }], // total
+      [], // contacts page (empty; unrelated to the counts aggregate)
       [{ count: 1 }], // DEC-776: overdue roster-scoped COUNT(*) (own query now)
     ]);
     const grid = await getOnboardingGrid(gridDb, "event-1", {

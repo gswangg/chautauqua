@@ -150,18 +150,56 @@ function onboardingMatchExists(
  * for exactly those page contacts, unfiltered (every task column still
  * renders); (iv) one event-wide filter-independent aggregate for `counts`. */
 export async function getOnboardingGrid(db: Db, eventId: string, params: OnboardingGridParams): Promise<OnboardingGrid> {
-  const taskRows = await db
-    .select({
-      id: schema.task.id,
-      kind: schema.task.kind,
-      title: schema.task.title,
-      dueDate: schema.task.dueDate,
-      required: schema.task.required,
-      instructions: schema.task.instructions,
-    })
-    .from(schema.task)
-    .where(eq(schema.task.eventId, eventId))
-    .orderBy(sql`${schema.task.dueDate} is null`, sql`${schema.task.dueDate} asc`, sql`${schema.task.title} asc`, sql`${schema.task.id} asc`);
+  // DEC-370 (wave-62 amendment): WAVE 1 — the four reads below share no
+  // dependency on each other (none needs whereExpr/timezone), so they issue
+  // concurrently rather than as four sequential round trips. Array order is
+  // preserved from the pre-wave-62 sequential order for the call-order-based
+  // mocks in this file's tests.
+  const [taskRows, eventRows, speakersCountRows, countsRow] = await Promise.all([
+    db
+      .select({
+        id: schema.task.id,
+        kind: schema.task.kind,
+        title: schema.task.title,
+        dueDate: schema.task.dueDate,
+        required: schema.task.required,
+        instructions: schema.task.instructions,
+      })
+      .from(schema.task)
+      .where(eq(schema.task.eventId, eventId))
+      .orderBy(sql`${schema.task.dueDate} is null`, sql`${schema.task.dueDate} asc`, sql`${schema.task.title} asc`, sql`${schema.task.id} asc`),
+    // DEC-801 (wave 58 amendment): the event row is resolved ONCE here (never
+    // a second query, never per row) — this file's own comment at the old
+    // DEC-936 fetch site below used to run this same select a second time,
+    // after contactIdsInOrder was known; both recordPrefix (DEC-936, for
+    // formatRef) and timezone (DEC-801, for the overdue day-label predicates
+    // below, which fire BEFORE that later point in the function) come from
+    // this one row.
+    db
+      .select({ recordPrefix: schema.event.recordPrefix, timezone: schema.event.timezone })
+      .from(schema.event)
+      .where(eq(schema.event.id, eventId))
+      .limit(1),
+    // DEC-754/DEC-829: `speakers` is the size of the roster itself (the SAME
+    // rosterParticipantConditions predicate the base row condition below
+    // composes), so it needs no timezone/whereExpr and can join wave 1.
+    db
+      .select({ count: sql<number>`count(distinct ${schema.contact.id})` })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+      .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
+      .where(rosterParticipantConditions(eventId)),
+    // chaseableContactExistsForTaskEvent composes no timezone either, so
+    // outstandingRequired/outstandingContacts join wave 1 too.
+    db
+      .select({
+        outstandingRequired: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.required} = 1 then ${schema.taskAssignment.id} end)`,
+        outstandingContacts: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' then ${schema.taskAssignment.contactId} end)`,
+      })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
+      .where(and(eq(schema.task.eventId, eventId), chaseableContactExistsForTaskEvent())),
+  ]);
 
   const tasks: GridTask[] = taskRows.map((t) => ({
     id: t.id,
@@ -179,23 +217,13 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     outstandingContacts: 0,
   };
 
-  // DEC-801 (wave 58 amendment): the event row is resolved ONCE here (never
-  // a second query, never per row) — this file's own comment at the old
-  // DEC-936 fetch site below used to run this same select a second time,
-  // after contactIdsInOrder was known; both recordPrefix (DEC-936, for
-  // formatRef) and timezone (DEC-801, for the overdue day-label predicates
-  // below, which fire BEFORE that later point in the function) come from
-  // this one row.
-  const eventRows = await db
-    .select({ recordPrefix: schema.event.recordPrefix, timezone: schema.event.timezone })
-    .from(schema.event)
-    .where(eq(schema.event.id, eventId))
-    .limit(1);
   const recordPrefix = eventRows[0]?.recordPrefix;
   const timezone = eventRows[0]?.timezone;
   if (recordPrefix === undefined || timezone === undefined) {
     throw new Error(`onboarding grid: event ${eventId} has no record prefix/timezone`);
   }
+
+  const speakersCount = Number(speakersCountRows[0]?.count ?? 0);
 
   // DEC-829 (widens DEC-754), wave-29 TIER-0 amendment: the base row
   // condition used to be a correlated EXISTS against `contact` (this is the
@@ -239,45 +267,64 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   }
   const whereExpr = and(...conditions);
 
-  // DEC-829 wave-29: driving relation is participant JOIN submission
-  // (scoped by rosterParticipantConditions's submission.eventId/status
-  // conditions above), never `contact` alone — `contact` is joined by id
-  // only to read name/company/search/ordering columns. `count(distinct
-  // contact.id)` collapses the (rare, DEC-936) case of a contact holding
-  // more than one accepted participation on this event to one roster row,
-  // matching the page SELECT's GROUP BY below.
-  const totalRows = await db
-    .select({ count: sql<number>`count(distinct ${schema.contact.id})` })
-    .from(schema.participant)
-    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
-    .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-    .where(whereExpr);
-  const total = Number(totalRows[0]?.count ?? 0);
-
   const offset = (params.page - 1) * params.perPage;
 
-  // Same driving relation as totalRows, GROUP BY contact.id so a contact
-  // with more than one accepted participation on this event still yields
-  // exactly one page row (the non-grouped columns are all functionally
-  // dependent on contact.id, which SQLite's bare-column GROUP BY allows).
-  const contactRows = await db
-    .select({
-      id: schema.contact.id,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      email: schema.contact.email,
-      company: schema.contact.company,
-      userId: schema.user.id,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
-    .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-    .leftJoin(schema.user, eq(schema.user.contactId, schema.contact.id))
-    .where(whereExpr)
-    .groupBy(schema.contact.id)
-    .orderBy(sql`lower(${schema.contact.lastName}) asc, lower(${schema.contact.firstName}) asc, ${schema.contact.id} asc`)
-    .limit(params.perPage)
-    .offset(offset);
+  // DEC-370 (wave-62 amendment): WAVE 2 — these three reads all need
+  // whereExpr/timezone (which is why eventRows had to land in wave 1
+  // first), but not each other, so they issue concurrently. Array order
+  // matches the pre-wave-62 sequential order (totalRows, contactRows,
+  // overdueCountRows) for the call-order-based mocks in this file's tests.
+  const [totalRows, contactRows, overdueCountRows] = await Promise.all([
+    // DEC-829 wave-29: driving relation is participant JOIN submission
+    // (scoped by rosterParticipantConditions's submission.eventId/status
+    // conditions above), never `contact` alone — `contact` is joined by id
+    // only to read name/company/search/ordering columns. `count(distinct
+    // contact.id)` collapses the (rare, DEC-936) case of a contact holding
+    // more than one accepted participation on this event to one roster row,
+    // matching the page SELECT's GROUP BY below.
+    db
+      .select({ count: sql<number>`count(distinct ${schema.contact.id})` })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+      .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
+      .where(whereExpr),
+    // Same driving relation as totalRows, GROUP BY contact.id so a contact
+    // with more than one accepted participation on this event still yields
+    // exactly one page row (the non-grouped columns are all functionally
+    // dependent on contact.id, which SQLite's bare-column GROUP BY allows).
+    db
+      .select({
+        id: schema.contact.id,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        email: schema.contact.email,
+        company: schema.contact.company,
+        userId: schema.user.id,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+      .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
+      .leftJoin(schema.user, eq(schema.user.contactId, schema.contact.id))
+      .where(whereExpr)
+      .groupBy(schema.contact.id)
+      .orderBy(sql`lower(${schema.contact.lastName}) asc, lower(${schema.contact.firstName}) asc, ${schema.contact.id} asc`)
+      .limit(params.perPage)
+      .offset(offset),
+    // DEC-776: `overdue` is a separate query (rather than folded into the
+    // countsRow query above) because it composes overdueAssignmentConditions,
+    // which needs a join to `contact` to enforce the roster predicate — a
+    // task_assignment for a contact who is no longer an accepted speaker
+    // (e.g. their submission was withdrawn after the task was assigned) must
+    // not inflate this count.
+    db
+      .select({ count: sql<number>`count(distinct ${schema.taskAssignment.id})` })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
+      .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
+      .where(overdueAssignmentConditions(eventId, params.now, timezone)),
+  ]);
+  const total = Number(totalRows[0]?.count ?? 0);
+  const overdueCount = Number(overdueCountRows[0]?.count ?? 0);
 
   // A left join to `user` may repeat a row only when a contact has more than
   // one user account, which the app never creates — dedupe defensively.
@@ -303,39 +350,81 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     if (c.userId) row.contact.hasAccount = true;
   }
 
-  // DEC-936: EVERY participation a roster row covers, built from ONE grouped
-  // query over the page's contact ids (chunked per DEC-078) — never a
-  // subquery per column, never a query per row. Joins participant ->
-  // submission composing rosterParticipantConditions (DEC-829, the same
-  // predicate the base row condition above requires), ordered by submission
-  // seq so a contact with more than one accepted participation lists them
-  // in a stable, meaningful order.
-  if (contactIdsInOrder.length > 0) {
-    for (const batch of chunkIds(contactIdsInOrder)) {
-      const participationRows = await db
-        .select({
-          contactId: schema.participant.contactId,
-          participantId: schema.participant.id,
-          submissionId: schema.participant.submissionId,
-          submissionSeq: schema.submission.seq,
-          submissionTitle: schema.submission.title,
-          inviteStatus: schema.participant.inviteStatus,
-        })
-        .from(schema.participant)
-        .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
-        .where(and(inArray(schema.participant.contactId, batch), rosterParticipantConditions(eventId)))
-        .orderBy(sql`${schema.submission.seq} asc`, sql`${schema.participant.id} asc`);
-      for (const p of participationRows) {
-        const row = rowsByContact.get(p.contactId);
-        if (!row) continue;
-        row.contact.participations.push({
-          participantId: p.participantId,
-          submissionId: p.submissionId,
-          ref: formatRef(recordPrefix, p.submissionSeq),
-          title: p.submissionTitle,
-          inviteStatus: p.inviteStatus as GridInviteStatus,
-        });
-      }
+  // Cells for exactly those page contacts, carrying ALL their cells
+  // unfiltered so every task column still renders — chunked per DEC-104 so
+  // the page's contact ids never reach inArray unbounded.
+  const taskIds = tasks.map((t) => t.id);
+
+  // DEC-370 (wave-62 amendment): WAVE 3 — one Promise.all covering BOTH
+  // chunk loops (participations and cells) across every batch of
+  // contactIdsInOrder. Neither loop depends on the other's results, so all
+  // their per-batch queries issue concurrently. The flat array preserves
+  // the pre-wave-62 sequential order (every participation batch, in order,
+  // followed by every cell batch, in order) for the call-order-based mocks
+  // in this file's tests; results are split back apart by length below so
+  // the participation throw still fires (in SOURCE order) before any cell
+  // row is processed.
+  const contactBatches = contactIdsInOrder.length > 0 ? chunkIds(contactIdsInOrder) : [];
+  const participationPromises = contactBatches.map((batch) =>
+    // DEC-936: EVERY participation a roster row covers, built from ONE
+    // grouped query over the page's contact ids (chunked per DEC-078) —
+    // never a subquery per column, never a query per row. Joins participant
+    // -> submission composing rosterParticipantConditions (DEC-829, the
+    // same predicate the base row condition above requires), ordered by
+    // submission seq so a contact with more than one accepted participation
+    // lists them in a stable, meaningful order.
+    db
+      .select({
+        contactId: schema.participant.contactId,
+        participantId: schema.participant.id,
+        submissionId: schema.participant.submissionId,
+        submissionSeq: schema.submission.seq,
+        submissionTitle: schema.submission.title,
+        inviteStatus: schema.participant.inviteStatus,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+      .where(and(inArray(schema.participant.contactId, batch), rosterParticipantConditions(eventId)))
+      .orderBy(sql`${schema.submission.seq} asc`, sql`${schema.participant.id} asc`),
+  );
+  const cellPromises =
+    taskIds.length > 0
+      ? contactBatches.map((batch) =>
+          db
+            .select({
+              assignmentId: schema.taskAssignment.id,
+              taskId: schema.taskAssignment.taskId,
+              status: schema.taskAssignment.status,
+              completedAt: schema.taskAssignment.completedAt,
+              fileId: schema.taskAssignment.fileId,
+              fileName: schema.file.filename,
+              fileSizeBytes: schema.file.sizeBytes,
+              lastRemindedAt: schema.taskAssignment.lastRemindedAt,
+              contactId: schema.taskAssignment.contactId,
+              createdAt: schema.taskAssignment.createdAt,
+            })
+            .from(schema.taskAssignment)
+            .leftJoin(schema.file, eq(schema.file.id, schema.taskAssignment.fileId))
+            .where(and(inArray(schema.taskAssignment.contactId, batch), inArray(schema.taskAssignment.taskId, taskIds))),
+        )
+      : [];
+  // Every query in both arrays above is already issued (db.select executes
+  // eagerly when built) before this Promise.all runs, so nesting here (to
+  // keep the two result shapes distinct for the type checker) does not
+  // change issuance order or concurrency — it is still one wave.
+  const [participationBatches, cellBatches] = await Promise.all([Promise.all(participationPromises), Promise.all(cellPromises)]);
+
+  for (const participationRows of participationBatches) {
+    for (const p of participationRows) {
+      const row = rowsByContact.get(p.contactId);
+      if (!row) continue;
+      row.contact.participations.push({
+        participantId: p.participantId,
+        submissionId: p.submissionId,
+        ref: formatRef(recordPrefix, p.submissionSeq),
+        title: p.submissionTitle,
+        inviteStatus: p.inviteStatus as GridInviteStatus,
+      });
     }
   }
 
@@ -349,105 +438,43 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     }
   }
 
-  // Cells for exactly those page contacts, carrying ALL their cells
-  // unfiltered so every task column still renders — chunked per DEC-104 so
-  // the page's contact ids never reach inArray unbounded.
-  const taskIds = tasks.map((t) => t.id);
-  if (contactIdsInOrder.length > 0 && taskIds.length > 0) {
-    for (const batch of chunkIds(contactIdsInOrder)) {
-      const cellRows = await db
-        .select({
-          assignmentId: schema.taskAssignment.id,
-          taskId: schema.taskAssignment.taskId,
-          status: schema.taskAssignment.status,
-          completedAt: schema.taskAssignment.completedAt,
-          fileId: schema.taskAssignment.fileId,
-          fileName: schema.file.filename,
-          fileSizeBytes: schema.file.sizeBytes,
-          lastRemindedAt: schema.taskAssignment.lastRemindedAt,
-          contactId: schema.taskAssignment.contactId,
-          createdAt: schema.taskAssignment.createdAt,
-        })
-        .from(schema.taskAssignment)
-        .leftJoin(schema.file, eq(schema.file.id, schema.taskAssignment.fileId))
-        .where(and(inArray(schema.taskAssignment.contactId, batch), inArray(schema.taskAssignment.taskId, taskIds)));
-      for (const r of cellRows) {
-        const row = rowsByContact.get(r.contactId);
-        if (!row) continue;
-        // schema.file.filename/sizeBytes are notNull columns (DEC-920) — a
-        // non-null fileId whose file row didn't resolve through the join is
-        // a broken reference, not a "no file" state. Fail loudly rather
-        // than falling back to a generic "Has file" label.
-        if (r.fileId != null && r.fileName == null) {
-          throw new Error(`onboarding grid: assignment ${r.assignmentId} has fileId ${r.fileId} that does not resolve to a file row`);
-        }
-        row.cells.push({
-          taskId: r.taskId,
-          assignmentId: r.assignmentId,
-          status: r.status,
-          completedAt: r.completedAt ? r.completedAt.getTime() : null,
-          fileId: r.fileId,
-          fileName: r.fileName,
-          fileSizeBytes: r.fileSizeBytes,
-          lastRemindedAt: r.lastRemindedAt ? r.lastRemindedAt.getTime() : null,
-          assignedAt: r.createdAt.getTime(),
-        });
+  for (const cellRows of cellBatches) {
+    for (const r of cellRows) {
+      const row = rowsByContact.get(r.contactId);
+      if (!row) continue;
+      // schema.file.filename/sizeBytes are notNull columns (DEC-920) — a
+      // non-null fileId whose file row didn't resolve through the join is
+      // a broken reference, not a "no file" state. Fail loudly rather
+      // than falling back to a generic "Has file" label.
+      if (r.fileId != null && r.fileName == null) {
+        throw new Error(`onboarding grid: assignment ${r.assignmentId} has fileId ${r.fileId} that does not resolve to a file row`);
       }
+      row.cells.push({
+        taskId: r.taskId,
+        assignmentId: r.assignmentId,
+        status: r.status,
+        completedAt: r.completedAt ? r.completedAt.getTime() : null,
+        fileId: r.fileId,
+        fileName: r.fileName,
+        fileSizeBytes: r.fileSizeBytes,
+        lastRemindedAt: r.lastRemindedAt ? r.lastRemindedAt.getTime() : null,
+        assignedAt: r.createdAt.getTime(),
+      });
     }
   }
 
   const rows = contactIdsInOrder.map((id) => rowsByContact.get(id)).filter((r): r is GridRow => r !== undefined);
 
-  // Event-wide aggregate, filter- and page-independent (DEC-333/334): SQL
-  // COUNT forms, never materialized rows. DEC-754/DEC-829: `speakers` is
-  // the size of the roster itself (the SAME rosterParticipantConditions
-  // predicate the base row condition above composes — that surface's own
-  // predicate), NOT count(distinct taskAssignment.contactId) — a roster
-  // participant with zero assignments, or an 'invited'/'declined' one, is
-  // still one of the `speakers` this grid counts. Wave-29: driven from
-  // participant JOIN submission (never `contact` alone), same as
-  // totalRows/contactRows above.
-  const speakersCountRows = await db
-    .select({ count: sql<number>`count(distinct ${schema.contact.id})` })
-    .from(schema.participant)
-    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
-    .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-    .where(rosterParticipantConditions(eventId));
-  const speakersCount = Number(speakersCountRows[0]?.count ?? 0);
-
   // DEC-776 amendment (wave 61): the three header numbers each range over a
-  // DIFFERENT population — `speakers` (above) is the roster itself
+  // DIFFERENT population — `speakers` is the roster itself
   // (rosterParticipantConditions: every accepted-submission participant,
   // including 'invited'/'declined'); `outstandingRequired`/`outstandingContacts`
-  // below and `overdue` further down both range over the NARROWER "still owes
-  // something" set (chaseableContactExistsForTaskEvent /
-  // overdueAssignmentConditions: accepted submission AND invite status still
-  // 'none' or 'accepted'), so a contact who declines their invite (or whose
-  // submission left 'accepted') stops inflating any of the three "open work"
-  // counts while still showing up as a roster row.
-  const countsRow = await db
-    .select({
-      outstandingRequired: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.required} = 1 then ${schema.taskAssignment.id} end)`,
-      outstandingContacts: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' then ${schema.taskAssignment.contactId} end)`,
-    })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
-    .where(and(eq(schema.task.eventId, eventId), chaseableContactExistsForTaskEvent()));
-
-  // DEC-776: `overdue` is a separate query (rather than folded into the
-  // count above) because it composes overdueAssignmentConditions, which
-  // needs a join to `contact` to enforce the roster predicate — a
-  // task_assignment for a contact who is no longer an accepted speaker
-  // (e.g. their submission was withdrawn after the task was assigned) must
-  // not inflate this count.
-  const overdueCountRows = await db
-    .select({ count: sql<number>`count(distinct ${schema.taskAssignment.id})` })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
-    .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
-    .where(overdueAssignmentConditions(eventId, params.now, timezone));
-  const overdueCount = Number(overdueCountRows[0]?.count ?? 0);
-
+  // and `overdue` both range over the NARROWER "still owes something" set
+  // (chaseableContactExistsForTaskEvent / overdueAssignmentConditions:
+  // accepted submission AND invite status still 'none' or 'accepted'), so a
+  // contact who declines their invite (or whose submission left 'accepted')
+  // stops inflating any of the three "open work" counts while still showing
+  // up as a roster row.
   const counts: OnboardingGridCounts = countsRow[0]
     ? {
         speakers: speakersCount,
