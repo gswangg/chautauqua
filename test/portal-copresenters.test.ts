@@ -5,6 +5,8 @@
 // plain "speaker" role. Absent entirely when there's nobody else.
 
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
@@ -165,6 +167,65 @@ describe("EditPage co-presenter frame (DEC-604 wave-56 amendment)", () => {
   it("does not render the duplicate banner for an ordinary field-validation error", () => {
     const html = render({ participantErrors: { firstName: "First name is required" } });
     expect(html).not.toContain("Everything you typed is still below.");
+  });
+});
+
+describe("EditPage co-presenter field-fill contract (DEC-604 wave-60 amendment)", () => {
+  const DATA: EditableSubmissionData = {
+    submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },
+    form: { id: "f1", closeDate: null, timezone: "America/Los_Angeles" },
+    fields: [],
+    answers: {},
+    offeredTrackIds: [],
+    allTracks: [],
+    selectedTrackIds: [],
+  };
+  const branding = { eventName: "Event", welcomeMessage: null, accentColor: null, logoUrl: null };
+
+  function render() {
+    return EditPage({
+      branding,
+      submissionId: "s1",
+      data: DATA,
+      answers: {},
+      selectedTrackIds: [],
+      csrfToken: "tok",
+      editable: true,
+      tracksEditable: true,
+      participants: [],
+      speakerName: "Priya Raman",
+    }).toString();
+  }
+
+  function findInputTag(html: string, id: string): string {
+    const match = html.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`));
+    expect(match).not.toBeNull();
+    return match![0];
+  }
+
+  it("puts the first name, last name and email co-presenter inputs on the shared .chq-input field-fill contract", () => {
+    const html = render();
+    expect(findInputTag(html, "cp-first-name")).toContain('class="chq-input"');
+    expect(findInputTag(html, "cp-last-name")).toContain('class="chq-input"');
+    expect(findInputTag(html, "cp-email")).toContain('class="chq-input"');
+  });
+
+  it("wraps each of those three inputs in a .chq-field div so they match the shared width rule's selector", () => {
+    const html = render();
+    // The wrapping div immediately preceding each labelled input must carry chq-field.
+    expect(html).toMatch(/<div class="chq-field">\s*<label class="chq-portal-field-label" for="cp-first-name">/);
+    expect(html).toMatch(/<div class="chq-field">\s*<label class="chq-portal-field-label" for="cp-last-name">/);
+    expect(html).toMatch(/<div class="chq-field">\s*<label class="chq-portal-field-label" for="cp-email">/);
+  });
+});
+
+describe("Co-presenter field-fill stylesheet rule (DEC-604 wave-60 amendment)", () => {
+  it("the rule matching .chq-field .chq-input sets width, not merely max-width, so the co-presenter pair fills its 220px column", () => {
+    const css = readFileSync(join(__dirname, "..", "src", "routes", "portal", "portal.css.ts"), "utf8");
+    const match = css.match(/\.chq-field \.chq-input,[\s\S]*?\{([\s\S]*?)\}/);
+    expect(match).not.toBeNull();
+    const body = match![1];
+    expect(body).toMatch(/(?<!max-)width:\s*100%/);
   });
 });
 
