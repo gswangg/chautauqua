@@ -49,14 +49,14 @@ vi.mock("../src/server/repo/portal", async () => {
         welcomeMessage: null,
         accentColor: null,
         logoUrl: null,
-        get showResources() {
-          return mockShowResources;
-        },
       },
       submissions: [],
       tasks: [],
       contactName: "Priya Raman",
       contactCompany: null,
+      get showResourcesByEventId() {
+        return { "evt-1": mockShowResources };
+      },
     })),
     getMySessions: vi.fn(
       async (): Promise<PortalSession[]> => [
@@ -70,6 +70,7 @@ vi.mock("../src/server/repo/portal", async () => {
           roomName: null,
           trackName: null,
           acceptedAt: null,
+          eventId: "evt-1",
           eventName: "Arbitrary Con",
           timezone: "UTC",
           overlaps: [],
@@ -150,7 +151,11 @@ describe("DEC-988: showResources server-side reader", () => {
     expect(body).toContain("That page isn");
   });
 
-  it("showResources=false: GET /portal/resources/:id/download is 404 before the download-scope query", async () => {
+  it("showResources=false: GET /portal/resources/:id/download is 404 before any bytes stream", async () => {
+    // DEC-988 (wave-74 amendment): gating moved to the RESOURCE's own
+    // event, resolved from the scope itself — getResourceDownloadScope IS
+    // called (it's the only source of the resource's eventId), but the
+    // route still refuses before the file store is ever touched.
     mockShowResources = false;
     const { getResourceDownloadScope } = await import("../src/server/repo/portal");
     const spy = vi.mocked(getResourceDownloadScope);
@@ -158,7 +163,7 @@ describe("DEC-988: showResources server-side reader", () => {
     const app = await buildResourcesApp();
     const res = await app.request("/portal/resources/res-1/download");
     expect(res.status).toBe(404);
-    expect(spy).not.toHaveBeenCalled();
+    expect(spy).toHaveBeenCalled();
   });
 
   it("showResources=false: home page suppresses both the footer link and the session card's Read notes link", async () => {

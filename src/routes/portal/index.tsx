@@ -185,10 +185,14 @@ function WorklistInvitationRow(props: { invitation: PortalInvitation; csrfToken:
  * such placed session is used — the portal home states one line, not a
  * per-session list. Composes formatPlacement below — the ONE portal
  * placement grammar (w13-d) — rather than hand-assembling day/time/room. */
-function scheduledSubline(eventName: string, sessions: PortalSession[]): string {
+function scheduledSubline(fallbackEventName: string, sessions: PortalSession[]): string {
   const placed = sessions.find((s) => s.day !== null && s.startMin !== null);
-  if (!placed) return eventName;
-  return `${eventName} · you speak ${formatPlacement(placed.day!, placed.startMin!, placed.roomName)}`;
+  if (!placed) return fallbackEventName;
+  // DEC-988 (wave-74 amendment, sibling fix): name the PLACED session's own
+  // event, never the portal's single "most recent submission" branding
+  // event — a speaker across events must not have Event A's placement
+  // captioned with Event B's name.
+  return `${placed.eventName} · you speak ${formatPlacement(placed.day!, placed.startMin!, placed.roomName)}`;
 }
 
 function SessionCard(props: {
@@ -267,6 +271,7 @@ function PortalPage(props: {
   submissions: PortalSubmissionListItem[];
   csrfToken: string;
   showAdminBounceNotice: boolean;
+  anyEventShowsResources: boolean;
 }) {
   const { branding, contactName, contactCompany } = props.data;
   const { sessions, invitations, taskAssignments, deliverables, submissions, csrfToken } = props;
@@ -292,9 +297,11 @@ function PortalPage(props: {
       {/* w15-b: /portal/resources must stay reachable even when the
           speaker has no accepted session (so no "Read notes" link renders
           in a Your session card) — the footer is the always-present path
-          WHEN the section is on (DEC-988 wave-56 amendment: the producer's
-          "Show resources" toggle suppresses this link entirely). */}
-      {branding.showResources ? (
+          WHEN the section is on for at least one of the speaker's events
+          (DEC-988 wave-74 amendment: PER EVENT, not one global toggle —
+          render when ANY event permits, /portal/resources itself filters
+          down to only the permitted groups). */}
+      {props.anyEventShowsResources ? (
         <a href="/portal/resources" class="chq-portal-footer-resources">Resources</a>
       ) : null}
       <a href="/portal/profile" class="chq-portal-footer-profile">Profile</a>
@@ -369,7 +376,7 @@ function PortalPage(props: {
             <SessionCard
               session={s}
               deliverable={deliverables.get(s.submissionId) ?? null}
-              showResources={branding.showResources}
+              showResources={props.data.showResourcesByEventId[s.eventId] ?? true}
             />
           ))
         )}
@@ -544,6 +551,10 @@ portalRoutes.get("/", async (c) => {
   );
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+  // DEC-988 (wave-74 amendment): the footer link is reachable when ANY of
+  // the speaker's events permits — /portal/resources itself filters down to
+  // only the permitted groups, so this is never an over-grant.
+  const anyEventShowsResources = Object.values(data.showResourcesByEventId).some((v) => v);
   return c.html(
     <PortalPage
       data={data}
@@ -554,6 +565,7 @@ portalRoutes.get("/", async (c) => {
       submissions={submissions}
       csrfToken={csrfToken}
       showAdminBounceNotice={showAdminBounceNotice}
+      anyEventShowsResources={anyEventShowsResources}
     />,
   );
 });

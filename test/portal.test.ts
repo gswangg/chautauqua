@@ -28,12 +28,12 @@ vi.mock("../src/server/repo/portal", async () => {
         welcomeMessage: null,
         accentColor: null,
         logoUrl: null,
-        showResources: true,
       },
       submissions: [],
       tasks: [],
       contactName: "Priya Raman",
       contactCompany: "Latticework Systems",
+      showResourcesByEventId: { "evt-1": true },
     })),
     getMySessions: vi.fn(async () => []),
     getMyInvitations: vi.fn(async () => mockInvitations),
@@ -296,12 +296,12 @@ describe("portal home tagline (DEC-777)", () => {
         welcomeMessage: "Welcome to the speaker portal!",
         accentColor: null,
         logoUrl: null,
-        showResources: true,
       },
       submissions: [],
       tasks: [],
       contactName: "Priya Raman",
       contactCompany: null,
+      showResourcesByEventId: { "evt-1": true },
     });
     mockTasks = [];
     mockInvitations = [];

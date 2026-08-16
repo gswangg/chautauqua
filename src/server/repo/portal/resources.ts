@@ -102,6 +102,10 @@ export async function getMyResources(db: Db, contactId: string, orgId: string): 
 }
 
 export interface PortalResourceDownloadScope {
+  /** DEC-988 (wave-74 amendment): the resource's OWN event — the caller
+   * gates showResourcesByEventId on this id, never on the portal's
+   * "most recent submission" branding event. */
+  eventId: string;
   r2Key: string;
   contentType: string;
   filename: string;
@@ -179,5 +183,5 @@ export async function getResourceDownloadScope(
     .limit(1);
   const fileRow = fileRows[0];
   if (!fileRow) return null;
-  return fileRow;
+  return { ...fileRow, eventId: row.eventId };
 }

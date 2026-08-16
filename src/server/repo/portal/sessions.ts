@@ -52,6 +52,7 @@ export interface PortalSession {
   roomName: string | null;
   trackName: string | null;
   acceptedAt: number | null;
+  eventId: string;
   eventName: string;
   timezone: string;
   /** DEC-777 amendment: the speaker's own placed sessions that collide with
@@ -74,6 +75,7 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
       endMin: schema.scheduleSlot.endMin,
       roomName: schema.room.name,
       acceptedAt: schema.submission.acceptedAt,
+      eventId: schema.event.id,
       eventName: schema.event.name,
       timezone: schema.event.timezone,
     })
@@ -125,6 +127,7 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
     roomName: row.roomName,
     trackName: trackNames.get(row.submissionId)?.[0] ?? null,
     acceptedAt: row.acceptedAt ? row.acceptedAt.getTime() : null,
+    eventId: row.eventId,
     eventName: row.eventName,
     timezone: row.timezone,
   }));

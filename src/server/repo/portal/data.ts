@@ -12,7 +12,10 @@ import { answerFieldRoleCondition } from "../form-roles";
 import { isOwnedByContact, speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
 import { safeImageSrc } from "../../../domain/brand-url";
-import { DEC_322 } from "../../../decisions";
+import { chunkIds } from "../../../lib/chunk";
+import { DEC_322, DEC_988 } from "../../../decisions";
+
+void DEC_988;
 
 void DEC_322;
 
@@ -35,13 +38,21 @@ export interface PortalTask {
   timezone: string;
 }
 
+/** Portal CHROME only — resolved from the event of the speaker's
+ * most-recent submission (or null when the speaker has none). This is a
+ * single-event snapshot used purely for header/footer branding (name,
+ * colors, welcome message); no visibility decision may ride on any field
+ * here. In particular there is no `showResources` on this type — resource
+ * visibility is per-event (DEC-988 wave-74 amendment) and lives on
+ * PortalData.showResourcesByEventId, keyed by the event that actually owns
+ * the resource/session being shown, never by this single "most recent"
+ * event. */
 export interface PortalBranding {
   eventId: string | null;
   eventName: string;
   welcomeMessage: string | null;
   accentColor: string | null;
   logoUrl: string | null;
-  showResources: boolean;
 }
 
 export interface PortalData {
@@ -50,6 +61,13 @@ export interface PortalData {
   tasks: PortalTask[];
   contactName: string;
   contactCompany: string | null;
+  /** DEC-988 (wave-74 amendment): whether the speaker portal's Resources
+   * section is on, PER EVENT the contact participates in (union of their
+   * submission and task-assignment events) — an event with no portal_settings
+   * row reads true, matching the schema default. Never collapse this to one
+   * global boolean: a speaker across two events must see Event A's resources
+   * while Event B's stay hidden, in either direction. */
+  showResourcesByEventId: Record<string, boolean>;
 }
 
 const DEFAULT_BRANDING: PortalBranding = {
@@ -58,7 +76,6 @@ const DEFAULT_BRANDING: PortalBranding = {
   welcomeMessage: null,
   accentColor: null,
   logoUrl: null,
-  showResources: true,
 };
 
 /**
@@ -111,6 +128,7 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
         title: schema.task.title,
         dueDate: schema.task.dueDate,
         required: schema.task.required,
+        eventId: schema.event.id,
         eventOrgId: schema.event.orgId,
         timezone: schema.event.timezone,
       })
@@ -145,9 +163,10 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
     timezone: row.timezone,
   }));
 
-  // Branding: portal_settings for the event of the speaker's most recent
-  // submission when present; else event-name-only default; else the
-  // generic fallback (no event context at all).
+  // Branding (CHROME ONLY): portal_settings for the event of the speaker's
+  // most recent submission when present; else event-name-only default; else
+  // the generic fallback (no event context at all). No visibility field
+  // lives here — see showResourcesByEventId below.
   let branding: PortalBranding = DEFAULT_BRANDING;
   const mostRecentEventId = submissionRows[0]?.eventId ?? null;
   if (mostRecentEventId) {
@@ -168,12 +187,33 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
           // stored value (written before this gate existed) can never
           // reach an <img src>.
           logoUrl: safeImageSrc(settings.logoUrl),
-          showResources: settings.showResources,
         }
       : { ...DEFAULT_BRANDING, eventId: mostRecentEventId, eventName };
   }
 
-  return { branding, submissions, tasks, contactName, contactCompany };
+  // DEC-988 (wave-74 amendment): showResources resolved PER EVENT the
+  // contact participates in — the union of their submission and
+  // task-assignment events, never the single "most recent submission" event
+  // branding above resolves. One batched select over portal_settings keyed
+  // by that event-id set; an event with no row reads true (schema default,
+  // src/db/schema/content.ts).
+  const participantEventIds = new Set<string>();
+  for (const row of submissionRows) participantEventIds.add(row.eventId);
+  for (const row of taskRows) participantEventIds.add(row.eventId);
+  const showResourcesByEventId: Record<string, boolean> = {};
+  for (const eventId of participantEventIds) showResourcesByEventId[eventId] = true;
+  const eventIdList = [...participantEventIds];
+  if (eventIdList.length > 0) {
+    for (const batch of chunkIds(eventIdList)) {
+      const rows = await db
+        .select({ eventId: schema.portalSettings.eventId, showResources: schema.portalSettings.showResources })
+        .from(schema.portalSettings)
+        .where(inArray(schema.portalSettings.eventId, batch));
+      for (const row of rows) showResourcesByEventId[row.eventId] = row.showResources;
+    }
+  }
+
+  return { branding, submissions, tasks, contactName, contactCompany, showResourcesByEventId };
 }
 
 export interface PortalSubmissionAnswer {
