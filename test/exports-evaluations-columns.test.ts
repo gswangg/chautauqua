@@ -51,6 +51,7 @@ const PLAN_A_ROUND_CRITERIA = JSON.stringify({
   "2": [{ id: "cri_a3", label: "Depth", kind: "dropdown", options: ["Low", "High"] }],
 });
 const PLAN_B_CRITERIA = JSON.stringify([{ id: "cri_b1", label: "Clarity", kind: "rating", weight: 1 }]);
+const SCALE = JSON.stringify({ min: 1, max: 5 });
 
 function evaluationRows() {
   return [
@@ -59,9 +60,12 @@ function evaluationRows() {
       planName: "Program Committee",
       criteriaJson: PLAN_A_CRITERIA,
       roundCriteriaJson: PLAN_A_ROUND_CRITERIA,
+      scaleJson: SCALE,
       seq: 1,
       title: "Talk One",
       reviewerEmail: "reviewer1@example.com",
+      contactFirstName: "Alice",
+      contactLastName: "Reviewer",
       round: 1,
       scoresJson: JSON.stringify({ cri_a1: 4, cri_a2: 5, cri_a4: "Nice job" }),
       comment: "Great session",
@@ -75,9 +79,12 @@ function evaluationRows() {
       planName: "Program Committee",
       criteriaJson: PLAN_A_CRITERIA,
       roundCriteriaJson: PLAN_A_ROUND_CRITERIA,
+      scaleJson: SCALE,
       seq: 1,
       title: "Talk One",
       reviewerEmail: "reviewer2@example.com",
+      contactFirstName: null,
+      contactLastName: null,
       round: 2,
       scoresJson: JSON.stringify({ cri_a1: 3, cri_a3: "High" }),
       comment: null,
@@ -88,9 +95,12 @@ function evaluationRows() {
       planName: "Program Committee",
       criteriaJson: PLAN_B_CRITERIA,
       roundCriteriaJson: null,
+      scaleJson: SCALE,
       seq: 2,
       title: "Talk Two",
       reviewerEmail: "reviewer1@example.com",
+      contactFirstName: "Alice",
+      contactLastName: "Reviewer",
       round: 1,
       scoresJson: JSON.stringify({ cri_b1: 5 }),
       comment: "",
@@ -182,5 +192,81 @@ describe("DEC-529: evaluations export replaces scoresJson with labelled columns 
     const table = await buildExport(fakeDb(queue()), "event-1", "evaluations");
     const planBRow = table.records.find((r) => r["title"] === "Talk Two")!;
     expect(planBRow["weightedScore"]).toBe("5");
+  });
+});
+
+describe("DEC-147 (wave 79 amendment): weightedScore resolves per (planId, round) via criteriaForRound", () => {
+  it("plan-a round 1 (no override for round 1) still weighs cri_a1+cri_a2 through the base criteria", async () => {
+    const table = await buildExport(fakeDb(queue()), "event-1", "evaluations");
+    const round1Row = table.records.find((r) => r["round"] === "1" && r["title"] === "Talk One")!;
+    // (4*1 + 5*2) / 3 = 4.666666666666667
+    expect(round1Row["weightedScore"]).toBe(String((4 * 1 + 5 * 2) / 3));
+  });
+
+  it("plan-a round 2's override REPLACES the base criteria with a dropdown-only scorecard, so weightedScore is empty (no rating criteria for that round), not merely missing a score", async () => {
+    const table = await buildExport(fakeDb(queue()), "event-1", "evaluations");
+    const round2Row = table.records.find((r) => r["round"] === "2")!;
+    expect(round2Row["weightedScore"]).toBe("");
+  });
+});
+
+describe("DEC-736 (wave 79 amendment): reviewer column carries a name when the contact has one, else the email", () => {
+  it("a reviewer with a linked contact renders 'First Last'", async () => {
+    const table = await buildExport(fakeDb(queue()), "event-1", "evaluations");
+    const row = table.records[0]!; // reviewer1@example.com, has contactFirstName/contactLastName
+    expect(row["reviewer"]).toBe("Alice Reviewer");
+  });
+
+  it("a reviewer with no linked contact name falls back to email", async () => {
+    const table = await buildExport(fakeDb(queue()), "event-1", "evaluations");
+    const row = table.records.find((r) => r["round"] === "2")!; // reviewer2@example.com, no contact names
+    expect(row["reviewer"]).toBe("reviewer2@example.com");
+  });
+
+  it("the header has no 'reviewerEmail' column -- it was renamed to 'reviewer'", async () => {
+    const table = await buildExport(fakeDb(queue()), "event-1", "evaluations");
+    expect(table.header).not.toContain("reviewerEmail");
+    expect(table.header).toContain("reviewer");
+  });
+});
+
+describe("guard: roundCriteriaJson has exactly one legitimate reader outside labelByCriterionId", () => {
+  it("src/server/repo/exports/evaluations.ts reads roundCriteriaJson only as a criteriaForRound argument or inside labelByCriterionId's deliberate all-rounds label union", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.resolve(__dirname, "../src/server/repo/exports/evaluations.ts"),
+      "utf8",
+    );
+    const lines = src.split("\n");
+    // Find labelByCriterionId's body span so its own reads are exempted --
+    // it's the deliberate all-rounds label UNION, not a scoring resolution.
+    const fnStart = lines.findIndex((l) => l.includes("export function labelByCriterionId"));
+    expect(fnStart).toBeGreaterThanOrEqual(0);
+    let depth = 0;
+    let fnEnd = -1;
+    for (let i = fnStart; i < lines.length; i++) {
+      for (const ch of lines[i]!) {
+        if (ch === "{") depth++;
+        if (ch === "}") depth--;
+      }
+      if (depth === 0 && i > fnStart) {
+        fnEnd = i;
+        break;
+      }
+    }
+    expect(fnEnd).toBeGreaterThan(fnStart);
+
+    lines.forEach((line, idx) => {
+      if (!line.includes("roundCriteriaJson")) return;
+      const insideLabelFn = idx >= fnStart && idx <= fnEnd;
+      const isCriteriaForRoundArg = /criteriaForRound\([^)]*roundCriteriaJson/.test(line) || /roundCriteriaJson,?\s*$/.test(line.trim()) && lines[idx - 1]?.includes("criteriaForRound(");
+      const isDestructureOrSelect =
+        /roundCriteriaJson:\s*schema\.evaluationPlan\.roundCriteriaJson/.test(line) || // select clause
+        /roundCriteriaJson:\s*string \| null/.test(line) || // type signature
+        /labelByCriterionId\(r\.criteriaJson, r\.roundCriteriaJson\)/.test(line); // label lookup call (feeds labelByCriterionId only)
+      const ok = insideLabelFn || isCriteriaForRoundArg || isDestructureOrSelect;
+      expect(ok, `unexpected roundCriteriaJson read outside criteriaForRound/labelByCriterionId at line ${idx + 1}: ${line}`).toBe(true);
+    });
   });
 });
