@@ -114,7 +114,7 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     const endDateInput = await screen.findByLabelText('End date');
     fireEvent.change(endDateInput, { target: { value: '5 Jun 2026' } });
     fireEvent.blur(endDateInput);
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     const notice = await screen.findByRole('status');
     expect(notice).toHaveTextContent(/placed sessions now fall/);
@@ -149,7 +149,7 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     const endDateInput = await screen.findByLabelText('End date');
     fireEvent.change(endDateInput, { target: { value: '5 Jun 2026' } });
     fireEvent.blur(endDateInput);
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     const notice = await screen.findByRole('status');
     expect(notice).toHaveTextContent('SES-004');
@@ -177,7 +177,7 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     const endDateInput = await screen.findByLabelText('End date');
     fireEvent.change(endDateInput, { target: { value: '5 Jun 2026' } });
     fireEvent.blur(endDateInput);
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     const notice = await screen.findByRole('status');
     expect(notice).toHaveTextContent('Lunch');
@@ -231,7 +231,7 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
 
     const nameInput = await screen.findByLabelText('Name');
     fireEvent.change(nameInput, { target: { value: 'Renamed Con' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     await waitFor(() => {
       expect(screen.getByText('Renamed Con')).toBeInTheDocument();
@@ -259,7 +259,7 @@ describe('EventSettingsPanel edit view shell (DEC-896)', () => {
     expect(footer).not.toBeNull();
     expect(footer.querySelector('.chq-settings-edit-footer-destructive')).toBeNull();
     const secondaryButton = within(footer).getByRole('button', { name: 'Cancel' });
-    const primaryButton = within(footer).getByRole('button', { name: 'Save' });
+    const primaryButton = within(footer).getByRole('button', { name: 'Save changes' });
     const order = Array.from(footer.querySelectorAll('button'));
     expect(order.indexOf(secondaryButton as HTMLButtonElement)).toBeLessThan(
       order.indexOf(primaryButton as HTMLButtonElement),
@@ -303,7 +303,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
     const slugInput = screen.getByLabelText('Slug');
     fireEvent.change(slugInput, { target: { value: 'taken-slug' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     const fieldError = await screen.findByText('That slug is already taken by another event in this org.');
     expect(fieldError).toHaveClass('chq-field-error');
@@ -341,7 +341,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
 
     const nameInput = await screen.findByLabelText('Name');
     fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     const banner = await screen.findByRole('alert');
     expect(banner).toHaveTextContent('Something went wrong');
@@ -381,7 +381,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     fireEvent.change(timezoneInput, { target: { value: 'America/Denver' } });
     const locationInput = screen.getByLabelText('Venue');
     fireEvent.change(locationInput, { target: { value: 'Edited Venue' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     // Three inline field-scoped messages, each role="alert".
     const slugMessage = await screen.findByText('That slug is already taken by another event in this org.');

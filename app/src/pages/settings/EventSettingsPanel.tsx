@@ -14,7 +14,7 @@ import { apiGet, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { buildEventPatch, type EventSettingsForm } from './formState';
 import { SummarySection } from './SummarySection';
-import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEditForm';
+import { SettingsEditForm, SettingsField, SettingsFieldPair, SettingsSaveButton } from './SettingsEditForm';
 import { plural } from '../../lib/plural';
 import { dateInputToMs, daysUntil } from '../../lib/dates';
 import { formatEventDayRange } from '../../../../src/lib/event-time';
@@ -335,11 +335,7 @@ export function EventSettingsPanel() {
           }}
           consequence="Changing the slug breaks every link already shared, including saved embeds"
           footer={{
-            primary: (
-              <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            ),
+            primary: <SettingsSaveButton pending={saving} />,
             secondary: (
               <button type="button" className="chq-btn chq-btn-secondary" onClick={closeEdit} disabled={saving}>
                 Cancel
