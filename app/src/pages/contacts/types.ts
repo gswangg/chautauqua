@@ -49,11 +49,14 @@ export interface ContactEmailHistory {
   sentAt: number;
 }
 
+// DEC-152 (wave-76 amendment): the server always emits all four keys as
+// strings (parseSocialLinks never returns null/undefined members) -- this
+// type describes what the wire actually produces, not a defensive superset.
 export interface ContactSocialLinks {
-  twitter?: string | null;
-  linkedin?: string | null;
-  github?: string | null;
-  website?: string | null;
+  twitter: string;
+  linkedin: string;
+  github: string;
+  website: string;
 }
 
 export interface ContactDetail extends ContactListItem {
@@ -64,7 +67,7 @@ export interface ContactDetail extends ContactListItem {
   // DEC-894: filename + upload date of the stored headshot file, printed
   // beside the image in the Contacts drawer. null when there is no headshot.
   headshotFile?: { filename: string; uploadedAt: number } | null;
-  socialLinks?: ContactSocialLinks | null;
+  socialLinks: ContactSocialLinks;
   customFields?: Record<string, string>;
   history: {
     submissions: ContactSubmissionHistory[];
