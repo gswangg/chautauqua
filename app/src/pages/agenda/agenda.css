@@ -1132,13 +1132,6 @@
   gap: 14px;
 }
 
-/* Location has no drawn track (schedule_break has the column, the frame
-   doesn't) -- app-only, so it renders on its own full-width line beneath
-   the three drawn tracks rather than inside the grid. */
-.chq-breaks-field-location {
-  width: 100%;
-}
-
 .chq-breaks-outside-hint {
   font-size: 13px;
   color: var(--chq-muted);
@@ -1150,14 +1143,6 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-/* DEC-021 amendment (w66, gate-11 sweep item 4): the panel's own dismiss,
-   right-flushed at the foot below every list/add/confirm affordance. */
-.chq-breaks-panel-foot {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
 }
 
 .chq-breaks-field {

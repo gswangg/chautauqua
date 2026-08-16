@@ -20,7 +20,6 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { clockHHMM } from '../../lib/clock';
 import { formatDayLabel } from '../../lib/dates';
 import { DEC_021 } from '../../../../src/decisions';
-import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 import { MAX_BREAKS_PER_EVENT } from '../../lib/batch-caps';
 import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 
@@ -94,7 +93,7 @@ function minutesToTimeInput(startMin: number): string {
   return clockHHMM(startMin);
 }
 
-const EMPTY_FORM = { label: '', location: '', startTime: '', durationMin: '' };
+const EMPTY_FORM = { label: '', startTime: '', durationMin: '' };
 
 // frame 06--02 heads the section "Breaks on Tuesday" -- the full weekday
 // name, not the abbreviated one formatDayLabel renders inline ("Tue 12
@@ -144,7 +143,6 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
     setEditingId(b.id);
     setEditForm({
       label: b.label,
-      location: b.location ?? '',
       startTime: minutesToTimeInput(b.startMin),
       durationMin: String(b.durationMin),
     });
@@ -163,9 +161,12 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
     setEditFieldErrors({});
     setSaving(true);
     try {
+      // No `location` key: DEC-021 (w8) deleted the write-side Location
+      // control, and the API reads key PRESENCE (breaks.ts:144) -- an
+      // absent key leaves the stored location untouched rather than
+      // clearing it on every unrelated edit.
       await apiPatch(`/breaks/${id}`, {
         label: editForm.label,
-        location: editForm.location.trim().length > 0 ? editForm.location : null,
         startMin: parseTimeToMinutes(editForm.startTime),
         durationMin: editForm.durationMin.trim().length > 0 ? Number(editForm.durationMin) : NaN,
       });
@@ -191,7 +192,6 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
       await apiPost(`/events/${eventId}/breaks`, {
         day,
         label: form.label,
-        location: form.location.trim().length > 0 ? form.location : undefined,
         startMin: parseTimeToMinutes(form.startTime),
         durationMin: form.durationMin.trim().length > 0 ? Number(form.durationMin) : NaN,
       });
@@ -239,19 +239,6 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
               {editFieldErrors.label}
             </span>
           )}
-        </div>
-        <div className="chq-breaks-field">
-          <label htmlFor={`chq-break-edit-location-${b.id}`}>
-            Location
-            <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
-          </label>
-          <input
-            id={`chq-break-edit-location-${b.id}`}
-            className="chq-input"
-            maxLength={MAX_NAME_LENGTH}
-            value={editForm.location}
-            onChange={(e) => setEditForm((prev) => ({ ...prev, location: e.target.value }))}
-          />
         </div>
         <div className="chq-breaks-field">
           <label htmlFor={`chq-break-edit-start-${b.id}`}>Start time</label>
@@ -470,24 +457,6 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
             )}
           </div>
         </div>
-        {/* Location isn't in the drawn frame (schedule_break has the column,
-           the frame doesn't draw it) -- app-only, so it gets its own
-           full-width line beneath the three drawn tracks rather than a
-           fourth column squeezed into the grid. */}
-        <div className="chq-breaks-field chq-breaks-field-location">
-          <label htmlFor="chq-break-location">
-            Location
-            <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
-          </label>
-          <input
-            id="chq-break-location"
-            className="chq-input"
-            maxLength={MAX_NAME_LENGTH}
-            placeholder="Foyer"
-            value={form.location}
-            onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
-          />
-        </div>
         <span className="chq-breaks-outside-hint">
           A break outside the day&apos;s window is kept but flagged — the grid shows it greyed rather than dropping
           it.
@@ -495,6 +464,13 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
         <div className="chq-breaks-add-actions">
           <button type="button" className="chq-btn chq-btn-primary" onClick={() => void handleAdd()} disabled={adding}>
             {adding ? 'Adding…' : 'Add the break'}
+          </button>
+          {/* DEC-021 amendment (w66, gate-11 sweep item 4): the panel's own
+             dismiss. Frame 06--02 draws "Add the break" and "Done" in ONE
+             flex row (:245), so Done lives in the same actions cluster
+             rather than a separate foot. */}
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onDone}>
+            Done
           </button>
           <span className="chq-breaks-cap-hint">Up to {MAX_BREAKS_PER_EVENT} breaks per event</span>
         </div>
@@ -522,12 +498,6 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
           onCancel={() => setPendingRemove(null)}
         />
       )}
-
-      <div className="chq-breaks-panel-foot">
-        <button type="button" className="chq-btn chq-btn-secondary" onClick={onDone}>
-          Done
-        </button>
-      </div>
     </section>
   );
 }
