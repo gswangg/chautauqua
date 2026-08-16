@@ -65,6 +65,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  // DEC-518 wave-76 amendment: an empty `templates` list renders identically
+  // to "this event has no templates" (the select just shows "Write from
+  // scratch" with no other options) -- indistinguishable from a load
+  // failure unless the failure names itself, so a failed fetch sets this
+  // instead of being silently absorbed into the same empty array.
+  const [templatesLoadError, setTemplatesLoadError] = useState(false);
   const [templateId, setTemplateId] = useState<string>('');
   const [templateName, setTemplateName] = useState<string>('');
   const [subject, setSubject] = useState('');
@@ -75,6 +81,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // implicitly, its current round) to attach before includeFeedback is
   // honored server-side.
   const [plans, setPlans] = useState<EvaluationPlan[]>([]);
+  // DEC-518 wave-76 amendment: same fabrication risk as templatesLoadError
+  // above -- an empty `plans` list reads as "this event has no evaluation
+  // plans" (feedback merge hidden, plan picker offers nothing) when it may
+  // just be a failed fetch.
+  const [plansLoadError, setPlansLoadError] = useState(false);
   const [feedbackPlanId, setFeedbackPlanId] = useState<string>('');
   const [attachIcs, setAttachIcs] = useState(false);
 
@@ -164,9 +175,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   }, [eventId, statusFilter, q, page]);
 
   useEffect(() => {
+    setTemplatesLoadError(false);
     apiList<EmailTemplate>(`/events/${eventId}/templates`)
       .then((res) => setTemplates(res.items))
-      .catch(() => undefined);
+      .catch(() => setTemplatesLoadError(true));
   }, [eventId]);
 
   // DEC-967 amendment (findings wave 8, w8-b): DECIDE -> NOTIFY handoff.
@@ -232,9 +244,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // arrives blank; picking a template is one explicit select.
 
   useEffect(() => {
+    setPlansLoadError(false);
     apiList<EvaluationPlan>(`/events/${eventId}/plans`)
       .then((res) => setPlans(res.items))
-      .catch(() => undefined);
+      .catch(() => setPlansLoadError(true));
   }, [eventId]);
 
   function toggleStatus(status: SubmissionStatus) {
@@ -907,6 +920,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               {idsKeptCount} of {idsArrivedCount} kept &middot; a send is capped at {MAX_COMPOSE_RECIPIENTS}
             </p>
           )}
+          {templatesLoadError && (
+            <p className="chq-field-error">
+              Templates could not be loaded &mdash; write your message from scratch, or reload the page to try again.
+            </p>
+          )}
           <FormRow label="Template" htmlFor="compose-template" optional>
             <select
               id="compose-template"
@@ -1067,6 +1085,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 />
                 Include reviewer feedback
               </label>
+              {plansLoadError && (
+                <p className="chq-field-error">
+                  Evaluation plans could not be loaded &mdash; feedback merge is unavailable this session.
+                </p>
+              )}
               {/* Ruling A18: the plan select is a PARAMETER of "Include
                   reviewer feedback", not a peer field -- indented under the
                   checkbox it belongs to and revealed only by it. */}

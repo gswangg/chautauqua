@@ -944,7 +944,14 @@ export function PlanEditor() {
     }
     apiGet<ScopePreview>(`/plans/${planId}/scope-preview?trackId=${encodeURIComponent(reviewerTrackId)}`)
       .then((res) => setSubmissionPickerOptions(res.items))
-      .catch(() => setSubmissionPickerOptions([]));
+      .catch((err) => {
+        // DEC-518 wave-76 amendment: an empty options array renders
+        // identically to "this track has no submissions" -- a failed load
+        // must say so instead, via the page's existing error banner, rather
+        // than leaving the picker looking like a real (empty) result.
+        setSubmissionPickerOptions([]);
+        setError(err instanceof ApiError ? err.message : 'Failed to load submissions for this track');
+      });
   }, [planId, reviewerScope, reviewerTrackId]);
 
   const [newReviewerEmail, setNewReviewerEmail] = useState('');

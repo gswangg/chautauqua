@@ -6,8 +6,10 @@
 // leaving the page's own loading flags permanently false and its counts
 // permanently zero, with nothing on screen saying so.
 //
-// This scan walks app/src/pages/**/*.ts(x) and app/src/components/**/*.ts(x)
-// (excluding *.test.*), finds every `.catch(` handler on a promise chain, and
+// This scan walks all of app/src/**/*.ts(x) (excluding *.test.* and the
+// usual skip dirs -- widened from app/src/{pages,components} in the
+// wave-76 amendment above), finds every `.catch(` handler on a promise
+// chain, and
 // classifies it SURFACING when its body names a setError/setLoadError/
 // setPreviewError-style setter (any identifier matching /\bset\w*Error\w*\(/)
 // or rethrows (`throw`). Every non-surfacing handler must appear in the
@@ -19,6 +21,22 @@
 // unledgered, non-surfacing hit fails naming file + the fetch it guards; a
 // ledger entry matching no hit fails as stale. Deliberately a lightweight
 // brace/paren-matching text scan -- no parser dependency added.
+//
+// DEC-518 wave-76 amendment: the eight ledger rows carrying the placeholder
+// reason "unreviewed — filed for a later wave" have been adjudicated --
+// each either now names (a) what the user sees on failure and (b) why that
+// rendering can never be misread as a real value, or the underlying swallow
+// was fixed to surface (feed the page's existing error state, or render the
+// area's absent state) and its row removed. This wave also widens the scan
+// from app/src/{pages,components} to all of app/src (excluding *.test.*
+// and the usual skip dirs), bringing app/src/lib under the rule;
+// useNavExceptions.ts and useCurrentEvent.ts each already carried a
+// written justification in a code comment at the catch site -- code
+// unchanged, reason mirrored verbatim into the ledger below. (useMe.ts's
+// only catch already rethrows non-401 errors, so the widened scan does not
+// flag it.) The widening also surfaced one pre-existing unledgered hit
+// inside pages/ that predates this wave (ContactDrawer.tsx's courtesy
+// event-name lookup) -- ledgered below rather than left failing.
 
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -26,7 +44,9 @@ import { join, relative } from 'node:path';
 
 const ROOT = join(__dirname, '..', '..'); // app/src/.. /.. -> repo root
 const APP_ROOT = join(__dirname); // app/src
-const SCAN_DIRS = ['pages', 'components'];
+// DEC-518 wave-76 amendment: widened from ['pages', 'components'] to all of
+// app/src -- '.' walks the whole tree rooted at APP_ROOT.
+const SCAN_DIRS = ['.'];
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.wrangler', 'build', '.git']);
 
 function walk(dir: string, out: string[]): void {
@@ -231,7 +251,7 @@ const KNOWN_SWALLOWS: { file: string; marker: string; reason: string }[] = [
     file: 'app/src/pages/speakers/RosterPanel.tsx',
     marker: '/contacts/duplicates/check',
     reason:
-      'unreviewed — filed for a later wave (the duplicate-match hint is advisory and never blocks Add, but the swallow itself has no written reason in this file yet).',
+      'DEC-788: same advisory hint as NewContactModal below -- a failed check just clears duplicateMatch (no hint shown above the submit row), which never blocks Add and reads identically to "no duplicate found", the same truthful null the endpoint itself returns on a genuine miss.',
   },
   {
     file: 'app/src/pages/speakers/OnboardingGrid.tsx',
@@ -254,7 +274,8 @@ const KNOWN_SWALLOWS: { file: string; marker: string; reason: string }[] = [
   {
     file: 'app/src/pages/content/DeliverableDetail.tsx',
     marker: '/submissions/${submissionId}`',
-    reason: 'unreviewed — filed for a later wave.',
+    reason:
+      'DEC-901: headerDetail stays null on a failed loadHeader() -- the header renders the title alone (subtitle and status band both absent), never a stale or fabricated subtitle/status carried over from a previous submission.',
   },
   {
     file: 'app/src/pages/contacts/NewContactModal.tsx',
@@ -277,17 +298,8 @@ const KNOWN_SWALLOWS: { file: string; marker: string; reason: string }[] = [
   {
     file: 'app/src/pages/contacts/ContactsApp.tsx',
     marker: '(no preceding api call found)',
-    reason: 'unreviewed — filed for a later wave (loadEventsOnce() import-target resolution swallow).',
-  },
-  {
-    file: 'app/src/pages/comms/ComposeWizard.tsx',
-    marker: '/templates`',
-    reason: 'unreviewed — filed for a later wave.',
-  },
-  {
-    file: 'app/src/pages/comms/ComposeWizard.tsx',
-    marker: '/plans`',
-    reason: 'unreviewed — filed for a later wave.',
+    reason:
+      "DEC-662 amendment (wave 55): loadEventsOnce() import-target resolution -- a failed read leaves the opt-in checkbox's importEventId/importEventName unresolved, which the wizard renders as its normal unselected (CRM-only) state, the same fallback a genuinely unknown/deleted/foreign eventId already takes. It never guesses a different event and never shows a fabricated name.",
   },
   {
     file: 'app/src/pages/comms/RecentSends.tsx',
@@ -305,11 +317,6 @@ const KNOWN_SWALLOWS: { file: string; marker: string; reason: string }[] = [
     file: 'app/src/pages/review/PlanEditor.tsx',
     marker: '/progress`',
     reason: 'Same non-blocking treatment as the reviewer roster above -- rows still render with a bare email/no load count if this fails.',
-  },
-  {
-    file: 'app/src/pages/review/PlanEditor.tsx',
-    marker: '/scope-preview?trackId=',
-    reason: 'unreviewed — filed for a later wave.',
   },
   {
     file: 'app/src/pages/review/PlanEditor.tsx',
@@ -331,12 +338,32 @@ const KNOWN_SWALLOWS: { file: string; marker: string; reason: string }[] = [
   {
     file: 'app/src/pages/submissions/SubmissionDetailPage.tsx',
     marker: '/submissions${buildSubmissionsQuery',
-    reason: 'unreviewed — filed for a later wave.',
+    reason:
+      'DEC-761: a failed re-run of the list query sets listPosition to null, which renders no position/prev/next controls -- the identical rendering the success path already takes for a stale link whose id is not on the returned page (idx === -1), never a fabricated position or neighbour.',
   },
   {
     file: 'app/src/pages/submissions/SubmissionsTable.tsx',
     marker: '?status=pending&perPage=1',
-    reason: 'unreviewed — filed for a later wave.',
+    reason:
+      "the independent \"N awaiting triage\" figure: a failed read sets pendingTotal to null, which the head summary renders by omitting the \" · N awaiting triage\" segment entirely -- never a fabricated zero or stale count, same absent-not-zero contract as FormsPage's Received count above.",
+  },
+  {
+    file: 'app/src/lib/useNavExceptions.ts',
+    marker: '/overview`',
+    reason:
+      "Fail loudly happens at the source (Overview page's own fetch); here in the shell, an unavailable count is absence of an exception, per DEC-369. (verbatim from the code comment at the catch site, moved into the ledger by the wave-76 scope widening.)",
+  },
+  {
+    file: 'app/src/lib/useCurrentEvent.ts',
+    marker: "'/events'",
+    reason:
+      'Fail soft: keep the id already in play. A network blip must not evict a valid selection. (verbatim from the code comment at the catch site -- background loadEventsOnce() reconciliation of an already-in-play eventId, moved into the ledger by the wave-76 scope widening. The nearest preceding fetch in source order is the module-level apiList(\'/events\') inside loadEventsOnce itself, not a call local to this catch.)',
+  },
+  {
+    file: 'app/src/pages/contacts/ContactDrawer.tsx',
+    marker: '/contacts/${contactId}',
+    reason:
+      "same loadEventsOnce() courtesy-name lookup as ContactsApp above: a failed read leaves currentEventName undefined, which the two FieldGroup labels render as their generic fallback ('On this event' / 'this event') rather than a wrong or stale event name -- never fed into the drawer's own load error, which is reserved for the contact fetch itself.",
   },
 ];
 
@@ -402,7 +429,7 @@ describe('spa-fetch-swallow-honesty scan negative control (DEC-518 wave-43 amend
 });
 
 describe('SPA .catch( handlers surface their outcome or are ledgered (DEC-518 wave-43 amendment)', () => {
-  it('the scan itself finds .catch( handlers under app/src/pages and app/src/components (not vacuous)', () => {
+  it('the scan itself finds .catch( handlers under app/src (not vacuous)', () => {
     const files: string[] = [];
     for (const dir of SCAN_DIRS) walk(join(APP_ROOT, dir), files);
     expect(files.length).toBeGreaterThan(0);
