@@ -94,10 +94,15 @@ targeting "created for all N" GONE · bulk-send count mismatch GONE · headshot
 rectangles GONE. The correctness campaign converted directly into score.
 
 **FINAL-FREEZE LANE (highest value first; final full run fires after these):**
-1. **Cluster 1b LANDED THE ONLY REMAINING MAJOR-CLASS DEFECT AGAIN** (SPK major:
-   email-only dedup minted a second Priya) + its cousin (CNT minor: reminders
-   target the duplicate's alternate address). STILL UNCLAIMED after 5+ waves —
-   name+company pre-import disposition, HIGHEST PRIORITY.
+1. ~~Cluster 1b~~ **CORRECTION (orchestrator, wave-68 review): 1b IS BUILT** —
+   DEC-663 wave-64 amendment landed HOURS AFTER the interim run's deploy
+   snapshot (6719a2dc): findImportDuplicateCandidates (last-name candidates,
+   chunked), mergeLines disposition through resolveImportUpsert, and the
+   wizard's per-row 'Import as new'/'Merge into <candidate>' radio group.
+   11/11 import merge+plan tests green at current main. The judge's SPK major
+   was measured against the PRE-wave-64 build. REMAINING: runtime click-verify
+   at the final-freeze probe (wizard step 2 shows the disposition for a
+   same-name-different-email row; merge path patches, not creates).
 2. **Auto-schedule un-flagged speaker double-bookings** (AIA major, NEW): SES-033
    CSV-batch session's speakers overlap other placements with no clash flag.
    ROOT-CAUSE HYPOTHESIS: conflict counting excludes participants by invite
