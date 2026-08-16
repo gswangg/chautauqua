@@ -1,59 +1,28 @@
-# Eval findings — rebased 2026-08-16 (wave 62, task-w62-j)
+# Eval findings — rebased 2026-08-16 (wave 74, task-w74-e)
 
-Verified against `main`/HEAD `80a3eac3` ("scribe wave 61"), MEASURED_SHA
-`80a3eac3`, derived AT THIS TASK'S OWN RUNTIME (DEC-069 wave-17/wave-37,
-DEC-358 rebase rule; this is a DOCS-ONLY lane of a wave-62 CODE wave —
+Verified against `main`/HEAD `ba170df7` ("scribe wave 74"), MEASURED_SHA
+`ba170df7`, derived AT THIS TASK'S OWN RUNTIME (DEC-069 wave-17/wave-37,
+DEC-358 rebase rule; this is a DOCS-ONLY lane of a wave-74 CODE wave —
 no gate ran, no `docs/verification-log/index/` section filed, per
-DEC-069). This wave is a MANDATE HYGIENE task only: it records a small
-named set of this wave's verified closures with receipts (see the new
-"Wave 62 closures" section in `docs/eval-findings/03-tier0-landed.md`)
-plus two DO-NOT-CHASE rulings; it does not re-derive TIER 0-2 in full
-and does not re-run the wave-57 GATE-9/GATE-10 falsifying checks (those
-sections below are carried unchanged from their own last-stated
-runtime).
+DEC-069). This wave is a MANDATE HYGIENE task only: it records the
+rebuilt IN FLIGHT census and a set of DO-NOT-CHASE rulings (see the new
+`docs/eval-findings/15-wave74-receipts.md`); it does not re-derive TIER
+0-2 in full and does not re-run the wave-57 GATE-9/GATE-10 falsifying
+checks (those sections below are carried unchanged from their own
+last-stated runtime).
 
-COMPACTION per DEC-358's rebase rule: the wave-57 header (pinned to
-`50c3fcc4`, five waves stale) is REPLACED by this one. No per-item
-citation is deleted; the full TIER 0-2 body below this header, and the
-GATE-8/9/10 sections, were not re-derived this wave (out of this task's
-scope) and are carried unchanged — treat their own file:line citations
-as of THEIR last stated runtime, not this one's.
-
-## Wave 67 mandate hygiene pass (task-w67-h, `main` `123f8ab221731e1a98a38fd076d0e8efa9e7d336`, own runtime)
-
-Per DEC-069, wave 67 is a CODE wave; this is its docs-only MANDATE
-HYGIENE lane (no gate ran, no `docs/verification-log/index/` section
-filed). Every citation below was re-derived AT THIS TASK'S OWN RUNTIME —
-line numbers not copied from a prior brief; see the inline annotations
-throughout GATE-8/GATE-11 below and the "Wave 67 closures" section in
-`docs/eval-findings/03-tier0-landed.md`. Filed as
-`## Amendment (wave 67)` on `decisions/DEC-358.md`.
-
-**Wave 67 in flight (this wave's seven code branches — do not re-file
-their scope):**
-- `task-w67-a` — orphan-contact rollback in `submit-post.tsx` (the
-  anonymous-submit `createContact` write sits above its own `try`, so a
-  failed submit orphans a CRM contact with no cleanup).
-- `task-w67-b` — 'photo' deliverable kind.
-- `task-w67-c` — participant-role identity on `SubmissionDetailPage`
-  (replacing the `isLead ? 'LEAD' : 'CO-PRESENTER'` binary with
-  `participantRoleLabel`).
-- `task-w67-d` — publish withheld list (owns the remainder of GATE-8 P3
-  item 19 above: the count already exists, the list does not).
-- `task-w67-e` — Overview/nav B8 hover+transition tokens.
-- `task-w67-f` — invite dialog form factor.
-- `task-w67-g` — IP-budget property statement (`requestIpFromHeaders`
-  mis-citation, DEC-072).
-
-**OFF-LIMITS this wave — the nine wave-66 scopes plus `task-w65-e`, do
-not re-file any of these:** ComposeWizard template provenance · comms
-History caption + expansion-band column heads · `/plans/:id/remind`
-dedupe + four-field receipt · the two settings nested read/edit splits ·
-the flagged break band differential · the `a:not(.chq-btn):hover`
-carve-out · `listDeliverableCandidates` status filter · auth-claim
-consume-before-INSERT ordering · FieldModal operator vocabulary +
-delete · `task-w65-e` (last-organizer atomic demotion in
-`src/server/repo/users.ts`).
+COMPACTION per DEC-358's rebase rule: the wave-62 header (pinned to
+`80a3eac3`, twelve waves stale) is REPLACED by this one. The wave-67
+mandate-hygiene pass block that previously sat here (`task-w67-h`, its
+seven wave-67 branch scopes and the nine wave-66 OFF-LIMITS names) is
+PRUNED — every one of those branches is now an ancestor of `main`
+(confirmed via `git merge-base --is-ancestor` at this task's own
+runtime) and the scopes they named have long since landed or been
+superseded by later waves' own findings. No per-item citation below
+this header is deleted; the full TIER 0-2 body, and the GATE-8/9/10
+sections, were not re-derived this wave (out of this task's scope) and
+are carried unchanged — treat their own file:line citations as of
+THEIR last stated runtime, not this one's.
 
 ## Recent review-lens findings — re-derived wave 57 (task-w57-e, at MEASURED_SHA `50c3fcc4`)
 
@@ -820,6 +789,9 @@ split, verify against git history if a citation seems to have moved.
 10. [`eval-findings/10-wave68-receipts.md`](eval-findings/10-wave68-receipts.md) — Wave 68 mandate-hygiene receipts (task-w68-e)
 11. [`eval-findings/11-wave69-receipts.md`](eval-findings/11-wave69-receipts.md) — Wave 69 mandate-hygiene receipts (task-w69-f)
 12. [`eval-findings/12-wave70-receipts.md`](eval-findings/12-wave70-receipts.md) — Wave 70 mandate-hygiene receipts (task-w70-g)
+13. [`eval-findings/13-wave71-receipts.md`](eval-findings/13-wave71-receipts.md) — Wave 71 mandate-hygiene receipts (task-w71-j)
+14. [`eval-findings/14-wave72-receipts.md`](eval-findings/14-wave72-receipts.md) — Wave 72 mandate-hygiene receipts (task-w72-p)
+15. [`eval-findings/15-wave74-receipts.md`](eval-findings/15-wave74-receipts.md) — Wave 74 mandate-hygiene receipts (task-w74-e; wave 73 filed no receipts file)
 
 Any citation of the form `docs/eval-findings.md #N` or `docs/eval-findings.md
 Section X` refers to content now living in one of the files above; the
