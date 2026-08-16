@@ -84,7 +84,7 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
 
   const fields = await getFormFields(db, form.id);
   const eventTracks = await getEventTracks(db, event.id);
-  const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id));
+  const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id), form.id);
   const tracks = eventTracks.filter((t) => offeredTrackIds.includes(t.id));
 
   // Body-free guards run BEFORE the body is ever parsed, so a hostile or

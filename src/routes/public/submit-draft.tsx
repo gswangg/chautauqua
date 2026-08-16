@@ -66,7 +66,7 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
 
   const fields = await getFormFields(db, form.id);
   const eventTracks = await getEventTracks(db, event.id);
-  const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id));
+  const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id), form.id);
   const tracks = eventTracks.filter((t) => offeredTrackIds.includes(t.id));
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   const answers = extractAnswers(fields, body);

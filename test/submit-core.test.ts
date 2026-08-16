@@ -207,15 +207,15 @@ describe("resolveOfferedTrackIds", () => {
   const eventTracks = ["t1", "t2", "t3"];
 
   it("returns all event tracks when tracksJson is null", () => {
-    expect(resolveOfferedTrackIds(null, eventTracks)).toEqual(eventTracks);
+    expect(resolveOfferedTrackIds(null, eventTracks, "form-1")).toEqual(eventTracks);
   });
 
   it("returns all event tracks when tracksJson is an empty array", () => {
-    expect(resolveOfferedTrackIds(JSON.stringify([]), eventTracks)).toEqual(eventTracks);
+    expect(resolveOfferedTrackIds(JSON.stringify([]), eventTracks, "form-1")).toEqual(eventTracks);
   });
 
   it("returns the subset named in tracksJson", () => {
-    expect(resolveOfferedTrackIds(JSON.stringify(["t1", "t3"]), eventTracks)).toEqual(["t1", "t3"]);
+    expect(resolveOfferedTrackIds(JSON.stringify(["t1", "t3"]), eventTracks, "form-1")).toEqual(["t1", "t3"]);
   });
 });
 

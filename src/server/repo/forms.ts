@@ -7,6 +7,7 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldRole, FormFieldRule } from "../../forms/types";
 import { parseFieldOptions, parseFieldRule } from "../../forms/field-json";
+import { parseFormTracks } from "../../forms/form-tracks";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldId } from "../../forms/types";
 import { DEC_050, DEC_398, DEC_592 } from "../../decisions";
 import { chunkIds, chunkRowsForInsert } from "../../lib/chunk";
@@ -66,7 +67,7 @@ function toFormRow(row: typeof schema.form.$inferSelect): FormRow {
     isDefault: row.isDefault,
     openDate: row.openDate ? row.openDate.getTime() : null,
     closeDate: row.closeDate ? row.closeDate.getTime() : null,
-    tracks: row.tracksJson ? (JSON.parse(row.tracksJson) as string[]) : null,
+    tracks: parseFormTracks(row.tracksJson, row.id),
   };
 }
 

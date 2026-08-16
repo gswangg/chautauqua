@@ -177,7 +177,7 @@ export async function loadEditableSubmission(
     .select({ id: schema.track.id, name: schema.track.name })
     .from(schema.track)
     .where(eq(schema.track.eventId, row.eventId));
-  const offeredTrackIds = resolveOfferedTrackIds(row.formTracksJson, allTrackRows.map((t) => t.id));
+  const offeredTrackIds = resolveOfferedTrackIds(row.formTracksJson, allTrackRows.map((t) => t.id), row.formId);
 
   const selectedTrackRows = await db
     .select({ trackId: schema.submissionTrack.trackId })
