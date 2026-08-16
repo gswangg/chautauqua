@@ -117,31 +117,28 @@ describe('BreaksPanel', () => {
     expect(screen.getByRole('button', { name: 'Add the break' })).toBeInTheDocument();
   });
 
-  // frame 06--02: Label/Starts/Minutes are the three drawn tracks; Location
-  // is app-only and sits on its own line beneath them.
-  it('renders the add row with Label/Starts/Minutes as the drawn grid and Location on its own line', () => {
+  // DEC-021 (w8): the Location control is deleted from both write forms --
+  // frame 06--02 draws a THREE-up add grid (Label / Starts / Minutes) and
+  // no fourth control, and a break "blocks every room at once" so a
+  // per-break place doesn't belong on the write side. The read side (a
+  // stored location, if any) still prints -- see the row-render test above.
+  it('renders the add row with Label/Starts/Minutes as the drawn grid and no Location control anywhere on the page', () => {
     render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />);
 
     const grid = document.querySelector('.chq-breaks-add-grid') as HTMLElement;
     expect(within(grid).getByLabelText('Label')).toBeInTheDocument();
     expect(within(grid).getByLabelText('Starts')).toBeInTheDocument();
     expect(within(grid).getByLabelText('Minutes')).toBeInTheDocument();
-    expect(within(grid).queryByLabelText('Location · optional')).not.toBeInTheDocument();
-
-    const locationField = screen.getByLabelText('Location · optional').closest('.chq-breaks-field-location');
-    expect(locationField).not.toBeNull();
-    expect(grid.contains(locationField)).toBe(false);
+    expect(screen.queryByLabelText(/Location/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Location')).not.toBeInTheDocument();
   });
 
-  it('Add a break POSTs numeric startMin/durationMin parsed from the inputs and the selected day, then calls onChanged', async () => {
+  it('Add a break POSTs numeric startMin/durationMin parsed from the inputs and the selected day, with no location key, then calls onChanged', async () => {
     apiPostMock.mockResolvedValueOnce(breakRow());
     const onChanged = vi.fn();
     render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={onChanged} onDone={() => {}} />);
 
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Coffee' } });
-    // w48-b: the label suffix is now the shared OPTIONAL_SUFFIX (' · optional')
-    // rather than the hand-typed '(optional)' literal (DEC-917 amendment).
-    fireEvent.change(screen.getByLabelText('Location · optional'), { target: { value: 'Lobby' } });
     fireEvent.change(screen.getByLabelText('Starts'), { target: { value: '10:15' } });
     fireEvent.change(screen.getByLabelText('Minutes'), { target: { value: '15' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add the break' }));
@@ -150,7 +147,6 @@ describe('BreaksPanel', () => {
     expect(apiPostMock).toHaveBeenCalledWith(`/events/${EVENT_ID}/breaks`, {
       day: DAY,
       label: 'Coffee',
-      location: 'Lobby',
       startMin: 615,
       durationMin: 15,
     });
@@ -159,8 +155,10 @@ describe('BreaksPanel', () => {
   });
 
   // DEC-022 amendment (wave 71): inline edit affordance driving PATCH
-  // /api/v1/breaks/:id.
-  it('Edit opens an inline form pre-filled from the row, and Save PATCHes then calls onChanged', async () => {
+  // /api/v1/breaks/:id. DEC-021 (w8): the edit form has no Location control
+  // and the PATCH body carries no `location` key -- the API reads key
+  // presence, so an absent key leaves a stored location untouched.
+  it('Edit opens an inline form pre-filled from the row (no Location control), and Save PATCHes with no location key, then calls onChanged', async () => {
     apiPatchMock.mockResolvedValueOnce(breakRow({ label: 'Lunch (extended)', durationMin: 90 }));
     const onChanged = vi.fn();
 
@@ -172,6 +170,7 @@ describe('BreaksPanel', () => {
     const labelInput = editForm.getByLabelText('Label') as HTMLInputElement;
     expect(labelInput.value).toBe('Lunch');
     expect((editForm.getByLabelText('Start time') as HTMLInputElement).value).toBe('12:00');
+    expect(editForm.queryByLabelText(/Location/)).not.toBeInTheDocument();
 
     fireEvent.change(labelInput, { target: { value: 'Lunch (extended)' } });
     fireEvent.change(editForm.getByLabelText('Duration (min)'), { target: { value: '90' } });
@@ -180,7 +179,6 @@ describe('BreaksPanel', () => {
     await waitFor(() => expect(apiPatchMock).toHaveBeenCalledTimes(1));
     expect(apiPatchMock).toHaveBeenCalledWith('/breaks/brk-1', {
       label: 'Lunch (extended)',
-      location: 'Foyer',
       startMin: 720,
       durationMin: 90,
     });
@@ -322,8 +320,9 @@ describe('BreaksPanel', () => {
     });
   });
 
-  // DEC-021 amendment (wave 66, gate-11 sweep item 4): the panel had no
-  // in-panel dismiss distinct from the ModalFrame's own X.
+  // DEC-021 amendment (wave 66, gate-11 sweep item 4; moved w8 per frame
+  // 06--02's single flex row at :245): the panel had no in-panel dismiss
+  // distinct from the ModalFrame's own X.
   describe('Done button', () => {
     it('renders a Done button and fires onDone when clicked', () => {
       const onDone = vi.fn();
@@ -336,5 +335,37 @@ describe('BreaksPanel', () => {
       fireEvent.click(doneButton);
       expect(onDone).toHaveBeenCalledTimes(1);
     });
+
+    // Frame 06--02 draws "Add the break" and "Done" in ONE flex row (:245)
+    // -- Done lives in the same actions cluster as the primary, not a
+    // separate foot.
+    it('sits in the same container as the "Add the break" primary', () => {
+      render(
+        <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />,
+      );
+
+      const actions = document.querySelector('.chq-breaks-add-actions') as HTMLElement;
+      expect(within(actions).getByRole('button', { name: 'Add the break' })).toBeInTheDocument();
+      expect(within(actions).getByRole('button', { name: 'Done' })).toBeInTheDocument();
+      expect(document.querySelector('.chq-breaks-panel-foot')).toBeNull();
+    });
+  });
+
+  // DEC-021 (w8): the read side is untouched -- a break with a stored
+  // location keeps printing its ` · <place>` suffix in the list row even
+  // though neither write form can set one any more.
+  it('a break with a stored location still renders its " · <place>" suffix in the list row', () => {
+    render(
+      <BreaksPanel
+        eventId={EVENT_ID}
+        day={DAY}
+        breaks={[breakRow({ label: 'Lunch', location: 'Foyer' })]}
+        outsideWindow={[]}
+        onChanged={() => {}}
+        onDone={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('Lunch · Foyer')).toBeInTheDocument();
   });
 });
