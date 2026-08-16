@@ -377,3 +377,90 @@ gap. `HEADSHOT_KIND` itself is declared at
 future lane revisiting this item must coordinate with `files-library.ts`'s
 owner before touching the constant.
 
+### Wave 67 closures (task-w67-h, MANDATE HYGIENE lane, docs only) — `main` `123f8ab221731e1a98a38fd076d0e8efa9e7d336` ("Interim run 93.8 (new best)…"), verified at this task's own runtime
+
+Per DEC-069, wave 67 is a code wave; this is its docs-only lane, no gate
+ran, no `docs/verification-log/index/` section filed. Nine named items
+re-read directly against the tree at THIS task's own runtime (every
+line number below was opened and read fresh, not copied from the task
+brief) and recorded with a verdict. Original item text is annotated in
+place in `docs/eval-findings.md` (the GATE-8 and GATE-11 sections) where
+a prior open item existed; this entry is the canonical receipt list.
+Filed as `## Amendment (wave 67)` on `decisions/DEC-358.md` — no new DEC
+file, `src/decisions.ts` untouched (this lane never hand-edits it).
+
+1. **GATE-8 P1 cluster 1(b), "CSV import dedup blindness" — CLOSED.**
+   `findImportDuplicateCandidates` (`src/domain/contacts-parts/
+   duplicates.ts:170`) is a name+company possible-duplicate matcher
+   consumed by `planImportRows` (`src/server/repo/contacts/
+   import.ts:634,672,722`, the dry-run planner that surfaces the
+   candidate set per row) and by `applyImportRows` (`:353-366`, which
+   re-derives the identical candidate set to validate a caller-chosen
+   merge). The route accepts the disposition as
+   `mergeLines: {line, contactId}[]`
+   (`src/routes/api/contacts/import.ts:116-146`). The "THREE WAVES
+   UNCLAIMED, TOP PRIORITY" banner on this row in `docs/eval-findings.md`
+   is PRUNED (false at this runtime and had been costing attention every
+   wave it survived — DEC-903: a gate/priority claim is about a
+   snapshot, not about main).
+2. **GATE-8 P2 item 6, seed residue `SBEK-PORTAL-BIO-01` — CLOSED.**
+   `grep -rn SBEK-PORTAL-BIO-01` under `src/` and `scripts/` returns
+   nothing at this runtime; the string survives only under `docs/`.
+3. **GATE-8 P2 item 9, `/dev/mailbox` 404 — RECLASSIFIED, NOT A SWARM
+   LANE.** The route exists (`src/routes/dev/mailbox.tsx`) and is
+   mounted behind `guardDevMailbox` (`src/server/app.ts:90-103`), which
+   404s unless `DEV_MODE==='1'` and then redirects/403s by role
+   (DEC-005/DEC-546) — a judge on a deployed build without `DEV_MODE`
+   gets the designed 404. Moved out of the swarm product-code list to an
+   operator/deploy-doc item.
+4. **GATE-8 P3 item 16, reviewer scope layering — CLOSED** by DEC-354's
+   advisory. `src/routes/review/plans-reviewers.ts:21,66` — "never a
+   refusal, never a silent supersede".
+5. **GATE-8 P3 item 17, "Round 1 of 1" — CLOSED.** Every surface routes
+   the label through `roundLabel` (`src/domain/evaluation/
+   criteria.ts:362`), consumed by
+   `app/src/pages/review/ReviewerQueue.tsx:530` and
+   `app/src/pages/review/Scorecard.tsx:427`.
+6. **GATE-8 P3 item 24, contact drawer scoping — CLOSED.** The
+   event-scoped block is its own titled `FieldGroup` with the split
+   named in the caption and in the save copy
+   (`app/src/pages/contacts/ContactDrawer.tsx:701-703`), pinned by
+   `app/src/pages/contacts/ContactDrawer.render.test.tsx:473-491`.
+7. **GATE-8 P3 item 25, comms recipient dedupe — ADJUDICATED
+   DO-NOT-CHASE, not a defect.** DEC-238's wave-15 amendment
+   (`src/routes/comms/send.ts:100-112`) rules that compose renders a
+   PER-SUBMISSION subject, so a speaker with two accepted talks
+   legitimately receives two different messages; identical subjects
+   collapse at stage 1 via `dedupeKey(email, subject)`.
+8. **GATE-8 P3 item 28, back-to-agenda context — CLOSED.** `detailCarry`
+   re-encodes day/q/trackId/format/roomId through the existing
+   `embedKnobQuery` encoder and `BackLink` consumes it
+   (`src/routes/public/detail.tsx:10-32`), DEC-151 wave-59.
+9. **GATE-8 P3 item 19, publish withholding — PARTIAL, now OWNED.** The
+   count is reported (`src/routes/agenda.ts:158-163`,
+   `app/src/pages/Agenda.tsx:275-280`); only the LIST is missing.
+   `task-w67-d` owns it this wave — moved to the "Wave 67 in flight"
+   block in `docs/eval-findings.md`, do not re-file.
+10. **GATE-11 new-small #3, "Import 1 rows" plural — CLOSED.**
+    `app/src/pages/contacts/ImportWizard.tsx:138,488,525` render through
+    `countOf` (`src/domain/count-copy.ts:20-22`), which pluralizes; no
+    site hand-composes the phrase.
+
+**Wave 67 in flight, named so wave 68 cannot re-file this scope:**
+`task-w67-a` (orphan contact rollback in `submit-post.tsx`) ·
+`task-w67-b` ('photo' deliverable kind) · `task-w67-c` (participant-role
+identity on `SubmissionDetailPage`) · `task-w67-d` (publish withheld
+list) · `task-w67-e` (Overview/nav B8 hover+transition) · `task-w67-f`
+(invite dialog form factor) · `task-w67-g` (IP-budget property
+statement).
+
+**OFF-LIMITS this wave, repeated here for the same reason:** the nine
+wave-66 scopes (ComposeWizard template provenance, comms History caption
++ expansion-band column heads, `/plans/:id/remind` dedupe + four-field
+receipt, the two settings nested read/edit splits, the flagged break
+band differential, the `a:not(.chq-btn):hover` carve-out,
+`listDeliverableCandidates` status filter, auth-claim
+consume-before-INSERT ordering, FieldModal operator vocabulary +
+delete) plus `task-w65-e` (last-organizer atomic demotion in
+`src/server/repo/users.ts`).
+

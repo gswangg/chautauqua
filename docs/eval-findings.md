@@ -19,6 +19,42 @@ GATE-8/9/10 sections, were not re-derived this wave (out of this task's
 scope) and are carried unchanged — treat their own file:line citations
 as of THEIR last stated runtime, not this one's.
 
+## Wave 67 mandate hygiene pass (task-w67-h, `main` `123f8ab221731e1a98a38fd076d0e8efa9e7d336`, own runtime)
+
+Per DEC-069, wave 67 is a CODE wave; this is its docs-only MANDATE
+HYGIENE lane (no gate ran, no `docs/verification-log/index/` section
+filed). Every citation below was re-derived AT THIS TASK'S OWN RUNTIME —
+line numbers not copied from a prior brief; see the inline annotations
+throughout GATE-8/GATE-11 below and the "Wave 67 closures" section in
+`docs/eval-findings/03-tier0-landed.md`. Filed as
+`## Amendment (wave 67)` on `decisions/DEC-358.md`.
+
+**Wave 67 in flight (this wave's seven code branches — do not re-file
+their scope):**
+- `task-w67-a` — orphan-contact rollback in `submit-post.tsx` (the
+  anonymous-submit `createContact` write sits above its own `try`, so a
+  failed submit orphans a CRM contact with no cleanup).
+- `task-w67-b` — 'photo' deliverable kind.
+- `task-w67-c` — participant-role identity on `SubmissionDetailPage`
+  (replacing the `isLead ? 'LEAD' : 'CO-PRESENTER'` binary with
+  `participantRoleLabel`).
+- `task-w67-d` — publish withheld list (owns the remainder of GATE-8 P3
+  item 19 above: the count already exists, the list does not).
+- `task-w67-e` — Overview/nav B8 hover+transition tokens.
+- `task-w67-f` — invite dialog form factor.
+- `task-w67-g` — IP-budget property statement (`requestIpFromHeaders`
+  mis-citation, DEC-072).
+
+**OFF-LIMITS this wave — the nine wave-66 scopes plus `task-w65-e`, do
+not re-file any of these:** ComposeWizard template provenance · comms
+History caption + expansion-band column heads · `/plans/:id/remind`
+dedupe + four-field receipt · the two settings nested read/edit splits ·
+the flagged break band differential · the `a:not(.chq-btn):hover`
+carve-out · `listDeliverableCandidates` status filter · auth-claim
+consume-before-INSERT ordering · FieldModal operator vocabulary +
+delete · `task-w65-e` (last-organizer atomic demotion in
+`src/server/repo/users.ts`).
+
 ## Recent review-lens findings — re-derived wave 57 (task-w57-e, at MEASURED_SHA `50c3fcc4`)
 
 Four items a reviewer re-filed as open; each re-run directly against the
@@ -143,6 +179,14 @@ Back link /admin prefix (bare /settings 404s live; test pin updated to working p
 3. API-tokens row MISSING from Your data edit view — revoke unreachable there (NEW,
    group3). Deep-linked ?section=portal&edit=1 shows resources read-only until
    Change clicked (group3). "Import 1 rows" plural (group3).
+   **"Import 1 rows" plural — CLOSED wave 67 (task-w67-h, `main` `123f8ab2`,
+   this task's own runtime).** Every cited site
+   (`app/src/pages/contacts/ImportWizard.tsx:138,488,525`) renders through
+   `countOf` (`src/domain/count-copy.ts:20-22`, re-exported for the SPA at
+   `app/src/lib/plural.ts:5`), which pluralizes; no site hand-composes the
+   phrase. Do not re-file. (The other three items in this row — API-tokens
+   row missing, deep-linked resources read-only — remain open, untouched by
+   this task.)
 4. Breaks flagged band: class + suffix land but bg/label BYTE-IDENTICAL to normal
    bands — the grey treatment never renders (group2). Plus no Done control, extra
    Location row vs frame 06--02.
@@ -303,10 +347,12 @@ real-organizer correctness bugs (user directive: fidelity + correctness focus); 
 them is justified on product grounds alone. Evidence: `killmysaas-evals/runs/<ts>/
 report.json` → areas[].defects + items[].
 
-**P1 CLUSTERS (all four produced MAJOR defects). STATUS wave-63: 1a/2/3/4 landed
-(DEC-290 opt-in attach, DEC-829 roster visibility, DEC-746 subset picker, DEC-238
-shared dedupe plan) — 1b below is the ONLY P1 remnant, THREE WAVES UNCLAIMED,
-TOP PRIORITY for the next wave:**
+**P1 CLUSTERS (all four produced MAJOR defects). STATUS wave-67: 1a/1b/2/3/4 ALL
+LANDED (DEC-290 opt-in attach, DEC-663 dedup-blindness, DEC-829 roster
+visibility, DEC-746 subset picker, DEC-238 shared dedupe plan) — no P1 remnant
+survives; the "THREE WAVES UNCLAIMED, TOP PRIORITY" banner this section
+carried is PRUNED (DEC-358 wave-67 amendment — the banner was a claim about a
+stale snapshot, not about main):**
 1. **CSV import: event coupling + dedup blindness** (hit in CRM AND SPK AND CNT — one
    cluster, three areas' judgments contaminated). (a) The wizard REQUIRES "Session
    title for this batch" and silently attaches every imported org-level contact to a
@@ -319,8 +365,20 @@ TOP PRIORITY for the next wave:**
    { eventId, sessionTitle: sessionTitle.trim() } : {})` — and the validation/
    UI gates at `:366,465,478,664,675`), per DEC-810; importing with the
    checkbox left off carries no `eventId`/`sessionTitle` and creates no
-   synthetic session. Part (b) (dedup-blindness/same-name+company
-   disposition) is UNTOUCHED by this receipt — stays open, do not mark closed.
+   synthetic session.
+   **Part (b) CLOSED-WITH-RECEIPT wave 67 (task-w67-h, `main` `123f8ab2`,
+   this task's own runtime):** `findImportDuplicateCandidates`
+   (`src/domain/contacts-parts/duplicates.ts:170`) is a name+company
+   possible-duplicate matcher, consumed by BOTH the dry-run planner,
+   `planImportRows` (`src/server/repo/contacts/import.ts:634,672,722` — the
+   candidate set is computed and attached to each plan row so the wizard can
+   surface a "possible duplicate" disposition before any write), and the
+   commit path, `applyImportRows` (`:353-366` — re-derives the identical
+   candidate set to validate a caller-supplied `mergeLines` entry). The route
+   accepts the merge-into-vs-import-as-new disposition as
+   `mergeLines: {line, contactId}[]` (`src/routes/api/contacts/import.ts:116-146`,
+   DEC-663 wave-64 amendment comment at `:116`). Dedup is therefore NOT
+   email-only and a pre-import possible-duplicate disposition already exists.
    (b) Dedup matches exact email only; same-name+company with a new address mints
    duplicate rows with no pre-import warning — surface a name+company match as a
    pre-import "possible duplicate" disposition (merge-into / import-as-new choice).
@@ -345,12 +403,27 @@ TOP PRIORITY for the next wave:**
    reproduced on sessions AND agenda surfaces in both runs. Fix the stacking/hit area.
 6. `SBEK-PORTAL-BIO-01` residue string in seed_contact_0001's public bio (seed
    hygiene — scrub the marker from seed.ts, it renders on prod).
+   **CLOSED wave 67 (task-w67-h, `main` `123f8ab2`, this task's own runtime):**
+   `grep -rn SBEK-PORTAL-BIO-01` under `src/` and `scripts/` returns nothing;
+   the string survives only in `docs/` (this file, the findings archive, and
+   the rubric that names it as a marker). Matches the standing NON-ACTIONABLE
+   ruling below (SPK-S2 writes it into the bio live via the portal mid-run;
+   it is not a seed value). Do not re-file as a seed-hygiene item.
 7. Speaker headshots render as blank navy rectangles on public speakers list/gallery/
    detail (3 speakers with uploaded photos) — the data exists, the render path fails.
 8. OFF-toggled saved embed serves a BLANK page at its permalink — render a minimal
    "This embed has been turned off" body instead of white nothing.
 9. `/dev/mailbox` 404s (operator-doc'd path, tried both runs) — either mount the dev
    mailbox viewer or fix the operator docs; judges read the docs.
+   **RECLASSIFIED wave 67 (task-w67-h, `main` `123f8ab2`, this task's own
+   runtime): NOT A SWARM LANE.** The route exists
+   (`src/routes/dev/mailbox.tsx`) and is mounted behind `guardDevMailbox`
+   (`src/server/app.ts:90-103`), which 404s unless `DEV_MODE==='1'` and then
+   redirects/403s by role (DEC-005/DEC-546). A judge running against a
+   deployed build without `DEV_MODE` set gets the DESIGNED 404 — this is an
+   operator/deploy-doc gap (the docs should say the route is dev-only), not a
+   product defect. Moved out of the swarm SPARK/product list; an operator
+   lane should update the deploy docs, not a code lane.
 10. Agenda: stale ROOM & SPEAKER CONFLICT badge after the clash is resolved +
     header "% placed" inconsistent (84%→79% with identical counts) — recompute on
     state change.
@@ -377,14 +450,35 @@ fix after P1 clusters and P2; each needs measured closure):**
 16. Reviewer scope layering: assigning a narrower "One submission" scope neither
     supersedes nor warns about the reviewer's existing broader track-wide assignment
     on the same plan — the effective queue changes silently. Warn or merge scopes.
+    **CLOSED wave 67 (task-w67-h, `main` `123f8ab2`, this task's own runtime),
+    by DEC-354's advisory.** `src/routes/review/plans-reviewers.ts:21` (`void
+    DEC_354; // POST /plans/:id/reviewers (amendment, wave 61): scopeAdvisory
+    computed below -- never a refusal, never a silent supersede`) and `:66`
+    ("broader one is an advisory, never a silent supersede and never a
+    refusal") — the layering is neither silent nor a supersede; it is a
+    named advisory by design. Do not re-file.
 17. Reviewer progress header "Round 1 of 1" while the event has six plans — the
     denominator is wrong or the copy claims a rounds model that doesn't exist.
+    **CLOSED wave 67 (task-w67-h, `main` `123f8ab2`, this task's own
+    runtime).** Every surface routes the round label through one function,
+    `roundLabel` (`src/domain/evaluation/criteria.ts:362`), consumed by
+    `app/src/pages/review/ReviewerQueue.tsx:530` and
+    `app/src/pages/review/Scorecard.tsx:427` — one source, cannot drift; no
+    surface hand-composes "Round N of M". Do not re-file.
 18. Scorecard a11y: the two numeric 1-5 criteria rows are exposed near-identically
     and the accessibility tree DEDUPES them into one set — give each criterion a
     distinct accessible group/name (fieldset/legend or labelled radiogroup).
 19. Publish-flow withholding is silent: 7 of 19 placed sessions were absent from
     the public agenda because of per-session content gating — publishing must SAY
     "N placed sessions are not public yet (unapproved content)" with the list.
+    **PARTIAL, now OWNED wave 67 (task-w67-h, `main` `123f8ab2`, this task's
+    own runtime).** The COUNT is already reported:
+    `src/routes/agenda.ts:158-163` (`GET .../agenda/publish` response shape
+    `{placed, public, heldBack}`) and `app/src/pages/Agenda.tsx:275-280`
+    (toast reads "Schedule live — N of M placed sessions are public." plus
+    "K held back: content not approved." when heldBack>0). Only the LIST of
+    withheld sessions is still missing. `task-w67-d` owns the list this wave
+    — moved to the "Wave 67 in flight" block below, do not re-file.
 20. Deliverable-kind taxonomy lacks Photo/Headshot while the Files library filters
     by a Headshot type — a headshot request must be mis-tagged today. Add the kind.
     **DO-NOT-CHASE ruling wave 62 (task-w62-j, `main` `80a3eac3`):** WEAKENED by
@@ -413,9 +507,25 @@ fix after P1 clusters and P2; each needs measured closure):**
 24. Contact drawer scoping clarity: org-level record mixes event-scoped rows
     ("THIS EVENT" role/year) into what reads as a cross-event record, and the save
     affordance is ambiguous — label the event-scoped block explicitly.
+    **CLOSED wave 67 (task-w67-h, `main` `123f8ab2`, this task's own
+    runtime).** The event-scoped block is its own titled `FieldGroup` with
+    the split named in the caption and in the save copy
+    (`app/src/pages/contacts/ContactDrawer.tsx:701-703` — title
+    `{currentEventName ?? 'On this event'}`, caption "These facts belong to
+    this event only — everything above is this person's org-wide record."),
+    pinned by `app/src/pages/contacts/ContactDrawer.render.test.tsx:473-491`.
+    Do not re-file.
 25. Comms recipient dedupe: recipient selection is submission-scoped so one person
     appears N times (Priya twice for SES-001/SES-003) in a people-email — dedupe
     recipients by contact for speaker-audience sends (one email per person).
+    **ADJUDICATED DO-NOT-CHASE wave 67 (task-w67-h, `main` `123f8ab2`, this
+    task's own runtime) — not a defect.** DEC-238's wave-15 amendment,
+    restated at `src/routes/comms/send.ts:100-112`: compose renders a
+    PER-SUBMISSION subject, so a speaker with two accepted talks legitimately
+    receives two different messages — dedupe here would silently drop a
+    message the speaker is owed. Identical-subject sends DO collapse, at
+    stage 1, via `dedupeKey(email, subject)` (`:107`). Do not re-file as a
+    dedupe gap.
 26. Participation status coherence: roster shows CONFIRMED (SES-001) + NOT INVITED
     chips per submission while the speaker-record header shows a single NOT
     INVITED — define the person-level rollup and make both surfaces agree.
@@ -425,6 +535,12 @@ fix after P1 clusters and P2; each needs measured closure):**
 28. Back-to-Agenda loses context: returning from a session detail lands on the
     default first day, dropping the day/filter the visitor was on — preserve via
     query params (?day=), consistent with the ?ids= hydration pattern.
+    **CLOSED wave 67 (task-w67-h, `main` `123f8ab2`, this task's own
+    runtime), DEC-151 wave-59.** `detailCarry`
+    (`src/routes/public/detail.tsx:21`) re-encodes day/q/trackId/format/
+    roomId through the existing `embedKnobQuery` encoder (`:10,22`), and
+    `BackLink` (`:32`, consumed at `:66,136`) renders the carried querystring
+    onto the back link. Do not re-file.
 29. Agenda "Highlight a track" highlights while the sessions list's same-looking
     track control FILTERS — the split is designed (frames call it Highlight) but
     verify the control labels state their verb; if both just say the track name,
