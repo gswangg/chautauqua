@@ -60,7 +60,16 @@ const SRC_ROOT = join(__dirname, "..", "src");
 // in the six lines above the chain). Each site's resolution (order it, key
 // it, or cite a DEC explaining why one row is unambiguous) should lower
 // this number in a later wave -- never raise it.
-const MAX_UNORDERED_LIMIT_ONE = 30;
+//
+// Wave 75 (task-w75-a, DEC-558 amendment): resolved the 14 sites this
+// lane's scope covered (src/server/repo/** excluding portal/**, review/**,
+// contacts/**, files*.ts, and tasks/**), lowering the count from 30 to 17.
+// The remaining 17 are deliberately left to sibling lanes/files this wave
+// did not own: src/routes/auth-login.tsx and src/server/middleware.ts
+// (outside src/server/repo/** entirely), src/server/repo/contacts/** and
+// src/server/repo/files*.ts (task-w75-b), src/server/repo/portal/**
+// (task-w74-b), and src/server/repo/review/** (task-w74-a/-c).
+const MAX_UNORDERED_LIMIT_ONE = 17;
 
 function listSourceFiles(dir: string): string[] {
   const out: string[] = [];

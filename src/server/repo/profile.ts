@@ -285,6 +285,9 @@ export async function getHeadshotServeScope(db: Db, fileId: string): Promise<Hea
   const contactRow = contactRows[0];
   if (!contactRow) return null;
 
+  // DEC-558 (wave 75): only `.length > 0` is read below -- WHICH visible
+  // participant row SQLite returns is never observed, so an unordered
+  // .limit(1) existence check has no ambiguity to resolve.
   const visibleRows = await db
     .select({ id: schema.participant.id })
     .from(schema.participant)

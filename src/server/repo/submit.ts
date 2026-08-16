@@ -90,6 +90,8 @@ export interface TrackRow {
 }
 
 export async function getEventBySlug(db: Db, slug: string): Promise<EventRow | null> {
+  // DEC-558 (wave 75): event_slug_idx is a uniqueIndex on schema.event.slug,
+  // so this predicate already narrows to at most one row.
   const rows = await db.select().from(schema.event).where(eq(schema.event.slug, slug)).limit(1);
   const row = rows[0];
   if (!row) return null;
@@ -183,6 +185,15 @@ export async function findContactByEmail(
     })
     .from(schema.contact)
     .where(and(eq(schema.contact.orgId, orgId), sql`lower(${schema.contact.email}) = lower(${email})`))
+    // DEC-558 (wave 75): contact.email has no uniqueIndex (duplicate
+    // contacts sharing an email are a recognized state -- see contacts/
+    // merge.ts) so this predicate can match more than one row. Absent SQLite
+    // giving a deterministic total order, a repeat submitter could attach
+    // to a different duplicate contact on different requests, silently
+    // splitting their submission history. Order by createdAt asc so "the
+    // existing contact" means the oldest/original contact row, tie-broken
+    // by id asc.
+    .orderBy(asc(schema.contact.createdAt), asc(schema.contact.id))
     .limit(1);
   return rows[0] ?? null;
 }

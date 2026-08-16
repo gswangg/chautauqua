@@ -118,6 +118,9 @@ export async function findEntryForOrg(db: Db, id: string, orgId: string): Promis
 }
 
 export async function findEntryByContact(db: Db, orgId: string, contactId: string): Promise<PipelineEntryRow | null> {
+  // DEC-558 (wave 75): pipeline_entry_org_id_contact_id_idx is a uniqueIndex
+  // on (schema.pipelineEntry.orgId, schema.pipelineEntry.contactId), so this
+  // predicate already narrows to at most one row.
   const rows = await db
     .select()
     .from(schema.pipelineEntry)

@@ -97,6 +97,9 @@ export interface CreateUserInput {
  * exact same ApiError the pre-check raises. */
 export async function createUser(db: Db, input: CreateUserInput): Promise<OrgUserRecord> {
   if (input.email !== input.email.toLowerCase()) throw new Error("createUser: email must be lowercased by the caller");
+  // DEC-558 (wave 75): user_email_idx is a uniqueIndex on schema.user.email,
+  // and input.email is already lowercased (asserted above), so this
+  // predicate already narrows to at most one row.
   const existing = await db
     .select({ id: schema.user.id })
     .from(schema.user)

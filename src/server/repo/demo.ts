@@ -18,6 +18,8 @@ import * as schema from "../../db/schema";
 export async function demoIdentitiesPresent(db: Db, emails: readonly string[]): Promise<boolean> {
   if (emails.length === 0) return false;
   for (const email of new Set(emails.map((e) => e.toLowerCase()))) {
+    // DEC-558 (wave 75): user_email_idx is a uniqueIndex on schema.user.email,
+    // so this predicate already narrows to at most one row.
     const rows = await db.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.email, email)).limit(1);
     if (rows.length === 0) return false;
   }
