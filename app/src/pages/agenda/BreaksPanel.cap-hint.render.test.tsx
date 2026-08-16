@@ -40,7 +40,7 @@ afterEach(() => cleanup());
 
 describe('BreaksPanel discloses the real MAX_BREAKS_PER_EVENT ceiling at its add form', () => {
   it('prints the imported cap constant, not a hand-typed number', () => {
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />);
 
     expect(screen.getByText(`Up to ${MAX_BREAKS_PER_EVENT} breaks per event`)).toBeInTheDocument();
     expect(MAX_BREAKS_PER_EVENT).toBe(200);

@@ -59,7 +59,7 @@ afterEach(() => cleanup());
 describe('BreaksPanel', () => {
   it('renders nothing when there is no selected day and no outside-window breaks', () => {
     const { container } = render(
-      <BreaksPanel eventId={EVENT_ID} day={null} breaks={[]} outsideWindow={[]} onChanged={() => {}} />,
+      <BreaksPanel eventId={EVENT_ID} day={null} breaks={[]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />,
     );
     expect(container).toBeEmptyDOMElement();
     expect(apiGetMock).not.toHaveBeenCalled();
@@ -67,7 +67,7 @@ describe('BreaksPanel', () => {
 
   it("renders the breaks passed in via props without fetching its own copy", () => {
     render(
-      <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />,
+      <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />,
     );
 
     expect(apiGetMock).not.toHaveBeenCalled();
@@ -83,7 +83,7 @@ describe('BreaksPanel', () => {
   it("heads the section 'Breaks on <weekday>' with the 'They block every room at once' caption", () => {
     // DAY = '2026-03-02', a Monday.
     render(
-      <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />,
+      <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />,
     );
 
     expect(screen.getByRole('heading', { name: 'Breaks on Monday' })).toBeInTheDocument();
@@ -94,7 +94,7 @@ describe('BreaksPanel', () => {
   // "<N> min" / actions, not one concatenated meta string.
   it('renders each break row as label(+location), start time, "<N> min", then Edit/Remove', () => {
     render(
-      <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />,
+      <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />,
     );
 
     const row = screen.getByText('12:00').closest('.chq-breaks-row') as HTMLElement;
@@ -107,7 +107,7 @@ describe('BreaksPanel', () => {
 
   // frame 06--02: the add row's second mandated copy line, verbatim.
   it("shows the outside-the-window hint verbatim above the add row's primary", () => {
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />);
 
     expect(
       screen.getByText(
@@ -120,7 +120,7 @@ describe('BreaksPanel', () => {
   // frame 06--02: Label/Starts/Minutes are the three drawn tracks; Location
   // is app-only and sits on its own line beneath them.
   it('renders the add row with Label/Starts/Minutes as the drawn grid and Location on its own line', () => {
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />);
 
     const grid = document.querySelector('.chq-breaks-add-grid') as HTMLElement;
     expect(within(grid).getByLabelText('Label')).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe('BreaksPanel', () => {
   it('Add a break POSTs numeric startMin/durationMin parsed from the inputs and the selected day, then calls onChanged', async () => {
     apiPostMock.mockResolvedValueOnce(breakRow());
     const onChanged = vi.fn();
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={onChanged} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={onChanged} onDone={() => {}} />);
 
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Coffee' } });
     // w48-b: the label suffix is now the shared OPTIONAL_SUFFIX (' · optional')
@@ -164,7 +164,7 @@ describe('BreaksPanel', () => {
     apiPatchMock.mockResolvedValueOnce(breakRow({ label: 'Lunch (extended)', durationMin: 90 }));
     const onChanged = vi.fn();
 
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={onChanged} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={onChanged} onDone={() => {}} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
 
@@ -190,7 +190,7 @@ describe('BreaksPanel', () => {
   });
 
   it('Cancel on the inline edit form fires no PATCH and restores the read-only row', () => {
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -204,7 +204,7 @@ describe('BreaksPanel', () => {
         durationMin: 'startMin + durationMin must not exceed 1440 (a break cannot run past midnight)',
       }),
     );
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     const editForm = within(document.querySelector('.chq-breaks-row-editing') as HTMLElement);
@@ -223,7 +223,7 @@ describe('BreaksPanel', () => {
     apiDeleteMock.mockResolvedValueOnce({ deleted: true });
     const onChanged = vi.fn();
 
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={onChanged} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={onChanged} onDone={() => {}} />);
     expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
@@ -237,7 +237,7 @@ describe('BreaksPanel', () => {
   });
 
   it('cancelling the remove confirmation fires no DELETE and keeps the row', async () => {
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
 
@@ -249,7 +249,7 @@ describe('BreaksPanel', () => {
     apiPostMock.mockRejectedValueOnce(
       new ApiError(400, 'invalid', 'Invalid break input', { startMin: 'must be an integer between 0 and 1439' }),
     );
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />);
 
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Coffee' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add the break' }));
@@ -269,7 +269,7 @@ describe('BreaksPanel', () => {
   describe('outside-window group', () => {
     it('is absent when outsideWindow is empty', () => {
       render(
-        <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />,
+        <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />,
       );
       expect(screen.queryByText('Outside the event dates')).not.toBeInTheDocument();
     });
@@ -283,6 +283,7 @@ describe('BreaksPanel', () => {
           breaks={[breakRow()]}
           outsideWindow={[stranded]}
           onChanged={() => {}}
+          onDone={() => {}}
         />,
       );
 
@@ -299,7 +300,7 @@ describe('BreaksPanel', () => {
       const onChanged = vi.fn();
       const stranded = breakRow({ id: 'brk-2', day: '2026-04-15' });
       render(
-        <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[stranded]} onChanged={onChanged} />,
+        <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[stranded]} onChanged={onChanged} onDone={() => {}} />,
       );
 
       fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
@@ -313,11 +314,27 @@ describe('BreaksPanel', () => {
 
     it('with day=null and outside-window rows present, the section renders without the add-row', () => {
       const stranded = breakRow({ id: 'brk-2', day: '2026-04-15' });
-      render(<BreaksPanel eventId={EVENT_ID} day={null} breaks={[]} outsideWindow={[stranded]} onChanged={() => {}} />);
+      render(<BreaksPanel eventId={EVENT_ID} day={null} breaks={[]} outsideWindow={[stranded]} onChanged={() => {}} onDone={() => {}} />);
 
       expect(screen.getByText('Outside the event dates')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Add the break' })).not.toBeInTheDocument();
       expect(screen.queryByLabelText('Label')).not.toBeInTheDocument();
+    });
+  });
+
+  // DEC-021 amendment (wave 66, gate-11 sweep item 4): the panel had no
+  // in-panel dismiss distinct from the ModalFrame's own X.
+  describe('Done button', () => {
+    it('renders a Done button and fires onDone when clicked', () => {
+      const onDone = vi.fn();
+      render(
+        <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={onDone} />,
+      );
+
+      const doneButton = screen.getByRole('button', { name: 'Done' });
+      expect(doneButton).toBeInTheDocument();
+      fireEvent.click(doneButton);
+      expect(onDone).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -348,6 +348,7 @@ export function AgendaPage() {
             breaks={dayBreaks}
             outsideWindow={outsideWindowBreaks}
             onChanged={reloadBreaks}
+            onDone={() => setBreaksOpen(false)}
           />
         </ModalFrame>
       )}

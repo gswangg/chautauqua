@@ -557,16 +557,17 @@
   color: var(--chq-muted);
 }
 
-/* DEC-021 amendment (w61-d): a break clamped to the visible grid because
-   its own window fell outside the day's start/end -- kept, never dropped,
-   just muted so it reads as flagged rather than a normal band (B8
-   vocabulary: #EFEBDF fill / #565A4B ink). */
+/* DEC-021 amendment (w66): the w61-d fill/ink pair (#EFEBDF / #565A4B) was
+   byte-identical to what the base band already computes from
+   --chq-surface-sunk / --chq-muted (see styles.css), so the "flagged"
+   modifier changed zero pixels -- a no-op with a name. Replaced with the B8
+   provisional-border vocabulary already used for the drag origin well
+   (.chq-day-grid-origin-well): a dashed rule overriding the base band's
+   solid border-top/border-bottom, so the flagged band is now visibly
+   distinct from an ordinary one. */
 .chq-agenda-break-band-flagged {
-  background: #efebdf;
-}
-
-.chq-agenda-break-band-flagged .chq-agenda-break-band-label {
-  color: #565a4b;
+  border-top: 1px dashed #bab6a6;
+  border-bottom: 1px dashed #bab6a6;
 }
 
 /* DEC-903 (wave-63 amendment): B8's drag vocabulary — while a placed card
@@ -1147,6 +1148,14 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* DEC-021 amendment (w66, gate-11 sweep item 4): the panel's own dismiss,
+   right-flushed at the foot below every list/add/confirm affordance. */
+.chq-breaks-panel-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .chq-breaks-field {
