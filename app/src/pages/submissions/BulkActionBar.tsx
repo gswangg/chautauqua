@@ -48,7 +48,10 @@ function movesFor(statusFilter: SubmissionStatus | null): BulkMove[] {
 }
 
 export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, onClear, selectedIds }: BulkActionBarProps) {
-  if (selectedCount === 0) return null;
+  // User-filed (gate-12 era): never unmount — idle renders the same box
+  // invisible (.chq-bulkbar-idle) so first selection cannot shift the
+  // table under the cursor.
+  const idle = selectedCount === 0;
 
   // DEC-967 (findings wave 8, w8-b): the compose link carries at most
   // MAX_COMPOSE_RECIPIENTS ids, in the selection's own (stable) order --
@@ -58,7 +61,12 @@ export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, o
   const overCap = selectedIds.length > MAX_COMPOSE_RECIPIENTS;
 
   return (
-    <div className="chq-submissions-bulkbar" role="toolbar" aria-label="Bulk actions">
+    <div
+      className={idle ? 'chq-submissions-bulkbar chq-bulkbar chq-bulkbar-idle' : 'chq-submissions-bulkbar chq-bulkbar'}
+      role="toolbar"
+      aria-label="Bulk actions"
+      aria-hidden={idle ? 'true' : undefined}
+    >
       <span className="chq-submissions-bulkbar-count">{selectedCount} selected</span>
       <span className="chq-submissions-bulkbar-note">Kept across pages · sent in batches of 100</span>
       <div className="chq-submissions-bulkbar-actions">

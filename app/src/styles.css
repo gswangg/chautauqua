@@ -732,6 +732,28 @@ a:hover {
   color: var(--chq-disabled);
   background: var(--chq-disabled-bg);
   border-color: var(--chq-disabled-bg);
+  /* User-filed (gate-12 era): the tertiary hover underline leaked through
+     this guard — B8's "no hover at all" includes decoration. */
+  text-decoration: none;
+}
+
+/* User-filed (gate-12 era): B8's disabled register (label on
+   --chq-disabled-bg) belongs to the FILLED tiers. A disabled tertiary is a
+   link-shaped control — it keeps NO surface: muted label only, no box. */
+.chq-btn-tertiary:disabled,
+.chq-btn-tertiary[aria-disabled='true'],
+.chq-btn-destructive-tertiary:disabled,
+.chq-btn-destructive-tertiary[aria-disabled='true'] {
+  background: none;
+  border-color: transparent;
+}
+
+.chq-btn-tertiary:disabled:hover,
+.chq-btn-tertiary[aria-disabled='true']:hover,
+.chq-btn-destructive-tertiary:disabled:hover,
+.chq-btn-destructive-tertiary[aria-disabled='true']:hover {
+  background: none;
+  border-color: transparent;
 }
 
 /* Inline text-styled button (row cells that act as links but must stay
@@ -1171,6 +1193,16 @@ a:hover {
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+/* User-filed (gate-12 era, ALL multi-select surfaces): the bar used to mount
+   on first selection, pushing the table down — the row you were about to
+   click moved under your cursor (the exact jank the motion spec bans for
+   arriving content). The bar now ALWAYS occupies its space; idle it is
+   invisible and inert (visibility keeps geometry and removes it from the
+   accessibility tree). */
+.chq-bulkbar.chq-bulkbar-idle {
+  visibility: hidden;
 }
 
 .chq-rail {

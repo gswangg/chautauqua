@@ -174,8 +174,14 @@ export function SessionList({
           table it acts on. Approving is a status change, never an email
           (house invariant), hence the consequence line rather than any
           "notify" language. */}
-      {selectedIds.size > 0 && (
-        <div className="chq-bulkbar" role="toolbar" aria-label="Bulk content actions">
+      {/* User-filed: always mounted — idle keeps the space so selecting
+          never shifts the worklist (see .chq-bulkbar-idle). */}
+      <div
+        className={selectedIds.size > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}
+        role="toolbar"
+        aria-label="Bulk content actions"
+        aria-hidden={selectedIds.size === 0 ? 'true' : undefined}
+      >
           <span className="chq-bulkbar-count">{selectedIds.size} selected</span>
           <span className="chq-bulkbar-note">Sends nothing · the speaker sees it in their portal</span>
           <div className="chq-bulkbar-actions">
@@ -217,7 +223,6 @@ export function SessionList({
             </button>
           </div>
         </div>
-      )}
 
       {/* v4 mock IA (docs/design/Chautauqua Content.dc.html, DEC-692): five
           columns — Session, Speaker, Latest file, Status, actions. 'Ask for
