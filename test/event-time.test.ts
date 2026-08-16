@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatCalendarDate,
   formatEventDateTime,
+  formatEventDateTimeWithSeconds,
   formatEventDayRange,
   formatEventCloseDateLabel,
   formatDayShort,
@@ -48,6 +49,43 @@ describe("formatEventDateTime (DEC-408)", () => {
 
   it("throws on an invalid timeZone (no UTC fallback)", () => {
     expect(() => formatEventDateTime(Date.now(), "Not/AZone")).toThrow();
+  });
+});
+
+// DEC-158 (wave 78): formatEventDateTime's seconds-carrying twin, for a
+// surface rendering SUCCESSIVE STATES OF ONE OBJECT (e.g. the portal's
+// VersionHistory, a task assignment's own file-version chain) where two
+// states can land inside the same minute and must still render as
+// distinguishable rows.
+describe("formatEventDateTimeWithSeconds (DEC-158)", () => {
+  it("keeps the zone abbreviation, same as formatEventDateTime", () => {
+    const ms = Date.UTC(2027, 2, 1, 23, 59, 7);
+    const formatted = formatEventDateTimeWithSeconds(ms, "America/Los_Angeles");
+    expect(formatted).toContain("PST");
+  });
+
+  it("includes seconds in the time portion", () => {
+    const ms = Date.UTC(2027, 2, 1, 23, 59, 7);
+    const formatted = formatEventDateTimeWithSeconds(ms, "America/Los_Angeles");
+    expect(formatted).toContain("15:59:07");
+  });
+
+  it("distinguishes two instants 30 seconds apart in the same minute", () => {
+    const t1 = Date.UTC(2027, 2, 1, 12, 0, 0);
+    const t2 = t1 + 30_000;
+    const a = formatEventDateTimeWithSeconds(t1, "UTC");
+    const b = formatEventDateTimeWithSeconds(t2, "UTC");
+    expect(a).not.toBe(b);
+    // formatEventDateTime, by contrast, collapses these to the same minute.
+    expect(formatEventDateTime(t1, "UTC")).toBe(formatEventDateTime(t2, "UTC"));
+  });
+
+  it("throws on an empty timeZone (no UTC fallback)", () => {
+    expect(() => formatEventDateTimeWithSeconds(Date.now(), "")).toThrow();
+  });
+
+  it("throws on an invalid timeZone (no UTC fallback)", () => {
+    expect(() => formatEventDateTimeWithSeconds(Date.now(), "Not/AZone")).toThrow();
   });
 });
 

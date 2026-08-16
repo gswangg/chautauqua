@@ -16,7 +16,7 @@ import type { AnswerMap } from "../../../forms/types";
 import { FormFieldsSection, FieldRulesScript } from "../../../views/form-render";
 import { allowedUploadExtensions, isValidFileKind, MAX_COMMENT_BODY_LENGTH, uploadHintText } from "../../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../../auth/cookies";
-import { formatCalendarDate, formatEventDateTime } from "../../../lib/event-time";
+import { formatCalendarDate, formatEventDateTime, formatEventDateTimeWithSeconds } from "../../../lib/event-time";
 import { effectiveAssignmentDueDayLabel } from "../../../domain/task-due";
 import { renderMarkdown } from "../../../lib/markdown";
 import type { FileCommentRow } from "../../../server/repo/files";
@@ -50,7 +50,10 @@ export interface FileVersionRow {
 // assignment's chain root before streaming) — the flat "current file" block
 // above stays untouched (still resolveTaskFileChainLatest via the DEC-244
 // route) so an older test asserting that block's exact shape keeps passing;
-// this is additive.
+// this is additive. DEC-158: these rows are SUCCESSIVE STATES OF ONE OBJECT
+// (one assignment's own version chain), so the timestamp renders through
+// formatEventDateTimeWithSeconds, not formatEventDateTime — two versions
+// uploaded in the same minute must still read as distinguishable rows.
 export function VersionHistory(props: { assignmentId: string; versions: FileVersionRow[]; timezone: string }) {
   const { assignmentId, versions, timezone } = props;
   return (
@@ -61,7 +64,7 @@ export function VersionHistory(props: { assignmentId: string; versions: FileVers
           <li class="chq-portal-version-row">
             <span class="chq-portal-version-num">v{v.version}</span>
             <a href={`/portal/tasks/${assignmentId}/file/${v.id}`}>{v.filename}</a>
-            <span class="chq-portal-detail">{formatEventDateTime(v.uploadedAt, timezone)}</span>
+            <span class="chq-portal-detail">{formatEventDateTimeWithSeconds(v.uploadedAt, timezone)}</span>
             {v.isCurrent ? <span class="chq-flag chq-portal-flag-done">Current</span> : null}
           </li>
         ))}

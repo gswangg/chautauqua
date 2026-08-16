@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { formatBytes } from './format';
-import { formatDateTime } from '../../lib/dates';
+import { formatDateTimeWithSeconds } from '../../lib/dates';
 import { orderVersionChains } from './version-chain';
 import { apiDelete, ApiError } from '../../lib/api';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -124,7 +124,7 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
                     {v.filename}
                   </a>
                   <span className="chq-version-meta chq-meta">
-                    {v.uploaderName ?? 'Uploaded in the admin'} &middot; {formatDateTime(v.createdAt)} &middot;{' '}
+                    {v.uploaderName ?? 'Uploaded in the admin'} &middot; {formatDateTimeWithSeconds(v.createdAt)} &middot;{' '}
                     {formatBytes(v.sizeBytes)}
                   </span>
                   {isReplaced && (

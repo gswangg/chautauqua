@@ -55,6 +55,52 @@ export function formatEventDateTime(ms: number, timeZone: string): string {
   return `${datePart}, ${timeParts.hour}:${timeParts.minute} ${timeParts.timeZoneName}`;
 }
 
+/** DEC-158 (wave 78): the SSR twin of app/src/lib/dates.ts's
+ * formatDateTimeWithSeconds -- same rule, not an example: use for a surface
+ * rendering SUCCESSIVE STATES OF ONE OBJECT (a single object's own version/
+ * edit-history rows), where two states can land inside the same minute and
+ * must still render as distinguishable rows -- never for a list of
+ * DIFFERENT objects, where formatEventDateTime's minute granularity stays
+ * the rule. Current reader: the portal's VersionHistory
+ * (src/routes/portal/tasks/views.tsx), for a task assignment's own
+ * file-version chain. e.g. "Sun 1 Mar 2027, 23:59:07 PST" (same en-GB
+ * day-before-month order, no comma between weekday/day/month/year, comma
+ * before the 24h time, zone abbreviation kept, DEC-408/DEC-918 -- differs
+ * from formatEventDateTime only by the added seconds field). Throws if
+ * `timeZone` is empty or not a valid IANA zone identifier -- there is no UTC
+ * fallback (DEC-408), same contract as formatEventDateTime. */
+export function formatEventDateTimeWithSeconds(ms: number, timeZone: string): string {
+  if (!timeZone) {
+    throw new Error("formatEventDateTimeWithSeconds: timeZone must not be empty");
+  }
+  let dateFormatter: Intl.DateTimeFormat;
+  let timeFormatter: Intl.DateTimeFormat;
+  try {
+    dateFormatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    timeFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZoneName: "short",
+    });
+  } catch (err) {
+    throw new Error(`formatEventDateTimeWithSeconds: invalid timeZone '${timeZone}': ${(err as Error).message}`);
+  }
+  const date = new Date(ms);
+  const datePart = joinDateParts(dateFormatter.formatToParts(date));
+  const timeParts: Record<string, string> = {};
+  for (const part of timeFormatter.formatToParts(date)) if (part.type !== "literal") timeParts[part.type] = part.value;
+  return `${datePart}, ${timeParts.hour}:${timeParts.minute}:${timeParts.second} ${timeParts.timeZoneName}`;
+}
+
 /** Formats a UTC instant (epoch ms) as a date-only string (no time-of-day)
  * in the given IANA timeZone, e.g. "Tue 2 Mar 2027" (DEC-918: en-GB
  * day-before-month order, no comma) — DEC-413: the speaker portal renders
