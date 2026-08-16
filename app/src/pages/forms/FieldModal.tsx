@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import {
   defaultRuleValue,
   deserializeRule,
+  hasRule,
+  requiredForSave,
   ruleReferenceCandidates,
   ruleValueControl,
   serializeRule,
@@ -35,6 +37,10 @@ interface FieldModalProps {
   field?: FormField;
   /** All fields currently on the form (used to populate the rule builder). */
   allFields: FormField[];
+  /** DEC-650(d): the blast radius the header states -- the count
+   * FormsPage already holds (submissions total), never fabricated or
+   * derived here. `null` while loading/errored renders no line at all. */
+  answeredCount?: number | null;
   onCancel: () => void;
   onSubmit: (input: FieldModalInput) => Promise<void>;
 }
@@ -42,7 +48,7 @@ interface FieldModalProps {
 /** Add/edit modal for a custom form field: section, kind, label, help text,
  * required toggle, options editor (dropdown), and conditional-visibility
  * rule builder (form_field.rule_json: { fieldId, op, value }). */
-export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalProps) {
+export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit }: FieldModalProps) {
   const [section, setSection] = useState<FormFieldSection>(field?.section ?? 'session');
   const [kind, setKind] = useState<FormFieldKind>(field?.kind ?? 'text');
   const [label, setLabel] = useState(field?.label ?? '');
@@ -109,7 +115,10 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
         kind,
         label: label.trim(),
         helpText: helpText.trim().length > 0 ? helpText.trim() : undefined,
-        required,
+        // DEC-650(c): a hidden question is never required -- enforced here,
+        // not merely captioned, so a rule added after the box was ticked
+        // can never ship a required-but-invisible question.
+        required: requiredForSave(required, rule),
         options: kind === 'dropdown' ? options : undefined,
         rule: serializeRule(rule),
       });
@@ -125,6 +134,11 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
       as="form"
       onSubmit={handleSubmit}
       title={field ? 'Edit field' : 'New field'}
+      subtitle={
+        typeof answeredCount === 'number'
+          ? `${answeredCount} people have already answered this form — editing a live question changes what those answers mean`
+          : undefined
+      }
       onClose={onCancel}
       closeDisabled={submitting}
       modalClassName="chq-forms-field-modal"
@@ -193,9 +207,20 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
         </FormRow>
 
         <label className="chq-checkbox-label">
-          <input className="chq-check" type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
+          <input
+            className="chq-check"
+            type="checkbox"
+            checked={required && !hasRule(rule)}
+            disabled={hasRule(rule)}
+            onChange={(e) => setRequired(e.target.checked)}
+          />
           Required
         </label>
+        {hasRule(rule) && (
+          <p className="chq-meta">
+            A hidden question is never required — if the submitter cannot see it, it cannot block their submission.
+          </p>
+        )}
 
         {kind === 'dropdown' && (
           <FormRow label="Options (one per line)" htmlFor="field-options" optional>
@@ -212,8 +237,12 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
           </FormRow>
         )}
 
+        {/* DEC-650(a): the rule reads as a SENTENCE -- leading copy, then the
+            trigger/condition/value controls inline -- and the off case is
+            STATED, never implied by an empty select. */}
         <fieldset className="chq-forms-rule-builder">
-          <legend>Show this field when...</legend>
+          <legend>Conditional visibility</legend>
+          <p className="chq-forms-rule-sentence">Only show this question when…</p>
           <FormRow label="Field" htmlFor="field-rule-trigger">
             <select
               id="field-rule-trigger"
@@ -229,6 +258,9 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
               ))}
             </select>
           </FormRow>
+          {rule.fieldId.length === 0 && (
+            <p className="chq-meta">Leave it off and the question always shows.</p>
+          )}
           {rule.fieldId.length > 0 && (
             <>
               <FormRow label="Condition" htmlFor="field-rule-op">

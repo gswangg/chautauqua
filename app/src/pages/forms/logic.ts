@@ -122,3 +122,21 @@ export function ruleValueControl(trigger: Pick<FormField, 'kind'> | undefined): 
 export function defaultRuleValue(control: RuleValueControl): string {
   return control === 'boolean' ? 'false' : '';
 }
+
+/** True iff `state` names a trigger field, i.e. a conditional-visibility
+ * rule is set (mirrors serializeRule's own "no fieldId -> no condition"
+ * test, so the two can never disagree about whether a rule exists). */
+export function hasRule(state: RuleBuilderState): boolean {
+  return state.fieldId.trim().length > 0;
+}
+
+/**
+ * DEC-650(c): required and a visibility rule are mutually exclusive, and
+ * that is enforced on SAVE, not merely captioned -- a submitter who cannot
+ * see a question can never be blocked by it, so a hidden question is always
+ * saved as `required: false` regardless of what the checkbox showed before
+ * the rule was added.
+ */
+export function requiredForSave(required: boolean, rule: RuleBuilderState): boolean {
+  return hasRule(rule) ? false : required;
+}

@@ -151,3 +151,79 @@ describe('FieldModal kind vocabulary (DEC-762)', () => {
     expect(await screen.findByText(`${FIELD_KIND_LABELS.dropdown} fields need at least one option.`)).toBeInTheDocument();
   });
 });
+
+// DEC-650 (wave-58 amendment): V11 frame 02--10 -- the conditional-
+// visibility control reads as a sentence with the off case stated, a
+// hidden question is never required (enforced on save, not just
+// captioned), and the header states the blast radius when a count is
+// known.
+describe('FieldModal conditional-visibility sentence + required guard (DEC-650)', () => {
+  it('states the off case when no trigger is set', () => {
+    renderModal(async () => {});
+    expect(screen.getByText('Only show this question when…')).toBeInTheDocument();
+    expect(screen.getByText('Leave it off and the question always shows.')).toBeInTheDocument();
+  });
+
+  it('does not state the off case once a trigger is set', () => {
+    renderModal(async () => {});
+    selectTrigger(FORMAT.id);
+    expect(screen.queryByText('Leave it off and the question always shows.')).not.toBeInTheDocument();
+  });
+
+  it('disables Required and captions why once a rule is set', () => {
+    renderModal(async () => {});
+    const requiredBox = screen.getByRole('checkbox', { name: 'Required' });
+    fireEvent.click(requiredBox);
+    expect(requiredBox).toBeChecked();
+
+    selectTrigger(FORMAT.id);
+    expect(requiredBox).toBeDisabled();
+    expect(requiredBox).not.toBeChecked();
+    expect(
+      screen.getByText('A hidden question is never required — if the submitter cannot see it, it cannot block their submission.'),
+    ).toBeInTheDocument();
+  });
+
+  it('sends required:false on save when a rule is set, even though the box was ticked before the rule was added', async () => {
+    let captured: FieldModalInput | undefined;
+    renderModal(async (input) => {
+      captured = input;
+    });
+    fireEvent.change(screen.getByLabelText('Label', { selector: 'input' }), { target: { value: 'Slides link' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Required' }));
+    selectTrigger(FORMAT.id);
+    fireEvent.change(screen.getByLabelText('Value', { selector: 'select' }), { target: { value: 'Workshop' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await vi.waitFor(() => expect(captured).toBeDefined());
+    expect(captured?.required).toBe(false);
+    expect(captured?.rule).toEqual({ fieldId: FORMAT.id, op: 'eq', value: 'Workshop' });
+  });
+
+  it('renders the blast-radius header line when answeredCount is a number', () => {
+    render(
+      <FieldModal
+        field={FORMAT}
+        allFields={ALL_FIELDS}
+        answeredCount={47}
+        onCancel={() => {}}
+        onSubmit={async () => {}}
+      />,
+    );
+    expect(
+      screen.getByText('47 people have already answered this form — editing a live question changes what those answers mean'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders no blast-radius line when answeredCount is null', () => {
+    render(
+      <FieldModal field={FORMAT} allFields={ALL_FIELDS} answeredCount={null} onCancel={() => {}} onSubmit={async () => {}} />,
+    );
+    expect(screen.queryByText(/already answered this form/)).not.toBeInTheDocument();
+  });
+
+  it('renders no blast-radius line when answeredCount is omitted', () => {
+    renderModal(async () => {});
+    expect(screen.queryByText(/already answered this form/)).not.toBeInTheDocument();
+  });
+});

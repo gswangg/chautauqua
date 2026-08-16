@@ -431,6 +431,7 @@ export function FormsPage() {
         <FieldModal
           field={modal.field}
           allFields={form.fields}
+          answeredCount={received === 'loading' || received === 'error' ? null : received.total}
           onCancel={() => setModal(null)}
           onSubmit={(input) => handleEditField(modal.field, input)}
         />
