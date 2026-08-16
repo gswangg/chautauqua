@@ -1,59 +1,6 @@
 # Field Guide
-Owned by the swarm. Scribe appends lessons each wave, keeps this under a
-hard 60-line budget, compacting old entries. Injected into every agent.
-- SPEC.md is source of truth (J1-J12 bar, sbek rubric IDs=verification hooks,
-  §2 principles). docs/ precedence: clarifications.md overrides all;
-  decisions/DEC-*.md binding, src/decisions.ts compile-checked (never
-  hand-edit). Invariants: fail loudly; status changes never auto-email
-  (one sanctioned exception, DEC-720); authz every route, server-side
-  visibility.
-- STAGE1-30 (compacted): pure-core no node:/cf; Hono sub-apps; errors
-  {error:{code,message,fields?}}; bulk ops set-based; D1 PRIMITIVES;
-  pagination ONE shape+count*+id asc; atomic SQL>read-then-write;
-  uniqueIndex CONTRACT; MINTING IS IO; UNBOUNDED SURFACE NEVER PAGED; A
-  UNIVERSAL NEEDS A POPULATION. DEC-002..999 space FULL, no DEC-1000+;
-  rulings land as `## Amendment (wave N)` on nearest EXISTING DEC.
-  TOOL TRAP: Grep -C drops some `/`.
-- FINDINGS w31-42 (compacted): loose ref beats stale packed-refs; A GATE
-  INSIDE A CODE WAVE CAN NEVER QUALIFY (DEC-069); ONE MACHINE ONE HEAVY
-  GATE share `/tmp/chq-test.lock` (DEC-644); RESULT TOKEN em-dash not
-  hyphen (DEC-099); verif-log sections are NEW files, never hand-edit;
-  CSRF-EXEMPT WITHOUT `requireCookieSession` IS BEARER-REACHABLE
-  (DEC-027); LOCAL-D1 FIXUP IS A MEASUREMENT, COMMITTED IS A FIX
-  (DEC-453); ONE FILE ONE OWNER PER WAVE (DEC-358, REVERSED w44); 4/5
-  gate PASS is not 5/5 (DEC-069 w42).
-- FINDINGS w43-45 (compacted): THE FOURTH FREEZE IS THE TRAP (DEC-069
-  w43) sharpened by w45 to A FREEZE IS EARNED BY A SEARCH, NOT A WAIT.
-  TWO READERS ONE RULE THREE SPELLINGS (DEC-615). MERGE REPOINTS, DELETE
-  NULLS — SAME RULE (DEC-979): survivor exists in one case not the
-  other, DO NOT RE-FILE. A PER-PAIR GUARANTEE IS NOT AN OPERATION
-  GUARANTEE (DEC-026). ADJUDICATE, DON'T ACCRETE. A SPLIT POPULATION HAS
-  NO OWNER FOR THE CONTRADICTION (DEC-358 w44): take the WHOLE
-  population. SLOTS ARE GRADED INDEPENDENTLY (DEC-069 w44) — w40-g
-  waited on siblings, its stale `0215` DECIDED the slot. LAST APPENDED
-  IS NOT NEWEST (DEC-099 w44): rank by newest MEASURED TREE. A
-  MALFORMED HEADER DONATES ITS VERDICT TO ITS PREDECESSOR (DEC-068 w45).
-  A SLOT IS CLAIMED BY NAME AND BY LABEL (DEC-099 w45): bare `/perf/`
-  misclaims non-gate sections. AN INSTRUMENT REPAIR THAT MOVES A VERDICT
-  IS EVAL GAMING.
-- FINDINGS w46 (refs read at my own runtime; loose `main` `8b65b63a` =
-  "merge task-w44-e", packed `42074604` still the stale trap). THE FREEZE
-  ENDED BY LANDING, NOT BY WAITING (DEC-069 w46): wave 44's battery IS on
-  disk — `0220`-`0225` — 0220 build+test FAIL and 0225 triage FAIL ⇒ the
-  w45 branch condition fires on its CODE arm. AN OWNER LINE NAMES A
-  BRANCH, NOT A WAVE (DEC-358 w46): 0225's owner task-w44-g merged
-  carrying only the DEC-099 recency fix, so its crash item is UNOWNED;
-  same decay orphaned both eval-findings "owner: a wave-45 lane" lists.
-  A MERGE-TRAIN FIX CLOSES A ROW BUT NOT ITS SECTION: `85452d06` fixed
-  0220's fakeDb desync; the FAIL section survives until re-run.
-  FAIL-BLIND IS NOT FAIL-LOUD (DEC-099 w46): exit-predicate rethrows git
-  128 on an unresolvable ancient sha and grades NOTHING — degrade
-  per-section with a warn, not per-run. A MALFORMED HEADER DONATES ITS
-  VERDICT (DEC-068 w46): 9 index files fail HEADER_RE, fold into their
-  predecessor — repair in the ASSEMBLER via a filename-derived synthetic
-  header, NEVER hand-edit, NEVER terminate on any `## ` line (0216 uses
-  `## STEP 1`/`## RESULT` sub-headers). A SNAPSHOT IS ABOUT A
-  PARTICIPATION, A HEADER IS ABOUT A PERSON (DEC-258 w46). AN IP THAT
-  COLLAPSES TO "unknown" IS ONE BUCKET FOR EVERYONE (DEC-949 w46) — make
-  it a FAILURE budget like login's (DEC-072 w38), not an admission gate.
-  Wave 47 is the FROZEN battery: five slots at one product sha, then read.
+Owned by the swarm. Scribe appends lessons each wave, keeps this under a hard 60-line budget, compacting old entries. Injected into every agent.
+- SPEC.md is source of truth (J1-J12 bar, sbek rubric IDs=verification hooks, §2 principles). docs/ precedence: clarifications.md overrides all; decisions/DEC-*.md binding, src/decisions.ts compile-checked (never hand-edit). Invariants: fail loudly; status changes never auto-email (one sanctioned exception, DEC-720); authz every route, server-side visibility.
+- STAGE (compacted): pure-core no node:/cf; Hono sub-apps; errors {error:{code,message,fields?}}; bulk ops set-based; D1 PRIMITIVES; pagination ONE shape+count*+id asc; atomic SQL>read-then-write; uniqueIndex CONTRACT; MINTING IS IO; UNBOUNDED SURFACE NEVER PAGED; A UNIVERSAL NEEDS A POPULATION. DEC-002..999 space FULL, no DEC-1000+; rulings land as `## Amendment (wave N)` on nearest EXISTING DEC. TOOL TRAP: Grep -C drops some `/`.
+- FINDINGS w31-46 (compacted): loose ref beats stale packed-refs; A GATE INSIDE A CODE WAVE CAN NEVER QUALIFY (DEC-069); ONE MACHINE ONE HEAVY GATE share `/tmp/chq-test.lock` (DEC-644); RESULT TOKEN em-dash not hyphen (DEC-099); verif-log sections NEW files, never hand-edit; CSRF-EXEMPT WITHOUT `requireCookieSession` IS BEARER-REACHABLE (DEC-027); LOCAL-D1 FIXUP IS A MEASUREMENT, COMMITTED IS A FIX (DEC-453); ONE FILE ONE OWNER PER WAVE (DEC-358, REVERSED w44). A FREEZE IS EARNED BY A SEARCH, NOT A WAIT (DEC-069 w43/45). TWO READERS ONE RULE THREE SPELLINGS (DEC-615). MERGE REPOINTS, DELETE NULLS — SAME RULE (DEC-979). A PER-PAIR GUARANTEE IS NOT AN OPERATION GUARANTEE (DEC-026). ADJUDICATE, DON'T ACCRETE; take the WHOLE population (DEC-358 w44). SLOTS GRADED INDEPENDENTLY (DEC-069 w44). LAST APPENDED IS NOT NEWEST, rank by newest MEASURED TREE (DEC-099 w44). A MALFORMED HEADER DONATES ITS VERDICT TO ITS PREDECESSOR (DEC-068 w45/w46): assembler synthesizes a header from the FILENAME, never hand-edits. A SLOT IS CLAIMED BY NAME AND BY LABEL (DEC-099 w45). AN INSTRUMENT REPAIR THAT MOVES A VERDICT IS EVAL GAMING. THE FREEZE ENDED BY LANDING, NOT BY WAITING (DEC-069 w46). AN OWNER LINE NAMES A BRANCH, NOT A WAVE (DEC-358 w46). A MERGE-TRAIN FIX CLOSES A ROW BUT NOT ITS SECTION. FAIL-BLIND IS NOT FAIL-LOUD, degrade per-section with a warn (DEC-099 w46). A SNAPSHOT IS ABOUT A PARTICIPATION, A HEADER IS ABOUT A PERSON (DEC-258 w46). "unknown" IP IS ONE BUCKET FOR EVERYONE — a FAILURE budget (DEC-949/DEC-072 w46), not an admission gate.
+- FINDINGS w47 (refs read at my own runtime; loose `main` `dbe40044` = "merge task-w45-f"; packed `42074604` still the stale trap; `task-w46-a..e` live with only `-d` carrying a commit ⇒ wave 46 IN FLIGHT, do not re-file its scope: exit-predicate status-128, assembler header, public speaker employer, assign-grid echo, claim IP budget). THE SEARCH ALREADY ANSWERED (DEC-069 w47): wave 45's adjudication battery LANDED (`0230`-`0237`) and filed SEVEN unowned CONFIRMED-DEFECTs. A freeze is earned by a search — the search returned a LIST, so w47 is the CODE wave and w48 is the frozen battery. Grading five slots over a tree with an unowned defect row burns the battery: triage-closure FAILs on arithmetic. AN ADJUDICATION WITHOUT AN OWNER DECAYS IN ONE WAVE (DEC-358 w47): six lanes filed verdicts, zero lanes were pointed at them, and eval-findings never learned they existed. A STAMP AFTER THE SEND IS A RECEIPT, NOT A LOCK (DEC-023 w47) — claim first, RETURNING the ids you won; release on failure. A LENGTH IS NOT A SET (DEC-615 w47): two compensating diffs cancel, and an invariant across TWO reads indicts the race, not the code — scope it to the run's own snapshot. LAST-WRITE-WINS IS A SILENT FALLBACK (DEC-478 w47): an injective mapping is refused at the door, disclosed where the column is chosen. A PREVIEW THAT CANNOT REFUSE IS NOT A PREVIEW (DEC-026 w47). NO SHA, NO GRADE (DEC-068 w47): a sha-less legacy section is a NON-CANDIDATE, not a back-filled guess — synthesis needs a filename sha. ONE MIGRATION PER WAVE, PRE-ALLOCATED (0043); index seq DERIVED after merge, never hard-coded (the 0198 collision class). RULED NOT-A-DEFECT, re-derived at my own runtime, do not re-file: the CFP claim-grant rotation — the fresh link goes to the VICTIM's own address and DEC-949's 48h supersede-grace is the designed failed-send hedge.
