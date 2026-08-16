@@ -7710,3 +7710,116 @@ wave 47's CSV import-wizard change both re-verified clean; frozen-wave
 scope (`src/**` `app/src/**` `migrations/**` `package.json`) left
 untouched.
 OPEN ITEMS: 0
+
+## 2026-08-15 task-w48-b — walkthrough @ 243b3094
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DEC-644 three-sha boundary (STEP 0, DEC-069 w48): `git merge --no-edit
+main` first reported "Already up to date" against `main`'s tip at that
+moment (`0ecff8aa`, "scribe wave 48"). A first bounded poll (max 10,
+~30s each, ~5 minutes total) for live `task-w47-*` refs (`refs/heads/
+task-w47-a`..`task-w47-h`) as non-ancestors of HEAD found all 8 refs
+non-ancestor at every one of the 10 polls (10/10 retries exhausted, no
+re-merge attempted mid-poll). Re-running `git merge --no-edit main`
+after that poll picked up 5 newly-landed merges (`main` had advanced:
+`task-w47-b/c/d/e/f` landed on `main` while the first poll ran). A
+second bounded poll (max 10, ~30s each, re-merging `main` each
+iteration) for the remaining live `task-w47-*` refs (`task-w47-a`,
+`task-w47-g`, `task-w47-h`) found all three still non-ancestor at all
+10 polls — exhausted (10/10 retries), search answered per DEC-069:
+these three lanes have not landed on `main` as of this measurement, so
+this gate proceeds without waiting further. `npx tsx
+scripts/ref-state.ts` receipt (verbatim, taken after the final
+re-merge):
+
+```
+DEC-644 three-sha boundary: HEAD `243b3094dcc4dd9125dc01f9cec01dc396251e89`; newest first-parent product-code-bearing sha `243b3094dcc4dd9125dc01f9cec01dc396251e89`; every live ref (`main`, `manual-qa`, `task-custodian-w68-4`, `task-w46-g`, `task-w47-b`, `task-w47-c`, `task-w47-d`, `task-w47-e`, `task-w47-f`, `task-w48-a`, `task-w48-b`, `task-w48-c`, `task-w48-d`, `task-w68-d`, `task-w71-c`, `task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git merge-base --is-ancestor`. NON-ancestor refs (NOT confirmed via `git merge-base --is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`, `task-w47-a`, `task-w47-g`, `task-w47-h`, `task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`, `task-w72-b`, `task-w72-c`, `task-w72-d`, `task-w72-e`, `task-w72-f`, `task-w72-g`, `task-w72-h`, `task-w72-i`, `task-w72-j`.
+```
+
+MEASURED_SHA = `243b3094` (HEAD before this task's own commit).
+
+Full detail: docs/verification-log/task-w48-b-walkthrough-243b3094.md
+
+Ran the DEC-069 required section-2 persona walkthrough inside one
+acquisition of the default `/tmp/chq-test.lock` (DEC-644): `db:migrate`
+(42 migrations applied — matches wave-44's count, not the 43 the brief
+flagged as expected from `migrations/0043_*`; the wave-47 lanes that
+would add it, `task-w47-a`/`g`/`h`, are the same three refs the STEP 0
+poll found unlanded, so the mismatch is consistent, not a surprise) ->
+`predev` -> `seed` -> `npx wrangler dev --port 8787` (backgrounded; port
+8787 chosen — not 8791 — because `.dev.vars`'s `PUBLIC_BASE_URL=
+http://localhost:8787` (DEC-296) is loopback in this wave (unlike
+wave-44's non-loopback `wrangler.jsonc` default), so the walkthrough's
+own w37-d pre-flight aborts on any other port; confirmed via one prior
+run on port 8791 that failed its pre-flight with an explicit
+`PUBLIC_BASE_URL mismatch (DEC-296)` error before any check ran, then
+re-ran the full recipe on 8787 inside a second, fresh lock acquisition)
+-> polled `http://localhost:8787/login` until ready (1 poll) -> `npx
+tsx scripts/walkthrough.ts --url http://localhost:8787` -> killed the
+port-8787 server afterward. Single successful (non-aborted) run on
+8787, one discarded pre-flight-aborted attempt on 8791 beforehand (not
+counted as a check failure — it never reached any J1-J12 assertion).
+
+Summary quoted verbatim (all six DEC-089/DEC-062 areas ran in fixed
+order producer -> review -> speaker -> public -> data -> scale, per
+scripts/walkthrough-lib.ts:15):
+
+```
+Summary:
+  FAIL producer
+  PASS review
+  PASS speaker
+  PASS public
+  PASS data
+  PASS scale
+
+walkthrough FAILED
+```
+
+Per-area PASS/FAIL line count (verbatim `grep -n "^PASS \|^FAIL "` over
+the Summary block, plus the module's own first-fatal-assert line for
+the failing area since `scripts/walkthrough/producer.ts` aborts on its
+first failed `assertTrue`/`assertStatus` rather than continuing):
+
+- producer: 1 FAIL line (`FAIL producer`, Summary block). The module
+  aborted at its first fatal assertion, transcript line 17 (this doc):
+  `FAILED: J1 open submit page has the submission form` / `expected the
+  submission form once the window is open` (scripts/walkthrough/
+  producer.ts:350-354) — after successfully creating the CFP form,
+  tracks, and PATCHing the window closed then open (all prior J1 steps
+  passed), `GET /submit/<slug>` on the now-open window does not render
+  `name="field__title"` in the response body. Owner: wave-49 lane.
+- review: 1 PASS line (`PASS review`, transcript line 43) — all 20
+  checks in the area passed, including the DEC-175 existence-hiding
+  pairs and the DEC-039 cross-org 404/403 checks.
+- speaker: 1 PASS line (`PASS speaker`, transcript line 116) — portal,
+  onboarding tasks incl. DEC-111 self-healed form tasks, invite flow,
+  ad hoc form-task creation/assignment all passed.
+- public: 1 PASS line (`PASS public`, transcript line 153) — all J9
+  (agenda scheduling) and J10 (public surfaces, embeds, schedule.ics,
+  DEC-274 hidden-participant gate, DEC-108 invite-visibility gate)
+  checks passed.
+- data: 1 PASS line (`PASS data`, transcript line 179) — all J11
+  (contacts, CSV import, segments, bulk email + cap, dashboard stats)
+  and J12 (bearer tokens, exports, cross-org 404, /docs/api) checks
+  passed.
+- scale: 7 PASS lines (`PASS step1`..`PASS step6`, `PASS scale`,
+  transcript lines 183-198) against 110 fresh contacts/submissions —
+  bulk accept of 110 ids in 95ms, email-log unchanged (no auto-email on
+  bulk status change), exactly-once re-accept, purge-refresh probe.
+
+RESULT: FAIL — producer area (J1) fails at product sha `243b3094`: the
+CFP open-window submit page (`GET /submit/<slug>` after `PATCH
+/api/v1/forms/:id` with `openDate` in the past) does not render the
+submission form fields, transcript line 17 (docs/verification-log/
+task-w48-b-walkthrough-243b3094.md:17). The other five areas
+(review/speaker/public/data/scale) all PASS unaffected — they run
+against pre-seeded fixture data and do not depend on the producer
+module's own J1 form-creation output. No product edits made in this
+task (frozen wave per this task's brief, docs/** only).
+OPEN ITEMS: 1 — owner: wave-49 lane; investigate why the open-window
+`/submit/<slug>` page omits `name="field__title"` (scripts/walkthrough/
+producer.ts:350-354); filed here, not fixed (frozen wave).
