@@ -280,9 +280,17 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     expect(distinctContactIds.size).toBeGreaterThanOrEqual(3);
 
     const distinctDueDates = new Set(pastPendingRows.map((r) => dueDateByTaskId.get(r.taskId)!));
-    const daysLate = [...distinctDueDates]
-      .map((due) => Math.round((now - due) / (24 * 60 * 60 * 1000)))
-      .sort((a, b) => a - b);
+    // DEC-522 (wave-52 amendment): a due date is a DAY LABEL minted by
+    // flooring SEED_NOW to UTC midnight and offsetting whole days — so
+    // lateness is measured in day-label space (today's UTC-midnight label
+    // minus the due label), never against the sub-day instant Date.now(),
+    // which DEC-522's wave-49 amendment bans (it over-counts by one for the
+    // fraction of the UTC day already elapsed). This matches the product's
+    // own days-late arithmetic (src/domain/task-due.ts assignmentDaysLate
+    // diffs day labels, DEC-801 wave-63 amendment).
+    const DAY = 24 * 60 * 60 * 1000;
+    const todayLabel = Math.floor(now / DAY) * DAY;
+    const daysLate = [...distinctDueDates].map((due) => (todayLabel - due) / DAY).sort((a, b) => a - b);
     expect(daysLate).toEqual([1, 2, 4]);
   });
 

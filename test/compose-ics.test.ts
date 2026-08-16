@@ -336,6 +336,11 @@ vi.mock("../src/server/repo/comms", async () => {
     findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string }[]) => new Map(params.map((p) => [p.contactId, null]))),
     listFeedbackComments: vi.fn(async () => []),
     listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
+    // DEC-238 (wave-60 amendment): /compose/preview now runs the SAME
+    // two-stage dedupe plan /compose/send executes, so it loads the
+    // recently-sent snapshot too — stub it empty (nothing sent recently),
+    // unrelated to this file's ics.timeZone scope.
+    loadRecentlySent: vi.fn(async () => new Map<string, number>()),
   };
 });
 

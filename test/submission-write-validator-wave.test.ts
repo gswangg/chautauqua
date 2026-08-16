@@ -9,8 +9,20 @@
 // test/reviewer-queue-round-trip-depth.test.ts's DEC-338 pattern -- rather
 // than a source grep. It also pins that a doubly-invalid body (bad trackId
 // AND bad format) still surfaces the trackIds error (declaration-order
-// re-throw, not whichever settles first), and that no write statement is
-// ever in flight concurrently with another write.
+// re-throw, not whichever settles first).
+//
+// Write-phase discipline: POST create's writes stay strictly sequential
+// (DEC-598 wave-34 amendment, unchanged). For PATCH, DEC-155's wave-68
+// amendment SUPERSEDES the wave-34 "writes stay sequential" clause: the
+// PATCH write phase issues as two waves (wave 1 = updateSubmissionFields +
+// ensureBaselineRevision; wave 2 = appendSubmissionRevision,
+// bumpIcsSequences, replaceSubmissionTracks, and the two role-answer
+// writes), with ensureBaselineRevision strictly before
+// appendSubmissionRevision and getSubmissionDetail a separate LAST await
+// observing every write. resolveActorName and the two
+// getEventFieldIdByRole lookups are READS hoisted into the pre-write wave
+// (DEC-155 wave-60 amendment) — they route through the write log here only
+// so their positions stay observable.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -41,27 +53,42 @@ function delayed<T>(tracker: Tracker, value: T, ms = 8): Promise<T> {
   });
 }
 
+interface WriteEntry {
+  name: string;
+  /** In-flight tracked statements at the moment this one started (including
+   * itself) — 1 means it issued alone. */
+  activeAtStart: number;
+  /** Names of tracked statements already COMPLETED when this one started —
+   * proves wave boundaries (an awaited earlier wave has fully drained). */
+  doneAtStart: string[];
+}
+
 interface WriteLog {
   active: number;
   maxActive: number;
   overlapDetected: boolean;
   order: string[];
+  entries: WriteEntry[];
+  done: string[];
 }
 
 function makeWriteLog(): WriteLog {
-  return { active: 0, maxActive: 0, overlapDetected: false, order: [] };
+  return { active: 0, maxActive: 0, overlapDetected: false, order: [], entries: [], done: [] };
 }
 
-/** Every write-phase statement (writes AND the sequential reads embedded in
- * the write phase, e.g. getEventFieldIdByRole inside writeRoleAnswer) route
- * through this so the test can pin strict non-overlap. */
+/** Every write-phase statement (writes AND the reads embedded in or hoisted
+ * out of it, e.g. getEventFieldIdByRole) routes through this so the test can
+ * pin the wave shape: which statements overlap, and which strictly follow
+ * another's completion. */
 async function trackedWrite<T>(log: WriteLog, name: string, value: T, ms = 4): Promise<T> {
   log.active += 1;
   log.maxActive = Math.max(log.maxActive, log.active);
   if (log.active > 1) log.overlapDetected = true;
   log.order.push(name);
+  log.entries.push({ name, activeAtStart: log.active, doneAtStart: [...log.done] });
   return new Promise<T>((resolve) => setTimeout(resolve, ms)).then((v) => {
     log.active -= 1;
+    log.done.push(name);
     return v ?? value;
   });
 }
@@ -76,6 +103,8 @@ function resetTrackers() {
   writeLog.maxActive = 0;
   writeLog.overlapDetected = false;
   writeLog.order = [];
+  writeLog.entries = [];
+  writeLog.done = [];
 }
 
 const VALID_TRACK_ID = "track-1";
@@ -247,7 +276,19 @@ describe("DEC-598 (wave-34 amendment): submission write doors issue ONE validati
     expect(body.error.fields).toEqual({ trackIds: "Unknown track id: not-a-real-track" });
   });
 
-  it("PATCH: every write statement stays strictly sequential (never overlaps another write)", async () => {
+  // DEC-155 (wave-68 amendment) SUPERSEDES DEC-598 wave-34's
+  // "writes stay sequential" clause for PATCH /submissions/:id: the write
+  // phase issues as two waves (wave 1 = updateSubmissionFields +
+  // ensureBaselineRevision, different tables, neither observes the other;
+  // wave 2 = appendSubmissionRevision, bumpIcsSequences,
+  // replaceSubmissionTracks, and the two role-answer writes). The ONLY
+  // genuinely ordered pair — ensureBaselineRevision stamps revision #1
+  // before appendSubmissionRevision appends #2 — is held by the wave
+  // boundary, and getSubmissionDetail stays a separate LAST await that
+  // observes every write. resolveActorName and the two
+  // getEventFieldIdByRole lookups are reads hoisted into the pre-write
+  // read wave (DEC-155 wave-60 amendment).
+  it("PATCH: writes issue as DEC-155 wave-68's two waves — baseline strictly before append, detail read last and alone", async () => {
     const app = await buildApp(AUTH);
     const res = await app.request(`/api/v1/submissions/${SUB_ID}`, {
       method: "PATCH",
@@ -260,22 +301,56 @@ describe("DEC-598 (wave-34 amendment): submission write doors issue ONE validati
       }),
     });
     expect(res.status).toBe(200);
-    expect(writeLog.overlapDetected).toBe(false);
-    expect(writeLog.maxActive).toBe(1);
-    // Every write fired, in the route's declared order.
+
+    // Every statement fired, starting in the route's declared order:
+    // hoisted read wave first, then wave 1, wave 2, and the detail read.
     expect(writeLog.order).toEqual([
+      "resolveActorName",
+      "getEventFieldIdByRole",
+      "getEventFieldIdByRole",
       "updateSubmissionFields",
       "ensureBaselineRevision",
-      "resolveActorName",
       "appendSubmissionRevision",
       "bumpIcsSequences",
       "replaceSubmissionTracks",
-      "getEventFieldIdByRole",
       "upsertSubmissionAnswers",
-      "getEventFieldIdByRole",
       "upsertSubmissionAnswers",
       "getSubmissionDetail",
     ]);
+
+    const entry = (name: string, nth = 0): WriteEntry => {
+      const found = writeLog.entries.filter((e) => e.name === name)[nth];
+      if (!found) throw new Error(`no tracked entry: ${name}[${nth}]`);
+      return found;
+    };
+
+    // Wave 1 genuinely batches: ensureBaselineRevision issues while
+    // updateSubmissionFields is still in flight.
+    expect(entry("ensureBaselineRevision").activeAtStart).toBeGreaterThanOrEqual(2);
+
+    // Wave boundary: revision #1 (and the field update) fully landed
+    // before revision #2 was issued.
+    expect(entry("appendSubmissionRevision").doneAtStart).toContain("ensureBaselineRevision");
+    expect(entry("appendSubmissionRevision").doneAtStart).toContain("updateSubmissionFields");
+
+    // Wave 2 genuinely batches: its last member issues with the rest of
+    // the wave still in flight.
+    expect(entry("upsertSubmissionAnswers", 1).activeAtStart).toBeGreaterThanOrEqual(2);
+
+    // The detail read stays a separate, LAST await: it issues alone, after
+    // every write has completed (it observes all of them).
+    const detail = entry("getSubmissionDetail");
+    expect(detail.activeAtStart).toBe(1);
+    for (const write of [
+      "updateSubmissionFields",
+      "ensureBaselineRevision",
+      "appendSubmissionRevision",
+      "bumpIcsSequences",
+      "replaceSubmissionTracks",
+      "upsertSubmissionAnswers",
+    ]) {
+      expect(detail.doneAtStart).toContain(write);
+    }
   });
 
   it("POST create: every write statement stays strictly sequential (never overlaps another write)", async () => {

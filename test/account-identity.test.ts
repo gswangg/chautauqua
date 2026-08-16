@@ -65,6 +65,11 @@ vi.mock("../src/server/repo/comms", async () => {
     // for `scheduled` — unrelated to this file's account-identity scope, so
     // stub it to "nothing scheduled" (an empty map).
     loadIcsScheduleData: vi.fn(async () => new Map()),
+    // DEC-238 (wave-60 amendment): /compose/preview now runs the SAME
+    // two-stage dedupe plan /compose/send executes, so it loads the
+    // recently-sent snapshot too — stub it empty (nothing sent recently),
+    // unrelated to this file's account-identity scope.
+    loadRecentlySent: vi.fn(async () => new Map<string, number>()),
     findAccountUserId: findAccountUserIdMock,
     // Batched sibling delegates to the (per-test-overridable) singular mock
     // above so every existing findAccountUserId.mockImplementation(...) in

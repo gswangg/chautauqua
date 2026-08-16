@@ -600,11 +600,19 @@ describe("item 4: POST /compose/send collapses same-address/same-subject duplica
     expect(payload.skipped[0]?.reason).toBe("duplicate_in_batch");
     expect(sentMails).toHaveLength(1);
 
-    // The collapsed duplicate never reaches the loadRecentlySent window
-    // query -- stage 1 (intra-batch) runs BEFORE stage 2, so only the
-    // survivor's (email, subject) pair is asked about.
-    expect(item4RecentlySentCalledWith).toHaveLength(1);
-    expect(item4RecentlySentCalledWith?.[0]?.email).toBe("speaker@example.com");
+    // DEC-238 (wave-60 amendment): `recentlySent` is loaded for EVERY
+    // rendered row, not just stage-1 survivors — the dedupe itself moved
+    // into the shared pure planner (src/domain/comms-dedupe.ts
+    // planComposeSends) so /compose/preview can run the identical decision,
+    // and loadRecentlySent dedupes its wanted keys into a Set internally
+    // (same query cost — see the wave-60 note in src/routes/comms/send.ts).
+    // Stage 1 still collapses the duplicate before stage 2 consults the
+    // window INSIDE the planner, which the sent/skipped assertions above
+    // pin behaviourally.
+    expect(item4RecentlySentCalledWith).toHaveLength(2);
+    for (const pair of item4RecentlySentCalledWith ?? []) {
+      expect(pair.email).toBe("speaker@example.com");
+    }
   });
 
   it("same email but DIFFERENT rendered subjects (per-submission merge field) are never collapsed", async () => {

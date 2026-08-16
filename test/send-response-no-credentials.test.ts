@@ -55,7 +55,16 @@ describe("send responses never carry rendered bodies or claim tokens", () => {
   it("comms/preview.ts /compose/preview still returns items derived from result.rendered", () => {
     const handler = handlerBody(commsPreviewSrc, '"/api/v1/events/:eventId/compose/preview"', []);
     expect(handler).toContain("result.rendered");
-    expect(handler).toMatch(/return c\.json\(\{\s*items\s*\}\);/);
+    // DEC-238 (wave-60 amendment): preview now runs the same dedupe planner
+    // send executes and returns the plan alongside items — the response is
+    // exactly { items, plan: { willSend, skipped } }. `plan` carries only
+    // counts and the planner's skip records ({email, name, submissionId,
+    // reason, retryAtIso}), never rendered bodies or claim tokens; the
+    // preview `items` bodies themselves remain legitimate (mintClaimTokens
+    // is false on this path, DEC-397).
+    expect(handler).toMatch(
+      /return c\.json\(\{\s*items,\s*plan:\s*\{\s*willSend:\s*toSend\.length,\s*skipped\s*\}\s*\}\);/,
+    );
   });
 
   it("bulk-email.ts /contacts/bulk-email send handler does not reference result.rendered in its response", () => {

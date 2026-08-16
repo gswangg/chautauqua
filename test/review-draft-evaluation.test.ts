@@ -189,6 +189,23 @@ vi.mock("../src/server/repo/submissions", async () => {
   };
 });
 
+// DEC-596: the organiser's evaluations route also reads the ASSIGNED-
+// reviewer denominator (countAssignedReviewersForSubmission), imported
+// directly from repo/review/reviewers (not through the repo/review index
+// mocked above) — stub it here so the route doesn't hit the bare fake db.
+// This file's draft-exclusion assertion is unaffected: the real
+// listEvaluationsForSubmission's submittedEvaluationCondition() filter is
+// what excludes drafts, mirrored by the store-backed mock below.
+vi.mock("../src/server/repo/review/reviewers", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/review/reviewers")>(
+    "../src/server/repo/review/reviewers",
+  );
+  return {
+    ...actual,
+    countAssignedReviewersForSubmission: vi.fn(async () => 2),
+  };
+});
+
 vi.mock("../src/server/repo/review/evaluations", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/review/evaluations")>(
     "../src/server/repo/review/evaluations",
