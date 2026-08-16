@@ -110,10 +110,68 @@ A corollary worth stating, because it caused the sign-in problem: **a centred ca
 One spec for hover / active / selected / expanded, so state bands stop being drawn per surface:
 
 - **Hover** on any row or nav item: `#EFEBDF` fill. No border change, no shift.
+- **Status cells that are controls** (the speakers grid) take a `0 0 0 2px #CFC7B7` ring on hover rather than a fill — they already carry their own fill or outline, and a second background would collide with the state they encode.
 - **Selected / active row**: `#EFEBDF` fill plus a **3px olive left edge**. The edge is what distinguishes selected from merely hovered, and it replaces 3px of the row's left padding rather than adding to it, so nothing shifts on selection.
 - **Expanded disclosure**: the band is `#FAF8F2` with a `1px #E1DDCE` top and bottom rule — a lighter surface than the row, so it reads as inside it.
 - **The rule that fixes items 27–28:** an expanded or selected band **inherits its parent's column grid**. It repeats the same `grid-template-columns`, so its content lines up under the columns it belongs to; it never spans the measure with its own free-floating layout. Content insets 16px from the band edge, top and bottom.
 - **Select carets**: `▾` always sits at the **right edge of the control** in muted ink (`#565A4B`), never as the last glyph of the label. Two control widths, one rule — a fixed-width control pushes it there with `justify-content:space-between`; a content-width control (toolbar filter, chip) has no edge beyond its text, so it gets a **6px gap** instead. A caret one space after the word makes a select read as a run of text, which is why the role select in People and roles looked wrong; the same defect was in every toolbar filter in the set and is now fixed across all eleven files.
+- **Button hover — each tier darkens, nothing moves.** A button already carries its own surface, so it must not take the row's `#EFEBDF` fill on hover; instead each tier goes one step darker in its own family, with no lift, no shadow, no scale and no border-width change (a 1px→2px border shifts every neighbour by a pixel):
+
+| Tier | Rest | Hover | Active (pressed) |
+|---|---|---|---|
+| Primary | `#4E5C31` on `#F7F9F0` | **`#3C471F`** | `#33401A` |
+| Secondary | `#EFEBDF` / `1px #CFC7B7` / `#2E2A24` | **`#E4DFD2`**, border `#BAB6A6` | `#DCD6C6` |
+| Tertiary link | olive `#4E5C31`, no surface | **`#3C471F` + underline** | `#33401A` |
+| Destructive tertiary | `#565A4B` | **`#1B1D17` + underline** | `#1B1D17` |
+
+`#3C471F` is already this system's `a:hover`, so a hovered primary and a hovered link land on one colour rather than two olives. Transition `background-color` only, at the 120ms in the motion spec below — never `all`.
+
+Two consequences worth stating because they get missed: a **disabled** button has no hover state at all (it is `#8E8A7A` on `#DDD8C8` and stays there, with `cursor:default`), and a button inside a hovering row keeps its own hover — the row tint sits behind it, so the two states read as nested rather than competing.
+
+- **Motion — three durations, and a list of what must not animate.** This is an admin tool people use for hours, so motion exists to make a change *legible*, never to decorate:
+
+| Duration | Easing | Used for |
+|---|---|---|
+| **120ms** | `ease-out` | Colour-only state: button hover and press, row and nav hover, chip selection, link colour |
+| **180ms** | `ease-out` | Something appearing in place: an error or rollback banner, an inline validation message, a toast-free result panel |
+| **220ms** | `cubic-bezier(0.2, 0, 0, 1)` | Something with geometry: a disclosure expanding, a modal or drawer entering, a sheet rising on phone |
+
+**Always animate the property, never `all`.** `transition: all` catches the focus ring and makes keyboard entry look laggy, and it catches layout properties you did not intend.
+
+**Entering vs leaving.** Things enter at the durations above and leave at **half** — a closing modal at 110ms, a dismissed banner at 90ms. Waiting for an exit is the part that feels slow.
+
+**What must not animate, and why:**
+
+- **Optimistic writes.** A task cell flipping to Complete, a bulk status change, an agenda placement — these must be *instant*. The whole point of the loud-rollback pattern is that the user sees the change land and sees it revert; a 200ms fade in both directions makes the two indistinguishable and turns a rollback into a flicker.
+- **Content arriving.** No stagger, no fade-in-up on table rows or cards. A submissions table that animates 25 rows on every filter change costs a triage session real time, and the row you were reading moves under your cursor.
+- **Numbers.** Counts change by replacement, never by counting up. "19 waiting" is a fact, not an odometer.
+- **The focus ring.** Instant, always — it is the one affordance a keyboard user is tracking.
+- **Anything on a print or PDF path**, and anything behind an open modal.
+
+**Respect the system setting.** Under `prefers-reduced-motion: reduce`, geometry animations drop to a **90ms opacity fade** and colour transitions go to `0ms` — states still change, nothing travels. Modals and disclosures still work; they simply appear.
+
+**One easing family.** `ease-out` for state, `cubic-bezier(0.2, 0, 0, 1)` for geometry — both decelerate, so everything settles rather than bouncing. No spring, no overshoot, no `ease-in-out` (which reads as sluggish at these durations).
+
+- **Pending — the gap the hover spec does not cover.** Optimistic writes are instant, so most of this product needs no loading state at all. But four operations are genuinely slow and are **not** optimistic, and each needs a designed wait rather than a spinner: a **bulk send** (23 emails, batched at 100), a **CSV import** (214 rows), a **file upload**, and **auto-schedule**. The rule:
+
+  - The button that started it becomes its own progress indicator — label swaps to the present participle and the count so far ("Sending 12 of 23…"), stays at its rest colour, and takes `cursor:progress`. No spinner glyph, no separate bar.
+  - It is the **only** thing disabled. Do not grey the page or trap the user in a modal — an organiser must still be able to read the list they are sending to.
+  - Under **300ms, show nothing.** A flash of "Saving…" on a fast connection is noise, and it makes a genuinely slow save indistinguishable from a fast one.
+  - Progress that can be counted is counted; progress that cannot is a single unmoving line ("Uploading…"). Never a fake percentage.
+  - On completion the button returns to rest and the **result panel** does the reporting (`{sent, skipped, remaining}`) — the button never says "Sent!".
+
+- **Drag — the agenda grid, and reorder rows.** Two surfaces drag: agenda sessions between room/time cells, and `⋮⋮` handles on criteria, tracks, rooms and CFP questions.
+
+  - The **dragged item** keeps its size and takes `opacity:0.6` — it must stay readable, since the user is reading it to decide where it goes. No rotation, no scale, no shadow bloom.
+  - Its **origin** leaves a `#EFEBDF` well with a `1px dashed #BAB6A6` outline, so "where it came from" survives the drag.
+  - A valid **drop target** takes the `#EFF1E4` / `1px dashed #A9AE94` treatment already used by the agenda's free slots — one vocabulary for "something can go here".
+  - An **occupied** target still accepts the drop (clashes are flagged, not blocked) and previews the clash inline rather than refusing.
+  - **Every drag has a keyboard equivalent** — the agenda's tap-to-place flow is it, and reorder rows move with arrow keys on the focused handle. A drag-only interaction is unreachable for a keyboard or touch user, which is why the phone agenda was designed tap-first.
+
+- **Touch has no hover.** On a touch surface the hover tint must not stick after a tap; the pressed state is the `:active` colour in the button table, and it should appear on `touchstart` rather than after the 300ms tap delay. Set `-webkit-tap-highlight-color: transparent` and let the active state do the work — the default blue flash is not in this palette.
+
+- **Inputs and selects.** Rest `1px #BAB6A6` on `#FAF8F2`; **hover** darkens the border to `#8E8A7A` only; **focus** takes the 2px olive outline and the border goes `#4E5C31`. A field group with focus inside gets nothing — no label colour change, no background shift; the outline is sufficient and label recolouring is a common source of jitter. Read-only fields (`Session length`, the locked email) keep the `#EFEBDF` fill and take **no** hover at all, since nothing will happen.
+
 - **Focus**: 2px olive outline, 2px offset, on every interactive element. Never removed, never replaced by the hover treatment.
 - **Disabled**: `#8E8A7A` text on `#DDD8C8` border. Reserved for genuinely inert controls — never for placeholder text or de-emphasis.
 
@@ -231,11 +289,87 @@ DEC-604 lets a speaker self-add a co-presenter to their own submission (`portal/
 
 **Duplicate is a server-only error.** The unique index on the join table (`migrations/0019`) is the arbiter, so the client cannot pre-empt it — the second frame shows the rejection in the standard shape: banner naming what did *not* happen, the email field marked, the API's own message, and "Everything you typed is still below."
 
+## CFP — the third window state
+
+`formWindowState` returns three values and two were framed. **`not_yet_open`** (`NotYetOpenPage`) is now drawn: the same card measure as the closed state, leading with the date the form opens rather than with an apology.
+
+Two rules: **state the opening date only when one is set** — the seeded form has no `open_date`, so with none the heading reads "The call for papers is not open yet" and no date is invented. And **give the visitor something to do** — last year's sessions — since a page with a future date and no action is a dead end. The hub's own listing rule already hides `not_yet_open` events, so anyone here followed a direct link.
+
+## Portal preview — "Open as a speaker"
+
+`GET /portal/preview` (DEC-747) is the Speaker portal settings row's one action, and it is **not an impersonation** — it renders the portal chrome with no speaker attached, which is what makes it safe. Framed at 1600 in the 560 portal column.
+
+The design's whole job is saying what it cannot show, twice: a read-only banner at the top ("no submissions, tasks or files here — only what you have written for everyone"), and a **"Not shown here"** section listing the four things absent as chips, closing with "to see a real speaker's portal you would have to be them — this preview deliberately cannot." Without that, an organiser reads an empty portal as a broken one. Resource rows render with **Download disabled**, since there is no speaker to authorise the file read.
+
+The Settings row that opens it must therefore read *Open as a speaker* and say it is a preview — item 22's ruling — never "sign in as".
+
+## CFP form — editing a question
+
+`FieldModal` was the last unframed dialog. Section, kind, label, help text, required, and an options textarea counted against `MAX_FIELD_OPTIONS` — but the substantial half is **conditional visibility**, which my form-builder frame showed none of.
+
+- The rule reads as a sentence, not a builder: **"Only show this question when… Format is Workshop"**, with the off state stated ("leave it off and the question always shows") rather than implied by empty selects.
+- The value control follows the trigger's kind — a dropdown of its options, a number field, a text field — so an organiser cannot write a rule that can never match.
+- **A hidden question is never required.** If the submitter cannot see it, it cannot block their submission; the modal says so where the two settings meet.
+- The header carries the blast radius — "47 people have already answered this form" — because editing a live question changes what those answers mean.
+- Delete sits far left in the footer, and goes through the irreversible confirm.
+
+## Review progress — two reminder scopes
+
+`ProgressPanel` sends to **two different audiences** and my frame showed one generic link, so the distinction was undesigned:
+
+- **Remind laggards (N)** — everyone with anything outstanding. Disabled when the list is empty.
+- **Remind the N not started** — the subset who have scored nothing, a harder nudge. Per **DEC-760**, when nobody is unstarted this link is **hidden, not disabled** — a permanently dead control on a panel an organiser visits weekly reads as broken.
+
+Both report through the same `{sent, skipped, remaining}` line as every other send in the product ("Sent to 5 reviewers · 1 skipped, reminded within the hour"), so the one-hour dedupe window is visible here too.
+
+## Loading — the first paint
+
+`PageSkeleton` and `DelayedLoading` are shared components with no frame, and `useDelayedFlag`'s 250ms default already implements the rule the pending spec states. Framed in `Chautauqua Overview` beside States and Widths, since it is a cross-cutting reference rather than a page.
+
+- **Draw everything that needs no data immediately** — header, page title, toolbar shell. Only the rows wait.
+- **Under 250ms, show nothing.** A skeleton that flashes is worse than a beat of stillness, and it makes a fast load look broken.
+- **Blocks at the height the rows will become**, so nothing jumps when data lands. Varied widths on the title column only — a column of identical bars reads as a loading *graphic*, not as rows.
+- **Always six rows**, never a guess at the real count: a skeleton that guesses lies twice, once while loading and again when the number differs.
+- **No shimmer, no pulse.** An animation across a whole table is motion the user cannot act on and it competes with the content arriving. `#EFEBDF` — the hovered-row tone — reads as furniture rather than as content that failed to load.
+
+## Two more surfaces that shipped without frames
+
+Found by the same component scan, outside Settings:
+
+- **New contact** (`NewContactModal`) — the only hand-entry path into the org directory, and the one place a contact is created without an import or a submission. Email carries the reason it is required: "it is how contacts are matched and merged". The modal ends by naming what it does **not** do — adding someone to the directory does not put them on an event; *Add to an event* on their row is the separate act.
+- **Breaks editor** (`BreaksPanel`) — the admin half of the public breaks display designed earlier. Existing breaks as rows with Remove, then label/start/minutes as a three-up add row. Two facts stated: a break **blocks every room at once** (it is not a session in one room), and a break outside the day's window is kept but flagged rather than dropped.
+
+## Confirm dialogs — one component, two weights
+
+`ConfirmDialog` is shared (SavedEmbeds, Resources, and every destructive action that follows), so it is ruled once rather than per caller. **Two weights, and the weight is decided by reversibility, not by how alarming the action sounds:**
+
+- **Reversible** — one sentence naming the consequence and what survives ("Nothing is deleted"), a primary carrying the verb, Cancel. No typing.
+- **Irreversible** — the same, plus **type the name to confirm**. Reserved for deletes that cannot be undone: a portal resource, an event, a contact merge.
+
+Both rules that matter: the primary **carries the verb** ("Turn it off", "Delete it"), never "Confirm" or "OK" — a dialog you can act on without reading the title is a dialog people dismiss reflexively. And the dialog **names the blast radius** from real data: "It is embedded on notion.so", "Downloaded 18 times by 12 speakers". A confirm that only says "Are you sure?" adds a click and no information.
+
+## Settings — the four surfaces that shipped without frames
+
+- **Reset a password** (`PeopleRolesPanel`) — same reveal-once shape as the invite password, plus the two facts unique to a reset: existing sessions are ended, so they are signed out everywhere, and **resetting sends no email**, so the organiser must pass it on.
+- **Portal resources** (`ResourcesPanel`) — add is a modal: name, kind as File/Link chips (one or the other, never both), then the drop zone or URL field. Delete goes through the irreversible confirm, since speakers may be linking to it.
+- **Track colour** (`TRACK_SWATCHES`) — a swatch sits left of the track name in the edit rows, captioned with what it is for: "how a track reads on the agenda and the public pages". It is not decoration, so it belongs beside the name rather than in a separate picker.
+- **Sessionboard import** (`SessionboardImportPanel`) — three steps in one modal, with step 2 showing counts per entity and what will happen to each ("9 match a contact you have", "One has no name — becomes Room 5"). Two things stated: nothing is written until step 3, and Sessionboard is read-only to us.
+
+## Settings — inviting someone
+
+`POST /api/v1/users` (`src/routes/api/users.ts:67`) does not send an invitation — it **creates the account immediately**, generates a password server-side, and returns it in the response body once. Three frames cover it, and each states a fact the fields cannot show:
+
+1. **Invite** — first/last name (optional on the wire, required at the door), email, and role as two chips with their consequence spelled out: "a reviewer sees only the plans they are assigned to · an organiser sees everything, including this page". A panel says the account is created straight away and the password appears on the next screen, so nobody waits for an acceptance that will never come. Primary reads **Create the account**, not "Send invitation" — the verb must match the act.
+2. **Created** — the one-time password in monospace at 20px with a Copy button, and the sentence that makes it safe: "Closing this dialog is the last time you see it — after that only a reset can replace it." It also states the emailing rule honestly, including the gap the route itself flags: `email_log.event_id` is NOT NULL, so the welcome email is logged against the org's first event, and **an org with no events gets a working account and no email**. The organiser must be told to pass the password on themselves.
+3. **Rejected** — email is the username, so a duplicate is refused. Standard error shape, plus a route out that is better than retyping: *Open Sam's row*, since changing an existing person's role is what the organiser actually wanted.
+
+**Do not design a pending-invitation state.** There is no such row: the account is live from creation. A greyed "Invited" row would describe a status the schema does not have, and organisers would wait for an acceptance that cannot arrive.
+
 ## Password reset
 
-**This is proposed new work — no reset flow exists.** `src/auth/` holds `cookies.ts`, `tokens.ts` (session and API tokens) and `claim.ts`. There is no forgot-password route and no reset token; the comment at `src/server/auth-session.ts:14` treats *claim* and *account password change* as the only password-reset paths, and a claim token is minted for a contact by an organiser's send, not requested by the person who forgot.
+**This is implemented** — `src/routes/auth-reset.tsx` with `src/auth/password-reset.ts`, covered by `test/password-reset-flow.test.ts`. An earlier draft of this document called it proposed new work; that was checked before the route existed and never re-checked. The four frames are a re-skin.
 
-The closest precedent, if the token is modelled on it, is `claim.ts`: `CLAIM_TTL_SECONDS` is **30 days**, and `createClaimToken` does not hard-invalidate a prior token — it re-puts it under `SUPERSEDED_GRACE_SECONDS` so a batch send that fails after minting cannot lock someone out. **The frames therefore assert no lifetime and no single-use guarantee.** An earlier draft said "works once and expires in an hour" and "asking twice invalidates the first link" — all three invented, and all three contradicting the one token mechanism that does exist. Whoever builds this decides the TTL and supersede behaviour, and the copy follows the decision.
+On success the route redirects to `/login?password-reset=1`, which `loginStatusLine()` renders as **"Your password has been changed. Sign in with it."** — use that string rather than inventing one, and confirm the real token lifetime in `password-reset.ts` before writing any duration into the copy.
 
 Four states in `Chautauqua Account`, entered from *Forgot your password?* on the sign-in card, all on that card's 460px measure and vertical centring.
 

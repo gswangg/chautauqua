@@ -470,6 +470,270 @@
     </div>
   </div>
 
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">States · hover, pending, drag</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Hover the live column · the rest are drawn states</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="max-width:1440px; margin:0 auto; width:100%; padding:34px 34px 44px; display:flex; flex-direction:column; gap:30px">
+
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:32px; font-weight:700; letter-spacing:-0.04em; line-height:1">Interaction states</h1>
+          <span style="font-size:14px; color:#3F4237; line-height:1.6; max-width:70ch">Every state in the B8 standard, drawn. The <strong>Live</strong> column is really hoverable — the rest are the same control frozen in each state so they can be compared side by side.</span>
+        </div>
+
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Buttons</span>
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Each tier darkens in its own family · nothing moves</span>
+          </div>
+          <div style="padding:18px 0 0; display:grid; grid-template-columns:150px repeat(4, 1fr); gap:20px; align-items:center">
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Tier</span>
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Rest</span>
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#4E5C31">Live · hover me</span>
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Pressed</span>
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Disabled</span>
+
+            <span style="font-size:14px; font-weight:600">Primary</span>
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save changes</span>
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; transition:background-color 120ms ease-out" style-hover="background:#3C471F" style-active="background:#33401A">Save changes</span>
+            <span style="background:#33401A; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save changes</span>
+            <span style="border:1px solid #DDD8C8; color:#8E8A7A; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save changes</span>
+
+            <span style="font-size:14px; font-weight:600">Secondary</span>
+            <span style="border:1px solid #CFC7B7; background:#EFEBDF; color:#2E2A24; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Cancel</span>
+            <span style="border:1px solid #CFC7B7; background:#EFEBDF; color:#2E2A24; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; transition:background-color 120ms ease-out, border-color 120ms ease-out" style-hover="background:#E4DFD2; border-color:#BAB6A6" style-active="background:#DCD6C6">Cancel</span>
+            <span style="border:1px solid #BAB6A6; background:#DCD6C6; color:#2E2A24; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Cancel</span>
+            <span style="border:1px solid #DDD8C8; color:#8E8A7A; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Cancel</span>
+
+            <span style="font-size:14px; font-weight:600">Tertiary</span>
+            <span style="color:#4E5C31; min-height:46px; display:flex; align-items:center; font-size:13px; font-weight:700">Remind this task</span>
+            <a href="#" style="color:#4E5C31; min-height:46px; display:flex; align-items:center; font-size:13px; font-weight:700; text-decoration:none; transition:color 120ms ease-out" style-hover="color:#3C471F; text-decoration:underline">Remind this task</a>
+            <span style="color:#33401A; min-height:46px; display:flex; align-items:center; font-size:13px; font-weight:700; text-decoration:underline">Remind this task</span>
+            <span style="color:#8E8A7A; min-height:46px; display:flex; align-items:center; font-size:13px; font-weight:700">Remind this task</span>
+
+            <span style="font-size:14px; font-weight:600">Destructive</span>
+            <span style="color:#565A4B; min-height:46px; display:flex; align-items:center; font-size:13px; font-weight:700">Archive this event</span>
+            <a href="#" style="color:#565A4B; min-height:46px; display:flex; align-items:center; font-size:13px; font-weight:700; text-decoration:none; transition:color 120ms ease-out" style-hover="color:#1B1D17; text-decoration:underline">Archive this event</a>
+            <span style="color:#1B1D17; min-height:46px; display:flex; align-items:center; font-size:13px; font-weight:700; text-decoration:underline">Archive this event</span>
+            <span style="color:#8E8A7A; min-height:46px; display:flex; align-items:center; font-size:13px; font-weight:700">Archive this event</span>
+          </div>
+          <div style="padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.55">A disabled button has no hover at all · a button inside a hovering row keeps its own hover, the row tint sits behind it</div>
+        </section>
+
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Rows and cells</span>
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Fill for rows · ring for cells that already carry a fill</span>
+          </div>
+          <div style="padding:18px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:34px">
+            <div style="display:flex; flex-direction:column; gap:0">
+              <div style="display:grid; grid-template-columns:44px 1fr 92px 84px; gap:14px; padding:0 15px 8px; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B; border-bottom:2px solid #1B1D17">
+                <span>Rank</span><span>Submission</span><span>Score</span><span>Reviews</span>
+              </div>
+              <div style="display:grid; grid-template-columns:44px 1fr 92px 84px; gap:14px; padding:13px 15px; font-size:14px; border-bottom:1px solid #E1DDCE">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-weight:700">1</span><span>Taming 40-Minute CI</span><span style="font-weight:600">4.6</span><span style="color:#565A4B">3</span>
+              </div>
+              <div style="display:grid; grid-template-columns:44px 1fr 92px 84px; gap:14px; padding:13px 15px; font-size:14px; border-bottom:1px solid #E1DDCE; background:#EFEBDF">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-weight:700">2</span><span>Hover — Your AI Pair Programmer</span><span style="font-weight:600">4.5</span><span style="color:#565A4B">3</span>
+              </div>
+              <div style="display:grid; grid-template-columns:44px 1fr 92px 84px; gap:14px; padding:13px 12px; font-size:14px; border-bottom:1px solid #E1DDCE; background:#EFEBDF; border-left:3px solid #4E5C31">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-weight:700">3</span><span>Selected — Evaluating Agents</span><span style="font-weight:600">3.9</span><span style="color:#565A4B">2</span>
+              </div>
+              <div style="background:#FAF8F2; border-bottom:1px solid #E1DDCE; padding:16px 15px">
+                <div style="display:grid; grid-template-columns:44px 1fr 92px 84px; gap:14px; font-size:13px; color:#3F4237">
+                  <span></span><span style="font-weight:600">Sam Whitfield</span><span style="font-weight:600">4.0</span><span></span>
+                  <span></span><span style="font-weight:600">Ines Duarte</span><span style="font-weight:600">3.5</span><span></span>
+                </div>
+                <span style="display:block; padding-top:10px; font-size:12px; color:#565A4B; line-height:1.5">Expanded — the band repeats the table's own tracks, so each score lands under Score</span>
+              </div>
+              <a href="#" style="display:grid; grid-template-columns:44px 1fr 92px 84px; gap:14px; padding:13px 15px; font-size:14px; color:#1B1D17; text-decoration:none; transition:background-color 120ms ease-out" style-hover="background:#EFEBDF">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-weight:700">4</span><span>Live · hover this row</span><span style="font-weight:600">3.4</span><span style="color:#565A4B">3</span>
+              </a>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+                <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#F7F9F0; background:#4E5C31; border-radius:3px; padding:3px 8px">Complete</span>
+                <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B; border:1px solid #BAB6A6; border-radius:3px; padding:2px 8px">Pending</span>
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#1B1D17; border:1px solid #1B1D17; border-radius:3px; padding:2px 8px">Overdue</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+                <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#F7F9F0; background:#4E5C31; border-radius:3px; padding:3px 8px; cursor:pointer; transition:box-shadow 120ms ease-out" style-hover="box-shadow:0 0 0 2px #CFC7B7">Complete</span>
+                <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B; border:1px solid #BAB6A6; border-radius:3px; padding:2px 8px; cursor:pointer; transition:box-shadow 120ms ease-out" style-hover="box-shadow:0 0 0 2px #CFC7B7">Pending</span>
+                <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#4E5C31">← live · hover these</span>
+              </div>
+              <span style="font-size:13px; color:#565A4B; line-height:1.55">A status cell takes a ring, never a fill — it already carries a fill that encodes its state.</span>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Inputs</span>
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Border only on hover · outline on focus</span>
+          </div>
+          <div style="padding:18px 0 0; display:grid; grid-template-columns:repeat(5, 1fr); gap:18px">
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Rest</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">Priya Raman</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Hover · live</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; transition:border-color 120ms ease-out" style-hover="border-color:#8E8A7A">Hover me</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Focus</span>
+              <div style="border:1px solid #4E5C31; outline:2px solid #4E5C31; outline-offset:2px; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">Priya Raman</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Error</span>
+              <div style="border:1px solid #1B1D17; border-left:3px solid #1B1D17; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">dana@example</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Read-only</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">Talk, 30 min</div>
+            </div>
+          </div>
+          <div style="padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.55">A read-only field takes no hover — nothing will happen. Placeholders are <span style="color:#565A4B; font-weight:600">#565A4B</span>, never the disabled token.</div>
+        </section>
+
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Pending</span>
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Four slow operations · nothing under 300ms</span>
+          </div>
+          <div style="padding:18px 0 0; display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; align-items:start">
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Rest</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Send 23 emails</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Counted</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; cursor:progress">Sending 12 of 23…</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Uncountable</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; cursor:progress">Uploading…</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Done · result reports</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Send 23 emails</span>
+            </div>
+          </div>
+          <div style="padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.55">The button is the progress indicator and the only thing disabled — no spinner, no overlay, no fake percentage. The button never says "Sent!"; the result panel reports.</div>
+        </section>
+
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Drag</span>
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Agenda sessions · reorder handles</span>
+          </div>
+          <div style="padding:18px 0 0; display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; align-items:start">
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Dragged · stays readable</span>
+              <div style="border:1px solid #D3CFC0; border-left:3px solid #4E5C31; border-radius:5px; background:#FAF8F2; padding:12px 14px; opacity:0.6; display:flex; flex-direction:column; gap:3px">
+                <span style="font-size:10px; font-weight:700; letter-spacing:0.06em; color:#565A4B">DFC-033</span>
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600">Docs That Answer Back</span>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Origin it left</span>
+              <div style="border:1px dashed #BAB6A6; border-radius:5px; background:#EFEBDF; min-height:66px"></div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Valid target</span>
+              <div style="border:1px dashed #A9AE94; border-radius:5px; background:#EFF1E4; min-height:66px; display:flex; align-items:center; justify-content:center; gap:9px">
+                <span style="font-size:13px; font-weight:700; color:#4E5C31">Place here</span>
+                <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#5E6B47">30 min free</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.55">No rotation, no scale, no shadow — the user is reading the card to decide where it goes. Every drag has a keyboard equivalent; an occupied target still accepts the drop and flags the clash.</div>
+        </section>
+
+        <section>
+          <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Motion</span>
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Three durations · exits at half</span>
+          </div>
+          <div style="padding:18px 0 0; display:grid; grid-template-columns:110px 1fr 220px; gap:18px">
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Duration</span>
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Used for</span>
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Easing</span>
+            <sc-for list="{{ motionRows }}" as="m" hint-placeholder-count="3">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:700; padding:12px 0; border-top:1px solid #E1DDCE">{{ m.dur }}</span>
+              <span style="font-size:14px; line-height:1.5; padding:12px 0; border-top:1px solid #E1DDCE; color:#3F4237">{{ m.use }}</span>
+              <span style="font-family:ui-monospace, monospace; font-size:12px; padding:12px 0; border-top:1px solid #E1DDCE; color:#565A4B">{{ m.ease }}</span>
+            </sc-for>
+          </div>
+          <div style="padding:18px 0 0; display:flex; flex-direction:column; gap:7px">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Never animated</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap">
+              <sc-for list="{{ neverAnimate }}" as="n" hint-placeholder-count="5">
+                <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; color:#3F4237">{{ n.name }}</span>
+              </sc-for>
+            </div>
+            <span style="font-size:13px; color:#565A4B; line-height:1.55; padding-top:4px">An optimistic write must be instant in both directions — fading the change and the rollback alike makes them indistinguishable.</span>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Loading · the first paint</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Nothing at all under 250ms</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Submissions</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="max-width:1440px; margin:0 auto; width:100%; padding:30px 34px 40px; display:flex; flex-direction:column; gap:24px">
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:32px; font-weight:700; letter-spacing:-0.04em; line-height:1">Submissions</h1>
+          <span style="font-size:14px; color:#3F4237; line-height:1.6; max-width:70ch">The chrome a page can draw without data — header, title, toolbar — is drawn immediately. Only the rows wait, and they wait as blocks at the row height they will become, so nothing jumps when the data lands.</span>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:9px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:12px 0">
+          <span style="border:1px solid #D3CFC0; border-radius:99px; background:#EFEBDF; height:32px; width:118px"></span>
+          <span style="border:1px solid #D3CFC0; border-radius:99px; background:#EFEBDF; height:32px; width:96px"></span>
+          <span style="border:1px solid #D3CFC0; border-radius:99px; background:#EFEBDF; height:32px; width:104px"></span>
+          <span style="margin-left:auto; border:1px solid #D3CFC0; border-radius:4px; background:#EFEBDF; height:36px; width:230px"></span>
+        </div>
+
+        <div>
+          <div style="display:grid; grid-template-columns:74px 1fr 150px 108px 92px; gap:18px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span>Ref</span><span>Title</span><span>Speakers</span><span>Status</span><span>Sent</span>
+          </div>
+          <sc-for list="{{ skeletonRows }}" as="s" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:74px 1fr 150px 108px 92px; gap:18px; align-items:center; padding:16px 0; border-bottom:1px solid #E1DDCE">
+              <span style="height:12px; border-radius:3px; background:#EFEBDF"></span>
+              <span style="{{ s.title }}"></span>
+              <span style="height:12px; border-radius:3px; background:#EFEBDF"></span>
+              <span style="height:12px; border-radius:3px; background:#EFEBDF; width:64px"></span>
+              <span style="height:12px; border-radius:3px; background:#EFEBDF; width:52px"></span>
+            </div>
+          </sc-for>
+          <span style="display:block; padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.55">Six rows, always — a skeleton that guesses the real count lies twice: once while loading, once when the number differs.</span>
+        </div>
+
+        <div style="border-top:1px solid #D3CFC0; padding-top:20px; display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">The rules</span>
+          <span style="font-size:14px; line-height:1.65; color:#3F4237; max-width:78ch">Under <strong>250ms</strong>, show nothing — a skeleton that flashes is worse than a beat of stillness. Blocks never shimmer or pulse: an animation on a whole table is motion the user cannot act on, and it competes with the content arriving. The skeleton uses <strong>#EFEBDF</strong>, the same tone as a hovered row, so it reads as furniture rather than as content that failed to load.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -510,6 +774,23 @@ const cell = (states, labels) => states.map((s, i) => ({
 class Component extends DCLogic {
   renderVals() {
     return {
+      skeletonRows: [
+        { title: 'height:12px; border-radius:3px; background:#EFEBDF; width:92%' },
+        { title: 'height:12px; border-radius:3px; background:#EFEBDF; width:74%' },
+        { title: 'height:12px; border-radius:3px; background:#EFEBDF; width:88%' },
+        { title: 'height:12px; border-radius:3px; background:#EFEBDF; width:63%' },
+        { title: 'height:12px; border-radius:3px; background:#EFEBDF; width:81%' },
+        { title: 'height:12px; border-radius:3px; background:#EFEBDF; width:70%' },
+      ],
+      motionRows: [
+        { dur: '120ms', use: 'Colour only — button hover and press, row and nav hover, chip selection, link colour', ease: 'ease-out' },
+        { dur: '180ms', use: 'Appearing in place — an error or rollback banner, an inline validation message', ease: 'ease-out' },
+        { dur: '220ms', use: 'Geometry — a disclosure expanding, a modal or drawer entering, a phone sheet rising', ease: 'cubic-bezier(0.2, 0, 0, 1)' },
+      ],
+      neverAnimate: [
+        { name: 'Optimistic writes' }, { name: 'Rows arriving' }, { name: 'Numbers counting up' },
+        { name: 'The focus ring' }, { name: 'Anything on a print path' }, { name: 'Content behind a modal' },
+      ],
       deadlines: [
         { label: 'CFP closes', value: '6 days', cellStyle: CELL_FIRST, valueStyle: V_NEAR, chipWrap: CHIP_NEAR, chipLabel: CL_NEAR, chipValue: CV_NEAR },
         { label: 'Tasks due', value: '2 days', cellStyle: CELL, valueStyle: V_REST, chipWrap: CHIP_REST, chipLabel: CL_REST, chipValue: CV_REST },

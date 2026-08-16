@@ -248,7 +248,7 @@
                 <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="2">
                   <div style="display:flex; align-items:baseline; gap:14px">
                     <span style="font-size:14px; font-weight:600">{{ t.name }}</span>
-                    <span style="font-size:13px; color:#565A4B">{{ t.mask }}</span>
+                    <span style="font-size:13px; color:#565A4B">{{ t.prefix }}</span>
                     <span style="font-size:12px; color:#565A4B">{{ t.used }}</span>
                     <a href="#" style="font-size:12px; font-weight:700; margin-left:auto">Revoke</a>
                   </div>
@@ -417,7 +417,7 @@
           <div style="padding:14px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:12px">
             <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:3px">
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ t.name }}</span>
-              <span style="font-size:13px; color:#565A4B">{{ t.mask }}</span>
+              <span style="font-size:13px; color:#565A4B">{{ t.prefix }}</span>
               <span style="font-size:12px; color:#565A4B">{{ t.used }}</span>
             </div>
             <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Revoke</span>
@@ -824,12 +824,15 @@
             <sc-for list="{{ editTracks }}" as="t" hint-placeholder-count="3">
               <div style="display:grid; grid-template-columns:20px 1fr 150px auto; gap:16px; align-items:center; padding:10px 0; border-bottom:1px solid #E1DDCE">
                 <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
-                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600; max-width:320px">{{ t.name }}</div>
+                <div style="display:flex; align-items:center; gap:10px; max-width:320px">
+                  <span style="{{ t.swatch }}"></span>
+                  <div style="flex:1; min-width:0; border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">{{ t.name }}</div>
+                </div>
                 <span style="font-size:12px; color:#565A4B">{{ t.used }}</span>
                 <span style="{{ t.delStyle }}">Remove</span>
               </div>
             </sc-for>
-            <div style="padding:12px 0 0; font-size:13px; color:#565A4B; line-height:1.5">A track in use cannot be removed — retire it instead and it stops appearing on the form</div>
+            <div style="padding:12px 0 0; font-size:13px; color:#565A4B; line-height:1.5">The swatch is how a track reads on the agenda and the public pages · a track in use cannot be removed — retire it instead and it stops appearing on the form</div>
           </section>
 
           <section>
@@ -1147,7 +1150,10 @@
             <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="2">
               <div style="display:grid; grid-template-columns:1fr 150px 150px auto; gap:18px; align-items:center; padding:13px 0; border-bottom:1px solid #E1DDCE">
                 <div style="display:flex; flex-direction:column; gap:3px">
-                  <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600; max-width:320px">{{ t.name }}</div>
+                  <div style="display:flex; align-items:center; gap:10px; max-width:320px">
+                  <span style="{{ t.swatch }}"></span>
+                  <div style="flex:1; min-width:0; border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">{{ t.name }}</div>
+                </div>
                   <span style="font-family:ui-monospace, monospace; font-size:12px; color:#565A4B">{{ t.prefix }}</span>
                 </div>
                 <span style="font-size:13px; color:#565A4B">{{ t.created }}</span>
@@ -1259,6 +1265,285 @@
     </div>
   </div>
 
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Invite someone</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Creates the account at once · no pending state</span>
+    </div>
+
+    <div style="width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Invite someone</span>
+          <span style="font-size:13px; color:#565A4B">They can sign in as soon as you do this</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">First name</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">First name</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Last name</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">Last name</div>
+        </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Email</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">their@email.com</div>
+          <span style="font-size:12px; color:#565A4B; line-height:1.5">This is the username they sign in with</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Role</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 16px; font-size:14px; font-weight:600">Reviewer</span>
+            <span style="border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 16px; font-size:14px; font-weight:500; color:#3F4237">Organiser</span>
+          </div>
+          <span style="font-size:12px; color:#565A4B; line-height:1.5">A reviewer sees only the plans they are assigned to · an organiser sees everything, including this page</span>
+        </div>
+        <div style="border:1px solid #D3CFC0; border-radius:5px; background:#FAF8F2; padding:14px 16px; display:flex; flex-direction:column; gap:5px">
+          <span style="font-size:13px; font-weight:700; line-height:1.5">The account is created straight away</span>
+          <span style="font-size:13px; color:#3F4237; line-height:1.55">We generate a password and show it to you once, on the next screen. There is no pending invitation to chase.</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Create the account</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Invite · the one-time password</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Shown once · never retrievable</span>
+    </div>
+
+    <div style="width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Sam Whitfield can now sign in</span>
+          <span style="font-size:13px; color:#565A4B">sam@example.com · Reviewer</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <div style="border:1px solid #1B1D17; border-left:4px solid #1B1D17; border-radius:5px; background:#EFEBDF; padding:16px 18px; display:flex; flex-direction:column; gap:10px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Their password · shown once</span>
+          <span style="font-family:ui-monospace, monospace; font-size:20px; font-weight:600; letter-spacing:0.02em; word-break:break-all">tr9-mossy-plinth-42</span>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+            <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Copy the password</span>
+            <span style="font-size:12px; color:#3F4237; line-height:1.5">Closing this dialog is the last time you see it — after that only a reset can replace it</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">We also emailed it</span>
+          <span style="font-size:14px; line-height:1.6; color:#3F4237">Sent to sam@example.com and logged against DevFlow Conf 2027. If your org has no event yet, the account still works but no email is sent — pass the password on yourself.</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Done</span><a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Invite someone else</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Invite · rejected</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Email is the username, so it is unique</span>
+    </div>
+
+    <div style="width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Nobody was invited</span>
+          <span style="font-size:13px; color:#565A4B">The address is already in use</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <div style="border:1px solid #1B1D17; border-left:4px solid #1B1D17; border-radius:5px; background:#EFEBDF; padding:14px 16px; display:flex; flex-direction:column; gap:5px">
+          <span style="font-size:14px; font-weight:700; line-height:1.4">Sam Whitfield already has an account here</span>
+          <span style="font-size:13px; line-height:1.55; color:#3F4237">To change what they can see, change their role on the list instead. Everything you typed is still below.</span>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">First name</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">Sam</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Last name</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">Whitfield</div>
+        </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Email</span>
+          <div style="border:1px solid #1B1D17; border-left:3px solid #1B1D17; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">sbek-reviewer@example.com</div>
+          <span style="font-size:13px; font-weight:600; line-height:1.5; color:#1B1D17">Already in use. Email is the username, so it can only belong to one account.</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Create the account</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span><a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Open Sam's row</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Confirm · reversible</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">The common case · no typing</span>
+    </div>
+
+    <div style="width:480px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Turn off “Sponsor deck feed”?</span>
+          <span style="font-size:13px; color:#565A4B">It is embedded on notion.so</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <span style="font-size:15px; line-height:1.65; color:#3F4237">The embed will render nothing wherever it is pasted, until you turn it back on. Nothing is deleted.</span>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Turn it off</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Confirm · irreversible</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Type the name · destructive verb on the button</span>
+    </div>
+
+    <div style="width:480px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Delete “Speaker handbook 2027.pdf”?</span>
+          <span style="font-size:13px; color:#565A4B">Downloaded 18 times by 12 speakers</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <span style="font-size:15px; line-height:1.65; color:#3F4237">This cannot be undone. Speakers linking to it will get a 404.</span>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Type the file name to confirm</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">Speaker handbook 2027.pdf</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Delete it</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Portal resource · add</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">A link or a file, not both</span>
+    </div>
+
+    <div style="width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Add a resource</span>
+          <span style="font-size:13px; color:#565A4B">Shown to every speaker in their portal</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Name</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">Stage and A/V notes</div>
+          <span style="font-size:12px; color:#565A4B; line-height:1.5">What speakers see in the list</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Kind</span>
+          <div style="display:flex; gap:8px">
+            <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 16px; font-size:14px; font-weight:600">File</span>
+            <span style="border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 16px; font-size:14px; font-weight:500; color:#3F4237">Link</span>
+          </div>
+        </div>
+        <div style="border:1px dashed #BAB6A6; border-radius:5px; padding:18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+          <span style="font-size:14px; color:#3F4237">Drop a file here, or choose one</span>
+          <span style="margin-left:auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">PDF, Keynote, PowerPoint · up to 200 MB</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Add it</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Reset a password</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Signs them out everywhere · shown once</span>
+    </div>
+
+    <div style="width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Sam Whitfield can sign in again</span>
+          <span style="font-size:13px; color:#565A4B">sbek-reviewer@example.com · Reviewer</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <div style="border:1px solid #1B1D17; border-left:4px solid #1B1D17; border-radius:5px; background:#EFEBDF; padding:16px 18px; display:flex; flex-direction:column; gap:10px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">New password · shown once</span>
+          <span style="font-family:ui-monospace, monospace; font-size:20px; font-weight:600; word-break:break-all">kf4-amber-lintel-08</span>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+            <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Copy the password</span>
+            <span style="font-size:12px; color:#3F4237; line-height:1.5">Closing this is the last time you see it</span>
+          </div>
+        </div>
+        <span style="font-size:14px; line-height:1.6; color:#3F4237">Their existing sessions were ended, so they are signed out on every device. Pass this on yourself — resetting sends no email.</span>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Done</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Import from Sessionboard</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Three steps · nothing is written until the last</span>
+    </div>
+
+    <div style="width:620px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Import from Sessionboard</span>
+          <span style="font-size:13px; color:#565A4B">Step 2 of 3 · what we found</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0">
+          <div style="padding:12px 14px 12px 0; display:flex; align-items:center; gap:10px">
+            <span style="width:24px; height:24px; border-radius:50%; background:#4E5C31; color:#F7F9F0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0">✓</span>
+            <span style="font-size:13px; color:#3F4237">Upload the export</span>
+          </div>
+          <div style="padding:12px 14px; border-left:1px solid #D3CFC0; background:#EFEBDF; display:flex; align-items:center; gap:10px">
+            <span style="width:24px; height:24px; border-radius:50%; background:#1B1D17; color:#F4F1E8; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0">2</span>
+            <span style="font-size:13px; font-weight:700">Check what we found</span>
+          </div>
+          <div style="padding:12px 14px; border-left:1px solid #D3CFC0; display:flex; align-items:center; gap:10px">
+            <span style="width:24px; height:24px; border-radius:50%; border:1px solid #BAB6A6; color:#565A4B; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; flex-shrink:0">3</span>
+            <span style="font-size:13px; color:#3F4237">Import</span>
+          </div>
+        </div>
+        <sc-for list="{{ importFound }}" as="i" hint-placeholder-count="4">
+          <div style="display:grid; grid-template-columns:1fr 120px 150px; gap:16px; align-items:baseline; padding-bottom:11px; border-bottom:1px solid #E1DDCE">
+            <span style="font-size:15px; font-weight:600">{{ i.what }}</span>
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:700">{{ i.count }}</span>
+            <span style="font-size:13px; color:#565A4B; line-height:1.45">{{ i.note }}</span>
+          </div>
+        </sc-for>
+        <span style="font-size:13px; color:#565A4B; line-height:1.55">Nothing has been written yet. Sessionboard is read-only to us — importing never changes anything on their side.</span>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Import all of it</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Back</span><a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Download what we found</a></div>
+      </div>
+    </div>
+  </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -1281,6 +1566,27 @@ const DEL_OFF = 'font-size:12px; font-weight:700; color:#8E8A7A';
 const PF_ON = 'background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 13px; font-size:13px; font-weight:600';
 const PF_OFF = 'border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; font-weight:500; color:#3F4237';
 
+// One source per concept — the read view and the edit view both derive from these,
+// so a track's usage, a room's seats and the people list cannot disagree.
+const TRACKS = [
+  { name: 'AI Engineering', count: 18, colour: '#4E5C31' },
+  { name: 'Platform & Infra', count: 16, colour: '#1B1D17' },
+  { name: 'Developer Experience', count: 13, colour: '#8E8A7A' },
+];
+const SWATCH = (c) => 'width:26px; height:26px; border-radius:4px; flex-shrink:0; cursor:pointer; background:' + c + '; box-shadow:0 0 0 1px #D3CFC0';
+const ROOMS = [
+  { name: 'Main Stage', seats: 900, sessions: 6 },
+  { name: 'Room 2A', seats: 220, sessions: 4 },
+  { name: 'Room 2B', seats: 220, sessions: 3 },
+  { name: 'Workshop Lab', seats: 60, sessions: 4 },
+];
+const PEOPLE = [
+  { name: 'Jordan Alvarez', email: 'sbek-organizer@example.com', role: 'Organiser', scope: 'Everything', self: true },
+  { name: 'Sam Whitfield', email: 'sbek-reviewer@example.com', role: 'Reviewer', scope: 'AI Engineering' },
+  { name: 'Ines Duarte', email: 'ines@example.com', role: 'Reviewer', scope: 'Developer Experience' },
+  { name: 'Devin Cole', email: 'devin@example.com', role: 'Reviewer', scope: 'AI Engineering' },
+];
+
 class Component extends DCLogic {
   renderVals() {
     return {
@@ -1300,17 +1606,18 @@ class Component extends DCLogic {
         { label: 'Time zone', value: 'America/Los_Angeles', note: '' },
         { label: 'Venue', value: 'Moscone West, San Francisco', note: '' },
       ],
-      editTracks: [
-        { name: 'AI Engineering', used: '18 submissions', delStyle: DEL_OFF },
-        { name: 'Platform & Infra', used: '21 submissions', delStyle: DEL_OFF },
-        { name: 'Developer Experience', used: 'Not used yet', delStyle: DEL_ON },
-      ],
-      editRooms: [
-        { name: 'Main Stage', seats: '400', used: '6 sessions', delStyle: DEL_OFF },
-        { name: 'Room 2A', seats: '120', used: '4 sessions', delStyle: DEL_OFF },
-        { name: 'Room 2B', seats: '120', used: '3 sessions', delStyle: DEL_OFF },
-        { name: 'Workshop Lab', seats: '40', used: 'Not used yet', delStyle: DEL_ON },
-      ],
+      editTracks: TRACKS.map((t) => ({
+        name: t.name,
+        swatch: SWATCH(t.colour),
+        used: t.count ? t.count + ' submissions' : 'Not used yet',
+        delStyle: t.count ? DEL_OFF : DEL_ON,
+      })),
+      editRooms: ROOMS.map((r) => ({
+        name: r.name,
+        seats: String(r.seats),
+        used: r.sessions ? r.sessions + ' sessions' : 'Not used yet',
+        delStyle: r.sessions ? DEL_OFF : DEL_ON,
+      })),
       portalFields: [
         { name: 'Bio', style: PF_ON },
         { name: 'Headshot', style: PF_ON },
@@ -1323,15 +1630,20 @@ class Component extends DCLogic {
         { name: 'Slide template.key', detail: '8.4 MB · 11 opens' },
         { name: 'Stage and A/V notes.pdf', detail: '640 KB · 4 opens' },
       ],
-      editPeople: [
-        { name: 'Jordan Alvarez', email: 'sbek-organizer@example.com', role: 'Organiser', scope: 'Everything · you', delStyle: DEL_OFF },
-        { name: 'Sam Whitfield', email: 'sbek-reviewer@example.com', role: 'Reviewer', scope: 'AI Engineering', delStyle: DEL_ON },
-        { name: 'Ines Duarte', email: 'ines@example.com', role: 'Reviewer', scope: 'Developer Experience', delStyle: DEL_ON },
-        { name: 'Ana Petrov', email: 'ana@example.com', role: 'Reviewer', scope: 'AI Engineering', delStyle: DEL_ON },
+      editPeople: PEOPLE.map((p) => ({
+        name: p.name, email: p.email, role: p.role,
+        scope: p.self ? p.scope + ' · you' : p.scope,
+        delStyle: p.self ? DEL_OFF : DEL_ON,
+      })),
+      importFound: [
+        { what: 'Sessions', count: '41', note: 'All accepted' },
+        { what: 'Speakers', count: '38', note: '9 match a contact you have' },
+        { what: 'Tracks', count: '3', note: 'Two are new' },
+        { what: 'Rooms', count: '5', note: 'One has no name — becomes “Room 5”' },
       ],
       tokens: [
-        { name: 'Sponsor deck feed', prefix: 'chq_live_7f2a…', created: '2 Mar 2027', used: 'Today', usedStyle: 'font-size:13px; color:#565A4B' },
-        { name: 'Website build', prefix: 'chq_live_c14b…', created: '18 Jan 2027', used: 'Never used', usedStyle: 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#1B1D17' },
+        { name: 'Airtable sync', prefix: 'chq_live_••••4f21', created: '2 Mar 2027', used: '2 hours ago', usedStyle: 'font-size:13px; color:#565A4B' },
+        { name: 'Website build', prefix: 'chq_live_••••9c07', created: '18 Jan 2027', used: 'Never used', usedStyle: 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#1B1D17' },
       ],
       formQuestions: [
         { label: 'Title', type: 'Short text', req: 'required' },
@@ -1343,17 +1655,8 @@ class Component extends DCLogic {
         { label: 'Notes for reviewers', type: 'Long text', req: 'optional' },
         { label: 'Accessibility needs', type: 'Short text', req: 'optional' },
       ],
-      tracks: [
-        { name: 'AI Engineering', count: '18 submissions' },
-        { name: 'Platform & Infra', count: '16 submissions' },
-        { name: 'Developer Experience', count: '13 submissions' },
-      ],
-      rooms: [
-        { name: 'Main Stage', cap: '900 seats' },
-        { name: 'Room 2A', cap: '220 seats' },
-        { name: 'Room 2B', cap: '220 seats' },
-        { name: 'Workshop Lab', cap: '60 seats' },
-      ],
+      tracks: TRACKS.map((t) => ({ name: t.name, count: t.count + ' submissions' })),
+      rooms: ROOMS.map((r) => ({ name: r.name, cap: r.seats + ' seats' })),
       savedEmbeds: [
         { name: 'AI track sessions', recipe: 'Sessions · iframe · AI Engineering · 6 fields', used: 'devflowconf.com', state: 'On', stateStyle: EMBED_ON, toggle: 'Turn off' },
         { name: 'Homepage agenda strip', recipe: 'Agenda · element · day 1 · 4 fields', used: 'devflowconf.com', state: 'On', stateStyle: EMBED_ON, toggle: 'Turn off' },
@@ -1380,21 +1683,12 @@ class Component extends DCLogic {
         { name: 'Slide template', detail: 'Keynote and PowerPoint' },
         { name: 'Stage and AV notes', detail: 'Link' },
       ],
-      people: [
-        { name: 'Jordan Alvarez', email: 'sbek-organizer@example.com', role: 'Organiser', scope: 'Everything' },
-        { name: 'Sam Whitfield', email: 'sbek-reviewer@example.com', role: 'Reviewer', scope: 'AI Engineering' },
-        { name: 'Ines Duarte', email: 'ines@example.com', role: 'Reviewer', scope: 'Developer Experience' },
-        { name: 'Devin Cole', email: 'devin@example.com', role: 'Reviewer', scope: 'AI Engineering' },
-      ],
+      people: PEOPLE.map((p) => ({ name: p.name, email: p.email, role: p.role, scope: p.scope })),
       exports: [
         { name: 'Submissions', detail: 'CSV · 47 rows, all custom fields' },
         { name: 'Contacts', detail: 'CSV · 318 rows' },
         { name: 'Schedule', toggle: 'Unpublish', detail: 'ICS · 17 placed sessions' },
         { name: 'Everything', detail: 'JSON · full event' },
-      ],
-      tokens: [
-        { name: 'Airtable sync', mask: 'chq_live_••••4f21', used: 'Last used 2 hours ago' },
-        { name: 'Website build', mask: 'chq_live_••••9c07', used: 'Last used yesterday' },
       ],
       mobileGroups: [
         { label: 'Event', detail: 'DevFlow Conf 2027 · 12–14 May · Moscone West' },

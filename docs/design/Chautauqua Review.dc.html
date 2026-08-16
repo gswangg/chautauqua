@@ -93,7 +93,14 @@
         <section>
           <div style="display:flex; align-items:baseline; justify-content:space-between; border-bottom:2px solid #1B1D17; padding-bottom:8px">
             <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Wave 2 · reviewer progress</span>
-            <a href="#" style="font-size:13px; font-weight:700">Remind the 4 not started</a>
+            <div style="display:flex; align-items:center; gap:16px">
+              <a href="#" style="font-size:13px; font-weight:700">Remind laggards (5)</a>
+              <a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Remind the 4 not started</a>
+            </div>
+          </div>
+          <div style="padding:14px 0 4px; display:flex; flex-direction:column; gap:5px">
+            <span style="font-size:13px; color:#3F4237; line-height:1.5">Sent to 5 reviewers · 1 skipped, reminded within the hour</span>
+            <span style="font-size:12px; color:#565A4B; line-height:1.5">Laggards is everyone with anything outstanding · not-started is the subset who have scored nothing. Where nobody is unstarted the second link is hidden, not disabled.</span>
           </div>
           <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0 34px">
             <sc-for list="{{ reviewers }}" as="r" hint-placeholder-count="6">

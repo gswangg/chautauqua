@@ -203,6 +203,50 @@
     </div>
   </div>
 
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Breaks · Tue 12 May</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Breaks are not sessions — they hold time, not content</span>
+    </div>
+
+    <div style="width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.035em; line-height:1.1">Breaks on Tuesday</span>
+          <span style="font-size:13px; color:#565A4B">They block every room at once</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <sc-for list="{{ breakRows }}" as="b" hint-placeholder-count="3">
+          <div style="display:grid; grid-template-columns:1fr 110px 96px auto; gap:14px; align-items:center; padding-bottom:11px; border-bottom:1px solid #E1DDCE">
+            <span style="font-size:15px; font-weight:600">{{ b.label }}</span>
+            <span style="font-size:13px; color:#565A4B">{{ b.start }}</span>
+            <span style="font-size:13px; color:#565A4B">{{ b.mins }}</span>
+            <a href="#" style="font-size:12px; font-weight:700; color:#565A4B">Remove</a>
+          </div>
+        </sc-for>
+        <div style="display:grid; grid-template-columns:1fr 110px 96px; gap:14px">
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Label</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">Coffee</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Starts</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">15:30</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Minutes</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; color:#565A4B">20</div>
+        </div>
+        </div>
+        <span style="font-size:13px; color:#565A4B; line-height:1.55">A break outside the day's window is kept but flagged — the grid shows it greyed rather than dropping it.</span>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Add the break</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Done</span></div>
+      </div>
+    </div>
+  </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -226,6 +270,11 @@ function card(ref, title, speaker, clash) {
 class Component extends DCLogic {
   renderVals() {
     return {
+      breakRows: [
+        { label: 'Morning coffee', start: '10:30', mins: '15 min' },
+        { label: 'Lunch · Foyer', start: '12:00', mins: '60 min' },
+        { label: 'Afternoon break', start: '15:30', mins: '20 min' },
+      ],
       rooms: [
         { name: 'Main Stage' },
         { name: 'Room 2A' },
