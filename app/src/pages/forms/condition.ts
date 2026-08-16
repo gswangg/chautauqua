@@ -13,7 +13,10 @@ function formatValue(op: FormFieldRuleOp, value: unknown): string {
   return `"${String(value)}"`;
 }
 
-function verbFor(op: FormFieldRuleOp): string {
+// DEC-650 (wave-66 amendment): the ONE operator-label vocabulary -- both
+// describeCondition's row prose and FieldModal's condition <select> render
+// this, never a second map.
+export function ruleOpLabel(op: FormFieldRuleOp): string {
   switch (op) {
     case 'eq':
       return 'is';
@@ -35,7 +38,7 @@ export function describeCondition(rule: FormFieldRule, fieldsById: Map<string, {
   if (!referenced) {
     return 'Shown when a deleted field matches';
   }
-  return `Shown when ${referenced.label} ${verbFor(rule.op)} ${formatValue(rule.op, rule.value)}`;
+  return `Shown when ${referenced.label} ${ruleOpLabel(rule.op)} ${formatValue(rule.op, rule.value)}`;
 }
 
 /** Builds the `fieldId -> {label}` lookup describeCondition needs from a form's field list. */

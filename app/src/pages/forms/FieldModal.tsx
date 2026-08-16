@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { ruleOpLabel } from './condition';
 import {
   defaultRuleValue,
   deserializeRule,
@@ -43,12 +44,18 @@ interface FieldModalProps {
   answeredCount?: number | null;
   onCancel: () => void;
   onSubmit: (input: FieldModalInput) => Promise<void>;
+  // DEC-650 (wave-66 amendment): only present when editing an existing
+  // field -- a new, unsaved field has nothing to delete. FormsPage wires
+  // this to the SAME handler FieldList's row Delete already uses (reuse,
+  // not a second delete path); that handler opens the shared ConfirmDialog
+  // at irreversible weight.
+  onDelete?: () => void;
 }
 
 /** Add/edit modal for a custom form field: section, kind, label, help text,
  * required toggle, options editor (dropdown), and conditional-visibility
  * rule builder (form_field.rule_json: { fieldId, op, value }). */
-export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit }: FieldModalProps) {
+export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit, onDelete }: FieldModalProps) {
   const [section, setSection] = useState<FormFieldSection>(field?.section ?? 'session');
   const [kind, setKind] = useState<FormFieldKind>(field?.kind ?? 'text');
   const [label, setLabel] = useState(field?.label ?? '');
@@ -144,12 +151,28 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
       modalClassName="chq-forms-field-modal"
       actions={
         <>
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
-            {submitting ? 'Saving...' : 'Save'}
-          </button>
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
-            Cancel
-          </button>
+          {/* DEC-650 (wave-66 amendment, DESIGN-RULINGS.md:314): Delete sits
+              far left, Cancel/Save right-flushed in their own group --
+              never adjacent to Delete. Only rendered when editing an
+              existing field. */}
+          {field && onDelete && (
+            <button
+              type="button"
+              className="chq-btn chq-btn-destructive-tertiary chq-forms-field-delete"
+              onClick={onDelete}
+              disabled={submitting}
+            >
+              Delete
+            </button>
+          )}
+          <div className="chq-forms-field-modal-actions-right">
+            <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
+              {submitting ? 'Saving...' : 'Save'}
+            </button>
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
+              Cancel
+            </button>
+          </div>
         </>
       }
     >
@@ -272,7 +295,7 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
                 >
                   {RULE_OPS.map((op) => (
                     <option key={op} value={op}>
-                      {op}
+                      {ruleOpLabel(op)}
                     </option>
                   ))}
                 </select>

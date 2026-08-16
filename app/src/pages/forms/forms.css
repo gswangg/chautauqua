@@ -326,6 +326,20 @@
   max-width: 520px;
 }
 
+/* DEC-650 (wave-66 amendment, DESIGN-RULINGS.md:314): Delete sits far left
+   in the footer, Cancel/Save right-flushed in their own group -- override
+   the base ModalFrame actions row (flex-start, DEC-750) scoped to this one
+   modal, since every other ModalFrame dialog has no far-left control. */
+.chq-forms-field-modal .chq-modal-actions {
+  justify-content: space-between;
+}
+
+.chq-forms-field-modal-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
 /* DEC-650(a): the conditional-visibility rule reads as a sentence -- this
    leading line, then the trigger/condition/value controls beneath it --
    rather than a bare "Field" select implying the sentence. */
