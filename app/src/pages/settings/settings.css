@@ -401,17 +401,23 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  /* DEC-902 (w60): the four-track grid is declared ONCE here and consumed
+     by both .chq-settings-people-header-row and .chq-settings-people-row
+     so the header labels and the data cells can never drift apart again. */
+  --chq-people-grid: minmax(0, 1fr) 170px 190px 200px;
 }
 
 .chq-settings-people-row:last-child {
   border-bottom: none;
 }
 
-/* w5-e/DEC-691 amendment: PERSON / ROLE / SCOPE / (empty) header row over
-   the same four-track grid as each .chq-settings-people-row below it. */
+/* w5-e/DEC-691 amendment, DEC-902 (w60): PERSON / ROLE / SCOPE / (empty)
+   header row consumes the same --chq-people-grid custom property as each
+   .chq-settings-people-row below it, declared once on the shared list
+   container (.chq-settings-people-list). */
 .chq-settings-people-header-row {
   display: grid;
-  grid-template-columns: 1fr 170px 190px auto;
+  grid-template-columns: var(--chq-people-grid);
   gap: 18px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--chq-rule);
@@ -779,7 +785,7 @@
      sizes per-row — the organizer row's wider actions cell shrank its 1fr
      identity (email wrapped) and shifted every column off the other rows'.
      A fixed track keeps all rows on one geometry. */
-  grid-template-columns: minmax(0, 1fr) 170px 190px 200px;
+  grid-template-columns: var(--chq-people-grid);
   gap: 18px;
   align-items: center;
   padding: 12px 0;
