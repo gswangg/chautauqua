@@ -22,7 +22,9 @@ const CONTENT_DIR = resolve(fileURLToPath(import.meta.url), "../../src/routes/do
 // scripts/docs-shots.ts, a generated manifest of captured screenshot ids,
 // never a DocsArticle. nav.ts and where-next.ts are article FURNITURE
 // (task-w4-b: side nav, Where-next closer, pager) -- pure data/derivation
-// modules with no DocsArticle export of their own.
+// modules with no DocsArticle export of their own. search.ts (task-w9-a,
+// DEC-382 amendment wave 9): the pure searchDocs core -- reads DocsArticle
+// values, never exports one.
 const NON_ARTICLE_FILES = new Set([
   "index.ts",
   "types.ts",
@@ -30,6 +32,7 @@ const NON_ARTICLE_FILES = new Set([
   "shots-available.ts",
   "nav.ts",
   "where-next.ts",
+  "search.ts",
 ]);
 
 /** Finds the single DocsArticle-shaped named export of a dynamically

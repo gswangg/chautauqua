@@ -15,6 +15,15 @@
 // Styling: DocsSiteStyles() (./docs-site.css.ts), in the
 // src/routes/public/home.css.ts idiom, rendered after ThemeStyles() —
 // never TOOLS_CSS, never the admin SPA sheet.
+//
+// DEC-382 (Amendment, wave 9, sha 3323a7b7): docs search is a QUERY on
+// GET /docs, never a new route (src/index.ts's mounted-route list and the
+// README evaluator table stay unchanged). ?q= renders the same shell with
+// a results section swapped in for the group grid, via the pure
+// ./docs-content/search.ts core. The ruling's other half -- the API
+// reference as the "Running the software" group's last row, per
+// Chautauqua Docs.dc.html:436 -- reads off the one existing
+// DOCS_API_LEAVING_LINK constant (DocsApiLeavingRow below).
 
 import { Hono } from "hono";
 import type { AppEnv } from "../server/env";
@@ -35,6 +44,8 @@ import { PublicEmptyState } from "./public/empty-state";
 import { DOCS_SHOTS_AVAILABLE } from "./docs-content/shots-available";
 import { docsNavGroups, docsArticleNeighbours } from "./docs-content/nav";
 import { WHERE_NEXT_BY_SLUG } from "./docs-content/where-next";
+import { searchDocs, type DocsSearchHit } from "./docs-content/search";
+import { boundedQueryString, MAX_SEARCH_QUERY_LENGTH } from "../lib/query-bounds";
 
 export const docsSiteRoutes = new Hono<AppEnv>();
 
@@ -43,7 +54,40 @@ void DEC_382;
 void DEC_518;
 void DEC_613;
 
-function DocsHeader() {
+// Real GET form (no-JS-correct: this IS how ?q= reaches the server), a
+// named `q` input, and a submit control with a real >=44px touch target --
+// the DEC-919 "off-screen/1px submit" defect does not repeat here. `size`
+// picks between the two drawn placements (Chautauqua Docs.dc.html:136 vs
+// :39/:237): both are the SAME form/route, only geometry differs.
+function DocsSearchForm(props: { q: string | undefined; size: "large" | "compact" }) {
+  const { q, size } = props;
+  return (
+    <form
+      method="get"
+      action="/docs"
+      class={size === "large" ? "chq-docs-search chq-docs-search-large" : "chq-docs-search chq-docs-search-compact"}
+      role="search"
+    >
+      <input
+        type="search"
+        name="q"
+        value={q ?? ""}
+        placeholder="Search the docs…"
+        aria-label="Search the docs"
+        class="chq-docs-search-input"
+      />
+      <button type="submit" class="chq-docs-search-submit">
+        Search
+      </button>
+    </form>
+  );
+}
+
+// DEC-382 (wave-9 amendment): a compact search field sits in the header's
+// right cluster, BEFORE the API-reference leaving link, on article and
+// results pages (:39/:237) -- never on the plain index (which carries the
+// large intro-block placement instead, :136).
+function DocsHeader(props: { search?: { q: string | undefined } }) {
   return (
     <header class="chq-docs-header">
       <span class="chq-docs-brandrow">
@@ -52,6 +96,7 @@ function DocsHeader() {
         </a>
         <span class="chq-docs-suffix">Docs</span>
       </span>
+      {props.search ? <DocsSearchForm q={props.search.q} size="compact" /> : null}
       <a class="chq-docs-leaving" href={DOCS_API_LEAVING_LINK.href}>
         <span aria-hidden="true" class="chq-docs-leaving-mark">
           &#8599;
@@ -237,7 +282,52 @@ function DocsPager(props: { slug: string }) {
   );
 }
 
-function DocsIndexPage() {
+// The running-the-software group's final row: the API reference, drawn as
+// a leaving link rather than an article (Chautauqua Docs.dc.html:436,
+// DESIGN-RULINGS.md:306). Both label and href come from the one existing
+// DOCS_API_LEAVING_LINK constant -- never re-typed (DEC-613's
+// two-vocabularies trap).
+function DocsApiLeavingRow() {
+  return (
+    <div class="chq-docs-article-row chq-docs-article-row-leaving">
+      <a class="chq-docs-article-title chq-docs-leaving-row-link" href={DOCS_API_LEAVING_LINK.href}>
+        <span aria-hidden="true" class="chq-docs-leaving-mark">
+          &#8599;
+        </span>
+        {DOCS_API_LEAVING_LINK.label}
+      </a>
+      <span class="chq-docs-article-blurb">Leaves the docs — an operator surface, generated from the routes</span>
+    </div>
+  );
+}
+
+function DocsSearchResults(props: { q: string; hits: DocsSearchHit[] }) {
+  const { q, hits } = props;
+  if (hits.length === 0) {
+    return (
+      <div class="chq-docs-empty">
+        <PublicEmptyState variant="fresh" what={`No results for "${q}".`} reason="Try a different word, or browse the sections below." />
+      </div>
+    );
+  }
+  return (
+    <div class="chq-docs-article-grid">
+      {hits.map((hit) => (
+        <div class="chq-docs-article-row">
+          <a class="chq-docs-article-title" href={`/docs/${hit.slug}`}>
+            {hit.title}
+          </a>
+          <span class="chq-docs-article-blurb">{DOCS_GROUP_META[hit.group].label}</span>
+          <span class="chq-docs-article-blurb">{hit.snippet}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DocsIndexPage(props: { q?: string; hits?: DocsSearchHit[] }) {
+  const { q, hits } = props;
+  const isSearch = q !== undefined;
   const byGroup = new Map<DocsGroupId, DocsArticle[]>();
   for (const article of DOCS_ARTICLES) {
     const list = byGroup.get(article.group) ?? [];
@@ -256,41 +346,53 @@ function DocsIndexPage() {
       </head>
       <body>
         <div class="chq-docs-shell">
-          <DocsHeader />
+          <DocsHeader search={isSearch ? { q } : undefined} />
           <main class="chq-docs-body">
             <div class="chq-docs-intro">
               <h1>Chautauqua docs</h1>
               <p>Everything the software does, in the order you meet it. Start where you sit.</p>
+              <DocsSearchForm q={q} size="large" />
             </div>
 
-            {DOCS_GROUPS.map((groupId) => {
-              const meta = DOCS_GROUP_META[groupId];
-              const articles = byGroup.get(groupId) ?? [];
-              return (
-                <section>
-                  <div class="chq-docs-group-head">
-                    <span class="chq-docs-group-label">{meta.label}</span>
-                    <span class="chq-docs-group-blurb">{meta.blurb}</span>
-                  </div>
-                  {articles.length === 0 ? (
-                    <div class="chq-docs-empty">
-                      <PublicEmptyState variant="fresh" what="Nothing here yet." reason="This section is still being written." />
+            {isSearch ? (
+              <section>
+                <div class="chq-docs-group-head">
+                  <span class="chq-docs-group-label">Search results</span>
+                  <span class="chq-docs-group-blurb">{`${hits!.length} match${hits!.length === 1 ? "" : "es"} for "${q}"`}</span>
+                </div>
+                <DocsSearchResults q={q!} hits={hits!} />
+              </section>
+            ) : (
+              DOCS_GROUPS.map((groupId) => {
+                const meta = DOCS_GROUP_META[groupId];
+                const articles = byGroup.get(groupId) ?? [];
+                return (
+                  <section>
+                    <div class="chq-docs-group-head">
+                      <span class="chq-docs-group-label">{meta.label}</span>
+                      <span class="chq-docs-group-blurb">{meta.blurb}</span>
                     </div>
-                  ) : (
-                    <div class="chq-docs-article-grid">
-                      {articles.map((article) => (
-                        <div class="chq-docs-article-row">
-                          <a class="chq-docs-article-title" href={`/docs/${article.slug}`}>
-                            {article.title}
-                          </a>
-                          <span class="chq-docs-article-blurb">{article.standfirst}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              );
-            })}
+                    {articles.length === 0 ? (
+                      <div class="chq-docs-empty">
+                        <PublicEmptyState variant="fresh" what="Nothing here yet." reason="This section is still being written." />
+                      </div>
+                    ) : (
+                      <div class="chq-docs-article-grid">
+                        {articles.map((article) => (
+                          <div class="chq-docs-article-row">
+                            <a class="chq-docs-article-title" href={`/docs/${article.slug}`}>
+                              {article.title}
+                            </a>
+                            <span class="chq-docs-article-blurb">{article.standfirst}</span>
+                          </div>
+                        ))}
+                        {groupId === "running-the-software" ? <DocsApiLeavingRow /> : null}
+                      </div>
+                    )}
+                  </section>
+                );
+              })
+            )}
           </main>
         </div>
       </body>
@@ -312,7 +414,7 @@ function DocsArticlePage(props: { article: DocsArticle }) {
       </head>
       <body>
         <div class="chq-docs-shell">
-          <DocsHeader />
+          <DocsHeader search={{ q: undefined }} />
           <div class="chq-docs-article-frame">
             <DocsNav activeSlug={article.slug} />
             <main class="chq-docs-article-body">
@@ -337,8 +439,30 @@ function DocsArticlePage(props: { article: DocsArticle }) {
   );
 }
 
+// Query bound: an over-long ?q= renders the no-results state rather than
+// throwing (this is a public surface, DEC-023's "the message must reach
+// the operator" is about a fail-loud SITE, not a fail-loud 500 in front of
+// an anonymous visitor). boundedQueryString still throws for a genuinely
+// too-long value; caught here and folded into "no matches" so the search
+// box round-trips the raw value without ever 500ing.
 docsSiteRoutes.get("/docs", async (c) => {
-  return c.html(<DocsIndexPage />);
+  const raw = c.req.query("q");
+  let q: string | null;
+  try {
+    q = boundedQueryString(raw, "q", MAX_SEARCH_QUERY_LENGTH);
+  } catch {
+    q = null;
+    if (raw !== undefined && raw.trim().length > 0) {
+      // Over-long: keep the raw value on-screen (so the box round-trips
+      // what was typed) but never feed it to the pure search core.
+      return c.html(<DocsIndexPage q={raw} hits={[]} />);
+    }
+  }
+  if (q === null) {
+    return c.html(<DocsIndexPage />);
+  }
+  const hits = searchDocs(DOCS_ARTICLES, q);
+  return c.html(<DocsIndexPage q={q} hits={hits} />);
 });
 
 docsSiteRoutes.get("/docs/:slug", async (c) => {

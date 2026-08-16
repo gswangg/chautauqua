@@ -137,6 +137,28 @@ export const DOCS_SITE_CSS = `
 
   .chq-docs-empty { max-width: 680px; }
 
+  /* Search (DEC-382 wave-9 amendment): two drawn placements, one form
+     shape. "compact" is the header cluster (:39/:237, min-width 260,
+     13px); "large" is the index intro block (:136, max-width 420, 15px).
+     The submit control is a real button sized to a >=44px touch target
+     (DEC-919) -- deliberately taller than the drawn 12px/8px row padding,
+     which describes the placeholder TEXT, not a control. */
+  .chq-docs-search { display: flex; align-items: center; gap: 6px; border: 1px solid var(--chq-border); border-radius: 4px; background: var(--chq-surface); }
+  .chq-docs-search-large { max-width: 420px; padding: 5px 5px 5px 14px; font-size: 15px; }
+  .chq-docs-search-compact { min-width: 260px; margin-left: auto; padding: 4px 4px 4px 12px; font-size: 13px; }
+  .chq-docs-search-input { flex: 1; min-width: 0; border: none; background: transparent; font: inherit; color: var(--chq-ink-2); outline: none; }
+  .chq-docs-search-submit { min-height: 44px; min-width: 44px; padding: 6px 14px; border: none; border-radius: 3px; background: var(--chq-ink); color: var(--chq-surface); font-size: 13px; font-weight: 700; letter-spacing: 0.01em; cursor: pointer; }
+
+  /* Header search sits before the leaving link, so the leaving link no
+     longer needs its own margin-left: auto once a search field is present
+     -- the search field carries it instead. */
+  .chq-docs-header:has(.chq-docs-search-compact) .chq-docs-leaving { margin-left: 0; }
+
+  /* API-reference leaving row: last row of the operator-tools group
+     (Chautauqua Docs.dc.html:436) -- same row anatomy as an article row,
+     styled muted like the header's leaving link rather than an ink title. */
+  .chq-docs-article-row-leaving .chq-docs-leaving-row-link { display: inline-flex; align-items: center; gap: 4px; color: var(--chq-muted); }
+
   @media (max-width: 700px) {
     .chq-docs-header { padding-inline: 16px; }
     .chq-docs-body { padding: 24px 16px 40px; gap: 24px; }
