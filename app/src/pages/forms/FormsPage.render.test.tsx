@@ -158,7 +158,7 @@ describe('FormsPage render smoke', () => {
     expect(addButton).toHaveClass('chq-link-button');
     expect(addButton).not.toHaveClass('chq-btn-secondary');
     addButton.click();
-    const dialog = await screen.findByRole('dialog', { name: 'New field' });
+    const dialog = await screen.findByRole('dialog', { name: 'Add a question' });
     expect(dialog).toBeInTheDocument();
 
     // ONE dialog contract (DEC-368/378): [role=dialog] IS the .chq-scrim
@@ -201,7 +201,7 @@ describe('FormsPage render smoke', () => {
     // DEC-378: Escape closes the dialog.
     fireEvent.keyDown(window, { key: 'Escape' });
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'New field' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'Add a question' })).not.toBeInTheDocument();
     });
   });
 });

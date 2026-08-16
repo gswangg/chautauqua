@@ -140,7 +140,14 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
     <ModalFrame
       as="form"
       onSubmit={handleSubmit}
-      title={field ? 'Edit field' : 'New field'}
+      // DEC-650 (wave-3 amendment): frame 02--10 in
+      // docs/design/Chautauqua Submissions.dc.html draws the edit dialog
+      // titled "Edit a question" (the substantial half is conditional
+      // visibility, not a bare field-editor chrome). The create case isn't
+      // separately drawn; it takes the SAME grammar the drawn "Add a
+      // question" trigger button already uses one panel over, rather than
+      // inventing a third phrase.
+      title={field ? 'Edit a question' : 'Add a question'}
       subtitle={
         typeof answeredCount === 'number'
           ? `${answeredCount} people have already answered this form — editing a live question changes what those answers mean`

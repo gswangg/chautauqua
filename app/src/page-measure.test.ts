@@ -176,11 +176,14 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     expect(mainBody).not.toMatch(/max-width/);
   });
 
-  it('leaves the 52ch prose measure and modal widths untouched', () => {
+  it('leaves the 52ch prose measure untouched, and forms.css at its DEC-650 wave-3 frame measure', () => {
     const reviewCss = readFileSync(join(HERE, 'pages/review/review.css'), 'utf-8');
     const formsCss = readFileSync(join(HERE, 'pages/forms/forms.css'), 'utf-8');
     expect(reviewCss).toMatch(/max-width:\s*52ch/);
-    expect(formsCss).toMatch(/max-width:\s*520px/);
+    // DEC-650 (wave-3 amendment): frame 02--10 draws the field-modal at
+    // 560px, not the prior 520 -- a geometry, not a sample count, so it
+    // binds.
+    expect(formsCss).toMatch(/max-width:\s*560px/);
   });
 
   it('the speaker matrix and pipeline board scroll below their own table-measure minimum', () => {
