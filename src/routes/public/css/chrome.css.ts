@@ -18,9 +18,19 @@ export const CHROME_CSS = `
      screen but still in the a11y tree and still reachable/focusable -- used
      for PublicSearchBox's label and submit button, which must announce
      themselves to assistive tech and keep the form usable without JS while
-     never drawing a visible label/button next to the compact input. */
+     never drawing a visible label/button next to the compact input.
+     DEC-919 amendment (wave 59): the old recipe (position:absolute with no
+     offset) keeps its STATIC in-flow position -- for the search submit that
+     landed it one pixel inside #chq-pub-search-q's right edge, intercepting
+     every pointer aimed at the input. left:-9999px + top:auto is the
+     standard off-screen recipe: it removes the element from the visible
+     viewport entirely (never over or under a visible control) while
+     leaving it in the a11y tree and focusable (unlike display:none/
+     visibility:hidden, which drop it from both). */
   .chq-visually-hidden {
     position: absolute;
+    left: -9999px;
+    top: auto;
     width: 1px;
     height: 1px;
     padding: 0;
