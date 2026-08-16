@@ -37,7 +37,13 @@ import { fileURLToPath } from "node:url";
 import { chromium, type Browser, type BrowserContext } from "playwright";
 
 import { parseUrlArg } from "./walkthrough-lib";
-import { DOCS_SHOT_VIEWPORT, DOCS_SHOTS, DOCS_SHOTS_EVENT_SLUG, type DocsShotEntry } from "./docs-shots-lib";
+import {
+  DOCS_SHOT_VIEWPORT,
+  DOCS_SHOTS,
+  DOCS_SHOTS_EVENT_SLUG,
+  resolveRoleForRoute,
+  type DocsShotEntry,
+} from "./docs-shots-lib";
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
 // Pure data registry (JSX-free, DEC-518) -- importing it here adds no
 // node:/playwright dependency to scripts/docs-shots-lib.ts, which stays
@@ -100,31 +106,6 @@ function personaForRole(role: PersonaRole, identities: FixtureData["identities"]
     case "public":
       return null;
   }
-}
-
-/**
- * Resolves the one role a DOCS_SHOTS route needs by looking it up in the
- * real app/src/routeManifest.ts route table (same table render-sweep
- * drives off). Fails loudly rather than guessing: a route absent from
- * ROUTE_MANIFEST, or present under more than one DIFFERENT role (e.g.
- * `/admin/review/plans/:id`, which PlanEditor and ReviewerQueue both mount
- * on), cannot be resolved to a single persona and must not be shot from
- * this manifest without disambiguating first.
- */
-function resolveRoleForRoute(route: string): PersonaRole {
-  const matches = ROUTE_MANIFEST.filter((entry) => entry.path === route);
-  if (matches.length === 0) {
-    throw new Error(`docs-shots: route not found in app/src/routeManifest.ts: ${route}`);
-  }
-  const roles = new Set(matches.map((entry) => entry.role));
-  if (roles.size > 1) {
-    throw new Error(
-      `docs-shots: route ${route} resolves to more than one role in app/src/routeManifest.ts (${[...roles].join(
-        ", ",
-      )}) -- ambiguous, pick a route that names a single persona`,
-    );
-  }
-  return matches[0]!.role;
 }
 
 /** Logs in via the real HTML /login form (not the JSON API), same idiom as
@@ -227,7 +208,7 @@ async function main(): Promise<void> {
 
   const fixture: FixtureData = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
 
-  const rolesNeeded = new Set(DOCS_SHOTS.map((entry) => resolveRoleForRoute(entry.route)));
+  const rolesNeeded = new Set(DOCS_SHOTS.map((entry) => resolveRoleForRoute(entry.route, ROUTE_MANIFEST)));
 
   const browser = await chromium.launch();
   const contextByRole = new Map<PersonaRole, BrowserContext>();
@@ -247,7 +228,7 @@ async function main(): Promise<void> {
       if (writtenIds.has(entry.id)) {
         throw new Error(`docs-shots: duplicate shot id written this run: ${entry.id}`);
       }
-      const role = resolveRoleForRoute(entry.route);
+      const role = resolveRoleForRoute(entry.route, ROUTE_MANIFEST);
       const context = contextByRole.get(role);
       if (!context) {
         throw new Error(`docs-shots: no browser context for role '${role}' (shot "${entry.id}")`);
