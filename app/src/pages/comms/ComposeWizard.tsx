@@ -58,6 +58,25 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
+  // Frame 07-comms--05: the status filter is drawn as counted pills
+  // ("Accepted · 23"), not bare checkboxes -- one perPage:1 read per status
+  // (same envelope-total idiom Comms.tsx's own sentLast7Days pair already
+  // uses) gives the real count without widening the row-fetch payload. Never
+  // filtered by `q`: the pills name the audience segments themselves, not a
+  // search result. Starts at null per status so an unloaded/failed count
+  // renders no number rather than a fabricated 0.
+  const [statusCounts, setStatusCounts] = useState<Record<SubmissionStatus, number | null>>(() => {
+    const init = {} as Record<SubmissionStatus, number | null>;
+    for (const s of SUBMISSION_STATUSES) init[s] = null;
+    return init;
+  });
+  // Step 1's "N have no slot yet" footer note (ruling B1) needs slot data for
+  // every SELECTED submission, but `submissions` only ever holds the current
+  // page/filter's rows. This accumulates every row this session has actually
+  // fetched (any page, any filter) keyed by id, so the note stays accurate
+  // for a selection that spans pages without fabricating a count for a
+  // submission this session has never loaded.
+  const [knownSubmissions, setKnownSubmissions] = useState<Map<string, SubmissionListItem>>(new Map());
   // DEC-350: selection spans pages — never cleared on page/q/status change.
   // Reducer + predicates are shared with ../submissions/selection.ts (the
   // same select-all/indeterminate contract as SubmissionsTable/ContactsTable).
@@ -169,10 +188,51 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       .then((res) => {
         setSubmissions(res.items);
         setTotal(res.total);
+        setKnownSubmissions((prev) => {
+          const next = new Map(prev);
+          for (const item of res.items) next.set(item.id, item);
+          return next;
+        });
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'))
       .finally(() => setLoadingSubmissions(false));
   }, [eventId, statusFilter, q, page]);
+
+  // Frame 07-comms--05: each status pill states its own count ("Declined ·
+  // 11"). One perPage:1 request per status, read off the same DEC-013
+  // envelope total every other list read uses -- never a client-side count
+  // of whatever happens to be on the current page/filter.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(
+      SUBMISSION_STATUSES.map((status) => {
+        // The query string is built BEFORE the template rather than inline
+        // inside it: DEC-817's path scan erases a `${...}` span at the first
+        // `}` it meets, so a nested object literal in the template leaves it
+        // with a torn path that resolves to no route. Same `${qs}` shape the
+        // list read above (and SubmissionsTable) already uses.
+        const statusCountQs = buildSubmissionsQuery({ ...DEFAULT_FILTER_STATE, status: [status], perPage: 1 });
+        return apiList<SubmissionListItem>(`/events/${eventId}/submissions${statusCountQs}`).then(
+          (res) => [status, res.total] as const,
+        );
+      }),
+    )
+      .then((pairs) => {
+        if (cancelled) return;
+        setStatusCounts((prev) => {
+          const next = { ...prev };
+          for (const [status, count] of pairs) next[status] = count;
+          return next;
+        });
+      })
+      // A failed count read leaves every pill's count null (no number
+      // shown) rather than surfacing a second error banner over the step-1
+      // table for a courtesy annotation.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
 
   useEffect(() => {
     setTemplatesLoadError(false);
@@ -267,6 +327,35 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   function handleSearchChange(next: string) {
     setQ(next);
     setPage(1);
+  }
+
+  // Frame 07-comms--05: "Select all N accepted" beside Clear. `total` is
+  // already the exact count the active filter matches (the same figure the
+  // pill states), but `submissions` only holds the current page -- so this
+  // fetches every id the CURRENT filter/search matches in one call (perPage
+  // set to the known total) and unions them into the existing selection via
+  // the selection reducer's own TOGGLE_PAGE action, which adds every given
+  // id when they aren't all already selected and never touches ids selected
+  // under a different filter (the same guarantee DEC-350's cross-page
+  // selection already depends on for the per-page header checkbox).
+  const [selectingAll, setSelectingAll] = useState(false);
+  async function selectAllShown() {
+    if (total === 0 || selectingAll) return;
+    setSelectingAll(true);
+    try {
+      const qs = buildSubmissionsQuery({ ...DEFAULT_FILTER_STATE, status: statusFilter, q, page: 1, perPage: total });
+      const res = await apiList<SubmissionListItem>(`/events/${eventId}/submissions${qs}`);
+      setKnownSubmissions((prev) => {
+        const next = new Map(prev);
+        for (const item of res.items) next.set(item.id, item);
+        return next;
+      });
+      dispatchSelection({ type: 'TOGGLE_PAGE', pageIds: res.items.map((item) => item.id) });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to select every shown submission');
+    } finally {
+      setSelectingAll(false);
+    }
   }
 
   function composeBody(overrides?: {
@@ -603,6 +692,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // prints 'Scheduled'. `scheduled` is rendered unconditionally (DEC-912),
   // so it's the truthful predicate for this caption too.
   const noSlotCount = preview.filter((r) => !r.scheduled).length;
+  // Frame 07-comms--05's step-1 footer note ("N have no slot yet"), counted
+  // over the SELECTED ids whose slot data this session has actually loaded
+  // (knownSubmissions -- see its declaration above). A selected id from a
+  // page/filter never visited this session is not counted here (there is no
+  // selected-submissions-by-id endpoint to fetch it exhaustively) -- see the
+  // fidelity report for this gap.
+  const selectedNoSlotCount = [...selection.selectedIds].filter((id) => {
+    const known = knownSubmissions.get(id);
+    return known ? known.slot === null : false;
+  }).length;
   // DEC-793 amendment (wave 28): the partial-send count named on the
   // blocked banner's secondary action — always preview.length minus the
   // named-blocked ids, never a client-side guess at who's scheduled.
@@ -673,7 +772,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           preview-step panel -- no press through this wizard can be a
           silent no-op. */}
       {icsUnscheduledIds && step !== 'preview' && step !== 'sent' && (
-        <div className="chq-error-banner" role="alert">
+        <div className="chq-error-banner chq-comms-refusal-banner" role="alert">
           <p>
             Send blocked: these submissions aren&apos;t scheduled yet:{' '}
             {icsUnscheduledIds.map((id) => submissionLabel(id, preview)).join(', ')}. Schedule
@@ -702,7 +801,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               Send to the {scheduledCount} who have a slot
             </button>
           )}
-          <p className="chq-comms-panel-note">This is the last point at which it is cheap to fix.</p>
+          <p className="chq-comms-panel-note">Sending cannot be undone, so this is the last point at which it is cheap to fix.</p>
         </div>
       )}
 
@@ -727,35 +826,72 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <div className="chq-section-head">
             <span className="chq-section-label">1. Pick submissions</span>
           </div>
-          <div className="chq-status-filter">
-            {SUBMISSION_STATUSES.map((status) => (
-              <label key={status} className="chq-comms-status-filter-item">
-                <input
-                  type="checkbox"
-                  className="chq-check"
-                  checked={statusFilter.includes(status)}
-                  onChange={() => toggleStatus(status)}
-                />
-                {STATUS_LABELS[status]}
-              </label>
-            ))}
+          {/* Frame 07-comms--05 + ruling B1: a question heading (never just
+              the step-strip's micro-label) plus the reassurance that this
+              step alone never sends anything. */}
+          <div className="chq-comms-step1-head">
+            <h2 className="chq-comms-step1-question">Who is this going to?</h2>
+            <span className="chq-comms-step1-reassurance">Nothing sends until step 4</span>
           </div>
-          <label className="chq-comms-template-label">
-            Search
-            <input
-              type="text"
-              className="chq-input"
-              value={q}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search submissions"
-            />
-          </label>
+          <div className="chq-comms-status-filter">
+            <div className="chq-comms-status-pills" role="group" aria-label="Status">
+              {SUBMISSION_STATUSES.map((status) => {
+                const count = statusCounts[status];
+                return (
+                  <label
+                    key={status}
+                    className={
+                      statusFilter.includes(status) ? 'chq-pill chq-comms-status-pill is-active' : 'chq-pill chq-comms-status-pill'
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      className="chq-comms-status-pill-input"
+                      checked={statusFilter.includes(status)}
+                      onChange={() => toggleStatus(status)}
+                    />
+                    {STATUS_LABELS[status]}
+                    {/* aria-hidden: the count is a courtesy annotation, not
+                        part of the pill's name -- 'Accepted' must stay
+                        'Accepted' for a screen reader (and for every
+                        existing getByRole('checkbox', { name: 'Accepted' })
+                        test) whether or not the count has loaded. */}
+                    {count !== null && (
+                      <span className="chq-comms-status-pill-count" aria-hidden="true">
+                        {' '}
+                        &middot; {count}
+                      </span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+            {/* A visible-but-visually-hidden wrapping label element (rather
+                than aria-label) keeps this control's accessible name "Search"
+                while its placeholder stays the string the text-caps
+                exemption ledger names it by (app/src/text-caps.scan.test.ts,
+                out of this page's ownership) -- an aria-label here would win
+                over the placeholder in that scan's id>aria-label>placeholder
+                priority and orphan the ledger entry. */}
+            <label className="chq-comms-status-search-label">
+              <span className="chq-comms-visually-hidden">Search</span>
+              <input
+                type="text"
+                className="chq-input chq-comms-status-search"
+                value={q}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search submissions"
+              />
+            </label>
+          </div>
           {/* DEC-350 amendment (wave 51, ruling A1): the selection bar sits
               below the filters and directly above the table, only when the
               selection is non-empty. It keeps both constraints the panel
               note used to carry alone -- selection survives filter changes,
               and the recipient cap fact -- in chrome voice (counts and
-              nouns, no explanatory clauses). */}
+              nouns, no explanatory clauses). Frame 07-comms--05: the action
+              cluster (Select all &middot; Clear) is right-flushed, never
+              mid-row. */}
           {selection.selectedIds.size > 0 && (
             <div className="chq-bulkbar" role="toolbar" aria-label="Selection">
               <span className="chq-bulkbar-count">{countOf(selection.selectedIds.size, 'submission')} selected</span>
@@ -764,6 +900,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 {selection.selectedIds.size > MAX_COMPOSE_RECIPIENTS ? 'over' : 'under'} the {MAX_COMPOSE_RECIPIENTS}-recipient cap
               </span>
               <div className="chq-bulkbar-actions">
+                <button type="button" className="chq-btn chq-btn-tertiary" disabled={total === 0} onClick={() => void selectAllShown()}>
+                  {statusFilter.length === 1
+                    ? `Select all ${total} ${STATUS_LABELS[statusFilter[0]!].toLowerCase()}`
+                    : `Select all ${total} shown`}
+                </button>
                 <button
                   type="button"
                   className="chq-btn chq-btn-tertiary"
@@ -822,7 +963,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                       aria-label="Select every submission on this page"
                     />
                   </th>
-                  <th className="chq-comms-compose-col-title">Title</th>
+                  <th className="chq-comms-compose-col-title">Submission</th>
                   <th className="chq-comms-compose-col-speaker">Speakers</th>
                   <th className="chq-comms-compose-col-status">Status</th>
                   <th className="chq-comms-compose-col-slot">Slot</th>
@@ -842,14 +983,17 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                     </td>
                     <td data-label="Title">{s.title}</td>
                     <td data-label="Speakers">{s.speakers.map((sp) => sp.name).join(', ')}</td>
-                    <td data-label="Status">{STATUS_LABELS[s.status]}</td>
+                    <td data-label="Status" className="chq-comms-compose-status-cell">
+                      {STATUS_LABELS[s.status]}
+                    </td>
                     {/* DEC-051/DEC-780 amendment (findings wave 8): the fact
                         that decides whether a calendar invite can be
                         attached moves here, from step 3's icsUnscheduledIds
                         refusal -- step 1 informs, it never gates or
                         pre-filters. 'No slot yet' in the ink micro-label
                         register (chq-flag, DEC-367 type-only), never a
-                        dash. */}
+                        dash. Frame 07-comms--05: kept on one line (never
+                        inflating the row) via the shared column class below. */}
                     <td data-label="Slot">
                       {s.slot ? (
                         `${formatDayLabel(s.slot.day)} ${clockHHMM(s.slot.startMin)}`
@@ -895,17 +1039,29 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
           {/* w8-d (DEC-051/DEC-780 amendment): the step-1 primary moves into
               a footer row, matching step 2/3's chq-comms-*-actions rows,
-              instead of sitting loose under the pager. */}
-          <div className="chq-comms-select-actions">
-            <button
-              type="button"
-              ref={selectPrimaryRef}
-              className="chq-btn chq-btn-primary"
-              disabled={selection.selectedIds.size === 0}
-              onClick={() => setStep('template')}
-            >
-              Next: choose template ({countOf(selection.selectedIds.size, 'submission')} selected)
-            </button>
+              instead of sitting loose under the pager. Frame 07-comms--05:
+              a left note naming who has no slot yet, and a right-flushed
+              Cancel/primary pair. */}
+          <div className="chq-comms-select-footer">
+            <span className="chq-comms-select-footer-note">
+              {selectedNoSlotCount > 0
+                ? `${selectedNoSlotCount} ${plural(selectedNoSlotCount, 'has', 'have')} no slot yet — they can still be emailed, but not sent a calendar invite`
+                : null}
+            </span>
+            <div className="chq-comms-select-actions">
+              <Link to="/comms" className="chq-btn chq-btn-secondary">
+                Cancel
+              </Link>
+              <button
+                type="button"
+                ref={selectPrimaryRef}
+                className="chq-btn chq-btn-primary"
+                disabled={selection.selectedIds.size === 0}
+                onClick={() => setStep('template')}
+              >
+                Next: choose a template
+              </button>
+            </div>
           </div>
         </section>
       )}
@@ -1140,8 +1296,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                   {noSlotCount} of {preview.length} have no slot yet &mdash; those get no invite
                 </span>
               )}
+              {/* Frame 07-comms--13 ("Check before sending"): the compose
+                  pre-flight refusal -- ink-edged register (chq-comms-
+                  refusal-banner), and a right-flushed three-action row
+                  instead of the single left-aligned secondary this used to
+                  end on. */}
               {icsUnscheduledIds && (
-                <div className="chq-error-banner" role="alert">
+                <div className="chq-error-banner chq-comms-refusal-banner" role="alert">
                   <p>
                     Send blocked: these submissions aren&apos;t scheduled yet:{' '}
                     {icsUnscheduledIds.map((id) => submissionLabel(id, preview)).join(', ')}. Schedule
@@ -1157,25 +1318,37 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                       </li>
                     ))}
                   </ul>
-                  {/* DEC-793 amendment (wave 28): the hard block on the
-                      unmodified Send stays -- this is an additional path,
-                      never a replacement, and it actually reduces the
-                      posted submissionIds rather than silently narrowing
-                      the audience. */}
-                  {scheduledCount > 0 && (
-                    <button
-                      type="button"
-                      className="chq-btn chq-btn-secondary"
-                      disabled={busy}
-                      onClick={() => {
-                        setStep('sent');
-                        void send({ excludeIds: icsUnscheduledIds });
-                      }}
-                    >
-                      Send to the {scheduledCount} who have a slot
-                    </button>
-                  )}
-                  <p className="chq-comms-panel-note">This is the last point at which it is cheap to fix.</p>
+                  <div className="chq-comms-refusal-footer">
+                    <p className="chq-comms-panel-note chq-comms-refusal-caption">
+                      Sending cannot be undone, so this is the last point at which it is cheap to fix.
+                    </p>
+                    <div className="chq-comms-refusal-actions">
+                      {/* DEC-793 amendment (wave 28): the hard block on the
+                          unmodified Send stays -- this is an additional path,
+                          never a replacement, and it actually reduces the
+                          posted submissionIds rather than silently narrowing
+                          the audience. */}
+                      {scheduledCount > 0 && (
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-secondary"
+                          disabled={busy}
+                          onClick={() => {
+                            setStep('sent');
+                            void send({ excludeIds: icsUnscheduledIds });
+                          }}
+                        >
+                          Send to the {scheduledCount} who have a slot
+                        </button>
+                      )}
+                      <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('template')}>
+                        Edit the template
+                      </button>
+                      <Link to="/agenda" className="chq-btn chq-btn-primary">
+                        {icsUnscheduledIds.length === 1 ? 'Place it first' : `Place all ${spellCount(icsUnscheduledIds.length)} first`}
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1257,7 +1430,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </div>
           )}
           {icsUnscheduledIds && (
-            <div className="chq-error-banner" role="alert">
+            <div className="chq-error-banner chq-comms-refusal-banner" role="alert">
               <p>
                 Send blocked: these submissions aren&apos;t scheduled yet:{' '}
                 {icsUnscheduledIds.map((id) => submissionLabel(id, preview)).join(', ')}. Schedule
@@ -1286,7 +1459,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                   Send to the {scheduledCount} who have a slot
                 </button>
               )}
-              <p className="chq-comms-panel-note">This is the last point at which it is cheap to fix.</p>
+              <p className="chq-comms-panel-note">Sending cannot be undone, so this is the last point at which it is cheap to fix.</p>
             </div>
           )}
           <div className="chq-comms-preview-actions">

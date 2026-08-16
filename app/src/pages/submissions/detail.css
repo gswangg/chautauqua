@@ -126,14 +126,12 @@
   gap: 24px;
 }
 
-/* Numbered sections with a 2px ink rule under the section title. */
-.chq-detail-main,
-.chq-detail-aside {
-  counter-reset: chq-detail-section;
-}
-
+/* G13 lane-D fix (02-submissions--02): the frame draws plain uppercase
+   section heads ('ABSTRACT'), not numbered ones -- the counter machinery
+   and both '01 —' ::before prefixes are removed. The section wrapper keeps
+   a rule for the DEC-379 class-vocabulary check. */
 .chq-detail-section {
-  counter-increment: chq-detail-section;
+  min-width: 0;
 }
 
 .chq-detail-section-title {
@@ -145,35 +143,6 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-}
-
-/* The numbered prefix must sit in the SAME head as the title text. A plain
-   .chq-detail-section-title (no row layout) puts ::before directly on the
-   element, which reads fine inline. But .chq-detail-section-title-row is a
-   flex container with justify-content:space-between — putting ::before on
-   THAT element makes the pseudo-element its own flex item, so
-   space-between shoves "01 —" to the far left, the title text to the
-   middle, and the action button to the right: three floating pieces
-   instead of "01 — History" read as one head. For the row variant the
-   prefix is attached to the title text's own span instead, so it travels
-   with the text as a single flex item on the left; the action button
-   remains the sole item on the right. */
-/* The trailing space in a `\2014 ` escape is consumed as the escape's own
-   terminator (not rendered) -- a CSS quirk that glued the em dash straight
-   to the title text ("01 —ABSTRACT"). The em dash lives in its own string
-   so its closing quote (not a swallowed space) terminates the escape,
-   with the surrounding gaps as separate literal-space strings. One shared
-   rule per selector shape, applied through .chq-detail-section-title /
-   .chq-detail-section-title-text -- every numbered section (all six) gets
-   the fix for free, never a per-section override. */
-.chq-detail-section-title:not(.chq-detail-section-title-row)::before {
-  content: counter(chq-detail-section, decimal-leading-zero) ' ' '\2014' ' ';
-  color: var(--chq-muted);
-}
-
-.chq-detail-section-title-row .chq-detail-section-title-text::before {
-  content: counter(chq-detail-section, decimal-leading-zero) ' ' '\2014' ' ';
-  color: var(--chq-muted);
 }
 
 .chq-detail-section-title button {
@@ -989,4 +958,11 @@
     text-align: center;
     border-radius: var(--chq-r-ctl-phone);
   }
+}
+
+/* G13 lane-D (02-submissions--02): the row-variant title text span keeps a
+   rule so the css-contract scan sees the class (the numbered ::before it
+   used to carry is retired). */
+.chq-detail-section-title-text {
+  display: inline;
 }

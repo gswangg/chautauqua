@@ -35,6 +35,27 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
   .chq-pub-agenda-block-speakers {
     overflow-wrap: break-word;
   }
+  /* G13 fix (frame 10--01, BROKEN): the card title carried NO typographic
+     treatment -- it inherited the block's 13.6px body size and the UA's
+     link underline, so title and speaker line were indistinguishable. The
+     frame draws the title in the display face, ink, no underline, visibly
+     larger than the speaker line -- same register the phone agenda list's
+     own title already uses (.chq-pub-agenda-list-title, agenda.css.ts). */
+  .chq-pub-agenda-block-title {
+    font-family: var(--chq-font-display);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  .chq-pub-agenda-block-title a {
+    color: var(--chq-ink);
+    text-decoration: none;
+  }
+  .chq-pub-agenda-block-title a:hover {
+    color: var(--chq-ink);
+    text-decoration: underline;
+  }
 
   /* DEC-919 (wave 51 amendment): the /schedule saved-sessions empty state
      (#chq-schedule-empty, shown/hidden by ItineraryScript's
@@ -82,16 +103,19 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
   .chq-pub-rail-day-row a { font-size: 14px; font-weight: 600; color: var(--chq-ink); text-decoration: none; }
   .chq-pub-rail-day-count { font-size: 13px; color: var(--chq-muted); }
   .chq-pub-rail-cfp-link { font-size: 14px; font-weight: 700; color: var(--chq-ink); align-self: flex-start; }
-  /* DEC-683 amendment (wave 65): the printable programme's one rail link --
-     same weight/alignment as the CFP link above (both are the rail's
-     "leave this page for that one" affordances), kept visibly underlined so
-     it does not read as body copy in a section of plain day rows. */
+  /* DEC-683 amendment (wave 65), restyled G13 (frames 10--01/02): the
+     printable programme's one rail link. The frames draw it in the B8
+     tertiary register -- olive, NO rest-state underline (underline is the
+     hover state) -- beneath the description, not above it. */
   .chq-pub-rail-programme-link {
     font-size: 14px;
     font-weight: 700;
-    color: var(--chq-ink);
+    color: var(--chq-brand);
+    text-decoration: none;
     align-self: flex-start;
-    margin-top: 14px;
+  }
+  .chq-pub-rail-programme-link:hover {
+    text-decoration: underline;
   }
 
   /* DEC-683: per-row Save/Saved pill. The checkbox itself is visually
@@ -262,7 +286,10 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     margin-bottom: 18px;
   }
   .chq-pub-schedule-subtitle { display: block; font-size: 14px; color: var(--chq-ink-2); margin-top: 5px; }
-  .chq-pub-schedule-browse-link { font-size: 13px; font-weight: 700; color: var(--chq-ink); white-space: nowrap; }
+  /* G13 (frame 10--12): B8 tertiary register -- olive at body size, no
+     rest-state underline (underline is the hover state). */
+  .chq-pub-schedule-browse-link { font-size: 14px; font-weight: 700; color: var(--chq-brand); white-space: nowrap; text-decoration: none; }
+  .chq-pub-schedule-browse-link:hover { text-decoration: underline; }
   .chq-pub-schedule-day-group { padding-top: 22px; }
   .chq-pub-schedule-day-heading {
     display: flex;
@@ -275,6 +302,17 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+  }
+  /* G13 (frame 10--12, MAJOR): the day heading is the 11px/700/0.12em caps
+     micro-label register -- but the h2 inside it carries
+     .chq-pub-section-title (19px), which overrode the wrapper's size while
+     inheriting its 1.32px tracking (0.12em of 11px, not of 19px). The
+     heading text must render at the wrapper's own register. */
+  .chq-pub-schedule-day-heading .chq-pub-section-title {
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    margin: 0;
   }
   .chq-pub-schedule-day-count { font-size: 12px; font-weight: 700; color: var(--chq-muted); text-transform: none; letter-spacing: normal; }
   /* task-w1-d / w4-g (DEC-534 amendment): two-line time/room gutter
@@ -300,7 +338,11 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     font-weight: 600;
     letter-spacing: -0.02em;
     color: var(--chq-ink);
+    /* G13 (frame 10--12): plain ink at rest, no UA underline -- underline
+       is the hover state (B8). */
+    text-decoration: none;
   }
+  .chq-pub-schedule-row-title:hover { text-decoration: underline; }
   .chq-pub-schedule-row-speakers { font-size: 14px; color: var(--chq-ink-2); }
   .chq-pub-schedule-row-clash {
     font-family: var(--chq-font-display);

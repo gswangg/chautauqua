@@ -47,7 +47,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { FormRow, ModalFrame } from '../../components/ModalFrame';
+import { FormRow, FormRowPair, ModalFrame } from '../../components/ModalFrame';
 import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useMe } from '../../lib/useMe';
 import { copyText } from '../../lib/clipboard';
@@ -83,6 +83,11 @@ interface RevealedPassword {
   email: string;
   password: string;
   context: 'invite' | 'reset';
+  // G13 fix (frame 09--19): the created screen's header names the PERSON
+  // ('Sam Whitfield can now sign in') with 'email · Role' as the subtitle
+  // -- captured at submit time on the invite path only.
+  name?: string;
+  role?: Role;
   // DEC-238 (wave 65 amendment): only set on the invite path -- the
   // server's closed vocabulary for what happened to the welcome notice,
   // named per-account rather than a blanket hedge.
@@ -252,6 +257,8 @@ export function PeopleRolesPanel() {
         password: res.password,
         context: 'invite',
         welcomeEmail: res.welcomeEmail,
+        name: `${newFirstName.trim()} ${newLastName.trim()}`.trim(),
+        role: newRole,
       });
       setNewEmail('');
       setNewFirstName('');
@@ -414,7 +421,12 @@ export function PeopleRolesPanel() {
       )}
 
       {inviting && revealedPassword && revealedPassword.context === 'invite' ? (
-        <ModalFrame title="Account created" onClose={closeInviteDialog} modalClassName="chq-people-invite-modal">
+        <ModalFrame
+          title={`${revealedPassword.name || revealedPassword.email} can now sign in`}
+          subtitle={`${revealedPassword.email} · ${roleLabel(revealedPassword.role ?? 'reviewer')}`}
+          onClose={closeInviteDialog}
+          modalClassName="chq-people-invite-modal"
+        >
           <PasswordRevealBlock
             revealed={revealedPassword}
             copyResult={copyResult}
@@ -453,22 +465,29 @@ export function PeopleRolesPanel() {
             </>
           }
         >
-          <div className="chq-settings-row">
-            <p className="chq-settings-row-hint">
-              This creates the account immediately — the password appears on the next screen, so nobody waits for
-              an acceptance that will never come.
-            </p>
-            {error && (
-              <div className="chq-error" role="alert">
-                {error}
-                {duplicateUser ? (
-                  <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
-                    Open {personLabel(duplicateUser)}&apos;s row
-                  </button>
-                ) : null}
-              </div>
-            )}
-            <FormRow label="First name" htmlFor="people-invite-first-name">
+          {/* G13 fix (frames 09--18/09--20): the modal body is the modal's
+              own FormRow stack -- NEVER the settings definition-grid row
+              (.chq-settings-row), whose 170px/1fr/auto tracks scattered
+              these fields outside the dialog box. First/last name pair
+              two-up; email carries its username hint; field refusals ride
+              each FormRow's own error slot so the control takes the ink
+              error treatment. */}
+          <p className="chq-people-invite-note">
+            The account is created straight away — the password appears on the next screen, so nobody waits for an
+            acceptance that will never come.
+          </p>
+          {error && (
+            <div className="chq-error" role="alert">
+              {error}
+              {duplicateUser ? (
+                <button type="button" className="chq-link-button" onClick={openDuplicateRow}>
+                  Open {personLabel(duplicateUser)}&apos;s row
+                </button>
+              ) : null}
+            </div>
+          )}
+          <FormRowPair>
+            <FormRow label="First name" htmlFor="people-invite-first-name" error={fieldErrors.firstName}>
               <input
                 id="people-invite-first-name"
                 className="chq-input"
@@ -478,8 +497,7 @@ export function PeopleRolesPanel() {
                 onChange={(e) => setNewFirstName(e.target.value)}
               />
             </FormRow>
-            {fieldErrors.firstName ? <span role="alert">{fieldErrors.firstName}</span> : null}
-            <FormRow label="Last name" htmlFor="people-invite-last-name">
+            <FormRow label="Last name" htmlFor="people-invite-last-name" error={fieldErrors.lastName}>
               <input
                 id="people-invite-last-name"
                 className="chq-input"
@@ -489,46 +507,56 @@ export function PeopleRolesPanel() {
                 onChange={(e) => setNewLastName(e.target.value)}
               />
             </FormRow>
-            {fieldErrors.lastName ? <span role="alert">{fieldErrors.lastName}</span> : null}
-            <FormRow label="Email" htmlFor="people-invite-email">
-              <input
-                id="people-invite-email"
-                className="chq-input"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                maxLength={MAX_EMAIL_LENGTH}
-              />
-            </FormRow>
-            {fieldErrors.email ? <span role="alert">{fieldErrors.email}</span> : null}
-            <div>
-              <span id="people-invite-role-label">Role</span>
-              <div className="chq-chipstrip" role="radiogroup" aria-labelledby="people-invite-role-label">
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={newRole === 'reviewer'}
-                  className={newRole === 'reviewer' ? 'chq-pill is-active' : 'chq-pill'}
-                  onClick={() => setNewRole('reviewer')}
-                >
-                  Reviewer
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={newRole === 'organizer'}
-                  className={newRole === 'organizer' ? 'chq-pill is-active' : 'chq-pill'}
-                  onClick={() => setNewRole('organizer')}
-                >
-                  Organizer
-                </button>
-              </div>
-              <p className="chq-settings-row-hint">
-                a reviewer sees only the plans they are assigned to &middot; an organiser sees everything, including
-                this page
-              </p>
+          </FormRowPair>
+          <FormRow
+            label="Email"
+            htmlFor="people-invite-email"
+            help="This is the username they sign in with"
+            error={fieldErrors.email}
+          >
+            <input
+              id="people-invite-email"
+              className="chq-input"
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              maxLength={MAX_EMAIL_LENGTH}
+            />
+          </FormRow>
+          <div className="chq-form-row">
+            <span className="chq-form-row-label" id="people-invite-role-label">
+              Role
+            </span>
+            <div className="chq-chipstrip" role="radiogroup" aria-labelledby="people-invite-role-label">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={newRole === 'reviewer'}
+                className={newRole === 'reviewer' ? 'chq-pill is-active' : 'chq-pill'}
+                onClick={() => setNewRole('reviewer')}
+              >
+                Reviewer
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={newRole === 'organizer'}
+                className={newRole === 'organizer' ? 'chq-pill is-active' : 'chq-pill'}
+                onClick={() => setNewRole('organizer')}
+              >
+                Organizer
+              </button>
             </div>
-            {fieldErrors.role ? <span role="alert">{fieldErrors.role}</span> : null}
+            <div className="chq-form-row-help">
+              a reviewer sees only the plans they are assigned to &middot; an organiser sees everything, including
+              this page
+            </div>
+            {fieldErrors.role ? (
+              <div className="chq-form-row-error" role="alert">
+                <span aria-hidden="true">&#9650; </span>
+                {fieldErrors.role}
+              </div>
+            ) : null}
           </div>
         </ModalFrame>
       ) : null}
@@ -613,6 +641,24 @@ export function PeopleRolesPanel() {
                           Reset password
                         </button>
                       )}
+                      {/* G13 fix (frame 09--14 + B10): Remove renders on
+                          every row, DISABLED rather than hidden -- muted,
+                          no hover, cursor:default (the shared
+                          .chq-link-button:disabled treatment) -- because
+                          accounts here are org-scoped and always in use;
+                          your own row is additionally self-protected. */}
+                      <button
+                        type="button"
+                        className="chq-link-button"
+                        disabled
+                        title={
+                          isSelf
+                            ? 'You cannot remove or demote yourself'
+                            : 'This account is in use across the org and cannot be removed'
+                        }
+                      >
+                        Remove
+                      </button>
                     </div>
                   </li>
                 );

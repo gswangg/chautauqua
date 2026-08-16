@@ -1040,7 +1040,7 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
       />,
     );
 
-    expect(screen.getByText('Tick rows to approve, request changes, or set pending in bulk.')).toHaveClass(
+    expect(screen.getByText('Tick rows to approve in bulk.')).toHaveClass(
       'chq-bulkbar-hint',
     );
     expect(screen.queryByRole('button', { name: 'Select them' })).not.toBeInTheDocument();
@@ -1069,7 +1069,7 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
 
     fireEvent.click(screen.getByRole('checkbox', { name: `Select ${reuploadedItem.title}` }));
 
-    expect(screen.getByText('Sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
+    expect(screen.getByText('Approving sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
   });
 });
 

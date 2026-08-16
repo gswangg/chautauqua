@@ -13,14 +13,16 @@ afterEach(() => {
   cleanup();
 });
 
-// Header row (line 1), John (line 2, has email), Jane/Bob/Amy (lines 3-5,
-// no email), Sam (line 6, has email). 3 of 5 data rows have no email.
+// Header row (line 1), John (line 2, has email), Jane/Bob/Amy (lines 3-5:
+// blank email, placeholder "n/a", missing-@ — the three failure kinds frame
+// 08-contacts--15 enumerates), Sam (line 6, has email). 3 of 5 data rows
+// have no usable email.
 const CSV_WITH_MISSING_EMAILS = [
   'First Name,Last Name,Email,Company',
   'John,Doe,john@example.com,Acme',
   'Jane,Smith,,Beta',
-  'Bob,Lee,,Gamma',
-  'Amy,Wu,,Delta',
+  'Bob,Lee,n/a,Gamma',
+  'Amy,Wu,priya.example.com,Delta',
   'Sam,Fox,sam@example.com,Zeta',
 ].join('\n');
 
@@ -36,8 +38,12 @@ describe('ImportWizard: DEC-575 file-level "rows have no email address" block', 
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV_WITH_MISSING_EMAILS } });
 
     expect(await screen.findByText('3 of 5 rows have no email address')).toBeInTheDocument();
-    expect(screen.getByText(/Email is the key the importer uses to match and update existing contacts/)).toBeInTheDocument();
-    expect(screen.getByText('Rows 3, 4, 5.')).toBeInTheDocument();
+    expect(screen.getByText(/Email is how a contact is matched and how anything reaches them/)).toBeInTheDocument();
+    // G13 (frame 08-contacts--15): every rejected row names its own reason —
+    // the three failure kinds the frame enumerates.
+    expect(screen.getByText('Row 3 — Email blank')).toBeInTheDocument();
+    expect(screen.getByText('Row 4 — Email reads "n/a"')).toBeInTheDocument();
+    expect(screen.getByText('Row 5 — Email missing an @ — "priya.example.com"')).toBeInTheDocument();
     expect(screen.getByText('Nothing was lost — the file is still loaded.')).toBeInTheDocument();
 
     // The match-columns screen (step 2) does not share the page with the
@@ -76,7 +82,7 @@ describe('ImportWizard: DEC-575 file-level "rows have no email address" block', 
     // they are for the whole of step 2) rather than the file being wiped.
     expect(screen.getByText('Nothing was lost — the file is still loaded.')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Re-upload a different file' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Upload a different file' }));
 
     // The explicit re-upload action clears the file and returns to step 1.
     expect(screen.getByLabelText('Upload a CSV file')).toBeInTheDocument();

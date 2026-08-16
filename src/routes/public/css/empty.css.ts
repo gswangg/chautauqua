@@ -40,6 +40,26 @@ export const EMPTY_CSS = `
     margin: 0 0 12px;
   }
 
+  /* G13 (frame 10--20, MAJOR): the FRESH zero-state is the page's whole
+     content, and the frame sets its headline at the page-title register
+     (~36px, the same size as every other public H1) with a ~16px reason --
+     not a 15px body line that vanishes on a 1600 canvas. The filtered
+     variant (a list surface with its filter bar still mounted above) keeps
+     the quiet 15/13 pair above; inline fresh blocks on the portal are
+     re-pinned by that surface's own sheet. */
+  .chq-pub-empty-block-fresh .chq-pub-empty-what {
+    font-family: var(--chq-font-display);
+    font-size: var(--chq-type-page-title-size);
+    font-weight: var(--chq-type-page-title-weight);
+    letter-spacing: var(--chq-type-page-title-tracking);
+    line-height: 1.15;
+    margin: 0 0 10px;
+  }
+  .chq-pub-empty-block-fresh .chq-pub-empty-reason {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
   /* Colour comes from .chq-pub-accent-link (DEC-838, accent-bound) applied
      alongside this class on the same <a> -- this rule only sets spacing, no
      new colour token. */

@@ -58,10 +58,14 @@ export const PORTAL_CSS = `
     color: var(--chq-ink-2);
     text-decoration: none;
   }
+  /* G13 (frames 10--04/24, MINOR): the portal H1 runs at the shared
+     page-title register on desktop (--chq-type-page-title-size, 36px) --
+     it was pinned to the phone token (25px) at every width. The phone
+     media block at the tail restores the phone size. */
   .chq-portal-hero {
-    font-size: 25px;
-    font-weight: 700;
-    letter-spacing: -0.04em;
+    font-size: var(--chq-type-page-title-size);
+    font-weight: var(--chq-type-page-title-weight);
+    letter-spacing: var(--chq-type-page-title-tracking);
     line-height: 1.2;
     margin: 6px 0 2px;
   }
@@ -71,15 +75,53 @@ export const PORTAL_CSS = `
     line-height: 1.5;
   }
 
-  /* w15-b: signed-in speaker's name, right-aligned in the header row
-     (docs/design "Speaker portal" mock) -- margin-left:auto pins it to the
-     right within .chq-header's flex row without disturbing the wordmark. */
-  .chq-portal-header-name {
-    margin-left: auto;
-    font-size: 12px;
+  /* G13 (frames 10--04/23/24, MAJOR): portal header anatomy -- wordmark +
+     muted event name left, 'NAME · SIGN OUT' caps cluster right. The
+     eventmark drops to a muted secondary beside the wordmark (frame 24);
+     the identity cluster is the 11px caps micro register. The sign-out
+     button strips its UA chrome so it reads as the frame's text control
+     while keeping the POST semantics. */
+  .chq-portal-brandline {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .chq-portal-shell .chq-eventmark {
+    font-size: 14px;
     font-weight: 600;
+    letter-spacing: 0;
     color: var(--chq-muted);
   }
+  .chq-portal-header-id {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--chq-ink-2);
+  }
+  .chq-portal-header-name {
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+  }
+  .chq-portal-header-sep { color: var(--chq-muted); }
+  .chq-portal-header-signout { display: inline-flex; margin: 0; }
+  .chq-portal-header-signout-btn {
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  .chq-portal-header-signout-btn:hover,
+  .chq-portal-header-signout-btn:active { color: var(--chq-ink); text-decoration: underline; }
 
   /* w15-b: "<name> · <company>" left, Profile link right, ahead of the
      (untouched) sign-out control inside .chq-portal-footer. */
@@ -215,19 +257,9 @@ export const PORTAL_CSS = `
   /* DEC-367 amendment (wave 57): moved to the phone media block
      at the tail of this module -- phone-only tap floor. */
 
-  /* Completion progress: composes the shared .chq-bar/.chq-bar-fill pair
-     (THEME_CSS) under a small caption — never redefines them. */
-  .chq-portal-progress {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin: 10px 0 18px;
-  }
-  .chq-portal-progress-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--chq-muted);
-  }
+  /* G13 (frame 10--05): the tasks progress bar is retired -- the frame
+     draws none -- so the .chq-portal-progress pair is deleted rather than
+     left as dead rules (test/ssr-css-contract.scan.test.ts). */
 
   /* Profile facts: composes the shared .chq-kv definition list — grouped
      in a card, each fact stacked, with a headshot preview beside the
@@ -397,6 +429,9 @@ export const PORTAL_CSS = `
   }
 
   @media (max-width: 700px) {
+    /* G13: the hero returns to the phone page-title token below 700px
+       (mobile geometry parked; this preserves the pre-G13 phone size). */
+    .chq-portal-hero { font-size: var(--chq-type-page-title-phone-size); }
     /* DEC-367 amendment (wave 57): the >=44px tap floor is phone-only
        (docs/design/README.md:92) -- these six boxes used to be
        unconditional base rules above; moved here verbatim, no other
@@ -539,6 +574,128 @@ export const PORTAL_CSS = `
     flex: 0 1 190px;
     min-width: 140px;
   }
+  /* ===== G13 fix-forward (frames 10--05/06/09/22/23/26) ===== */
+
+  /* Frames 10--06/23 (MAJOR): .chq-field-counter had NO stylesheet backing
+     in the portal -- the rule lived only in CFP_CSS, so counters rendered
+     16px, left-aligned, on their own line. Same register as the CFP sheet:
+     label and counter share one baseline row, counter 12px muted
+     right-flushed at the measure's edge. */
+  .chq-field-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .chq-field-counter { font-size: 12px; color: var(--chq-muted); white-space: nowrap; }
+
+  /* Frame 10--05 (MAJOR): the comment textarea fell back to the browser's
+     intrinsic cols width inside its column -- fields fill their column
+     everywhere else in the system. */
+  textarea.chq-textarea { width: 100%; }
+
+  /* Frame 10--05 (MAJOR): the task detail's two sub-heads were bare 16px
+     h4s with margin 0 -- they take the section-label register (11px caps
+     over a 2px ink rule, matching .chq-section-label 30px higher on the
+     same page) with breathing room above so the second one stops butting
+     the version row. NOTE: comments here ship inside the page's <style>,
+     so they must never quote on-page copy verbatim (index-scanning tests
+     read the whole document). */
+  .chq-portal-subsection-label {
+    font-family: var(--chq-font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--chq-ink);
+    border-bottom: 2px solid var(--chq-ink);
+    padding-bottom: 6px;
+    margin: 18px 0 8px;
+  }
+
+  /* Frames 10--09/22/23 (MAJOR): the participants section label carries
+     the count right-flushed against the measure's edge. */
+  .chq-portal-session-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .chq-portal-session-count { font-weight: 700; }
+
+  /* Frames 10--09/22/23 (MAJOR): participant rows are ruled rows, never a
+     bulleted UA list -- no disc, no 40px indent; name flush left, role as
+     a right-side micro-label, 1px hairline per row. */
+  .chq-portal-participants { list-style: none; margin: 0; padding: 0; }
+  .chq-portal-participant-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+  .chq-portal-participant-name { font-weight: 600; color: var(--chq-ink); }
+  .chq-portal-participant-sub { flex-basis: 100%; }
+
+  /* Frames 10--09/23 (MAJOR): the Save/Cancel row is the page's terminal
+     element, preceded by a 1px rule and carrying the consequence line. */
+  .chq-portal-actions-footer {
+    border-top: 1px solid var(--chq-hairline);
+    margin-top: 24px;
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .chq-portal-actions-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
+
+  /* Frame 10--23 (MINOR) + frame 14: desktop control heights -- the frames
+     draw 46px inputs/selects and 46px footer buttons; the app rendered
+     33.8/32.8/37. min-height (not padding) so multiline textareas are
+     untouched. Phone keeps its own 44px floor rules. */
+  .chq-input, .chq-select, select, input[type=text], input[type=email], input[type=date] { min-height: 46px; }
+  .chq-portal-actions .chq-btn { min-height: 46px; }
+  .chq-portal-copresenter-submit .chq-btn { min-height: 46px; }
+
+  /* Frame 10--23 (MINOR), B8: inputs and selects darken the border on
+     hover -- colour only, no size/shadow change. */
+  .chq-input:hover, .chq-select:hover, .chq-textarea:hover, select:hover, textarea:hover,
+  input[type=text]:hover, input[type=email]:hover, input[type=date]:hover {
+    border-color: var(--chq-border-hover);
+  }
+
+  /* Frame 10--08 (MAJOR): the session title under the detail page's own
+     H1 -- the largest thing after the H1 itself, in the display face. */
+  .chq-portal-session-title {
+    font-family: var(--chq-font-display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 4px 0 2px;
+  }
+
+  /* Frame 10--24 (MAJOR): the preview page's H1 lede, and the read-only
+     Download per DEVIATIONS §2's disabled link-shaped register -- muted
+     text, no box, no underline, no hover response. */
+  .chq-portal-lede { font-size: 16px; line-height: 1.6; color: var(--chq-ink-2); margin: 4px 0 10px; }
+  .chq-portal-preview-download {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-disabled);
+    cursor: default;
+  }
+
+  /* Frame 10--26 (MAJOR): a resource's own title (16px .chq-portal-row-title)
+     was set smaller than the h2/h3 sub-heads of its own markdown body --
+     the title must stay the largest element in its row. */
+  .chq-portal-detail h2 { font-size: 15px; }
+  .chq-portal-detail h3 { font-size: 13px; }
+
 ${EMPTY_CSS}
 ${ERROR_STATES_CSS}
 
@@ -561,4 +718,22 @@ ${ERROR_STATES_CSS}
   padding: 4px 12px;
   font-size: 13px;
   color: var(--chq-muted);
-}`;
+}
+
+/* G13: EMPTY_CSS (composed above) raises the FRESH zero-state headline to
+   the page-title register for full-page public empty states (frame 10--20).
+   The portal's fresh blocks are INLINE section states ('No participants
+   yet.', 'No comments yet.') -- re-pin them to the quiet register here,
+   after the composed sheet, so they never inflate to 36px. */
+.chq-portal-shell .chq-pub-empty-block-fresh .chq-pub-empty-what {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: normal;
+  margin: 0 0 4px;
+}
+.chq-portal-shell .chq-pub-empty-block-fresh .chq-pub-empty-reason {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.chq-portal-shell .chq-pub-empty-block-fresh { padding-top: 10px; }`;

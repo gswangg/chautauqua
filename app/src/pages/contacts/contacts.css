@@ -299,35 +299,6 @@
   margin: 0;
 }
 
-.chq-contacts-headshot-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.chq-contacts-headshot {
-  border-radius: var(--chq-r-card);
-  object-fit: cover;
-}
-
-/* DEC-950: the headshot upload is a dialog field, so it is a FormRow like any
-   other -- a labelled column, not a bare <label> wrapping a raw input. */
-.chq-contacts-headshot-upload {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  min-width: 0;
-}
-
-/* The native file input has an intrinsic width (~284px) that ignores
-   max-width against an auto-floored ancestor; an explicit width makes it
-   track the column the grid actually grants. */
-.chq-contacts-headshot-upload .chq-file {
-  width: 100%;
-}
-
 /* ---------------------------------------------------------------------- */
 /* Modals (Bulk email / Add to event)                                     */
 /* ---------------------------------------------------------------------- */
@@ -345,13 +316,11 @@
   color: var(--chq-muted);
 }
 
-.chq-bulk-email-unsendable-templates {
-  list-style: none;
+/* G13 (frame 08-contacts--10, ruling A19): the merge-fields footnote sits
+   under the one-sentence unavailability note in the same muted helper
+   voice (the four-item unsendable-templates list is gone). */
+.chq-bulk-email-merge-footnote {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
   font-size: 12px;
   color: var(--chq-muted);
 }

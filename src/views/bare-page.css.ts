@@ -29,10 +29,19 @@ export const BARE_PAGE_CSS = `
     width: 100%;
     max-width: 820px;
     margin: 0 auto;
-    padding: 48px 20px;
+    /* G13 fix (frame 11-account--01): the frame's field bands run the full
+       818px content measure centred on x=800 -- 20px side padding ate 40px
+       of the measure at desktop. Side padding returns at phone widths. */
+    padding: 48px 0;
     display: flex;
     flex-direction: column;
     gap: 22px;
+  }
+  /* DEC-385: 900px is the sanctioned breakpoint above the 820px measure --
+     side padding returns as soon as the viewport stops clearing the
+     measure plus its gutters, not at a third hand-picked width. */
+  @media (max-width: 900px) {
+    .chq-bare-page { padding: 48px 20px; }
   }
   .chq-bare-page .chq-auth-title { font-size: 28px; }
   /* Gate-9 fleet R-A: the input fill rule is scoped to .chq-auth-card, so
@@ -51,7 +60,8 @@ export const BARE_PAGE_CSS = `
   }
   .chq-bare-page .chq-btn-primary,
   .chq-bare-page button[type=submit] {
-    min-height: 46px;
+    /* G13 fix (frame 11-account--01): the frame's submit band is 48px. */
+    min-height: 48px;
     padding: 0 20px;
     width: auto;
     align-self: flex-start;

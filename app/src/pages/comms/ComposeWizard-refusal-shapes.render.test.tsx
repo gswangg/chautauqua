@@ -13,6 +13,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ComposeWizard } from './ComposeWizard';
 import { listEnvelope, mockApi, errorEnvelope } from '../../test-utils/mockApi';
 import type { SubmissionListItem } from '../submissions/types';
@@ -59,7 +60,11 @@ function mockBase(overrides: Record<string, unknown> = {}) {
 /** Arrives on step 2 (?ids=sub1 hydration) and fills in the minimum for the
  * "Next: preview" primary to be enabled. */
 async function reachTemplateStep() {
-  render(<ComposeWizard eventId={EVENT_ID} />);
+  render(
+    <MemoryRouter>
+      <ComposeWizard eventId={EVENT_ID} />
+    </MemoryRouter>,
+  );
   const subjectInput = await screen.findByLabelText('Subject');
   fireEvent.change(subjectInput, { target: { value: 'Congratulations!' } });
   const bodyInput = screen.getByLabelText('Body');

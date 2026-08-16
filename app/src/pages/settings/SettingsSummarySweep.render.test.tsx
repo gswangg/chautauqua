@@ -224,7 +224,7 @@ describe('PublicPagesPanel per-surface count mapping (DEC-816, row by row)', () 
 
     expect(within(rowValue('Sessions')).getByText('Live · 16 published')).toBeInTheDocument();
     expect(within(rowValue('Agenda')).getByText('Live · 9 published')).toBeInTheDocument();
-    expect(within(rowValue('Schedule')).getByText('Live · 9 published')).toBeInTheDocument();
+    expect(within(rowValue('Schedule and ICS')).getByText('Live · 9 published')).toBeInTheDocument();
     expect(within(rowValue('Speakers')).getByText('Live · 4 published')).toBeInTheDocument();
     expect(within(rowValue('Speaker gallery')).getByText('Live · 4 published')).toBeInTheDocument();
   });

@@ -110,12 +110,15 @@ describe('ComposeWizard recipient picker', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    expect(screen.getByRole('button', { name: /1 submission selected/ })).toBeInTheDocument();
+    // Frame 07-comms--05: the count lives on the selection bar (and the
+    // step-strip's own "N selected" detail), not appended to the primary's
+    // label -- the primary reads a plain "Next: choose a template".
+    expect(screen.getByRole('toolbar', { name: 'Selection' }).textContent).toContain('1 submission selected');
 
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     await screen.findByText('Talk number 51');
 
-    expect(screen.getByRole('button', { name: /1 submission selected/ })).toBeInTheDocument();
+    expect(screen.getByRole('toolbar', { name: 'Selection' }).textContent).toContain('1 submission selected');
   });
 
   it('issues a request with q= and resets page to 1 when searching', async () => {
@@ -255,7 +258,7 @@ describe('ComposeWizard recipient picker', () => {
     expect(noSlot).toBeInTheDocument();
     expect(noSlot).toHaveClass('chq-flag');
 
-    const primary = screen.getByRole('button', { name: /Next: choose template/ });
+    const primary = screen.getByRole('button', { name: /Next: choose a template/ });
     expect(primary.closest('.chq-comms-select-actions')).not.toBeNull();
   });
 
@@ -284,7 +287,7 @@ describe('ComposeWizard recipient picker', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -319,7 +322,7 @@ describe('ComposeWizard recipient picker', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     const body = screen.getByLabelText('Body');
@@ -350,7 +353,7 @@ describe('ComposeWizard body merge-field menu (DEC-793, DEC-993)', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
     await screen.findByLabelText('Body');
   }
 
@@ -415,7 +418,7 @@ describe('ComposeWizard body merge-field menu (DEC-793, DEC-993)', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -466,7 +469,7 @@ describe('ComposeWizard missing-merge-field errors (DEC-856)', () => {
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByLabelText('Select Talk number 2'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -520,7 +523,7 @@ describe('ComposeWizard no-eligible-recipients errors (DEC-317 amendment wave 60
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByLabelText('Select Talk number 2'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -563,7 +566,7 @@ describe('ComposeWizard template selection copies text, edits win, id stays as p
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const templateSelect = await screen.findByLabelText(/Template/);
     fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
@@ -605,7 +608,7 @@ describe('ComposeWizard template selection copies text, edits win, id stays as p
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const templateSelect = await screen.findByLabelText(/Template/);
     fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
@@ -635,7 +638,7 @@ describe('ComposeWizard feedback plan picker (DEC-682)', () => {
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -709,7 +712,7 @@ describe('ComposeWizard include-feedback toggle reachability (DEC-883)', () => {
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -811,7 +814,7 @@ describe('ComposeWizard sends edited body, and templateId travels as provenance 
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const templateSelect = await screen.findByLabelText(/Template/);
     fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
@@ -870,7 +873,7 @@ describe('ComposeWizard recipient rows name the talk and state the slot (DEC-912
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -917,7 +920,7 @@ describe('ComposeWizard recipient rows name the talk and state the slot (DEC-912
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
@@ -970,7 +973,7 @@ describe('ComposeWizard: Send moves to step 4 (ruling B1)', () => {
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -1062,7 +1065,7 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -1127,7 +1130,7 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -1164,7 +1167,7 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -1207,7 +1210,7 @@ describe('ComposeWizard send report frame (DEC-238 amendment, findings wave 5)',
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello there' } });
@@ -1302,7 +1305,7 @@ describe('ComposeWizard ICS slot predicate and blocked-send (DEC-954)', () => {
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -1359,7 +1362,7 @@ describe('ComposeWizard ICS slot predicate and blocked-send (DEC-954)', () => {
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -1409,7 +1412,7 @@ describe('ComposeWizard {feedback} companion plan picker (DEC-955)', () => {
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
     await screen.findByLabelText('Body');
   }
 
@@ -1428,7 +1431,7 @@ describe('ComposeWizard {feedback} companion plan picker (DEC-955)', () => {
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
 
@@ -1510,7 +1513,7 @@ describe('ComposeWizard evaluation-plan select is a parameter of Include reviewe
     );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -1584,7 +1587,7 @@ describe('ComposeWizard partial-send way out on the blocked banner (DEC-793 amen
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByLabelText('Select Talk number 2'));
     fireEvent.click(screen.getByLabelText('Select Talk number 3'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -1610,7 +1613,9 @@ describe('ComposeWizard partial-send way out on the blocked banner (DEC-793 amen
     }
 
     // The last-cheap-to-fix caption.
-    expect(within(banner).getByText('This is the last point at which it is cheap to fix.')).toBeInTheDocument();
+    expect(
+      within(banner).getByText('Sending cannot be undone, so this is the last point at which it is cheap to fix.'),
+    ).toBeInTheDocument();
 
     // Partial action names the scheduled subset (3 - 2 = 1).
     const partialButton = within(banner).getByRole('button', { name: 'Send to the 1 who have a slot' });
@@ -1654,7 +1659,7 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     expect(subject).toHaveValue('');
@@ -1681,7 +1686,7 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     expect(subject).toHaveValue('');
@@ -1707,7 +1712,7 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(screen.getByLabelText(/^Template/), { target: { value: 'tpl-1' } });
@@ -1736,7 +1741,7 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
     fireEvent.change(await screen.findByLabelText(/^Template/), { target: { value: 'tpl-1' } });
     await waitFor(() => expect(screen.getByLabelText('Subject')).toHaveValue('You are in'));
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
@@ -1800,7 +1805,7 @@ describe('ComposeWizard reads the server dedupe plan, not the raw expansion (wav
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -1857,7 +1862,7 @@ describe('ComposeWizard reads the server dedupe plan, not the raw expansion (wav
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });

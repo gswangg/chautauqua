@@ -87,7 +87,7 @@ describe("ItineraryScript emitted body: EXECUTED in jsdom (EMB-10/11)", () => {
     const link = dom.window.document.getElementById("chq-ics-link") as HTMLAnchorElement;
     const count = dom.window.document.getElementById("chq-ics-count") as HTMLElement;
     expect(link.getAttribute("href")).toContain("sub-a");
-    expect(count.textContent).toBe("1 picked");
+    expect(count.textContent).toBe("1"); // G13: the span carries the count alone (caption text lives in the SSR markup)
 
     // Re-running the emitted script (as a fresh page load would) must
     // rehydrate the checkbox as checked from the SAME localStorage key and

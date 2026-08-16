@@ -70,8 +70,9 @@ describe('FormsPage discloses the real MAX_FORM_FIELDS ceiling at Add-a-question
       expect(screen.getByRole('button', { name: 'Add a question' })).toBeInTheDocument();
     });
 
-    // FORM.fields has 2 rows; the hint reads "N of MAX_FORM_FIELDS".
-    expect(screen.getByText(`2 of ${MAX_FORM_FIELDS} questions`)).toBeInTheDocument();
+    // G13 lane-D fix (02-submissions--04): the frame draws a 2-item FIELDS
+    // header with NO cap counter -- the DEC-422 hint is gone.
+    expect(screen.queryByText(`2 of ${MAX_FORM_FIELDS} questions`)).not.toBeInTheDocument();
     expect(MAX_FORM_FIELDS).toBe(200);
   });
 });

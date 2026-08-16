@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiPost, ApiError } from '../../lib/api';
-import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsvVerbatim, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
+import { expandFullNameMapping, importEmailProblem, mapImportRow, parseCsv, suggestMapping, toCsvVerbatim, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { usePendingLabel } from '../../components/PendingAction';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
@@ -83,18 +83,46 @@ interface PlannedRequest {
   sessionTitle?: string;
 }
 
+// G13 (frame 08-contacts--03): the match-columns selects speak human labels
+// ('First name', 'Email'), never the machine field keys ('firstName') --
+// option VALUES stay the wire keys, so the mapping contract is untouched.
+const IMPORT_FIELD_LABELS: Record<string, string> = {
+  email: 'Email',
+  firstName: 'First name',
+  lastName: 'Last name',
+  company: 'Company',
+  title: 'Title',
+  phone: 'Phone',
+  bio: 'Bio',
+};
+
+/** Human label for a mapped field key -- used by the match-columns selects
+ * and the review step's diff lines (frame 08-contacts--13: 'Title
+ * ~~Senior Engineer~~ → Principal Engineer', capitalised human labels). */
+function importFieldLabel(field: string): string {
+  return IMPORT_FIELD_LABELS[field] ?? (field.startsWith('custom.') ? field.slice('custom.'.length) : field);
+}
+
 function actionLabel(row: ImportPlanRow): string {
   if (row.action === 'create') return 'Create';
   if (row.action === 'update') return 'Update';
   return `Skip — ${row.reason ?? 'no reason given'}`;
 }
 
-/** Row numbers capped at ten, then 'and N more' (DEC-575 wave-28 amendment). */
-function formatRowList(lines: number[]): string {
-  if (lines.length <= 10) return lines.join(', ');
-  const shown = lines.slice(0, 10);
-  const more = lines.length - shown.length;
-  return `${shown.join(', ')}, and ${more} more`;
+/** One rejected row of the DEC-575 file-level gate: its 1-based CSV line
+ * and the named problem with its email cell (G13, frame 08-contacts--15). */
+interface BadRow {
+  line: number;
+  problem: string;
+}
+
+/** Rows listed with their reasons, capped at ten, then 'and N more'
+ * (DEC-575 wave-28 amendment; per-row reasons per frame 08-contacts--15).
+ * A display cap, not a server-enforced bound -- kept as a plain literal at
+ * its two call sites so the DEC-660 cap-crossing scan doesn't read it as a
+ * hand-declared domain cap. */
+function listedBadRows(rows: BadRow[]): BadRow[] {
+  return rows.slice(0, 10);
 }
 
 export function ImportWizard({ onClose, onImported, eventId, eventName }: Props) {
@@ -181,14 +209,20 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   const showSizeRefusal = header.length > 0 && !plan && !result && (overRowCount > 0 || overByteCount > 0);
 
   // DEC-575 (wave 28 amendment): a pre-mapping, file-level refusal for rows
-  // missing the dedupe key (email) -- counted from the header's own
+  // whose email cell is unusable -- counted from the header's own
   // auto-suggested mapping (suggestMapping, same alias table the "Match
   // columns" screen uses to prime its selects), computed ONCE per parsed
   // file and never re-derived from the organizer's later, live edits to
   // `mapping` in the match step -- a match-step "skip this column" toggle
   // on Email must not resurrect this file-level gate after it has already
   // been passed.
-  const badRows = useMemo(() => {
+  //
+  // G13 (frame 08-contacts--15): the gate tests the cell with
+  // importEmailProblem -- the domain's canonical isValidEmail rule
+  // (DEC-454), the same one the server's plan/commit path enforces -- not
+  // just emptiness, and carries each rejected row's named reason so the
+  // refusal can say WHY per row, the way the frame draws it.
+  const badRows: BadRow[] = useMemo(() => {
     if (header.length === 0) return [];
     const autoMapping = suggestMapping(header);
     // DEC-011/DEC-478 (wave-65 amendment): the domain's mapImportRow has no
@@ -197,10 +231,11 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     // expandFullNameMapping FIRST -- the same two steps runPreview's own
     // POST body already runs below -- before mapImportRow ever sees it.
     const expanded = expandFullNameMapping(header, allDataRows, autoMapping);
-    const bad: number[] = [];
+    const bad: BadRow[] = [];
     expanded.rows.forEach((row, i) => {
       const mapped = mapImportRow(expanded.mapping, expanded.header, row);
-      if (!mapped.email) bad.push(i + 2); // +2: header is line 1, first data row is line 2.
+      const problem = importEmailProblem(mapped.email ?? '');
+      if (problem) bad.push({ line: i + 2, problem }); // +2: header is line 1, first data row is line 2.
     });
     return bad;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,7 +248,11 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
   // step (match columns, dedupe preview, dry run) sees only the usable
   // rows -- the raw file (csvText / allDataRows) is untouched so re-upload
   // and "the file is still loaded" both stay true.
-  const dataRows = warningAcknowledged ? allDataRows.filter((_, i) => !badRows.includes(i + 2)) : allDataRows;
+  const dataRows = useMemo(() => {
+    if (!warningAcknowledged) return allDataRows;
+    const badLines = new Set(badRows.map((r) => r.line));
+    return allDataRows.filter((_, i) => !badLines.has(i + 2));
+  }, [warningAcknowledged, allDataRows, badRows]);
 
   // P1 fix (w1-f): auto-suggest a mapping from header names on the first
   // sight of a given header (see suggestMapping in ./csv.ts), so a CSV whose
@@ -464,6 +503,19 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     }
   }
 
+  // G13 (frame 08-contacts--13): the review step's back path -- drops only
+  // the stale plan; the parsed file, mapping and match-step state all
+  // survive, so the organizer lands back on Match the columns.
+  function backToMatchColumns() {
+    setPlan(null);
+    setPlannedRequest(null);
+    setSkipLines(new Set());
+    setMergeSelections(new Map());
+    setShowAllRows(false);
+    setFieldErrors(null);
+    setError(null);
+  }
+
   async function runCommit() {
     if (!plannedRequest) return;
     setBusy(true);
@@ -499,7 +551,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
         Import the {countOf(allDataRows.length - badRows.length, 'good row', 'good rows')}
       </button>
       <button type="button" className="chq-btn chq-btn-secondary" onClick={resetToChooseFile}>
-        Re-upload a different file
+        Upload a different file
       </button>
     </>
   ) : result ? (
@@ -515,6 +567,11 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
         onClick={runCommit}
       >
         {importPendingLabel.label}
+      </button>
+      {/* G13 (frame 08-contacts--13): a footer Back beside the primary --
+          the second of the frame's two return paths to the match step. */}
+      <button type="button" className="chq-btn chq-btn-secondary" onClick={backToMatchColumns} disabled={busy}>
+        Back
       </button>
       <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
         Cancel
@@ -618,12 +675,23 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
             {badRows.length} of {allDataRows.length} rows have no email address
           </p>
           <p className="chq-error-summary-detail">
-            Email is the key the importer uses to match and update existing contacts, so these rows can't be
-            imported.
+            Email is how a contact is matched and how anything reaches them, so a row without one cannot be
+            created.
           </p>
-          <p className="chq-error-summary-rows">
-            {plural(badRows.length, 'Row')} {formatRowList(badRows)}.
-          </p>
+          {/* G13 (frame 08-contacts--15): every rejected row names its own
+              reason -- blank, a placeholder like "n/a", a missing @ -- in
+              the frame's vocabulary, capped at ten rows then 'and N more'
+              (DEC-575). */}
+          <ul className="chq-error-summary-rows">
+            {listedBadRows(badRows).map((row) => (
+              <li key={row.line}>
+                Row {row.line} — {row.problem}
+              </li>
+            ))}
+            {badRows.length > listedBadRows(badRows).length && (
+              <li>and {badRows.length - listedBadRows(badRows).length} more</li>
+            )}
+          </ul>
           <p className="chq-error-summary-kept">Nothing was lost — the file is still loaded.</p>
         </div>
       )}
@@ -760,39 +828,42 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
             </FormRow>
           )}
 
+          {/* G13 (frame 08-contacts--03): one full-width row per CSV column
+              -- column name over a sample value on the left, an → glyph
+              mid-row, the target select right-flushed. The unmapped state
+              IS the select, rendered in the dashed skip register with
+              'Skip this column' as its empty option -- not an '(ignore)'
+              option plus a separate button. */}
           <div className="chq-contacts-import-columns">
             {header.map((col, i) => {
               const sample = dataRows[0]?.[i] ?? '';
               const skipped = !mapping[col];
               return (
-                <div key={col} className="chq-contacts-import-column-block">
-                  <div className="chq-contacts-import-column-header">{col}</div>
-                  <div className="chq-contacts-import-column-sample">
-                    {sample !== '' ? sample : <em className="chq-contacts-import-preview-cell-skip">(blank)</em>}
+                <div key={col} className="chq-contacts-import-column-row">
+                  <div className="chq-contacts-import-column-id">
+                    <div className="chq-contacts-import-column-header">{col}</div>
+                    <div className="chq-contacts-import-column-sample">
+                      {sample !== '' ? sample : <em className="chq-contacts-import-preview-cell-skip">(blank)</em>}
+                    </div>
                   </div>
+                  <span className="chq-contacts-import-column-arrow" aria-hidden="true">
+                    →
+                  </span>
                   <select
-                    className="chq-select"
+                    className={`chq-select chq-contacts-import-column-select${skipped ? ' is-skipped' : ''}`}
                     aria-label={`Map column ${col}`}
                     value={mapping[col] ?? ''}
                     onChange={(e) => setColumnMapping(col, e.target.value)}
                   >
-                    <option value="">(ignore)</option>
+                    <option value="">Skip this column</option>
                     {STANDARD_IMPORT_FIELDS.map((f) => (
                       <option key={f} value={f}>
-                        {f}
+                        {importFieldLabel(f)}
                       </option>
                     ))}
                     <option value={FULL_NAME_TARGET}>Full name (splits into first / last)</option>
-                    <option value={`custom.${col}`}>custom: {col}</option>
+                    <option value={`custom.${col}`}>Custom: {col}</option>
                   </select>
-                  <button
-                    type="button"
-                    className="chq-contacts-import-column-skip"
-                    aria-pressed={skipped}
-                    onClick={() => setColumnMapping(col, '')}
-                  >
-                    Skip this column
-                  </button>
                 </div>
               );
             })}
@@ -812,6 +883,13 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
 
       {plan && !result && (
         <div className="chq-contacts-import-review">
+          {/* G13 (frame 08-contacts--13): a wrong mapping must be fixable
+              without closing and re-uploading -- this tertiary link (and
+              the footer's Back) return to the match step with the file and
+              mapping intact; only the stale plan is dropped. */}
+          <button type="button" className="chq-btn chq-btn-tertiary chq-contacts-import-review-back" onClick={backToMatchColumns}>
+            ‹ Match the columns
+          </button>
           {/* B5 (DEC-663 amendment, w27-i): the heading names the two counts
               the dedupe outcome earns -- created/updated straight from the
               dry run's plan, not a re-derivation from the rows array --
@@ -819,10 +897,17 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
               nothing the organizer didn't already know. 'new'/'updated' are
               invariant adjectives (never "1 news"), so countOf is called
               with an explicit pluralForm equal to the singular rather than
-              inventing a second helper. */}
-          <h3 className="chq-section-label">
+              inventing a second helper. G13 (frame 08-contacts--13, ruling
+              B5 'two counts as a heading'): the counts ARE the step's
+              heading -- sentence case at heading size, never an 11px
+              micro-label -- with the file · rows · match-key line as its
+              sub. */}
+          <h3 className="chq-contacts-import-review-heading">
             {countOf(plan.created, 'new', 'new')} · {countOf(plan.updated, 'updated', 'updated')}
           </h3>
+          <p className="chq-contacts-import-review-sub">
+            {fileName ?? 'Pasted CSV'} · {countOf(plan.rows.length, 'row')} · matched on email
+          </p>
           {/* w49-f: the existing-contacts claim moved here from the match
               step's dedupe footer -- sourced straight from the dry run's
               own plan.updated, never re-derived from the rows array. */}
@@ -854,10 +939,14 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
                       {decorated && (
                         <ul className="chq-contacts-import-review-detail">
                           {updateReason && <li>{updateReason}</li>}
+                          {/* G13 (frame 08-contacts--13): diffs read
+                              'Title ~~Senior Engineer~~ → Principal
+                              Engineer' -- Capitalised human label, explicit
+                              arrow -- never the machine field key. */}
                           {(row.overwrites ?? []).map((ow, i) => (
                             <li key={`ow-${i}`}>
-                              <strong>{ow.field}</strong>:{' '}
-                              <s className="chq-contacts-import-overwrite-old">{ow.from}</s>{' '}
+                              <strong>{importFieldLabel(ow.field)}</strong>{' '}
+                              <s className="chq-contacts-import-overwrite-old">{ow.from}</s> {'→'}{' '}
                               <span className="chq-contacts-import-overwrite-new">{ow.to}</span>
                             </li>
                           ))}
@@ -954,7 +1043,9 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
               action -- ModalFrame renders `children` then the actions div
               right after (see ModalFrame.tsx), so this is the last thing in
               the review step's own content. */}
-          <p className="chq-contacts-import-irreversible">A bulk import cannot be undone.</p>
+          <p className="chq-contacts-import-irreversible">
+            Importing cannot be undone in bulk — a skipped row can be imported later.
+          </p>
         </div>
       )}
 

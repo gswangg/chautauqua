@@ -317,7 +317,13 @@ export function DayGrid({
     <div className={gridClassName} style={{ gridTemplateColumns, gridTemplateRows }} ref={gridRef}>
       <div className="chq-day-grid-corner" style={{ gridColumn: 1, gridRow: 1 }} />
       {columns.map((colId, colIdx) => (
-        <div key={colId} className="chq-day-grid-room-header" style={{ gridColumn: colIdx + 2, gridRow: 1 }}>
+        <div
+          key={colId}
+          className={
+            colId === TBD_COL_ID ? 'chq-day-grid-room-header chq-day-grid-room-header-tbd' : 'chq-day-grid-room-header'
+          }
+          style={{ gridColumn: colIdx + 2, gridRow: 1 }}
+        >
           {colId === TBD_COL_ID ? TBD_LABEL : (roomNameById.get(colId) ?? colId)}
         </div>
       ))}

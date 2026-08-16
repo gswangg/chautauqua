@@ -511,10 +511,10 @@ describe('DeliverableDetail render smoke', () => {
 
   // w41-a (DEC-901 amendment): Approve moved out of the title column's own
   // status bar (deleted) into the CONTENT STATUS band.
-  // w5-i amendment: "Download all" moved OFF the status band onto the
-  // header block (chq-content-detail-head-actions) -- it's a page-level
-  // export action, not a fact about the current status.
-  it('carries Approve inside the status band and "Download all" on the header block, and drops Approve once approved', async () => {
+  // G13 lane-D fix (05-content--01, reverting w5-i against the frame):
+  // "Download all" is a tertiary text link INSIDE the status band, to the
+  // right of [Approve]; the title row carries no button at all.
+  it('carries Approve and the "Download all" tertiary inside the status band, and drops Approve once approved', async () => {
     mockBase();
 
     const { container } = render(
@@ -536,11 +536,13 @@ describe('DeliverableDetail render smoke', () => {
     const approveInBand = Array.from(band!.querySelectorAll('button')).find((b) => b.textContent === 'Approve');
     const downloadInBand = Array.from(band!.querySelectorAll('button')).find((b) => b.textContent === 'Download all');
     expect(approveInBand).toBeDefined();
-    // "Download all" no longer lives in the status band at all.
-    expect(downloadInBand).toBeUndefined();
-    const headActions = container.querySelector('.chq-content-detail-head-actions');
-    expect(headActions).not.toBeNull();
-    expect(Array.from(headActions!.querySelectorAll('button')).find((b) => b.textContent === 'Download all')).toBeDefined();
+    // "Download all" is the band's tertiary, to the right of Approve.
+    expect(downloadInBand).toBeDefined();
+    expect(downloadInBand!.className).toContain('chq-btn-tertiary');
+    // the frame draws no 'Pending' control in the band.
+    expect(Array.from(band!.querySelectorAll('button')).find((b) => b.textContent === 'Pending')).toBeUndefined();
+    // the title row carries no button (the w5-i head-actions block is gone).
+    expect(container.querySelector('.chq-content-detail-head-actions')).toBeNull();
     // the old parallel .chq-content-status-bar box is gone entirely.
     expect(container.querySelector('.chq-content-status-bar')).toBeNull();
 
@@ -560,8 +562,7 @@ describe('DeliverableDetail render smoke', () => {
     await screen.findByText('slides-v2.pdf');
     const approvedBand = approvedContainer.querySelector('.chq-content-status-band');
     expect(Array.from(approvedBand!.querySelectorAll('button')).find((b) => b.textContent === 'Approve')).toBeUndefined();
-    const approvedHeadActions = approvedContainer.querySelector('.chq-content-detail-head-actions');
-    expect(Array.from(approvedHeadActions!.querySelectorAll('button')).find((b) => b.textContent === 'Download all')).toBeDefined();
+    expect(Array.from(approvedBand!.querySelectorAll('button')).find((b) => b.textContent === 'Download all')).toBeDefined();
   });
 
   // DEC-989 amendment (wave 41, widened wave 72): the band is chrome -- no

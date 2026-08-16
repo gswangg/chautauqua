@@ -35,6 +35,39 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* G13 lane-D fix (05-content--00): the frame closes the title band with a
+     1px hairline (no WORKLIST section label, no 2px ink rule anywhere in
+     the header stack). */
+  border-top: 1px solid var(--chq-hairline);
+  padding-top: 13px;
+}
+
+/* G13 lane-D fix (05-content--00): second drawn hairline sits between the
+   filter chips and the bulk bar. */
+.chq-content-worklist > .chq-chipstrip {
+  border-bottom: 1px solid var(--chq-hairline);
+  padding-bottom: 13px;
+}
+
+/* G13 lane-D fix (05-content--00): the bar's actions are right-flushed at
+   the measure edge — count and note lead, actions land at the far end. */
+.chq-content-worklist .chq-bulkbar-actions {
+  margin-left: auto;
+}
+
+/* G13 lane-D fix (05-content--00): the frame fills the ACTIVE filter pill
+   with ink (label knocked out in the page ground) and gives inactive pills
+   NO fill — the page colour shows through. The shared .chq-pill olive
+   on-state (frame 09--07's on/confirmed vocabulary) does not apply to
+   these filter facets. */
+.chq-content-worklist .chq-pill {
+  background: transparent;
+}
+
+.chq-content-worklist .chq-pill.is-active {
+  border-color: var(--chq-ink);
+  background: var(--chq-ink);
+  color: var(--chq-paper);
 }
 
 /* DEC-730 amendment (wave 39) / w41-b: a 2px ink rule closes the section
@@ -87,14 +120,6 @@
 .chq-content-status-muted {
   color: var(--chq-muted);
   font-weight: 600;
-}
-
-/* DEC-825 amendment (wave 72): the worklist's own section rule -- "Approve
-   N ready" moved off the title row onto here as a section action (house
-   link-on-the-rule treatment via the shared .chq-section-head/-label/
-   -action classes from styles.css; no overrides needed). */
-.chq-content-worklist-head {
-  margin-bottom: 2px;
 }
 
 .chq-content-actions {
@@ -183,13 +208,14 @@
   font-size: 28px;
 }
 
-/* w5-i: "Download all" lives on the header block now, not the status band
-   -- sits at the row's far end (chq-content-detail-head is already a
-   space-between flex row), baseline-aligned with the title column. */
-.chq-content-detail-head-actions {
-  display: flex;
-  align-items: center;
+/* G13 lane-D fix (05-content--01, ruling A2): the edit/history tertiary
+   links sit right-flushed against the session title on the H1's own line
+   (chq-content-detail-head is a space-between flex row; align-self keeps
+   them on the title line rather than the row's flex-end baseline). */
+.chq-content-detail-head > .chq-content-detail-actions {
   flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 8px;
 }
 
 /* DEC-756: ONE deliverable chip strip scopes both the version list and the
@@ -475,9 +501,11 @@
 }
 
 /* Accepted-type/size-cap text (CNT-06) -- right-flushed against the prompt
-   on the same line, uppercased for the chrome-strip register. Still the
-   full verbatim hint text in the DOM (never truncated in markup); only the
-   overflow is visually clipped with an ellipsis on a narrow viewport. */
+   on the same line, uppercased for the chrome-strip register. G13 lane-D
+   fix (05-content--01): the whole rule renders — the frame shows the full
+   formats + size-cap line, and the DESIGN-RULINGS error-states table
+   requires this surface to "say which formats and why", so it wraps rather
+   than clipping behind an ellipsis. */
 .chq-content-upload-caps {
   flex: 1 1 auto;
   min-width: 0;
@@ -488,22 +516,8 @@
   text-transform: uppercase;
   text-align: right;
   color: var(--chq-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* DEC-020 wave-58 amendment: the standing "posting a new version sends it
-   back for review" notice, stated BEFORE the organizer drops a file (the
-   twin of the portal's ReuploadReviewNotice). The zone is otherwise a
-   single-line strip, so the notice claims a full basis and wraps the
-   click/drop label onto its own line beneath it -- the strip keeps its
-   one-line shape, the notice just sits above it inside the same dashed
-   frame, sharing the label's 16px inset. */
-.chq-content-upload-notice {
-  flex: 1 1 100%;
-  margin: 0;
-  padding: 10px 16px 0;
+  white-space: normal;
+  line-height: 1.4;
 }
 
 /* Visually hidden, never display:none -- stays in the tab order and

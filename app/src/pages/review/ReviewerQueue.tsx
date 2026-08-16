@@ -280,18 +280,10 @@ function PlanSection({
                     .join(' · ')}
                 </p>
               )}
-              {/* DEC-239/DEC-251 (w1-d re-closure): the queue's own
-                  fewest-ratings-first order is invisible without the count
-                  it's ordered by -- countOf(ratingsCount, 'rating') plus
-                  "so far" names why this row is where it is, never a bare
-                  list with no explanation. The count goes through countOf()
-                  rather than a hand-written parenthetical so DEC-957's one
-                  count grammar still holds here. Its own class (not
-                  .chq-review-plan-meta) so it stays a separately countable
-                  fact from the format/audienceLevel meta line above. */}
-              <p className="chq-review-queue-ratings-count">
-                {countOf(item.ratingsCount, 'rating')} so far
-              </p>
+              {/* G13 lane-D fix (03-review--03): the frame draws THREE lines
+                  per row (eyebrow, title, meta) at a constant 103px pitch —
+                  the DEC-239/DEC-251 "N ratings so far" fourth line is
+                  unframed and is gone. */}
             </div>
             {/* DEC-857/DEC-874/REVIEW PACK 03-03: the action names what it
                 actually offers -- a scored row already took the action, so
@@ -585,7 +577,7 @@ export function ReviewerQueue() {
       <div className="chq-page chq-review-page chq-measure">
         <p>
           <Link to="/review" className="chq-review-back">
-            &larr; Your plans
+            &lsaquo; Your plans
           </Link>
         </p>
         {!routeEnvelope ? (

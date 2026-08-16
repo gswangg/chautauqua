@@ -58,7 +58,7 @@ describe("DEC-976 (wave 29): public Speakers filter bar -- List surface (Speaker
       SpeakersContent({ event: EVENT, speakers: [SPEAKER], total: 1, page: 1, q: null, tracks: TRACKS, activeTrackId: null }),
     );
     expect(html).toContain("chq-pub-searchform");
-    expect(html).toContain('placeholder="Search"');
+    expect(html).toContain('placeholder="Search sessions or speakers…"'); // G13 (frame 10--00): frame's fuller placeholder
     expect(html).toContain("All tracks");
     expect(html).toContain("chq-pub-view-toggle");
     expect(html).toContain(">List<");
@@ -96,7 +96,7 @@ describe("DEC-976 (wave 29): public Speakers filter bar -- Grid surface (Gallery
       GalleryContent({ event: EVENT, speakers: [SPEAKER], total: 1, page: 1, q: null, tracks: TRACKS, activeTrackId: null }),
     );
     expect(html).toContain("chq-pub-searchform");
-    expect(html).toContain('placeholder="Search"');
+    expect(html).toContain('placeholder="Search sessions or speakers…"'); // G13 (frame 10--00): frame's fuller placeholder
     expect(html).toContain("All tracks");
     expect(html).toContain("chq-pub-view-toggle");
     const gridMatch = html.match(/<a[^>]*>Grid<\/a>/);

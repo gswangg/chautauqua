@@ -133,7 +133,7 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
 // into the Contacts importer, event preselected -- Import is Contacts' job,
 // this is just the door in.
 describe('OnboardingGrid: DEC-662 import link', () => {
-  it('renders a quiet link into the Contacts importer carrying this event id', async () => {
+  it('renders NO import link on the grid — ruling A13 places it on the roster (G13 lane-D fix, 04-speakers--00)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
@@ -143,18 +143,10 @@ describe('OnboardingGrid: DEC-662 import link', () => {
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
-    const link = screen.getByRole('link', { name: 'Import speakers from a CSV' });
-    expect(link).toHaveAttribute('href', `/contacts?import=1&eventId=${EVENT_ID}`);
-    // Not a button, not a second importer -- a real <a>, quiet link joining
-    // the same title-action row as Add speaker/New task/Remind.
-    expect(link.tagName).toBe('A');
-    expect(link.closest('.chq-speakers-head-actions')).not.toBeNull();
-    // Ruling A13 (DEC-662 amendment, wave 25): exactly one import affordance
-    // on the page -- and it is not inside the matrix filter row (GridFilters'
-    // .chq-speakers-filters), which owns search/task/status/invite-status
-    // predicates only.
-    expect(screen.getAllByRole('link', { name: 'Import speakers from a CSV' })).toHaveLength(1);
-    expect(link.closest('.chq-speakers-filters')).toBeNull();
+    // The frame draws three controls in the title row with the primary
+    // flush at the content edge — no CSV link anywhere on the grid; the
+    // roster's Add-speaker dialog carries it instead (RosterPanel).
+    expect(screen.queryByRole('link', { name: 'Import speakers from a CSV' })).not.toBeInTheDocument();
     const filterRow = screen.getByLabelText('Search speakers').closest('.chq-speakers-filters') as HTMLElement;
     expect(within(filterRow).queryByText(/Import/)).not.toBeInTheDocument();
   });

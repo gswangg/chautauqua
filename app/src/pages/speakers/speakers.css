@@ -25,14 +25,27 @@
   flex-wrap: wrap;
 }
 
-/* DEC-265 amendment (error-states rule 8): the rolled-back-write banner --
-   .chq-error's colour/weight/border comes from the shared vocabulary; this
-   only lays out the message plus its two recovery actions on one line. */
+/* DEC-265 amendment / G13 lane-D fix (04-speakers--09): the
+   rolled-back-write banner -- drawn as a ~102px box below the title band
+   with a 1px ink border, the bold title line over the body, and the two
+   recovery controls right-flushed as a secondary + primary pair. */
 .chq-speakers-write-failure {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--chq-ink);
+  padding: 16px 18px;
+}
+
+.chq-speakers-write-failure-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.chq-speakers-write-failure-actions {
+  display: flex;
+  gap: 9px;
+  justify-content: flex-end;
 }
 
 .chq-speakers-head-actions {
@@ -1119,4 +1132,22 @@
   margin: 0;
   font-size: 13px;
   color: var(--chq-muted);
+}
+
+/* G13 lane-D fix (04-speakers--00): the frame fills the ACTIVE filter chip
+   with ink and knocks the label out in the page ground (drawn again on
+   07-comms--05) — not the shared olive on-state. */
+.chq-speakers-filters .chq-pill.is-active {
+  border-color: var(--chq-ink);
+  background: var(--chq-ink);
+  color: var(--chq-paper);
+}
+
+/* G13 lane-D fix (04-speakers--02): KIND chips sit at their natural label
+   widths, 46px tall, ending where the labels end — never stretched across
+   the full content row (page-scoped undo of the shared .chq-segmented
+   flex-grow). */
+.chq-speakers-modal .chq-segmented .chq-btn {
+  flex: 0 0 auto;
+  min-height: 46px;
 }

@@ -291,33 +291,6 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(deleteEl.nextElementSibling).not.toBe(saveEl);
   });
 
-  // DEC-894: the headshot file input uses the shared .chq-file control
-  // (not the generic .chq-input, which overflows the panel), and the
-  // drawer prints the stored file's filename and upload date beside the
-  // image so an uploaded headshot reads as a record, not decoration.
-  it('gives the headshot input the shared .chq-file class and prints stored file metadata', async () => {
-    const contactWithHeadshot: ContactDetail = {
-      ...CONTACT,
-      headshotUrl: '/headshots/file1',
-      headshotFile: { filename: 'priya-headshot.jpg', uploadedAt: 1735689600000 },
-    };
-    mockApi({ 'GET /api/v1/contacts/ct1': contactWithHeadshot });
-
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
-
-    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
-    await waitFor(() => {
-      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
-    });
-
-    const fileInput = dialog.querySelector('input[type="file"]');
-    expect(fileInput).not.toBeNull();
-    expect(fileInput).toHaveClass('chq-file');
-    expect(fileInput).not.toHaveClass('chq-input');
-
-    expect(within(dialog).getByText(/priya-headshot\.jpg/)).toBeInTheDocument();
-  });
-
   // DEC-894 amendment (wave 53): .chq-file had no width bound at all, so
   // the UA's intrinsic file-input width won and pushed the control's right
   // edge past the drawer's viewport (~38px of horizontal scroll). The rule
@@ -325,19 +298,6 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('bounds .chq-file to its container so the drawer never scrolls horizontally', () => {
     const body = topLevelRuleBody(SHARED_CSS, '.chq-file');
     expect(body).toMatch(/max-width:\s*100%/);
-  });
-
-  it('renders no headshot metadata line when there is no stored headshot', async () => {
-    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
-
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
-
-    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
-    await waitFor(() => {
-      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
-    });
-
-    expect(dialog.querySelector('.chq-contacts-headshot-meta')).toBeNull();
   });
 
   // DEC-616 amendment (wave 4): frame width is 520px, not 420.

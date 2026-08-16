@@ -157,7 +157,7 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
         <>
           <p>
             <Link to="/review" className="chq-review-back">
-              &larr; Back to plans
+              &lsaquo; Back to plans
             </Link>
           </p>
           <div className="chq-review-summary-row">
@@ -197,21 +197,18 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
           satisfied. "Not started" below keeps DEC-760's original
           hidden-when-zero rule: an action with no possible target is absent,
           not disabled (DEC-733). */}
-      <div className="chq-toolbar">
-        <button
-          type="button"
-          className="chq-btn chq-btn-primary"
-          disabled={reminding || laggards.length === 0}
-          onClick={() => void sendReminder('incomplete')}
-        >
-          Remind laggards ({laggards.length})
-        </button>
-        {!embedded && plan && plan.currentRound < plan.rounds && (
+      {/* G13 lane-D fix (03-review--00): the frame draws BOTH reminder
+          scopes as tertiary olive links right-flushed on the REVIEWER
+          PROGRESS section-label line — never a filled primary in its own
+          toolbar band. "Remind laggards" moved into the section head below;
+          only Advance (standalone page) keeps the toolbar. */}
+      {!embedded && plan && plan.currentRound < plan.rounds && (
+        <div className="chq-toolbar">
           <button type="button" className="chq-btn chq-btn-secondary" disabled={advancing} onClick={advanceRound}>
             Advance to round {plan.currentRound + 1}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <section className={embedded ? 'chq-section chq-review-landing-progress' : 'chq-section'}>
         <div className="chq-section-head">
@@ -223,16 +220,31 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
               population (assigned reviewers) always exists and so stays
               disabled rather than absent. Renders on both surfaces (wave-60
               amendment). */}
-          {notStarted.length > 0 && (
+          <div className="chq-review-progress-remind-links">
+            {/* G13 lane-D fix (03-review--00): laggards keeps its
+                disabled-when-empty rule (its population always exists), but
+                renders as a tertiary link on the section-label line per the
+                frame — the disabled tertiary keeps no surface (DEVIATIONS
+                §2). */}
             <button
               type="button"
               className="chq-link-button chq-section-action"
-              disabled={reminding}
-              onClick={() => void sendReminder('not_started')}
+              disabled={reminding || laggards.length === 0}
+              onClick={() => void sendReminder('incomplete')}
             >
-              Remind the {notStarted.length} not started
+              Remind laggards ({laggards.length})
             </button>
-          )}
+            {notStarted.length > 0 && (
+              <button
+                type="button"
+                className="chq-link-button chq-section-action"
+                disabled={reminding}
+                onClick={() => void sendReminder('not_started')}
+              >
+                Remind the {notStarted.length} not started
+              </button>
+            )}
+          </div>
         </div>
         <div className="chq-review-progress-grid">
           {rows.map((row) => {

@@ -203,7 +203,10 @@ function ProfilePage(props: {
           </div>
           <div class="chq-portal-field">
             <label class="chq-portal-field-label" for="bio">Bio</label>
-            <textarea class="chq-textarea" id="bio" name="bio" maxLength={MAX_LONG_TEXT_LENGTH}>{profile.bio ?? ""}</textarea>
+            {/* G13 (frame 10--07, MAJOR): rows=5 -- the default 2-row box
+                clipped the speaker's own stored bio on first paint (the
+                frame draws the box four lines tall). */}
+            <textarea class="chq-textarea" id="bio" name="bio" rows={5} maxLength={MAX_LONG_TEXT_LENGTH}>{profile.bio ?? ""}</textarea>
           </div>
           <div class="chq-portal-field">
             <label class="chq-portal-field-label" for="twitter">Twitter</label>

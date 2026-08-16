@@ -74,7 +74,7 @@ describe('ComposeWizard step-1 "1. Pick submissions" slot (item 3)', () => {
     expect(screen.getByRole('checkbox', { name: 'Accepted' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     await screen.findByLabelText('Subject');
     expect(screen.queryByText('1. Pick submissions')).not.toBeInTheDocument();
@@ -116,7 +116,7 @@ describe('ComposeWizard step-4 no-slot-yet footer list (item 3)', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });
@@ -168,7 +168,7 @@ describe('ComposeWizard step-4 no-slot-yet footer list (item 3)', () => {
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });

@@ -342,6 +342,18 @@ const KNOWN_SWALLOWS: { file: string; marker: string; reason: string }[] = [
       'DEC-761: a failed re-run of the list query sets listPosition to null, which renders no position/prev/next controls -- the identical rendering the success path already takes for a stale link whose id is not on the returned page (idx === -1), never a fabricated position or neighbour.',
   },
   {
+    file: 'app/src/pages/comms/ComposeWizard.tsx',
+    marker: '/submissions${statusCountQs}',
+    reason:
+      "frame 07-comms--05's per-status pill counts: one bounded perPage:1 read per status, and a failed read leaves every pill's count null, which renders the pill as its bare label ('Declined') with no number at all -- never a fabricated or stale zero, and never a second error banner stacked over the step-1 table for a courtesy annotation. (verbatim from the code comment at the catch site.)",
+  },
+  {
+    file: 'app/src/pages/submissions/SubmissionsTable.tsx',
+    marker: '/submissions?perPage=1',
+    reason:
+      'G13 lane-D (frame 02-submissions--09) unfiltered total behind the triage-cleared line: a failed read sets allTotal to null, which withholds that whole sentence rather than asserting "All 0 submissions have a decision" -- same absent-not-zero contract as the pending count below.',
+  },
+  {
     file: 'app/src/pages/submissions/SubmissionsTable.tsx',
     marker: '?status=pending&perPage=1',
     reason:

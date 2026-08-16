@@ -192,19 +192,6 @@
   cursor: not-allowed;
 }
 
-/* DEC-422 (wave 67): the live "N of 200 questions" count beside Add-a-question.
-   Quiet muted micro-copy, not a second action -- and like its sibling above it
-   must undo the uppercase/letter-spaced .chq-forms-section-title row it sits
-   in, since a counted number reads wrong in tracked caps. */
-.chq-forms-field-cap-hint {
-  font-size: 11px;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--chq-muted);
-  line-height: 1.5;
-}
-
 /* Field list: flat one-line rows (eval-findings item 51 / DEC-715). Grid
    columns mirror the mock's 20px/1fr/150px/108px/auto rhythm -- no second
    action/move row, so each row is the mock's height, not ~2.5x it. */
@@ -416,13 +403,6 @@
   margin-left: auto;
 }
 
-.chq-forms-settings-link {
-  display: inline-block;
-  margin-top: 13px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
 /* Phone-only fixed footer (mock 390px frame): hidden at desktop, becomes
    the flex-shrink:0 footer of the phone shell below 700px. Second markup,
    not a text swap over the desktop header actions (DEC-390 phone-selector
@@ -535,4 +515,13 @@
     justify-content: center;
     border-radius: var(--chq-r-ctl-phone);
   }
+}
+
+/* G13 lane-D fix (02-submissions--10, B10): SECTION and KIND render two-up
+   in a 1fr 1fr grid at a 16px gap, per the drawn 245px pair. */
+.chq-forms-field-modal-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
 }

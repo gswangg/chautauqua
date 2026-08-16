@@ -214,7 +214,10 @@ describe("DEC-582 (wave 11 amendment): hub action cluster is one exact render co
     expect(body).not.toMatch(/class="chq-home-row-published"/);
   });
 
-  it("the footer's own single 'API docs' link is present in all three states", async () => {
+  // G13 lane-D fix (12-home--02/--04): the frames draw the footer's API
+  // docs link on the FULL hub only -- between-cycles leaves the right edge
+  // empty, and the fresh deploy carries the affordance once, in the hero.
+  it("the footer's 'API docs' link renders on the full hub only", async () => {
     const scenarios: { name: string; queue: unknown[][] }[] = [
       {
         name: "full",
@@ -245,7 +248,7 @@ describe("DEC-582 (wave 11 amendment): hub action cluster is one exact render co
       const body = await res.text();
       const footer = body.split("<footer")[1]?.split("</footer>")[0] ?? "";
       const footerApiLinks = [...footer.matchAll(/href="\/docs\/api"[^>]*>\s*API docs\s*<\/a>/g)];
-      expect(footerApiLinks.length, `${scenario.name} footer API docs link`).toBe(1);
+      expect(footerApiLinks.length, `${scenario.name} footer API docs link`).toBe(scenario.name === "full" ? 1 : 0);
     }
   });
 });

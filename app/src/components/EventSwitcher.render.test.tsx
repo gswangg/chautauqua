@@ -343,9 +343,13 @@ describe('EventSwitcher', () => {
 
   // w6-h (DEC-369 amendment): the 24x23 caret-only button used to hold the
   // focus ring around bare ink; the focusable control is now the name+
-  // caret GROUP, with a real >=44px tap target so the ring frames the
-  // whole visible control.
-  it('the focusable "Switch event" control wraps both the event name and the caret, at a >=44px min-height', async () => {
+  // caret GROUP, so the ring frames the whole visible control.
+  // G13: the >=44px tap floor stays, but on PHONE only (DEC-367 wave-57,
+  // docs/design/README.md:92) -- at desktop it made this button the tallest
+  // thing in .chq-header and drove the admin header to 75px against the
+  // 59.5px every admin frame draws. Both halves are asserted: absent from
+  // the base rule, present in the phone block.
+  it('the focusable "Switch event" control wraps both the event name and the caret, with the >=44px tap floor scoped to phone', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
@@ -358,7 +362,9 @@ describe('EventSwitcher', () => {
     expect(within(trigger).getByText('Alpha Conf')).toHaveClass('chq-eventswitcher-name');
     expect(trigger.querySelector('.chq-eventswitcher-caret')).toBeInTheDocument();
 
-    expect(topLevelRuleBody(EVENT_SWITCHER_CSS, '.chq-eventswitcher-menu-btn')).toMatch(/min-height:\s*44px/);
+    expect(topLevelRuleBody(EVENT_SWITCHER_CSS, '.chq-eventswitcher-menu-btn')).not.toMatch(/min-height/);
+    const phoneBlock = EVENT_SWITCHER_CSS.slice(EVENT_SWITCHER_CSS.indexOf('@media (max-width: 700px)'));
+    expect(phoneBlock).toMatch(/\.chq-eventswitcher-menu-btn\s*\{[^}]*min-height:\s*44px/);
   });
 
   it('shows "New event…" for an organizer', async () => {

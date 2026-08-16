@@ -25,7 +25,7 @@ describe('Ruling A19: BulkEmailModal template picker copy', () => {
 
     render(
       <MemoryRouter>
-        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} recipientNames={['Ada Lovelace']} onClose={() => {}} />
       </MemoryRouter>,
     );
 
@@ -35,15 +35,18 @@ describe('Ruling A19: BulkEmailModal template picker copy', () => {
     // Empty option copy.
     expect(screen.getByRole('option', { name: 'No template — write it here' })).toBeInTheDocument();
 
-    // Reason sentence names the unavailable templates with the real rule.
+    // Reason sentence names the unavailable templates with the real rule --
+    // item 9 (frame 08-contacts--10): this ONE sentence replaces the old
+    // four-item "Use in Comms compose" link list entirely.
     await waitFor(() => {
       expect(
-        screen.getByText('Acceptance, Decline and Schedule live need a submission, so they are not available here.'),
+        screen.getByText(
+          'Acceptance, Decline and Schedule live need a submission, so they are not available here — send those from Comms.',
+        ),
       ).toBeInTheDocument();
     });
 
-    // Forward path is unchanged (copy ruling, not a capability change).
-    expect(screen.getAllByRole('link', { name: 'Use in Comms compose' }).length).toBe(3);
+    expect(screen.queryByRole('link', { name: 'Use in Comms compose' })).toBeNull();
 
     // Footnote names which merge fields DO resolve in this context.
     expect(screen.getByText(/merge fields:/)).toBeInTheDocument();

@@ -11,6 +11,21 @@
   gap: 20px;
 }
 
+/* Frame 07-comms--08: the shared .chq-pager (styles.css) space-betweens
+   three children (summary, Previous, Next), which strands Previous mid-row
+   whenever the summary text is short. Page-scoped override: the summary
+   stays left, Previous/Next become one right-flushed pair with a small gap
+   between them -- covers both this page's pagers (compose step 1, History)
+   since both sit under .chq-comms-page. */
+.chq-comms-page .chq-pager {
+  justify-content: flex-start;
+  gap: 24px;
+}
+
+.chq-comms-page .chq-pager > button:first-of-type {
+  margin-left: auto;
+}
+
 /* DEC-621: wraps the regular head+tab content so the phone landing swap
    (below) can hide it with one modifier class instead of unmounting it. */
 .chq-comms-main {
@@ -92,20 +107,125 @@
 /* Compose steps 1-2: recipient picker / template editor (w8-b)           */
 /* ---------------------------------------------------------------------- */
 
-.chq-comms-status-filter-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* Frame 07-comms--05 + ruling B1: the step-1 question heading, with the
+   "nothing sends yet" reassurance right-flushed on the same baseline. */
+.chq-comms-step1-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 6px 0 16px;
+}
+
+.chq-comms-step1-question {
+  margin: 0;
+  font-family: var(--chq-font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.chq-comms-step1-reassurance {
   font-size: 13px;
-  color: var(--chq-ink-2);
+  color: var(--chq-muted);
+  white-space: nowrap;
+}
+
+/* Frame 07-comms--05: counted status pills (shared .chq-pill vocabulary)
+   with the search input pushed right, inline on the same row -- replaces
+   the old checkbox-row-then-full-width-search stack. */
+.chq-comms-status-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.chq-comms-status-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chq-comms-status-pill {
+  position: relative;
+  cursor: pointer;
+}
+
+/* The real checkbox stays in the a11y tree (keyboard-operable, announced as
+   a checkbox, its name unaffected by the aria-hidden count span below) --
+   only visually hidden, so the label supplies the pill's whole appearance. */
+.chq-comms-status-pill-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+}
+
+.chq-comms-status-pill-count {
+  color: inherit;
+}
+
+.chq-comms-status-search-label {
+  flex: 0 0 auto;
+}
+
+/* Visually-hidden but announced label text -- keeps the search input's
+   accessible name "Search" without a visible caption above it (the frame
+   draws a bare placeholder-only box) and without an aria-label, which would
+   outrank the placeholder in the text-caps scan's exemption-matching
+   priority (see the doc comment at this control in ComposeWizard.tsx). */
+.chq-comms-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.chq-comms-status-search {
+  width: 230px;
+  flex: 0 0 auto;
 }
 
 /* w8-d (DEC-051/DEC-780 amendment): step 1's primary moves into a footer
-   row, same shape as chq-comms-template-actions (step 2). */
+   row, same shape as chq-comms-template-actions (step 2). Frame 07-comms--05:
+   the row splits into a left note (who has no slot yet) and the
+   Cancel/primary pair, right-flushed. */
+.chq-comms-select-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+}
+
+.chq-comms-select-footer-note {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 .chq-comms-select-actions {
   display: flex;
   gap: 9px;
-  padding-top: 14px;
+  margin-left: auto;
+}
+
+/* Frame 07-comms--05: the selection bar's action cluster (Select all N ·
+   Clear) is right-flushed, not mid-row -- .chq-bulkbar-actions itself is
+   the shared class (styles.css); this page-scoped override only changes
+   its position inside the compose wizard's own bar. */
+.chq-compose-wizard .chq-bulkbar-actions {
+  margin-left: auto;
+  gap: 12px;
 }
 
 .chq-comms-template-label {
@@ -552,9 +672,17 @@
    DEC-751 (wave-21 amendment, B8): the five tracks below are declared ONCE
    here and shared by both the batch row and the recipients band it
    discloses -- neither may free-float its own measure. */
+/* Frame 07-comms--08 fidelity fix: the trailing action track was `auto`,
+   sized to EACH ROW'S OWN content -- since every `.chq-comms-batch-row`/
+   `.chq-comms-recipient-row` is its own independent grid container (not
+   rows of one shared table), an empty head-row placeholder (0px) and a
+   real "Open"/"Close" button (~66.4px) produced two DIFFERENT auto widths,
+   which pushed the preceding `1fr` (Subject) track to a different actual
+   width per row and misaligned every column after it. Pinning the action
+   track keeps it identical across every row that shares this grid. */
 .chq-comms-batch {
   display: block;
-  --chq-comms-batch-grid: 150px 1fr 130px 150px auto;
+  --chq-comms-batch-grid: 150px 1fr 130px 150px 96px;
   --chq-comms-batch-gap: 18px;
 }
 
@@ -674,6 +802,27 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--chq-muted);
+}
+
+/* Frame 07-comms--08: SENT/SKIPPED/FAILED as a bold uppercase micro-label,
+   not sentence case. */
+.chq-comms-recipient-result {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-ink-2);
+}
+
+/* Frame 07-comms--08's footer honesty line, shown only when the recipient
+   list is a truncated projection of the batch (items.length below the sum
+   of the batch's own statusCounts -- real data the batch prop already
+   carries, never a fabricated count). */
+.chq-comms-batch-recipients-footer {
+  padding: 10px 0 2px;
+  font-size: 12px;
+  color: var(--chq-muted);
+  line-height: 1.5;
 }
 
 .chq-comms-recipient-to {
@@ -925,7 +1074,29 @@
 }
 
 .chq-comms-compose-col-slot {
-  width: 118px;
+  /* Frame 07-comms--05: kept on one line so a scheduled row's day+time
+     never wraps and inflates the row height -- widened from 118px, which
+     wrapped "Tue 18 Aug 10:00" at the table's narrower breakpoints. Under
+     table-layout:fixed the <th> width alone sets the column; the matching
+     no-wrap for the <td>'s own text is the structural sibling rule below
+     (DEC-902's contract keeps column-class hooks off <td>, th-only). */
+  width: 150px;
+  white-space: nowrap;
+}
+
+.chq-comms-compose-table td:last-child {
+  white-space: nowrap;
+}
+
+/* MINOR: the status cell reads as an 11px muted uppercase micro-label
+   (matching the table's own header register) instead of 14px sentence
+   case. */
+.chq-comms-compose-status-cell {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1236,6 +1407,41 @@
   flex-wrap: wrap;
 }
 
+/* Frame 07-comms--13 + DESIGN-RULINGS "Errors are set in weight and rule,
+   never colour alone": a refusal takes a 1px ink border with a 3px ink
+   LEFT edge, over the same --chq-surface-sunk fill .chq-error-banner
+   already uses everywhere else. Page-scoped: .chq-error-banner itself
+   (styles.css) keeps its plain all-round border for every other caller in
+   the app; only the compose pre-flight refusal gets the heavier edge. */
+.chq-comms-refusal-banner.chq-error-banner {
+  border: 1px solid var(--chq-ink);
+  border-left: 3px solid var(--chq-ink);
+  background: var(--chq-surface-sunk);
+}
+
+/* Frame 07-comms--13: the caption ("Sending cannot be undone...") sits left,
+   the action cluster right-flushed, both on one row. */
+.chq-comms-refusal-footer {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.chq-comms-refusal-caption {
+  margin: 0;
+}
+
+.chq-comms-refusal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* ---------------------------------------------------------------------- */
 /* History tab (DEC-603 amendment, wave 18): task-w18-f                   */
 /* ---------------------------------------------------------------------- */
@@ -1265,6 +1471,13 @@
    wraps (flex-wrap: wrap) instead of being squeezed by the flexible titles
    block. .chq-btn already zeroes text-decoration for anchor-as-button. */
 .chq-comms-history-export {
+  flex: 0 0 auto;
+}
+
+.chq-comms-history-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   flex: 0 0 auto;
 }
 

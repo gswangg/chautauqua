@@ -11,7 +11,6 @@ import { FieldList } from './FieldList';
 import { FieldModal, type FieldModalInput } from './FieldModal';
 import { guardEditableField, moveId } from './logic';
 import type { CfpForm, EventTrack, FormField } from './types';
-import { MAX_FORM_FIELDS } from '../../lib/batch-caps';
 import './forms.css';
 
 interface EventSummary {
@@ -379,9 +378,11 @@ export function FormsPage() {
             >
               Add a question
             </button>
-            <span className="chq-forms-field-cap-hint">
-              {form.fields.length} of {MAX_FORM_FIELDS} questions
-            </span>
+            {/* G13 lane-D fix (02-submissions--04): the frame draws a
+                2-item FIELDS header -- label left, 'Add a question'
+                right-flushed -- with no cap counter; the DEC-422 hint
+                displaced the link 360px off its drawn position. The
+                MAX_FORM_FIELDS cap stays enforced server-side. */}
           </div>
           <div className="chq-forms-section-body">
             <FieldList
@@ -407,9 +408,10 @@ export function FormsPage() {
                   : 'Copy failed — select the text and copy it manually'
                 : null}
             </div>
-            <Link to="/settings?section=cfp" className="chq-forms-settings-link">
-              Settings &rsaquo; Call for papers
-            </Link>
+            {/* G13 lane-D fix (02-submissions--04): the undrawn
+                'Settings › Call for papers' link below the public-link
+                footer row is removed -- the frame ends the section at that
+                row. */}
           </div>
         </section>
       </div>

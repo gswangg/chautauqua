@@ -305,7 +305,7 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
         // off..." warning, which lives on the eyebrow row above instead.
         <div className="chq-settings-saved-embed-build-row">
           <button type="button" className="chq-link-button" onClick={onBuild}>
-            Build an embed
+            New embed
           </button>
           <p className="chq-settings-note">
             A saved embed keeps its own URL · editing it updates every page that uses it

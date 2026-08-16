@@ -115,6 +115,13 @@
   gap: 10px;
 }
 
+/* G13 (frame 08-contacts--14, ruling B7): the per-stage empty block sits
+   inside a narrow kanban column, so it takes a tighter inset than the
+   page-level empty block whose shared classes it composes. */
+.chq-contacts-pipeline-column-empty {
+  padding: 18px 12px;
+}
+
 .chq-contacts-pipeline-card {
   border: 1px solid var(--chq-rule);
   border-radius: var(--chq-r-card, 5px);
@@ -247,11 +254,12 @@
   color: var(--chq-muted);
 }
 
-/* w4-c: now an inline span in .chq-contacts-pipeline-card-fit-row, beside
-   the fit chip, rather than its own block-level line below it. */
+/* w4-c: an inline span in .chq-contacts-pipeline-card-fit-row, beside the
+   fit chip, rather than its own block-level line below it. Item 7 (frame
+   08-contacts--04): upright, not italic -- the frame draws the chip and
+   reason side by side in the card's ordinary text weight. */
 .chq-contacts-pipeline-card-rationale {
   font-size: 12px;
-  font-style: italic;
   color: var(--chq-muted);
 }
 
@@ -394,6 +402,25 @@
   color: var(--chq-muted);
 }
 
+/* Item 7 (fidelity fix-forward): the fit-edit trigger moved off the card
+   face into the detail panel, beside the stage select it sits under -- same
+   label-then-control rhythm as .chq-contacts-pipeline-detail-stage, but a
+   single row (label, pill, rationale, edit link) rather than a stacked
+   column since nothing here is a full-width control. */
+.chq-contacts-pipeline-detail-fit {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  margin-top: 10px;
+}
+
+.chq-contacts-pipeline-detail-fit-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-pipeline-notes {
   display: flex;
   flex-direction: column;
@@ -530,11 +557,6 @@
   margin-right: auto;
 }
 
-.chq-contacts-merge-intro {
-  font-size: 13px;
-  color: var(--chq-muted);
-}
-
 .chq-contacts-merge-picks {
   display: flex;
   flex-direction: column;
@@ -548,11 +570,29 @@
   padding: 8px 0;
 }
 
+/* Item 10 (frame 08-contacts--05): one full-width title band -- back link
+   + H1 left, pair counter right-flushed on the same row, closed by a 1px
+   ink rule (same weight the compare table's own head rule uses). */
+.chq-contacts-merge-titleband {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--chq-ink);
+}
+
+.chq-contacts-merge-titleband-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .chq-contacts-merge-pair-count {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--chq-muted);
-  margin: 4px 0 0;
+  white-space: nowrap;
 }
 
 .chq-contacts-merge-compare-head {
@@ -618,16 +658,25 @@
   color: var(--chq-muted);
 }
 
-/* DEC-992 amendment (wave 4): the ONE combine-rule statement, in a tinted
-   box above the compare table -- replaces the loose trailing footnote
-   paragraphs (two of which used to end with the same clause). */
+/* Item 10 (frame 08-contacts--05): the ONE consequence block, now BELOW the
+   compare table -- the combine rule (bold, first line) and the real
+   submissions/tasks impact + deletion fact (second line) stacked in one
+   tinted box, replacing the old split (rule box above the table, a loose
+   impact paragraph below it). */
 .chq-contacts-merge-rule-box {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--chq-ink-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   background: var(--chq-surface-sunk);
   border-radius: var(--chq-r-card);
-  padding: 10px 14px;
+  padding: 12px 14px;
+}
+
+.chq-contacts-merge-rule-box-rule {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
 }
 
 /* DEC-992 amendment (wave 4): 'Not a duplicate' is an escape hatch, not a
@@ -652,6 +701,7 @@
 }
 
 .chq-contacts-merge-impact {
+  margin: 0;
   font-size: 13px;
   color: var(--chq-ink-2);
   font-weight: 600;
@@ -846,67 +896,67 @@
   white-space: nowrap;
 }
 
-/* w15-c: minmax(0, 1fr), not a bare 1fr -- a bare 1fr track still carries a
-   min-content floor, and the long "Full name (splits into first / last)"
-   <option> text was that floor, pushing both tracks to ~288px and
-   overflowing the modal's content box (same root cause as the headshot-
-   overflow fix). minmax(0, 1fr) lets each track shrink below its content's
-   natural width; the select itself gets max-width: 100% below so it clips
-   instead of forcing the track wider. */
+/* G13 (frame 08-contacts--03): the match step is a full-width row list --
+   column name over its sample on the left, an → glyph mid-row, one select
+   right-flushed -- never a two-up grid of bordered cards. */
 .chq-contacts-import-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.chq-contacts-import-column-block {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-  border: 1px solid var(--chq-rule);
-  border-radius: var(--chq-r-card, 5px);
-  background: var(--chq-surface);
+}
+
+.chq-contacts-import-column-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-rule);
   min-width: 0;
 }
 
-.chq-contacts-import-column-block select {
-  max-width: 100%;
+.chq-contacts-import-column-id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-contacts-import-column-arrow {
+  flex: none;
+  color: var(--chq-muted);
+  font-size: 15px;
+}
+
+/* Frame draws the select at 262px, right-flushed. max-width lets it shrink
+   inside the modal's content box rather than forcing an overflow (the long
+   "Full name (splits into first / last)" option was once that floor). */
+.chq-contacts-import-column-select {
+  flex: none;
+  width: 262px;
+  max-width: 48%;
+}
+
+/* Dashed skip register IN the select's place (frame 08--03): an unmapped
+   column's select reads 'Skip this column' inside a dashed outline --
+   deliberate, reversible -- not a missing render. */
+.chq-contacts-import-column-select.is-skipped {
+  border-style: dashed;
+  border-color: var(--chq-muted);
+  color: var(--chq-muted);
+  background: transparent;
 }
 
 .chq-contacts-import-column-header {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .chq-contacts-import-column-sample {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--chq-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Dashed skip affordance, same visual family as the unrated-fit pill
-   (DEC-821): dashed outline reads as a deliberate, reversible state, not a
-   missing render. */
-.chq-contacts-import-column-skip {
-  align-self: flex-start;
-  background: transparent;
-  border: 1px dashed var(--chq-muted);
-  border-radius: var(--chq-r-ctl, 4px);
-  color: var(--chq-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  cursor: pointer;
-}
-
-.chq-contacts-import-column-skip[aria-pressed='true'] {
-  color: var(--chq-ink);
-  border-color: var(--chq-ink);
 }
 
 .chq-contacts-import-dedupe {
@@ -939,6 +989,30 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* G13 (frame 08-contacts--13, ruling B5 'two counts as a heading'): the dry
+   run's counts ARE the step's heading -- sentence case at heading size --
+   with the file · rows · match-key line as its sub. */
+.chq-contacts-import-review-heading {
+  margin: 0;
+  font-family: var(--chq-font-display);
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.chq-contacts-import-review-sub {
+  margin: -8px 0 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* G13 (frame 08-contacts--13): the '‹ Match the columns' return path above
+   the heading -- a tertiary link, left-flushed, never a boxed button. */
+.chq-contacts-import-review-back {
+  align-self: flex-start;
+  padding-left: 0;
 }
 
 .chq-contacts-import-review-table {
@@ -1110,4 +1184,77 @@
     border-bottom: none;
     overflow-wrap: anywhere;
   }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Add to an event (item 11, frame 08-contacts--11)                       */
+/* ---------------------------------------------------------------------- */
+
+/* EVENT is two stacked full-width choice cards, not a <select> -- selected
+   = ink border on the paper token; unselected = the ordinary bordered
+   surface, muted text. Compound `.chq-modal.chq-contacts-add-to-event-modal`
+   below overrides the shared 560px default (DEC-367: type/weight, not a
+   third border colour, marks the selected state). */
+.chq-add-to-event-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-add-to-event-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-ctl);
+  background: var(--chq-surface);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-muted);
+  cursor: pointer;
+}
+
+.chq-add-to-event-card:hover {
+  border-color: var(--chq-border);
+  /* a:hover-proof (B8): hover darkens the frame, never repaints the label --
+     the base color is re-asserted here so the global a:hover olive can never
+     win over it if this card is ever rendered as an anchor. */
+  color: var(--chq-muted);
+}
+
+.chq-add-to-event-card.is-selected {
+  border: 2px solid var(--chq-ink);
+  background: var(--chq-paper);
+  color: var(--chq-ink);
+}
+
+/* The 'As' role segmented control's selected state: the frame draws
+   paper-filled + ink-border, not the shared olive chq-btn-primary fill --
+   compound selector so it wins over the shared .chq-btn regardless of CSS
+   load order (same idiom as agenda.css's compound lattice rules). */
+.chq-btn.chq-add-to-event-role-btn {
+  border: 1px solid var(--chq-rule);
+  background: var(--chq-surface);
+  color: var(--chq-ink);
+}
+
+.chq-btn.chq-add-to-event-role-btn:hover {
+  border-color: var(--chq-border);
+}
+
+.chq-btn.chq-add-to-event-role-btn.is-selected {
+  border: 2px solid var(--chq-ink);
+  background: var(--chq-paper);
+  color: var(--chq-ink);
+}
+
+/* Item 11: 480px per the frame, narrower than the shared 560px default --
+   ModalFrame's size prop only offers 'default'/'wide' (560/640), so this
+   overrides the width directly via the compound class (0,2,0 specificity),
+   the same mechanism .chq-modal.is-wide already uses for the opposite
+   direction. */
+.chq-modal.chq-contacts-add-to-event-modal {
+  width: min(480px, 100%);
 }

@@ -163,7 +163,14 @@ describe("upload accepted-type/size-cap vocabulary has one source (DEC-020, CNT-
     // Sanity: the population must be non-empty and match every surface this
     // wave's enumeration found, so a future refactor that renames/removes a
     // surface is visible here rather than silently shrinking the scan.
-    expect(files.length).toBeGreaterThanOrEqual(5);
+    // G13 A20: the floor drops 5 -> 4 because the Contacts drawer's HEADSHOT
+    // row -- native file input and all -- was removed as unframed (frame
+    // 08-contacts--02 draws PROFILE as bio + links). The four remaining
+    // governed surfaces are content/UploadZone.tsx,
+    // settings/ResourcesPanel.tsx, portal/profile.tsx (HEADSHOT_EXTENSIONS)
+    // and portal/tasks/views.tsx. Adjusted deliberately, with the removal
+    // named, rather than left to shrink silently.
+    expect(files.length).toBeGreaterThanOrEqual(4);
 
     const results: ScanResult[] = files.map((f) => ({
       file: f,

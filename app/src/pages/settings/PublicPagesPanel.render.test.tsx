@@ -58,7 +58,7 @@ describe('PublicPagesPanel', () => {
       expect(within(section).getByText('Sessions')).toBeInTheDocument();
     });
 
-    ['Sessions', 'Speakers', 'Agenda', 'Schedule', 'Speaker gallery', 'CFP submit page'].forEach((name) => {
+    ['Sessions', 'Speakers', 'Agenda', 'Schedule and ICS', 'Speaker gallery', 'CFP submit page'].forEach((name) => {
       expect(within(section).getByText(name)).toBeInTheDocument();
     });
 
@@ -146,7 +146,7 @@ describe('PublicPagesPanel', () => {
     expect(within(savedEmbedsSection).getByRole('link', { name: 'Edit' })).toBeInTheDocument();
     expect(within(savedEmbedsSection).getByRole('button', { name: 'Turn off' })).toBeInTheDocument();
     expect(within(savedEmbedsSection).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
-    expect(within(savedEmbedsSection).getByRole('button', { name: 'Build an embed' })).toBeInTheDocument();
+    expect(within(savedEmbedsSection).getByRole('button', { name: 'New embed' })).toBeInTheDocument();
     // The rows render, but the builder heading itself only mounts once opened.
     expect(screen.queryByRole('heading', { name: 'Embeds' })).not.toBeInTheDocument();
   });

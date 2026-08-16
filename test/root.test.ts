@@ -459,13 +459,16 @@ describe("GET / — anonymous hub (DEC-581)", () => {
 
 // w15-d: closing the six r2-home fixes (mandate item 31).
 describe("GET / — footer (mandate item 31a/31b)", () => {
-  it("never emits a stray gear glyph before the GitHub mark, and links an API docs footer item to /docs/api", async () => {
+  it("never emits a stray gear glyph before the GitHub mark, and links API docs to /docs/api", async () => {
     const app = buildApp({ queue: buildQueue({ events: [] }) });
     const res = await app.request("/", {}, { ASSETS: fakeAssets() });
     const body = await res.text();
     expect(body).not.toContain("⚙");
+    // G13 lane-D fix (12-home--04): the fresh deploy carries the affordance
+    // once, as the hero tertiary -- the footer's right edge stays empty.
     expect(body).toContain('href="/docs/api"');
-    expect(body).toContain(">API docs<");
+    expect(body).toContain("API docs ›");
+    expect(body).not.toContain(">API docs<");
   });
 });
 

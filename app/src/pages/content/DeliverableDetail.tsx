@@ -315,10 +315,6 @@ export function DeliverableDetail({
     return setContentStatus('changes_requested');
   }
 
-  function handlePending() {
-    return setContentStatus('pending');
-  }
-
   // w6-e (DEC-881): the band's status reads the SAME predicate the worklist
   // row does -- headerDetail.reuploaded, absent (false) only while the
   // header fetch hasn't resolved yet, never a fabricated guess.
@@ -364,34 +360,21 @@ export function DeliverableDetail({
               {` · ${subtitleTrailer}`}
             </p>
           )}
-          {/* DEC-998: quiet turn-diet actions straight into the submission's
-              open editor and its open history -- tertiary text links, no
-              bordered buttons (affordance grammar is conditional-and-quiet). */}
-          <p className="chq-content-detail-actions">
-            <Link to={`/submissions/${submissionId}?edit=1`} className="chq-content-detail-action-link">
-              Edit title and abstract &rsaquo;
-            </Link>
-            <Link to={`/submissions/${submissionId}?history=1`} className="chq-content-detail-action-link">
-              Revision history &rsaquo;
-            </Link>
-          </p>
         </div>
-        {/* w5-i: "Download all" moves onto the header block (title row),
-            alongside the breadcrumb/H1, rather than sharing the status
-            band's own row with Approve -- the status band states a fact
-            (current status) plus the one action that changes it; a
-            page-level export action belongs with the page's own header, the
-            same anatomy FilesLibrary already uses. */}
-        <div className="chq-content-detail-head-actions">
-          <button
-            type="button"
-            className="chq-btn chq-btn-secondary"
-            disabled={downloadPending || !eventId}
-            onClick={() => void handleDownloadAll()}
-          >
-            {downloadPending ? 'Downloading…' : 'Download all'}
-          </button>
-        </div>
+        {/* DEC-998 / G13 lane-D fix (05-content--01, ruling A2): quiet
+            turn-diet actions into the submission's open editor and its open
+            history — tertiary links RIGHT-FLUSHED against the session title
+            (the pattern the submission detail already uses), never a
+            bordered button. The frame carries no button in the title row —
+            "Download all" is the status band's tertiary. */}
+        <p className="chq-content-detail-actions">
+          <Link to={`/submissions/${submissionId}?edit=1`} className="chq-content-detail-action-link">
+            Edit title and abstract &rsaquo;
+          </Link>
+          <Link to={`/submissions/${submissionId}?history=1`} className="chq-content-detail-action-link">
+            Revision history &rsaquo;
+          </Link>
+        </p>
       </div>
 
       {/* DEC-901 amendment (wave 41): sunk CONTENT STATUS band -- states the
@@ -482,16 +465,17 @@ export function DeliverableDetail({
               Request changes
             </button>
           )}
-          {pill !== 'pending' && (
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              disabled={statusPending}
-              onClick={() => void handlePending()}
-            >
-              Pending
-            </button>
-          )}
+          {/* G13 lane-D fix (05-content--01): the frame draws no 'Pending'
+              control in the status band — [Approve] plus the Download-all
+              tertiary only. */}
+          <button
+            type="button"
+            className="chq-btn chq-btn-tertiary"
+            disabled={downloadPending || !eventId}
+            onClick={() => void handleDownloadAll()}
+          >
+            {downloadPending ? 'Downloading…' : 'Download all'}
+          </button>
         </div>
       </div>
 

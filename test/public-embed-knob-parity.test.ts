@@ -412,7 +412,7 @@ describe("DEC-594/DEC-634 (EMB-5): sessions?day= filters by scheduled day, URL s
     // is a configured knob, not a user-removable filter, on an embed) — so
     // from SessionsContent's own props this reads as the 'fresh' case
     // (no facet in flight, grandTotal 0), not 'filtered'.
-    expect(html).toContain("The programme is not out yet.");
+    expect(html).toContain("The programme is not out yet");
   });
 
   it("sessions emits no day param in its Show-more link, even when one was supplied", async () => {

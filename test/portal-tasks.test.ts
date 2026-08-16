@@ -143,7 +143,7 @@ describe("portal tasks page — DEC-953 status pill wording", () => {
     expect(html).not.toMatch(/>Completed</);
     // class hooks and the summary line stay stable, just the count word changes
     expect(html).toContain("chq-flag chq-portal-flag-done");
-    expect(html).toContain("1 of 2 done");
+    expect(html).not.toContain("1 of 2 done"); // G13 (frame 10--05): the undrawn progress bar is retired
     // the "Mark complete" button label and the POST endpoint are unchanged
     expect(html).toContain(">Mark complete<");
     expect(html).toContain('action="/portal/tasks/assign-pending/complete"');

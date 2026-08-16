@@ -82,7 +82,7 @@ describe("DEC-919 (wave 47): sessions surface fresh/filtered zero state", () => 
         page: 1,
       }),
     );
-    expect(html).toContain("The programme is not out yet.");
+    expect(html).toContain("The programme is not out yet");
     expect(html).toContain("Sessions appear here once the schedule is published.");
     expect(html).not.toContain("chq-pub-filter-row");
     expect(html).not.toContain("Clear filters");

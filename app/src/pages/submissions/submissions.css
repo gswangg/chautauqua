@@ -227,28 +227,33 @@
   width: 44px;
 }
 
+/* G13 lane-D fix (02-submissions--00): drawn column widths -- the app's
+   measure is 68px wider than the frame's content box, yet six of eight
+   columns were narrower than drawn, wrapping the seeded 'Developer
+   Experience' track onto two lines. Fixed columns take the frame's widths;
+   Title flexes with the surplus. */
 .chq-submissions-col-ref {
-  width: 74px;
+  width: 88px;
 }
 
 .chq-submissions-col-speakers {
-  width: 150px;
+  width: 164px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .chq-submissions-col-track {
-  width: 130px;
+  width: 144px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .chq-submissions-col-status {
-  width: 108px;
+  width: 122px;
 }
 
 .chq-submissions-col-sent {
-  width: 92px;
+  width: 106px;
 }
 
 /* Every custom column (the ColumnPicker can add any number of them at
@@ -313,6 +318,10 @@
   letter-spacing: -0.01em;
   color: var(--chq-ink);
   text-decoration: none;
+  /* G13 lane-D fix (02-submissions--00): the inherited 1.6 line box (24px)
+     overtops the cell strut and stretches every row 8.3px past the drawn
+     46.5px pitch. */
+  line-height: 1.3;
 }
 
 .chq-submissions-table-ref {
@@ -693,4 +702,11 @@
 .chq-submissions-delete-footer {
   display: flex;
   gap: 8px;
+}
+
+/* G13 lane-D fix (02-submissions--07): the save-view dialog is drawn at
+   440, narrower than the shared 560 .chq-modal. */
+.chq-submissions-save-view-modal {
+  width: 440px;
+  max-width: calc(100vw - 40px);
 }

@@ -85,7 +85,9 @@ export const PORTAL_BACK_LINKS: ReadonlyArray<{
   { test: (to) => to === "/portal", label: "Your portal" },
   { test: (to) => to === "/portal/submissions", label: "Your submissions" },
   { test: (to) => to === "/portal/tasks", label: "Your tasks" },
-  { test: (to) => /^\/portal\/submissions\/[^/]+$/.test(to), label: "Your submission" },
+  // G13 (frames 10--09/22/23): the frames name the detail page "Your
+  // session", so the back link onto it says the same.
+  { test: (to) => /^\/portal\/submissions\/[^/]+$/.test(to), label: "Your session" },
 ];
 
 function portalBackLinkLabel(to: string): string {
@@ -145,7 +147,12 @@ export function PortalLayout(props: {
   // ahead of the sign-out control — placement only, never touching the
   // sign-out form/button below (a sibling task owns that cascade).
   footerExtra?: unknown;
+  // G13: /portal/preview is read-only impersonation -- its identity slot
+  // renders in the header cluster but it must NOT grow a second mutating
+  // form (test/portal-preview.test.ts's zero-mutating-controls contract).
+  headerSignOut?: boolean;
 }) {
+  const headerSignOut = props.headerSignOut ?? true;
   const accent = safeAccent(props.branding.accentColor);
   return (
     <html lang="en">
@@ -158,12 +165,43 @@ export function PortalLayout(props: {
       </head>
       <body style={`--chq-brandable-accent: ${accent}`}>
         <div class="chq-portal-shell">
+          {/* G13 (frames 10--04/23/24, MAJOR): the portal header sets the
+              'chautauqua' wordmark first, with the event name beside it as a
+              muted secondary (frame 24, the 1600 portal authority) -- the
+              event name no longer occupies the wordmark's slot. Right side:
+              speaker name and a Sign out control as one 11px caps cluster
+              ('PRIYA RAMAN · SIGN OUT'). The header sign-out POSTs through
+              the same /logout + CSRF proof as the footer control. */}
           <header class="chq-header">
-            <span class="chq-eventmark">
-              {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
-              {props.branding.eventName}
+            <span class="chq-portal-brandline">
+              <span class="chq-wordmark">chautauqua</span>
+              <span class="chq-eventmark">
+                {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
+                {props.branding.eventName}
+              </span>
             </span>
-            {props.speakerName ? <span class="chq-portal-header-name">{props.speakerName}</span> : null}
+            {/* Gated on speakerName: /portal/preview (no signed-in speaker)
+                keeps its own identity slot and stays at exactly one <form>
+                (test/portal-preview.test.ts's zero-mutating-controls
+                contract). */}
+            {props.speakerName ? (
+              <span class="chq-portal-header-id">
+                <span class="chq-portal-header-name">{props.speakerName}</span>
+                {headerSignOut ? (
+                  <>
+                    <span class="chq-portal-header-sep" aria-hidden="true">·</span>
+                    <form method="post" action="/logout" class="chq-portal-header-signout">
+                      <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+                      {/* chq-btn-tertiary keeps the theme's brand-filled bare-submit
+                          rule (button[type=submit]:not([class*="chq-btn-"])) off
+                          this control; the portal class then re-registers it to the
+                          header's caps cluster. */}
+                      <button type="submit" class="chq-btn chq-btn-tertiary chq-portal-header-signout-btn">Sign out</button>
+                    </form>
+                  </>
+                ) : null}
+              </span>
+            ) : null}
           </header>
           <main class="chq-measure">{props.children as any}</main>
           {/* DEC-154: sign-out control on every /portal/* page, via the

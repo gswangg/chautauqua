@@ -136,28 +136,41 @@ export function AddToEventModal({ contact, onClose }: Props) {
 
       {submissionId === null && (
         <>
-          <FormRow label="Event" htmlFor="add-to-event-select">
-            <select
-              id="add-to-event-select"
-              className="chq-select"
-              value={eventId}
-              onChange={(e) => setEventId(e.target.value)}
-            >
-              {events.length === 0 && <option value="">No events</option>}
-              {events.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  {ev.name}
-                </option>
-              ))}
-            </select>
+          {/* Item 11 (frame 08-contacts--11): EVENT is two stacked
+              full-width choice cards, not a <select> -- selected = ink
+              border on the paper token, unselected = the ordinary bordered
+              surface. Buttons (not native radios) to match the same
+              aria-pressed idiom the role control below already uses. */}
+          <FormRow label="Event">
+            {events.length === 0 ? (
+              <p className="chq-meta">No events</p>
+            ) : (
+              <div className="chq-add-to-event-cards" role="group" aria-label="Event">
+                {events.map((ev) => (
+                  <button
+                    key={ev.id}
+                    type="button"
+                    className={`chq-add-to-event-card${eventId === ev.id ? ' is-selected' : ''}`}
+                    aria-pressed={eventId === ev.id}
+                    onClick={() => setEventId(ev.id)}
+                  >
+                    {ev.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </FormRow>
           <FormRow label="As">
+            {/* Item 11: the frame's selected segment is paper-filled with an
+                ink border, not the shared olive chq-btn-primary fill -- a
+                dedicated modifier restyles it with tokens rather than
+                reaching for the primary/secondary button pair. */}
             <div className="chq-segmented" role="group" aria-label="As">
               {PARTICIPANT_ROLE_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
-                  className={role === opt.value ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+                  className={`chq-btn chq-add-to-event-role-btn${role === opt.value ? ' is-selected' : ''}`}
                   aria-pressed={role === opt.value}
                   onClick={() => setRole(opt.value)}
                 >

@@ -187,9 +187,9 @@ describe('ViewTabs save dialog (DEC-422 per-event cap disclosure)', () => {
     await screen.findByRole('button', { name: 'View 0' });
     fireEvent.click(screen.getByRole('button', { name: 'Save current as view' }));
 
-    // The caption names its noun, matching the house cap-caption pattern
-    // ('N of MAX options', 'N of MAX questions').
-    expect(await screen.findByText(`3 of ${MAX_SAVED_VIEWS_PER_EVENT} saved views`)).toBeInTheDocument();
+    // G13 lane-D fix (02-submissions--07): the frame draws no cap line in
+    // the normal (under-cap) state -- the caption is reserved for the cap.
+    expect(screen.queryByText(`3 of ${MAX_SAVED_VIEWS_PER_EVENT} saved views`)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save the view' })).toBeEnabled();
   });
 

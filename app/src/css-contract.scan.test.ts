@@ -374,6 +374,8 @@ const DYNAMIC_CLASS_TOKENS = new Set<string>([
   'chq-settings-field-seats',
   'chq-settings-field-name',
   'chq-settings-field-slug',
+  'chq-settings-field-venue',
+  'chq-settings-field-timezone',
   'chq-settings-field-full',
 ]);
 

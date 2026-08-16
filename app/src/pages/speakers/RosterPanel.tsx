@@ -247,6 +247,16 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
             </>
           }
         >
+          {/* G13 lane-D fix (04-speakers--00, ruling A13): 'the roster is
+              where adding people lives' — the CSV-import link sits here
+              beside Add a speaker, off the grid's title row, carrying the
+              event id so the Contacts wizard preselects this event. */}
+          <Link
+            to={`/contacts?import=1&eventId=${encodeURIComponent(eventId)}`}
+            className="chq-link-button chq-speakers-import-link"
+          >
+            Import speakers from a CSV
+          </Link>
           {error && <div className="chq-error">{error}</div>}
           {errorSummaryProblems.length > 0 && (
             <ErrorSummary

@@ -449,7 +449,7 @@ export function ScheduleContent(props: {
                   <div class="chq-pub-schedule-day-group" data-day={day} style="display:none">
                     <div class="chq-pub-schedule-day-heading">
                       <h2 class="chq-pub-section-title">{formatDay(day)}</h2>
-                      <span class="chq-pub-schedule-day-count">0</span>
+                      <span class="chq-pub-schedule-day-count">0 sessions</span>
                     </div>
                     {sorted.map((item) => (
                       <ScheduleRow event={props.event} item={item} day={day} base={base} carry={detailRowCarry || undefined} />

@@ -160,6 +160,11 @@ export const CFP_CSS = `
   .chq-pub-surface-title { font-family: var(--chq-font-display); font-size: 36px; font-weight: 700; letter-spacing: -0.04em; }
 
   .chq-cfp-links { display: flex; flex-direction: row; flex-wrap: wrap; gap: 18px; font-size: 13px; font-weight: 700; }
+  /* G13 (frames 10--16/17/19/25, MAJOR): dead-end/confirmation links are
+     the B8 tertiary register -- olive, no rest-state underline (underline
+     is the hover state). */
+  .chq-cfp-links a, .chq-cfp-confirm-actions a { color: var(--chq-brand); text-decoration: none; }
+  .chq-cfp-links a:hover, .chq-cfp-confirm-actions a:hover { text-decoration: underline; }
 
   /* w14-f (DEC-986): phone-only two-step CFP wizard chrome. Every class
      below is inert on desktop (display: none, no other declaration) --

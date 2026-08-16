@@ -43,6 +43,24 @@ interface Props {
   contactIds: string[];
   eventId: string | null;
   onClose: () => void;
+  // Item 9 (frame 08-contacts--10): the frame heads the modal with the
+  // recipients' actual names beneath the H1 ('Priya Raman, Marcus Okafor'),
+  // not just a count -- callers already hold these (the directory table's
+  // loaded rows, or the drawer's own contact), so this is threaded through
+  // rather than a second contacts fetch by id.
+  recipientNames: string[];
+}
+
+// A subtitle line of names is fine for a handful of recipients but unbounded
+// for a large bulk selection -- cap it the same way a sentence would ("and N
+// more") rather than letting the header wrap for pages.
+const RECIPIENT_NAMES_SHOWN = 6;
+
+function recipientNamesLine(names: string[]): string {
+  if (names.length <= RECIPIENT_NAMES_SHOWN) return names.join(', ');
+  const shown = names.slice(0, RECIPIENT_NAMES_SHOWN);
+  const rest = names.length - shown.length;
+  return `${shown.join(', ')} and ${countOf(rest, 'more')}`;
 }
 
 interface EmailTemplate {
@@ -95,7 +113,7 @@ function extractFieldErrors(err: ApiError): Record<string, string> {
   return out;
 }
 
-export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
+export function BulkEmailModal({ contactIds, eventId, onClose, recipientNames }: Props) {
   const [subject, setSubject] = useState('');
   const [bodyText, setBodyText] = useState('');
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -211,6 +229,9 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   }
 
   const title = `Email ${countOf(contactIds.length, 'contact')}`;
+  // Item 9 (frame 08-contacts--10): the recipients' names sit beneath the
+  // H1, in the modal sub -- the header states WHO, not just how many.
+  const subtitle = recipientNames.length > 0 ? recipientNamesLine(recipientNames) : undefined;
   // DEC-967: names the resolved subject (merge fields applied), falling back
   // to the raw typed subject only when no preview row has rendered yet.
   const resolvedSendSubject = preview[0]?.subject ?? subject;
@@ -235,13 +256,21 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   } else if (step === 'preview') {
     actions = (
       <>
+        {/* Item 9 (frame 08-contacts--10): the frame's footer primary reads
+            'Send N emails' -- this dialog keeps the existing preview step as
+            a genuine pre-flight (frame 08-contacts--02's "Pre-flight the
+            irreversible" rule: an email send cannot be undone, and the
+            preview is what catches an unresolved merge field before it
+            goes out), so this button still opens the confirm step rather
+            than sending directly. Its label now matches the frame's and the
+            confirm dialog's own wording instead of "Send to N recipients". */}
         <button
           type="button"
           className="chq-btn chq-btn-primary"
           disabled={busy}
           onClick={() => setConfirmingSend(true)}
         >
-          Send to {countOf(contactIds.length, 'recipient')}
+          Send {countOf(contactIds.length, 'email')}
         </button>
         <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('compose')} disabled={busy}>
           Back to edit
@@ -259,6 +288,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   return (
     <ModalFrame
       title={title}
+      subtitle={subtitle}
       ariaLabel="Bulk email"
       onClose={onClose}
       closeDisabled={busy}
@@ -287,17 +317,43 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
         </div>
       )}
 
+      {/* Item 9 (frame 08-contacts--10): field order follows the frame --
+          SUBJECT, MESSAGE, TEMPLATE (with its own unavailability sentence),
+          then the merge-fields footnote -- replacing the old
+          template-first / four-link-list layout. The recipient count moved
+          into the header subtitle (recipient names) above; only the
+          over-cap warning stays here, since it is a real blocker on this
+          step's own action. */}
       {step === 'compose' && (
         <>
-          <p>
-            {countOf(contactIds.length, 'recipient')} selected
-            {overCap && (
-              <strong className="chq-cap-warning">
-                {' '}
-                — exceeds the {BULK_EMAIL_RECIPIENT_CAP}-recipient cap; narrow your selection to send.
-              </strong>
-            )}
-          </p>
+          {overCap && (
+            <p className="chq-cap-warning" role="alert">
+              Exceeds the {BULK_EMAIL_RECIPIENT_CAP}-recipient cap; narrow your selection to send.
+            </p>
+          )}
+          <FormRow label="Subject" htmlFor="bulk-email-subject" error={fieldErrors.subject}>
+            <input
+              id="bulk-email-subject"
+              className="chq-input"
+              maxLength={MAX_TEXT_LENGTH}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="A quick question about your {event_name} session"
+              aria-invalid={fieldErrors.subject ? true : undefined}
+            />
+          </FormRow>
+          <FormRow label="Body" htmlFor="bulk-email-body" error={fieldErrors.bodyText}>
+            <textarea
+              id="bulk-email-body"
+              className="chq-textarea"
+              rows={8}
+              maxLength={MAX_LONG_TEXT_LENGTH}
+              value={bodyText}
+              onChange={(e) => setBodyText(e.target.value)}
+              placeholder="Hi {speaker_name}, ..."
+              aria-invalid={fieldErrors.bodyText ? true : undefined}
+            />
+          </FormRow>
           {templates.length > 0 && (
             <FormRow label="Template" htmlFor="bulk-email-template" optional>
               <select
@@ -322,11 +378,15 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
           {(() => {
             const unavailable = templates.filter((t) => missingFieldsForTemplate(t).length > 0);
             if (unavailable.length === 0) return null;
-            // Ruling A19: the submission-scoped templates are named as
-            // unavailable WITH the reason, in one sentence -- e.g.
+            // Ruling A19/item 9: the submission-scoped templates are named
+            // as unavailable WITH the reason, in ONE sentence -- e.g.
             // "Acceptance, Decline and Schedule live need a submission, so
-            // they are not available here." Names come from the templates
-            // themselves (event-defined, never hardcoded).
+            // they are not available here — send those from Comms." Names
+            // come from the templates themselves (event-defined, never
+            // hardcoded). The four-item "Use in Comms compose" link list
+            // this sentence used to sit above is gone -- the sentence
+            // itself is the one A19 draws, and the disabled option already
+            // names each template's blocking token individually.
             const names = unavailable.map((t) => t.name);
             const joined =
               names.length === 1
@@ -335,56 +395,15 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
             const verb = plural(names.length, 'needs', 'need');
             const pronoun = plural(names.length, 'it is', 'they are');
             return (
-              <>
-                <p className="chq-bulk-email-unsendable-note">
-                  {joined} {verb} a submission, so {pronoun} not available here.
-                </p>
-                <ul className="chq-bulk-email-unsendable-templates">
-                  {unavailable.map((t) => (
-                    <li key={t.id}>
-                      {/* DEC-834 / DEC-837: the router's basename is already '/admin' -- a
-                          `to` starting with '/admin/comms' resolves to
-                          '/admin/admin/comms' and 404s. */}
-                      <Link to={`/comms?tab=compose&template=${t.id}`}>Use in Comms compose</Link>
-                    </li>
-                  ))}
-                </ul>
-              </>
+              <p className="chq-bulk-email-unsendable-note">
+                {joined} {verb} a submission, so {pronoun} not available here — send those from Comms.
+              </p>
             );
           })()}
-          <FormRow label="Subject" htmlFor="bulk-email-subject" error={fieldErrors.subject}>
-            <input
-              id="bulk-email-subject"
-              className="chq-input"
-              maxLength={MAX_TEXT_LENGTH}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="A quick question about your {event_name} session"
-              aria-invalid={fieldErrors.subject ? true : undefined}
-            />
-          </FormRow>
-          <FormRow
-            label="Body"
-            htmlFor="bulk-email-body"
-            error={fieldErrors.bodyText}
-            help={
-              <>
-                Sent one at a time · logged in Comms history · merge fields:{' '}
-                {BULK_EMAIL_MERGE_FIELDS.map((f) => `{${f}}`).join(', ')}
-              </>
-            }
-          >
-            <textarea
-              id="bulk-email-body"
-              className="chq-textarea"
-              rows={8}
-              maxLength={MAX_LONG_TEXT_LENGTH}
-              value={bodyText}
-              onChange={(e) => setBodyText(e.target.value)}
-              placeholder="Hi {speaker_name}, ..."
-              aria-invalid={fieldErrors.bodyText ? true : undefined}
-            />
-          </FormRow>
+          <p className="chq-meta chq-bulk-email-merge-footnote">
+            Sent one at a time · logged in Comms history · merge fields:{' '}
+            {BULK_EMAIL_MERGE_FIELDS.map((f) => `{${f}}`).join(', ')}
+          </p>
         </>
       )}
 

@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { BreaksPanel } from './BreaksPanel';
+import { BreaksPanel, weekdayOf } from './BreaksPanel';
 import { ApiError } from '../../lib/api';
 
 const EVENT_ID = 'evt-breaks-render';
@@ -78,16 +78,19 @@ describe('BreaksPanel', () => {
     expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
   });
 
-  // frame 06--02: the section head names the selected day's weekday in
-  // full, with the mandated caption directly beneath it.
-  it("heads the section 'Breaks on <weekday>' with the 'They block every room at once' caption", () => {
+  // G13 (frame 06--02): 'Breaks on <weekday>' is the DIALOG title now
+  // (Agenda.tsx's ModalFrame call, via the exported weekdayOf), with 'They
+  // block every room at once' as the dialog subtitle -- the panel body no
+  // longer renders a duplicate micro-label header.
+  it('renders no in-body day header (the day-scoped title is the dialog title)', () => {
     // DAY = '2026-03-02', a Monday.
     render(
       <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} onDone={() => {}} />,
     );
 
-    expect(screen.getByRole('heading', { name: 'Breaks on Monday' })).toBeInTheDocument();
-    expect(screen.getByText('They block every room at once')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Breaks on Monday' })).toBeNull();
+    expect(screen.queryByText('They block every room at once')).toBeNull();
+    expect(weekdayOf(DAY)).toBe('Monday');
   });
 
   // frame 06--02: the day's break rows read label(+location) / start /

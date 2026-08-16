@@ -12,6 +12,7 @@ import '@testing-library/jest-dom/vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { MemoryRouter } from 'react-router-dom';
 import { RecentSends } from './RecentSends';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { formatDateTime, formatDate } from '../../lib/dates';
@@ -64,12 +65,24 @@ function batchRowCells(row: HTMLElement): HTMLElement[] {
 }
 
 describe('RecentSends', () => {
-  it('renders the shared EmptyState fresh block when there are no batches, and withholds the subtitle', () => {
-    render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={[]} templatesById={{}} />);
+  it('renders the shared EmptyState fresh block (with a real primary + secondary action) when there are no batches, and withholds the subtitle', () => {
+    render(
+      <MemoryRouter>
+        <RecentSends eventId={EVENT_ID} batchesLoaded batches={[]} templatesById={{}} />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Recent sends')).toBeInTheDocument();
-    expect(screen.getByText('No emails sent yet.')).toBeInTheDocument();
+    // Frame 07-comms--07 + ruling B7: this replaces the old bare "No emails
+    // sent yet." apology (never a fake button-less table over zero rows).
+    expect(screen.getByText('You have not emailed anyone yet')).toBeInTheDocument();
     expect(document.querySelector('.chq-empty-block-fresh')).toBeInTheDocument();
-    expect(document.querySelector('.chq-empty-actions')).not.toBeInTheDocument();
+    const actions = document.querySelector('.chq-empty-actions');
+    expect(actions).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tell your accepted speakers' })).toHaveAttribute(
+      'href',
+      '/comms?tab=compose',
+    );
+    expect(screen.getByRole('link', { name: 'Read the templates ›' })).toHaveAttribute('href', '/comms?tab=templates');
     expect(document.querySelector('.chq-comms-recent-sends-subtitle')).not.toBeInTheDocument();
   });
 
@@ -77,9 +90,13 @@ describe('RecentSends', () => {
   // The compose mount renders this component with batches=[] on every first
   // paint, before GET .../email-log?groupBy=batch has come back.
   it('withholds the empty state while the batches request is still in flight', () => {
-    render(<RecentSends eventId={EVENT_ID} batchesLoaded={false} batches={[]} templatesById={{}} />);
+    render(
+      <MemoryRouter>
+        <RecentSends eventId={EVENT_ID} batchesLoaded={false} batches={[]} templatesById={{}} />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Recent sends')).toBeInTheDocument();
-    expect(screen.queryByText('No emails sent yet.')).not.toBeInTheDocument();
+    expect(screen.queryByText('You have not emailed anyone yet')).not.toBeInTheDocument();
     expect(document.querySelectorAll('.chq-empty')).toHaveLength(0);
   });
 
@@ -529,11 +546,10 @@ describe('RecentSends', () => {
     const rows = document.querySelectorAll('.chq-comms-recipient-row:not(.chq-comms-recipient-col-heads-row)');
     expect(rows).toHaveLength(2);
     const skippedRow = Array.from(rows).find((r) => r.querySelector('.chq-comms-recipient-to')?.textContent === 'bo@example.com')!;
-    // The Result cell is the row's second .chq-meta span (the first .chq-meta
-    // in the document belongs to the batch tally) -- assert on it directly
-    // rather than the row's full textContent, which also contains the
-    // per-row "Show what was sent" disclosure button's own label.
-    const resultCell = skippedRow.querySelector('.chq-meta') as HTMLElement;
+    // The Result cell -- assert on it directly rather than the row's full
+    // textContent, which also contains the per-row "Show what was sent"
+    // disclosure button's own label.
+    const resultCell = skippedRow.querySelector('.chq-comms-recipient-result') as HTMLElement;
     expect(resultCell.textContent).toBe('skipped');
   });
 
@@ -630,7 +646,11 @@ describe('RecentSends', () => {
 describe('comms.css: the expanded recipients band inherits the batch row\'s grid (DEC-751, wave-21 amendment, B8)', () => {
   it('declares the five-track grid + gap exactly once and reuses it for both mounts', () => {
     const batchBody = ruleBodyFor(commsCss, '.chq-comms-batch {');
-    expect(batchBody).toMatch(/--chq-comms-batch-grid:\s*150px 1fr 130px 150px auto/);
+    // Frame 07-comms--08 fidelity fix: the trailing action track is now a
+    // pinned 96px (not `auto`) -- an auto-sized track took a different
+    // real width on the head row (an empty placeholder) than on a data row
+    // (the "Open"/"Close" button), which misaligned every column after it.
+    expect(batchBody).toMatch(/--chq-comms-batch-grid:\s*150px 1fr 130px 150px 96px/);
     expect(batchBody).toMatch(/--chq-comms-batch-gap:\s*18px/);
 
     const batchRowBody = ruleBodyFor(commsCss, '.chq-comms-batch-row {');
@@ -643,13 +663,13 @@ describe('comms.css: the expanded recipients band inherits the batch row\'s grid
 
     // No hardcoded track list left behind on the recipient-row rule that
     // could drift from the batch row's own tracks.
-    expect(recipientRowBody).not.toMatch(/1fr\s+130px\s+auto/);
+    expect(recipientRowBody).not.toMatch(/1fr\s+130px\s+96px/);
   });
 
   it('does not repeat .chq-comms-batch-row\'s own tracks under a different literal (ONE grid serves both mounts)', () => {
     const batchRowBody = ruleBodyFor(commsCss, '.chq-comms-batch-row {');
     expect(batchRowBody).toMatch(/grid-template-columns:\s*var\(--chq-comms-batch-grid\)/);
-    expect(batchRowBody).not.toMatch(/150px 1fr 130px 150px auto/);
+    expect(batchRowBody).not.toMatch(/150px 1fr 130px 150px 96px/);
   });
 
   it('drops the wrapper indent and gives the band a surface fill with top+bottom hairline rules', () => {
@@ -696,7 +716,11 @@ describe('columnHeads (DEC-603, wave-56 amendment)', () => {
   });
 
   it('withholds the head row entirely when there are no batches (nothing to head)', () => {
-    render(<RecentSends eventId={EVENT_ID} batches={[]} batchesLoaded templatesById={{}} columnHeads />);
+    render(
+      <MemoryRouter>
+        <RecentSends eventId={EVENT_ID} batches={[]} batchesLoaded templatesById={{}} columnHeads />
+      </MemoryRouter>,
+    );
     expect(document.querySelector('.chq-comms-batch-col-heads-row')).toBeNull();
   });
 });

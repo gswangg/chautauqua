@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ComposeWizard } from './ComposeWizard';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -53,7 +54,11 @@ describe('ComposeWizard step-1 select-all and selection bar (DEC-350 ruling A1)'
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+    <MemoryRouter>
+      <ComposeWizard eventId={EVENT_ID} />
+    </MemoryRouter>,
+  );
     await screen.findByText('Talk number 1');
 
     expect(screen.queryByRole('toolbar', { name: 'Selection' })).not.toBeInTheDocument();
@@ -73,7 +78,11 @@ describe('ComposeWizard step-1 select-all and selection bar (DEC-350 ruling A1)'
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+    <MemoryRouter>
+      <ComposeWizard eventId={EVENT_ID} />
+    </MemoryRouter>,
+  );
     await screen.findByText('Talk number 1');
 
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -88,7 +97,11 @@ describe('ComposeWizard step-1 select-all and selection bar (DEC-350 ruling A1)'
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+    <MemoryRouter>
+      <ComposeWizard eventId={EVENT_ID} />
+    </MemoryRouter>,
+  );
     await screen.findByText('Talk number 1');
 
     fireEvent.click(headerCheckbox());
@@ -111,7 +124,11 @@ describe('ComposeWizard step-1 select-all and selection bar (DEC-350 ruling A1)'
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+    <MemoryRouter>
+      <ComposeWizard eventId={EVENT_ID} />
+    </MemoryRouter>,
+  );
     await screen.findByText('Talk number 1');
 
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -129,7 +146,11 @@ describe('ComposeWizard step-1 select-all and selection bar (DEC-350 ruling A1)'
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+    <MemoryRouter>
+      <ComposeWizard eventId={EVENT_ID} />
+    </MemoryRouter>,
+  );
     await screen.findByText('Talk number 1');
 
     fireEvent.click(headerCheckbox());

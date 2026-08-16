@@ -14,6 +14,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AddToEventModal } from './AddToEventModal';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
+import { resetEventsCacheForTests } from '../../lib/useCurrentEvent';
 import type { ContactDetail, ContactListItem } from './types';
 
 const CONTACT: ContactListItem = {
@@ -38,6 +39,12 @@ const NO_HISTORY = detailWithSubmissions([]);
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  // useCurrentEvent's loadEventsOnce cache is scoped to one page load and
+  // must be reset between tests in the same file (see its own doc comment)
+  // -- without this a later test's background reconcile pass can resolve
+  // against an EARLIER test's stale /events response and silently move the
+  // selection back off the id this test just asserted.
+  resetEventsCacheForTests();
 });
 
 describe('AddToEventModal (DEC-714/DEC-734)', () => {
@@ -54,7 +61,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
     });
 
     for (const opt of PARTICIPANT_ROLE_OPTIONS) {
@@ -81,7 +88,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
     });
 
     const titleInput = screen.getByLabelText('Session title') as HTMLInputElement;
@@ -112,7 +119,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
     });
 
     const nonDefault = PARTICIPANT_ROLE_OPTIONS[1]!;
@@ -151,7 +158,7 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByLabelText('Session title'), { target: { value: 'Keynote: Priya' } });
@@ -182,8 +189,9 @@ describe('AddToEventModal defaults to the event in context (DEC-795)', () => {
     );
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Event') as HTMLSelectElement).value).toBe('ev-2');
+      expect(screen.getByRole('button', { name: 'Forward Summit 2028' })).toHaveAttribute('aria-pressed', 'true');
     });
+    expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('falls back to the first event when the current event id is not in the returned list', async () => {
@@ -203,8 +211,9 @@ describe('AddToEventModal defaults to the event in context (DEC-795)', () => {
     );
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Event') as HTMLSelectElement).value).toBe('ev-1');
+      expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toHaveAttribute('aria-pressed', 'true');
     });
+    expect(screen.getByRole('button', { name: 'Forward Summit 2028' })).toHaveAttribute('aria-pressed', 'false');
   });
 });
 
@@ -249,7 +258,7 @@ describe('AddToEventModal advisory when the contact already has a submission on 
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
     });
     expect(screen.queryByText(/already on this event/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add them' })).toBeInTheDocument();
@@ -277,7 +286,7 @@ describe('AddToEventModal advisory when the contact already has a submission on 
       expect(screen.getByText(/already on this event.*1 session/)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Event'), { target: { value: 'ev-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Forward Summit 2028' }));
 
     await waitFor(() => {
       expect(screen.queryByText(/already on this event/)).not.toBeInTheDocument();

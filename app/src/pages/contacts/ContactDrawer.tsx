@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { apiDelete, apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
+import { apiDelete, apiGet, apiPatch, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import { loadEventsOnce, useCurrentEvent } from '../../lib/useCurrentEvent';
 import type { ContactDetail, ContactListItem } from './types';
@@ -11,11 +11,6 @@ import {
   RESERVED_CUSTOM_FIELD_KEYS,
   RESERVED_CUSTOM_FIELD_LABELS,
 } from '../../../../src/domain/contact-labels';
-import {
-  HEADSHOT_EXTENSIONS,
-  headshotHintText,
-} from '../../../../src/domain/files';
-import { HEADSHOT_DOWNSCALE_EDGE_PX, HEADSHOT_DOWNSCALE_QUALITY } from '../../lib/domain-caps';
 import { BulkEmailModal } from './BulkEmailModal';
 import { AddToEventModal } from './AddToEventModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -198,15 +193,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   const [github, setGithub] = useState('');
   const [website, setWebsite] = useState('');
 
-  const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
-  // DEC-894: the drawer prints the stored file's filename and upload date
-  // beside the image — an uploaded file with no metadata reads as
-  // decoration, not as a record.
-  const [headshotFile, setHeadshotFile] = useState<{ filename: string; uploadedAt: number } | null>(null);
-  const [headshotUploading, setHeadshotUploading] = useState(false);
-  const [headshotError, setHeadshotError] = useState<string | null>(null);
-  const headshotInputRef = useRef<HTMLInputElement | null>(null);
-
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -229,8 +215,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         setLinkedin(c.socialLinks?.linkedin ?? '');
         setGithub(c.socialLinks?.github ?? '');
         setWebsite(c.socialLinks?.website ?? '');
-        setHeadshotUrl(c.headshotUrl ?? null);
-        setHeadshotFile(c.headshotFile ?? null);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contact'))
       .finally(() => setLoading(false));
@@ -326,66 +310,8 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     setEditingField(`custom-${customFieldRows.length}`);
   }
 
-  // DEC-894: downscale to HEADSHOT_DOWNSCALE_EDGE_PX longest edge via
-  // canvas/toBlob at HEADSHOT_DOWNSCALE_QUALITY JPEG quality before
-  // POSTing — src/domain/files.ts is the single source for these numbers,
-  // read by both this drawer and the portal's inline downscale script
-  // (src/routes/portal/profile.tsx HEADSHOT_DOWNSCALE_JS).
-  // Leaves the original file in place if the browser cannot do it (no
-  // canvas/Image support, decode failure, etc.) — the server-side dimension
-  // gate is the sole authority in that case.
-  async function downscaleHeadshot(file: File): Promise<File> {
-    try {
-      const MAX_EDGE = HEADSHOT_DOWNSCALE_EDGE_PX;
-      const bitmap = await createImageBitmap(file);
-      const { width, height } = bitmap;
-      if (width <= MAX_EDGE && height <= MAX_EDGE) return file;
-      const scale = MAX_EDGE / Math.max(width, height);
-      const targetW = Math.round(width * scale);
-      const targetH = Math.round(height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = targetW;
-      canvas.height = targetH;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return file;
-      ctx.drawImage(bitmap, 0, 0, targetW, targetH);
-      const blob: Blob | null = await new Promise((resolve) =>
-        canvas.toBlob(resolve, 'image/jpeg', HEADSHOT_DOWNSCALE_QUALITY),
-      );
-      if (!blob) return file;
-      const base = file.name.replace(/\.[^.]+$/, '');
-      return new File([blob], `${base}.jpg`, { type: 'image/jpeg' });
-    } catch {
-      return file;
-    }
-  }
-
-  async function uploadHeadshot() {
-    const chosen = headshotInputRef.current?.files?.[0];
-    if (!chosen) return;
-    setHeadshotUploading(true);
-    setHeadshotError(null);
-    try {
-      const file = await downscaleHeadshot(chosen);
-      const form = new FormData();
-      form.set('headshot', file);
-      const updated = await apiUpload<ContactDetail>(`/contacts/${contactId}/headshot`, form);
-      setHeadshotUrl(updated.headshotUrl ?? null);
-      setHeadshotFile(updated.headshotFile ?? null);
-      if (headshotInputRef.current) headshotInputRef.current.value = '';
-      // DEC-574: refresh the list's thumbnail without closing this drawer —
-      // onSaved() closes on save-and-navigate-away, which would discard any
-      // bio/notes/custom-field edits typed but not yet saved.
-      onContactChanged();
-    } catch (err) {
-      setHeadshotError(err instanceof ApiError ? err.message : 'Failed to upload headshot');
-    } finally {
-      setHeadshotUploading(false);
-    }
-  }
-
   const nestedModalOpen = showEmail || showAddToEvent || showDeleteConfirm;
-  const closeDisabled = saving || headshotUploading || nestedModalOpen;
+  const closeDisabled = saving || nestedModalOpen;
 
   const historyRows = contact ? buildHistoryRows(contact.history) : [];
 
@@ -481,50 +407,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         ) : (
           NOTHING_RECORDED
         )}
-      </div>
-    </div>
-  ) : null;
-
-  const headshotNode = contact ? (
-    <div className="chq-contacts-record-row" key="headshot">
-      <span className="chq-contacts-record-label">Headshot</span>
-      <div className="chq-contacts-record-editor chq-contacts-headshot-field">
-        {headshotUrl ? (
-          <img
-            className="chq-contacts-headshot"
-            src={headshotUrl}
-            alt={`${firstName} ${lastName} headshot`}
-            width={64}
-            height={64}
-          />
-        ) : (
-          NOTHING_RECORDED
-        )}
-        {headshotFile && (
-          <p className="chq-contacts-headshot-meta">
-            {headshotFile.filename} — uploaded {formatDateTime(headshotFile.uploadedAt)}
-          </p>
-        )}
-        <label className="chq-contacts-headshot-upload" htmlFor="chq-contact-headshot-upload">
-          Upload headshot
-          <input
-            id="chq-contact-headshot-upload"
-            className="chq-file"
-            type="file"
-            accept={HEADSHOT_EXTENSIONS.map((e) => `.${e}`).join(',')}
-            ref={headshotInputRef}
-            onChange={uploadHeadshot}
-            disabled={headshotUploading}
-            placeholder="headshot.jpg"
-          />
-        </label>
-        {/* chq-portal-detail is portal-only CSS (src/routes/portal/portal.css.ts),
-            which the admin SPA never loads. This hint is also NOT the stored-file
-            meta line (chq-contacts-headshot-meta renders only when a headshot
-            exists), so it carries its own class. */}
-        <p className="chq-contacts-headshot-hint">{headshotHintText()}</p>
-        {headshotUploading && <p>Uploading...</p>}
-        {headshotError && <div className="chq-error">{headshotError}</div>}
       </div>
     </div>
   ) : null;
@@ -694,7 +576,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
 
               <FieldGroup title="Profile">
                 {textField('bio', 'Bio', bio, setBio, { multiline: true, placeholder: 'A short speaker bio', maxLength: MAX_LONG_TEXT_LENGTH })}
-                {headshotNode}
                 {linksNode}
               </FieldGroup>
 
@@ -800,7 +681,14 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         )}
       </ModalFrame>
 
-      {showEmail && <BulkEmailModal contactIds={[contactId]} eventId={null} onClose={() => setShowEmail(false)} />}
+      {showEmail && (
+        <BulkEmailModal
+          contactIds={[contactId]}
+          eventId={null}
+          recipientNames={[`${firstName} ${lastName}`.trim()]}
+          onClose={() => setShowEmail(false)}
+        />
+      )}
       {showAddToEvent && <AddToEventModal contact={contactListItem} onClose={() => setShowAddToEvent(false)} />}
       {showDeleteConfirm && (
         <ConfirmDialog

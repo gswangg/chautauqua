@@ -32,7 +32,11 @@ export interface EmptyStateEscape {
 
 export interface EmptyStateSecondary {
   label: string;
-  to: string;
+  // G13 lane-D (02-submissions--08): same to/onClick duality as
+  // EmptyStateAction — a secondary can open a dialog ('Add one by hand ›')
+  // rather than navigate.
+  to?: string;
+  onClick?: () => void;
 }
 
 export interface EmptyStateProps {
@@ -84,11 +88,16 @@ export function EmptyState({ variant, what, reason, action, escape, secondary }:
                 {action.label}
               </button>
             ))}
-          {secondary && (
-            <Link to={secondary.to} className="chq-btn chq-btn-tertiary">
-              {secondary.label}
-            </Link>
-          )}
+          {secondary &&
+            (secondary.to ? (
+              <Link to={secondary.to} className="chq-btn chq-btn-tertiary">
+                {secondary.label}
+              </Link>
+            ) : (
+              <button type="button" className="chq-btn chq-btn-tertiary" onClick={secondary.onClick}>
+                {secondary.label}
+              </button>
+            ))}
         </div>
       )}
       {escape && (

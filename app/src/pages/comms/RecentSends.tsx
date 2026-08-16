@@ -30,6 +30,12 @@ function statusTally(statusCounts: Record<string, number>): string {
 
 interface RecipientsState {
   items: EmailLogRow[] | null;
+  // DEC-905: the recipients read's OWN envelope total -- the only honest
+  // source for "how many rows does this batch have", and the reason this
+  // component still derives no aggregate of its own (never a sum over the
+  // batch's statusCounts, which answers a different question and would be
+  // exactly the re-derived figure DEC-905 removed from here).
+  total: number | null;
   error: string | null;
 }
 
@@ -97,6 +103,7 @@ function SendDetailDisclosure({
 function BatchRecipients({
   eventId,
   items,
+  total,
   error,
   templatesById,
   batchSubject,
@@ -144,7 +151,13 @@ function BatchRecipients({
         <div key={row.id} className="chq-comms-recipient-row">
           <span aria-hidden="true" />
           <span className="chq-comms-recipient-to">{row.toEmail}</span>
-          <span className="chq-meta">{row.status}</span>
+          {/* Frame 07-comms--08: SENT/SKIPPED/FAILED as a bold uppercase
+              micro-label. The frame also shows a failed row's "provider
+              said: <reason>" line -- EmailLogRow (the list projection this
+              disclosure is fed from) carries no such field, only a
+              `status` string, so that line can't be rendered honestly here;
+              see the fidelity report for this gap. */}
+          <span className="chq-comms-recipient-result">{row.status}</span>
           {/* A subject only differs when a merge field made it real (e.g. a
               per-recipient token) -- that's exactly when it's worth this
               cell; the shared batch subject is already printed once at the
@@ -163,6 +176,17 @@ function BatchRecipients({
           <SendDetailDisclosure eventId={eventId} emailId={row.id} templatesById={templatesById} />
         </div>
       ))}
+      {/* Frame 07-comms--08's footer honesty line -- shown only when this
+          fetch is a truncated projection of the batch, measured against the
+          recipients read's OWN envelope total (DEC-905: a printed count is
+          its own query's count), never a sum re-derived here over the batch
+          row's statusCounts. */}
+      {!error && items && total !== null && items.length < total && (
+        <p className="chq-comms-batch-recipients-footer">
+          {total - items.length} more &middot; sent means the provider accepted it &mdash; whether it landed in an
+          inbox is not something we hear back about
+        </p>
+      )}
     </div>
   );
 }
@@ -248,12 +272,16 @@ export function RecentSends({
     if (recipients[batchKey]) return;
     apiList<EmailLogRow>(`/events/${eventId}/email-log?batchId=${encodeURIComponent(batchKey)}`)
       .then((res) => {
-        setRecipients((prev) => ({ ...prev, [batchKey]: { items: res.items, error: null } }));
+        setRecipients((prev) => ({ ...prev, [batchKey]: { items: res.items, total: res.total, error: null } }));
       })
       .catch((err) => {
         setRecipients((prev) => ({
           ...prev,
-          [batchKey]: { items: null, error: err instanceof ApiError ? err.message : 'Failed to load recipients' },
+          [batchKey]: {
+            items: null,
+            total: null,
+            error: err instanceof ApiError ? err.message : 'Failed to load recipients',
+          },
         }));
       });
   }
@@ -315,8 +343,23 @@ export function RecentSends({
         </div>
       )}
 
+      {/* Frame 07-comms--07 + ruling B7: a fresh (never-sent) empty state
+          gets a real primary action, not a bare "No emails sent yet."
+          apology. RecentSends is fed only batches/templatesById/rhythm --
+          it has no decision-count data of its own, so the reason clause
+          stays static (no fabricated "N submissions" figure) rather than
+          inventing a number this component cannot verify. The primary
+          links into Compose, which already defaults step 1's status filter
+          to Accepted alone (DEC-967), so "accepted speakers" is the real
+          audience that lands, not just a label. */}
       {batchesLoaded && rows.length === 0 && (
-        <EmptyState variant="fresh" what="No emails sent yet." action={null} />
+        <EmptyState
+          variant="fresh"
+          what="You have not emailed anyone yet"
+          reason="Every send is logged here afterwards."
+          action={{ label: 'Tell your accepted speakers', to: '/comms?tab=compose' }}
+          secondary={{ label: 'Read the templates ›', to: '/comms?tab=templates' }}
+        />
       )}
 
       {rows.map((batch) => {
@@ -355,6 +398,7 @@ export function RecentSends({
               <BatchRecipients
                 eventId={eventId}
                 items={entry?.items ?? null}
+                total={entry?.total ?? null}
                 error={entry?.error ?? null}
                 templatesById={templatesById}
                 batchSubject={batch.subject}

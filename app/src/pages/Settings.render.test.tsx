@@ -188,7 +188,7 @@ describe('SettingsPage render smoke', () => {
       'href',
       `/e/devcon-2026/agenda.ics`,
     );
-    expect(within(yourDataSection).getByRole('button', { name: 'Everything JSON' })).toBeInTheDocument();
+    expect(within(yourDataSection).getByRole('button', { name: 'Everything, JSON' })).toBeInTheDocument();
 
     expect(within(yourDataSection).getByRole('heading', { name: 'API Tokens' })).toBeInTheDocument();
     await waitFor(() => {
@@ -277,8 +277,9 @@ describe('SettingsPage render smoke', () => {
       'Tracks and rooms',
       'Public pages',
       'Speaker portal',
-      'People and roles',
+      // G13 fix: frames 09--10..16 draw Your data BEFORE People and roles.
       'Your data',
+      'People and roles',
     ]);
   });
 

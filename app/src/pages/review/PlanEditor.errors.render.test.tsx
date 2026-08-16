@@ -75,7 +75,10 @@ describe('PlanEditor save-rejection error standard (DEC-745/DEC-124)', () => {
 
     const summary = findSummaryAlert();
     expect(summary).toHaveTextContent('Two things need fixing before this plan can open');
-    expect(summary).toHaveTextContent(
+    // G13 lane-D fix (03-review--11): the criteria/window kept sentence is
+    // drawn only when BOTH those errors fired — these two problems are name
+    // and scale, so asserting it here would be a false claim.
+    expect(summary).not.toHaveTextContent(
       'A plan with no criteria has nothing for reviewers to score, and the window has to run forwards.',
     );
 

@@ -111,7 +111,10 @@ const WEEKDAY_FULL_NAMES: Record<string, string> = {
   Sat: 'Saturday',
 };
 
-function weekdayOf(day: string | null): string {
+/** G13 (frame 06-agenda--02): exported so Agenda.tsx can put the day-scoped
+ * 'Breaks on <weekday>' in the DIALOG TITLE, where the frame draws it --
+ * not demoted to an in-body micro-label. */
+export function weekdayOf(day: string | null): string {
   if (!day) return '';
   const [short] = formatDayLabel(day).split(' ');
   return (short && WEEKDAY_FULL_NAMES[short]) || short || '';
@@ -306,13 +309,12 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
         </div>
       )}
 
+      {/* G13 (frame 06-agenda--02): the day-scoped title and its 'They
+          block every room at once' sub are the DIALOG's title pair now
+          (see Agenda.tsx's ModalFrame call) -- no duplicate in-body
+          micro-label header. */}
       {day !== null && (
         <>
-          <div className="chq-section-head chq-breaks-section-head">
-            <h2 className="chq-section-label">Breaks on {weekdayOf(day)}</h2>
-            <span className="chq-breaks-section-sub">They block every room at once</span>
-          </div>
-
           <ul className="chq-breaks-list">
             {breaks.length === 0 && <li className="chq-breaks-empty">No breaks yet.</li>}
             {breaks.map((b) =>

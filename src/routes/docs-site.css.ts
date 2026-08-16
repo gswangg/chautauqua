@@ -70,7 +70,12 @@ export const DOCS_SITE_CSS = `
   /* Article page: 216px nav column + fluid article column (frame's
      grid-template-columns:216px minmax(0, 1fr), :44). */
   .chq-docs-article-frame { max-width: 1240px; margin-inline: auto; width: 100%; padding: 34px 34px 48px; display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 44px; align-items: start; }
-  .chq-docs-article-body { min-width: 0; display: flex; flex-direction: column; gap: 26px; }
+  /* G13 lane-D fix (13-docs--00): this <main> inherits the shell's generic
+     main padding (theme.ts: 26px 34px 34px) on top of the article frame's
+     own 34px inset, doubling the gutter and pushing the 900 figure 34px
+     past its drawn edge -- the article column starts at the frame's grid
+     track, so it carries no padding of its own. */
+  .chq-docs-article-body { min-width: 0; display: flex; flex-direction: column; gap: 26px; padding: 0; }
   .chq-docs-article-head { max-width: 680px; display: flex; flex-direction: column; gap: 10px; }
 
   /* Sticky grouped side nav (:46-55). Selected/unselected styles at

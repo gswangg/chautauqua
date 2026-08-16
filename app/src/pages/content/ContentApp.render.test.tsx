@@ -120,8 +120,10 @@ describe('ContentApp title-row destination buttons (w41-b/DEC-902 amendment)', (
     fireEvent.click(screen.getByRole('button', { name: 'All files' }));
 
     await screen.findByTestId('files-library');
-    expect(screen.getByRole('button', { name: 'Worklist' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
+    // G13 lane-D fix (05-content--04): the files view keeps NO Worklist/
+    // Refresh button row — the '‹ Content' breadcrumb is the way back.
+    expect(screen.queryByRole('button', { name: 'Worklist' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Refresh' })).not.toBeInTheDocument();
   });
 });
 
@@ -262,7 +264,7 @@ describe('ContentApp worklist bulk content-status (DEC-825 amendment)', () => {
     const callsBeforeBulk = submissionsMock.mock.calls.length;
 
     const bulkbar = screen.getByRole('toolbar', { name: 'Bulk content actions' });
-    expect(within(bulkbar).getByText('Sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
+    expect(within(bulkbar).getByText('Approving sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
     fireEvent.click(within(bulkbar).getByRole('button', { name: 'Approve 2' }));
 
     await waitFor(() => {
@@ -348,7 +350,11 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
       expect(filesMock).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    // G13 lane-D fix (05-content--04): the files view carries no Refresh
+    // button — staleness is covered by the refetch-on-switch below.
+    fireEvent.click(screen.getByRole('button', { name: '‹ Content' }));
+    await screen.findByRole('button', { name: 'All files' });
+    fireEvent.click(screen.getByRole('button', { name: 'All files' }));
 
     await waitFor(() => {
       expect(filesMock).toHaveBeenCalledTimes(2);

@@ -16,6 +16,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { plural } from '../../lib/plural';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import {
   validateRoomForm,
@@ -147,6 +148,12 @@ export function TracksRoomsPanel() {
   const [pendingDelete, setPendingDelete] = useState<{ kind: 'track'; track: Track } | { kind: 'room'; room: Room } | null>(
     null,
   );
+  // G13 fix (frame 09--12, DESIGN-RULINGS error rules 8/11): Done must
+  // never silently revert a dirty row -- when any row edit is unsaved,
+  // Done opens a confirm NAMING what will be discarded; only the dialog's
+  // own primary discards and leaves. The per-row save model itself is the
+  // blessed model (DEVIATIONS §5 pending adjudication) and is unchanged.
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   // w4-e/DEC-815 amendment: the add form is revealed from a tertiary action
   // on the section head, not shown open-by-default with a filled primary --
   // one filled primary per view (the footer's Done/Save) is the invariant.
@@ -203,6 +210,40 @@ export function TracksRoomsPanel() {
       params.delete('edit');
       return params;
     });
+  }
+
+  // The rows whose unsaved edits Done would otherwise lose -- named (by
+  // their saved names) in the discard confirm.
+  function dirtyRowNames(): string[] {
+    return [
+      ...tracks.filter((track) => isTrackDirty(track)).map((track) => track.name),
+      ...rooms.filter((room) => isRoomDirty(room)).map((room) => room.name),
+    ];
+  }
+
+  function handleDone() {
+    if (dirtyRowNames().length > 0) {
+      setConfirmingDiscard(true);
+      return;
+    }
+    closeEdit();
+  }
+
+  function discardDirtyAndClose() {
+    setTrackDrafts((prev) => {
+      const next = { ...prev };
+      for (const track of tracks) next[track.id] = trackBaseline(track);
+      return next;
+    });
+    setRoomDrafts((prev) => {
+      const next = { ...prev };
+      for (const room of rooms) next[room.id] = roomBaseline(room);
+      return next;
+    });
+    setTrackRowErrors({});
+    setRoomRowErrors({});
+    setConfirmingDiscard(false);
+    closeEdit();
   }
 
   function isTrackDirty(track: Track): boolean {
@@ -433,7 +474,7 @@ export function TracksRoomsPanel() {
           consequence="A track in use cannot be removed — retire it. Seats are advisory: the agenda flags over-capacity but never blocks."
           footer={{
             primary: (
-              <button type="button" className="chq-btn chq-btn-primary" onClick={closeEdit}>
+              <button type="button" className="chq-btn chq-btn-primary" onClick={handleDone}>
                 Done
               </button>
             ),
@@ -795,6 +836,21 @@ export function TracksRoomsPanel() {
           ) : null}
         </SettingsEditForm>
       </SummarySection>
+
+      {confirmingDiscard && (
+        <ConfirmDialog
+          title="Discard unsaved edits?"
+          body={
+            <p>
+              {dirtyRowNames().join(', ')} {plural(dirtyRowNames().length, 'has', 'have')} unsaved edits. Each row
+              saves with its own Save control — leaving now discards these edits and keeps the saved values.
+            </p>
+          }
+          confirmLabel="Discard the edits"
+          onConfirm={discardDirtyAndClose}
+          onCancel={() => setConfirmingDiscard(false)}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmDialog

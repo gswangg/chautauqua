@@ -392,7 +392,10 @@ export function CallForPapersPanel() {
               <h2>When it runs</h2>
             </div>
             {event && editWindowState ? (
-              <p role="status" className="chq-settings-row">
+              // G13 fix (frame 09--10): section prose, not a 53px read-view
+              // definition row -- the read-row class pushed the first field
+              // ~125px below the section rule.
+              <p role="status" className="chq-settings-section-caption">
                 {callStateLabel(editWindowState, dateInputToMs(closeDate))}
               </p>
             ) : null}

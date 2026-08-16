@@ -766,21 +766,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   return (
     <div className="chq-page chq-speakers-page chq-measure-table">
       {error && <div className="chq-error">{error}</div>}
-      {/* DEC-265 amendment: a rolled-back optimistic write's banner --
-          names the row, states the server-fault cause, and offers the two
-          real recovery actions (never a bare dismiss: there's nothing to
-          silently dismiss into). */}
-      {pendingFailure && (
-        <div className="chq-error chq-speakers-write-failure" role="alert">
-          {pendingFailure.message}
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => pendingFailure.retry()}>
-            Try again
-          </button>
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void reloadGridAfterFailure()}>
-            Reload the grid
-          </button>
-        </div>
-      )}
       {toast && (
         <div className="chq-toast" role="status">
           {toast}
@@ -813,22 +798,32 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           >
             Remind all outstanding
           </button>
-          {/* DEC-662/DEC-827 amendment (wave 55): the roster's only mention
-              of import is a quiet link, not a second importer -- it joins
-              this same title-action row rather than opening a new band, and
-              carries the current event id so the Contacts import wizard
-              preselects this event rather than making the organizer
-              re-pick it. */}
-          {eventId && (
-            <Link
-              to={`/contacts?import=1&eventId=${encodeURIComponent(eventId)}`}
-              className="chq-link-button chq-speakers-import-link"
-            >
-              Import speakers from a CSV
-            </Link>
-          )}
+          {/* G13 lane-D fix (04-speakers--00, ruling A13): the frame draws
+              three controls here with the primary flush at the content
+              edge, and A13 places the CSV-import link on the ROSTER, not
+              the grid — the link now lives in RosterPanel's Add-speaker
+              dialog. */}
         </div>
       </div>
+
+      {/* DEC-265 amendment / G13 lane-D fix (04-speakers--09): the
+          rolled-back-write banner sits BELOW the H1 and meta (the frame
+          draws it under the title band, never above it), with a bold title
+          line over the recovery actions — 'Reload the grid' secondary then
+          'Try again' primary, right-flushed to the measure edge. */}
+      {pendingFailure && (
+        <div className="chq-error chq-speakers-write-failure" role="alert">
+          <p className="chq-speakers-write-failure-title">{pendingFailure.message}</p>
+          <div className="chq-speakers-write-failure-actions">
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void reloadGridAfterFailure()}>
+              Reload the grid
+            </button>
+            <button type="button" className="chq-btn chq-btn-primary" onClick={() => pendingFailure.retry()}>
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="chq-speakers-toolbar">
         {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}

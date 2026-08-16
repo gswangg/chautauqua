@@ -179,7 +179,7 @@ export function YourDataPanel() {
           </a>
         ) : null}
         <button type="button" className="chq-pill" disabled={bundling} onClick={() => void downloadEverythingJson()}>
-          {bundling ? 'Building…' : 'Everything JSON'}
+          {bundling ? 'Building…' : 'Everything, JSON'}
         </button>
         {skippedKinds && skippedKinds.length > 0 ? (
           <div role="status" className="chq-settings-row-note">

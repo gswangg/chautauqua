@@ -140,10 +140,9 @@ describe('FormsPage render smoke', () => {
     expect(within(footer as HTMLElement).getByText('localhost:3000/submit/devcon-2026')).toBeInTheDocument();
     expect(within(footer as HTMLElement).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
 
-    // Builder ends at the Public link row (frame 04): a single link into
-    // Settings > Call for papers replaces the old FormSettings block.
-    const settingsLink = screen.getByRole('link', { name: 'Settings › Call for papers' });
-    expect(settingsLink).toHaveAttribute('href', '/settings?section=cfp');
+    // G13 lane-D fix (02-submissions--04): the builder ends AT the Public
+    // link row -- the frame draws no Settings link below it.
+    expect(screen.queryByRole('link', { name: 'Settings › Call for papers' })).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue('DevCon 2026 CFP')).not.toBeInTheDocument();
 
     // Amendment (wave 72): the header's Save renders from load and is

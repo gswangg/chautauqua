@@ -309,7 +309,7 @@ describe('SavedEmbedsPanel', () => {
     expect(screen.queryByRole('button', { name: 'Save embed' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Surface')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Build an embed' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New embed' })).not.toBeInTheDocument();
 
     cleanup();
 
@@ -324,7 +324,7 @@ describe('SavedEmbedsPanel', () => {
       expect(screen.getByText('No saved embeds yet.')).toBeInTheDocument();
     });
 
-    const buildButton = screen.getByRole('button', { name: 'Build an embed' });
+    const buildButton = screen.getByRole('button', { name: 'New embed' });
     fireEvent.click(buildButton);
     expect(onBuild).toHaveBeenCalledTimes(1);
   });

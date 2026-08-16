@@ -310,7 +310,7 @@ export function ResultsTable({
       {!embedded && (
         <p>
           <Link to="/review" className="chq-review-back">
-            &larr; Back to plans
+            &lsaquo; Back to plans
           </Link>
         </p>
       )}

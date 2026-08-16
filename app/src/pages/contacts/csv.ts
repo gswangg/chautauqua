@@ -25,6 +25,32 @@
 export { parseCsv, toCsvVerbatim } from '../../../../src/domain/csv';
 export { mapImportRow, STANDARD_IMPORT_FIELDS } from '../../../../src/domain/contacts-parts/import';
 
+import { isValidEmail } from '../../../../src/domain/email';
+
+/** Values people type into an email cell to mean "there isn't one". Named
+ * separately from the generic missing-@ case because the frame
+ * (08-contacts--15) calls the kind out on its own row: 'Email reads "n/a"'. */
+const EMAIL_PLACEHOLDER_VALUES = new Set(['n/a', 'na', 'none', 'null', 'unknown', 'tbd', '-', '--', '?']);
+
+/**
+ * G13 fix (frame 08-contacts--15): the file-level import gate used to test
+ * the email cell for emptiness only, so a row reading "n/a" or missing its
+ * "@" sailed through the refusal the frame draws. This names the problem
+ * with a cell, per row, in the frame's own vocabulary — or returns null for
+ * a usable address. Validity is the ONE canonical rule the server enforces
+ * at every contact.email write: isValidEmail (src/domain/email.ts, DEC-454)
+ * — never a second regex here.
+ */
+export function importEmailProblem(raw: string): string | null {
+  const value = raw.trim();
+  if (value === '') return 'Email blank';
+  if (isValidEmail(value)) return null;
+  const shown = value.length > 40 ? `${value.slice(0, 40)}…` : value;
+  if (EMAIL_PLACEHOLDER_VALUES.has(value.toLowerCase())) return `Email reads "${shown}"`;
+  if (!value.includes('@')) return `Email missing an @ — "${shown}"`;
+  return `Not a valid email address — "${shown}"`;
+}
+
 /**
  * P1 fix (w1-f): a fixture/export CSV frequently carries one combined "name"
  * column (e.g. docs/fixtures/speakers.csv's `name` header, "Priya Raman")

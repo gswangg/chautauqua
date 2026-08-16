@@ -173,11 +173,15 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
             </button>
           )}
           <div className="chq-forms-field-modal-actions-right">
-            <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Save the question'}
-            </button>
+            {/* G13 lane-D fix (02-submissions--10, B10): the primary sits
+                LAST -- Cancel bordered to its left, filled olive Save at the
+                terminal position. The earlier order rendered Save then
+                Cancel. */}
             <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
               Cancel
+            </button>
+            <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
+              {submitting ? 'Saving...' : 'Save the question'}
             </button>
           </div>
         </>
@@ -185,6 +189,10 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
     >
       {error && <div className="chq-error-banner">{error}</div>}
 
+        {/* G13 lane-D fix (02-submissions--10, B10 "two-up where fields
+            pair"): SECTION and KIND are drawn two-up at half measure, not
+            stacked full-width. */}
+        <div className="chq-forms-field-modal-pair">
         <FormRow label="Section" htmlFor="field-section">
           <select
             id="field-section"
@@ -211,6 +219,7 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
             ))}
           </select>
         </FormRow>
+        </div>
 
         <FormRow label="Label" htmlFor="field-label">
           <input

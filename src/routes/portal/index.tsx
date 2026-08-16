@@ -460,23 +460,36 @@ function SubmissionDetailPage(props: {
     .join(", ");
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
+      {/* G13 (frame 10--08, MAJOR): the page names itself -- back link,
+          H1 'Your session', THEN the status eyebrow and the session title
+          -- the session title no longer occupies the H1 slot. The page's
+          primary is the upload action (olive), with Edit as the secondary
+          beside it. */}
       <div class="chq-portal-back-row">
         <PortalBackLink to="/portal/submissions" />
       </div>
+      <h1 class="chq-portal-hero">Your session</h1>
       <div class="chq-portal-status-row">
         <span class="chq-flag chq-portal-status-badge">
           {detail.statusLabel} · {formatCalendarDate(detail.submittedAt)}
         </span>
       </div>
-      <h1 class="chq-portal-hero">{detail.title}</h1>
+      <h2 class="chq-portal-session-title">{detail.title}</h2>
       {metaParts.length > 0 ? <p class="chq-portal-sub">{metaParts.join(" · ")}</p> : null}
       {coPresenters.length > 0 ? <p class="chq-portal-sub">With {withLine}</p> : null}
       {placed ? (
         <p class="chq-portal-sub">{formatPlacement(detail.day!, detail.startMin!, detail.roomName)}</p>
       ) : null}
-      {editable ? (
+      {editable || fileRequestTask ? (
         <div class="chq-portal-actions">
-          <a href={`/portal/submissions/${detail.id}/edit`} class="chq-btn chq-btn-secondary">Edit submission</a>
+          {editable ? (
+            <a href={`/portal/submissions/${detail.id}/edit`} class="chq-btn chq-btn-secondary">Edit submission</a>
+          ) : null}
+          {fileRequestTask ? (
+            <a href={taskActionHref(fileRequestTask)} class="chq-btn chq-btn-primary">
+              {taskActionLabel(fileRequestTask)}
+            </a>
+          ) : null}
         </div>
       ) : null}
 

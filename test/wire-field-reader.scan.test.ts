@@ -630,6 +630,24 @@ interface LedgerEntry {
 
 const LEDGER: LedgerEntry[] = [
   {
+    key: 'app/src/pages/contacts/types.ts#ContactDetail.headshotUrl',
+    verdict: 'exempt',
+    reason:
+      "design-frames-v12 08-contacts--02 draws the drawer's PROFILE section as bio + links; the 238px HEADSHOT row that read this field was unframed and the G13 A20 ruling removed it. The field stays on the wire because it is the contact row's own stored column (src/server/repo/contacts/rows.ts:27), served by the same serializeContact projection every other contact response uses, and it is still WRITTEN and RENDERED outside the SPA -- the speaker portal's own headshot upload (src/routes/portal/profile.tsx, src/server/repo/profile.ts:190) and the speaker-detail read (src/server/repo/tasks/speaker-detail.ts:165). Narrowing the shared projection to hide it from one client would be a server change no ruling asks for.",
+  },
+  {
+    key: 'app/src/pages/contacts/types.ts#ContactDetail.headshotFile',
+    verdict: 'exempt',
+    reason:
+      "the filename + upload-date companion to headshotUrl above, computed per-request by GET /contacts/:id (src/routes/api/contacts/crud.ts:264-286) to satisfy DEC-894's rule that an uploaded file carries its own record rather than reading as decoration. Its only reader was the drawer's headshot meta line, removed with the row by G13 A20. Recorded rather than deleted because DEC-894 is a standing decision about this endpoint's payload, and the A20 ruling is about what the drawer DRAWS -- a design ruling does not by itself repeal an API contract, and the register (DESIGN-RULINGS.md / DEVIATIONS.md) is where that reconciliation belongs.",
+  },
+  {
+    key: 'app/src/pages/review/types.ts#ReviewerQueueItem.ratingsCount',
+    verdict: 'exempt',
+    reason:
+      "design-frames-v12 03-review--03 draws the reviewer queue row as exactly three lines (ref/state eyebrow, title, format meta) at a constant 103px pitch -- the DEC-239/DEC-251 'N ratings so far' fourth line was unframed and the G13 fidelity gate removed it. The field itself stays on the wire because buildReviewerQueue (src/domain/evaluation.ts) is ORDERED by it (fewest-ratings-first with completed sunk last); it is the payload's own sort-key fact, not a display obligation any frame or ruling asks the row to print.",
+  },
+  {
     key: 'app/src/pages/comms/types.ts#EmailLogDetail.bodyHtml',
     verdict: 'exempt',
     reason:
@@ -796,12 +814,12 @@ describe('wire-field-reader.scan (DEC-851/DEC-358 w1-d): a declared response fie
     expect(commentThread!.src.includes('c.authorRole')).toBe(true);
   });
 
-  it('the ReviewerQueueItem.ratingsCount finding is fixed: ReviewerQueue.tsx now reads ratingsCount (DEC-239/DEC-251 re-closure)', () => {
+  it('ReviewerQueueItem.ratingsCount is unread again by design: G13 lane-D removed the unframed fourth line (03-review--03), and the ledger carries its exemption', () => {
     const files = candidateFiles();
-    expect(hasReader('ratingsCount', files)).toBe(true);
+    expect(hasReader('ratingsCount', files)).toBe(false);
     const reviewerQueue = files.find((f) => f.path === 'app/src/pages/review/ReviewerQueue.tsx');
     expect(reviewerQueue, 'ReviewerQueue.tsx not found under app/src').toBeTruthy();
-    expect(reviewerQueue!.src.includes('item.ratingsCount')).toBe(true);
+    expect(reviewerQueue!.src.includes('item.ratingsCount')).toBe(false);
   });
 
   it('latestFileVersionNo was deleted from ContentSubmissionListItem (the other real closure this task made -- server projection matched to the wire deletion)', () => {

@@ -343,19 +343,16 @@ export function ContentApp() {
           )}
           {/* w41-b (DEC-902 amendment): Worklist/Files are destinations, not
               tabs of one surface — the toolbar's role=tablist pills are gone;
-              the title row carries the one button that switches destination
-              (named for where it goes, not where you are) plus Refresh. */}
-          {!submissionId && (
+              the WORKLIST title row carries the one button that switches
+              destination plus Refresh. G13 lane-D fix (05-content--04): the
+              files view renders NO button row above its own header — the
+              frame's first element under the chrome is the '‹ Content /
+              Files' breadcrumb row FilesLibrary already draws. */}
+          {!submissionId && view === 'worklist' && (
             <div className="chq-content-summary-actions">
-              {view === 'worklist' ? (
-                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => changeView('files')}>
-                  All files
-                </button>
-              ) : (
-                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => changeView('worklist')}>
-                  Worklist
-                </button>
-              )}
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => changeView('files')}>
+                All files
+              </button>
               <button type="button" className="chq-btn chq-btn-secondary" aria-label="Refresh" onClick={refresh}>
                 Refresh
               </button>

@@ -298,7 +298,11 @@ describe('HistoryTab', () => {
     );
 
     expect(await screen.findByText('Nothing has been sent yet')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Compose' })).toBeInTheDocument();
+    // The header's own right-flushed Compose button (frame 07-comms--08)
+    // means "Compose" now names two buttons on this page -- scope to the
+    // empty state's own action for the one this test is about.
+    const emptyBlock = document.querySelector('.chq-empty-block-fresh') as HTMLElement;
+    expect(within(emptyBlock).getByRole('button', { name: 'Compose' })).toBeInTheDocument();
 
     // No batch-table chrome (RecentSends' own "Recent sends" section head)
     // renders over the zero rows.

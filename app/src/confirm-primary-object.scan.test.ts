@@ -79,8 +79,16 @@ describe('DEC-941 (wave 68): every ConfirmDialog primary names its object, not a
     // The one computed confirmLabel this scan knows about (TracksRoomsPanel
     // serves both a track and a room from one dialog) must still be
     // recorded, not silently skipped.
-    expect(skipped).toContain(
-      "pages/settings/TracksRoomsPanel.tsx:808:pendingDelete.kind === 'track' ? 'Remove track' : 'Remove room'",
+    // Keyed by file + the exact recorded expression, never by line number:
+    // a pin drifts every time a line is inserted above the call (the same
+    // reason DEC-967's wave-62 amendment re-keyed spa-mutation-contract's
+    // UNRESOLVABLE_PATHS structurally), and a drifted pin would quietly
+    // start vouching for whatever expression now sits at that line.
+    expect(
+      skipped.map((s) => s.replace(/:\d+:/, ':')),
+      skipped.join('\n'),
+    ).toContain(
+      "pages/settings/TracksRoomsPanel.tsx:pendingDelete.kind === 'track' ? 'Remove track' : 'Remove room'",
     );
   });
 
