@@ -95,8 +95,10 @@ describe("PUT /submissions/:id/slot (DEC-073 room-ownership gate)", () => {
   }
 
   it("400s with a field error when roomId is foreign/nonexistent for the submission's event", async () => {
-    // select #1: getSubmissionOwnership -> accepted submission in org1/event1
-    // select #2: roomBelongsToEvent -> no matching room row (foreign/nonexistent)
+    // DEC-370 wave-61: select #1: getSlotWriteContext (submission LEFT JOIN
+    // event) -> accepted submission in org1/event1. select #2:
+    // getRoomEventId -> no matching room row (foreign/nonexistent), so it
+    // resolves null, which never equals context.eventId.
     const app = appWithDb([[{ eventId: "event1", orgId: "org1", status: "accepted" }], []]);
     const res = await putSlot(app, "room-from-other-event");
     expect(res.status).toBe(400);
@@ -105,21 +107,18 @@ describe("PUT /submissions/:id/slot (DEC-073 room-ownership gate)", () => {
   });
 
   it("succeeds (200) when roomId belongs to the submission's own event", async () => {
-    // select #1: getSubmissionOwnership
-    // select #2: roomBelongsToEvent -> found
-    // select #3: getEventInfo (DEC-277: moved above the write for range check)
+    // DEC-370 wave-61: select #1: getSlotWriteContext (context.eventId +
+    // status + startDate/endDate/recordPrefix, all from the one query).
+    // select #2: getRoomEventId -> room1 belongs to event1.
     // (DEC-552: upsertSlot no longer reads before writing -- it is one
     // INSERT ... ON CONFLICT DO UPDATE -- so its old existing-slot lookup
     // select is gone. DEC-492: the ics_sequence bump is one atomic set-based
     // UPDATE with no preceding select, so that select is gone too.)
-    // select #4: getConflictsAndSummary -> loadAcceptedSessions submissionRows
-    // select #5/#6/#7: track/participant/slot rows for loadAcceptedSessions
+    // select #3/#4/#5: getConflictsAndSummary's {slotRows, roomRows,
+    // totalAcceptedRows} wave.
     const app = appWithDb([
-      [{ eventId: "event1", orgId: "org1", status: "accepted" }],
-      [{ id: "room1" }],
-      [{ orgId: "org1", startDate: "2026-08-10", endDate: "2026-08-10", recordPrefix: "EV" }],
-      [],
-      [],
+      [{ eventId: "event1", orgId: "org1", status: "accepted", startDate: "2026-08-10", endDate: "2026-08-10", recordPrefix: "EV" }],
+      [{ id: "room1", eventId: "event1" }],
       [],
       [],
       [],

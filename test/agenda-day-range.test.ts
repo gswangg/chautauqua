@@ -17,6 +17,7 @@ function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
+    leftJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
     limit: async () => rows,
@@ -117,12 +118,20 @@ describe("PUT /submissions/:id/slot rejects an out-of-range day (DEC-277)", () =
   }
 
   it("returns 400 with a `day` field error and never writes the slot", async () => {
-    // select #1: getSubmissionOwnership -> accepted submission in org1/event1
-    // (roomId is omitted from the body, so roomBelongsToEvent is skipped)
-    // select #2: getEventInfo -> single-day event 2026-08-10
+    // DEC-370 wave-61: select #1 is getSlotWriteContext's single submission
+    // LEFT JOIN event read (roomId is omitted from the body, so
+    // getRoomEventId never issues a DB call at all).
     const { app, wasWritten } = appWithDb([
-      [{ eventId: "event1", orgId: "org1", status: "accepted" }],
-      [{ orgId: "org1", startDate: "2026-08-10", endDate: "2026-08-10", recordPrefix: "EV" }],
+      [
+        {
+          eventId: "event1",
+          orgId: "org1",
+          status: "accepted",
+          startDate: "2026-08-10",
+          endDate: "2026-08-10",
+          recordPrefix: "EV",
+        },
+      ],
     ]);
 
     const res = await app.request(
@@ -148,6 +157,9 @@ describe("PUT /submissions/:id/slot rejects an out-of-range day (DEC-277)", () =
   // delegates to isIsoDate and fails the shape gate itself, before the
   // event's range is even loaded.
   it("returns 400 for a calendar-invalid day and never writes the slot (DEC-510 amendment)", async () => {
+    // DEC-370 wave-61: select #1 is getSlotWriteContext's single read; the
+    // shape gate (isValidSlotInput) rejects before roomId/day-range are
+    // ever consulted, so no further select is issued.
     const { app, wasWritten } = appWithDb([[{ eventId: "event1", orgId: "org1", status: "accepted" }]]);
 
     const res = await app.request(

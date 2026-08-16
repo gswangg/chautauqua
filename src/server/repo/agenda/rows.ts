@@ -61,6 +61,74 @@ export async function getSubmissionOwnership(
   return rows[0] ?? null;
 }
 
+/** DEC-370 wave-61: single-statement replacement for the PUT
+ * .../submissions/:id/slot handler's authz + event-lookup pair
+ * (getSubmissionOwnership + getEventInfo), so the route can fold its own
+ * refusal reads into ONE wave with the room check instead of two sequential
+ * waves. LEFT JOIN is load-bearing: a submission row with no matching event
+ * row (should never happen in practice, but the join makes it possible)
+ * must still return a row (with null startDate/endDate) rather than
+ * collapsing into the same null this function returns for "no submission
+ * row at all" — those are two different refusals ("Submission not found"
+ * vs "Event not found") and must stay distinguishable. */
+export async function getSlotWriteContext(
+  db: Db,
+  submissionId: string,
+): Promise<{
+  orgId: string;
+  eventId: string;
+  status: string;
+  startDate: string | null;
+  endDate: string | null;
+  // recordPrefix isn't part of the caller's refusal ladder, but
+  // getConflictsAndSummary's placedRows need it for formatRef — carrying it
+  // here (same LEFT JOIN, one extra column) avoids a second event read the
+  // route would otherwise need just for this one field.
+  recordPrefix: string | null;
+} | null> {
+  const rows = await db
+    .select({
+      eventId: schema.submission.eventId,
+      status: schema.submission.status,
+      orgId: schema.event.orgId,
+      startDate: schema.event.startDate,
+      endDate: schema.event.endDate,
+      recordPrefix: schema.event.recordPrefix,
+    })
+    .from(schema.submission)
+    .leftJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .where(eq(schema.submission.id, submissionId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    // orgId is only null in the degenerate "event row missing" case (LEFT
+    // JOIN); the route's orgId-mismatch check treats null as a mismatch
+    // (never equals a real auth.orgId), which reproduces the old inner-join
+    // getSubmissionOwnership's "Submission not found" for that same case.
+    orgId: row.orgId as string,
+    eventId: row.eventId,
+    status: row.status,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    recordPrefix: row.recordPrefix,
+  };
+}
+
+/** DEC-370 wave-61: resolves a room's OWN eventId (no eventId argument to
+ * compare against in SQL — the fake dependency roomBelongsToEvent's
+ * (roomId, eventId) signature exemplified per DEC-370's finding). The
+ * caller compares the returned eventId against the submission's eventId in
+ * JS after both reads land in the same wave. */
+export async function getRoomEventId(db: Db, roomId: string): Promise<string | null> {
+  const rows = await db
+    .select({ eventId: schema.room.eventId })
+    .from(schema.room)
+    .where(eq(schema.room.id, roomId))
+    .limit(1);
+  return rows[0]?.eventId ?? null;
+}
+
 export interface AcceptedSessionRow {
   submissionId: string;
   ref: string;

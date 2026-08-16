@@ -15,6 +15,8 @@ import {
   getAgendaPayload,
   getConflictsAndSummary,
   getEventInfo,
+  getRoomEventId,
+  getSlotWriteContext,
   getSubmissionOwnership,
   isDayWithinEventRange,
   isValidSlotInput,
@@ -48,14 +50,39 @@ agendaRoutes.get("/events/:eventId/agenda", requireOrganizer, async (c) => {
 agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) => {
   const auth = requireAuth(c);
   const submissionId = c.req.param("id");
-  const ownership = await getSubmissionOwnership(c.var.db, submissionId);
-  if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
-  if (ownership.status !== "accepted") {
+
+  // DEC-370 wave-61 amendment: read the body first (no DB round trip -- this
+  // is an in-memory c.req.text()/JSON.parse, not a wave), then issue the
+  // authz/event-lookup read (getSlotWriteContext) and the room-ownership
+  // read (getRoomEventId, only when body.roomId is a string) as ONE wave
+  // via settleInDeclarationOrder — collapsing what was previously two
+  // sequential waves (getSubmissionOwnership, then
+  // roomBelongsToEvent+getEventInfo) into one. A malformed body must not
+  // leak its own 400 ahead of a cross-org 404 (DEC-459/DEC-727's
+  // existence-hiding invariant, cross-org-object-probe.test.ts) — the body
+  // parse is attempted eagerly (so roomId is known before the wave fires)
+  // but any parse error is captured and re-thrown only once the ladder
+  // reaches the point the four-wave version threw it (after the
+  // authz/status gates, at the shape-validation step).
+  let body: Record<string, unknown> | null = null;
+  let bodyError: unknown = null;
+  try {
+    body = await readJsonBody(c);
+  } catch (err) {
+    bodyError = err;
+  }
+  const roomId = typeof body?.roomId === "string" ? body.roomId : null;
+  const [context, roomEventId] = await settleInDeclarationOrder([
+    getSlotWriteContext(c.var.db, submissionId),
+    roomId !== null ? getRoomEventId(c.var.db, roomId) : Promise.resolve(null),
+  ]);
+
+  if (!context) throw new ApiError("not_found", "Submission not found");
+  if (context.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
+  if (context.status !== "accepted") {
     throw new ApiError("invalid", "Only accepted submissions can be scheduled");
   }
-
-  const body = await readJsonBody(c);
+  if (bodyError) throw bodyError;
   if (!isValidSlotInput(body)) {
     throw new ApiError(
       "invalid",
@@ -65,31 +92,17 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
       },
     );
   }
-  // DEC-155 wave-34 amendment: roomBelongsToEvent (only when body.roomId is
-  // a string) and getEventInfo consume nothing from each other, so they
-  // issue as one wave via settleInDeclarationOrder. Both can independently
-  // produce a user-facing ApiError past this point, and rejections are
-  // re-thrown in SOURCE order (room check first, event-not-found second) —
-  // a doubly-bad request must still produce the identical 'Room does not
-  // belong to this event' error it did before this change.
-  let event: Awaited<ReturnType<typeof getEventInfo>>;
-  if (typeof body.roomId === "string") {
-    const roomId = body.roomId;
-    const [, eventResult] = await settleInDeclarationOrder([
-      (async () => {
-        if (!(await roomBelongsToEvent(c.var.db, roomId, ownership.eventId))) {
-          throw new ApiError("invalid", "Room does not belong to this event", {
-            roomId: "Room does not belong to this event",
-          });
-        }
-      })(),
-      getEventInfo(c.var.db, ownership.eventId),
-    ]);
-    event = eventResult;
-  } else {
-    event = await getEventInfo(c.var.db, ownership.eventId);
+  if (roomId !== null && roomEventId !== context.eventId) {
+    throw new ApiError("invalid", "Room does not belong to this event", {
+      roomId: "Room does not belong to this event",
+    });
   }
-  if (!event) throw new ApiError("not_found", "Event not found");
+  if (context.startDate === null) throw new ApiError("not_found", "Event not found");
+  const event = {
+    startDate: context.startDate,
+    endDate: context.endDate as string,
+    recordPrefix: context.recordPrefix as string,
+  };
   if (!isDayWithinEventRange(body.day, event.startDate, event.endDate)) {
     throw new ApiError("invalid", "Slot day is outside the event date range", {
       day: `Outside ${event.startDate}..${event.endDate}`,
@@ -98,7 +111,7 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
 
   await upsertSlot(c.var.db, submissionId, body);
 
-  const refreshed = await getConflictsAndSummary(c.var.db, ownership.eventId, event);
+  const refreshed = await getConflictsAndSummary(c.var.db, context.eventId, event);
   return c.json(refreshed);
 });
 
