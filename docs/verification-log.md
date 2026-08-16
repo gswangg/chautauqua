@@ -7327,3 +7327,127 @@ uncaught-crashes on an unresolvable git object reachable from a
 `QUALIFYING`-labeled candidate; this fix only sidesteps it for the
 wave-11 candidate at this product sha by excluding it via the qualifying
 gate. Carried forward from `0215 item 3`/`0216#1`.)
+## 2026-08-15 task-w48-d — spec-audit @ 243b3094
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DEC-644 wave-48 three-sha boundary: worktree cut at `0ecff8aa` (main's tip
+when the worktree was created); bounded-poll (6 iterations x 15s) for the
+live `task-w47-*` refs did not converge all of them to ancestor before the
+bound was exhausted — `task-w47-a`, `task-w47-g`, `task-w47-h` remained
+non-ancestor of `main` after the poll (`task-w47-b/c/d/e/f` landed during
+the poll). Synced this worktree to `main`'s post-poll tip via
+`git fetch <main-repo> main && git merge --ff-only FETCH_HEAD`
+(`0ecff8aa..243b3094`, fast-forward). `npx tsx scripts/ref-state.ts` receipt
+(verbatim) at that tip: DEC-644 three-sha boundary: HEAD
+`243b3094dcc4dd9125dc01f9cec01dc396251e89`; newest first-parent
+product-code-bearing sha `243b3094dcc4dd9125dc01f9cec01dc396251e89`; every
+live ref (`main`, `manual-qa`, `task-custodian-w68-4`, `task-w46-g`,
+`task-w47-b`, `task-w47-c`, `task-w47-d`, `task-w47-e`, `task-w47-f`,
+`task-w48-a`, `task-w48-b`, `task-w48-c`, `task-w48-d`, `task-w68-d`,
+`task-w71-c`, `task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via
+`git merge-base --is-ancestor`; NON-ancestor refs (not confirmed):
+`mail-rich-shape-fallback`, `task-w17-i`, `task-w47-a`, `task-w47-g`,
+`task-w47-h`, `task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`,
+`task-w72-a..j`. MEASURED_SHA = `243b3094dcc4dd9125dc01f9cec01dc396251e89`.
+
+§8/§9 re-derivation at this boundary (nine checks, extending
+`0223-...-task-w44-d-spec-audit-6edb5263.md`):
+
+(1) `package.json`'s scripts block re-read directly this wave: `dev` =
+`wrangler dev`; `db:migrate` = `wrangler d1 migrations apply chautauqua
+--local`; `seed` = `tsx scripts/seed.ts && wrangler d1 execute chautauqua
+--local --file=.seed.sql && tsx scripts/seed-r2.ts`; `deploy` = `wrangler d1
+migrations apply chautauqua --remote && wrangler deploy` — all four match
+SPEC.md §8's recipe verbatim.
+
+(2) `test/spec9-invariants.test.ts`'s four named `describe(` blocks
+(close-date lock, speaker isolation, hidden-speaker exclusion, decision
+never auto-emails) all still present unchanged. RE-RUNNING the file this
+wave (not done by prior audits, which cited block presence only) surfaces a
+GENUINE, REPRODUCIBLE failure: `> an ACCEPTED speaker keeps editing past
+close` fails its first assertion — `canEditSubmission("pending", now -
+24h, now, "America/Los_Angeles")` returns `true`, expected `false`. Root
+cause traced to `src/lib/timezone.ts`'s `dayLabelToYmd`/`dayLabelEndInstant`
+(DEC-522: closeDate is a DAY LABEL, not an instant) combined with the
+test's `closeDate = now - 24*60*60*1000` fixture: at real wall-clock times
+where UTC has already rolled to the next calendar day but
+America/Los_Angeles (UTC-7 in August) has not, `now - 24h`'s UTC calendar
+day is still "today" in LA's day-label expansion, so
+`dayLabelEndInstant` lands AFTER `now` and `isFormClosed` returns `false`.
+This is time-of-day-dependent (reproduces deterministically right now,
+2026-08-15 ~20:56 America/New_York / 2026-08-16 00:56 UTC; would not
+reproduce at every wall-clock hour) — confirmed by running the file twice
+in isolation, same failure both times. `git diff --stat 6edb5263..HEAD --
+test/spec9-invariants.test.ts src/domain/edit-lock.ts src/lib/submit-core.ts
+src/lib/timezone.ts` is EMPTY: this bug pre-dates wave 48 (present at least
+since the wave-44 boundary) and was never caught because no prior spec-audit
+lane re-ran the suite, only cited block presence. Per DEC-453 (FILE, NEVER
+FIX) this lane does not touch the test fixture or `src/lib/timezone.ts` —
+filed for the owning triage lane: the test fixture should mint `closeDate`
+via a real day-label (e.g. `dayLabelOfInstant`-style truncation in the
+target zone) rather than a raw `now - 24h` instant offset.
+
+(3) FK-index cross-check: `git diff --stat 6edb5263..HEAD -- src/db/schema
+migrations` is EMPTY at MEASURED_SHA — the wave-47 migration
+(`migrations/0043_file_version_chain_unique.sql`, a partial unique index on
+`file.previous_file_id` per a DEC-818 amendment) has NOT landed on `main`
+as of this audit's post-poll sync: it lives on `task-w47-g`
+(`git diff --stat 243b3094..task-w47-g -- migrations src/db/schema` shows
+exactly `migrations/0043_file_version_chain_unique.sql` +
+`src/db/schema/content.ts`), which remained non-ancestor after the bounded
+poll exhausted. Informational only (not part of the measured tree, does
+not change this audit's own diff-empty finding): read for completeness —
+the migration (`DROP INDEX file_previous_file_id_idx; CREATE UNIQUE INDEX
+file_previous_file_id_unique ON file (previous_file_id) WHERE
+previous_file_id IS NOT NULL`) and the schema declaration
+(`uniqueIndex("file_previous_file_id_unique").on(t.previousFileId).where(sql
+`${t.previousFileId} is not null`)`) AGREE with each other, and the branch
+also adds `test/file-version-chain-unique.test.ts` (153 lines, new) as a
+uniqueIndex CONTRACT test — so once landed the contract is covered. Not
+adjudicated by this lane; flagged for the next spec-audit to re-check once
+`task-w47-g` (or its content) lands.
+
+(4) `app/src/App.tsx` — still route-code-split (`lazy(pageLoaders.X)` for
+all 15 top-level pages), no `manualChunks` anywhere under `app/` or
+`vite.config.ts`.
+
+(5) `< 300 KB gz` measured FIRST-HAND this wave inside one
+`sh scripts/with-test-lock.sh sh -c 'npm run build && npm run bundle:check'`
+acquisition: `Entry bundle: index-oGwNuBcd.js + index-DpG2gFFa.css = 69.20
+kB gzip (budget 300.00 kB)` / `bundle:check PASSED` — own-measured, zero
+drift from the `6edb5263` boundary's `69.20 kB` reading despite the
+wave-45..48 contacts/import/merge/portal/auto-schedule churn (none of it
+touches client bundle inputs).
+
+(6) parameterized queries only: grepped `src/server/repo/**` for raw-SQL
+string interpolation outside the Drizzle `sql` tag — every hit
+(`participants.ts:109`, `events.ts:358,622`, `portal-edit.ts:522`,
+`submissions/seq.ts:15`) is a `sql<number>`...`` template with `${...}`
+placeholders bound to Drizzle column/table references, not raw string
+concatenation. Zero hits outside the tag, including in wave-47's
+`files-versions.ts` (unchanged in scope at this boundary — its rewrite
+lives on the not-yet-landed `task-w47-g`).
+
+(7) no HTML content type served: `assertServedContentTypeHeader`
+(`src/domain/files.ts:539-548`) unchanged, still called at
+`src/routes/files.ts:695` before every served file response.
+
+(8) secrets via `wrangler secret`; `.dev.vars` still gitignored
+(`.gitignore:9`).
+
+(9) `docs/eval-rubric/*.yaml` coverage: 7 yaml files (same count as every
+prior audit since `task-w25-e`); `test/rubric-coverage-enumeration.scan.test.ts`
+(15 tests) GREEN — re-run this wave, not just cited.
+
+Full detail: `docs/verification-log/task-w48-d-spec-audit-243b3094.md`.
+
+RESULT: FAIL — item (2) above: a named SPEC §9 close-date-lock invariant
+test (`test/spec9-invariants.test.ts`) is observed, first-hand, failing
+reproducibly at MEASURED_SHA due to a pre-existing (pre-dates wave 48,
+diff-empty back to `6edb5263`) time-of-day-dependent fixture bug never
+previously caught because no prior spec-audit lane re-ran the suite. All
+other eight checks PASS with no defects found.
+OPEN ITEMS: 1
