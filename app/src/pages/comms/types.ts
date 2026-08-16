@@ -26,6 +26,16 @@ export type ComposeSendResult = Omit<SendResult, 'skipped'> & {
   skipped?: ComposeSkippedRecipient[];
 };
 
+// wave-60 amendment (DEC-238, P1 cluster 4): /compose/preview's dedupe plan
+// summary — the same arithmetic /compose/send is about to run against the
+// same input. `willSend` is the number the wizard's primary Send button
+// must display; ComposeSendResult.sent + .failed + .skipped is the number
+// the SAME denominator uses after send actually runs.
+export interface ComposePreviewPlan {
+  willSend: number;
+  skipped: ComposeSkippedRecipient[];
+}
+
 export interface EmailTemplate {
   id: string;
   eventId: string;
@@ -52,11 +62,21 @@ export interface RenderedRecipientIcs {
   timeZone: string;
 }
 
+// wave-60 amendment (DEC-238, P1 cluster 4): per-item send disposition,
+// computed by the same src/domain/comms-dedupe.ts planComposeSends planner
+// /compose/send runs — so the preview step can name, per recipient, whether
+// THIS render will send or be skipped (and why), never just a raw count.
 export interface RenderedRecipient {
   contactId: string;
   submissionId: string;
   email: string;
   name: string;
+  // Present on every /compose/preview item (absent on /compose/send, which
+  // never returns `items` at all per DEC-949). true when this recipient is
+  // not currently held back by either dedupe stage.
+  willSend?: boolean;
+  skipReason?: 'already_sent_recently' | 'duplicate_in_batch';
+  retryAtIso?: string;
   // DEC-912: the talk's human ref (e.g. 'DFC-014') and whether it has a
   // schedule slot, populated unconditionally on every rendered recipient —
   // never gated on attachIcs. `ics` (below) stays gated: it's the

@@ -19,7 +19,7 @@ import { preflightRender } from "../../domain/compose";
 import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
-import { dedupeCutoff, dedupeKey, retryAtMs } from "../../domain/comms-dedupe";
+import { dedupeCutoff, planComposeSends } from "../../domain/comms-dedupe";
 import { DEC_238, DEC_846 } from "../../decisions";
 import {
   requireFullMatch,
@@ -109,59 +109,33 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
   // own sends.
   //
   // DEC-238 wave-15 amendment: mirrors bulk-email.ts's two-stage shape.
-  // Stage 1 (intra-batch) runs FIRST, BEFORE loadRecentlySent, so the window
-  // query never asks about entries this call has already collapsed. Unlike
-  // bulk-email (one subject for the whole batch, so stage 1 keys on address
-  // alone), compose renders a PER-SUBMISSION subject — a speaker with two
-  // accepted talks legitimately gets two different messages to one address —
-  // so stage 1 here keys on dedupeKey(email, subject) exactly like stage 2,
-  // not on address alone.
+  // Stage 1 (intra-batch) runs FIRST, inside planComposeSends, before its
+  // stage 2 consults `recentlySent` — a stage-1 collapse is never also
+  // checked against the window. Unlike bulk-email (one subject for the
+  // whole batch, so stage 1 keys on address alone), compose renders a
+  // PER-SUBMISSION subject — a speaker with two accepted talks legitimately
+  // gets two different messages to one address — so stage 1 here keys on
+  // dedupeKey(email, subject) exactly like stage 2, not on address alone.
+  // wave-60 note: `recentlySent` is loaded for every rendered row (not just
+  // stage-1 survivors) because loadRecentlySent itself dedupes its wanted
+  // keys into a Set — this is the same query cost, and it lets
+  // /compose/preview call it identically without also re-implementing
+  // stage 1 first.
   void DEC_238;
   const now = new Date();
-  const skipped: {
-    email: string;
-    name: string;
-    submissionId: string;
-    reason: "already_sent_recently" | "duplicate_in_batch";
-    retryAtIso?: string;
-  }[] = [];
-  const seenInBatch = new Set<string>();
-  const afterIntraBatch: typeof result.rendered = [];
-  for (const rendered of result.rendered) {
-    const key = dedupeKey(rendered.email, rendered.subject);
-    if (seenInBatch.has(key)) {
-      skipped.push({
-        email: rendered.email,
-        name: rendered.name,
-        submissionId: rendered.submissionId,
-        reason: "duplicate_in_batch",
-      });
-      continue;
-    }
-    seenInBatch.add(key);
-    afterIntraBatch.push(rendered);
-  }
+  // wave-60 amendment (DEC-238, P1 cluster 4): the two-stage dedupe itself
+  // now lives in the pure src/domain/comms-dedupe.ts planner (planComposeSends)
+  // so /compose/preview can run the identical decision before any mail is
+  // sent. This route still loads its own `recentlySent` snapshot (stage 2
+  // needs a fresh read of email_log at send time, same as before) but the
+  // stage-1/stage-2 logic itself is shared, not re-implemented here.
   const recentlySent = await repo.loadRecentlySent(
     c.var.db,
     eventId,
-    afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject })),
+    result.rendered.map((r) => ({ email: r.email, subject: r.subject })),
     dedupeCutoff(now.getTime()),
   );
-  const toSend: typeof result.rendered = [];
-  for (const rendered of afterIntraBatch) {
-    const lastSentAt = recentlySent.get(dedupeKey(rendered.email, rendered.subject));
-    if (lastSentAt !== undefined) {
-      skipped.push({
-        email: rendered.email,
-        name: rendered.name,
-        submissionId: rendered.submissionId,
-        reason: "already_sent_recently",
-        retryAtIso: new Date(retryAtMs(lastSentAt)).toISOString(),
-      });
-      continue;
-    }
-    toSend.push(rendered);
-  }
+  const { toSend, skipped } = planComposeSends(result.rendered, recentlySent);
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   // DEC-846 wave-3 amendment: templateId is PROVENANCE, not authority — the

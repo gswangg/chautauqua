@@ -175,6 +175,14 @@ async function send(app: Hono<AppEnv>, kv: KVStore, body: Record<string, unknown
   );
 }
 
+async function preview(app: Hono<AppEnv>, kv: KVStore, body: Record<string, unknown>) {
+  return app.request(
+    `${ORIGIN}/api/v1/events/${EVENT_ID}/compose/preview`,
+    { method: "POST", headers: { "content-type": "application/json", "x-chq-csrf": "1" }, body: JSON.stringify(body) },
+    withEnv(kv),
+  );
+}
+
 describe("POST /api/v1/events/:eventId/compose/send — dedupe (DEC-238 wave-3 amendment)", () => {
   it("a second send of the same subject to the same address inside the window is skipped, with a retryAtIso an hour after the first send", async () => {
     const app = await buildCommsApp();
@@ -316,6 +324,66 @@ describe("POST /api/v1/events/:eventId/compose/send — intra-batch dedupe (DEC-
     // second already_sent_recently for the already-collapsed entry.
     expect(body.skipped.map((s) => s.reason).sort()).toEqual(["already_sent_recently", "duplicate_in_batch"]);
     expect(sentMails).toHaveLength(1);
+  });
+});
+
+describe("POST /api/v1/events/:eventId/compose/preview — plan summary matches send (wave-60, DEC-238, P1 cluster 4)", () => {
+  it("preview's plan.willSend/plan.skipped exactly matches what a subsequent send actually does, for the same input", async () => {
+    currentSubmissions = twoTalkSubmissions;
+    const app = await buildCommsApp();
+    const kv = new InMemoryKV();
+    const t0 = 1_700_000_000_000;
+    vi.setSystemTime(t0);
+
+    // First, an out-of-band send that will make one address+subject
+    // "recently sent" for the next preview/send pair.
+    await send(app, kv, { submissionIds: ["sub-1"], subject: "Reminder", bodyText: "Hi {speaker_name}." });
+    expect(sentMails).toHaveLength(1);
+    sentMails.length = 0;
+
+    vi.setSystemTime(t0 + 40_000);
+    const body = { submissionIds: ["sub-1", "sub-2"], subject: "Reminder", bodyText: "Hi {speaker_name}." };
+
+    const previewRes = await preview(app, kv, body);
+    expect(previewRes.status).toBe(200);
+    const previewBody = (await previewRes.json()) as {
+      items: { willSend: boolean; skipReason?: string; retryAtIso?: string; submissionId: string }[];
+      plan: { willSend: number; skipped: { submissionId: string; reason: string }[] };
+    };
+    // sub-2 collapses into sub-1's identical render (duplicate_in_batch);
+    // sub-1 itself is still inside the window from the out-of-band send
+    // above (already_sent_recently) — nothing should send.
+    expect(previewBody.plan.willSend).toBe(0);
+    expect(previewBody.plan.skipped.map((s) => s.reason).sort()).toEqual([
+      "already_sent_recently",
+      "duplicate_in_batch",
+    ]);
+    expect(previewBody.items.every((i) => i.willSend === false)).toBe(true);
+
+    const sendRes = await send(app, kv, body);
+    const sendBody = (await sendRes.json()) as { sent: number; skipped: { reason: string }[]; failed: unknown[] };
+    expect(sendBody.sent).toBe(previewBody.plan.willSend);
+    expect(sendBody.skipped.map((s) => s.reason).sort()).toEqual(
+      previewBody.plan.skipped.map((s) => s.reason).sort(),
+    );
+    expect(sentMails).toHaveLength(0);
+  });
+
+  it("preview's plan.willSend matches the raw send count when nothing collides", async () => {
+    const app = await buildCommsApp();
+    const kv = new InMemoryKV();
+    vi.setSystemTime(1_700_000_000_000);
+
+    const body = { submissionIds: ["sub-1"], subject: "Reminder", bodyText: "Hi {speaker_name}." };
+    const previewRes = await preview(app, kv, body);
+    const previewBody = (await previewRes.json()) as { items: unknown[]; plan: { willSend: number; skipped: unknown[] } };
+    expect(previewBody.plan.willSend).toBe(1);
+    expect(previewBody.plan.skipped).toEqual([]);
+    expect(previewBody.items).toHaveLength(1);
+
+    const sendRes = await send(app, kv, body);
+    const sendBody = (await sendRes.json()) as { sent: number };
+    expect(sendBody.sent).toBe(previewBody.plan.willSend);
   });
 });
 

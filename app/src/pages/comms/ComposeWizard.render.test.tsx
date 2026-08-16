@@ -1041,7 +1041,11 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
     const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
     fireEvent.click(sendButton);
 
-    await screen.findByText(/1 of 1 speakers were emailed/);
+    // wave-60 amendment (DEC-238, P1 cluster 4): the denominator now
+    // includes every skipped recipient too (1 sent + 0 failed + 2 skipped),
+    // never just sent+failed -- a batch that skipped most of its audience
+    // must not read as "complete".
+    await screen.findByText(/1 of 3 speakers were emailed/);
 
     // DEC-238 amendment (findings wave 5): the interim counts paragraph is
     // gone -- sent lives in the headline, skipped in its own named section.
@@ -1102,7 +1106,9 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
     const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
     fireEvent.click(sendButton);
 
-    await screen.findByText(/1 of 1 speakers were emailed/);
+    // wave-60 amendment (DEC-238, P1 cluster 4): denominator includes the
+    // one skipped recipient too (1 sent + 0 failed + 1 skipped).
+    await screen.findByText(/1 of 2 speakers were emailed/);
 
     expect(screen.getByText('Same message, same address, already in this batch.')).toBeInTheDocument();
     expect(screen.queryByText(/^Send in \d+ minutes?$/)).not.toBeInTheDocument();
@@ -1709,5 +1715,133 @@ describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
 
     const sendCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/send'));
     expect(sendCalls.length).toBe(0);
+  });
+});
+
+// wave-60 amendment (DEC-238, P1 cluster 4): "Send 36 emails" producing a
+// history entry reading "6 sent" -- the step-4 primary must read the
+// server's dedupe PLAN (willSend), never the raw preview.length expansion,
+// and the post-send report's denominator must include every skip.
+describe('ComposeWizard reads the server dedupe plan, not the raw expansion (wave-60, DEC-238)', () => {
+  function recipient(contactId: string, submissionId: string, name: string, willSend: boolean) {
+    return {
+      contactId,
+      submissionId,
+      email: `${contactId}@example.com`,
+      name,
+      ref: `REF-${submissionId}`,
+      scheduled: false,
+      subject: 'You are in!',
+      text: 'See you there',
+      willSend,
+      ...(willSend ? {} : { skipReason: 'duplicate_in_batch' as const }),
+    };
+  }
+
+  it('the step-4 Send button count equals plan.willSend, not the raw items.length expansion', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: {
+        items: [
+          recipient('c1', 'sub-1', 'Priya Raman', true),
+          recipient('c2', 'sub-2', 'Nadia Ferrone', false),
+          recipient('c3', 'sub-3', 'Grace Hopper', false),
+        ],
+        plan: {
+          willSend: 1,
+          skipped: [
+            { email: 'c2@example.com', name: 'Nadia Ferrone', submissionId: 'sub-2', reason: 'duplicate_in_batch' },
+            { email: 'c3@example.com', name: 'Grace Hopper', submissionId: 'sub-3', reason: 'duplicate_in_batch' },
+          ],
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText('Attachments');
+    // 3 recipients rendered, but only 1 will actually send -- the quiet
+    // note under Next:send names the other 2 before the organizer commits.
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
+
+    // The button reads plan.willSend (1), never items.length (3).
+    const sendButton = await screen.findByRole('button', { name: 'Send 1 email' });
+    expect(sendButton).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Send 3 emails$/ })).not.toBeInTheDocument();
+
+    // The quiet skip line names the collapsed count.
+    expect(screen.getByText('2 duplicate/recently-sent recipients will be skipped.')).toBeInTheDocument();
+  });
+
+  it("the result panel's denominator (sent + failed + skipped) is what the server actually attempted, not preview.length", async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: {
+        items: [
+          recipient('c1', 'sub-1', 'Priya Raman', true),
+          recipient('c2', 'sub-2', 'Nadia Ferrone', false),
+          recipient('c3', 'sub-3', 'Grace Hopper', false),
+        ],
+        plan: {
+          willSend: 1,
+          skipped: [
+            { email: 'c2@example.com', name: 'Nadia Ferrone', submissionId: 'sub-2', reason: 'duplicate_in_batch' },
+            { email: 'c3@example.com', name: 'Grace Hopper', submissionId: 'sub-3', reason: 'duplicate_in_batch' },
+          ],
+        },
+      },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: {
+        sent: 1,
+        failed: [],
+        skipped: [
+          { email: 'c2@example.com', name: 'Nadia Ferrone', submissionId: 'sub-2', reason: 'duplicate_in_batch' },
+          { email: 'c3@example.com', name: 'Grace Hopper', submissionId: 'sub-3', reason: 'duplicate_in_batch' },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText('Attachments');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
+
+    const sendButton = await screen.findByRole('button', { name: 'Send 1 email' });
+    fireEvent.click(sendButton);
+
+    // 1 sent + 0 failed + 2 skipped = 3 -- never "1 of 1" (which would
+    // silently drop the two skips from the denominator, reproducing the
+    // "Send 36 emails" / "6 sent" mismatch this closes) and never "1 of 3
+    // items" (preview.length would coincidentally also read 3 here, so this
+    // asserts the server's own skipped array drove it, not the client's
+    // stale preview array).
+    expect(await screen.findByText('1 of 3 speakers were emailed')).toBeInTheDocument();
   });
 });
