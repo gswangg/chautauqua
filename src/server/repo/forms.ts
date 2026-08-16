@@ -194,6 +194,9 @@ export async function createDefaultForm(db: Db, eventId: string): Promise<{ form
     })
     .onConflictDoNothing({ target: [schema.form.eventId, schema.form.title] });
 
+  // DEC-558 (wave 75): form_event_id_title_idx is a uniqueIndex on
+  // (schema.form.eventId, schema.form.title), so this predicate already
+  // narrows to at most one row.
   const winner = await db
     .select()
     .from(schema.form)

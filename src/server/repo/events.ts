@@ -164,6 +164,8 @@ export async function getFirstEventSlug(db: Db): Promise<string | null> {
 }
 
 export async function isSlugTaken(db: Db, slug: string): Promise<boolean> {
+  // DEC-558 (wave 75): event_slug_idx is a uniqueIndex on schema.event.slug,
+  // so this predicate already narrows to at most one row.
   const rows = await db
     .select({ id: schema.event.id })
     .from(schema.event)

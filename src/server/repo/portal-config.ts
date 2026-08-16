@@ -49,6 +49,9 @@ function toPortalSettingsRecord(row: typeof schema.portalSettings.$inferSelect):
 }
 
 export async function getPortalSettingsForEvent(db: Db, eventId: string): Promise<PortalSettingsRecord | null> {
+  // DEC-558 (wave 75): portal_settings_event_id_idx is a uniqueIndex on
+  // schema.portalSettings.eventId, so this predicate already narrows to at
+  // most one row.
   const rows = await db
     .select()
     .from(schema.portalSettings)

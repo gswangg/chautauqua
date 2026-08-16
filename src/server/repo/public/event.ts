@@ -20,6 +20,8 @@ export interface PublicEvent {
 }
 
 export async function getPublicEventBySlug(db: Db, slug: string): Promise<PublicEvent | null> {
+  // DEC-558 (wave 75): event_slug_idx is a uniqueIndex on schema.event.slug,
+  // so this predicate already narrows to at most one row.
   const rows = await db.select().from(schema.event).where(eq(schema.event.slug, slug)).limit(1);
   const row = rows[0];
   if (!row) return null;
@@ -76,6 +78,11 @@ export async function getPublicCfpWindow(
   db: Db,
   eventId: string,
 ): Promise<{ openDate: number | null; closeDate: number | null } | null> {
+  // DEC-558/DEC-398 (wave 75): isDefault=true is set on exactly one form per
+  // event, only at creation time in createDefaultForm (src/server/repo/
+  // forms.ts) and never toggled by any other write path (see findFormForEvent
+  // in that file for the same invariant), so this predicate already narrows
+  // to at most one row.
   const rows = await db
     .select({ openDate: schema.form.openDate, closeDate: schema.form.closeDate })
     .from(schema.form)

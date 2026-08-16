@@ -99,6 +99,9 @@ async function getOrCreateFormTaskForm(db: Db, eventId: string, title: string, n
     })
     .onConflictDoNothing({ target: [schema.form.eventId, schema.form.title] });
 
+  // DEC-558 (wave 75): form_event_id_title_idx is a uniqueIndex on
+  // (schema.form.eventId, schema.form.title), so this predicate already
+  // narrows to at most one row.
   const winner = await db
     .select({ id: schema.form.id })
     .from(schema.form)
@@ -166,6 +169,9 @@ async function getOrCreateTask(
     })
     .onConflictDoNothing({ target: [schema.task.eventId, schema.task.title] });
 
+  // DEC-558 (wave 75): task_event_id_title_idx is a uniqueIndex on
+  // (schema.task.eventId, schema.task.title), so this predicate already
+  // narrows to at most one row.
   const winner = await db
     .select({ id: schema.task.id, formId: schema.task.formId })
     .from(schema.task)
