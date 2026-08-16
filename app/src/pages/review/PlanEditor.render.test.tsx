@@ -168,7 +168,7 @@ describe('PlanEditor render smoke', () => {
     });
 
     fireEvent.click(screen.getByRole('link', { name: 'Add criterion' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Rating' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Scale 1–5' }));
     const labelInput = screen.getByPlaceholderText('Label');
     fireEvent.change(labelInput, { target: { value: 'Innovation' } });
     expect((labelInput as HTMLInputElement).value).toBe('Innovation');
@@ -681,7 +681,7 @@ describe('PlanEditor render smoke', () => {
     // -- while locked, the caption states only the wording/weights/scale
     // sentence.
     expect(container.querySelector('.chq-review-section-caption')?.textContent).toBe(
-      'Wording, weights and the scale are fixed for the rest of this wave.',
+      'Wording, type and weights are fixed for the rest of this wave.',
     );
   });
 
@@ -713,6 +713,38 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => expect(screen.getAllByText('Weight 3 · 50%')).toHaveLength(2));
+  });
+
+  // DEC-613/DEC-882 (wave 7): a locked round's criteria readout names each
+  // criterion's TYPE (frame's typeLabel column) and a non-rating criterion's
+  // weight cell reads "Not scored" rather than blank.
+  it('renders a locked criterion row\'s type and "Not scored" for a non-rating criterion', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [
+          { id: 'c1', label: 'Content', kind: 'rating', weight: 3 },
+          { id: 'c2', label: 'Format', kind: 'dropdown', options: ['Talk', 'Workshop'] },
+        ],
+        evaluationCountsByRound: { '1': 3 },
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Scale 1–5')).toBeInTheDocument());
+    expect(screen.getByText('Choice')).toBeInTheDocument();
+    expect(screen.getByText('Not scored')).toBeInTheDocument();
   });
 
   // w41-f/DEC-715: no handle for a locked round's criteria -- the handle is
@@ -827,7 +859,12 @@ describe('PlanEditor render smoke', () => {
 
     const picker = screen.getByRole('group', { name: 'New criterion kind' });
     expect(picker.querySelector('select')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Dropdown' }));
+    // DEC-613: the picker offers the frame's vocabulary (Scale 1–5 / Choice
+    // / Text), never the storage words (rating/dropdown/text).
+    expect(within(picker).getByRole('button', { name: 'Scale 1–5' })).toBeInTheDocument();
+    expect(within(picker).getByRole('button', { name: 'Choice' })).toBeInTheDocument();
+    expect(within(picker).getByRole('button', { name: 'Text' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Choice' }));
 
     // v12 intake section A: options are editable rows, not one
     // comma-separated field -- a brand-new dropdown criterion starts at the

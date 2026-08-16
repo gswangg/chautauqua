@@ -903,6 +903,19 @@
   grid-template-columns: 20px minmax(0, 1fr) 260px 132px 62px;
 }
 
+/* DEC-613/DEC-882 (wave 7): the locked/frozen criteria readout restores its
+   TYPE cell (dropped at w5-e) -- a genuinely missing column, not a hidden
+   one. Chautauqua Review.dc.html:696-701 draws the frozen row's own four
+   content tracks `1fr 232px 128px 122px` (label / hint / type / weight);
+   flanked here by the same pinned 20px drag and 62px remove placeholders
+   the unlocked row uses, so the locked row still occupies six tracks total.
+   Scoped to the readonly row only (higher specificity than the shared rule
+   above) -- the unlocked editor and its header keep their five-track
+   layout, out of this task's scope. */
+.chq-review-criterion-row.chq-review-criterion-row-readonly {
+  grid-template-columns: 20px minmax(0, 1fr) 232px 128px 122px 62px;
+}
+
 /* w28-b/DEC-124: layout-only hook, carrying no typography of its own (the
    error-vocabulary scan requires .chq-field-error itself be declared
    nowhere but error-states.css) -- every per-criterion error span below
