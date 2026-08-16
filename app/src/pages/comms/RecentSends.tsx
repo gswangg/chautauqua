@@ -113,6 +113,23 @@ function BatchRecipients({
       <div className="chq-meta chq-comms-batch-tally">{statusTally(statusCounts)}</div>
       {error && <div className="chq-error-banner">{error}</div>}
       {!error && !items && <DelayedLoading />}
+      {/* DEC-603 amendment (wave 66, gate-11 sweep item 6): a head row over
+          the SAME five-track grid the recipient rows below use -- empty /
+          RECIPIENT / RESULT / empty / empty -- so a reader opening the
+          disclosure sees what each of the five cells means. Rendered only
+          once there is at least one recipient row (never over the loading
+          or error states, which have nothing to head). The head class rides
+          the same comms.css rule as `.chq-comms-recipient-row` (see the
+          selector list there) so heads and cells cannot drift apart. */}
+      {!error && items && items.length > 0 && (
+        <div className="chq-comms-recipient-row chq-comms-recipient-col-heads-row">
+          <span aria-hidden="true" />
+          <span>Recipient</span>
+          <span>Result</span>
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+        </div>
+      )}
       {/* DEC-751 (wave-21 amendment, B8): each recipient row is FIVE cells,
           matching the batch row's own five tracks exactly (Recipient sits
           under Subject, Result under the count) -- an empty leading cell,

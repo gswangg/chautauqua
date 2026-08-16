@@ -647,6 +647,21 @@
   padding: 9px 0;
 }
 
+/* DEC-603 amendment (wave 66, gate-11 sweep item 6): the disclosure's own
+   head row -- empty / RECIPIENT / RESULT / empty / empty. The element
+   carries .chq-comms-recipient-row too (see RecentSends.tsx), so it
+   inherits the grid/gap/padding above beside this class, exactly the way
+   .chq-comms-batch-col-heads-row inherits .chq-comms-batch-row's grid --
+   heads and cells cannot drift out of alignment because they share the one
+   rule that lays them out. This rule only adds the head's text treatment. */
+.chq-comms-recipient-col-heads-row {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
 .chq-comms-recipient-to {
   min-width: 0;
   overflow: hidden;

@@ -6,7 +6,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { RecentSends } from './RecentSends';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { countOf } from '../../lib/plural';
-import { formatSendRhythm, type SendRhythm } from './sendRhythm';
+import type { SendRhythm } from './sendRhythm';
 import type { EmailBatchRow } from './types';
 
 // DEC-603 amendment (findings wave 8): GET /email-log pages like every list
@@ -103,18 +103,24 @@ export function HistoryTab({
   }, [eventId, q, page, templateId]);
 
   // DEC-603 amendment (wave 18): the head mirrors TemplatesTab's exactly --
-  // a breadcrumb back to Compose, the page title, and a count/rhythm line --
-  // plus a plain cookie-authed Export CSV anchor onto the SAME email-log
-  // export the row-level exports already ship (src/routes/api/exports.ts,
+  // a breadcrumb back to Compose, the page title, and a count line -- plus a
+  // plain cookie-authed Export CSV anchor onto the SAME email-log export the
+  // row-level exports already ship (src/routes/api/exports.ts,
   // kind=email-log), carrying only the filter this tab actually has (q).
   // NOTE: Comms.tsx already renders its own "Comms" h1 unconditionally, and
   // TemplatesTab already renders a second, page-scoped "Templates" h1 while
   // mounted alongside it (see app/src/pages/comms/TemplatesTab.tsx:185) --
   // there is no single-h1 rule on this page to reconcile with, so History
   // follows the same two-h1 precedent rather than inventing a third pattern.
-  const countLine = rhythm
-    ? `${countOf(total, 'send')} · ${formatSendRhythm(rhythm)}`
-    : countOf(total, 'send');
+  // DEC-603 amendment (wave 66, gate-11 sweep item 6): the rhythm clause was
+  // dropped from this line -- Comms.tsx already renders the SAME
+  // formatSendRhythm(rhythm) sentence, once, in the page head directly above
+  // this tab's own titles block (Comms.tsx:225). Printing it a second time
+  // here made the tab's own caption an unlabelled echo of the page head. The
+  // `rhythm` prop is kept unused-here but still threaded to RecentSends
+  // below, which needs it for its own (columnHeads-suppressed) subtitle
+  // slot -- see RecentSends.tsx's own rhythm doc comment.
+  const countLine = countOf(total, 'send');
   const exportParams = new URLSearchParams();
   exportParams.set('format', 'csv');
   if (q.trim()) exportParams.set('q', q.trim());

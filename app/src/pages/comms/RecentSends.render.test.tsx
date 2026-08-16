@@ -307,6 +307,64 @@ describe('RecentSends', () => {
     expect(document.querySelector('.chq-comms-batch-tally')?.textContent).toBe('1 bounced, 2 failed, 1 sent');
   });
 
+  // DEC-603 amendment (wave 66, gate-11 sweep item 6): the expanded
+  // recipients disclosure gets a head row over the SAME five-track grid the
+  // recipient rows use -- empty / Recipient / Result / empty / empty --
+  // rendered only once there's at least one recipient row.
+  describe('recipient column heads (DEC-603, wave 66 amendment)', () => {
+    it('emits exactly one head row naming Recipient/Result once recipients have loaded', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+          { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+          { id: 'log-2', eventName: 'Evt', toEmail: 'bo@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+        ]),
+      });
+
+      render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={[batch()]} templatesById={{}} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+      await waitFor(() => {
+        expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+      });
+
+      const headRows = document.querySelectorAll('.chq-comms-recipient-col-heads-row');
+      expect(headRows).toHaveLength(1);
+      const headCells = Array.from(headRows[0]!.children).map((el) => el.textContent);
+      expect(headCells).toEqual(['', 'Recipient', 'Result', '', '']);
+      // The head shares the recipient row's own five-track grid class.
+      expect(headRows[0]!.className).toContain('chq-comms-recipient-row');
+    });
+
+    it('withholds the head row while recipients are still loading', async () => {
+      // A fetch that never resolves keeps the recipients disclosure in its
+      // loading (DelayedLoading) state indefinitely, matching the pattern
+      // used elsewhere for "still loading" assertions (e.g.
+      // Review.render.test.tsx, EventSwitcher.render.test.tsx).
+      vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+
+      render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={[batch()]} templatesById={{}} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
+      await waitFor(() => {
+        expect(document.querySelector('.chq-comms-batch-tally')).toBeInTheDocument();
+      });
+      expect(document.querySelector('.chq-comms-recipient-col-heads-row')).toBeNull();
+    });
+
+    it('withholds the head row when the recipients fetch errors', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/email-log`]: { status: 500, body: { error: { code: 'internal_error', message: 'Failed to load recipients' } } },
+      });
+
+      render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={[batch()]} templatesById={{}} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to load recipients')).toBeInTheDocument();
+      });
+      expect(document.querySelector('.chq-comms-recipient-col-heads-row')).toBeNull();
+    });
+  });
+
   // DEC-833 (+ DEC-846's "history owes the WORDS" half): each recipient row
   // gets a quiet "Show what was sent" disclosure
   // that fetches the full stored row once and renders subject+bodyText
@@ -400,7 +458,7 @@ describe('RecentSends', () => {
     expect(document.querySelectorAll('.chq-comms-history-when')).toHaveLength(1);
     expect(screen.queryByText(/Subject:/)).not.toBeInTheDocument();
 
-    const rows = document.querySelectorAll('.chq-comms-recipient-row');
+    const rows = document.querySelectorAll('.chq-comms-recipient-row:not(.chq-comms-recipient-col-heads-row)');
     expect(rows).toHaveLength(2);
     for (const row of Array.from(rows)) {
       // DEC-751 (wave-21 amendment, B8): the recipient row's five cells lead
@@ -430,7 +488,9 @@ describe('RecentSends', () => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
     });
 
-    const recipientRow = document.querySelector('.chq-comms-recipient-row') as HTMLElement;
+    const recipientRow = document.querySelector(
+      '.chq-comms-recipient-row:not(.chq-comms-recipient-col-heads-row)',
+    ) as HTMLElement;
     expect(recipientRow.children).toHaveLength(5);
     expect(recipientRow.children[1]!.className).toContain('chq-comms-recipient-to');
     expect(recipientRow.children[2]!.textContent).toBe('sent');
