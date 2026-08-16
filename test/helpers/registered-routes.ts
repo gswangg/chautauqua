@@ -130,3 +130,74 @@ export function enumerateRegisteredRoutes(): RegisteredRoute[] {
   }
   return registeredRoutes;
 }
+
+// ---------------------------------------------------------------------------
+// resolveRegisteredRoute -- DEC-817 (wave-53 amendment). Resolves a client
+// method+path against the REAL route table (enumerateRegisteredRoutes()),
+// replacing the hand-written ROUTE_MODULE_MAP that DEC-817's own ruling named
+// as a hand-listed population. Semantics fixed by the ruling so multiple
+// lanes can implement this identically:
+//   - upper-case the method
+//   - strip a trailing `?...` query string and `#...` fragment from
+//     clientPath
+//   - replace every `${...}` span in clientPath with a literal `:param`
+//     segment (the caller may also pass an already-normalized path -- a
+//     `:param` segment on the client side still compares as a wildcard
+//     against a registered `:name` segment, and as a literal segment
+//     against anything else, which is what callers here want)
+//   - compare segment-wise against every same-method registration: a
+//     registered `:name` segment matches any one client segment; a
+//     registered `*` (or a trailing `/*`) matches all remaining segments;
+//     every other segment must match exactly
+//   - first match wins; undefined when nothing matches
+// ---------------------------------------------------------------------------
+function stripQueryAndFragment(path: string): string {
+  return path.split("?")[0]!.split("#")[0]!;
+}
+
+function normalizeClientPath(path: string): string {
+  return stripQueryAndFragment(path).replace(/\$\{[^}]*\}/g, ":param");
+}
+
+function segmentsOf(path: string): string[] {
+  return path.split("/").filter((s) => s.length > 0);
+}
+
+function matchesRegistration(clientSegments: string[], registeredPath: string): boolean {
+  const regSegments = segmentsOf(registeredPath);
+  let ci = 0;
+  for (let ri = 0; ri < regSegments.length; ri++) {
+    const regSeg = regSegments[ri]!;
+    if (regSeg === "*") {
+      // A wildcard segment (or the last segment being "*") matches all
+      // remaining client segments (including zero).
+      return true;
+    }
+    if (regSeg.startsWith(":")) {
+      if (ci >= clientSegments.length) return false;
+      ci++;
+      continue;
+    }
+    if (ci >= clientSegments.length) return false;
+    if (clientSegments[ci] !== regSeg) return false;
+    ci++;
+  }
+  return ci === clientSegments.length;
+}
+
+let cachedRoutes: RegisteredRoute[] | undefined;
+function routesForResolve(): RegisteredRoute[] {
+  if (!cachedRoutes) cachedRoutes = enumerateRegisteredRoutes();
+  return cachedRoutes;
+}
+
+export function resolveRegisteredRoute(method: string, clientPath: string): RegisteredRoute | undefined {
+  const upperMethod = method.toUpperCase();
+  const normalized = normalizeClientPath(clientPath);
+  const clientSegments = segmentsOf(normalized);
+  for (const route of routesForResolve()) {
+    if (route.method !== upperMethod) continue;
+    if (matchesRegistration(clientSegments, route.path)) return route;
+  }
+  return undefined;
+}
