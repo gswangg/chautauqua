@@ -52,8 +52,36 @@
   border-top: 1px solid var(--chq-hairline);
 }
 
+/* Title column: varied widths across the six rows -- a column of identical
+   bars reads as a loading graphic, not as rows. The narrow meta columns
+   stay uniform (they don't stand in for readable content, just presence). */
 .chq-skeleton-row-table .chq-skeleton-bar-wide {
-  flex: 2 1 0;
+  flex: 0 1 auto;
+  width: 65%;
+}
+
+.chq-skeleton-row-table:nth-child(1) .chq-skeleton-bar-wide {
+  width: 70%;
+}
+
+.chq-skeleton-row-table:nth-child(2) .chq-skeleton-bar-wide {
+  width: 45%;
+}
+
+.chq-skeleton-row-table:nth-child(3) .chq-skeleton-bar-wide {
+  width: 80%;
+}
+
+.chq-skeleton-row-table:nth-child(4) .chq-skeleton-bar-wide {
+  width: 55%;
+}
+
+.chq-skeleton-row-table:nth-child(5) .chq-skeleton-bar-wide {
+  width: 90%;
+}
+
+.chq-skeleton-row-table:nth-child(6) .chq-skeleton-bar-wide {
+  width: 60%;
 }
 
 .chq-skeleton-row-table .chq-skeleton-bar-narrow {
