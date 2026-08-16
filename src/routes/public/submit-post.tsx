@@ -43,7 +43,7 @@ import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim
 import { parseCookies, newCsrfToken, buildCsrfCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import { renderTemplate } from "../../mail/render";
 import { renderEmailHtml } from "../../mail/shell";
-import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
+import { validateUpload, sanitizeFilenameForKey, CFP_FILE_FIELD_KIND, type ValidUpload } from "../../domain/files";
 import { fieldInputName } from "../../views/form-render";
 import { resolveBaseUrl } from "../../server/origin";
 import { publicNotFound } from "./not-found";
@@ -210,7 +210,7 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
     // `kind` here only selects the extension/size allowlist tier inside
     // validateUpload — the file row this becomes is always kind 'attachment'
     // (DEC-040), never one of the submission-deliverable kinds.
-    const result = validateUpload({ filename: file.name, sizeBytes: file.size, kind: "handout" });
+    const result = validateUpload({ filename: file.name, sizeBytes: file.size, kind: CFP_FILE_FIELD_KIND });
     if (!result.ok) {
       fileErrors[field.id] = result.message;
       continue;

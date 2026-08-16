@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "../src/forms/types";
 import { FormField } from "../src/views/form-render";
 import { MAX_LONG_TEXT_LENGTH } from "../src/forms/validate";
-import { allowedUploadExtensions } from "../src/domain/files";
+import { allowedUploadExtensions, CFP_FILE_FIELD_KIND } from "../src/domain/files";
 
 describe("form-render field grammar (DEC-909)", () => {
   // w1-a (DEC-124 amendment): the counter was widened from long_text-only
@@ -88,10 +88,12 @@ describe("form-render field grammar (DEC-909)", () => {
     expect(html).toContain("0 / 1,200");
   });
 
-  // w10-e (DEC-879 amendment): a CFP file field's accept attribute and its
-  // printed hint text must name the same extensions — both derive from
-  // allowedUploadExtensions(), not two independent lists.
-  it("a file field's accept attribute agrees with the printed hint (no video, CFP files are handout-tier)", () => {
+  // w10-e (DEC-879 amendment), w54-d (DEC-879 amendment): a CFP file field's
+  // accept attribute and its printed hint text must name the same
+  // extensions — both derive from allowedUploadExtensions(CFP_FILE_FIELD_KIND),
+  // not two independent lists, and CFP files are handout-tier (zip admitted,
+  // video is not).
+  it("a file field's accept attribute agrees with the printed hint (zip included, no video, CFP files are handout-tier)", () => {
     const field: FormFieldDef = {
       id: "slides",
       section: "session",
@@ -101,9 +103,10 @@ describe("form-render field grammar (DEC-909)", () => {
       position: 5,
     };
     const html = FormField({ field, value: undefined, visible: true }).toString();
-    for (const ext of allowedUploadExtensions()) {
+    for (const ext of allowedUploadExtensions(CFP_FILE_FIELD_KIND)) {
       expect(html).toContain(`.${ext}`);
     }
+    expect(html).toContain(".zip");
     expect(html).not.toMatch(/\.(mp4|mov|webm)/);
   });
 });
