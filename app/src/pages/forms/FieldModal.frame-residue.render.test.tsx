@@ -56,7 +56,7 @@ describe('FieldModal condition select reads as words, never a raw op token (DEC-
   it('renders the visibility-rule condition options as is / is not / is one of', () => {
     render(<FieldModal field={FORMAT} allFields={ALL_FIELDS} onCancel={() => {}} onSubmit={async () => {}} />);
     fireEvent.change(screen.getByLabelText('Field', { selector: 'select' }), { target: { value: TITLE.id } });
-    const opSelect = screen.getByLabelText('Condition', { selector: 'select' });
+    const opSelect = screen.getByLabelText('Is', { selector: 'select' });
     const optionLabels = Array.from(opSelect.querySelectorAll('option')).map((o) => o.textContent);
     expect(optionLabels).toEqual(['is', 'is not', 'is one of']);
   });

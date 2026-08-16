@@ -183,11 +183,11 @@ describe('FormsPage render smoke', () => {
       screen.getByLabelText('Options (one per line)', { selector: 'textarea', exact: false }),
     ).toHaveClass('chq-textarea');
     expect(fieldSelect).toHaveClass('chq-select');
-    expect(screen.getByLabelText('Condition', { selector: 'select' })).toHaveClass('chq-select');
+    expect(screen.getByLabelText('Is', { selector: 'select' })).toHaveClass('chq-select');
     expect(screen.getByLabelText('Value', { selector: 'input' })).toHaveClass('chq-input');
 
     const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-    const saveButton = within(dialog).getByRole('button', { name: 'Save' });
+    const saveButton = within(dialog).getByRole('button', { name: 'Save the question' });
     // DEC-650 (wave-66 amendment): Save/Cancel sit in their own
     // right-flushed group (chq-forms-field-modal-actions-right) inside the
     // shared chq-modal-actions footer, so a far-left Delete (edit mode

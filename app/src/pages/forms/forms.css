@@ -340,9 +340,19 @@
 /* DEC-650 (wave-66 amendment, DESIGN-RULINGS.md:314): Delete sits far left
    in the footer, Cancel/Save right-flushed in their own group -- override
    the base ModalFrame actions row (flex-start, DEC-750) scoped to this one
-   modal, since every other ModalFrame dialog has no far-left control. */
+   modal, since every other ModalFrame dialog has no far-left control.
+   DEC-650 (wave 8, frame 02--10 :721 amendment): the footer band also gets
+   its own background + top rule, matching the mock's #EFEBDF/#D3CFC0
+   footer -- pulled out to the .chq-modal's own edges (the same
+   negative-margin trick modal-frame.css's .chq-modal-head uses against the
+   base .chq-modal 20px/26px padding) rather than inheriting the plain-paper
+   body. */
 .chq-forms-field-modal .chq-modal-actions {
   justify-content: space-between;
+  margin: 2px -26px -20px;
+  padding: 16px 26px;
+  background: var(--chq-paper-2, #efebdf);
+  border-top: 1px solid var(--chq-rule);
 }
 
 .chq-forms-field-modal-actions-right {
@@ -357,6 +367,19 @@
 .chq-forms-rule-sentence {
   margin: 0 0 8px;
   font-weight: 600;
+}
+
+/* DEC-650 (wave 8, frame 02--10 :704): Field/Is/Value share one grid row --
+   1fr/120px/1fr with a 10px gap, bottom-aligned so a short "Is" select
+   lines up with its taller Field/Value neighbours. Grid keeps all three
+   column tracks reserved regardless of how many children actually render
+   (see FieldModal.tsx), so the Value column never collapses when no
+   trigger is chosen. */
+.chq-forms-rule-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 1fr;
+  gap: 10px;
+  align-items: end;
 }
 
 /* Fields section footer row (mock: "Public link · <url> · Copy") --
