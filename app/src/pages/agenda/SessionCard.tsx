@@ -41,6 +41,20 @@ interface SessionCardProps {
    * omit this (undefined), keeping the "choose a time slot" wording for a
    * first placement. */
   placed?: boolean;
+  /** DEC-903 (wave-63 amendment): while another session is armed for
+   * click-to-place, a placed card's accessible name must state what
+   * clicking it will actually do (place the ARMED session into this
+   * card's own slot, possibly clashing) instead of the generic "click to
+   * select, then choose a new slot" — callers compute the same wording the
+   * twin cell button uses and pass it here as a full override. Undefined
+   * when nothing is armed, leaving the default name untouched. */
+  armedLabel?: string;
+  /** DEC-903 (wave-63 amendment): fires `true` on this card's own
+   * dragstart and `false` on its dragend, so a container (DayGrid) can
+   * track which card is mid-drag without owning the dataTransfer payload
+   * itself — SessionCard keeps the HTML5 DnD wiring, the parent only
+   * observes the boolean. */
+  onDragStateChange?: (dragging: boolean) => void;
 }
 
 /** Drag-drop AND keyboard-operable source card for a session (DEC-570/571):
@@ -51,16 +65,22 @@ interface SessionCardProps {
  * track NAME rendered as text, never by a track color swatch). Draggable
  * via HTML5 DnD, carrying the submission id as plain text + a scoped MIME
  * type. */
-export function SessionCard({ session, conflicts, durationMin, style, className, onDragOver, onDrop, onSelect, selected, placed }: SessionCardProps) {
+export function SessionCard({ session, conflicts, durationMin, style, className, onDragOver, onDrop, onSelect, selected, placed, armedLabel, onDragStateChange }: SessionCardProps) {
   const conflicted = conflicts.some((c) => c.submissionIds.includes(session.submissionId));
   // The placement path is click-to-arm (DEC-570), but nothing in the a11y tree
   // said so — both sbek runs never found manual placement (mandate coverage
   // item #1). Selectable cards now state the action in their accessible name.
   // DEC-853: a card already on the grid is a MOVE, not a first placement —
-  // "choose a new slot" rather than "choose a time slot".
-  const accessibleName = `${session.ref}: ${session.title}${conflicted ? ' (conflict)' : ''}${
-    onSelect ? (placed ? ' — click to select, then choose a new slot' : ' — click to select, then choose a time slot') : ''
-  }`;
+  // "choose a new slot" rather than "choose a time slot". DEC-903 (wave-63
+  // amendment): while something else is armed, `armedLabel` — the same
+  // wording the twin cell button uses — replaces this whole computed name
+  // rather than being appended to it, since the click's actual effect (place
+  // the ARMED session here) has nothing to do with THIS card's own ref/title.
+  const accessibleName =
+    armedLabel ??
+    `${session.ref}: ${session.title}${conflicted ? ' (conflict)' : ''}${
+      onSelect ? (placed ? ' — click to select, then choose a new slot' : ' — click to select, then choose a time slot') : ''
+    }`;
 
   function handleDragStart(e: DragEvent<HTMLButtonElement>) {
     e.dataTransfer.setData(AGENDA_DRAG_MIME, session.submissionId);
@@ -70,6 +90,11 @@ export function SessionCard({ session, conflicts, durationMin, style, className,
       e.dataTransfer.setData('application/x-chq-duration-min', String(placed.endMin - placed.startMin));
     }
     e.dataTransfer.effectAllowed = 'move';
+    onDragStateChange?.(true);
+  }
+
+  function handleDragEnd() {
+    onDragStateChange?.(false);
   }
 
   return (
@@ -79,6 +104,7 @@ export function SessionCard({ session, conflicts, durationMin, style, className,
       style={style}
       draggable
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onClick={onSelect}
