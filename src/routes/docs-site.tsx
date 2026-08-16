@@ -32,6 +32,7 @@ import {
 } from "./docs-content";
 import { publicNotFound } from "./public/not-found";
 import { PublicEmptyState } from "./public/empty-state";
+import { DOCS_SHOTS_AVAILABLE } from "./docs-content/shots-available";
 
 export const docsSiteRoutes = new Hono<AppEnv>();
 
@@ -82,7 +83,28 @@ function DocsBlockView(props: { block: DocsBlock }) {
   // figure: a NAMED PLACEHOLDER frame carrying its shotId as text plus its
   // caption -- never an <img> pointing at a file that does not exist yet
   // (screenshot rule 1: a doc showing a screen that isn't there is worse
-  // than no screenshot). The freeze-time shoot fills this frame in later.
+  // than no screenshot). Once scripts/docs-shots.ts has actually captured
+  // this id (DOCS_SHOTS_AVAILABLE, generated -- never hand-extended), the
+  // frame renders the real image instead. alt is deliberately empty: the
+  // figcaption carries the point (DESIGN-RULINGS.md:313), so the image is
+  // decorative to a screen reader.
+  if (DOCS_SHOTS_AVAILABLE.includes(block.shotId)) {
+    return (
+      <figure class="chq-docs-figure">
+        <div class="chq-docs-figure-frame">
+          <img
+            class="chq-docs-figure-img"
+            src={`/docs/shots/${block.shotId}.png`}
+            width="900"
+            height="563"
+            loading="lazy"
+            alt=""
+          />
+        </div>
+        <figcaption class="chq-docs-figure-caption">{block.caption}</figcaption>
+      </figure>
+    );
+  }
   return (
     <figure class="chq-docs-figure">
       <div class="chq-docs-figure-frame">
