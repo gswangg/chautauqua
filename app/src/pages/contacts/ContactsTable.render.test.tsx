@@ -189,7 +189,7 @@ describe('ContactsTable column allocation (w20-c, DEC-902)', () => {
     const desktopBlock = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
 
     expect(desktopBlock).toMatch(/\.chq-contacts-table\s*\{[^}]*table-layout:\s*fixed;/);
-    expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-select\s*\{\s*width:\s*26px;\s*\}/);
+    expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-select\s*\{\s*width:\s*46px;\s*\}/);
     expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-company\s*\{\s*width:\s*130px;\s*\}/);
     expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-labels\s*\{\s*width:\s*118px;\s*\}/);
     // Gate-9 user-filed: the actions column carries a REAL width, not the

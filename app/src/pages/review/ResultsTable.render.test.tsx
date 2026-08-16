@@ -1234,7 +1234,7 @@ describe('ResultsTable results table is fixed-layout on the frame\'s seven track
     const baseRule = sheet.slice(sheet.indexOf('.chq-review-results-table {'), sheet.indexOf('.chq-review-results-table th {'));
     expect(baseRule).toContain('table-layout: fixed;');
 
-    expect(sheet).toContain('.chq-review-results-col-rank {\n  width: 44px;\n}');
+    expect(sheet).toContain('.chq-review-results-col-rank {\n  width: 56px;\n}');
     expect(sheet).toContain('.chq-review-results-col-speaker {\n  width: 150px;\n}');
     expect(sheet).toContain('.chq-review-results-col-track {\n  width: 130px;\n}');
     expect(sheet).toContain('.chq-review-results-col-score {\n  width: 92px;\n}');
