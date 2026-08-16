@@ -17,6 +17,7 @@
     "bundle:check": "tsx scripts/bundle-check.ts",
     "walkthrough": "tsx scripts/walkthrough.ts",
     "gate:render-sweep": "tsx scripts/render-sweep.ts",
+    "shots:docs": "sh scripts/with-test-lock.sh tsx scripts/docs-shots.ts",
     "gate:scale": "tsx scripts/walkthrough/stress.ts",
     "verification-log:assemble": "tsx scripts/assemble-verification-log.ts",
     "verification-log:check": "tsx scripts/assemble-verification-log.ts --check",
