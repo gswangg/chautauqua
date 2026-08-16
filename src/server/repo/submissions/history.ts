@@ -20,6 +20,7 @@ import * as schema from "../../../db/schema";
 import type { Db } from "../../context";
 import { AS_SUBMITTED_EDITOR, listRevisions } from "../revisions";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
+import { submittedEvaluationCondition } from "../review/evaluations";
 
 export interface SubmissionHistoryEntry {
   id: string;
@@ -67,7 +68,7 @@ export async function listSubmissionHistory(db: Db, submissionId: string): Promi
       .innerJoin(schema.evaluationPlan, eq(schema.evaluation.planId, schema.evaluationPlan.id))
       .innerJoin(schema.user, eq(schema.evaluation.reviewerId, schema.user.id))
       .leftJoin(schema.contact, eq(schema.user.contactId, schema.contact.id))
-      .where(eq(schema.evaluation.submissionId, submissionId)),
+      .where(and(eq(schema.evaluation.submissionId, submissionId), submittedEvaluationCondition())),
     // DEC-892: one join, never one email_log lookup per participant.
     db
       .select({
