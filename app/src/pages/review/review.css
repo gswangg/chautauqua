@@ -1611,6 +1611,33 @@
   color: var(--chq-muted);
 }
 
+/* task-w3-d; DEC-939 (wave-82 amendment): a Choice criterion is a STACKED
+   radio row (not the frame's five-across rating segments) -- one row per
+   option, each meeting the 44px minimum touch target, so option labels of
+   differing length never wrap raggedly the way a horizontal row would. */
+.chq-review-choice-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-review-choice-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 15px;
+  color: var(--chq-ink);
+  cursor: pointer;
+}
+
+.chq-review-choice-option input[type='radio'] {
+  cursor: pointer;
+  flex: none;
+}
+/* end task-w3-d Choice radio row block */
+
 .chq-review-overall {
   padding: 18px 0;
   border-bottom: 1px solid var(--chq-hairline);

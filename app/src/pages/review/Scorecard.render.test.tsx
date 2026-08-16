@@ -125,8 +125,13 @@ describe('Scorecard render smoke', () => {
     expect(qualityRadios).toHaveLength(5);
     expect(qualityRadios.every((r) => r.getAttribute('aria-checked') === 'false')).toBe(true);
 
-    // dropdown criterion -> select with its options
-    expect(screen.getByRole('option', { name: 'Great' })).toBeInTheDocument();
+    // dropdown (Choice) criterion -> stacked radio row, one radio per
+    // option, inside a role=radiogroup named by the criterion's own id.
+    const fitGroup = screen.getByRole('radiogroup', { name: 'Fit (c2)' });
+    const fitRadios = within(fitGroup).getAllByRole('radio');
+    expect(fitRadios).toHaveLength(3);
+    expect(fitRadios.every((r) => (r as HTMLInputElement).checked === false)).toBe(true);
+    expect(screen.getByRole('radio', { name: 'Fit (c2): Great' })).toBeInTheDocument();
 
     // free-text criterion -> textarea
     expect(screen.getByLabelText('Notes (c3)')).toBeInTheDocument();
@@ -230,7 +235,12 @@ describe('Scorecard render smoke', () => {
     // before every rating criterion is scored that sentence is just the
     // caption (no reconciliation clause to append yet).
     expect(screen.getByText('Overall')).toBeInTheDocument();
-    expect(screen.getByText('Averaged by weight, not editable')).toBeInTheDocument();
+    // DEC-939 (wave-82 amendment): 'Fit' is a Choice criterion, so the
+    // caption states its denominator -- the N rating criteria it means to
+    // score, and that Choice is recorded rather than averaged.
+    expect(
+      screen.getByText('Averaged by weight, not editable · Weighted mean of the 2 scored criteria · Fit is recorded, not averaged'),
+    ).toBeInTheDocument();
     const overallValue = () => document.querySelector('.chq-review-overall-value')!;
     expect(overallValue().textContent).toBe('—');
 
@@ -243,7 +253,7 @@ describe('Scorecard render smoke', () => {
     expect(overallValue().textContent).toBe('—');
 
     fireEvent.click(within(depthGroup).getByRole('radio', { name: 'Depth (c2): 2 of 5' }));
-    fireEvent.change(screen.getByRole('option', { name: 'Great' }).closest('select')!, { target: { value: 'Great' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Fit (c3): Great' }));
 
     // Complete -> (4*3 + 2*1) / 4 = 3.5.
     await waitFor(() => expect(overallValue().textContent).toBe('3.5'));
@@ -256,6 +266,164 @@ describe('Scorecard render smoke', () => {
       expect.objectContaining({ method: 'PUT' }),
     );
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+  });
+});
+
+// task-w3-d; DEC-939 (wave-82 amendment): a Choice criterion is a stacked
+// radio row (not a <select>), and the Overall caption states its
+// denominator when the round carries at least one Choice criterion.
+describe('Scorecard Choice criterion control (DEC-939 wave-82 amendment)', () => {
+  function planWithChoice() {
+    return {
+      id: PLAN_ID,
+      eventId: 'evt-1',
+      name: 'Track Review',
+      instructions: '',
+      openDate: null,
+      closeDate: null,
+      filters: null,
+      anonymized: false,
+      scale: { min: 1, max: 5 },
+      criteria: [
+        { id: 'c1', label: 'Quality', kind: 'rating' as const, weight: 1 },
+        { id: 'c2', label: 'Fit', kind: 'dropdown' as const, options: ['Poor', 'OK', 'Great'] },
+      ],
+      rounds: 1,
+      currentRound: 1,
+      maxEvaluations: null,
+      createdAt: 1700000000000,
+    };
+  }
+
+  it('renders one radio per option in declared order, stacked inside a named fieldset/legend group', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([planWithChoice()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [
+          { id: 'c1', label: 'Quality', kind: 'rating', weight: 1 },
+          { id: 'c2', label: 'Fit', kind: 'dropdown', options: ['Poor', 'OK', 'Great'] },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+
+    // No bare <select> survives for a dropdown/Choice criterion.
+    expect(document.querySelector('select')).toBeNull();
+
+    // Lives inside the SAME per-criterion <fieldset>/<legend> every kind
+    // uses -- two criteria that share a label would still be two groups,
+    // since the group name is scoped by criterion id.
+    const fitLegend = screen.getByText('Fit').closest('fieldset')!.querySelector('legend')!;
+    expect(fitLegend.textContent).toContain('Fit');
+
+    const fitGroup = screen.getByRole('radiogroup', { name: 'Fit (c2)' });
+    const options = within(fitGroup).getAllByRole('radio');
+    expect(options.map((o) => o.getAttribute('aria-label'))).toEqual([
+      'Fit (c2): Poor',
+      'Fit (c2): OK',
+      'Fit (c2): Great',
+    ]);
+
+    // Each option row is a real 44px-minimum touch target (CSS asserted
+    // in review.css; here we assert the row structure carries the class).
+    options.forEach((o) => {
+      expect(o.closest('.chq-review-choice-option')).not.toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Fit (c2): OK' }));
+    expect(screen.getByRole('radio', { name: 'Fit (c2): OK' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Fit (c2): Poor' })).not.toBeChecked();
+  });
+
+  it('states the Overall denominator when the round carries a Choice criterion, naming it as recorded not averaged', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([planWithChoice()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [
+          { id: 'c1', label: 'Quality', kind: 'rating', weight: 1 },
+          { id: 'c2', label: 'Fit', kind: 'dropdown', options: ['Poor', 'OK', 'Great'] },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+
+    // Derived from the plan's own criteria -- never hand-typed -- naming
+    // the count of RATING criteria actually scored, and the Choice
+    // criterion's own label, as recorded rather than averaged.
+    expect(
+      screen.getByText(/Weighted mean of the 1 scored criteria · Fit is recorded, not averaged/),
+    ).toBeInTheDocument();
+  });
+
+  it('a page-level digit key while focus is inside the Choice radio group never sets a rating (scorecardKeyAction yields none for a form-field target)', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([planWithChoice()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [
+          { id: 'c1', label: 'Quality', kind: 'rating', weight: 1 },
+          { id: 'c2', label: 'Fit', kind: 'dropdown', options: ['Poor', 'OK', 'Great'] },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
+    const fitOk = screen.getByRole('radio', { name: 'Fit (c2): OK' });
+    fitOk.focus();
+    expect(fitOk).toHaveFocus();
+
+    // Digit '4' originates from the radio input, a form-field target --
+    // scorecardKeyAction must yield 'none', so the Quality rating group
+    // stays entirely unset.
+    fireEvent.keyDown(fitOk, { key: '4' });
+    within(qualityGroup)
+      .getAllByRole('radio')
+      .forEach((r) => expect(r).toHaveAttribute('aria-checked', 'false'));
+    // And the digit did not select a Choice option either -- it is not a
+    // native radio keyboard action ('4' is not Arrow/Home/End/Space).
+    expect(fitOk).not.toBeChecked();
   });
 });
 
@@ -526,10 +694,11 @@ describe('Scorecard recusal survives reload (DEC-984)', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /conflict of interest/i })).not.toBeInTheDocument();
 
-    // Every rating/dropdown control and both action buttons are disabled.
+    // Every rating/Choice control and both action buttons are disabled.
     const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality (c1)' });
     within(qualityGroup).getAllByRole('radio').forEach((r) => expect(r).toBeDisabled());
-    expect(screen.getByRole('combobox')).toBeDisabled();
+    const fitGroup = screen.getByRole('radiogroup', { name: 'Fit (c2)' });
+    within(fitGroup).getAllByRole('radio').forEach((r) => expect(r).toBeDisabled());
     expect(screen.getByRole('button', { name: 'Submit and next' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
 
@@ -931,7 +1100,7 @@ describe('Scorecard completeness notice and form-field key guard (DEC-939 wave-3
     ).toBeInTheDocument();
 
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Recommendation (c2)' })).getByRole('radio', { name: 'Recommendation (c2): 3 of 5' }));
-    fireEvent.change(screen.getByRole('option', { name: 'Yes' }).closest('select')!, { target: { value: 'Yes' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Format fit (c3): Yes' }));
 
     // The notice vanishes the instant the last criterion is answered --
     // no second submit click required to clear it.

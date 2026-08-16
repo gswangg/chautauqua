@@ -71,6 +71,13 @@ function radioAccessibleName(criterion: EvaluationCriterion, value: number, max:
   return `${criterionGroupName(criterion)}: ${value} of ${max}`;
 }
 
+// DEC-939 (wave-82 amendment): the Choice radio row's accessible name
+// follows the same criterion-id-scoped grammar as the rating radios'
+// (radioAccessibleName above) -- unique per criterion by construction.
+function choiceOptionAccessibleName(criterion: EvaluationCriterion, option: string): string {
+  return `${criterionGroupName(criterion)}: ${option}`;
+}
+
 function evaluationRefusalProblems(
   fields: Record<string, string>,
   criteria: EvaluationCriterion[],
@@ -413,6 +420,19 @@ export function Scorecard() {
       )
     : null;
 
+  // DEC-939 (wave-82 amendment): when the round carries at least one
+  // Choice criterion, the Overall caption names its own denominator
+  // ("Weighted mean of the N scored criteria") and states that the Choice
+  // criterion is recorded, not averaged -- derived from the plan's own
+  // criteria list, never hand-typed.
+  const choiceCriteria = criteria.filter((c) => c.kind === 'dropdown');
+  const overallDenominatorClause =
+    choiceCriteria.length > 0
+      ? ` · Weighted mean of the ${ratingCriteria.length} scored criteria · ${choiceCriteria
+          .map((c) => c.label)
+          .join(', ')} ${choiceCriteria.length > 1 ? 'are' : 'is'} recorded, not averaged`
+      : '';
+
   // DEC-831: eyebrow names plan · track · round (round only when the plan
   // runs more than one) -- the track clause reuses planTrackScope so it can
   // never drift from the queue header's own scope wording.
@@ -671,21 +691,39 @@ export function Scorecard() {
                   );
                 })()
               ) : criterion.kind === 'dropdown' ? (
-                <select
-                  className="chq-select"
-                  aria-label={criterionGroupName(criterion)}
-                  value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
-                  disabled={!!recusal}
-                  onFocus={() => setFocusedId(criterion.id)}
-                  onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
-                >
-                  <option value="">Select…</option>
-                  {(criterion.options ?? []).map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
+                // DEC-939 (wave-82 amendment): a Choice criterion is a
+                // STACKED radio row, not a <select> -- option labels are
+                // words of differing length and a five-across row of them
+                // wraps raggedly. Native <input type="radio"> elements
+                // sharing one `name` give the standard radio keyboard
+                // contract (Arrow/Home/End roving selection) for free, so
+                // no custom handler is needed here the way the rating
+                // group (buttons, not native inputs) requires one. The
+                // group's accessible name comes from the criterion's own
+                // id (criterionGroupName), same as the rating group, so
+                // two same-labelled criteria stay two things to a screen
+                // reader -- and this group sits inside the SAME per-
+                // criterion <fieldset>/<legend> every criterion kind uses.
+                <div role="radiogroup" aria-label={criterionGroupName(criterion)} className="chq-review-choice-group">
+                  {(criterion.options ?? []).map((opt) => {
+                    const inputId = `${criterionAnchorId(criterion.id)}-opt-${opt}`;
+                    return (
+                      <label key={opt} htmlFor={inputId} className="chq-review-choice-option">
+                        <input
+                          id={inputId}
+                          type="radio"
+                          name={criterionAnchorId(criterion.id)}
+                          aria-label={choiceOptionAccessibleName(criterion, opt)}
+                          checked={scores[criterion.id] === opt}
+                          disabled={!!recusal}
+                          onFocus={() => setFocusedId(criterion.id)}
+                          onChange={() => setScores((s) => ({ ...s, [criterion.id]: opt }))}
+                        />
+                        {opt}
+                      </label>
+                    );
+                  })}
+                </div>
               ) : (
                 <textarea
                   className="chq-textarea"
@@ -723,11 +761,11 @@ export function Scorecard() {
               <span className="chq-review-overall-value">{formatScore(overallScore)}</span>
             </p>
             <p className="chq-review-overall-caption">
-              {overallScore !== null && ratingCriteria.length > 0
+              {(overallScore !== null && ratingCriteria.length > 0
                 ? `Averaged by weight, not editable — a plain average of ${ratingCriteria
                     .map((c) => scores[c.id] as number)
                     .join(', ')} would be ${formatScore(plainAverage(ratingCriteria.map((c) => scores[c.id] as number)))}`
-                : 'Averaged by weight, not editable'}
+                : 'Averaged by weight, not editable') + overallDenominatorClause}
             </p>
           </section>
 
