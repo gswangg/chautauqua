@@ -307,19 +307,20 @@ export async function listFeedbackCommentsForSubmissions(
   return map;
 }
 
-/** DEC-456: account identity is answered by contact_id OR email, never
- * email alone — a contact's email can drift out of sync with its linked
- * user row (e.g. mid-edit, or deliberately after a merge repoint), so a
- * hit on either key means "this contact already has an account". The
- * portal_link merge var is /portal for existing users, else a fresh
- * DEC-014 claim link (route layer mints the token). */
+/** DEC-456 (wave-71 amendment): account identity is answered by contact_id
+ * OR email, never email alone — a contact's email can drift out of sync
+ * with its linked user row (e.g. mid-edit, or deliberately after a merge
+ * repoint), so a hit on either key means "this contact already has an
+ * account". The resolved priority is contact_id first, then lowercased
+ * email, deterministic even when both keys hit different rows: this
+ * function delegates to the batched findAccountUserIds (one array of one)
+ * so the priority has exactly ONE implementation and cannot drift between
+ * the single-row and batch paths. The portal_link merge var is /portal for
+ * existing users, else a fresh DEC-014 claim link (route layer mints the
+ * token). */
 export async function findAccountUserId(db: Db, params: { contactId: string; email: string }): Promise<string | null> {
-  const rows = await db
-    .select({ id: schema.user.id })
-    .from(schema.user)
-    .where(or(eq(schema.user.contactId, params.contactId), sql`lower(${schema.user.email}) = lower(${params.email})`))
-    .limit(1);
-  return rows[0]?.id ?? null;
+  const result = await findAccountUserIds(db, [params]);
+  return result.get(params.contactId) ?? null;
 }
 
 // Each row of this lookup binds TWO columns (contact_id, lower(email)), so
@@ -329,14 +330,19 @@ export async function findAccountUserId(db: Db, params: { contactId: string; ema
 const ACCOUNT_LOOKUP_COLUMNS_PER_ROW = 2;
 const ACCOUNT_LOOKUP_BATCH_SIZE = Math.floor(ID_CHUNK_SIZE / ACCOUNT_LOOKUP_COLUMNS_PER_ROW);
 
-/** DEC-530 batched sibling of findAccountUserId, expressing the SAME
- * predicate (DEC-456: contact_id OR lower(email), never email alone) in one
- * chunked query pass instead of one query per recipient. Keyed by
- * contactId in the returned map; every requested contactId is present
- * (null when neither key hit). Associates hits back by contactId first,
- * then by lowercased email, so a batch can never quietly narrow to
- * email-only — that would mint claim links for contacts who already have
- * logins. */
+/** DEC-530 batched query, chunked one query pass per ACCOUNT_LOOKUP_BATCH_SIZE
+ * recipients instead of one query per recipient; findAccountUserId (the
+ * single-row case) delegates here so there is exactly one implementation of
+ * the DEC-456 priority. Keyed by contactId in the returned map; every
+ * requested contactId is present (null when neither key hit). Resolved
+ * priority, a PROPERTY of this function (not an aspiration): a hit by
+ * contact_id always wins over a hit by lowercased email, even when the two
+ * keys point at different user rows — the underlying select is ordered by
+ * user.id (asc) so that when two rows tie on the SAME key (two users
+ * sharing a contact_id, or two sharing a lowercased email — both should be
+ * impossible under user_email_idx / contact_id uniqueness, but the map
+ * build is last-write-wins), the winner is deterministic rather than
+ * whatever order SQLite happens to return rows in. */
 export async function findAccountUserIds(db: Db, params: { contactId: string; email: string }[]): Promise<Map<string, string | null>> {
   const result = new Map<string, string | null>();
   for (const p of params) result.set(p.contactId, null);
@@ -350,10 +356,13 @@ export async function findAccountUserIds(db: Db, params: { contactId: string; em
     const batchRows = await db
       .select({ id: schema.user.id, contactId: schema.user.contactId, email: schema.user.email })
       .from(schema.user)
-      .where(or(inArray(schema.user.contactId, contactIds), inArray(sql`lower(${schema.user.email})`, emails)));
+      .where(or(inArray(schema.user.contactId, contactIds), inArray(sql`lower(${schema.user.email})`, emails)))
+      .orderBy(asc(schema.user.id));
     rows.push(...batchRows);
   }
 
+  // rows are ordered by user.id (asc) above, so when two rows tie on the
+  // same key this last-write-wins build is deterministic, not arbitrary.
   const byContactId = new Map<string, string>();
   const byEmail = new Map<string, string>();
   for (const row of rows) {
