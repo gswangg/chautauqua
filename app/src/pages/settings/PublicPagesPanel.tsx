@@ -106,6 +106,10 @@ export function PublicPagesPanel() {
 
   useEffect(() => {
     if (!eventId) return;
+    // DEC-856 (wave 71 amendment): clear the page-level banner before any
+    // read is issued -- so a stale refusal never sits beside a later
+    // successful reload (TracksRoomsPanel's shape).
+    setError(undefined);
     apiGet<EventSummary>(`/events/${eventId}`)
       .then(setEvent)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load event'));

@@ -135,6 +135,12 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
       return false;
     }
     setFileError(undefined);
+    // DEC-856 (wave 71 amendment): the sibling handlers (addResource,
+    // saveEdit, confirmDeleteResource) all clear the page-level `error`
+    // before the reload() their success triggers -- this one didn't, so a
+    // stale `error` from an earlier failed reload survived beside a
+    // successful upload.
+    setError(undefined);
     const form = new FormData();
     form.set('title', fileTitle);
     form.set('file', fileToUpload);

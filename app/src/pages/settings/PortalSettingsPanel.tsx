@@ -120,6 +120,10 @@ export function PortalSettingsPanel() {
 
   const loadPortalSettings = useCallback(() => {
     if (!eventId) return;
+    // DEC-856 (wave 71 amendment): clear the page-level banner at the start
+    // of the load, before any read is issued -- so a stale refusal never
+    // sits beside a later successful reload (TracksRoomsPanel's shape).
+    setError(undefined);
     apiGet<PortalSettingsRecord>(`/events/${eventId}/portal-settings`)
       .then((record) => {
         setWelcomeMessage(record.welcomeMessage);
@@ -130,6 +134,11 @@ export function PortalSettingsPanel() {
   }, [eventId]);
 
   useEffect(() => {
+    // DEC-856 (wave 71 amendment): clear the page-level banner before the
+    // onboarding/resources reads below are issued too -- loadPortalSettings
+    // already clears for its own read, but this effect fires two more reads
+    // of its own into the SAME `error` state.
+    setError(undefined);
     loadPortalSettings();
     if (!eventId) return;
     apiGet<OnboardingSummary>(`/events/${eventId}/onboarding?page=1&perPage=1`)
