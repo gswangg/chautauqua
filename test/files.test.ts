@@ -297,13 +297,74 @@ describe("validateUpload — zip (DEC-879 findings wave 5 amendment)", () => {
 });
 
 // w42-a: the document/image/text tiers are unaffected by the kind-gated
-// video tier — still accept/reject purely on extension + size for every kind.
+// video tier — still accept/reject purely on extension + size for every kind
+// EXCEPT 'photo' (wave-67 amendment, DEC-879), which admits image
+// extensions only.
 describe("validateUpload — document tier is unchanged across kinds (w42-a)", () => {
-  it("accepts a pdf under the document cap for every FileKind", () => {
-    for (const kind of FILE_KINDS) {
+  it("accepts a pdf under the document cap for every FileKind except 'photo'", () => {
+    for (const kind of FILE_KINDS.filter((k) => k !== "photo")) {
       const result = validateUpload({ filename: "deck.pdf", sizeBytes: 1024, kind });
       expect(result).toEqual({ ok: true, ext: "pdf", servedContentType: "application/pdf" });
     }
+  });
+});
+
+// DEC-879 (wave-67 amendment): a headshot/photo file request is its own
+// deliverable kind, admitting ONLY image extensions — distinct from the
+// profile-derived 'headshot' library projection off contact.headshot_file_id
+// (src/server/repo/files-library-scope.ts's HEADSHOT_KIND), which is not a
+// FileKind and never flows through this validator.
+describe("validateUpload — photo (DEC-879 wave-67 amendment)", () => {
+  it("accepts a .png under the image cap for kind:'photo'", () => {
+    const result = validateUpload({ filename: "headshot.png", sizeBytes: 1024, kind: "photo" });
+    expect(result).toEqual({ ok: true, ext: "png", servedContentType: "image/png" });
+  });
+
+  it("accepts a .jpg under the image cap for kind:'photo'", () => {
+    const result = validateUpload({ filename: "headshot.jpg", sizeBytes: 1024, kind: "photo" });
+    expect(result).toEqual({ ok: true, ext: "jpg", servedContentType: "image/jpeg" });
+  });
+
+  it("rejects a .pdf for kind:'photo' (document tier is not admitted)", () => {
+    const result = validateUpload({ filename: "resume.pdf", sizeBytes: 1024, kind: "photo" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toBe("Documents are not accepted for a photo deliverable");
+      expect(result.fields?.file).toBe("Unsupported file type for this kind");
+    }
+  });
+
+  it("rejects a .mp4 for kind:'photo' (video tier is recording-only)", () => {
+    const result = validateUpload({ filename: "clip.mp4", sizeBytes: 1024, kind: "photo" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toBe("Video files are only accepted for a recording deliverable");
+    }
+  });
+
+  it("rejects a .zip for kind:'photo' (zip tier is handout-only)", () => {
+    const result = validateUpload({ filename: "archive.zip", sizeBytes: 1024, kind: "photo" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toBe("Zip archives are only accepted for a handout deliverable");
+    }
+  });
+
+  it("rejects an over-IMAGE_MAX_BYTES image for kind:'photo'", () => {
+    const result = validateUpload({ filename: "big.png", sizeBytes: IMAGE_MAX_BYTES + 1, kind: "photo" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toBe(`File exceeds the ${IMAGE_MAX_BYTES / BYTES_PER_MB} MB limit for images`);
+      expect(result.fields?.file).toBe("Too large");
+    }
+  });
+
+  it("allowedUploadExtensions('photo') equals the image key set exactly", () => {
+    expect(new Set(allowedUploadExtensions("photo"))).toEqual(new Set(["png", "jpg", "jpeg", "webp", "gif"]));
+  });
+
+  it("FILE_KINDS includes 'photo', derived not hand-typed", () => {
+    expect(FILE_KINDS).toContain("photo");
   });
 });
 

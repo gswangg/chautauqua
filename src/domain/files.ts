@@ -9,10 +9,13 @@ import { overCapFieldMessage, overCapSentence } from "./cap-copy";
 
 void DEC_425;
 
-// 'presentation' | 'poster' | 'handout' | 'recording' — DEC-003/DEC-879
-// file.kind literal. DEC-879: a session recording is a deliverable like any
-// other file kind, not a separate concept.
-export const FILE_KINDS = ["presentation", "poster", "handout", "recording"] as const;
+// 'presentation' | 'poster' | 'handout' | 'recording' | 'photo' —
+// DEC-003/DEC-879 file.kind literal. DEC-879: a session recording is a
+// deliverable like any other file kind, not a separate concept; a headshot/
+// photo file request is likewise its own deliverable kind (wave-67
+// amendment), distinct from the profile-derived 'headshot' library
+// projection off contact.headshot_file_id (src/server/repo/files-library-scope.ts).
+export const FILE_KINDS = ["presentation", "poster", "handout", "recording", "photo"] as const;
 export type FileKind = (typeof FILE_KINDS)[number];
 
 export function isValidFileKind(value: unknown): value is FileKind {
@@ -132,6 +135,10 @@ export const CFP_FILE_FIELD_KIND: FileKind = "handout";
  * The ONE place this per-kind filter is applied (DEC-879 amendment, wave
  * 10) — uploadHintText derives from this, not a second copy of the rule. */
 export function allowedUploadExtensions(kind?: FileKind): readonly string[] {
+  // DEC-879 (wave-67 amendment): the 'photo' kind admits ONLY the image
+  // extensions — narrower than every other kind's document+image+text base,
+  // matching the tier gate validateUpload enforces below.
+  if (kind === "photo") return Object.keys(IMAGE_EXT_CONTENT_TYPE);
   return ALL_UPLOAD_EXTENSIONS.filter((e) => {
     if (allowedContentType(VIDEO_EXT_CONTENT_TYPE, e) !== null) return kind === "recording";
     if (allowedContentType(ZIP_EXT_CONTENT_TYPE, e) !== null) return kind === "handout";
@@ -155,7 +162,9 @@ export function uploadHintText(kind?: FileKind): string {
   const sizeNote =
     kind === "recording"
       ? `Max ${DOCUMENT_MAX_BYTES / BYTES_PER_MB} MB (${IMAGE_MAX_BYTES / BYTES_PER_MB} MB for images, ${VIDEO_MAX_BYTES / BYTES_PER_MB} MB for recordings).`
-      : `Max ${DOCUMENT_MAX_BYTES / BYTES_PER_MB} MB (${IMAGE_MAX_BYTES / BYTES_PER_MB} MB for images).`;
+      : kind === "photo"
+        ? `Max ${IMAGE_MAX_BYTES / BYTES_PER_MB} MB.`
+        : `Max ${DOCUMENT_MAX_BYTES / BYTES_PER_MB} MB (${IMAGE_MAX_BYTES / BYTES_PER_MB} MB for images).`;
   return `Allowed types: ${extensions.map((e) => `.${e}`).join(", ")}. ${sizeNote}`;
 }
 
@@ -213,6 +222,16 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
 
   const documentType = allowedContentType(DOCUMENT_EXT_CONTENT_TYPE, ext);
   if (documentType !== null) {
+    // DEC-879 (wave-67 amendment): the photo tier admits image extensions
+    // only — a document extension is rejected outright, never sized,
+    // mirroring the video/zip kind gates below.
+    if (input.kind === "photo") {
+      return {
+        ok: false,
+        message: "Documents are not accepted for a photo deliverable",
+        fields: { file: "Unsupported file type for this kind" },
+      };
+    }
     if (input.sizeBytes > DOCUMENT_MAX_BYTES) {
       return {
         ok: false,
@@ -237,6 +256,16 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
 
   const textType = allowedContentType(TEXT_EXT_CONTENT_TYPE, ext);
   if (textType !== null) {
+    // DEC-879 (wave-67 amendment): the photo tier admits image extensions
+    // only — a text extension is rejected outright, never sized, mirroring
+    // the video/zip kind gates below.
+    if (input.kind === "photo") {
+      return {
+        ok: false,
+        message: "Text files are not accepted for a photo deliverable",
+        fields: { file: "Unsupported file type for this kind" },
+      };
+    }
     if (input.sizeBytes > TEXT_MAX_BYTES) {
       return {
         ok: false,
