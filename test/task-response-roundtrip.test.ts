@@ -125,7 +125,7 @@ describe("DEC-291/DEC-694: portal save -> organizer response-detail round-trip",
     });
 
     // The portal save path, exactly as routes/portal/tasks.tsx calls it.
-    await saveTaskFormResponse(db, ASSIGNMENT_ID, JSON.stringify(validation.cleaned));
+    await saveTaskFormResponse(db, ASSIGNMENT_ID, CONTACT_ID, JSON.stringify(validation.cleaned));
     expect(state.taskAssignment[0].responseJson).toBe(JSON.stringify(validation.cleaned));
 
     // GET /api/v1/task-assignments/:id/response (org-scope check happens

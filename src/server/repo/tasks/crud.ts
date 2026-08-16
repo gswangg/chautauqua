@@ -463,12 +463,22 @@ function toAssignmentRecord(row: typeof schema.taskAssignment.$inferSelect): Ass
 
 /** Sets status, stamping completedAt/completedBy(acting user) on transition
  * to 'complete'; clearing them on transition back to 'pending'. */
+// DEC-962 (wave-63 amendment): the organizer route (src/routes/tasks.ts)
+// legitimately updates any contact's assignment in its org, already scoped
+// upstream by event/org authz — but the speaker portal route
+// (src/routes/portal/tasks.tsx) can only ever act on its OWN assignment.
+// scopeContactId is optional (undefined preserves the unscoped statement for
+// the organizer caller, no regression) so the portal caller can pass its own
+// contactId and have the WHERE itself refuse a foreign assignment, in
+// addition to (never instead of) the upstream assertOwnAssignmentOr403
+// check that already runs there.
 export async function updateAssignmentStatus(
   db: Db,
   assignmentId: string,
   status: TaskAssignmentStatus,
   actingUserId: string,
   now: Date,
+  scopeContactId?: string,
 ): Promise<AssignmentRecord> {
   const rows = await db
     .update(schema.taskAssignment)
@@ -478,7 +488,11 @@ export async function updateAssignmentStatus(
       completedBy: status === "complete" ? actingUserId : null,
       updatedAt: now,
     })
-    .where(eq(schema.taskAssignment.id, assignmentId))
+    .where(
+      scopeContactId
+        ? and(eq(schema.taskAssignment.id, assignmentId), eq(schema.taskAssignment.contactId, scopeContactId))
+        : eq(schema.taskAssignment.id, assignmentId),
+    )
     .returning();
   const row = rows[0];
   if (!row) throw new Error(`updateAssignmentStatus: assignment ${assignmentId} not found after update`);

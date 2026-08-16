@@ -193,6 +193,7 @@ describe("portal tasks page — DEC-953 status pill wording", () => {
       "complete",
       speakerAuth.userId,
       expect.any(Date),
+      speakerAuth.contactId,
     );
   });
 });

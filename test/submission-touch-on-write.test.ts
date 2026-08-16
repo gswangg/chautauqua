@@ -245,7 +245,7 @@ describe("submission.updated_at covers its participant/submission_track composit
     insertParticipant(sqlite, "p1", "sub-1", "c1", "invited", T0);
     const before = submissionUpdatedAt(sqlite, "sub-1");
 
-    await portalSetInviteStatus(db, "p1", "declined", "sub-1");
+    await portalSetInviteStatus(db, "p1", "c1", "declined", "sub-1");
 
     const after = submissionUpdatedAt(sqlite, "sub-1");
     expect(after).toBeGreaterThan(before);
