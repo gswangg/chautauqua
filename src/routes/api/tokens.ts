@@ -10,10 +10,10 @@ import { requireOrganizer, requireCookieSession, csrfJson } from "../../server/m
 import { ApiError, readJsonBody } from "../../server/http";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
-import { hashToken, newApiToken, apiTokenDisplayPrefix } from "../../auth/tokens";
+import { hashToken, newApiToken, apiTokenDisplayPrefix, MAX_API_TOKENS_PER_ORG } from "../../auth/tokens";
 import { DEC_027 } from "../../decisions";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-425
-import { overCapFieldMessage } from "../../domain/cap-copy";
+import { overCapFieldMessage, overCapCountMessage } from "../../domain/cap-copy";
 import { clampPage, listPerPage } from "../../lib/pagination";
 
 void DEC_027;
@@ -58,6 +58,7 @@ tokensRoutes.get("/api/v1/tokens", requireOrganizer, requireCookieSession, async
     total,
     page,
     perPage,
+    max: MAX_API_TOKENS_PER_ORG,
   });
 });
 
@@ -71,6 +72,21 @@ tokensRoutes.post("/api/v1/tokens", requireOrganizer, requireCookieSession, csrf
   }
   if (name.length > MAX_NAME_LENGTH) {
     throw new ApiError("invalid", "name is too long", { name: overCapFieldMessage(name.length, MAX_NAME_LENGTH) });
+  }
+
+  // DEC-027 wave-51 amendment: refuse at the org-scoped cap BEFORE minting
+  // -- nothing is written on refusal, matching every sibling mint door
+  // (saved views, saved embeds, form fields, ...).
+  const countRows = await c.var.db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.apiToken)
+    .where(eq(schema.apiToken.orgId, auth.orgId));
+  const existingCount = Number(countRows[0]?.count ?? 0);
+  if (existingCount >= MAX_API_TOKENS_PER_ORG) {
+    throw new ApiError(
+      "conflict",
+      `${overCapCountMessage(existingCount + 1, MAX_API_TOKENS_PER_ORG, "API token")} -- revoke one before creating another`,
+    );
   }
 
   const plaintext = newApiToken();

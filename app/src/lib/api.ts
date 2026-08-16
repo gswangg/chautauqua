@@ -46,6 +46,9 @@ export interface ListEnvelope<T> {
   // the plan editor's cap row reads its talks/reviews/reviewers summary off
   // this ONE number rather than re-deriving it client-side.
   submissionsInScope?: number;
+  // DEC-027 wave-51 amendment: present on GET /tokens only -- the bound on
+  // the org's bearer-token population, rendered beside the create control.
+  max?: number;
 }
 
 // DEC-024 (wave-19 amendment): a 401 anywhere on the wire is one policy in

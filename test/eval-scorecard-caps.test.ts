@@ -119,10 +119,19 @@ describe("DEC-425: POST /api/v1/tokens caps the name field", () => {
     registerErrorHandler(app);
     app.use("*", async (c, next) => {
       c.set("auth", auth);
+      // DEC-027 wave-51 amendment: POST /tokens now runs an org-scoped
+      // count(*) before minting, so this fake db needs a select() chain
+      // too (always reporting an empty org -- these cases exercise the
+      // name-length validation, not the cap).
       c.set(
         "db",
         {
           insert: () => ({ values: async () => undefined }),
+          select: () => ({
+            from: () => ({
+              where: async () => [{ count: 0 }],
+            }),
+          }),
         } as never,
       );
       await next();

@@ -74,6 +74,11 @@ export function listEnvelope<T>(
     // Undefined by default (omitted from the response), matching every other
     // apiList<T> caller that doesn't care about it.
     submissionsInScope: number;
+    // DEC-027 wave-51 amendment: GET /tokens' bound on the org's
+    // bearer-token population. Undefined by default (omitted from the
+    // response), matching every other apiList<T> caller that doesn't care
+    // about it.
+    max: number;
   }> = {},
 ): {
   items: T[];
@@ -85,6 +90,7 @@ export function listEnvelope<T>(
   contentStatusCounts: { pending: number; approved: number; changes_requested: number };
   reuploadedCount: number;
   submissionsInScope?: number;
+  max?: number;
 } {
   return {
     items,
@@ -96,6 +102,7 @@ export function listEnvelope<T>(
     contentStatusCounts: overrides.contentStatusCounts ?? { pending: 0, approved: 0, changes_requested: 0 },
     reuploadedCount: overrides.reuploadedCount ?? 0,
     ...(overrides.submissionsInScope !== undefined ? { submissionsInScope: overrides.submissionsInScope } : {}),
+    ...(overrides.max !== undefined ? { max: overrides.max } : {}),
   };
 }
 

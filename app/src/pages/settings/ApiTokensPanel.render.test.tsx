@@ -194,6 +194,40 @@ describe('ApiTokensPanel tokens table CSS (w22-b, DEC-902 amendment)', () => {
   });
 });
 
+describe('ApiTokensPanel cap line (DEC-027 wave-51 amendment)', () => {
+  it('renders the envelope max beside the create control', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()], { max: 25 }),
+    });
+
+    render(<ApiTokensPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+
+    expect(await screen.findByText('1 of 25 used')).toBeInTheDocument();
+  });
+
+  it('surfaces the 409 cap-refusal message on the error register', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()], { max: 25 }),
+      'POST /api/v1/tokens': {
+        status: 409,
+        body: { error: { code: 'conflict', message: '26 API tokens — 1 over the 25 limit -- revoke one before creating another' } },
+      },
+    });
+
+    render(<ApiTokensPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.change(await screen.findByLabelText('Token name'), { target: { value: 'One more' } });
+    fireEvent.click(screen.getByRole('button', { name: 'New token' }));
+
+    expect(
+      await screen.findByText('26 API tokens — 1 over the 25 limit -- revoke one before creating another'),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('ApiTokensPanel (DEC-941)', () => {
   it('gates Revoke behind a confirm dialog naming the token and the consequence, and only DELETEs on confirm', async () => {
     const fetchMock = mockApi({

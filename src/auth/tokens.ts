@@ -35,6 +35,11 @@ export async function hashToken(token: string): Promise<string> {
 // Bearer API tokens (DEC-027)
 // ---------------------------------------------------------------------------
 
+// DEC-027 wave-51 amendment: J12 DATA-OUT bounds the bearer-token
+// population, matching every sibling mint door (saved views, saved embeds,
+// form fields, ...).
+export const MAX_API_TOKENS_PER_ORG = 25;
+
 const API_TOKEN_PREFIX = "chq_";
 const API_TOKEN_BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
 const API_TOKEN_RANDOM_CHARS = 40;
