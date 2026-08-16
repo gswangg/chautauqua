@@ -35,7 +35,6 @@ const baseItem: ContentSubmissionListItem = {
   ],
   deliverableCounts: { presentation: 2, poster: 0, handout: 1, recording: 0, photo: 0 },
   latestFile: { filename: 'slides.pdf', kind: 'presentation', versionCount: 2, uploadedAt: 1700000000000 },
-  latestFileVersionNo: 2,
   latestFileByKind: { presentation: 2 },
   reuploaded: true,
   scheduled: null,
@@ -234,7 +233,6 @@ describe('SessionList: Session cell subtitle carries the placed schedule slot (w
           {
             ...baseItem,
             latestFile: { ...baseItem.latestFile!, versionCount: 2 },
-            latestFileVersionNo: 3,
             latestFileByKind: { presentation: 3 },
           },
         ]}

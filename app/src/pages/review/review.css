@@ -88,6 +88,15 @@
   color: var(--chq-muted);
 }
 
+/* DEC-239/DEC-251 (w1-d re-closure): the queue row's own ratings-so-far
+   line -- same muted-meta treatment as .chq-review-plan-meta, kept as its
+   own class so a row's format/audienceLevel meta and this count are two
+   independently countable facts, never one shared selector. */
+.chq-review-queue-ratings-count {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 .chq-review-plan-actions {
   display: flex;
   gap: 14px;

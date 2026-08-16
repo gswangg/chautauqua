@@ -72,8 +72,12 @@ export interface ContentSubmissionListItem {
   // DEC-881: the single re-uploaded predicate (latest deliverable file's
   // version_no > 1), computed server-side once and read here — never
   // re-derived client-side from latestFile.versionCount (a deleted middle
-  // version could disagree with version_no).
-  latestFileVersionNo: number | null;
+  // version could disagree with version_no). w1-d/DEC-851 amendment: the raw
+  // version_no this predicate was derived from used to ride the wire too
+  // (latestFileVersionNo) with no reader anywhere under app/src -- the
+  // per-kind summary (latestFileByKind, below) superseded it for display.
+  // Deleted from the wire; still computed server-side as a local (never
+  // exposed) to derive this boolean.
   reuploaded: boolean;
   // w5-i: a per-kind latest version_no (Partial -- a kind with no files is
   // simply absent), so the worklist's Latest file column can print a
