@@ -77,11 +77,15 @@ function toRecord(row: {
   createdAt: Date;
   updatedAt: Date;
 }): SavedViewRecord {
+  const parsed: unknown = JSON.parse(row.configJson);
+  if (!isValidSavedViewConfig(parsed)) {
+    throw new Error(`saved_view ${row.id}.config_json: does not match the DEC-031 config shape`);
+  }
   return {
     id: row.id,
     eventId: row.eventId,
     name: row.name,
-    config: JSON.parse(row.configJson) as SavedViewConfig,
+    config: parsed,
     createdByUserId: row.createdByUserId,
     shared: row.shared,
     createdAt: row.createdAt.getTime(),
