@@ -85,27 +85,47 @@ const EVALUATIONS_FIXED_HEADER = ["planName", "ref", "title", "reviewer", "round
 const FIXED_EVALUATIONS_COLUMN_NAMES = new Set<string>(EVALUATIONS_FIXED_HEADER);
 
 /** Pure row-shaping for the evaluations export (DB-free, unit-tested
- * directly): derives the dynamic score columns from the UNION of score keys
- * actually present across the exported rows -- the load-bearing property
- * that no stored score value is ever dropped -- then renders each row's
- * cells, planName/weightedScore alongside the fixed columns. */
+ * directly). DEC-529 (wave-5 amendment): score columns follow the plan's
+ * DECLARED criteria order (`criteriaByPlan`, base criteria_json followed by
+ * any round-override-only ids in ascending round order) rather than
+ * `Object.keys` of whatever the rows happen to contain -- so integer-like
+ * criterion ids no longer hoist to the front, and a declared-but-unscored
+ * criterion still gets a column (empty cells). A score key present in the
+ * stored data but absent from the plan's declared set is still never
+ * dropped -- it is appended after the declared columns, sorted
+ * lexicographically by "planId:criterionId". */
 export function shapeEvaluationsExport(
   rows: EvaluationExportRow[],
-  labelsByPlan: Map<string, Map<string, string>>,
+  criteriaByPlan: Map<string, { id: string; label: string }[]>,
   planNames: Map<string, string>,
 ): ExportTable {
-  const seen = new Set<string>();
-  const scoreColumns: EvaluationScoreColumn[] = [];
+  const declaredColumns: EvaluationScoreColumn[] = [];
+  const declaredKeys = new Set<string>();
+  for (const [planId, criteria] of criteriaByPlan) {
+    const planName = planNames.get(planId) ?? planId;
+    for (const c of criteria) {
+      declaredKeys.add(`${planId}:${c.id}`);
+      declaredColumns.push({ planId, criterionId: c.id, label: `${planName}: ${c.label}` });
+    }
+  }
+
+  const orphanKeys = new Set<string>();
   for (const r of rows) {
     for (const criterionId of Object.keys(r.scores)) {
       const key = `${r.planId}:${criterionId}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const label = labelsByPlan.get(r.planId)?.get(criterionId) ?? criterionId;
-      const planName = planNames.get(r.planId) ?? r.planId;
-      scoreColumns.push({ planId: r.planId, criterionId, label: `${planName}: ${label}` });
+      if (declaredKeys.has(key)) continue;
+      orphanKeys.add(key);
     }
   }
+  const orphanColumns: EvaluationScoreColumn[] = [...orphanKeys].sort().map((key) => {
+    const sep = key.indexOf(":");
+    const planId = key.slice(0, sep);
+    const criterionId = key.slice(sep + 1);
+    const planName = planNames.get(planId) ?? planId;
+    return { planId, criterionId, label: `${planName}: ${criterionId}` };
+  });
+
+  const scoreColumns: EvaluationScoreColumn[] = [...declaredColumns, ...orphanColumns];
 
   const columnNames = nameCustomColumns(
     scoreColumns.map((c) => ({ fieldId: `${c.planId}:${c.criterionId}`, label: c.label })),
@@ -273,5 +293,37 @@ export async function exportEvaluations(db: Db, eventId: string, params?: Evalua
     };
   });
 
-  return shapeEvaluationsExport(exportRows, labelsByPlan, planNames);
+  // DEC-529 (wave-5 amendment): per plan, the declared column order is the
+  // base criteria_json array followed by any round-override-only criterion
+  // ids in ascending round order -- reusing the same criteriaForRound door
+  // and criteriaForRoundCache the weightedScore computation above already
+  // populated, and labelByCriterionId for the label text, so the label
+  // vocabulary keeps exactly one owner.
+  const criteriaByPlan = new Map<string, { id: string; label: string }[]>();
+  for (const planId of planNames.keys()) {
+    const base = planBaseCriteria.get(planId) ?? [];
+    const orderedIds: string[] = [];
+    const seenIds = new Set<string>();
+    for (const c of base) {
+      if (seenIds.has(c.id)) continue;
+      seenIds.add(c.id);
+      orderedIds.push(c.id);
+    }
+    const rounds = [...new Set(rows.filter((r) => r.planId === planId).map((r) => r.round))].sort((a, b) => a - b);
+    for (const round of rounds) {
+      const roundCriteria = criteriaForRoundCache.get(`${planId}:${round}`) ?? [];
+      for (const c of roundCriteria) {
+        if (seenIds.has(c.id)) continue;
+        seenIds.add(c.id);
+        orderedIds.push(c.id);
+      }
+    }
+    const labels = labelsByPlan.get(planId) ?? new Map<string, string>();
+    criteriaByPlan.set(
+      planId,
+      orderedIds.map((id) => ({ id, label: labels.get(id) ?? id })),
+    );
+  }
+
+  return shapeEvaluationsExport(exportRows, criteriaByPlan, planNames);
 }

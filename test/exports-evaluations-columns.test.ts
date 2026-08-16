@@ -230,6 +230,83 @@ describe("DEC-736 (wave 79 amendment): reviewer column carries a name when the c
   });
 });
 
+describe("DEC-529 (wave-5 amendment): score columns follow the plan's DECLARED criteria order", () => {
+  // Criterion ids '1' and '2' declared in DESCENDING order -- a JS object's
+  // own key iteration would hoist these integer-like keys to ASCENDING
+  // numeric order regardless of insertion order, which is exactly the bug
+  // this amendment fixes. A third declared criterion ('3') is never scored
+  // by any row, and an unrelated 'orphanKey' is scored but never declared.
+  const PLAN_C_CRITERIA = JSON.stringify([
+    { id: "2", label: "Second", kind: "text" },
+    { id: "1", label: "First", kind: "text" },
+    { id: "3", label: "Third", kind: "text" },
+  ]);
+
+  function orderingRows() {
+    return [
+      {
+        planId: "plan-c",
+        planName: "Ordering Plan",
+        criteriaJson: PLAN_C_CRITERIA,
+        roundCriteriaJson: null,
+        scaleJson: SCALE,
+        seq: 1,
+        title: "Talk C",
+        reviewerEmail: "reviewer3@example.com",
+        contactFirstName: null,
+        contactLastName: null,
+        round: 1,
+        scoresJson: JSON.stringify({ "2": "b-value", "1": "a-value", orphanKey: "orphan-value" }),
+        comment: "",
+        submittedAt: new Date("2026-01-04T00:00:00.000Z"),
+      },
+    ];
+  }
+
+  function orderingQueue() {
+    return [[{ recordPrefix: "SES" }], orderingRows()];
+  }
+
+  it("integer-like criterion ids print in DECLARED order ('2' before '1'), not JS object-key ascending order", async () => {
+    const table = await buildExport(fakeDb(orderingQueue()), "event-1", "evaluations");
+    const secondCol = table.header.find((h) => h.includes("Second"))!;
+    const firstCol = table.header.find((h) => h.includes("First"))!;
+    expect(secondCol).toBeDefined();
+    expect(firstCol).toBeDefined();
+    expect(table.header.indexOf(secondCol)).toBeLessThan(table.header.indexOf(firstCol));
+  });
+
+  it("a declared criterion with zero scores still yields a column (empty cell)", async () => {
+    const table = await buildExport(fakeDb(orderingQueue()), "event-1", "evaluations");
+    const thirdCol = table.header.find((h) => h.includes("Third"))!;
+    expect(thirdCol).toBeDefined();
+    const row = table.records[0]!;
+    expect(row[thirdCol]).toBe("");
+  });
+
+  it("an orphan score key (present in stored data, absent from declared criteria) still yields a column, appended after the declared ones", async () => {
+    const table = await buildExport(fakeDb(orderingQueue()), "event-1", "evaluations");
+    const secondCol = table.header.find((h) => h.includes("Second"))!;
+    const firstCol = table.header.find((h) => h.includes("First"))!;
+    const thirdCol = table.header.find((h) => h.includes("Third"))!;
+    const orphanCol = table.header.find((h) => h.includes("orphanKey"))!;
+    expect(orphanCol).toBeDefined();
+    const declaredIndexes = [secondCol, firstCol, thirdCol].map((c) => table.header.indexOf(c));
+    expect(table.header.indexOf(orphanCol)).toBeGreaterThan(Math.max(...declaredIndexes));
+    const row = table.records[0]!;
+    expect(row[orphanCol]).toBe("orphan-value");
+  });
+
+  it("values still land under the correct declared column regardless of print order", async () => {
+    const table = await buildExport(fakeDb(orderingQueue()), "event-1", "evaluations");
+    const secondCol = table.header.find((h) => h.includes("Second"))!;
+    const firstCol = table.header.find((h) => h.includes("First"))!;
+    const row = table.records[0]!;
+    expect(row[secondCol]).toBe("b-value");
+    expect(row[firstCol]).toBe("a-value");
+  });
+});
+
 describe("guard: roundCriteriaJson has exactly one legitimate reader outside labelByCriterionId", () => {
   it("src/server/repo/exports/evaluations.ts reads roundCriteriaJson only as a criteriaForRound argument or inside labelByCriterionId's deliberate all-rounds label union", async () => {
     const fs = await import("node:fs");
