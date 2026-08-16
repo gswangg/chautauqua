@@ -88,14 +88,21 @@ function contactRow(id: string, first: string, last: string) {
 }
 
 // DEC-936: the event lookup (recordPrefix, for formatRef) and the ONE
-// grouped participations query, queued right after the contacts page select
-// whenever that page is non-empty -- fixtures for tests with a non-empty
+// grouped participations query -- fixtures for tests with a non-empty
 // contacts page must supply both so the roster row's fail-loudly
 // empty-participations check doesn't trip on unrelated fixtures.
 // DEC-801 (wave 58 amendment): the event row is now resolved ONCE, up
 // front (never a second query), so every fixture needing a non-empty tasks
 // select must also supply this as the SECOND select() response — it carries
 // both recordPrefix (DEC-936) and timezone (DEC-801) from that one row.
+//
+// DEC-370 (wave-62 amendment): getOnboardingGrid now issues its 9
+// db.select() calls in three concurrent waves rather than one sequential
+// chain, so the call-order-based fakeDb queue below is ordered
+// 0=tasks, 1=event, 2=speakersCount, 3=counts, 4=totalCount, 5=contactsPage,
+// 6=overdueCount, 7=participations, 8=cells (participations/cells skipped
+// when the contacts page is empty; cells also skipped when there are no
+// tasks) -- see getOnboardingGrid's WAVE 1/2/3 comments.
 const EVENT_ROW = [{ recordPrefix: "SES", timezone: "America/New_York" }];
 
 function participationRow(contactId: string, seq = 1, overrides: Partial<{ participantId: string; submissionId: string; submissionTitle: string; inviteStatus: string }> = {}) {
@@ -111,14 +118,15 @@ function participationRow(contactId: string, seq = 1, overrides: Partial<{ parti
 
 // DEC-754: `speakers` is now its own event-wide accepted-roster COUNT(*)
 // query (against `contact`, base predicate only), no longer read off the
-// task_assignment aggregate — SPEAKERS_COUNT_ROW is that query's response,
-// queued immediately before COUNTS_ROW (the last select() call).
+// task_assignment aggregate. DEC-370 (wave-62): SPEAKERS_COUNT_ROW/
+// COUNTS_ROW both compose no timezone/whereExpr, so they join WAVE 1
+// (queued right after EVENT_ROW, at call indices 2/3).
 const SPEAKERS_COUNT_ROW = [{ count: 5 }];
 const COUNTS_ROW = [{ outstandingRequired: 2, outstandingContacts: 3 }];
-// DEC-776: `overdue` is now its own query (composed from
+// DEC-776: `overdue` is its own query (composed from
 // overdueAssignmentConditions, joined through `contact` for the roster
-// predicate) — queued as the LAST select() call, after SPEAKERS_COUNT_ROW
-// and COUNTS_ROW.
+// predicate) — needs whereExpr/timezone, so it joins WAVE 2 (queued right
+// after the contacts page, at call index 6).
 const OVERDUE_COUNT_ROW = [{ count: 1 }];
 
 function sqlTextOf(cond: unknown): { sql: string; params: unknown[] } {
@@ -126,6 +134,20 @@ function sqlTextOf(cond: unknown): { sql: string; params: unknown[] } {
 }
 
 describe("getOnboardingGrid (DEC-340)", () => {
+  // DEC-370 (wave-62 amendment): the missing-event throw is evaluated right
+  // after WAVE 1 resolves (taskRows/eventRows/speakersCountRows/countsRow
+  // all issued concurrently) -- it must still fire even though eventRows is
+  // no longer the sole query in that wave, and it must fire BEFORE any
+  // WAVE 2 query (which needs eventRows' timezone) is ever issued.
+  it("throws when the event row is missing (recordPrefix/timezone unresolved), never reaching WAVE 2", async () => {
+    const { db, calls } = fakeDb([TASK_ROWS, [] /* eventRows: no matching event */, SPEAKERS_COUNT_ROW, COUNTS_ROW]);
+    await expect(getOnboardingGrid(db, "event-404", baseParams())).rejects.toThrow(
+      "onboarding grid: event event-404 has no record prefix/timezone",
+    );
+    // Only WAVE 1's four selects were ever issued.
+    expect(calls.length).toBe(4);
+  });
+
   // DEC-829 (wave-59 amendment): a zero-task event must NOT short-circuit --
   // the roster (rows/total/counts.speakers) is driven by
   // rosterParticipantConditions alone, independent of whether any task rows
@@ -133,7 +155,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
   // envelope, but it's reached by running every query (cellRows is the only
   // one skipped, guarded by taskIds.length > 0), not by an early return.
   it("returns an empty envelope by running every query (not an early return) when the event has no tasks", async () => {
-    const { db, calls } = fakeDb([[], EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db, calls } = fakeDb([[], EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 0 }], [], OVERDUE_COUNT_ROW]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     expect(result).toEqual({
       tasks: [],
@@ -157,35 +179,35 @@ describe("getOnboardingGrid (DEC-340)", () => {
     const { db: db1, calls: calls1 } = fakeDb([
       TASK_ROWS,
       EVENT_ROW,
-      [{ count: 4 }],
-      page1Contacts,
-      page1Participations,
-      [],
       SPEAKERS_COUNT_ROW,
       COUNTS_ROW,
+      [{ count: 4 }],
+      page1Contacts,
       OVERDUE_COUNT_ROW,
+      page1Participations,
+      [],
     ]);
     const result1 = await getOnboardingGrid(db1, "event-1", baseParams({ page: 1, perPage: 2 }));
     expect(result1.rows.map((r) => r.contact.id)).toEqual(["c1", "c2"]);
-    // contactRows is call index 3 (0=tasks, 1=event, 2=count, 3=contacts page).
-    expect(calls1[3]?.offset).toBe(0);
-    expect(calls1[3]?.limit).toBe(2);
+    // contactRows is call index 5 (0=tasks, 1=event, 2=speakers, 3=counts, 4=count, 5=contacts page).
+    expect(calls1[5]?.offset).toBe(0);
+    expect(calls1[5]?.limit).toBe(2);
 
     const { db: db2, calls: calls2 } = fakeDb([
       TASK_ROWS,
       EVENT_ROW,
-      [{ count: 4 }],
-      page2Contacts,
-      page2Participations,
-      [],
       SPEAKERS_COUNT_ROW,
       COUNTS_ROW,
+      [{ count: 4 }],
+      page2Contacts,
       OVERDUE_COUNT_ROW,
+      page2Participations,
+      [],
     ]);
     const result2 = await getOnboardingGrid(db2, "event-1", baseParams({ page: 2, perPage: 2 }));
     expect(result2.rows.map((r) => r.contact.id)).toEqual(["c3", "c4"]);
-    expect(calls2[3]?.offset).toBe(2);
-    expect(calls2[3]?.limit).toBe(2);
+    expect(calls2[5]?.offset).toBe(2);
+    expect(calls2[5]?.limit).toBe(2);
 
     // Disjoint: no id from page 1 appears in page 2.
     const page1Ids = new Set(result1.rows.map((r) => r.contact.id));
@@ -201,20 +223,20 @@ describe("getOnboardingGrid (DEC-340)", () => {
       { assignmentId: "a2", taskId: "task-2", status: "complete", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
       { assignmentId: "a3", taskId: "task-3", status: "pending", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
     ];
-    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 1 }], contacts, [participationRow("c1")], cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 1 }], contacts, OVERDUE_COUNT_ROW, [participationRow("c1")], cellRows]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     expect(result.total).toBe(1);
     expect(result.rows[0]?.cells.length).toBe(3);
   });
 
   it("counts stay event-wide (identical aggregate WHERE) whether or not a filter is active", async () => {
-    const { db: dbFiltered, calls: callsFiltered } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db: dbFiltered, calls: callsFiltered } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 0 }], [], OVERDUE_COUNT_ROW]);
     await getOnboardingGrid(
       dbFiltered,
       "event-1",
       baseParams({ taskId: "task-1", status: "pending", overdueOnly: true, q: "ada" }),
     );
-    const { db: dbUnfiltered, calls: callsUnfiltered } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db: dbUnfiltered, calls: callsUnfiltered } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 0 }], [], OVERDUE_COUNT_ROW]);
     await getOnboardingGrid(dbUnfiltered, "event-1", baseParams());
 
     // Last select() call in both cases is the counts aggregate.
@@ -226,9 +248,9 @@ describe("getOnboardingGrid (DEC-340)", () => {
 
   it("counts come straight from the aggregate query untouched", async () => {
     // No contacts on the page, so the cellRows select is skipped entirely —
-    // the counts aggregate is the 5th select() call now (0=tasks,
-    // 1=event, 2=count, 3=contacts, 4=speakers, 5=counts, 6=overdue).
-    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    // COUNTS_ROW is served at call index 3 (0=tasks, 1=event, 2=speakers,
+    // 3=counts, 4=count, 5=contacts, 6=overdue).
+    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 0 }], [], OVERDUE_COUNT_ROW]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     expect(result.counts).toEqual({ speakers: 5, outstandingRequired: 2, overdue: 1, outstandingContacts: 3 });
   });
@@ -239,7 +261,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
   // calling that function directly, proving the grid can't drift from the
   // overview card's same-predicate count.
   it("counts.overdue's query composes overdueAssignmentConditions verbatim (DEC-776)", async () => {
-    const { db, calls } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db, calls } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 0 }], [], OVERDUE_COUNT_ROW]);
     await getOnboardingGrid(db, "event-1", baseParams({ now: 42_000 }));
     const overdueCall = calls[calls.length - 1];
     const { overdueAssignmentConditions } = await import("../src/server/repo/tasks/crud");
@@ -250,10 +272,10 @@ describe("getOnboardingGrid (DEC-340)", () => {
   });
 
   it("taskId/status/overdueOnly are ANDed inside the single correlated EXISTS (DEC-312)", async () => {
-    const { db, calls } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db, calls } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 0 }], [], OVERDUE_COUNT_ROW]);
     await getOnboardingGrid(db, "event-1", baseParams({ taskId: "task-1", status: "pending", overdueOnly: true }));
-    // contactRows where clause is call index 3 (0=tasks, 1=event, 2=count, 3=contacts).
-    const { sql, params } = sqlTextOf(calls[3]!.where);
+    // contactRows where clause is call index 5 (0=tasks, 1=event, 2=speakers, 3=counts, 4=count, 5=contacts).
+    const { sql, params } = sqlTextOf(calls[5]!.where);
     expect(sql).toContain("exists (select 1 from");
     expect(sql).toMatch(/"task_assignment"\."task_id" = \?.*"task_assignment"\."status" = \?.*"task"\."due_date" is not null/s);
     expect(params).toContain("task-1");
@@ -261,9 +283,9 @@ describe("getOnboardingGrid (DEC-340)", () => {
   });
 
   it("q ANDs first/last/email OR-columns as an escaped LIKE, never widening a literal % or _", async () => {
-    const { db, calls } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db, calls } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 0 }], [], OVERDUE_COUNT_ROW]);
     await getOnboardingGrid(db, "event-1", baseParams({ q: "50%_off" }));
-    const { sql, params } = sqlTextOf(calls[3]!.where);
+    const { sql, params } = sqlTextOf(calls[5]!.where);
     expect(sql).toContain("like");
     expect(sql).toContain("escape '\\'");
     // likeContains escapes % and _ to \% and \_ before wrapping in %...%.
@@ -271,9 +293,9 @@ describe("getOnboardingGrid (DEC-340)", () => {
   });
 
   it("q is ANDed with the match-exists predicate (conjunction, not OR)", async () => {
-    const { db, calls } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db, calls } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 0 }], [], OVERDUE_COUNT_ROW]);
     await getOnboardingGrid(db, "event-1", baseParams({ taskId: "task-1", q: "ada" }));
-    const { sql } = sqlTextOf(calls[3]!.where);
+    const { sql } = sqlTextOf(calls[5]!.where);
     expect(sql).toContain("exists (select 1 from");
     expect(sql).toContain("like");
     // and(...) joins clauses with " and " at the top level.
@@ -311,7 +333,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
         createdAt: new Date(500_000),
       },
     ];
-    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 1 }], contacts, [participationRow("c1")], cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 1 }], contacts, OVERDUE_COUNT_ROW, [participationRow("c1")], cellRows]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
     const cellWithFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a1");
     const cellWithoutFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a2");
@@ -338,7 +360,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
         createdAt: new Date(500_000),
       },
     ];
-    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, [{ count: 1 }], contacts, [participationRow("c1")], cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const { db } = fakeDb([TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 1 }], contacts, OVERDUE_COUNT_ROW, [participationRow("c1")], cellRows]);
     await expect(getOnboardingGrid(db, "event-1", baseParams())).rejects.toThrow(/a1.*missing-file/s);
   });
 
@@ -355,20 +377,20 @@ describe("getOnboardingGrid (DEC-340)", () => {
       const { db, calls } = fakeDb([
         TASK_ROWS,
         EVENT_ROW,
-        [{ count: 3 }],
-        contacts,
-        participations,
-        cellRows,
         SPEAKERS_COUNT_ROW,
         COUNTS_ROW,
+        [{ count: 3 }],
+        contacts,
         OVERDUE_COUNT_ROW,
+        participations,
+        cellRows,
       ]);
       await getOnboardingGrid(db, "event-1", baseParams());
       return { calls };
     })();
-    // tasks, event lookup, count, contacts page, ONE participations select,
-    // ONE cells select, speakers count, counts aggregate, overdue count == 9
-    // total regardless of row count.
+    // tasks, event lookup, speakers count, counts aggregate, contact count,
+    // contacts page, overdue count, ONE participations select, ONE cells
+    // select == 9 total regardless of row count.
     expect(calls.length).toBe(9);
   });
 
@@ -382,7 +404,7 @@ describe("getOnboardingGrid (DEC-340)", () => {
     // the aggregate query untouched" above (no contacts on the page, so
     // the cellRows select is skipped): tasks, event lookup, count, contacts
     // page (empty), counts aggregate.
-    const responses = [TASK_ROWS, EVENT_ROW, [{ count: 0 }], [], SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW];
+    const responses = [TASK_ROWS, EVENT_ROW, SPEAKERS_COUNT_ROW, COUNTS_ROW, [{ count: 0 }], [], OVERDUE_COUNT_ROW];
     const db = {
       select: () => {
         const rows = responses[call] ?? [];

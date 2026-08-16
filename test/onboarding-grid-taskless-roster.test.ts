@@ -64,16 +64,21 @@ const ONE_PARTICIPATION = [
 
 describe("getOnboardingGrid: a taskless event still shows its roster (DEC-829 wave-59 amendment)", () => {
   it("returns one row/total 1/counts.speakers 1 for an accepted submission + participant with zero task rows", async () => {
+    // DEC-370 (wave-62 amendment): getOnboardingGrid now issues its reads in
+    // three concurrent waves (WAVE 1 = tasks/event/speakers/counts, WAVE 2 =
+    // total/contacts/overdue, WAVE 3 = participations+cells chunk loops), so
+    // this call-order-based queue is ordered 0=tasks, 1=event, 2=speakers,
+    // 3=counts, 4=total, 5=contacts, 6=overdue, 7=participations. cellRows is
+    // skipped: taskIds.length === 0.
     const { db, calls } = fakeDb([
       [], // taskRows: zero tasks
       EVENT_ROW, // event lookup
-      [{ count: 1 }], // totalRows
-      ONE_CONTACT, // contactRows (page)
-      ONE_PARTICIPATION, // participations for the page
-      // cellRows is skipped: taskIds.length === 0
       [{ count: 1 }], // speakersCountRows
       [{ outstandingRequired: 0, outstandingContacts: 0 }], // countsRow
+      [{ count: 1 }], // totalRows
+      ONE_CONTACT, // contactRows (page)
       [{ count: 0 }], // overdueCountRows
+      ONE_PARTICIPATION, // participations for the page
     ]);
 
     const result = await getOnboardingGrid(db, "event-1", baseParams());
@@ -86,7 +91,7 @@ describe("getOnboardingGrid: a taskless event still shows its roster (DEC-829 wa
     expect(result.counts.speakers).toBe(1);
 
     // No cellRows select was issued (taskIds.length === 0 guards it): tasks,
-    // event, total, contacts, participations, speakers, counts, overdue == 8.
+    // event, speakers, counts, total, contacts, overdue, participations == 8.
     expect(calls.length).toBe(8);
   });
 });
