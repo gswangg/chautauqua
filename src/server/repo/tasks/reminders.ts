@@ -801,12 +801,15 @@ export async function sendDueRemindersForEvent(
     outstandingByContact.set(r.contactId, arr);
   }
 
+  // wave-82 amendment (DEC-023): the guard MUST precede the computation it
+  // protects — an empty timezone must surface this named error, not an
+  // opaque RangeError from zonedMinutesToUtc one line below.
+  if (!eventTimezone) throw new Error(`no event timezone resolved for eventId ${eventId}`);
+
   // wave-58 amendment (DEC-023): the event's own end-of-day instant, in the
   // event's timezone, is the cron's terminal gate — an incomplete task never
   // gets reminded past the event it belongs to.
   const eventEndsAt = zonedMinutesToUtc(eventEndDate, 24 * 60, eventTimezone).getTime();
-
-  if (!eventTimezone) throw new Error(`no event timezone resolved for eventId ${eventId}`);
 
   const plan = planReminders({
     assignments: outstanding.map(toReminderAssignment),

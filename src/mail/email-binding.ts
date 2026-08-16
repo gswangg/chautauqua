@@ -152,6 +152,22 @@ function newBoundary(): string {
   return `chq_${crypto.randomUUID()}`;
 }
 
+/**
+ * wave-82 amendment (DEC-023/DEC-168): the calendar MIME part's `method=`
+ * parameter must be derived from the `METHOD:` line inside the ics bytes it
+ * is labelling, never hard-coded — a hard-coded REQUEST was only correct
+ * while a single caller existed. Fail loudly if the ics content carries no
+ * METHOD line at all, rather than silently mislabelling a CANCEL/PUBLISH
+ * calendar as a REQUEST.
+ */
+function icsMethodFromContent(icsContent: string): string {
+  const match = /^METHOD:(.+)$/m.exec(icsContent);
+  if (!match) {
+    throw new Error("icsMethodFromContent: ics content carries no METHOD: line");
+  }
+  return match[1]!.trim();
+}
+
 function buildRawMime(from: { email: string; name: string }, m: RenderedEmail, now: Date): string {
   const altBoundary = newBoundary();
   const alt: string[] = [
@@ -191,6 +207,7 @@ function buildRawMime(from: { email: string; name: string }, m: RenderedEmail, n
 
   const mixedBoundary = newBoundary();
   const safeFilename = sanitizeMimeFilename(m.ics.filename);
+  const icsMethod = icsMethodFromContent(m.ics.content);
   const lines = [
     ...headers,
     `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
@@ -201,7 +218,7 @@ function buildRawMime(from: { email: string; name: string }, m: RenderedEmail, n
     ...alt,
     "",
     `--${mixedBoundary}`,
-    `Content-Type: text/calendar; charset="UTF-8"; method=REQUEST; name="${safeFilename}"`,
+    `Content-Type: text/calendar; charset="UTF-8"; method=${icsMethod}; name="${safeFilename}"`,
     `Content-Transfer-Encoding: base64`,
     `Content-Disposition: attachment; filename="${safeFilename}"`,
     "",

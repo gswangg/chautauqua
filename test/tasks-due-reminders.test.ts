@@ -204,4 +204,39 @@ describe("sendDueRemindersForEvent (DEC-023 due-date cron path, invoked per-even
     expect(count).toBe(0);
     expect(sent).toHaveLength(0);
   });
+
+  // wave-82 amendment (DEC-023): the missing-timezone guard must run BEFORE
+  // zonedMinutesToUtc is called, so a row with an empty/absent
+  // eventTimezone surfaces the named "no event timezone resolved" error —
+  // not an opaque RangeError from the date computation one line below it
+  // (which src/routes/tasks.ts's per-event try/catch would otherwise
+  // swallow into failedEventIds with no useful message).
+  it("throws the named 'no event timezone resolved' error, not a RangeError, for an outstanding row with an empty eventTimezone", async () => {
+    const rows: OutstandingRowShape[] = [
+      {
+        assignmentId: "assign_3",
+        taskId: "task_3",
+        taskTitle: "Hotel stay requirement form",
+        dueDate: new Date(NOW.getTime() - HOUR),
+        status: "pending",
+        lastRemindedAt: null,
+        contactId: "contact_3",
+        firstName: "Speaker",
+        lastName: "Three",
+        email: "sbek-speaker3@example.com",
+        eventId: "event_1",
+        eventName: "DevFlow Conf 2027",
+        timezone: "",
+        eventEndDate: "2027-12-31",
+        assignmentCreatedAt: new Date(NOW.getTime() - 200 * HOUR),
+      },
+    ];
+    const { db } = fakeDb(rows);
+    const { mailer, sent } = fakeMailer();
+
+    await expect(
+      sendDueRemindersForEvent(db, mailer, "event_1", NOW, new InMemoryKV(), ORIGIN),
+    ).rejects.toThrow("no event timezone resolved for eventId event_1");
+    expect(sent).toHaveLength(0);
+  });
 });

@@ -67,13 +67,41 @@ describe("EmailBindingMailer", () => {
     const log = new InMemoryEmailLog();
     const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
 
-    const icsContent = "BEGIN:VCALENDAR\nEND:VCALENDAR";
+    const icsContent = "BEGIN:VCALENDAR\nMETHOD:REQUEST\nEND:VCALENDAR";
     await mailer.send(baseMsg({ ics: { filename: "session.ics", content: icsContent } }));
 
     const raw = calls[0]!.raw;
     expect(raw).toContain('Content-Type: text/calendar; charset="UTF-8"; method=REQUEST; name="session.ics"');
     expect(raw).toContain('filename="session.ics"');
     expect(raw).toContain(btoa(icsContent));
+  });
+
+  // wave-82 amendment (DEC-023/DEC-168): the method= parameter must come
+  // from the METHOD: line inside the ics bytes, not a hard-coded REQUEST —
+  // correct today only because REQUEST was the sole caller.
+  it("labels a METHOD:CANCEL calendar's part as method=CANCEL, not method=REQUEST", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    const icsContent = "BEGIN:VCALENDAR\nMETHOD:CANCEL\nEND:VCALENDAR";
+    await mailer.send(baseMsg({ ics: { filename: "session.ics", content: icsContent } }));
+
+    const raw = calls[0]!.raw;
+    expect(raw).toContain('Content-Type: text/calendar; charset="UTF-8"; method=CANCEL; name="session.ics"');
+    expect(raw).not.toContain("method=REQUEST");
+  });
+
+  it("refuses to send an .ics attachment whose content carries no METHOD: line", async () => {
+    const binding = { send: async () => {} };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    const icsContent = "BEGIN:VCALENDAR\nEND:VCALENDAR";
+    await expect(
+      mailer.send(baseMsg({ ics: { filename: "session.ics", content: icsContent } })),
+    ).rejects.toThrow(/METHOD/);
   });
 
   it("strips a header-injection subject to a single Subject: line with no Bcc: line", async () => {
@@ -114,7 +142,7 @@ describe("EmailBindingMailer", () => {
     const log = new InMemoryEmailLog();
     const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
 
-    await mailer.send(baseMsg({ ics: { filename: "session.ics", content: "BEGIN:VCALENDAR\nEND:VCALENDAR" } }));
+    await mailer.send(baseMsg({ ics: { filename: "session.ics", content: "BEGIN:VCALENDAR\nMETHOD:REQUEST\nEND:VCALENDAR" } }));
 
     const raw = calls[0]!.raw;
     const headerBlockEnd = raw.indexOf("\r\n\r\n");
@@ -284,7 +312,7 @@ describe("EmailBindingMailer", () => {
     const icsEvents = Array.from({ length: 30 }, (_, i) => (
       `BEGIN:VEVENT\r\nUID:chq-${i}@chautauqua\r\nSUMMARY:Session number ${i} with a fairly long title so the ics body grows past a single 76-char line\r\nEND:VEVENT`
     )).join("\r\n");
-    const icsContent = `BEGIN:VCALENDAR\r\n${icsEvents}\r\nEND:VCALENDAR`;
+    const icsContent = `BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\n${icsEvents}\r\nEND:VCALENDAR`;
     await mailer.send(baseMsg({ ics: { filename: "sessions.ics", content: icsContent } }));
 
     const raw = calls[0]!.raw;
