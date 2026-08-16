@@ -204,6 +204,7 @@ export async function listDeliverableCandidates(db: Db, contactId: string, event
       and(
         eq(schema.participant.contactId, contactId),
         eq(schema.submission.eventId, eventId),
+        eq(schema.submission.status, "accepted"),
         inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
       ),
     )
@@ -252,6 +253,7 @@ export async function listDeliverableCandidatesForEvents(
         and(
           eq(schema.participant.contactId, contactId),
           inArray(schema.submission.eventId, chunk),
+          eq(schema.submission.status, "accepted"),
           inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
         ),
       )
