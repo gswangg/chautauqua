@@ -957,6 +957,114 @@ describe('ResultsTable sort honesty (DEC-737)', () => {
   });
 });
 
+// DEC-241/DEC-737/DEC-851 (w3-c): the results row carries a per-dropdown
+// (Choice) aggregate distribution from the server (row.perDropdown) -- the
+// expanded reviews band must print it in the criterion's OWN declared
+// option order, omitting zero-pick options, never Object.keys(counts)'s
+// silently-resorted order.
+describe('ResultsTable Choice-criterion distribution (DEC-241/DEC-737)', () => {
+  it('prints the distribution in declared option order, omitting zero-pick options', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      // Declared option order is ['Yes', 'No'] but counts hoists neither --
+      // this proves the render reads options, not Object.keys(counts).
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([
+        { ...resultsRow(), perDropdown: { c2: { counts: { No: 0, Yes: 2 }, modal: 'Yes' } } },
+      ]),
+      [`GET /api/v1/submissions/sub-1/evaluations`]: listEnvelope([
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Priya Patel',
+          scores: { c1: 4, c2: 'Yes' },
+          score: 4,
+          criteria: [
+            { id: 'c1', label: 'Quality', kind: 'rating', weight: 1 },
+            { id: 'c2', label: 'Fit', kind: 'dropdown' },
+          ],
+          comment: null,
+          submittedAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /3 reviews/ }));
+
+    // Aggregate distribution row: declared order, zero-pick option omitted.
+    expect(await screen.findByText('Yes 2')).toBeInTheDocument();
+    expect(screen.queryByText(/No 0/)).not.toBeInTheDocument();
+
+    // Each reviewer's own pick still renders as text under the criterion.
+    expect(screen.getByText('Fit: Yes')).toBeInTheDocument();
+  });
+
+  it('renders the named empty-cell fallback (—) when no evaluation carries the criterion', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([
+        { ...resultsRow(), perDropdown: { c2: { counts: { Yes: 0, No: 0 }, modal: null } } },
+      ]),
+      [`GET /api/v1/submissions/sub-1/evaluations`]: listEnvelope([
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Priya Patel',
+          scores: { c1: 4 },
+          score: 4,
+          criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+          comment: null,
+          submittedAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /3 reviews/ }));
+
+    expect(await screen.findByText('Priya Patel')).toBeInTheDocument();
+    const fitLine = screen.getByText('Fit:').closest('span')!;
+    expect(fitLine.textContent).toBe('Fit: —');
+  });
+
+  it('does not touch the numeric mean -- Score cell is unaffected by a Choice criterion in the plan', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    // average is 4.5, unaffected by the plan carrying a dropdown criterion.
+    expect(screen.getByText('4.5')).toBeInTheDocument();
+  });
+});
+
 // DEC-856: a page-level error banner gets the same clear path
 // decideError already gets (cleared at the head of decide()) -- a fresh
 // read that can replace the error must clear it BEFORE that read's outcome

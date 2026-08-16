@@ -8,7 +8,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
-import type { EvaluationPlan, ResultsRow, SubmissionEvaluationItem } from './types';
+import type { EvaluationCriterion, EvaluationPlan, ResultsRow, SubmissionEvaluationItem } from './types';
 import { STATUS_LABELS, type SubmissionStatus } from '../submissions/types';
 import { countOf } from '../../lib/plural';
 
@@ -70,6 +70,21 @@ function SortButton({
       {indicator}
     </button>
   );
+}
+
+// DEC-241/DEC-737/DEC-851 (w3-c): a dropdown (Choice) criterion's distribution
+// across every evaluation on this submission -- in the criterion's OWN
+// DECLARED option order (never Object.keys(counts): integer-like option
+// labels hoist and silently re-sort the committee's list). Options with zero
+// picks are omitted from the line; an all-zero distribution (or a criterion
+// this scan can't resolve at all) falls back to the codebase's own named
+// empty-cell convention, '—', never a blank string.
+function formatDropdownDistribution(counts: Record<string, number> | undefined, options: string[]): string {
+  const parts = options
+    .map((option) => ({ option, count: counts?.[option] ?? 0 }))
+    .filter(({ count }) => count > 0)
+    .map(({ option, count }) => `${option} ${count}`);
+  return parts.length > 0 ? parts.join(' · ') : '—';
 }
 
 function ariaSort(
@@ -279,6 +294,14 @@ export function ResultsTable({
   // own column; # Evaluations is dropped (coverage is the progress panel's
   // job, not this table's).
   const columnCount = 7;
+  // DEC-147/DEC-241 (w3-c): the round actually being viewed may carry its
+  // own criteria override -- the dropdown-criteria distribution must read
+  // from THIS round's resolved criteria (mirrors the server's
+  // criteriaForRound fallback: an override entry for this round wins, else
+  // the plan's base criteria), never the plan's base list unconditionally.
+  const activeCriteria: EvaluationCriterion[] =
+    round !== null ? (plan?.roundCriteria?.[String(round)] ?? plan?.criteria ?? []) : [];
+  const dropdownCriteria = activeCriteria.filter((c) => c.kind === 'dropdown');
   const Wrapper = embedded ? Fragment : 'div';
   const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page chq-measure-table' };
 
@@ -503,6 +526,29 @@ export function ResultsTable({
                   </td>
                 </tr>
               )}
+              {/* DEC-241/DEC-737/DEC-851 (w3-c): the aggregate Choice
+                 distribution for this submission -- one line per dropdown
+                 criterion, in the criterion's own declared option order,
+                 grammar "Strong 2 · Weak 1". Choice never contributes to the
+                 numeric mean (aggregateSubmission/aggregateEvaluations are
+                 untouched); this reads only row.perDropdown, the server's
+                 own aggregate. Rendered as the band's first row when present
+                 -- the individual reviewer rows below it no longer claim
+                 chq-review-band-first in that case. */}
+              {expanded && evaluations && evaluations.length > 0 && dropdownCriteria.length > 0 && (
+                <tr className="chq-review-reviews-row chq-review-band-first chq-review-dropdown-distribution">
+                  <td colSpan={columnCount} className="chq-review-reviews-detail">
+                    <div className="chq-review-dropdown-distribution-list">
+                      {dropdownCriteria.map((c) => (
+                        <span key={c.id} className="chq-review-dropdown-distribution-item">
+                          <strong>{c.label}:</strong>{' '}
+                          {formatDropdownDistribution(row.perDropdown[c.id]?.counts, c.options ?? [])}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              )}
               {/* DEC-633 amendment (wave 25/A27+B8): each evaluation is its
                  own real <tr> in the results table so the browser aligns it
                  to the header columns -- no hand-copied grid template. */}
@@ -514,7 +560,7 @@ export function ResultsTable({
                     key={`${ev.planId}-${ev.round}-${i}`}
                     className={
                       'chq-review-reviews-row' +
-                      (i === 0 ? ' chq-review-band-first' : '') +
+                      (i === 0 && dropdownCriteria.length === 0 ? ' chq-review-band-first' : '') +
                       (i === evaluations.length - 1 && row.recusals === 0 ? ' chq-review-band-last' : '')
                     }
                   >
