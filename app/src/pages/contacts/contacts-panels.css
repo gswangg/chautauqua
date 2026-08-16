@@ -990,6 +990,27 @@
   color: var(--chq-muted);
 }
 
+/* task-w64-b (DEC-663 wave-64 amendment): the per-row possible-duplicate
+   disposition radio group — a bare fieldset, stacked, with no browser
+   fieldset chrome so it reads as part of the review cell. */
+.chq-contacts-import-review-dupe-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+/* task-w64-b: "N more possible matches not shown" — same muted detail tier as
+   .chq-contacts-import-review-detail above. */
+.chq-contacts-import-review-dupe-more {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-import-review-skip {
   display: flex;
   align-items: center;

@@ -564,6 +564,22 @@
   margin: 0 0 16px;
 }
 
+/* task-w64-d: "Sessionboard is read-only to us" note, same tier as the
+   sessionboard notes above it (DEC-379 keeps the class vocabulary closed). */
+.chq-settings-sessionboard-readonly-note {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  margin: 0 0 16px;
+}
+
+/* task-w64-d: "nothing is written until you confirm" reassurance beside the
+   dry-run button — inline with the button, so no block margin. */
+.chq-settings-sessionboard-nothing-written-note {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  margin: 0;
+}
+
 .chq-settings-sessionboard-field {
   display: flex;
   flex-direction: column;
@@ -1093,13 +1109,6 @@
 .chq-settings-portal-resource-detail {
   font-size: 13px;
   color: var(--chq-ink-2);
-}
-
-.chq-settings-portal-resource-add {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-start;
 }
 
 .chq-settings-portal-add-resource {
