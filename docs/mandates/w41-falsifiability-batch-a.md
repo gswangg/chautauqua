@@ -80,23 +80,66 @@ rebase belongs to task-w41-f, which folds these lines in.
 
 ## STILL UNFALSIFIABLE
 
-Carried verbatim from the source batch, untouched this wave — same
-per-item treatment still needed:
+Carried from the source batch. Four items discharged wave-46
+(`task-w46-f`, DEC-358 amendment — see `docs/eval-findings.md`): saved
+embeds exist, `/account/password` Cancel + 820 bare-page column, Overview
+§01 skips-last-hour caption, Home footer media rule. Five items discharged
+wave-49 (`task-w49-f`, DEC-358 — the batch-A remainder pointer had decayed
+to UNOWNED per task-w47-h's re-homing; this branch is the owner) — see
+below. Nothing remains open from this batch.
 
-- Saved embeds exist — `src/db/schema/embed.ts`,
-  `src/routes/public/saved-embed.tsx`.
-- `npm run deploy` exists — `package.json:21`.
-- Settings edit-view field widths are tokens —
-  `app/src/pages/settings/settings.css:17-22` (DEC-896).
-- `/account/password` has real Cancel + 820 bare-page column —
-  `src/routes/account.tsx:139-144`.
-- Overview §01 skips-last-hour caption — `app/src/pages/Overview.tsx:325`.
+**DISCHARGED wave-49 (`task-w49-f`, DEC-358): five items, each CONFIRMED
+TRUE at this worker's own runtime before writing a real exercised
+falsifying check.**
+
+- `npm run deploy` exists — `package.json:26` (line moved since the batch
+  was first filed; script unchanged). FALSIFYING CHECK:
+  `test/tier0-falsifiability-w49-batch-a.test.ts` (item i) — asserts
+  `package.json`'s `scripts.deploy` runs `wrangler d1 migrations apply
+  --remote` then `wrangler deploy`, and that `npm run` (no script name,
+  network-free) actually resolves and lists that command line under the
+  name "deploy" — proving npm's own script resolution finds it, not just a
+  `JSON.parse` of the file. Never invokes wrangler for real (STAGE 1: no
+  external account/secret required to run this repo's tests).
+- Settings edit-view field widths are tokens, not literals —
+  `app/src/pages/settings/settings.css:17-21` (DEC-896). FALSIFYING CHECK:
+  `test/tier0-falsifiability-w49-batch-a.test.ts` (item ii) — parses the
+  real CSS, asserts the four `--chq-field-w-*` custom properties exist on
+  `:root` and that each of the four per-kind field rules
+  (`.chq-settings-field-date` etc.) sets `width: var(--chq-field-w-*)`,
+  with no bare literal px width in the same rule. Verified by hand: reverting
+  one rule to a literal `width: 200px` fails the assertion.
 - Phone agenda N-aware clash caption —
-  `app/src/pages/agenda/PhoneAgenda.tsx:186`.
-- Phone agenda "Place here anyway" — `:167-176,199-208`.
-- Phone password fixed footer + Cancel —
-  `src/routes/auth.css.ts:318-336`.
-- Home footer media rule — `src/routes/public/home.css.ts:72-76`.
+  `app/src/pages/agenda/PhoneAgenda.tsx:186`. FALSIFYING CHECK:
+  `app/src/pages/agenda/PhoneAgenda.w49.render.test.tsx` (item iii) — mounts
+  the real `PhoneAgenda` with a two-way and a separately a three-way room
+  clash, asserting "2 sessions in this slot" / "3 sessions in this slot"
+  respectively (each test also asserts the OTHER count's caption is
+  absent). Verified by hand: collapsing the caption to a fixed "Sessions in
+  this slot" string fails both cases.
+- Phone agenda "Place here anyway" —
+  `app/src/pages/agenda/PhoneAgenda.tsx:167-176,199-208`. FALSIFYING CHECK:
+  `app/src/pages/agenda/PhoneAgenda.w49.render.test.tsx` (item iv) — arms a
+  session then clicks the real "Place here anyway" control on both a plain
+  `placed` slot and a `clash` slot, asserting the real `onPlace` prop is
+  actually invoked with the armed session's id/duration and the occupied
+  slot's own `startMin` — not merely asserting the button exists. Verified
+  by hand: stubbing the button's `onClick` to a no-op fails both cases.
+- Phone password fixed footer + Cancel — `src/routes/auth.css.ts` (the
+  phone media block that was cited at `:318-336` has since shifted to
+  roughly `:298-329` under wave-48's `:has()` re-scoping amendment; same
+  behaviour). FALSIFYING CHECK:
+  `test/tier0-falsifiability-w49-batch-a.test.ts` (item v) — asserts
+  `.chq-auth-cancel` is `display: none` by default and only becomes
+  `display: inline-flex` inside the `max-width: 700px` block; that inside
+  that same block `.chq-bare-page:has(.chq-auth-fields)` is a full-height
+  flex column whose sole scrolling child is `.chq-auth-fieldstack` (`flex:
+  1; overflow-y: auto`), leaving the actions row fixed below it; and that
+  the real `PasswordPage` renders its Cancel control inside
+  `.chq-auth-actions` (the fixed footer), never inside the scrolling
+  `.chq-auth-fieldstack`. Verified by hand: reverting the phone
+  `.chq-auth-cancel` rule back to `display: none` fails the visibility
+  assertion.
 
 Already exempt from the UNFALSIFIABLE label (per the source batch's own
 text, not re-checked this wave): `app/src/phone-block-visibility.test.ts`

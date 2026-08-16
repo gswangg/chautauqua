@@ -669,28 +669,29 @@ found" is itself a citation.
   is present and differs from the base rule, and that `root.tsx` actually
   renders a `<footer class="chq-home-footer">` the rule targets).
 
-  **STILL UNFALSIFIABLE (batch A remainder, the four items above now
-  discharged — see wave-46 entry) — re-homed wave 48 (DEC-358 wave-46
-  amendment: an owner line names a BRANCH, not a wave; no wave-47 branch
-  ever covered this list, so per that rule it returned to UNOWNED at the
-  close of wave 47 and stays that way here — not silently re-pointed at
-  "wave-49" without a real branch to name):**
-  `npm run deploy` exists —
-  `package.json:26` (drifted from `:21`, re-globbed this wave). Settings
-  edit-view field widths are tokens —
-  `app/src/pages/settings/settings.css:17-22` (DEC-896).
-  Phone agenda N-aware clash caption —
-  `app/src/pages/agenda/PhoneAgenda.tsx:186`. Phone agenda "Place here
-  anyway" — `:167-176,199-208`. Phone password fixed footer + Cancel —
-  `src/routes/auth.css.ts:318-336`. **DUPLICATE REMOVED this wave:** "Home
-  footer media rule — `src/routes/public/home.css.ts:72-76`" was carried
-  here despite wave 46's own paragraph two blocks above already discharging
-  this exact item as CONFIRMED TRUE with `test/tier0-falsifiability-w46.test.ts`
-  — the remainder list was never pruned when the discharge landed. It does
-  not belong in either an owned-or-unowned UNFALSIFIABLE list; it is
-  CLOSED, see the wave-46 discharge paragraph above. UNOWNED, no branch
-  claims this list — the next lane that picks it up should open the
-  remaining four items directly rather than re-deriving this note.
+  **DISCHARGED wave-49 (`task-w49-f`, DEC-358: the batch-A remainder,
+  re-homed UNOWNED by wave 47's `task-w47-h`, decayed to that state after
+  wave 45's lanes closed without taking it and none of wave 47's lanes a-g
+  covered it either — this branch is the owner) — five items, each
+  CONFIRMED TRUE at this worker's own runtime with a real exercised
+  falsifying check. Full detail in
+  `docs/mandates/w41-falsifiability-batch-a.md`'s wave-49 entry.**
+  `npm run deploy` exists — `package.json:26`. FALSIFYING CHECK:
+  `test/tier0-falsifiability-w49-batch-a.test.ts`. Settings edit-view field
+  widths are tokens — `app/src/pages/settings/settings.css:17-21`
+  (DEC-896). FALSIFYING CHECK:
+  `test/tier0-falsifiability-w49-batch-a.test.ts`. Phone agenda N-aware
+  clash caption — `app/src/pages/agenda/PhoneAgenda.tsx:186`. FALSIFYING
+  CHECK: `app/src/pages/agenda/PhoneAgenda.w49.render.test.tsx`. Phone
+  agenda "Place here anyway" — `:167-176,199-208`. FALSIFYING CHECK:
+  `app/src/pages/agenda/PhoneAgenda.w49.render.test.tsx`. Phone password
+  fixed footer + Cancel — `src/routes/auth.css.ts` (media block shifted
+  under wave 48's `:has()` re-scoping). FALSIFYING CHECK:
+  `test/tier0-falsifiability-w49-batch-a.test.ts`.
+
+  The batch-A remainder's sixth item, the Home footer media rule
+  (`src/routes/public/home.css.ts:72-76`), was already discharged wave-46
+  — see the entry above; nothing remains open from this batch.
 - **DEC-099 wave-35 Vary: Cookie population + fix** — `task-w35-c`
   (`beb58e29` at filing, MERGED as of this wave — `3a041507` on `main`'s
   first-parent line per `task-w36-a`/`task-w36-b`/`task-w36-c`/`task-w36-e`'s
