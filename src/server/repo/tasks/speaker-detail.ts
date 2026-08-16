@@ -46,6 +46,27 @@ export interface SpeakerDetailParticipation {
   inviteStatus: string;
 }
 
+// DEC-936: the header's singular `participation` triple is an elected
+// "primary" row and stays the ParticipationMenu's write target -- but a
+// contact with more than one participation can disagree with itself across
+// sessions, and the header must never assert a status the roster
+// contradicts. This rollup is the person-level truth built from every
+// participantRow the function already loads (no new query): the single
+// shared status when every participation agrees, or the literal 'mixed'
+// (never a highest/lowest-wins guess) plus one row per submission so the
+// page can name each disagreement.
+export interface SpeakerDetailParticipationRollupRow {
+  participantId: string;
+  submissionId: string;
+  ref: string;
+  inviteStatus: string;
+}
+
+export interface SpeakerDetailParticipationRollup {
+  status: string;
+  bySubmission: SpeakerDetailParticipationRollupRow[];
+}
+
 export interface SpeakerDetailScheduled {
   day: string;
   startMin: number;
@@ -90,6 +111,7 @@ export interface SpeakerDetailCounts {
 export interface SpeakerDetail {
   contact: SpeakerDetailContact;
   participation: SpeakerDetailParticipation;
+  participationRollup: SpeakerDetailParticipationRollup;
   sessions: SpeakerDetailSession[];
   tasks: SpeakerDetailTask[];
   counts: SpeakerDetailCounts;
@@ -193,6 +215,21 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
     role: p.role,
     scheduled: scheduledBySubmission.get(p.submissionId) ?? null,
   }));
+
+  // DEC-936: the person-level rollup, built from the same participantRows
+  // and refs `sessions` above already derived -- the single shared status
+  // when every participation agrees, else the literal 'mixed'.
+  const bySubmission: SpeakerDetailParticipationRollupRow[] = participantRows.map((p) => ({
+    participantId: p.participantId,
+    submissionId: p.submissionId,
+    ref: formatRef(recordPrefix, p.submissionSeq),
+    inviteStatus: p.inviteStatus,
+  }));
+  const distinctStatuses = new Set(bySubmission.map((r) => r.inviteStatus));
+  const participationRollup: SpeakerDetailParticipationRollup = {
+    status: distinctStatuses.size === 1 ? bySubmission[0]!.inviteStatus : "mixed",
+    bySubmission,
+  };
 
   // The one query for the whole task set — the same taskAssignment/task/file
   // join shape grid.ts's cells query carries (DEC-920), never a query per
@@ -309,6 +346,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       submissionId: primary.submissionId,
       inviteStatus: primary.inviteStatus,
     },
+    participationRollup,
     sessions,
     tasks,
     counts: {

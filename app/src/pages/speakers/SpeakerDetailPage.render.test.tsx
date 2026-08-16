@@ -37,6 +37,10 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
       submissionId: 'sub-1',
       inviteStatus: 'accepted',
     },
+    participationRollup: {
+      status: 'accepted',
+      bySubmission: [{ participantId: 'p-1', submissionId: 'sub-1', ref: 'S-001', inviteStatus: 'accepted' }],
+    },
     sessions: [
       {
         submissionId: 'sub-1',
@@ -338,6 +342,54 @@ describe('SpeakerDetailPage render smoke', () => {
 
     expect(screen.queryByRole('button', { name: /^Remind/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Remind this task' })).not.toBeInTheDocument();
+  });
+
+  // DEC-936: a two-session speaker whose participation statuses disagree
+  // gets a MIXED chip in the header plus a breakdown line naming each
+  // session ref and its own status -- the header can never assert a single
+  // status the roster contradicts.
+  it('DEC-936: a mixed rollup renders a MIXED chip plus a breakdown line naming every disagreeing ref', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        participationRollup: {
+          status: 'mixed',
+          bySubmission: [
+            { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-001', inviteStatus: 'accepted' },
+            { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-014', inviteStatus: 'none' },
+          ],
+        },
+      }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const head = document.querySelector('.chq-speaker-detail-head');
+    expect(head).toHaveTextContent('Mixed');
+    expect(head).toHaveTextContent('SES-001 confirmed');
+    expect(head).toHaveTextContent('SES-014 not invited');
+  });
+
+  it('DEC-936: an agreeing rollup renders one status chip naming the shared status, no breakdown line', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        participationRollup: {
+          status: 'declined',
+          bySubmission: [
+            { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-001', inviteStatus: 'declined' },
+            { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-014', inviteStatus: 'declined' },
+          ],
+        },
+      }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const head = document.querySelector('.chq-speaker-detail-head');
+    expect(head).toHaveTextContent('Declined');
+    expect(document.querySelector('.chq-speaker-detail-participation-rollup-breakdown')).not.toBeInTheDocument();
+    expect(head).not.toHaveTextContent('Mixed');
   });
 
   it('a speaker with one pending task shows both the header Remind control and the per-row "Remind this task" link', async () => {

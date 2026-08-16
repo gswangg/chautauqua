@@ -167,6 +167,10 @@ describe("DEC-930 getSpeakerDetail", () => {
         submissionId: "sub-1",
         inviteStatus: "accepted",
       },
+      participationRollup: {
+        status: "accepted",
+        bySubmission: [{ participantId: "p-sub-1", submissionId: "sub-1", ref: "SES-014", inviteStatus: "accepted" }],
+      },
       sessions: [
         {
           submissionId: "sub-1",
@@ -304,6 +308,39 @@ describe("DEC-930 getSpeakerDetail", () => {
     const { db } = fakeDb({ contact: [], event: [eventRow()], participant: [] });
     const detail = await getSpeakerDetail(db, EVENT_ID, "does-not-exist");
     expect(detail).toBeNull();
+  });
+
+  it("DEC-936: rolls up a two-participation contact with disagreeing statuses to 'mixed' naming both rows", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [
+        participantRow("sub-1", 1, { participantId: "p-1", inviteStatus: "accepted" }),
+        participantRow("sub-2", 14, { participantId: "p-2", inviteStatus: "none" }),
+      ],
+    });
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail?.participationRollup).toEqual({
+      status: "mixed",
+      bySubmission: [
+        { participantId: "p-1", submissionId: "sub-1", ref: "SES-001", inviteStatus: "accepted" },
+        { participantId: "p-2", submissionId: "sub-2", ref: "SES-014", inviteStatus: "none" },
+      ],
+    });
+  });
+
+  it("DEC-936: rolls up a two-participation contact with agreeing statuses to that shared status", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [
+        participantRow("sub-1", 1, { participantId: "p-1", inviteStatus: "declined" }),
+        participantRow("sub-2", 14, { participantId: "p-2", inviteStatus: "declined" }),
+      ],
+    });
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail?.participationRollup.status).toBe("declined");
+    expect(detail?.participationRollup.bySubmission).toHaveLength(2);
   });
 
   it("issues the same number of queries regardless of session/task count (no per-row query)", async () => {
