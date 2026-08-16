@@ -27,6 +27,13 @@ type ModalState = { mode: 'create' } | { mode: 'edit'; field: FormField } | null
 // "Delete anyway" retry that cascades.
 type DeleteConfirmState = { field: FormField; conflictMessage?: string } | null;
 
+// DEC-505 (wave-53 amendment): the PATCH-side sibling of DeleteConfirmState.
+// A 409 naming `fields.dependents` means the edit would clear one or more
+// sibling questions' visibility rules -- confirm with the server's message,
+// retry with ?cascade=1. Carries the field + the submitted input so Confirm
+// can re-issue the exact same PATCH the organizer already made.
+type EditCascadeConfirmState = { field: FormField; input: FieldModalInput; message: string } | null;
+
 type ReceivedState = { total: number } | 'loading' | 'error';
 
 /** J1 form builder SPA (DEC-033, DEC-650 mock rebuild): loads the event's
@@ -47,6 +54,8 @@ export function FormsPage() {
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<ModalState>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>(null);
+  const [editCascadeConfirm, setEditCascadeConfirm] = useState<EditCascadeConfirmState>(null);
+  const [editCascadeBusy, setEditCascadeBusy] = useState(false);
   const [received, setReceived] = useState<ReceivedState>('loading');
   const [linkCopyResult, setLinkCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -118,9 +127,40 @@ export function FormsPage() {
   async function handleEditField(field: FormField, input: FieldModalInput) {
     if (!form) return;
     guardEditableField(field, 'edit');
-    const updated = await apiPatch<FormField>(`/fields/${field.id}`, input);
-    setForm({ ...form, fields: form.fields.map((f) => (f.id === field.id ? updated : f)) });
-    setModal(null);
+    try {
+      const updated = await apiPatch<FormField>(`/fields/${field.id}`, input);
+      setForm({ ...form, fields: form.fields.map((f) => (f.id === field.id ? updated : f)) });
+      setModal(null);
+    } catch (err) {
+      // DEC-505 (wave-53 amendment): a conflict naming `fields.dependents`
+      // is a confirm-to-proceed door, not a terminal refusal -- render the
+      // cascade confirm and resolve normally (no rethrow) so FieldModal's
+      // own error banner stays quiet and the organizer isn't double-told.
+      // A conflict WITHOUT dependents (kind/section/option answer guards)
+      // is terminal -- rethrow so FieldModal paints its banner as before.
+      if (err instanceof ApiError && err.code === 'conflict' && err.fields?.dependents) {
+        setEditCascadeConfirm({ field, input, message: err.message });
+        return;
+      }
+      throw err;
+    }
+  }
+
+  async function confirmEditCascade() {
+    if (!form || !editCascadeConfirm) return;
+    const { field, input } = editCascadeConfirm;
+    setEditCascadeBusy(true);
+    try {
+      await apiPatch<FormField>(`/fields/${field.id}?cascade=1`, input);
+      load();
+      setEditCascadeConfirm(null);
+      setModal(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to save field');
+      setEditCascadeConfirm(null);
+    } finally {
+      setEditCascadeBusy(false);
+    }
   }
 
   function handleDeleteField(field: FormField) {
@@ -414,6 +454,17 @@ export function FormsPage() {
           pending={busy}
           onConfirm={confirmDeleteField}
           onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
+
+      {editCascadeConfirm && (
+        <ConfirmDialog
+          title="Confirm field change"
+          body={editCascadeConfirm.message}
+          confirmLabel="Change anyway"
+          pending={editCascadeBusy}
+          onConfirm={confirmEditCascade}
+          onCancel={() => setEditCascadeConfirm(null)}
         />
       )}
     </div>
