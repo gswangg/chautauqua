@@ -13,6 +13,10 @@ export interface SpeakerDetailContact {
   hasAccount: boolean;
   phone: string | null;
   notes: string | null;
+  // DEC-738 amendment (wave 71): the person's org-wide logistics facts --
+  // same customFields record the CRM Contacts drawer edits, not an
+  // event-scoped copy.
+  customFields: Record<string, string>;
   headshotFileId: string | null;
 }
 
