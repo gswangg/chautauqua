@@ -2,16 +2,24 @@
 // fixes -- a pure string scan of AUTH_CSS, same style as
 // test/auth-card-geometry.test.ts.
 //  (1) .chq-auth-fields (a <form>) zeroes the UA form margin.
-//  (2) .chq-auth-footer's own footer-links keep the 44px hit area via
-//      align-items: flex-start (not the 404 card's shared selector).
+//  (2) DEC-367 amendment (wave 57): the >=44px tap floor is phone-only now
+//      (docs/design/README.md:92) -- .chq-auth-footer's own former
+//      align-items:flex-start override on .chq-auth-footer-links a is
+//      GONE (nothing left to compensate for once the box is phone-scoped),
+//      and so is the base rule's unconditional min-height:44px; the 44px
+//      box only appears inside AUTH_CSS's tail @media (max-width: 700px)
+//      block now, shared unscoped by both the /login footer and the 404
+//      card.
 //  (3) demo prefill buttons take the card's link vocabulary: 14px/700,
 //      brand olive via var(--chq-brand), no underline at rest; the
 //      landed :focus-visible ring is
 //      untouched.
-//  (4) /account/password's head rhythm: .chq-auth-back's own 44px hit
-//      area via align-items: flex-start + a negative margin-bottom; the
-//      titlerow->fields gap and .chq-auth-actions' own gap are each
-//      tightened/loosened without moving the 14px field pitch.
+//  (4) /account/password's head rhythm: DEC-367 amendment (wave 57):
+//      .chq-auth-back's former always-on 44px hit area (align-items:
+//      flex-start + a negative margin-bottom compensating for it) is gone
+//      from the base rule too -- the titlerow->fields gap and
+//      .chq-auth-actions' own gap are each tightened/loosened without
+//      moving the 14px field pitch.
 
 import { describe, expect, it } from "vitest";
 import { AUTH_CSS } from "../src/routes/auth.css";
@@ -31,13 +39,11 @@ describe("auth card rhythm (DEC-945 wave-6 amendment)", () => {
     expect(rule).toMatch(/margin:\s*0/);
   });
 
-  it(".chq-auth-footer's own footer-links row keeps the 44px hit area top-aligned, scoped away from the 404 card", () => {
-    const scoped = extractRule(AUTH_CSS, ".chq-auth-footer .chq-auth-footer-links a");
-    expect(scoped).toMatch(/align-items:\s*flex-start/);
-    // the shared base rule (used by the 404 card too) still declares the
-    // 44px min-height tap target.
+  it("DEC-367 amendment (wave 57): the .chq-auth-footer-scoped align-items:flex-start override is gone, and the shared base rule no longer carries an unconditional 44px floor", () => {
+    expect(AUTH_CSS).not.toMatch(/\.chq-auth-footer\s+\.chq-auth-footer-links\s+a\s*\{/);
     const base = extractRule(AUTH_CSS, ".chq-auth-footer-links a");
-    expect(base).toMatch(/min-height:\s*44px/);
+    expect(base).not.toMatch(/min-height/);
+    expect(base).toMatch(/align-items:\s*center/);
   });
 
   it("demo prefill buttons take the card's link vocabulary and keep the landed focus ring", () => {
@@ -54,11 +60,12 @@ describe("auth card rhythm (DEC-945 wave-6 amendment)", () => {
     expect(focusRule).toMatch(/outline-offset:\s*2px/);
   });
 
-  it(".chq-auth-back keeps its 44px hit area top-aligned and pulls the following h1 up", () => {
+  it("DEC-367 amendment (wave 57): .chq-auth-back's base rule has no 44px floor / centering compensation left; the floor is phone-scoped", () => {
     const rule = extractRule(AUTH_CSS, ".chq-auth-back");
-    expect(rule).toMatch(/min-height:\s*44px/);
-    expect(rule).toMatch(/align-items:\s*flex-start/);
-    expect(rule).toMatch(/margin-bottom:\s*-13px/);
+    expect(rule).not.toMatch(/min-height/);
+    expect(rule).not.toMatch(/align-items:\s*flex-start/);
+    expect(rule).not.toMatch(/margin-bottom:\s*-13px/);
+    expect(rule).toMatch(/align-self:\s*flex-start/);
   });
 
   it("DEC-369 amendment (wave 22): the titlerow->fields override is gone, the card's shared 26px gap governs", () => {

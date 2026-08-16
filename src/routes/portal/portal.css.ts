@@ -38,19 +38,21 @@ void DEC_989; // ruling B6 (wave 25 amendment): portal content column clamps to 
 export const PORTAL_CSS = `
   /* --- verbatim starting point (moved from PortalLayout's inline <style>) --- */
   main { padding: 0 1rem; }
-  /* DEC-393: the bare "nav a" rule that duplicated the old sub-floor
-     min-height here is gone -- the portal nav markup
-     (src/routes/portal/index.tsx) is nav.chq-nav > a, so THEME_CSS's
-     more specific ".chq-nav a" rule (min-height: 44px) already covers
-     it; duplicating it here at the old, now-stale floor would have been
-     dead weight at best and a regression trap at worst. */
+  /* DEC-393: the bare "nav a" rule that duplicated the old sub-floor tap
+     floor here is gone -- the portal nav markup (src/routes/portal/
+     index.tsx) is nav.chq-nav > a, so THEME_CSS's more specific
+     ".chq-nav a" rule (phone-scoped 44px tap floor) already covers it;
+     duplicating it here at the old, now-stale floor would have been dead
+     weight at best and a regression trap at worst. */
   table { border-collapse: collapse; }
 
   /* --- new growth: .chq-portal-* --- */
+  /* DEC-367 amendment (wave 57): the >=44px tap floor is a PHONE rule
+     (docs/design/README.md:92) -- moved to the phone media block at the
+     tail of this module, no other property added. */
   .chq-portal-back {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
     font-size: 13px;
     font-weight: 700;
     color: var(--chq-ink-2);
@@ -94,11 +96,12 @@ export const PORTAL_CSS = `
     font-size: 13px;
     color: var(--chq-muted);
   }
+  /* DEC-367 amendment (wave 57): both tap floors below moved to the
+     phone media block at the tail of this module. */
   .chq-portal-footer-resources {
     margin-left: auto;
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
     font-size: 13px;
     font-weight: 600;
     color: var(--chq-ink-2);
@@ -107,7 +110,6 @@ export const PORTAL_CSS = `
   .chq-portal-footer-profile {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
     font-size: 13px;
     font-weight: 700;
     color: var(--chq-ink);
@@ -210,7 +212,8 @@ export const PORTAL_CSS = `
     padding-top: 2px;
     justify-content: flex-end;
   }
-  .chq-portal-actions .chq-btn { min-height: 44px; }
+  /* DEC-367 amendment (wave 57): moved to the phone media block
+     at the tail of this module -- phone-only tap floor. */
 
   /* Completion progress: composes the shared .chq-bar/.chq-bar-fill pair
      (THEME_CSS) under a small caption — never redefines them. */
@@ -291,7 +294,8 @@ export const PORTAL_CSS = `
   .chq-portal-shell > .chq-measure {
     max-width: var(--chq-portal-measure);
   }
-  .chq-portal-signout-btn { min-height: 44px; }
+  /* DEC-367 amendment (wave 57): moved to the phone media block
+     at the tail of this module -- phone-only tap floor. */
 
   /* form-render.tsx's shared FormField output renders un-wrapped on both
      portal surfaces that use it (the hotel-stay-style task form at
@@ -393,6 +397,16 @@ export const PORTAL_CSS = `
   }
 
   @media (max-width: 700px) {
+    /* DEC-367 amendment (wave 57): the >=44px tap floor is phone-only
+       (docs/design/README.md:92) -- these six boxes used to be
+       unconditional base rules above; moved here verbatim, no other
+       property added. */
+    .chq-portal-back { min-height: 44px; }
+    .chq-portal-footer-resources { min-height: 44px; }
+    .chq-portal-footer-profile { min-height: 44px; }
+    .chq-portal-actions .chq-btn { min-height: 44px; }
+    .chq-portal-signout-btn { min-height: 44px; }
+    .chq-portal-copresenter-submit .chq-btn { min-height: 44px; }
     .chq-portal-row-head { align-items: flex-start; }
     /* DEC-989 ruling B6's right-flush on .chq-portal-actions (base rule
        above) is a desktop-only affordance: at phone width the buttons go
@@ -496,7 +510,8 @@ export const PORTAL_CSS = `
      right-flush -- adding a co-presenter is an aside, not the page's
      primary action. */
   .chq-portal-copresenter-submit { padding-top: 2px; }
-  .chq-portal-copresenter-submit .chq-btn { min-height: 44px; }
+  /* DEC-367 amendment (wave 57): moved to the phone media block
+     at the tail of this module -- phone-only tap floor. */
 
   /* DEC-604 (wave-56 amendment) B10 form spec: the edit view is the one
      portal page with a form, so first/last name go two-up and email pairs

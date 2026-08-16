@@ -4,21 +4,24 @@
 // frame. The vendored design pack outranks a render measurement (SPEC.md
 // docs precedence), so any fractional-px literal surviving in a geometry
 // declaration is presumptively a fitted value, not a frame transcription.
-// This scan enumerates every stylesheet under app/src/**/*.css and
-// src/routes/**/*.css.ts (readdirSync, no hand-listed manifest), strips
-// /* */ comments first (comment prose legitimately carries decimal
-// measurements when explaining a past fit), and fails on any fractional-px
-// literal appearing in a padding/margin/gap/width/height/
-// grid-template-columns declaration.
+// This scan enumerates every stylesheet under app/src/**/*.css (readdirSync,
+// no hand-listed manifest) and every SSR *_CSS module under src/ (via
+// ssrCssSources(), DEC-808's derived-population idiom -- wave 57 widened
+// this from a src/routes/**/*.css.ts directory glob, which made
+// src/views/theme.ts and its siblings invisible to the scan), strips /* */
+// comments first (comment prose legitimately carries decimal measurements
+// when explaining a past fit), and fails on any fractional-px literal
+// appearing in a padding/margin/gap/width/height/grid-template-columns
+// declaration.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { ssrCssSources } from '../../test/helpers/ssr-css-sources';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE;
 const REPO_ROOT = join(HERE, '..', '..');
-const ROUTES_SRC = join(REPO_ROOT, 'src', 'routes');
 
 /** Every .css file under `root`, found via recursive readdirSync. */
 function allCssFiles(root: string): string[] {
@@ -62,18 +65,30 @@ function findFittedGeometry(css: string): Array<{ selectorHint: string; declarat
 
 describe('no fitted sub-pixel geometry survives in any stylesheet (DEC-369 amendment, wave 22)', () => {
   const appCssFiles = allCssFiles(APP_SRC);
-  const routeCssFiles = allCssFiles(ROUTES_SRC);
-  const allFiles = [...appCssFiles, ...routeCssFiles];
+  const ssrSources = ssrCssSources();
 
   it('found at least one stylesheet in each root (sanity check on the enumeration)', () => {
     expect(appCssFiles.length).toBeGreaterThan(0);
-    expect(routeCssFiles.length).toBeGreaterThan(0);
+    expect(ssrSources.length).toBeGreaterThanOrEqual(14);
   });
 
-  for (const file of allFiles) {
+  for (const file of appCssFiles) {
     const rel = relative(REPO_ROOT, file);
     it(`${rel} has no fractional-px geometry declaration`, () => {
       const src = readFileSync(file, 'utf-8');
+      const offenders = findFittedGeometry(src);
+      if (offenders.length > 0) {
+        const detail = offenders
+          .map((o) => `  selector "${o.selectorHint}": ${o.declaration}`)
+          .join('\n');
+        throw new Error(`${rel} has fitted sub-pixel geometry:\n${detail}`);
+      }
+      expect(offenders).toEqual([]);
+    });
+  }
+
+  for (const { path: rel, text: src } of ssrSources) {
+    it(`${rel} has no fractional-px geometry declaration`, () => {
       const offenders = findFittedGeometry(src);
       if (offenders.length > 0) {
         const detail = offenders

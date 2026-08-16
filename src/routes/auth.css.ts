@@ -87,20 +87,19 @@ export const AUTH_CSS = `
   .chq-auth-titlerow { display: flex; flex-direction: column; gap: 10px; }
   /* DEC-369 amendment (wave 22): the fitted -8.5px override chased a gate-4
      render measurement now superseded; the card's shared 26px gap governs. */
+  /* DEC-367 amendment (wave 57): the >=44px tap floor is a PHONE rule
+     (docs/design/README.md:92), not a desktop one -- the tap-floor box
+     now only appears in the @media (max-width: 700px) block at the
+     tail of this module. The wave-6 align-items:flex-start +
+     margin-bottom:-13px compensation this rule used to carry (fighting the
+     always-on box's own centering back off so the following h1 held its
+     frame position) has nothing left to compensate for now that the box is
+     phone-only, and is gone. */
   .chq-auth-back {
     font-size: 13px;
     font-weight: 700;
-    min-height: 44px;
     display: inline-flex;
-    align-items: flex-start;
     align-self: flex-start;
-    /* wave-6: min-height:44 keeps the 44px hit area, but centering the ink
-       inside that box added ~13px of dead lead below the "Back" text (ink
-       bottom -> h1 ink top measured 35.5 against the frame's 22.5) --
-       align-items:flex-start plus this negative margin-bottom pull the
-       following h1 back up by exactly that delta without shrinking the
-       44px tap target itself. */
-    margin-bottom: -13px;
     text-decoration: none;
   }
   .chq-auth-back:hover,
@@ -230,28 +229,22 @@ export const AUTH_CSS = `
     gap: 16px;
     flex-wrap: wrap;
   }
+  /* DEC-367 amendment (wave 57): the >=44px tap floor is a PHONE rule
+     (docs/design/README.md:92), not a desktop one -- the tap-floor box
+     now only appears in the @media (max-width: 700px) block at the
+     tail of this module, shared unscoped by both this /login footer row
+     and the 404 notice card (src/server/not-found.tsx renders the same
+     .chq-auth-footer-links markup with no .chq-auth-footer wrapper). The
+     wave-6 .chq-auth-footer-scoped align-items:flex-start override this
+     rule used to need (fighting the always-on box's own centering back off
+     so the divider->ink gap held the frame's number) has nothing left to
+     compensate for now that the box is phone-only, and is gone. */
   .chq-auth-footer-links a {
     font-size: 14px;
     font-weight: 700;
-    min-height: 44px;
     display: inline-flex;
-    align-items: center; /* 44px tap target via vertical centering, not
-                             top padding -- padding above the text would
-                             itself become extra rhythm the frame doesn't
-                             draw. */
+    align-items: center;
     text-decoration: none;
-  }
-  /* wave-6: scoped to the /login footer's own links row (never the 404
-     card's -- .chq-auth-card-notice's body->links 26px gap is already
-     frame-exact per DEC-945's wave-1 amendment and must stay untouched).
-     Centering the ink inside the 44px box put half the box's dead lead
-     ABOVE the text (divider -> ink-top measured 35.0 against the frame's
-     17.0) -- flex-start moves the ink flush to the box's top edge so the
-     full 44px hit area survives entirely BELOW the ink instead, with no
-     top padding added (padding above the text would itself become extra
-     rhythm the frame doesn't draw). */
-  .chq-auth-footer .chq-auth-footer-links a {
-    align-items: flex-start;
   }
   .chq-auth-footer-links a:hover,
   .chq-auth-footer-links a:focus-visible { text-decoration: underline; }
@@ -296,6 +289,11 @@ export const AUTH_CSS = `
   }
 
   @media (max-width: 700px) {
+    /* DEC-367 amendment (wave 57): the >=44px tap floor is phone-only
+       (docs/design/README.md:92) -- these two boxes used to be unconditional
+       base rules above; moved here verbatim, no other property added. */
+    .chq-auth-back { min-height: 44px; }
+    .chq-auth-footer-links a { min-height: 44px; }
     body { padding: 0; }
     .chq-auth-card {
       max-width: none;
