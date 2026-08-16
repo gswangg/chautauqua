@@ -92,6 +92,18 @@ describe("GET /docs/:slug", () => {
           for (const item of block.items) {
             expect(body).toContain(item);
           }
+        } else if (block.kind === "aside") {
+          expect(body).toContain(block.label);
+          expect(body).toContain(block.text);
+        } else if (block.kind === "deflist") {
+          for (const row of block.rows) {
+            expect(body).toContain(row.term);
+            expect(body).toContain(row.definition);
+          }
+        } else if (block.kind === "code") {
+          for (const line of block.lines) {
+            expect(body).toContain(line);
+          }
         } else {
           expect(body).toContain(block.shotId);
           expect(body).toContain(block.caption);

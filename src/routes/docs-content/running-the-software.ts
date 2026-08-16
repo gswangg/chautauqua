@@ -13,13 +13,8 @@ export const runningTheSoftware: DocsArticle = {
       text: "A fresh clone needs four commands: install dependencies, apply migrations to a local database, seed a demo event, and start the dev server. Nothing else is required — Stage 1 runs entirely against local, Miniflare-backed storage, with email delivered to a dev sink instead of a real provider, so there's no API key or account to set up before you can click around.",
     },
     {
-      kind: "list",
-      items: [
-        "npm i — installs dependencies.",
-        "npm run db:migrate — applies migrations to a local database.",
-        "npm run seed — loads a fully-populated demo event.",
-        "npm run dev — builds the admin bundle and starts the dev server.",
-      ],
+      kind: "code",
+      lines: ["npm i", "npm run db:migrate", "npm run seed", "npm run dev"],
     },
     { kind: "heading", text: "The seeded demo event" },
     {
@@ -38,17 +33,23 @@ export const runningTheSoftware: DocsArticle = {
       text: "Every login lands somewhere specific to what that role can see. An organizer signs into the admin console with the full run of the product: building the CFP, triaging and deciding submissions, managing contacts, building the agenda, and publishing the public pages. A reviewer signs into the same admin console but a narrower one — their queue of assigned submissions and the scoring surfaces, not the organizer's settings or contacts. A speaker doesn't get an admin login at all; they land in the speaker portal, scoped to their own submissions, tasks and profile, and nothing else.",
     },
     {
-      kind: "list",
-      items: [
-        "Organizer — full admin console: CFP, triage, contacts, agenda, publishing.",
-        "Reviewer — admin console narrowed to their assigned review queue.",
-        "Speaker — the speaker portal only: their submissions, tasks and profile.",
+      kind: "deflist",
+      rows: [
+        { term: "Organizer", definition: "Full admin console: CFP, triage, contacts, agenda, publishing." },
+        { term: "Reviewer", definition: "Admin console narrowed to their assigned review queue." },
+        { term: "Speaker", definition: "The speaker portal only: their submissions, tasks and profile." },
       ],
     },
     { kind: "heading", text: "Deploying" },
     {
       kind: "prose",
       text: "Deploying is an operator action, not something the product does on its own — no CI job runs it. One command applies any pending database migrations to the remote database and then deploys the worker, so it's safe to re-run any time. Before pointing it at a real origin, though, there's a variable a local clone never has to think about that a deployed instance can't skip.",
+    },
+    {
+      kind: "aside",
+      weight: "cannot-be-undone",
+      label: "Cannot be undone",
+      text: "Deploying applies pending migrations to the remote database before it deploys the worker. There's no separate dry run — running the deploy command against a real origin changes that database's schema.",
     },
     {
       kind: "prose",

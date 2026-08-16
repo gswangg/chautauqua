@@ -65,18 +65,65 @@ function DocsHeader() {
 function DocsBlockView(props: { block: DocsBlock }) {
   const { block } = props;
   if (block.kind === "heading") {
+    // level stops at 3 -- DEC-650's "an article needing H4 is two articles"
+    // is enforced at the type level (DocsBlock's level union has no 4), so
+    // this render side only ever picks between the two shapes that exist.
+    if (block.level === 3) {
+      return <h3 class="chq-docs-h3">{block.text}</h3>;
+    }
     return <h2 class="chq-docs-h2">{block.text}</h2>;
   }
   if (block.kind === "prose") {
     return <p class="chq-docs-prose">{block.text}</p>;
   }
   if (block.kind === "list") {
+    if (block.ordered) {
+      return (
+        <ol class="chq-docs-list">
+          {block.items.map((item) => (
+            <li>{item}</li>
+          ))}
+        </ol>
+      );
+    }
     return (
       <ul class="chq-docs-list">
         {block.items.map((item) => (
           <li>{item}</li>
         ))}
       </ul>
+    );
+  }
+  if (block.kind === "aside") {
+    // Weight picks a whole literal class string (never assembled with a
+    // template literal) -- test/ssr-css-contract.scan.test.ts's
+    // whole-source-text scan only sees plain quoted literals.
+    const asideClass =
+      block.weight === "cannot-be-undone" ? "chq-docs-aside chq-docs-aside-cannot-be-undone" : "chq-docs-aside chq-docs-aside-worth-knowing";
+    return (
+      <div class={asideClass}>
+        <span class="chq-docs-aside-label">{block.label}</span>
+        <p class="chq-docs-aside-text">{block.text}</p>
+      </div>
+    );
+  }
+  if (block.kind === "deflist") {
+    return (
+      <dl class="chq-docs-deflist">
+        {block.rows.map((row) => (
+          <div class="chq-docs-deflist-row">
+            <dt class="chq-docs-deflist-term">{row.term}</dt>
+            <dd class="chq-docs-deflist-definition">{row.definition}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+  if (block.kind === "code") {
+    return (
+      <pre class="chq-docs-code">
+        <code>{block.lines.join("\n")}</code>
+      </pre>
     );
   }
   // figure: a NAMED PLACEHOLDER frame carrying its shotId as text plus its

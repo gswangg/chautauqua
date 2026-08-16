@@ -26,11 +26,12 @@
 // while its caption stays legible prose.
 
 import { jsx } from "hono/jsx";
-import { DEC_373, DEC_374, DEC_382 } from "../decisions";
+import { DEC_373, DEC_374, DEC_382, DEC_650 } from "../decisions";
 
 void DEC_373;
 void DEC_374;
 void DEC_382;
+void DEC_650;
 
 export const DOCS_SITE_CSS = `
   .chq-docs-shell { display: flex; flex-direction: column; }
@@ -75,7 +76,27 @@ export const DOCS_SITE_CSS = `
 
   .chq-docs-prose { max-width: 680px; font-size: 16px; line-height: 1.7; color: var(--chq-ink-2); }
   .chq-docs-h2 { max-width: 680px; margin: 0; font-family: var(--chq-font-display); font-size: 24px; font-weight: 700; letter-spacing: -0.03em; padding-top: 6px; }
+  .chq-docs-h3 { max-width: 680px; margin: 0; font-family: var(--chq-font-display); font-size: 18px; font-weight: 700; letter-spacing: -0.02em; padding-top: 4px; }
   .chq-docs-list { max-width: 680px; margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; font-size: 16px; line-height: 1.65; color: var(--chq-ink-2); }
+
+  /* Aside -- DEC-650, exactly two weights, no tip/note/info/caution ladder.
+     A 3px left edge carries the weight: olive brand token for a soft
+     worth-knowing note, ink for a cannot-be-undone warning. */
+  .chq-docs-aside { max-width: 680px; padding: 12px 16px; border-left: 3px solid var(--chq-brand); display: flex; flex-direction: column; gap: 5px; background: var(--chq-surface-sunk); }
+  .chq-docs-aside-worth-knowing { border-left-color: var(--chq-brand); }
+  .chq-docs-aside-cannot-be-undone { border-left-color: var(--chq-ink); }
+  .chq-docs-aside-label { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); }
+  .chq-docs-aside-text { margin: 0; font-size: 15px; line-height: 1.6; color: var(--chq-ink-2); }
+
+  /* Definition list -- a two-column grid, one hairline row per term. */
+  .chq-docs-deflist { max-width: 680px; margin: 0; display: flex; flex-direction: column; }
+  .chq-docs-deflist-row { display: grid; grid-template-columns: 150px 1fr; gap: 18px; padding-block: 13px; border-bottom: 1px solid var(--chq-hairline); }
+  .chq-docs-deflist-term { margin: 0; font-size: 15px; font-weight: 600; color: var(--chq-ink); }
+  .chq-docs-deflist-definition { margin: 0; font-size: 15px; line-height: 1.6; color: var(--chq-ink-2); }
+
+  /* Code block -- for something the reader will copy, never rendered as
+     prose or a bulleted list. */
+  .chq-docs-code { max-width: 680px; margin: 0; border: 1px solid var(--chq-rule); border-radius: 5px; background: var(--chq-surface); padding: 14px 16px; overflow-x: auto; font-family: ui-monospace, monospace; font-size: 13px; line-height: 1.7; color: var(--chq-ink-2); white-space: pre; }
 
   .chq-docs-figure { margin: 0; width: 900px; max-width: 900px; display: flex; flex-direction: column; gap: 10px; }
   .chq-docs-figure-frame {
