@@ -321,6 +321,13 @@ export function PlanEditor() {
   const [reviewerAssignErrors, setReviewerAssignErrors] = useState<{ anchorId: string; label: string }[] | null>(
     null,
   );
+  // DEC-354 (amendment, wave 61): a narrower reviewer scope laid over a
+  // broader one is an ADVISORY, never a refusal -- the server still writes
+  // the row and answers 201, and this holds the sentence naming the
+  // broader row it overlaps, or null when the last successful add didn't
+  // overlap anything. Rendered as a quiet advisory beside the reviewer
+  // list, never styled as an error (nothing failed).
+  const [scopeAdvisory, setScopeAdvisory] = useState<string | null>(null);
   // DEC-124 (wave-56 amendment): commitSave's own ErrorSummary problems,
   // built from the WHOLE err.fields map a rejected POST/PATCH plan save
   // returns (name, instructions, scale, criteria, rounds, roundCriteria,
@@ -996,13 +1003,16 @@ export function PlanEditor() {
   }, [copyResult]);
 
   async function postReviewerAssignment(body: { userId: string; trackId?: string; submissionId?: string }) {
-    const created = await apiPost<PlanReviewer>(`/plans/${planId}/reviewers`, body);
+    const created = await apiPost<PlanReviewer & { scopeAdvisory: string | null }>(`/plans/${planId}/reviewers`, body);
     // The server decorates the create response with the same email/
     // trackName/submissionRef/submissionTitle labels the list mapper
     // computes (DEC-659 amendment), so the row never flashes a raw id or a
     // "(removed)" label before the next reload.
     setReviewers((prev) => [...prev, created]);
     setReviewersTotal((prev) => prev + 1);
+    // DEC-354 (amendment, wave 61): scopeAdvisory is null when nothing
+    // overlapped -- clear any stale advisory from a previous add.
+    setScopeAdvisory(created.scopeAdvisory ?? null);
     return created;
   }
 
@@ -1018,6 +1028,7 @@ export function PlanEditor() {
     }
     setError(null);
     setReviewerAssignErrors(null);
+    setScopeAdvisory(null);
     try {
       const body: { userId: string; trackId?: string; submissionId?: string } = { userId: reviewerUserId.trim() };
       if (reviewerScope === 'submission' && reviewerSubmissionId.trim()) body.submissionId = reviewerSubmissionId.trim();
@@ -1042,6 +1053,7 @@ export function PlanEditor() {
     if (!planId || !reviewerUserId.trim() || !reviewerTrackId) return;
     setError(null);
     setReviewerAssignErrors(null);
+    setScopeAdvisory(null);
     setAssigningBatch(true);
     try {
       await postReviewerAssignment({ userId: reviewerUserId.trim(), trackId: reviewerTrackId });
@@ -1072,9 +1084,14 @@ export function PlanEditor() {
     if (!planId || !reviewerUserId.trim() || chosenSubmissionIds.size === 0) return;
     setError(null);
     setReviewerAssignErrors(null);
+    setScopeAdvisory(null);
     setAssigningBatch(true);
     try {
-      const { items } = await apiPost<{ items: PlanReviewer[]; total: number }>(`/plans/${planId}/reviewers`, {
+      const { items, scopeAdvisory: advisory } = await apiPost<{
+        items: PlanReviewer[];
+        total: number;
+        scopeAdvisory: string | null;
+      }>(`/plans/${planId}/reviewers`, {
         userId: reviewerUserId.trim(),
         submissionIds: [...chosenSubmissionIds],
       });
@@ -1083,6 +1100,9 @@ export function PlanEditor() {
       // submissionTitle, so no client-side patching is needed.
       setReviewers((prev) => [...prev, ...items]);
       setReviewersTotal((prev) => prev + items.length);
+      // DEC-354 (amendment, wave 61): null when nothing in the chosen set
+      // overlapped an existing broader row.
+      setScopeAdvisory(advisory ?? null);
       setReviewerUserId('');
       resetScopeConfirm();
       setScopePreview(null);
@@ -1949,6 +1969,15 @@ export function PlanEditor() {
                 claims it applies immediately; only "Assign a reviewer" is a
                 real zero-confirm immediate action. */}
             <p className="chq-review-section-caption">Assign a reviewer applies immediately.</p>
+            {/* DEC-354 (amendment, wave 61): the write always succeeds --
+                this is a quiet advisory beside the list, not an error
+                banner and not the reviewerAssignErrors ErrorSummary below,
+                since nothing failed. */}
+            {scopeAdvisory && (
+              <p className="chq-review-scope-advisory" role="status">
+                {scopeAdvisory}
+              </p>
+            )}
             {reviewers.map((r) => {
               const progress = progressRows.find((p) => p.userId === r.userId);
               const displayName = progress ? reviewerDisplayLabel(progress) : (r.email ?? '(account removed)');

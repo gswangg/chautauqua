@@ -111,6 +111,10 @@ vi.mock("../src/server/repo/review", async () => {
       return map;
     }),
     trackExistsInEvent: vi.fn(async (_db: unknown, trackId: string, eventId: string) => eventId === plan.eventId && trackId === "track-a"),
+    // DEC-354 (amendment, wave 61): the scopeAdvisory pre-read -- no
+    // existing plan_reviewer rows in this fixture, so always empty.
+    listReviewerRowsForPlan: vi.fn(async () => []),
+    getTrackIdsBySubmissionIds: vi.fn(async () => new Map()),
   };
 });
 

@@ -57,6 +57,10 @@ vi.mock("../src/server/repo/review", async () => {
     findSubmissionIdByRefOrId: vi.fn(async (_db: unknown, eventId: string, input: string) =>
       eventId === planRecord.eventId && input !== "sub-cross-event" ? input : null,
     ),
+    // DEC-354 (amendment, wave 61): the scopeAdvisory pre-read -- no
+    // existing plan_reviewer rows in this fixture, so always empty.
+    listReviewerRowsForPlan: vi.fn(async () => []),
+    getTrackIdsBySubmissionIds: vi.fn(async () => new Map()),
     addReviewers: vi.fn(async (_db: unknown, planId: string, inputs: unknown[]) =>
       inputs.map((input) => ({
         id: "pr-new",
