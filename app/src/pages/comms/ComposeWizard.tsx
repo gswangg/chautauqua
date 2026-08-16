@@ -916,14 +916,17 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 const id = e.target.value;
                 const found = templates.find((t) => t.id === id);
                 if (found) {
-                  // DEC-832: copy the template's text into the composer's
-                  // own fields, then clear the selection — the dropdown
-                  // reverts to "Write from scratch" and further edits to
-                  // subject/body are what get sent, not the stored template.
+                  // DEC-832 (DEC-846 amendment, wave 66): copy the template's
+                  // text into the composer's own fields AND keep the
+                  // selection — templateId tracks the picked template so the
+                  // send carries provenance (History's TEMPLATE cell,
+                  // template chips, Templates' "Last used"). Further edits to
+                  // subject/body are still what get sent, not the stored
+                  // template text, but the id travels with the send.
                   setTemplateName(found.name);
                   setSubject(found.subject);
                   setBodyText(found.bodyText);
-                  setTemplateId('');
+                  setTemplateId(found.id);
                 } else if (id === '') {
                   // User-filed (gate-9): with the w12-c auto-apply having
                   // pre-filled the composer, the dropdown already READS
@@ -934,9 +937,6 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                   setTemplateId('');
                   setSubject('');
                   setBodyText('');
-                } else {
-                  setTemplateName('');
-                  setTemplateId(id);
                 }
               }}
             >

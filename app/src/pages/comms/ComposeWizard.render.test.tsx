@@ -540,11 +540,13 @@ describe('ComposeWizard no-eligible-recipients errors (DEC-317 amendment wave 60
   });
 });
 
-// DEC-832: selecting a template copies its text into the composer's own
-// fields and clears the selection -- an edit to the body after picking a
-// template is what actually gets posted, never the stored template text.
-describe('ComposeWizard template selection copies text, edits win (DEC-832)', () => {
-  it('posts the edited body (not the stored template text) to compose/preview, and never sends templateId', async () => {
+// DEC-832 (DEC-846 amendment, wave 66): selecting a template copies its text
+// into the composer's own fields and KEEPS the selection -- an edit to the
+// body after picking a template is still what actually gets posted (subject/
+// bodyText remain the authority), but templateId travels along as
+// provenance until an explicit "Write from scratch" pick clears it.
+describe('ComposeWizard template selection copies text, edits win, id stays as provenance (DEC-832/DEC-846)', () => {
+  it('posts the edited body (not the stored template text) to compose/preview, and keeps templateId selected', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
@@ -566,11 +568,12 @@ describe('ComposeWizard template selection copies text, edits win (DEC-832)', ()
     const templateSelect = await screen.findByLabelText(/Template/);
     fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
 
-    // Selecting the template copies its text in and reverts the dropdown
-    // to "Write from scratch" (the selection is cleared, DEC-832).
+    // Selecting the template copies its text in and LEAVES the dropdown on
+    // the picked template (DEC-846 amendment wave 66) -- the control now
+    // truthfully names what this draft came from.
     expect(await screen.findByLabelText('Subject')).toHaveValue('You are in');
     expect(screen.getByLabelText('Body')).toHaveValue('Original body');
-    expect(templateSelect).toHaveValue('');
+    expect(templateSelect).toHaveValue('tpl-1');
 
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Edited body wins' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
@@ -581,8 +584,38 @@ describe('ComposeWizard template selection copies text, edits win (DEC-832)', ()
       const lastBody = JSON.parse(String(previewCalls[previewCalls.length - 1]?.[1]?.body ?? '{}'));
       expect(lastBody.subject).toBe('You are in');
       expect(lastBody.bodyText).toBe('Edited body wins');
-      expect(lastBody.templateId).toBeUndefined();
+      expect(lastBody.templateId).toBe('tpl-1');
     });
+  });
+
+  it('clicking "Write from scratch" after a template pick clears templateId and empties subject/body', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
+        { id: 'tpl-1', eventId: EVENT_ID, name: 'Acceptance', subject: 'You are in', bodyText: 'Original body' },
+      ]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const templateSelect = await screen.findByLabelText(/Template/);
+    fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
+    expect(await screen.findByLabelText('Subject')).toHaveValue('You are in');
+
+    fireEvent.change(templateSelect, { target: { value: '' } });
+
+    expect(templateSelect).toHaveValue('');
+    expect(screen.getByLabelText('Subject')).toHaveValue('');
+    expect(screen.getByLabelText('Body')).toHaveValue('');
   });
 });
 
@@ -756,11 +789,12 @@ describe('ComposeWizard include-feedback toggle reachability (DEC-883)', () => {
   });
 });
 
-// DEC-846: the composer sends what it shows -- selecting a template only
-// prefills subject/bodyText, so an edit made afterward (including a merge
-// chip insert) is what actually goes out, and templateId is never sent.
-describe('ComposeWizard sends edited body, not the template id (DEC-846)', () => {
-  it('posts the edited subject/bodyText after selecting a template, with no templateId', async () => {
+// DEC-846 (amendment wave 66): the composer sends what it shows -- selecting
+// a template prefills subject/bodyText, so an edit made afterward (including
+// a merge chip insert) is what actually goes out; templateId travels along
+// as provenance (where the draft started), not authority (what it says).
+describe('ComposeWizard sends edited body, and templateId travels as provenance (DEC-846, amendment wave 66)', () => {
+  it('posts the edited subject/bodyText after selecting a template, along with the picked templateId', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
@@ -797,7 +831,7 @@ describe('ComposeWizard sends edited body, not the template id (DEC-846)', () =>
       const previewCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/preview'));
       expect(previewCalls.length).toBeGreaterThan(0);
       const lastBody = JSON.parse(String(previewCalls[previewCalls.length - 1]?.[1]?.body ?? '{}'));
-      expect(lastBody.templateId).toBeUndefined();
+      expect(lastBody.templateId).toBe('tpl-1');
       expect(lastBody.subject).toBe('You are in (edited)');
       expect(lastBody.bodyText).toBe('Congrats {speaker_name}, edited body');
     });
