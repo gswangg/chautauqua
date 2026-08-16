@@ -134,6 +134,26 @@ describe('DEC-678 (w52-d): the bare chq-empty line survives only at four documen
     }
   });
 
+  it('visits the same number of files as its sibling b7-empty-table scan', () => {
+    // Each scan computes its own walk (no shared helper, per the serial-write
+    // scan's standing argument against factoring test walkers into shared
+    // code) -- this asserts the two populations agree without coupling their
+    // implementations. b7-empty-table.scan.test.ts also walks all of app/src
+    // (its own file sits directly in app/src, same as this one).
+    const siblingRoot = HERE;
+    function siblingAllSourceFiles(root: string): string[] {
+      const out: string[] = [];
+      for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+        if (!entry.isFile() || !entry.name.endsWith('.tsx')) continue;
+        if (entry.name.includes('.test.')) continue;
+        const full = join(entry.parentPath, entry.name);
+        out.push(relative(root, full).split(sep).join('/'));
+      }
+      return out.sort();
+    }
+    expect(siblingAllSourceFiles(siblingRoot).length).toBe(SOURCE_FILES.length);
+  });
+
   it('the set of files carrying a bare chq-empty element, with counts, equals the ALLOWLIST exactly', () => {
     const actual: Record<string, number> = {};
     const offenseLines: string[] = [];
