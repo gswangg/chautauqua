@@ -2683,6 +2683,7 @@ in `main()`).
 RESULT: PASS — contrast pass landed, advisory, own module; does not flip
 the render-sweep exit code; build/test green.
 
+## 2026-08-12 task-w12-a — render sweep mobile overflow instrument @ correction
 ## 2026-08-12 task-w12-a — render-sweep mobile-overflow instrument correction (DEC-424)
 
 Full detail: docs/verification-log/task-w12-a-render-sweep-mobile-overflow-instrument-correction-dec-424.md
@@ -2727,6 +2728,7 @@ OPEN ITEMS: 0
 
 RESULT: PASS
 
+## 2026-08-12 task-w13-c — j1 j12 persona walkthrough npm run walkthrough @ sta
 ## 2026-08-12 task-w13-c — J1-J12 persona walkthrough (`npm run walkthrough`), stage-1 close
 
 Full transcript in `docs/verification-log/task-w13-c-walkthrough-stage1.md`.
@@ -2763,6 +2765,7 @@ OPEN ITEMS: 0
 
 RESULT: PASS
 
+## 2026-08-12 task-w13-f — stage 1 completion ledger dec @ 423
 ## 2026-08-12 task-w13-f — STAGE-1 COMPLETION LEDGER (DEC-423)
 
 Full detail: docs/verification-log/task-w13-f-spec-audit-stage1.md
@@ -2784,6 +2787,7 @@ OPEN ITEMS: 0
 
 RESULT: PASS
 
+## 2026-08-12 task-w13-g — rubric coverage audit all 7 docs eval rubric @ yaml
 ## 2026-08-12 task-w13-g — rubric coverage audit, all 7 docs/eval-rubric/*.yaml files (evidence lane, log-only)
 
 Full detail: docs/verification-log/task-w13-g-rubric-coverage-stage1.md
@@ -2804,6 +2808,7 @@ independently requires it — none did). No rubric-only feature proposed.
 
 RESULT: PASS — OPEN ITEMS: 0.
 
+## 2026-08-12 task-w13-a — dec 430 contrast fixes dec 431 render sweep @ flip
 ## 2026-08-12 task-w13-a — DEC-430 contrast fixes + DEC-431 render-sweep flip
 
 Full transcripts in
@@ -2842,6 +2847,7 @@ RESULT: PASS (with a scope note) — both named contrast offenders fixed;
 two DEC-387 flip-rule passes fired; contrast pass stays advisory pending a
 newly-surfaced third offender outside this task's named scope.
 
+## 2026-08-12 task-w13-d — perf smoke 2 000 submission seed dec 419 dec 432 @ b
 ## 2026-08-12 task-w13-d — perf:smoke @ 2,000-submission seed (DEC-419, DEC-432 baseline)
 
 Evidence lane, log-only (DEC-419): no source file changed. Seeded the 2k
@@ -2895,6 +2901,7 @@ RESULT: FAIL — see
 `docs/verification-log/task-w13-d-perf-smoke-stage1.md` for full detail and
 route file:line citations.
 
+## 2026-08-12 task-w15-e — build test bundle render sweep evidence lane @ first
 ## 2026-08-12 task-w15-e — build/test/bundle/render-sweep evidence lane, first BLOCKING mobile + type-floor wave (DEC-443)
 
 Evidence lane, log-only except the single named `CONTRAST_BLOCKING` flip governed by DEC-436/443.
@@ -2935,6 +2942,7 @@ sweep, mobile overflow/tap-target, ADMIN_MOBILE_PASS, FONT_FLOOR) all green on t
 run; the advisory WCAG AA contrast pass reads 41/42 with one previously-known, non-blocking
 offender named above; `CONTRAST_BLOCKING` correctly stays `false`.
 
+## 2026-08-12 task-w17-e — evidence reconciliation across stage 1 waves 13 @ 16
 ## 2026-08-12 task-w17-e — evidence reconciliation across stage-1 waves 13-16 (DEC-453)
 
 Log-only lane (DEC-452/453): no source file changed by this task. Reconciled all 18
@@ -2974,6 +2982,7 @@ This file is the input wave 18's closing ledger must consume for waves 13-16's e
 this wave carries no ledger of its own (a ledger cut behind only this fix-adjacent lane would report
 sibling wave-17 source lanes PENDING-OWNED).
 
+## 2026-08-12 task-w17-d — perf smoke 2 000 submission seed dec 449 @ acceptanc
 ## 2026-08-12 task-w17-d — perf:smoke @ 2,000-submission seed, DEC-449 acceptance (DEC-453)
 
 Evidence lane, log-only: no source file was changed by this task. Full transcript, per-check
@@ -3006,6 +3015,7 @@ RESULT: PASS — all 21 perf:smoke checks green on 4/4 runs at the DEC-449 sha; 
 read-budget miss that drove w16-c's FAIL is confirmed closed with wide margin, and w16-c's
 event-overview flake did not reproduce.
 
+## 2026-08-12 task-w17-f — admin list pagination audit dec @ 453
 ## 2026-08-12 task-w17-f — admin-list pagination audit (DEC-453)
 
 Log-only lane (DEC-452/453): no source file changed, nothing fixed. SPEC.md:193-195/353's "server
@@ -3059,6 +3069,7 @@ and report true `total`, confirmed live at 2k-row scale. The audit found unbound
 SPEC.md:193-195/353 does not yet cover in code; none were fixed by this log-only lane per
 DEC-452/453.
 
+## 2026-08-12 task-w21-c — build test evidence wave 21 dec 472 dec 438 dec @ 44
 ## 2026-08-12 task-w21-c — build/test evidence, wave 21 (DEC-472, DEC-438, DEC-448)
 
 Log-only lane (DEC-472): no source file changed. sha `bf56ba715a36bcde8bbdb9e01edf7b573c38b0de`
@@ -3100,6 +3111,7 @@ reproducible run at `bf56ba7`; zero committed secrets; DEC-472's three spot-chec
 TRUE/FALSE/FALSE exactly as the code shows, confirming wave 20's fixes are actually landed,
 contradicting (favorably) the compacted field-guide summary.
 
+## 2026-08-12 task-w20-f — list envelope enumeration stage 1 dec 459 @ 466
 ## 2026-08-12 task-w20-f — list-envelope enumeration, stage 1 (DEC-459/466)
 
 Full detail: `docs/verification-log/task-w20-f-list-envelope-enumeration-stage1.md`.
@@ -3139,6 +3151,7 @@ RESULT: PASS — the enumeration is population-complete, mechanically re-derivab
 classified with zero gaps, and every BOUNDED-* row live-confirmed at 2k scale. Open items are
 findings the enumeration surfaced, not defects in the enumeration itself.
 
+## 2026-08-12 task-w21-b — list envelope enumeration artifact dec @ 473
 ## 2026-08-12 task-w21-b — list-envelope enumeration artifact (DEC-473)
 
 Log-only lane (DEC-473/DEC-472/DEC-466/DEC-459/DEC-453): no source file changed. Produces the
@@ -3195,6 +3208,7 @@ live-probed against the 2k-scale perf seed, report a true `total`; 3 are UNBOUND
 PENDING-OWNED on `task-w21-a`, not credited here per DEC-472; 1 newly-found and unowned). Per
 DEC-453 this PASS/FAIL is evidence about sha `bf56ba715a36bcde8bbdb9e01edf7b573c38b0de` only.
 
+## 2026-08-12 task-w21-e — perf smoke dec 469 measurability audit stage 1 @ clo
 ## 2026-08-12 task-w21-e — perf smoke + DEC-469 measurability audit (stage 1 close)
 
 Log-only lane (DEC-472/453/438/469): no source file changed. Sha measured: `bf56ba7` (`scribe
@@ -3334,6 +3348,7 @@ is a universal-quantifier claim (DEC-459) and one enumerated site is still unbou
 per DEC-438/459 that single miss withholds PASS. Scope of the miss is narrow and named above with
 file:line for a direct follow-up fix.
 
+## 2026-08-12 task-w25-f — stage 1 completion ledger e5f41c6 dec @ 496
 ## 2026-08-12 task-w25-f — stage-1 completion ledger @ e5f41c6 (DEC-496)
 
 Full ledger: `docs/verification-log/task-w25-f-stage-1-completion-ledger.md`. LOG-ONLY task; own
@@ -3626,6 +3641,7 @@ deliverable panel "version 2" text) fails; build and bundle:check both
 green.
 OPEN ITEMS: 1 — see task-w26-f-walkthrough-73f380f2.md for the full repro.
 
+## 2026-08-15 task-w27-b — build test bundle ceda66f2 @ diagnostic
 ## 2026-08-15 task-w27-b — build+test+bundle @ ceda66f2 [DIAGNOSTIC]
 
 INVALIDATED BY: src/**, app/src/**, test/**, package.json, migrations/**
@@ -3678,6 +3694,7 @@ RESULT: FAIL — full-suite vitest run has 37 failing tests across 11 files
 at S; build, bundle:check, db:migrate, and seed all PASS; the wave-16 red
 spa-mutation-contract scan is confirmed GREEN.
 
+## 2026-08-15 task-w27-e — spec audit 6 7 8 9 ceda66f2 @ diagnostic
 ## 2026-08-15 task-w27-e — spec-audit §6/§7/§8/§9 @ ceda66f2 [DIAGNOSTIC]
 
 DEC-069 static-audit lane, widened per DEC-063's wave-27 amendment. §8/§9
@@ -3737,6 +3754,7 @@ guard + secrets hygiene confirmed, rubric-coverage scan green at S); 1 item
 (§7-3 bundle size) pending-at-S, no wave-27 measurement landed, last known
 value (wave 26) is well inside budget.
 
+## 2026-08-15 task-w27-d — perf smoke render sweep ceda66f2 @ diagnostic
 ## 2026-08-15 task-w27-d — perf-smoke + render-sweep @ ceda66f2 [DIAGNOSTIC]
 
 INVALIDATED BY: src/**, app/src/**/*.css, src/**/*.css.ts, src/views/theme.ts, app/src/routeManifest.ts, scripts/perf-*, scripts/render-sweep*
@@ -3793,6 +3811,7 @@ persist/worsen under aie); render-sweep found 5 genuinely open items plus
 2 rows already owned by in-flight task-w27-a; task-w25-e's cfp-step-next
 keyboard focus-visible fix confirmed NOT resolved live.
 
+## 2026-08-15 task-w27-c — walkthrough ceda66f2 @ diagnostic
 ## 2026-08-15 task-w27-c — walkthrough @ ceda66f2 [DIAGNOSTIC]
 
 Full detail: docs/verification-log/task-w27-c-walkthrough-ceda66f2.md
@@ -3853,6 +3872,7 @@ reproduces unfixed at the wave-27 tip; all three curl spot checks
 (orphan-free CFP upload failure, no-auto-email status transitions,
 immediate un-accept purge) PASS.
 
+## 2026-08-15 task-w27-g — tier 1 fidelity re check ceda66f2 @ diagnostic
 ## 2026-08-15 task-w27-g — TIER-1 fidelity re-check @ ceda66f2 [DIAGNOSTIC]
 
 INVALIDATED BY: app/src/**, src/routes/**, docs/design/**
@@ -4229,6 +4249,7 @@ in the same default-profile run (`reviewer queue`, `files library (page
 owned by other lanes per the field guide's DEC-773 entry.
 OPEN ITEMS: 0 (for this lane's scope)
 
+## 2026-08-15 task-w29-f — void gate finding @ f62af3ce
 ## 2026-08-15 task-w29-f — VOID a mis-attributed gate finding (DEC-976 wave-29 amendment)
 
 QUALIFYING
@@ -4292,6 +4313,7 @@ RESULT: VOID (wave-28 gate's citation) — the "speakers toolbar right-cluster"
 open item is DISMISSED-VERIFIED-CLOSED, not carried forward. perf-smoke
 ordered-recipe gap also closed (docs-only, no runtime script logic changed).
 
+## 2026-08-15 task-w29-c — render sweep @ 6aa4a438
 ## QUALIFYING (task-w29-c)
 
 INSTRUMENT TRUTH: three of wave 27's five "genuinely open" render-sweep
@@ -4597,6 +4619,7 @@ docs/verification-log/task-w32-a-plan-results-perf-69e419ad.md.
 RESULT: PASS (plan results, this task's scope) — reviewer queue's own FAIL
 is unrelated and unowned by this lane.
 
+## 2026-08-15 task-w32-b — reviewer queue hydration @ 74c6377a
 ## 2026-08-15 task-w32-b — reviewer queue: hydrate emitted rows, not the scope @ 74c6377a [QUALIFYING]
 
 Owned `src/routes/review/reviewer.ts`. Constrained by DEC-829 (wave-32
@@ -4884,6 +4907,7 @@ per file in the companion doc. Full detail:
 
 RESULT: QUALIFYING
 OPEN ITEMS: 1
+## 2026-08-15 task-w36-c — perf smoke @ f5783479
 ## 2026-08-15 task-w36-c — perf-smoke @ f5783479 [QUALIFYING]
 
 INVALIDATED BY: src/** app/src/** migrations/** package.json

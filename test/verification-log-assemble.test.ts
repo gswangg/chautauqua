@@ -12,7 +12,13 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { duplicateSequences, planRenumber } from "../scripts/assemble-verification-log";
+import {
+  assembleEntry,
+  deriveSyntheticHeader,
+  duplicateSequences,
+  planRenumber,
+} from "../scripts/assemble-verification-log";
+import { parseLogSections } from "../scripts/exit-predicate";
 
 const ROOT = join(__dirname, "..");
 const INDEX_DIR = join(ROOT, "docs", "verification-log", "index");
@@ -161,5 +167,70 @@ describe("planRenumber (DEC-068 wave-39 collision remedy)", () => {
       "0003-2026-08-10-task-w3-a-build-test-1234567.md",
     ];
     expect(planRenumber(files)).toEqual([]);
+  });
+});
+
+describe("deriveSyntheticHeader / assembleEntry (DEC-068 wave-46 amendment)", () => {
+  it("derives a header from a well-formed filename, sha as trailing segment", () => {
+    expect(
+      deriveSyntheticHeader("0176-2026-08-15-task-w29-a-onboarding-grid-perf-1d274c8b.md"),
+    ).toBe("## 2026-08-15 task-w29-a — onboarding grid perf @ 1d274c8b");
+  });
+
+  it("derives a header even when the trailing segment is not hex-shaped (positional, not content-validated)", () => {
+    expect(
+      deriveSyntheticHeader(
+        "0143-2026-08-12-task-w13-f-stage-1-completion-ledger-dec-423.md",
+      ),
+    ).toBe("## 2026-08-12 task-w13-f — stage 1 completion ledger dec @ 423");
+  });
+
+  it("throws loudly when the filename does not match the base contract", () => {
+    expect(() => deriveSyntheticHeader("not-a-conforming-filename.md")).toThrow(
+      /does not match/,
+    );
+  });
+
+  it("throws loudly when there is nothing after the branch to serve as scope/sha", () => {
+    expect(() => deriveSyntheticHeader("0001-2026-08-10-task-w1-a.md")).toThrow();
+  });
+
+  it("assembleEntry returns a conforming file byte-unchanged", () => {
+    const content =
+      "## 2026-08-10 task-w1-a — build+test+bundle @ abc1234\n\nRESULT: PASS\n";
+    expect(assembleEntry("0001-2026-08-10-task-w1-a-build-test-abc1234.md", content)).toBe(
+      content,
+    );
+  });
+
+  it("assembleEntry prepends a synthetic header and preserves the original first line as body", () => {
+    const content = "## QUALIFYING (task-w31-c)\n\nRESULT: PASS\n";
+    const filename = "0183-2026-08-15-task-w31-c-plan-results-perf-7581aa3b.md";
+    const out = assembleEntry(filename, content);
+    const lines = out.split("\n");
+    expect(lines[0]).toBe("## 2026-08-15 task-w31-c — plan results perf @ 7581aa3b");
+    expect(lines[1]).toBe("## QUALIFYING (task-w31-c)");
+    expect(out.endsWith(content)).toBe(true);
+  });
+
+  it("assembleEntry prepends a synthetic header for a trailing-bracket-suffix header ([QUALIFYING] after the sha)", () => {
+    const filename = "0180-2026-08-15-task-w29-e-review-perf-b7060152.md";
+    const content =
+      "## 2026-08-15 task-w29-e — review-side TIER-0 perf (reviewer queue + plan results) @ b7060152 [QUALIFYING]\n\nRESULT: PASS\n";
+    const out = assembleEntry(filename, content);
+    const lines = out.split("\n");
+    expect(lines[0]).toBe("## 2026-08-15 task-w29-e — review perf @ b7060152");
+    expect(lines[1]).toBe(
+      "## 2026-08-15 task-w29-e — review-side TIER-0 perf (reviewer queue + plan results) @ b7060152 [QUALIFYING]",
+    );
+  });
+});
+
+describe("assembled docs/verification-log.md integration (DEC-068 wave-46 amendment)", () => {
+  it("parseLogSections finds exactly one section per docs/verification-log/index/ file", () => {
+    const files = entryFiles();
+    const assembled = readFileSync(OUTPUT_FILE, "utf8");
+    const sections = parseLogSections(assembled);
+    expect(sections.length).toBe(files.length);
   });
 });
