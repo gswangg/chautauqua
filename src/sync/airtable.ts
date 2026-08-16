@@ -147,6 +147,22 @@ function watermarkKey(orgId: string): string {
   return `airtable:watermark:${orgId}`;
 }
 
+// DEC-725 amendment: like Retry-After above, the stored watermark is an
+// externally-sourced string (KV, not our own write path once corruption or a
+// hand-edit is in play) — parsing it without validation would turn a corrupt
+// cursor into a NaN-valued lookbackMark, which makes gt(...) match nothing
+// and the sync silently push zero rows forever while still advancing the
+// watermark. Fail loudly instead, naming the key and the offending value, so
+// the corruption surfaces in the cron invocation log rather than as a
+// permanently dead sync.
+function parseWatermark(key: string, storedMark: string): Date {
+  const parsed = new Date(storedMark);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`airtable sync: watermark KV key ${key} holds an unparseable value: ${JSON.stringify(storedMark)}`);
+  }
+  return parsed;
+}
+
 // DEC-450: hard cap on rows read per sync tick. A cap that's silently
 // truncated would drop rows without anyone noticing; instead we throw,
 // naming the table and the cap, so an org that outgrows this needs a real
@@ -196,7 +212,7 @@ export async function runAirtableSync(
   // incremental path needs no separate bootstrap.
   const wmKey = watermarkKey(orgId);
   const storedMark = env.KV ? await env.KV.get(wmKey) : null;
-  const mark = storedMark ? new Date(storedMark) : null;
+  const mark = storedMark ? parseWatermark(wmKey, storedMark) : null;
   const lookbackMark = mark ? new Date(mark.getTime() - WATERMARK_LOOKBACK_MS) : null;
 
   const contacts = await db
