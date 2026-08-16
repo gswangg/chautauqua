@@ -83,23 +83,12 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
     );
   }
 
-  // DEC-397 wave-62 amendment (MINT ONLY WHAT THE MESSAGE CARRIES): mint a
-  // claim credential only if the send actually references {portal_link} —
-  // an unused mint is destructive (it revokes/replaces any prior grant) for
-  // no delivery benefit.
-  const needsPortalLink =
-    templateUsesMergeField(input.subjectTemplate, "portal_link") ||
-    templateUsesMergeField(input.bodyTemplate, "portal_link");
-  const kv = c.env.KV as unknown as KVStore;
-  const origin = resolveBaseUrl(c);
-  if (needsPortalLink) {
-    await applyMintedPortalLinks(kv, recipients, event.id, origin, targets);
-  }
-  const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
-  if (!result.ok) {
-    throw new ApiError("invalid", "One or more recipients are missing merge fields", missingToFields(result.missing));
-  }
-
+  // DEC-397 wave-62 amendment (MINT ONLY WHAT SHIPS): dedupe keys are
+  // computed on this UNMINTED render — a claim token is never part of the
+  // dedupe identity. The mint itself is deferred past every 400 (including
+  // templateId validation below) and past both dedupe stages, and then
+  // narrowed to only the recipients that survive into `toSend` — see below.
+  //
   // DEC-238 wave-3 amendment: refuse to deliver the same message (event,
   // lower(email), exact rendered subject) to the same address twice within
   // COMPOSE_DEDUPE_WINDOW_MS of the prior successful send — a gate-7 probe
@@ -126,8 +115,8 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
     retryAtIso?: string;
   }[] = [];
   const seenInBatch = new Set<string>();
-  const afterIntraBatch: typeof result.rendered = [];
-  for (const rendered of result.rendered) {
+  const afterIntraBatch: typeof preflightResult.rendered = [];
+  for (const rendered of preflightResult.rendered) {
     const key = dedupeKey(rendered.email, rendered.subject);
     if (seenInBatch.has(key)) {
       skipped.push({
@@ -147,7 +136,7 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
     afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject })),
     dedupeCutoff(now.getTime()),
   );
-  const toSend: typeof result.rendered = [];
+  const toSendKeys: typeof preflightResult.rendered = [];
   for (const rendered of afterIntraBatch) {
     const lastSentAt = recentlySent.get(dedupeKey(rendered.email, rendered.subject));
     if (lastSentAt !== undefined) {
@@ -160,7 +149,7 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
       });
       continue;
     }
-    toSend.push(rendered);
+    toSendKeys.push(rendered);
   }
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
@@ -181,6 +170,42 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
     }
     templateId = template.id;
   }
+
+  // DEC-397 wave-62 amendment (MINT ONLY WHAT SHIPS): mint a claim
+  // credential only for recipients that survived every 400 (templateId
+  // included) and both dedupe stages — createClaimToken supersedes any
+  // prior grant onto a fresh 48h TTL, so minting for a `skipped` recipient
+  // would revoke their live, already-delivered portal link and never
+  // deliver the replacement. Only if the send actually references
+  // {portal_link} do we mint at all. Targets/recipients are narrowed to
+  // toSendKeys' contactIds before minting, then just those targets are
+  // re-rendered (preflightRender is pure, so this extra pass costs no IO).
+  const needsPortalLink =
+    templateUsesMergeField(input.subjectTemplate, "portal_link") ||
+    templateUsesMergeField(input.bodyTemplate, "portal_link");
+  // Keyed on (contactId, submissionId) — not contactId alone — because a
+  // speaker with two accepted talks (DEC-238 wave-15) has one target per
+  // submission under the same contactId, and only some of those
+  // submissions' messages may have survived dedupe.
+  const toSendTargetKeys = new Set(toSendKeys.map((r) => `${r.contactId}::${r.submissionId}`));
+  const toSendTargets = targets.filter((t) => toSendTargetKeys.has(`${t.contactId}::${t.submissionId}`));
+  const toSendContactIds = new Set(toSendKeys.map((r) => r.contactId));
+  const toSendRecipients = recipients.filter((r) => toSendContactIds.has(r.contactId));
+  if (needsPortalLink && toSendTargets.length > 0) {
+    const kv = c.env.KV as unknown as KVStore;
+    const origin = resolveBaseUrl(c);
+    await applyMintedPortalLinks(kv, toSendRecipients, event.id, origin, toSendTargets);
+  }
+  const finalResult = preflightRender(toSendTargets, input.subjectTemplate, input.bodyTemplate);
+  if (!finalResult.ok) {
+    throw new ApiError(
+      "invalid",
+      "One or more recipients are missing merge fields",
+      missingToFields(finalResult.missing),
+    );
+  }
+  const toSend = finalResult.rendered;
+
   const { makeMailer } = await import("../../server/context");
   const mailer = makeMailer(c.var.db, c.env);
   // DEC-603: one id per fan-out call, shared by every recipient in this
