@@ -58,6 +58,86 @@ live tree this task, not inherited from a prior wave's claim:
   (`accept={...}`) and `:168` (`uploadHintText(...)`) derive from — one
   source, cannot drift.
 
+## GATE-10 SWEEP VERDICTS (fidelity-gate10/group{1,2,3}.md; snapshot d3c0c518, isolated servers 8894-6, integrity CLEAN all three)
+
+**Verdicts: 2 PASS (04, 11) · 3 MINOR (01, 05→08, 10) · 5 MAJOR (02, 03, 06, 07, 09)
+· 1 BROKEN (saved views).** Method validated to the decimal against gate-9 numbers.
+
+**P0 BROKEN (functional, found by click-through):**
+- **Saved views can NEVER be deleted**: `ViewTabs.tsx:218` — `pendingDelete` is only
+  ever set to null, so the delete affordance never arms; DELETE /api/v1/views/:id and
+  its ConfirmDialog are DEAD CODE. Wire the trigger; render-test that the confirm
+  opens; this is also a DEC-941-class miss the new scan must catch (dead confirm ≠
+  present confirm).
+- **Sessionboard import step-2 trap**: mapping UI omits `externalId`
+  (SessionboardImportPanel.tsx:47) while the server REQUIRES it and only auto-maps
+  when the mapping is EMPTY (import.ts:91) — hand-mapping ANY column guarantees
+  "Missing external id (Record ID)" + 0 rows imported. Verified both ways live. Add
+  externalId to the mapping choices (or always-auto-map it) + a test importing WITH a
+  hand-set mapping.
+
+**REOPENS (measured on d3c0c518; check post-snapshot commits before re-fixing):**
+1. ~~Scorecard rail gutter 36 vs 60~~ — swarm commit 2304bbd6 (DEC-939 w57) landed
+   AFTER the snapshot; main now reads gap:60px. VERIFY at gate-11, else closed.
+2. `/plans/:id/progress` STILL no measure (x=34 w=1532, ProgressPanel.tsx:118).
+3. 12-home HOME_MEASURE still 820 (home.css.ts:21) vs frames 732@434 — needs the
+   ruling the gate-9 lane asked for; PLUS new: theme.ts:172 `a:hover` paints the
+   "Submit a talk" primary's LABEL #3C471F on the #4E5C31 fill = dark-on-dark hover
+   (a v11 tier violation: hovered primary must darken the FILL, label stays on-brand).
+4. 07 history tab: ALL THREE clauses still absent (0 column heads, 0 filter chips,
+   search own-row x=80 w=820 vs right-flushed chip row) + caption triplicated.
+5. 09 people HEADER row kept `1fr 170px 190px auto` (settings.css:414) while the data
+   rows moved to `minmax(0,1fr) 170 190 200` — header labels sit ~200px off their
+   columns (Role@x814 over rows' scope@x802). Finish the fix orchestrator started.
+6. Portal co-presenter inputs at intrinsic 188.2px (unclassed, portal edit.tsx:318) —
+   the R-A bare-page fix never reached the portal form; class them.
+7. §09 residue M1/M2/M4/M5/M6/M7/R1/R2 reproduce unchanged (field widths, footer
+   grammar, portal toggles, embed card anatomy — see group3.md for measures).
+
+**V11 BASELINE (quantified gaps, ordered by lane priority):**
+- **Transitions: literally zero** — every element on every audited surface computes
+  `transition: all 0s`; secondary buttons + comms rows + overview controls have NO
+  hover state at all; where hover exists the COLORS already match B8 (#EFEBDF rows,
+  #3C471F primary). So lane item (1) is purely additive tokens — low regression risk.
+- **ConfirmDialog**: one weight, no type-the-name anywhere (embed/resource/contact
+  deletes all render inputs:0); worse, THREE destructive actions fire with NO confirm:
+  embed "Turn off", tracks "Remove", admin co-presenter "Remove".
+- **Invite flow vs 09--18/19/20**: inline strip not a dialog; primary "Send invite"
+  (must be "Create the account"); reveal 12px mono, no Copy, no last-time line; 409
+  lacks "Open <name>'s row". Reset (09--24) omits both facts though the server DOES
+  end sessions and skip email — copy-only fix.
+- **FieldModal (02)**: works but ~6 v11 frame items short (group1.md list); saved-view
+  delete BROKEN above sits on the same surface.
+- **Breaks modal vs 06--02**: title "Breaks" not "Breaks on <day>"; BOTH mandated copy
+  lines missing; out-of-window break clamps at full opacity (frame: kept-but-flagged
+  grey); 2×2 add grid vs frame's 3-up 270/108/94; rows concatenate time-first.
+- **ProgressPanel scopes**: both exist + DEC-760 hidden-when-zero VERIFIED live, but
+  "Remind laggards (N)" renders only on the standalone page (!embedded,
+  ProgressPanel.tsx:150) — the two scopes never share a surface as the frame requires.
+- **/portal/preview**: exists but lacks Not-shown-here chips, Back-to-settings, and
+  Download-disabled resource rows.
+- **New interaction bug**: armed click-to-place cannot land on an OCCUPIED agenda slot
+  by mouse (the card intercepts the pointer; keyboard + drag both work) — v11 drag
+  spec says occupied targets accept and flag the clash.
+
+**RULINGS NEEDED (file in DESIGN-RULINGS or design-standard-brief):**
+- Status-cell hover ring renders INSET (DEC-383) vs v11's literal outset shadow —
+  pick one.
+- CFP builder content 820@390 vs frame 756@422 (−64 residue after the measure-class
+  fix) — align or rule.
+
+**CONFIRMED CLOSED (measured; prune from open lists):** results cols 210/190 · files
+26px scoping + 900/190/108/92/150 · worklist 28/710/168/200/152/182 · detail pair
+1.35:1 · compose step-2 blank arrival + at-control merge-field 400 + per-recipient
+banner · plan-editor per-field 400s · auth inputs 780×48 + h1 28px (painted ink
+222.0 = frame) · people-row DATA grid + guard dedupe · contacts drawer sticky bar ·
+overview Open alignment · co-presenter add/remove loop incl. lead-protection 400 ·
+DEC-760 hidden-not-disabled · 11--07 reset frame verified LIVE frame-exact.
+
+SWARM: P0 BROKEN items first, then reopens 2-7, then v11 baseline order. Closures
+against design-frames-v11 with measures.
+
+
 ## GATE-8 LOSS-MINE, ITEMIZED (runs 2026-08-15T07-46 [89.0] + T13-02 [90.3 final], both vs prod) — CORRECTNESS LANE
 
 Every major-severity judge defect across BOTH runs traces to four clusters. These are
