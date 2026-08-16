@@ -12,6 +12,7 @@ import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
 import type { PlanRecord } from "./plans";
 import { MAX_REVIEWER_SCOPE_ROWS } from "./reviewers";
+import { parseSubmissionAnswerValue } from "../../../forms/answer-json";
 
 // DEC-346 amendment (wave 57): the ceiling listPlanFilteredSubmissions'
 // matched-submissions scan refuses past -- mirrors MAX_FILE_LIBRARY_SCAN
@@ -946,6 +947,6 @@ export async function listAnswersForSubmission(db: Db, submissionId: string): Pr
     section: r.section as "session" | "speaker",
     label: r.label,
     kind: r.kind,
-    value: JSON.parse(r.valueJson) as unknown,
+    value: parseSubmissionAnswerValue(r.valueJson, r.fieldId),
   }));
 }

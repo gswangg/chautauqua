@@ -17,6 +17,7 @@ import { upsertSubmissionAnswers, replaceSubmissionTracks, findContactByEmail, c
 import type { FormFieldDef, FormFieldKind, FormFieldSection, AnswerMap } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName, projectFieldForAnswers } from "../../forms/types";
 import { parseFieldOptions, parseFieldRule } from "../../forms/field-json";
+import { parseSubmissionAnswerValue } from "../../forms/answer-json";
 import type { SubmissionStatus } from "../../domain/status";
 import { resolveOfferedTrackIds } from "../../lib/submit-core";
 import { ACTIVE_INVITE_STATUSES, PORTAL_VISIBLE_INVITE_STATUSES } from "../../domain/acceptance";
@@ -154,7 +155,7 @@ export async function loadEditableSubmission(
     .where(eq(schema.submissionAnswer.submissionId, submissionId));
   const answers: AnswerMap = {};
   for (const a of answerRows) {
-    answers[a.fieldId] = JSON.parse(a.valueJson);
+    answers[a.fieldId] = parseSubmissionAnswerValue(a.valueJson, a.fieldId);
   }
   // DEC-016: locked fields live on real submission columns, not
   // submission_answer — surface them into the same answers map so the
