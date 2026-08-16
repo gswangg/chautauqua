@@ -41,10 +41,10 @@ function ruleMap(css: string): Map<string, string> {
   const re = /([^{}@]+)\{([^{}]*)\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(css))) {
-    for (const rawSel of m[1].split(",")) {
+    for (const rawSel of m[1]!.split(",")) {
       const sel = rawSel.trim();
       if (!sel) continue;
-      map.set(sel, (map.get(sel) ?? "") + ";" + m[2]);
+      map.set(sel, (map.get(sel) ?? "") + ";" + m[2]!);
     }
   }
   return map;
