@@ -10,6 +10,11 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
+// DEC-664 (wave-59 amendment): this panel reports its send outcome as one
+// inline string (role=status), so it names each failure's reason through the
+// ONE shared toast-context reporter -- never a bare count that discards the
+// server's per-recipient message.
+import { failureLines } from '../../lib/sendResult';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
 
@@ -37,12 +42,14 @@ function rowStateLabel(row: ProgressRow): string {
 /** DEC-760 (wave-60 amendment)/DEC-238 (wave-66 amendment): the v11 standard
  * result line names every count the server reports -- sent, skipped,
  * remaining -- always present per the CLOSED ReminderResult vocabulary, plus
- * a failure clause when the server reports any. */
+ * a failure clause when the server reports any. DEC-664 (wave-59 amendment):
+ * that failure clause names the server's per-recipient REASON via the shared
+ * failureLines reporter -- the count alone is not a report. */
 function formatReminderResult(result: ReminderResult): string {
   const parts = [`Sent: ${result.sent}.`, `Skipped: ${result.skipped}.`, `Remaining: ${result.remaining}.`];
   const failedCount = result.failed?.length ?? 0;
   if (failedCount > 0) {
-    parts.push(`Failed: ${failedCount}.`);
+    parts.push(`Failed: ${failedCount}. ${failureLines(result)}`);
   }
   return parts.join(' ');
 }
