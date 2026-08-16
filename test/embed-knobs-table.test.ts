@@ -19,7 +19,10 @@ const EXPECTED: Record<EmbedSurface, readonly string[]> = {
   speakers: ["trackId", "q", "limit", "accent"],
   gallery: ["trackId", "q", "limit", "accent"],
   agenda: ["trackId", "day", "q", "accent"],
-  schedule: ["trackId", "day", "q", "accent"],
+  // DEC-851 (wave-55 amendment): schedule drops trackId -- no reader
+  // honors it (ScheduleContent never read the highlight prop, the
+  // .json/.xml feed twin never threaded it).
+  schedule: ["day", "q", "accent"],
 };
 
 const EXPECTED_TRACK_MODE: Record<EmbedSurface, "filter" | "highlight"> = {

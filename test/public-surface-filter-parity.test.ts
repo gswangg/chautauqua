@@ -360,19 +360,29 @@ describe("DEC-489 (wave-12 amendment): the .json/.xml feed twins never thread tr
   });
 });
 
-describe("DEC-489 (wave-12 amendment): EMBED_KNOBS_BY_SURFACE pins the corrected set for agenda/schedule", () => {
-  it("agenda and schedule both list trackId(highlight), day, q, accent — never format, roomId, limit or fields", async () => {
+describe("DEC-489 (wave-12 amendment, revised DEC-851 wave-55 amendment): EMBED_KNOBS_BY_SURFACE pins the corrected set for agenda/schedule", () => {
+  it("agenda lists trackId(highlight), day, q, accent — never format, roomId, limit or fields", async () => {
     const { EMBED_KNOBS_BY_SURFACE, trackKnobMode } = await import("../app/src/pages/settings/embedSnippet");
     const expected = ["trackId", "day", "q", "accent"];
     expect([...EMBED_KNOBS_BY_SURFACE.agenda].sort()).toEqual([...expected].sort());
-    expect([...EMBED_KNOBS_BY_SURFACE.schedule].sort()).toEqual([...expected].sort());
     expect(EMBED_KNOBS_BY_SURFACE.agenda).not.toContain("roomId");
     expect(EMBED_KNOBS_BY_SURFACE.agenda).not.toContain("fields");
     expect(EMBED_KNOBS_BY_SURFACE.agenda).not.toContain("format");
     expect(EMBED_KNOBS_BY_SURFACE.agenda).not.toContain("limit");
+    expect(trackKnobMode("agenda")).toBe("highlight");
+  });
+
+  // DEC-851 (wave-55 amendment): schedule lost trackId entirely -- no
+  // reader honors it (ScheduleContent never read the highlight prop, the
+  // .json/.xml feed twin never threaded it into getPublicAgenda).
+  it("schedule lists only day, q, accent — never trackId, format, roomId, limit or fields", async () => {
+    const { EMBED_KNOBS_BY_SURFACE } = await import("../app/src/pages/settings/embedSnippet");
+    const expected = ["day", "q", "accent"];
+    expect([...EMBED_KNOBS_BY_SURFACE.schedule].sort()).toEqual([...expected].sort());
+    expect(EMBED_KNOBS_BY_SURFACE.schedule).not.toContain("trackId");
     expect(EMBED_KNOBS_BY_SURFACE.schedule).not.toContain("roomId");
     expect(EMBED_KNOBS_BY_SURFACE.schedule).not.toContain("fields");
-    expect(trackKnobMode("agenda")).toBe("highlight");
-    expect(trackKnobMode("schedule")).toBe("highlight");
+    expect(EMBED_KNOBS_BY_SURFACE.schedule).not.toContain("format");
+    expect(EMBED_KNOBS_BY_SURFACE.schedule).not.toContain("limit");
   });
 });

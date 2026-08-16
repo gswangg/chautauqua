@@ -364,13 +364,6 @@ export function ScheduleContent(props: {
   items: PublicAgendaItem[];
   total: number;
   embed?: boolean;
-  allDays?: string[] | null;
-  activeDay?: string | null;
-  // DEC-851 (wave 64 amendment): render-level highlight, not a filter -- see
-  // the matching comment on AgendaContent above. Unused by this frame (the
-  // highlight control was dropped -- kept on the prop shape so
-  // dispatch.tsx's existing call site needs no change).
-  highlightTrackId?: string | null;
   q?: string | null;
   breaksByDay?: Map<string, ScheduleBreak[]>;
   // DEC-489 (wave-54 amendment): threaded into the one internal out-link

@@ -126,6 +126,67 @@ describe("deleteTrack 409 refusal for a saved embed (DEC-931 amendment)", () => 
     const { db } = fakeDb([...trackPriorSelects, []]);
     await expect(deleteTrack(db, "track1", "event1")).resolves.toBeUndefined();
   });
+
+  // DEC-851 (wave-55 amendment): the embed blocker only fires for surfaces
+  // whose EMBED_KNOB_TABLE row actually declares trackId (derived via
+  // knobsForSurface, never a hand-listed surface set) -- 'schedule' lost
+  // trackId this wave, so a schedule-surface embed can no longer refuse a
+  // track delete for a knob it can't act on.
+  it("only scopes the embed WHERE to surfaces that honor trackId, excluding schedule", async () => {
+    let capturedWhere: unknown;
+    const deleteChain: any = { where: async () => undefined };
+    let call = 0;
+    const priorSelects = trackPriorSelects;
+    const db = {
+      select: () => {
+        const idx = call;
+        call += 1;
+        const chain: any = {
+          from: () => chain,
+          innerJoin: () => chain,
+          where: (cond: unknown) => {
+            // The embed-blocker select is the first select AFTER all of
+            // trackPriorSelects have been consumed.
+            if (idx === priorSelects.length) capturedWhere = cond;
+            return chain;
+          },
+          orderBy: () => chain,
+          limit: async () => priorSelects[idx] ?? [],
+          then: (resolve: (v: unknown[]) => void) => resolve(priorSelects[idx] ?? []),
+        };
+        return chain;
+      },
+      delete: () => deleteChain,
+    } as unknown as AppEnv["Variables"]["db"];
+
+    await expect(deleteTrack(db, "track1", "event1")).resolves.toBeUndefined();
+
+    function walk(node: unknown, seen = new Set<unknown>(), depth = 0): string[] {
+      if (depth > 12 || node === null || node === undefined) return [];
+      if (typeof node === "string") return [node];
+      if (typeof node !== "object") return [];
+      if (seen.has(node)) return [];
+      seen.add(node);
+      const out: string[] = [];
+      if (Array.isArray(node)) {
+        for (const c of node) out.push(...walk(c, seen, depth + 1));
+        return out;
+      }
+      const n = node as Record<string, unknown>;
+      // drizzle's `Param` wrapper (inArray's bound values) carries the raw
+      // value on `.value`, not inside `queryChunks`.
+      if (typeof n.value === "string") out.push(n.value);
+      if (Array.isArray(n.queryChunks)) {
+        for (const c of n.queryChunks) out.push(...walk(c, seen, depth + 1));
+      }
+      return out;
+    }
+
+    const tokens = walk(capturedWhere);
+    expect(tokens).toContain("sessions");
+    expect(tokens).toContain("agenda");
+    expect(tokens).not.toContain("schedule");
+  });
 });
 
 describe("deleteRoom 409 refusal for a saved embed (DEC-931 amendment)", () => {

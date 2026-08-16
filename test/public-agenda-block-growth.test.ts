@@ -115,7 +115,10 @@ describe("task-w1-e (DEC-768): day switcher survives a ?day= filtered view", () 
   // task-w1-d (DEC-555 amendment): /schedule dropped the day-pill row
   // entirely -- frame 10--12's day groups are headed by a plain <h2>, not a
   // switcher, and every saved day renders in one page (the client-side
-  // filter decides what's visible, never a ?day= narrowing).
+  // filter decides what's visible, never a ?day= narrowing). DEC-851
+  // (wave-55 amendment) deleted the dead allDays/activeDay props from
+  // ScheduleContent's signature entirely -- it never took a switcher input
+  // to begin with, so this call carries neither.
   it("ScheduleContent renders no day switcher at all", () => {
     const items = [item({ submissionId: "s1", day: "2026-08-10" })];
     const html = String(
@@ -123,8 +126,6 @@ describe("task-w1-e (DEC-768): day switcher survives a ?day= filtered view", () 
         event: EVENT,
         items,
         total: items.length,
-        allDays: ["2026-08-10", "2026-08-11"],
-        activeDay: "2026-08-10",
       }),
     );
     expect(html).not.toContain("chq-pub-day-switcher");
