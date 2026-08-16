@@ -84,7 +84,7 @@ describe('ContactsApp: New-contact dialog (DEC-597)', () => {
 
     const before = fetchMock.mock.calls.filter(([input]) => (typeof input === 'string' ? input : input.toString()).includes('/api/v1/contacts?') || (typeof input === 'string' ? input : input.toString()).endsWith('/api/v1/contacts')).length;
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create contact' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add the contact' }));
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'New contact' })).not.toBeInTheDocument();

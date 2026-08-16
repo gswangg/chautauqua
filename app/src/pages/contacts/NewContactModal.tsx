@@ -109,6 +109,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
   return (
     <ModalFrame
       title="New contact"
+      subtitle="Added to the org, not to an event"
       onClose={onClose}
       closeDisabled={busy}
       modalClassName="chq-contacts-new-contact-modal"
@@ -120,7 +121,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
             disabled={busy || firstName.trim() === '' || lastName.trim() === '' || email.trim() === ''}
             onClick={submit}
           >
-            Create contact
+            Add the contact
           </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={busy}>
             Cancel
@@ -135,26 +136,28 @@ export function NewContactModal({ onClose, onCreated }: Props) {
       )}
       {conflict && <DuplicateEmailNotice email={email} />}
 
-      <FormRow label="First name" htmlFor="new-contact-first-name" error={fields.firstName}>
-        <input
-          id="new-contact-first-name"
-          className="chq-input"
-          maxLength={MAX_NAME_LENGTH}
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          placeholder="Priya"
-        />
-      </FormRow>
-      <FormRow label="Last name" htmlFor="new-contact-last-name" error={fields.lastName}>
-        <input
-          id="new-contact-last-name"
-          className="chq-input"
-          maxLength={MAX_NAME_LENGTH}
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          placeholder="Raman"
-        />
-      </FormRow>
+      <div className="chq-contacts-new-contact-row-2up">
+        <FormRow label="First name" htmlFor="new-contact-first-name" error={fields.firstName}>
+          <input
+            id="new-contact-first-name"
+            className="chq-input"
+            maxLength={MAX_NAME_LENGTH}
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="First name"
+          />
+        </FormRow>
+        <FormRow label="Last name" htmlFor="new-contact-last-name" error={fields.lastName}>
+          <input
+            id="new-contact-last-name"
+            className="chq-input"
+            maxLength={MAX_NAME_LENGTH}
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Last name"
+          />
+        </FormRow>
+      </div>
       <FormRow
         label="Email"
         htmlFor="new-contact-email"
@@ -168,29 +171,31 @@ export function NewContactModal({ onClose, onCreated }: Props) {
           maxLength={MAX_NAME_LENGTH}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="priya.raman@example.com"
+          placeholder="their@email.com"
         />
       </FormRow>
-      <FormRow label="Company" htmlFor="new-contact-company" error={fields.company} optional>
-        <input
-          id="new-contact-company"
-          className="chq-input"
-          maxLength={MAX_NAME_LENGTH}
-          value={company}
-          onChange={(e) => setCompany(e.target.value)}
-          placeholder="Latticework Systems"
-        />
-      </FormRow>
-      <FormRow label="Title" htmlFor="new-contact-title" error={fields.title} optional>
-        <input
-          id="new-contact-title"
-          className="chq-input"
-          maxLength={MAX_NAME_LENGTH}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Principal Engineer"
-        />
-      </FormRow>
+      <div className="chq-contacts-new-contact-row-2up">
+        <FormRow label="Company" htmlFor="new-contact-company" error={fields.company} optional>
+          <input
+            id="new-contact-company"
+            className="chq-input"
+            maxLength={MAX_NAME_LENGTH}
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="Company"
+          />
+        </FormRow>
+        <FormRow label="Title" htmlFor="new-contact-title" error={fields.title} optional>
+          <input
+            id="new-contact-title"
+            className="chq-input"
+            maxLength={MAX_NAME_LENGTH}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Job title"
+          />
+        </FormRow>
+      </div>
       {duplicateMatch && (
         <p className="chq-contacts-new-contact-duplicate-hint" role="status">
           Possible duplicate:{' '}

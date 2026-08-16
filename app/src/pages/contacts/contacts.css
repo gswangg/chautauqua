@@ -394,6 +394,15 @@
   color: var(--chq-ink);
 }
 
+/* DEC-597 (wave 8 amendment): NewContactModal's frame 08--16 two-up rows --
+   First/Last share one row, Company/Title share a second, Email stays full
+   width between them (docs/design/Chautauqua Contacts.dc.html:821-845). */
+.chq-contacts-new-contact-row-2up {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
 /* Phone frame (DEC-385/386, docs/design/Chautauqua Contacts.dc.html "390"
    frame): the desktop directory table becomes a stack of cards via a
    pure-CSS transform on the SAME markup (thead hidden, tr/td turned into
