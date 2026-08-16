@@ -54,6 +54,16 @@ export const HOME_CSS = `
   .chq-home-state { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
   .chq-home-meta { font-size: 13px; color: var(--chq-muted); }
   .chq-home-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  /* DEC-383 (wave-8 amendment, sha efb77e4a): B8 motion contract extended to
+     the hub's action family -- same property-scoped transition as theme.ts's
+     button/.chq-btn family (:357), same tokens, never \`transition: all\`. */
+  .chq-home-action-primary,
+  .chq-home-action-secondary,
+  .chq-home-action-quiet {
+    transition: background-color var(--chq-motion-color) var(--chq-ease-state),
+      border-color var(--chq-motion-color) var(--chq-ease-state),
+      color var(--chq-motion-color) var(--chq-ease-state);
+  }
   .chq-home-action-primary { background: var(--chq-brand); color: var(--chq-on-brand); border-radius: var(--chq-r-ctl); min-height: 48px; display: flex; align-items: center; padding: 0 20px; font-size: 15px; font-weight: 700; white-space: nowrap; text-decoration: none; }
   /* DEC-383 (wave-66 amendment): anchor-qualified so it beats theme.ts's
      a:not(.chq-btn):hover (0,2,1 > 0,2,0) -- the hover darkens the FILL to
@@ -62,6 +72,19 @@ export const HOME_CSS = `
   a.chq-home-action-primary:hover { background: var(--chq-brand-hover); color: var(--chq-on-brand); }
   .chq-home-action-secondary { border: 1px solid var(--chq-border-strong); border-radius: var(--chq-r-ctl); background: var(--chq-surface-sunk); min-height: 46px; display: flex; align-items: center; padding: 0 18px; font-size: 14px; font-weight: 600; color: var(--chq-ink-strong); white-space: nowrap; text-decoration: none; }
   .chq-home-action-quiet { font-size: 13px; font-weight: 700; white-space: nowrap; display: flex; align-items: center; }
+
+  /* DEC-383 (wave-8 amendment, sha efb77e4a): reduced-motion override lives
+     in this SAME region so the transition and its 0ms override can never
+     separate -- theme.ts rebinds --chq-motion-color globally, but HOME_CSS
+     is a distinct stylesheet and must not rely on THEME_CSS's media query
+     firing for it. */
+  @media (prefers-reduced-motion: reduce) {
+    .chq-home-action-primary,
+    .chq-home-action-secondary,
+    .chq-home-action-quiet {
+      transition-duration: 0ms;
+    }
+  }
 
   .chq-home-row-published { padding: 18px 0; }
   .chq-home-row-published .chq-home-name { font-size: 21px; letter-spacing: -0.025em; line-height: 1.25; }
