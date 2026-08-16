@@ -14,6 +14,34 @@ export interface DraftRecord {
   formId: string;
   answers: AnswerMap;
   savedAt: number;
+  trackIds: string[];
+}
+
+/** DEC-014 amendment (wave 10): KV holds arbitrary external bytes -- a
+ * record that fails this shape check is treated exactly as a missing
+ * record by every caller, never as a half-valid object. */
+export function parseDraftRecord(raw: string): DraftRecord | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const record = parsed as Record<string, unknown>;
+  if (typeof record.formId !== "string") return null;
+  if (typeof record.savedAt !== "number" || !Number.isFinite(record.savedAt)) return null;
+  if (typeof record.answers !== "object" || record.answers === null || Array.isArray(record.answers)) return null;
+  for (const value of Object.values(record.answers as Record<string, unknown>)) {
+    if (typeof value !== "string" && typeof value !== "boolean") return null;
+  }
+  if (!Array.isArray(record.trackIds) || record.trackIds.some((id) => typeof id !== "string")) return null;
+  return {
+    formId: record.formId,
+    answers: record.answers as AnswerMap,
+    savedAt: record.savedAt,
+    trackIds: record.trackIds as string[],
+  };
 }
 
 /** Structural subset of Cloudflare's KVNamespace — small enough to fake. */
@@ -74,7 +102,7 @@ export async function readDraft(kv: KVStore, token: string): Promise<DraftRecord
   const hash = await hashDraftToken(token);
   const raw = await kv.get(draftKvKey(hash));
   if (!raw) return null;
-  return JSON.parse(raw) as DraftRecord;
+  return parseDraftRecord(raw);
 }
 
 /** Deletes the draft record (called on successful submit). */

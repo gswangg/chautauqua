@@ -12,7 +12,13 @@ import {
 } from "../../server/repo/submit";
 import type { AnswerMap } from "../../forms/types";
 import { formWindowState, resolveOfferedTrackIds } from "../../lib/submit-core";
-import { readDraft, draftCookieName, type KVStore as DraftKVStore } from "../../lib/draft";
+import {
+  parseDraftRecord,
+  draftCookieName,
+  draftKvKey,
+  hashDraftToken,
+  type KVStore as DraftKVStore,
+} from "../../lib/draft";
 import { parseCookies } from "../../auth/cookies";
 import { publicNotFound } from "./not-found";
 import { ClosedPage, NotYetOpenPage, SubmitPage } from "./submit-views";
@@ -49,14 +55,26 @@ publicSubmitGetRoutes.get("/submit/:eventSlug", async (c) => {
   let selectedTrackIds: string[] = [];
   let hasDraft = false;
   let draftSavedAt: number | undefined;
+  let draftUnreadable = false;
   if (draftCookie) {
     const kv = c.env.KV as unknown as DraftKVStore;
-    const draft = await readDraft(kv, draftCookie);
-    if (draft && draft.formId === form.id) {
-      answers = draft.answers;
-      selectedTrackIds = Array.isArray(draft.answers.__trackIds) ? (draft.answers.__trackIds as string[]) : [];
-      hasDraft = true;
-      draftSavedAt = draft.savedAt;
+    const hash = await hashDraftToken(draftCookie);
+    const raw = await kv.get(draftKvKey(hash));
+    if (raw) {
+      const draft = parseDraftRecord(raw);
+      if (draft && draft.formId === form.id) {
+        answers = draft.answers;
+        selectedTrackIds = draft.trackIds;
+        hasDraft = true;
+        draftSavedAt = draft.savedAt;
+      } else if (!draft) {
+        // The KV record exists but failed parseDraftRecord's shape check --
+        // delete the now-unusable record so the browser isn't stuck
+        // carrying a dead cookie for the rest of the 30-day TTL, and tell
+        // the person rather than silently starting them over.
+        await kv.delete(draftKvKey(hash));
+        draftUnreadable = true;
+      }
     }
   }
 
@@ -72,6 +90,7 @@ publicSubmitGetRoutes.get("/submit/:eventSlug", async (c) => {
       draftSavedAt={draftSavedAt}
       csrfToken={csrfToken}
       draftSavedNotice={c.req.query("draft") === "saved"}
+      banner={draftUnreadable ? "We couldn't restore your saved draft, so we've started you with a blank form." : undefined}
     />,
   );
 });

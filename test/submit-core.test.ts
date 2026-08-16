@@ -7,7 +7,16 @@ import {
   nextSeqRef,
   extractFileAnswers,
 } from "../src/lib/submit-core";
-import { saveDraft, readDraft, deleteDraft, draftCookieName, type KVStore } from "../src/lib/draft";
+import {
+  saveDraft,
+  readDraft,
+  deleteDraft,
+  draftCookieName,
+  draftKvKey,
+  hashDraftToken,
+  parseDraftRecord,
+  type KVStore,
+} from "../src/lib/draft";
 
 class InMemoryKV implements KVStore {
   private readonly store = new Map<string, string>();
@@ -233,24 +242,42 @@ describe("draft round-trip against an in-memory KV fake", () => {
   it("saves and reads back a draft without consuming it", async () => {
     const kv = new InMemoryKV();
     const token = "tok-1";
-    await saveDraft(kv, token, { formId: "form1", answers: { title: "My talk" }, savedAt: 123 });
+    await saveDraft(kv, token, {
+      formId: "form1",
+      answers: { title: "My talk" },
+      savedAt: 123,
+      trackIds: [],
+    });
     const draft = await readDraft(kv, token);
-    expect(draft).toEqual({ formId: "form1", answers: { title: "My talk" }, savedAt: 123 });
+    expect(draft).toEqual({ formId: "form1", answers: { title: "My talk" }, savedAt: 123, trackIds: [] });
     // still there after a second read
     await expect(readDraft(kv, token)).resolves.toEqual(draft);
+  });
+
+  it("round-trips trackIds through save and resume (DEC-014)", async () => {
+    const kv = new InMemoryKV();
+    const token = "tok-tracks";
+    await saveDraft(kv, token, {
+      formId: "form1",
+      answers: { title: "My talk" },
+      savedAt: 123,
+      trackIds: ["t1", "t3"],
+    });
+    const draft = await readDraft(kv, token);
+    expect(draft?.trackIds).toEqual(["t1", "t3"]);
   });
 
   it("never stores the raw token as the KV key", async () => {
     const kv = new InMemoryKV();
     const token = "tok-2";
-    await saveDraft(kv, token, { formId: "form1", answers: {}, savedAt: 1 });
+    await saveDraft(kv, token, { formId: "form1", answers: {}, savedAt: 1, trackIds: [] });
     expect(kv.has(`draft:${token}`)).toBe(false);
   });
 
   it("deleteDraft removes the record", async () => {
     const kv = new InMemoryKV();
     const token = "tok-3";
-    await saveDraft(kv, token, { formId: "form1", answers: { a: 1 }, savedAt: 1 });
+    await saveDraft(kv, token, { formId: "form1", answers: { a: "1" }, savedAt: 1, trackIds: [] });
     await deleteDraft(kv, token);
     await expect(readDraft(kv, token)).resolves.toBeNull();
   });
@@ -263,5 +290,25 @@ describe("draft round-trip against an in-memory KV fake", () => {
   it("draftCookieName is namespaced per form id (DEC-014)", () => {
     expect(draftCookieName("form1")).toBe("chq_draft_form1");
     expect(draftCookieName("form2")).toBe("chq_draft_form2");
+  });
+
+  it("DEC-014: a malformed/legacy KV blob is treated as no draft, not a crash", async () => {
+    const kv = new InMemoryKV();
+    const hash = await hashDraftToken("tok-legacy");
+    // Legacy shape: no trackIds field at all.
+    await kv.put(draftKvKey(hash), JSON.stringify({ formId: "form1", answers: {}, savedAt: 1 }));
+    await expect(readDraft(kv, "tok-legacy")).resolves.toBeNull();
+  });
+
+  it("parseDraftRecord rejects non-string/boolean answer values", () => {
+    expect(
+      parseDraftRecord(JSON.stringify({ formId: "form1", answers: { a: 1 }, savedAt: 1, trackIds: [] })),
+    ).toBeNull();
+  });
+
+  it("parseDraftRecord rejects garbage JSON", () => {
+    expect(parseDraftRecord("not json")).toBeNull();
+    expect(parseDraftRecord("42")).toBeNull();
+    expect(parseDraftRecord("null")).toBeNull();
   });
 });

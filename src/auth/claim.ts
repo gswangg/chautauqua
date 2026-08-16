@@ -22,6 +22,24 @@ export interface ClaimRecord {
   eventId: string;
 }
 
+/** DEC-014 amendment (wave 10): KV holds arbitrary external bytes -- a
+ * record that fails this shape check is treated exactly as a missing
+ * token by every caller, never as a half-record with an undefined
+ * contactId reaching user creation. */
+export function parseClaimRecord(raw: string): ClaimRecord | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const record = parsed as Record<string, unknown>;
+  if (typeof record.contactId !== "string" || !record.contactId) return null;
+  if (typeof record.eventId !== "string" || !record.eventId) return null;
+  return { contactId: record.contactId, eventId: record.eventId };
+}
+
 /** Structural subset of Cloudflare's KVNamespace — small enough to fake. */
 export interface KVStore {
   get(key: string): Promise<string | null>;
@@ -101,7 +119,7 @@ export async function readClaimToken(kv: KVStore, token: string): Promise<ClaimR
   const hash = await hashClaimToken(token);
   const raw = await kv.get(claimKvKey(hash));
   if (!raw) return null;
-  return JSON.parse(raw) as ClaimRecord;
+  return parseClaimRecord(raw);
 }
 
 /** Reads and deletes the claim record (used on successful POST). DEC-949:
@@ -112,7 +130,11 @@ export async function consumeClaimToken(kv: KVStore, token: string): Promise<Cla
   const key = claimKvKey(hash);
   const raw = await kv.get(key);
   if (!raw) return null;
-  const record = JSON.parse(raw) as ClaimRecord;
+  const record = parseClaimRecord(raw);
+  if (!record) {
+    await kv.delete(key);
+    return null;
+  }
   await kv.delete(key);
   const indexKey = claimIndexKey(record.contactId, record.eventId);
   const indexedHash = await kv.get(indexKey);

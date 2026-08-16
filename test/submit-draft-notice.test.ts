@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
+import { draftCookieName, draftKvKey, hashDraftToken } from "../src/lib/draft";
 import type { AppEnv } from "../src/server/env";
 
 const EVENT_ROW = {
@@ -146,5 +147,34 @@ describe("GET /submit/:eventSlug?draft=saved", () => {
     const body = await res.text();
     expect(body).toContain("Draft saved");
     expect(body).toContain("you can return later to finish and submit");
+  });
+});
+
+// DEC-014 amendment (wave 10): a malformed/legacy KV blob under the
+// submitter's chq_draft_<formId> cookie must never 500 the GET -- it renders
+// the empty form with a stated banner instead, and the unusable record is
+// deleted so the cookie isn't stuck broken for the rest of the 30-day TTL.
+describe("GET /submit/:eventSlug with a malformed draft KV record", () => {
+  it("renders 200 with the empty form and a restore-failed banner, not a 500", async () => {
+    const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]]);
+    const app = appWithDb(db);
+    const kv = fakeKv();
+    const token = "legacy-token";
+    const hash = await hashDraftToken(token);
+    // Legacy/malformed shape: no trackIds field, and answers is missing
+    // entirely -- exactly the crash case this task fixes.
+    await kv.put(draftKvKey(hash), JSON.stringify({ formId: "form-1", savedAt: 1 }));
+
+    const res = await app.request(
+      "/submit/test-conf",
+      { headers: { cookie: `${draftCookieName("form-1")}=${token}` } },
+      { KV: kv } as unknown as AppEnv["Bindings"],
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("restore your saved draft");
+    // The unusable record is deleted, not left to keep breaking the cookie.
+    expect(await kv.get(draftKvKey(hash))).toBeNull();
   });
 });
