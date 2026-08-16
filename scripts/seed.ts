@@ -403,7 +403,11 @@ async function main(): Promise<void> {
 
   // --- tracks --- (distinct, readable hex palette; cycles if more tracks
   // than colors are ever added)
-  const TRACK_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2"];
+  // User-filed + frame 09--12: seeded tracks carry the SYSTEM-token track
+  // palette (TRACK_SWATCHES order) — never Tailwind stock colours. The old
+  // seed values were why fresh events showed off-palette blue/green/orange
+  // swatches before their first save.
+  const TRACK_COLORS = ["#4E5C31", "#1B1D17", "#8E8A7A", "#565A4B", "#BAB6A6"];
   const trackIds = fixture.event.tracks.map((name, i) => {
     const trackId = seedId("track", i + 1);
     statements.push(
@@ -2577,7 +2581,7 @@ async function main(): Promise<void> {
       id: seedId("portal_settings", 1),
       event_id: eventId,
       logo_url: null,
-      accent_color: "#4f46e5",
+      accent_color: "#4E5C31",
       welcome_message: "Welcome to the speaker portal! Here you'll find your schedule, onboarding tasks, and resources for the event.",
       show_resources: true,
       created_at: nextTs(),
