@@ -351,6 +351,9 @@ function HubPage(props: { orgName: string; sections: HubSections; state: HubStat
                 <a class="chq-home-action-primary" href="/login">
                   Sign in
                 </a>
+                <a class="chq-home-action-tertiary" href="/docs/api">
+                  API docs ›
+                </a>
               </div>
             ) : null}
 

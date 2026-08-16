@@ -86,6 +86,17 @@ export const HOME_CSS = `
     }
   }
 
+  /* DEC-582 (wave-11 amendment): the frame's "API docs ›" tertiary anchor
+     next to the fresh-deploy Sign in (:284-287 desktop, :313-314 phone) --
+     44px is the frame's OWN minimum across both breakpoints (46px desktop,
+     44px phone), so this rule pins the floor rather than either sample.
+     Kept OUT of the .chq-home-action-primary/-secondary/-quiet motion
+     family above -- that trio's selector list is pinned exactly by
+     test/public-home-motion.test.ts, and a bare colour hover here needs no
+     transition contract of its own. */
+  .chq-home-action-tertiary { font-size: 14px; font-weight: 700; padding: 0 8px; min-height: 44px; display: flex; align-items: center; white-space: nowrap; color: var(--chq-ink-strong); text-decoration: none; }
+  a.chq-home-action-tertiary:hover { color: var(--chq-brand); }
+
   .chq-home-row-published { padding: 18px 0; }
   .chq-home-row-published .chq-home-name { font-size: 21px; letter-spacing: -0.025em; line-height: 1.25; }
   .chq-home-row-published .chq-home-info { gap: 5px; }
