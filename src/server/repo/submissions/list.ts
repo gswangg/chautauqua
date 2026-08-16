@@ -208,23 +208,10 @@ export async function listSubmissions(
   eventId: string,
   params: ParsedListQuery,
 ): Promise<ListSubmissionsResult> {
-  const eventRows = await db
-    .select({ recordPrefix: schema.event.recordPrefix })
-    .from(schema.event)
-    .where(eq(schema.event.id, eventId))
-    .limit(1);
-  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
-
   const conditions = submissionListConditions(eventId, params);
 
   const offset = (params.page - 1) * params.perPage;
   const whereExpr = and(...conditions);
-
-  const totalRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.submission)
-    .where(whereExpr);
-  const total = Number(totalRows[0]?.count ?? 0);
 
   // DEC-913: chip counts + re-uploaded headline as ONE grouped aggregate
   // over the same base filter (eventId/q/trackId) with this call's own
@@ -234,15 +221,35 @@ export async function listSubmissions(
   // second query.
   const countConditions = submissionListConditions(eventId, { ...params, contentStatus: [], reuploaded: null });
   const countWhereExpr = and(...countConditions);
-  const countRows = await db
-    .select({
-      contentStatus: schema.submission.contentStatus,
-      count: sql<number>`count(*)`,
-      reuploaded: sql<number>`sum(case when ${reUploadedSql()} = 1 then 1 else 0 end)`,
-    })
-    .from(schema.submission)
-    .where(countWhereExpr)
-    .groupBy(schema.submission.contentStatus);
+
+  // DEC-370 (wave-62 amendment): the event lookup, the total count, the
+  // grouped chip/re-uploaded count, and the page of rows all derive solely
+  // from eventId/params — none reads another's result — so WAVE 1 issues
+  // all four concurrently instead of as four sequential round trips. Array
+  // order matches the pre-wave sequential order.
+  const [eventRows, totalRows, countRows, rows] = await Promise.all([
+    db.select({ recordPrefix: schema.event.recordPrefix }).from(schema.event).where(eq(schema.event.id, eventId)).limit(1),
+    db.select({ count: sql<number>`count(*)` }).from(schema.submission).where(whereExpr),
+    db
+      .select({
+        contentStatus: schema.submission.contentStatus,
+        count: sql<number>`count(*)`,
+        reuploaded: sql<number>`sum(case when ${reUploadedSql()} = 1 then 1 else 0 end)`,
+      })
+      .from(schema.submission)
+      .where(countWhereExpr)
+      .groupBy(schema.submission.contentStatus),
+    db
+      .select()
+      .from(schema.submission)
+      .where(whereExpr)
+      .orderBy(orderByForSort(params.sort))
+      .limit(params.perPage)
+      .offset(offset),
+  ]);
+
+  const recordPrefix = eventRows[0]?.recordPrefix ?? "SES";
+  const total = Number(totalRows[0]?.count ?? 0);
 
   const contentStatusCounts: SubmissionContentStatusCounts = { pending: 0, approved: 0, changes_requested: 0 };
   let reuploadedCount = 0;
@@ -253,18 +260,130 @@ export async function listSubmissions(
     reuploadedCount += Number(r.reuploaded ?? 0);
   }
 
-  const rows = await db
-    .select()
-    .from(schema.submission)
-    .where(whereExpr)
-    .orderBy(orderByForSort(params.sort))
-    .limit(params.perPage)
-    .offset(offset);
-
   if (rows.length === 0) return { items: [], total, contentStatusCounts, reuploadedCount };
 
   const ids = rows.map((r) => r.id);
   const idBatches = chunkIds(ids);
+
+  type LatestFileCandidateRow = DeliverableFileRow & { versionNo: number | null };
+
+  // DEC-370 (wave-62 amendment): every hydration loop below is keyed by the
+  // same page id set and independent of the others, so WAVE 2 issues every
+  // chunk batch, across all six hydration reads, concurrently in a single
+  // Promise.all rather than six sequential chunk loops. The includeAnswers
+  // loop simply contributes an empty array of promises when the flag is
+  // off. Chunking (chunkIds) is unchanged — one batch of promises per
+  // hydration read, not a single combined query.
+  const [
+    participantBatches,
+    trackBatches,
+    answerBatches,
+    deliverableBatches,
+    latestFileCandidateBatches,
+    scheduledBatches,
+  ] = await Promise.all([
+    Promise.all(
+      idBatches.map((batch) =>
+        db
+          .select({
+            submissionId: schema.participant.submissionId,
+            contactId: schema.participant.contactId,
+            firstName: schema.contact.firstName,
+            lastName: schema.contact.lastName,
+            order: schema.participant.order,
+          })
+          .from(schema.participant)
+          .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+          .where(inArray(schema.participant.submissionId, batch)),
+      ),
+    ),
+    Promise.all(
+      idBatches.map((batch) =>
+        db
+          .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+          .from(schema.submissionTrack)
+          .where(inArray(schema.submissionTrack.submissionId, batch)),
+      ),
+    ),
+    Promise.all(
+      params.includeAnswers
+        ? idBatches.map((batch) =>
+            db
+              .select({
+                submissionId: schema.submissionAnswer.submissionId,
+                formFieldId: schema.submissionAnswer.formFieldId,
+                valueJson: schema.submissionAnswer.valueJson,
+              })
+              .from(schema.submissionAnswer)
+              .where(inArray(schema.submissionAnswer.submissionId, batch)),
+          )
+        : [],
+    ),
+    // DEC-341: per-page deliverable counts (chain roots only — DEC-247) via
+    // ONE grouped query per id chunk. Cost bound by page size, not total
+    // submission count.
+    Promise.all(
+      idBatches.map((batch) =>
+        db
+          .select({
+            submissionId: schema.file.submissionId,
+            kind: schema.file.kind,
+            count: sql<number>`count(*)`,
+          })
+          .from(schema.file)
+          .where(
+            and(
+              inArray(schema.file.submissionId, batch),
+              sql`${schema.file.previousFileId} is null`,
+              inArray(schema.file.kind, FILE_KINDS as unknown as string[]),
+            ),
+          )
+          .groupBy(schema.file.submissionId, schema.file.kind),
+      ),
+    ),
+    // latestFile (v4 mock worklist column): ONE batched query per id chunk,
+    // same style as deliverableCounts above — page-scoped WHERE, never a
+    // whole-event scan (DEC-686). Unlike the grouped count query, this needs
+    // full rows (previousFileId/createdAt) so the chain can be walked in
+    // memory via files-library's findRoot rather than re-derived per file.
+    // DEC-881: versionNo rides along on the same candidate-row query so the
+    // re-uploaded predicate reads the same "newest by created_at" row the
+    // latestFile column already resolves — never a second query that could
+    // disagree on which file is "latest".
+    Promise.all(
+      idBatches.map((batch) =>
+        db
+          .select({
+            id: schema.file.id,
+            submissionId: schema.file.submissionId,
+            kind: schema.file.kind,
+            filename: schema.file.filename,
+            previousFileId: schema.file.previousFileId,
+            createdAt: schema.file.createdAt,
+            sizeBytes: schema.file.sizeBytes,
+            uploadedByContactId: schema.file.uploadedByContactId,
+            versionNo: schema.file.versionNo,
+          })
+          .from(schema.file)
+          .where(and(inArray(schema.file.submissionId, batch), inArray(schema.file.kind, FILE_KINDS as unknown as string[]))),
+      ),
+    ),
+    Promise.all(
+      idBatches.map((batch) =>
+        db
+          .select({
+            submissionId: schema.scheduleSlot.submissionId,
+            day: schema.scheduleSlot.day,
+            startMin: schema.scheduleSlot.startMin,
+            endMin: schema.scheduleSlot.endMin,
+            roomName: schema.room.name,
+          })
+          .from(schema.scheduleSlot)
+          .leftJoin(schema.room, eq(schema.room.id, schema.scheduleSlot.roomId))
+          .where(inArray(schema.scheduleSlot.submissionId, batch)),
+      ),
+    ),
+  ]);
 
   const participantRows: {
     submissionId: string;
@@ -272,96 +391,21 @@ export async function listSubmissions(
     firstName: string;
     lastName: string;
     order: number;
-  }[] = [];
-  for (const batch of idBatches) {
-    const batchRows = await db
-      .select({
-        submissionId: schema.participant.submissionId,
-        contactId: schema.participant.contactId,
-        firstName: schema.contact.firstName,
-        lastName: schema.contact.lastName,
-        order: schema.participant.order,
-      })
-      .from(schema.participant)
-      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .where(inArray(schema.participant.submissionId, batch));
-    participantRows.push(...batchRows);
-  }
+  }[] = participantBatches.flat();
 
-  const trackRows: { submissionId: string; trackId: string }[] = [];
-  for (const batch of idBatches) {
-    const batchRows = await db
-      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
-      .from(schema.submissionTrack)
-      .where(inArray(schema.submissionTrack.submissionId, batch));
-    trackRows.push(...batchRows);
-  }
+  const trackRows: { submissionId: string; trackId: string }[] = trackBatches.flat();
 
-  let answerRows: { submissionId: string; formFieldId: string; valueJson: string }[] = [];
-  if (params.includeAnswers) {
-    for (const batch of idBatches) {
-      const batchRows = await db
-        .select({
-          submissionId: schema.submissionAnswer.submissionId,
-          formFieldId: schema.submissionAnswer.formFieldId,
-          valueJson: schema.submissionAnswer.valueJson,
-        })
-        .from(schema.submissionAnswer)
-        .where(inArray(schema.submissionAnswer.submissionId, batch));
-      answerRows.push(...batchRows);
-    }
-  }
+  const answerRows: { submissionId: string; formFieldId: string; valueJson: string }[] = answerBatches.flat();
 
-  // DEC-341: per-page deliverable counts (chain roots only — DEC-247) via
-  // ONE grouped query per id chunk, following the tracks/speakers hydration
-  // pattern above. Cost bound by page size, not total submission count.
-  const deliverableRows: { submissionId: string; kind: string; count: number }[] = [];
-  for (const batch of idBatches) {
-    const batchRows = await db
-      .select({
-        submissionId: schema.file.submissionId,
-        kind: schema.file.kind,
-        count: sql<number>`count(*)`,
-      })
-      .from(schema.file)
-      .where(
-        and(
-          inArray(schema.file.submissionId, batch),
-          sql`${schema.file.previousFileId} is null`,
-          inArray(schema.file.kind, FILE_KINDS as unknown as string[]),
-        ),
-      )
-      .groupBy(schema.file.submissionId, schema.file.kind);
-    deliverableRows.push(...(batchRows as { submissionId: string; kind: string; count: number }[]));
-  }
+  const deliverableRows: { submissionId: string; kind: string; count: number }[] = deliverableBatches.flat() as {
+    submissionId: string;
+    kind: string;
+    count: number;
+  }[];
 
-  // latestFile (v4 mock worklist column): ONE batched query per id chunk,
-  // same style/loop as deliverableCounts above — page-scoped WHERE, never a
-  // whole-event scan (DEC-686). Unlike the grouped count query, this needs
-  // full rows (previousFileId/createdAt) so the chain can be walked in
-  // memory via files-library's findRoot rather than re-derived per file.
-  // DEC-881: versionNo rides along on the same candidate-row query so the
-  // re-uploaded predicate reads the same "newest by created_at" row the
-  // latestFile column already resolves — never a second query that could
-  // disagree on which file is "latest".
-  type LatestFileCandidateRow = DeliverableFileRow & { versionNo: number | null };
   const latestFileCandidateRows: LatestFileCandidateRow[] = [];
-  for (const batch of idBatches) {
-    const batchRows = await db
-      .select({
-        id: schema.file.id,
-        submissionId: schema.file.submissionId,
-        kind: schema.file.kind,
-        filename: schema.file.filename,
-        previousFileId: schema.file.previousFileId,
-        createdAt: schema.file.createdAt,
-        sizeBytes: schema.file.sizeBytes,
-        uploadedByContactId: schema.file.uploadedByContactId,
-        versionNo: schema.file.versionNo,
-      })
-      .from(schema.file)
-      .where(and(inArray(schema.file.submissionId, batch), inArray(schema.file.kind, FILE_KINDS as unknown as string[])));
-    for (const r of batchRows as LatestFileCandidateRow[]) {
+  for (const batch of latestFileCandidateBatches) {
+    for (const r of batch as LatestFileCandidateRow[]) {
       if (r.submissionId) latestFileCandidateRows.push(r);
     }
   }
@@ -429,19 +473,8 @@ export async function listSubmissions(
     string,
     { day: string; startMin: number; endMin: number; roomName: string | null }
   >();
-  for (const batch of idBatches) {
-    const batchRows = await db
-      .select({
-        submissionId: schema.scheduleSlot.submissionId,
-        day: schema.scheduleSlot.day,
-        startMin: schema.scheduleSlot.startMin,
-        endMin: schema.scheduleSlot.endMin,
-        roomName: schema.room.name,
-      })
-      .from(schema.scheduleSlot)
-      .leftJoin(schema.room, eq(schema.room.id, schema.scheduleSlot.roomId))
-      .where(inArray(schema.scheduleSlot.submissionId, batch));
-    for (const r of batchRows) {
+  for (const batch of scheduledBatches) {
+    for (const r of batch) {
       if (!r.submissionId) continue;
       scheduledBySubmission.set(r.submissionId, {
         day: r.day,
