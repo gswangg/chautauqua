@@ -208,17 +208,20 @@ describe("PUT /submissions/:id/slot onto a break (DEC-010 warn-never-block)", ()
     );
 
     expect(res.status).toBe(200);
+    // DEC-851 wave-5 amendment: breakId/breakLabel are Conflict-internal
+    // inputs that describeConflict folds into `detail`; the WIRE shape
+    // (DescribedConflict) deliberately drops them, so the break's identity
+    // is asserted where it actually reaches the client — in the prose.
     const json = (await res.json()) as {
-      conflicts: { kind: string; submissionIds: string[]; breakId: string | null; breakLabel: string | null }[];
+      conflicts: { kind: string; submissionIds: string[]; detail: string }[];
       summary: { conflicts: number };
     };
     const breakConflicts = json.conflicts.filter((c) => c.kind === "break_overlap");
     expect(breakConflicts).toHaveLength(1);
-    expect(breakConflicts[0]).toMatchObject({
-      submissionIds: ["sub1"],
-      breakId: "brk-1",
-      breakLabel: "Lunch",
-    });
+    expect(breakConflicts[0]).toMatchObject({ submissionIds: ["sub1"] });
+    expect(breakConflicts[0]?.detail).toContain('the break "Lunch"');
+    expect(breakConflicts[0]).not.toHaveProperty("breakId");
+    expect(breakConflicts[0]).not.toHaveProperty("breakLabel");
     expect(json.summary.conflicts).toBeGreaterThanOrEqual(1);
   });
 });

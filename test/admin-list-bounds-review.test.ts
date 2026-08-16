@@ -25,6 +25,9 @@ import { registerErrorHandler } from "../src/server/http";
 import { ApiError } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { PlanRecord } from "../src/server/repo/review";
+// Imported from its own module, not the vi.mock'd "../src/server/repo/review"
+// barrel, so the cap this asserts is the real constant.
+import { MAX_REVIEWER_SCOPE_ROWS } from "../src/server/repo/review/reviewers";
 import type { Db } from "../src/server/context";
 
 const ORG_A = "org-a";
@@ -283,6 +286,12 @@ describe("DEC-461(b) regression: files-authz.ts:153's unpaged listPlansForEvent 
     // `listPlansForEvent(db, eventId)` call at files-authz.ts:153.
     const assignedRows = ALL_PLANS.map((p) => ({ planId: p.id }));
     let selectCall = 0;
+    // DEC-461: the plan_reviewer join is capped at MAX_REVIEWER_SCOPE_ROWS + 1
+    // like every sibling reviewer-scope read, so the fake must honour `.limit`
+    // (and records it, so a silently-dropped cap fails here too). That cap is
+    // on the ASSIGNMENT read only -- the listPlansForEvent call below stays
+    // unpaged, which is what this regression actually pins.
+    let limitN: number | undefined;
     const fakeDb = {
       select: () => {
         selectCall += 1;
@@ -291,6 +300,10 @@ describe("DEC-461(b) regression: files-authz.ts:153's unpaged listPlansForEvent 
           innerJoin: () => chain,
           where: () => chain,
           orderBy: () => chain,
+          limit: (n: number) => {
+            limitN = n;
+            return chain;
+          },
           then: (resolve: (v: unknown[]) => void) => resolve(assignedRows),
         };
         return chain;
@@ -305,6 +318,7 @@ describe("DEC-461(b) regression: files-authz.ts:153's unpaged listPlansForEvent 
     const allowed = await reviewerCanAccessSubmissionFile(fakeDb, "rev-1", EVENT_ID, "sub-far");
     expect(allowed).toBe(true);
     expect(selectCall).toBe(1);
+    expect(limitN).toBe(MAX_REVIEWER_SCOPE_ROWS + 1);
     // files-authz.ts:153 must call listPlansForEvent with NO page arg (the
     // SAFETY-CRITICAL invariant this task must not violate).
     expect(reviewModule.listPlansForEvent).toHaveBeenCalledWith(fakeDb, EVENT_ID);

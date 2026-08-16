@@ -241,8 +241,9 @@ describe("DEC-155 (wave-60, w60-d): PATCH submission collapses its pre-write rea
       contentStatus: "approved",
       trackIds: [],
       formId: "form-1",
-      acceptedAt: null,
-      icsSequence: 2,
+      // acceptedAt/icsSequence left this wire shape under DEC-851's wave-5
+      // amendment (an unread wire field is a lie) -- the DB columns are
+      // untouched, so SUBMISSION_ROW above still carries them.
       createdAt: SUBMISSION_ROW.createdAt.getTime(),
       updatedAt: body.updatedAt,
       participants: [],

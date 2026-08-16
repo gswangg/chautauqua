@@ -6,6 +6,8 @@ import { and, asc, eq, type SQL } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { listPlansForEvent, isSubmissionInReviewerScope } from "./review";
+import { MAX_REVIEWER_SCOPE_ROWS } from "./review/reviewers";
+import { ApiError } from "../http";
 import { PORTAL_VISIBLE_INVITE_STATUSES, isActiveParticipant } from "../../domain/acceptance";
 import { isPlanOpen } from "../../domain/evaluation";
 
@@ -197,11 +199,21 @@ export async function reviewerCanAccessSubmissionFile(
   // Date.now(), overridable for tests.
   now: number = Date.now(),
 ): Promise<boolean> {
+  // DEC-461: this plan_reviewer read is the same population every sibling
+  // reviewer-scope query caps, so it takes the same ceiling — `+ 1` then
+  // refuse loudly, rather than trusting the caller to be small.
   const assignedRows = await db
     .select({ planId: schema.planReviewer.planId })
     .from(schema.planReviewer)
     .innerJoin(schema.evaluationPlan, eq(schema.planReviewer.planId, schema.evaluationPlan.id))
-    .where(and(eq(schema.planReviewer.userId, userId), eq(schema.evaluationPlan.eventId, eventId)));
+    .where(and(eq(schema.planReviewer.userId, userId), eq(schema.evaluationPlan.eventId, eventId)))
+    .limit(MAX_REVIEWER_SCOPE_ROWS + 1);
+  if (assignedRows.length > MAX_REVIEWER_SCOPE_ROWS) {
+    throw new ApiError(
+      "invalid",
+      `This reviewer's scope would scan more than ${MAX_REVIEWER_SCOPE_ROWS} plan_reviewer rows -- narrow the reviewer's assignment scope first`,
+    );
+  }
   const assignedPlanIds = new Set(assignedRows.map((r) => r.planId));
   if (assignedPlanIds.size === 0) return false;
 

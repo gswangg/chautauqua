@@ -275,8 +275,9 @@ describe("PATCH /api/v1/submissions/:id write-phase wave collapse (DEC-155 wave-
       contentStatus: "pending",
       trackIds: [],
       formId: null,
-      acceptedAt: null,
-      icsSequence: 0,
+      // acceptedAt/icsSequence left this wire shape under DEC-851's wave-5
+      // amendment (an unread wire field is a lie) -- the DB columns are
+      // untouched, so the fixture row above still carries them.
       createdAt: 1000,
       updatedAt: 2000,
       participants: [],

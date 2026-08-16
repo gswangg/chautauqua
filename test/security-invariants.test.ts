@@ -264,7 +264,15 @@ describe("SPEC §6: anonymous-reachable mutating doors are rate limited (DEC-628
   // Guard-shaped identifiers that are NOT auth-related at all (field/body
   // validators sharing the require* naming convention by coincidence) — the
   // guard-shaped regex below would otherwise flag these as unrecognised.
-  const KNOWN_NON_GUARD_HELPERS = new Set(["requireString", "requireFullMatch"]);
+  // requireAtLeastOneField (src/server/http.ts, DEC-627 wave-6 amendment)
+  // refuses an all-optional PATCH whose body supplies no recognised field.
+  // It reads only the parsed body, never auth/session state, so it belongs
+  // with the other body-shape validators here rather than in GUARD_NAMES.
+  const KNOWN_NON_GUARD_HELPERS = new Set([
+    "requireString",
+    "requireFullMatch",
+    "requireAtLeastOneField",
+  ]);
   // Ownership evidence that isn't require*-shaped at all — a LOCAL helper
   // (e.g. src/routes/files.ts's authzSubmissionWrite, which calls
   // requireAuth(c) internally but is itself the only identifier visible in
