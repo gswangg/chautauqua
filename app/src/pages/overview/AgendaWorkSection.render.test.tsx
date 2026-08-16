@@ -329,6 +329,34 @@ describe('AgendaWorkSection (DEC-652)', () => {
     expect(screen.getByText('To be announced')).toBeInTheDocument();
   });
 
+  // DEC-615 (wave 71 amendment): conflictKindLabel is the ONE renderer for
+  // all three ConflictKind members -- a break_overlap row (exactly one
+  // entry, per Conflict.submissionIds' documented shape) must read
+  // "Scheduled over a break", never "undefined" or the room caption.
+  it('renders the break caption for a break_overlap conflict row', () => {
+    mockApi({});
+    const payload = basePayload();
+    payload.agendaWork.conflicts[0]!.kind = 'break_overlap';
+    payload.agendaWork.conflicts[0]!.entries = [
+      { submissionId: 'sub-a', ref: 'DFC-014', title: 'Taming 40-Minute CI', speakerName: 'Priya Raman' },
+    ];
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    expect(screen.getByText('Scheduled over a break')).toBeInTheDocument();
+  });
+
+  // DEC-615 (wave 71 amendment): speaker_overlap is the third member --
+  // pinned here alongside break_overlap so all three ConflictKind values
+  // have a real render assertion on this surface, not just room_overlap.
+  it('renders the speaker caption for a speaker_overlap conflict row', () => {
+    mockApi({});
+    const payload = basePayload();
+    payload.agendaWork.conflicts[0]!.kind = 'speaker_overlap';
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    expect(screen.getByText('Speaker double-booked')).toBeInTheDocument();
+  });
+
   it('loudly refetches (never a silent rollback) when the placement PUT fails', async () => {
     mockApi({
       'PUT /api/v1/submissions/sub-c/slot': {

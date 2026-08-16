@@ -9,7 +9,7 @@
 import { Link } from 'react-router-dom';
 import { apiPut, ApiError } from '../../lib/api';
 import { formatDayLabel } from '../../lib/dates';
-import { conflictKindLabel } from '../agenda/ConflictChip';
+import { conflictKindLabel } from '../../lib/schedule-vocabulary';
 import { joinSegments } from './rows';
 import { plural } from '../../lib/plural';
 import { publicRoomLabel } from '../../lib/room-label';

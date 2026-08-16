@@ -1,35 +1,15 @@
 import type { AgendaConflict } from './types';
-import { capitalizeFirst, plural, spellCount } from '../../lib/plural';
+// DEC-615 (wave 71 amendment): conflictKindLabel moved to
+// src/domain/schedule-copy.ts (re-exported via the schedule-vocabulary
+// crossing module) so SSR/domain callers can reach it without importing a
+// component file. This file keeps its own conflictChipLabel-style
+// composition (captionForConflicts/clusterConflictCaption below) local —
+// only the single-kind label moved.
+import { conflictKindLabel } from '../../lib/schedule-vocabulary';
 
 interface ConflictChipProps {
   conflicts: AgendaConflict[];
   submissionId: string;
-}
-
-/** The human wording for a single conflict `kind` (DEC-557/DEC-589/DEC-701) —
- * the ONE place this vocabulary is spelled out. Overview.tsx (the worklist's
- * "04 — Unplaced sessions and conflicts" section) imports this rather than
- * keeping a second copy, which is exactly how the raw `room_overlap` enum
- * leaked into that page's rendered output before. `count` is the number of
- * sessions actually sharing the slot — assignLanes (gridMath.ts) already
- * proves a room can hold N > 2 overlapping sessions, so the wording must
- * count instead of assuming a pair ("Two sessions in one room").
- * `speaker_overlap` has no room-count analogue and keeps its fixed caption.
- * `break_overlap` (DEC-557 amendment, wave 71) likewise has a fixed caption
- * — a session scheduled over a break has exactly one participant, never a
- * count of clashing sessions. */
-export function conflictKindLabel(kind: 'room_overlap' | 'speaker_overlap' | 'break_overlap', count = 2): string {
-  if (kind === 'speaker_overlap') return 'Speaker double-booked';
-  if (kind === 'break_overlap') return 'Scheduled over a break';
-  return `${numberWord(count)} ${plural(count, 'session')} in one room`;
-}
-
-// DEC-925 (amendment, wave 52): spells its count via the shared
-// src/domain/count-copy.ts spellCount (0-10 word, numeral above), then
-// capitalizes for the chip's sentence-head position -- the same
-// capitalize-the-result pattern root.tsx and ErrorSummary.tsx use.
-function numberWord(n: number): string {
-  return capitalizeFirst(spellCount(n));
 }
 
 /** DEC-557 amendment (wave 48): the caption logic for a SET of conflicts

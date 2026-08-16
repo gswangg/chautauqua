@@ -44,8 +44,10 @@ export interface PlacedSession {
   speakerContactIds: string[];
 }
 
+export type ConflictKind = "room_overlap" | "speaker_overlap" | "break_overlap";
+
 export interface Conflict {
-  kind: "room_overlap" | "speaker_overlap" | "break_overlap";
+  kind: ConflictKind;
   /** Exactly 2 ids for room_overlap/speaker_overlap; exactly 1 for
    * break_overlap (DEC-557 wave-71/69 amendments). */
   submissionIds: string[];

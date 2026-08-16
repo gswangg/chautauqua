@@ -35,7 +35,7 @@ export interface AgendaTrack {
 }
 
 export interface AgendaConflict {
-  kind: 'room_overlap' | 'speaker_overlap' | 'break_overlap';
+  kind: ConflictKind;
   // DEC-557 amendment (wave 71): a list of participants, not a pair tuple —
   // exactly 2 for room_overlap/speaker_overlap, exactly 1 for break_overlap.
   submissionIds: string[];
@@ -60,8 +60,8 @@ export interface AgendaSummary {
 // UnplacedReason — the SPA never invents a reason, it only renders one
 // already computed server-side. Re-exported from the schedule-vocabulary
 // crossing module so this type can never drift from the server union.
-import type { UnplacedReason } from '../../lib/schedule-vocabulary';
-export type { UnplacedReason };
+import type { ConflictKind, UnplacedReason } from '../../lib/schedule-vocabulary';
+export type { ConflictKind, UnplacedReason };
 
 export interface DescribedUnplaced {
   submissionId: string;
