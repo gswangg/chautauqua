@@ -77,6 +77,10 @@ export function MergePage() {
   // DEC-802: the merge preview's "N submissions and M tasks move to
   // <keeper>" impact line -- counted server-side, never re-derived here.
   const [impact, setImpact] = useState<{ submissions: number; tasks: number } | null>(null);
+  // DEC-026 (wave-47 amendment): the SAME whole-operation preflight the POST
+  // route runs, surfaced by the preview so the Merge button can never be
+  // clicked toward a refusal the write would then reject.
+  const [blocked, setBlocked] = useState<{ code: string; message: string } | null>(null);
   // DEC-748: "N of M pairs" -- this pair's position among every duplicate
   // group GET /contacts/duplicates currently reports, not a client-invented
   // count.
@@ -114,12 +118,16 @@ export function MergePage() {
     setPreview(null);
     setPreviewError(null);
     setImpact(null);
-    apiGet<{ fields: MergeFieldPreview[]; impact: { submissions: number; tasks: number } }>(
-      `/contacts/merge/preview?ids=${ids.map(encodeURIComponent).join(',')}&keep=${encodeURIComponent(keepId)}`,
-    )
+    setBlocked(null);
+    apiGet<{
+      fields: MergeFieldPreview[];
+      impact: { submissions: number; tasks: number };
+      blocked: { code: string; message: string } | null;
+    }>(`/contacts/merge/preview?ids=${ids.map(encodeURIComponent).join(',')}&keep=${encodeURIComponent(keepId)}`)
       .then((res) => {
         setPreview(res.fields);
         setImpact(res.impact);
+        setBlocked(res.blocked);
       })
       .catch((err) => setPreviewError(err instanceof ApiError ? err.message : 'Failed to load merge preview'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -311,8 +319,15 @@ export function MergePage() {
             </p>
           )}
 
+          {blocked && <div className="chq-error chq-contacts-merge-blocked">{blocked.message}</div>}
+
           <div className="chq-contacts-merge-footer">
-            <button type="button" className="chq-btn chq-btn-primary" onClick={() => setConfirmOpen(true)}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={!!blocked}
+              onClick={() => setConfirmOpen(true)}
+            >
               {keepContact ? `Merge into ${keepContact.firstName} ${keepContact.lastName}` : 'Merge'}
             </button>
             {/* DEC-992: 'Swap which is kept' sits beside the primary as a

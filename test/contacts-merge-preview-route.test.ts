@@ -113,6 +113,12 @@ describe("GET /api/v1/contacts/merge/preview (DEC-705)", () => {
   it("reports keep/discard for company, append for notes, and combine for a duplicate-only custom field, matching what previewMerge computes directly", async () => {
     const db = fakeDb([
       [KEEP, DUP], // requireOwnedContacts([keep, dup]) -- one set-based select
+      [], // countMergeImpact participant count
+      [], // countMergeImpact task_assignment count
+      [KEEP], // checkMergeConflicts findContactById(keep)
+      [DUP], // checkMergeConflicts findContactById(dup)
+      [], // checkMergeConflicts contactIdsWithLogin
+      [], // checkMergeConflicts emailOwners
     ]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
@@ -159,6 +165,10 @@ describe("GET /api/v1/contacts/merge/preview (DEC-705)", () => {
       [KEEP, DUP], // requireOwnedContacts([keep, dup]) -- one set-based select
       [{ count: 3 }], // countMergeImpact participant count
       [{ count: 2 }], // countMergeImpact task_assignment count
+      [KEEP], // checkMergeConflicts findContactById(keep)
+      [DUP], // checkMergeConflicts findContactById(dup)
+      [], // checkMergeConflicts contactIdsWithLogin
+      [], // checkMergeConflicts emailOwners
     ]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 

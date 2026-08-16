@@ -699,35 +699,26 @@ export async function countMergeImpact(
   return { submissions, tasks };
 }
 
-/** DEC-629/DEC-026 wave-43 amendment: set-based, ALL-OR-NOTHING merge.
- * Dedupes mergeIds, drops keepId if present (a no-op to merge a contact into
- * itself), then runs a whole-operation preflight BEFORE any write:
- *  1. planMergeFold cumulatively folds planMerge over the full id list, in
- *     the exact order the fold below will apply it, producing every
- *     intermediate merged email (not just the final one).
- *  2. one chunked select of user rows whose contactId is in the full
- *     [keepId, ...toMerge] set (which of them hold a login);
- *  3. one chunked select of user rows whose lower(email) is in the set of
- *     intermediate merged emails (who owns each candidate email);
- *  4. detectMergeConflicts judges both cumulatively over the WHOLE list —
- *     see its own docstring for why a per-pair check can miss a conflict a
- *     whole-operation check cannot (DEC-026 wave-43 amendment / DEC-069).
- * Only once the preflight passes clean does the fold run, unchanged, one
- * mergeOnePair call per id — so a refusal always means ZERO writes, never a
- * write of contacts 1..k-1 followed by a 409 on contact k. Both keepId and
- * every id in mergeIds must already be verified org-scoped by the caller. */
-export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]): Promise<ContactRow> {
-  const toMerge = Array.from(new Set(mergeIds)).filter((id) => id !== keepId);
-  if (toMerge.length === 0) {
-    throw new ApiError("invalid", "mergeIds must contain at least one id other than keepId");
-  }
-
-  const allIds = [keepId, ...toMerge];
+/** DEC-629/DEC-026 wave-43 amendment (wave-47 amendment: extracted so the
+ * preview route can run the identical check -- see this function's own
+ * docstring on `checkMergeConflicts` for why a second copy would be the
+ * drift this exists to remove). Read-only: runs the whole-operation
+ * preflight and returns the first conflict found, or null if the merge is
+ * clean. Both keepId and every id in mergeIds must already be verified
+ * org-scoped by the caller; mergeIds must already be deduped and have
+ * keepId filtered out (mergeContacts and the preview route both do this
+ * before calling in). Performs no write. */
+export async function checkMergeConflicts(
+  db: Db,
+  keepId: string,
+  mergeIds: string[],
+): Promise<{ code: string; message: string } | null> {
+  const allIds = [keepId, ...mergeIds];
 
   const keepRow = await findContactById(db, keepId);
   if (!keepRow) throw new Error(`merge: keep contact ${keepId} not found`);
   const mergeRows: ContactRow[] = [];
-  for (const mergeId of toMerge) {
+  for (const mergeId of mergeIds) {
     const row = await findContactById(db, mergeId);
     if (!row) throw new Error(`merge: merge contact ${mergeId} not found`);
     mergeRows.push(row);
@@ -760,7 +751,26 @@ export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]):
     }
   }
 
-  const conflict = detectMergeConflicts({ keepId, mergeIds: toMerge, contactIdsWithLogin, emailOwners, steps });
+  return detectMergeConflicts({ keepId, mergeIds, contactIdsWithLogin, emailOwners, steps });
+}
+
+/** DEC-629/DEC-026 wave-43 amendment: set-based, ALL-OR-NOTHING merge.
+ * Dedupes mergeIds, drops keepId if present (a no-op to merge a contact into
+ * itself), then runs checkMergeConflicts's whole-operation preflight BEFORE
+ * any write -- the SAME function the GET /contacts/merge/preview route calls
+ * (wave-47 amendment), so there is exactly one implementation of the rule,
+ * not a parallel copy that can drift. Only once the preflight passes clean
+ * does the fold run, one mergeOnePair call per id — so a refusal always
+ * means ZERO writes, never a write of contacts 1..k-1 followed by a 409 on
+ * contact k. Both keepId and every id in mergeIds must already be verified
+ * org-scoped by the caller. */
+export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]): Promise<ContactRow> {
+  const toMerge = Array.from(new Set(mergeIds)).filter((id) => id !== keepId);
+  if (toMerge.length === 0) {
+    throw new ApiError("invalid", "mergeIds must contain at least one id other than keepId");
+  }
+
+  const conflict = await checkMergeConflicts(db, keepId, toMerge);
   if (conflict) {
     throw new ApiError("conflict", conflict.message);
   }

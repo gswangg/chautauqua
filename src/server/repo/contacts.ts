@@ -67,6 +67,7 @@ export {
   findDuplicateGroupsForOrg,
   findDuplicateCandidatesForOrg,
   mergeContacts,
+  checkMergeConflicts,
   dismissDuplicatePair,
   countMergeImpact,
   type DuplicateGroup,
