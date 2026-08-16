@@ -12,6 +12,7 @@ import { touchSubmissions } from "./submissions/touch";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, FormFieldRole, AnswerMap } from "../../forms/types";
 import { lockedFieldName, projectFieldForAnswers } from "../../forms/types";
 import { DEC_258, DEC_718 } from "../../decisions";
+import { DEFAULT_PARTICIPANT_ROLE } from "../../domain/participant-roles";
 
 // Compile-checked dependency marker: createParticipant below snapshots
 // DEC-258's title_at_time/org_at_time onto every new participant row.
@@ -289,7 +290,7 @@ export async function createParticipant(
     id: newId(),
     submissionId: params.submissionId,
     contactId: params.contactId,
-    role: "speaker",
+    role: DEFAULT_PARTICIPANT_ROLE,
     order: 0,
     visible: true,
     inviteStatus: "none",

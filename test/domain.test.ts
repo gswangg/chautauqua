@@ -7,6 +7,12 @@ import {
   type StatusChangeInput,
 } from "../src/domain/status";
 import { DEFAULT_ONBOARDING_TASKS, planAcceptance } from "../src/domain/acceptance";
+import {
+  DEFAULT_PARTICIPANT_ROLE,
+  PARTICIPANT_ROLE_OPTIONS,
+  isDefaultParticipantRole,
+  isCoPresenterRoleValue,
+} from "../src/domain/participant-roles";
 
 describe("ids", () => {
   it("generates 20-char lowercase base32 ids", () => {
@@ -197,5 +203,26 @@ describe("acceptance planning", () => {
       "Finalize bio + headshot",
       "Announce participation",
     ]);
+  });
+});
+
+describe("participant-roles (DEC-604 wave-76 amendment)", () => {
+  it("DEFAULT_PARTICIPANT_ROLE is derived from the first vocabulary entry", () => {
+    expect(DEFAULT_PARTICIPANT_ROLE).toBe(PARTICIPANT_ROLE_OPTIONS[0]!.value);
+    expect(DEFAULT_PARTICIPANT_ROLE).toBe("speaker");
+  });
+
+  it("isDefaultParticipantRole is true only for the default role", () => {
+    expect(isDefaultParticipantRole(DEFAULT_PARTICIPANT_ROLE)).toBe(true);
+    for (const option of PARTICIPANT_ROLE_OPTIONS) {
+      if (option.value === DEFAULT_PARTICIPANT_ROLE) continue;
+      expect(isDefaultParticipantRole(option.value)).toBe(false);
+    }
+  });
+
+  it("isDefaultParticipantRole and isCoPresenterRoleValue are not complements: a free-text role is false under both", () => {
+    const freeText = "Keynote host";
+    expect(isDefaultParticipantRole(freeText)).toBe(false);
+    expect(isCoPresenterRoleValue(freeText)).toBe(false);
   });
 });

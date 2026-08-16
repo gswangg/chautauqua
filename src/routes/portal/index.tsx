@@ -44,6 +44,7 @@ import {
 import { getFileVersionNumber } from "../../server/repo/files";
 import { formatBytes } from "../../domain/files";
 import { DEC_729, DEC_777, DEC_884 } from "../../decisions";
+import { isDefaultParticipantRole } from "../../domain/participant-roles";
 
 void DEC_729;
 void DEC_777;
@@ -447,8 +448,14 @@ function SubmissionDetailPage(props: {
   // a CRM identity resolved from a supplied email), the viewer's own row
   // excluded upstream, role suffixed only when it isn't the plain "speaker"
   // role. Absent entirely when there is nobody else — never "With -".
+  // DEC-604 (wave-76 amendment): predicate is "is this the default role",
+  // not "is this one of the three co-presenter values" -- the organizer
+  // participant endpoint can stamp a free-text role that participantRoleLabel
+  // renders as-is, and isCoPresenterRoleValue would disagree with the
+  // default-check for such a value, so isDefaultParticipantRole is the
+  // correct (and only NO-OP-preserving) predicate here.
   const withLine = coPresenters
-    .map((p) => (p.role === "speaker" ? p.name : `${p.name} (${p.roleLabel.toLowerCase()})`))
+    .map((p) => (isDefaultParticipantRole(p.role) ? p.name : `${p.name} (${p.roleLabel.toLowerCase()})`))
     .join(", ");
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>

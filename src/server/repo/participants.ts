@@ -14,7 +14,10 @@ import { newId } from "../../domain/ids";
 import { DEC_070, DEC_258, DEC_556, DEC_604 } from "../../decisions";
 import { chunkRowsForInsert } from "../../lib/chunk";
 import { touchSubmissions } from "./submissions/touch";
-import { MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
+import {
+  MAX_PARTICIPANTS_PER_SUBMISSION,
+  DEFAULT_PARTICIPANT_ROLE,
+} from "../../domain/participant-roles";
 import { participantCapRefusalMessage } from "../../domain/cap-copy";
 import { ApiError } from "../http";
 
@@ -99,7 +102,7 @@ export async function inviteParticipant(
   input: InviteParticipantInput,
 ): Promise<ParticipantRow | typeof DUPLICATE_PARTICIPANT | typeof OVER_CAP> {
   const { submissionId, contactId } = input;
-  const role = input.role && input.role.trim() ? input.role : "speaker";
+  const role = input.role && input.role.trim() ? input.role : DEFAULT_PARTICIPANT_ROLE;
 
   const count = await getParticipantCount(db, submissionId);
   if (count >= MAX_PARTICIPANTS_PER_SUBMISSION) return OVER_CAP;
