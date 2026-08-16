@@ -2,7 +2,7 @@
 // repo/submissions.ts (contention decomposition, no behavior change). See
 // repo/submissions.ts for the module-level contract notes.
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -76,10 +76,16 @@ export async function findOrCreateContact(
   // every find-or-create path -- matches submit.ts's findContactByEmail so
   // a differently-cased address (e.g. Jordan@X.com vs jordan@x.com) reuses
   // the existing contact instead of minting a duplicate.
+  // DEC-558 wave-5 amendment: contact.email has no uniqueIndex (duplicate
+  // contacts sharing an email are a recognized state -- see contacts/
+  // merge.ts), so this predicate can match more than one row. Same
+  // resolution as findContactByEmail (submit.ts): order by createdAt asc,
+  // tie-broken by id asc, so "the existing contact" is stable across calls.
   const existing = await db
     .select({ id: schema.contact.id, title: schema.contact.title, company: schema.contact.company })
     .from(schema.contact)
     .where(and(eq(schema.contact.orgId, orgId), sql`lower(${schema.contact.email}) = lower(${email})`))
+    .orderBy(asc(schema.contact.createdAt), asc(schema.contact.id))
     .limit(1);
   if (existing[0]) return existing[0];
 

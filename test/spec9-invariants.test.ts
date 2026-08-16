@@ -76,8 +76,8 @@ describe("SPEC §9 invariant: close-date lock (SPEC.md:297-298)", () => {
       const c: any = {
         from: () => c,
         where: () => c,
+        orderBy: () => c,
         limit: async () => rows,
-        orderBy: async () => rows,
       };
       return c;
     }

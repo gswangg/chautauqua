@@ -88,10 +88,17 @@ export async function findEventForOrg(db: Db, eventId: string, orgId: string) {
  * created with isDefault:false), so this is never "the first row"; it's
  * the one row with isDefault = true. */
 export async function findFormForEvent(db: Db, eventId: string): Promise<FormRow | null> {
+  // DEC-558 wave-5 amendment: (eventId, isDefault=true) isn't covered by a
+  // declared uniqueIndex -- DEC-398's createDefaultForm/getOrCreateForm
+  // guarantees exactly one default per event in practice via
+  // form_event_id_title_idx, but that's a title-keyed constraint, not an
+  // isDefault-keyed one, so it isn't cited here as proof. .orderBy(...)
+  // makes the pick deterministic regardless.
   const rows = await db
     .select()
     .from(schema.form)
     .where(and(eq(schema.form.eventId, eventId), eq(schema.form.isDefault, true)))
+    .orderBy(asc(schema.form.id))
     .limit(1);
   const row = rows[0];
   return row ? toFormRow(row) : null;
@@ -445,10 +452,15 @@ export async function patchField(db: Db, fieldId: string, patch: FieldPatch): Pr
  * instead of the DB silently ending up with two. Set-based (one query, no
  * per-field loop). */
 export async function findFieldByRole(db: Db, formId: string, role: FormFieldRole): Promise<FormFieldRow | null> {
+  // DEC-558 wave-5 amendment: (formId, role) has no declared uniqueIndex --
+  // this function's own docstring says the DB can end up with two rows
+  // sharing a role, which is exactly the case this read exists to catch.
+  // .orderBy(...) makes which incumbent is reported deterministic.
   const rows = await db
     .select()
     .from(schema.formField)
     .where(and(eq(schema.formField.formId, formId), eq(schema.formField.role, role)))
+    .orderBy(asc(schema.formField.id))
     .limit(1);
   const row = rows[0];
   return row ? toFieldRow(row) : null;

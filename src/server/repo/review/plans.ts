@@ -2,7 +2,7 @@
 // drizzle row types (DEC-012) for evaluation_plan. Converts to/from the pure
 // src/domain/evaluation.ts shapes.
 
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -296,10 +296,14 @@ export async function advancePlanRound(db: Db, planId: string): Promise<PlanReco
  * evaluation is recorded, changing the criteria/scale shape would orphan it
  * into a 500ing results surface (aggregateSubmission's fail-loudly throw). */
 export async function planHasEvaluations(db: Db, planId: string): Promise<boolean> {
+  // DEC-558 wave-5 amendment: only `.length > 0` is read below -- WHICH
+  // evaluation row SQLite returns is never observed, but .orderBy(...) is
+  // added anyway so the pick is reproducible.
   const rows = await db
     .select({ id: schema.evaluation.id })
     .from(schema.evaluation)
     .where(eq(schema.evaluation.planId, planId))
+    .orderBy(asc(schema.evaluation.id))
     .limit(1);
   return rows.length > 0;
 }

@@ -4,7 +4,7 @@
 // drizzle row types (DEC-012); scoping is absolute — every write below is
 // keyed by the speaker's own contact_id (never a request-supplied id).
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -285,14 +285,16 @@ export async function getHeadshotServeScope(db: Db, fileId: string): Promise<Hea
   const contactRow = contactRows[0];
   if (!contactRow) return null;
 
-  // DEC-558 (wave 75): only `.length > 0` is read below -- WHICH visible
-  // participant row SQLite returns is never observed, so an unordered
-  // .limit(1) existence check has no ambiguity to resolve.
+  // DEC-558 (wave 75, amended wave 5): only `.length > 0` is read below --
+  // WHICH visible participant row SQLite returns is never observed, so row
+  // identity doesn't matter. .orderBy(...) is added anyway so the pick is
+  // reproducible rather than merely harmless.
   const visibleRows = await db
     .select({ id: schema.participant.id })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .where(and(eq(schema.participant.contactId, contactRow.id), visibleSubmissionConditions()))
+    .orderBy(asc(schema.participant.id))
     .limit(1);
 
   return {

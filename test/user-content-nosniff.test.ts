@@ -139,7 +139,13 @@ describe("DEC-551: nosniff on stored-user-content responses", () => {
     function fakeDb(fileRow: FileRow, contactRow: ContactRow, visible: boolean) {
       let call = 0;
       function makeChain(rows: unknown[]) {
-        const chain: any = { from: () => chain, innerJoin: () => chain, where: () => chain, limit: async () => rows };
+        const chain: any = {
+          from: () => chain,
+          innerJoin: () => chain,
+          where: () => chain,
+          orderBy: () => chain,
+          limit: async () => rows,
+        };
         return chain;
       }
       return {

@@ -172,6 +172,8 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
   const mostRecentEventId = submissionRows[0]?.eventId ?? null;
   if (mostRecentEventId) {
     const eventName = submissionRows[0]!.eventName;
+    // DEC-558 wave-5 amendment: portal_settings_event_id_idx (src/db/schema/
+    // content.ts) is a uniqueIndex on eventId -- at most one row per event.
     const settingsRows = await db
       .select()
       .from(schema.portalSettings)

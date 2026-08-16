@@ -212,6 +212,9 @@ export async function deleteFileVersion(db: Db, input: DeleteFileVersionInput): 
   // stays correct even after later versions are deleted in turn.
   const versionNumber = await getFileVersionNumber(db, fileId);
 
+  // DEC-558: file_previous_file_id_unique (src/db/schema/content.ts) is a
+  // partial uniqueIndex on previousFileId (WHERE previousFileId IS NOT
+  // NULL) — at most one row can ever match this predicate.
   const successorRows = await db
     .select({ id: schema.file.id })
     .from(schema.file)

@@ -118,6 +118,7 @@ function fakeDb(fileRow: FileRow | null, contactRow: { id: string; orgId: string
       from: () => chain,
       innerJoin: () => chain,
       where: () => chain,
+      orderBy: () => chain,
       limit: async () => rows,
     };
     return chain;
