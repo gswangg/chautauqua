@@ -288,6 +288,40 @@ interface MutationCall {
   skipped: { kind: "spread" | "computed-key"; text: string }[];
 }
 
+// DEC-817's wave-57 amendment: the PATH side of this scan silently dropped
+// three shapes the BODY side is scrupulous about -- a call whose first
+// argument isn't a string literal, an api* identifier not actually followed
+// by a call, and a `${...}` span normalizePath erases with no record. Each
+// site now pushes here instead of a bare `continue`, so a hole in the path
+// side is as visible as a hole in the body side already was.
+interface SkippedPath {
+  file: string; // repo-relative path
+  line: number; // 1-indexed line of the call (or identifier, for not-a-call)
+  reason: "non-literal-path" | "not-a-call" | "interpolation-erased";
+  text: string; // raw source text at the site, truncated to a readable length
+}
+
+function truncate(text: string, max = 80): string {
+  const t = text.trim();
+  return t.length > max ? `${t.slice(0, max)}...` : t;
+}
+
+/** True when `raw` contains a `${...}` interpolation span NOT immediately
+ * preceded by "/" -- the exact shape normalizePath erases silently (see its
+ * comment: a trailing computed query string tacked onto the last segment).
+ * Duplicated (rather than having normalizePath itself report it) so
+ * normalizePath stays a pure string->string function callable from anywhere
+ * this file needs a normalized path, including the synthetic controls below. */
+function hasErasedInterpolation(raw: string): boolean {
+  const stripped = raw.split("?")[0]!.split("#")[0]!;
+  let found = false;
+  stripped.replace(/(\/)?\$\{[^}]*\}/g, (_match: string, slash: string | undefined) => {
+    if (!slash) found = true;
+    return "";
+  });
+  return found;
+}
+
 // DEC-817's wave-53 amendment: every api* helper, not just the three that
 // carry a JSON body -- an SPA call to a path no route serves is the exact P1
 // class (apiDelete's Remove co-presenter), and it can't be seen by scanning
@@ -360,13 +394,42 @@ function extractObjectKeys(inner: string): { keys: string[]; skipped: MutationCa
   return { keys, skipped };
 }
 
-function findMutationCalls(file: string, rawSrc: string): MutationCall[] {
+// An `import { apiGet, apiPost, ... } from "..."` specifier list is a
+// structurally distinguishable non-call occurrence of an api* identifier --
+// not the ambiguous "re-export vs. parse failure" case the not-a-call
+// finding below exists to surface. Every api* call site's file imports the
+// helpers it uses, so without this exclusion every such import line would
+// fire one not-a-call finding per named import, drowning any genuine
+// ambiguous case in noise. Computed once per file, over the same
+// comment-stripped `src` the call scan itself walks.
+const IMPORT_STMT_RE = /import\s+(?:type\s+)?\{[\s\S]*?\}\s*from\s*["'][^"']*["']/g;
+
+function importSpans(src: string): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  let m: RegExpExecArray | null;
+  IMPORT_STMT_RE.lastIndex = 0;
+  while ((m = IMPORT_STMT_RE.exec(src))) {
+    spans.push([m.index, m.index + m[0].length]);
+  }
+  return spans;
+}
+
+function insideAnySpan(idx: number, spans: Array<[number, number]>): boolean {
+  return spans.some(([start, end]) => idx >= start && idx < end);
+}
+
+function findMutationCalls(file: string, rawSrc: string): { calls: MutationCall[]; skippedPaths: SkippedPath[] } {
   const src = stripComments(rawSrc);
   const out: MutationCall[] = [];
+  const skippedPaths: SkippedPath[] = [];
+  const relFile = relative(ROOT, file).split("\\").join("/");
+  const importedSpans = importSpans(src);
   let match: RegExpExecArray | null;
   CALL_NAME_RE.lastIndex = 0;
   while ((match = CALL_NAME_RE.exec(src))) {
+    if (insideAnySpan(match.index, importedSpans)) continue; // an import specifier, not a call site -- structurally distinguishable, not the ambiguous not-a-call case
     const name = match[1] as keyof typeof CALL_NAME_TO_METHOD;
+    const lineIdx = src.slice(0, match.index).split("\n").length - 1;
     let j = match.index + name.length;
     while (j < src.length && /\s/.test(src[j] ?? "")) j++;
     // Optional `<...>` generic -- a simple balanced-angle-bracket skip (the
@@ -387,18 +450,46 @@ function findMutationCalls(file: string, rawSrc: string): MutationCall[] {
       }
       while (j < src.length && /\s/.test(src[j] ?? "")) j++;
     }
-    if (src[j] !== "(") continue; // not actually a call (e.g. a re-export name)
+    if (src[j] !== "(") {
+      // Not actually a call -- e.g. a re-export name. Legitimate, but a parse
+      // failure (this scan losing track of a real call) would look identical
+      // from here, so it's recorded rather than silently dropped.
+      skippedPaths.push({
+        file: relFile,
+        line: lineIdx + 1,
+        reason: "not-a-call",
+        text: truncate(src.slice(match.index, Math.min(match.index + 80, src.length))),
+      });
+      continue;
+    }
     const openParenIdx = j;
     const closeParenIdx = findMatchingBracket(src, openParenIdx);
     const argsText = src.slice(openParenIdx + 1, closeParenIdx);
     const args = splitTopLevel(argsText);
     const pathArg = (args[0] ?? "").trim();
-    if (pathArg[0] !== '"' && pathArg[0] !== "'" && pathArg[0] !== "`") continue; // computed path -- invisible to this scan
+    if (pathArg[0] !== '"' && pathArg[0] !== "'" && pathArg[0] !== "`") {
+      // Computed path (a variable, a ternary, a function result) -- invisible
+      // to this scan's route-resolution check, recorded rather than dropped.
+      skippedPaths.push({
+        file: relFile,
+        line: lineIdx + 1,
+        reason: "non-literal-path",
+        text: truncate(pathArg),
+      });
+      continue;
+    }
     const rawPath = readStringLiteral(pathArg, 0);
     if (!rawPath.startsWith("/")) continue;
+    if (hasErasedInterpolation(rawPath)) {
+      skippedPaths.push({
+        file: relFile,
+        line: lineIdx + 1,
+        reason: "interpolation-erased",
+        text: truncate(rawPath),
+      });
+    }
     const path = normalizePath(rawPath);
 
-    const lineIdx = src.slice(0, match.index).split("\n").length - 1;
     const bodyArg = (args[1] ?? "").trim();
     let keys: string[] = [];
     let skipped: MutationCall["skipped"] = [];
@@ -424,7 +515,7 @@ function findMutationCalls(file: string, rawSrc: string): MutationCall[] {
     // absent body, per the file header.
 
     out.push({
-      file: relative(ROOT, file).split("\\").join("/"),
+      file: relFile,
       line: lineIdx + 1,
       method: CALL_NAME_TO_METHOD[name]!,
       path,
@@ -432,7 +523,7 @@ function findMutationCalls(file: string, rawSrc: string): MutationCall[] {
       skipped,
     });
   }
-  return out;
+  return { calls: out, skippedPaths };
 }
 
 /** Returns the character offset, within `argsText`, of the start of the Nth
@@ -512,11 +603,25 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
   const files: string[] = [];
   walk(APP_SRC, files);
 
+  // app/src/lib/api.ts's own apiGet/apiPost/... FUNCTION DECLARATIONS (e.g.
+  // `export function apiPost<T>(path: string, body?: unknown)`) match
+  // CALL_NAME_RE followed by a `(` -- the declaration's parameter list --
+  // and their `path: string` first parameter is not a string literal. That
+  // is a real, structural non-call ("declaring the helper" is not "calling
+  // the helper"), not the ambiguous case the not-a-call/non-literal-path
+  // findings exist to surface, so api.ts itself is excluded from this scan
+  // entirely (it never contains a call to one of these helpers).
+  const API_TS = join(APP_SRC, "lib", "api.ts");
+
   const calls: MutationCall[] = [];
+  const skippedPaths: SkippedPath[] = [];
   for (const file of files) {
+    if (file === API_TS) continue;
     const rawSrc = readFileSync(file, "utf8");
     try {
-      calls.push(...findMutationCalls(file, rawSrc));
+      const result = findMutationCalls(file, rawSrc);
+      calls.push(...result.calls);
+      skippedPaths.push(...result.skippedPaths);
     } catch (err) {
       throw new Error(`${file}: ${(err as Error).message}`);
     }
@@ -534,6 +639,59 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
   // silent allowlist) with file:line and a written reason -- the unresolved
   // set below must equal exactly this array, so it can never grow silently.
   const UNBUILT_ENDPOINTS: string[] = [];
+
+  // DEC-817's wave-57 amendment: a call site this scan cannot statically
+  // resolve a path for (non-literal path argument, an api* identifier not
+  // actually followed by a call, or a `${...}` span normalizePath erases
+  // with no record) is recorded in `skippedPaths` rather than silently
+  // dropped -- see findMutationCalls. An entry below may only be added with
+  // a written reason naming why the path genuinely cannot be made statically
+  // resolvable; it is a FINDING for a human to read, never a suppression
+  // that shrinks what the test below checks.
+  //
+  // Not empty: the file header already documents this exact shape (see
+  // normalizePath's comment) -- a trailing `${qs}`/`${query}` computed query
+  // string tacked onto the end of a call's path template with no "/"
+  // separator, e.g. `` `/events/${eventId}/submissions${qs}` ``. The path
+  // segment BEFORE the interpolation is a literal and is unaffected (this
+  // scan still resolves and route-checks it -- only the caller-built
+  // trailing suffix is erased/invisible); the interpolated portion is a
+  // client-built query string (page/filter params), never a route segment,
+  // in every case below, confirmed by reading each call site.
+  const UNRESOLVABLE_PATHS: string[] = [
+    "app/src/pages/comms/ComposeWizard.tsx:144 interpolation-erased: /events/${eventId}/submissions${qs}",
+    "app/src/pages/contacts/MergePage.tsx:98 interpolation-erased: /contacts/duplicates${query}",
+    "app/src/pages/review/PlanEditor.tsx:823 interpolation-erased: /plans/${planId}/assignments/distribute/preview${qs}",
+    "app/src/pages/submissions/SubmissionDetailPage.tsx:454 interpolation-erased: /events/${detail.eventId}/submissions${buildSubmissionsQuery(listFilters)}",
+    "app/src/pages/submissions/SubmissionsTable.tsx:148 interpolation-erased: /events/${eventId}/submissions${qs}",
+  ];
+
+  it("every path this scan could not statically resolve is recorded, not silently dropped (no growth beyond UNRESOLVABLE_PATHS)", () => {
+    const observed = skippedPaths.map((s) => `${s.file}:${s.line} ${s.reason}: ${s.text}`).sort();
+    // eslint-disable-next-line no-console
+    console.log(`spa-mutation-contract: ${observed.length} skipped path(s):\n${observed.join("\n")}`);
+    expect(
+      observed,
+      `paths this scan could not statically resolve to a literal, method-checkable route path (add UNRESOLVABLE_PATHS entries with a written reason, or fix the call site to use a literal path):\n${observed.join("\n")}`,
+    ).toEqual([...UNRESOLVABLE_PATHS].sort());
+  });
+
+  it("positive control: a non-literal path argument is recorded in skippedPaths with reason non-literal-path, not silently dropped", () => {
+    const synthetic = `apiDelete(someVariable);`;
+    const result = findMutationCalls("app/src/__synthetic_nonliteral_path__.tsx", synthetic);
+    expect(result.calls).toHaveLength(0);
+    expect(result.skippedPaths).toHaveLength(1);
+    expect(result.skippedPaths[0]!.reason).toBe("non-literal-path");
+    expect(result.skippedPaths[0]!.text).toContain("someVariable");
+  });
+
+  it("negative control: a literal-path call is not recorded in skippedPaths", () => {
+    const synthetic = `apiDelete("/submissions/abc-123");`;
+    const result = findMutationCalls("app/src/__synthetic_literal_path__.tsx", synthetic);
+    expect(result.calls).toHaveLength(1);
+    expect(result.calls[0]!.path).toBe("/api/v1/submissions/abc-123");
+    expect(result.skippedPaths).toHaveLength(0);
+  });
 
   it("every extracted call's path resolves to a real route registration (no unmapped path)", () => {
     const unresolved: string[] = [];
