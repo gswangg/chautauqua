@@ -28,6 +28,7 @@ const SCOPES: Record<string, FileDeleteScope> = {
     formCloseDate: null,
     timezone: "UTC",
     isLatestInChain: false,
+    assignmentContactId: null,
   },
   // speaker's own latest version, submission still pending — deletable by them.
   "latest-file": {
@@ -44,6 +45,7 @@ const SCOPES: Record<string, FileDeleteScope> = {
     formCloseDate: null,
     timezone: "UTC",
     isLatestInChain: true,
+    assignmentContactId: null,
   },
   // same speaker's own version, but NOT the latest link in the chain.
   "not-latest-file": {
@@ -60,6 +62,7 @@ const SCOPES: Record<string, FileDeleteScope> = {
     formCloseDate: null,
     timezone: "UTC",
     isLatestInChain: false,
+    assignmentContactId: null,
   },
   // speaker's own latest version, but the submission has moved past pending.
   "approved-latest-file": {
@@ -76,6 +79,7 @@ const SCOPES: Record<string, FileDeleteScope> = {
     formCloseDate: null,
     timezone: "UTC",
     isLatestInChain: true,
+    assignmentContactId: null,
   },
 };
 

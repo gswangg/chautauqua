@@ -565,35 +565,52 @@ fileApiRoutes.delete("/files/:fileId", csrfJson, async (c) => {
   }
   const fileId = c.req.param("fileId");
 
-  // DEC-713: getFileDeleteScope's population is FILE_KINDS deliverables only
-  // — a kind='attachment' CFP form-answer upload (or any other non-FILE_KINDS
-  // row) resolves null here and 404s, exactly as the disjoint
-  // getResourceFileScope/getTaskFileScope populations do for GET /files/:fileId.
+  // DEC-713 (wave-78 amendment): getFileDeleteScope's population is
+  // FILE_KINDS deliverables — either submission-scoped (submissionId set) or
+  // task-assignment-scoped (submissionId null, assignmentContactId set, e.g.
+  // a plain 'handout' task upload). Any other non-FILE_KINDS row, or a
+  // FILE_KINDS row resolving neither link, resolves null here and 404s,
+  // exactly as the disjoint getResourceFileScope/getTaskFileScope
+  // populations do for GET /files/:fileId.
   const scope = await getFileDeleteScope(c.var.db, fileId);
-  if (!scope || !scope.submissionId || !scope.orgId) throw new ApiError("not_found", "File not found");
+  if (!scope || !scope.orgId) throw new ApiError("not_found", "File not found");
 
-  if (auth.role === "organizer") {
-    // DEC-713: an organizer may delete ANY version of a submission in their org.
-    if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
+  if (scope.submissionId) {
+    // Submission-scoped population — organizer/speaker rules verbatim.
+    if (auth.role === "organizer") {
+      // DEC-713: an organizer may delete ANY version of a submission in their org.
+      if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
+    } else {
+      // DEC-713: a speaker may delete ONLY the latest version of the chain,
+      // that they uploaded, while the submission is still pending review.
+      if (!auth.contactId || scope.uploadedByContactId !== auth.contactId) {
+        throw new ApiError("forbidden", "Only the speaker who uploaded this version may delete it");
+      }
+      if (!scope.isLatestInChain) {
+        throw new ApiError("forbidden", "Only the latest version in the chain may be deleted");
+      }
+      if (scope.contentStatus !== PENDING_CONTENT_STATUS) {
+        throw new ApiError("forbidden", "A version may only be deleted while the submission's content status is pending");
+      }
+      // DEC-041 (wave-46 amendment): deleting the latest version is a
+      // destructive submission-write like upload/comment — it must be equally
+      // locked past the form close date.
+      if (scope.status === null || scope.timezone === null) {
+        throw new ApiError("not_found", "Submission not found");
+      }
+      assertSpeakerSubmissionUnlocked({ status: scope.status, formCloseDate: scope.formCloseDate, timezone: scope.timezone });
+    }
+  } else if (scope.assignmentContactId) {
+    // DEC-713 (wave-78 amendment): task-assignment-scoped population —
+    // organizer-only with an org match. A speaker (even the assignee) gets a
+    // named 403, never a 404 that would look like the file doesn't exist; a
+    // cross-org organizer stays a 404 (no IDOR leak of another org's file).
+    if (auth.role !== "organizer") {
+      throw new ApiError("forbidden", "Only an organizer may remove a task file version");
+    }
+    if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "File not found");
   } else {
-    // DEC-713: a speaker may delete ONLY the latest version of the chain,
-    // that they uploaded, while the submission is still pending review.
-    if (!auth.contactId || scope.uploadedByContactId !== auth.contactId) {
-      throw new ApiError("forbidden", "Only the speaker who uploaded this version may delete it");
-    }
-    if (!scope.isLatestInChain) {
-      throw new ApiError("forbidden", "Only the latest version in the chain may be deleted");
-    }
-    if (scope.contentStatus !== PENDING_CONTENT_STATUS) {
-      throw new ApiError("forbidden", "A version may only be deleted while the submission's content status is pending");
-    }
-    // DEC-041 (wave-46 amendment): deleting the latest version is a
-    // destructive submission-write like upload/comment — it must be equally
-    // locked past the form close date.
-    if (scope.status === null || scope.timezone === null) {
-      throw new ApiError("not_found", "Submission not found");
-    }
-    assertSpeakerSubmissionUnlocked({ status: scope.status, formCloseDate: scope.formCloseDate, timezone: scope.timezone });
+    throw new ApiError("not_found", "File not found");
   }
 
   // DEC-713 ordering (amended wave 50): the DB write commits FIRST, then the

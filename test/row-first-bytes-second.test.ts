@@ -37,6 +37,7 @@ const SCOPE: FileDeleteScope = {
   formCloseDate: null,
   timezone: "UTC",
   isLatestInChain: false,
+  assignmentContactId: null,
 };
 
 const ORGANIZER: AuthInfo = { userId: "org-user-1", role: "organizer", orgId: "org-1" };

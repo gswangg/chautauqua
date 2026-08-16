@@ -78,6 +78,7 @@ function deleteScopeFor(submissionId: string): FileDeleteScope {
     formCloseDate: sub.formCloseDate,
     timezone: sub.timezone,
     isLatestInChain: true,
+    assignmentContactId: null,
   };
 }
 

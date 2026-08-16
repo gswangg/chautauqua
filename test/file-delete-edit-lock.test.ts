@@ -40,6 +40,7 @@ const SCOPES: Record<string, FileDeleteScope> = {
     formCloseDate: CLOSED_DATE,
     timezone: TZ,
     isLatestInChain: true,
+    assignmentContactId: null,
   },
   // same speaker, same shape, form still OPEN — must be allowed.
   "file-pending-open": {
@@ -56,6 +57,7 @@ const SCOPES: Record<string, FileDeleteScope> = {
     formCloseDate: OPEN_DATE,
     timezone: TZ,
     isLatestInChain: true,
+    assignmentContactId: null,
   },
   // organizer target, form closed — organizers are never locked.
   "file-organizer-closed": {
@@ -72,6 +74,7 @@ const SCOPES: Record<string, FileDeleteScope> = {
     formCloseDate: CLOSED_DATE,
     timezone: TZ,
     isLatestInChain: true,
+    assignmentContactId: null,
   },
   // organizer target, form open — organizers are never locked.
   "file-organizer-open": {
@@ -88,6 +91,7 @@ const SCOPES: Record<string, FileDeleteScope> = {
     formCloseDate: OPEN_DATE,
     timezone: TZ,
     isLatestInChain: true,
+    assignmentContactId: null,
   },
 };
 
