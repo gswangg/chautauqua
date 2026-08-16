@@ -214,7 +214,12 @@
 }
 
 .chq-review-results-col-reviews {
-  width: 92px;
+  /* User-filed (gate-9, second pass): the reviews disclosure toggle is
+     ~91px of content in a cell whose 92px track loses 16px to padding —
+     under table-layout:fixed it overflowed into the Decision column and
+     butted the Accept button. Width fits the widest label ("▸ 0 reviews")
+     plus the cell padding; Title is the remainder column and absorbs. */
+  width: 124px;
 }
 
 .chq-review-results-col-decision {
