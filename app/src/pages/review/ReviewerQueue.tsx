@@ -184,10 +184,17 @@ function PlanSection({
           muted note above the (still-rendered) list instead, naming what
           they're seeing, since the queue route now admits them same as the
           plan detail route always did. */}
-      {!open && !error && !viewerIsOrganizer && <p className="chq-empty">This review plan is not currently open.</p>}
-      {!open && !error && viewerIsOrganizer && (
+      {/* ONE notice element, two voices: DEC-678's bare-`chq-empty` ratchet
+          (app/src/b7-empty-collection.scan.test.ts) allows this file exactly
+          one such element because a plan-state notice is not a zero-row
+          collection. The two voices are mutually exclusive, so they are one
+          element with conditional text rather than two siblings -- same DOM
+          either way, and the ratchet stays where it is. */}
+      {!open && !error && (
         <p className="chq-empty">
-          This plan is closed. You are seeing it as an organiser — reviewers cannot score it now.
+          {viewerIsOrganizer
+            ? 'This plan is closed. You are seeing it as an organiser — reviewers cannot score it now.'
+            : 'This review plan is not currently open.'}
         </p>
       )}
       {(open || viewerIsOrganizer) && items.length === 0 && recused.length === 0 && !error && (

@@ -56,7 +56,7 @@ const ALLOWLIST: Record<string, { count: number; reason: string }> = {
   'pages/review/ReviewerQueue.tsx': {
     count: 1,
     reason:
-      "'This review plan is not currently open.' is a plan-state notice, not an empty collection -- there is no list to have zero rows.",
+      "the closed-plan notice is a plan-state notice, not an empty collection -- there is no list to have zero rows. It carries two mutually exclusive voices since DEC-018's wave-58 amendment ('This review plan is not currently open.' for a reviewer, the 'seeing it as an organiser' line for an organizer), rendered as ONE element with conditional text so this count stays at 1.",
   },
   'pages/Review.tsx': {
     count: 1,

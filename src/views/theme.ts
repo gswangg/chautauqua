@@ -136,6 +136,30 @@ export const THEME_CSS = `
        (rail.css.ts) so the two renderings of one stack can't drift again.
        Mirrored in app/src/styles.css. */
     --chq-pub-when-gutter: 126px;
+    /* Interaction-state + motion tokens (DEC-383 wave-58 amendment; V11 B8,
+       docs/design/DESIGN-RULINGS.md:108-177). DEC-372 binds these two token
+       files to the IDENTICAL --chq-* name set with identical values, so the
+       SPA and SSR vocabularies cannot drift; the amendment's "and nowhere
+       else" is about SURFACE stylesheets carrying literals, which these two
+       token files are not. The B8 hover/active/disabled RULES live with
+       their consumers in app/src/styles.css (SSR surfaces consume none of
+       these yet); only the vocabulary is mirrored here.
+       Mirrored in app/src/styles.css. */
+    --chq-brand-active: #33401A;
+    --chq-secondary-hover: #E4DFD2;
+    --chq-secondary-hover-border: #BAB6A6;
+    --chq-secondary-active: #DCD6C6;
+    --chq-destructive: #565A4B;
+    --chq-destructive-hover: #1B1D17;
+    --chq-border-hover: #8E8A7A;
+    --chq-motion-color: 120ms;
+    --chq-motion-appear: 180ms;
+    --chq-motion-geometry: 220ms;
+    --chq-motion-color-exit: 60ms;
+    --chq-motion-appear-exit: 90ms;
+    --chq-motion-geometry-exit: 110ms;
+    --chq-ease-state: ease-out;
+    --chq-ease-geometry: cubic-bezier(0.2, 0, 0, 1);
   }
 
   @font-face {
