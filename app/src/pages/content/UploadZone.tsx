@@ -102,18 +102,10 @@ export function UploadZone({ kind, sessionTitle, replacesFileId, onUpload }: Upl
         void handleFile(e.dataTransfer.files[0]);
       }}
     >
-      {/* DEC-020 wave-58 amendment ('both sides of the act', wave-10):
-          UploadZone is mounted only inside DeliverableDetail (a
-          submission-linked deliverable) -- every upload/replace here reopens
-          content review server-side (files.ts's reopenContentReview) once
-          the submission is past 'pending'. The portal states this BEFORE the
-          speaker posts (tasks/views.tsx's ReuploadReviewNotice); this is the
-          same notice, same register, stated here too rather than only
-          disclosed after the fact by uploadReopened in the parent. */}
-      <p className="chq-meta chq-content-upload-notice">
-        Posting a new version sends it back to the producer for review. The session will not appear on the
-        public schedule while it is being reviewed.
-      </p>
+      {/* G13 lane-D fix (05-content--01): the DEC-020 two-line re-review
+          notice is unframed here — the frame's drop zone carries only the
+          prompt plus the formats caption. The portal keeps its own
+          ReuploadReviewNotice; uploadReopened still reports after the act. */}
       {/* CNT-06: the accepted-types + size-cap text must be visible verbatim on
           the upload zone, not hidden behind a tooltip or validation-only
           error -- the prompt and the caps text share this one line, the

@@ -139,13 +139,10 @@ export function SessionList({
 
   return (
     <div className="chq-content-worklist">
-      {/* DEC-825 amendment (wave 25, ruling A1): the section rule carries no
-          action now — bulk approval lives in the bar below, scoped to the
-          ticked rows, so this rule never competes with it as a second
-          primary. */}
-      <div className="chq-section-head chq-content-worklist-head">
-        <h2 className="chq-section-label">Worklist</h2>
-      </div>
+      {/* G13 lane-D fix (05-content--00): the frame draws NO section label
+          and NO 2px ink rule here — the header stack is title, 1px hairline,
+          chips, 1px hairline, bulk bar. The hairlines are carried by
+          .chq-content-worklist / .chq-chipstrip rules in content.css. */}
       <div className="chq-chipstrip" role="tablist" aria-label="Content status">
         {WORKLIST_TABS.map((t) => (
           <button
@@ -196,14 +193,19 @@ export function SessionList({
                 </button>
               </>
             ) : (
-              'Tick rows to approve, request changes, or set pending in bulk.'
+              'Tick rows to approve in bulk.'
             )}
           </span>
         ) : (
           <>
           <span className="chq-bulkbar-count">{selectedIds.size} selected</span>
-          <span className="chq-bulkbar-note">Sends nothing · the speaker sees it in their portal</span>
+          <span className="chq-bulkbar-note">Approving sends nothing · the speaker sees it in their portal</span>
           <div className="chq-bulkbar-actions">
+            {/* G13 lane-D fix (05-content--00, DESIGN-RULINGS A1: "One verb,
+                one scope: the bar owns Approve") — the DEC-720 'Request
+                changes'/'Pending' bulk verbs are removed; the frame draws
+                [Approve N] + Clear only. The deliberate note+email path stays
+                the per-submission content-note composer. */}
             <button
               type="button"
               className="chq-btn chq-btn-primary"
@@ -211,26 +213,6 @@ export function SessionList({
               onClick={() => onBulkContentStatus('approved')}
             >
               Approve {selectedIds.size}
-            </button>
-            {/* DEC-720 wave-32 amendment: 'Request changes' is now reachable
-                at volume from the bulk bar, silently (no note, no mail) —
-                the deliberate note+email path stays the per-submission
-                content-note composer, which is a distinct action. */}
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              disabled={bulkPending}
-              onClick={() => onBulkContentStatus('changes_requested')}
-            >
-              Request changes {selectedIds.size}
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              disabled={bulkPending}
-              onClick={() => onBulkContentStatus('pending')}
-            >
-              Pending {selectedIds.size}
             </button>
             <button
               type="button"
