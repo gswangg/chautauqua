@@ -1,7 +1,7 @@
 // CFP form-builder repo layer (DEC-012): the only code here that touches
 // drizzle row types. Converts to/from the pure src/forms/types.ts shapes.
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -492,6 +492,20 @@ export async function countAnswersByOptionValue(db: Db, fieldId: string): Promis
     }
   }
   return counts;
+}
+
+/** DEC-505 (amendment, wave 49): clears exactly the given fields' stored
+ * rules, in one set-based UPDATE (no per-row loop) — used by PATCH
+ * /api/v1/fields/:fieldId's `?cascade=1` path when a kind/option edit
+ * invalidates one or more sibling rules that target the patched field.
+ * Returns the number of rows cleared. */
+export async function clearFieldRules(db: Db, fieldIds: string[]): Promise<number> {
+  if (fieldIds.length === 0) return 0;
+  await db
+    .update(schema.formField)
+    .set({ ruleJson: null, updatedAt: new Date() })
+    .where(inArray(schema.formField.id, fieldIds));
+  return fieldIds.length;
 }
 
 /** DEC-300: declared cascade — clears dependent siblings' rules (they become

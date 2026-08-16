@@ -9,7 +9,7 @@ import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapCountMessage } from "../../domain/cap-copy";
-import { validateFieldDefInput, isPermutation, type FieldDefInput } from "../../forms/builder";
+import { validateFieldDefInput, validateRuleReference, isPermutation, type FieldDefInput } from "../../forms/builder";
 import type { FormFieldDef, FormFieldRole, FormFieldRule } from "../../forms/types";
 import { FORM_FIELD_ROLES } from "../../forms/types";
 import * as repo from "../../server/repo/forms";
@@ -358,6 +358,44 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
     }
   }
 
+  // DEC-505 (amendment, wave 49): this field's post-patch shape may
+  // invalidate a SIBLING's stored rule (an option this field's kind/options
+  // used to satisfy but no longer does, e.g. a removed dropdown option or a
+  // dropdown->number kind change). validateRuleReference only ever ran the
+  // OTHER direction (this field's own rule against siblings, at :300) --
+  // never a sibling's rule against this field's new shape. Build the
+  // effective post-patch def for this field and re-check every sibling
+  // whose rule targets it; a newly-invalid rule 409s naming the sibling
+  // unless ?cascade=1, which clears exactly those rules in the same write.
+  const effectiveSelfDef: FormFieldDef = {
+    id: fieldId,
+    section: typeof body.section === "string" ? (body.section as FormFieldDef["section"]) : field.section,
+    kind: typeof body.kind === "string" ? (body.kind as FormFieldDef["kind"]) : field.kind,
+    label: typeof body.label === "string" ? body.label : field.label,
+    required: field.required,
+    position: field.position,
+    options: body.options !== undefined ? (body.options === null ? undefined : (body.options as string[])) : field.options,
+    rule: body.rule !== undefined ? (body.rule === null ? undefined : (body.rule as FormFieldRule)) : field.rule,
+    role: field.role,
+  };
+  const dependentSiblings = siblings.filter((s) => s.rule?.fieldId === fieldId);
+  const invalidatedSiblings = dependentSiblings.filter((s) => {
+    const otherDefs = siblingDefs.filter((d) => d.id !== s.id).concat(effectiveSelfDef);
+    return validateRuleReference(s.rule as FormFieldRule, otherDefs, s.id) !== undefined;
+  });
+  if (invalidatedSiblings.length > 0) {
+    const cascade = c.req.query("cascade") === "1";
+    if (!cascade) {
+      throw new ApiError(
+        "conflict",
+        `This change would invalidate ${countOf(invalidatedSiblings.length, "dependent question")}'s visibility rule: ${invalidatedSiblings
+          .map((s) => `"${s.label}"`)
+          .join(", ")}. Confirm to clear them too.`,
+        { dependents: invalidatedSiblings.map((s) => s.label).join(", ") },
+      );
+    }
+  }
+
   const updated = await repo.patchField(c.var.db, fieldId, {
     label: typeof body.label === "string" ? body.label : undefined,
     helpText: body.helpText !== undefined ? (body.helpText === null ? null : String(body.helpText)) : undefined,
@@ -368,6 +406,14 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
     kind: typeof body.kind === "string" ? (body.kind as FormFieldDef["kind"]) : undefined,
     role: body.role !== undefined ? (body.role === null ? null : (body.role as FormFieldRole)) : undefined,
   });
+
+  if (invalidatedSiblings.length > 0) {
+    const clearedRules = await repo.clearFieldRules(
+      c.var.db,
+      invalidatedSiblings.map((s) => s.id),
+    );
+    return c.json({ ...toPublicField(updated), clearedRules });
+  }
 
   return c.json(toPublicField(updated));
 });
