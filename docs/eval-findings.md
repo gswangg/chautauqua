@@ -182,9 +182,9 @@ settings open / reviewer queue / recusal. ONE caption drift within a real
 screen (fix wording, not the shot): reviewer-queue caption claims rows show
 "how many ratings it has so far · fewest at the top" — the screen actually
 shows the reviewer's OWN scored/not-scored status per row. Say what the
-screen says. The shoot script lands at
-scripts/docs-shots.mjs (orchestrator) — wire its output dir to however the
-shell serves shotIds.
+screen says. The shoot script is `npm run shots:docs` (scripts/docs-shots.ts,
+orchestrator) — it writes to public/docs/shots/, which is how the shell
+serves shotIds.
 
 **SEQUENCING (user): ALL-PASS lane items 1-22 FIRST → then A + B-shell in
 parallel → gate-12 fleet (all-PASS target, now including 03 criterion frames +
