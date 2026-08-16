@@ -48,6 +48,65 @@ describe('SessionboardImportPanel', () => {
     }
   });
 
+  it('labels the steps Choose file / Review what will change / Done (DEC-613 wave-64 amendment)', () => {
+    render(<SessionboardImportPanel />);
+    const steps = screen.getByRole('list', { name: 'Import CSV steps' });
+    expect(within(steps).getByText('Choose file')).toBeInTheDocument();
+    expect(within(steps).getByText('Review what will change')).toBeInTheDocument();
+    expect(within(steps).getByText('Done')).toBeInTheDocument();
+  });
+
+  it('states that Sessionboard is read-only to us, next to the entity picker', () => {
+    render(<SessionboardImportPanel />);
+    expect(
+      screen.getByText('Sessionboard is read-only to us — importing never writes anything back.'),
+    ).toBeInTheDocument();
+  });
+
+  it('states nothing is written until the last step, next to the dry-run control', () => {
+    render(<SessionboardImportPanel />);
+    fireEvent.change(screen.getByLabelText(/Or paste the exported CSV text/), {
+      target: { value: 'name,email\nAda Lovelace,ada@example.com' },
+    });
+    expect(
+      screen.getByText('Nothing is written until you confirm on the last step.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the dry-run report on step 2, next to the mapping table, not step 3', async () => {
+    mockApi({
+      [ENDPOINT]: {
+        dryRun: true,
+        entity: 'contacts',
+        created: 5,
+        updated: 2,
+        skipped: [{ row: 9, reason: 'missing email' }],
+        issues: [],
+      },
+    });
+
+    render(<SessionboardImportPanel />);
+    fireEvent.change(screen.getByLabelText(/Or paste the exported CSV text/), {
+      target: { value: 'name,email\nAda Lovelace,ada@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview import (dry run)' }));
+
+    await waitFor(() => {
+      // The report's own numbers, sourced from the mocked report -- not
+      // re-derived from the two parsed data rows.
+      expect(screen.getByText('Created 5, updated 2, skipped 1.')).toBeInTheDocument();
+    });
+
+    const steps = screen.getByRole('list', { name: 'Import CSV steps' });
+    const reviewStep = within(steps).getByText('Review what will change');
+    expect(reviewStep).toHaveClass('is-current');
+    const doneStep = within(steps).getByText('Done');
+    expect(doneStep).not.toHaveClass('is-current');
+
+    // The mapping table is still part of step 2's work, alongside the report.
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
   it('states plainly that imported speakers are added hidden (DEC-675/DEC-656)', () => {
     render(<SessionboardImportPanel />);
     expect(screen.getByText(/Imported speakers are added hidden/)).toBeInTheDocument();
