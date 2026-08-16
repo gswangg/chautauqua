@@ -101,9 +101,21 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
     }),
     update: () => ({
       set: (values: unknown) => ({
-        where: async () => {
-          updateCalls.push(values);
-        },
+        where: (cond: unknown) => ({
+          then: (resolve: (v: unknown) => void) => {
+            updateCalls.push(values);
+            resolve(undefined);
+          },
+          // DEC-023 wave-47 claim-before-send: the cron claims every
+          // candidate assignment id up front via UPDATE ... RETURNING, then
+          // releases the ids of any recipient whose send threw. Dumb mock,
+          // per this fake's convention: ignores `cond` and wins every id.
+          returning: async () => {
+            updateCalls.push(values);
+            void cond;
+            return rows.map((r) => ({ id: r.assignmentId }));
+          },
+        }),
       }),
     }),
   } as unknown as Db;
@@ -175,7 +187,19 @@ describe("sendDueRemindersForEvent (DEC-238 class 1 cron, partial mailer failure
     expect(count).toBe(1);
     expect(sent).toHaveLength(1);
     expect(sent[0]?.to.email).toBe("good@example.com");
-    // Only the successful recipient's assignment gets last_reminded_at stamped.
-    expect(updateCalls).toHaveLength(1);
+    // DEC-023 wave-47 claim-before-send: last_reminded_at is now stamped by
+    // the pre-loop claim (both candidates, since the claim cannot know which
+    // send will fail) and the failed recipient's stamp is RELEASED back to
+    // its pre-claim value after the loop — so the net stored state is
+    // unchanged from the old post-loop stamp: only the successful recipient
+    // stays marked as reminded, and the bad one retries on the next tick.
+    // Two writes, both batched (never one per recipient).
+    expect(updateCalls).toHaveLength(2);
+    expect((updateCalls[0] as { lastRemindedAt: Date | null }).lastRemindedAt).toEqual(NOW);
+    expect((updateCalls[1] as { lastRemindedAt: Date | null }).lastRemindedAt).toBeNull();
+    // (Which ids ride in each write is asserted at id level by
+    // test/reminders-claim-before-send.test.ts and
+    // test/reminders-batched-stamp.test.ts, which mock inArray to inspect
+    // the bound values; this file's scope is cron-path failure resilience.)
   });
 });

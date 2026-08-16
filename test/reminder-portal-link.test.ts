@@ -150,9 +150,20 @@ function fakeDb(
     select: () => makeChain({}),
     update: () => ({
       set: (values: unknown) => ({
-        where: async () => {
-          updateCalls.push(values);
-        },
+        where: (cond: unknown) => ({
+          then: (resolve: (v: unknown) => void) => {
+            updateCalls.push(values);
+            resolve(undefined);
+          },
+          // DEC-023 wave-47 claim-before-send: the claim UPDATE ... RETURNING
+          // runs before the mail loop. Dumb mock (this fake's convention):
+          // ignores `cond` and claims the whole fixture set.
+          returning: async () => {
+            updateCalls.push(values);
+            void cond;
+            return rows.map((r) => ({ id: r.assignmentId }));
+          },
+        }),
       }),
     }),
   } as unknown as Db;

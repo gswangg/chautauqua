@@ -50,6 +50,11 @@ const ALLOWLIST: AllowlistEntry[] = [
   },
   { index: "evaluation_plan_submission_reviewer_round_idx", file: "src/server/repo/review/evaluations.ts", guard: "onConflictDoUpdate" },
   { index: "event_slug_idx", file: "src/server/repo/events.ts", guard: "isUniqueViolation" },
+  // DEC-818 amendment (wave-47): partial-unique on file.previous_file_id
+  // encodes the version-chain invariant ("at most one row may name a given
+  // predecessor"). insertFile catches the violation and rethrows it as an
+  // ApiError("conflict") -- a loud, retryable refusal, never a silent retry.
+  { index: "file_previous_file_id_unique", file: "src/server/repo/files-versions.ts", guard: "isUniqueViolation" },
   { index: "form_event_id_title_idx", file: "src/server/repo/forms.ts", guard: "onConflictDoNothing" },
   { index: "participant_submission_id_contact_id_idx", file: "src/server/repo/participants.ts", guard: "onConflictDoNothing" },
   { index: "pipeline_entry_org_id_contact_id_idx", file: "src/server/repo/pipeline.ts", guard: "onConflictDoNothing" },

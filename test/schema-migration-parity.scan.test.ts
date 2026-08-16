@@ -100,7 +100,16 @@ const COLUMN_UPDATED_AT_HELPER = /(\w+):\s*updatedAt\(\)/g;
 // next column starts, so we scan line-by-line instead (see below).
 const COLUMN_TEXT_OR_INT = /(\w+):\s*(?:text|integer)\(\s*"([^"]+)"/;
 
-const INDEX_DECL = /(\w+):\s*(uniqueIndex|index)\(\s*"([^"]+)"\s*,?\s*\)\.on\(([^)]*)\)/g;
+// `.on(...)` may be separated from the `uniqueIndex("name")` call by a line
+// break (drizzle's builder chain is routinely wrapped when a trailing
+// `.where(sql`...`)` partial-index predicate follows, as on
+// file_previous_file_id_unique). Without the `\s*` the declaration is
+// invisible to this scan, which silently degrades into a false PASS on the
+// schema->migration leg and a false FAIL ("no schema file declares it") on
+// the migration->schema leg. Anything chained after `.on(...)` (e.g.
+// `.where(...)`) is deliberately not parsed here: SQLite partial-index
+// predicates are compared by neither leg.
+const INDEX_DECL = /(\w+):\s*(uniqueIndex|index)\(\s*"([^"]+)"\s*,?\s*\)\s*\.on\(([^)]*)\)/g;
 
 /** Builds { JS prop name -> db column name } and the table's primary-key db
  * column list, from a sqliteTable(...) call body's column-definition object
@@ -197,25 +206,46 @@ interface MigrationIndexEntry {
   file: string;
 }
 
-const CREATE_INDEX = /CREATE\s+(UNIQUE\s+)?INDEX(?:\s+IF\s+NOT\s+EXISTS)?\s+`([^`]+)`\s+ON\s+`([^`]+)`\s*\(([^)]*)\)/gi;
+// A single alternation so CREATEs and DROPs are seen in true source order:
+// the migration corpus is a script, not a bag of CREATEs, and an index that a
+// later migration drops must NOT be required to have a schema declaration
+// (0043 drops file_previous_file_id_idx, created back in 0000, and replaces it
+// with the partial-unique file_previous_file_id_unique). Comparing the
+// cumulative *effect* of migrations against the schema is the only model that
+// stays correct once any index is ever dropped or recreated.
+const CREATE_OR_DROP_INDEX =
+  /CREATE\s+(UNIQUE\s+)?INDEX(?:\s+IF\s+NOT\s+EXISTS)?\s+`([^`]+)`\s+ON\s+`([^`]+)`\s*\(([^)]*)\)|DROP\s+INDEX(?:\s+IF\s+EXISTS)?\s+`([^`]+)`/gi;
 
+/** The set of indexes LIVE after the whole migration corpus has been applied,
+ * in filename order (drizzle's numeric prefixes are the apply order). */
 function scanMigrationIndexes(): MigrationIndexEntry[] {
-  const out: MigrationIndexEntry[] = [];
+  const live = new Map<string, MigrationIndexEntry>();
   const files = readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith(".sql"))
     .sort();
 
   for (const file of files) {
     const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
-    CREATE_INDEX.lastIndex = 0;
+    CREATE_OR_DROP_INDEX.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = CREATE_INDEX.exec(sql))) {
-      const [, unique, name, table, colsRaw] = m;
+    while ((m = CREATE_OR_DROP_INDEX.exec(sql))) {
+      const [, unique, name, table, colsRaw, droppedName] = m;
+      if (droppedName) {
+        if (!live.has(droppedName)) {
+          throw new Error(
+            `schema-migration-parity scan: ${file} drops index "${droppedName}", which no earlier ` +
+              `migration creates -- the drop is dead (or misspelled), and applying this corpus from ` +
+              `scratch would fail on it.`,
+          );
+        }
+        live.delete(droppedName);
+        continue;
+      }
       const columns = [...colsRaw!.matchAll(/`([^`]+)`/g)].map((c) => c[1]!);
-      out.push({ name: name!, table: table!, columns, unique: Boolean(unique), file });
+      live.set(name!, { name: name!, table: table!, columns, unique: Boolean(unique), file });
     }
   }
-  return out;
+  return [...live.values()];
 }
 
 // ---------------------------------------------------------------------------

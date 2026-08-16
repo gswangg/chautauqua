@@ -151,7 +151,17 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; touchedTables: unknown[]
       touchedTables.push(table);
       return {
         set: () => ({
-          where: async () => undefined,
+          where: (cond: unknown) => ({
+            then: (resolve: (v: unknown) => void) => resolve(undefined),
+            // DEC-023 wave-47 claim-before-send: only the send path (remindNow)
+            // ever reaches this — a preview still touches nothing, which the
+            // touchedTables assertion above continues to police. Claims the
+            // whole fixture set so the send path mails every seeded contact.
+            returning: async () => {
+              void cond;
+              return rows.map((r) => ({ id: r.assignmentId }));
+            },
+          }),
         }),
       };
     },

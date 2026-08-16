@@ -60,16 +60,21 @@ describe("DEC-104 chunk sweep — misc lane", () => {
     expect(src).toMatch(/for \(const batch of chunkIds\(contactIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.contactId, batch\)/);
   });
 
-  it("reminders.ts: sendReminderEmails stamps lastRemindedAt in chunkIds batches", () => {
+  it("reminders.ts: sendReminderEmails claims/releases lastRemindedAt in chunkIds batches", () => {
     const src = readSrc("reminders.ts");
-    // wave-48: the stamped id list is now `sentAssignmentIds` — accumulated
-    // across the send loop (only recipients whose mail actually went out) and
-    // flushed in ONE chunked UPDATE after the loop, rather than an UPDATE per
-    // recipient. The chunking guard itself is unchanged, only the accumulator
-    // name; the raw-list forms stay forbidden.
+    // wave-47 (DEC-023 claim-before-send): the post-loop stamp over
+    // `sentAssignmentIds` is gone — the claim IS the stamp. Two chunked
+    // UPDATEs remain, and BOTH must stay chunked (the DEC-078 invariant this
+    // assertion actually defends): the pre-loop claim over `allAssignmentIds`
+    // (RETURNING the ids won) and the post-loop release of the failed ids.
+    // The raw-list forms stay forbidden, including the now-dead accumulator.
     expect(src).not.toMatch(/\.where\(inArray\(schema\.taskAssignment\.id, assignmentIds\)\)/);
     expect(src).not.toMatch(/\.where\(inArray\(schema\.taskAssignment\.id, sentAssignmentIds\)\)/);
-    expect(src).toMatch(/for \(const batch of chunkIds\(sentAssignmentIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.id, batch\)/);
+    expect(src).not.toMatch(/\.where\(inArray\(schema\.taskAssignment\.id, allAssignmentIds\)\)/);
+    // The claim: chunked, and its WHERE binds the chunk (not the whole list).
+    expect(src).toMatch(/for \(const chunk of chunkIds\(allAssignmentIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.id, chunk\)/);
+    // The release: also chunked, per restored-value group.
+    expect(src).toMatch(/for \(const chunk of chunkIds\(ids\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.id, chunk\)/);
     // wave-14 (DEC-078 tightened scan): taskIds/contactIds arrive via
     // parseBoundedIdArray (max 1000, routes/tasks.ts) -- above D1's bound
     // budget, so the old "exempt bounded track filter" reading was wrong.

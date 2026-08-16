@@ -140,9 +140,21 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[]; 
     select: () => makeChain({}),
     update: () => ({
       set: (values: unknown) => ({
-        where: async () => {
-          updateCalls.push(values);
-        },
+        where: (cond: unknown) => ({
+          then: (resolve: (v: unknown) => void) => {
+            updateCalls.push(values);
+            resolve(undefined);
+          },
+          // DEC-023 wave-47 claim-before-send: remindNow claims every
+          // candidate assignment id up front via UPDATE ... RETURNING, then
+          // releases the ids of any recipient whose send threw. Dumb mock,
+          // per this fake's convention: ignores `cond` and wins every id.
+          returning: async () => {
+            updateCalls.push(values);
+            void cond;
+            return rows.map((r) => ({ id: r.assignmentId }));
+          },
+        }),
       }),
     }),
     insert: () => ({
@@ -216,8 +228,13 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
     expect(result.failed[0]?.email).toBe("bad@example.com");
     expect(sent).toHaveLength(1);
     expect(sent[0]?.to.email).toBe("good@example.com");
-    // Only the successful recipient's assignment gets last_reminded_at stamped.
-    expect(updateCalls).toHaveLength(1);
+    // DEC-023 wave-47 claim-before-send: both candidates are claimed before
+    // the loop and the failed recipient's stamp is released after it, so the
+    // net stored state still marks only the successful recipient as
+    // reminded. Two batched writes, never one per recipient.
+    expect(updateCalls).toHaveLength(2);
+    expect((updateCalls[0] as { lastRemindedAt: Date | null }).lastRemindedAt).toEqual(NOW);
+    expect((updateCalls[1] as { lastRemindedAt: Date | null }).lastRemindedAt).toBeNull();
   });
 
   // DEC-923/DEC-996 (amendment wave 57): reminders.ts has no logFailedSend
@@ -262,8 +279,14 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
 
     expect(result.sent).toBe(0);
     expect(result.failed).toHaveLength(3);
-    // No recipient's assignment gets stamped when its send fails.
-    expect(updateCalls).toHaveLength(0);
+    // DEC-023 wave-47 claim-before-send: every recipient is claimed before
+    // the loop, then — because EVERY send failed here — every claim is
+    // released back to its pre-claim value. Net stored state is what this
+    // assertion has always defended: no recipient is left marked as
+    // reminded, so all three retry. One claim write + one release write.
+    expect(updateCalls).toHaveLength(2);
+    expect((updateCalls[0] as { lastRemindedAt: Date | null }).lastRemindedAt).toEqual(NOW);
+    expect((updateCalls[1] as { lastRemindedAt: Date | null }).lastRemindedAt).toBeNull();
 
     const failedRows = inserts.filter((v) => (v as { status: string }).status === "failed") as {
       toEmail: string;

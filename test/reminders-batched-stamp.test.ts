@@ -1,14 +1,19 @@
-// DEC-023 wave-48 amendment: the WRITE half of sendReminderEmails's fan-out
-// used to stamp last_reminded_at inside the per-recipient send loop — one
-// sequential D1 UPDATE per successfully-emailed recipient, interleaved with
-// the mail sends (the READ half, resolvePortalLinks, was already batched in
-// wave 46). This proves the loop body issues NO db.update call at all, and
-// that exactly one chunked UPDATE is issued after the loop, carrying only
-// the assignment ids of recipients whose send actually resolved — a
-// recipient whose mailer.send throws contributes none of its ids, and
-// `sent`/`failed` semantics are unchanged. Mocks inArray the same way
+// DEC-023: the WRITE half of sendReminderEmails's fan-out used to stamp
+// last_reminded_at inside the per-recipient send loop — one sequential D1
+// UPDATE per successfully-emailed recipient, interleaved with the mail sends
+// (the READ half, resolvePortalLinks, was already batched in wave 46). This
+// file proves the loop body issues NO db.update call at all.
+//
+// wave-47 amendment (claim-before-send): the post-loop stamp is gone — the
+// claim IS the stamp. sendReminderEmails now issues one chunked claim UPDATE
+// ... RETURNING *before* the loop (carrying every candidate id, since it
+// cannot yet know which sends fail) and, only when a send throws, one chunked
+// release UPDATE after it restoring just those ids to their pre-claim value.
+// The invariant this file defends is unchanged in spirit: the write half is
+// batched around the loop, never per-recipient, and a failed send still
+// retries on the next tick. Mocks inArray the same way
 // test/submissions-bulk-delete-r2-batch.test.ts does, to inspect the ids
-// bound into the single UPDATE's WHERE clause.
+// bound into each UPDATE's WHERE clause.
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -58,7 +63,25 @@ interface OutstandingRowShape {
 
 interface UpdateCall {
   values: unknown;
-  whereArg: { kind: "inArray"; vals: unknown[] };
+  whereArg: unknown;
+}
+
+/** Pulls the ids bound into an UPDATE's WHERE. The claim UPDATE wraps the
+ * mocked inArray in a real drizzle `and(...)` (its second operand, the
+ * dedupe-cutoff predicate, is undefined for remindNow), so the mock object
+ * is not always the top-level `whereArg` — search the graph for it. */
+function idsOf(whereArg: unknown): string[] {
+  const seen = new Set<unknown>();
+  const stack: unknown[] = [whereArg];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (node === null || typeof node !== "object" || seen.has(node)) continue;
+    seen.add(node);
+    const rec = node as Record<string, unknown>;
+    if (rec.kind === "inArray" && Array.isArray(rec.vals)) return rec.vals as string[];
+    for (const v of Object.values(rec)) stack.push(v);
+  }
+  throw new Error("no mocked inArray(...) found in this UPDATE's WHERE clause -- the fake's assumption broke");
 }
 
 // wave-56 amendment: remindNow now calls listRemindableContactIds FIRST (one
@@ -150,9 +173,20 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: UpdateCall[
     select: () => makeChain({}),
     update: () => ({
       set: (values: unknown) => ({
-        where: async (whereArg: { kind: "inArray"; vals: unknown[] }) => {
-          updateCalls.push({ values, whereArg });
-        },
+        where: (whereArg: { kind: "inArray"; vals: unknown[] }) => ({
+          then: (resolve: (v: unknown) => void) => {
+            updateCalls.push({ values, whereArg });
+            resolve(undefined);
+          },
+          // DEC-023 wave-47 claim-before-send: the claim UPDATE returns the
+          // ids it actually won. This fake's claim is unconditional (it has
+          // no dedupe state), so it wins every id bound into the WHERE —
+          // which is exactly what remindNow (claimCutoff=null) expects.
+          returning: async () => {
+            updateCalls.push({ values, whereArg });
+            return idsOf(whereArg).map((id) => ({ id }));
+          },
+        }),
       }),
     }),
     insert: () => ({
@@ -184,8 +218,8 @@ function rowFor(i: number): OutstandingRowShape {
   };
 }
 
-describe("sendReminderEmails write-half batching (DEC-023 wave-48 amendment)", () => {
-  it("issues exactly ONE update call carrying only the successful groups' assignment ids", async () => {
+describe("sendReminderEmails write-half batching (DEC-023 claim-before-send, wave-47 amendment)", () => {
+  it("brackets the send loop with one chunked claim UPDATE and one chunked release of only the failed ids", async () => {
     const rows = Array.from({ length: 5 }, (_, i) => rowFor(i));
     const { db, updateCalls } = fakeDb(rows);
 
@@ -207,13 +241,29 @@ describe("sendReminderEmails write-half batching (DEC-023 wave-48 amendment)", (
     expect(result.failed).toHaveLength(1);
     expect(result.failed[0]?.email).toBe(badEmail);
 
-    // Exactly one UPDATE was issued (not one per recipient).
-    expect(updateCalls).toHaveLength(1);
+    // DEC-023 wave-47 amendment: the write half is still batched, but the
+    // batching now brackets the loop instead of trailing it — ONE chunked
+    // claim UPDATE before the first send, and (only because one send failed)
+    // ONE chunked release UPDATE after the last. Still nothing per-recipient:
+    // 5 recipients, 2 writes.
+    expect(updateCalls).toHaveLength(2);
 
-    const idsUpdated = updateCalls[0]?.whereArg.vals as string[];
-    const expectedIds = rows.filter((_, i) => i !== BAD_INDEX).map((r) => r.assignmentId);
-    expect(new Set(idsUpdated)).toEqual(new Set(expectedIds));
-    expect(idsUpdated).not.toContain(rows[BAD_INDEX]?.assignmentId);
-    expect(idsUpdated).toHaveLength(4);
+    // The claim carries EVERY candidate id (it runs before any send, so it
+    // cannot yet know which will fail) and stamps last_reminded_at.
+    const claim = updateCalls[0]!;
+    expect(new Set(idsOf(claim.whereArg))).toEqual(new Set(rows.map((r) => r.assignmentId)));
+    expect((claim.values as { lastRemindedAt: Date | null }).lastRemindedAt).toEqual(NOW);
+
+    // The release carries ONLY the failed group's ids, restoring the
+    // pre-claim value (null here) so the next tick retries just that one.
+    const release = updateCalls[1]!;
+    const releasedIds = idsOf(release.whereArg);
+    expect(releasedIds).toEqual([rows[BAD_INDEX]?.assignmentId]);
+    expect((release.values as { lastRemindedAt: Date | null }).lastRemindedAt).toBeNull();
+
+    // The four successful recipients keep their claim: never released.
+    for (const r of rows.filter((_, i) => i !== BAD_INDEX)) {
+      expect(releasedIds).not.toContain(r.assignmentId);
+    }
   });
 });

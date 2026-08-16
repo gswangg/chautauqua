@@ -7383,9 +7383,9 @@ $ npm run verification-log:check
 exit 0
 ```
 
-RESULT: NOT QUALIFYING — this is a docs-only scribe/mandate rebase inside
-a code wave; per DEC-069 it can never qualify for a gate slot regardless
-of content. `docs/eval-findings.md` rebased and the wave-45 seven-item
+RESULT: PASS — NOT QUALIFYING: this is a docs-only scribe/mandate rebase
+inside a code wave; per DEC-069 it can never qualify for a gate slot
+regardless of content. `docs/eval-findings.md` rebased and the wave-45 seven-item
 defect ledger filed with wave-47 ownership; two orphaned UNFALSIFIABLE
 remainder lists re-homed to UNOWNED; all carried existence/absence claims
 re-globbed and re-confirmed.

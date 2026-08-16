@@ -159,7 +159,16 @@ function fakeDb(rows: OutstandingRowShape[]): Db {
     select: () => makeChain({}),
     update: () => ({
       set: () => ({
-        where: async () => {},
+        where: (cond: unknown) => ({
+          then: (resolve: (v: unknown) => void) => resolve(undefined),
+          // DEC-023 wave-47 claim-before-send: claims the whole fixture set,
+          // so every seeded contact still reaches the (batched) send loop
+          // this file is actually asserting on.
+          returning: async () => {
+            void cond;
+            return rows.map((r) => ({ id: r.assignmentId }));
+          },
+        }),
       }),
     }),
     insert: () => ({

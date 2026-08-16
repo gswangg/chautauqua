@@ -138,9 +138,22 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
     select: () => makeChain({}),
     update: () => ({
       set: (values: unknown) => ({
-        where: async () => {
-          updateCalls.push(values);
-        },
+        where: (cond: unknown) => ({
+          then: (resolve: (v: unknown) => void) => {
+            updateCalls.push(values);
+            resolve(undefined);
+          },
+          // DEC-023 wave-47 claim-before-send: sendReminderEmails claims the
+          // assignment ids up front via UPDATE ... RETURNING. Dumb mock, per
+          // this fake's own convention: ignores `cond` and claims the whole
+          // fixture set, matching the unconditional accept every other chain
+          // link here already does.
+          returning: async () => {
+            updateCalls.push(values);
+            void cond;
+            return rows.map((r) => ({ id: r.assignmentId }));
+          },
+        }),
       }),
     }),
   } as unknown as Db;
