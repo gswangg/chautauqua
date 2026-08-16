@@ -9,7 +9,7 @@ import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { getEventForOrg } from "../../server/repo/events";
 import { applySessionboardPlans } from "../../server/repo/import/sessionboard";
-import { parseCsv } from "../../lib/csv";
+import { parseCsv } from "../../domain/csv";
 import { autoMapSessionboardColumns, planSessionboardRows, type SbEntity } from "../../domain/sessionboard";
 import { MAX_IMPORT_CSV_BYTES, MAX_IMPORT_ROWS } from "./contacts/import";
 import { currentOrgId, asRecord, isPlainObject } from "./contacts/shared";

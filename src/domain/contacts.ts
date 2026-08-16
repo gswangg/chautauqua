@@ -1,6 +1,6 @@
 // Contacts/CRM domain core (J11), pure module per DEC-002.
 // No node:/cloudflare imports — Web APIs only. This module consumes
-// already-parsed CSV rows (parseCsv lives in src/lib/csv.ts, DEC-011); it
+// already-parsed CSV rows (parseCsv lives in src/domain/csv.ts, DEC-011); it
 // never imports the CSV parser itself.
 //
 // Structure-custodian decomposition: this file used to hold the whole J11

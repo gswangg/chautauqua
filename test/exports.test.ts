@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toCsv } from "../src/lib/csv";
+import { toCsv } from "../src/domain/csv";
 import {
   isExportKind,
   EXPORT_KINDS,

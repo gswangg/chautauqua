@@ -9,7 +9,7 @@ import { ApiError } from "../../../server/http";
 import * as repo from "../../../server/repo/contacts";
 import { getEventForOrg } from "../../../server/repo/events";
 import { listAcceptedContactIds } from "../../../server/repo/tasks";
-import { parseCsv } from "../../../lib/csv";
+import { parseCsv } from "../../../domain/csv";
 import {
   mapImportRow,
   importFieldCapViolations,
