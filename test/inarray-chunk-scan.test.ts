@@ -117,7 +117,7 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
       "enum's own size, never request-scale.",
   ],
   [
-    "src/server/repo/files-versions.ts",
+    "src/server/repo/files-versions-chain.ts",
     "ids",
     "listFileChainVersions' ids come from listFileChainIds, which walks " +
       "ONE file's previous_file_id chain -- bounded by that single file's " +
