@@ -83,3 +83,41 @@ survives contact with state:
   Save/Cancel. A save-model change was judged too risky mid-freeze; the
   final sweep should record a verdict (bless the per-row model or file the
   page-footer rework as post-deadline).
+
+## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)
+
+The G13 frame-complete sweep confirmed these frames draw features or reworks the
+build does not carry. The user blessed deferring them past the submission
+deadline; they are scope decisions, not defects. Audits cite this section
+instead of re-flagging.
+
+**Unbuilt features (no data model or endpoint behind the drawing):**
+- "Your data" edit view: retention select, keeping-and-deleting checkboxes,
+  revoke-every-token footer (09--16).
+- Tracks/rooms drag-handle reordering — no server-side order field (09--12).
+- Public-pages Publish/Unpublish control (09--07) and saved-embed "in use on"
+  host column (09--09) — no backing data.
+- Per-person scope column and per-row Change on people-and-roles read view —
+  users are org-scoped (09--02/--14).
+- Hotel-form save-draft, per-recipient reminder triage rows, speaker-detail
+  header restructure (04/07 frames).
+- AI-assisted triage (eval ABS-14) — roadmap, never sketched in frames.
+
+**Reworks larger than the freeze window:**
+- CSV import "THE FIRST THREE" rejection screen (560 card, no step rail,
+  download-the-rows action) — the validation itself SHIPPED; this is the
+  presentation (08--15).
+- Embed editor drill-page anatomy (09--15), Sessionboard importer modal +
+  per-entity dispositions (09--25), plan-editor footer draft-vs-open model,
+  email HTML shells' CTA/callout/signature anatomy (07--09..12), shared
+  ConfirmDialog 480/subtitle/typed-label anatomy (09--21/22), portal
+  resources-block rework (09--13), docs IA expansion (14 further articles).
+
+**Adjudications recorded:**
+- Tracks-and-rooms save model: per-row dirty-reveal BLESSED (G13 srv1
+  adjudication); frame 09--12's page-footer model filed as post-deadline
+  rework. The Done control now confirms before discarding dirty rows.
+- Auth input fill #FFFFFF (frames) vs palette-closure ban on the literal —
+  needs a README palette ruling before any change.
+- Settings 760 measure (09--00) rejected: collides with the app-wide 820
+  measure token (DEC-744/DEC-808).
