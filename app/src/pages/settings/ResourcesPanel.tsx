@@ -12,21 +12,20 @@
 // disabled. A wiki resource's read row names the page and its SIZE (word
 // count), never its raw markdown body (DEC-747).
 //
-// w1-f, DEC-785: this panel is only ever mounted inside its caller's own
-// edit drill (PortalSettingsPanel), so at rest it must not ALSO dump
-// straight into the full add/edit/delete surface -- it owns its own local
-// summary/edit split. At rest it renders the real rows (name + kind, DEC-047
-// amendment); 'Change' switches to the CRUD surface below rather than
-// revealing it inline.
-//
 // DEC-815 amendment (wave 4): PortalSettingsPanel's own SummarySection row
-// (before 'Change' is clicked) also needs the real resource rows instead
-// of a describing sentence. `readOnly` makes this component serve both
-// views rather than a second list renderer: the row-level `readOnly` render
-// is the plain title + kind list (a file row also links its download,
-// mirroring the CRUD view's own link) with no add/delete control at all;
-// the default (unset) keeps the existing local summary/edit split used
-// inside PortalSettingsPanel's own edit branch.
+// needs the real resource rows instead of a describing sentence. `readOnly`
+// makes this component serve both views rather than a second list renderer:
+// the row-level `readOnly` render is the plain title + kind list (a file
+// row also links its download, mirroring the CRUD view's own link) with no
+// add/delete control at all; the default (unset) render is the full
+// add/edit/delete surface reachable directly.
+//
+// DEC-785 amendment (wave 66): the local summary/edit split ('Change' /
+// 'Back', `showEditor` state) is REMOVED. This panel is only ever mounted
+// inside its caller's own edit drill (PortalSettingsPanel's `edit=1`
+// branch), so a second nested drill just to reach add/edit/delete was
+// drill-inside-a-drill -- the caller already gated entry. The default
+// (unset) render is now always the full CRUD surface.
 import { useEffect, useState, type FormEvent } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
@@ -85,9 +84,6 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
   // shared ConfirmDialog rather than firing on click.
   const [pendingDelete, setPendingDelete] = useState<Resource | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // w1-f, DEC-785: local read/edit split -- defaults to the read-only list
-  // (name + kind); 'Change' switches to the full CRUD surface below.
-  const [showEditor, setShowEditor] = useState(false);
 
   function reload(id: string) {
     setLoading(true);
@@ -237,39 +233,10 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
     );
   }
 
-  if (!showEditor) {
-    return (
-      <div className="chq-settings-portal-resources-block">
-        {loading ? <DelayedLoading /> : null}
-        {error ? <p role="alert">{error}</p> : null}
-        <ul className="chq-settings-summary-list">
-          {resources.map((resource) => (
-            <li key={resource.id} className="chq-settings-summary-row">
-              <span className="chq-settings-summary-row-primary">{resource.title}</span>
-              <span className="chq-settings-summary-row-detail">
-                {resource.kind === 'file' ? 'File' : 'Wiki page'}
-              </span>
-            </li>
-          ))}
-          {!loading && resources.length === 0 ? (
-            <li className="chq-settings-summary-empty">No resources yet.</li>
-          ) : null}
-        </ul>
-        <button type="button" className="chq-link-button" onClick={() => setShowEditor(true)}>
-          Change
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="chq-settings-portal-resources-block">
       {loading ? <DelayedLoading /> : null}
       {error ? <p role="alert">{error}</p> : null}
-
-      <button type="button" className="chq-link-button" onClick={() => setShowEditor(false)}>
-        Back
-      </button>
 
       <ul className="chq-settings-portal-resource-list">
         {resources.map((resource) => {

@@ -107,6 +107,28 @@ describe('SessionboardImportPanel', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
+  it('pluralizes the confirm button label: "Import 1 row" for a one-row dry run, "Import 3 rows" otherwise', async () => {
+    mockApi({
+      [ENDPOINT]: {
+        dryRun: true,
+        entity: 'contacts',
+        created: 1,
+        updated: 0,
+        skipped: [],
+        issues: [],
+      },
+    });
+
+    render(<SessionboardImportPanel />);
+    fireEvent.change(screen.getByLabelText(/Or paste the exported CSV text/), {
+      target: { value: 'name,email\nAda Lovelace,ada@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview import (dry run)' }));
+
+    expect(await screen.findByRole('button', { name: 'Import 1 row' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Import 1 rows' })).not.toBeInTheDocument();
+  });
+
   it('states plainly that imported speakers are added hidden (DEC-675/DEC-656)', () => {
     render(<SessionboardImportPanel />);
     expect(screen.getByText(/Imported speakers are added hidden/)).toBeInTheDocument();

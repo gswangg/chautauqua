@@ -35,8 +35,8 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
 });
 
-describe('ResourcesPanel (w1-f, DEC-785)', () => {
-  it('renders the real rows (name + kind) at rest, before any Change click', async () => {
+describe('ResourcesPanel (DEC-785 amendment, wave 66)', () => {
+  it('renders the full add/edit/delete surface directly at rest, with no local Change/Back drill', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([resource(), fileResource()]),
     });
@@ -44,13 +44,12 @@ describe('ResourcesPanel (w1-f, DEC-785)', () => {
     render(<ResourcesPanel />);
 
     expect(await screen.findByText('Speaker FAQ')).toBeInTheDocument();
-    expect(screen.getByText('Wiki page')).toBeInTheDocument();
     expect(screen.getByText('Handout.pdf')).toBeInTheDocument();
-    expect(screen.getByText('File')).toBeInTheDocument();
 
-    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add a resource' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Add a resource' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 });
 
@@ -96,7 +95,6 @@ describe('ResourcesPanel (DEC-941)', () => {
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     const dialog = screen.getByRole('dialog');
@@ -135,7 +133,6 @@ describe('ResourcesPanel file upload discloses caps up front (w63-c)', () => {
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
     fireEvent.click(await screen.findByRole('button', { name: 'File' }));
 
@@ -156,7 +153,6 @@ describe('ResourcesPanel file upload discloses caps up front (w63-c)', () => {
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
     fireEvent.click(await screen.findByRole('button', { name: 'File' }));
 
@@ -191,7 +187,6 @@ describe('ResourcesPanel Add-a-resource modal (DEC-047 wave-64 amendment)', () =
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
@@ -208,7 +203,6 @@ describe('ResourcesPanel Add-a-resource modal (DEC-047 wave-64 amendment)', () =
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
 
     // Wiki page selected by default: content textarea present, no file input.
@@ -237,7 +231,6 @@ describe('ResourcesPanel Add-a-resource modal (DEC-047 wave-64 amendment)', () =
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
 
     fireEvent.change(screen.getByPlaceholderText('Title'), { target: { value: 'Speaker FAQ' } });
@@ -263,7 +256,6 @@ describe('ResourcesPanel Add-a-resource modal (DEC-047 wave-64 amendment)', () =
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
     fireEvent.click(screen.getByRole('button', { name: 'File' }));
 
@@ -292,7 +284,6 @@ describe('ResourcesPanel wiki-page content states the Markdown grammar it applie
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
 
     expect(screen.getByText(MARKDOWN_SYNTAX_HINT)).toBeInTheDocument();
@@ -305,7 +296,6 @@ describe('ResourcesPanel wiki-page content states the Markdown grammar it applie
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Replace' }));
 
     expect(screen.getByText(MARKDOWN_SYNTAX_HINT)).toBeInTheDocument();
@@ -320,7 +310,6 @@ describe('ResourcesPanel file-row Rename (DEC-029 amendment)', () => {
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
 
     expect(await screen.findByRole('button', { name: 'Rename' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Replace' })).not.toBeInTheDocument();
@@ -340,7 +329,6 @@ describe('ResourcesPanel file-row Rename (DEC-029 amendment)', () => {
 
     render(<ResourcesPanel />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Rename' }));
     const titleInput = await screen.findByDisplayValue('Handout.pdf');
     fireEvent.change(titleInput, { target: { value: 'Renamed Handout' } });

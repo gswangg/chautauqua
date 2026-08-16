@@ -30,6 +30,7 @@ import { parseCsv } from '../contacts/csv';
 import { MAX_IMPORT_CSV_BYTES } from '../../lib/domain-caps';
 import { formatBytes } from '../../../../src/domain/files';
 import { SB_TARGET_FIELDS, autoMapSessionboardColumns, type SbEntity } from '../../../../src/domain/sessionboard';
+import { countOf } from '../../lib/plural';
 
 export type SessionboardEntity = SbEntity;
 
@@ -421,7 +422,7 @@ export function SessionboardImportPanel() {
               {dryRunReport && !finalReport && (
                 <div className="chq-settings-row">
                   <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={() => void runImport()}>
-                    {busy ? 'Importing…' : `Import ${dryRunReport.created + dryRunReport.updated} rows`}
+                    {busy ? 'Importing…' : `Import ${countOf(dryRunReport.created + dryRunReport.updated, 'row')}`}
                   </button>
                 </div>
               )}
