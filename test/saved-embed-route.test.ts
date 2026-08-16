@@ -136,15 +136,27 @@ describe("DEC-785: GET /embed/e/:embedId", () => {
 
   // DEC-822 overrides DEC-785: a disabled embed is an intentional blank
   // (an organiser switched it off), not a 404 — a 404 inside someone
-  // else's iframe would read as a broken customer page.
-  it("returns an empty 200 for a disabled embed -- an intentional blank, not a 404 (DEC-822)", async () => {
+  // else's iframe would read as a broken customer page. Wave-59 amendment:
+  // the blank is a MINIMAL designed document (a single quiet line), not a
+  // literal empty body, and it must never name the event or the surface
+  // (the check runs before getPublicEventById -- a withdrawn embed leaks
+  // nothing).
+  it("returns a minimal designed 200 for a disabled embed -- an intentional blank, not a 404 (DEC-822)", async () => {
     const app = buildApp();
     const res = await app.request(`/embed/e/${DISABLED_EMBED.id}`);
 
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toBe("");
+    expect(html).toContain("This embed has been turned off.");
     expect(html).not.toContain("That page isn");
+    expect(html).not.toContain(EVENT.name);
+    // The body (not the shared, value-free stylesheet, which legitimately
+    // mentions surface names in unrelated class names/comments) must name
+    // neither the event nor the surface -- the check runs before
+    // getPublicEventById, so this is a body-content assertion, not a
+    // full-document one.
+    const body = html.match(/<body[^>]*>([\s\S]*)<\/body>/)![1]!;
+    expect(body).not.toContain(DISABLED_EMBED.surface);
     expect(res.headers.get("Content-Type")).toContain("text/html");
     // DEC-822: a switched-off embed keeps the same cache headers as a live
     // one -- unlike publicNotFound, which forces no-store.

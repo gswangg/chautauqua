@@ -1,10 +1,15 @@
 // DEC-785/DEC-822/DEC-839: saved embeds. GET /embed/e/:embedId resolves the
 // embed row. An unknown id returns the SAME designed 404 page every other
 // unknown public route uses (publicNotFound, ./index.tsx). A DISABLED embed
-// is DEC-822's explicit override of DEC-785: it returns an empty 200 (an
-// intentional blank inside someone else's iframe), not a 404 -- a page the
-// organiser switched off must not shout "not found" on a customer's site.
-// When enabled, it resolves in its SAVED format (DEC-850): iframe/element/
+// is DEC-822's explicit override of DEC-785: it returns 200 with a MINIMAL
+// designed blank (DEC-822 wave-59 amendment) -- a single quiet line, not a
+// literal empty body, and not a 404 -- a page the organiser switched off
+// must not shout "not found" on a customer's site. The blank still runs
+// with NO event lookup (getPublicEventById never runs for a disabled
+// embed): a withdrawn embed must leak nothing about the event it was
+// pointed at, so the blank is a self-contained document, not EmbedShell
+// (which requires a PublicEvent). When enabled, it resolves in its SAVED
+// format (DEC-850): iframe/element/
 // link render inline through the existing embed render path
 // (renderSurfaceContent + EmbedShell — the identical pipeline
 // /embed/:eventSlug/:surface uses); json/xml redirect (302) to the
@@ -19,7 +24,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { getPublicEventById } from "../../server/repo/public";
 import { getEmbedById } from "../../server/repo/embeds";
-import { isSurface, setCacheHeaders, EmbedShell } from "./shell";
+import { isSurface, setCacheHeaders, EmbedShell, BaseStyles } from "./shell";
 import { parseTrackId, parseNameQuery, parseDay, parseLimit, parseCardFields, parseAccent, parseFormat, parseRoomId } from "./query";
 import { renderSurfaceContent } from "./dispatch";
 import { publicNotFound } from "./not-found";
@@ -56,10 +61,31 @@ savedEmbedRoutes.get("/embed/e/:embedId", async (c) => {
   setCacheHeaders(c);
   const embed = await getEmbedById(c.var.db, c.req.param("embedId"));
   if (!embed) return publicNotFound(c, "Embed not found.");
-  // DEC-822/DEC-839: disabled is an intentional blank, not a 404 -- keep
-  // the cache headers setCacheHeaders(c) already set above (unlike
-  // publicNotFound, which forces no-store).
-  if (!embed.enabled) return c.html("");
+  // DEC-822/DEC-839 (wave-59 amendment): disabled is an intentional blank,
+  // not a 404 -- keep the cache headers setCacheHeaders(c) already set
+  // above (unlike publicNotFound, which forces no-store), and run this
+  // check strictly BEFORE getPublicEventById below so a withdrawn embed
+  // never resolves (and cannot leak) the event it was pointed at. The
+  // blank is a MINIMAL designed document, not a literal empty body -- a
+  // single quiet line, still status 200, no EmbedShell (which requires a
+  // PublicEvent this branch must never fetch).
+  if (!embed.enabled) {
+    return c.html(
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Chautauqua</title>
+          <BaseStyles />
+        </head>
+        <body>
+          <main class="chq-pub-main">
+            <p>This embed has been turned off.</p>
+          </main>
+        </body>
+      </html>,
+    );
+  }
   if (!isSurface(embed.surface)) return publicNotFound(c, "Embed not found.");
 
   const event = await getPublicEventById(c.var.db, embed.eventId);
