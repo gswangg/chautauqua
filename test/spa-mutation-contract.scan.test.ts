@@ -1,26 +1,37 @@
-// DEC-817 amendment (findings wave 13): the admin SPA and its routes are ONE
-// contract, graded executably. Two controls shipped a key their route never
-// parsed (PATCH /submissions/:id's `audienceLevel`, PATCH .../participants/
-// :participantId's `role` -- both fixed by task-w13-a, on which this scan
-// depends to be green), and nothing anywhere compared the two sides. This
-// scan re-derives the population at test time, from the SPA's own source:
+// DEC-817 amendment (findings wave 13, widened wave 53): the admin SPA and
+// its routes are ONE contract, graded executably. Two controls shipped a key
+// their route never parsed (PATCH /submissions/:id's `audienceLevel`, PATCH
+// .../participants/:participantId's `role` -- both fixed by task-w13-a, on
+// which this scan depends to be green), and nothing anywhere compared the
+// two sides. A THIRD defect (the user-filed prod P1: "No route matches
+// DELETE /api/v1/submissions/:id/participants/:pid") happened because the
+// original scan read only apiPost/apiPatch/apiPut and resolved paths through
+// a hand-written ROUTE_MODULE_MAP -- a hand-listed population. Wave 53
+// widened both: every api* helper is scanned, and resolution goes through
+// resolveRegisteredRoute (test/helpers/registered-routes.ts), derived from
+// the REAL route table in src/routes/**. This scan re-derives the
+// population at test time, from the SPA's own source:
 //
 //   1. Walk app/src/**/*.{ts,tsx} (excluding *.test.ts(x) -- those exercise
 //      the api client itself against synthetic paths that are not live
 //      routes, e.g. app/src/lib/useNavExceptions.test.tsx's
 //      '/events/ev-1/agenda/resolve', which no route in src/routes/ serves).
-//      For every call to apiPost/apiPatch/apiPut (an optional `<...>`
-//      generic is skipped) whose second argument is a literal object `{...}`,
-//      extract the request path and the object's TOP-LEVEL keys.
-//   2. Resolve each extracted path to the route module that serves it, via
-//      an explicit path-prefix -> module map declared below. A path the map
-//      cannot resolve FAILS the test, naming the path -- an unmapped path is
-//      a hole in the grader, not a pass.
-//   3. Assert every extracted key appears as a token in that module's source
-//      (a simple `\bkey\b` search over the raw file text -- not a real
-//      parse, so a key that only appears in a comment would also "pass";
-//      this repo's other *.scan.test.ts files accept the same text-scan
-//      honesty tradeoff, e.g. test/route-authz-enumeration.scan.test.ts).
+//      For every call to apiGet/apiList/apiPost/apiPatch/apiPut/apiDelete/
+//      apiUpload/apiPostBlob (an optional `<...>` generic is skipped),
+//      extract the request path (relative to API_PREFIX, `/api/v1`, query
+//      string and fragment stripped) and -- when the second argument is a
+//      literal object `{...}` -- the object's TOP-LEVEL keys.
+//   2. Resolve each extracted method+path to its registered route via
+//      resolveRegisteredRoute. A path that resolves to no route FAILS the
+//      test, naming file:line -- an unresolved path is a hole in the
+//      grader, not a pass, unless it is recorded in the UNBUILT_ENDPOINTS
+//      array below with a written reason.
+//   3. Assert every extracted key appears as a token in that route's own
+//      module source, plus that module's one-level relative imports (a
+//      simple `\bkey\b` search over the raw file text -- not a real parse,
+//      so a key that only appears in a comment would also "pass"; this
+//      repo's other *.scan.test.ts files accept the same text-scan honesty
+//      tradeoff, e.g. test/route-authz-enumeration.scan.test.ts).
 //
 // What this scan deliberately does NOT see (so a green run is never mistaken
 // for a total proof):
@@ -52,7 +63,8 @@
 
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
+import { resolveRegisteredRoute } from "./helpers/registered-routes";
 
 const ROOT = join(__dirname, "..");
 const APP_SRC = join(ROOT, "app", "src");
@@ -270,16 +282,50 @@ function splitTopLevel(text: string): string[] {
 interface MutationCall {
   file: string; // repo-relative path
   line: number; // 1-indexed line of the call
-  method: "POST" | "PATCH" | "PUT";
-  path: string; // normalized: ${...} segments become ":param"
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+  path: string; // API_PREFIX-joined, normalized: ${...} segments become ":param", query/fragment stripped
   keys: string[];
   skipped: { kind: "spread" | "computed-key"; text: string }[];
 }
 
-const CALL_NAME_RE = /\b(apiPost|apiPatch|apiPut)\b/g;
+// DEC-817's wave-53 amendment: every api* helper, not just the three that
+// carry a JSON body -- an SPA call to a path no route serves is the exact P1
+// class (apiDelete's Remove co-presenter), and it can't be seen by scanning
+// only the body-bearing verbs.
+const CALL_NAME_RE = /\b(apiGet|apiList|apiPost|apiPatch|apiPut|apiDelete|apiUpload|apiPostBlob)\b/g;
+
+const CALL_NAME_TO_METHOD: Record<string, MutationCall["method"]> = {
+  apiGet: "GET",
+  apiList: "GET",
+  apiPost: "POST",
+  apiUpload: "POST",
+  apiPostBlob: "POST",
+  apiPatch: "PATCH",
+  apiPut: "PUT",
+  apiDelete: "DELETE",
+};
+
+// app/src/lib/api.ts's API_PREFIX -- every api* call's path is relative to
+// this; the real route table (test/helpers/registered-routes.ts) reports
+// full mounted paths that already carry it (src/index.ts mounts every
+// api/* sub-app at "/api/v1").
+const API_PREFIX = "/api/v1";
 
 function normalizePath(raw: string): string {
-  return raw.replace(/\$\{[^}]*\}/g, ":param");
+  const stripped = raw.split("?")[0]!.split("#")[0]!;
+  // A `${...}` span immediately preceded by "/" opens a new path segment --
+  // a genuine route param (e.g. `/fields/${id}`) -- and becomes ":param".
+  // A `${...}` span NOT preceded by "/" is tacked onto the end of the
+  // previous literal segment with no separator (e.g.
+  // `` `/events/${eventId}/submissions${qs}` `` where `qs` is a
+  // caller-built computed query string, not a path segment) -- this scan
+  // can't know its runtime shape, so it's dropped rather than guessed at,
+  // the same "invisible to this scan" treatment as any other computed
+  // value (see the file header).
+  return (
+    API_PREFIX +
+    stripped.replace(/(\/)?\$\{[^}]*\}/g, (_match, slash) => (slash ? "/:param" : ""))
+  );
 }
 
 /** Extracts the top-level keys of an object-literal body (the text strictly
@@ -320,7 +366,7 @@ function findMutationCalls(file: string, rawSrc: string): MutationCall[] {
   let match: RegExpExecArray | null;
   CALL_NAME_RE.lastIndex = 0;
   while ((match = CALL_NAME_RE.exec(src))) {
-    const name = match[1] as "apiPost" | "apiPatch" | "apiPut";
+    const name = match[1] as keyof typeof CALL_NAME_TO_METHOD;
     let j = match.index + name.length;
     while (j < src.length && /\s/.test(src[j] ?? "")) j++;
     // Optional `<...>` generic -- a simple balanced-angle-bracket skip (the
@@ -354,29 +400,33 @@ function findMutationCalls(file: string, rawSrc: string): MutationCall[] {
 
     const lineIdx = src.slice(0, match.index).split("\n").length - 1;
     const bodyArg = (args[1] ?? "").trim();
-    if (bodyArg === "" || bodyArg[0] !== "{") {
-      // No body, or a computed body (variable/call/ternary/etc) -- invisible
-      // to this scan, per the file header.
-      continue;
+    let keys: string[] = [];
+    let skipped: MutationCall["skipped"] = [];
+    if (bodyArg !== "" && bodyArg[0] === "{") {
+      // bodyArg[0] is '{' at index 0 of bodyArg (after trimming), but bodyArg
+      // is a slice of argsText (itself a slice of src) -- re-locate the real
+      // '{' inside `src` via argsOffsetOfIndex (which reuses the SAME depth-
+      // tracking splitTopLevel already used to produce `args`, so it can't
+      // drift from what `args[1]` actually is) rather than a string search
+      // (an object body can legitimately repeat substrings elsewhere in
+      // argsText).
+      const secondArgOffsetInArgsText = argsOffsetOfIndex(argsText, 1);
+      const braceIdxInSrc = openParenIdx + 1 + secondArgOffsetInArgsText + (args[1]!.indexOf("{"));
+      const closeBraceIdx = findMatchingBracket(src, braceIdxInSrc);
+      const inner = src.slice(braceIdxInSrc + 1, closeBraceIdx);
+      const extracted = extractObjectKeys(inner);
+      keys = extracted.keys;
+      skipped = extracted.skipped;
     }
-    // bodyArg[0] is '{' at index 0 of bodyArg (after trimming), but bodyArg
-    // is a slice of argsText (itself a slice of src) -- re-locate the real
-    // '{' inside `src` via argsOffsetOfIndex (which reuses the SAME depth-
-    // tracking splitTopLevel already used to produce `args`, so it can't
-    // drift from what `args[1]` actually is) rather than a string search
-    // (an object body can legitimately repeat substrings elsewhere in
-    // argsText).
-    const secondArgOffsetInArgsText = argsOffsetOfIndex(argsText, 1);
-    const braceIdxInSrc = openParenIdx + 1 + secondArgOffsetInArgsText + (args[1]!.indexOf("{"));
-    const closeBraceIdx = findMatchingBracket(src, braceIdxInSrc);
-    const inner = src.slice(braceIdxInSrc + 1, closeBraceIdx);
-    const { keys, skipped } = extractObjectKeys(inner);
+    // No body, or a computed body (variable/call/ternary/FormData/etc) --
+    // the path is still resolved and checked (that's the whole point of the
+    // widened scan); only the key check is invisible for a non-literal or
+    // absent body, per the file header.
 
-    const method = name === "apiPost" ? "POST" : name === "apiPatch" ? "PATCH" : "PUT";
     out.push({
       file: relative(ROOT, file).split("\\").join("/"),
       line: lineIdx + 1,
-      method,
+      method: CALL_NAME_TO_METHOD[name]!,
       path,
       keys,
       skipped,
@@ -420,93 +470,45 @@ function argsOffsetOfIndex(argsText: string, index: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Path-prefix -> route module map, declared explicitly here (not derived --
-// DEC-817's own instruction). Order matters: more specific prefixes are
-// listed before their broader parents where both could otherwise match, but
-// every entry below is actually a distinct literal-segment prefix so there
-// is no real overlap in practice.
+// DEC-817's wave-53 amendment: resolution is no longer a hand-written map --
+// resolveRegisteredRoute (test/helpers/registered-routes.ts) resolves a
+// call's method+path against the REAL route table, derived from source. The
+// module a key is checked against is that registration's own `file` plus
+// its one-level relative imports (so a route that parses its body in a
+// sibling helper module still passes honestly).
 // ---------------------------------------------------------------------------
-const ROUTE_MODULE_MAP: { prefix: RegExp; module: string }[] = [
-  { prefix: /^\/embeds\/:param$/, module: "src/routes/api/embeds.ts" },
-  { prefix: /^\/events\/:param\/embeds$/, module: "src/routes/api/embeds.ts" },
-  { prefix: /^\/events\/:param\/submissions\/status$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/events\/:param\/submissions\/content-status$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/events\/:param\/submissions\/delete$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/events\/:param\/submissions$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/submissions\/:param\/participants\/:param$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/submissions\/:param\/participants$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/submissions\/:param\/content-status$/, module: "src/routes/files.ts" },
-  { prefix: /^\/submissions\/:param\/content-note$/, module: "src/routes/content-notes.ts" },
-  { prefix: /^\/submissions\/:param$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/task-assignments\/:param$/, module: "src/routes/tasks.ts" },
-  { prefix: /^\/events\/:param\/tasks$/, module: "src/routes/tasks.ts" },
-  { prefix: /^\/events\/:param\/onboarding\/remind\/preview$/, module: "src/routes/tasks.ts" },
-  { prefix: /^\/events\/:param\/onboarding\/remind$/, module: "src/routes/tasks.ts" },
-  { prefix: /^\/tasks\/:param$/, module: "src/routes/tasks.ts" },
-  { prefix: /^\/events\/:param\/resources$/, module: "src/routes/api/portal-config.ts" },
-  { prefix: /^\/resources\/:param$/, module: "src/routes/api/portal-config.ts" },
-  { prefix: /^\/events\/:param\/portal-settings$/, module: "src/routes/api/portal-config.ts" },
-  { prefix: /^\/events\/:param\/portal-invites$/, module: "src/routes/comms/portal-invites.ts" },
-  { prefix: /^\/events\/:param\/tracks$/, module: "src/routes/api/events.ts" },
-  { prefix: /^\/tracks\/:param$/, module: "src/routes/api/events.ts" },
-  { prefix: /^\/events\/:param\/rooms$/, module: "src/routes/api/events.ts" },
-  { prefix: /^\/rooms\/:param$/, module: "src/routes/api/events.ts" },
-  { prefix: /^\/events\/:param\/agenda\/auto-schedule$/, module: "src/routes/agenda.ts" },
-  { prefix: /^\/events\/:param\/agenda\/publish$/, module: "src/routes/agenda.ts" },
-  { prefix: /^\/submissions\/:param\/slot$/, module: "src/routes/agenda.ts" },
-  { prefix: /^\/contacts\/duplicates\/dismiss$/, module: "src/routes/api/contacts/duplicates.ts" },
-  { prefix: /^\/contacts\/merge$/, module: "src/routes/api/contacts/merge.ts" },
-  { prefix: /^\/contacts\/bulk-email\/preview$/, module: "src/routes/api/contacts/bulk-email.ts" },
-  { prefix: /^\/contacts\/bulk-email$/, module: "src/routes/api/contacts/bulk-email.ts" },
-  { prefix: /^\/contacts\/import$/, module: "src/routes/api/contacts/import.ts" },
-  { prefix: /^\/contacts\/:param\/add-to-event$/, module: "src/routes/api/contacts/crud.ts" },
-  { prefix: /^\/contacts\/:param$/, module: "src/routes/api/contacts/crud.ts" },
-  { prefix: /^\/contacts$/, module: "src/routes/api/contacts/crud.ts" },
-  { prefix: /^\/segments\/:param$/, module: "src/routes/api/contacts/segments.ts" },
-  { prefix: /^\/segments$/, module: "src/routes/api/contacts/segments.ts" },
-  { prefix: /^\/pipeline\/:param\/notes$/, module: "src/routes/api/pipeline.ts" },
-  { prefix: /^\/pipeline\/:param$/, module: "src/routes/api/pipeline.ts" },
-  { prefix: /^\/pipeline$/, module: "src/routes/api/pipeline.ts" },
-  { prefix: /^\/events\/:param\/templates$/, module: "src/routes/comms/templates.ts" },
-  { prefix: /^\/templates\/:param$/, module: "src/routes/comms/templates.ts" },
-  { prefix: /^\/review\/plans\/:param\/evaluations\/:param$/, module: "src/routes/review/reviewer.ts" },
-  { prefix: /^\/review\/plans\/:param\/recusals\/:param$/, module: "src/routes/review/recusals.ts" },
-  { prefix: /^\/breaks\/:param$/, module: "src/routes/api/breaks.ts" },
-  { prefix: /^\/events\/:param\/breaks$/, module: "src/routes/api/breaks.ts" },
-  { prefix: /^\/events\/:param$/, module: "src/routes/api/events.ts" },
-  { prefix: /^\/events$/, module: "src/routes/api/events.ts" },
-  { prefix: /^\/events\/:param\/import\/sessionboard$/, module: "src/routes/api/import.ts" },
-  { prefix: /^\/users\/:param\/reset-password$/, module: "src/routes/api/users.ts" },
-  { prefix: /^\/users\/:param$/, module: "src/routes/api/users.ts" },
-  { prefix: /^\/users$/, module: "src/routes/api/users.ts" },
-  { prefix: /^\/tokens\/:param$/, module: "src/routes/api/tokens.ts" },
-  { prefix: /^\/tokens$/, module: "src/routes/api/tokens.ts" },
-  { prefix: /^\/forms\/:param\/fields\/reorder$/, module: "src/routes/api/forms.ts" },
-  { prefix: /^\/forms\/:param\/fields$/, module: "src/routes/api/forms.ts" },
-  { prefix: /^\/fields\/:param$/, module: "src/routes/api/forms.ts" },
-  { prefix: /^\/forms\/:param$/, module: "src/routes/api/forms.ts" },
-  { prefix: /^\/plans\/:param\/remind$/, module: "src/routes/review/plans-progress.ts" },
-  { prefix: /^\/plans\/:param\/advance-round$/, module: "src/routes/review/plans-crud.ts" },
-  { prefix: /^\/plans\/:param\/waves$/, module: "src/routes/review/plans-crud.ts" },
-  { prefix: /^\/plans\/:param$/, module: "src/routes/review/plans-crud.ts" },
-  { prefix: /^\/events\/:param\/plans$/, module: "src/routes/review/plans-crud.ts" },
-  { prefix: /^\/plans\/:param\/assignments\/distribute$/, module: "src/routes/review/plans-distribute.ts" },
-  { prefix: /^\/plans\/:param\/reviewers\/:param$/, module: "src/routes/review/plans-reviewers.ts" },
-  { prefix: /^\/plans\/:param\/reviewers$/, module: "src/routes/review/plans-reviewers.ts" },
-  { prefix: /^\/events\/:param\/submissions\/delete-plan$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/events\/:param\/views$/, module: "src/routes/api/views.ts" },
-  { prefix: /^\/views\/:param$/, module: "src/routes/api/views.ts" },
-  { prefix: /^\/submissions\/:param\/clone$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/submissions\/:param\/revisions\/:param\/restore$/, module: "src/routes/api/submissions.ts" },
-  { prefix: /^\/events\/:param\/compose\/preview$/, module: "src/routes/comms/preview.ts" },
-  { prefix: /^\/events\/:param\/compose\/send$/, module: "src/routes/comms/send.ts" },
-];
+const IMPORT_RE = /import\s+(?:[^;'"`]*?)\bfrom\s+["'](\.[^"']+)["']/g;
 
-function resolveModule(path: string): string | undefined {
-  return ROUTE_MODULE_MAP.find((e) => e.prefix.test(path))?.module;
+function resolveRelativeImport(fromFile: string, specifier: string): string | undefined {
+  const base = join(dirname(fromFile), specifier);
+  for (const candidate of [`${base}.ts`, `${base}.tsx`]) {
+    try {
+      statSync(candidate);
+      return candidate;
+    } catch {
+      // not this extension -- try the next
+    }
+  }
+  return undefined;
 }
 
-describe("SPA admin mutation <-> route contract (DEC-817 amendment, findings wave 13)", () => {
+/** The resolved registration's own source, concatenated with the source of
+ * every relative (`./x` / `../y`) import one level deep -- not a real
+ * module-graph walk, just enough for a route that hands its body parsing to
+ * a sibling helper to still be checked honestly. */
+function moduleSourcesFor(registrationFile: string): string {
+  const own = readFileSync(registrationFile, "utf8");
+  let combined = own;
+  let m: RegExpExecArray | null;
+  IMPORT_RE.lastIndex = 0;
+  while ((m = IMPORT_RE.exec(own))) {
+    const resolved = resolveRelativeImport(registrationFile, m[1]!);
+    if (resolved) combined += "\n" + readFileSync(resolved, "utf8");
+  }
+  return combined;
+}
+
+describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 widened scan)", () => {
   const files: string[] = [];
   walk(APP_SRC, files);
 
@@ -521,39 +523,45 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, findings wav
   }
 
   it("tripwire: the population doesn't silently collapse", () => {
-    // As of this task, 40+ apiPost/apiPatch/apiPut call sites in app/src
-    // pass a literal-object body -- if a future rewrite of api.ts or a mass
-    // rename made the regex stop matching, this catches it going quiet.
-    expect(calls.length).toBeGreaterThanOrEqual(30);
+    // Widened (wave 53) from apiPost/apiPatch/apiPut alone to every api*
+    // helper (apiGet/apiList/apiDelete/apiUpload/apiPostBlob too) -- if a
+    // future rewrite of api.ts or a mass rename made the regex stop
+    // matching, this catches it going quiet.
+    expect(calls.length).toBeGreaterThanOrEqual(200);
   });
 
-  it("every extracted call's path resolves to a route module (no unmapped path)", () => {
+  // A path a real endpoint doesn't yet serve, recorded here (never as a
+  // silent allowlist) with file:line and a written reason -- the unresolved
+  // set below must equal exactly this array, so it can never grow silently.
+  const UNBUILT_ENDPOINTS: string[] = [];
+
+  it("every extracted call's path resolves to a real route registration (no unmapped path)", () => {
     const unresolved: string[] = [];
     for (const call of calls) {
-      if (!resolveModule(call.path)) {
+      if (!resolveRegisteredRoute(call.method, call.path)) {
         unresolved.push(`${call.file}:${call.line} ${call.method} ${call.path}`);
       }
     }
     expect(
-      unresolved,
-      `calls whose path is not in ROUTE_MODULE_MAP (add a mapping -- an unmapped path is a hole in the grader, not a pass):\n${unresolved.join("\n")}`,
-    ).toEqual([]);
+      unresolved.sort(),
+      `calls whose method+path resolves to no registered route (add the route, or record it in UNBUILT_ENDPOINTS with a reason -- an unmapped path is a hole in the grader, not a pass):\n${unresolved.join("\n")}`,
+    ).toEqual([...UNBUILT_ENDPOINTS].sort());
   });
 
-  it("every extracted key appears as a token in its resolved route module's source", () => {
+  it("every extracted key appears as a token in its resolved route's module source (or its one-level relative imports)", () => {
     const moduleSrc = new Map<string, string>();
     const gaps: string[] = [];
     for (const call of calls) {
-      const mod = resolveModule(call.path);
-      if (!mod) continue; // reported by the prior test
-      if (!moduleSrc.has(mod)) {
-        moduleSrc.set(mod, readFileSync(join(ROOT, mod), "utf8"));
+      const route = resolveRegisteredRoute(call.method, call.path);
+      if (!route) continue; // reported by the prior test
+      if (!moduleSrc.has(route.file)) {
+        moduleSrc.set(route.file, moduleSourcesFor(route.file));
       }
-      const src = moduleSrc.get(mod)!;
+      const src = moduleSrc.get(route.file)!;
       for (const key of call.keys) {
         const tokenRe = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
         if (!tokenRe.test(src)) {
-          gaps.push(`${call.file}:${call.line} ${call.method} ${call.path}: key "${key}" not found in ${mod}`);
+          gaps.push(`${call.file}:${call.line} ${call.method} ${call.path}: key "${key}" not found in ${relative(ROOT, route.file)}`);
         }
       }
     }
@@ -568,18 +576,19 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, findings wav
       file: "app/src/__synthetic__.tsx",
       line: 1,
       method: "PATCH",
-      path: "/submissions/:param",
+      path: "/api/v1/submissions/:param",
       keys: ["totallyMadeUpKeyNoRouteHas"],
       skipped: [],
     };
-    const mod = resolveModule(synthetic.path)!;
-    const src = readFileSync(join(ROOT, mod), "utf8");
+    const route = resolveRegisteredRoute(synthetic.method, synthetic.path)!;
+    expect(route).toBeDefined();
+    const src = moduleSourcesFor(route.file);
     const tokenRe = new RegExp(`\\b${synthetic.keys[0]}\\b`);
     expect(tokenRe.test(src)).toBe(false);
   });
 
-  it("negative control: an unmapped synthetic path is reported unresolved, not silently skipped", () => {
-    expect(resolveModule("/this/path/does/not/exist/:param")).toBeUndefined();
+  it("negative control: an unresolvable synthetic path is reported unresolved, not silently skipped", () => {
+    expect(resolveRegisteredRoute("GET", "/this/path/does/not/exist")).toBeUndefined();
   });
 
   it("documents (does not suppress) every spread/computed-key entry this scan skipped", () => {
