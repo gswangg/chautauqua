@@ -21,10 +21,11 @@
 // interpolated with request/user data.
 
 import { jsx } from "hono/jsx";
-import { DEC_367, DEC_371 } from "../decisions";
+import { DEC_367, DEC_371, DEC_383 } from "../decisions";
 
 void DEC_367;
 void DEC_371;
+void DEC_383;
 
 export const THEME_CSS = `
   :root {
@@ -193,8 +194,18 @@ export const THEME_CSS = `
   }
   img { max-width: 100%; height: auto; }
   a { color: var(--chq-brand); }
-  a:hover { color: var(--chq-brand-hover); }
+  /* DEC-383 (wave-60 amendment): narrowed off .chq-btn -- the generic anchor
+     hover used to repaint a button-classed anchor's LABEL to the hover brand
+     on the unchanged brand fill (dark-on-dark on .chq-btn-primary). Button
+     tiers below own their own hover/active rules. */
+  a:not(.chq-btn):hover { color: var(--chq-brand-hover); }
   :focus-visible { outline: 2px solid var(--chq-brand); outline-offset: 2px; }
+
+  /* Touch has no hover (B8): a tap must not leave a stuck tint behind after
+     the 300ms hover-simulation delay some browsers apply on touch. */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
 
   /* Every interactive element is >=44px tall on phone (min-height, not
      padding) -- DEC-367. Attribute selectors stay unquoted here for
@@ -327,6 +338,12 @@ export const THEME_CSS = `
     border-radius: 4px;
     cursor: pointer;
     text-decoration: none;
+    /* B8 (DEC-383, wave-60 amendment): each tier darkens on hover/press,
+       nothing moves -- colour only, never \`all\` (that would also animate
+       the focus ring). */
+    transition: background-color var(--chq-motion-color) var(--chq-ease-state),
+      border-color var(--chq-motion-color) var(--chq-ease-state),
+      color var(--chq-motion-color) var(--chq-ease-state);
   }
   .chq-btn {
     display: inline-flex;
@@ -338,10 +355,26 @@ export const THEME_CSS = `
     color: var(--chq-on-brand);
     border: none;
   }
+  .chq-btn-primary:hover {
+    background: var(--chq-brand-hover);
+    color: var(--chq-on-brand);
+  }
+  .chq-btn-primary:active {
+    background: var(--chq-brand-active);
+    color: var(--chq-on-brand);
+  }
   button[type=submit]:not([class*="chq-btn-"]) {
     background: var(--chq-brand);
     color: var(--chq-on-brand);
     border: none;
+  }
+  button[type=submit]:not([class*="chq-btn-"]):hover {
+    background: var(--chq-brand-hover);
+    color: var(--chq-on-brand);
+  }
+  button[type=submit]:not([class*="chq-btn-"]):active {
+    background: var(--chq-brand-active);
+    color: var(--chq-on-brand);
   }
   .chq-btn-secondary {
     background: var(--chq-surface-sunk);
@@ -349,12 +382,45 @@ export const THEME_CSS = `
     border: 1px solid var(--chq-border-strong);
     font-weight: 600;
   }
+  .chq-btn-secondary:hover {
+    background: var(--chq-secondary-hover);
+    border-color: var(--chq-secondary-hover-border);
+  }
+  .chq-btn-secondary:active {
+    background: var(--chq-secondary-active);
+  }
   .chq-btn-tertiary {
     background: transparent;
     color: var(--chq-brand);
     border: none;
     font-weight: 700;
     padding: 0.25rem 0;
+  }
+  .chq-btn-tertiary:hover {
+    color: var(--chq-brand-hover);
+    text-decoration: underline;
+  }
+  .chq-btn-tertiary:active {
+    color: var(--chq-brand-active);
+    text-decoration: underline;
+  }
+  /* B8: a disabled control has no hover state at all -- rest colour, stays
+     there, cursor:default. Scoped after the tiers so it beats each tier's
+     own colour without needing !important. */
+  button:disabled, .chq-btn:disabled,
+  button[aria-disabled=true], .chq-btn[aria-disabled=true] {
+    color: var(--chq-disabled);
+    background: var(--chq-disabled-bg);
+    border-color: var(--chq-disabled-bg);
+    cursor: default;
+  }
+  button:disabled:hover, .chq-btn:disabled:hover,
+  button[aria-disabled=true]:hover, .chq-btn[aria-disabled=true]:hover,
+  button:disabled:active, .chq-btn:disabled:active,
+  button[aria-disabled=true]:active, .chq-btn[aria-disabled=true]:active {
+    color: var(--chq-disabled);
+    background: var(--chq-disabled-bg);
+    border-color: var(--chq-disabled-bg);
   }
 
   /* Header + horizontal nav (DEC-369: sidebar deleted, top header replaces
@@ -545,6 +611,23 @@ export const THEME_CSS = `
     }
     .chq-nav a {
       min-height: 44px;
+    }
+  }
+
+  /* DEC-383 (wave-60 amendment), B8 "Respect the system setting": under
+     prefers-reduced-motion, colour transitions go to 0ms -- states still
+     change, nothing travels. Re-bind the duration tokens themselves rather
+     than adding a parallel rule set, so every consumer that already
+     references var(--chq-motion-color) inherits the reduced value for
+     free. Mirrors app/src/styles.css's block. */
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --chq-motion-color: 0ms;
+      --chq-motion-appear: 0ms;
+      --chq-motion-geometry: 0ms;
+      --chq-motion-color-exit: 0ms;
+      --chq-motion-appear-exit: 0ms;
+      --chq-motion-geometry-exit: 0ms;
     }
   }
 `;
