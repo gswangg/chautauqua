@@ -19,6 +19,7 @@ import {
   resolveAssignments,
   criteriaForRound,
   assignedExcludingRecused,
+  assignedExcludingSaturated,
   sortResultsRows,
   selectRemindTargets,
   resolveReviewerScopeTrackIds,
@@ -76,10 +77,17 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
   ]);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const evaluatedByReviewer = new Map<string, Set<string>>();
+  // DEC-707 (wave-74 amendment): fold the SAME evaluatedPairs load into a
+  // per-submissionId count -- zero new reads. listEvaluatedPairsForPlan
+  // carries submittedEvaluationCondition(), the identical predicate
+  // countEvaluationsBySubmission uses, so this count agrees with the
+  // actionable queue's needsMoreRatings check (reviewer.ts) exactly.
+  const ratingsBySubmissionId = new Map<string, number>();
   for (const p of evaluatedPairs) {
     const set = evaluatedByReviewer.get(p.reviewerId) ?? new Set<string>();
     set.add(p.submissionId);
     evaluatedByReviewer.set(p.reviewerId, set);
+    ratingsBySubmissionId.set(p.submissionId, (ratingsBySubmissionId.get(p.submissionId) ?? 0) + 1);
   }
   const assignments = resolveAssignments(submissions, reviewerRows);
   const recusedByUser = new Map<string, Set<string>>();
@@ -133,7 +141,20 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
   const start = (page - 1) * perPage;
   const pagedUsers = users.slice(start, start + perPage);
   const pagedItems = pagedUsers.map((user) => {
-    const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
+    const recusedExcluded = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
+    // DEC-707 (wave-74 amendment): recusal first, then saturation -- a
+    // submission other reviewers have already filled the plan's cap on is
+    // not reachable by THIS reviewer (reviewer.ts's actionable queue
+    // already refuses it), so it must not sit in their denominator forever
+    // reading "assigned, incomplete". A submission this reviewer already
+    // rated stays counted (ratedByThisReviewer), preserving
+    // `completed <= assigned`.
+    const assigned = assignedExcludingSaturated(
+      recusedExcluded,
+      ratingsBySubmissionId,
+      evaluatedByReviewer.get(user.userId) ?? new Set<string>(),
+      plan.maxEvaluations ?? undefined,
+    );
     // DEC-707 (wave-3 amendment): `completed` is a SUBSET of `assigned` --
     // only evaluations whose submissionId is in this reviewer's own
     // resolved-assigned set for the round count toward it, so
@@ -262,10 +283,14 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // subset of assigned, never a raw per-plan evaluation count.
   const evaluatedPairs = await repo.listEvaluatedPairsForPlan(c.var.db, plan.id, round);
   const evaluatedByReviewer = new Map<string, Set<string>>();
+  // DEC-707 (wave-74 amendment): same fold as GET /progress -- zero new
+  // reads, this reuses the evaluatedPairs load already above.
+  const ratingsBySubmissionId = new Map<string, number>();
   for (const p of evaluatedPairs) {
     const set = evaluatedByReviewer.get(p.reviewerId) ?? new Set<string>();
     set.add(p.submissionId);
     evaluatedByReviewer.set(p.reviewerId, set);
+    ratingsBySubmissionId.set(p.submissionId, (ratingsBySubmissionId.get(p.submissionId) ?? 0) + 1);
   }
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
@@ -291,7 +316,17 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // -- the SAME predicate the SPA's landing-page label counts through -- is
   // the single place that decides who a given scope actually reaches.
   const progressRows = users.map((user) => {
-    const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
+    const recusedExcluded = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
+    // DEC-707 (wave-74 amendment): the SAME recusal-then-saturation compose
+    // as GET /progress -- so `selectRemindTargets(rows,'incomplete')` can
+    // never nag a reviewer whose remaining assignments are all saturated by
+    // OTHER reviewers.
+    const assigned = assignedExcludingSaturated(
+      recusedExcluded,
+      ratingsBySubmissionId,
+      evaluatedByReviewer.get(user.userId) ?? new Set<string>(),
+      plan.maxEvaluations ?? undefined,
+    );
     const assignedIds = new Set(assigned.map((s) => s.id));
     const evaluated = evaluatedByReviewer.get(user.userId) ?? new Set<string>();
     let completed = 0;
