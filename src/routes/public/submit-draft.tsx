@@ -47,15 +47,13 @@ publicSubmitDraftRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c
   // a per-IP scoped limiter (scope "draft", checked here, before touching
   // KV) and a per-email scoped limiter (scope "draft-email", checked below
   // once the submitted email is known, before saveDraft's write). The
-  // second budget exists for the same reason final-submit's does:
-  // src/lib/rate-limit.ts's own doc comment on requestIpFromHeaders states
-  // x-forwarded-for is client-supplied and not a trustworthy identity, so an
-  // attacker can rotate it to bypass the IP budget while hammering one
-  // address's draft slot.
-  // DEC-072 (wave-58 amendment)/DEC-949: IP-keyed, stays UNREFUNDED — same
-  // reasoning as final-submit's "submit" scope (see submit-post.tsx): it's a
-  // FAILURE budget over the single "unknown" bucket every untrustworthy/
-  // absent IP collapses to, and refunding it would stop it being a guard.
+  // second budget exists for the reason documented on requestIpFromHeaders
+  // in src/lib/rate-limit.ts (DEC-072): x-forwarded-for is client-supplied
+  // and rotatable, so an attacker can bypass the IP budget while hammering
+  // one address's draft slot.
+  // DEC-072: IP-keyed, stays UNREFUNDED for the same reason given in
+  // src/lib/rate-limit.ts's doc comment on requestIpFromHeaders — see that
+  // comment for the full three-branch property, not restated here.
   const kv = c.env.KV as unknown as DraftKVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const rate = await checkAndIncrementScopedLimit(db, "draft", ip, Date.now(), {

@@ -40,19 +40,36 @@ export function scopedRateLimitKey(scope: string, id: string, windowStartMs: num
   return `ratelimit:${scope}:${boundRateLimitId(id)}:${windowStartMs}`;
 }
 
-/** Mirrors the IP-resolution logic in src/routes/public/submit.tsx:
- * cf-connecting-ip, else the first hop of x-forwarded-for, else 'unknown'.
+/** Mirrors the IP-resolution logic in src/routes/public/submit.tsx.
  *
- * DEC-072: x-forwarded-for is client-controllable and trivially spoofable
- * (an attacker can send an arbitrary rotating value) — it is only a
- * best-effort fallback for local/stage-1 dev where no trusted edge sets
- * cf-connecting-ip. cf-connecting-ip is authoritative only when the
- * request has actually passed through Cloudflare's edge (stage 2
- * deployment); nothing upstream of this function currently guarantees
- * that. Because IP is not a trustworthy identity, callers that need real
- * correctness (e.g. login) MUST also key a scoped limiter by a stable
- * identity value (such as the submitted account email) rather than
- * relying on IP alone. */
+ * DEC-072 (wave-67 amendment): the ONE statement of this property. There
+ * are exactly three branches, and only one of them collapses to a shared
+ * bucket:
+ *
+ *   1. cf-connecting-ip present -> that value, verbatim. Trustworthy ONLY
+ *      when the request has actually passed through Cloudflare's edge
+ *      (stage 2 deployment); nothing upstream of this function currently
+ *      guarantees that in stage 1 / wrangler dev.
+ *   2. cf-connecting-ip absent, x-forwarded-for present -> the first hop
+ *      of x-forwarded-for, trimmed, VERBATIM. This is CLIENT-CONTROLLED:
+ *      an attacker can send an arbitrary value and rotate it per request.
+ *      It does NOT collapse to one shared bucket — it produces one
+ *      distinct bucket PER DISTINCT VALUE, so rotating the header buys a
+ *      fresh budget on any front door that is not Cloudflare's edge.
+ *   3. both absent -> the literal string "unknown". This is the only
+ *      branch that is a genuinely shared bucket, and only an ABSENT
+ *      header reaches it.
+ *
+ * Because branch 2 is attacker-controlled and NOT a shared bucket, an
+ * IP-keyed budget built on this function cannot be safely refunded on
+ * failure (refunding would let an attacker probe the true state of a
+ * bucket it can already rotate away from) and cannot by itself provide
+ * real correctness — every caller that needs real correctness (e.g.
+ * login, submit) MUST also key a SECOND, independent scoped limiter on a
+ * stable identity value the attacker does not control (the submitted
+ * account email — see submit-post.tsx's "submit-email" scope and
+ * auth-helpers.ts's login-account email-only bucket), rather than relying
+ * on IP alone. */
 export function requestIpFromHeaders(header: (name: string) => string | undefined): string {
   const cfIp = header("cf-connecting-ip");
   if (cfIp) return cfIp;
