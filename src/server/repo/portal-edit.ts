@@ -11,7 +11,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../context";
-import { appendSubmissionRevision } from "./revisions";
+import { appendSubmissionRevision, ensureBaselineRevision } from "./revisions";
 import { bumpIcsSequences } from "./ics-sequence";
 import { upsertSubmissionAnswers, replaceSubmissionTracks, findContactByEmail, createContact } from "./submit";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
@@ -230,7 +230,11 @@ export async function saveSubmissionEdits(
   // snapshot in case only firstName/lastName (and not title/description)
   // changed this request.
   const beforeRows = await db
-    .select({ title: schema.submission.title, description: schema.submission.description })
+    .select({
+      title: schema.submission.title,
+      description: schema.submission.description,
+      createdAt: schema.submission.createdAt,
+    })
     .from(schema.submission)
     .where(eq(schema.submission.id, submissionId))
     .limit(1);
@@ -325,6 +329,14 @@ export async function saveSubmissionEdits(
     const newTitle = typeof title === "string" ? title : before.title;
     const newDescription = typeof description === "string" ? description : before.description;
     if (newTitle !== before.title || newDescription !== before.description) {
+      // DEC-158 wave-59 amendment: stamp the ORIGINAL (pre-edit) content as
+      // revision #1 before appending the actual edit's snapshot — a no-op
+      // once the submission has any revision at all.
+      await ensureBaselineRevision(db, submissionId, {
+        title: before.title,
+        description: before.description,
+        at: before.createdAt,
+      });
       const resolvedFirstName = contactUpdate.firstName ?? contactBefore?.firstName ?? "";
       const resolvedLastName = contactUpdate.lastName ?? contactBefore?.lastName ?? "";
       const editorName = `${resolvedFirstName} ${resolvedLastName}`.trim() || "Speaker";

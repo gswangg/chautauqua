@@ -87,7 +87,7 @@ describe("PATCH /api/v1/submissions/:id (DEC-519)", () => {
       const actual = await vi.importActual<typeof import("../src/server/repo/revisions")>(
         "../src/server/repo/revisions",
       );
-      return { ...actual, appendSubmissionRevision: vi.fn(async () => {}) };
+      return { ...actual, appendSubmissionRevision: vi.fn(async () => {}), ensureBaselineRevision: vi.fn(async () => {}) };
     });
     const icsSeq = await import("../src/server/repo/ics-sequence");
     const bumpSpy = vi.spyOn(icsSeq, "bumpIcsSequences").mockImplementation(async () => {});
@@ -163,6 +163,12 @@ describe("POST /api/v1/submissions/:id/revisions/:revisionId/restore (DEC-519)",
           createdAt: new Date(1000),
         })),
         appendSubmissionRevision: vi.fn(async () => {}),
+        // Explicitly stubbed (never spread from `actual`, DEC-158 wave-59):
+        // a stale `actual` reference captured before a later test's
+        // vi.resetModules() would otherwise resolve schema.submissionRevision
+        // against a discarded module-cache generation and mismatch the fake
+        // db's table-identity check. Restore doesn't call this anyway.
+        ensureBaselineRevision: vi.fn(async () => {}),
       };
     });
     const icsSeq = await import("../src/server/repo/ics-sequence");
@@ -185,13 +191,27 @@ describe("POST /api/v1/submissions/:id/revisions/:revisionId/restore (DEC-519)",
     expect(bumpSpy.mock.calls[0]?.[1]).not.toContain(UNRELATED_SUBMISSION_ID);
   });
 
-  it("does NOT bump when restoring a snapshot identical to the current content (no-op)", async () => {
+  // DEC-158 wave-59 amendment: restoring a snapshot identical to the current
+  // content is now a loud 400 refusal (not a silent 200 no-op) — so it
+  // certainly doesn't bump ics_sequence.
+  it("400s (refuses) restoring a snapshot identical to the current content, and does NOT bump", async () => {
     const same = { title: "Same Title", description: "Same description" };
     const { submissionsRoutes, bumpSpy } = await setup(same, same);
-    const res = await appWithAuth(submissionsRoutes, ORGANIZER_A, {}).request(
-      postRequest("/api/v1/submissions/sub-1/revisions/rev-1/restore"),
-    );
-    expect(res.status).toBe(200);
+    // Bespoke app (not the shared appWithAuth helper): errorResponse's
+    // `err instanceof ApiError` check must run against the SAME module-cache
+    // generation that threw it — a statically-imported registerErrorHandler
+    // would hold a stale ApiError class after this file's vi.resetModules().
+    const { registerErrorHandler } = await import("../src/server/http");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", {} as Db);
+      c.set("auth", ORGANIZER_A);
+      await next();
+    });
+    app.route("/api/v1", submissionsRoutes);
+    const res = await app.request(postRequest("/api/v1/submissions/sub-1/revisions/rev-1/restore"));
+    expect(res.status).toBe(400);
     expect(bumpSpy).not.toHaveBeenCalled();
   });
 });
@@ -208,6 +228,9 @@ function makeTableFakeDb(
     if (table === freshSchema.submission) return data.submissionRows;
     if (table === freshSchema.contact) return data.contactRows;
     if (table === freshSchema.submissionAnswer) return [];
+    // countRevisions (ensureBaselineRevision, DEC-158 wave-59): report
+    // "already has revisions" so this test's own baseline is untouched.
+    if (table === freshSchema.submissionRevision) return [{ count: 1 }];
     throw new Error("fake db: unexpected table in select");
   }
 

@@ -148,6 +148,7 @@ vi.mock("../src/server/repo/revisions", async () => {
   return {
     ...actual,
     appendSubmissionRevision: vi.fn(async () => trackedWrite(writeLog, "appendSubmissionRevision", undefined)),
+    ensureBaselineRevision: vi.fn(async () => trackedWrite(writeLog, "ensureBaselineRevision", undefined)),
   };
 });
 
@@ -264,6 +265,7 @@ describe("DEC-598 (wave-34 amendment): submission write doors issue ONE validati
     // Every write fired, in the route's declared order.
     expect(writeLog.order).toEqual([
       "updateSubmissionFields",
+      "ensureBaselineRevision",
       "resolveActorName",
       "appendSubmissionRevision",
       "bumpIcsSequences",

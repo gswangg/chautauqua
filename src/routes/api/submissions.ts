@@ -53,7 +53,13 @@ import {
 import { PARTICIPANT_ROLE_OPTIONS, MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
 import { findContactForOrg } from "../../server/repo/contacts";
 import { resolveActorName } from "../../server/repo/users";
-import { appendSubmissionRevision, countRevisions, getRevision, listRevisions } from "../../server/repo/revisions";
+import {
+  appendSubmissionRevision,
+  countRevisions,
+  ensureBaselineRevision,
+  getRevision,
+  listRevisions,
+} from "../../server/repo/revisions";
 import { listSubmissionHistory } from "../../server/repo/submissions/history";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { clampPage, listPerPage } from "../../lib/pagination";
@@ -440,6 +446,14 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   const newTitle = fields.title ?? before.title;
   const newDescription = fields.description !== undefined ? fields.description : before.description;
   if (newTitle !== before.title || newDescription !== before.description) {
+    // DEC-158 wave-59 amendment: stamp the ORIGINAL (pre-edit) content as
+    // revision #1 before appending the actual edit's snapshot — this is a
+    // no-op once the submission has any revision at all.
+    await ensureBaselineRevision(c.var.db, id, {
+      title: before.title,
+      description: before.description,
+      at: before.createdAt,
+    });
     const editorName = await resolveActorName(c.var.db, auth.userId);
     await appendSubmissionRevision(c.var.db, {
       submissionId: id,
@@ -506,7 +520,14 @@ submissionsRoutes.get("/submissions/:id/history", requireOrganizer, async (c) =>
   if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const entries = await listSubmissionHistory(c.var.db, id);
-  const items = entries.map((e) => ({ id: e.id, at: e.at.getTime(), kind: e.kind, label: e.label, detail: e.detail }));
+  const items = entries.map((e) => ({
+    id: e.id,
+    at: e.at.getTime(),
+    kind: e.kind,
+    label: e.label,
+    detail: e.detail,
+    revisionId: e.revisionId,
+  }));
   return c.json({ items, total: items.length, page: 1, perPage: items.length });
 });
 
@@ -531,6 +552,14 @@ submissionsRoutes.post(
 
     const before = await getSubmissionContent(c.var.db, id);
     if (!before) throw new ApiError("not_found", "Submission not found");
+
+    // DEC-158 wave-59 amendment: restoring the revision that already equals
+    // the current content (most commonly the newest one, now that a baseline
+    // revision exists) is a guaranteed no-op — refuse loudly instead of
+    // returning a silent unchanged 200.
+    if (revision.title === before.title && revision.description === before.description) {
+      throw new ApiError("invalid", "This version is identical to what is there now — nothing to restore.");
+    }
 
     // DEC-124: revision restore replays a title/description the product
     // already accepted (either as the current row's own prior content, or a

@@ -99,9 +99,13 @@ export async function getEventOrgId(db: Db, eventId: string): Promise<string | n
 export async function getSubmissionContent(
   db: Db,
   submissionId: string,
-): Promise<{ title: string; description: string | null } | null> {
+): Promise<{ title: string; description: string | null; createdAt: Date } | null> {
   const rows = await db
-    .select({ title: schema.submission.title, description: schema.submission.description })
+    .select({
+      title: schema.submission.title,
+      description: schema.submission.description,
+      createdAt: schema.submission.createdAt,
+    })
     .from(schema.submission)
     .where(eq(schema.submission.id, submissionId))
     .limit(1);
