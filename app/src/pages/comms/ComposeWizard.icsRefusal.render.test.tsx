@@ -104,7 +104,7 @@ describe('ComposeWizard ics-unscheduled refusal renders on the step that issued 
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const subject = await screen.findByLabelText('Subject');
     fireEvent.change(subject, { target: { value: 'Hello' } });

@@ -138,9 +138,22 @@ export function HistoryTab({
         </div>
         {/* Plain cookie-authed anchor, same idiom as
             app/src/pages/settings/ExportsPanel.tsx:87 -- no fetch, no blob. */}
-        <a className="chq-btn chq-btn-secondary chq-comms-history-export" href={exportHref}>
-          Export CSV
-        </a>
+        {/* Frame 07-comms--08: Export CSV + a filled Compose button,
+            right-flushed in the page header. The frame draws ONE page
+            title here; Comms.tsx (app/src/pages/Comms.tsx, out of this
+            page's ownership under app/src/pages/comms/**) unconditionally
+            renders its own "Comms" H1 + tab pills above every tab's own
+            content, which this file cannot remove -- see the fidelity
+            report for that cross-file gap. This adds the Compose pairing
+            achievable from inside this file alone. */}
+        <div className="chq-comms-history-head-actions">
+          <a className="chq-btn chq-btn-secondary chq-comms-history-export" href={exportHref}>
+            Export CSV
+          </a>
+          <button type="button" className="chq-btn chq-btn-primary" onClick={goToCompose}>
+            Compose
+          </button>
+        </div>
       </div>
 
       {error && <div className="chq-error-banner">{error}</div>}
@@ -172,7 +185,7 @@ export function HistoryTab({
         <input
           className="chq-input chq-comms-history-search"
           type="search"
-          placeholder="Search subject or recipient..."
+          placeholder="Search a subject or a person…"
           value={q}
           onChange={(e) => {
             setQ(e.target.value);

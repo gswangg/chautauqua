@@ -61,7 +61,7 @@ describe('ComposeWizard send carries templateId as provenance (DEC-846, amendmen
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const templateSelect = await screen.findByLabelText(/Template/);
     fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
@@ -102,7 +102,7 @@ describe('ComposeWizard send carries templateId as provenance (DEC-846, amendmen
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     const templateSelect = await screen.findByLabelText(/Template/);
     fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });

@@ -144,7 +144,13 @@ function BatchRecipients({
         <div key={row.id} className="chq-comms-recipient-row">
           <span aria-hidden="true" />
           <span className="chq-comms-recipient-to">{row.toEmail}</span>
-          <span className="chq-meta">{row.status}</span>
+          {/* Frame 07-comms--08: SENT/SKIPPED/FAILED as a bold uppercase
+              micro-label. The frame also shows a failed row's "provider
+              said: <reason>" line -- EmailLogRow (the list projection this
+              disclosure is fed from) carries no such field, only a
+              `status` string, so that line can't be rendered honestly here;
+              see the fidelity report for this gap. */}
+          <span className="chq-comms-recipient-result">{row.status}</span>
           {/* A subject only differs when a merge field made it real (e.g. a
               per-recipient token) -- that's exactly when it's worth this
               cell; the shared batch subject is already printed once at the
@@ -163,6 +169,17 @@ function BatchRecipients({
           <SendDetailDisclosure eventId={eventId} emailId={row.id} templatesById={templatesById} />
         </div>
       ))}
+      {/* Frame 07-comms--08's footer honesty line -- shown only when this
+          fetch is a truncated projection of the batch (the batch's own
+          statusCounts, already on the batch row, sum to more than the
+          fetched recipient rows). Real data already on hand, never a
+          fabricated remaining-count. */}
+      {!error && items && items.length < Object.values(statusCounts).reduce((sum, n) => sum + n, 0) && (
+        <p className="chq-comms-batch-recipients-footer">
+          {Object.values(statusCounts).reduce((sum, n) => sum + n, 0) - items.length} more &middot; sent means the
+          provider accepted it &mdash; whether it landed in an inbox is not something we hear back about
+        </p>
+      )}
     </div>
   );
 }
@@ -315,8 +332,23 @@ export function RecentSends({
         </div>
       )}
 
+      {/* Frame 07-comms--07 + ruling B7: a fresh (never-sent) empty state
+          gets a real primary action, not a bare "No emails sent yet."
+          apology. RecentSends is fed only batches/templatesById/rhythm --
+          it has no decision-count data of its own, so the reason clause
+          stays static (no fabricated "N submissions" figure) rather than
+          inventing a number this component cannot verify. The primary
+          links into Compose, which already defaults step 1's status filter
+          to Accepted alone (DEC-967), so "accepted speakers" is the real
+          audience that lands, not just a label. */}
       {batchesLoaded && rows.length === 0 && (
-        <EmptyState variant="fresh" what="No emails sent yet." action={null} />
+        <EmptyState
+          variant="fresh"
+          what="You have not emailed anyone yet"
+          reason="Every send is logged here afterwards."
+          action={{ label: 'Tell your accepted speakers', to: '/comms?tab=compose' }}
+          secondary={{ label: 'Read the templates ›', to: '/comms?tab=templates' }}
+        />
       )}
 
       {rows.map((batch) => {

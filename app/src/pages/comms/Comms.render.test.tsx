@@ -83,7 +83,7 @@ describe('CommsPage render smoke', () => {
     expect(await screen.findByText('A Talk About Testing')).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Select A Talk About Testing'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     expect(await screen.findByText('2. Pick or edit a template')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/Template/), { target: { value: 'tpl-1' } });
@@ -404,7 +404,7 @@ describe('ComposeWizard compose-step field layout (DEC-710)', () => {
     );
 
     fireEvent.click(await screen.findByLabelText('Select A Talk About Testing'));
-    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
 
     expect(await screen.findByText('2. Pick or edit a template')).toBeInTheDocument();
 

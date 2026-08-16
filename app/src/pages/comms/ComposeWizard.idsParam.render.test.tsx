@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ComposeWizard } from './ComposeWizard';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -35,7 +36,11 @@ describe('ComposeWizard ?ids= landing', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => expect(screen.getByText('2 submissions selected')).toBeInTheDocument());
     expect(screen.getByText('2. Pick or edit a template')).toBeInTheDocument();
@@ -50,7 +55,11 @@ describe('ComposeWizard ?ids= landing', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     // The garbage entry is dropped, "sub-ok" survives -- one selected, not
     // zero and not a thrown render.
@@ -67,7 +76,11 @@ describe('ComposeWizard ?ids= landing', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => expect(screen.getByText('100 submissions selected')).toBeInTheDocument());
     expect(screen.getByText('2. Pick or edit a template')).toBeInTheDocument();
@@ -82,7 +95,11 @@ describe('ComposeWizard ?ids= landing', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => expect(screen.getByText('5 submissions selected')).toBeInTheDocument());
     expect(screen.getByText('2. Pick or edit a template')).toBeInTheDocument();
@@ -97,7 +114,11 @@ describe('ComposeWizard ?ids= landing', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => expect(screen.getByText('1. Pick submissions')).toBeInTheDocument());
     expect(screen.queryByText(/kept/)).not.toBeInTheDocument();
@@ -113,7 +134,11 @@ describe('ComposeWizard ?ids= landing', () => {
       ]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => expect(screen.getByText('From "Waitlist"')).toBeInTheDocument());
     expect(screen.getByText('1. Pick submissions')).toBeInTheDocument();

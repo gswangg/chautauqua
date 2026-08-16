@@ -12,6 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ComposeWizard } from './ComposeWizard';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -43,7 +44,11 @@ describe('ComposeWizard ?template= landing', () => {
       ]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+    <MemoryRouter>
+      <ComposeWizard eventId={EVENT_ID} />
+    </MemoryRouter>,
+  );
 
     // Rail's own "Template" row names the preselected template without the
     // wizard having advanced to it.
@@ -63,7 +68,11 @@ describe('ComposeWizard ?template= landing', () => {
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+    <MemoryRouter>
+      <ComposeWizard eventId={EVENT_ID} />
+    </MemoryRouter>,
+  );
 
     await waitFor(() => screen.getByLabelText('Subject'));
     // Next: preview requires only a non-empty subject/body -- recipient
