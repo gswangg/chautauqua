@@ -540,7 +540,7 @@ describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", (
 
     expect(payload.unscheduled.map((s) => s.submissionId)).toEqual(["sub-3"]);
     expect(summaryResult.summary).toEqual(payload.summary);
-    expect(summaryResult.summary).toEqual({ unplaced: 1, conflicts: 1 });
+    expect(summaryResult.summary).toEqual({ unplaced: 1, conflicts: 1, placed: 2, total: 3 });
     expect(summaryResult.conflicts.map((c) => c.detail)).toEqual(payload.conflicts.map((c) => c.detail));
     expect(summaryResult.conflicts).toEqual(payload.conflicts);
   });

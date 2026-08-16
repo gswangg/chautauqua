@@ -3,8 +3,8 @@
 // 'room_overlap' -- and must never form at all in the room-less (TBD)
 // column, since schedule.ts never emits a room_overlap for a null roomId.
 
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 
 afterEach(cleanup);
 
@@ -109,6 +109,37 @@ describe('DayGrid clash cards', () => {
     ];
     const { container } = render(<DayGrid {...BASE_PROPS} placed={placed} conflicts={conflicts} />);
     expect(container.querySelector('.chq-day-grid-clash-caption')?.textContent).toBe('Two sessions in one room');
+  });
+});
+
+// gate-10: "an armed click-to-place cannot land on an occupied slot by
+// mouse (keyboard and drag both work)". Reading the tree: SessionCard's
+// root IS a real <button> with onClick={onSelect} (SessionCard.tsx:76-84),
+// DayGrid wires onSelect to handleCardSelect (DayGrid.tsx:432), which at
+// :256-259 calls onPlaceAt(session.roomId, session.startMin) whenever
+// something is armed -- so a real mouse click dispatched at the placed
+// card's own DOM node (the button testing-library's fireEvent.click
+// resolves to, same node a real click on that card's visible area
+// resolves to since it is the frontmost hit target -- .chq-day-grid-
+// placed-card sits at the named overlay tier, agenda.css:560-571) reaches
+// onSelect and, since a DIFFERENT session is armed, places the ARMED
+// session onto the OCCUPIED card's own room/startMin (accept-and-flag,
+// never a silent refusal, matching V11's drag-parity spec). This passes
+// against main as of wave 60 -- NOT-A-DEFECT, kept as a regression lock.
+describe('DayGrid armed click onto an occupied slot (gate-10, NOT-A-DEFECT)', () => {
+  it('places the armed session onto an already-placed card via a real mouse click', () => {
+    const occupied = session({ submissionId: 'sub-occupied', ref: 'SES-002', title: 'Talk Two', roomId: 'room-1', startMin: 600, endMin: 630 });
+    const armed = { submissionId: 'sub-armed', ref: 'SES-099', title: 'Armed Talk', durationMin: 30 };
+    const onPlaceAt = vi.fn();
+    const { container } = render(
+      <DayGrid {...BASE_PROPS} placed={[occupied]} conflicts={[]} armed={armed} onPlaceAt={onPlaceAt} />,
+    );
+    const card = container.querySelector('[data-submission-id="sub-occupied"]');
+    expect(card).not.toBeNull();
+    expect(card?.tagName).toBe('BUTTON');
+    fireEvent.click(card as HTMLElement);
+    expect(onPlaceAt).toHaveBeenCalledTimes(1);
+    expect(onPlaceAt).toHaveBeenCalledWith('room-1', 600);
   });
 });
 

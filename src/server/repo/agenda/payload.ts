@@ -197,7 +197,10 @@ export async function getConflictsAndSummary(
   db: Db,
   eventId: string,
   event: Pick<EventInfo, "startDate" | "endDate" | "recordPrefix">,
-): Promise<{ conflicts: DescribedConflict[]; summary: { unplaced: number; conflicts: number } }> {
+): Promise<{
+  conflicts: DescribedConflict[];
+  summary: { unplaced: number; conflicts: number; placed: number; total: number };
+}> {
   // DEC-155 wave-34 amendment: roomRows (:283 originally) and
   // totalAcceptedRows (:289 originally) consume nothing from the slot chain
   // below (both are scoped only by `eventId`), so they join the slot read's

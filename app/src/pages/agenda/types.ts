@@ -50,6 +50,10 @@ export interface AgendaConflict {
 export interface AgendaSummary {
   unplaced: number;
   conflicts: number;
+  // DEC-899: the same placed/total the header's "P% placed" divides — read
+  // directly, never re-derived from placed.length/unscheduled.length.
+  placed: number;
+  total: number;
 }
 
 // DEC-615: closed vocabulary mirroring src/domain/schedule.ts's
