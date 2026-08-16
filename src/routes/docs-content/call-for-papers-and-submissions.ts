@@ -49,7 +49,7 @@ export const callForPapersAndSubmissions: DocsArticle = {
       kind: "figure",
       shotId: "running-an-event-call-for-papers-and-submissions-02",
       caption:
-        "The pipeline board: submissions grouped by status. Dragging a card between columns changes its status only — nothing here sends mail; that's a separate compose step.",
+        "The submissions worklist: every proposal for the event with its status shown as a pill. Select a batch and apply a status change to all of them at once — moving statuses here only ever changes status; nothing sends mail on its own.",
     },
   ],
 };

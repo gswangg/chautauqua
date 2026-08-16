@@ -37,7 +37,6 @@ export interface DocsShotEntry {
   readonly id: string;
   readonly route: string;
   readonly group: DocsShotGroup;
-  readonly caption: string;
 }
 
 /** Generic shot-id shape: one or more lower-kebab segments, then a
@@ -66,13 +65,18 @@ const REVIEWER_SUBMISSION_ID = "seed_submission_0002";
 const PLAN_ID = "seed_evaluation_plan_0001";
 
 /**
- * DECLARED manifest (DEC-644 amendment): one row per major screen the first
- * tranche of /docs articles names, seeded per DESIGN-RULINGS.md rule 2
- * ("Seeded data only. DevFlow Conf 2027 is fictional and stable"). Routes
- * are real app/src/routeManifest.ts / src/index.ts-mounted paths -- never
- * invented -- so scripts/docs-shots.ts's own route/role cross-check
- * (buildRoleIndex in this file) can resolve who to log in as before
- * visiting.
+ * DECLARED manifest (DEC-644 amendment; DEC-518 wave-3 reconciliation):
+ * one row per `figure` block's shotId in src/routes/docs-content/**
+ * (DOCS_ARTICLES) -- the id SET here must equal the id set the article
+ * registry declares, checked in both directions by
+ * test/docs-shots-manifest.test.ts. Routes are real
+ * app/src/routeManifest.ts / src/index.ts-mounted paths -- never invented
+ * -- so scripts/docs-shots.ts's own route/role cross-check
+ * (resolveRoleForRoute in scripts/docs-shots.ts) can resolve who to log in
+ * as before visiting. No `caption` field here: the article's own figure
+ * block owns the caption (a second copy is the DEC-613 trap) --
+ * scripts/docs-shots.ts reads a shot's caption from DOCS_ARTICLES when it
+ * needs one for logging/alt text.
  *
  * NEVER hand-mirrored elsewhere (DEC-518): scripts/docs-shots.ts imports
  * this array directly and test/docs-shots-manifest.test.ts asserts its
@@ -80,70 +84,111 @@ const PLAN_ID = "seed_evaluation_plan_0001";
  */
 export const DOCS_SHOTS: readonly DocsShotEntry[] = [
   {
-    id: "getting-started-the-event-hub-01",
-    route: "/",
-    group: "getting-started",
-    caption: "The public event hub — where anyone lands before signing in.",
-  },
-  {
-    id: "getting-started-first-event-01",
+    id: "getting-started-start-here-01",
     route: "/admin/overview",
     group: "getting-started",
-    caption: "The organizer Overview — deadlines, pipeline counts and the nearest task, all in one screen.",
   },
   {
-    id: "running-an-event-cfp-and-submissions-01",
+    id: "running-an-event-call-for-papers-and-submissions-01",
     route: "/admin/submissions/forms",
     group: "running-an-event",
-    caption: "The CFP builder — the form speakers see when they submit a session.",
   },
   {
-    id: "running-an-event-cfp-and-submissions-02",
+    id: "running-an-event-call-for-papers-and-submissions-02",
     route: "/admin/submissions",
     group: "running-an-event",
-    caption: "The submissions worklist — every proposal for the event, with status and track at a glance.",
   },
   {
-    id: `running-an-event-cfp-and-submissions-03`,
-    route: `/admin/submissions/${SUBMISSION_ID}`,
+    id: "running-an-event-speakers-tasks-and-content-01",
+    route: "/admin/speakers",
     group: "running-an-event",
-    caption: "A single submission's detail page — abstract, participants and the accept/decline decision.",
   },
   {
-    id: "running-an-event-building-the-agenda-01",
+    id: "running-an-event-speakers-tasks-and-content-02",
+    route: "/admin/speakers",
+    group: "running-an-event",
+  },
+  {
+    id: "running-an-event-speakers-tasks-and-content-03",
+    route: `/admin/content/${SUBMISSION_ID}`,
+    group: "running-an-event",
+  },
+  {
+    id: "running-an-event-agenda-and-publishing-01",
     route: "/admin/agenda",
     group: "running-an-event",
-    caption: "The agenda builder — placing accepted sessions into rooms and time slots.",
   },
   {
-    id: "your-contacts-managing-contacts-01",
+    id: "running-an-event-agenda-and-publishing-02",
+    route: "/admin/agenda",
+    group: "running-an-event",
+  },
+  {
+    id: "running-an-event-agenda-and-publishing-03",
+    route: "/admin/agenda",
+    group: "running-an-event",
+  },
+  {
+    id: "running-an-event-embeds-and-public-pages-01",
+    route: `/e/${EVENT_SLUG}/sessions`,
+    group: "running-an-event",
+  },
+  {
+    id: "running-an-event-embeds-and-public-pages-02",
+    route: "/admin/settings",
+    group: "running-an-event",
+  },
+  {
+    id: "your-contacts-contacts-pipeline-and-comms-01",
     route: "/admin/contacts",
     group: "your-contacts",
-    caption: "The Contacts list — everyone your event has ever emailed, speakers and non-speakers alike.",
   },
   {
-    id: `for-reviewers-scoring-a-submission-01`,
+    id: "your-contacts-contacts-pipeline-and-comms-02",
+    route: "/admin/contacts",
+    group: "your-contacts",
+  },
+  {
+    id: "your-contacts-contacts-pipeline-and-comms-03",
+    route: "/admin/comms",
+    group: "your-contacts",
+  },
+  {
+    id: "for-reviewers-reviewing-start-to-finish-01",
+    // DEC-518 wave-3: /admin/review and /admin/review/plans/:planId are
+    // BOTH ambiguous -- ROUTE_MANIFEST lists each path once for
+    // role:"organizer" and once for role:"reviewer" (PlanEditor and
+    // ReviewerQueue mount the same URLs), and scripts/docs-shots.ts's
+    // resolveRoleForRoute throws rather than guess between them. The
+    // plan-scoped submission route below is the only reviewer-only path
+    // ROUTE_MANIFEST declares, so both reviewer-group shots reuse it.
     route: `/admin/review/plans/${PLAN_ID}/submissions/${REVIEWER_SUBMISSION_ID}`,
     group: "for-reviewers",
-    caption: "A reviewer's scorecard for one submission — criteria, scores and notes.",
   },
   {
-    id: "for-speakers-your-portal-01",
-    route: "/portal",
+    id: "for-reviewers-reviewing-start-to-finish-02",
+    route: `/admin/review/plans/${PLAN_ID}/submissions/${REVIEWER_SUBMISSION_ID}`,
+    group: "for-reviewers",
+  },
+  {
+    id: "for-speakers-your-speaker-portal-01",
+    route: "/portal/tasks",
     group: "for-speakers",
-    caption: "The speaker portal home — a speaker's submissions, tasks and profile in one place.",
   },
   {
-    id: "for-speakers-your-portal-02",
-    route: `/portal/submissions/${SUBMISSION_ID}/edit`,
+    id: "for-speakers-your-speaker-portal-02",
+    route: "/portal/profile",
     group: "for-speakers",
-    caption: "Editing a submission from the portal — the same form a speaker used to submit it.",
   },
   {
-    id: "running-the-software-event-settings-01",
-    route: "/admin/settings",
+    id: "running-the-software-running-the-software-01",
+    route: "/admin/overview",
     group: "running-the-software",
-    caption: "Event settings — the organizer's control panel for the whole event.",
+  },
+  {
+    id: "running-the-software-running-the-software-02",
+    route: "/dev/mailbox",
+    group: "running-the-software",
   },
 ] as const;
 
