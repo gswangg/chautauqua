@@ -155,7 +155,12 @@ export function NewContactModal({ onClose, onCreated }: Props) {
           placeholder="Raman"
         />
       </FormRow>
-      <FormRow label="Email" htmlFor="new-contact-email" error={fields.email}>
+      <FormRow
+        label="Email"
+        htmlFor="new-contact-email"
+        error={fields.email}
+        help="It's how contacts are matched and merged — the same key the CSV importer's dedupe and the merge tool use."
+      >
         <input
           id="new-contact-email"
           className="chq-input"
@@ -198,6 +203,12 @@ export function NewContactModal({ onClose, onCreated }: Props) {
           </Link>
         </p>
       )}
+      {/* DEC-597 (wave 64 amendment): the modal closes by naming what it does
+          not do -- adding someone here does not put them on an event; "Add
+          to an event" on their directory row is the separate act. */}
+      <p className="chq-contacts-new-contact-scope-note">
+        Adding a contact here does not put them on an event — use &ldquo;Add to an event&rdquo; on their row for that.
+      </p>
     </ModalFrame>
   );
 }

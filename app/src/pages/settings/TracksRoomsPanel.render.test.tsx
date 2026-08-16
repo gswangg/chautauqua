@@ -514,6 +514,21 @@ describe('TracksRoomsPanel', () => {
     expect(within(workshopRow).getByRole('button', { name: 'Remove' })).not.toBeDisabled();
   });
 
+  // DEC-888 (wave 64 amendment): one caption for the tracks edit section
+  // naming what the colour is for, not one per row.
+  it('renders one caption naming what the track colour is for', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const captions = within(section).getAllByText(/how a track reads on the agenda and the public pages/);
+    expect(captions).toHaveLength(1);
+  });
+
   it('renders the consequence line naming what Remove and Seats mean (DEC-896/B10)', async () => {
     mockTracksRooms();
     render(
