@@ -6,6 +6,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldRole, FormFieldRule } from "../../forms/types";
+import { parseFieldOptions, parseFieldRule } from "../../forms/field-json";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldId } from "../../forms/types";
 import { DEC_050, DEC_398, DEC_592 } from "../../decisions";
 import { chunkIds, chunkRowsForInsert } from "../../lib/chunk";
@@ -49,8 +50,8 @@ function toFieldRow(row: typeof schema.formField.$inferSelect): FormFieldRow {
     helpText: row.helpText ?? undefined,
     required: row.required,
     position: row.position,
-    options: row.optionsJson ? (JSON.parse(row.optionsJson) as string[]) : undefined,
-    rule: row.ruleJson ? (JSON.parse(row.ruleJson) as FormFieldRule) : undefined,
+    options: parseFieldOptions(row.optionsJson, row.id),
+    rule: parseFieldRule(row.ruleJson, row.id),
     locked: row.locked,
     role: (row.role as FormFieldRole | null) ?? null,
   };

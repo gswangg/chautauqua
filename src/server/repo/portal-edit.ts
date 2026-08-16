@@ -14,8 +14,9 @@ import type { Db } from "../context";
 import { appendSubmissionRevision, ensureBaselineRevision } from "./revisions";
 import { bumpIcsSequences } from "./ics-sequence";
 import { upsertSubmissionAnswers, replaceSubmissionTracks, findContactByEmail, createContact } from "./submit";
-import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
+import type { FormFieldDef, FormFieldKind, FormFieldSection, AnswerMap } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName, projectFieldForAnswers } from "../../forms/types";
+import { parseFieldOptions, parseFieldRule } from "../../forms/field-json";
 import type { SubmissionStatus } from "../../domain/status";
 import { resolveOfferedTrackIds } from "../../lib/submit-core";
 import { ACTIVE_INVITE_STATUSES, PORTAL_VISIBLE_INVITE_STATUSES } from "../../domain/acceptance";
@@ -141,8 +142,8 @@ export async function loadEditableSubmission(
         helpText: f.helpText ?? undefined,
         required: f.required,
         position: f.position,
-        options: f.optionsJson ? (JSON.parse(f.optionsJson) as string[]) : undefined,
-        rule: f.ruleJson ? (JSON.parse(f.ruleJson) as FormFieldRule) : undefined,
+        options: parseFieldOptions(f.optionsJson, f.id),
+        rule: parseFieldRule(f.ruleJson, f.id),
       }),
     )
     .sort((a, b) => a.position - b.position);

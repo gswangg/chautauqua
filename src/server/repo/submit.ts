@@ -9,8 +9,9 @@ import { newId } from "../../domain/ids";
 import { chunkRowsForInsert } from "../../lib/chunk";
 import { submissionSeqSubquery } from "./submissions/seq";
 import { touchSubmissions } from "./submissions/touch";
-import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, FormFieldRole, AnswerMap } from "../../forms/types";
+import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRole, AnswerMap } from "../../forms/types";
 import { lockedFieldName, projectFieldForAnswers } from "../../forms/types";
+import { parseFieldOptions, parseFieldRule } from "../../forms/field-json";
 import { DEC_258, DEC_718 } from "../../decisions";
 import { DEFAULT_PARTICIPANT_ROLE } from "../../domain/participant-roles";
 
@@ -150,8 +151,8 @@ export async function getFormFields(db: Db, formId: string): Promise<FormFieldDe
       helpText: row.helpText ?? undefined,
       required: row.required,
       position: row.position,
-      options: row.optionsJson ? (JSON.parse(row.optionsJson) as string[]) : undefined,
-      rule: row.ruleJson ? (JSON.parse(row.ruleJson) as FormFieldRule) : undefined,
+      options: parseFieldOptions(row.optionsJson, row.id),
+      rule: parseFieldRule(row.ruleJson, row.id),
       // DEC-592/DEC-755 (wave 10, task w10-b): role is the ONE matcher for
       // the two well-known CFP fields -- must ride along here so callers
       // (submit-post.tsx, submit-views.tsx) can resolve them by role instead
