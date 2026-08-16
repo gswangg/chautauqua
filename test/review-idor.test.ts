@@ -252,10 +252,12 @@ describe("DEC-211: PUT evaluation IDOR -- existence-hiding 404 for out-of-event 
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe("not_found");
-    // The existence-hiding check must short-circuit BEFORE the
-    // getEvaluation/upsertEvaluation flow -- no evaluation row read or
-    // written for a submission outside the plan's event.
-    expect(vi.mocked(reviewRepo.getEvaluation)).not.toHaveBeenCalled();
+    // DEC-370 (wave-61 amendment): the four validation reads (inEvent,
+    // scope, recusal, getEvaluation) now issue as ONE wave -- getEvaluation
+    // IS called even though its result is discarded by the inEvent refusal
+    // (a discarded read is cheaper than a serialized one). The invariant
+    // that actually matters -- no WRITE happens for a submission outside
+    // the plan's event -- still holds: upsertEvaluation is never called.
     expect(vi.mocked(reviewRepo.upsertEvaluation)).not.toHaveBeenCalled();
   });
 

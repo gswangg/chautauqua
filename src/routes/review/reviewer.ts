@@ -28,9 +28,10 @@ import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_239, DEC_460, DEC_461, DEC_466, DEC_831, DEC_857, DEC_873 } from "../../decisions";
+import { DEC_211, DEC_239, DEC_338, DEC_370, DEC_460, DEC_461, DEC_466, DEC_831, DEC_857, DEC_873 } from "../../decisions";
 import { currentAuth, requireReviewerOrOrganizer, requireAssignedPlan } from "./shared";
 import { lockedFieldName } from "../../forms/types";
+import { settleInDeclarationOrder } from "../../lib/settle";
 
 export const reviewReviewerRoutes = new Hono<AppEnv>();
 void DEC_239; // /review/plans/:id/queue: shaped {submissionId,ref,title,ratingsCount,alreadyRatedByMe} below
@@ -40,6 +41,9 @@ void DEC_466; // /review/plans/:id/queue bounded below via the blessed JS-slice 
 void DEC_831; // queue items carry myScore (this reviewer's own blended score) below
 void DEC_857; // queue items carry format (session-shape fact, never stripped for anonymized plans) below
 void DEC_873; // PUT evaluations: draft flag skips the completeness check and never stamps submittedAt, below
+void DEC_338; // wave-61 amendment: round-trip-depth proven behaviourally on the instrumented harness, below
+void DEC_370; // wave-61 amendment: independent validation reads join ONE wave, refusal order stays source order, below
+void DEC_211; // wave-61 amendment: out-of-scope refusal names the reviewer's own queue inside an assigned plan, below
 
 reviewReviewerRoutes.get("/api/v1/review/plans", async (c) => {
   requireReviewerOrOrganizer(c);
@@ -354,12 +358,59 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
     throw new ApiError("conflict", "This review plan is not currently open");
   }
 
-  if (auth.role !== "organizer") {
-    const inScope = await repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId);
-    if (!inScope) throw new ApiError("not_found", "Submission not found");
-  }
+  // DEC-370 (wave-61 amendment): the eight reads below are independent of
+  // each other (none consumes another's result -- inScope/summary/answers/
+  // speakers/format/audienceLevel/myEvaluation/myRecusal are each keyed only
+  // off plan/auth/submissionId, already known before any of them run), so
+  // they issue as ONE settleInDeclarationOrder wave instead of eight
+  // sequential awaits. The organizer branch skips isSubmissionInReviewerScope
+  // (organizers have no scope to be out of) by resolving a `true` promise in
+  // its place, so the wave's shape never changes with role. Refusals are then
+  // evaluated in the SAME source order as before the wave: scope-miss first,
+  // summary-null second.
+  const [inScope, summary, rawAnswers, speakers, formatBySubmission, audienceLevelBySubmission, myEvaluationRecord, myRecusalRecord] =
+    await settleInDeclarationOrder<
+      [
+        boolean,
+        repo.SubmissionSummary | null,
+        repo.SubmissionAnswerRow[],
+        repo.SpeakerSummary[],
+        Map<string, string | null>,
+        Map<string, string | null>,
+        Awaited<ReturnType<typeof repo.getEvaluation>>,
+        Awaited<ReturnType<typeof repo.hasRecusal>>,
+      ]
+    >([
+      auth.role === "organizer" ? Promise.resolve(true) : repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId),
+      repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId),
+      repo.listAnswersForSubmission(c.var.db, submissionId),
+      repo.listSpeakersForSubmission(c.var.db, submissionId),
+      // frame 03--01: the scorecard head's meta line needs the same role-keyed
+      // (session_format) reading the queue row already carries (DEC-857)
+      // -- reuse listFormatLabelsBySubmission (single-id call) rather than a
+      // second lookup. audienceLevel is wired the same way (single-id call to
+      // listAudienceLevelLabelsBySubmission) and, like format, is NOT stripped
+      // for an anonymized plan: a session-shape fact is not identity.
+      repo.listFormatLabelsBySubmission(c.var.db, [submissionId]),
+      repo.listAudienceLevelLabelsBySubmission(c.var.db, [submissionId]),
+      // DEC-561: this reviewer's own stored evaluation for the plan's ACTIVE
+      // round, omitted entirely (property absent, not null) when there's no
+      // row yet -- lets a reviewer reopen/revise a submitted review.
+      repo.getEvaluation(c.var.db, plan.id, submissionId, auth.userId, plan.currentRound),
+      // DEC-984: this reviewer's own recusal (if any) for THIS submission --
+      // must survive a reload, not just live in client state after a POST.
+      // Property absent (not null) when there's no recusal, matching
+      // myEvaluation's convention (DEC-561). Never another reviewer's
+      // recusal, never a list.
+      repo.hasRecusal(c.var.db, plan.id, submissionId, auth.userId),
+    ]);
 
-  const summary = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
+  // DEC-211 (wave-61 amendment): an out-of-scope submission is refused with a
+  // sentence naming what actually happened -- an assigned reviewer who is
+  // already inside this plan (requireAssignedPlan passed) can already infer
+  // the event and its queue size, so hiding existence here buys nothing; the
+  // status code stays 'not_found'/404, only the sentence changes.
+  if (auth.role !== "organizer" && !inScope) throw new ApiError("not_found", "That submission is not in your review queue.");
   if (!summary) throw new ApiError("not_found", "Submission not found");
 
   // DEC-908/DEC-016: locked built-ins (title, description, first_name,
@@ -369,35 +420,14 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   // a non-anonymized plan, leaks raw speaker PII through a reading column
   // that isn't supposed to carry it). Filter BEFORE the speaker/session
   // split so neither branch can reintroduce a locked key.
-  const rawAnswers = await repo.listAnswersForSubmission(c.var.db, submissionId);
   const answers = rawAnswers.filter((a) => lockedFieldName(a.fieldId) === null);
-  const speakers = await repo.listSpeakersForSubmission(c.var.db, submissionId);
-  // frame 03--01: the scorecard head's meta line needs the same role-keyed
-  // (session_format) reading the queue row already carries (DEC-857)
-  // -- reuse listFormatLabelsBySubmission (single-id call) rather than a
-  // second lookup. audienceLevel is wired the same way (single-id call to
-  // listAudienceLevelLabelsBySubmission) and, like format, is NOT stripped
-  // for an anonymized plan: a session-shape fact is not identity.
-  const formatBySubmission = await repo.listFormatLabelsBySubmission(c.var.db, [submissionId]);
   const format = formatBySubmission.get(submissionId) ?? null;
-  const audienceLevelBySubmission = await repo.listAudienceLevelLabelsBySubmission(c.var.db, [submissionId]);
   const audienceLevel = audienceLevelBySubmission.get(submissionId) ?? null;
 
   // DEC-147: the criteria embedded on the submission detail are resolved for
   // the plan's ACTIVE round -- the reviewer's scorecard renders these, not
   // plan.criteria, so a round override actually takes effect client-side.
   const criteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), plan.currentRound);
-
-  // DEC-561: this reviewer's own stored evaluation for the plan's ACTIVE
-  // round, omitted entirely (property absent, not null) when there's no row
-  // yet -- lets a reviewer reopen/revise a submitted review.
-  const myEvaluationRecord = await repo.getEvaluation(c.var.db, plan.id, submissionId, auth.userId, plan.currentRound);
-
-  // DEC-984: this reviewer's own recusal (if any) for THIS submission -- must
-  // survive a reload, not just live in client state after a POST. Property
-  // absent (not null) when there's no recusal, matching myEvaluation's
-  // convention (DEC-561). Never another reviewer's recusal, never a list.
-  const myRecusalRecord = await repo.hasRecusal(c.var.db, plan.id, submissionId, auth.userId);
 
   const detail = {
     ...summary,
@@ -430,23 +460,45 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
   const plan = await requireAssignedPlan(c, c.req.param("planId"));
   const submissionId = c.req.param("submissionId");
 
-  // DEC-211: existence-hiding 404 for a submission outside the plan's event,
-  // enforced for EVERY role (organizer included) before any other checks.
-  const inEvent = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
+  // DEC-370 (wave-61 amendment): these four validation reads are all
+  // available up front (none depends on another's result) so they issue as
+  // ONE settleInDeclarationOrder wave. The organizer branch skips
+  // isSubmissionInReviewerScope with a resolved `true`, same shape trick as
+  // the GET route above. Refusals below are still evaluated in TODAY's exact
+  // source order (inEvent 404 -> plan-open 409 -> scope 404 -> recusal 409 ->
+  // body validation -> draft-vs-submitted 400): plan-open is a synchronous
+  // check (isPlanOpen/Date.now(), no repo read) so it slots in unchanged
+  // between the wave's first and third refusal checks.
+  const round = plan.currentRound;
+  const [inEvent, inScope, recusal, existing] = await settleInDeclarationOrder<
+    [
+      repo.SubmissionSummary | null,
+      boolean,
+      Awaited<ReturnType<typeof repo.hasRecusal>>,
+      Awaited<ReturnType<typeof repo.getEvaluation>>,
+    ]
+  >([
+    // DEC-211: existence-hiding 404 for a submission outside the plan's
+    // event, enforced for EVERY role (organizer included) before any other
+    // checks.
+    repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId),
+    auth.role === "organizer" ? Promise.resolve(true) : repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId),
+    // DEC-271: a reviewer who has recused themselves cannot score the
+    // submission through this endpoint.
+    repo.hasRecusal(c.var.db, plan.id, submissionId, auth.userId),
+    repo.getEvaluation(c.var.db, plan.id, submissionId, auth.userId, round),
+  ]);
+
   if (!inEvent) throw new ApiError("not_found", "Submission not found");
 
   if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
     throw new ApiError("conflict", "This review plan is not currently open");
   }
 
-  if (auth.role !== "organizer") {
-    const inScope = await repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId);
-    if (!inScope) throw new ApiError("not_found", "Submission not found");
-  }
+  // DEC-211 (wave-61 amendment): named refusal for an assigned reviewer who
+  // is out of scope inside their own plan -- see the GET route above.
+  if (auth.role !== "organizer" && !inScope) throw new ApiError("not_found", "That submission is not in your review queue.");
 
-  // DEC-271: a reviewer who has recused themselves cannot score the
-  // submission through this endpoint.
-  const recusal = await repo.hasRecusal(c.var.db, plan.id, submissionId, auth.userId);
   if (recusal) {
     throw new ApiError("conflict", "You have recused yourself from this submission");
   }
@@ -459,9 +511,6 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
   // DEC-873 (wave 27 amendment): draft defaults false -- absent means
   // today's full-submit behaviour, unchanged.
   const draft = body.draft === true;
-
-  const round = plan.currentRound;
-  const existing = await repo.getEvaluation(c.var.db, plan.id, submissionId, auth.userId, round);
 
   // DEC-873 (wave 27 amendment): a draft PUT against a row that is already
   // submitted is a loud 400 -- never a silent un-submit.
