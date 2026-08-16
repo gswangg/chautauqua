@@ -214,12 +214,12 @@
 }
 
 .chq-review-results-col-reviews {
-  /* User-filed (gate-9, second pass): the reviews disclosure toggle is
-     ~91px of content in a cell whose 92px track loses 16px to padding —
-     under table-layout:fixed it overflowed into the Decision column and
-     butted the Accept button. Width fits the widest label ("▸ 0 reviews")
-     plus the cell padding; Title is the remainder column and absorbs. */
-  width: 124px;
+  /* User-filed (gate-9, third pass): under table-layout:fixed this track
+     must fit the WIDEST label variant, and the label inventory is
+     "▸ N reviews" AND "▸ N reviews · M recusals" (~178px with a recusal) —
+     124px fit only the first and Accept overlapped again on recused rows.
+     Sized for the full inventory + cell padding; Title absorbs. */
+  width: 210px;
 }
 
 .chq-review-results-col-decision {

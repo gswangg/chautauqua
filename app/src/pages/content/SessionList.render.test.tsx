@@ -1131,7 +1131,7 @@ describe('SessionList: worklist table takes the frame six tracks under fixed lay
     expect(headers[5]).toHaveClass('chq-content-worklist-col-actions');
   });
 
-  it('declares table-layout:fixed with the four pinned tracks, one hug column, and one remainder', () => {
+  it('declares table-layout:fixed with the four pinned tracks, one fixed actions column, and one remainder', () => {
     const cssPath = join(process.cwd(), 'app/src/pages/content/content.css');
     const css = readFileSync(cssPath, 'utf-8');
 
@@ -1156,7 +1156,7 @@ describe('SessionList: worklist table takes the frame six tracks under fixed lay
     expect(speakerMatch![1]).toMatch(/width:\s*168px/);
     expect(latestFileMatch![1]).toMatch(/width:\s*200px/);
     expect(statusMatch![1]).toMatch(/width:\s*152px/);
-    expect(actionsMatch![1]).toMatch(/width:\s*1px/);
+    expect(actionsMatch![1]).toMatch(/width:\s*182px/);
     expect(actionsMatch![1]).toMatch(/white-space:\s*nowrap/);
   });
 
@@ -1174,7 +1174,7 @@ describe('SessionList: worklist table takes the frame six tracks under fixed lay
     expect(filesSessionMatch![1]).toMatch(/width:\s*190px/);
     expect(filesVersionMatch![1]).toMatch(/width:\s*108px/);
     expect(filesSizeMatch![1]).toMatch(/width:\s*92px/);
-    expect(filesActionsMatch![1]).toMatch(/width:\s*1px/);
+    expect(filesActionsMatch![1]).toMatch(/width:\s*150px/);
 
     // Neither the shared .chq-content-table selector, nor the files-only
     // selector, ever declares the worklist's fixed layout -- the pins must

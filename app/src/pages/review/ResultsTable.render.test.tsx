@@ -1005,10 +1005,10 @@ describe('ResultsTable results table is fixed-layout on the frame\'s seven track
     expect(sheet).toContain('.chq-review-results-col-speaker {\n  width: 150px;\n}');
     expect(sheet).toContain('.chq-review-results-col-track {\n  width: 130px;\n}');
     expect(sheet).toContain('.chq-review-results-col-score {\n  width: 92px;\n}');
-    expect(sheet).toContain('.chq-review-results-col-reviews {\n  width: 92px;\n}');
+    expect(sheet).toMatch(/\.chq-review-results-col-reviews \{[^}]*width: 210px/);
     // Decision hugs its two buttons (DEC-902 wave-20 sub-rule 4) rather than
     // taking a frame-literal `auto`.
-    expect(sheet).toMatch(/\.chq-review-results-col-decision\s*{\s*width:\s*1px;\s*white-space:\s*nowrap;\s*}/);
+    expect(sheet).toMatch(/\.chq-review-results-col-decision\s*\{[^}]*width:\s*190px;[^}]*white-space:\s*nowrap/);
     // Title carries no pinned width of its own -- it is the remainder column.
     expect(sheet).not.toMatch(/\.chq-review-results-col-title\s*{[^}]*width:/);
 

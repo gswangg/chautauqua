@@ -51,8 +51,12 @@
    own width, not the checkbox's, matching the ContactsTable precedent's
    intent of a narrow lead column that never competes with Session/Speaker
    for space. */
-.chq-content-table thead th:first-child,
-.chq-content-table tbody td:first-child {
+/* Gate-9 fleet: this 26px checkbox column belongs to the WORKLIST table
+   only — hung on the shared .chq-content-table class it also pinned the
+   files library's FILE column (its first column) to 26px, and fixed layout
+   redistributed the 1000px surplus across every other track. */
+.chq-content-worklist-table thead th:first-child,
+.chq-content-worklist-table tbody td:first-child {
   width: 26px;
 }
 
@@ -218,6 +222,12 @@
   grid-template-columns: 1.35fr 1fr;
   gap: 26px;
   padding-top: 16px;
+}
+
+/* Gate-9 fleet: grid items keep min-width:auto, so the deliverables pane's
+   945px min-content floor crushed the notes rail to 209px (pack: 464). */
+.chq-content-group-body > * {
+  min-width: 0;
 }
 
 @media (max-width: 900px) {

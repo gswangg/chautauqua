@@ -34,5 +34,26 @@ export const BARE_PAGE_CSS = `
     flex-direction: column;
     gap: 22px;
   }
-  .chq-bare-page .chq-auth-title { font-size: 36px; }
+  .chq-bare-page .chq-auth-title { font-size: 28px; }
+  /* Gate-9 fleet R-A: the input fill rule is scoped to .chq-auth-card, so
+     when /account/password (and the expired-claim page) moved onto the
+     bare page their fields collapsed to the browser's intrinsic ~188px
+     size-attribute width against the frame's full-measure 818x47.5 bands.
+     The bare page owns its own fill. Same for the submit control, which
+     lost the card's footer-row sizing and painted as a 19px sliver. */
+  .chq-bare-page input[type=email],
+  .chq-bare-page input[type=password],
+  .chq-bare-page input[type=text],
+  .chq-bare-page .chq-input {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+  }
+  .chq-bare-page .chq-btn-primary,
+  .chq-bare-page button[type=submit] {
+    min-height: 46px;
+    padding: 0 20px;
+    width: auto;
+    align-self: flex-start;
+  }
 `;
