@@ -829,7 +829,11 @@ describe('PlanEditor render smoke', () => {
     expect(picker.querySelector('select')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Dropdown' }));
 
-    expect(screen.getByPlaceholderText('Options (comma-separated)')).toBeInTheDocument();
+    // v12 intake section A: options are editable rows, not one
+    // comma-separated field -- a brand-new dropdown criterion starts at the
+    // floor (MIN_CRITERION_OPTIONS = 2), so two option rows render.
+    expect(screen.getByPlaceholderText('Option 1')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Option 2')).toBeInTheDocument();
   });
 
   // --- DEC-745: v4 shell coverage -------------------------------------
@@ -1780,6 +1784,78 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByText('75%')).toBeInTheDocument();
     expect(screen.getByText('25%')).toBeInTheDocument();
     expect(screen.queryByText(/^3 · 75%$/)).not.toBeInTheDocument();
+  });
+
+  // v12 intake section A (DEC-422 wave-2 amendment / DEC-650): the Choice
+  // options editor -- editable rows bounded 2..6, a "N of 6" counter fed by
+  // the declared constant, Add hidden at the max, Remove disabled at the
+  // min, row order preserved, and no weight input renders for a dropdown
+  // criterion. Two rating criteria beside a Choice criterion still split
+  // 60/40 -- the share caption ignores the Choice row entirely.
+  it('edits a Choice criterion\'s options as bounded rows and drops its weight input', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [
+          { id: 'c1', label: 'Content', kind: 'rating', weight: 3 },
+          { id: 'c2', label: 'Delivery', kind: 'rating', weight: 2 },
+          { id: 'c3', label: 'Format', kind: 'dropdown', options: ['Talk', 'Workshop'] },
+        ],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Format')).toBeInTheDocument());
+
+    // Row-per-option, in declared order.
+    expect(screen.getByPlaceholderText('Option 1')).toHaveValue('Talk');
+    expect(screen.getByPlaceholderText('Option 2')).toHaveValue('Workshop');
+
+    // The rating shares split 60/40 over the two rating criteria alone --
+    // the Choice criterion contributes nothing to the denominator.
+    expect(screen.getByText('60%')).toBeInTheDocument();
+    expect(screen.getByText('40%')).toBeInTheDocument();
+
+    // No weight input anywhere in the Choice criterion's row.
+    const criterionRows = container.querySelectorAll('.chq-review-criterion-row');
+    const formatRow = [...criterionRows].find((row) => row.querySelector('input[value="Talk"]'));
+    expect(formatRow).toBeDefined();
+    expect(formatRow?.querySelector('input[type="number"]')).toBeNull();
+
+    // Counter reads "N of 6" from the declared constant.
+    expect(screen.getByText('2 of 6')).toBeInTheDocument();
+
+    // Remove is disabled at the floor (two options).
+    const removeOptionButtons = screen.getAllByRole('button', { name: /^Remove option \d+$/ });
+    expect(removeOptionButtons).toHaveLength(2);
+    for (const button of removeOptionButtons) {
+      expect(button).toBeDisabled();
+    }
+
+    // Adding options up to the cap hides "Add an option" and the counter
+    // reads "6 of 6"; Remove re-enables once above the floor.
+    const addOptionLink = screen.getByRole('link', { name: 'Add an option' });
+    fireEvent.click(addOptionLink);
+    fireEvent.click(screen.getByRole('link', { name: 'Add an option' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Add an option' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Add an option' }));
+
+    expect(screen.getByText('6 of 6')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Add an option' })).not.toBeInTheDocument();
+    for (const button of screen.getAllByRole('button', { name: /^Remove option \d+$/ })) {
+      expect(button).not.toBeDisabled();
+    }
   });
 
   // w25-g/DEC-745 amendment (ruling 9): the per-reviewer "Reset password"

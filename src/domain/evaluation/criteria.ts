@@ -44,10 +44,12 @@ export const MAX_PLAN_ROUNDS = 10;
 // a separate cap.
 export const MAX_PLAN_CRITERIA = 7;
 
-// DEC-422 (amendment, wave 2): a dropdown criterion's options list was
-// bounded by the CFP builder's own control but not here -- capped at the
-// same order of magnitude as other bounded option lists in the codebase.
-export const MAX_CRITERION_OPTIONS = 20;
+// DEC-422 (amendment, wave 2, and this wave's amendment on the crossing): a
+// Choice (dropdown) criterion's options list is bounded 2..6 -- a fixed
+// option list only reads as a choice with at least two members, and the
+// v12 intake caps it at six so the results distribution stays readable.
+export const MIN_CRITERION_OPTIONS = 2;
+export const MAX_CRITERION_OPTIONS = 6;
 
 // DEC-676: a criterion may carry a one-line guidance string shown to
 // reviewers under its label and to organizers in the plan editor -- bounded

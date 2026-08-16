@@ -1012,6 +1012,43 @@
   white-space: nowrap;
 }
 
+/* v12 intake section A (DEC-650): a Choice criterion's options render as
+   editable rows in the criterion row's WEIGHT column -- the weight input
+   never renders at all for a dropdown criterion, this block takes its
+   place. Each option row wraps its drag handle/input/Remove within the
+   column's own width rather than fighting the row grid for extra tracks. */
+.chq-review-criterion-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chq-review-criterion-option-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.chq-review-criterion-option-row .chq-input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.chq-review-criterion-options-footer {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.chq-review-criterion-options-count {
+  font-size: 12px;
+  color: var(--chq-muted);
+  white-space: nowrap;
+}
+
 .chq-review-criteria-locked-notice {
   font-size: 13px;
   color: var(--chq-ink-2);

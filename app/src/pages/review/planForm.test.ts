@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   addCriterion,
+  addCriterionOption,
   isPlanDraftValid,
+  moveCriterionOption,
   removeCriterion,
+  removeCriterionOption,
   totalRatingWeight,
   updateCriterion,
+  updateCriterionOption,
   validateCriteriaList,
   validatePlanDraft,
 } from './planForm';
@@ -21,9 +25,13 @@ describe('addCriterion / removeCriterion / updateCriterion', () => {
     expect(criteria[0]).toMatchObject({ kind: 'rating', weight: 1, label: '' });
   });
 
-  it('adds a dropdown criterion with empty options', () => {
+  // v12 intake section A (DEC-422 wave-2 amendment): a Choice criterion's
+  // options are bounded 2..6, so a brand-new row starts at the floor --
+  // two blank option rows the editor's own Remove-disabled-at-two control
+  // could never reach starting from zero.
+  it('adds a dropdown criterion starting at the two-option floor', () => {
     const criteria = addCriterion([], 'dropdown');
-    expect(criteria[0]).toMatchObject({ kind: 'dropdown', options: [] });
+    expect(criteria[0]).toMatchObject({ kind: 'dropdown', options: ['', ''] });
   });
 
   it('adds a free-text criterion defaulting to not required (DEC-148)', () => {
@@ -175,5 +183,48 @@ describe('totalRatingWeight', () => {
       { id: 'c3', label: 'Format fit', kind: 'dropdown', options: ['Yes', 'No'] },
     ];
     expect(totalRatingWeight(criteria)).toBe(5);
+  });
+});
+
+// v12 intake section A (DEC-422 wave-2 amendment): the Choice options
+// editor's pure row helpers -- add/remove/update/move -- never re-sort a
+// row's declared position and never touch a non-dropdown criterion.
+describe('addCriterionOption / removeCriterionOption / updateCriterionOption / moveCriterionOption', () => {
+  function withOptions(options: string[]): EvaluationCriterion[] {
+    return [
+      { id: 'rating-1', label: 'Content', kind: 'rating', weight: 1 },
+      { id: 'c1', label: 'Format', kind: 'dropdown', options },
+    ];
+  }
+
+  it('appends a blank option row', () => {
+    const criteria = addCriterionOption(withOptions(['Talk', 'Workshop']), 'c1');
+    expect(criteria[1]).toMatchObject({ options: ['Talk', 'Workshop', ''] });
+  });
+
+  it('is a no-op on a non-dropdown criterion id', () => {
+    const criteria = withOptions(['Talk', 'Workshop']);
+    expect(addCriterionOption(criteria, 'rating-1')).toEqual(criteria);
+  });
+
+  it('removes an option row by index, preserving the order of the rest', () => {
+    const criteria = removeCriterionOption(withOptions(['Talk', 'Workshop', 'Panel']), 'c1', 1);
+    expect(criteria[1]).toMatchObject({ options: ['Talk', 'Panel'] });
+  });
+
+  it('replaces one option row in place without reordering', () => {
+    const criteria = updateCriterionOption(withOptions(['Talk', 'Workshop']), 'c1', 0, 'Keynote');
+    expect(criteria[1]).toMatchObject({ options: ['Keynote', 'Workshop'] });
+  });
+
+  it('moves an option row by delta, same contract as moveCriterion', () => {
+    const criteria = moveCriterionOption(withOptions(['Talk', 'Workshop', 'Panel']), 'c1', 0, 1);
+    expect(criteria[1]).toMatchObject({ options: ['Workshop', 'Talk', 'Panel'] });
+  });
+
+  it('refuses to move past either end of the list', () => {
+    const criteria = withOptions(['Talk', 'Workshop']);
+    expect(moveCriterionOption(criteria, 'c1', 0, -1)).toEqual(criteria);
+    expect(moveCriterionOption(criteria, 'c1', 1, 1)).toEqual(criteria);
   });
 });
