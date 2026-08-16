@@ -22,3 +22,5 @@ export const DOCS_ARTICLES: readonly DocsArticle[] = [
 
 export { DOCS_GROUPS } from "./types";
 export type { DocsGroupId, DocsBlock, DocsArticle } from "./types";
+export { DOCS_GROUP_META, DOCS_API_LEAVING_LINK } from "./groups";
+export type { DocsGroupMeta } from "./groups";
