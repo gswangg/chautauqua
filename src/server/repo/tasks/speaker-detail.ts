@@ -12,9 +12,14 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { overdueAssignmentConditions, rosterParticipantConditions } from "./crud";
-import { DEC_930 } from "../../../decisions";
+import { safeExternalUrl } from "../../../domain/contacts";
+import { parseSocialLinks } from "../profile";
+import { DEC_930, DEC_738 } from "../../../decisions";
 
 void DEC_930; // this file is the ONE bounded GET DEC-930 mandates.
+void DEC_738; // wave 75: the org-wide contact record (bio/socialLinks, alongside
+// title/company/customFields) is projected here too -- the CRM drawer stays
+// the one place it's edited (this record carries a link there, not a form).
 
 // DEC-930 amendment (wave 26): cross-event history is a COUNT plus up to
 // five names, never an unbounded query on a detail page.
@@ -40,6 +45,13 @@ export interface SpeakerDetailContact {
   // see repo/profile.ts) rather than a dedicated column, so this stays the
   // one place a headshot URL turns into a bare id.
   headshotFileId: string | null;
+  // DEC-738 amendment (wave 75): the bio and social links the speaker wrote
+  // through their portal profile (repo/profile.ts's updateProfile) are the
+  // same org-wide contact facts the public speaker detail page projects
+  // (repo/public/detail.ts) -- read the same way here so the organizer's
+  // record isn't a poorer view of the person than the public page.
+  bio: string | null;
+  socialLinks: { label: string; url: string }[];
 }
 
 export interface SpeakerDetailOtherEvent {
@@ -151,6 +163,8 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       customFieldsJson: schema.contact.customFieldsJson,
       headshotUrl: schema.contact.headshotUrl,
       headshotFileId: schema.contact.headshotFileId,
+      bio: schema.contact.bio,
+      socialLinksJson: schema.contact.socialLinksJson,
       userId: schema.user.id,
     })
     .from(schema.contact)
@@ -295,6 +309,24 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
     .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
     .where(and(eq(schema.taskAssignment.contactId, contactId), overdueAssignmentConditions(eventId, Date.now(), timeZone)));
 
+  // DEC-738 amendment (wave 75): parse the stored social_links_json and run
+  // each non-empty value through safeExternalUrl (external-input boundary),
+  // dropping anything unsafe/unparseable -- fixed label order regardless of
+  // which fields are populated, mirroring repo/public/detail.ts exactly so
+  // this isn't a second social-link vocabulary.
+  const parsedSocial = parseSocialLinks(contactRow.socialLinksJson);
+  const socialLinks: { label: string; url: string }[] = [];
+  const socialFieldOrder: { label: string; key: keyof typeof parsedSocial }[] = [
+    { label: "Twitter", key: "twitter" },
+    { label: "LinkedIn", key: "linkedin" },
+    { label: "GitHub", key: "github" },
+    { label: "Website", key: "website" },
+  ];
+  for (const { label, key } of socialFieldOrder) {
+    const safe = safeExternalUrl(parsedSocial[key]);
+    if (safe !== null) socialLinks.push({ label, url: safe });
+  }
+
   const primary = participantRows[0];
   if (!primary) throw new Error("speaker detail: participantRows unexpectedly empty after length check");
 
@@ -349,6 +381,8 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
         }
         return contactRow.headshotFileId;
       })(),
+      bio: contactRow.bio,
+      socialLinks,
     },
     participation: {
       participantId: primary.participantId,

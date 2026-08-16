@@ -21,6 +21,12 @@ export interface SpeakerDetailContact {
   // event-scoped copy.
   customFields: Record<string, string>;
   headshotFileId: string | null;
+  // DEC-738 amendment (wave 75): the bio and social links the speaker wrote
+  // through their portal profile -- same org-wide contact facts the public
+  // speaker page shows, projected here read-only (the CRM drawer stays the
+  // one place they're edited).
+  bio: string | null;
+  socialLinks: { label: string; url: string }[];
 }
 
 // DEC-930 amendment (wave 26): cross-event history is a bounded list
