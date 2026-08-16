@@ -530,7 +530,7 @@ feature, out of scope for the final hours; noted as roadmap, not a freeze item.
 that (AIA minor is the judge disliking the policy, not a silent withhold — the
 withholding-list detail in gate-10 lane item 19 remains nice-to-have).
 
-**Eval budget: spend ≈$490 of $650 after this run. Final full run reserved.**
+**Eval budget: ACTUAL spend $322.77 of $650 (console-verified by user 2026-08-16 — earlier ≈$490 tally was a conservative overestimate, mostly from over-pricing the 140-turn diagnostic). Headroom ≈$327; final full run reserved.**
 
 
 ## GATE-11 SWEEP VERDICTS (fidelity-gate11/group{1,2,3}.md; DEPLOYED sha 6719a2dc, hotfix8 9b18f7ff on top; integrity CLEAN all three)
