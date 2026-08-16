@@ -49,6 +49,12 @@ export interface ListEnvelope<T> {
   // DEC-027 wave-51 amendment: present on GET /tokens only -- the bound on
   // the org's bearer-token population, rendered beside the create control.
   max?: number;
+  // DEC-596 (wave-61 amendment): present on GET /submissions/:id/evaluations
+  // only -- the count of reviewers ASSIGNED to this submission, never the
+  // count of evaluation rows they've submitted. The "Reviews · N of M in"
+  // header's denominator must always read this, never items.length --
+  // items.length is how the two arithmetics diverged in the first place.
+  assigned?: number;
 }
 
 // DEC-024 (wave-19 amendment): a 401 anywhere on the wire is one policy in

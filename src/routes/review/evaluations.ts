@@ -11,6 +11,7 @@ import { ApiError } from "../../server/http";
 import { getSubmissionOwnership } from "../../server/repo/submissions";
 import { listEvaluationsForSubmission, listPlanCriteriaByIds } from "../../server/repo/review/evaluations";
 import { getPlanForOrg } from "../../server/repo/review/plans";
+import { countAssignedReviewersForSubmission } from "../../server/repo/review/reviewers";
 import { criteriaForRound, computeWeightedScore, type EvaluationCriterionDef } from "../../domain/evaluation";
 import { DEC_596, DEC_723, DEC_736, DEC_763 } from "../../decisions";
 
@@ -35,7 +36,12 @@ reviewEvaluationsRoutes.get("/api/v1/submissions/:id/evaluations", requireOrgani
     if (!plan || plan.eventId !== ownership.eventId) throw new ApiError("not_found", "Plan not found");
   }
 
-  const rows = await listEvaluationsForSubmission(c.var.db, submissionId, planIdParam);
+  // DEC-596: `assigned` (reviewers assigned, not evaluation rows) rides the
+  // SAME wave as the evaluations read -- no extra round trip.
+  const [rows, assigned] = await Promise.all([
+    listEvaluationsForSubmission(c.var.db, submissionId, planIdParam),
+    countAssignedReviewersForSubmission(c.var.db, ownership.eventId, submissionId, planIdParam),
+  ]);
 
   // DEC-723: an evaluation read carries its own round's criteria and the
   // plan's own weighted score -- never bare criterion ids. Plan lookups
@@ -83,5 +89,5 @@ reviewEvaluationsRoutes.get("/api/v1/submissions/:id/evaluations", requireOrgani
   // DEC-461(a) list envelope. This read is unpaginated on purpose -- one
   // submission's evaluations are bounded by (plans x reviewers), so the whole
   // set is always one page.
-  return c.json({ items, total: items.length, page: 1, perPage: items.length });
+  return c.json({ items, total: items.length, page: 1, perPage: items.length, assigned });
 });

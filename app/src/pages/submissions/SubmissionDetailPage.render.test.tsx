@@ -75,7 +75,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: patchMock,
     });
 
@@ -125,7 +125,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -163,7 +163,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/submissions/${SUB_ID}/history`]: () => ({ items: history, total: history.length, page: 1, perPage: history.length }),
       [`POST /api/v1/submissions/${SUB_ID}/revisions/rev-1/restore`]: restoreMock,
     });
@@ -222,7 +222,7 @@ describe('SubmissionDetailPage render: DEC-998 URL-state editor + history', () =
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage(`/submissions/${SUB_ID}?edit=1`);
@@ -248,7 +248,7 @@ describe('SubmissionDetailPage render: DEC-998 URL-state editor + history', () =
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/submissions/${SUB_ID}/history`]: { items: history, total: 1, page: 1, perPage: 20 },
     });
 
@@ -325,6 +325,10 @@ describe('SubmissionDetailPage render: Reviews section + decision rail', () => {
             submittedAt: null,
           },
         ],
+        // DEC-596: `assigned` is the reviewer-ASSIGNMENT count, not
+        // items.length -- a third reviewer is assigned but has not yet
+        // submitted an evaluation row at all, so it never appears in items.
+        assigned: 3,
       },
     });
 
@@ -338,8 +342,10 @@ describe('SubmissionDetailPage render: Reviews section + decision rail', () => {
     expect(screen.queryByText('Anonymous reviewer')).not.toBeInTheDocument();
     expect(screen.getByText('Scope is too broad for the slot.')).toBeInTheDocument();
 
-    // Header: 'Reviews · N of M in' -- 1 of 2 items has a non-null submittedAt.
-    expect(screen.getByRole('heading', { name: /Reviews\s*·\s*1 of 2 in/ })).toBeInTheDocument();
+    // Header: 'Reviews · N of M in' -- 1 of 2 items has a non-null
+    // submittedAt, and M is the ASSIGNED reviewer count (3), not
+    // items.length (2) -- DEC-596.
+    expect(screen.getByRole('heading', { name: /Reviews\s*·\s*1 of 3 in/ })).toBeInTheDocument();
 
     // DEC-737 (wave 2 amendment): per-criterion detail is behind a quiet,
     // closed-by-default disclosure on each review row -- the resting row
@@ -400,7 +406,7 @@ describe('SubmissionDetailPage render: decided-state rail (DEC-878)', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -437,7 +443,7 @@ describe('SubmissionDetailPage render: decided-state rail (DEC-878)', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`POST /api/v1/events/evt-1/submissions/status`]: statusMock,
     });
 
@@ -485,7 +491,7 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
         perPage: 20,
       },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: patchMock,
     });
 
@@ -534,7 +540,7 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
         perPage: 20,
       },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: patchMock,
     });
 
@@ -579,7 +585,7 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
         perPage: 20,
       },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: {
         status: 422,
         body: errorEnvelope('invalid', 'Tracks belong to a different event', {
@@ -647,7 +653,7 @@ describe('SubmissionDetailPage render: unpublished-participant caption (DEC-656)
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -671,7 +677,7 @@ describe('SubmissionDetailPage render: unpublished-participant caption (DEC-656)
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -709,7 +715,7 @@ describe('SubmissionDetailPage render: list position + neighbour navigation (DEC
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/events/evt-1/submissions`]: {
         items: [
           listItem({ id: 'sub-before', ref: 'S-002' }),
@@ -745,7 +751,7 @@ describe('SubmissionDetailPage render: list position + neighbour navigation (DEC
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/events/evt-1/submissions`]: {
         items: [listItem({ id: SUB_ID, ref: 'S-001' }), listItem({ id: 'sub-after', ref: 'S-002' })],
         total: 2,
@@ -770,7 +776,7 @@ describe('SubmissionDetailPage render: list position + neighbour navigation (DEC
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/events/evt-1/submissions`]: {
         items: [listItem({ id: 'someone-else', ref: 'S-009' })],
         total: 1,
@@ -798,7 +804,7 @@ describe('SubmissionDetailPage render: awaiting-triage banner (DEC-761)', () => 
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/events/evt-1/submissions`]: { items: [], total: 0, page: 1, perPage: 20 },
     });
 
@@ -817,7 +823,7 @@ describe('SubmissionDetailPage render: awaiting-triage banner (DEC-761)', () => 
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/events/evt-1/submissions`]: { items: [], total: 0, page: 1, perPage: 20 },
     });
 
@@ -840,7 +846,7 @@ describe('SubmissionDetailPage render: placement + format (DEC-780)', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -860,7 +866,7 @@ describe('SubmissionDetailPage render: placement + format (DEC-780)', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -896,7 +902,7 @@ describe('SubmissionDetailPage render: placement + format (DEC-780)', () => {
           },
         ],
       },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: patchMock,
     });
 
@@ -951,7 +957,7 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/contacts`]: {
         items: [{ id: 'c-2', firstName: 'Riley', lastName: 'Contact', email: 'riley@example.com' }],
         total: 1,
@@ -1031,7 +1037,7 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1090,7 +1096,7 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
           },
         ],
       },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/events/evt-1/submissions`]: { items: [], total: 0, page: 1, perPage: 20 },
     });
 
@@ -1113,7 +1119,7 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1139,7 +1145,7 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1240,7 +1246,7 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
           },
         ],
       },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1313,7 +1319,7 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
         perPage: 20,
       },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1367,7 +1373,7 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1408,7 +1414,7 @@ describe('SubmissionDetailPage render: DEC-920 file-kind answer', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: fileFormFields },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1433,7 +1439,7 @@ describe('SubmissionDetailPage render: DEC-920 file-kind answer', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: fileFormFields },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1458,7 +1464,7 @@ describe('SubmissionDetailPage render: delete entry point (DEC-886)', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1483,7 +1489,7 @@ describe('SubmissionDetailPage render: DEC-900 frame 02 anatomy fixes', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1517,7 +1523,7 @@ describe('SubmissionDetailPage render: DEC-900 frame 02 anatomy fixes', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1557,7 +1563,7 @@ describe('SubmissionDetailPage render: DEC-900 frame 02 anatomy fixes', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1593,7 +1599,7 @@ describe('SubmissionDetailPage render: DEC-900 frame 02 anatomy fixes', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1626,7 +1632,7 @@ describe('SubmissionDetailPage render: DEC-900 frame 02 anatomy fixes', () => {
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -1649,7 +1655,7 @@ describe('SubmissionDetailPage: title/abstract edit refusal (DEC-958 wave 64)', 
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: {
         status: 400,
         body: errorEnvelope('invalid', 'Validation failed', { title: 'Max 200 characters' }),
@@ -1694,7 +1700,7 @@ describe('SubmissionDetailPage: title/abstract editor turn diet (findings wave 1
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: patchHandler,
     };
   }
@@ -1815,7 +1821,7 @@ describe('SubmissionDetailPage: tracks editor turn diet (findings wave 15 amendm
         perPage: 20,
       },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: { status: 200, body: updated },
     });
 
@@ -1886,7 +1892,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`POST /api/v1/events/evt-1/submissions/status`]: {
         status: 400,
         body: errorEnvelope('invalid', 'status must be one of the DEC-003 submission statuses', {
@@ -1917,7 +1923,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`POST /api/v1/events/evt-1/submissions/status`]: {
         status: 500,
         body: errorEnvelope('internal', 'Something went wrong'),
@@ -1947,7 +1953,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
         perPage: 20,
       },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: {
         status: 400,
         body: errorEnvelope('invalid', 'trackIds must not exceed 1000 entries', { trackIds: 'Max 1000' }),
@@ -1992,7 +1998,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
           },
         ],
       },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}`]: {
         status: 400,
         body: errorEnvelope('invalid', 'format must be one of the field’s options', {
@@ -2032,7 +2038,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
           },
         ],
       },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       // Mirrors src/routes/api/submissions.ts's PATCH /submissions/:id --
       // it names no dedicated audienceLevel key, so the shared 'Provide
       // title, description, trackIds, or format' catch-all (keyed 'title')
@@ -2067,7 +2073,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`DELETE /api/v1/submissions/${SUB_ID}/participants/p2`]: { status: 200, body: { deleted: 1 } },
     });
 
@@ -2100,7 +2106,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -2127,7 +2133,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`DELETE /api/v1/submissions/${SUB_ID}/participants/p2`]: {
         status: 400,
         body: errorEnvelope('invalid', 'Cannot remove this participant', {
@@ -2164,7 +2170,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}/participants/p2`]: {
         status: 400,
         body: errorEnvelope('invalid', 'visible or inviteStatus is required', { visible: 'Required' }),
@@ -2194,7 +2200,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`PATCH /api/v1/submissions/${SUB_ID}/participants/p2`]: {
         status: 400,
         body: errorEnvelope('invalid', 'visible must be a boolean', { visible: 'Required' }),
@@ -2224,7 +2230,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
       [`GET /api/v1/contacts`]: {
         items: [{ id: 'c-2', firstName: 'Riley', lastName: 'Contact', email: 'riley@example.com' }],
         total: 1,
@@ -2294,7 +2300,7 @@ describe('SubmissionDetailPage render: DEC-958 (findings wave 13 amendment) Form
           },
         ],
       },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -2317,7 +2323,7 @@ describe('SubmissionDetailPage render: DEC-958 (findings wave 13 amendment) Form
       [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
@@ -2358,7 +2364,7 @@ describe('SubmissionDetailPage render: DEC-958 (findings wave 13 amendment) Form
           },
         ],
       },
-      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [], assigned: 0 },
     });
 
     renderPage();
