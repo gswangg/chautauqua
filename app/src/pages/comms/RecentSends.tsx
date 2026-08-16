@@ -30,6 +30,12 @@ function statusTally(statusCounts: Record<string, number>): string {
 
 interface RecipientsState {
   items: EmailLogRow[] | null;
+  // DEC-905: the recipients read's OWN envelope total -- the only honest
+  // source for "how many rows does this batch have", and the reason this
+  // component still derives no aggregate of its own (never a sum over the
+  // batch's statusCounts, which answers a different question and would be
+  // exactly the re-derived figure DEC-905 removed from here).
+  total: number | null;
   error: string | null;
 }
 
@@ -97,6 +103,7 @@ function SendDetailDisclosure({
 function BatchRecipients({
   eventId,
   items,
+  total,
   error,
   templatesById,
   batchSubject,
@@ -170,14 +177,14 @@ function BatchRecipients({
         </div>
       ))}
       {/* Frame 07-comms--08's footer honesty line -- shown only when this
-          fetch is a truncated projection of the batch (the batch's own
-          statusCounts, already on the batch row, sum to more than the
-          fetched recipient rows). Real data already on hand, never a
-          fabricated remaining-count. */}
-      {!error && items && items.length < Object.values(statusCounts).reduce((sum, n) => sum + n, 0) && (
+          fetch is a truncated projection of the batch, measured against the
+          recipients read's OWN envelope total (DEC-905: a printed count is
+          its own query's count), never a sum re-derived here over the batch
+          row's statusCounts. */}
+      {!error && items && total !== null && items.length < total && (
         <p className="chq-comms-batch-recipients-footer">
-          {Object.values(statusCounts).reduce((sum, n) => sum + n, 0) - items.length} more &middot; sent means the
-          provider accepted it &mdash; whether it landed in an inbox is not something we hear back about
+          {total - items.length} more &middot; sent means the provider accepted it &mdash; whether it landed in an
+          inbox is not something we hear back about
         </p>
       )}
     </div>
@@ -265,12 +272,16 @@ export function RecentSends({
     if (recipients[batchKey]) return;
     apiList<EmailLogRow>(`/events/${eventId}/email-log?batchId=${encodeURIComponent(batchKey)}`)
       .then((res) => {
-        setRecipients((prev) => ({ ...prev, [batchKey]: { items: res.items, error: null } }));
+        setRecipients((prev) => ({ ...prev, [batchKey]: { items: res.items, total: res.total, error: null } }));
       })
       .catch((err) => {
         setRecipients((prev) => ({
           ...prev,
-          [batchKey]: { items: null, error: err instanceof ApiError ? err.message : 'Failed to load recipients' },
+          [batchKey]: {
+            items: null,
+            total: null,
+            error: err instanceof ApiError ? err.message : 'Failed to load recipients',
+          },
         }));
       });
   }
@@ -387,6 +398,7 @@ export function RecentSends({
               <BatchRecipients
                 eventId={eventId}
                 items={entry?.items ?? null}
+                total={entry?.total ?? null}
                 error={entry?.error ?? null}
                 templatesById={templatesById}
                 batchSubject={batch.subject}

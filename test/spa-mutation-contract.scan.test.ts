@@ -965,6 +965,12 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
   // scan's own output can never diverge in shape.
   const UNRESOLVABLE_PATHS: string[] = [
     "app/src/pages/comms/ComposeWizard.tsx interpolation-erased: /events/${eventId}/submissions${qs}",
+    // Frame 07-comms--05's per-status pill counts: same class as the row
+    // above (this file's own list read) -- one bounded read per status whose
+    // trailing `${statusCountQs}` is a client-built `?status=…&perPage=1`
+    // query string, never a route segment. The literal segment before it is
+    // still resolved and route-checked by this scan.
+    "app/src/pages/comms/ComposeWizard.tsx interpolation-erased: /events/${eventId}/submissions${statusCountQs}",
     "app/src/pages/contacts/MergePage.tsx interpolation-erased: /contacts/duplicates${query}",
     "app/src/pages/review/PlanEditor.tsx interpolation-erased: /plans/${planId}/assignments/distribute/preview${qs}",
     "app/src/pages/submissions/SubmissionDetailPage.tsx interpolation-erased: /events/${detail.eventId}/submissions${buildSubmissionsQuery(listFilters)}",

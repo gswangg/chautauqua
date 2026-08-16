@@ -205,11 +205,17 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   useEffect(() => {
     let cancelled = false;
     Promise.all(
-      SUBMISSION_STATUSES.map((status) =>
-        apiList<SubmissionListItem>(
-          `/events/${eventId}/submissions${buildSubmissionsQuery({ ...DEFAULT_FILTER_STATE, status: [status], perPage: 1 })}`,
-        ).then((res) => [status, res.total] as const),
-      ),
+      SUBMISSION_STATUSES.map((status) => {
+        // The query string is built BEFORE the template rather than inline
+        // inside it: DEC-817's path scan erases a `${...}` span at the first
+        // `}` it meets, so a nested object literal in the template leaves it
+        // with a torn path that resolves to no route. Same `${qs}` shape the
+        // list read above (and SubmissionsTable) already uses.
+        const statusCountQs = buildSubmissionsQuery({ ...DEFAULT_FILTER_STATE, status: [status], perPage: 1 });
+        return apiList<SubmissionListItem>(`/events/${eventId}/submissions${statusCountQs}`).then(
+          (res) => [status, res.total] as const,
+        );
+      }),
     )
       .then((pairs) => {
         if (cancelled) return;
@@ -860,8 +866,8 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 );
               })}
             </div>
-            {/* A visible-but-visually-hidden wrapping <label> (rather than
-                aria-label) keeps this control's accessible name "Search"
+            {/* A visible-but-visually-hidden wrapping label element (rather
+                than aria-label) keeps this control's accessible name "Search"
                 while its placeholder stays the string the text-caps
                 exemption ledger names it by (app/src/text-caps.scan.test.ts,
                 out of this page's ownership) -- an aria-label here would win

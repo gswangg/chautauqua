@@ -16,6 +16,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { plural } from '../../lib/plural';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import {
   validateRoomForm,
@@ -841,7 +842,7 @@ export function TracksRoomsPanel() {
           title="Discard unsaved edits?"
           body={
             <p>
-              {dirtyRowNames().join(', ')} {dirtyRowNames().length === 1 ? 'has' : 'have'} unsaved edits. Each row
+              {dirtyRowNames().join(', ')} {plural(dirtyRowNames().length, 'has', 'have')} unsaved edits. Each row
               saves with its own Save control — leaving now discards these edits and keeps the saved values.
             </p>
           }

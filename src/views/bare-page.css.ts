@@ -37,7 +37,10 @@ export const BARE_PAGE_CSS = `
     flex-direction: column;
     gap: 22px;
   }
-  @media (max-width: 860px) {
+  /* DEC-385: 900px is the sanctioned breakpoint above the 820px measure --
+     side padding returns as soon as the viewport stops clearing the
+     measure plus its gutters, not at a third hand-picked width. */
+  @media (max-width: 900px) {
     .chq-bare-page { padding: 48px 20px; }
   }
   .chq-bare-page .chq-auth-title { font-size: 28px; }

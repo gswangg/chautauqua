@@ -84,7 +84,15 @@ describe('turn-diet honesty: ComposeWizard', () => {
       // mock would throw "no route registered" and fail the test.
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    // Step 1's footer carries a real Cancel <Link> back to /comms (frame
+    // 07-comms--05), so this mount needs the router context every other
+    // ComposeWizard render test already supplies -- an unrouted mount
+    // throws inside react-router's Link, not in the code under test.
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     // State was hydrated from the URL (2 submissions selected, template
     // applied) --

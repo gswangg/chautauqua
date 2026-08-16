@@ -630,6 +630,18 @@ interface LedgerEntry {
 
 const LEDGER: LedgerEntry[] = [
   {
+    key: 'app/src/pages/contacts/types.ts#ContactDetail.headshotUrl',
+    verdict: 'exempt',
+    reason:
+      "design-frames-v12 08-contacts--02 draws the drawer's PROFILE section as bio + links; the 238px HEADSHOT row that read this field was unframed and the G13 A20 ruling removed it. The field stays on the wire because it is the contact row's own stored column (src/server/repo/contacts/rows.ts:27), served by the same serializeContact projection every other contact response uses, and it is still WRITTEN and RENDERED outside the SPA -- the speaker portal's own headshot upload (src/routes/portal/profile.tsx, src/server/repo/profile.ts:190) and the speaker-detail read (src/server/repo/tasks/speaker-detail.ts:165). Narrowing the shared projection to hide it from one client would be a server change no ruling asks for.",
+  },
+  {
+    key: 'app/src/pages/contacts/types.ts#ContactDetail.headshotFile',
+    verdict: 'exempt',
+    reason:
+      "the filename + upload-date companion to headshotUrl above, computed per-request by GET /contacts/:id (src/routes/api/contacts/crud.ts:264-286) to satisfy DEC-894's rule that an uploaded file carries its own record rather than reading as decoration. Its only reader was the drawer's headshot meta line, removed with the row by G13 A20. Recorded rather than deleted because DEC-894 is a standing decision about this endpoint's payload, and the A20 ruling is about what the drawer DRAWS -- a design ruling does not by itself repeal an API contract, and the register (DESIGN-RULINGS.md / DEVIATIONS.md) is where that reconciliation belongs.",
+  },
+  {
     key: 'app/src/pages/review/types.ts#ReviewerQueueItem.ratingsCount',
     verdict: 'exempt',
     reason:

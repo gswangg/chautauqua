@@ -9,6 +9,7 @@ import { type DemoIdentity } from "../lib/demo-identities";
 import type { LoginFooterEvent, AuthBandCopy } from "./auth-helpers";
 import { DEC_583 } from "../decisions";
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "../domain/auth-copy";
+import { capitalizeFirst } from "../domain/count-copy";
 import { MAX_TEXT_LENGTH } from "../forms/validate";
 
 void DEC_583;
@@ -157,7 +158,7 @@ export function LoginPage(props: {
                   data-demo-email={identity.email}
                   data-demo-password={identity.password}
                 >
-                  {identity.role.charAt(0).toUpperCase() + identity.role.slice(1)} &middot; {identity.email}
+                  {capitalizeFirst(identity.role)} &middot; {identity.email}
                 </button>
               ))}
             </div>

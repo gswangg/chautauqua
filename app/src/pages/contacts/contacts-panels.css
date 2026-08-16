@@ -1218,6 +1218,10 @@
 
 .chq-add-to-event-card:hover {
   border-color: var(--chq-border);
+  /* a:hover-proof (B8): hover darkens the frame, never repaints the label --
+     the base color is re-asserted here so the global a:hover olive can never
+     win over it if this card is ever rendered as an anchor. */
+  color: var(--chq-muted);
 }
 
 .chq-add-to-event-card.is-selected {
