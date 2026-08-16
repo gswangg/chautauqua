@@ -18,6 +18,17 @@ export const PUBLIC_PER_PAGE = 12;
 export const MAX_PUBLIC_PAGE = 100;
 export const MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE * PUBLIC_PER_PAGE;
 
+// DEC-487 amendment (wave 10): the ONE home for the `?limit=` embed-config
+// override's valid range. src/routes/public/query.ts's parseLimit enforces
+// this range (degrading any out-of-range value to null, never throwing);
+// src/routes/api/embeds.ts's refusal message for the same param is composed
+// from these same two symbols, so the enforced range and the described
+// range can never drift apart. The SPA's embed builder (app/src/pages/
+// settings/EmbedsPanel.tsx) imports these directly for its number input's
+// min/max, for the same reason.
+export const MIN_EMBED_LIMIT = 1;
+export const MAX_EMBED_LIMIT = 100;
+
 // DEC-433 amendment (wave 30, superseded in part by wave 45): the ONE bound
 // on every public query-string STRING value (trackId/format/roomId/q),
 // mirrored by src/routes/public/query.ts's trim-or-null parsers and

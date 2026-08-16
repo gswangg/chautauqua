@@ -10,7 +10,12 @@
 // DEC-477/DEC-487: MAX_PUBLIC_PAGE now lives in src/server/repo/public/
 // bounds.ts, the ONE home for public paging constants (alongside
 // PUBLIC_PER_PAGE and their derived MAX_PUBLIC_ROWS).
-import { MAX_PUBLIC_PAGE, MAX_PUBLIC_QUERY_VALUE_LENGTH } from "../../server/repo/public/bounds";
+import {
+  MAX_PUBLIC_PAGE,
+  MAX_PUBLIC_QUERY_VALUE_LENGTH,
+  MIN_EMBED_LIMIT,
+  MAX_EMBED_LIMIT,
+} from "../../server/repo/public/bounds";
 // DEC-510: isIsoDate is the ONE home for the YYYY-MM-DD format+round-trip
 // rule, in pure core (src/domain/iso-date.ts, no imports).
 import { isIsoDate } from "../../domain/iso-date";
@@ -73,11 +78,13 @@ export function parseDay(raw: string | undefined): string | null {
   return raw && isIsoDate(raw) ? raw : null;
 }
 
-/** `limit` = sessions-surface page size override, integer 1..100, else null
- * (caller falls back to PER_PAGE). */
+/** `limit` = sessions-surface page size override, integer
+ * MIN_EMBED_LIMIT..MAX_EMBED_LIMIT (DEC-487: src/server/repo/public/
+ * bounds.ts is the ONE home for this range), else null (caller falls back
+ * to PER_PAGE). Never throws — an out-of-range value degrades to null. */
 export function parseLimit(raw: string | undefined): number | null {
   const n = Number(raw);
-  return Number.isInteger(n) && n >= 1 && n <= 100 ? n : null;
+  return Number.isInteger(n) && n >= MIN_EMBED_LIMIT && n <= MAX_EMBED_LIMIT ? n : null;
 }
 
 // DEC-673: the card-field vocabulary moved to src/lib/card-fields.ts (pure

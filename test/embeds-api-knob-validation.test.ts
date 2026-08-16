@@ -11,6 +11,7 @@ import { Hono } from "hono";
 import { embedsRoutes } from "../src/routes/api/embeds";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
+import { MIN_EMBED_LIMIT, MAX_EMBED_LIMIT } from "../src/server/repo/public/bounds";
 
 const ORG_A = "org-a";
 const EVENT_ID = "event-1";
@@ -171,6 +172,31 @@ describe("POST /api/v1/events/:eventId/embeds refuses a knob the surface does no
       q: "ai",
       accent: "#123456",
     });
+  });
+
+  // DEC-487 (wave 10 amendment): the refusal sentence for an out-of-range
+  // `limit` is composed from the same two constants parseLimit enforces
+  // (src/server/repo/public/bounds.ts), so the enforced range and the
+  // described range can never drift apart.
+  it("refuses an out-of-range limit with a message naming both MIN_EMBED_LIMIT and MAX_EMBED_LIMIT", async () => {
+    const { db } = fakeDb([[{ orgId: ORG_A }]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      postRequest(`/api/v1/events/${EVENT_ID}/embeds`, {
+        name: "Sessions widget",
+        surface: "sessions",
+        format: "iframe",
+        options: { limit: MAX_EMBED_LIMIT + 1 },
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as any;
+    expect(body.error.code).toBe("invalid");
+    expect(body.error.message).toContain(String(MIN_EMBED_LIMIT));
+    expect(body.error.message).toContain(String(MAX_EMBED_LIMIT));
+    expect(body.error.fields).toMatchObject({ limit: expect.any(String) });
   });
 });
 

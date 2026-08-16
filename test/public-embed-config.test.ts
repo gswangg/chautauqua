@@ -13,7 +13,7 @@ import {
   parsePage,
   ALL_CARD_FIELDS,
 } from "../src/routes/public/query";
-import { MAX_PUBLIC_PAGE } from "../src/server/repo/public/bounds";
+import { MAX_PUBLIC_PAGE, MIN_EMBED_LIMIT, MAX_EMBED_LIMIT } from "../src/server/repo/public/bounds";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
 import * as schema from "../src/db/schema";
@@ -324,6 +324,19 @@ describe("query.ts pure parsers (DEC-289 allowlists — never throw)", () => {
     expect(parseLimit("abc")).toBeNull();
     expect(parseLimit(undefined)).toBeNull();
     expect(parseLimit("5.5")).toBeNull();
+  });
+
+  // DEC-487 (wave 10 amendment): parseLimit's range is the same two symbols
+  // the API refusal message describes — a value one past the declared
+  // ceiling degrades to null (never throws), same as the bare "101" case
+  // above, but expressed against the constant rather than a hand-typed
+  // number so a future change to the constant can't silently desync this
+  // assertion from the enforced bound.
+  it("degrades to null one past MAX_EMBED_LIMIT and accepts exactly MIN_EMBED_LIMIT/MAX_EMBED_LIMIT", () => {
+    expect(parseLimit(String(MIN_EMBED_LIMIT))).toBe(MIN_EMBED_LIMIT);
+    expect(parseLimit(String(MAX_EMBED_LIMIT))).toBe(MAX_EMBED_LIMIT);
+    expect(parseLimit(String(MAX_EMBED_LIMIT + 1))).toBeNull();
+    expect(parseLimit(String(MIN_EMBED_LIMIT - 1))).toBeNull();
   });
 
   it("parseCardFields: absent/empty is all-on", () => {

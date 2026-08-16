@@ -165,20 +165,19 @@ function findRefusalNumberLiterals(src: string): string[] {
   return out;
 }
 
-// Named, live allowlist: a real cap-shaped literal that legitimately
-// survives this scan because fixing it is out of this task's owned-file
-// scope (submissions.ts + recusals.ts only, per DEC-425 wave-67). Filed for
-// a future wave rather than silently widened here.
-const REFUSAL_NUMBER_ALLOWLIST: { file: string; reason: string }[] = [
-  {
-    file: join(ROUTES_ROOT, 'api', 'embeds.ts'),
-    reason:
-      "\"limit must be an integer 1-100\" duplicates parseLimit's hand-typed 1..100 range check in " +
-      'src/routes/public/query.ts -- a real finding, but src/routes/api/embeds.ts and query.ts are ' +
-      'outside this task\'s owned-file scope (DEC-425 wave-67 covers submissions.ts trackIds + ' +
-      'recusals.ts reason only); filed for a follow-up wave rather than fixed here.',
-  },
-];
+// RULE, not a scope: an `ApiError(...)` call may NEVER hand-type a
+// cap-shaped numeric literal in its message or fields text. Every bound
+// named in a refusal sentence must be interpolated from an imported
+// constant (src/domain/**, or a single home like src/server/repo/public/
+// bounds.ts for a param range) so the enforced value and the described
+// value can never drift apart (DEC-425 wave-67; DEC-487 wave-10 closed the
+// last live exemption -- src/routes/api/embeds.ts's `limit` refusal now
+// interpolates MIN_EMBED_LIMIT/MAX_EMBED_LIMIT). An allowlist entry here is
+// a live named exception to that rule, not a place to park a known gap on
+// a schedule -- if a genuine new exemption is ever needed it must state
+// which invariant makes the interpolation impossible, not merely which
+// wave will get to it.
+const REFUSAL_NUMBER_ALLOWLIST: { file: string; reason: string }[] = [];
 
 describe('no src/routes/**/*.{ts,tsx} ApiError call hand-types a cap-shaped numeric literal (DEC-425, wave 67 amendment)', () => {
   const ROUTE_FILES = allSourceFiles(ROUTES_ROOT);
@@ -204,16 +203,11 @@ describe('no src/routes/**/*.{ts,tsx} ApiError call hand-types a cap-shaped nume
     ).toEqual([]);
   });
 
-  // The allowlisted file DOES still carry the literal the allowlist
-  // excuses -- confirms the entry isn't stale for something already fixed.
-  it('the allowlisted file still carries the literal the allowlist excuses', () => {
-    for (const entry of REFUSAL_NUMBER_ALLOWLIST) {
-      const src = readFileSync(entry.file, 'utf-8');
-      expect(
-        findRefusalNumberLiterals(src).length,
-        `${relative(HERE, entry.file)} no longer hand-types a cap-shaped literal -- remove its allowlist entry`,
-      ).toBeGreaterThan(0);
-    }
+  // The allowlist is empty: every ApiError refusal in src/routes now
+  // interpolates its cap-shaped number from an imported constant, so an
+  // empty allowlist is the passing state, not a gap.
+  it('the allowlist is empty -- no live exemption from the interpolated-constant rule', () => {
+    expect(REFUSAL_NUMBER_ALLOWLIST).toEqual([]);
   });
 
   // Vacuous-scan tripwire.

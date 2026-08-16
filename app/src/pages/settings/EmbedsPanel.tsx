@@ -25,6 +25,7 @@ import {
   type EmbedSurface,
 } from './embedSnippet';
 import { MAX_NAME_LENGTH } from '../../../../src/forms/validate';
+import { MIN_EMBED_LIMIT, MAX_EMBED_LIMIT } from '../../../../src/server/repo/public/bounds';
 
 // DEC-822/DEC-839: the shape a saved embed row comes back as from GET
 // /events/:eventId/embeds (src/server/repo/embeds.ts's EmbedRecord,
@@ -466,8 +467,8 @@ export function EmbedsPanel() {
                 <input
                   className="chq-input"
                   type="number"
-                  min={1}
-                  max={100}
+                  min={MIN_EMBED_LIMIT}
+                  max={MAX_EMBED_LIMIT}
                   value={limit}
                   onChange={(e) => setLimit(e.target.value)}
                   placeholder="(no limit)"
