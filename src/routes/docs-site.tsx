@@ -33,6 +33,8 @@ import {
 import { publicNotFound } from "./public/not-found";
 import { PublicEmptyState } from "./public/empty-state";
 import { DOCS_SHOTS_AVAILABLE } from "./docs-content/shots-available";
+import { docsNavGroups, docsArticleNeighbours } from "./docs-content/nav";
+import { WHERE_NEXT_BY_SLUG } from "./docs-content/where-next";
 
 export const docsSiteRoutes = new Hono<AppEnv>();
 
@@ -115,6 +117,79 @@ function DocsBlockView(props: { block: DocsBlock }) {
   );
 }
 
+// Sticky grouped side nav (Chautauqua Docs.dc.html:46-55). Current article
+// marked with the olive inset rule (:354-355 of the same file); every other
+// link in its group renders unselected. On phone the whole column is
+// hidden by CSS in favour of the '‹ Docs' back link rendered separately
+// below, per the frame's third (390px) panel.
+function DocsNav(props: { activeSlug: string }) {
+  const groups = docsNavGroups();
+  return (
+    <nav class="chq-docs-nav" aria-label="Docs sections">
+      {groups.map((group) => (
+        <div class="chq-docs-nav-group">
+          <span class="chq-docs-nav-group-label">{group.label}</span>
+          {group.articles.map((article) => (
+            <a
+              class={
+                article.slug === props.activeSlug
+                  ? "chq-docs-nav-link chq-docs-nav-link-active"
+                  : "chq-docs-nav-link"
+              }
+              href={`/docs/${article.slug}`}
+              aria-current={article.slug === props.activeSlug ? "page" : undefined}
+            >
+              {article.title}
+            </a>
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+// "Closes every article. Names the screen, not the doc." (:336) -- the
+// 150px/1fr grid drawn at :328-337 and again in the article frame at
+// :97-105.
+function DocsWhereNext(props: { slug: string }) {
+  const rows = WHERE_NEXT_BY_SLUG[props.slug] ?? [];
+  if (rows.length === 0) return null;
+  return (
+    <div class="chq-docs-where-next">
+      <h2 class="chq-docs-h2">Where next</h2>
+      {rows.map((row) => (
+        <div class="chq-docs-where-next-row">
+          <a class="chq-docs-where-next-where" href={row.href}>
+            {row.where}
+          </a>
+          <span class="chq-docs-where-next-what">{row.what}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Top-rule pager: prev on the left, next pushed right (:341-345). Either
+// side is omitted at the ends of the flattened nav order.
+function DocsPager(props: { slug: string }) {
+  const { prev, next } = docsArticleNeighbours(props.slug);
+  if (!prev && !next) return null;
+  return (
+    <div class="chq-docs-pager">
+      {prev ? (
+        <a class="chq-docs-pager-prev" href={`/docs/${prev.slug}`}>
+          &lsaquo; {prev.title}
+        </a>
+      ) : null}
+      {next ? (
+        <a class="chq-docs-pager-next" href={`/docs/${next.slug}`}>
+          {next.title} &rsaquo;
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
 function DocsIndexPage() {
   const byGroup = new Map<DocsGroupId, DocsArticle[]>();
   for (const article of DOCS_ARTICLES) {
@@ -191,16 +266,24 @@ function DocsArticlePage(props: { article: DocsArticle }) {
       <body>
         <div class="chq-docs-shell">
           <DocsHeader />
-          <main class="chq-docs-article-body">
-            <div class="chq-docs-article-head">
-              <span class="chq-docs-article-eyebrow">{meta.label}</span>
-              <h1>{article.title}</h1>
-              <p>{article.standfirst}</p>
-            </div>
-            {article.blocks.map((block) => (
-              <DocsBlockView block={block} />
-            ))}
-          </main>
+          <div class="chq-docs-article-frame">
+            <DocsNav activeSlug={article.slug} />
+            <main class="chq-docs-article-body">
+              <a class="chq-docs-phone-back" href="/docs">
+                &lsaquo; Docs
+              </a>
+              <div class="chq-docs-article-head">
+                <span class="chq-docs-article-eyebrow">{meta.label}</span>
+                <h1>{article.title}</h1>
+                <p>{article.standfirst}</p>
+              </div>
+              {article.blocks.map((block) => (
+                <DocsBlockView block={block} />
+              ))}
+              <DocsWhereNext slug={article.slug} />
+              <DocsPager slug={article.slug} />
+            </main>
+          </div>
         </div>
       </body>
     </html>
