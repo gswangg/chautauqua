@@ -65,10 +65,12 @@ live tree this task, not inherited from a prior wave's claim:
    modal closes by naming what it does NOT do (directory ≠ event).
 3. FieldModal residue: dialog title per frame (not "Edit field"), operator tokens
    read as words (not raw eq/ne/in), card width 520 → 560.
-4. **12-home measure: ALIGN TO FRAME — HOME_MEASURE 820 → 732** (user's all-PASS
-   directive resolves the parked ruling in the frame's favor; home.css.ts:21).
-5. **CFP builder content measure: ALIGN TO FRAME — 820 → 756** (same resolution;
-   frame 02--04 draws 756 @ x422).
+4. ~~12-home 820→732~~ **ON HOLD (user, wave-78): the 732/756 frames are suspected
+   ABERRANT** — the system's canonical measure is 820 (DEC-744/DEC-808) and these
+   are the only two frames deviating, with no ruling. The design agent is asked to
+   confirm-or-correct the frames. DO NOT change HOME_MEASURE or the builder measure
+   until the next handoff answers; app stays at 820.
+5. (merged into 4 — same hold.)
 6. Home CTA dark-on-dark hover: .chq-home-action-primary must keep its on-brand
    label on hover (add .chq-btn or scope theme.ts a:hover away from it). VERIFY
    with computed style — this was still live at gate-11.
