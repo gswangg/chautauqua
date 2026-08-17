@@ -115,7 +115,7 @@ instead of re-flagging.
 
 **Adjudications recorded:**
 - Portal measure WIDENED against the frames: --chq-portal-measure 560px (drawn)
-  -> 760px. USER RULING 2026-08-16 (release night): the 560 column reads as a
+  -> var(--chq-measure) (the 820px admin/overview measure). USER RULING 2026-08-16 (release night): the 560 column reads as a
   phone view on desktop. Single-token change; the portal keeps its narrow
   editorial character relative to the 820 admin measure.
 - Tracks-and-rooms save model: per-row dirty-reveal BLESSED (G13 srv1

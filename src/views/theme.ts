@@ -113,7 +113,7 @@ export const THEME_CSS = `
        honest (every page still picks exactly one named token) rather
        than overriding --chq-measure locally. Consumed by
        src/routes/portal/portal.css.ts only. */
-    --chq-portal-measure: 760px;
+    --chq-portal-measure: var(--chq-measure);
     /* DEC-683 amendment (wave 1, task w1-a): the PUBLIC PAIR contract is
        820 (list) + 60 (gap) + 300 (rail) = 1180 of CONTENT at a 1440
        viewport. --chq-measure-wide alone only clamps a rule's max-width;

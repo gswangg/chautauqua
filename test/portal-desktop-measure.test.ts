@@ -59,9 +59,9 @@ function extract700Blocks(src: string): string[] {
 
 describe("portal desktop measure (DEC-989 ruling B6)", () => {
   // USER RULING 2026-08-16 (release night): the frames' 560px portal column
-  // read as a phone view on desktop; widened to 760px. DEVIATIONS.md §6.
-  it("declares --chq-portal-measure: 760px alongside --chq-measure in theme.ts", () => {
-    expect(THEME).toMatch(/--chq-portal-measure:\s*760px;/);
+  // read as a phone view on desktop; widened to the admin measure (var(--chq-measure), 820px). DEVIATIONS.md §6.
+  it("declares --chq-portal-measure: var(--chq-measure) alongside --chq-measure in theme.ts", () => {
+    expect(THEME).toMatch(/--chq-portal-measure:\s*var\(--chq-measure\);/);
   });
 
   it("leaves --chq-measure at 820px -- shared reading measure is untouched", () => {
