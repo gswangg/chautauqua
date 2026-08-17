@@ -81,7 +81,11 @@ describe("GET /docs", () => {
     const res = await app.request("/docs");
     const body = await res.text();
     expect(body).toContain('href="/docs/api"');
-    expect(body).toContain("Leaves the docs");
+    // The link text names what opens; the ↗ mark plus the row blurb carry
+    // the leaves-the-docs seam (user-filed: the old label read as a warning
+    // with no noun in it).
+    expect(body).toContain("API reference");
+    expect(body).toContain("Opens outside the docs site.");
     expect(body).toContain("↗");
   });
 });

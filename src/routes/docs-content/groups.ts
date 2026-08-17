@@ -41,8 +41,13 @@ export const DOCS_GROUP_META: Record<DocsGroupId, DocsGroupMeta> = {
 
 // The API reference is TOOLS_CSS chrome (DEC-382) — this design does not
 // revise that, so the seam from the docs index to /docs/api is named rather
-// than hidden.
+// than hidden. The LABEL names the destination ("API reference", same as
+// the design reference's own row name, Chautauqua Docs.dc.html:436) and the
+// ↗ leaving mark plus the row's blurb (src/routes/docs-site.tsx) carry the
+// seam — a reader scanning the link text should learn what opens, not read
+// a warning with no noun in it. User-filed: '"Leave the docs an operator
+// surface" is weird. please make the link more plainly descriptive.'
 export const DOCS_API_LEAVING_LINK = {
   href: "/docs/api",
-  label: "Leaves the docs — an operator surface",
+  label: "API reference",
 } as const;

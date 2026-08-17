@@ -128,6 +128,14 @@ describe("docs article page furniture", () => {
       expect(body).toContain(`href="${row.href}"`);
       expect(body).toContain(row.where);
     }
+    // ...and the one quiet line under the heading saying what those rows
+    // actually open (user-filed: the block "doesn't make it clear that
+    // these are links to admin pages you need to sign in to access").
+    const whereNextNote =
+      "These open screens in the running app. Links under /admin need an organizer or reviewer sign-in; /portal links need a speaker sign-in.";
+    expect(body).toContain(whereNextNote);
+    // Once per BLOCK, not once per row.
+    expect(body.split(whereNextNote).length - 1).toBe(1);
 
     // pager: both links present
     expect(body).toContain(`href="/docs/${prev!.slug}"`);

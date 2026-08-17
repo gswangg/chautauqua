@@ -192,6 +192,10 @@ describe("GET /docs?q=", () => {
     const app = buildApp();
     const res = await app.request("/docs");
     const body = await res.text();
-    expect(body).toContain("generated from the routes");
+    // The row's blurb now carries BOTH halves in plain words -- what the
+    // page is (generated per route) and that it leaves the docs site --
+    // after the user filed the old link label as unreadable.
+    expect(body).toContain("one generated page per route");
+    expect(body).toContain("Opens outside the docs site.");
   });
 });

@@ -76,6 +76,36 @@ survives contact with state:
   src/routes/docs-content/technical-names.ts). Bans that stand: should/might
   ambiguity, metaphors, synonym wobble on domain terms.
 
+## 4a. Docs screenshots: tall frames and prepared states (USER RULING 2026-08-16)
+
+DESIGN-RULINGS.md:308-316 rule 1/3 said every docs figure is "exactly
+1600 x 900", "full frames, not crops". The user OVERRODE that on release
+night, after reviewing the shot set: *"theyre all cutoff"*. The admin shell
+scrolls inside `.chq-main`, not on `<body>` (app/src/styles.css), so a
+1600x900 viewport clip cut every long screen off mid-row — a crop by another
+name, and worse than a tall figure.
+
+What changed in `scripts/docs-shots.ts` / `scripts/docs-shots-lib.ts`:
+
+- **Capture is `fullPage` by default, still at 1600 wide.** The width is the
+  invariant; the height grows to whatever the screen actually needs
+  (`growViewportToFit`, capped at 6000px). `capture: "frame"` keeps the
+  literal 1600x900 viewport and is used ONLY for `position: fixed` overlays
+  (modal cards, `.chq-toast`), which a tall frame strands instead of showing.
+- **A row may declare `prep` steps** — click / clickRole / fill / select /
+  upload / waitFor — so a figure can show the STATE its caption names. Same
+  user report: several figures were byte-identical route twins whose captions
+  promised different states (a new break, an import dry-run, a recused queue
+  row, a compose result). The interactions are performed in the real app, by
+  the same personas, against the same seed.
+
+Unchanged: seeded data only (DevFlow Conf 2027), no cropping, no drawn
+annotation, no image post-processing, and the shoot is still a script that is
+re-run every release. Mutating prep flows (publish, send, recuse, add a
+break) are legal because the shoot runs against a dev server that is reseeded
+afterwards; the CSV-import flow deliberately STOPS at the dry-run step so it
+writes nothing at all.
+
 ## 5. Pending adjudication (not yet blessed — sweep should verdict)
 
 - **Tracks-and-rooms save model** — the frame (09--12) shows ONE page-level

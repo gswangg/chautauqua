@@ -94,6 +94,12 @@ export const DOCS_SITE_CSS = `
   .chq-docs-where-next-row { display: grid; grid-template-columns: 150px 1fr; gap: 18px; align-items: baseline; padding: 13px 0; border-bottom: 1px solid var(--chq-hairline); }
   .chq-docs-where-next-where { font-size: 15px; font-weight: 700; color: var(--chq-ink); text-decoration: none; }
   .chq-docs-where-next-what { font-size: 15px; line-height: 1.6; color: var(--chq-ink-2); }
+  /* One quiet line under the Where-next heading saying what these links
+     actually open (user-filed: the block "doesn't make it clear that these
+     are links to admin pages you need to sign in to access"). Same muted
+     13px register as .chq-docs-group-blurb / .chq-docs-figure-caption --
+     its own class because it is a block-level note, not a blurb in a row. */
+  .chq-docs-where-next-note { max-width: 680px; font-size: 13px; line-height: 1.55; color: var(--chq-muted); }
 
   /* Prev/next pager: top rule, prev left, next pushed right (:341-345). */
   .chq-docs-pager { max-width: 680px; border-top: 1px solid var(--chq-rule); padding-top: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }

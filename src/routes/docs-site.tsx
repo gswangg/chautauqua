@@ -301,6 +301,14 @@ function DocsWhereNext(props: { slug: string }) {
   return (
     <div class="chq-docs-where-next">
       <h2 class="chq-docs-h2">Where next</h2>
+      {/* The rows name SCREENS, not docs (:336) -- so say once, quietly,
+          that they open the running app and what each needs to get in.
+          Per BLOCK, never per row: three copies of the same sentence in a
+          three-row grid is noise. */}
+      <p class="chq-docs-where-next-note">
+        These open screens in the running app. Links under /admin need an organizer or reviewer sign-in; /portal links
+        need a speaker sign-in.
+      </p>
       {rows.map((row) => (
         <div class="chq-docs-where-next-row">
           <a class="chq-docs-where-next-where" href={row.href}>
@@ -348,7 +356,10 @@ function DocsApiLeavingRow() {
         </span>
         {DOCS_API_LEAVING_LINK.label}
       </a>
-      <span class="chq-docs-article-blurb">Leaves the docs — an operator surface, generated from the routes</span>
+      {/* The seam DESIGN-RULINGS.md:306 asks to be NAMED rather than
+          hidden now lives here, in plain words, instead of inside the link
+          text (which names the destination -- DOCS_API_LEAVING_LINK). */}
+      <span class="chq-docs-article-blurb">The HTTP API, one generated page per route. Opens outside the docs site.</span>
     </div>
   );
 }

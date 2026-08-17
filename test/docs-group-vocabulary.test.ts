@@ -85,7 +85,11 @@ describe("docs group vocabulary (DEC-613 amendment: one owner)", () => {
   it("DOCS_API_LEAVING_LINK carries the ruling's verbatim label and href", () => {
     expect(DOCS_API_LEAVING_LINK).toEqual({
       href: "/docs/api",
-      label: "Leaves the docs — an operator surface",
+      // User-filed rewrite: the link text names the DESTINATION plainly
+      // ("API reference", the design reference's own row name at
+      // Chautauqua Docs.dc.html:436); the ↗ mark and the row blurb in
+      // src/routes/docs-site.tsx carry the leaves-the-docs seam.
+      label: "API reference",
     });
   });
 

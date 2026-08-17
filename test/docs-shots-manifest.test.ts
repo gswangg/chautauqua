@@ -89,6 +89,106 @@ describe("DOCS_SHOTS manifest", () => {
   });
 });
 
+// DEVIATIONS.md 2026-08-16: rows may now carry `prep` (declarative
+// interactions run before the shutter) and `capture` ("fullPage" default /
+// "frame"). These assert the SHAPE the interpreter in
+// scripts/docs-shots.ts switches on -- a step kind it doesn't know, or a
+// capture mode outside the two it implements, would silently shoot the
+// wrong state.
+describe("DOCS_SHOTS prep/capture fields", () => {
+  const STEP_KINDS = ["click", "clickRole", "fill", "select", "upload", "waitFor"];
+  const STEP_ROLES = ["button", "link", "checkbox", "tab"];
+
+  it("every declared capture mode is one the script implements", () => {
+    for (const entry of DOCS_SHOTS) {
+      if (entry.capture === undefined) continue;
+      expect(["fullPage", "frame"], `shot "${entry.id}" capture`).toContain(entry.capture);
+    }
+  });
+
+  it("every prep array is non-empty and every step names a known kind", () => {
+    for (const entry of DOCS_SHOTS) {
+      if (entry.prep === undefined) continue;
+      expect(entry.prep.length, `shot "${entry.id}" declares an empty prep array`).toBeGreaterThan(0);
+      for (const step of entry.prep) {
+        expect(STEP_KINDS, `shot "${entry.id}" has an unrecognized prep step kind`).toContain(step.kind);
+      }
+    }
+  });
+
+  it("every step carries the fields its kind needs (no blank selectors, roles or values)", () => {
+    for (const entry of DOCS_SHOTS) {
+      for (const step of entry.prep ?? []) {
+        const where = `shot "${entry.id}" step ${step.kind}`;
+        switch (step.kind) {
+          case "click":
+          case "waitFor":
+            expect(step.selector.length, where).toBeGreaterThan(0);
+            break;
+          case "clickRole":
+            expect(STEP_ROLES, where).toContain(step.role);
+            expect(step.name.length, where).toBeGreaterThan(0);
+            break;
+          case "fill":
+            expect(step.selector.length, where).toBeGreaterThan(0);
+            expect(step.value.length, where).toBeGreaterThan(0);
+            break;
+          case "select":
+            expect(step.selector.length, where).toBeGreaterThan(0);
+            expect(step.label.length, where).toBeGreaterThan(0);
+            break;
+          case "upload":
+            expect(step.selector.length, where).toBeGreaterThan(0);
+            expect(step.fileName.endsWith(".csv"), `${where} uploads a non-CSV name`).toBe(true);
+            expect(step.content.length, where).toBeGreaterThan(0);
+            break;
+        }
+      }
+    }
+  });
+
+  it("a prep flow ends by waiting for the state it was after (never a bare click before the shutter)", () => {
+    for (const entry of DOCS_SHOTS) {
+      if (entry.prep === undefined) continue;
+      const last = entry.prep[entry.prep.length - 1]!;
+      expect(last.kind, `shot "${entry.id}" prep must end with a waitFor, not a ${last.kind}`).toBe("waitFor");
+    }
+  });
+
+  it("the shots whose captions name a STATE all declare prep (regression pin: they were byte-identical route twins)", () => {
+    const owesPrep = [
+      "running-an-event-speakers-tasks-and-content-02",
+      "running-an-event-agenda-and-publishing-02",
+      "running-an-event-agenda-and-publishing-03",
+      "your-contacts-contacts-pipeline-and-comms-01",
+      "your-contacts-contacts-pipeline-and-comms-02",
+      "your-contacts-contacts-pipeline-and-comms-03",
+      "for-reviewers-reviewing-start-to-finish-01",
+      "for-reviewers-reviewing-start-to-finish-02",
+    ];
+    for (const id of owesPrep) {
+      const entry = DOCS_SHOTS.find((row) => row.id === id);
+      expect(entry, `no DOCS_SHOTS row for "${id}"`).toBeDefined();
+      expect((entry!.prep ?? []).length, `shot "${id}" must declare prep steps`).toBeGreaterThan(0);
+    }
+  });
+
+  it("no two rows sharing a route ALSO share an identical prep+capture (that is what made the duplicate figures)", () => {
+    const seen = new Map<string, string>();
+    for (const entry of DOCS_SHOTS) {
+      const fingerprint = JSON.stringify([entry.route, entry.capture ?? "fullPage", entry.prep ?? []]);
+      const twin = seen.get(fingerprint);
+      // The /admin/overview pair is the one deliberate exception: two
+      // different articles both open on the dashboard, and both captions
+      // genuinely describe it.
+      if (twin !== undefined && entry.route !== "/admin/overview") {
+        throw new Error(`shots "${twin}" and "${entry.id}" would capture the identical frame (${entry.route})`);
+      }
+      seen.set(fingerprint, entry.id);
+    }
+  });
+});
+
 describe("DOCS_SHOTS reconciled against DOCS_ARTICLES's figure blocks", () => {
   it("every DOCS_SHOTS id has a matching figure shotId in DOCS_ARTICLES (no manifest row without a figure slot)", () => {
     const articleShotIds = new Set(articleFigureShots().map((s) => s.shotId));

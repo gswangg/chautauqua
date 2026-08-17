@@ -13,9 +13,18 @@
 // For each scripts/docs-shots-lib.ts DOCS_SHOTS row: resolves which persona
 // (if any) the route needs by cross-referencing app/src/routeManifest.ts
 // (the real route/role table render-sweep also drives off), logs in once
-// per role, navigates at exactly the declared 1600x900 viewport, and writes
-// a full-frame (viewport-clipped, not page-scroll-clipped -- "full frames,
-// not crops") PNG to public/docs/shots/<id>.png.
+// per role, navigates at the declared 1600-wide viewport, runs the row's
+// declarative `prep` steps (if any) so the page is in the STATE its caption
+// names, and writes a PNG to public/docs/shots/<id>.png.
+//
+// CAPTURE (docs/design/DEVIATIONS.md, 2026-08-16 -- a user override of
+// DESIGN-RULINGS.md:308-316 rule 3's "exactly 1600x900 frames"): the admin
+// shell scrolls inside `.chq-main`, not on <body>, so the old
+// `fullPage: false` clip cut long screens off mid-row. A shot is now taken
+// at 1600 wide and TALL ENOUGH TO SHOW THE WHOLE SCREEN (growViewportToFit
+// below), unless its row declares `capture: "frame"` -- the exception for
+// position:fixed overlays (modal cards, .chq-toast), which a tall frame
+// strands rather than shows. Still no cropping and still no annotation.
 //
 // FAIL LOUDLY: a route that doesn't resolve to exactly one role in
 // ROUTE_MANIFEST, a navigation that doesn't land on 200, a missing seeded
@@ -34,7 +43,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { chromium, type Browser, type BrowserContext } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 
 import { parseUrlArg } from "./walkthrough-lib";
 import {
@@ -43,6 +52,7 @@ import {
   DOCS_SHOTS_EVENT_SLUG,
   resolveRoleForRoute,
   type DocsShotEntry,
+  type DocsShotStep,
 } from "./docs-shots-lib";
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
 // Pure data registry (JSX-free, DEC-518) -- importing it here adds no
@@ -173,6 +183,90 @@ function captionForShot(shotId: string): string {
   throw new Error(`docs-shots: no figure block in DOCS_ARTICLES declares shotId "${shotId}" (docs-shots-lib.ts and the article registry have drifted)`);
 }
 
+/** How long a step is given to land before it counts as failed. Same order
+ * as playwright's own default; stated here so a prep flow's failure is a
+ * named docs-shots error and not an anonymous timeout. */
+const STEP_TIMEOUT_MS = 15_000;
+
+/** Settle pause after each action, for the SPA's own re-render + fetch. */
+const STEP_SETTLE_MS = 450;
+
+/** A tall shot never grows past this -- a figure taller than this is a
+ * signal that a page needs pagination, not a taller camera. */
+const MAX_SHOT_HEIGHT = 6000;
+
+/** Runs one declarative prep step. FAILS LOUDLY with the shot id in the
+ * message: a prep step that can't run means the figure would have shown the
+ * wrong state, which is worse than no figure at all. */
+async function runStep(page: Page, entry: DocsShotEntry, index: number, step: DocsShotStep): Promise<void> {
+  const where = `docs-shots: shot "${entry.id}" prep step ${index + 1} (${step.kind})`;
+  try {
+    switch (step.kind) {
+      case "click":
+        await page.click(step.selector, { timeout: STEP_TIMEOUT_MS });
+        break;
+      case "clickRole":
+        await page
+          .getByRole(step.role, { name: step.name })
+          .first()
+          .click({ timeout: STEP_TIMEOUT_MS });
+        break;
+      case "fill":
+        await page.fill(step.selector, step.value, { timeout: STEP_TIMEOUT_MS });
+        break;
+      case "select":
+        await page.selectOption(step.selector, { label: step.label }, { timeout: STEP_TIMEOUT_MS });
+        break;
+      case "upload":
+        await page.setInputFiles(
+          step.selector,
+          { name: step.fileName, mimeType: "text/csv", buffer: Buffer.from(step.content, "utf8") },
+          { timeout: STEP_TIMEOUT_MS },
+        );
+        break;
+      case "waitFor":
+        await page.waitForSelector(step.selector, { timeout: STEP_TIMEOUT_MS });
+        break;
+    }
+  } catch (err) {
+    throw new Error(`${where} failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  await page.waitForTimeout(STEP_SETTLE_MS);
+}
+
+/**
+ * Grows the viewport until nothing on the page is still scrolled out of
+ * sight, so a `"fullPage"` capture really is the whole screen.
+ *
+ * `fullPage: true` alone is NOT enough here: the admin shell pins <body> to
+ * the viewport and scrolls inside `.chq-main` (app/src/styles.css), so the
+ * page's own scrollHeight is always exactly 900 and playwright happily
+ * captures the same clipped frame. Growing the viewport by the tallest
+ * overflow found (repeatedly -- revealing rows can reveal more rows) is what
+ * actually un-clips it.
+ */
+async function growViewportToFit(page: Page): Promise<void> {
+  for (let pass = 0; pass < 5; pass++) {
+    const overflow = await page.evaluate(() => {
+      let extra = 0;
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>("*"))) {
+        const overflowY = getComputedStyle(el).overflowY;
+        if ((overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight + 1) {
+          extra = Math.max(extra, el.scrollHeight - el.clientHeight);
+        }
+      }
+      const doc = document.documentElement;
+      return Math.max(extra, doc.scrollHeight - doc.clientHeight);
+    });
+    if (overflow < 2) return;
+    const current = page.viewportSize() ?? DOCS_SHOT_VIEWPORT;
+    const grown = Math.min(MAX_SHOT_HEIGHT, current.height + Math.ceil(overflow));
+    if (grown <= current.height) return;
+    await page.setViewportSize({ width: DOCS_SHOT_VIEWPORT.width, height: grown });
+    await page.waitForTimeout(STEP_SETTLE_MS);
+  }
+}
+
 async function shootOne(context: BrowserContext, baseUrl: string, entry: DocsShotEntry): Promise<string> {
   const page = await context.newPage();
   await page.setViewportSize(DOCS_SHOT_VIEWPORT);
@@ -188,12 +282,23 @@ async function shootOne(context: BrowserContext, baseUrl: string, entry: DocsSho
     await page.close();
     throw new Error(`docs-shots: shot "${entry.id}" route ${entry.route} returned status ${status}, expected 200`);
   }
+  const steps = entry.prep ?? [];
+  for (let i = 0; i < steps.length; i++) {
+    await runStep(page, entry, i, steps[i]!);
+  }
+
   const outPath = join(SHOTS_DIR, `${entry.id}.png`);
-  // Rule 3 ("full frames, not crops") + rule 5 ("no annotation drawn on
-  // top"): fullPage is deliberately false -- the shot is exactly the
-  // declared 1600x900 frame, never the whole scrollable page and never
-  // post-processed.
-  await page.screenshot({ path: outPath, fullPage: false });
+  // Still no cropping and still no annotation (rules 3 and 5) -- what
+  // changed is only WHERE the frame stops: "fullPage" grows the camera to
+  // the whole screen instead of clipping it at 900px, and "frame" keeps the
+  // literal 1600x900 viewport for the fixed overlays that need it. See
+  // docs/design/DEVIATIONS.md (2026-08-16).
+  if ((entry.capture ?? "fullPage") === "fullPage") {
+    await growViewportToFit(page);
+    await page.screenshot({ path: outPath, fullPage: true });
+  } else {
+    await page.screenshot({ path: outPath, fullPage: false });
+  }
   await page.close();
   return outPath;
 }
@@ -223,7 +328,10 @@ async function main(): Promise<void> {
     }
 
     const writtenIds = new Set<string>();
-    console.log(`docs-shots: shooting ${DOCS_SHOTS.length} screenshots from ${url} at ${DOCS_SHOT_VIEWPORT.width}x${DOCS_SHOT_VIEWPORT.height}`);
+    console.log(
+      `docs-shots: shooting ${DOCS_SHOTS.length} screenshots from ${url} at ${DOCS_SHOT_VIEWPORT.width} wide ` +
+        `(starting viewport ${DOCS_SHOT_VIEWPORT.width}x${DOCS_SHOT_VIEWPORT.height}; fullPage shots grow taller)`,
+    );
     for (const entry of DOCS_SHOTS) {
       if (writtenIds.has(entry.id)) {
         throw new Error(`docs-shots: duplicate shot id written this run: ${entry.id}`);
@@ -235,7 +343,8 @@ async function main(): Promise<void> {
       }
       const outPath = await shootOne(context, url, entry);
       writtenIds.add(entry.id);
-      console.log(`SHOT ${entry.id} -> ${outPath} (${entry.route}) -- ${captionForShot(entry.id)}`);
+      const how = `${entry.capture ?? "fullPage"}${entry.prep ? `, ${entry.prep.length} prep steps` : ""}`;
+      console.log(`SHOT ${entry.id} -> ${outPath} (${entry.route}; ${how}) -- ${captionForShot(entry.id)}`);
     }
 
     writeShotsAvailable([...writtenIds]);
