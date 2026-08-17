@@ -1151,3 +1151,10 @@
   flex: 0 0 auto;
   min-height: 46px;
 }
+
+/* User-filed (release night): the preview's personalization disclosure --
+   quiet line under the sample draft. */
+.chq-speakers-remind-draft-note {
+  font-size: 12px;
+  color: var(--chq-muted);
+}

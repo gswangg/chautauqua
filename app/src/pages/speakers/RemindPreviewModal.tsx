@@ -98,8 +98,15 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
 
           {first && (
             <div className="chq-speakers-remind-draft">
-              <div className="chq-speakers-modal-label">Draft &mdash; {first.subject}</div>
+              {/* User-filed (release night): the single draft read as a
+                  shared superset message. It is one PERSONALIZED draft per
+                  contact (buildReminderMessage renders each recipient's own
+                  assignment list) -- say so, and name whose draft this is. */}
+              <div className="chq-speakers-modal-label">Draft for {first.name} &mdash; {first.subject}</div>
               <pre className="chq-speakers-remind-draft-text">{first.text}</pre>
+              <div className="chq-speakers-remind-draft-note">
+                Each speaker gets their own message listing only their outstanding tasks.
+              </div>
             </div>
           )}
         </>
