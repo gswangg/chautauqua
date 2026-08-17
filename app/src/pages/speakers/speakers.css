@@ -1103,6 +1103,21 @@
   line-height: 1.5;
 }
 
+/* DEC-620/DEC-991: `.chq-empty` (styles.css) is the standalone zero-state
+   register and carries 24px of BLOCK padding, which is right for a
+   paragraph that stands in for a whole collection (the notes field below)
+   and wrong for the inline "Not set." that stands in for a single field
+   VALUE inside a one-line <dd>. On an inline span that padding does not
+   grow the line box, it just pushes the span's padding box ~22px past the
+   <dd> that contains it -- which render-sweep's vertical-clip probe reads,
+   correctly, as content hanging outside its box, and it is the sole
+   blocking failure of the whole desktop sweep (/admin/speakers/:id).
+   The muted 14px colour is what this value wants from `.chq-empty`; the
+   block padding is not. */
+.chq-speaker-detail-logistics-row dd .chq-empty {
+  padding: 0;
+}
+
 .chq-speaker-detail-logistics-form {
   display: flex;
   flex-direction: column;
