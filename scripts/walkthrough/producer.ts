@@ -834,10 +834,14 @@ async function runJ5(organizerJar: CookieJar, eventId: string, eventStartDate: s
   });
   assertStatus("J5 PUT schedule slot (for ICS)", slotRes.res, 200, slotRes.text);
 
-  const beforeDetail = await api(organizerJar, "GET", `/api/v1/submissions/${targetSubmissionId}`);
-  const sequenceAfterSchedule = beforeDetail.json.icsSequence as number;
-
-  // Preview never bumps the sequence (DEC-051).
+  // DEC-851 wave-5 deleted `icsSequence` from the organiser submission-detail
+  // wire shape (src/server/repo/submissions/detail.ts: it is a comms-send
+  // concern with no admin-detail surface naming it), so reading the sequence
+  // off GET /api/v1/submissions/:id silently yielded `undefined` and every
+  // comparison below failed. The sequence is observed where it is actually
+  // serialized instead: RenderedRecipientIcs.sequence on the compose preview
+  // (DEC-051) — which, being a preview, is also the read that must not
+  // itself move the counter.
   const icsPreview1 = await api(organizerJar, "POST", `/api/v1/events/${eventId}/compose/preview`, {
     subject: "Room details for {talk_title}",
     bodyText: "Hi {speaker_name}, see you soon for {talk_title}.",
@@ -845,15 +849,25 @@ async function runJ5(organizerJar: CookieJar, eventId: string, eventStartDate: s
     attachIcs: true,
   });
   assertStatus("J5 POST compose/preview with attachIcs", icsPreview1.res, 200, icsPreview1.text);
+  const sequenceAfterSchedule = icsPreview1.json.items[0]?.ics?.sequence as number;
   assertTrue(
-    "J5 preview does not bump ics_sequence",
-    icsPreview1.json.items[0].ics.sequence === sequenceAfterSchedule,
+    "J5 scheduled submission's preview carries an ics sequence",
+    Number.isInteger(sequenceAfterSchedule),
     icsPreview1.text,
   );
-  const secondPreviewCheck = await api(organizerJar, "GET", `/api/v1/submissions/${targetSubmissionId}`);
+
+  // Preview never bumps the sequence (DEC-051): previewing again reports the
+  // same sequence the first preview did.
+  const secondPreviewCheck = await api(organizerJar, "POST", `/api/v1/events/${eventId}/compose/preview`, {
+    subject: "Room details for {talk_title}",
+    bodyText: "Hi {speaker_name}, see you soon for {talk_title}.",
+    submissionIds: [targetSubmissionId],
+    attachIcs: true,
+  });
+  assertStatus("J5 POST compose/preview again", secondPreviewCheck.res, 200, secondPreviewCheck.text);
   assertTrue(
-    "J5 preview leaves the stored ics_sequence unchanged",
-    secondPreviewCheck.json.icsSequence === sequenceAfterSchedule,
+    "J5 preview does not bump ics_sequence",
+    secondPreviewCheck.json.items[0]?.ics?.sequence === sequenceAfterSchedule,
     secondPreviewCheck.text,
   );
 
@@ -867,11 +881,18 @@ async function runJ5(organizerJar: CookieJar, eventId: string, eventStartDate: s
   assertStatus("J5 POST compose/send with attachIcs", sendRes.res, 200, sendRes.text);
   assertTrue("J5 send reports at least one sent email", sendRes.json.sent >= 1, sendRes.text);
 
-  const afterSendDetail = await api(organizerJar, "GET", `/api/v1/submissions/${targetSubmissionId}`);
+  const afterSendPreview = await api(organizerJar, "POST", `/api/v1/events/${eventId}/compose/preview`, {
+    subject: "Room details for {talk_title}",
+    bodyText: "Hi {speaker_name}, see you soon for {talk_title}.",
+    submissionIds: [targetSubmissionId],
+    attachIcs: true,
+  });
+  assertStatus("J5 POST compose/preview after send", afterSendPreview.res, 200, afterSendPreview.text);
+  const sequenceAfterSend = afterSendPreview.json.items[0]?.ics?.sequence as number;
   assertTrue(
     "J5 send bumps ics_sequence exactly once",
-    afterSendDetail.json.icsSequence === sequenceAfterSchedule + 1,
-    `expected ${sequenceAfterSchedule + 1}, got ${afterSendDetail.json.icsSequence}`,
+    sequenceAfterSend === sequenceAfterSchedule + 1,
+    `expected ${sequenceAfterSchedule + 1}, got ${sequenceAfterSend}`,
   );
 
   const afterLog = await api(organizerJar, "GET", `/api/v1/events/${eventId}/email-log?perPage=1`);

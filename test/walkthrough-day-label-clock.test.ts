@@ -55,12 +55,20 @@ describe("scripts/walkthrough/*.ts — scan: no sub-day-offset openDate/closeDat
   expect(files.length).toBeGreaterThan(0);
 
   // Matches `openDate: <expr>` / `closeDate: <expr>` (and the same as a
-  // standalone `const openDate = <expr>` assignment) where <expr> contains a
-  // `Date.now()` offset by a raw millisecond literal that is NOT a whole
-  // multiple of 86_400_000 (a day). We deliberately do not try to fully
-  // parse JS: we scan for the two known offending shapes literally so this
-  // stays a reliable text-level defect scanner.
-  const DATE_NOW_OFFSET_RE = /(?:openDate|closeDate)\s*[:=]\s*Date\.now\(\)\s*([+-])\s*([0-9_]+(?:\s*\*\s*[0-9_]+)*)/g;
+  // standalone `const openDate = <expr>` assignment) where <expr> is a clock
+  // reading offset by a raw millisecond literal that is NOT a whole multiple
+  // of 86_400_000 (a day). We deliberately do not try to fully parse JS: we
+  // scan for the known offending shapes literally so this stays a reliable
+  // text-level defect scanner.
+  //
+  // The left operand is `Date.now()` OR any bare identifier: review.ts
+  // shipped `const now = Date.now(); ... openDate: now - 24 * 60 * 60 * 1000`
+  // and slipped past the original Date.now()-only pattern for a whole wave,
+  // failing the review lane in CI with a 400 on every run. An identifier that
+  // already holds a proper day label is unaffected — adding a whole-day
+  // offset to one is still a day label, and that is all this scan permits.
+  const DATE_NOW_OFFSET_RE =
+    /(?:openDate|closeDate)\s*[:=]\s*(?:Date\.now\(\)|[A-Za-z_$][\w$]*)\s*([+-])\s*([0-9_]+(?:\s*\*\s*[0-9_]+)*)/g;
 
   function millisFromExpr(mulChain: string): number {
     // e.g. "60_000" or "24 * 60 * 60 * 1000" -> numeric product.

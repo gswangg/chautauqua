@@ -249,9 +249,16 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
    * with this comment, never silently. */
   function chqPageStringLiterals(content: string): string[] {
     const literals: string[] = [];
-    const re = /'([^'\\]*)'|"([^"\\]*)"/g;
+    // Strip ONCE, before the scan loop. `re.exec(stripComments(content))`
+    // re-stripped the whole file on every match (the exec's argument is
+    // re-evaluated each iteration), which made this an O(literals x file
+    // size) rescan: 230 page files x ~90 literals each churned 2.1 GB of
+    // strings and pushed the enumerating scan below to ~2.2s locally and
+    // past vitest's 5s testTimeout on a loaded CI runner.
+    const stripped = stripComments(content);
+    const literalsRe = /'([^'\\]*)'|"([^"\\]*)"/g;
     let m: RegExpExecArray | null;
-    while ((m = re.exec(stripComments(content))) !== null) {
+    while ((m = literalsRe.exec(stripped)) !== null) {
       const value = m[1] ?? m[2] ?? '';
       const tokens = value.split(/\s+/);
       // Only literals carrying the exact `chq-page` token are page-root

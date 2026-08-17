@@ -4,6 +4,15 @@ on:
   push:
   pull_request:
 
+# One run per ref at a time. A push train (the swarm lands several commits a
+# minute) otherwise starts a full 5-job fan-out per commit and the runs starve
+# each other on the shared runner pool -- 16 concurrent runs on 2026-08-17
+# pushed test-full's page-measure scan past its 5s testTimeout purely from CPU
+# contention. Only the tip of a branch is interesting anyway, so supersede.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Stage-1 scope only (DEC-034): typecheck + unit tests, plus a local perf
 # smoke run against a 2k-row seeded event. Everything here runs against
 # `wrangler dev`'s local Miniflare/D1 — no deploy, no secrets, no external

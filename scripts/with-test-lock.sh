@@ -56,9 +56,25 @@ while [ "$acquired" -eq 0 ]; do
   # Lock is held by someone else. Check its age; steal if stale.
   if [ -d "$LOCK_DIR" ]; then
     now=$(date +%s)
+    # GNU stat FIRST, BSD stat second. `stat -f` means two different things:
+    # on BSD/macOS it is the format flag (so `stat -f %m` prints the mtime),
+    # but on GNU/Linux it is --file-system and `%m` is the MOUNT POINT — it
+    # SUCCEEDS and prints "/", so a BSD-first chain never falls through on
+    # Linux and feeds a non-numeric value into the arithmetic below (dash
+    # then exits 2 under `set -e`, killing the waiter). `stat -c` has no BSD
+    # meaning at all and simply fails there, so this order is safe on both.
     lock_mtime=$(
-      stat -f %m "$LOCK_DIR" 2>/dev/null || stat -c %Y "$LOCK_DIR" 2>/dev/null || echo "$now"
+      stat -c %Y "$LOCK_DIR" 2>/dev/null || stat -f %m "$LOCK_DIR" 2>/dev/null || echo "$now"
     )
+    # Neither stat spelling produced a plain integer (or the lock vanished
+    # mid-check): fail loudly rather than silently skipping the staleness
+    # check for the rest of the 45-minute window.
+    case "$lock_mtime" in
+      '' | *[!0-9]*)
+        echo "with-test-lock.sh: cannot read mtime of $LOCK_DIR (stat returned '$lock_mtime')" >&2
+        exit 1
+        ;;
+    esac
     age=$((now - lock_mtime))
     if [ "$age" -gt "$STALE_SECONDS" ]; then
       echo "with-test-lock.sh: WARNING: stealing stale lock at $LOCK_DIR (age ${age}s > ${STALE_SECONDS}s)" >&2

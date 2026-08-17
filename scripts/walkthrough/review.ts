@@ -41,6 +41,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { hashPassword } from "../../src/auth/password";
+import { dayLabelMs } from "../walkthrough-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
@@ -329,7 +330,11 @@ async function main(): Promise<void> {
 
   // -- (1) Organizer creates the evaluation plan ----------------------------
 
-  const now = Date.now();
+  // DEC-509/DEC-522: a plan's openDate/closeDate are DAY LABELS, and
+  // src/routes/review/shared.ts rejects anything that is not an exact
+  // ms-epoch multiple of 86_400_000. A raw `Date.now() +/- ms` offset is
+  // never one, so it must go through dayLabelMs (same idiom as
+  // producer.ts/speaker.ts since wave 52).
   const plan = await organizer.json<PlanRecord>(
     "create evaluation plan",
     `/api/v1/events/${event.id}/plans`,
@@ -339,8 +344,8 @@ async function main(): Promise<void> {
       body: JSON.stringify({
         name: "Walkthrough Committee Review",
         instructions: "Score each proposal on quality, delivery, and length fit. Be specific in free-text notes.",
-        openDate: now - 24 * 60 * 60 * 1000,
-        closeDate: now + 30 * 24 * 60 * 60 * 1000,
+        openDate: dayLabelMs(-1),
+        closeDate: dayLabelMs(30),
         filters: { trackIds: [trackA.id, trackB.id] },
         anonymized: true,
         scale: { min: 1, max: 5 },
