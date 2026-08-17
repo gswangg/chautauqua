@@ -62,6 +62,7 @@ function renderTaskRow(assignment: PortalTaskAssignment, fileExtras?: unknown): 
   const el = TaskRow({
     assignment,
     csrfToken: "tok",
+    now: Date.now(),
     fileExtras: fileExtras as never,
   });
   return String(el);

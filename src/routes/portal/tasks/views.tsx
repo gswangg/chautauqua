@@ -17,7 +17,7 @@ import { FormFieldsSection, FieldRulesScript } from "../../../views/form-render"
 import { allowedUploadExtensions, isValidFileKind, MAX_COMMENT_BODY_LENGTH, uploadHintText } from "../../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../../auth/cookies";
 import { formatCalendarDate, formatEventDateTime, formatEventDateTimeWithSeconds } from "../../../lib/event-time";
-import { effectiveAssignmentDueDayLabel } from "../../../domain/task-due";
+import { effectiveAssignmentDueDayLabel, isAssignmentOverdue } from "../../../domain/task-due";
 import { renderMarkdown } from "../../../lib/markdown";
 import type { FileCommentRow } from "../../../server/repo/files";
 import { PROFILE_TASK_TITLE } from "../../../domain/acceptance";
@@ -218,8 +218,9 @@ export function TaskRow(props: {
   // each other's error state.
   commentError?: string;
   commentDraftBody?: string;
+  now: number;
 }) {
-  const { assignment: t, csrfToken, error, fileExtras, deliverableChoice, commentError, commentDraftBody } = props;
+  const { assignment: t, csrfToken, error, fileExtras, deliverableChoice, commentError, commentDraftBody, now } = props;
   // DEC-826: a task cannot be late before it was assigned — print the
   // effective due date, the same one the organizer's grid and the
   // reminder email already use.
@@ -238,10 +239,15 @@ export function TaskRow(props: {
         </span>
         {/* Behaviour frozen (DEC-366): the underlying status stays
             pending|complete — only the on-screen wording grows a
-            .chq-flag, never a red swatch (DEC-367). */}
-        <span class={t.status === "complete" ? "chq-flag chq-portal-flag-done" : "chq-flag"}>
-          {t.status === "complete" ? "Done" : "To do"}
-        </span>
+            .chq-flag, never a red swatch (DEC-367). Overdue is carried by
+            weight + wording (DEC-590), same as the portal home worklist. */}
+        {t.status === "complete" ? (
+          <span class="chq-flag chq-portal-flag-done">Done</span>
+        ) : isAssignmentOverdue(t.dueDate, t.assignedAt, now, t.timezone) ? (
+          <strong class="chq-flag">Overdue</strong>
+        ) : (
+          <span class="chq-flag">To do</span>
+        )}
       </div>
       {effectiveDue ? <span class="chq-portal-due">Due {formatCalendarDate(effectiveDue)}</span> : null}
       {t.description ? <p class="chq-portal-detail">{t.description}</p> : null}
@@ -373,6 +379,7 @@ export function TasksPage(props: {
   commentErrorFor?: (assignmentId: string) => string | undefined;
   commentDraftBodyFor?: (assignmentId: string) => string | undefined;
   speakerName: string;
+  now: number;
   // DEC-020 amendment (wave 10): the assignment id the /upload handler just
   // redirected here for (submission-linked uploads only — see that route's
   // comment). Renders a receipt naming what was received and disclosing the
@@ -439,7 +446,11 @@ export function TasksPage(props: {
                   {t.title}
                   {t.required ? <em> (required)</em> : null}
                 </span>
-                <span class="chq-flag">To do</span>
+                {isAssignmentOverdue(t.dueDate, t.assignedAt, props.now, t.timezone) ? (
+                  <strong class="chq-flag">Overdue</strong>
+                ) : (
+                  <span class="chq-flag">To do</span>
+                )}
               </div>
               {effectiveAssignmentDueDayLabel(t.dueDate, t.assignedAt, t.timezone) ? (
                 <span class="chq-portal-due">
@@ -453,6 +464,7 @@ export function TasksPage(props: {
           ) : (
             <TaskRow
               assignment={t}
+              now={props.now}
               csrfToken={csrfToken}
               error={errorFor?.(t.id)}
               fileExtras={fileExtrasFor?.(t.id)}

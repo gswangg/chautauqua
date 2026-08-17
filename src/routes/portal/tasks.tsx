@@ -269,6 +269,7 @@ portalTasksRoutes.get("/tasks", async (c) => {
 
   return c.html(
     <TasksPage
+      now={Date.now()}
       branding={data.branding}
       assignments={assignments}
       csrfToken={csrfToken}
@@ -544,6 +545,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
     if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
     return c.html(
       <TasksPage
+        now={Date.now()}
         branding={data.branding}
         assignments={assignments}
         csrfToken={csrfToken}
@@ -716,6 +718,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/comments", csrfForm, async (c) => {
     if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
     return c.html(
       <TasksPage
+        now={Date.now()}
         branding={data.branding}
         assignments={assignments}
         csrfToken={csrfToken}

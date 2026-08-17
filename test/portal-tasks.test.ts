@@ -149,6 +149,54 @@ describe("portal tasks page — DEC-953 status pill wording", () => {
     expect(html).toContain('action="/portal/tasks/assign-pending/complete"');
   });
 
+  // User-filed (release night): the tasks page printed "To do" on tasks the
+  // roster grid and portal home already called overdue. Same DEC-801
+  // predicate, same weight+wording presentation as the home worklist
+  // (DEC-590: never a red swatch).
+  it("renders 'Overdue' for a pending assignment past its due day, 'To do' for a future one", async () => {
+    const dayLabel = (offsetDays: number) => Math.floor(Date.now() / 86_400_000 + offsetDays) * 86_400_000;
+    const base = {
+      taskId: "task-1",
+      eventId: "event-1",
+      kind: "general" as const,
+      description: null,
+      instructions: null,
+      required: false,
+      status: "pending" as const,
+      formId: null,
+      deliverableKind: null,
+      fileId: null,
+      responseJson: null,
+      timezone: "UTC",
+      completedAt: null,
+    };
+    const { getMyTaskAssignments } = await import("../src/server/repo/portal");
+    vi.mocked(getMyTaskAssignments).mockResolvedValue([
+      { ...base, id: "assign-late", title: "Upload your slide deck", dueDate: dayLabel(-3), assignedAt: dayLabel(-10) },
+      { ...base, id: "assign-future", title: "Announce participation", dueDate: dayLabel(30), assignedAt: dayLabel(-10) },
+    ] as never);
+
+    const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", speakerAuth);
+      c.set("db", {} as never);
+      await next();
+    });
+    app.route("/portal", portalTasksRoutes);
+
+    const res = await app.request("/portal/tasks");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    expect(html).toContain('<strong class="chq-flag">Overdue</strong>');
+    expect(html).toContain('<span class="chq-flag">To do</span>');
+    // one of each — the late row is not also counted as "To do"
+    expect(html.match(/>Overdue</g)).toHaveLength(1);
+    expect(html.match(/>To do</g)).toHaveLength(1);
+  });
+
   it("POST /portal/tasks/:id/complete still calls updateAssignmentStatus with the literal 'complete' status", async () => {
     const { getAssignmentScope } = await import("../src/server/repo/portal");
     vi.mocked(getAssignmentScope).mockResolvedValue({
