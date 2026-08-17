@@ -28,7 +28,8 @@ import { publicRoomLabel } from '../../lib/room-label';
 import { clockHHMM } from '../../lib/clock';
 import { firstNameOf } from '../../lib/identity';
 import { DEC_930 } from '../../../../src/decisions';
-import type { SpeakerDetailResponse, SpeakerDetailTaskStatus } from './speakerDetail';
+import type { SpeakerDetailResponse, SpeakerDetailTask, SpeakerDetailTaskStatus } from './speakerDetail';
+import { OVERDUE_LABEL, statusCellClass } from './TaskCell';
 import { toRows, fromRows, reservedValue, RESERVED_CUSTOM_FIELD_KEYS, RESERVED_CUSTOM_FIELD_LABELS } from '../contacts/customFields';
 // DEC-417/DEC-660: the same cap the Contacts drawer declares on these three
 // reserved fields -- the two surfaces PATCH the same /contacts/:id route, so
@@ -56,11 +57,54 @@ function neutralStatusClass(): string {
   return 'chq-speakers-status chq-speakers-status-neutral';
 }
 
+// User-filed (speaker detail, Elliot Ekström): the tasks list arrived in
+// whatever order the assignment join produced -- completes and pendings
+// interleaved, due dates jumping backwards -- so the one row that needed
+// chasing could sit last. Outstanding work reads first, oldest deadline
+// first: overdue, then the rest of the pendings, then the completed history.
+// Within each band, by due date ascending; a task with no due date sorts to
+// the end of its own band (it names no deadline to be early or late for),
+// and ties keep the server's order (stable), so the page never invents an
+// ordering the payload didn't carry.
+const TASK_BAND_OVERDUE = 0;
+const TASK_BAND_PENDING = 1;
+const TASK_BAND_COMPLETE = 2;
+
+function taskBand(task: SpeakerDetailTask): number {
+  if (task.status === 'complete') return TASK_BAND_COMPLETE;
+  return task.overdue ? TASK_BAND_OVERDUE : TASK_BAND_PENDING;
+}
+
+export function sortSpeakerDetailTasks(tasks: readonly SpeakerDetailTask[]): SpeakerDetailTask[] {
+  return tasks
+    .map((task, index) => ({ task, index }))
+    .sort((a, b) => {
+      const bandDelta = taskBand(a.task) - taskBand(b.task);
+      if (bandDelta !== 0) return bandDelta;
+      const dueA = a.task.dueDate;
+      const dueB = b.task.dueDate;
+      if (dueA === null && dueB === null) return a.index - b.index;
+      if (dueA === null) return 1;
+      if (dueB === null) return -1;
+      if (dueA !== dueB) return dueA - dueB;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.task);
+}
+
 // Task status is the SAME binary domain TaskCell.tsx's onboarding grid cells
-// already use ('pending' | 'complete'), so it reuses those two modifiers
-// directly rather than the neutral one above.
-function taskStatusClass(status: SpeakerDetailTaskStatus): string {
-  return `chq-speakers-status chq-speakers-status-${status}`;
+// already use ('pending' | 'complete') over the SAME three-modifier control
+// family (DEC-730), so the class comes from that component's own
+// statusCellClass -- never a second mapping here. The overdue arm is what
+// the user-filed report was missing: a past-due pending row rendered
+// identically to an on-time one while the section header counted it.
+function taskStatusClass(status: SpeakerDetailTaskStatus, overdue: boolean): string {
+  return statusCellClass(status, overdue);
+}
+
+function taskStatusLabel(status: SpeakerDetailTaskStatus, overdue: boolean): string {
+  if (status !== 'complete' && overdue) return OVERDUE_LABEL;
+  return TASK_STATUS_LABELS[status];
 }
 
 // DEC-930 wave-19 amendment: the Files row-grid's 52px lead track is a
@@ -183,11 +227,24 @@ export function SpeakerDetailPage() {
     const desired: AssignmentStatus = current === 'complete' ? 'pending' : 'complete';
     const previous = detail;
     const now = Date.now();
+    const tasks = detail.tasks.map((t) =>
+      t.assignmentId === assignmentId ? { ...t, status: desired, completedAt: desired === 'complete' ? now : null } : t,
+    );
+    // User-filed: the section header states these two counts over the rows
+    // directly beneath it, so the optimistic flip has to restate them from
+    // the flipped rows -- otherwise ticking the one overdue task complete
+    // leaves the header claiming an overdue row the reader can no longer
+    // find. Same two derivations the server makes (repo/tasks/
+    // speaker-detail.ts): required-and-not-complete, and late-and-not-
+    // complete (lateness itself is the server's DEC-801 read, never
+    // re-judged here).
     setDetail({
       ...detail,
-      tasks: detail.tasks.map((t) =>
-        t.assignmentId === assignmentId ? { ...t, status: desired, completedAt: desired === 'complete' ? now : null } : t,
-      ),
+      tasks,
+      counts: {
+        outstandingRequired: tasks.filter((t) => t.status !== 'complete' && t.required).length,
+        overdue: tasks.filter((t) => t.status !== 'complete' && t.overdue).length,
+      },
     });
     setError(null);
     try {
@@ -455,7 +512,7 @@ export function SpeakerDetailPage() {
                   <EmptyState variant="fresh" what="No tasks." />
                 ) : (
                   <div role="table" aria-label="Tasks">
-                    {detail.tasks.map((task) => (
+                    {sortSpeakerDetailTasks(detail.tasks).map((task) => (
                       <div className="chq-speaker-detail-tasks-row" role="row" key={task.assignmentId}>
                         <span role="cell">
                           {task.title}
@@ -465,11 +522,15 @@ export function SpeakerDetailPage() {
                         <span role="cell">
                           <button
                             type="button"
-                            className={taskStatusClass(task.status)}
+                            className={taskStatusClass(task.status, task.overdue)}
                             onClick={() => toggleTaskStatus(task.assignmentId, task.status)}
-                            aria-label={`Toggle ${task.title} for ${detail.contact.name}`}
+                            aria-label={
+                              task.status !== 'complete' && task.overdue
+                                ? `Toggle ${task.title} for ${detail.contact.name}, overdue`
+                                : `Toggle ${task.title} for ${detail.contact.name}`
+                            }
                           >
-                            {TASK_STATUS_LABELS[task.status]}
+                            {taskStatusLabel(task.status, task.overdue)}
                           </button>
                         </span>
                         {/* DEC-829 amendment (w61-e): quiet on an

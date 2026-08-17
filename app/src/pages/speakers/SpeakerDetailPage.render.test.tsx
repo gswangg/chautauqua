@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SpeakerDetailPage } from './SpeakerDetailPage';
@@ -66,6 +66,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
         status: 'complete',
         completedAt: 1700000000000,
         file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2 },
+        overdue: false,
       },
       {
         assignmentId: 'as-2',
@@ -77,6 +78,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
         status: 'pending',
         completedAt: null,
         file: null,
+        overdue: false,
       },
     ],
     counts: { outstandingRequired: 1, overdue: 0 },
@@ -334,6 +336,7 @@ describe('SpeakerDetailPage render smoke', () => {
             status: 'complete',
             completedAt: 1700000000000,
             file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2 },
+            overdue: false,
           },
         ],
         counts: { outstandingRequired: 0, overdue: 0 },
@@ -446,5 +449,157 @@ describe('SpeakerDetailPage render smoke', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
 
     expect(document.querySelector('.chq-speaker-detail-portal-bio')).not.toBeInTheDocument();
+  });
+});
+
+// User-filed defect (screenshot of /admin/speakers/<id>, speaker "Elliot
+// Ekström", TASKS section): rows arrived in no useful order (completes and
+// pendings interleaved, due dates jumping 15 Aug -> 16 Aug -> 26 Aug -> 13
+// Aug -> 9 Sep -> 13 Aug); the due-date and status columns landed at
+// different x-positions row to row; and the header counted "1 OVERDUE" while
+// no row was marked overdue. This block pins all three.
+describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', () => {
+  // Same six-row shape the filed screenshot showed, in the same unordered
+  // arrival order the server sent it.
+  function shuffledTasks() {
+    return [
+      { id: 'as-a', title: 'Hotel stay requirement form', due: Date.UTC(2026, 7, 15), status: 'complete' as const, overdue: false },
+      { id: 'as-b', title: 'Flight reimbursement form', due: Date.UTC(2026, 7, 16), status: 'pending' as const, overdue: false },
+      { id: 'as-c', title: 'Finalize talk description', due: Date.UTC(2026, 7, 26), status: 'complete' as const, overdue: false },
+      { id: 'as-d', title: 'Finalize bio + headshot', due: Date.UTC(2026, 7, 13), status: 'complete' as const, overdue: false },
+      { id: 'as-e', title: 'Announce participation', due: Date.UTC(2026, 8, 9), status: 'pending' as const, overdue: false },
+      { id: 'as-f', title: 'Upload your slide deck', due: Date.UTC(2026, 7, 13), status: 'pending' as const, overdue: true },
+    ].map((t) => ({
+      assignmentId: t.id,
+      taskId: `task-${t.id}`,
+      title: t.title,
+      kind: 'general' as const,
+      required: t.id === 'as-f',
+      dueDate: t.due,
+      status: t.status,
+      completedAt: t.status === 'complete' ? 1700000000000 : null,
+      file: null,
+      overdue: t.overdue,
+    }));
+  }
+
+  function mountWithTasks() {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        tasks: shuffledTasks(),
+        counts: { outstandingRequired: 1, overdue: 1 },
+      }),
+    });
+    renderPage();
+  }
+
+  function taskRows() {
+    return within(screen.getByRole('table', { name: 'Tasks' })).getAllByRole('row');
+  }
+
+  it('orders outstanding work first -- overdue, then upcoming pendings, then the completed history, each by due date', async () => {
+    mountWithTasks();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const titles = taskRows().map((row) => row.firstElementChild?.textContent?.replace(' Required', '').trim());
+    expect(titles).toEqual([
+      // Overdue first (13 Aug, the oldest deadline still outstanding).
+      'Upload your slide deck',
+      // Then the remaining pendings, earliest deadline first.
+      'Flight reimbursement form',
+      'Announce participation',
+      // Then the completed history, also by due date.
+      'Finalize bio + headshot',
+      'Hotel stay requirement form',
+      'Finalize talk description',
+    ]);
+  });
+
+  it('a task with no due date sorts to the end of its own band, never above a dated one', async () => {
+    const tasks = shuffledTasks();
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        tasks: [
+          { ...tasks[1]!, assignmentId: 'as-undated', title: 'Undated pending', dueDate: null },
+          ...tasks,
+        ],
+        counts: { outstandingRequired: 1, overdue: 1 },
+      }),
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const titles = taskRows().map((row) => row.firstElementChild?.textContent?.replace(' Required', '').trim());
+    expect(titles.indexOf('Undated pending')).toBeGreaterThan(titles.indexOf('Announce participation'));
+    // Still inside the pending band -- above every completed row.
+    expect(titles.indexOf('Undated pending')).toBeLessThan(titles.indexOf('Finalize bio + headshot'));
+  });
+
+  it('marks the overdue pending row with the roster grid OVERDUE vocabulary, and the header count matches the marked rows', async () => {
+    mountWithTasks();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const marked = document.querySelectorAll('.chq-speaker-detail-tasks-row .chq-speakers-status-overdue');
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toHaveTextContent('OVERDUE');
+    // The SAME chip class family the onboarding grid's cells use -- never a
+    // second overdue vocabulary invented for this page.
+    expect(marked[0]).toHaveClass('chq-speakers-status');
+    // Header count and the marked rows agree.
+    expect(screen.getByText('Tasks · 6 · 1 outstanding · 1 overdue')).toBeInTheDocument();
+    // The other pending row still reads as a plain pending chip.
+    expect(document.querySelectorAll('.chq-speaker-detail-tasks-row .chq-speakers-status-pending')).toHaveLength(2);
+    // The overdue row stays a live status control (click-to-change intact),
+    // and names its lateness in the accessible name.
+    expect(marked[0]!.tagName).toBe('BUTTON');
+    expect(marked[0]).toHaveAttribute('aria-label', 'Toggle Upload your slide deck for Ada Lovelace, overdue');
+  });
+
+  it('gives every row the same four column tracks -- the action track is fixed, so a completed row cannot slide the due date sideways', async () => {
+    mountWithTasks();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    // Every row renders four cells, including completed rows (whose fourth
+    // cell is deliberately empty -- DEC-829 w61-e: no Remind on a completed
+    // task), so no row can collapse a track.
+    for (const row of taskRows()) {
+      expect(within(row).getAllByRole('cell')).toHaveLength(4);
+    }
+    // Only the three pending rows carry the per-task Remind control.
+    expect(screen.getAllByRole('button', { name: 'Remind this task' })).toHaveLength(3);
+
+    // jsdom applies no external stylesheet, so the track shape is read from
+    // the stylesheet text: a fixed action track, never `auto` (an `auto`
+    // track resolves to 0px on the rows that render no Remind link and
+    // ~88px on the rows that do, which is exactly the raggedness the user
+    // filed).
+    const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'speakers.css');
+    const css = readFileSync(cssPath, 'utf-8');
+    const rowBody = css.match(/\.chq-speaker-detail-tasks-row\s*\{([^}]*)\}/)?.[1];
+    expect(rowBody).toBeDefined();
+    const tracks = rowBody!.match(/grid-template-columns:\s*([^;]+);/)?.[1]?.trim();
+    expect(tracks).toBeDefined();
+    expect(tracks!.split(/\s+/)).toHaveLength(4);
+    expect(tracks).not.toMatch(/auto/);
+    // The frame's own title/due/status tracks are untouched (docs/design/
+    // Chautauqua Speakers.dc.html:371).
+    expect(tracks).toMatch(/^1fr 150px 130px /);
+  });
+
+  it('ticking the overdue task complete restates the header counts, so the header never names a row the reader cannot find', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        tasks: shuffledTasks(),
+        counts: { outstandingRequired: 1, overdue: 1 },
+      }),
+      'PATCH /api/v1/task-assignments/as-f': { ok: true },
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle Upload your slide deck for Ada Lovelace, overdue' }));
+
+    await waitFor(() => expect(screen.getByText('Tasks · 6 · 0 outstanding · 0 overdue')).toBeInTheDocument());
+    expect(document.querySelectorAll('.chq-speaker-detail-tasks-row .chq-speakers-status-overdue')).toHaveLength(0);
   });
 });

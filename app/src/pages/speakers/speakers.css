@@ -966,9 +966,18 @@
   border-bottom: 1px solid var(--chq-hairline);
 }
 
+/* User-filed (speaker detail, Elliot Ekström): each row is its OWN grid, so
+   the frame's trailing `auto` action track (:371) resolved per row -- 0px on
+   a completed row (which renders no "Remind this task" link, DEC-829 w61-e)
+   and ~88px on a pending one. That stole the difference from the 1fr title
+   track and slid the due date and status columns ~88px sideways row to row.
+   The action track is therefore FIXED, sized to that one piece of fixed
+   copy: every row now resolves the same four tracks whether or not it
+   carries the link. The Files row keeps `auto` legitimately -- its last cell
+   is a Download link on every row, so `auto` cannot differ there. */
 .chq-speaker-detail-tasks-row {
   display: grid;
-  grid-template-columns: 1fr 150px 130px auto;
+  grid-template-columns: 1fr 150px 130px 110px;
   gap: 18px;
   align-items: center;
   padding: 12px 0;

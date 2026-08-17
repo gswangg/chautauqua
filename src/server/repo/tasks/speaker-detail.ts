@@ -121,6 +121,15 @@ export interface SpeakerDetailTask {
   status: string;
   completedAt: number | null;
   file: SpeakerDetailFile | null;
+  // User-filed (speaker detail, Elliot Ekström): the detail page's own
+  // header counted "1 overdue" while every pending row rendered identically,
+  // because lateness was only ever a COUNT on this payload. The per-row flag
+  // is derived from the SAME overdueAssignmentConditions result set the
+  // count is (see below), so a row and the header can never disagree; the
+  // client cannot re-derive it (DEC-801 judges lateness against the
+  // assignment's creation in the EVENT's timezone, neither of which crosses
+  // this wire).
+  overdue: boolean;
 }
 
 export interface SpeakerDetailCounts {
@@ -147,9 +156,10 @@ export interface SpeakerDetail {
  * recordPrefix for session refs; (iii) one schedule-slot/room join for the
  * whole session set; (iv) one task_assignment/task/file join for the whole
  * task set (the SAME join shape grid.ts's cells query carries, never a
- * query per task); (v) the overdue count, composing the existing DEC-801
+ * query per task); (v) the overdue set, composing the existing DEC-801
  * overdueAssignmentConditions predicate rather than re-typing its grace
- * window. Returns null when the contact is not on this event's roster. */
+ * window — read once and spent twice, as the header count AND each task's
+ * own `overdue` flag. Returns null when the contact is not on this event's roster. */
 export async function getSpeakerDetail(db: Db, eventId: string, contactId: string): Promise<SpeakerDetail | null> {
   const contactRows = await db
     .select({
@@ -277,6 +287,17 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
     .leftJoin(schema.file, eq(schema.file.id, schema.taskAssignment.fileId))
     .where(and(eq(schema.taskAssignment.contactId, contactId), eq(schema.task.eventId, eventId)));
 
+  // The ONE lateness read for this payload (DEC-801): it feeds both the
+  // header count and each row's own overdue flag, so the two are the same
+  // fact stated twice, never two derivations that can drift apart.
+  const overdueRows = await db
+    .select({ id: schema.taskAssignment.id })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
+    .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
+    .where(and(eq(schema.taskAssignment.contactId, contactId), overdueAssignmentConditions(eventId, Date.now(), timeZone)));
+  const overdueAssignmentIds = new Set(overdueRows.map((r) => r.id));
+
   let outstandingRequired = 0;
   const tasks: SpeakerDetailTask[] = assignmentRows.map((r) => {
     // schema.file.filename/sizeBytes are notNull columns (DEC-920) — a
@@ -300,15 +321,9 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
         r.fileId != null && r.fileName != null && r.fileSizeBytes != null
           ? { id: r.fileId, filename: r.fileName, sizeBytes: r.fileSizeBytes, versionNo: r.fileVersionNo }
           : null,
+      overdue: overdueAssignmentIds.has(r.assignmentId),
     };
   });
-
-  const overdueRows = await db
-    .select({ id: schema.taskAssignment.id })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
-    .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
-    .where(and(eq(schema.taskAssignment.contactId, contactId), overdueAssignmentConditions(eventId, Date.now(), timeZone)));
 
   // DEC-738 amendment (wave 75): parse the stored social_links_json and run
   // each non-empty value through safeExternalUrl (external-input boundary),

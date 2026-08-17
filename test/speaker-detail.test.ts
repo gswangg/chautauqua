@@ -125,6 +125,11 @@ function participantRow(submissionId: string, seq: number, opts: Partial<Record<
 
 function assignmentRow(assignmentId: string, taskId: string, opts: Partial<Record<string, unknown>> = {}) {
   return {
+    // The overdue query selects task_assignment.id (aliased `id`), while the
+    // task join selects it as `assignmentId` — one seeded row stands in for
+    // both projections so the per-row overdue flag's id match is exercised
+    // rather than silently matching nothing.
+    id: assignmentId,
     assignmentId,
     taskId,
     taskTitle: `Task ${taskId}`,
@@ -200,6 +205,11 @@ describe("DEC-930 getSpeakerDetail", () => {
           status: "pending",
           completedAt: null,
           file: { id: "file-1", filename: "slides.pdf", sizeBytes: 1024, versionNo: 2 },
+          // User-filed (speaker detail): lateness now rides on the ROW, from
+          // the same overdue query the counts line below is read from — this
+          // fakeDb's no-op WHERE makes that query return every seeded
+          // assignment, so the flag and the count of 1 are the same fact.
+          overdue: true,
         },
       ],
       // The fakeDb's WHERE/JOIN no-op means the overdue query (which is
@@ -213,6 +223,23 @@ describe("DEC-930 getSpeakerDetail", () => {
       otherEvents: [],
       otherEventsCount: 0,
     });
+  });
+
+  // User-filed (speaker detail, "1 OVERDUE" with no row marked): the header
+  // count and the rows beneath it are read from the ONE overdue query, so
+  // the number of rows flagged overdue is the count — never a count the
+  // reader cannot point at.
+  it("flags overdue per task from the same query the overdue count is read from", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 14)],
+      taskAssignment: [assignmentRow("assign-1", "task-1"), assignmentRow("assign-2", "task-2")],
+    });
+
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail!.tasks.filter((t) => t.overdue)).toHaveLength(detail!.counts.overdue);
+    expect(detail!.tasks.map((t) => t.assignmentId)).toEqual(["assign-1", "assign-2"]);
   });
 
   it("reads headshotFileId straight off contact.headshot_file_id (DEC-773 amendment, w32-e)", async () => {

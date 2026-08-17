@@ -47,7 +47,7 @@ export function formatDueDate(dueDate: number, now: number): string {
  * DEC-789 — replaces the old "N DAYS LATE" copy). The day count isn't
  * dropped: it moves into the button's accessible name/title via
  * overdueTitle below, so no information is lost, just not shown inline. */
-const OVERDUE_LABEL = 'OVERDUE';
+export const OVERDUE_LABEL = 'OVERDUE';
 
 function overdueTitle(task: OnboardingTask, cell: OnboardingCell, now: number, timezone: string): string {
   // DEC-925: the count phrase goes through the ONE plural helper, never a
@@ -74,8 +74,12 @@ function cellDueTitle(
 
 /** One control family for all three cell states (DEC-730): complete/pending/
  * overdue share box metrics, a hover ring and cursor:pointer -- only the
- * fill/outline/ink-outline modifier differs. */
-function statusCellClass(status: AssignmentStatus, overdue: boolean): string {
+ * fill/outline/ink-outline modifier differs. Exported because the speaker
+ * DETAIL page's task rows are the same status control over the same
+ * pending|complete domain: a second hand-rolled mapping there is exactly how
+ * that page ended up showing no overdue mark at all (user-filed, Elliot
+ * Ekström) while its header counted one. */
+export function statusCellClass(status: AssignmentStatus, overdue: boolean): string {
   const modifier = status === 'complete' ? 'complete' : overdue ? 'overdue' : 'pending';
   return `chq-speakers-status chq-speakers-status-${modifier}`;
 }

@@ -114,6 +114,12 @@ export interface SpeakerDetailTask {
   status: SpeakerDetailTaskStatus;
   completedAt: number | null;
   file: SpeakerDetailFile | null;
+  // User-filed (speaker detail, Elliot Ekström): lateness per ROW, not only
+  // as a header count. Server-derived from the same DEC-801 predicate result
+  // the count is (repo/tasks/speaker-detail.ts) -- the client cannot judge it
+  // here, since neither the assignment's creation instant nor the event's
+  // timezone crosses this wire.
+  overdue: boolean;
 }
 
 export interface SpeakerDetailCounts {
