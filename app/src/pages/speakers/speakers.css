@@ -923,11 +923,11 @@
 /* User-filed (screenshot of /admin/speakers/<id>): "the row of chips and
    buttons also looks inconsistent here", then USER RULING: the participation
    control moved up beside the name (one control, chip-sized, in the header
-   rollup line) and this row is Email + Remind only. The frame pins both
-   buttons at min-height:46px (docs/design/Chautauqua Speakers.dc.html:
-   346-347); the app rendered 42.8px vs 35px because .chq-btn declares no
-   line-height, so the Email <a> inherits body's 1.6 while the Remind
-   <button> takes the UA's `normal`. Fixing that on the global .chq-btn is
+   rollup line) and this row is Email + Remind only. The frame
+   (docs/design/Chautauqua Speakers.dc.html: 346-347) pins both buttons at
+   `min-height:46px`; the app rendered 42.8px vs 35px because .chq-btn
+   declares no line-height, so the Email <a> inherits body's 1.6 while the
+   Remind <button> takes the UA's default. Fixing that on the global .chq-btn is
    277 call sites and is not this row's change to make, so the row pins its
    own control height. */
 .chq-speaker-detail-actions > .chq-btn {
