@@ -12,7 +12,7 @@
 // root.tsx wires auth redirects + the hub render correctly given whatever
 // rows the repo layer hands back.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { rootRoutes } from "../src/routes/root";
 import { HUB_CANDIDATE_LIMIT } from "../src/server/repo/public/home";
@@ -547,20 +547,34 @@ describe("GET / — British date grammar (mandate item 31d)", () => {
     // uses the event's own IANA zone) with a close instant safely inside
     // that calendar day in both UTC and Pacific time.
     const closeMs = Date.UTC(2026, 7, 16, 20, 0, 0);
-    const events = [
-      eventRow({
-        id: "e1",
-        startDate: "2027-05-12",
-        endDate: "2027-05-14",
-        openMs: null,
-        closeMs,
-      }),
-    ];
-    const app = buildApp({ queue: buildQueue({ events }) });
-    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
-    const body = await res.text();
-    expect(body).toMatch(/CLOSES SUN 16 AUG · \d+ DAYS? LEFT/);
-    expect(body).not.toMatch(/CLOSES SUN, 16 AUG/);
+    // ...and the clock is FROZEN a few days before it. The subject here is
+    // the grammar of the closes line ("CLOSES SUN 16 AUG", uppercase, no
+    // comma), but the "· N DAYS LEFT" half is computed against Date.now(),
+    // so pinning the close instant while leaving the clock live made this a
+    // time bomb: it stopped rendering a days-left numeral the moment
+    // America/Los_Angeles rolled past 16 Aug 2026, and CI's build-and-test
+    // and test-full both went red on 2026-08-17 at 07:00Z with the whole
+    // rest of the suite green. Freezing the clock keeps the assertion about
+    // grammar instead of about what day it happens to be.
+    vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 7, 13, 12, 0, 0));
+    try {
+      const events = [
+        eventRow({
+          id: "e1",
+          startDate: "2027-05-12",
+          endDate: "2027-05-14",
+          openMs: null,
+          closeMs,
+        }),
+      ];
+      const app = buildApp({ queue: buildQueue({ events }) });
+      const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+      const body = await res.text();
+      expect(body).toMatch(/CLOSES SUN 16 AUG · \d+ DAYS? LEFT/);
+      expect(body).not.toMatch(/CLOSES SUN, 16 AUG/);
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });
 
