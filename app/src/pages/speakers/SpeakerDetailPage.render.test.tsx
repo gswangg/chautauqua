@@ -414,11 +414,12 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(head).toHaveTextContent('SES-014 not invited');
   });
 
-  // USER RULING follow-up: the optimistic flip carries the rollup, so a
-  // two-session speaker whose sessions disagreed BY this change shows the
-  // Mixed breakdown immediately -- not only after a reload.
-  it('declining one of two agreeing sessions surfaces the Mixed breakdown optimistically, before any refetch', async () => {
-    mockApi({
+  // USER RULING (release night, second pass): this page's menu is a
+  // PERSON-level control -- one selection writes EVERY session the speaker
+  // holds, so "this person declined" is never a half-applied first-session
+  // write the roster then contradicts.
+  it('declining a two-session speaker patches BOTH participations and never shows a Mixed breakdown', async () => {
+    const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
         participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'accepted' },
         participationRollup: {
@@ -430,18 +431,67 @@ describe('SpeakerDetailPage render smoke', () => {
         },
       }),
       [`PATCH /api/v1/submissions/sub-1/participants/p-1`]: { ok: true },
+      [`PATCH /api/v1/submissions/sub-2/participants/p-2`]: { ok: true },
     });
 
     renderPage();
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
-    expect(document.querySelector('.chq-speaker-detail-participation-rollup-breakdown')).not.toBeInTheDocument();
 
     fireEvent.click(document.querySelector('.chq-speaker-detail-participation-rollup .chq-participation-menu-trigger')!);
     fireEvent.click(screen.getByRole('menuitemradio', { name: /Declined/ }));
 
-    const breakdown = document.querySelector('.chq-speaker-detail-participation-rollup-breakdown');
-    expect(breakdown).not.toBeNull();
-    expect(breakdown).toHaveTextContent('Mixed · SES-008 declined · SES-009 confirmed');
+    // Optimistic: the person-level state flips whole, no Mixed window.
+    expect(document.querySelector('.chq-speaker-detail-participation-rollup-breakdown')).not.toBeInTheDocument();
+    expect(
+      document.querySelector('.chq-speaker-detail-participation-rollup .chq-participation-menu-trigger'),
+    ).toHaveTextContent('Declined');
+
+    // Both rows were written, not just the first.
+    await waitFor(() => {
+      const patched = fetchMock.mock.calls
+        .filter(([, init]) => (init?.method ?? 'GET').toUpperCase() === 'PATCH')
+        .map(([input]) => String(input));
+      expect(patched).toHaveLength(2);
+      expect(patched.some((u) => u.includes('/submissions/sub-1/participants/p-1'))).toBe(true);
+      expect(patched.some((u) => u.includes('/submissions/sub-2/participants/p-2'))).toBe(true);
+    });
+  });
+
+  // The genuinely-mixed state: the person-level trigger says so in its own
+  // chip (neutral register), no state row claims NOW, and one selection
+  // unifies every session.
+  it('a mixed rollup shows a Mixed trigger, and one selection unifies all sessions', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'accepted' },
+        participationRollup: {
+          status: 'mixed',
+          bySubmission: [
+            { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-008', inviteStatus: 'accepted' },
+            { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-009', inviteStatus: 'none' },
+          ],
+        },
+      }),
+      [`PATCH /api/v1/submissions/sub-1/participants/p-1`]: { ok: true },
+      [`PATCH /api/v1/submissions/sub-2/participants/p-2`]: { ok: true },
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const trigger = document.querySelector('.chq-speaker-detail-participation-rollup .chq-participation-menu-trigger');
+    expect(trigger).toHaveTextContent('Mixed');
+    expect(trigger).toHaveClass('chq-speakers-status-neutral');
+
+    fireEvent.click(trigger!);
+    // No state row is marked current while mixed.
+    expect(document.querySelector('.chq-participation-menu-item.is-current')).not.toBeInTheDocument();
+    // The scope note names what a selection covers.
+    expect(screen.getByText('Applies to all 2 sessions')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Confirmed/ }));
+    expect(trigger).toHaveTextContent('Confirmed');
+    expect(document.querySelector('.chq-speaker-detail-participation-rollup-breakdown')).not.toBeInTheDocument();
   });
 
   it('DEC-936: an agreeing rollup renders one status control naming the shared status, no breakdown line', async () => {

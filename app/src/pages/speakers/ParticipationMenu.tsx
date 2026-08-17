@@ -67,6 +67,14 @@ interface ParticipationMenuProps {
   // this component never fetches.
   company?: string | null;
   hasAccount: boolean;
+  // USER RULING (release night): the speaker DETAIL page's menu is a
+  // person-level control -- `mixed` marks that the person's sessions
+  // currently disagree (trigger reads "Mixed", no state row is "NOW"),
+  // and `scopeNote` names what a selection applies to ("Applies to all 2
+  // sessions"). The roster grid never sets either: there DEC-936 keeps one
+  // menu per participation instead.
+  mixed?: boolean;
+  scopeNote?: string;
 }
 
 export function ParticipationMenu({
@@ -78,6 +86,8 @@ export function ParticipationMenu({
   label,
   company,
   hasAccount,
+  mixed,
+  scopeNote,
 }: ParticipationMenuProps) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -89,13 +99,13 @@ export function ParticipationMenu({
       {label && <span className="chq-participation-menu-ref">{label}</span>}
       <button
         type="button"
-        className={`${participationStatusClass(status)} chq-participation-menu-trigger`}
+        className={`${mixed ? 'chq-speakers-status chq-speakers-status-neutral' : participationStatusClass(status)} chq-participation-menu-trigger`}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Participation status for ${identity}: ${INVITE_STATUS_LABELS[status]}`}
+        aria-label={`Participation status for ${identity}: ${mixed ? 'Mixed' : INVITE_STATUS_LABELS[status]}`}
         onClick={() => setOpen((v) => !v)}
       >
-        <span>{INVITE_STATUS_LABELS[status]}</span>
+        <span>{mixed ? 'Mixed' : INVITE_STATUS_LABELS[status]}</span>
         <span className="chq-participation-menu-caret" aria-hidden="true">
           ▾
         </span>
@@ -112,6 +122,7 @@ export function ParticipationMenu({
           <p className="chq-participation-menu-identity-sub">
             {company ?? '—'} &middot; {hasAccount ? 'has account' : 'no portal account'}
           </p>
+          {scopeNote && <p className="chq-participation-menu-identity-sub">{scopeNote}</p>}
           <div className="chq-participation-menu-body">
             {(status === 'invited'
               ? // DEC-869: 'invited' is never a SELECTABLE choice, but when it
@@ -129,10 +140,10 @@ export function ParticipationMenu({
                   key={candidate}
                   type="button"
                   role="menuitemradio"
-                  aria-checked={candidate === status}
+                  aria-checked={candidate === status && !mixed}
                   aria-disabled={disabledRow || undefined}
                   disabled={disabledRow}
-                  className={`chq-participation-menu-item${candidate === status ? ' is-current' : ''}`}
+                  className={`chq-participation-menu-item${candidate === status && !mixed ? ' is-current' : ''}`}
                   onClick={
                     disabledRow
                       ? undefined
@@ -144,7 +155,7 @@ export function ParticipationMenu({
                 >
                   <span className="chq-participation-menu-item-label">
                     {INVITE_STATUS_LABELS[candidate]}
-                    {candidate === status && <span className="chq-participation-menu-now">NOW</span>}
+                    {candidate === status && !mixed && <span className="chq-participation-menu-now">NOW</span>}
                   </span>
                   <span className="chq-participation-menu-item-caption">{PARTICIPATION_STATE_CAPTIONS[candidate]}</span>
                 </button>
