@@ -17,7 +17,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { formatDateOnly, formatDayLabel } from '../../lib/dates';
 import { INVITE_STATUS_LABELS, type AssignmentStatus, type InviteStatus, type ReminderDraft } from './types';
-import { ParticipationMenu, participationStatusClass } from './ParticipationMenu';
+import { ParticipationMenu } from './ParticipationMenu';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
 import { STATUS_LABELS } from '../submissions/types';
@@ -388,27 +388,31 @@ export function SpeakerDetailPage() {
                   {' · '}
                   {detail.contact.hasAccount ? 'has an account' : 'no account'}
                 </p>
-                {/* DEC-936: the header names the person-level rollup, never
-                    just the write-target participation row -- a two-session
-                    speaker whose statuses disagree gets a MIXED chip plus a
-                    quiet breakdown line instead of a single status that
-                    contradicts the roster below it. */}
-                {detail.participationRollup.status === 'mixed' ? (
-                  <p className="chq-meta chq-speaker-detail-participation-rollup">
-                    <span className="chq-speakers-status chq-speakers-status-neutral">Mixed</span>
+                {/* USER RULING (release night): ONE participation control on
+                    this page, and it lives by the name -- the roster's menu,
+                    promoted (DESIGN-RULINGS.md:99), replacing the static
+                    DEC-936 rollup chip that restated it. DEC-936's
+                    anti-contradiction device survives as the quiet breakdown
+                    beside the trigger whenever a multi-session speaker's
+                    statuses disagree with the write-target row. */}
+                <div className="chq-meta chq-speaker-detail-participation-rollup">
+                  <ParticipationMenu
+                    contactName={detail.contact.name}
+                    status={detail.participation.inviteStatus}
+                    onSelectStatus={setInviteStatus}
+                    onSendInvite={sendPortalInvite}
+                    company={detail.contact.company}
+                    hasAccount={detail.contact.hasAccount}
+                  />
+                  {detail.participationRollup.status === 'mixed' && (
                     <span className="chq-speaker-detail-participation-rollup-breakdown">
+                      {'Mixed · '}
                       {detail.participationRollup.bySubmission
                         .map((row) => `${row.ref} ${INVITE_STATUS_LABELS[row.inviteStatus].toLowerCase()}`)
                         .join(' · ')}
                     </span>
-                  </p>
-                ) : (
-                  <p className="chq-meta chq-speaker-detail-participation-rollup">
-                    <span className={participationStatusClass(detail.participationRollup.status)}>
-                      {INVITE_STATUS_LABELS[detail.participationRollup.status]}
-                    </span>
-                  </p>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
@@ -436,14 +440,6 @@ export function SpeakerDetailPage() {
             )}
 
             <div className="chq-speaker-detail-actions">
-              <ParticipationMenu
-                contactName={detail.contact.name}
-                status={detail.participation.inviteStatus}
-                onSelectStatus={setInviteStatus}
-                onSendInvite={sendPortalInvite}
-                company={detail.contact.company}
-                hasAccount={detail.contact.hasAccount}
-              />
               <a className="chq-btn chq-btn-secondary" href={`mailto:${detail.contact.email}`}>
                 Email {firstNameOf(detail.contact.name)}
               </a>

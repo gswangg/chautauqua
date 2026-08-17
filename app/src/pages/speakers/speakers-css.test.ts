@@ -145,32 +145,25 @@ describe('speakers.css toolbar control shrink is max-width-only (DEC-385)', () =
 });
 
 // User-filed (screenshot of /admin/speakers/<id>): "the row of chips and
-// buttons also looks inconsistent here" — the state chip, Email and Remind
-// rendered at 19px / 42.8px / 35px, three registers in one row. The frame
-// puts Email and Remind on one 46px box (docs/design/Chautauqua
-// Speakers.dc.html:346-347) with the state changer as a chip beside them
-// (:345); the fix pins that height on the row so all three share one top and
-// one bottom edge. Pinned in CSS text (jsdom applies no external stylesheet)
-// and scoped to this row — the roster grid's chips keep their table metrics.
+// buttons also looks inconsistent here", then USER RULING: the participation
+// control moved up beside the name at its natural chip size, and the actions
+// row is Email + Remind alone on the frame's one 46px box (docs/design/
+// Chautauqua Speakers.dc.html:346-347). Pinned in CSS text (jsdom applies no
+// external stylesheet); the roster grid's chips keep their table metrics.
 describe('speaker-detail action row is one control height (user-filed)', () => {
   const css = readFileSync(CSS_PATH, 'utf-8');
 
-  it('pins ONE min-height across the row’s buttons and its state trigger', () => {
-    const rule = css.match(
-      /\.chq-speaker-detail-actions > \.chq-btn,\s*\.chq-speaker-detail-actions \.chq-participation-menu-trigger \{([^}]*)\}/,
-    );
+  it('pins ONE min-height across the row’s two buttons', () => {
+    const rule = css.match(/\.chq-speaker-detail-actions > \.chq-btn \{([^}]*)\}/);
     expect(rule).not.toBeNull();
-    // The frame's height for both action-row buttons, not two of them.
     expect(rule?.[1]).toMatch(/min-height:\s*46px/);
   });
 
-  it('gives the state trigger the buttons’ horizontal rhythm in this row only', () => {
-    const scoped = css.match(
-      /\.chq-speaker-detail-actions \.chq-participation-menu-trigger \{\s*padding-inline:\s*16px;\s*\}/,
-    );
-    expect(scoped).not.toBeNull();
-    // The shared chip keeps the roster grid's 3px 8px box — the row-scoped
-    // override must never leak back into .chq-speakers-status itself.
+  it('leaves the state chip at its natural size — no row-scoped trigger overrides remain', () => {
+    // The inflated-chip cure was rejected by the user; the trigger must not
+    // be box-grown or re-padded anywhere in this stylesheet.
+    expect(css).not.toMatch(/\.chq-speaker-detail-actions[^{]*\.chq-participation-menu-trigger/);
+    // The shared chip keeps the roster grid's 3px 8px box.
     expect(topLevelRuleBody(css, '.chq-speakers-status')).toMatch(/padding:\s*3px 8px/);
   });
 

@@ -195,30 +195,35 @@ describe('SpeakerDetailPage render smoke', () => {
     // The old body-paragraph restatement is gone entirely.
     expect(document.querySelector('.chq-speaker-detail-participation')).not.toBeInTheDocument();
 
-    // The live participation control (ParticipationMenu's trigger button)
-    // lives inside the header actions row, beside Email and Remind.
-    const actions = document.querySelector('.chq-speaker-detail-actions');
-    expect(actions).not.toBeNull();
-    const trigger = actions?.querySelector('.chq-participation-menu-trigger');
+    // USER RULING (release night): the live participation control
+    // (ParticipationMenu's trigger button) lives up by the name, in the
+    // header rollup line -- not in the actions row.
+    const rollup = document.querySelector('.chq-speaker-detail-participation-rollup');
+    expect(rollup).not.toBeNull();
+    const trigger = rollup?.querySelector('.chq-participation-menu-trigger');
     expect(trigger).not.toBeNull();
     expect(trigger).toHaveTextContent('Confirmed');
+
+    const actions = document.querySelector('.chq-speaker-detail-actions');
+    expect(actions).not.toBeNull();
+    expect(actions?.querySelector('.chq-participation-menu-trigger')).toBeNull();
     expect(actions).toHaveTextContent(/Email Ada/);
     expect(actions).toHaveTextContent(/Remind Ada/);
 
-    // The header row itself is the ONE place the control renders.
+    // The header block is the ONE place the control renders.
     const head = document.querySelector('.chq-speaker-detail-head');
-    expect(head?.contains(actions)).toBe(true);
+    expect(head?.querySelectorAll('.chq-participation-menu-trigger')).toHaveLength(1);
   });
 
   // User-filed (screenshot of /admin/speakers/<id>): "the row of chips and
-  // buttons also looks inconsistent here". The row must stay three controls
-  // drawn from the two existing families the frame uses -- the DEC-730 chip
-  // for the state changer (docs/design/Chautauqua Speakers.dc.html:345) and
-  // chq-btn secondary/primary for Email/Remind (:346-347). Any new class
-  // here is new visual vocabulary, and the height rule in speakers.css is
-  // keyed on exactly this shape (row > .chq-btn, row .chq-participation-
-  // menu-trigger), so it silently stops applying if the shape drifts.
-  it('draws the action row from the chip + chq-btn families the frame uses, and nothing else', async () => {
+  // buttons also looks inconsistent here", then USER RULING: one
+  // participation control, up by the name. The actions row is exactly the
+  // two chq-btn controls the frame draws at one 46px height (docs/design/
+  // Chautauqua Speakers.dc.html:346-347); the state changer is the roster's
+  // chip (DEC-730 family) in the header rollup line. The height rule in
+  // speakers.css is keyed on `row > .chq-btn`, so it silently stops
+  // applying if this shape drifts.
+  it('draws the action row as exactly Email + Remind, with the state chip up in the header rollup', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
     });
@@ -229,24 +234,18 @@ describe('SpeakerDetailPage render smoke', () => {
     const actions = document.querySelector('.chq-speaker-detail-actions');
     expect(actions).not.toBeNull();
 
-    // Exactly three controls, in the frame's order.
+    // Exactly two controls, in the frame's order: Email then Remind.
     const children = [...(actions?.children ?? [])];
-    expect(children).toHaveLength(3);
-
-    // 1. State changer: the roster's chip family, carrying its state modifier
-    //    -- kept as a chip because the frame draws it as one.
-    const menu = children[0]!;
-    expect(menu).toHaveClass('chq-participation-menu');
-    const trigger = menu.querySelector('.chq-participation-menu-trigger');
-    expect(trigger).toHaveClass('chq-speakers-status', 'chq-speakers-status-complete');
-
-    // 2/3. Email and Remind: the shared button family, secondary then
-    //      primary -- the height rule reaches them as `> .chq-btn`.
-    expect(children[1]).toHaveClass('chq-btn', 'chq-btn-secondary');
-    expect(children[1]).toHaveTextContent(/Email Ada/);
-    expect(children[2]).toHaveClass('chq-btn', 'chq-btn-primary');
-    expect(children[2]).toHaveTextContent(/Remind Ada/);
+    expect(children).toHaveLength(2);
+    expect(children[0]).toHaveClass('chq-btn', 'chq-btn-secondary');
+    expect(children[0]).toHaveTextContent(/Email Ada/);
+    expect(children[1]).toHaveClass('chq-btn', 'chq-btn-primary');
+    expect(children[1]).toHaveTextContent(/Remind Ada/);
     expect(actions?.querySelectorAll(':scope > .chq-btn')).toHaveLength(2);
+
+    // The state changer: the roster's chip family, in the rollup line.
+    const trigger = document.querySelector('.chq-speaker-detail-participation-rollup .chq-participation-menu-trigger');
+    expect(trigger).toHaveClass('chq-speakers-status', 'chq-speakers-status-complete');
   });
 
   it('the rail carries both Notes and the other-events list', async () => {
@@ -393,7 +392,7 @@ describe('SpeakerDetailPage render smoke', () => {
   // gets a MIXED chip in the header plus a breakdown line naming each
   // session ref and its own status -- the header can never assert a single
   // status the roster contradicts.
-  it('DEC-936: a mixed rollup renders a MIXED chip plus a breakdown line naming every disagreeing ref', async () => {
+  it('DEC-936: a mixed rollup renders a Mixed breakdown line naming every disagreeing ref', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
         participationRollup: {
@@ -415,9 +414,12 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(head).toHaveTextContent('SES-014 not invited');
   });
 
-  it('DEC-936: an agreeing rollup renders one status chip naming the shared status, no breakdown line', async () => {
+  it('DEC-936: an agreeing rollup renders one status control naming the shared status, no breakdown line', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        // The write-target row agrees with the rollup (that is what
+        // "agreeing" means) -- the menu trigger is now the one chip.
+        participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'declined' },
         participationRollup: {
           status: 'declined',
           bySubmission: [
