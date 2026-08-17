@@ -74,8 +74,17 @@ async function buildAppWith(shotsAvailable: readonly string[]) {
 }
 
 describe("DOCS_SHOTS_AVAILABLE population", () => {
-  it("is empty by default -- the file must never be hand-extended", () => {
-    expect(DOCS_SHOTS_AVAILABLE).toEqual([]);
+  // Release amendment (2026-08-16): the screenshot shoot ran against the
+  // locked build (scripts/docs-shots.ts wrote the manifest + public/docs/
+  // shots/*.png in the same commit), so the manifest is now POPULATED.
+  // The guard shifts from "empty until the shoot" to "script-written and
+  // backed by real files": every id must have its PNG on disk.
+  it("is script-populated at release -- every listed id has its shot file on disk", () => {
+    expect(DOCS_SHOTS_AVAILABLE.length).toBeGreaterThan(0);
+    for (const id of DOCS_SHOTS_AVAILABLE) {
+      const file = join(__dirname, "..", "public", "docs", "shots", `${id}.png`);
+      expect(() => readFileSync(file), `missing shot file for ${id}`).not.toThrow();
+    }
   });
 
   it("every listed id is a declared figure-block shotId somewhere in DOCS_ARTICLES (no orphan image)", () => {

@@ -119,19 +119,22 @@ function mainActionAnchors(html: string): { text: string; href: string; cls: str
 describe("DEC-582 (wave 11 amendment): hub action cluster is one exact render contract per state", () => {
   it("full — per-row 'Submit a talk' / 'Browse sessions' / 'Sessions ›', no body-level Sign in", async () => {
     const now = Date.now();
+    // DEC-522: open/close are UTC-midnight DAY LABELS (see the footer test's
+    // fixture note) — raw instants make classification time-of-day dependent.
+    const dayLabel = (offsetDays: number) => Math.floor(now / 86_400_000 + offsetDays) * 86_400_000;
     const events = [
       eventRow({
         id: "e1",
         slug: "open-cfp-event",
         name: "Open CFP Event",
-        openMs: now - 1000,
-        closeMs: now + 30 * 86_400_000,
+        openMs: dayLabel(-2),
+        closeMs: dayLabel(30),
       }),
       eventRow({
         id: "e2",
         slug: "published-event",
         name: "Published Event",
-        closeMs: now - 30 * 86_400_000,
+        closeMs: dayLabel(-30),
       }),
       eventRow({
         id: "e3",
@@ -139,7 +142,7 @@ describe("DEC-582 (wave 11 amendment): hub action cluster is one exact render co
         name: "Past Event",
         startDate: "2020-01-01",
         endDate: "2020-01-02",
-        closeMs: now - 1000,
+        closeMs: dayLabel(-2),
       }),
     ];
     const app = buildApp(
@@ -169,7 +172,7 @@ describe("DEC-582 (wave 11 amendment): hub action cluster is one exact render co
         id: "e1",
         startDate: "2020-01-01",
         endDate: "2020-01-02",
-        closeMs: Date.now() - 1000,
+        closeMs: Math.floor(Date.now() / 86_400_000 - 2) * 86_400_000,
       }),
     ];
     const app = buildApp(buildQueue({ events, countRows: [{ eventId: "e1", count: 1 }] }));
@@ -222,7 +225,18 @@ describe("DEC-582 (wave 11 amendment): hub action cluster is one exact render co
       {
         name: "full",
         queue: buildQueue({
-          events: [eventRow({ id: "e1", openMs: Date.now() - 1000, closeMs: Date.now() + 30 * 86_400_000 })],
+          events: [
+            // DEC-522: open/close are UTC-midnight DAY LABELS, expanded to
+            // local start/end-of-day in the event's timezone. Raw instants
+            // made this fixture time-of-day dependent (between 00:00 UTC and
+            // local midnight, "today's" label has not started yet in LA).
+            // Use aligned labels safely in the past / future instead.
+            eventRow({
+              id: "e1",
+              openMs: Math.floor(Date.now() / 86_400_000 - 2) * 86_400_000,
+              closeMs: Math.floor(Date.now() / 86_400_000 + 30) * 86_400_000,
+            }),
+          ],
         }),
       },
       {
@@ -233,7 +247,7 @@ describe("DEC-582 (wave 11 amendment): hub action cluster is one exact render co
               id: "e1",
               startDate: "2020-01-01",
               endDate: "2020-01-02",
-              closeMs: Date.now() - 1000,
+              closeMs: Math.floor(Date.now() / 86_400_000 - 2) * 86_400_000,
             }),
           ],
           countRows: [{ eventId: "e1", count: 1 }],

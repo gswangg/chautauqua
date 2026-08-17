@@ -15,6 +15,7 @@ vi.mock("../src/server/repo/public/home", () => ({
 import { docsSiteRoutes } from "../src/routes/docs-site";
 import { docsRoutes } from "../src/routes/docs";
 import { DOCS_GROUPS, DOCS_GROUP_META, DOCS_ARTICLES } from "../src/routes/docs-content";
+import { DOCS_SHOTS_AVAILABLE } from "../src/routes/docs-content/shots-available";
 import type { AppEnv } from "../src/server/env";
 
 // hono/jsx HTML-escapes text children (&, <, >, ", '), so raw fixture
@@ -123,15 +124,23 @@ describe("GET /docs/:slug", () => {
     }
   });
 
-  it("prints a figure slot's shotId as a named placeholder, never an <img>", async () => {
-    const withFigure = DOCS_ARTICLES.find((a) => a.blocks.some((b) => b.kind === "figure"));
+  // Release amendment (2026-08-16): the shoot populated the manifest, so a
+  // figure whose id is available renders the REAL <img> (correct src,
+  // caption kept); only ids absent from the manifest keep the named
+  // placeholder. Both branches asserted in test/docs-figure-availability.
+  it("renders an available figure as a real <img> pointing at its shot file", async () => {
+    const withFigure = DOCS_ARTICLES.find((a) =>
+      a.blocks.some((b) => b.kind === "figure" && DOCS_SHOTS_AVAILABLE.includes((b as { shotId: string }).shotId)),
+    );
     expect(withFigure).toBeDefined();
     const app = buildApp();
     const res = await app.request(`/docs/${withFigure!.slug}`);
     const body = await res.text();
-    expect(body).not.toContain("<img");
-    const figureBlock = withFigure!.blocks.find((b) => b.kind === "figure") as { shotId: string };
-    expect(body).toContain(figureBlock.shotId);
+    const figureBlock = withFigure!.blocks.find(
+      (b) => b.kind === "figure" && DOCS_SHOTS_AVAILABLE.includes((b as { shotId: string }).shotId),
+    ) as { shotId: string };
+    expect(body).toContain(`/docs/shots/${figureBlock.shotId}.png`);
+    expect(body).toContain("<img");
   });
 
   it("404s on an unknown slug rather than redirecting", async () => {
