@@ -116,6 +116,14 @@ jobs:
 
   render-sweep:
     runs-on: ubuntu-latest
+    # Bound the browser sweep. It is the one job that drives a real chromium
+    # over ~118 page loads behind its own wrangler dev, so a page that never
+    # settles (or a teardown that never returns) otherwise burns GitHub's
+    # 6-hour default before anyone hears about it -- one run sat at 100+
+    # minutes on 2026-08-17 with all its checks already printed. A healthy
+    # run is ~25 minutes locally; 75 leaves generous room for a slow runner
+    # while still failing loudly instead of hanging.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

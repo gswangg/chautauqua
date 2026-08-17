@@ -1228,6 +1228,10 @@ async function main(): Promise<void> {
   const server: ChildProcess = spawn("npx", ["wrangler", "dev", "--port", String(port)], {
     cwd: REPO_ROOT,
     stdio: ["ignore", "pipe", "pipe"],
+    // Own process group, so the teardown in the finally block below can
+    // signal wrangler and workerd (npx's grandchildren) and not just npx --
+    // see the comment there.
+    detached: true,
   });
   let serverLog = "";
   server.stdout?.on("data", (chunk: Buffer) => (serverLog += chunk.toString()));
@@ -1492,7 +1496,27 @@ async function main(): Promise<void> {
     }
   } finally {
     if (browser) await browser.close();
-    server.kill();
+    // `server` is `npx`, not wrangler: npm exec runs wrangler as a CHILD, and
+    // wrangler in turn runs workerd. A bare server.kill() signals only the npx
+    // wrapper, so on Linux the wrangler/workerd grandchildren survive, keep
+    // the inherited stdout/stderr pipes open, and node's event loop never
+    // drains -- the script prints its whole report and then hangs forever
+    // (observed on ubuntu-latest CI: the job sat in `npm run gate:render-sweep`
+    // for 100+ minutes with every check already done). `detached: true` above
+    // makes npx a process-group leader so the negative-pid signal reaches the
+    // whole tree, and destroying the pipes releases the loop even if something
+    // in that tree ignores SIGTERM.
+    if (server.pid !== undefined) {
+      try {
+        process.kill(-server.pid, "SIGTERM");
+      } catch {
+        // Already gone (or never got its own group) -- fall back to the
+        // direct signal rather than leaving the child running.
+        server.kill("SIGTERM");
+      }
+    }
+    server.stdout?.destroy();
+    server.stderr?.destroy();
     if (failed) {
       console.error("--- wrangler dev log (tail) ---");
       console.error(serverLog.split("\n").slice(-100).join("\n"));
