@@ -235,7 +235,7 @@ describe('SpeakerDetailPage render smoke', () => {
 
     // 1. State changer: the roster's chip family, carrying its state modifier
     //    -- kept as a chip because the frame draws it as one.
-    const menu = children[0];
+    const menu = children[0]!;
     expect(menu).toHaveClass('chq-participation-menu');
     const trigger = menu.querySelector('.chq-participation-menu-trigger');
     expect(trigger).toHaveClass('chq-speakers-status', 'chq-speakers-status-complete');
