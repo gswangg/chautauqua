@@ -114,6 +114,10 @@ instead of re-flagging.
   resources-block rework (09--13), docs IA expansion (14 further articles).
 
 **Adjudications recorded:**
+- Portal measure WIDENED against the frames: --chq-portal-measure 560px (drawn)
+  -> 760px. USER RULING 2026-08-16 (release night): the 560 column reads as a
+  phone view on desktop. Single-token change; the portal keeps its narrow
+  editorial character relative to the 820 admin measure.
 - Tracks-and-rooms save model: per-row dirty-reveal BLESSED (G13 srv1
   adjudication); frame 09--12's page-footer model filed as post-deadline
   rework. The Done control now confirms before discarding dirty rows.
