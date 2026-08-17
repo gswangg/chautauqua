@@ -556,9 +556,14 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               {/* DEC-616 amendment (wave 15): the drawer states its own save
                   mechanism in the record head, in plain words, rather than
                   leaving Save's persistent footer (below) to speak for
-                  itself. */}
+                  itself. Post-eval polish (copy only, no behaviour change):
+                  the old wording over-promised on both halves -- not every
+                  row is clickable (Labels and the History rows are read-only
+                  display), and Save's promise covers the FIELD ROWS only
+                  (a headshot upload, Delete, Email and Add to an event all
+                  act on their own, without Save). */}
               <p className="chq-meta chq-contacts-record-save-caption">
-                Click a row to edit it — nothing is saved until you press Save.
+                Click an editable row to change it — nothing in these rows is saved until you press Save.
               </p>
 
               {/* A20 (w26-c): four titled groups, in this order — Contact,

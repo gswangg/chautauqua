@@ -18,6 +18,7 @@ import {
   mergeFieldErrors,
   resolveCurrentEvent,
   validateNewEventForm,
+  defaultTimezone,
   type NewEventForm,
   type NewEventFormErrors,
 } from './eventSwitcherState';
@@ -26,17 +27,24 @@ import './event-switcher.css';
 
 const STORAGE_KEY = 'chq.currentEventId';
 
-const EMPTY_FORM: NewEventForm = {
-  name: '',
-  slug: '',
-  startDate: '',
-  endDate: '',
-  timezone: '',
-  location: '',
-};
+// Post-eval polish: Time zone is `required` and now opens with the
+// browser's own zone rather than an empty field wearing a placeholder that
+// reads as a default -- so the native "Please fill out this field" bubble
+// can no longer fire on a field that looks answered. Built per-open (not a
+// module const) so the value is resolved when the modal mounts.
+function newEventForm(): NewEventForm {
+  return {
+    name: '',
+    slug: '',
+    startDate: '',
+    endDate: '',
+    timezone: defaultTimezone(),
+    location: '',
+  };
+}
 
 function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreated: (id: string) => void }) {
-  const [form, setForm] = useState<NewEventForm>(EMPTY_FORM);
+  const [form, setForm] = useState<NewEventForm>(newEventForm);
   const [errors, setErrors] = useState<NewEventFormErrors>({});
   const [banner, setBanner] = useState<string | null>(null);
   const [pending, setPending] = useState(false);

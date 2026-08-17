@@ -155,6 +155,10 @@ describe("task w31-c: plan-results aggregate pin (Promise.all wave collapse move
     expect(rows).toEqual([
       {
         submissionId: "sub-1",
+        // Post-eval amendment: the SCORE rank rides the ranked row.
+        // sub-1 and sub-2 share an average but differ on count, so
+        // they hold distinct positions -- 1 and 2, not a tie.
+        rank: 1,
         ref: "S-001",
         title: "Talk A",
         count: 2,
@@ -168,6 +172,7 @@ describe("task w31-c: plan-results aggregate pin (Promise.all wave collapse move
       },
       {
         submissionId: "sub-2",
+        rank: 2,
         ref: "S-002",
         title: "Talk B",
         count: 1,
@@ -181,6 +186,7 @@ describe("task w31-c: plan-results aggregate pin (Promise.all wave collapse move
       },
       {
         submissionId: "sub-3",
+        rank: 3,
         ref: "S-003",
         title: "Talk C",
         count: 0,

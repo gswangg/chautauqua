@@ -148,6 +148,11 @@ export interface ProgressRow {
 // GET /api/v1/plans/:id/results item.
 export interface ResultsRow {
   submissionId: string;
+  // DEC-906 (post-eval amendment): standing in the SCORE ranking, stamped
+  // server-side over the whole population before ?sort= and paging. The
+  // table renders this verbatim -- it is never the row's display position,
+  // so toggling a sort reorders the rows without renumbering them.
+  rank: number;
   ref: string;
   title: string;
   count: number;

@@ -6,6 +6,7 @@ import {
   buildReviewerQueue,
   needsMoreRatings,
   buildResultsRows,
+  assignScoreRanks,
   anonymizeForReviewer,
   redactIdentity,
   validateEvaluationScores,
@@ -221,6 +222,75 @@ describe("buildResultsRows", () => {
     const rows = buildResultsRows(input);
     expect(rows).not.toBe(input);
     expect(input[0]?.submissionId).toBe("a");
+  });
+});
+
+// Post-eval amendment: the results table's Rank column must report SCORE
+// standing, not display position -- toggling the sort ascending used to
+// renumber the rows 1..N top-down.
+describe("assignScoreRanks", () => {
+  it("numbers the ranked population 1..N", () => {
+    const ranked = assignScoreRanks(
+      buildResultsRows([
+        { submissionId: "a", average: 3, count: 1 },
+        { submissionId: "b", average: 4.5, count: 1 },
+        { submissionId: "c", average: 1, count: 1 },
+      ]),
+    );
+    expect(ranked.map((r) => [r.submissionId, r.rank])).toEqual([
+      ["b", 1],
+      ["a", 2],
+      ["c", 3],
+    ]);
+  });
+
+  it("gives rows equal on BOTH ranking keys the same rank, and skips the positions they consumed", () => {
+    const ranked = assignScoreRanks(
+      buildResultsRows([
+        { submissionId: "a", average: 4, count: 2 },
+        { submissionId: "b", average: 5, count: 2 },
+        { submissionId: "c", average: 4, count: 2 },
+        { submissionId: "d", average: 2, count: 1 },
+      ]),
+    );
+    expect(ranked.map((r) => r.rank)).toEqual([1, 2, 2, 4]);
+  });
+
+  it("does NOT tie rows that share an average but differ on count -- they hold different positions", () => {
+    const ranked = assignScoreRanks(
+      buildResultsRows([
+        { submissionId: "a", average: 4, count: 2 },
+        { submissionId: "b", average: 4, count: 5 },
+      ]),
+    );
+    expect(ranked.map((r) => [r.submissionId, r.rank])).toEqual([
+      ["b", 1],
+      ["a", 2],
+    ]);
+  });
+
+  it("a rank travels with its row -- re-sorting the ranked array never renumbers it", () => {
+    const ranked = assignScoreRanks(
+      buildResultsRows([
+        { submissionId: "a", average: 3, count: 1 },
+        { submissionId: "b", average: 4.5, count: 1 },
+        { submissionId: "c", average: 1, count: 1 },
+      ]),
+    );
+    const ascending = [...ranked].sort((x, y) => x.average - y.average);
+    expect(ascending.map((r) => [r.submissionId, r.rank])).toEqual([
+      ["c", 3],
+      ["a", 2],
+      ["b", 1],
+    ]);
+  });
+
+  it("returns a new array of new objects -- the input rows are untouched", () => {
+    const input = [{ submissionId: "a", average: 1, count: 1 }];
+    const ranked = assignScoreRanks(input);
+    expect(ranked).not.toBe(input);
+    expect(ranked[0]).not.toBe(input[0]);
+    expect(input[0]).not.toHaveProperty("rank");
   });
 });
 

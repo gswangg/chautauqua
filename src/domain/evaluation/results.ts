@@ -24,6 +24,31 @@ export function buildResultsRows<T extends ResultsRowInput>(subs: T[]): T[] {
   });
 }
 
+/**
+ * Stamps each row with its SCORE rank -- its standing in the ranked order
+ * buildResultsRows produces (average desc, then count desc) -- so the
+ * table's Rank column stays tied to the score and not to whatever order the
+ * reader has currently sorted the rows into. Toggling a column sort
+ * ascending must reorder the rows without renumbering them 1..N top-down.
+ *
+ * Standard competition ranking: rows equal on BOTH ranking keys share a
+ * rank, and the next distinct row takes the position it actually occupies
+ * (1, 2, 2, 4). Input MUST already be in buildResultsRows order.
+ */
+export function assignScoreRanks<T extends ResultsRowInput>(ranked: T[]): (T & { rank: number })[] {
+  let lastRank = 0;
+  let lastAverage: number | null = null;
+  let lastCount: number | null = null;
+  return ranked.map((row, index) => {
+    if (lastAverage === null || row.average !== lastAverage || row.count !== lastCount) {
+      lastRank = index + 1;
+      lastAverage = row.average;
+      lastCount = row.count;
+    }
+    return { ...row, rank: lastRank };
+  });
+}
+
 // DEC-345: results-table column sort, moved verbatim from the former SPA
 // module app/src/pages/review/resultsSort.ts into pure core so the
 // GET /api/v1/plans/:id/results route can sort server-side over the WHOLE

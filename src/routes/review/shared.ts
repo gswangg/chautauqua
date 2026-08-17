@@ -13,6 +13,7 @@ import {
   aggregateSubmission,
   aggregateDropdownCriterion,
   buildResultsRows,
+  assignScoreRanks,
   criteriaForRound,
   normalizeGuidance,
   numericScoresFor,
@@ -449,6 +450,11 @@ export interface RankedResultsRow {
   perCriterion: Record<string, number>;
   perDropdown: Record<string, { counts: Record<string, number>; modal: string | null }>;
   status: string;
+  /** DEC-906 (post-eval amendment): standing in the SCORE ranking (average
+   * desc, count desc), stamped once over the whole population by
+   * rankPlanResults. Survives ?sort= and paging unchanged -- the reader can
+   * sort the table any way they like and rank 1 stays rank 1. */
+  rank: number;
 }
 
 /** RANK the whole population (DEC-829/DEC-338 w32): the two independent
@@ -491,7 +497,9 @@ export async function rankPlanResults(
     evalsBySubmission.set(e.submissionId, list);
   }
 
-  const rows: RankedResultsRow[] = submissions.map((sub) => {
+  // `rank` is stamped by assignScoreRanks below, once the whole population
+  // is in ranked order -- an individual row has no rank of its own to know.
+  const rows: Omit<RankedResultsRow, "rank">[] = submissions.map((sub) => {
     const subEvals = evalsBySubmission.get(sub.id) ?? [];
     // DEC-212 (wave-81 amendment): numericScoresFor is the ONE validated
     // narrowing from the row's raw Record<string, number|string> to the
@@ -520,7 +528,10 @@ export async function rankPlanResults(
       status: sub.status,
     };
   });
-  return buildResultsRows(rows);
+  // DEC-906 (post-eval amendment): the score rank is stamped HERE, on the
+  // ranked population, before ?sort= reorders it and before the page slice
+  // -- so the Rank column reports score standing, never row position.
+  return assignScoreRanks(buildResultsRows(rows));
 }
 
 /** HYDRATE an already-sliced/sorted set of ranked rows with the

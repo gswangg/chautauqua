@@ -193,6 +193,10 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
     expect(rows).toEqual([
       {
         submissionId: "sub-2",
+        // Post-eval amendment: the SCORE rank is stamped on the ranked
+        // population, so it rides the payload rather than being recomputed
+        // from display position in the table.
+        rank: 1,
         ref: "S-002",
         title: "Talk B",
         count: 1,
@@ -206,6 +210,7 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
       },
       {
         submissionId: "sub-1",
+        rank: 2,
         ref: "S-001",
         title: "Talk A",
         count: 2,

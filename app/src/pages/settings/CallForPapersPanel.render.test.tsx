@@ -379,6 +379,39 @@ describe('CallForPapersPanel', () => {
       }
     });
 
+    // Post-eval polish: the state pill used to hand-roll its own "1 Feb"
+    // grammar off a private SHORT_MONTHS array -- a fourth grammar for the
+    // same close date, and the only deadline surface in the product that
+    // dropped the year. It now goes through app/src/lib/dates' UTC-anchored
+    // formatDateOnly, the one writer (DEC-963/DEC-907).
+    it('states the close date in the house grammar, year included', async () => {
+      const now = Date.now();
+      mockCfp({
+        [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+          id: 'form1',
+          eventId: EVENT_ID,
+          title: 'Speak at DevCon',
+          intro: 'Tell us about your talk.',
+          openDate: now - 1000 * 60 * 60 * 24,
+          closeDate: Date.UTC(2031, 1, 1),
+          tracks: ['trk1'],
+          fields: [{ id: 'f1', label: 'Title', locked: true }],
+        },
+      });
+      render(
+        <MemoryRouter>
+          <CallForPapersPanel />
+        </MemoryRouter>,
+      );
+      const section = await screen.findByRole('region', { name: 'Call for papers' });
+      await waitFor(() => {
+        expect(within(section).getByRole('button', { name: 'Edit the form' })).toBeInTheDocument();
+      });
+      fireEvent.click(within(section).getByRole('button', { name: 'Edit the form' }));
+
+      expect(await within(section).findByText('Open · closes 1 Feb 2031')).toBeInTheDocument();
+    });
+
     it('shows a "Close the call" fast path on the read view while the call is open, and closes it behind a confirm without entering edit', async () => {
       const now = Date.now();
       mockCfp({
