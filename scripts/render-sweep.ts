@@ -861,6 +861,24 @@ async function measureContrast(
       const isDisabledTokenPair = (fg: [number, number, number], bg: [number, number, number]): boolean =>
         closeEnough(fg, DISABLED_INK_RGB) && closeEnough(bg, DISABLED_BG_RGB);
 
+      // The token-pair test above recognises an inactive component only when
+      // the disabled ink sits on --chq-disabled-bg, i.e. only for the FILLED
+      // button tiers. styles.css:744-751 states the opposite rule for the
+      // tertiary tier ("a disabled tertiary is a link-shaped control — it
+      // keeps NO surface: muted label only, no box"), so its disabled ink is
+      // measured against the page ground and the pair test can never fire.
+      // That is exactly the /admin/submissions/forms reading: three
+      // `<button class="chq-btn chq-btn-tertiary" disabled>Delete</button>`
+      // rows (FieldList.tsx:340) at ratio 3.90 on paper -- genuinely
+      // inactive controls, reported as offenders. WCAG 2.1 SC 1.4.3 exempts
+      // by INACTIVITY, not by colour, so ask the element (or the control it
+      // sits inside -- a disabled fieldset's label is inactive too) whether
+      // it is disabled. Same DEC-411 inline-only constraint as above.
+      const isInactiveComponent = (el: Element): boolean =>
+        el.closest(
+          "button:disabled, input:disabled, select:disabled, textarea:disabled, fieldset:disabled, [aria-disabled='true']",
+        ) !== null;
+
       const elements = Array.from(document.querySelectorAll("*"));
       let minRatio: number | null = null;
       const under: { el: Element; ratio: number; fg: [number, number, number]; bg: [number, number, number] }[] = [];
@@ -882,7 +900,7 @@ async function measureContrast(
         const isLarge = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700);
         const threshold = isLarge ? minRatioLarge : minRatioNormal;
         if (r < threshold) {
-          if (isDisabledTokenPair(fg, bg)) {
+          if (isDisabledTokenPair(fg, bg) || isInactiveComponent(el)) {
             exempt.push({ el, ratio: r, fg, bg });
           } else {
             under.push({ el, ratio: r, fg, bg });
