@@ -460,6 +460,24 @@ user-DELETE path exists (users API = GET/POST/reset) — fine for product, but p
 reverts need D1; not a defect.
 
 
+## FINAL OFFICIAL RUN 2026-08-17T00-28 — **93.5 @ 93.2% coverage** (interim 93.8 @ 93.5 — statistically flat composite, structurally better)
+
+Run against the LOCKED build a80d061f (g13-lock), local prod-like server, solo machine
+(first attempt 23-21-38 DISCARDED: eval target crashed under parallel G14 load — instrument
+failure, ~$35 spend). Per-area (this run's rubric labels):
+- abstract-management **100 @ 96.4** (was 91.1 — Scale-or-Choice + fixes CONVERTED)
+- public-widgets 97.1 @ 100 · speaker-management **96.7** (was 88.7) · ai-agenda 94.4 @ 100
+- speaker-crm 88.9 @ 94.7 · call-for-papers 87.9 @ 76.3 (turn-cap luck: S1+S4 capped;
+  CFP-04/13/16/18 cannot_judge — same structural tail as interim)
+- content-management 83.9 @ 100 (was 90.7): losses are seed-bleed judgments (Marcus dual
+  fixture rows read as data inconsistency) + a feature ask (file-collection enablement
+  setting) — no new correctness defects.
+Known non-actionables re-observed: SBEK-PORTAL-BIO-01 self-contamination (public-widgets
+minor); portal_link showing localhost in LOCAL run preview (PUBLIC_BASE_URL is correct in
+prod). Defect worth a post-deadline look: organizer submission detail shows one review's
+free-text comment duplicated across evaluations (flagged major in ABS notes though area
+scored 100 — render bug candidate, was ALSO an interim minor).
+
 ## INTERIM RUN 2026-08-16T06-09 — **93.8 @ 93.5% coverage, NEW BEST** (was 90.3; matches the 140-turn diagnostic's predicted ceiling exactly). LOSS-MINE + FINAL-FREEZE LANE
 
 Per-area: AIA 100 · EMB 100 · CRM 94.4 · CFP 93.5 · ABS 91.1 · CNT 90.7 · SPK 88.7.
