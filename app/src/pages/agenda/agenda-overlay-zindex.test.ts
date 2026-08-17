@@ -86,11 +86,27 @@ describe('agenda ONE overlay tier (DEC-900 amendment, wave 72)', () => {
   // it here too -- so this pins the TOTAL number of `z-index:` declarations
   // in the file, forcing a new one to be noticed and classified rather than
   // silently landing below the lattice with its own literal.
+  // USER-FILED (release night): the ONE slot under the pointer mid-drag is
+  // the single exception that must paint ABOVE the overlay tier -- a drop
+  // target hidden behind the very card the organiser is dragging past is
+  // the regression being fixed. It is expressed relative to the tier token
+  // (never a literal 10/11), so re-tiering the overlays carries it along.
+  it('the mid-drag drop target and its readout sit just above the overlay tier, via the token', () => {
+    expect(declValue(ruleBody(CSS, '.chq-day-grid-cell-drop-target'), 'z-index')).toBe(
+      'calc(var(--chq-z-agenda-overlay) + 1)',
+    );
+    expect(
+      declValue(ruleBody(CSS, '.chq-day-grid-cell-drop-target .chq-day-grid-cell-hover-label'), 'z-index'),
+    ).toBe('calc(var(--chq-z-agenda-overlay) + 2)');
+  });
+
   it('pins the total count of z-index declarations in agenda.css', () => {
     const matches = CSS.match(/z-index\s*:/g) ?? [];
     // 10th: .chq-agenda-armed-bar's overlay tier on the DAY-TABS strip
     // (delta-2 amendment) -- outside .chq-day-grid, so it is not part of
     // the grid's one-overlay-tier contract above; classified here.
-    expect(matches.length).toBe(10);
+    // 11th/12th: the mid-drag drop target and its free-minutes readout
+    // (user-filed release-night fix), classified in the test above.
+    expect(matches.length).toBe(12);
   });
 });

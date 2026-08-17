@@ -191,13 +191,65 @@ export function DayGrid({
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
   }
 
-  function handleDragOver(e: DragEvent<Element>) {
-    e.preventDefault();
+  // USER-FILED (release night): the HTML5-drag placement gesture had NO
+  // placement affordance at all — the "prospective slot ring + N MIN FREE"
+  // readout built for the click-to-arm path (DEC-899/900) hangs off CSS
+  // :hover, and a browser freezes :hover for the whole duration of a drag,
+  // so dragging a card across the grid showed nothing about where it would
+  // land. `dropTarget` is the slot the pointer is currently over DURING a
+  // drag, tracked in React state (dragover fires throughout a drag, :hover
+  // does not) so the same ring + free-minutes readout paints for the drag
+  // path as for the armed path. dataTransfer payloads are unreadable in
+  // dragover under the browsers' protected mode, so this deliberately keys
+  // off the slot alone, never the dragged session's identity.
+  const [dropTarget, setDropTarget] = useState<{ roomId: string | null; startMin: number } | null>(null);
+
+  function isDropTarget(roomId: string | null, minutes: number): boolean {
+    return dropTarget !== null && roomKey(dropTarget.roomId) === roomKey(roomId) && dropTarget.startMin === minutes;
   }
+
+  function handleDragOver(e: DragEvent<Element>, roomId: string | null, rowStartMin: number) {
+    e.preventDefault();
+    // dragover fires many times per second over the same cell — return the
+    // previous object when the slot is unchanged so React skips the
+    // re-render instead of rebuilding the whole grid on every event.
+    setDropTarget((prev) =>
+      prev !== null && roomKey(prev.roomId) === roomKey(roomId) && prev.startMin === rowStartMin
+        ? prev
+        : { roomId, startMin: rowStartMin },
+    );
+  }
+
+  /** Leaving the grid entirely (not merely crossing between two of its own
+   * cells) drops the affordance — otherwise the last slot the pointer
+   * touched stays lit while the card is dragged over the tray. */
+  function handleGridDragLeave(e: DragEvent<HTMLDivElement>) {
+    const next = e.relatedTarget as Node | null;
+    if (next && e.currentTarget.contains(next)) return;
+    setDropTarget(null);
+  }
+
+  // A drag can end anywhere (Esc, a drop outside the grid, a cancelled
+  // drag) and those events never reach a cell's own handlers, so the
+  // affordance is cleared at the document level too rather than relying on
+  // the grid seeing the terminating event.
+  useEffect(() => {
+    function clearDragAffordance() {
+      setDropTarget(null);
+      setDraggingId(null);
+    }
+    document.addEventListener('dragend', clearDragAffordance);
+    document.addEventListener('drop', clearDragAffordance);
+    return () => {
+      document.removeEventListener('dragend', clearDragAffordance);
+      document.removeEventListener('drop', clearDragAffordance);
+    };
+  }, []);
 
   function handleDrop(e: DragEvent<Element>, roomId: string | null, rowStartMin: number) {
     e.preventDefault();
     setDraggingId(null);
+    setDropTarget(null);
     const submissionId = e.dataTransfer.getData('text/plain');
     if (!submissionId) return;
     const duration = durationForDrag(e);
@@ -314,7 +366,12 @@ export function DayGrid({
 
   return (
     <>
-    <div className={gridClassName} style={{ gridTemplateColumns, gridTemplateRows }} ref={gridRef}>
+    <div
+      className={gridClassName}
+      style={{ gridTemplateColumns, gridTemplateRows }}
+      ref={gridRef}
+      onDragLeave={handleGridDragLeave}
+    >
       <div className="chq-day-grid-corner" style={{ gridColumn: 1, gridRow: 1 }} />
       {columns.map((colId, colIdx) => (
         <div
@@ -354,6 +411,11 @@ export function DayGrid({
           // the boundary is the bottom edge of the row right before the
           // next label, i.e. every odd rowIdx.
           const boundaryClass = rowIdx % 2 === 1 ? ' chq-day-grid-cell-boundary' : '';
+          // USER-FILED (release night): the slot the pointer is over mid-drag
+          // takes the SAME ring/tint the armed path gives a :hover-ed slot,
+          // plus the free-minutes readout — the drag gesture is otherwise
+          // blind (see the dropTarget comment above).
+          const dropTargetClass = isDropTarget(roomId, minutes) ? ' chq-day-grid-cell-drop-target' : '';
           if (armed) {
             const clashCount = occupancyCount(roomId, minutes);
             if (clashCount === 0) {
@@ -362,9 +424,9 @@ export function DayGrid({
                 <button
                   key={`cell-${colId}-${minutes}`}
                   type="button"
-                  className={`chq-day-grid-cell-btn${boundaryClass}`}
+                  className={`chq-day-grid-cell-btn${boundaryClass}${dropTargetClass}`}
                   style={cellStyle}
-                  onDragOver={handleDragOver}
+                  onDragOver={(e) => handleDragOver(e, roomId, minutes)}
                   onDrop={(e) => handleDrop(e, roomId, minutes)}
                   onClick={() => handleCellPlace(roomId, minutes)}
                   aria-label={`Place ${armed.ref} at ${clockHHMM(minutes)} in ${roomName}`}
@@ -385,9 +447,9 @@ export function DayGrid({
               <button
                 key={`cell-${colId}-${minutes}`}
                 type="button"
-                className={`chq-day-grid-cell-btn chq-day-grid-cell-btn-clash${boundaryClass}`}
+                className={`chq-day-grid-cell-btn chq-day-grid-cell-btn-clash${boundaryClass}${dropTargetClass}`}
                 style={cellStyle}
-                onDragOver={handleDragOver}
+                onDragOver={(e) => handleDragOver(e, roomId, minutes)}
                 onDrop={(e) => handleDrop(e, roomId, minutes)}
                 onClick={() => handleCellPlace(roomId, minutes)}
                 aria-label={`Place ${armed.ref} at ${clockHHMM(minutes)} in ${roomName} — will clash with ${countOf(clashCount, 'session')}`}
@@ -396,17 +458,28 @@ export function DayGrid({
               />
             );
           }
+          // Not armed: the cell is a plain drop target. It still shows the
+          // prospective-slot ring and its free-minutes run while a drag is
+          // actually over it — the readout is computed from the same
+          // freeMinutesAt() the armed path uses, so both placement gestures
+          // read identically.
           return (
             <div
               key={`cell-${colId}-${minutes}`}
-              className={`chq-day-grid-cell${boundaryClass}`}
+              className={`chq-day-grid-cell${boundaryClass}${dropTargetClass}`}
               style={cellStyle}
               tabIndex={-1}
-              onDragOver={handleDragOver}
+              onDragOver={(e) => handleDragOver(e, roomId, minutes)}
               onDrop={(e) => handleDrop(e, roomId, minutes)}
               data-room-id={colId}
               data-start-min={minutes}
-            />
+            >
+              {dropTargetClass !== '' && (
+                <span className="chq-day-grid-cell-hover-label" aria-hidden="true">
+                  {`Place here · ${freeMinutesAt(roomId, minutes)} MIN FREE`}
+                </span>
+              )}
+            </div>
           );
         }),
       )}
@@ -486,7 +559,7 @@ export function DayGrid({
                 width: `calc((100% - ${CARD_INSET_PX}px) / ${laneCount})`,
                 marginInlineStart: `calc(${CARD_INSET_PX}px + (100% - ${CARD_INSET_PX}px) / ${laneCount} * ${lane})`,
               }}
-              onDragOver={handleDragOver}
+              onDragOver={(e) => handleDragOver(e, session.roomId, session.startMin)}
               onDrop={(e) => handleDrop(e, session.roomId, session.startMin)}
               onSelect={() => handleCardSelect(session)}
               selected={armed?.submissionId === session.submissionId}
@@ -520,7 +593,7 @@ export function DayGrid({
             key={`clash-${sessions.map((s) => s.submissionId).join('-')}`}
             className="chq-day-grid-clash-card"
             style={{ gridColumn: colIdx + 2, gridRow: `${rowStart} / ${rowEnd}` }}
-            onDragOver={handleDragOver}
+            onDragOver={(e) => handleDragOver(e, sessions[0]!.roomId, sessions[0]!.startMin)}
             onDrop={(e) => handleDrop(e, sessions[0]!.roomId, sessions[0]!.startMin)}
           >
             {sessions.map((session) => (
@@ -534,7 +607,7 @@ export function DayGrid({
                   e.dataTransfer.setData('application/x-chq-duration-min', String(session.endMin - session.startMin));
                   e.dataTransfer.effectAllowed = 'move';
                 }}
-                onDragOver={handleDragOver}
+                onDragOver={(e) => handleDragOver(e, session.roomId, session.startMin)}
                 onDrop={(e) => handleDrop(e, session.roomId, session.startMin)}
                 onClick={() => handleCardSelect(session)}
                 aria-label={`${session.ref}: ${session.title} (conflict)`}

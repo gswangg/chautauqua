@@ -327,16 +327,14 @@
  * breakpoints. Hidden at rest (the button's own hover tint/outline already
  * carries the state to a sighted user scanning the grid) and surfaced only
  * on :hover/:focus-visible so it never crowds the 24px row at rest. */
+/* The readout's own appearance lives here, on the base class, so the two
+   states that REVEAL it (armed :hover/:focus-visible below, and the
+   mid-drag drop target further below) each add only `display` + their own
+   stacking tier instead of restating twelve identical declarations. */
 .chq-day-grid-cell-hover-label {
   display: none;
-}
-
-.chq-day-grid-armed .chq-day-grid-cell-btn:hover .chq-day-grid-cell-hover-label,
-.chq-day-grid-armed .chq-day-grid-cell-btn:focus-visible .chq-day-grid-cell-hover-label {
-  display: block;
   position: absolute;
   inset: 2px 4px auto 4px;
-  z-index: 8;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -348,6 +346,42 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.chq-day-grid-armed .chq-day-grid-cell-btn:hover .chq-day-grid-cell-hover-label,
+.chq-day-grid-armed .chq-day-grid-cell-btn:focus-visible .chq-day-grid-cell-hover-label {
+  display: block;
+  z-index: 8;
+}
+
+/* USER-FILED (release night): dragging a session across the grid showed NO
+   indication of where it would land — no prospective-slot highlight, no
+   free-minutes arithmetic. The DEC-899/900 affordance above is gated on
+   :hover, and a browser freezes :hover for the entire duration of an HTML5
+   drag, so it could only ever fire on the click-to-arm path. DayGrid now
+   tracks the dragged-over slot in state (dragover, not :hover) and marks it
+   .chq-day-grid-cell-drop-target — this rule gives that ONE slot the same
+   3px brand ring and translucent brand tint the armed :hover state uses, so
+   both placement gestures read identically. It is the single live target at
+   any moment, so unlike the at-rest armed lattice (DEC-938) a heavy ring
+   here cannot double across ~144 shared cell edges.
+
+   Unlike that lattice it sits ABOVE the overlay tier: a drag can hover a
+   slot covered by a placed card, a merged clash card or a break band (all
+   at --chq-z-agenda-overlay), and a target the organiser cannot see is the
+   bug being fixed. The tint stays translucent so the covered card's own
+   text is still legible underneath it. */
+.chq-day-grid-cell-drop-target {
+  position: relative;
+  z-index: calc(var(--chq-z-agenda-overlay) + 1);
+  outline: 3px solid var(--chq-brand);
+  outline-offset: -3px;
+  background: color-mix(in srgb, var(--chq-brand) 14%, transparent);
+}
+
+.chq-day-grid-cell-drop-target .chq-day-grid-cell-hover-label {
+  display: block;
+  z-index: calc(var(--chq-z-agenda-overlay) + 2);
 }
 
 .chq-day-grid-armed .chq-day-grid-cell-btn:focus-visible {
