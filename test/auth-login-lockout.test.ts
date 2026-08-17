@@ -14,7 +14,7 @@
 // test/password-reset-flow.test.ts -- real SELECT/INSERT/UPDATE statements
 // run through the actual Hono app.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { Hono } from "hono";
@@ -176,9 +176,32 @@ describe("DEC-072 wave-54: the identity-keyed login budget no longer strands a v
   let db: Db;
   let sqlite: DatabaseSync;
 
+  // DEC-072's budgets live in FIXED, epoch-aligned 15-minute windows --
+  // windowBounds (src/server/repo/rate-limit.ts:41-45) floors Date.now() to
+  // a multiple of the window and keys the counter row on that floor. So a
+  // test that spends real wall-clock time walking a budget to its cap is
+  // only correct while every attempt lands in the SAME window: if the run
+  // straddles a boundary, the counter starts over mid-loop and the attempt
+  // that should be the (max+1)th is merely the nth. That is a fact about
+  // the clock, not about the code under test, and it failed CI's test-full
+  // on 2026-08-17 ("the per-IP flood guard still trips at its cap":
+  // expected 429, got 401) -- 101 password-verifying POSTs take long enough
+  // on a shared runner to make the straddle a real probability every run.
+  // Freezing Date.now at a fixed mid-window instant removes the wall clock
+  // from the assertion entirely (86_400_000 is an exact multiple of the
+  // 900_000ms window, so 12:07:30 UTC is 450s into a window, as far from
+  // either edge as it gets). Nothing in the login path reads the clock for
+  // anything but these buckets and session expiry.
+  const FROZEN_NOW = Date.UTC(2027, 0, 15, 12, 7, 30);
+
   beforeEach(async () => {
+    vi.spyOn(Date, "now").mockReturnValue(FROZEN_NOW);
     ({ db, sqlite } = makeTestDb());
     await seedUser(sqlite);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("20 failed attempts for the victim's email from IP A cap the 21st from IP A, but the first attempt for the same email from IP B still admits and signs in", async () => {
