@@ -29,6 +29,11 @@ items are excluded from coverage, not scored) · content-management 83.9 @ 100.
   87.9 → 89.0 → 90.3 → 93.8 (interim, 2026-08-16) → 93.5 final. The 93.8→93.5
   delta is within observed run-to-run variance (turn-cap luck alone moves
   areas by several points).
+- **Known harness caveat (community-reported):** the CNT area's scenario design
+  binds the speaker persona's session to the seeded event while the organizer
+  scenario creates a new event, making several content-management handoffs
+  (CNT-05/07/13/14) impossible to demonstrate as scripted. Our
+  content-management 83.9 includes losses of this class.
 - Remaining-gap taxonomy lives in `docs/eval-findings.md` (turn-cap tail,
   eval self-contamination markers, deliberate scope decisions incl. one
   rubric item we forfeit on the SaaS owner's own guidance).
