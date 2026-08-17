@@ -16,7 +16,7 @@ import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { formatDateOnly, formatDayLabel } from '../../lib/dates';
-import { INVITE_STATUS_LABELS, type AssignmentStatus, type InviteStatus, type ReminderDraft } from './types';
+import { type AssignmentStatus, type InviteStatus, type ReminderDraft } from './types';
 import { ParticipationMenu } from './ParticipationMenu';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
@@ -162,35 +162,36 @@ export function SpeakerDetailPage() {
       .finally(() => setLoading(false));
   }, [eventId, contactId]);
 
-  async function setInviteStatus(desired: InviteStatus) {
+  // USER RULING (release night, final form): participation is controlled
+  // per session, in the Sessions rows -- exactly the roster grid's surface,
+  // no person-level master switch and no separate header chip restating a
+  // status. Each menu writes only its own participation row.
+  async function setSessionInviteStatus(
+    target: { participantId: string; submissionId: string },
+    desired: InviteStatus,
+  ) {
     if (!detail) return;
     const previous = detail;
-    // USER RULING (release night): this page's menu is a PERSON-level
-    // control -- a selection applies to every participation the speaker
-    // holds on this event, so "this person declined" is one click, never a
-    // half-applied first-session write the roster then contradicts. The
-    // roster grid stays the per-session surface (DEC-936: one menu per
-    // participation there).
-    const rows = detail.participationRollup.bySubmission;
-    const targets =
-      rows.length > 0
-        ? rows.map((row) => ({ participantId: row.participantId, submissionId: row.submissionId }))
-        : [{ participantId: detail.participation.participantId, submissionId: detail.participation.submissionId }];
+    const bySubmission = detail.participationRollup.bySubmission.map((row) =>
+      row.participantId === target.participantId ? { ...row, inviteStatus: desired } : row,
+    );
+    const first = bySubmission[0];
     setDetail({
       ...detail,
-      participation: { ...detail.participation, inviteStatus: desired },
-      participationRollup: {
-        status: desired,
-        bySubmission: rows.map((row) => ({ ...row, inviteStatus: desired })),
-      },
+      participation:
+        detail.participation.participantId === target.participantId
+          ? { ...detail.participation, inviteStatus: desired }
+          : detail.participation,
+      participationRollup:
+        first !== undefined && bySubmission.every((row) => row.inviteStatus === first.inviteStatus)
+          ? { status: first.inviteStatus, bySubmission }
+          : { status: 'mixed', bySubmission },
     });
     setError(null);
     try {
-      for (const target of targets) {
-        await apiPatch(`/submissions/${target.submissionId}/participants/${target.participantId}`, {
-          inviteStatus: desired,
-        });
-      }
+      await apiPatch(`/submissions/${target.submissionId}/participants/${target.participantId}`, {
+        inviteStatus: desired,
+      });
     } catch (err) {
       setDetail(previous);
       setError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
@@ -408,37 +409,12 @@ export function SpeakerDetailPage() {
                   {' · '}
                   {detail.contact.hasAccount ? 'has an account' : 'no account'}
                 </p>
-                {/* USER RULING (release night): ONE participation control on
-                    this page, and it lives by the name -- the roster's menu,
-                    promoted (DESIGN-RULINGS.md:99), replacing the static
-                    DEC-936 rollup chip that restated it. DEC-936's
-                    anti-contradiction device survives as the quiet breakdown
-                    beside the trigger whenever a multi-session speaker's
-                    statuses disagree with the write-target row. */}
-                <div className="chq-meta chq-speaker-detail-participation-rollup">
-                  <ParticipationMenu
-                    contactName={detail.contact.name}
-                    status={detail.participation.inviteStatus}
-                    mixed={detail.participationRollup.status === 'mixed'}
-                    scopeNote={
-                      detail.participationRollup.bySubmission.length > 1
-                        ? `Applies to all ${detail.participationRollup.bySubmission.length} sessions`
-                        : undefined
-                    }
-                    onSelectStatus={setInviteStatus}
-                    onSendInvite={sendPortalInvite}
-                    company={detail.contact.company}
-                    hasAccount={detail.contact.hasAccount}
-                  />
-                  {detail.participationRollup.status === 'mixed' && (
-                    <span className="chq-speaker-detail-participation-rollup-breakdown">
-                      {'Mixed · '}
-                      {detail.participationRollup.bySubmission
-                        .map((row) => `${row.ref} ${INVITE_STATUS_LABELS[row.inviteStatus].toLowerCase()}`)
-                        .join(' · ')}
-                    </span>
-                  )}
-                </div>
+                {/* USER RULING (release night, final form): no participation
+                    chip in the header at all -- no master switch, no static
+                    restatement. Participation is read AND set per session in
+                    the Sessions rows below (grid parity); DEC-936's "header
+                    never contradicts the roster" is satisfied by the header
+                    asserting nothing. */}
               </div>
             </div>
 
@@ -499,19 +475,41 @@ export function SpeakerDetailPage() {
                   // same evaluation-lattice axis, DEC-367) rather than
                   // dropping either value.
                   <div role="table" aria-label="Sessions">
-                    {detail.sessions.map((session) => (
-                      <div className="chq-speaker-detail-sessions-row" role="row" key={session.submissionId}>
-                        <span role="cell">
-                          <Link to={`/submissions/${session.submissionId}`}>
-                            {session.ref} &middot; {session.title}
-                          </Link>
-                        </span>
-                        <span role="cell">{scheduledLabel(session.scheduled)}</span>
-                        <span role="cell" className={neutralStatusClass()}>
-                          {STATUS_LABELS[session.status]} &middot; {CONTENT_STATUS_LABELS[session.contentStatus]}
-                        </span>
-                      </div>
-                    ))}
+                    {detail.sessions.map((session) => {
+                      // USER RULING (release night): per-session state is
+                      // settable HERE too, not only on the roster grid --
+                      // each row carries its own menu, writing exactly its
+                      // own participation.
+                      const participation = detail.participationRollup.bySubmission.find(
+                        (row) => row.submissionId === session.submissionId,
+                      );
+                      return (
+                        <div className="chq-speaker-detail-sessions-row" role="row" key={session.submissionId}>
+                          <span role="cell">
+                            <Link to={`/submissions/${session.submissionId}`}>
+                              {session.ref} &middot; {session.title}
+                            </Link>
+                          </span>
+                          <span role="cell">{scheduledLabel(session.scheduled)}</span>
+                          <span role="cell" className={neutralStatusClass()}>
+                            {STATUS_LABELS[session.status]} &middot; {CONTENT_STATUS_LABELS[session.contentStatus]}
+                          </span>
+                          <span role="cell">
+                            {participation && (
+                              <ParticipationMenu
+                                contactName={detail.contact.name}
+                                label={session.ref}
+                                status={participation.inviteStatus}
+                                onSelectStatus={(desired) => setSessionInviteStatus(participation, desired)}
+                                onSendInvite={sendPortalInvite}
+                                company={detail.contact.company}
+                                hasAccount={detail.contact.hasAccount}
+                              />
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </section>

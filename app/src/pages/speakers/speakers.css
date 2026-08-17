@@ -872,21 +872,6 @@
   margin: 0;
 }
 
-/* DEC-936: the person-level participation rollup line -- a status chip plus,
-   only when the rollup disagrees with itself, a quiet per-session
-   breakdown so the header never contradicts the roster beneath it. */
-.chq-speaker-detail-participation-rollup {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.chq-speaker-detail-participation-rollup-breakdown {
-  color: var(--chq-ink-2);
-  font-size: 12px;
-}
-
 /* DEC-738 amendment (wave 75): the bio/social links the speaker wrote
    through their portal profile -- read-only here, closed by the 'Edit in
    contact record' link (the CRM contact drawer stays the one edit
@@ -973,7 +958,11 @@
    is one grid row over a 1px hairline, tracks per the frame. */
 .chq-speaker-detail-sessions-row {
   display: grid;
-  grid-template-columns: 1fr 150px 130px;
+  /* USER RULING (release night): the detail page must not support LESS than
+     the roster grid -- each session row carries its own participation menu
+     in a fourth track, so per-session state is settable here too (the
+     header chip stays the person-level master switch). */
+  grid-template-columns: 1fr 150px 130px 110px;
   gap: 18px;
   align-items: baseline;
   padding: 15px 0;

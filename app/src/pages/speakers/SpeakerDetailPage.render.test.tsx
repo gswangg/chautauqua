@@ -195,12 +195,12 @@ describe('SpeakerDetailPage render smoke', () => {
     // The old body-paragraph restatement is gone entirely.
     expect(document.querySelector('.chq-speaker-detail-participation')).not.toBeInTheDocument();
 
-    // USER RULING (release night): the live participation control
-    // (ParticipationMenu's trigger button) lives up by the name, in the
-    // header rollup line -- not in the actions row.
-    const rollup = document.querySelector('.chq-speaker-detail-participation-rollup');
-    expect(rollup).not.toBeNull();
-    const trigger = rollup?.querySelector('.chq-participation-menu-trigger');
+    // USER RULING (release night, final form): participation is controlled
+    // per session, in the Sessions rows -- no header chip, no master
+    // switch, no menu in the actions row.
+    const sessionRow = document.querySelector('.chq-speaker-detail-sessions-row');
+    expect(sessionRow).not.toBeNull();
+    const trigger = sessionRow?.querySelector('.chq-participation-menu-trigger');
     expect(trigger).not.toBeNull();
     expect(trigger).toHaveTextContent('Confirmed');
 
@@ -210,20 +210,20 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(actions).toHaveTextContent(/Email Ada/);
     expect(actions).toHaveTextContent(/Remind Ada/);
 
-    // The header block is the ONE place the control renders.
+    // The header asserts no participation state at all.
     const head = document.querySelector('.chq-speaker-detail-head');
-    expect(head?.querySelectorAll('.chq-participation-menu-trigger')).toHaveLength(1);
+    expect(head?.querySelector('.chq-participation-menu-trigger')).toBeNull();
+    expect(document.querySelector('.chq-speaker-detail-participation-rollup')).not.toBeInTheDocument();
   });
 
   // User-filed (screenshot of /admin/speakers/<id>): "the row of chips and
-  // buttons also looks inconsistent here", then USER RULING: one
-  // participation control, up by the name. The actions row is exactly the
-  // two chq-btn controls the frame draws at one 46px height (docs/design/
-  // Chautauqua Speakers.dc.html:346-347); the state changer is the roster's
-  // chip (DEC-730 family) in the header rollup line. The height rule in
-  // speakers.css is keyed on `row > .chq-btn`, so it silently stops
-  // applying if this shape drifts.
-  it('draws the action row as exactly Email + Remind, with the state chip up in the header rollup', async () => {
+  // buttons also looks inconsistent here", then USER RULING (final form):
+  // the actions row is exactly the two chq-btn controls the frame draws at
+  // one 46px height (docs/design/Chautauqua Speakers.dc.html:346-347); the
+  // state changer is the roster's chip (DEC-730 family) inside each
+  // Sessions row. The height rule in speakers.css is keyed on
+  // `row > .chq-btn`, so it silently stops applying if this shape drifts.
+  it('draws the action row as exactly Email + Remind, with the state chip in the session row', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
     });
@@ -243,8 +243,8 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(children[1]).toHaveTextContent(/Remind Ada/);
     expect(actions?.querySelectorAll(':scope > .chq-btn')).toHaveLength(2);
 
-    // The state changer: the roster's chip family, in the rollup line.
-    const trigger = document.querySelector('.chq-speaker-detail-participation-rollup .chq-participation-menu-trigger');
+    // The state changer: the roster's chip family, in the session row.
+    const trigger = document.querySelector('.chq-speaker-detail-sessions-row .chq-participation-menu-trigger');
     expect(trigger).toHaveClass('chq-speakers-status', 'chq-speakers-status-complete');
   });
 
@@ -388,11 +388,10 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(screen.queryByRole('button', { name: 'Remind this task' })).not.toBeInTheDocument();
   });
 
-  // DEC-936: a two-session speaker whose participation statuses disagree
-  // gets a MIXED chip in the header plus a breakdown line naming each
-  // session ref and its own status -- the header can never assert a single
-  // status the roster contradicts.
-  it('DEC-936: a mixed rollup renders a Mixed breakdown line naming every disagreeing ref', async () => {
+  // DEC-936 (USER RULING final form): the header asserts NO participation
+  // status at all -- disagreeing sessions each show their own state in
+  // their own row, so nothing on the page can contradict the roster.
+  it('DEC-936: disagreeing sessions each show their own status in their own row, and the header asserts none', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
         participationRollup: {
@@ -402,6 +401,26 @@ describe('SpeakerDetailPage render smoke', () => {
             { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-014', inviteStatus: 'none' },
           ],
         },
+        sessions: [
+          {
+            submissionId: 'sub-1',
+            ref: 'SES-001',
+            title: 'Analytical Engines',
+            status: 'accepted',
+            contentStatus: 'pending',
+            role: 'speaker',
+            scheduled: null,
+          },
+          {
+            submissionId: 'sub-2',
+            ref: 'SES-014',
+            title: 'Notes on the Engine',
+            status: 'accepted',
+            contentStatus: 'pending',
+            role: 'speaker',
+            scheduled: null,
+          },
+        ],
       }),
     });
 
@@ -409,103 +428,88 @@ describe('SpeakerDetailPage render smoke', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
 
     const head = document.querySelector('.chq-speaker-detail-head');
-    expect(head).toHaveTextContent('Mixed');
-    expect(head).toHaveTextContent('SES-001 confirmed');
-    expect(head).toHaveTextContent('SES-014 not invited');
+    expect(head?.querySelector('.chq-participation-menu-trigger')).toBeNull();
+    expect(document.querySelector('.chq-speaker-detail-participation-rollup')).not.toBeInTheDocument();
+
+    const triggers = document.querySelectorAll('.chq-speaker-detail-sessions-row .chq-participation-menu-trigger');
+    expect(triggers).toHaveLength(2);
+    expect(triggers[0]).toHaveTextContent('Confirmed');
+    expect(triggers[1]).toHaveTextContent('Not invited');
   });
 
-  // USER RULING (release night, second pass): this page's menu is a
-  // PERSON-level control -- one selection writes EVERY session the speaker
-  // holds, so "this person declined" is never a half-applied first-session
-  // write the roster then contradicts.
-  it('declining a two-session speaker patches BOTH participations and never shows a Mixed breakdown', async () => {
-    const fetchMock = mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
-        participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'accepted' },
-        participationRollup: {
-          status: 'accepted',
-          bySubmission: [
-            { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-008', inviteStatus: 'accepted' },
-            { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-009', inviteStatus: 'accepted' },
-          ],
+  // USER RULING (release night, final form): per-session menus in the
+  // Sessions rows -- each writes exactly ITS OWN participation row, so a
+  // two-session speaker's rows can be set independently right here, same
+  // capability as the roster grid.
+  it('each session row carries its own menu, and a selection patches only that row', async () => {
+    const twoSessions = {
+      participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'accepted' as const },
+      participationRollup: {
+        status: 'accepted' as const,
+        bySubmission: [
+          { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-008', inviteStatus: 'accepted' as const },
+          { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-009', inviteStatus: 'accepted' as const },
+        ],
+      },
+      sessions: [
+        {
+          submissionId: 'sub-1',
+          ref: 'SES-008',
+          title: 'Incident Response Pipelines',
+          status: 'accepted' as const,
+          contentStatus: 'pending' as const,
+          role: 'speaker',
+          scheduled: null,
         },
-      }),
-      [`PATCH /api/v1/submissions/sub-1/participants/p-1`]: { ok: true },
+        {
+          submissionId: 'sub-2',
+          ref: 'SES-009',
+          title: 'The Hidden Costs of API Design',
+          status: 'accepted' as const,
+          contentStatus: 'pending' as const,
+          role: 'speaker',
+          scheduled: null,
+        },
+      ],
+    };
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(twoSessions),
       [`PATCH /api/v1/submissions/sub-2/participants/p-2`]: { ok: true },
     });
 
     renderPage();
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
 
-    fireEvent.click(document.querySelector('.chq-speaker-detail-participation-rollup .chq-participation-menu-trigger')!);
+    const rows = document.querySelectorAll('.chq-speaker-detail-sessions-row');
+    expect(rows).toHaveLength(2);
+    const triggers = document.querySelectorAll('.chq-speaker-detail-sessions-row .chq-participation-menu-trigger');
+    expect(triggers).toHaveLength(2);
+
+    // Decline only the SECOND session from its own row.
+    fireEvent.click(triggers[1]!);
     fireEvent.click(screen.getByRole('menuitemradio', { name: /Declined/ }));
 
-    // Optimistic: the person-level state flips whole, no Mixed window.
-    expect(document.querySelector('.chq-speaker-detail-participation-rollup-breakdown')).not.toBeInTheDocument();
-    expect(
-      document.querySelector('.chq-speaker-detail-participation-rollup .chq-participation-menu-trigger'),
-    ).toHaveTextContent('Declined');
+    // Optimistic per-row: row 2 flips, row 1 untouched.
+    expect(triggers[0]).toHaveTextContent('Confirmed');
+    expect(triggers[1]).toHaveTextContent('Declined');
 
-    // Both rows were written, not just the first.
+    // Exactly ONE row was written -- the one whose menu was used.
     await waitFor(() => {
       const patched = fetchMock.mock.calls
         .filter(([, init]) => (init?.method ?? 'GET').toUpperCase() === 'PATCH')
         .map(([input]) => String(input));
-      expect(patched).toHaveLength(2);
-      expect(patched.some((u) => u.includes('/submissions/sub-1/participants/p-1'))).toBe(true);
-      expect(patched.some((u) => u.includes('/submissions/sub-2/participants/p-2'))).toBe(true);
+      expect(patched).toHaveLength(1);
+      expect(patched[0]).toContain('/submissions/sub-2/participants/p-2');
     });
   });
 
-  // The genuinely-mixed state: the person-level trigger says so in its own
-  // chip (neutral register), no state row claims NOW, and one selection
-  // unifies every session.
-  it('a mixed rollup shows a Mixed trigger, and one selection unifies all sessions', async () => {
+  it('DEC-936 (final form): an agreeing speaker shows the shared status only in the session row, never in the header', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
-        participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'accepted' },
-        participationRollup: {
-          status: 'mixed',
-          bySubmission: [
-            { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-008', inviteStatus: 'accepted' },
-            { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-009', inviteStatus: 'none' },
-          ],
-        },
-      }),
-      [`PATCH /api/v1/submissions/sub-1/participants/p-1`]: { ok: true },
-      [`PATCH /api/v1/submissions/sub-2/participants/p-2`]: { ok: true },
-    });
-
-    renderPage();
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
-
-    const trigger = document.querySelector('.chq-speaker-detail-participation-rollup .chq-participation-menu-trigger');
-    expect(trigger).toHaveTextContent('Mixed');
-    expect(trigger).toHaveClass('chq-speakers-status-neutral');
-
-    fireEvent.click(trigger!);
-    // No state row is marked current while mixed.
-    expect(document.querySelector('.chq-participation-menu-item.is-current')).not.toBeInTheDocument();
-    // The scope note names what a selection covers.
-    expect(screen.getByText('Applies to all 2 sessions')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('menuitemradio', { name: /Confirmed/ }));
-    expect(trigger).toHaveTextContent('Confirmed');
-    expect(document.querySelector('.chq-speaker-detail-participation-rollup-breakdown')).not.toBeInTheDocument();
-  });
-
-  it('DEC-936: an agreeing rollup renders one status control naming the shared status, no breakdown line', async () => {
-    mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
-        // The write-target row agrees with the rollup (that is what
-        // "agreeing" means) -- the menu trigger is now the one chip.
         participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'declined' },
         participationRollup: {
           status: 'declined',
-          bySubmission: [
-            { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-001', inviteStatus: 'declined' },
-            { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-014', inviteStatus: 'declined' },
-          ],
+          bySubmission: [{ participantId: 'p-1', submissionId: 'sub-1', ref: 'S-001', inviteStatus: 'declined' }],
         },
       }),
     });
@@ -514,9 +518,11 @@ describe('SpeakerDetailPage render smoke', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
 
     const head = document.querySelector('.chq-speaker-detail-head');
-    expect(head).toHaveTextContent('Declined');
-    expect(document.querySelector('.chq-speaker-detail-participation-rollup-breakdown')).not.toBeInTheDocument();
+    expect(head).not.toHaveTextContent('Declined');
     expect(head).not.toHaveTextContent('Mixed');
+    expect(
+      document.querySelector('.chq-speaker-detail-sessions-row .chq-participation-menu-trigger'),
+    ).toHaveTextContent('Declined');
   });
 
   it('a speaker with one pending task shows both the header Remind control and the per-row "Remind this task" link', async () => {
