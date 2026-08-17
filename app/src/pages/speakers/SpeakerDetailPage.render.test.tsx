@@ -414,6 +414,36 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(head).toHaveTextContent('SES-014 not invited');
   });
 
+  // USER RULING follow-up: the optimistic flip carries the rollup, so a
+  // two-session speaker whose sessions disagreed BY this change shows the
+  // Mixed breakdown immediately -- not only after a reload.
+  it('declining one of two agreeing sessions surfaces the Mixed breakdown optimistically, before any refetch', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'accepted' },
+        participationRollup: {
+          status: 'accepted',
+          bySubmission: [
+            { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-008', inviteStatus: 'accepted' },
+            { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-009', inviteStatus: 'accepted' },
+          ],
+        },
+      }),
+      [`PATCH /api/v1/submissions/sub-1/participants/p-1`]: { ok: true },
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+    expect(document.querySelector('.chq-speaker-detail-participation-rollup-breakdown')).not.toBeInTheDocument();
+
+    fireEvent.click(document.querySelector('.chq-speaker-detail-participation-rollup .chq-participation-menu-trigger')!);
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Declined/ }));
+
+    const breakdown = document.querySelector('.chq-speaker-detail-participation-rollup-breakdown');
+    expect(breakdown).not.toBeNull();
+    expect(breakdown).toHaveTextContent('Mixed · SES-008 declined · SES-009 confirmed');
+  });
+
   it('DEC-936: an agreeing rollup renders one status control naming the shared status, no breakdown line', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({

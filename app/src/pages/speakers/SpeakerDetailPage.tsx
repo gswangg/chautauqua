@@ -165,7 +165,24 @@ export function SpeakerDetailPage() {
   async function setInviteStatus(desired: InviteStatus) {
     if (!detail) return;
     const previous = detail;
-    setDetail({ ...detail, participation: { ...detail.participation, inviteStatus: desired } });
+    // DEC-936 + USER RULING (release night): the optimistic flip must carry
+    // the rollup too, or a multi-session speaker briefly shows a single
+    // status the roster contradicts (the Mixed breakdown only appeared
+    // after a reload). Same recompute the server does: all rows agree ->
+    // that status, else 'mixed'.
+    const bySubmission = detail.participationRollup.bySubmission.map((row) =>
+      row.participantId === detail.participation.participantId ? { ...row, inviteStatus: desired } : row,
+    );
+    const first = bySubmission[0];
+    const rollup =
+      first !== undefined && bySubmission.every((row) => row.inviteStatus === first.inviteStatus)
+        ? { status: first.inviteStatus, bySubmission }
+        : { status: 'mixed' as const, bySubmission };
+    setDetail({
+      ...detail,
+      participation: { ...detail.participation, inviteStatus: desired },
+      participationRollup: rollup,
+    });
     setError(null);
     try {
       await apiPatch(`/submissions/${detail.participation.submissionId}/participants/${detail.participation.participantId}`, {
