@@ -391,6 +391,65 @@ describe('SubmissionDetailPage render: Reviews section + decision rail', () => {
     // elsewhere on the page).
     expect(screen.queryByRole('combobox', { name: 'Status' })).not.toBeInTheDocument();
   });
+
+  // Eval finding (two independent runs): two review rows on one submission
+  // rendered byte-identical comment prose. The narrowest reproduction of the
+  // reported shape -- ONE reviewer, TWO evaluation plans, two distinct
+  // comments -- is locked here so the render/read path can never collapse
+  // one row's comment onto the other (e.g. by keying the comment lookup on
+  // reviewerName or submissionId instead of the row's own evaluation).
+  it('renders each plan’s own comment when ONE reviewer reviewed under TWO plans', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail(),
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: {
+        items: [
+          {
+            planId: 'plan-1',
+            planName: 'Program Committee Review',
+            round: 1,
+            reviewerName: 'Jamie Reviewer',
+            scores: { c1: 4 },
+            criteria: [{ id: 'c1', label: 'Technical depth', kind: 'rating', weight: 1 }],
+            score: 4,
+            comment: 'Strong technical depth, well organized.',
+            submittedAt: 1700000000000,
+          },
+          {
+            planId: 'plan-2',
+            planName: 'Late-Stage Program Review',
+            round: 1,
+            reviewerName: 'Jamie Reviewer',
+            scores: { c1: 2 },
+            criteria: [{ id: 'c1', label: 'Technical depth', kind: 'rating', weight: 1 }],
+            score: 2,
+            comment: 'Ambitious scope for the slot -- consider narrowing.',
+            submittedAt: 1700000100000,
+          },
+        ],
+        assigned: 2,
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Strong technical depth, well organized.')).toBeInTheDocument();
+    });
+    // Both plans' own prose is on the page, exactly once each -- neither
+    // comment is duplicated onto the other reviewer row.
+    expect(screen.getByText('Ambitious scope for the slot -- consider narrowing.')).toBeInTheDocument();
+
+    const comments = document.querySelectorAll('.chq-review-comment');
+    expect(comments.length).toBe(2);
+    const texts = [...comments].map((el) => el.textContent);
+    expect(new Set(texts).size).toBe(2);
+
+    // The same reviewer signs both rows -- that is the fixture, not a defect.
+    expect(screen.getAllByText('Jamie Reviewer').length).toBe(2);
+  });
 });
 
 // DEC-878: once a decision is in force, the rail states it plainly (with a
