@@ -210,6 +210,45 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(head?.contains(actions)).toBe(true);
   });
 
+  // User-filed (screenshot of /admin/speakers/<id>): "the row of chips and
+  // buttons also looks inconsistent here". The row must stay three controls
+  // drawn from the two existing families the frame uses -- the DEC-730 chip
+  // for the state changer (docs/design/Chautauqua Speakers.dc.html:345) and
+  // chq-btn secondary/primary for Email/Remind (:346-347). Any new class
+  // here is new visual vocabulary, and the height rule in speakers.css is
+  // keyed on exactly this shape (row > .chq-btn, row .chq-participation-
+  // menu-trigger), so it silently stops applying if the shape drifts.
+  it('draws the action row from the chip + chq-btn families the frame uses, and nothing else', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const actions = document.querySelector('.chq-speaker-detail-actions');
+    expect(actions).not.toBeNull();
+
+    // Exactly three controls, in the frame's order.
+    const children = [...(actions?.children ?? [])];
+    expect(children).toHaveLength(3);
+
+    // 1. State changer: the roster's chip family, carrying its state modifier
+    //    -- kept as a chip because the frame draws it as one.
+    const menu = children[0];
+    expect(menu).toHaveClass('chq-participation-menu');
+    const trigger = menu.querySelector('.chq-participation-menu-trigger');
+    expect(trigger).toHaveClass('chq-speakers-status', 'chq-speakers-status-complete');
+
+    // 2/3. Email and Remind: the shared button family, secondary then
+    //      primary -- the height rule reaches them as `> .chq-btn`.
+    expect(children[1]).toHaveClass('chq-btn', 'chq-btn-secondary');
+    expect(children[1]).toHaveTextContent(/Email Ada/);
+    expect(children[2]).toHaveClass('chq-btn', 'chq-btn-primary');
+    expect(children[2]).toHaveTextContent(/Remind Ada/);
+    expect(actions?.querySelectorAll(':scope > .chq-btn')).toHaveLength(2);
+  });
+
   it('the rail carries both Notes and the other-events list', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),

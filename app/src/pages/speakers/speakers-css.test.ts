@@ -144,6 +144,43 @@ describe('speakers.css toolbar control shrink is max-width-only (DEC-385)', () =
   });
 });
 
+// User-filed (screenshot of /admin/speakers/<id>): "the row of chips and
+// buttons also looks inconsistent here" — the state chip, Email and Remind
+// rendered at 19px / 42.8px / 35px, three registers in one row. The frame
+// puts Email and Remind on one 46px box (docs/design/Chautauqua
+// Speakers.dc.html:346-347) with the state changer as a chip beside them
+// (:345); the fix pins that height on the row so all three share one top and
+// one bottom edge. Pinned in CSS text (jsdom applies no external stylesheet)
+// and scoped to this row — the roster grid's chips keep their table metrics.
+describe('speaker-detail action row is one control height (user-filed)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  it('pins ONE min-height across the row’s buttons and its state trigger', () => {
+    const rule = css.match(
+      /\.chq-speaker-detail-actions > \.chq-btn,\s*\.chq-speaker-detail-actions \.chq-participation-menu-trigger \{([^}]*)\}/,
+    );
+    expect(rule).not.toBeNull();
+    // The frame's height for both action-row buttons, not two of them.
+    expect(rule?.[1]).toMatch(/min-height:\s*46px/);
+  });
+
+  it('gives the state trigger the buttons’ horizontal rhythm in this row only', () => {
+    const scoped = css.match(
+      /\.chq-speaker-detail-actions \.chq-participation-menu-trigger \{\s*padding-inline:\s*16px;\s*\}/,
+    );
+    expect(scoped).not.toBeNull();
+    // The shared chip keeps the roster grid's 3px 8px box — the row-scoped
+    // override must never leak back into .chq-speakers-status itself.
+    expect(topLevelRuleBody(css, '.chq-speakers-status')).toMatch(/padding:\s*3px 8px/);
+  });
+
+  it('keeps the row centred so the three controls share a baseline', () => {
+    const body = topLevelRuleBody(css, '.chq-speaker-detail-actions');
+    expect(body).toMatch(/display:\s*flex/);
+    expect(body).toMatch(/align-items:\s*center/);
+  });
+});
+
 // User-filed (gate-5 cycle): the toolbar shrink's padding SHORTHAND wiped
 // the select caret clearance — labels ran under the caret glyph.
 describe('speakers toolbar selects keep caret clearance', () => {

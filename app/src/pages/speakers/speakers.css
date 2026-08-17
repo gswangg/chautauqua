@@ -920,6 +920,35 @@
   gap: 10px;
 }
 
+/* User-filed (screenshot of /admin/speakers/<id>): "the row of chips and
+   buttons also looks inconsistent here" -- three controls in three
+   registers. The frame draws this row on ONE height grid: Email and Remind
+   are both min-height:46px (docs/design/Chautauqua Speakers.dc.html:346-347)
+   with the participation state changer beside them as a chip (:345). The app
+   rendered three heights instead -- 19px chip / 42.8px Email / 35px Remind.
+   The two buttons disagree because .chq-btn declares no line-height, so the
+   Email <a> inherits body's 1.6 (20.8px) while the Remind <button> takes the
+   UA's `normal`; fixing that on the global .chq-btn is 277 call sites and is
+   not this row's change to make, so the row pins its own control height.
+   The chip keeps every DEC-730/DEC-880 chip semantic it shares with the
+   roster grid -- olive fill, 11px/700 uppercase, 3px radius, and the
+   .chq-participation-menu-trigger rule still declaring none of
+   background/padding/font/border -- and only grows its BOX to the row's
+   height, so all three controls share one top and one bottom edge rather
+   than three floating centres. */
+.chq-speaker-detail-actions > .chq-btn,
+.chq-speaker-detail-actions .chq-participation-menu-trigger {
+  min-height: 46px;
+}
+
+/* The chip's shared 8px side padding is sized for a 19px table cell; on a
+   46px control beside two 16px-padded buttons it reads as a narrow slab, so
+   this row (and only this row -- the grid's chips are untouched) matches
+   the buttons' horizontal rhythm. */
+.chq-speaker-detail-actions .chq-participation-menu-trigger {
+  padding-inline: 16px;
+}
+
 /* DEC-930 wave-19 amendment: the pack's true column pair -- a flexible
    reading column plus a 320px rail, 34px gap. No max-width of its own --
    the page root's own chq-measure-table clamp is the outer bound (WIDTH
