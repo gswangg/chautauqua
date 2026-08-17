@@ -233,15 +233,14 @@ function DocsBlockView(props: { block: DocsBlock }) {
   if (DOCS_SHOTS_AVAILABLE.includes(block.shotId)) {
     return (
       <figure class="chq-docs-figure">
-        <div class="chq-docs-figure-frame">
-          <img
-            class="chq-docs-figure-img"
-            src={`/docs/shots/${block.shotId}.png`}
-            width="900"
-            height="563"
-            loading="lazy"
-            alt=""
-          />
+        {/* The captured frame is 1600 WIDE and as tall as the screen it
+            shows (docs/design/DEVIATIONS.md 4a) -- so the frame around a
+            real shot drops the placeholder's 16/9 box and takes the
+            image's own ratio. No width/height attributes: the heights vary
+            per shot and nothing generates them, and a wrong pair here
+            would letterbox or squash every tall figure. */}
+        <div class="chq-docs-figure-frame chq-docs-figure-frame-shot">
+          <img class="chq-docs-figure-img" src={`/docs/shots/${block.shotId}.png`} loading="lazy" alt="" />
         </div>
         <figcaption class="chq-docs-figure-caption">
           <DocsInline text={block.caption} />

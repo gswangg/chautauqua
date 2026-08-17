@@ -156,6 +156,11 @@ export const DOCS_SITE_CSS = `
     display: grid;
     place-items: center;
   }
+  /* A frame holding a REAL shot takes the image's own ratio -- shots are
+     1600 wide and as tall as the screen (DEVIATIONS.md 4a), so the 16/9
+     box above belongs to the placeholder only; keeping it here would let a
+     tall figure spill out of its own border. */
+  .chq-docs-figure-frame-shot { aspect-ratio: auto; display: block; overflow: hidden; }
   .chq-docs-figure-placeholder { font-family: ui-monospace, monospace; font-size: 12px; color: var(--chq-muted); padding: 0 16px; text-align: center; }
   .chq-docs-figure-img { width: 100%; height: auto; display: block; }
   .chq-docs-figure-caption { font-size: 13px; color: var(--chq-muted); line-height: 1.55; }
