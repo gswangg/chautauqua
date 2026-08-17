@@ -553,13 +553,22 @@ export function ResultsTable({
                     }
                   >
                     <td data-label="Rank" className="chq-review-reviews-cell" />
-                    <td data-label="Title" className="chq-review-reviews-cell">
+                    {/* User-filed (prod screenshot): the annotation half of a
+                       band row is ONE cell spanning Title..Track, not a name
+                       stranded in the 1fr Title column with the chips and the
+                       comment crushed into the 150px Speaker column. The frame
+                       gives the expanded band's reviewer/comment the 1fr track
+                       and its per-criterion picks the three tracks that follow
+                       (docs/design/Chautauqua Review.dc.html:147-155); our
+                       criteria count is dynamic, so the chips flow across that
+                       same region instead of claiming one column each. Score
+                       and Plan · Round stay in their own aligned columns, and
+                       the colSpan keeps head/row/band column parity. */}
+                    <td colSpan={3} data-label="Reviewer" className="chq-review-reviews-cell">
                       {/* DEC-736: the server always resolves a reviewer name
                          on this organiser-facing endpoint -- no
                          '(anonymized)' branch. */}
                       <span className="chq-review-reviews-reviewer">{ev.reviewerName}</span>
-                    </td>
-                    <td data-label="Speaker" className="chq-review-reviews-cell">
                       <div className="chq-review-reviews-scores">
                         {/* DEC-723: one chip per criterion, labelled from the
                            item's own resolved criteria -- the raw
@@ -572,7 +581,6 @@ export function ResultsTable({
                       </div>
                       {ev.comment && <p className="chq-review-reviews-comment">{ev.comment}</p>}
                     </td>
-                    <td data-label="Track" className="chq-review-reviews-cell" />
                     <td data-label="Score" className="chq-review-reviews-cell chq-review-reviews-score-total">
                       {formatScore(ev.score)}
                     </td>

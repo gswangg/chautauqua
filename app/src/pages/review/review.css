@@ -516,11 +516,15 @@
 
 /* DEC-241 amendment (wave 7, sha ddc9a7d9): the distribution moved into the
    band's one shared footer row, alongside the recusal sentence when both are
-   present -- stack them instead of the two footers the earlier layout drew. */
-.chq-review-reviews-recusal-footer .chq-review-reviews-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+   present -- stack them instead of the two footers the earlier layout drew.
+   User-filed (prod screenshot): this stack MUST NOT be a `display: flex` on
+   the <td> itself. A cell given a non-table display is no longer a
+   table-cell box, so the browser drops its colSpan and wraps it in an
+   anonymous single-column cell -- the footer measured 56px (the Rank track)
+   and its text spilled out of the band. Stack with margins, which leaves the
+   cell a real table-cell and colSpan={columnCount} spanning the full band. */
+.chq-review-reviews-recusal-footer .chq-review-reviews-detail > * + * {
+  margin-top: 8px;
 }
 
 .chq-review-reviews-recusal-sentence {

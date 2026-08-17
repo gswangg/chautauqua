@@ -775,9 +775,16 @@ describe('ResultsTable expanded reviews band inherits the column grid (DEC-633)'
     const evaluationRow = screen.getByText('Priya Patel').closest('tr')!;
     expect(evaluationRow.classList.contains('chq-review-reviews-row')).toBe(true);
     const cells = Array.from(evaluationRow.querySelectorAll('td'));
-    expect(cells.length).toBe(7);
+    // User-filed (prod screenshot): the annotation cell spans Title..Track,
+    // so the row is five <td>s whose colSpans still sum to the seven head
+    // columns. Grid parity is the invariant, not the raw cell count.
+    expect(cells.length).toBe(5);
+    expect(cells.reduce((n, td) => n + td.colSpan, 0)).toBe(7);
+    expect(cells[1]!.colSpan).toBe(3);
     expect(cells[1]!.textContent).toContain('Priya Patel');
-    expect(cells[4]!.textContent).toBe('4.0');
+    // Score still starts at grid column 5 (Rank 1 + annotation 2-4).
+    expect(cells[2]!.textContent).toBe('4.0');
+    expect(cells[2]!.className).toContain('chq-review-reviews-score-total');
   });
 
   it('renders — in the Score cell for a recused/null-score evaluation', async () => {
@@ -813,7 +820,10 @@ describe('ResultsTable expanded reviews band inherits the column grid (DEC-633)'
     expect(await screen.findByText('Recused Reviewer')).toBeInTheDocument();
     const evaluationRow = screen.getByText('Recused Reviewer').closest('tr')!;
     const cells = Array.from(evaluationRow.querySelectorAll('td'));
-    expect(cells[4]!.textContent).toBe('—');
+    // Score is the 3rd <td> now that the annotation cell spans Title..Track,
+    // but still the 5th grid column (Rank 1 + annotation 2-4).
+    expect(cells[2]!.className).toContain('chq-review-reviews-score-total');
+    expect(cells[2]!.textContent).toBe('—');
   });
 
   it('renders the recusal footer exactly once when the row has recusals', async () => {
@@ -1291,6 +1301,35 @@ describe('ResultsTable results table is fixed-layout on the frame\'s seven track
     expect(mediaBlock).toContain('table-layout: auto;');
   });
 
+  // User-filed (prod screenshot): the Choice-distribution footer rendered its
+  // text inside a ~56px column at the far left of an otherwise empty
+  // full-width band. Cause: the footer <td> carried `display: flex`, which
+  // makes it a non-table box, so the browser DROPPED its colSpan and wrapped
+  // it in an anonymous single-column cell. No band cell may take a display
+  // that leaves the table formatting context.
+  it('never gives the colSpan footer cell a non-table display (user-filed)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const cssPath = join(process.cwd(), 'app/src/pages/review/review.css');
+    const sheet = readFileSync(cssPath, 'utf-8');
+
+    const footerRules = sheet.match(/\.chq-review-reviews-detail[^{]*\{[^}]*\}/g) ?? [];
+    expect(footerRules.length).toBeGreaterThan(0);
+    for (const rule of footerRules) {
+      // A rule targeting a DESCENDANT of the cell may use flex/grid freely;
+      // a rule whose subject is the cell itself may not.
+      const subjectIsTheCell = /\.chq-review-reviews-detail\s*\{/.test(rule);
+      if (subjectIsTheCell) {
+        expect(rule).not.toMatch(/display:\s*(flex|grid|inline-flex|inline-grid|block)/);
+      }
+    }
+    // The recusal sentence and the distribution list still stack with 8px
+    // between them -- via margin, which costs the cell nothing.
+    expect(sheet).toMatch(
+      /\.chq-review-reviews-recusal-footer \.chq-review-reviews-detail > \* \+ \* \{\s*margin-top: 8px;/,
+    );
+  });
+
   it('B8: each expanded reviewer row is a real <tr> with exactly seven <td>s, matching head column parity structurally', async () => {
     mockApi({
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
@@ -1328,14 +1367,25 @@ describe('ResultsTable results table is fixed-layout on the frame\'s seven track
       tr.textContent!.includes('Priya Patel'),
     )!;
     expect(reviewerRow).toBeDefined();
-    expect(reviewerRow.querySelectorAll('td').length).toBe(headerCount);
-    expect(reviewerRow.querySelectorAll('td').length).toBe(7);
+    // User-filed (prod screenshot): parity is now carried by colSpan, since
+    // the reviewer/chips/comment annotation is ONE cell spanning
+    // Title..Track. The spans still sum to the head's column count.
+    const cells = Array.from(reviewerRow.querySelectorAll('td'));
+    expect(cells.reduce((n, td) => n + td.colSpan, 0)).toBe(headerCount);
+    expect(cells.reduce((n, td) => n + td.colSpan, 0)).toBe(7);
+    expect(cells.length).toBe(5);
 
-    // The reviewer's name lands under Title (index 1), their score under
-    // Score (index 4) -- alignment from real column position, no
-    // band-specific layout of its own.
-    const cells = reviewerRow.querySelectorAll('td');
+    // The reviewer's name, their score chips and their comment share the one
+    // wide annotation cell (grid columns 2-4); the score stays in the Score
+    // column and Plan · Round in Reviews -- alignment from real column
+    // position, no band-specific layout of its own.
+    expect(cells[1]!.colSpan).toBe(3);
     expect(cells[1]!.textContent).toContain('Priya Patel');
-    expect(cells[4]!.textContent).toContain('4.0');
+    expect(cells[1]!.textContent).toContain('Quality: 4');
+    expect(cells[1]!.textContent).toContain('Strong proposal, well scoped.');
+    expect(cells[1]!.querySelector('.chq-review-reviews-scores')).not.toBeNull();
+    expect(cells[1]!.querySelector('.chq-review-reviews-comment')).not.toBeNull();
+    expect(cells[2]!.textContent).toContain('4.0');
+    expect(cells[3]!.textContent).toContain('Round 1');
   });
 });
