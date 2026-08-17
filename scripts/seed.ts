@@ -1206,95 +1206,112 @@ async function main(): Promise<void> {
   // the whole merge flow need real findDuplicateGroups() hits to demo
   // against. DEC-771's collision ban only ever applied to IDENTITY contacts
   // (personas, reviewers, anything a seeded user account points at via
-  // user.contact_id) -- it never promised the synthetic CRM directory itself
-  // would be collision-free, and a directory with zero duplicates is exactly
-  // what made the Duplicates tab and merge flow demo empty. These three
-  // extra contact rows are deliberately built to COLLIDE with three of the
-  // ~27 synthetic directory contacts seeded above (never a fixture persona,
-  // never a reviewer, never a contact any user account is linked to), each
-  // one exercising a distinct DEC-800 duplicate reason:
-  //   - dupEmailContact shares a normalized email with synth index 2 (Casey
-  //     Quraishi) but a different display name -- reason 'email' (a CSV
-  //     import that carried a different name spelling against the same
-  //     inbox).
-  //   - dupNameCompanyContact shares a normalized name AND company with
-  //     synth index 15 (Parker Anders, Fernway Technologies) but a
-  //     different email -- reason 'name_and_company'.
-  //   - dupNameOnlyContact shares only a normalized name with synth index 8
-  //     (Indigo Fontaine) at a different company -- reason 'name' (the
-  //     "changed employers" case).
+  // user.contact_id) -- it never promised the CRM directory itself would be
+  // collision-free, and a directory with zero duplicates is exactly what
+  // made the Duplicates tab and merge flow demo empty.
+  //
+  // POST-EVAL AMENDMENT (finding 7b): the fixture used to collide against
+  // three of the ~27 SYNTHETIC directory contacts, each of which is also a
+  // seeded SPEAKER with a submission. So the CRM-only duplication bled
+  // straight into the sessions, speakers, and abstract surfaces, where two
+  // "Parker Anders" / two "Indigo Fontaine" read as a data-integrity defect
+  // rather than the merge fixture it is. Both halves of every pair are now
+  // DEDICATED CRM-ONLY fixture people -- no submission, no participant row,
+  // no user account -- so every speaker in the directory appears exactly
+  // once and the dedup/merge flows keep all three of their fixtures.
+  //
+  // The structural shape the DEC-823 tests rest on is unchanged: exactly
+  // three groups, two members each, one per DEC-800 reason, no identity
+  // contact in any of them.
+  //   - Pair 1 ('email'): same normalized inbox, different display name --
+  //     a CSV import that carried a different spelling against one address.
+  //   - Pair 2 ('name_and_company'): same normalized name AND company,
+  //     different email, and the two rows differ only in LETTER CASE --
+  //     the shape the merge screen's keep/discard header demos against.
+  //   - Pair 3 ('name'): same normalized name, different company -- the
+  //     "changed employers" case.
   {
-    const baseEmailIdx = 2;
-    const baseEmail = synthName(baseEmailIdx);
-    const dupEmailContactId = seedId("dup_contact", 1);
-    statements.push(
-      insertStmt("contact", {
-        id: dupEmailContactId,
-        org_id: orgId,
-        first_name: "C.",
-        last_name: `${baseEmail.last}-Imported`,
-        email: `${baseEmail.first.toLowerCase()}.${baseEmail.last.toLowerCase().replace(/[^a-z]/g, "")}@example-speakers.test`,
-        phone: null,
-        company: SYNTH_COMPANIES[baseEmailIdx % SYNTH_COMPANIES.length]!,
-        title: "Software Engineer",
-        bio: null,
-        headshot_url: null,
-        social_links_json: null,
-        notes: null,
-        custom_fields_json: null,
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
+    const FIXTURE_DOMAIN = "example-speakers.test";
+    let dupContactSeq = 0;
+    function insertFixtureContact(fields: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      company: string;
+      title: string;
+    }): string {
+      dupContactSeq += 1;
+      const id = seedId("dup_contact", dupContactSeq);
+      statements.push(
+        insertStmt("contact", {
+          id,
+          org_id: orgId,
+          first_name: fields.firstName,
+          last_name: fields.lastName,
+          email: fields.email,
+          phone: null,
+          company: fields.company,
+          title: fields.title,
+          bio: null,
+          headshot_url: null,
+          social_links_json: null,
+          notes: null,
+          custom_fields_json: null,
+          created_at: nextTs(),
+          updated_at: ts,
+        }),
+      );
+      return id;
+    }
 
-    const baseNameCompanyIdx = 15;
-    const baseNameCompany = synthName(baseNameCompanyIdx);
-    const dupNameCompanyContactId = seedId("dup_contact", 2);
-    statements.push(
-      insertStmt("contact", {
-        id: dupNameCompanyContactId,
-        org_id: orgId,
-        first_name: baseNameCompany.first.toUpperCase(),
-        last_name: baseNameCompany.last.toLowerCase(),
-        email: "parker.anders.dup@example-speakers.test",
-        phone: null,
-        company: SYNTH_COMPANIES[baseNameCompanyIdx % SYNTH_COMPANIES.length]!,
-        title: "Senior Engineer",
-        bio: null,
-        headshot_url: null,
-        social_links_json: null,
-        notes: null,
-        custom_fields_json: null,
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
+    // Pair 1 -- reason 'email'.
+    insertFixtureContact({
+      firstName: "Rowan",
+      lastName: "Delacroix",
+      email: `rowan.delacroix@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[2]!,
+      title: "Software Engineer",
+    });
+    insertFixtureContact({
+      firstName: "R.",
+      lastName: "Delacroix-Imported",
+      email: `rowan.delacroix@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[2]!,
+      title: "Software Engineer",
+    });
 
-    const baseNameOnlyIdx = 8;
-    const baseNameOnly = synthName(baseNameOnlyIdx);
-    const dupNameOnlyContactId = seedId("dup_contact", 3);
-    statements.push(
-      insertStmt("contact", {
-        id: dupNameOnlyContactId,
-        org_id: orgId,
-        first_name: baseNameOnly.first,
-        last_name: baseNameOnly.last,
-        email: "indigo.fontaine.newco@example-speakers.test",
-        phone: null,
-        // Deliberately NOT SYNTH_COMPANIES[baseNameOnlyIdx % ...] -- a
-        // different company is the whole point of the 'name' reason (a
-        // person who changed employers).
-        company: SYNTH_COMPANIES[(baseNameOnlyIdx + 3) % SYNTH_COMPANIES.length]!,
-        title: "Engineering Manager",
-        bio: null,
-        headshot_url: null,
-        social_links_json: null,
-        notes: null,
-        custom_fields_json: null,
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
+    // Pair 2 -- reason 'name_and_company'. Same person, same employer, two
+    // inboxes, and the casing differs between the rows.
+    insertFixtureContact({
+      firstName: "Dana",
+      lastName: "Whitcombe",
+      email: `dana.whitcombe@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[5]!,
+      title: "Senior Engineer",
+    });
+    insertFixtureContact({
+      firstName: "DANA",
+      lastName: "WHITCOMBE",
+      email: `dana.whitcombe+alt@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[5]!,
+      title: "Senior Engineer",
+    });
+
+    // Pair 3 -- reason 'name'. A DIFFERENT company is the whole point here.
+    insertFixtureContact({
+      firstName: "Ellis",
+      lastName: "Marchetti",
+      email: `ellis.marchetti@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[1]!,
+      title: "Engineering Manager",
+    });
+    insertFixtureContact({
+      firstName: "Ellis",
+      lastName: "Marchetti",
+      email: `ellis.marchetti.newco@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[8]!,
+      title: "Engineering Manager",
+    });
   }
 
   // --- contact Labels (task w2-c/DEC-739): custom_fields_json drives the
@@ -1440,11 +1457,12 @@ async function main(): Promise<void> {
   // ~40 evaluation rows: the reviewer persona (track 0) only clears 7 of
   // 10 submissions, leaving their queue/progress view genuinely
   // incomplete; the synthetic reviewers clear their whole tracks.
-  // DEC-702 (amendment): 12 entries, comfortably above the largest observed
-  // per-(reviewer, plan) evaluation count (10, on the two 10-submission
-  // tracks) -- insertEvaluation below throws rather than silently wrapping
-  // if a future fixture grows past this pool, instead of quietly repeating
-  // a comment under one reviewer's name again.
+  // DEC-702 (amendment): the pool must cover the WORST-CASE greedy demand of
+  // pickComment below -- the largest per-(reviewer, plan) run (10, on the two
+  // 10-submission tracks) plus the largest per-submission review count (3),
+  // i.e. 13 -- so a legal index always exists. 16 entries leaves headroom;
+  // pickComment throws loudly rather than repeating if a future fixture
+  // outgrows it.
   const EVAL_COMMENTS = [
     "Strong technical depth, well organized.",
     "Good energy but could tighten the scope.",
@@ -1458,6 +1476,10 @@ async function main(): Promise<void> {
     "Practical takeaways an attendee could apply right away.",
     "Ambitious scope for the slot -- consider narrowing.",
     "Confident premise, would benefit from a concrete case study.",
+    "Relevant and timely, though the opening takes a while to land.",
+    "Good fit for the audience; the demo section carries the talk.",
+    "Well-researched, but the conclusions outrun the evidence shown.",
+    "Approachable framing that would suit a first-time attendee.",
   ];
   // Deterministic, non-degenerate recommendation spread (DEC-273): mostly
   // Approve, a meaningful minority Maybe, a few Deny -- so the DEC-241
@@ -1493,15 +1515,48 @@ async function main(): Promise<void> {
     return 1 + (h % 5);
   }
   let evalCounter = 0;
-  // DEC-702 (amendment): comment text must be indexed by the (reviewer, plan)
-  // pair an evaluation belongs to, never by a single global emission counter
-  // -- a global counter cycling through EVAL_COMMENTS.length (8) means any
-  // reviewer whose own call-count gap across the run is a multiple of 8 gets
-  // byte-identical prose signed under their name (confirmed:
-  // seed_evaluation_0002/0058, both seed_user_0004). evalCounter is kept
-  // purely for id minting (seedId("evaluation", ...)); it no longer drives
-  // the comment index.
-  const commentIndexByReviewerPlan = new Map<string, number>();
+  // DEC-702 (amendment): comment text is never drawn from a single running
+  // counter. Two collision axes have both been observed in a judge run and
+  // BOTH are held here:
+  //
+  //  (1) per (reviewer, plan) -- a global `evalCounter` cycling through
+  //      EVAL_COMMENTS meant any reviewer whose own call-count gap was a
+  //      multiple of the pool size signed byte-identical prose twice
+  //      (seed_evaluation_0002/0058, both seed_user_0004).
+  //  (2) per SUBMISSION -- the (reviewer, plan)-keyed fix for (1) restarted
+  //      the index at 0 for every pair, and because the seed emits
+  //      evaluations in submission order, EVERY reviewer's Nth evaluation
+  //      landed on the same submission. The organiser's submission-detail
+  //      Reviews section therefore showed two or three review rows on ONE
+  //      submission all carrying identical comment text -- the shape the
+  //      eval flagged in two independent runs (e.g. submission_0001's three
+  //      rows all read "Strong technical depth, well organized.").
+  //
+  // pickComment takes the lowest pool index unused on BOTH axes, so no
+  // reviewer repeats itself within a plan AND no two reviews on one
+  // submission ever read alike. evalCounter is kept purely for id minting
+  // (seedId("evaluation", ...)); it never drives the comment index.
+  const usedCommentsByReviewerPlan = new Map<string, Set<number>>();
+  const usedCommentsBySubmission = new Map<string, Set<number>>();
+  function pickComment(reviewerId: string, submissionId: string, planId: string): string {
+    const reviewerPlanKey = `${reviewerId}::${planId}`;
+    const byPair = usedCommentsByReviewerPlan.get(reviewerPlanKey) ?? new Set<number>();
+    const bySubmission = usedCommentsBySubmission.get(submissionId) ?? new Set<number>();
+    const index = EVAL_COMMENTS.findIndex((_, i) => !byPair.has(i) && !bySubmission.has(i));
+    if (index < 0) {
+      throw new Error(
+        `seed: no unused comment left for reviewer ${reviewerId} on plan ${planId} / submission ${submissionId} ` +
+          `(${byPair.size} already signed by this reviewer on this plan, ${bySubmission.size} already used on this ` +
+          `submission, only ${EVAL_COMMENTS.length} distinct comments seeded) -- add more EVAL_COMMENTS entries ` +
+          "instead of letting a comment repeat.",
+      );
+    }
+    byPair.add(index);
+    bySubmission.add(index);
+    usedCommentsByReviewerPlan.set(reviewerPlanKey, byPair);
+    usedCommentsBySubmission.set(submissionId, bySubmission);
+    return EVAL_COMMENTS[index]!;
+  }
   function insertEvaluation(
     reviewerId: string,
     submissionId: string,
@@ -1513,17 +1568,7 @@ async function main(): Promise<void> {
     const deliveryScore = scoreOverride?.speaker_delivery ?? hashedScore(reviewerId, submissionId, "speaker_delivery");
     const recommendation =
       RECOMMENDATION_PATTERN[(evalCounter - 1) % RECOMMENDATION_PATTERN.length]!;
-    const reviewerPlanKey = `${reviewerId}::${planId}`;
-    const reviewerPlanIndex = commentIndexByReviewerPlan.get(reviewerPlanKey) ?? 0;
-    commentIndexByReviewerPlan.set(reviewerPlanKey, reviewerPlanIndex + 1);
-    if (reviewerPlanIndex >= EVAL_COMMENTS.length) {
-      throw new Error(
-        `seed: reviewer ${reviewerId} would sign a repeated comment on plan ${planId} ` +
-          `(evaluation #${reviewerPlanIndex + 1} for this pair, only ${EVAL_COMMENTS.length} distinct comments seeded) -- ` +
-          "add more EVAL_COMMENTS entries instead of letting the index wrap.",
-      );
-    }
-    const comment = EVAL_COMMENTS[reviewerPlanIndex]!;
+    const comment = pickComment(reviewerId, submissionId, planId);
     statements.push(
       insertStmt("evaluation", {
         id: seedId("evaluation", evalCounter),

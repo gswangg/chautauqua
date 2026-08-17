@@ -250,6 +250,72 @@ describe("seed coherence (DEC-771)", () => {
     }
   });
 
+  // Post-eval amendment (eval finding 7b): the DEC-823 fixture used to
+  // collide against three SYNTHETIC directory contacts, each of which is
+  // also a seeded SPEAKER with a submission -- so a CRM-only merge fixture
+  // read as a data-integrity defect on the sessions/speakers/abstract
+  // surfaces ("two Parker Anders", "two Indigo Fontaine"). Both halves of
+  // every pair are now dedicated CRM-only fixture people. Asserted
+  // structurally (a duplicate-group member is never a submission
+  // participant) rather than by hand-listing names.
+  it("(DEC-823 post-eval amendment) no duplicate-group member is a speaker/participant -- the merge fixture never bleeds into the speaker surfaces", () => {
+    const contactRows = parseInserts(sql, "contact");
+    const records: ContactRecord[] = contactRows.map((r) => ({
+      id: r.id!,
+      email: r.email ?? "",
+      firstName: r.first_name ?? "",
+      lastName: r.last_name ?? "",
+      company: r.company ?? undefined,
+    }));
+
+    const participantContactIds = new Set(
+      parseInserts(sql, "participant")
+        .map((p) => p.contact_id)
+        .filter((id): id is string => !!id),
+    );
+    expect(participantContactIds.size).toBeGreaterThan(0);
+
+    for (const group of findDuplicateGroups(records)) {
+      for (const contactId of group.contactIds) {
+        expect(
+          participantContactIds.has(contactId),
+          `duplicate group ${JSON.stringify(group)} contains ${contactId}, which is a seeded submission participant ` +
+            "-- the CRM merge fixture must not duplicate anyone who appears on a speaker-facing surface",
+        ).toBe(false);
+      }
+    }
+  });
+
+  // The same rule stated from the other side: nobody who speaks at the
+  // event shares a normalized full name with any other contact in the
+  // directory, so every speaker in the seeded data reads exactly once.
+  it("(DEC-823 post-eval amendment) no participant contact shares a normalized full name with any other contact", () => {
+    const contactRows = parseInserts(sql, "contact");
+    const participantContactIds = new Set(
+      parseInserts(sql, "participant")
+        .map((p) => p.contact_id)
+        .filter((id): id is string => !!id),
+    );
+
+    const normalize = (r: Record<string, string | null>) =>
+      `${r.first_name ?? ""} ${r.last_name ?? ""}`.toLowerCase().trim().replace(/\s+/g, " ");
+    const idsByName = new Map<string, string[]>();
+    for (const r of contactRows) {
+      const key = normalize(r);
+      idsByName.set(key, [...(idsByName.get(key) ?? []), r.id!]);
+    }
+
+    for (const [name, ids] of idsByName) {
+      if (ids.length < 2) continue;
+      for (const id of ids) {
+        expect(
+          participantContactIds.has(id),
+          `contact ${id} is a seeded participant and shares the name "${name}" with ${ids.filter((x) => x !== id).join(", ")}`,
+        ).toBe(false);
+      }
+    }
+  });
+
   it("(c) no two tasks in the event share a title", () => {
     const taskRows = parseInserts(sql, "task");
     expect(taskRows.length).toBeGreaterThan(0);

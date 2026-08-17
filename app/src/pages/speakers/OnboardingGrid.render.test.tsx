@@ -1815,6 +1815,13 @@ describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
     // is still true (set synchronously in the mount effect), so this
     // synchronous assertion catches the skeleton frame before it flips.
     expect(document.querySelector('.chq-skeleton-frame')).not.toBeNull();
+    // Post-eval polish: the placeholder rows are announced, not silent, and
+    // the label names this region's own noun rather than the generic
+    // 'Loading…' fallback -- the same shape ContactsTable already used.
+    const status = document.querySelector('.chq-skeleton')!;
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.getAttribute('aria-busy')).toBe('true');
+    expect(status.textContent).toContain('Loading speakers…');
     expect(screen.queryByText('No speakers on the roster yet.')).not.toBeInTheDocument();
     expect(screen.queryByText('No speakers match the current filters.')).not.toBeInTheDocument();
 

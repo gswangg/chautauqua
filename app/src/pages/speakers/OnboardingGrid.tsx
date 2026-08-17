@@ -847,7 +847,10 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         </div>
       )}
 
-      {loading && <PageSkeleton variant="table" />}
+      {/* Post-eval polish: the skeleton's accessible label names its own
+         noun, like every other list in the product -- the generic default
+         told a screen-reader user nothing about which region was busy. */}
+      {loading && <PageSkeleton variant="table" label="Loading speakers…" />}
 
       {/* DEC-678 amendment (B7, wave 47): a settled, zero-row grid never
           parks a full <thead> (or the phone card list) over one

@@ -12,7 +12,7 @@ import { DateField } from '../../components/DateField';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { dateInputToMs, msToDateInput, formatDateTimeInZone, daysUntil } from '../../lib/dates';
+import { dateInputToMs, msToDateInput, formatDateOnly, formatDateTimeInZone, daysUntil } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { formWindowState } from '../../../../src/lib/submit-core';
 import { dayLabelEndInstant } from '../../../../src/lib/timezone';
@@ -34,17 +34,6 @@ interface EventSummary {
   timezone: string;
 }
 
-const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** Renders a day-label epoch-ms value (UTC-midnight of the intended
- * calendar day, DEC-153/DEC-522) as "16 Aug" -- read via UTC field getters,
- * never a timezone conversion (the calendar day itself doesn't move with
- * the viewer's zone). */
-function formatDayMonth(ms: number): string {
-  const date = new Date(ms);
-  return `${date.getUTCDate()} ${SHORT_MONTHS[date.getUTCMonth()]}`;
-}
-
 /** Today's calendar day as a day-label epoch-ms value (UTC midnight). */
 function todayDayLabelMs(): number {
   const now = new Date();
@@ -58,7 +47,12 @@ function todayDayLabelMs(): number {
 function callStateLabel(state: ReturnType<typeof formWindowState>, closeMs: number | null): string {
   if (state === 'not_yet_open') return 'Not yet open';
   if (state === 'closed') return 'Closed';
-  return closeMs !== null ? `Open · closes ${formatDayMonth(closeMs)}` : 'Open';
+  // DEC-963/DEC-907 (post-eval polish): the house date grammar has ONE
+  // writer. This pill used to hand-roll "16 Aug" off a local SHORT_MONTHS
+  // array -- a private fourth grammar for the same close date, missing the
+  // year every other deadline surface prints. formatDateOnly is the shared,
+  // UTC-anchored (DEC-153) writer for a day-label value.
+  return closeMs !== null ? `Open · closes ${formatDateOnly(closeMs)}` : 'Open';
 }
 
 /** DEC-781: the summary's right-aligned uppercase relative note next to

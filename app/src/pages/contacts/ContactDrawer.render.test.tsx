@@ -415,8 +415,12 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
       expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
     });
 
+    // Post-eval polish (copy only): the caption no longer over-promises --
+    // "an editable row" (Labels and History are read-only display) and
+    // "nothing in these rows" (a headshot upload, Delete, Email and Add to
+    // an event all act without Save).
     const captions = within(dialog).getAllByText(
-      'Click a row to edit it — nothing is saved until you press Save.',
+      'Click an editable row to change it — nothing in these rows is saved until you press Save.',
     );
     expect(captions).toHaveLength(1);
     expect(captions[0]).toHaveClass('chq-meta');

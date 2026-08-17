@@ -22,6 +22,21 @@ export function isValidTimezoneLocal(timezone: string): boolean {
   }
 }
 
+/**
+ * The browser's own IANA zone, used as the new-event form's Time zone
+ * default. Post-eval polish: the field was `required` with an empty value
+ * and only a `placeholder="America/Chicago"` -- ghost text a reader
+ * reasonably takes for a filled-in default, so submitting raised the native
+ * "Please fill out this field" bubble on a field that looked answered. The
+ * form now carries a real, editable value from the first paint. Falls back
+ * to 'UTC' if the runtime reports no zone (isValidTimezoneLocal is the
+ * gate either way -- an unusable value is never silently kept).
+ */
+export function defaultTimezone(): string {
+  const resolved = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return resolved && isValidTimezoneLocal(resolved) ? resolved : 'UTC';
+}
+
 export interface NewEventForm {
   name: string;
   slug: string;

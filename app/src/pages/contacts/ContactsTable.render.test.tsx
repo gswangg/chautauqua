@@ -183,6 +183,16 @@ describe('ContactsTable empty states (B7 rule 6, DEC-678)', () => {
     expect(screen.getByText('Loading contacts…')).toBeInTheDocument();
     expect(screen.queryByText('No contacts yet.')).not.toBeInTheDocument();
   });
+
+  // Post-eval polish: the placeholder rows are announced, not silent -- the
+  // house PageSkeleton pattern is role="status" + aria-busy + a
+  // visually-hidden label naming the region's own noun.
+  it('announces the placeholder rows as a busy status region naming contacts', () => {
+    renderTable({ items: [], total: 0, loading: true, empty: { variant: 'fresh' } });
+    const status = screen.getByRole('status');
+    expect(status).toHaveAttribute('aria-busy', 'true');
+    expect(status).toHaveTextContent('Loading contacts…');
+  });
 });
 
 // w20-c (DEC-902 amendment): docs/design/Chautauqua Contacts.dc.html:97/101

@@ -122,6 +122,12 @@ export function ResultsTable({
   // exactly the rows the server ranked, sorted, and paged, never a
   // client-side re-sort of a single page (that class of bug is DEC-341's).
   const [sort, setSort] = useState<{ key: ResultsSortKey; direction: SortDirection } | null>(null);
+  // Post-eval polish: the export link used to be the one action on this page
+  // that said nothing back. It speaks in the house success register --
+  // .chq-toast + role="status", the same shape every other 'this worked'
+  // moment uses -- and names the file, mirroring the content screen's
+  // '<filename> downloaded.' download feedback.
+  const [downloadToast, setDownloadToast] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [refreshToken, setRefreshToken] = useState(0);
   // DEC-587/DEC-193: optimistic per-submission decision, keyed by
@@ -373,6 +379,7 @@ export function ResultsTable({
                 )}
                 download
                 className="chq-section-action chq-link-button"
+                onClick={() => setDownloadToast('results.csv downloaded.')}
               >
                 Download CSV
               </a>
@@ -407,9 +414,11 @@ export function ResultsTable({
         <table className="chq-table chq-review-results-table">
           <thead>
             <tr>
-              {/* DEC-906: Rank leads -- it is never sortable itself; it is
-                 always the row's position in whatever order (default: score
-                 descending) the table is currently showing. */}
+              {/* DEC-906: Rank leads -- it is never sortable itself. It
+                 reports the row's standing in the SCORE ranking (server
+                 truth), not its position in the order currently shown, so
+                 sorting ascending reorders the rows without renumbering
+                 them 1..N top-down. */}
               <th className="chq-review-results-col-rank">Rank</th>
               <th className="chq-review-results-col-title" aria-sort={ariaSort({ column: 'title' }, sort)}>
                 <SortButton label="Title" columnKey={{ column: 'title' }} sort={sort} onSort={handleSort} />
@@ -431,20 +440,18 @@ export function ResultsTable({
           <tbody>
             {/* w2-d/DEC-737: embedded renders only the first 4 rows of the
                current page -- a preview, not the page. */}
-            {(embedded ? rows.slice(0, 4) : rows).map((row, index) => {
+            {(embedded ? rows.slice(0, 4) : rows).map((row) => {
               const overlay = decisions[row.submissionId];
               const effectiveStatus: string | undefined = overlay ?? row.status;
               const decided = effectiveStatus !== undefined && isDecidedStatus(effectiveStatus);
               const evaluations = evaluationsById[row.submissionId];
               const expanded = expandedId === row.submissionId;
-              // DEC-906: rank is the row's position in the ordering
-              // currently shown (default: score descending) -- (page - 1) *
-              // perPage + index + 1, never a value the server returns.
-              const rank = (page - 1) * PER_PAGE + index + 1;
               return (
               <Fragment key={row.submissionId}>
               <tr>
-                <td data-label="Rank">{rank}</td>
+                {/* DEC-906 (post-eval amendment): server-stamped SCORE
+                   rank, never a display-position count. */}
+                <td data-label="Rank">{row.rank}</td>
                 <td className="chq-review-results-title" data-label="Title">
                   {/* DEC-906: the ref isn't lost with its own column -- it
                      prints as a muted prefix so a producer can still name the
@@ -641,6 +648,19 @@ export function ResultsTable({
               disabled={page >= totalPages}
             >
               Next
+            </button>
+          </div>
+        )}
+        {downloadToast && (
+          <div className="chq-toast" role="status">
+            {downloadToast}
+            <button
+              type="button"
+              className="chq-btn chq-btn-tertiary"
+              onClick={() => setDownloadToast(null)}
+              aria-label="Dismiss"
+            >
+              &times;
             </button>
           </div>
         )}

@@ -4,7 +4,7 @@
 // the micro-label off of it (review.css). This test asserts the invariant
 // on the underlying DOM, independent of viewport width.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ResultsTable } from './ResultsTable';
@@ -39,6 +39,7 @@ function plan() {
 function resultsRow(overrides: Partial<{ status: string; speakers: string[]; trackNames: string[] }> = {}) {
   return {
     submissionId: 'sub-1',
+    rank: 1,
     ref: 'S-001',
     title: 'A Great Talk',
     count: 3,
@@ -196,6 +197,40 @@ describe('ResultsTable CSV export lives on the section rule (DEC-366)', () => {
     expect(csvLink.className).toContain('chq-section-action');
     expect(new URL(csvLink.getAttribute('href')!, 'http://localhost').searchParams.get('round')).toBe('1');
   });
+
+  // Post-eval polish: the export used to say nothing back. It now answers in
+  // the house success register -- .chq-toast + role="status" + a Dismiss
+  // control -- the same shape every other 'this worked' moment uses.
+  it('confirms the export in the house toast register, dismissible', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    // jsdom cannot follow a real download navigation -- suppress only the
+    // navigation, so the component's own onClick still runs.
+    const csvLink = screen.getByRole('link', { name: 'Download CSV' });
+    csvLink.addEventListener('click', (e) => e.preventDefault());
+    fireEvent.click(csvLink);
+
+    const toast = screen.getByRole('status');
+    expect(toast).toHaveTextContent('results.csv downloaded.');
+    expect(toast).toHaveClass('chq-toast');
+
+    fireEvent.click(within(toast).getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
 });
 
 // w42-h/DEC-366 amendment: the REVIEWS cell reads as text -- "N reviews · M
@@ -283,10 +318,14 @@ describe('ResultsTable rank-led header (DEC-906)', () => {
     expect(screen.getByText('4.5')).toBeInTheDocument();
   });
 
-  it('numbers rank by position within the page, offsetting by page size on page 2', async () => {
+  // Post-eval amendment: Rank is the SERVER's score rank, rendered verbatim
+  // -- never (page - 1) * perPage + index + 1. Page 2's row carries its own
+  // rank in the payload, and a tie carries the same rank on both rows.
+  it('renders the server-stamped score rank verbatim, on page 1 and page 2 alike', async () => {
     const rows = Array.from({ length: 3 }, (_, i) => ({
       ...resultsRow({ speakers: ['Ada Lovelace'], trackNames: ['Engineering'] }),
       submissionId: `sub-${i}`,
+      rank: i === 2 ? 2 : i + 1, // rows 2 and 3 tie on score -> ranks 1, 2, 2
       ref: `S-${100 + i}`,
       title: `Talk ${i}`,
     }));
@@ -300,9 +339,10 @@ describe('ResultsTable rank-led header (DEC-906)', () => {
       if (url.pathname === `/api/v1/plans/${PLAN_ID}/results`) {
         const body =
           url.searchParams.get('page') === '2'
-            ? listEnvelope([{ ...rows[0], submissionId: 'sub-page2', ref: 'S-200', title: 'Page Two Talk' }], {
-                total: 51,
-              })
+            ? listEnvelope(
+                [{ ...rows[0], submissionId: 'sub-page2', rank: 51, ref: 'S-200', title: 'Page Two Talk' }],
+                { total: 51 },
+              )
             : listEnvelope(rows, { total: 51 });
         return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
       }
@@ -321,13 +361,13 @@ describe('ResultsTable rank-led header (DEC-906)', () => {
     expect(await screen.findByText(/Talk 0/)).toBeInTheDocument();
     const table = document.querySelector('table.chq-review-results-table')!;
     let bodyRows = Array.from(table.querySelectorAll('tbody tr')).filter((tr) => !tr.classList.contains('chq-review-reviews-row'));
-    expect(bodyRows.map((tr) => tr.querySelectorAll('td')[0]!.textContent)).toEqual(['1', '2', '3']);
+    expect(bodyRows.map((tr) => tr.querySelectorAll('td')[0]!.textContent)).toEqual(['1', '2', '2']);
 
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     expect(await screen.findByText(/Page Two Talk/)).toBeInTheDocument();
     bodyRows = Array.from(table.querySelectorAll('tbody tr')).filter((tr) => !tr.classList.contains('chq-review-reviews-row'));
-    // Page 2, index 0, perPage 50 -> rank 51.
+    // The server said 51; the table prints 51 -- it does no arithmetic.
     expect(bodyRows[0]!.querySelectorAll('td')[0]!.textContent).toBe('51');
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildNewEventPayload,
+  defaultTimezone,
   isValidSlugLocal,
   isValidTimezoneLocal,
   mergeFieldErrors,
@@ -166,5 +167,22 @@ describe('mergeFieldErrors', () => {
     expect(mergeFieldErrors({ slug: 'Must match [a-z0-9-]+' }, { slug: 'Already in use' })).toEqual({
       slug: 'Already in use',
     });
+  });
+});
+
+// Post-eval polish: Time zone is a `required` field, so it must not open
+// empty behind a placeholder that reads as a default -- that is what raised
+// the native "Please fill out this field" bubble on an apparently-answered
+// field.
+describe('defaultTimezone', () => {
+  it('returns a value the form\'s own validator accepts', () => {
+    const tz = defaultTimezone();
+    expect(tz).not.toBe('');
+    expect(isValidTimezoneLocal(tz)).toBe(true);
+  });
+
+  it('a form carrying it passes validation with no timezone error', () => {
+    const errors = validateNewEventForm({ ...baseForm, timezone: defaultTimezone() });
+    expect(errors.timezone).toBeUndefined();
   });
 });

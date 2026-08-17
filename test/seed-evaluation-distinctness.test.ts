@@ -141,6 +141,56 @@ describe("DEC-702 (wave 1a): seeded evaluation comments are distinct per (review
   });
 });
 
+// Eval finding (two independent runs): on the organiser's submission-detail
+// page, two review rows on ONE submission rendered byte-identical comment
+// prose. The render/read path is clean (locked by
+// app/src/pages/submissions/SubmissionDetailPage.render.test.tsx's "ONE
+// reviewer reviewed under TWO plans" case) -- the duplication was seeded.
+// The (reviewer, plan) keying above restarted the comment index at 0 for
+// every pair, and the seed emits evaluations in submission order, so every
+// reviewer's Nth evaluation landed on the same submission and all of that
+// submission's rows drew EVAL_COMMENTS[0].
+describe("DEC-702 (post-eval amendment): no submission carries two identical review comments", () => {
+  it("no two evaluations on the same submission share `comment` text", () => {
+    const evaluations = parseInserts(sql, "evaluation");
+    expect(evaluations.length).toBeGreaterThan(0);
+
+    const seenBySubmission = new Map<string, Map<string, string>>();
+    for (const evaluation of evaluations) {
+      const submissionId = evaluation.submission_id!;
+      const comment = evaluation.comment;
+      expect(comment, `evaluation ${evaluation.id} has no comment`).toBeTruthy();
+      const seen = seenBySubmission.get(submissionId) ?? new Map<string, string>();
+      expect(
+        seen.has(comment!),
+        `submission ${submissionId} carries the same comment on ${seen.get(comment!)} and ` +
+          `${evaluation.id}: ${JSON.stringify(comment)}`,
+      ).toBe(false);
+      seen.set(comment!, evaluation.id!);
+      seenBySubmission.set(submissionId, seen);
+    }
+  });
+
+  // The exact shape the eval described: one reviewer, two plans, one
+  // submission. Asserted as a general rule over the parsed rows rather than
+  // a hand-picked pair, so it keeps holding as the fixture moves.
+  it("no (reviewer, submission) pair signs the same comment under two different plans", () => {
+    const evaluations = parseInserts(sql, "evaluation");
+    const seenByPair = new Map<string, Map<string, string>>();
+    for (const evaluation of evaluations) {
+      const key = `${evaluation.reviewer_id}::${evaluation.submission_id}`;
+      const seen = seenByPair.get(key) ?? new Map<string, string>();
+      expect(
+        seen.has(evaluation.comment!),
+        `reviewer ${evaluation.reviewer_id} signed the same comment twice on submission ` +
+          `${evaluation.submission_id} (${seen.get(evaluation.comment!)} / ${evaluation.id})`,
+      ).toBe(false);
+      seen.set(evaluation.comment!, evaluation.id!);
+      seenByPair.set(key, seen);
+    }
+  });
+});
+
 describe("DEC-702 (wave 1a): seed_user_0004's whole-track reviewer scope is narrowed", () => {
   // seed_user_0004 (reviewerUserId, the fixture's demo reviewer persona) was
   // the confirmed defect: whole-track plan_reviewer scope on THREE plans

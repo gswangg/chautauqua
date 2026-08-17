@@ -62,6 +62,7 @@ export type { ReviewerQueueItem, OrderedReviewerQueueItem } from "./evaluation/q
 
 export {
   buildResultsRows,
+  assignScoreRanks,
   sortValueForColumn,
   sortResultsRows,
 } from "./evaluation/results";

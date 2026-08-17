@@ -149,6 +149,9 @@ describe("DEC-239: plan progress/results wire shapes", () => {
       "count",
       "perCriterion",
       "perDropdown",
+      // Post-eval amendment: the SCORE rank is server truth -- the table
+      // renders it verbatim instead of numbering rows by display position.
+      "rank",
       // w42-h/DEC-366 amendment: the Reviews cell's disclosure trigger names
       // a real recusal count, never a fabricated figure -- plan-scoped.
       "recusals",
