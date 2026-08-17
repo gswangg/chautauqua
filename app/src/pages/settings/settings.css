@@ -1134,8 +1134,13 @@
   color: var(--chq-ink-2);
 }
 
-/* task-w3-c/DEC-747: Speaker portal read view (mock lines 142-182). */
+/* task-w3-c/DEC-747: Speaker portal read view (mock lines 142-182).
+   User-filed (release night): `gap` is inert without a flex/grid context --
+   the pills rendered touching. */
 .chq-settings-portal-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 

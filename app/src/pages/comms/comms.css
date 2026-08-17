@@ -842,7 +842,16 @@
 /* DEC-833: per-recipient "Show what was sent" disclosure -- it's the row's
    5th (auto) DOM cell, matching the batch row's own trailing "Open"
    column, so it doesn't disturb the recipient/status alignment above. */
+/* User-filed (release night): the expanded body rendered inside the row's
+   narrow trailing cell -- a 3-words-per-line sliver -- because grid-column
+   on .chq-comms-send-detail-body was inert one level below the grid.
+   display:contents promotes the toggle and the body to grid items: the
+   toggle keeps the trailing-cell position, the body's 1/-1 span works. */
 .chq-comms-send-detail {
+  display: contents;
+}
+
+.chq-comms-send-detail > .chq-link-button {
   justify-self: end;
 }
 
