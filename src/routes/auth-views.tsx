@@ -143,28 +143,29 @@ export function LoginPage(props: {
               </div>
             </div>
           ) : null}
-        </main>
-        {/* DESIGN-RULINGS A23: below the sign-in card, OUTSIDE it, under a
-            DEMO ACCOUNTS micro-label -- three tertiary rows (role · email)
-            and a muted line saying passwords come from the seed. */}
-        {demoIdentities.length > 0 ? (
-          <aside className="chq-auth-demo" aria-label="Demo accounts">
-            <div className="chq-auth-demo-label">Demo accounts</div>
-            <div className="chq-auth-demo-buttons">
-              {demoIdentities.map((identity) => (
-                <button
-                  type="button"
-                  className="chq-auth-demo-btn"
-                  data-demo-email={identity.email}
-                  data-demo-password={identity.password}
-                >
-                  {capitalizeFirst(identity.role)} &middot; {identity.email}
-                </button>
-              ))}
+          {/* USER RULING (release night): the demo block keeps its ORIGINAL
+              in-card presentation -- rule-separated footer inside the card,
+              sentence-case label, buttons in one wrapping row. The A23
+              outside-the-card micro-label variant was reverted as a
+              regression in feel. */}
+          {demoIdentities.length > 0 ? (
+            <div className="chq-auth-demo">
+              <div className="chq-auth-demo-label">Try it with a seeded demo account</div>
+              <div className="chq-auth-demo-buttons">
+                {demoIdentities.map((identity) => (
+                  <button
+                    type="button"
+                    className="chq-auth-demo-btn"
+                    data-demo-email={identity.email}
+                    data-demo-password={identity.password}
+                  >
+                    {capitalizeFirst(identity.role)} &middot; {identity.email}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="chq-auth-demo-note">Passwords come from the seed data.</p>
-          </aside>
-        ) : null}
+          ) : null}
+        </main>
         </div>
         {demoIdentities.length > 0 ? <script dangerouslySetInnerHTML={{ __html: DEMO_PREFILL_SCRIPT }} /> : null}
       </body>

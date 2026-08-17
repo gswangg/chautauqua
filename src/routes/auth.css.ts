@@ -276,24 +276,19 @@ export const AUTH_CSS = `
   .chq-auth-footer-links a:hover,
   .chq-auth-footer-links a:focus-visible { text-decoration: underline; }
 
-  /* G13 fix (A23): the block lives OUTSIDE the card now, under a DEMO
-     ACCOUNTS micro-label -- three tertiary ROWS (role · email), one per
-     line, plus a muted passwords-come-from-the-seed line. */
+  /* USER RULING (release night): original in-card presentation restored --
+     rule-separated footer block, sentence-case label, one wrapping row of
+     prefill buttons. (Reverts the A23 outside-the-card micro-label form.) */
   .chq-auth-demo {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 0 34px;
+    gap: 10px;
+    border-top: 1px solid var(--chq-rule);
+    padding-top: 18px;
+    margin-top: 18px;
   }
-  .chq-auth-demo-label {
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--chq-muted);
-  }
-  .chq-auth-demo-buttons { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-  .chq-auth-demo-note { font-size: 13px; color: var(--chq-muted); margin: 0; }
+  .chq-auth-demo-label { font-size: 13px; color: var(--chq-muted); }
+  .chq-auth-demo-buttons { display: flex; flex-wrap: wrap; gap: 16px; }
   /* Small links in card vocabulary, not the 44px .chq-btn-secondary box --
      still a <button type="button"> (DEMO_PREFILL_SCRIPT delegates on the
      .chq-auth-demo-btn class + click event), just restyled to read as

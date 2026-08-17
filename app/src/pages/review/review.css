@@ -1819,7 +1819,13 @@
    below (DEC-385: narrow overrides wide via max-width only). */
 .chq-reviewer-plan-row {
   display: grid;
-  grid-template-columns: 1fr 150px 190px auto;
+  /* User-filed (release night): each <li> is its OWN grid, so an `auto`
+     action track let the label's width ("Score the next one" vs "Start
+     scoring") resize every row's 1fr independently -- pills and bars
+     staggered row to row and never sat under the head row's columns. Fixed
+     180px track, same cure as the queue's 176px action track (DEC-745
+     wave-22). Head row below shares the template. */
+  grid-template-columns: 1fr 150px 190px 180px;
   gap: 20px;
   align-items: center;
   padding: 16px 0;
@@ -1983,7 +1989,7 @@
    columns, same discipline as .chq-review-criteria-head-row. */
 .chq-reviewer-plan-head-row {
   display: grid;
-  grid-template-columns: 1fr 150px 190px auto;
+  grid-template-columns: 1fr 150px 190px 180px;
   gap: 20px;
   padding: 0 0 9px;
   border-bottom: 2px solid var(--chq-ink);

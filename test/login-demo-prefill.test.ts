@@ -62,16 +62,16 @@ describe("GET /login demo-credential prefill (DEC-583)", () => {
     const body = await res.text();
 
     for (const identity of DEMO_IDENTITIES) {
-      // G13 (DESIGN-RULINGS A23): each row reads "Role · email" under the
-      // DEMO ACCOUNTS micro-label, not the old "Use demo <role>" label.
+      // USER RULING (release night): the in-card presentation is restored --
+      // sentence-case label, "Role · email" buttons in one wrapping row.
       const roleLabel = identity.role.charAt(0).toUpperCase() + identity.role.slice(1);
       expect(body).toContain(roleLabel);
       expect(body).toContain(identity.email);
       expect(body).toContain(`data-demo-email="${identity.email}"`);
       expect(body).toContain(`data-demo-password="${identity.password}"`);
     }
-    expect(body).toContain("Demo accounts");
-    expect(body).toContain("Passwords come from the seed data.");
+    expect(body).toContain("Try it with a seeded demo account");
+    expect(body).not.toContain("Passwords come from the seed data.");
   });
 
   it("buttons carry no form action and never auto-submit", async () => {
