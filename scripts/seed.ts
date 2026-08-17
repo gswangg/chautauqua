@@ -1206,95 +1206,112 @@ async function main(): Promise<void> {
   // the whole merge flow need real findDuplicateGroups() hits to demo
   // against. DEC-771's collision ban only ever applied to IDENTITY contacts
   // (personas, reviewers, anything a seeded user account points at via
-  // user.contact_id) -- it never promised the synthetic CRM directory itself
-  // would be collision-free, and a directory with zero duplicates is exactly
-  // what made the Duplicates tab and merge flow demo empty. These three
-  // extra contact rows are deliberately built to COLLIDE with three of the
-  // ~27 synthetic directory contacts seeded above (never a fixture persona,
-  // never a reviewer, never a contact any user account is linked to), each
-  // one exercising a distinct DEC-800 duplicate reason:
-  //   - dupEmailContact shares a normalized email with synth index 2 (Casey
-  //     Quraishi) but a different display name -- reason 'email' (a CSV
-  //     import that carried a different name spelling against the same
-  //     inbox).
-  //   - dupNameCompanyContact shares a normalized name AND company with
-  //     synth index 15 (Parker Anders, Fernway Technologies) but a
-  //     different email -- reason 'name_and_company'.
-  //   - dupNameOnlyContact shares only a normalized name with synth index 8
-  //     (Indigo Fontaine) at a different company -- reason 'name' (the
-  //     "changed employers" case).
+  // user.contact_id) -- it never promised the CRM directory itself would be
+  // collision-free, and a directory with zero duplicates is exactly what
+  // made the Duplicates tab and merge flow demo empty.
+  //
+  // POST-EVAL AMENDMENT (finding 7b): the fixture used to collide against
+  // three of the ~27 SYNTHETIC directory contacts, each of which is also a
+  // seeded SPEAKER with a submission. So the CRM-only duplication bled
+  // straight into the sessions, speakers, and abstract surfaces, where two
+  // "Parker Anders" / two "Indigo Fontaine" read as a data-integrity defect
+  // rather than the merge fixture it is. Both halves of every pair are now
+  // DEDICATED CRM-ONLY fixture people -- no submission, no participant row,
+  // no user account -- so every speaker in the directory appears exactly
+  // once and the dedup/merge flows keep all three of their fixtures.
+  //
+  // The structural shape the DEC-823 tests rest on is unchanged: exactly
+  // three groups, two members each, one per DEC-800 reason, no identity
+  // contact in any of them.
+  //   - Pair 1 ('email'): same normalized inbox, different display name --
+  //     a CSV import that carried a different spelling against one address.
+  //   - Pair 2 ('name_and_company'): same normalized name AND company,
+  //     different email, and the two rows differ only in LETTER CASE --
+  //     the shape the merge screen's keep/discard header demos against.
+  //   - Pair 3 ('name'): same normalized name, different company -- the
+  //     "changed employers" case.
   {
-    const baseEmailIdx = 2;
-    const baseEmail = synthName(baseEmailIdx);
-    const dupEmailContactId = seedId("dup_contact", 1);
-    statements.push(
-      insertStmt("contact", {
-        id: dupEmailContactId,
-        org_id: orgId,
-        first_name: "C.",
-        last_name: `${baseEmail.last}-Imported`,
-        email: `${baseEmail.first.toLowerCase()}.${baseEmail.last.toLowerCase().replace(/[^a-z]/g, "")}@example-speakers.test`,
-        phone: null,
-        company: SYNTH_COMPANIES[baseEmailIdx % SYNTH_COMPANIES.length]!,
-        title: "Software Engineer",
-        bio: null,
-        headshot_url: null,
-        social_links_json: null,
-        notes: null,
-        custom_fields_json: null,
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
+    const FIXTURE_DOMAIN = "example-speakers.test";
+    let dupContactSeq = 0;
+    function insertFixtureContact(fields: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      company: string;
+      title: string;
+    }): string {
+      dupContactSeq += 1;
+      const id = seedId("dup_contact", dupContactSeq);
+      statements.push(
+        insertStmt("contact", {
+          id,
+          org_id: orgId,
+          first_name: fields.firstName,
+          last_name: fields.lastName,
+          email: fields.email,
+          phone: null,
+          company: fields.company,
+          title: fields.title,
+          bio: null,
+          headshot_url: null,
+          social_links_json: null,
+          notes: null,
+          custom_fields_json: null,
+          created_at: nextTs(),
+          updated_at: ts,
+        }),
+      );
+      return id;
+    }
 
-    const baseNameCompanyIdx = 15;
-    const baseNameCompany = synthName(baseNameCompanyIdx);
-    const dupNameCompanyContactId = seedId("dup_contact", 2);
-    statements.push(
-      insertStmt("contact", {
-        id: dupNameCompanyContactId,
-        org_id: orgId,
-        first_name: baseNameCompany.first.toUpperCase(),
-        last_name: baseNameCompany.last.toLowerCase(),
-        email: "parker.anders.dup@example-speakers.test",
-        phone: null,
-        company: SYNTH_COMPANIES[baseNameCompanyIdx % SYNTH_COMPANIES.length]!,
-        title: "Senior Engineer",
-        bio: null,
-        headshot_url: null,
-        social_links_json: null,
-        notes: null,
-        custom_fields_json: null,
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
+    // Pair 1 -- reason 'email'.
+    insertFixtureContact({
+      firstName: "Rowan",
+      lastName: "Delacroix",
+      email: `rowan.delacroix@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[2]!,
+      title: "Software Engineer",
+    });
+    insertFixtureContact({
+      firstName: "R.",
+      lastName: "Delacroix-Imported",
+      email: `rowan.delacroix@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[2]!,
+      title: "Software Engineer",
+    });
 
-    const baseNameOnlyIdx = 8;
-    const baseNameOnly = synthName(baseNameOnlyIdx);
-    const dupNameOnlyContactId = seedId("dup_contact", 3);
-    statements.push(
-      insertStmt("contact", {
-        id: dupNameOnlyContactId,
-        org_id: orgId,
-        first_name: baseNameOnly.first,
-        last_name: baseNameOnly.last,
-        email: "indigo.fontaine.newco@example-speakers.test",
-        phone: null,
-        // Deliberately NOT SYNTH_COMPANIES[baseNameOnlyIdx % ...] -- a
-        // different company is the whole point of the 'name' reason (a
-        // person who changed employers).
-        company: SYNTH_COMPANIES[(baseNameOnlyIdx + 3) % SYNTH_COMPANIES.length]!,
-        title: "Engineering Manager",
-        bio: null,
-        headshot_url: null,
-        social_links_json: null,
-        notes: null,
-        custom_fields_json: null,
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
+    // Pair 2 -- reason 'name_and_company'. Same person, same employer, two
+    // inboxes, and the casing differs between the rows.
+    insertFixtureContact({
+      firstName: "Dana",
+      lastName: "Whitcombe",
+      email: `dana.whitcombe@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[5]!,
+      title: "Senior Engineer",
+    });
+    insertFixtureContact({
+      firstName: "DANA",
+      lastName: "WHITCOMBE",
+      email: `dana.whitcombe+alt@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[5]!,
+      title: "Senior Engineer",
+    });
+
+    // Pair 3 -- reason 'name'. A DIFFERENT company is the whole point here.
+    insertFixtureContact({
+      firstName: "Ellis",
+      lastName: "Marchetti",
+      email: `ellis.marchetti@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[1]!,
+      title: "Engineering Manager",
+    });
+    insertFixtureContact({
+      firstName: "Ellis",
+      lastName: "Marchetti",
+      email: `ellis.marchetti.newco@${FIXTURE_DOMAIN}`,
+      company: SYNTH_COMPANIES[8]!,
+      title: "Engineering Manager",
+    });
   }
 
   // --- contact Labels (task w2-c/DEC-739): custom_fields_json drives the
