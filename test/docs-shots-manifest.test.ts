@@ -173,10 +173,16 @@ describe("DOCS_SHOTS prep/capture fields", () => {
     }
   });
 
-  it("no two rows sharing a route ALSO share an identical prep+capture (that is what made the duplicate figures)", () => {
+  it("no two rows sharing a route ALSO share an identical prep+capture+focus (that is what made the duplicate figures)", () => {
     const seen = new Map<string, string>();
     for (const entry of DOCS_SHOTS) {
-      const fingerprint = JSON.stringify([entry.route, entry.capture ?? "fullPage", entry.prep ?? []]);
+      const fingerprint = JSON.stringify([
+        entry.route,
+        entry.capture ?? "fullPage",
+        entry.prep ?? [],
+        entry.clip ?? null,
+        entry.highlight ?? null,
+      ]);
       const twin = seen.get(fingerprint);
       // The /admin/overview pair is the one deliberate exception: two
       // different articles both open on the dashboard, and both captions
@@ -185,6 +191,67 @@ describe("DOCS_SHOTS prep/capture fields", () => {
         throw new Error(`shots "${twin}" and "${entry.id}" would capture the identical frame (${entry.route})`);
       }
       seen.set(fingerprint, entry.id);
+    }
+  });
+});
+
+// DEVIATIONS.md 2026-08-17 (second USER RULING on this surface): a row may
+// also carry `clip` (a full-width vertical band around one element) and/or
+// `highlight` (a brand outline + glow, optionally dimming the rest), so a
+// figure that shares a screen with another figure still says what it is
+// about at the docs page's ~820px rendered width. These assert the SHAPE
+// scripts/docs-shots.ts's applyHighlight/clipBandFor read.
+describe("DOCS_SHOTS clip/highlight focus fields", () => {
+  it("every clip names a selector and a non-negative padding", () => {
+    for (const entry of DOCS_SHOTS) {
+      if (entry.clip === undefined) continue;
+      const where = `shot "${entry.id}" clip`;
+      expect(entry.clip.selector.length, where).toBeGreaterThan(0);
+      expect(Number.isFinite(entry.clip.padding), `${where} padding must be a number`).toBe(true);
+      expect(entry.clip.padding, `${where} padding must not be negative`).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("a clip keeps GENEROUS context, never a tight crop (DESIGN-RULINGS.md rule 3 is overridden for width, not for cropping)", () => {
+    for (const entry of DOCS_SHOTS) {
+      if (entry.clip === undefined) continue;
+      expect(
+        entry.clip.padding,
+        `shot "${entry.id}" clips to within ${entry.clip.padding}px of its subject -- that reads as a crop`,
+      ).toBeGreaterThanOrEqual(120);
+    }
+  });
+
+  it("every highlight names at least one non-empty selector", () => {
+    for (const entry of DOCS_SHOTS) {
+      if (entry.highlight === undefined) continue;
+      const where = `shot "${entry.id}" highlight`;
+      expect(entry.highlight.selectors.length, `${where} declares no selectors`).toBeGreaterThan(0);
+      for (const selector of entry.highlight.selectors) {
+        expect(selector.length, `${where} has a blank selector`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("the three same-screen /admin/agenda figures each carry their own focus treatment (regression pin: USER RULING 2026-08-17, 'the agenda screenshots are still not distinct')", () => {
+    const agendaShots = DOCS_SHOTS.filter((entry) => entry.route === "/admin/agenda");
+    expect(agendaShots.length, "expected three /admin/agenda figures").toBe(3);
+    for (const entry of agendaShots) {
+      expect(
+        entry.clip !== undefined || entry.highlight !== undefined,
+        `agenda shot "${entry.id}" shares its screen with two others and must declare clip and/or highlight`,
+      ).toBe(true);
+    }
+    // ...and no two of them may name the SAME subject, which is what "not
+    // distinct" meant in the first place.
+    const subjects = agendaShots.map((entry) => JSON.stringify(entry.highlight?.selectors ?? []));
+    expect(new Set(subjects).size, "two agenda figures highlight the identical subject").toBe(subjects.length);
+  });
+
+  it("the /admin/overview twin stays deliberately untreated (both captions genuinely describe the whole dashboard)", () => {
+    for (const entry of DOCS_SHOTS.filter((row) => row.route === "/admin/overview")) {
+      expect(entry.clip, `shot "${entry.id}" must stay a full, untreated frame`).toBeUndefined();
+      expect(entry.highlight, `shot "${entry.id}" must stay a full, untreated frame`).toBeUndefined();
     }
   });
 });

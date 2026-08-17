@@ -24,7 +24,17 @@
 // at 1600 wide and TALL ENOUGH TO SHOW THE WHOLE SCREEN (growViewportToFit
 // below), unless its row declares `capture: "frame"` -- the exception for
 // position:fixed overlays (modal cards, .chq-toast), which a tall frame
-// strands rather than shows. Still no cropping and still no annotation.
+// strands rather than shows.
+//
+// FOCUS (docs/design/DEVIATIONS.md, 2026-08-17 -- a second user override,
+// this time of rule 5's "no drawn annotation"): a row may declare `clip` (a
+// full-width vertical BAND around one element, so a figure about a 3px break
+// strip is not a 1251px page) and/or `highlight` (a var(--chq-brand) outline
+// + soft glow on the caption's subject, optionally dimming the rest). Both
+// live entirely in this script -- injected with page.addStyleTag at shutter
+// time, never in app code -- and both are layout-neutral, so the shot is the
+// pixels the app really renders with an edge drawn on them. No arrows, no
+// callouts, no text: only the subject's own edge.
 //
 // FAIL LOUDLY: a route that doesn't resolve to exactly one role in
 // ROUTE_MANIFEST, a navigation that doesn't land on 200, a missing seeded
@@ -51,7 +61,9 @@ import {
   DOCS_SHOTS,
   DOCS_SHOTS_EVENT_SLUG,
   resolveRoleForRoute,
+  type DocsShotClip,
   type DocsShotEntry,
+  type DocsShotHighlight,
   type DocsShotStep,
 } from "./docs-shots-lib";
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
@@ -267,6 +279,137 @@ async function growViewportToFit(page: Page): Promise<void> {
   }
 }
 
+/** The colour the focus outline is drawn in -- app/src/styles.css's
+ * `--chq-brand`. Named as a fallback beside the custom property because the
+ * public surfaces (`/e/...`) define their own theme block, and a shot whose
+ * outline silently resolved to `currentColor` would be no highlight at all. */
+const FOCUS_BRAND = "#4e5c31";
+
+/** Opacity everything that is NOT the subject drops to under `dim: true`.
+ * Low enough that the lit element is unmistakably the subject, high enough
+ * that the screen behind it is still legible as the screen it is -- a figure
+ * whose context has been erased is a crop with extra steps. */
+const DIM_OPACITY = 0.34;
+
+/** Attribute scripts/docs-shots.ts stamps on a highlight's resolved elements
+ * so the injected CSS can be a single flat rule. Resolution goes through
+ * playwright LOCATORS, not `document.querySelectorAll`, so a row may use
+ * playwright's own engines (`:has-text("Afternoon break")`) to name ONE of
+ * several same-class elements -- which is exactly the agenda case: three
+ * `.chq-agenda-break-band`s on the day, and the figure is about one. */
+const FOCUS_ATTR = "data-chq-docs-focus";
+
+/**
+ * Injects the focus treatment for a row's `highlight` (DEVIATIONS.md 4a,
+ * USER RULING 2026-08-17): a `var(--chq-brand)` outline plus a soft glow on
+ * the named element(s), and -- when `dim` is set -- a fade on everything
+ * else.
+ *
+ * LAYOUT MUST NOT MOVE. `outline` and `box-shadow` both paint outside the
+ * border box and are ignored by layout, and the dim is plain `opacity` on
+ * elements that keep their own position -- nothing here sets `position`,
+ * `z-index`, `margin` or `padding`, so the shot is the same pixels the app
+ * really renders, with an edge drawn on them.
+ *
+ * FAILS LOUDLY when a selector matches nothing: a highlight that quietly
+ * matched zero elements would ship exactly the indistinguishable figure this
+ * whole mechanism exists to fix.
+ */
+async function applyHighlight(page: Page, entry: DocsShotEntry, highlight: DocsShotHighlight): Promise<void> {
+  for (const selector of highlight.selectors) {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+    if (count === 0) {
+      throw new Error(
+        `docs-shots: shot "${entry.id}" highlight selector "${selector}" matched no element after prep ` +
+          `-- the figure would have shipped with no focus at all`,
+      );
+    }
+    for (let i = 0; i < count; i++) {
+      await locator.nth(i).evaluate((el, attr) => el.setAttribute(attr, ""), FOCUS_ATTR);
+    }
+  }
+
+  await page.addStyleTag({
+    content: `[${FOCUS_ATTR}] {
+  outline: 3px solid var(--chq-brand, ${FOCUS_BRAND}) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 7px rgba(78, 92, 49, 0.14), 0 0 30px 12px rgba(78, 92, 49, 0.20) !important;
+  border-radius: 3px !important;
+}`,
+  });
+
+  if (highlight.dim === true) {
+    await page.evaluate(
+      ({ attr, opacity }) => {
+        const targets = Array.from(document.querySelectorAll(`[${attr}]`));
+        // Every ancestor of every target, so the spotlight walks down the
+        // tree instead of fading the subject's own container out from
+        // under it.
+        const spine = new Set<Element>();
+        for (const target of targets) {
+          for (let node: Element | null = target; node !== null; node = node.parentElement) spine.add(node);
+        }
+        for (const node of spine) {
+          // Stop at the subject itself: its own descendants stay lit.
+          if (targets.some((target) => target === node || target.contains(node))) continue;
+          for (const child of Array.from(node.children)) {
+            if (spine.has(child)) continue;
+            (child as HTMLElement).style.opacity = String(opacity);
+          }
+        }
+      },
+      { attr: FOCUS_ATTR, opacity: DIM_OPACITY },
+    );
+  }
+}
+
+/**
+ * Resolves a row's `clip` to a screenshot rect -- a full-WIDTH band around
+ * the named element, never a box crop (see DocsShotClip). The 1600 width is
+ * kept verbatim so the doc set stays comparable; only the top and bottom
+ * move.
+ *
+ * Coordinates come from `getBoundingClientRect()` plus the document's own
+ * scroll offset. The admin shell pins `<body>` to the viewport and scrolls
+ * inside `.chq-main`, so the document never scrolls and a viewport-relative
+ * rect IS the page-relative rect -- and for a `"fullPage"` row
+ * growViewportToFit has already removed the inner scroller's overflow before
+ * this runs, so the whole element is laid out inside the frame.
+ */
+async function clipBandFor(
+  page: Page,
+  entry: DocsShotEntry,
+  clip: DocsShotClip,
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  const locator = page.locator(clip.selector);
+  if ((await locator.count()) === 0) {
+    throw new Error(`docs-shots: shot "${entry.id}" clip selector "${clip.selector}" matched no element after prep`);
+  }
+  // .first() rather than a whole-selector union: a clip is one band around
+  // ONE element, and a selector that matched three (three break bands on a
+  // day) must name which one it means -- playwright's `:has-text()` is
+  // available here precisely so it can.
+  const measured = await locator.first().evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    return {
+      top: rect.top + window.scrollY,
+      bottom: rect.bottom + window.scrollY,
+      pageHeight: Math.max(document.documentElement.scrollHeight, window.innerHeight),
+    };
+  });
+  const top = Math.max(0, Math.floor(measured.top - clip.padding));
+  const bottom = Math.min(measured.pageHeight, Math.ceil(measured.bottom + clip.padding));
+  const height = bottom - top;
+  if (height < 1) {
+    throw new Error(
+      `docs-shots: shot "${entry.id}" clip on "${clip.selector}" resolved to a ${height}px band ` +
+        `-- the element is not laid out (display:none, or collapsed)`,
+    );
+  }
+  return { x: 0, y: top, width: DOCS_SHOT_VIEWPORT.width, height };
+}
+
 async function shootOne(context: BrowserContext, baseUrl: string, entry: DocsShotEntry): Promise<string> {
   const page = await context.newPage();
   await page.setViewportSize(DOCS_SHOT_VIEWPORT);
@@ -293,12 +436,15 @@ async function shootOne(context: BrowserContext, baseUrl: string, entry: DocsSho
   // the whole screen instead of clipping it at 900px, and "frame" keeps the
   // literal 1600x900 viewport for the fixed overlays that need it. See
   // docs/design/DEVIATIONS.md (2026-08-16).
-  if ((entry.capture ?? "fullPage") === "fullPage") {
-    await growViewportToFit(page);
-    await page.screenshot({ path: outPath, fullPage: true });
-  } else {
-    await page.screenshot({ path: outPath, fullPage: false });
-  }
+  const fullPage = (entry.capture ?? "fullPage") === "fullPage";
+  if (fullPage) await growViewportToFit(page);
+  // Focus treatment last, so `dim`'s opacity and the outline are measured
+  // and painted against the frame that is actually about to be shot. Both
+  // are layout-neutral (see applyHighlight), so growing the viewport first
+  // and highlighting second cannot disagree about where anything sits.
+  if (entry.highlight) await applyHighlight(page, entry, entry.highlight);
+  const clip = entry.clip ? await clipBandFor(page, entry, entry.clip) : undefined;
+  await page.screenshot({ path: outPath, fullPage, ...(clip ? { clip } : {}) });
   await page.close();
   return outPath;
 }
@@ -343,7 +489,11 @@ async function main(): Promise<void> {
       }
       const outPath = await shootOne(context, url, entry);
       writtenIds.add(entry.id);
-      const how = `${entry.capture ?? "fullPage"}${entry.prep ? `, ${entry.prep.length} prep steps` : ""}`;
+      const how =
+        `${entry.capture ?? "fullPage"}` +
+        `${entry.prep ? `, ${entry.prep.length} prep steps` : ""}` +
+        `${entry.clip ? `, clipped to a band around ${entry.clip.selector}` : ""}` +
+        `${entry.highlight ? `, highlighting ${entry.highlight.selectors.join(" + ")}${entry.highlight.dim === true ? " (dimmed)" : ""}` : ""}`;
       console.log(`SHOT ${entry.id} -> ${outPath} (${entry.route}; ${how}) -- ${captionForShot(entry.id)}`);
     }
 

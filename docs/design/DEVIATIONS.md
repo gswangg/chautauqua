@@ -76,7 +76,7 @@ survives contact with state:
   src/routes/docs-content/technical-names.ts). Bans that stand: should/might
   ambiguity, metaphors, synonym wobble on domain terms.
 
-## 4a. Docs screenshots: tall frames and prepared states (USER RULING 2026-08-16)
+## 4a. Docs screenshots: tall frames, prepared states, and focus (USER RULINGS 2026-08-16 / 2026-08-17)
 
 DESIGN-RULINGS.md:308-316 rule 1/3 said every docs figure is "exactly
 1600 x 900", "full frames, not crops". The user OVERRODE that on release
@@ -99,12 +99,44 @@ What changed in `scripts/docs-shots.ts` / `scripts/docs-shots-lib.ts`:
   row, a compose result). The interactions are performed in the real app, by
   the same personas, against the same seed.
 
-Unchanged: seeded data only (DevFlow Conf 2027), no cropping, no drawn
-annotation, no image post-processing, and the shoot is still a script that is
-re-run every release. Mutating prep flows (publish, send, recuse, add a
-break) are legal because the shoot runs against a dev server that is reseeded
-afterwards; the CSV-import flow deliberately STOPS at the dry-run step so it
-writes nothing at all.
+### Focus: clips and highlights on same-screen figures (USER RULING 2026-08-17)
+
+The user reviewed the re-shot set and filed a second defect against the same
+surface: *"the agenda screenshots are still not distinct. if we have to use
+the same screens, we should at least highlight what the focus is in each
+context."* Three figures were tall captures of the same `/admin/agenda`
+screen, and at the docs page's ~820px rendered width the things that made
+them different — a 20-minute break strip, a publish report — shrank to a few
+pixels. Rule 5's "no drawn annotation" and rule 3's "full frames, not crops"
+are OVERRIDDEN for this case, narrowly:
+
+- **`clip: { selector, padding }`** — the frame becomes a **vertical band**
+  around one element: still the full declared 1600 width (that is the real
+  invariant; a doc set at mixed widths is not comparable), with `padding` px
+  of page kept above and below. Generous context is required, not optional —
+  a band with nothing around its subject is the crop the rule forbade.
+- **`highlight: { selectors, dim? }`** — a `var(--chq-brand)` outline plus a
+  soft glow on the caption's subject, optionally fading everything else to
+  0.34. **No arrows, no callouts, no added text**: only the subject's own
+  edge is drawn. The treatment is injected by `scripts/docs-shots.ts` with
+  `page.addStyleTag` at shutter time and never exists in app code, and it is
+  layout-neutral by construction (`outline` + `box-shadow` + `opacity`), so
+  the figure is the pixels the app really renders with an edge drawn on them.
+
+Applied where a figure's subject was not obvious at ~820px, or where two
+figures read as the same screen twice: the three agenda figures (tray /
+break band / publish report), the embed builder inside a 3271px Settings
+page, the CFP field dialog, the compose send report, and the recused reviewer
+queue. The `/admin/overview` twin (`getting-started-start-here-01` and
+`running-the-software-running-the-software-01`) stays deliberately full and
+untreated — both captions genuinely describe the whole dashboard — and
+`test/docs-shots-manifest.test.ts` pins that.
+
+Unchanged: seeded data only (DevFlow Conf 2027), no image post-processing, and
+the shoot is still a script that is re-run every release. Mutating prep flows
+(publish, send, recuse, add a break) are legal because the shoot runs against
+a dev server that is reseeded afterwards; the CSV-import flow deliberately
+STOPS at the dry-run step so it writes nothing at all.
 
 ## 5. Pending adjudication (not yet blessed — sweep should verdict)
 

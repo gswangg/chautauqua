@@ -100,6 +100,63 @@ export type DocsShotStep =
  */
 export type DocsShotCapture = "fullPage" | "frame";
 
+/**
+ * FOCUS: narrow a shot to the BAND of the page its caption is about.
+ *
+ * USER RULING 2026-08-17 (docs/design/DEVIATIONS.md section 4a): three
+ * agenda figures were tall captures of the same /admin/agenda screen, and at
+ * the docs page's ~820px rendered width the thing that made each one
+ * different (a break strip, a publish report) shrank to nothing. *"the
+ * agenda screenshots are still not distinct. if we have to use the same
+ * screens, we should at least highlight what the focus is in each context."*
+ *
+ * A clip is deliberately a **vertical band, never a box crop**: it always
+ * keeps the FULL declared 1600 width (DESIGN-RULINGS.md rule 1's real
+ * invariant -- "a doc set at mixed widths is not comparable") and only moves
+ * where the frame starts and stops vertically. `padding` is the context in
+ * CSS px kept above and below the element's own box, and should be generous
+ * enough that the reader can still tell WHICH screen they are looking at --
+ * a band with no surrounding rows is a crop by another name.
+ */
+export interface DocsShotClip {
+  /** CSS selector for the element the band is centred on. Must match at
+   * least one element after `prep` has run, or the shoot ABORTS. */
+  readonly selector: string;
+  /** CSS px of page kept above and below the element's own box. */
+  readonly padding: number;
+}
+
+/**
+ * FOCUS: outline the element(s) the caption is about, so a figure that
+ * shares a screen with another figure still says at a glance what it is
+ * about (same USER RULING 2026-08-17 as DocsShotClip).
+ *
+ * Injected by scripts/docs-shots.ts with `page.addStyleTag` at shutter time
+ * and NEVER present in app code -- the app has no "docs highlight" state,
+ * and a screenshot harness must not be able to teach it one. The treatment
+ * is a `var(--chq-brand)` outline plus a soft glow, both of which draw
+ * OUTSIDE the element's box (outline + box-shadow), so nothing on the page
+ * moves by a pixel between the un-highlighted layout and the shot.
+ *
+ * This is the one narrow exception to DESIGN-RULINGS.md rule 5's "no drawn
+ * annotation": no arrows, no numbered callouts, no text is added -- only the
+ * subject's own edge is drawn, and only where two figures would otherwise
+ * read as the same screen twice.
+ */
+export interface DocsShotHighlight {
+  /** CSS selectors for the subject. Every listed selector must match at
+   * least one element after `prep` has run, or the shoot ABORTS -- a
+   * highlight that silently matched nothing would ship the exact
+   * indistinguishable figure this field exists to fix. */
+  readonly selectors: readonly string[];
+  /** Fade everything that is not the subject (and not an ancestor of it) to
+   * a low opacity, so the outlined element reads as the only lit thing on a
+   * busy screen. Opacity alone -- no overlay element, no z-index promotion
+   * -- so a `position: fixed` subject like `.chq-toast` keeps its own
+   * placement. Absent means "no dim". */
+  readonly dim?: boolean;
+}
+
 export interface DocsShotEntry {
   readonly id: string;
   readonly route: string;
@@ -109,6 +166,10 @@ export interface DocsShotEntry {
   readonly prep?: readonly DocsShotStep[];
   /** Absent means `"fullPage"`. */
   readonly capture?: DocsShotCapture;
+  /** Absent means "the whole frame" -- see DocsShotClip. */
+  readonly clip?: DocsShotClip;
+  /** Absent means "no focus treatment" -- see DocsShotHighlight. */
+  readonly highlight?: DocsShotHighlight;
 }
 
 /** Generic shot-id shape: one or more lower-kebab segments, then a
@@ -161,9 +222,30 @@ export const DOCS_SHOTS: readonly DocsShotEntry[] = [
     group: "getting-started",
   },
   {
+    // Caption: "A field's settings, including its visibility rule, open in a
+    // dialog above the question list." The cold-load form builder shows no
+    // dialog at all, so the figure's own subject was missing from it --
+    // the same defect class as the byte-identical twins, one step worse.
+    // Accessibility needs is the shortest custom field on the seeded form
+    // (short text, no options list), so its dialog fits the frame with the
+    // Conditional visibility fieldset -- the "visibility rule" the caption
+    // names -- fully in view.
     id: "running-an-event-call-for-papers-and-submissions-01",
     route: "/admin/submissions/forms",
     group: "running-an-event",
+    prep: [
+      { kind: "click", selector: '.chq-forms-field-row:has-text("Accessibility needs") >> button:has-text("Edit")' },
+      { kind: "waitFor", selector: ".chq-forms-rule-builder" },
+    ],
+    // NOT `capture: "frame"`, unlike the other dialog figures: the card is
+    // `max-height: calc(100vh - 80px)` (app/src/styles.css:945) and its body
+    // is its own scroller, so in a literal 900px frame the Conditional
+    // visibility fieldset -- the caption's actual subject -- is cut off by
+    // the card's own fold. growViewportToFit counts that inner overflow like
+    // any other, so a fullPage shot grows the viewport until the dialog
+    // fits, and the page behind it is only ~300px taller than the frame
+    // anyway, so nothing is stranded.
+    highlight: { selectors: [".chq-forms-rule-builder"] },
   },
   {
     id: "running-an-event-call-for-papers-and-submissions-02",
@@ -200,9 +282,17 @@ export const DOCS_SHOTS: readonly DocsShotEntry[] = [
     group: "running-an-event",
   },
   {
+    // Caption: "The day grid: rooms across the top, sessions in their time
+    // slots, and the tray of sessions not yet scheduled." The ESTABLISHING
+    // shot of the three /admin/agenda figures, so it stays whole -- what it
+    // adds is a lit tray, the one part of the screen the other two figures
+    // are not about (USER RULING 2026-08-17, DEVIATIONS.md 4a).
     id: "running-an-event-agenda-and-publishing-01",
     route: "/admin/agenda",
     group: "running-an-event",
+    // Outline only, no dim: the caption's first two-thirds ARE the grid, so
+    // fading it out would contradict the figure it is focusing.
+    highlight: { selectors: [".chq-unscheduled-tray"] },
   },
   {
     // Caption: "A new break: one strip that closes the same time slot in
@@ -223,6 +313,18 @@ export const DOCS_SHOTS: readonly DocsShotEntry[] = [
       { kind: "clickRole", role: "button", name: "Done" },
       { kind: "waitFor", selector: "text=Afternoon break" },
     ],
+    // USER RULING 2026-08-17: at the docs page's ~820px rendered width the
+    // added strip was a 3px line inside a 1251px-tall page, so this figure
+    // and the day-grid figure above it read as the same screen twice. The
+    // band is 1600 wide and ~600 tall around the strip -- the surrounding
+    // slots and the sessions either side of it are the "generous context"
+    // that keeps it recognisably the same grid, zoomed.
+    // `:has-text` (a playwright engine, resolved through a locator) is what
+    // names THIS break: the seeded day already carries a coffee break and a
+    // lunch band, and a bare `.chq-agenda-break-band` clipped to the first
+    // of the three -- the wrong strip, and every strip outlined.
+    clip: { selector: '.chq-agenda-break-band:has-text("Afternoon break")', padding: 300 },
+    highlight: { selectors: ['.chq-agenda-break-band:has-text("Afternoon break")'] },
   },
   {
     // Caption: "The publish report: the total sessions on the grid, the
@@ -239,6 +341,12 @@ export const DOCS_SHOTS: readonly DocsShotEntry[] = [
     // .chq-toast is position:fixed (app/src/styles.css) -- in a tall frame
     // it sits a screen and a half below the panel it belongs with.
     capture: "frame",
+    // The report is TWO pieces at opposite ends of the frame (the held-back
+    // panel above the grid, the count toast pinned near the bottom), and
+    // between them sits the same day grid the two figures above already
+    // show. Lighting both and dimming the grid is what makes this figure
+    // read as "the publish report" rather than "the agenda, again".
+    highlight: { selectors: [".chq-agenda-held-back", ".chq-toast"], dim: true },
   },
   {
     id: "running-an-event-embeds-and-public-pages-01",
@@ -246,9 +354,22 @@ export const DOCS_SHOTS: readonly DocsShotEntry[] = [
     group: "running-an-event",
   },
   {
+    // Caption: "The embed builder: the surface, its options, and the snippet
+    // it produces, with one saved row per embed." The builder is disclosed
+    // by Public pages -> New embed, and even then it is one panel a third of
+    // the way down a 3271px-tall Settings page -- at ~820px rendered the
+    // subject was a few unreadable lines. Open it, then band the frame to
+    // the builder with enough padding above to keep the saved-embed rows the
+    // caption also names.
     id: "running-an-event-embeds-and-public-pages-02",
     route: "/admin/settings",
     group: "running-an-event",
+    prep: [
+      { kind: "clickRole", role: "button", name: "New embed" },
+      { kind: "waitFor", selector: ".chq-embeds-output-block" },
+    ],
+    clip: { selector: ".chq-embeds-panel", padding: 260 },
+    highlight: { selectors: [".chq-embeds-panel"] },
   },
   {
     // Caption: "A possible-duplicate row in the import wizard: Import as
@@ -323,6 +444,12 @@ export const DOCS_SHOTS: readonly DocsShotEntry[] = [
       { kind: "clickRole", role: "button", name: "Send 2 emails" },
       { kind: "waitFor", selector: ".chq-comms-send-report-skipped" },
     ],
+    // The caption's whole point is the SEPARATION -- sent, skipped and
+    // remaining reported as three things, not folded into one number -- and
+    // the skipped block is what proves it. Below the report sits the Recent
+    // sends history, which at ~820px reads as more of the same list; lighting
+    // the report's head and its skipped block says which half is the figure.
+    highlight: { selectors: [".chq-comms-send-report-headline", ".chq-comms-send-report-skipped"] },
   },
   {
     id: "for-reviewers-reviewing-start-to-finish-01",
@@ -363,6 +490,13 @@ export const DOCS_SHOTS: readonly DocsShotEntry[] = [
       { kind: "click", selector: ".chq-review-queue-footer-showall" },
       { kind: "waitFor", selector: ".chq-review-queue-row-recused" },
     ],
+    // Both reviewer figures are the queue, and this one's difference -- two
+    // RECUSED rows -- sorts to the BOTTOM of an 11-row list, so at ~820px
+    // the pair read as the same screen twice. Lighting the recused rows is
+    // what tells them apart at a glance; the progress bar above them stays
+    // unlit but in frame, since the caption's "your assigned and progress
+    // numbers adjust to match" is read off it.
+    highlight: { selectors: [".chq-review-queue-row-recused"] },
   },
   {
     id: "for-speakers-your-speaker-portal-01",
