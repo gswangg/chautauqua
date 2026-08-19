@@ -14,6 +14,31 @@ block; the earlier w5-a block's rules were moved into the w8-h block at the
 sheet's true end, no selector/declaration/value changed) and retired the
 contradictory local pin at `test/portal-phone-frames.test.ts:220-223`.
 
+Task v12m-w3-k (the shell lane, wave 21) fixed `app/src/styles.css` (5
+blocks, originally at lines 394, 1189, 2216, 2384, 2530 -> 1 terminal
+block): the bodies of the four earlier blocks were forward-merged into the
+sheet's last top-level construct, in ascending source order, above its
+existing body; no selector, property or value changed. The block's own
+header comment (`Do not reorder or delete the block at :381 ...`) predated
+DEC-385 wave-100/102's one-terminal-block contract and has been rewritten
+to say so explicitly rather than left as a stale prohibition.
+
+Cascade check (`app/src/phone-cascade-order.scan.test.ts`, DEC-385 wave
+103): styles.css carried 12 of the tree's shadowed (selector, property)
+pairs before this fix (all twelve named by
+`app/src/phone-cascade-terminal.test.ts`'s `SHADOWED_PAIRS`, already
+resolved by the pre-existing wave-7 terminal-block restatement, which is
+now the tail of the merged block). Measured before/after on this task:
+tree-wide shadow count **17 -> 5** (styles.css's own contribution **12 ->
+0**); the five remaining shadows are in other sheets, out of this task's
+scope. No newly-winning phone declaration in the merged block contradicts
+any shell phone frame this sheet cites (`docs/design/Chautauqua
+Speakers.dc.html:261-279` for the phone page-scaffold primitives,
+`Chautauqua Settings.dc.html:299` / `Chautauqua Submissions.dc.html:173-180`
+for the tab bar) — every merged declaration is verbatim from its original
+block, and those citations were already correct before the merge. No
+declaration was deleted.
+
 Fixing every other sheet below is explicitly OUT OF SCOPE for w1-d — that
 task's brief said not to touch them here. This is the honest replacement for
 two hand-written pins that used to disagree about this same invariant: the
@@ -23,8 +48,12 @@ and what the scan measured on this branch. **This list is a snapshot** — the
 scan itself, not this file, is the ground truth; re-run it before sizing a
 follow-up rather than trusting this table.
 
-20 sheets are non-conformant on this branch (more than three — flagged per
-task w1-d's own instruction to say so plainly if that threshold is crossed).
+19 sheets were non-conformant on this branch as of v12m-w3-j; v12m-w3-k's
+fix to `app/src/styles.css` (below) brings that to 18 (more than three —
+flagged per task w1-d's own instruction to say so plainly if that
+threshold is crossed). **This list is a snapshot, re-run the scan** —
+`test/phone-terminal-block.scan.test.ts` may already read a different
+count if another lane's fix landed since.
 
 | Sheet | Cluster | Measured |
 |---|---|---|
@@ -41,7 +70,6 @@ task w1-d's own instruction to say so plainly if that threshold is crossed).
 | `app/src/pages/speakers/task-view.css` | speakers (TaskView) | 2 blocks (lines 253, 280) |
 | `app/src/pages/submissions/detail.css` | submissions | 3 blocks (lines 844, 1097, 1171) |
 | `app/src/pages/submissions/submissions.css` | submissions | 4 blocks (lines 477, 739, 834, 889) |
-| `app/src/styles.css` | shell / global | 5 blocks (lines 381, 1127, 2048, 2214, 2360) |
 | `src/routes/auth.css.ts` | auth (SSR) | 2 blocks (lines 281, 456) |
 | `src/routes/public/css/agenda.css.ts` | public agenda (SSR) | 2 blocks (lines 373, 443) |
 | `src/routes/public/css/cards.css.ts` | public cards (SSR) | 2 blocks (lines 218, 244) |
