@@ -151,3 +151,155 @@
   margin: 0;
   white-space: nowrap;
 }
+
+/* DEC-939 (wave-85 amendment, task w3-g): the scorecard's h1 used to carry
+   its 27px size as an inline style, which no max-width media query could
+   ever have overridden (DEC-385 is CSS-only) -- moved onto this class so
+   the phone rule below is the query that actually wins. Desktop value is
+   unchanged (27px, same as the retired inline style). */
+.chq-review-scorecard-title {
+  font-size: 27px;
+}
+
+/* DEC-939 (wave-85 amendment, task w3-g): the local phone counter is
+   display:none at top level -- the desktop counter stays the existing
+   #chq-header-slot portal, so this element must never render at desktop
+   widths (see phone-block-visibility.test.ts). Switched back on inside
+   the phone media query below. */
+.chq-review-scorecard-phone-progress {
+  display: none;
+}
+
+/* v12 phone drill band (DEC-939 wave-85 amendment, task w3-g). Frame
+   citations: docs/design/Chautauqua Review.dc.html:934-1138 ("Scorecard ·
+   a criterion unscored") for the band anatomy + bare title, :280-350
+   ("Reviewer scorecard") for the added counter/eyebrow/meta row. DEC-385
+   single-direction: this whole block is additive under one max-width
+   query; nothing here is read above 700px. */
+@media (max-width: 700px) {
+  /* :936 `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0;
+     display:flex; flex-direction:column; gap:7px` -- sticky so the band
+     stays reachable while the body scrolls beneath it. margin-inline:-16px
+     cancels .chq-main's own 16px phone gutter so the band runs full-bleed;
+     its own 16px padding restores the frame's content inset. */
+  .chq-review-scorecard-head-band {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    margin-inline: -16px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--chq-ink);
+    background: var(--chq-paper);
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .chq-review-scorecard-head-band .chq-review-scorecard-head {
+    padding-bottom: 0;
+    border-bottom: none;
+    gap: 4px;
+  }
+
+  /* :283 `font-size:13px; font-weight:700; min-height:44px; display:flex;
+     align-items:center` on the back link; :284 `margin-left:auto;
+     font-size:12px; font-weight:600` on the counter beside it. */
+  .chq-review-scorecard-back-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .chq-review-scorecard-back-row .chq-review-back {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .chq-review-scorecard-phone-progress {
+    display: inline-flex;
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--chq-muted);
+  }
+
+  /* :288 `font-family:'Familjen Grotesk'...font-size:20px; font-weight:600;
+     letter-spacing:-0.025em; line-height:1.25` -- the drill-in register
+     this frame draws (distinct from the generic 25px drill-in token; the
+     frame's own literal geometry wins per DEC-650). */
+  .chq-review-scorecard-head-band .chq-review-scorecard-title {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+  }
+
+  .chq-review-scorecard-head-band .chq-review-scorecard-meta {
+    font-size: 12px;
+  }
+
+  /* :941 the unscored banner -- ink-outlined card, 4px left border, a
+     persistent state disclosure rather than a toast. */
+  .chq-review-scorecard-unscored-banner {
+    border: 1px solid var(--chq-ink);
+    border-left: 4px solid var(--chq-ink);
+    border-radius: 5px;
+    background: var(--chq-surface-sunk);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 14px;
+  }
+
+  .chq-review-scorecard-unscored-heading {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .chq-review-scorecard-unscored-body {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--chq-ink-2);
+  }
+
+  /* :941 (:952/:956) the rating scale's phone geometry is a PAIRED variant
+     of the existing radiogroup (DEC-212 wave-81's validated-parser
+     control, ratingScaleValues(plan.scale)) -- never a second control.
+     review.css already raises the segment height to the 44px floor at
+     this same breakpoint; this file only tunes the two remaining frame
+     deltas (radius, type size) it does not own. */
+  .chq-review-rating-btn {
+    border-radius: var(--chq-r-ctl-phone);
+    font-size: 16px;
+  }
+
+  /* :974-975 `Submit and next` (46px, brand) + `Save draft` (46px,
+     bordered), hoisted past .chq-review-scorecard-rail to the end of
+     .chq-page so this sticky band spans the full page width. Same
+     full-bleed cancellation as the head band above. */
+  .chq-review-scorecard-dock {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin-inline: -16px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--chq-ink);
+    background: var(--chq-surface-sunk);
+    display: flex;
+    gap: 8px;
+  }
+
+  .chq-review-scorecard-dock .chq-btn {
+    min-height: 46px;
+  }
+
+  .chq-review-scorecard-dock .chq-btn-primary {
+    flex: 1;
+  }
+}

@@ -1,6 +1,11 @@
 // Pure scorecard helpers: completeness check + keyboard-fast input mapping
 // (number keys 1-9 set the focused rating; Enter submits and advances).
 import type { EvaluationCriterion, EvaluationScale, EvaluationScores } from './types';
+// DEC-939 (wave-85 amendment, task w3-g): the phone unscored banner's copy
+// reuses the ONE count-phrase vocabulary (src/domain/count-copy.ts) rather
+// than hand-typing "One"/"three" -- the same module app/src/lib/plural.ts
+// already re-exports for every other SPA count phrase.
+import { capitalizeFirst, plural, spellCount } from '../../../../src/domain/count-copy';
 
 /** DEC-939 (wave-3 amendment): ONE predicate for scorecard completeness --
  * the validator, the incomplete notice, and the rail's per-criterion
@@ -48,6 +53,31 @@ export function ratingScaleValues(scale: EvaluationScale): number[] {
 export function plainAverage(values: number[]): number {
   if (values.length === 0) throw new Error('plainAverage requires at least one value');
   return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+/** DEC-939 (wave-85 amendment, task w3-g): the phone scorecard's unscored
+ * banner (docs/design/Chautauqua Review.dc.html:934-1138, "a criterion
+ * unscored") is a LIVE, always-on card -- unlike the desktop rail's
+ * `showIncompleteNotice`, it is never gated behind an attempted submit.
+ * Reads the SAME incompleteCriteria predicate every other completeness
+ * surface on this page reads, so it can never disagree with the rail's
+ * per-criterion markers or the submit/save validators. Returns null once
+ * every criterion is scored -- the caller renders nothing then, never an
+ * empty card. The denominator is the criterion COUNT (matching the frame's
+ * "until all three are scored" -- every criterion kind, Choice included,
+ * since a Choice pick is still required even though it is not averaged),
+ * not the rating-only subset computeWeightedScore blends. */
+export function unscoredBannerCopy(
+  criteria: EvaluationCriterion[],
+  scores: EvaluationScores,
+): { heading: string; body: string } | null {
+  const incomplete = incompleteCriteria(criteria, scores);
+  if (incomplete.length === 0) return null;
+  const n = incomplete.length;
+  return {
+    heading: `${capitalizeFirst(spellCount(n))} ${plural(n, 'criterion', 'criteria')} still ${plural(n, 'needs', 'need')} a score`,
+    body: `The weighted total cannot be worked out until all ${spellCount(criteria.length)} are scored.`,
+  };
 }
 
 export type ScorecardKeyAction =
