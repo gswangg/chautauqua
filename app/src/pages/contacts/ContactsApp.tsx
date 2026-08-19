@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
+import { useCachedList } from '../../lib/useCachedRead';
 import { loadEventsOnce, useCurrentEvent } from '../../lib/useCurrentEvent';
 import { countOf } from '../../lib/plural';
 import { BulkEmailModal } from './BulkEmailModal';
@@ -93,15 +94,12 @@ export function ContactsApp() {
   }
 
   const [stats, setStats] = useState<ContactStats | null>(null);
-  const [items, setItems] = useState<ContactListItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
   const [rules, setRules] = useState<SegmentRule[]>([]);
   const [segmentId, setSegmentId] = useState('');
   const [segments, setSegments] = useState<Segment[]>([]);
   const [selection, setSelection] = useState(EMPTY_SELECTION);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [duplicatePreview, setDuplicatePreview] = useState<DuplicateGroup[]>([]);
   // Amendment (wave 41): the ONE /contacts/duplicates request this page
@@ -198,8 +196,26 @@ export function ContactsApp() {
   const [showBulkEmail, setShowBulkEmail] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // D21 (DEC_013/DEC_851): the directory list's own path, memoised over
+  // exactly the facets that change it -- rebuilding it on every render
+  // would defeat useCachedList's [path, mutationVersion] effect key.
+  const contactsPath = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('perPage', String(PER_PAGE));
+    if (q.trim() !== '') params.set('q', q.trim());
+    if (segmentId !== '') params.set('segmentId', segmentId);
+    const activeRuleSet = activeRules(rules);
+    if (activeRuleSet.length > 0) params.set('rules', JSON.stringify(activeRuleSet));
+    return `/contacts?${params.toString()}`;
+  }, [page, q, rules, segmentId]);
+  const directory = useCachedList<ContactListItem>(contactsPath, 'Failed to load contacts');
+  const items = directory.data?.items ?? [];
+  const total = directory.data?.total ?? 0;
+
   function reload() {
     setRefreshKey((k) => k + 1);
+    void directory.refetch();
   }
 
   useEffect(() => {
@@ -281,25 +297,6 @@ export function ContactsApp() {
       setError(err instanceof ApiError ? err.message : 'Failed to dismiss pair');
     });
   }
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    params.set('perPage', String(PER_PAGE));
-    if (q.trim() !== '') params.set('q', q.trim());
-    if (segmentId !== '') params.set('segmentId', segmentId);
-    const activeRuleSet = activeRules(rules);
-    if (activeRuleSet.length > 0) params.set('rules', JSON.stringify(activeRuleSet));
-    apiList<ContactListItem>(`/contacts?${params.toString()}`)
-      .then((res) => {
-        setItems(res.items);
-        setTotal(res.total);
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contacts'))
-      .finally(() => setLoading(false));
-  }, [page, q, rules, segmentId, refreshKey]);
 
   const selectedIds = [...selection.selectedIds];
 
@@ -399,7 +396,11 @@ export function ContactsApp() {
         </div>
       </div>
 
-      {error && <div className="chq-error" role="alert">{error}</div>}
+      {(error || directory.error) && (
+        <div className="chq-error" role="alert">
+          {error ?? directory.error}
+        </div>
+      )}
 
       {/* DEC-710: tab chips carry counts; search + the segment control sit
           at the RIGHT end of this same row (margin-left:auto), replacing
@@ -493,7 +494,7 @@ export function ContactsApp() {
               page={page}
               perPage={PER_PAGE}
               selection={selection}
-              loading={loading}
+              loading={directory.loading}
               empty={computeContactsEmpty()}
               onChangePage={setPage}
               onSelectionChange={setSelection}

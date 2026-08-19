@@ -148,7 +148,8 @@ function findCatchHandlers(src: string): CatchHandler[] {
 // may call fetch() through, but a couple of call sites below still stub
 // fetch() directly in tests, not product code, so this list stays scoped to
 // the real client helpers).
-const API_CALL_RE = /\b(?:apiList|apiGet|apiPost|apiPut|apiPatch|apiDelete|apiPostBlob|apiUpload)\s*(?:<[^>]*>)?\(/g;
+const API_CALL_RE =
+  /\b(?:apiListCached|apiGetCached|apiList|apiGet|apiPost|apiPut|apiPatch|apiDelete|apiPostBlob|apiUpload)\s*(?:<[^>]*>)?\(/g;
 
 interface ApiCall {
   start: number;
@@ -386,6 +387,22 @@ describe('spa-fetch-swallow-honesty scan negative control (DEC-518 wave-43 amend
       'function useSomething(eventId) {',
       '  useEffect(() => {',
       "    apiList(`/events/${eventId}/mystery-endpoint`)",
+      '      .then((res) => setThing(res.items))',
+      '      .catch(() => undefined);',
+      '  }, [eventId]);',
+      '}',
+    ].join('\n');
+    const hits = findSpaFetchSwallowHits(src, 'app/src/pages/fixture.tsx');
+    expect(hits.length).toBe(1);
+    expect(hits[0]?.fetchContext).toContain('/mystery-endpoint');
+  });
+
+  it('VIOLATION: a swallowed apiListCached chain is reported (DEC_013 cached reads are still a fetch call)', () => {
+    const src = [
+      "import { apiListCached } from '../lib/api';",
+      'function useSomething(eventId) {',
+      '  useEffect(() => {',
+      "    apiListCached(`/events/${eventId}/mystery-endpoint`)",
       '      .then((res) => setThing(res.items))',
       '      .catch(() => undefined);',
       '  }, [eventId]);',
