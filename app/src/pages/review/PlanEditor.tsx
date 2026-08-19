@@ -1253,7 +1253,18 @@ export function PlanEditor() {
   }
 
   return (
-    <div className="chq-page chq-review-page chq-measure-table">
+    <div
+      className="chq-page chq-review-page chq-measure-table"
+      {...(isPhone ? { 'data-chq-phone-dock': true } : {})}
+    >
+      {/* w1-f (DEC-576, wave-98 amendment): .chq-review-editor-title-actions
+          becomes a docked phone footer (position:fixed; bottom:0;
+          border-top) inside review.css's max-width:700px block below, but
+          it is a single unconditionally-rendered div whose docking is
+          purely CSS-driven rather than a page-local dock class gated by
+          isPhone -- so this attribute is what tells the shell (styles.css's
+          `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` rule) to
+          suppress the tab bar underneath it, matching Scorecard.tsx. */}
       {/* DEC-989 amendment (wave 39): the plan editor is table class (1440) --
           its criteria table is scanned/compared, not composed like the two
           named 820 editors. The title row below is a bare flex block with
