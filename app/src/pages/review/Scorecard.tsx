@@ -478,6 +478,7 @@ export function Scorecard() {
       style={{ '--chq-review-scale-steps': ratingScaleStepCount } as React.CSSProperties}
       onKeyDown={handleKeyDown}
       tabIndex={-1}
+      {...(isPhone ? { 'data-chq-phone-dock': true } : {})}
     >
       {/* DEC-939 (wave-65 amendment, frame 03--01): two work surfaces --
           the reading column (submission context) on the left, the scoring
