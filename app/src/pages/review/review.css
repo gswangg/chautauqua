@@ -2024,6 +2024,26 @@
   display: none;
 }
 
+/* v12m-w5-k, DEC-919 wave-109 amendment: PlanEditor.tsx mounts
+   `<span className="chq-review-criteria-count-phone" aria-hidden="true">`
+   (:1565) and `<span className="chq-review-reviewers-count-phone"
+   aria-hidden="true">` (:2170) unconditionally, but each class's ONLY rule
+   used to live inside this file's terminal `@media (max-width: 700px)`
+   block, so on desktop the bare numeral painted unstyled into a
+   `space-between` section head and shoved the eyebrow to mid-page. A
+   top-level `display:none` declared HERE, before the terminal block, wins
+   the cascade at every width via source order (the same contract
+   phone-cascade-order.scan already enforces): hidden by default, and the
+   terminal block's `display: inline-flex` for the same selector still wins
+   at <=700px because it comes later in source order. */
+.chq-review-criteria-count-phone {
+  display: none;
+}
+
+.chq-review-reviewers-count-phone {
+  display: none;
+}
+
 /* v12m-w7-b, DEC-385 wave-7 amendment: source order, not specificity, decides
    between a phone `@media` block and a later top-level rule on the same
    selector -- a phone override placed BEFORE a wider top-level re-declaration

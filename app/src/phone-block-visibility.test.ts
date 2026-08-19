@@ -20,6 +20,13 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { DEC_919 } from '../../src/decisions';
+
+void DEC_919; // wave-109 amendment: closes this scan's "no top-level rule at all" escape
+// hatch for phone-named classes that are mounted UNCONDITIONALLY in markup (the premise
+// that such a class "only exists inside a phone-only container that is itself hidden"
+// is false for a bare node in a visible parent -- PlanEditor.tsx:1565/:2170 were exactly
+// that bug).
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE;
@@ -232,4 +239,141 @@ describe('phone-block visibility invariant (w6-h)', () => {
       }
     });
   }
+});
+
+// --- DEC-919 wave-109 amendment: markup-mounted phone classes must be ---
+// --- top-level display:none, not merely "no top-level rule at all" -----
+//
+// The premise behind NO_PHONE_RULE_OK / the "no top-level rule at all"
+// branch above is that a phone-named class with no top-level rule only
+// ever exists inside a phone-only container that is itself hidden, so it
+// inherits the hidden state. That premise is false for a class mounted
+// UNCONDITIONALLY on a node in a visible parent (PlanEditor.tsx's two
+// count spans): with no top-level rule the browser paints the node with
+// whatever inline-level default it has. This section derives (readdirSync,
+// DEC-808 -- never a hand list) every phone-named class that appears in a
+// `className=` string literal in a non-test *.tsx under app/src/**, and
+// requires EVERY member of that set to carry a top-level display:none
+// somewhere in the CSS source population already loaded above (SOURCES).
+// Classes that never appear in markup keep the looser rule above
+// unchanged (e.g. classes only ever referenced via a compound/co-applied
+// selector, per NO_PHONE_RULE_OK).
+
+function walkTsx(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const p = join(dir, entry);
+    const st = statSync(p);
+    if (st.isDirectory()) out.push(...walkTsx(p));
+    else if (entry.endsWith('.tsx') && !entry.includes('.test.')) out.push(p);
+  }
+  return out;
+}
+
+const CLASSNAME_LITERAL_RE =
+  /className\s*=\s*"([^"]*)"|className\s*=\s*\{`([^`]*)`\}|className\s*=\s*'([^']*)'/g;
+
+/**
+ * Every phone-named class (selector text `.foo`) that appears in a
+ * `className=` string/template literal in a non-test *.tsx under `root`.
+ * Template-literal `${...}` interpolations are stripped before splitting
+ * on whitespace (mirrors app/src/phone-horizontal-overflow.scan.test.ts's
+ * `extractCssTsLiteral`) -- without this a JS identifier that merely
+ * CONTAINS "phone" inside an interpolated ternary (e.g. a `phoneStage`
+ * React state variable) leaks in as a false "class name".
+ */
+function markupPhoneClasses(root: string): Set<string> {
+  const classes = new Set<string>();
+  for (const file of walkTsx(root)) {
+    const text = readFileSync(file, 'utf-8');
+    let m: RegExpExecArray | null;
+    CLASSNAME_LITERAL_RE.lastIndex = 0;
+    while ((m = CLASSNAME_LITERAL_RE.exec(text))) {
+      const raw = (m[1] ?? m[2] ?? m[3] ?? '').replace(/\$\{[^}]*\}/g, ' ');
+      for (const token of raw.split(/\s+/)) {
+        if (token && /phone/.test(token)) classes.add(`.${token}`);
+      }
+    }
+  }
+  return classes;
+}
+
+const MARKUP_PHONE_CLASSES = markupPhoneClasses(APP_SRC);
+
+/** Whether `selector` has a top-level (non-@media) rule anywhere in the
+ * already-loaded CSS source population that declares `display: none`. */
+function hasTopLevelDisplayNone(selector: string): boolean {
+  for (const { css } of SOURCES) {
+    const withoutMedia = stripMedia(css);
+    const bodies = topLevelRuleBodies(withoutMedia, selector);
+    if (bodies.length === 0) continue;
+    if (/display:\s*none\s*(;|$)/.test(bodies.join('\n'))) return true;
+  }
+  return false;
+}
+
+const MARKUP_OFFENDERS = [...MARKUP_PHONE_CLASSES]
+  .filter((selector) => !hasTopLevelDisplayNone(selector))
+  .sort();
+
+// Measured on this branch's tree (v12m-w5-k) after fixing the two
+// PlanEditor spans that motivated this amendment: see field-guide/commit
+// message for the count. This ratchet may only fall; raising it back up to
+// accommodate a new unconditionally-mounted, unhidden phone class is not a
+// valid fix -- fix the class instead, or (if it is genuinely rendered at
+// both widths) exempt it via NOT_PHONE_ONLY above with a reason.
+export const MARKUP_PHONE_UNHIDDEN_CEILING = 71;
+
+describe('markup-mounted phone classes must be top-level display:none (DEC-919 wave-109 amendment)', () => {
+  it('found a sane population of phone-named classes in TSX markup (vacuous-population tripwire)', () => {
+    expect(MARKUP_PHONE_CLASSES.size).toBeGreaterThan(10);
+  });
+
+  it('the fixed regression is no longer in the offender list (.chq-review-criteria-count-phone)', () => {
+    expect(MARKUP_OFFENDERS).not.toContain('.chq-review-criteria-count-phone');
+  });
+
+  it('the fixed regression is no longer in the offender list (.chq-review-reviewers-count-phone)', () => {
+    expect(MARKUP_OFFENDERS).not.toContain('.chq-review-reviewers-count-phone');
+  });
+
+  // Both controls use a class name the tree does not contain anywhere
+  // (real SOURCES cannot be injected into, so the underlying mechanism --
+  // topLevelRuleBodies + the display:none check -- is exercised directly
+  // against synthetic CSS text, the same mechanism hasTopLevelDisplayNone
+  // runs per-file over SOURCES above).
+  it('a synthetic class WITH a top-level display:none is recognised as hidden (positive control)', () => {
+    const syntheticCss = '.chq-synthetic-phone-control-hidden { display: none; }';
+    const bodies = topLevelRuleBodies(stripMedia(syntheticCss), '.chq-synthetic-phone-control-hidden');
+    expect(/display:\s*none\s*(;|$)/.test(bodies.join('\n'))).toBe(true);
+  });
+
+  it('a synthetic class with NO top-level rule (the closed escape hatch) is NOT recognised as hidden (negative control)', () => {
+    expect(hasTopLevelDisplayNone('.chq-synthetic-phone-control-unhidden')).toBe(false);
+  });
+
+  it('markup-mounted phone classes without a top-level display:none never exceed the ceiling (two-sided ratchet: may only fall)', () => {
+    expect(
+      MARKUP_OFFENDERS.length,
+      `markup-mounted phone classes with no top-level display:none ` +
+        `(${MARKUP_OFFENDERS.length}, ceiling ${MARKUP_PHONE_UNHIDDEN_CEILING}):\n${MARKUP_OFFENDERS.join('\n')}`,
+    ).toBeLessThanOrEqual(MARKUP_PHONE_UNHIDDEN_CEILING);
+  });
+
+  // Companion to the ceiling test above (mirrors
+  // app/src/phone-capability-removal.scan.test.ts's stale-floor companion):
+  // a ceiling sitting ABOVE the measured truth licenses stagnation instead
+  // of forbidding debt. Re-tightening the constant is a merge-train act.
+  it('never sits ABOVE the measured truth without the ceiling being tightened to match (a stale ceiling licenses stagnation)', () => {
+    if (MARKUP_OFFENDERS.length < MARKUP_PHONE_UNHIDDEN_CEILING) {
+      throw new Error(
+        `${MARKUP_OFFENDERS.length} markup-mounted phone class(es) without a top-level ` +
+          `display:none, below the ratchet ceiling of ${MARKUP_PHONE_UNHIDDEN_CEILING}. ` +
+          `This is the ratchet working: coverage landed. Tighten the ceiling in the same ` +
+          `commit (a merge-train act, never a worker's edit mid-lane) by replacing the line:\n` +
+          `  export const MARKUP_PHONE_UNHIDDEN_CEILING = ${MARKUP_OFFENDERS.length};`,
+      );
+    }
+    expect(MARKUP_OFFENDERS.length).toBeGreaterThanOrEqual(MARKUP_PHONE_UNHIDDEN_CEILING);
+  });
 });
