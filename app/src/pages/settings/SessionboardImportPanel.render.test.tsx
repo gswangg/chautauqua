@@ -15,6 +15,7 @@ import { mockApi } from '../../test-utils/mockApi';
 import { MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
 import { formatBytes } from '../../../../src/domain/files';
 import { SB_TARGET_FIELDS, type SbEntity } from '../../../../src/domain/sessionboard';
+import { phoneBlockRulesMentioning } from '../../test-utils/phoneBlock';
 
 const EVENT_ID = 'evt-sbimport-render';
 const ENDPOINT = `POST /api/v1/events/${EVENT_ID}/import/sessionboard`;
@@ -377,24 +378,17 @@ describe('SessionboardImportPanel mapping table CSS (w23-c, DEC-902 amendment)',
   });
 
   it('declares no table-layout for the mapping table inside the phone reflow media block', () => {
-    const mediaStart = css.indexOf('@media (max-width: 700px) {');
-    expect(mediaStart).toBeGreaterThanOrEqual(0);
-    let depth = 0;
-    let i = mediaStart;
-    let mediaEnd = -1;
-    for (; i < css.length; i++) {
-      if (css[i] === '{') depth++;
-      else if (css[i] === '}') {
-        depth--;
-        if (depth === 0) {
-          mediaEnd = i;
-          break;
-        }
-      }
+    // DEC-385's forward-merge collapsed every phone concern into one
+    // terminal `@media (max-width: 700px)` block, which now carries
+    // provenance comments that quote CSS and names nearly every token in
+    // the sheet for unrelated reasons. A plain substring check against
+    // "chq-settings-sessionboard-mapping-col" therefore false-positives on
+    // mentions that don't declare table-layout at all. Assert the actual
+    // property on the actual declaring rules instead (DEC-613 wave-106).
+    const rules = phoneBlockRulesMentioning(css, 'chq-settings-sessionboard-mapping-col');
+    for (const rule of rules) {
+      expect(rule.body).not.toMatch(/table-layout\s*:/);
     }
-    expect(mediaEnd).toBeGreaterThan(mediaStart);
-    const mediaBlock = css.slice(mediaStart, mediaEnd + 1);
-    expect(mediaBlock).not.toContain('chq-settings-sessionboard-mapping-col');
   });
 
   it('gives the mapping headers the expected class hooks in the DOM', () => {
