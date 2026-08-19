@@ -56,6 +56,35 @@ function closesInDaysLabel(closeDate: number | null, timezone: string): string |
   return `closes in ${countOf(daysLeft, 'day')}`;
 }
 
+// docs/design/Chautauqua Review.dc.html:413's phone dock draws a standing
+// Sign out control. App.tsx's `signOut()` (DEC-154) is the app's one
+// sign-out contract -- POST /logout with the CSRF header, redirect to
+// /login only on a 2xx, and never swallow a rejection -- but it is a
+// page-private function there, not exported from a shared lib, and this
+// task's file ownership is scoped to app/src/pages/review/**. This mirrors
+// that same contract rather than reaching into App.tsx; flagged as a
+// design gap for a later wave to extract into a shared helper instead.
+async function handlePhoneSignOut(): Promise<void> {
+  const res = await fetch('/logout', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'x-chq-csrf': '1' },
+  });
+  if (!res.ok) {
+    throw new Error(`Sign-out failed: /logout responded ${res.status}`);
+  }
+  window.location.assign('/login');
+}
+
+// Calls handlePhoneSignOut() without swallowing a rejection into `void` --
+// a failed sign-out must surface (fail loudly) rather than be silently
+// discarded, mirroring App.tsx's handleSignOutClick.
+function handlePhoneSignOutClick(): void {
+  handlePhoneSignOut().catch((err) => {
+    throw err;
+  });
+}
+
 // DEC-586/DEC-874: a reviewer landing on /review sees their queue directly
 // -- no intermediate plan-name-only picker page. With exactly one assigned
 // plan, ReviewerQueue navigates straight into this scoped section (no
@@ -172,7 +201,13 @@ function PlanSection({
   }
 
   return (
-    <section className="chq-section">
+    // docs/design/Chautauqua Review.dc.html:413
+    // `width:390px; height:844px; ...`
+    // -- the queue body is the scrolling region between the sticky head
+    // (rendered by the routePlanId branch below) and the standing phone
+    // dock; chq-phone-body has no rule outside the max-width:700px block
+    // (styles.css) so this is a no-op at desktop.
+    <section className="chq-section chq-phone-body">
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -576,14 +611,28 @@ export function ReviewerQueue() {
     return (
       <div className="chq-page chq-review-page chq-measure">
         <p>
-          <Link to="/review" className="chq-review-back">
+          {/* docs/design/Chautauqua Review.dc.html:413
+              `width:390px; height:844px; ...`
+              -- chq-phone-back only supplies the 44px tap-target floor
+              (display:flex; align-items:center; min-height:44px) under the
+              max-width:700px block; no effect at desktop. */}
+          <Link to="/review" className="chq-review-back chq-phone-back">
             &lsaquo; Your plans
           </Link>
         </p>
         {!routeEnvelope ? (
           <DelayedLoading />
         ) : (
-          <div className="chq-review-scoped-head">
+          // docs/design/Chautauqua Review.dc.html:413
+          // `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:9px`
+          // -- chq-phone-head is the sticky head band (no rule outside the
+          // max-width:700px block, so this is a no-op at desktop); this is
+          // a back-linked drill-in (reached from the "Your plans" list, or
+          // landed on directly when the reviewer has exactly one plan), so
+          // chq-phone-head-drill applies the 25px drill H1 register
+          // (--chq-type-page-title-phone-drill) rather than the 27px
+          // cluster-landing register.
+          <div className="chq-review-scoped-head chq-phone-head chq-phone-head-drill">
             <span className="chq-section-label">{`REVIEW · ${routeEnvelope.planName}`}</span>
             {/* DEC-678: while the queue is still in flight the count is not
                 known, and a bare literal in the title is exactly the
@@ -650,9 +699,29 @@ export function ReviewerQueue() {
         )}
         <PlanSection planId={routePlanId} onData={setRouteEnvelope} />
         {/* DEC-369/DEC-874 (wave-72 amendment): the "Scores stay hidden from
-            other reviewers" reassurance now lives ONLY in PlanSection's own
-            footer row, beside the count/Show-all group -- it is no longer
-            minted by the shell chrome (App.tsx Footer). */}
+            other reviewers" reassurance's DESKTOP home is PlanSection's own
+            footer row (conditional on totalRows > 0), beside the
+            count/Show-all group -- it is no longer minted by the shell
+            chrome (App.tsx Footer). */}
+        {/* docs/design/Chautauqua Review.dc.html:413
+            `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; align-items:center; gap:12px`
+            -- the phone frame's dock is a STANDING band (present whether or
+            not anything is scored yet, unlike PlanSection's totalRows > 0
+            gated footer above), carrying the reassurance and Sign out
+            together; chq-phone-dock has no rule outside the
+            max-width:700px block, so this is a no-op at desktop. */}
+        <div className="chq-phone-dock chq-review-phone-dock">
+          <span className="chq-review-phone-dock-note">Scores stay hidden from other reviewers</span>
+          {/* Design gap flagged for a later wave: App.tsx's sign-out POST
+              (/logout, DEC-154) is a page-private function, not exported
+              from a shared lib, and this task's file ownership is scoped to
+              app/src/pages/review/** -- extracting it to a shared helper is
+              out of scope here, so this mirrors the same request/response
+              contract locally rather than reaching into App.tsx. */}
+          <button type="button" className="chq-review-phone-signout" onClick={handlePhoneSignOutClick}>
+            Sign out
+          </button>
+        </div>
       </div>
     );
   }
