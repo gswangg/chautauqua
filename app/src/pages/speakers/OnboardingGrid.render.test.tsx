@@ -744,16 +744,20 @@ describe('OnboardingGrid: DEC-678 amendment -- a search miss renders the filtere
       expect(screen.queryByText('No speakers on the roster yet.')).not.toBeInTheDocument();
       expect(screen.getByText('No speakers match the current filters.')).toBeInTheDocument();
     });
-    // The reason names the actual term, read off filters.q.
-    expect(screen.getByText('matching "Zzyx"')).toBeInTheDocument();
-    // The narrowing caption above the (now-empty) grid also names it.
+    // w6-g: search is the ONLY active facet here, so the EmptyState reason
+    // is the single-facet clause (narrowing.ts activeFacet), echoing the
+    // typed string verbatim -- not the generic multi-facet narrowingDescription.
+    expect(screen.getByText('No speakers match "Zzyx".')).toBeInTheDocument();
+    // The narrowing caption above the (now-empty) grid keeps the generic
+    // multi-facet description (out of scope for w6-g -- unchanged).
     expect(screen.getByText('Showing 0 of 2 speakers · matching "Zzyx"')).toBeInTheDocument();
 
     // The pager stays visible for a filtered zero-state (chrome is how a
     // filter gets undone) -- unlike the fresh zero-state, which hides it.
     expect(screen.getByText(/^Showing /, { selector: '.chq-summary' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    // w6-g: single-facet escape names and clears only the search facet.
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search ›' }));
 
     // The escape clears the search box itself (bound straight to filters.q).
     await waitFor(() => {
@@ -1837,7 +1841,11 @@ describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
     await waitFor(() => {
       expect(screen.getByText('No speakers match the current filters.')).toBeInTheDocument();
     });
-    expect(screen.getByText('overdue')).toBeInTheDocument();
+    // w6-g: overdueOnly is the ONLY active facet -- the single-facet reason
+    // and escape from narrowing.ts activeFacet, not the generic copy.
+    expect(
+      screen.getByText('No speakers have anything overdue. Clearing "Overdue only" finds the rest.'),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(document.querySelector('thead')).not.toBeInTheDocument();
 
@@ -1849,7 +1857,7 @@ describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
     expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
 
-    const escape = screen.getByRole('button', { name: 'Clear filters' });
+    const escape = screen.getByRole('button', { name: 'Clear the overdue filter ›' });
     expect(escape).toBeInTheDocument();
     fireEvent.click(escape);
 

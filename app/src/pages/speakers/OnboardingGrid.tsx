@@ -11,6 +11,7 @@ import { TaskModal } from './TaskModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
+import { activeFacet } from './narrowing';
 import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
 import { ParticipationMenu } from './ParticipationMenu';
 import { countOf } from '../../lib/plural';
@@ -888,11 +889,20 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           what={hasActiveNarrowing(filters) ? 'No speakers match the current filters.' : 'No speakers on the roster yet.'}
           reason={
             hasActiveNarrowing(filters)
-              ? narrowingDescription(filters, grid.tasks)
+              ? (activeFacet(filters)?.reason(filters.q.trim() || null) ?? narrowingDescription(filters, grid.tasks))
               : 'Speakers appear here once a submission is accepted.'
           }
           action={null}
-          escape={hasActiveNarrowing(filters) ? { label: 'Clear filters', onClick: clearNarrowingFacets } : null}
+          escape={
+            hasActiveNarrowing(filters)
+              ? (() => {
+                  const facet = activeFacet(filters);
+                  return facet
+                    ? { label: facet.escapeLabel, onClick: () => handleFiltersChange(facet.clear(filters)) }
+                    : { label: 'Clear filters', onClick: clearNarrowingFacets };
+                })()
+              : null
+          }
         />
       )}
 
