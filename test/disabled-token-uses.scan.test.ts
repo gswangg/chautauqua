@@ -23,9 +23,10 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEC_367 } from '../src/decisions';
+import { DEC_367, DEC_745 } from '../src/decisions';
 
 void DEC_367; // wave-87 amendment: the two-legal-uses scan below extends to phone (<=700px) blocks
+void DEC_745; // wave-100 amendment: the checkbox/radio :disabled inert-control accounts below
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..');
@@ -101,6 +102,10 @@ const LEGAL_USES: Record<string, string> = {
   '.chq-submissions-clone:disabled': 'inert control — Clone with nothing clonable',
   '.chq-portal-preview-download':
     'inert control — the preview page\'s Download carries `disabled aria-disabled="true"` (src/routes/portal/preview.tsx)',
+  "input[type='checkbox']:disabled, input[type='radio']:disabled":
+    'inert control — a checkbox/radio that cannot be toggled (B8); the SPA styles.css spelling with quoted attribute values (DEC-745 wave-100 amendment)',
+  'input[type=checkbox]:disabled, input[type=radio]:disabled':
+    'inert control — a checkbox/radio that cannot be toggled (B8); the SSR theme.ts spelling with unquoted attribute values (DEC-745 wave-100 amendment)',
 
   // --- drag handles ----------------------------------------------------
   // (none compose the token today: .chq-forms-field-drag and the PlanEditor
@@ -108,6 +113,26 @@ const LEGAL_USES: Record<string, string> = {
   // requires. Legal either way — the row stays here so the second legal use
   // is visible in the enumeration rather than implied by its absence.)
 };
+
+/** File-bound subset of LEGAL_USES for accounts that name a SPECIFIC
+ * stylesheet, not just a selector -- DEC-745 wave-100 amendment. A plain
+ * selector-only allowlist (the `no LEGAL_USES row is dead` check below)
+ * cannot tell two files apart if they ever shared a selector string; this
+ * ties each of the two checkbox/radio accounts to its own file so the
+ * stale-account tripwire (mirroring
+ * app/src/phone-horizontal-overflow.scan.test.ts's STALE_EXEMPTIONS shape)
+ * can say exactly which file a dead account belonged to. The reason text
+ * itself is single-sourced from LEGAL_USES -- never duplicated here. */
+const NAMED_FILE_ACCOUNTS: Array<{ file: string; selector: string }> = [
+  {
+    file: 'app/src/styles.css',
+    selector: "input[type='checkbox']:disabled, input[type='radio']:disabled",
+  },
+  {
+    file: 'src/views/theme.ts',
+    selector: 'input[type=checkbox]:disabled, input[type=radio]:disabled',
+  },
+];
 
 /** Escapes that are real but sit in another lane's files. Subset, not
  * equality: fixing one must not turn this suite red for the lane that fixed
@@ -342,6 +367,22 @@ describe('the Disabled register has exactly two legal uses (design pack v12)', (
     const live = new Set(scan().map((h) => h.selector));
     const dead = Object.keys(LEGAL_USES).filter((sel) => !live.has(sel));
     expect(dead, dead.join('\n')).toEqual([]);
+  });
+
+  it('no NAMED_FILE_ACCOUNTS row is stale (its selector must still match a rule in its own named file, else: delete this line)', () => {
+    const hits = scan();
+    const stale = NAMED_FILE_ACCOUNTS.filter(
+      (a) => !hits.some((h) => h.file === a.file && h.selector === a.selector),
+    );
+    expect(
+      stale,
+      stale
+        .map(
+          (a) =>
+            `${a.file} :: ${a.selector} -- stale named-file account, no longer matches a rule in its named file -- delete this line`,
+        )
+        .join('\n'),
+    ).toEqual([]);
   });
 
   it('negative control: a synthetic de-emphasis rule IS flagged', () => {
