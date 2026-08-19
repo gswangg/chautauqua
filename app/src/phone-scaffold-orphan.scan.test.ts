@@ -89,12 +89,15 @@ function classesWithRenderers(declared: string[]): Set<string> {
   return withRenderer;
 }
 
-// Pinned as of wave 86 (v12m-w4-i). `.chq-phone-dock` has a renderer
-// (SubmissionDetailPage.tsx:1870); `.chq-phone-head`, `.chq-phone-head-drill`,
-// `.chq-phone-body` and `.chq-phone-back` do not. Lower this number as pages
-// adopt the scaffold; never raise it to match a regression -- a ratchet
-// raised to match a regression is a ceiling, not a floor (DEC-576/DEC-180).
-export const ORPHAN_CEILING = 4;
+// Re-measured wave-106 (task v12m-w2-b) against this branch's tree: every
+// declared `.chq-phone-*` class now has at least one renderer, so the truth
+// is 0 -- down from the stale ceiling of 4 this file shipped with (the
+// wave-86 count of `.chq-phone-head`, `.chq-phone-head-drill`,
+// `.chq-phone-body` and `.chq-phone-back` as orphans no longer holds; pages
+// have since adopted the scaffold). Lower this number as pages adopt the
+// scaffold; never raise it to match a regression -- a ratchet raised to
+// match a regression is a ceiling, not a floor (DEC-576/DEC-180).
+export const ORPHAN_CEILING = 0;
 
 describe('phone page-scaffold orphan ratchet (DEC-576 wave-85 amendment a)', () => {
   it('declares at least the five known scaffold classes', () => {
@@ -112,5 +115,30 @@ describe('phone page-scaffold orphan ratchet (DEC-576 wave-85 amendment a)', () 
       orphans.length,
       `${orphans.length} orphaned .chq-phone-* class(es) with zero renderers under app/src or src: ${orphans.join(', ')}. A ratchet is never raised to match a regression -- either give the class a renderer or, if ORPHAN_CEILING itself needs to move, only ever move it down.`,
     ).toBeLessThanOrEqual(ORPHAN_CEILING);
+  });
+
+  // Companion to the ceiling test above, mirroring
+  // test/phone-frame-ledger.scan.test.ts's stale-floor companion (DEC-808):
+  // a ceiling that sits ABOVE the measured truth is just as much a lie as
+  // one that sits below it -- it licenses stagnation instead of forbidding
+  // debt. This FAILS whenever the measured orphan count falls BELOW
+  // ORPHAN_CEILING, printing the exact replacement line. Re-tightening the
+  // constant is a merge-train act performed once per batch (re-measure the
+  // whole tree, never a worker's mid-lane edit) -- the ratchet's one-sided
+  // half still stands: this companion only ever asks for a LOWER number,
+  // never licenses raising ORPHAN_CEILING back up to match a regression.
+  it('never sits ABOVE the measured truth without the ceiling being tightened to match (a stale ceiling licenses stagnation)', () => {
+    const declared = declaredPhoneScaffoldClasses();
+    const withRenderers = classesWithRenderers(declared);
+    const orphans = declared.filter((cls) => !withRenderers.has(cls));
+    if (orphans.length < ORPHAN_CEILING) {
+      throw new Error(
+        `${orphans.length} orphaned .chq-phone-* class(es), below the ratchet ceiling of ` +
+          `${ORPHAN_CEILING}. This is the ratchet working: coverage landed. Tighten the ` +
+          `ceiling in the same commit (a merge-train act, never a worker's edit mid-lane) by ` +
+          `replacing the line:\n  export const ORPHAN_CEILING = ${orphans.length};`,
+      );
+    }
+    expect(orphans.length).toBeGreaterThanOrEqual(ORPHAN_CEILING);
   });
 });

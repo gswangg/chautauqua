@@ -120,6 +120,10 @@
      .chq-settings-section-action token (also used by TracksRoomsPanel's
      unconverted "Add a track"/"Add a room" head links, out of this
      task's scope) via each panel's own extra class. */
+  /* phone-hidden: desktop twin of .chq-settings-phone-action, the phone-only
+     46px primary drawn at docs/design/Chautauqua Settings.dc.html:426 and
+     :568 -- the capability renders twice in the DOM, exactly once on screen
+     (DEC-919). */
   .chq-settings-token-create .chq-btn-primary,
   .chq-settings-people-invite-action {
     display: none;
