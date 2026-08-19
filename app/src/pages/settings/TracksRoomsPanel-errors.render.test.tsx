@@ -119,7 +119,7 @@ describe('TracksRoomsPanel captions, consequence line, and field-level refusals'
     );
 
     const section = await openEdit();
-    fireEvent.click(within(section).getByRole('button', { name: 'Add a room' }));
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a room' })[0]!);
     fireEvent.click(within(section).getByRole('button', { name: 'Add room' }));
 
     await waitFor(() => {
@@ -155,7 +155,7 @@ describe('TracksRoomsPanel captions, consequence line, and field-level refusals'
     );
 
     const section = await openEdit();
-    fireEvent.click(within(section).getByRole('button', { name: 'Add a track' }));
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a track' })[0]!);
     fireEvent.change(within(section).getByPlaceholderText('New track name'), {
       target: { value: 'New Track' },
     });
@@ -192,7 +192,7 @@ describe('TracksRoomsPanel captions, consequence line, and field-level refusals'
     );
 
     const section = await openEdit();
-    fireEvent.click(within(section).getByRole('button', { name: 'Add a room' }));
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a room' })[0]!);
     fireEvent.click(within(section).getByRole('button', { name: 'Add room' }));
 
     await waitFor(() => {

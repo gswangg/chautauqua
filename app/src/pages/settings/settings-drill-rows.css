@@ -50,6 +50,11 @@
   border: 1px dashed var(--chq-border);
   border-radius: var(--chq-r-ctl-phone);
   min-height: 44px;
+  /* DEC-577/DEC-808: this class lands on a <button>, and font-family is not
+     inherited into form controls by any UA -- a rule that sets a type
+     register must declare the family too or the label silently computes the
+     UA default face beside its Figtree neighbours. */
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
   color: var(--chq-brand);
@@ -103,6 +108,10 @@
   border: 1px solid var(--chq-border);
   border-radius: var(--chq-r-ctl-phone);
   background: var(--chq-surface-sunk);
+  /* Same DEC-577/DEC-808 contract as .chq-settings-drillrow-add above: the
+     class is applied to control elements, so the type register it sets
+     carries its own family rather than falling back to the UA face. */
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   color: var(--chq-ink);
@@ -124,6 +133,15 @@
      class on the two desktop "Add a track"/"Add a room" head links, so
      the base (visible, settings.css-owned) rule for that class is never
      touched. */
+  /* phone-hidden: RE-LINED, not removed -- the capability this head link
+     carries ("add a track" / "add a room") is still on the 390 surface as
+     the dashed .chq-settings-drillrow-add sibling below each list, which
+     this same block turns on (display:flex above). Both controls call the
+     identical setShowAddTrack/setShowAddRoom handler in
+     TracksRoomsPanel.tsx and open the identical form, so nothing the user
+     could do at desktop is unreachable at 390 -- only the affordance's
+     position moves, from the section head to below the list, which is
+     what docs/design/Chautauqua Settings.dc.html:367,382 draws. */
   .chq-settings-drillrow-head-hide {
     display: none;
   }
