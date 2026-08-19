@@ -1164,16 +1164,7 @@
 /* ---------------------------------------------------------------------- */
 
 @media (max-width: 700px) {
-  .chq-comms-history-when {
-    order: 0;
-  }
-
-  .chq-comms-history-subject {
-    order: 2;
-  }
-
   .chq-comms-history-row .chq-meta {
-    order: 3;
     margin-top: 2px;
     font-size: 10px;
     font-weight: 800;
@@ -1181,33 +1172,135 @@
     text-transform: uppercase;
   }
 
-  /* DEC-603 + DEC-751 amendment (w41-g): batch rows stack the same way
-     (when / subject / sent count / template), matching
-     .chq-comms-history-row's card layout. .chq-comms-batch-row .chq-meta
-     no longer matches anything here -- the status tally it used to style
-     moved into the expanded .chq-comms-batch-recipients disclosure, which
-     keeps its own (unscoped) .chq-meta styling. */
+  /* ------------------------------------------------------------------ */
+  /* v12 phone frame "Send history · 390"                                 */
+  /* (docs/design/Chautauqua Comms.dc.html, the 390 frame headed          */
+  /* "Send history · 390" -- Every send, with its recipients).            */
+  /*                                                                      */
+  /* The frame's send card is NOT a flat stack: `when` and the recipient  */
+  /* count share the first line on one baseline, the count right-flushed  */
+  /* as a brand-ink uppercase micro-label, and subject / template / the   */
+  /* recipients control each take the card's full width beneath it. A     */
+  /* two-track grid gives exactly that -- a flex column cannot put two    */
+  /* items on one line without a wrapper element, and the wrapper would   */
+  /* have to exist on desktop too (desktop is frozen).                    */
+  /*                                                                      */
+  /* The two `order:` declarations that used to sit above this block      */
+  /* (.chq-comms-history-when order:0 / -subject order:2) were written    */
+  /* for the deleted .chq-comms-history-row flex column and are gone:     */
+  /* `order` reorders grid AUTO-PLACEMENT too, so leaving them would have */
+  /* placed the subject after the disclosure button.                      */
+  /* ------------------------------------------------------------------ */
   .chq-comms-batch-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 14px 0;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px 12px;
+    align-items: baseline;
+    padding: 15px 0;
   }
 
-  .chq-comms-batch-count,
-  .chq-comms-batch-template {
+  .chq-comms-batch-row > .chq-comms-history-when {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 12px;
+  }
+
+  .chq-comms-batch-row > .chq-comms-batch-count {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    text-align: right;
     white-space: normal;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--chq-brand);
   }
 
-  .chq-comms-batch-toggle,
-  .chq-comms-batch-open {
-    justify-self: auto;
-    align-self: flex-start;
+  .chq-comms-batch-row > .chq-comms-history-subject {
+    grid-column: 1 / -1;
+    font-family: var(--chq-font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.35;
+  }
+
+  .chq-comms-batch-row > .chq-comms-batch-template {
+    grid-column: 1 / -1;
+    white-space: normal;
+    font-size: 12px;
+  }
+
+  /* Frame: the recipients control is a full-width bordered row action at
+     the foot of the card, not a shrink-wrapped chip beside it. */
+  .chq-comms-batch-row > .chq-comms-batch-toggle,
+  .chq-comms-batch-row > .chq-comms-batch-open {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    width: 100%;
     margin-top: 6px;
+  }
+
+  /* A five-track column-head row over a card stack is the same defect as
+     a <thead> over table-to-card rows (DEC-386): the heads label tracks
+     that no longer exist. The frame draws no heads at 390. */
+  .chq-comms-batch-col-heads {
+    display: none;
   }
 
   .chq-comms-batch-recipients {
     padding-left: 12px;
+  }
+
+  /* The expanded recipients band inherits the batch row's grid at desktop
+     (B8). At 390 that grid is gone, so the band's rows stack too -- and
+     its own head row goes with the batch heads above. Scoped as a
+     descendant so it outranks the row rule on the SAME element (the head
+     carries both classes). */
+  .chq-comms-batch-recipients .chq-comms-recipient-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-comms-batch-recipients .chq-comms-recipient-col-heads-row {
+    display: none;
+  }
+
+  /* The five-track grid pads three of its cells with empty spans so the
+     tracks never shift; stacked, those become blank gap-bearing rows. */
+  .chq-comms-batch-recipients .chq-comms-recipient-row > span:empty {
+    display: none;
+  }
+
+  .chq-comms-recipient-to {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  /* Keeps the user-filed `display: contents` fix working in the stacked
+     row: the toggle and the expanded body are still promoted to items of
+     the row above, so the body runs the card's full width instead of the
+     trailing-cell sliver. `justify-self` is inert in flex, so the
+     desktop end-alignment is restated here as `align-self`, plus the
+     44px floor the shared .chq-link-button never carries. */
+  .chq-comms-send-detail > .chq-link-button {
+    justify-self: auto;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 16px;
+  }
+
+  .chq-comms-send-detail-body {
+    width: 100%;
   }
 
   /* Templates list: CSS-only table-to-card (thead hidden, td block) — no
@@ -1241,6 +1334,27 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--chq-muted);
+  }
+
+  /* v12 phone frame "Templates · 390": the Last-used cell is the one
+     exception to the rule above. Its VALUE already opens with the words
+     it would be labelled by -- "Last used 12 Aug 2027", or "Not used yet"
+     -- so the prefix printed "LAST USED: Last used 12 Aug 2027" on the
+     card, and the frame draws that line as a single uppercase micro-label
+     with no prefix at all. The Name cell keeps its prefix; this is a named
+     per-cell exception, not a retreat from DEC-937's attr(data-label)
+     pattern (the label is still sourced from the cell, never from a
+     column position -- it is simply already inside the value). */
+  .chq-comms-templates-table td.chq-comms-templates-col-last-used[data-label]::before {
+    content: none;
+  }
+
+  /* The pinned 96px Last-used column width is TWO classes deep, so it
+     outranks the `td { display: block; width: 100% }` card reflow above
+     (one class + one type) and survived into the card, wrapping
+     "LAST USED 12 AUG 2027" after the day. Released at card width. */
+  .chq-comms-templates-table .chq-comms-templates-col-last-used {
+    width: 100%;
   }
 
   /* Compose step-1 submission picker: same CSS-only table-to-card treatment
@@ -1282,10 +1396,18 @@
     color: var(--chq-muted);
   }
 
-  /* Template editor: merge-field chip strip wraps (chq-pill already gets
-     44px/centred-flex from the shared 700px rule in ../../styles.css). */
-  .chq-comms-merge-chips {
-    row-gap: 10px;
+  /* Both card stacks: the shared `.chq-table td:first-child/:last-child`
+     16px inset (styles.css) exists so a hovered ROW's fill never touches
+     its content. A card stack has no cell edges left to inset from, and
+     the inset lands on top of .chq-main's own 16px gutter -- 32px in from
+     a 390 screen, against the frames' flush cards. Same specificity as the
+     shared rule, later in the cascade, and scoped to these two tables. */
+  .chq-comms-templates-table td:first-child,
+  .chq-comms-templates-table td:last-child,
+  .chq-comms-compose-table td:first-child,
+  .chq-comms-compose-table td:last-child {
+    padding-left: 0;
+    padding-right: 0;
   }
 
   /* Preview pane switcher: flex-shrink:0 horizontal strip. The Prev/Next
@@ -1320,6 +1442,233 @@
      already run full width; tighten the panel's gutter to match. */
   .chq-comms-panel {
     margin-top: 16px;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* v12 phone frame "Comms · 390" -- the page head                       */
+  /* (docs/design/Chautauqua Comms.dc.html, the 390 frame headed "Comms": */
+  /* wordmark row, then the H1, then the send-rhythm line beneath it).    */
+  /* The desktop head is a baseline row with the tab strip opposite; at   */
+  /* 390 that row wraps mid-sentence, so it becomes a stack.              */
+  /* ------------------------------------------------------------------ */
+  .chq-comms-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .chq-comms-head-titles {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* NOTE: the "Send history · 390" HEAD rules are not here. Their desktop
+     base rules (.chq-comms-history-head / -titles / -breadcrumb /
+     -head-actions and the chips-row search) are declared BELOW this media
+     block, at the foot of the file, so at equal specificity they would win
+     over anything written here. They live in the trailing
+     @media (max-width: 700px) block at the end of this file instead --
+     same for the compose refusal footer, whose base is also down there. */
+
+  /* "All history" is a bare .chq-link-button, which carries no floor of
+     its own (styles.css gives it padding:0). Same right-growing hit box
+     as the breadcrumbs above, mirrored to the left since it is
+     right-flushed in its section head. */
+  .chq-comms-recent-sends .chq-section-head .chq-link-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-left: 16px;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* v12 phone frame "Templates · 390" -- the merge-field list            */
+  /* The frame draws "Insert a field · open" as a full-width bordered     */
+  /* list inside the column, each row a 44px line with the token left and */
+  /* its example right-flushed -- not the desktop's 300px absolutely-     */
+  /* positioned popover, which overhangs a 390 viewport, and not 6px      */
+  /* items, which are a third of the tap floor.                           */
+  /* ------------------------------------------------------------------ */
+  /* The strip wraps, and its one child (the Insert-a-field menu) runs
+     the column's full width inside it. */
+  .chq-comms-merge-chips {
+    row-gap: 10px;
+  }
+
+  .chq-insert-field-menu {
+    display: block;
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .chq-insert-field-menu-trigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .chq-insert-field-menu-panel {
+    position: static;
+    min-width: 0;
+    width: 100%;
+    padding: 0;
+    gap: 0;
+    box-shadow: none;
+  }
+
+  .chq-insert-field-menu-item {
+    min-height: 44px;
+    align-items: center;
+    gap: 11px;
+    padding: 0 13px;
+    border-radius: 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-insert-field-menu-item-sample {
+    margin-left: auto;
+    text-align: right;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Compose at 390. The v12 pack frames compose only at 1600 and says so */
+  /* on the landing card ("Better on a laptop"), but the wizard is still  */
+  /* reachable from the phone landing, so every split row it draws        */
+  /* becomes a stack and every action row becomes the phone action bar    */
+  /* rather than overflowing 390.                                        */
+  /* ------------------------------------------------------------------ */
+  .chq-comms-step1-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 4px 0 14px;
+  }
+
+  .chq-comms-step1-question {
+    font-size: 24px;
+  }
+
+  .chq-comms-step1-reassurance {
+    white-space: normal;
+  }
+
+  .chq-comms-status-filter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .chq-comms-status-search-label {
+    flex: 1 1 auto;
+  }
+
+  .chq-comms-status-search {
+    width: 100%;
+  }
+
+  .chq-comms-select-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .chq-comms-select-actions,
+  .chq-comms-template-actions,
+  .chq-comms-preview-actions {
+    margin-left: 0;
+    gap: 8px;
+  }
+
+  .chq-comms-select-actions > .chq-btn,
+  .chq-comms-template-actions > .chq-btn,
+  .chq-comms-preview-actions > .chq-btn {
+    flex: 1 1 0;
+  }
+
+  /* A18's revealed evaluation-plan select: 26px margin + 12px padding is
+     a 38px indent out of 358 usable pixels at 390. */
+  .chq-comms-panel-indent {
+    margin-left: 12px;
+    padding-left: 10px;
+  }
+
+  /* The plain-text disclosure is a control, so it takes the floor too.
+     `display` is left alone deliberately -- flexing a <summary> drops the
+     native disclosure marker. */
+  .chq-comms-preview-plaintext-disclosure > summary {
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 12px 4px;
+  }
+
+  /* The pre-flight refusal's per-recipient "Place on the agenda ›" ways
+     out are <a class="chq-link-button">: no floor of their own. */
+  .chq-comms-blocked-list li .chq-link-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 16px;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Step 4's send REPORT at 390. Same reasoning as compose above: framed */
+  /* at 1600 only, but a send finished on a phone lands here.             */
+  /* ------------------------------------------------------------------ */
+  .chq-comms-send-report-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .chq-comms-send-report-headline {
+    font-size: 24px;
+  }
+
+  .chq-comms-send-report-all-history {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 16px;
+    white-space: normal;
+  }
+
+  /* The definition grid keeps its two columns -- a label above its own
+     value loses the pairing the grid exists to state -- on a narrower
+     label track that still fits the longest label ("Subject they saw"). */
+  .chq-comms-send-report-grid {
+    grid-template-columns: 108px 1fr;
+    gap: 12px 14px;
+  }
+
+  .chq-comms-send-report-grid-value {
+    font-size: 14px;
+  }
+
+  .chq-comms-send-report-skipped-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .chq-comms-send-report-skipped-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    align-items: start;
+  }
+
+  .chq-comms-send-report-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .chq-comms-send-report-footer-actions {
+    margin-left: 0;
+    gap: 8px;
+  }
+
+  .chq-comms-send-report-footer-actions > .chq-btn {
+    flex: 1 1 0;
   }
 
   /* DEC-621: phone landing swap -- while the visitor hasn't chosen a
@@ -1510,4 +1859,83 @@
   min-width: 230px;
   width: auto;
   max-width: none;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Trailing phone block (DEC-385: still one direction -- max-width only,   */
+/* so desktop is untouched).                                              */
+/*                                                                        */
+/* Why a SECOND @media block rather than more lines in the one above: this */
+/* file appends new desktop base rules AFTER its 700px query (the History  */
+/* tab block above, the refusal-banner block, the preview-body block), and */
+/* at equal specificity a later rule wins regardless of the media gate. A  */
+/* phone override for any of those classes written in the earlier block is */
+/* silently dead -- measured at 390: `.chq-comms-history-head` kept its    */
+/* desktop `align-items: flex-end`, which right-flushed the whole titles   */
+/* column including the `‹ Comms` back link. Every phone rule for a class  */
+/* declared below the first query belongs here.                           */
+/*                                                                        */
+/* v12 phone frame "Send history · 390" (docs/design/Chautauqua Comms      */
+/* .dc.html) -- Every send, with its recipients: `‹ Comms` on its own line */
+/* at the column's left edge, then the H1, then "57 sends · 4 in the last  */
+/* 7 days", then the chips and search.                                    */
+/* ---------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  .chq-comms-history-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .chq-comms-history-titles {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* 44px floor. `.chq-link-button` (styles.css) is padding:0 with no
+     floor of its own, and DESIGN-RULINGS is explicit that padding alone
+     does not reach it -- so this is min-height PLUS centred flex PLUS
+     horizontal padding. The padding grows rightward only, so the hit box
+     reaches the floor while the `‹` glyph stays flush with the column's
+     left edge the way the frame draws it. */
+  .chq-comms-history-breadcrumb {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 16px;
+  }
+
+  .chq-comms-history-head-actions {
+    gap: 8px;
+  }
+
+  .chq-comms-history-head-actions > .chq-btn {
+    flex: 1 1 0;
+  }
+
+  /* The chips row's search is `margin-left: auto` at desktop; at 390 that
+     strands it mid-row on the wrapped line, so it takes its own
+     full-width line under the chips instead. */
+  .chq-comms-history-chips .chq-comms-history-search {
+    margin-left: 0;
+    flex: 1 0 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Compose's pre-flight refusal footer: caption over a left-aligned
+     action row, not a space-between row that wraps at 390. */
+  .chq-comms-refusal-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .chq-comms-refusal-actions {
+    justify-content: flex-start;
+    gap: 8px;
+  }
 }

@@ -82,10 +82,133 @@
   color: var(--chq-muted);
 }
 
+/* ---------------------------------------------------------------------- */
+/* v12 phone frame "Templates · 390"                                       */
+/* docs/design/Chautauqua Comms.dc.html, the 390 frame headed              */
+/* "Templates · 390" -- Read, tweak the wording, save.                     */
+/*                                                                        */
+/* DEC-385 single-direction: everything below is a max-width override, so  */
+/* the 1600 "Templates" subscreen is untouched.                            */
+/*                                                                        */
+/* Two things the frame draws that this build deliberately does NOT copy,  */
+/* both because a recorded ruling already settled them the other way:      */
+/*                                                                        */
+/*  1. The frame's per-row `Open` button. w18-e (DEC-890 amendment) ruled  */
+/*     that the row carries no verbs -- the NAME is the row's one control  */
+/*     -- so a phone-only second control pointing at the same action would */
+/*     put two tap targets on one row for one act. Instead the name TAKES  */
+/*     the frame's Open geometry: the 44px floor with real horizontal      */
+/*     padding, at the frame's own 16px display face.                      */
+/*  2. The frame's "5 saved" line under the H1. The section head directly  */
+/*     beneath it already prints `Saved · 5`, and DEC-603's wave-66 sweep  */
+/*     removed exactly this duplication from the History head for exactly  */
+/*     this reason ("an unlabelled echo").                                 */
+/* ---------------------------------------------------------------------- */
 @media (max-width: 700px) {
   .chq-comms-templates-head {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 10px;
+  }
+
+  /* Frame: `‹ Comms` sits on its own line above the H1, its glyph flush
+     with the column's left edge. The hit box grows rightward only, so the
+     44px floor is reached with horizontal padding (per DESIGN-RULINGS'
+     "padding alone does not reach the floor" clause) without indenting
+     the glyph away from the page's left rule. .chq-link-button carries
+     padding:0 and no floor of its own. */
+  .chq-comms-templates-breadcrumb {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-right: 16px;
+  }
+
+  /* Frame: the header's one primary spans the column. */
+  .chq-comms-templates-head > .chq-btn {
+    width: 100%;
+  }
+
+  /* Frame row: name (16px display 600) over the purpose+subject line,
+     with the last-used state as an uppercase micro-label beneath. The
+     `Name: ` / `Last used: ` prefixes stay -- comms.css's
+     td[data-label]::before rule is pinned by TemplatesTable.columns.test
+     .ts (DEC-937) as the phone card's only honest label source. */
+  .chq-comms-template-name {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    /* A <button> shrink-wraps to its label even at display:block/flex, so
+       the row's tap target has to claim the card's width explicitly --
+       min-height alone would leave a 104px box on a 358px card. */
+    width: 100%;
+    padding-right: 16px;
+    font-family: var(--chq-font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .chq-comms-template-last-used {
+    display: block;
+    white-space: normal;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Duplicate is a .chq-link-button in the editor eyebrow row: no floor
+     of its own, right-flushed, so its padding grows leftward. */
+  .chq-comms-editor-head .chq-link-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-left: 16px;
+  }
+
+  /* Frame editor: 48px fields and a 150px body box (the desktop rule's
+     220px is a laptop measure). Restated here rather than relying on the
+     shared 44px control floor, because the frame's phone editor sits one
+     step above it. */
+  .chq-comms-editor input.chq-input {
+    min-height: 48px;
+  }
+
+  .chq-comms-editor .chq-textarea {
+    min-height: 150px;
+  }
+
+  /* Frame footer action bar: the primary fills the row, its partner keeps
+     its own width beside it, and Delete -- a destructive tertiary that
+     must never sit adjacent to Save (ruling 20) -- drops to its own
+     full-width line beneath, where it also reaches the tap floor. */
+  .chq-comms-editor-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 10px;
+  }
+
+  .chq-comms-editor-actions > .chq-btn-primary {
+    flex: 1 1 0;
+    min-height: 48px;
+  }
+
+  .chq-comms-editor-actions > .chq-btn-secondary {
+    min-height: 48px;
+  }
+
+  .chq-comms-editor-delete {
+    margin-left: 0;
+    flex: 1 0 100%;
+    display: flex;
+    align-items: center;
+    /* Left, not centred: a centred full-width tertiary reads as a third
+       button beside Save. Ruling 20 puts the destructive action far left,
+       and its own line is as far from Save as this row can put it. */
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 0 16px 0 0;
   }
 }
