@@ -49,10 +49,13 @@ function session(id: string, ref: string, title: string, startMin: number, endMi
 function baseProps(overrides: Partial<ComponentProps<typeof PhoneAgenda>> = {}) {
   return {
     day: DAY,
+    days: [DAY],
+    onDayChange: vi.fn(),
     rooms: ROOMS,
     placed: [] as PlacedAgendaSession[],
     unscheduled: [] as UnscheduledAgendaSession[],
     conflicts: CONFLICTS,
+    summary: { unplaced: 0, conflicts: 0, placed: 0, total: 0 },
     dayStartMin: 480, // 08:00
     dayEndMin: 1020, // 17:00
     gridMin: 15,
