@@ -34,6 +34,10 @@ export interface SpeakerDetailContact {
 export interface SpeakerDetailOtherEvent {
   eventId: string;
   name: string;
+  // DEC-829 wave-110 amendment: the rail's second line ("Spoke · <title>",
+  // "Submitted, declined"); absent when the submission has no decided
+  // state to speak of.
+  participation: string | null;
 }
 
 export interface SpeakerDetailParticipation {

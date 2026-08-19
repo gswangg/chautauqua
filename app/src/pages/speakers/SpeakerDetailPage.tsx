@@ -691,7 +691,12 @@ export function SpeakerDetailPage() {
                 ) : (
                   <ul className="chq-speaker-detail-other-events-list">
                     {otherEvents.map((e) => (
-                      <li key={e.eventId}>{e.name}</li>
+                      <li key={e.eventId}>
+                        <span className="chq-speaker-detail-other-event-name">{e.name}</span>
+                        {e.participation && (
+                          <span className="chq-speaker-detail-other-event-participation">{e.participation}</span>
+                        )}
+                      </li>
                     ))}
                   </ul>
                 )}
