@@ -144,6 +144,18 @@ describe('the 44px floor for the three ROOMY link tokens this wave fixed', () =>
     });
   }
 
+  it('.chq-detail-delete-link phone rule still declares its OWN horizontal padding (0 8px), not inherited from the top-level rule', () => {
+    // Guard against a later 'the top level already has a 44px control box
+    // (commit 7f450624), the phone rule is now redundant' cleanup silently
+    // deleting the phone rule: the top-level rule never declares padding,
+    // so this is the only place horizontal padding for this token exists
+    // at any width. Pinning it explicitly (beyond the generic
+    // shorthand/longhand check above) makes deleting the phone block a
+    // visible test failure, not a silent regression.
+    const { body } = floorBody(detailCss, '.chq-detail-delete-link');
+    expect(declares(body, 'padding', '0 8px')).toBe(true);
+  });
+
   it('DESKTOP PRESERVED: .chq-detail-content-link keeps its existing top-level property (align-self) unchanged', () => {
     const body = topLevelRuleBody(detailCss, '.chq-detail-content-link');
     expect(declares(body, 'align-self', 'flex-start')).toBe(true);
@@ -151,11 +163,22 @@ describe('the 44px floor for the three ROOMY link tokens this wave fixed', () =>
     expect(body).not.toMatch(/min-height\s*:/);
   });
 
-  it('DESKTOP PRESERVED: .chq-detail-delete-link keeps its existing top-level properties (font-size, color) unchanged', () => {
+  it('USER OVERRIDE (commit 7f450624): .chq-detail-delete-link gets a real control box at EVERY width, not just on phone', () => {
+    // DEC-393 wave-108 amendment: the user's own v12-review commit
+    // (7f450624) rules that a bare 13px muted anchor read as unstyled lost
+    // text, and gave the top-level rule a real 44px control box -- at
+    // every width, not narrowed behind a max-width block. This outranks
+    // both the desktop freeze and this file's earlier 'no min-height at
+    // top level' pin for this one selector; that pin is now stale and is
+    // rewritten positively rather than deleted. The pre-existing font-size
+    // and color are still asserted since the user's commit kept them.
     const body = topLevelRuleBody(detailCss, '.chq-detail-delete-link');
     expect(declares(body, 'font-size', '13px')).toBe(true);
     expect(declares(body, 'color', 'var(--chq-muted)')).toBe(true);
-    expect(body).not.toMatch(/min-height\s*:/);
+    expect(declares(body, 'display', 'inline-flex')).toBe(true);
+    expect(declares(body, 'align-items', 'center')).toBe(true);
+    expect(declares(body, 'min-height', '44px')).toBe(true);
+    expect(declares(body, 'white-space', 'nowrap')).toBe(true);
   });
 
   it('DESKTOP PRESERVED: .chq-error-summary-link keeps its existing top-level properties (font-size, font-weight, color, text-decoration) unchanged', () => {
