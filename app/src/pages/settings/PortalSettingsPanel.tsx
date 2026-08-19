@@ -189,6 +189,15 @@ export function PortalSettingsPanel() {
 
   const paragraphs = paragraphCount(welcomeMessage);
 
+  const resourcesCap = (
+    <>
+      <div className="chq-settings-section-head">
+        <h3 className="chq-section-label">Resources</h3>
+      </div>
+      <ResourcesPanel readOnly />
+    </>
+  );
+
   const rows = [
     {
       label: 'Welcome note',
@@ -197,6 +206,7 @@ export function PortalSettingsPanel() {
       ) : (
         `Shown above the task list · ${countOf(paragraphs, 'paragraph')}`
       ),
+      rowClassName: 'chq-settings-drill-field-row',
     },
     {
       label: 'Speakers can edit',
@@ -211,9 +221,15 @@ export function PortalSettingsPanel() {
           `${countOf(taskCount, 'task')} · created when a submission is accepted`
         ),
     },
+    // docs/design/Chautauqua Settings.dc.html:510-549 ('Settings · Speaker
+    // portal', phone drill): Resources draws as its own 2px-ruled cap over
+    // the list, not a label:value row -- a full-width row
+    // (chq-settings-row-full) with the label collapsed carries the same
+    // ResourcesPanel readOnly list this row already rendered.
     {
-      label: 'Resources',
-      value: <ResourcesPanel readOnly />,
+      label: '',
+      value: resourcesCap,
+      rowClassName: 'chq-settings-row-full',
     },
     { label: 'Access', value: 'Speakers claim their portal from a link in their acceptance email' },
     {

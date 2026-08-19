@@ -1834,3 +1834,164 @@
     padding: 14px 0;
   }
 }
+
+
+/* task-w4-f/DEC-375/DEC-967: the four-drill phone body conformance sweep
+   (docs/design/Chautauqua Settings.dc.html:444 CFP, :481 Public pages,
+   :510 Speaker portal, :578 Saved embeds). Trailing max-width block, kept
+   the file's LAST top-level construct (DEC-385 wave-85) -- v12m-w4-e's own
+   Settings.tsx/index-drill work appends its own disjoint selectors above
+   this comment, never below it.
+
+   Shared vocabulary across the four drills:
+   - a 15px-padded field row = an 11px/800/0.1em uppercase muted label over
+     a 46px bordered readout (border/radius/bg/min-height:46px/padding:0
+     13px) -- opted into per-row via SummarySectionRow's own rowClassName
+     prop (chq-settings-drill-field-row), never a blanket override of the
+     shared .chq-settings-row-value every other settings drill (Event,
+     Tracks and rooms, People) also renders through;
+   - a 2px ink section rule under an 11px uppercase cap ("Questions · 8",
+     "Resources") -- the existing .chq-settings-numbered
+     .chq-settings-section-head/.chq-section-label pair, reused verbatim
+     (CallForPapersPanel's new QuestionsSection, PortalSettingsPanel's
+     Resources cap) rather than a third heading vocabulary;
+   - 14px list rows with a 44px bordered inline action;
+   - the Public-pages and Saved-embeds cards end their row in bordered
+     44px actions;
+   - the Speaker-portal chip set is 44px pills, filled for on/bordered for
+     off (the existing .chq-pill/.chq-pill-static vocabulary, sized here). */
+@media (max-width: 700px) {
+  /* CFP Public link / Closes (:444-478) and Speaker portal Welcome note
+     (:510-549): the row's value becomes a bordered readout box instead of
+     bare text, scoped to rows that opt in via rowClassName so every other
+     settings drill's .chq-settings-row-value is untouched. */
+  .chq-settings-drill-field-row .chq-settings-row-value {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    min-height: 46px;
+    padding: 0 13px;
+    border: 1px solid var(--chq-border);
+    border-radius: 6px;
+    background: var(--chq-surface-sunk);
+    font-size: 14px;
+  }
+
+  /* CFP Questions section (:461 `Questions · 8`) -- a 2px-ruled cap over
+     14px list rows, each with a 44px bordered Edit action. */
+  .chq-settings-questions-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chq-settings-questions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-settings-questions-row:last-child {
+    border-bottom: none;
+  }
+
+  .chq-settings-questions-row-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .chq-settings-questions-row-label {
+    font-family: var(--chq-font-display);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .chq-settings-questions-row-meta {
+    font-size: 12px;
+    color: var(--chq-ink-2);
+  }
+
+  .chq-settings-questions-row .chq-settings-inline-action {
+    min-height: 44px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--chq-border);
+    border-radius: 6px;
+    background: var(--chq-surface-sunk);
+    flex-shrink: 0;
+  }
+
+  /* Speaker portal chip set (:517-524, the 'Speakers can edit' pills) --
+     44px pills, filled olive for on (the existing .chq-pill.is-active
+     fill), bordered/muted for off. */
+  .chq-settings-portal-pills .chq-pill {
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  /* Public pages (:481-507) and Saved embeds (:578-607) rows already
+     reflow to a single column above (the pre-existing 700px block); each
+     row's own actions become full-width 44px bordered targets -- one
+     action per line, since neither row groups its actions under one
+     element the desktop grid can spare for a flex re-layout without
+     touching that frozen grid-template-columns declaration. */
+  .chq-settings-public-pages-row > .chq-settings-inline-action,
+  .chq-settings-public-pages-row > .chq-link-button.chq-settings-inline-action {
+    min-height: 44px;
+    width: 100%;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--chq-border);
+    border-radius: 6px;
+    background: var(--chq-surface-sunk);
+    box-sizing: border-box;
+  }
+
+  /* Saved embeds' action cluster IS already one grid cell
+     (.chq-settings-saved-embed-actions, settings.css:782) -- no markup
+     change needed to lay its buttons out as a bordered 44px row. */
+  .chq-settings-saved-embed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    justify-self: stretch;
+    padding-right: 0;
+  }
+
+  .chq-settings-saved-embed-actions .chq-link-button {
+    flex: 1 1 auto;
+    min-height: 44px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--chq-border);
+    border-radius: 6px;
+    background: var(--chq-surface-sunk);
+    box-sizing: border-box;
+  }
+
+  .chq-settings-saved-embed-eyebrow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .chq-settings-saved-embed-caption {
+    text-align: left;
+    white-space: normal;
+  }
+}
