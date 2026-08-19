@@ -1,9 +1,12 @@
 // Public sessions "Last year" aside (DEC-745, v12 mobile campaign wave-107
 // amendment; task v12m-w3-y). Claims the last unowned/undeviated desktop
-// frame in the whole design pack:
-//
-// docs/design/Chautauqua Public and Portal.dc.html:1167
-// `Public sessions · nothing published`
+// frame in the whole design pack -- the "Chautauqua Public and Portal"
+// sheet's fresh-empty sessions frame, `Public sessions · nothing published`,
+// at line 1167. The strict, receipted citation that carries that claim is
+// the citation block further down this file: it spells the full
+// docs/design path with its backtick literal and an expect() beneath, so
+// the claim is receipted exactly once rather than twice (a header repeat
+// would be an unreceipted duplicate, DEC-808 wave-107).
 //
 // test/desktop-frames-portal.test.ts (branch v12m-w5-c) filed this frame as
 // an UNCLAIMED divergence rather than a claim: "the frame draws a 300px

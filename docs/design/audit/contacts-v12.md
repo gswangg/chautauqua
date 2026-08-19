@@ -35,8 +35,9 @@ no touching `app/src/styles.css` or `src/views/theme.ts`).
    `.chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions {
    display: none; }` (`app/src/pages/contacts/contacts-panels.css:1777`,
    appended at the sheet's single terminal block per DEC-385) —
-   reusing the same `[data-chq-phone-dock]` attribute contract
-   `app/src/styles.css:2262` already uses. `.chq-modal-actions`'s "Import N
+   reusing the same `[data-chq-phone-dock]` attribute contract that
+   `app/src/styles.css:2262` (`.chq-main:has([data-chq-phone-dock])`)
+   already uses. `.chq-modal-actions`'s "Import N
    rows" / "Cancel" survive elsewhere on screen: "Import N rows" ->
    the phone dock's own last-column primary ("Review N rows",
    `ImportWizard.tsx` ~1028); "Cancel" -> ModalFrame's header Close control

@@ -231,26 +231,26 @@ describe('ImportWizard: phone-only Import CSV pager (v12m-w2-b, frame :487)', ()
 
   // DEC-663 (wave-108 amendment, ruling A / contacts-v12.md finding 2,
   // RESOLVED -- supersedes the wave-87 "hidden at phone width" pin this
-  // test used to carry): docs/design/Chautauqua Contacts.dc.html:506
+  // test used to carry). .chq-contacts-import-dedupe is ONE node read at
+  // both widths (v12m-w9-h) -- the phone layer re-spaces it under the radio
+  // list rather than hiding it. jsdom applies no stylesheet, so this is a
+  // source-scan pin on the CSS text, not computed style (see
+  // phoneLayerRuleBody above). docs/design/Chautauqua Contacts.dc.html:506
   // ("Import CSV · 390") draws a 13px muted body note at exactly this slot
-  // with `padding: 16px 0 0`, and .chq-contacts-import-dedupe is ONE node
-  // read at both widths (v12m-w9-h) -- the phone layer re-spaces it under
-  // the radio list rather than hiding it. jsdom applies no stylesheet, so
-  // this is a source-scan pin on the CSS text, not computed style (see
-  // phoneLayerRuleBody above).
+  // with `padding: 16px 0 0`.
   it('re-spaces the same-file dedupe note under the phone radio list -- same node, both widths', () => {
     expect(phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-dedupe')).toMatch(/padding-top:\s*16px/);
   });
 
   // DEC-663 (wave-108 amendment, ruling B / contacts-v12.md finding 1,
-  // RESOLVED): the frame draws exactly ONE footer pair at 390
-  // (docs/design/Chautauqua Contacts.dc.html:508-511) -- the page-owned
-  // `.chq-contacts-import-phone-dock` (Next column / Skip, or Review N
-  // rows on the last column). ModalFrame's own `.chq-modal-actions`
+  // RESOLVED): the frame draws exactly ONE footer pair at 390 -- the
+  // page-owned `.chq-contacts-import-phone-dock` (Next column / Skip, or
+  // Review N rows on the last column). ModalFrame's own `.chq-modal-actions`
   // (Import N rows / Cancel) must be hidden whenever that page-owned dock
   // is present, via the shared `[data-chq-phone-dock]` attribute contract
   // (styles.css:2262 uses the same idiom) -- not a new class, not a TSX
-  // prop.
+  // prop. That single footer pair is drawn at
+  // docs/design/Chautauqua Contacts.dc.html:508-511 as `Next column`.
   it('hides the shared ModalFrame footer at phone width when the page-owned phone dock is present', () => {
     expect(phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions')).toMatch(
       /display:\s*none/,
