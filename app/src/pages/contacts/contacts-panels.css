@@ -1682,7 +1682,9 @@
   }
 
   /* v12m-w1-c (DEC-919 amendment wave 98): frame "Merge · 390"
-     (docs/design/Chautauqua Contacts.dc.html:522-539). Four phone-only
+     (docs/design/Chautauqua Contacts.dc.html:524-539 -- :522-523 are the
+     phone shell's wrapper divs; the cited content starts at the back link
+     `‹ Duplicates`). Four phone-only
      divergences from desktop -- desktop stays byte-unchanged, every rule
      below lives inside this terminal max-width block (DEC-385).
 

@@ -2164,18 +2164,18 @@ export function PlanEditor() {
                 reviewer" control below the roster/cap row -- phone-only,
                 distinct from the section-head toggle above (:2087). Both
                 drive the SAME assignFormOpen state (one form, two
-                triggers, never two open states, never two forms). This
-                file owns PlanEditor.tsx but not review.css (six branches
-                own it, and the wave-98 task explicitly forbids a new rule
-                there), so rather than a CSS max-width block the control
-                is gated by isPhone (the same matchMedia(700px) hook
-                Scorecard.tsx/Agenda.tsx already use) -- it does not exist
-                in the DOM at all on desktop, and its geometry is applied
-                inline (frame literal `display:flex; align-items:center;
-                justify-content:center; border:1px dashed #BAB6A6;
-                border-radius:6px; min-height:46px; font-size:13px;
-                font-weight:700; color:#4E5C31`) since a JS-gated element
-                needs no separate CSS visibility rule. The earlier attempt
+                triggers, never two open states, never two forms). Rather
+                than a CSS max-width block the control is gated by isPhone
+                (the same matchMedia(700px) hook Scorecard.tsx/Agenda.tsx
+                already use) -- it does not exist in the DOM at all on
+                desktop, so it needs no separate CSS visibility rule. Its
+                geometry lives in review.css as .chq-review-assign-below
+                (the wave-98 task deferred that rule to avoid contending
+                with the five sibling branches also editing review.css;
+                the rule was added at merge-train integration, once that
+                contention was resolved, so the control carries a DEC-406
+                vocabulary class rather than inline hex literals). The
+                earlier attempt
                 duplicated the toggle's accessible name ("Assign a
                 reviewer" twice) and broke `findByRole('button', { name:
                 'Assign a reviewer' })` in PlanEditor.render.test.tsx; this
@@ -2186,22 +2186,9 @@ export function PlanEditor() {
             {isPhone && (
               <button
                 type="button"
+                className="chq-review-assign-below"
                 aria-label="Assign a reviewer, below the roster"
                 onClick={() => setAssignFormOpen((open) => !open)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
-                  marginTop: 9,
-                  border: '1px dashed #BAB6A6',
-                  borderRadius: 6,
-                  minHeight: 46,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: '#4E5C31',
-                  background: 'transparent',
-                }}
               >
                 {assignFormOpen ? 'Close' : 'Assign a reviewer'}
               </button>

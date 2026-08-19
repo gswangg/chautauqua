@@ -94,7 +94,7 @@ describe('HistoryTab', () => {
   // NOT repeated here (wave 66, gate-11 sweep item 6): Comms.tsx already
   // renders it once in the page head above this tab -- only the bare
   // figure is reused for the drill head's own "N in the last 7 days"
-  // clause (docs/design/Chautauqua Comms.dc.html:339).
+  // clause (frame citation receipted at the count-line assertion below).
   it('renders the head with a count line built from total + rhythm.sentLast7Days (no full-sentence echo), and an Export CSV anchor scoped to email-log + the live q', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batch()], { total: 57 }),
@@ -114,6 +114,8 @@ describe('HistoryTab', () => {
 
     expect(screen.getByRole('heading', { name: 'History' })).toBeInTheDocument();
     const countLine = document.querySelector('.chq-comms-history-titles .chq-comms-head-subtitle')!;
+    // docs/design/Chautauqua Comms.dc.html:339
+    // `<span style="font-size:13px; color:#565A4B">57 sends · 4 in the last 7 days</span>`
     expect(countLine).toHaveTextContent('57 sends · 4 in the last 7 days');
     expect(countLine).not.toHaveTextContent('sent in the last 7 days');
 

@@ -325,6 +325,26 @@
   cursor: pointer;
 }
 
+/* DEC-745 (wave-98 adjudication): the phone-only second "Assign a reviewer"
+   trigger that sits below the roster. Rendered only when isPhone is true
+   (PlanEditor.tsx), so it needs no max-width gate of its own -- the JS gate
+   is the visibility rule. Dashed, full-width and brand-inked to read as an
+   add-affordance rather than a committed action (DESIGN-RULINGS 3, 20). */
+.chq-review-assign-below {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 9px;
+  border: 1px dashed var(--chq-border);
+  border-radius: 6px;
+  min-height: 46px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  background: transparent;
+}
+
 /* Results table -> cards (DEC-386/390): thead hidden, table/tbody/tr/td go
    block-level on the SAME markup (no cell dropped); each td's data-label
    attribute (set in ResultsTable.tsx from the same string its <th> uses)

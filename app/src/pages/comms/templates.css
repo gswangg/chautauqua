@@ -74,8 +74,10 @@
   background: var(--chq-hairline);
 }
 
-/* DEC-621 (wave-98 amendment): the drill head's phone-only third line
-   (`{templates.length} saved`, docs/design/Chautauqua Comms.dc.html:290)
+/* DEC-621 (wave-98 amendment): the drill head's phone-only third line --
+   docs/design/Chautauqua Comms.dc.html:290
+   `<span style="font-size:13px; color:#565A4B">5 saved</span>`, rendered
+   from `{templates.length} saved`
    -- hidden at every width until the terminal max-width:700px block below
    turns it on. The desktop pin (Comms.dc.html:227-229) carries no count
    line at all, so this stays off at desktop widths. */
