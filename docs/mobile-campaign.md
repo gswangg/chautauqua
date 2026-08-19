@@ -89,3 +89,9 @@ Cascade rule (two lanes hit it independently): a stylesheet whose desktop
 rules are declared AFTER its max-width block silently kills equal-
 specificity phone overrides. content.css and comms.css are fixed and
 pinned; sweep the remaining stylesheets for the same exposure.
+
+## User-filed (2026-08-19, morning review — fix agent dispatched, lenses must verify)
+- Speakers surfaces show NATIVE focus rings; the design-system :focus-visible
+  treatment (styles.css:225) must reach every interactive element there.
+- Task view answered tab offered "Open" universally; the response viewer is
+  form-only. Per-kind actions: form=Open, file_request=file link, general=none.
