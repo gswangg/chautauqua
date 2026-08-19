@@ -300,7 +300,7 @@ const ALL_VIOLATIONS: Violation[] = DECISION_DOC_NAMES.flatMap((name) =>
 // cfp-steps-script.tsx's Next handler, so the three docs that receipted the
 // OLD text (DEC-986, DEC-976, DEC-681) were rewritten against the new lines
 // -- the two-sided ratchet below is what forced the constant down with them.
-export const UNRESOLVED_CITATION_CEILING = 29;
+export const UNRESOLVED_CITATION_CEILING = 0;
 
 // The 29 measured on this branch are a MIX, not a uniform class -- future
 // lanes spending this ceiling down should expect two different repairs:
