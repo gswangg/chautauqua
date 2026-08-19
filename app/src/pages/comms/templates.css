@@ -99,10 +99,31 @@
 /*     put two tap targets on one row for one act. Instead the name TAKES  */
 /*     the frame's Open geometry: the 44px floor with real horizontal      */
 /*     padding, at the frame's own 16px display face.                      */
-/*  2. The frame's "5 saved" line under the H1. The section head directly  */
+/*  2. The frame's "5 saved" line under the H1 (docs/design/Chautauqua      */
+/*     Comms.dc.html:286, `<span style="font-size:13px; color:#565A4B">5   */
+/*     saved</span>` directly under the H1). The section head directly     */
 /*     beneath it already prints `Saved · 5`, and DEC-603's wave-66 sweep  */
 /*     removed exactly this duplication from the History head for exactly  */
-/*     this reason ("an unlabelled echo").                                 */
+/*     this reason ("an unlabelled echo") -- w6-e (this task) re-read that  */
+/*     comment against the frame and RE-AFFIRMS the deviation rather than  */
+/*     restoring the line: restoring it would reintroduce the same         */
+/*     unlabelled-echo defect DEC-603 already ruled out for History's       */
+/*     identical shape, one section head down.                             */
+/*                                                                        */
+/*  3. The frame's pinned Save/Cancel dock (frame :319-322, the shell's own */
+/*     `.chq-phone-dock` geometry). Composing `.chq-phone-dock` here would  */
+/*     require a dedicated scroll region between a fixed head and a fixed   */
+/*     dock -- exactly the `.chq-phone-body` shape this task's ruling        */
+/*     forbids mounting, because `.chq-phone-body`'s own `overflow-y:auto`  */
+/*     contradicts `.chq-main` being the app's one scroll region            */
+/*     (styles.css:487-492). Without that dedicated body, sticking the      */
+/*     footer to the viewport would also pin it OVER the templates list      */
+/*     section above the editor, which the frame's own single-screen        */
+/*     drill never has to contend with. `.chq-comms-editor-actions` keeps    */
+/*     the frame's full-width primary + 48px controls (below) but stays     */
+/*     in-flow -- a structural head/body/dock rebuild of this tab is out    */
+/*     of this task's scope; flagged for the shell lane alongside           */
+/*     `.chq-phone-body`'s own orphan status.                               */
 /* ---------------------------------------------------------------------- */
 @media (max-width: 700px) {
   .chq-comms-templates-head {

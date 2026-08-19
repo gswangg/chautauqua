@@ -128,9 +128,19 @@ export function HistoryTab({
 
   return (
     <div className="chq-comms-history-tab">
-      <div className="chq-comms-history-head">
+      {/* v12 phone frame "Send history · 390" (docs/design/Chautauqua
+          Comms.dc.html:335): the drill head is the shell's own
+          .chq-phone-head/-head-drill vocabulary (styles.css:2190, :2209),
+          composed onto this page-local head rather than replacing it --
+          the page-local classes stay so HistoryTab.render.test.tsx and
+          Comms.phone.render.test.tsx keep reading them unchanged. */}
+      <div className="chq-comms-history-head chq-phone-head chq-phone-head-drill">
         <div className="chq-comms-history-titles">
-          <button type="button" className="chq-link-button chq-comms-history-breadcrumb" onClick={goToCompose}>
+          <button
+            type="button"
+            className="chq-link-button chq-comms-history-breadcrumb chq-phone-back"
+            onClick={goToCompose}
+          >
             &lsaquo; Comms
           </button>
           <h1 className="chq-page-title">History</h1>

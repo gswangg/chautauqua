@@ -49,6 +49,11 @@ export default defineConfig({
       ["app/src/lib/api.unauthorized.render.test.ts", "jsdom"],
       ["app/src/pages/review/planEditor-refusal-shapes.test.ts", "jsdom"],
       ["app/src/lib/api-mutation-bump.scan.test.ts", "jsdom"],
+      // w6-e (DEC-976 citation form): comms-drill-phone-frames.test.ts
+      // renders TemplatesTab/HistoryTab via React.createElement (no JSX,
+      // plain .test.ts name, same idiom as planEditor-refusal-shapes.test.ts
+      // above) but still needs a real DOM/window for its render assertions.
+      ["app/src/pages/comms/comms-drill-phone-frames.test.ts", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",
