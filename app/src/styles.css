@@ -77,6 +77,15 @@
      repo outranks a measurement of it) -- so the TOKEN is corrected to
      match, not the rendered rule. */
   --chq-type-page-title-phone-size: 27px;
+  /* DEC-643 amendment (v12 mobile campaign w1): the 25px reading in the
+     README's 25-27px range is real, but it belongs to the drill-in <h1>
+     (Roster/Import CSV/Event/Your tasks), not the cluster-landing one --
+     docs/design/Chautauqua Speakers.dc.html:263
+     `font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05`
+     -- so it gets its own token rather than overloading
+     --chq-type-page-title-phone-size, which stays the 27px cluster-landing
+     register above. */
+  --chq-type-page-title-phone-drill: 25px;
 
   --chq-type-overview-headline-size: 44px;
   --chq-type-overview-headline-weight: 700;
@@ -2158,5 +2167,125 @@ a:hover {
     --chq-motion-color: 0ms;
     --chq-motion-appear: 90ms;
     --chq-motion-geometry: 90ms;
+  }
+}
+
+/* v12 phone page-scaffold primitives (DEC-576/643/368/616 amendments, wave
+   83, v12 mobile campaign w1) -- the SAME three-part phone band anatomy
+   drawn identically across every 390 frame (Speakers, Settings, Contacts,
+   Public and Portal design sheets): a sticky header (back link / H1 /
+   sub-line), a scrolling body, and a sticky action dock -- each verified
+   individually against its own frame citation below. Consuming pages
+   compose these classes onto their own markup; nothing here is
+   page-specific. DEC-385 single-direction: this is the only new block,
+   and it is max-width only. */
+@media (max-width: 700px) {
+  /* docs/design/Chautauqua Speakers.dc.html:261
+     `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px`
+     -- sticky so the band stays reachable while the body scrolls beneath
+     it. The -16px margin-inline exactly cancels .chq-main's own 16px
+     phone padding (below, `.chq-main { padding: 16px; }`) so the band's
+     hairline and background run full-bleed edge-to-edge, and the head's
+     own 16px padding then supplies the frame's inset for its contents. */
+  .chq-phone-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    flex-shrink: 0;
+    margin-inline: -16px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--chq-ink);
+    background: var(--chq-paper);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* docs/design/Chautauqua Speakers.dc.html:263
+     `font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05`
+     -- the drill-in register (Roster/Import CSV/Event/Your tasks), one
+     step down from the 27px cluster-landing title that
+     --chq-type-page-title-phone-size still carries. */
+  .chq-phone-head-drill .chq-page-title {
+    font-size: var(--chq-type-page-title-phone-drill);
+  }
+
+  /* docs/design/Chautauqua Speakers.dc.html:266
+     `flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px`
+     -- the sole scroll region between the fixed head and dock. */
+  .chq-phone-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* docs/design/Chautauqua Speakers.dc.html:278
+     `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
+     -- same full-bleed cancellation as the head above. */
+  .chq-phone-dock {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    flex-shrink: 0;
+    margin-inline: -16px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--chq-ink);
+    background: var(--chq-surface-sunk);
+    display: flex;
+    gap: 8px;
+  }
+
+  /* docs/design/Chautauqua Speakers.dc.html:279
+     `flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700` */
+  .chq-phone-dock .chq-btn {
+    min-height: 48px;
+    padding: 0 16px;
+  }
+
+  .chq-phone-dock .chq-btn-primary {
+    flex: 1;
+  }
+
+  /* docs/design/Chautauqua Speakers.dc.html:262
+     `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center` */
+  .chq-phone-back {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* DEC-368 amendment: the shared `.chq-table td:first-child/:last-child`
+     16px fill inset above stacks on top of .chq-main's own 16px phone
+     gutter -- 32px in from a 390 screen against the frames' flush cards
+     on every table that card-stacks at this width. comms.css previously
+     neutralised this locally for its two tables; that local block is now
+     dead and has been removed as part of this shell fix. */
+  .chq-table th:first-child,
+  .chq-table td:first-child {
+    padding-left: 0;
+  }
+
+  .chq-table th:last-child,
+  .chq-table td:last-child {
+    padding-right: 0;
+  }
+
+  /* DEC-616 amendment: the drawer's own horizontal inset shrinks from the
+     desktop 26px to 16px at 390 (the frame's own gutter, matched above by
+     .chq-phone-head/-dock's -16px cancellation). The action bar's
+     negative margin must equal that same 16px or a see-through gutter
+     appears beside the pinned band (the gate-6 defect recorded at
+     styles.css:1037-1041, `margin: 0 -26px 0; padding: 16px 26px 20px;`
+     -- both numbers below must stay equal to each other, not just to that
+     comment's memory of the desktop value). */
+  .chq-drawer {
+    padding: 16px;
+  }
+
+  .chq-contacts-drawer-actions {
+    margin: 0 -16px 0;
+    padding: 16px 16px 20px;
   }
 }

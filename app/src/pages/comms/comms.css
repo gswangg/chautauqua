@@ -1396,20 +1396,6 @@
     color: var(--chq-muted);
   }
 
-  /* Both card stacks: the shared `.chq-table td:first-child/:last-child`
-     16px inset (styles.css) exists so a hovered ROW's fill never touches
-     its content. A card stack has no cell edges left to inset from, and
-     the inset lands on top of .chq-main's own 16px gutter -- 32px in from
-     a 390 screen, against the frames' flush cards. Same specificity as the
-     shared rule, later in the cascade, and scoped to these two tables. */
-  .chq-comms-templates-table td:first-child,
-  .chq-comms-templates-table td:last-child,
-  .chq-comms-compose-table td:first-child,
-  .chq-comms-compose-table td:last-child {
-    padding-left: 0;
-    padding-right: 0;
-  }
-
   /* Preview pane switcher: flex-shrink:0 horizontal strip. The Prev/Next
      buttons carry chq-btn chq-btn-tertiary (DEC-410); this element
      selector still wins on phone via the class+element specificity bump,
