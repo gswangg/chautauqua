@@ -36,6 +36,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { DEC_808, DEC_989 } from '../../src/decisions';
+
+void DEC_989; // this file's whole reason to exist: the ceiling, its companion and its controls
+void DEC_808; // population-by-source-content, never a hand-listed manifest or a filename convention
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = resolve(HERE, '..', '..');
@@ -147,6 +151,41 @@ function srcCssExportSources(): CssSource[] {
   return out;
 }
 
+/**
+ * The scan's own rule-matching predicate (DEC-989 clause c): given a rule's
+ * selector and body plus the derived set of control-bearing `chq-…` class
+ * tokens, decides whether the rule is an offender -- it names at least one
+ * control class AND sets a type register (font-size/font-weight) without
+ * also declaring font-family (or the `font` shorthand). Both the real
+ * offender scan below and the falsifiability controls run THIS function --
+ * a control that re-implements the predicate proves nothing about the
+ * predicate (DEC-989).
+ */
+function isControlFontOffender(selector: string, body: string, controlClasses: Set<string>): boolean {
+  const selectorClasses = [...selector.matchAll(/\.([a-zA-Z0-9_-]+)/g)].map((m) => m[1]!);
+  const matched = selectorClasses.some((c) => controlClasses.has(c));
+  if (!matched) return false;
+  const hasFontSize = /font-size\s*:/.test(body);
+  const hasFontWeight = /font-weight\s*:/.test(body);
+  const hasFontFamily = /font-family\s*:/.test(body) || /\bfont\s*:/.test(body);
+  return (hasFontSize || hasFontWeight) && !hasFontFamily;
+}
+
+// TWO-SIDED RATCHET (DEC-989 clause a/DEC-808 wave-106 shape): CEILING was
+// previously a function-local `it()`-body const, unreachable by the merge
+// train's re-measurement sweep and unreadable by anything outside this file.
+// Promoted to an exported module-level const so it can be found and
+// re-measured the way every other campaign ratchet is.
+//
+// The value below was measured by RUNNING this scan on branch v12m-w3-w
+// (`CEILING` forced to -1 and the test re-run) -- never read from
+// docs/design/audit/control-font-population-v12.md, which is a wave-6
+// snapshot and the exact trap DEC-989 clause (a) names: the audit doc says
+// 34, this branch's own run of the scan says 28. Re-tightening this
+// constant downward is the act of the batch that lands a fix for one of the
+// 28 offenders currently licensed below -- see the companion test.
+export const CEILING = 28;
+
 describe('control font vocabulary contract (DEC-577 amendment, DEC-808 wave-99 amendment)', () => {
   const TSX_FILES = allTsxFiles(HERE);
   const APP_CSS_SOURCES = appSrcCssSources();
@@ -171,41 +210,85 @@ describe('control font vocabulary contract (DEC-577 amendment, DEC-808 wave-99 a
     expect(SRC_CSS_SOURCES.some((s) => s.label.endsWith('src/views/theme.ts'))).toBe(true);
   });
 
-  it('every className token applied to a form control has a matching CSS rule that declares font-family when it sets a type register', () => {
-    const controlClasses = new Set<string>();
-    for (const path of TSX_FILES) {
-      const src = readFileSync(path, 'utf-8');
-      for (const token of controlClassTokens(src)) controlClasses.add(token);
-    }
-    expect(controlClasses.size).toBeGreaterThan(5);
+  const controlClasses = new Set<string>();
+  for (const path of TSX_FILES) {
+    const src = readFileSync(path, 'utf-8');
+    for (const token of controlClassTokens(src)) controlClasses.add(token);
+  }
 
+  function measureOffenders(): string[] {
     const offenders: string[] = [];
     for (const { label, css } of ALL_CSS_SOURCES) {
       for (const { selector, body } of topLevelRules(css)) {
         if (!selector || selector.startsWith('@')) continue;
-        const selectorClasses = [...selector.matchAll(/\.([a-zA-Z0-9_-]+)/g)].map((m) => m[1]!);
-        const matched = selectorClasses.filter((c) => controlClasses.has(c));
-        if (matched.length === 0) continue;
-
-        const hasFontSize = /font-size\s*:/.test(body);
-        const hasFontWeight = /font-weight\s*:/.test(body);
-        const hasFontFamily = /font-family\s*:/.test(body) || /\bfont\s*:/.test(body);
-        if ((hasFontSize || hasFontWeight) && !hasFontFamily) {
+        if (isControlFontOffender(selector, body, controlClasses)) {
           offenders.push(`${label}: "${selector}" (font-size/font-weight set, no font-family)`);
         }
       }
     }
+    return offenders;
+  }
 
-    // DEC-808 wave-99 amendment: seeded at the measured truth under the
-    // newly-derived population (34, all in sheets an unmerged v12m-*
-    // branch already owns -- see docs/design/audit/control-font-population-v12.md
-    // for the enumeration and per-offender owner). toBeLessThanOrEqual so
-    // this can only tighten as owning branches land their fixes, never
-    // silently widen.
-    const CEILING = 34;
+  it('every className token applied to a form control has a matching CSS rule that declares font-family when it sets a type register', () => {
+    expect(controlClasses.size).toBeGreaterThan(5);
+
+    const offenders = measureOffenders();
+
+    // DEC-989 clause (a): may only be LOWERED, never raised to paper over a
+    // regression. See CEILING's own comment above for how it was measured.
     expect(
       offenders.length,
       `control-class rules with a type register but no font-family:\n${offenders.join('\n')}`,
     ).toBeLessThanOrEqual(CEILING);
+  });
+
+  it('the ceiling is not stale: the measured offender count does not fall below CEILING (two-sided ratchet, DEC-808/DEC-989)', () => {
+    const offenders = measureOffenders();
+    if (offenders.length < CEILING) {
+      throw new Error(
+        `${offenders.length} offenders measured, below CEILING=${CEILING}. An offender was ` +
+          `fixed -- good -- but the ceiling licenses stagnation until it moves too (the mirror ` +
+          `failure of a floor that never rises). Lower CEILING to exactly ${offenders.length} ` +
+          `as part of the SAME batch that landed the fix: ` +
+          `export const CEILING = ${offenders.length};`,
+      );
+    }
+    expect(offenders.length).toBe(CEILING);
+  });
+
+  describe('falsifiability controls (DEC-989 clause c): run through the scan\'s own matcher, isControlFontOffender, never a re-implementation', () => {
+    const SYNTHETIC_CONTROL_CLASS = new Set(['chq-synthetic-test-control']);
+
+    it('positive control: a rule with a type register and no font-family IS flagged', () => {
+      expect(
+        isControlFontOffender('.chq-synthetic-test-control', 'font-size: 14px; color: red;', SYNTHETIC_CONTROL_CLASS),
+      ).toBe(true);
+      expect(
+        isControlFontOffender('.chq-synthetic-test-control', 'font-weight: 600;', SYNTHETIC_CONTROL_CLASS),
+      ).toBe(true);
+    });
+
+    it('negative control: an otherwise-identical rule that also declares font-family is NOT flagged', () => {
+      expect(
+        isControlFontOffender(
+          '.chq-synthetic-test-control',
+          'font-size: 14px; font-family: Figtree, sans-serif; color: red;',
+          SYNTHETIC_CONTROL_CLASS,
+        ),
+      ).toBe(false);
+      expect(
+        isControlFontOffender(
+          '.chq-synthetic-test-control',
+          'font-weight: 600; font: inherit;',
+          SYNTHETIC_CONTROL_CLASS,
+        ),
+      ).toBe(false);
+    });
+
+    it('negative control: a rule with a type register on a non-control class is NOT flagged', () => {
+      expect(
+        isControlFontOffender('.chq-not-a-control-class', 'font-size: 14px;', SYNTHETIC_CONTROL_CLASS),
+      ).toBe(false);
+    });
   });
 });
