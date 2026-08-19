@@ -1647,3 +1647,190 @@
     width: 100%;
   }
 }
+
+
+/* ---------------------------------------------------------------------- */
+/* w4-e/DEC-375 wave-86: the index/drill SWITCH at <=700px, and the       */
+/* three list drills' body anatomy (Tracks and rooms, Your data, People   */
+/* and roles) -- docs/design/Chautauqua Settings.dc.html:275/347/393/552. */
+/* Appended LAST (DEC-385 wave-85 cascade note: settings.css's mid-file   */
+/* phone block at :158 is shadowed by any later unconditional rule for    */
+/* the same selector) so nothing declared above can outrank these.        */
+/* Namespaced to `.chq-settings-rail-link-*`, `.chq-settings-index-hint`, */
+/* `.chq-settings-drill-title` and `.chq-settings-tracks-rooms-phone-     */
+/* caption` -- disjoint from any other lane appending to this same        */
+/* trailing block (e.g. v12m-w4-f); never reorders or edits a rule that   */
+/* isn't one of these.                                                    */
+/* ---------------------------------------------------------------------- */
+
+/* The phone-only elements below render unconditionally in the DOM (JSX
+   keeps them viewport-agnostic; only CSS decides visibility) -- so every
+   one of them needs an explicit desktop `display:none` OUTSIDE the media
+   block, never left to rely on "no rule = invisible". */
+.chq-settings-drill-title,
+.chq-settings-index-hint,
+.chq-settings-tracks-rooms-phone-caption,
+.chq-settings-rail-link-open {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  /* -- The switch itself -------------------------------------------- */
+  /* DEC-375: index OR one drilled section, never the rail stacked above
+     its content. The mid-file block at :158 already toggles
+     .chq-settings-rail/.chq-settings-content display via
+     [data-drilled]; this just adds the title register swap that block
+     never had. */
+  /* Only the plain read-drill state (not editing) needs the swap -- while
+     editing, the original h1 already carries the section label (Settings.
+     tsx's `pageTitle`), so `.chq-settings-drill-title` isn't rendered at
+     all there (avoids a second, identically-named h1 in the DOM). */
+  .chq-settings-page:has(.chq-settings-layout[data-drilled='true'][data-editing='false']) > .chq-page-title {
+    display: none;
+  }
+
+  .chq-settings-drill-title {
+    display: block;
+    /* DEC-643 wave-83 amendment: Settings drills carry their own 26px
+       register, cluster-local to this file -- never the shared 25px
+       --chq-type-page-title-phone-drill token (that's the OTHER
+       drill-in register, Roster/Import CSV/etc.). */
+    font-size: 26px;
+    margin: 0;
+  }
+
+  .chq-settings-back {
+    /* docs/design/Chautauqua Settings.dc.html:347
+       `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center` --
+       .chq-btn-tertiary already carries the 44px floor + centred flex
+       from styles.css's shared phone rule; this just left-aligns the
+       text instead of the shared rule's centred justify-content, to
+       match the frame's left-flush back link. */
+    justify-content: flex-start;
+    padding-left: 0;
+    margin-bottom: 4px;
+  }
+
+  /* -- The index rows -------------------------------------------------- */
+  /* docs/design/Chautauqua Settings.dc.html:275-296: `{{ g.label }}` +
+     an olive "Open" on one baseline, an 18px-rhythm hairline-divided
+     list, a 13px detail line beneath each row. */
+  .chq-settings-rail-link {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 9px;
+    width: 100%;
+    min-height: 44px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+    text-align: left;
+  }
+
+  .chq-settings-rail-link:last-of-type {
+    border-bottom: none;
+  }
+
+  .chq-settings-rail-link-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .chq-settings-rail-link-label {
+    font-family: var(--chq-font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--chq-ink);
+  }
+
+  .chq-settings-rail-link-open {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-brand);
+  }
+
+  .chq-settings-rail-link-detail {
+    font-size: 13px;
+    color: var(--chq-ink-2);
+    line-height: 1.5;
+  }
+
+  /* docs/design/Chautauqua Settings.dc.html:296: the closing hint under
+     the index, phone-only. */
+  .chq-settings-index-hint {
+    display: block;
+    padding: 18px 0 0;
+    font-size: 13px;
+    color: var(--chq-ink-2);
+    line-height: 1.5;
+  }
+
+  /* -- Tracks and rooms drill body anatomy ------------------------------ */
+  /* docs/design/Chautauqua Settings.dc.html:347-390: a 2px-ruled 11px/700/
+     0.1em uppercase 'TRACKS'/'ROOMS' caption (matching the shared
+     `.chq-settings-panel h2` register above) heads each list. */
+  .chq-settings-tracks-rooms-phone-caption {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--chq-ink);
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    font-family: var(--chq-font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .chq-settings-tracks-rooms-phone-caption span:last-child {
+    font-family: inherit;
+    letter-spacing: normal;
+    text-transform: none;
+    font-weight: 700;
+    color: var(--chq-ink-2);
+  }
+
+  /* -- Your data / People and roles: the 44px bordered inline action ---- */
+  /* docs/design/Chautauqua Settings.dc.html:393-441 (Download/Revoke) and
+     :552-575 (Change) all draw the same bordered, sunk-fill, 44px inline
+     row action -- the SAME visual role `.chq-link-button` already carries
+     inside `.chq-settings-panel` (mid-file block, settings.css:~215);
+     this reaffirms it here, last, so it can never lose that cascade
+     fight against a later unconditional rule for the same selector. */
+  .chq-settings-panel .chq-link-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--chq-ink);
+  }
+
+  /* Exports' real download links (YourDataPanel's renderExportPills) ride
+     `.chq-pill`; the shared styles.css phone rule already floors it at
+     44px (:1108) -- this just gives it the same bordered-sunk treatment
+     as the row actions above, matching the frame's boxed "Download". */
+  .chq-settings-summary-pills .chq-pill {
+    border: 1px solid var(--chq-border);
+    background: var(--chq-surface-sunk);
+    padding: 0 14px;
+  }
+
+  /* People and roles / Your data read-list rows: 14px, hairline-divided,
+     18px rhythm (docs/design/Chautauqua Settings.dc.html:393-441/552-575
+     `padding:15px 0; border-bottom:1px solid #E1DDCE`). */
+  .chq-settings-summary-row {
+    padding: 14px 0;
+  }
+}

@@ -424,6 +424,14 @@ export function TracksRoomsPanel() {
   const readValue = (
     <div className="chq-settings-tracks-rooms-grid">
       <div className="chq-settings-tracks-rooms-col" aria-label="Tracks">
+        {/* w4-e/DEC-375: phone-only caption (docs/design/Chautauqua
+            Settings.dc.html:347-390 draws a 2px-ruled 'TRACKS'/'N' caption
+            above the read list) -- hidden at desktop, where the two-column
+            grid carries no caption row of its own (frozen). */}
+        <div className="chq-settings-tracks-rooms-phone-caption">
+          <span>Tracks</span>
+          <span>{tracks.length}</span>
+        </div>
         {tracks.length === 0 ? <p className="chq-settings-empty">No tracks yet.</p> : null}
         {tracks.map((track) => (
           <div key={track.id} className="chq-settings-tracks-rooms-row">
@@ -433,6 +441,10 @@ export function TracksRoomsPanel() {
         ))}
       </div>
       <div className="chq-settings-tracks-rooms-col" aria-label="Rooms">
+        <div className="chq-settings-tracks-rooms-phone-caption">
+          <span>Rooms</span>
+          <span>{rooms.length}</span>
+        </div>
         {rooms.length === 0 ? <p className="chq-settings-empty">No rooms yet.</p> : null}
         {rooms.map((room) => (
           <div key={room.id} className="chq-settings-tracks-rooms-row">

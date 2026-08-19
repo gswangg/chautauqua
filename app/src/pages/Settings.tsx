@@ -47,6 +47,10 @@ export interface SettingsSection {
   // counts that could drift from the record.
   detail: string;
   Panel: ComponentType;
+  // w4-e/DEC-375: the phone index row's detail line (docs/design/
+  // Chautauqua Settings.dc.html:275 `{{ g.detail }}`). Desktop never reads
+  // this -- the rail there is the plain link it always was.
+  detail: string;
 }
 
 // DEC-747: 'Speaker portal' is now ONE read-view section rendered entirely
@@ -126,6 +130,25 @@ export function SettingsPage() {
   const editingSection = editing ? SECTIONS.find((section) => section.key === urlSection) : undefined;
   const sectionsToRender = editingSection ? [editingSection] : SECTIONS;
   const pageTitle = editingSection ? editingSection.label : 'Settings';
+
+  // w4-e/DEC-375 wave-86: phone renders the index OR one drilled section,
+  // never both -- the desktop rail-click highlight already tracks `active`
+  // (DEC-896), so a drilled phone screen's title is the SAME state, just a
+  // section label instead of 'Settings'. This is a phone-only twin of
+  // `pageTitle` (below, `.chq-settings-drill-title`, CSS-hidden at desktop
+  // in settings.css's trailing phone block) -- reusing `pageTitle` itself
+  // for phone would also retitle the DESKTOP page the moment a reader
+  // scrolls (data-drilled tracks the same `active`), which is exactly the
+  // "rail click only scrolls, never hides" invariant this file's own header
+  // comment states. `editingSection` already covers the edit-drill case;
+  // `active` covers the plain read-drill case the phone index taps into.
+  const activeSection = active !== null ? SECTIONS.find((section) => section.key === active) : undefined;
+  // Only the plain read-drill gap needs a twin title -- when editingSection
+  // is set, the ORIGINAL top-level h1 (pageTitle, above) already carries
+  // the section label for both desktop and phone; rendering a second h1
+  // with the same text here would give jsdom's role-based queries (and any
+  // screen reader) two identically-named headings for one screen.
+  const phoneDrillTitle = !editingSection ? activeSection?.label : undefined;
 
   // Keep `active` in sync whenever the URL's `section` param CHANGES (e.g.
   // navigating directly to /settings?section=cfp, or Back/Forward) without
@@ -269,6 +292,13 @@ export function SettingsPage() {
           >
             &lsaquo; Settings
           </button>
+          {phoneDrillTitle ? (
+            // w4-e/DEC-375: phone-only twin of the page h1 (settings.css
+            // hides this at desktop and hides the page-level h1 at phone
+            // whenever a section is drilled, so exactly one title is ever
+            // visible in either mode).
+            <h1 className="chq-page-title chq-settings-drill-title">{phoneDrillTitle}</h1>
+          ) : null}
           {sectionsToRender.map((section) => {
             const Panel = section.Panel;
             return (
