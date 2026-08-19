@@ -37,7 +37,7 @@ const FACET_DEFS: Record<FacetKey, FacetDef> = {
     label: 'search',
     isActive: (filters) => filters.q.trim().length > 0,
     reason: (_filters, typed) => `No speakers match "${typed}".`,
-    escapeLabel: 'Clear the search ›',
+    escapeLabel: 'Clear the search filter ›',
     clear: (filters) => ({ ...filters, q: '' }),
   },
   taskId: {

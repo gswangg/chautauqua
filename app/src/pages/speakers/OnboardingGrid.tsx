@@ -18,6 +18,7 @@ import { countOf } from '../../lib/plural';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { firstNameOf } from '../../lib/identity';
 import { MAX_TASK_ASSIGNEES } from '../../lib/batch-caps';
+import { activeFacet } from './narrowing';
 import {
   DEFAULT_GRID_FILTERS,
   INVITE_STATUS_LABELS,
@@ -36,8 +37,8 @@ import {
 // Speakers links to it with the event already chosen).
 void DEC_827;
 // Compile-checked dependency marker: DEC-678 (v2-c amendment) -- the
-// single-active-facet empty-state naming/escape below (activeNarrowingFacets
-// / clearSingleNarrowingFacet / singleFacetClearLabel).
+// single-active-facet empty-state naming/escape below (narrowing.ts
+// activeFacet).
 void DEC_678;
 
 function nextStatus(status: AssignmentStatus): AssignmentStatus {
@@ -259,66 +260,6 @@ function narrowingDescription(filters: GridFilterState, tasks: OnboardingTask[])
   if (filters.overdueOnly) parts.push('overdue');
   if (filters.inviteStatus) parts.push(`participation ${INVITE_STATUS_LABELS[filters.inviteStatus].toLowerCase()}`);
   return parts.join(' and ');
-}
-
-/** The single narrowing predicate currently set, or null when zero or two+
- * are active. Same five checks as hasActiveNarrowing/narrowingDescription,
- * kept as one array so a caller can both count them and clear exactly one
- * without a second, possibly-drifting definition of "which facets exist". */
-type NarrowingFacet = 'q' | 'taskId' | 'status' | 'overdueOnly' | 'inviteStatus';
-
-function activeNarrowingFacets(filters: GridFilterState): NarrowingFacet[] {
-  const facets: NarrowingFacet[] = [];
-  if (filters.q.trim()) facets.push('q');
-  if (filters.taskId) facets.push('taskId');
-  if (filters.status) facets.push('status');
-  if (filters.overdueOnly) facets.push('overdueOnly');
-  if (filters.inviteStatus) facets.push('inviteStatus');
-  return facets;
-}
-
-/** DEC-678 amendment (w2-c, matching
- * docs/design/Chautauqua Speakers.dc.html:442
- * `Marcus Okafor is on the roster, but nothing of his is overdue. Clearing
- * "Overdue only" finds him.` / `Clear the overdue filter ›`): when exactly
- * one predicate is narrowing the roster, the escape clears only that
- * predicate, not every facet -- clearNarrowingFacets stays reserved for the
- * two-or-more case, where naming one of several active facets would be
- * misleading about what the link actually restores. */
-function clearSingleNarrowingFacet(filters: GridFilterState, facet: NarrowingFacet): GridFilterState {
-  switch (facet) {
-    case 'q':
-      return { ...filters, q: '' };
-    case 'taskId':
-      return { ...filters, taskId: null };
-    case 'status':
-      return { ...filters, status: null };
-    case 'overdueOnly':
-      return { ...filters, overdueOnly: false };
-    case 'inviteStatus':
-      return { ...filters, inviteStatus: null };
-  }
-}
-
-/** The escape link's label for the single-facet case -- names the same
- * facet narrowingDescription already isolated (there's exactly one part
- * when activeNarrowingFacets has one entry), so the two can never disagree
- * about which filter "Clear the X filter" refers to. */
-function singleFacetClearLabel(facet: NarrowingFacet, filters: GridFilterState, tasks: OnboardingTask[]): string {
-  switch (facet) {
-    case 'q':
-      return 'Clear the search filter ›';
-    case 'taskId': {
-      const task = tasks.find((t) => t.id === filters.taskId);
-      return task ? `Clear the "${task.title}" filter ›` : 'Clear the task filter ›';
-    }
-    case 'status':
-      return 'Clear the task-status filter ›';
-    case 'overdueOnly':
-      return 'Clear the overdue filter ›';
-    case 'inviteStatus':
-      return 'Clear the participation filter ›';
-  }
 }
 
 // DEC-934: a roster row whose participation is 'invited'/'declined' is one
@@ -1021,25 +962,28 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           claims a filter excluded anything. */}
       {!loading && grid && visibleRows.length === 0 && (() => {
         // DEC-678 amendment (w2-c): one active facet gets its own name and
-        // its own escape (frame :442); two or more keep the prior
-        // multi-facet sentence and clear-all escape, unchanged.
-        const activeFacets = activeNarrowingFacets(filters);
-        const onlyFacet = activeFacets.length === 1 ? activeFacets[0] : null;
+        // its own escape (frame :442), read from narrowing.ts's single
+        // voice -- null with two-or-more (or zero) active facets, which
+        // keep the prior multi-facet sentence and clear-all escape,
+        // unchanged.
+        const facet = activeFacet(filters);
         return (
           <EmptyState
             variant={hasActiveNarrowing(filters) ? 'filtered' : 'fresh'}
             what={hasActiveNarrowing(filters) ? 'No speakers match the current filters.' : 'No speakers on the roster yet.'}
             reason={
-              hasActiveNarrowing(filters)
-                ? narrowingDescription(filters, grid.tasks)
-                : 'Speakers appear here once a submission is accepted.'
+              facet
+                ? facet.reason(filters.q.trim() || null)
+                : hasActiveNarrowing(filters)
+                  ? narrowingDescription(filters, grid.tasks)
+                  : 'Speakers appear here once a submission is accepted.'
             }
             action={null}
             escape={
-              onlyFacet
+              facet
                 ? {
-                    label: singleFacetClearLabel(onlyFacet, filters, grid.tasks),
-                    onClick: () => handleFiltersChange(clearSingleNarrowingFacet(filters, onlyFacet)),
+                    label: facet.escapeLabel,
+                    onClick: () => handleFiltersChange(facet.clear(filters)),
                   }
                 : hasActiveNarrowing(filters)
                   ? { label: 'Clear filters', onClick: clearNarrowingFacets }
