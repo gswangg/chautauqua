@@ -1627,3 +1627,38 @@
     border-radius: var(--chq-r-ctl-phone);
   }
 }
+
+/* DEC-385 wave-7 amendment: cascade repair. Three declarations below this
+   file's earlier @media (max-width: 700px) blocks are shadowed by
+   later-declared, higher-source-order top-level rules of equal
+   specificity -- source order alone decides when specificity ties, so the
+   fix is a single terminal override block, appended here rather than by
+   reordering (37 other worktrees hold hunks in this file). Also carries
+   the DEC-393 wave-7 tap-floor technique for the merge page's back
+   control: grow the anchor itself, absorb the padding with an equal
+   negative inline margin. */
+@media (max-width: 700px) {
+  /* beats the top-level `grid-template-columns: minmax(0, 1fr) auto auto`
+     at :578. */
+  .chq-contacts-duplicate-group {
+    grid-template-columns: 1fr;
+  }
+
+  /* beats the top-level `white-space: nowrap` at :608. */
+  .chq-contacts-duplicate-names {
+    white-space: normal;
+  }
+
+  /* beats the top-level `flex-wrap: nowrap` on the same selector. */
+  .chq-contacts-duplicate-group .chq-contacts-import-actions {
+    flex-wrap: wrap;
+  }
+
+  .chq-contacts-merge-back {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+}
