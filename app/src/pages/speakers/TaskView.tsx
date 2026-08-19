@@ -429,63 +429,77 @@ export function TaskView() {
         </span>
       </div>
 
-      {selected.length > 0 && (
-        <div className="chq-bulkbar">
-          <span className="chq-bulkbar-count chq-taskview-bulk-count">{selected.length} selected</span>
-          <span className="chq-bulkbar-note chq-taskview-bulk-note">
+      {/* User-filed: always mounted — idle keeps the space so selecting
+          never shifts the table. USER RULING 2026-08-16: idle is a real
+          quiet state now — one muted hint line (.chq-bulkbar-hint, same
+          height as the armed bar) instead of an invisible band, kept in
+          the accessibility tree (no aria-hidden: the hint is real
+          content). */}
+      <div className={selected.length > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}>
+        {selected.length === 0 ? (
+          <span className="chq-bulkbar-hint">
             {tab === 'answered'
-              ? 'Marking complete sends nothing'
-              : 'A reminder names only this task · skips anyone emailed in the last hour · the due date moves for everyone, from the header'}
+              ? 'Tick rows to mark complete, reopen, or export.'
+              : 'Tick rows to remind or mark not needed.'}
           </span>
-          <div className="chq-bulkbar-actions">
-            {tab === 'answered' ? (
-              <>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-primary"
-                  onClick={() => void setStatusForSelected('complete')}
-                  disabled={busy}
-                >
-                  Mark complete
-                </button>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary"
-                  onClick={() => void setStatusForSelected('pending')}
-                  disabled={busy}
-                >
-                  Reopen
-                </button>
-                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => exportRows(selectedRows)}>
-                  Export
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-primary"
-                  onClick={() => void openRemindReview(selected)}
-                  disabled={busy}
-                >
-                  Remind
-                </button>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary"
-                  onClick={() => setPendingNotNeeded(selected)}
-                  disabled={busy}
-                >
-                  Not needed
-                </button>
-              </>
-            )}
-            <button type="button" className="chq-link-button chq-taskview-clear" onClick={() => setSelected([])}>
-              Clear
-            </button>
-          </div>
-        </div>
-      )}
+        ) : (
+          <>
+            <span className="chq-bulkbar-count chq-taskview-bulk-count">{selected.length} selected</span>
+            <span className="chq-bulkbar-note chq-taskview-bulk-note">
+              {tab === 'answered'
+                ? 'Marking complete sends nothing'
+                : 'A reminder names only this task · skips anyone emailed in the last hour · the due date moves for everyone, from the header'}
+            </span>
+            <div className="chq-bulkbar-actions">
+              {tab === 'answered' ? (
+                <>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-primary"
+                    onClick={() => void setStatusForSelected('complete')}
+                    disabled={busy}
+                  >
+                    Mark complete
+                  </button>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary"
+                    onClick={() => void setStatusForSelected('pending')}
+                    disabled={busy}
+                  >
+                    Reopen
+                  </button>
+                  <button type="button" className="chq-btn chq-btn-secondary" onClick={() => exportRows(selectedRows)}>
+                    Export
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-primary"
+                    onClick={() => void openRemindReview(selected)}
+                    disabled={busy}
+                  >
+                    Remind
+                  </button>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary"
+                    onClick={() => setPendingNotNeeded(selected)}
+                    disabled={busy}
+                  >
+                    Not needed
+                  </button>
+                </>
+              )}
+              <button type="button" className="chq-link-button chq-taskview-clear" onClick={() => setSelected([])}>
+                Clear
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {tabRows.length === 0 ? (
         <EmptyState
