@@ -52,7 +52,10 @@ describe('submissions.css phone head re-lining (DEC-919 wave-7 amendment)', () =
     expect(PHONE).toMatch(/\.chq-submissions-columnpicker[\s\S]{0,400}display:\s*none/);
   });
 
-  it('docs/design/Chautauqua Submissions.dc.html:147: re-lines the search+sort row into a column so the search field spans the measure on its own line', () => {
+  // docs/design/Chautauqua Submissions.dc.html:147
+  // `min-height:44px; display:flex; align-items:center; padding:0 13px`
+  // -- the search field is a full-width 44px control on its own line.
+  it('re-lines the search+sort row into a column so the search field spans the measure on its own line', () => {
     expect(PHONE).toMatch(/\.chq-submissions-filterbar-searchsort\s*\{[^}]*flex-direction:\s*column/);
   });
 
@@ -74,7 +77,10 @@ describe('submissions.css phone head re-lining (DEC-919 wave-7 amendment)', () =
     expect(PHONE).not.toMatch(/\.chq-status-pills \[data-status\][^{]*:not\(/);
   });
 
-  it('docs/design/Chautauqua Submissions.dc.html:148: keeps .chq-submissions-filterbar as one horizontally scrolling strip (status pills + track select + ColumnPicker) at the 44px floor', () => {
+  // docs/design/Chautauqua Submissions.dc.html:148
+  // `display:flex; gap:7px; overflow-x:auto`
+  // -- three status pills only (no ColumnPicker, DEC-919 wave-92/102).
+  it('keeps .chq-submissions-filterbar as one horizontally scrolling strip (status pills + track select) at the 44px floor', () => {
     expect(PHONE).toMatch(/\.chq-submissions-filterbar,[\s\S]{0,200}overflow-x:\s*auto/);
     expect(PHONE).toMatch(/\.chq-submissions-filterbar-select\s*\{[^}]*min-height:\s*44px/);
     expect(PHONE).toMatch(/\.chq-submissions-columnpicker > summary\s*\{[^}]*min-height:\s*44px/);
