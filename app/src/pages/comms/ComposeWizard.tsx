@@ -24,11 +24,17 @@ import { paginationSummary } from '../../lib/pagination-summary';
 import { writeComposeDraft, clearComposeDraft } from './composeDraft';
 import type { ComposePreviewPlan, ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
-import { DEC_317, DEC_793, DEC_967, DEC_993 } from '../../../../src/decisions';
+import { DEC_317, DEC_752, DEC_793, DEC_825, DEC_967, DEC_993 } from '../../../../src/decisions';
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
 
 void DEC_317;
+// DEC-752/DEC-825 back the always-mounted bulk bar contract (DEC-967
+// wave-107 doc-integrity lens: this file previously imported DEC_919 for
+// the same purpose, which is the wave-105 unreceipted-phone-hides
+// amendment, not the bulk-bar authority).
+void DEC_752;
 void DEC_793;
+void DEC_825;
 void DEC_967;
 void DEC_993;
 
@@ -915,7 +921,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               />
             </label>
           </div>
-          {/* DEC-919 wave-96: the 2026-08-16 user ruling (DEVIATIONS.md §2)
+          {/* DEC-752/DEC-825 wave-96: the 2026-08-16 user ruling (DEVIATIONS.md §2)
               supersedes DEC-350 wave-51 ruling A1 for every multi-select
               surface -- the selection bar is now ALWAYS mounted below the
               filters and directly above the table, idle a visible quiet
@@ -926,7 +932,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               survives filter changes, and the recipient cap fact -- in
               chrome voice (counts and nouns, no explanatory clauses). Frame
               07-comms--05: the action cluster (Select all &middot; Clear) is
-              right-flushed, never mid-row. */}
+              right-flushed, never mid-row.
+              (DEC-967 wave-107 doc-integrity: re-cited from a wave-105 phone-
+              hide amendment that named the wrong decision here. DEC-752
+              names the three-moves-plus-Clear contract; DEC-825 is the
+              sibling worklist chips ruling. DEVIATIONS.md §2 remains the
+              actual user ruling.) */}
           <div
             className={selection.selectedIds.size > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}
             role="toolbar"

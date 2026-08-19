@@ -2,9 +2,11 @@
 // the shared select-all/indeterminate/selection-bar contract from
 // ../submissions/selection.ts, matching ContactsTable/SubmissionsTable --
 // selecting 23 recipients is no longer 23 clicks.
-// DEC-919 wave-96: the 2026-08-16 user ruling supersedes DEC-350 wave-51 for
-// every multi-select surface -- the bar is always mounted, idle a visible
-// quiet state instead of unmounted.
+// DEC-752/DEC-825 wave-96 (re-cited wave-107, DEC-967 doc-integrity lens --
+// this comment previously named an unrelated wave-105 phone-hide amendment):
+// the 2026-08-16 user ruling (DEVIATIONS.md §2) supersedes DEC-350 wave-51
+// for every multi-select surface -- the bar mounts unconditionally, idle a
+// visible quiet state instead of unmounted.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
