@@ -216,7 +216,10 @@ describe('ApiTokensPanel cap line (DEC-027 wave-51 amendment)', () => {
     render(<ApiTokensPanel />);
 
     fireEvent.change(await screen.findByLabelText('Token name'), { target: { value: 'One more' } });
-    fireEvent.click(screen.getByRole('button', { name: 'New token' }));
+    // DEC-919 wave-99 amendment: "New token" now renders twice in the DOM
+    // (the form's own submit + the phone-only sibling, jsdom applies no
+    // media query so both are present) -- index 0 is the form's own submit.
+    fireEvent.click(screen.getAllByRole('button', { name: 'New token' })[0]!);
 
     expect(
       await screen.findByText('26 API tokens — 1 over the 25 limit -- revoke one before creating another'),
@@ -256,6 +259,50 @@ describe('ApiTokensPanel (DEC-941)', () => {
     });
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('ApiTokensPanel phone "New token" primary (DEC-919 wave-99 amendment, task v12m-w2-a)', () => {
+  it('renders the control exactly twice -- the form submit and the phone-only sibling -- the sibling carrying the phone-action class outside the form', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+    });
+
+    render(<ApiTokensPanel />);
+
+    // docs/design/Chautauqua Settings.dc.html:426
+    // `        <span style="display:flex; align-items:center; justify-content:center; margin-top:12px; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; font-size:14px; font-weight:700">New token</span>`
+    const buttons = await screen.findAllByRole('button', { name: 'New token' });
+    expect(buttons).toHaveLength(2);
+
+    const [formSubmit, phoneSibling] = buttons;
+    expect(formSubmit).toHaveAttribute('type', 'submit');
+    expect(formSubmit!.closest('form')).not.toBeNull();
+    expect(phoneSibling).toHaveClass('chq-settings-phone-action');
+    expect(phoneSibling!.closest('form')).toBeNull();
+  });
+
+  it('drives the same create call (and stays disabled with an empty name) from the phone-only sibling', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+      'POST /api/v1/tokens': { status: 200, body: { token: 'chq_live_secret' } },
+    });
+
+    render(<ApiTokensPanel />);
+
+    const [, phoneSibling] = await screen.findAllByRole('button', { name: 'New token' });
+    expect(phoneSibling).toBeDisabled();
+
+    fireEvent.change(await screen.findByLabelText('Token name'), { target: { value: 'Phone-created' } });
+    expect(phoneSibling).not.toBeDisabled();
+
+    fireEvent.click(phoneSibling!);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST'),
+      ).toBe(true);
     });
   });
 });
