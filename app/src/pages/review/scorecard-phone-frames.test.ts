@@ -78,7 +78,7 @@ function phoneRule(css: string, selector: string): string {
  * topLevelRuleBodies pair: the rule body for `selector` OUTSIDE any
  * @media block. */
 function stripAnyMedia(css: string): string {
-  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  return css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 }
 
 function topLevelRuleBody(css: string, selector: string): string {

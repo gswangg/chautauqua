@@ -572,7 +572,7 @@ describe('DeliverableDetail render smoke', () => {
   // padded parent's content box).
   it('declares no max-width on the status band in content.css, and bleeds through --chq-pub-main-pad-x never vw/cqw', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
-    const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
     const match = withoutMedia.match(/\.chq-content-status-band\s*\{([^}]*)\}/);
     expect(match).not.toBeNull();
     const body = match![1];
@@ -651,7 +651,7 @@ describe('DeliverableDetail render smoke', () => {
     // margin-inline/padding bleed treatment as the band (so both flush to
     // the same true edge, not just the band alone).
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
-    const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
     const pageContentBody = withoutMedia.match(/\.chq-content-page-content\s*\{([^}]*)\}/)?.[1];
     expect(pageContentBody).toBeDefined();
     expect(pageContentBody).toMatch(/max-width:\s*var\(--chq-measure-wide\)/);

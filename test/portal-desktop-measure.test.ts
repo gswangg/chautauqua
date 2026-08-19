@@ -22,7 +22,7 @@ const PORTAL_CSS = readFileSync(
 /** Extracts a top-level (not inside any @media block) rule's declaration
  * body by selector -- mirrors portal-phone-shell.test.ts's helper. */
 function topLevelRuleBody(css: string, selector: string): string | undefined {
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, "");
+  const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // Word-boundary the tail so ".chq-portal-footer" never matches the
   // ".chq-portal-footer-band" rule that happens to share its prefix.

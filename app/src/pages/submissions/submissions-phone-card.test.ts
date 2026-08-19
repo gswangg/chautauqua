@@ -17,7 +17,7 @@ const CSS_PATH = join(HERE, 'submissions.css');
 
 /** Strips one level of @media { ... } blocks out of a stylesheet's text. */
 function withoutMediaBlocks(css: string): string {
-  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  return css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 }
 
 /** Extracts the body text of the (single) 700px media block. */

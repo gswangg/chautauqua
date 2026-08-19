@@ -193,7 +193,7 @@ describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and P
     expect(phoneBlock).toMatch(/\.chq-portal-copresenter-role\s*\{[^}]*flex:\s*1 1 100%;[^}]*min-width:\s*0;/);
     // the unmediated (desktop) rule keeps its 190px cap -- this is a
     // max-width-only override, never a rewrite (DEC-385).
-    const withoutMedia = PORTAL_CSS.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, "");
+    const withoutMedia = PORTAL_CSS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
     expect(withoutMedia).toMatch(/\.chq-portal-copresenter-role\s*\{[^}]*flex:\s*0 1 190px;/);
   });
 

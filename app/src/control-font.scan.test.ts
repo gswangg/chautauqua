@@ -69,7 +69,7 @@ function controlClassTokens(src: string): Set<string> {
 function topLevelRules(css: string): Array<{ selector: string; body: string }> {
   const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const withoutMedia = withoutComments.replace(
-    /@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g,
+    /@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g,
     '',
   );
   const rules: Array<{ selector: string; body: string }> = [];

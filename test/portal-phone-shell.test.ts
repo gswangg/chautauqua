@@ -88,7 +88,7 @@ describe("portal.css.ts source scan (DEC-028 amendment)", () => {
   /** Extracts a top-level (not inside an @media block) rule's declaration
    * body by selector, mirroring app/src/shell-geometry.test.ts's helper. */
   function topLevelRuleBody(css: string, selector: string): string | undefined {
-    const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, "");
+    const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
     return match?.[1];

@@ -26,7 +26,7 @@ const ERROR_STATES_CSS_PATH = join(HERE, 'error-states.css');
  * braces, which is all any sheet here uses) so a selector that also
  * appears inside a phone block is never mistaken for the top-level one. */
 function topLevelRuleBody(css: string, selector: string): string {
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = withoutMedia.match(new RegExp(`(^|[,{}\\s])${escaped}\\s*\\{([^}]*)\\}`));
   const body = match?.[2];
@@ -152,7 +152,7 @@ describe('the 44px floor for the three ROOMY link tokens this wave fixed', () =>
     // (test/error-vocabulary-parity.scan.test.ts) starts matching the
     // wrong body. The desktop rule text itself is untouched (asserted
     // above); this just confirms exactly one top-level declaration exists.
-    const topLevelOnly = errorStatesCss.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const topLevelOnly = errorStatesCss.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
     const occurrences = topLevelOnly.match(/\.chq-error-summary-link\s*\{/g) ?? [];
     expect(occurrences.length).toBe(1);
   });

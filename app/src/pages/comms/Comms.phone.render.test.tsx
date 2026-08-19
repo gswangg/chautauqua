@@ -29,7 +29,7 @@ const TEMPLATES_CSS = readFileSync(join(HERE, 'templates.css'), 'utf-8');
 /** Extracts a top-level (not inside an @media block) rule's declaration
  * body by selector — same helper as shell-geometry.test.ts. */
 function topLevelRuleBody(css: string, selector: string): string {
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
   const body = match?.[1];

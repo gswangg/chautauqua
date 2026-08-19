@@ -147,7 +147,7 @@ describe('"Your plans · /review" -- docs/design/Chautauqua Review.dc.html:793-8
   it('frame :811 draws the card progress hairline at 5px -- the shared .chq-bar default, untouched', () => {
     const literal = '            <div style="height:5px; border-radius:99px; background:#E1DDCE; overflow:hidden">';
     expect(frameLine(811)).toBe(literal);
-    const barRule = ruleIn(read(join(REPO_ROOT, 'app/src/styles.css')).replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, ''), '.chq-bar');
+    const barRule = ruleIn(read(join(REPO_ROOT, 'app/src/styles.css')).replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, ''), '.chq-bar');
     expect(barRule).toMatch(/height:\s*5px/);
   });
 
@@ -177,7 +177,7 @@ describe('"Your plans · /review" -- docs/design/Chautauqua Review.dc.html:793-8
     // Hidden by default (no top-level rule outside any media block) --
     // mirrors phone-block-visibility.test.ts's own contract for
     // .chq-phone-* classes, extended here to this page-local sibling.
-    const withoutMedia = REVIEW_CSS.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const withoutMedia = REVIEW_CSS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
     expect(withoutMedia).toMatch(/\.chq-reviewer-plans-phone-note\s*\{\s*display:\s*none;\s*\}/);
     const phoneNoteRule = ruleIn(REVIEW_PHONE, '.chq-reviewer-plans-phone-note');
     expect(phoneNoteRule).toMatch(/display:\s*flex/);

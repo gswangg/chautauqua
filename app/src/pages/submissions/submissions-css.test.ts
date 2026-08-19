@@ -81,7 +81,7 @@ describe('submissions.css phone head re-lining (DEC-919 wave-7 amendment)', () =
   });
 
   it('desktop keeps every control (no display:none for these selectors outside a media block)', () => {
-    const withoutMedia = CSS.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const withoutMedia = CSS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
     expect(withoutMedia).not.toMatch(/\.chq-submissions-status-label\s*\{[^}]*display:\s*none/);
     expect(withoutMedia).not.toMatch(/\.chq-submissions-columnpicker\s*\{[^}]*display:\s*none/);
   });

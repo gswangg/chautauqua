@@ -22,7 +22,7 @@ const CSS = readFileSync(join(HERE, 'styles.css'), 'utf-8');
 function topLevelRuleBody(css: string, selector: string): string {
   // Strip every @media {...} block first so a nested override of the same
   // selector doesn't get picked up as the top-level rule.
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
   const body = match?.[1];

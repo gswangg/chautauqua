@@ -88,7 +88,7 @@ function phoneRule(css: string, selector: string): string {
  * (every width), not a phone-only override, so it lives at the top level of
  * styles.css, not inside agenda.css's phone layer. */
 function stripAnyMedia(css: string): string {
-  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  return css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 }
 
 function topLevelRule(css: string, selector: string): string {

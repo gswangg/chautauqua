@@ -22,7 +22,7 @@ const CSS = readFileSync(join(HERE, 'contacts-panels.css'), 'utf-8');
  * body by selector — same helper as ContactsApp.newContact.render.test.tsx
  * and shell-geometry.test.ts. */
 function topLevelRuleBody(css: string, selector: string): string {
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
   const body = match?.[1];

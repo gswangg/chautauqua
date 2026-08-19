@@ -130,7 +130,7 @@ describe("Sign in / Change password 390 CSS source-scan (DEC-385)", () => {
   });
 
   it("none of the new rules sit at the top level (outside every 700px block)", () => {
-    const withoutMedia = AUTH_CSS_TS.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, "");
+    const withoutMedia = AUTH_CSS_TS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
     expect(withoutMedia).not.toMatch(/\.chq-auth-stack \.chq-auth-wordmark/);
     expect(withoutMedia).not.toMatch(/\.chq-bare-page:has\(\.chq-auth-fields\) \.chq-auth-titlerow/);
   });

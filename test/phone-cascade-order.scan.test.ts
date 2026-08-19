@@ -232,7 +232,7 @@ function allShadowedPairs(): string[] {
 // the ceiling DOWN as part of that same merge-train step, printing the
 // exact new count the assertion below reports — never edit this number
 // from inside a worker lane that isn't the one doing the fix.
-export const SHADOWED_CEILING = 20;
+export const SHADOWED_CEILING = 19;
 
 describe('phone cascade order (DEC-385 single-direction, DEC-808 enumerating scan)', () => {
   it('does not exceed the shadowed-declaration ceiling', () => {

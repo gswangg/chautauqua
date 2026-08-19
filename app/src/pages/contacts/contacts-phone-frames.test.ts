@@ -118,7 +118,7 @@ function phoneRuleGroup(css: string, selector: string): string {
  * (.chq-contacts-import-phone-column/-dock) `display: none` at the top
  * level, so they never render unstyled underneath the desktop layout. */
 function stripAnyMedia(css: string): string {
-  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  return css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 }
 
 function topLevelRuleBody(css: string, selector: string): string {

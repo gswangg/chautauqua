@@ -27,7 +27,7 @@ function phoneBlockBody(css: string): string {
  * layer and the phone block overrides it -- not the other way round.
  */
 function topLevelCss(css: string): string {
-  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  return css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 }
 
 describe('submissions.css table column allocation (DEC-902, task w20-b)', () => {

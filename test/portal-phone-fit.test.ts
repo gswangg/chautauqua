@@ -80,7 +80,7 @@ describe("portal phone fit (DEC-253 wave-25 amendment)", () => {
   });
 
   it("does not move a single desktop pixel: the top-level (unmediated) rule keeps its DEC-989 560px clamp untouched", () => {
-    const withoutMedia = CSS.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, "");
+    const withoutMedia = CSS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
     expect(withoutMedia).toMatch(
       /\.chq-portal-shell\s*>\s*\.chq-measure\s*\{\s*max-width:\s*var\(--chq-portal-measure\);\s*\}/,
     );

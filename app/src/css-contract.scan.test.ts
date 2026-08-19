@@ -115,7 +115,7 @@ function stripComments(css: string): string {
 
 /** Strips every @media block (top-level-only parsing, per house idiom). */
 function stripMedia(css: string): string {
-  return stripComments(css).replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  return stripComments(css).replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 }
 
 /** Every top-level `selector { body }` rule, with @media blocks stripped. */
@@ -312,7 +312,7 @@ function allRulesIncludingMedia(css: string): Array<{ selector: string; body: st
   const withoutComments = stripComments(css);
   const rules: Array<{ selector: string; body: string }> = [];
   const topLevel = withoutComments.replace(
-    /@media[^{]*\{((?:[^{}]*\{[^{}]*\}[^{}]*)*)\}/g,
+    /@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g,
     (_full, inner: string) => {
       const re = /([^{}]+)\{([^{}]*)\}/g;
       let m: RegExpExecArray | null;

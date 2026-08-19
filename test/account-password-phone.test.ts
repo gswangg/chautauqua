@@ -341,7 +341,7 @@ const AUTH_CSS_TS = readFileSync(join(REPO_ROOT, "src/routes/auth.css.ts"), "utf
 
 /** Strips every @media {...} block (single level of nested rule braces). */
 function withoutMedia(css: string): string {
-  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, "");
+  return css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
 }
 
 /** Extracts the contents of every `@media (max-width: 700px) { ... }` block via balanced-brace scanning. */

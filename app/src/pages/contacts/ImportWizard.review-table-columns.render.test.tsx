@@ -22,7 +22,7 @@ const TSX_PATH = join(HERE, 'ImportWizard.tsx');
  * layer and any phone block overrides it -- not the other way round.
  */
 function topLevelCss(css: string): string {
-  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  return css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 }
 
 describe('contacts-panels.css import review table column allocation (DEC-902, task w23-b)', () => {

@@ -220,7 +220,7 @@ describe('ContactsTable column allocation (w20-c, DEC-902)', () => {
     // max-width only, never min-width. So the desktop allocation is the
     // unconditional base layer, not a min-width block.
     expect(css).not.toMatch(/@media[^{]*min-width/);
-    const desktopBlock = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const desktopBlock = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 
     expect(desktopBlock).toMatch(/\.chq-contacts-table\s*\{[^}]*table-layout:\s*fixed;/);
     expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-select\s*\{\s*width:\s*46px;\s*\}/);

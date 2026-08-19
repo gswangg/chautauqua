@@ -32,7 +32,7 @@ const PANELS_CSS = readFileSync(join(__dirname, "contacts-panels.css"), "utf8");
 // Extract every top-level (not inside any @media block) rule, in source
 // order, as { selector, body } pairs.
 function topLevelRules(css: string): Array<{ selector: string; body: string }> {
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, "");
+  const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
   const withoutComments = withoutMedia.replace(/\/\*[\s\S]*?\*\//g, "");
   const out: Array<{ selector: string; body: string }> = [];
   const re = /([^{}]+)\{([^{}]*)\}/g;

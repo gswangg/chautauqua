@@ -47,7 +47,7 @@ function stripComments(css: string): string {
  * test.ts / ContactsApp.newContact.render.test.tsx's topLevelRuleBody
  * helper (one level of nested braces inside @media). */
 function stripMedia(css: string): string {
-  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  return css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 }
 
 /** All declaration bodies of rules whose selector text is immediately

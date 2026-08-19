@@ -637,7 +637,7 @@ describe('overview headline row CSS contract (DEC-877 amendment)', () => {
   it('keeps the title flexible and the toolbar rigid outside @media', () => {
     const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'overview', 'overview.css');
     const css = readFileSync(cssPath, 'utf8');
-    const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 
     const headlineMatch = withoutMedia.match(/\.chq-overview-headline\s*\{([^}]*)\}/);
     expect(headlineMatch).not.toBeNull();
@@ -657,7 +657,7 @@ describe('overview headline row CSS contract (DEC-877 amendment)', () => {
 describe('overview top-third spacing measure (Gate-4 wave-6 amendment)', () => {
   const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'overview', 'overview.css');
   const css = readFileSync(cssPath, 'utf8');
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
 
   function ruleBody(selector: string): string {
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -771,7 +771,7 @@ describe('overview phone (390) DOM contract (task w2-g)', () => {
 describe('overview phone (390) CSS contract (task w2-g)', () => {
   const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'overview', 'overview.css');
   const css = readFileSync(cssPath, 'utf8');
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
   const maxWidthBlocks = [...css.matchAll(/@media\s*\(max-width:\s*700px\)\s*\{([\s\S]*?)\n\}/g)].map((m) => m[1]!);
   const phoneCss = maxWidthBlocks.join('\n');
 

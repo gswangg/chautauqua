@@ -23,7 +23,7 @@ const CSS = readFileSync(join(HERE, 'contacts-panels.css'), 'utf-8');
 /** Extracts a top-level (not inside an @media block) rule's declaration
  * body by selector — same helper as ContactsApp.newContact.render.test.tsx. */
 function topLevelRuleBody(css: string, selector: string): string {
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
   const body = match?.[1];

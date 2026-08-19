@@ -111,7 +111,7 @@ describe("frame docs/design/Chautauqua Submissions.dc.html:137 ('Submissions' 39
   });
 
   it('DESKTOP PRESERVED: the search+sort column re-lining and the caption/divider hide stay phone-only', () => {
-    const withoutMedia = CSS.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const withoutMedia = CSS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
     expect(withoutMedia).not.toMatch(/\.chq-submissions-filterbar-searchsort\s*\{[^}]*flex-direction:\s*column/);
     expect(withoutMedia).not.toMatch(/\.chq-submissions-status-label\s*\{[^}]*display:\s*none/);
     expect(withoutMedia).not.toMatch(/\.chq-submissions-filterbar-divider\s*\{[^}]*display:\s*none/);

@@ -150,7 +150,7 @@ describe("cfp.css.ts — phone wizard chrome (w14-f)", () => {
   ];
 
   function stripMedia(css: string): string {
-    return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, "");
+    return css.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
   }
 
   const withoutMedia = stripMedia(CFP_CSS);

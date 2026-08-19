@@ -50,7 +50,7 @@ describe('TracksRoomsPanel CSS geometry', () => {
 
 describe('DEC-781: .chq-settings-row is ONE grid row, not a column stack', () => {
   it('settings.css declares .chq-settings-row exactly once at the top level (no dead duplicate a source-scan or the cascade could silently prefer)', () => {
-    const withoutMedia = SETTINGS_CSS.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const withoutMedia = SETTINGS_CSS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
     const matches = withoutMedia.match(/(^|\n)\.chq-settings-row\s*\{/g) ?? [];
     expect(matches.length).toBe(1);
   });

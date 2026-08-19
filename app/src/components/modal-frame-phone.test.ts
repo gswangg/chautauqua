@@ -70,7 +70,7 @@ function phoneRule(css: string, selector: string): string {
 }
 
 function topLevelRuleBody(css: string, selector: string): string {
-  const withoutMedia = stripComments(css).replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = stripComments(css).replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const m = new RegExp(`${escaped}\\s*\\{([^}]*)\\}`).exec(withoutMedia);
   if (!m || m[1] === undefined) throw new Error(`no top-level rule for ${selector}`);
