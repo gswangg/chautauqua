@@ -752,9 +752,12 @@ describe('OnboardingGrid: DEC-678 amendment -- a search miss renders the filtere
     // multi-facet description (out of scope for w6-g -- unchanged).
     expect(screen.getByText('Showing 0 of 2 speakers · matching "Zzyx"')).toBeInTheDocument();
 
-    // The pager stays visible for a filtered zero-state (chrome is how a
-    // filter gets undone) -- unlike the fresh zero-state, which hides it.
-    expect(screen.getByText(/^Showing /, { selector: '.chq-summary' })).toBeInTheDocument();
+    // DEC-678 wave-109 amendment (w5-t): docs/design/Chautauqua
+    // Speakers.dc.html:442-483 -- `No speaker matches all three filters`.
+    // After that block the card ends, so a filtered zero-state has no table
+    // region left to page; it goes with the legend, not with the fresh
+    // zero-state's copy alone.
+    expect(screen.queryByText(/^Showing /, { selector: '.chq-summary' })).not.toBeInTheDocument();
 
     // DEC-678 amendment (w2-c): exactly one facet (q) is active, so the
     // escape names it instead of the generic multi-facet label.
@@ -1857,10 +1860,13 @@ describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
     // Filter row stays mounted underneath the empty state.
     expect(screen.getByRole('button', { name: 'Overdue only' })).toBeInTheDocument();
 
-    // DEC-678 amendment (B7 rule 5, wave 53): a FILTERED zero-state keeps
-    // the pager -- chrome is how a filter gets undone.
-    expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+    // DEC-678 wave-109 amendment (w5-t): docs/design/Chautauqua
+    // Speakers.dc.html:442-483 -- `No speaker matches all three filters`.
+    // The frame draws NO pager (and no legend) beneath the filtered empty
+    // block -- its own escape is how a filter gets undone, not table
+    // furniture with nothing left to page.
+    expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
 
     // DEC-678 amendment (w2-c): exactly one facet (overdueOnly) is active,
     // so the escape names it (frame :442) instead of the generic label.

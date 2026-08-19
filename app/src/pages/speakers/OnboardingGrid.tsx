@@ -1260,12 +1260,17 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         </>
       )}
 
-      {/* DEC-678 amendment (B7 rule 5, wave 53): a FRESH zero-state (no
-          narrowing facet active) hides the pager -- 'Showing 0 of 0' with
-          Prev/Next under a block that says the roster has never held a row
-          is chrome over nothing. A FILTERED zero-state keeps it: chrome is
-          how a filter gets undone. */}
-      {!loading && grid && !(visibleRows.length === 0 && !hasActiveNarrowing(filters)) && (
+      {/* DEC-678 amendment (B7 rule 5, wave 53; revised wave-109 amendment,
+          w5-t): NO zero-row state keeps the pager, fresh or filtered.
+          docs/design/Chautauqua Speakers.dc.html:442-483 -- the 'Speakers ·
+          search found nothing' frame ends its card at the empty block's own
+          escape action ("Clear the overdue filter ›"); there is no
+          `<thead>`, no legend row and no pager anywhere below it. The
+          filtered EmptyState's own escape control (facet.escapeLabel /
+          'Clear filters') is how the visitor undoes the exclusion --
+          the legend and pager are table furniture with nothing to legend
+          or page once the table region itself is gone. */}
+      {!loading && grid && visibleRows.length > 0 && (
         <div className="chq-speakers-pager">
           <span className="chq-summary">{paginationSummary(page, PER_PAGE, total, visibleRows.length)}</span>
           <span className="chq-speakers-grid-legend">{GRID_STATUS_LEGEND}</span>
