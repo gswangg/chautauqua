@@ -136,7 +136,7 @@ describe('ModalFrame: back link (DEC-651, wave 7 amendment)', () => {
   it('renders the back link as the FIRST child of .chq-modal-head when the prop is present', () => {
     const onBack = vi.fn();
     render(
-      <ModalFrame title="Contact detail" onClose={vi.fn()} back={{ label: '‹ Contacts', onClick: onBack }}>
+      <ModalFrame title="Contact detail" onClose={vi.fn()} backLink={{ label: '‹ Contacts', onClick: onBack }}>
         <p>Body</p>
       </ModalFrame>,
     );
@@ -151,7 +151,7 @@ describe('ModalFrame: back link (DEC-651, wave 7 amendment)', () => {
 
   it('renders the back link as a real <button>, not a bare anchor', () => {
     render(
-      <ModalFrame title="Contact detail" onClose={vi.fn()} back={{ label: '‹ Contacts', onClick: vi.fn() }}>
+      <ModalFrame title="Contact detail" onClose={vi.fn()} backLink={{ label: '‹ Contacts', onClick: vi.fn() }}>
         <p>Body</p>
       </ModalFrame>,
     );
@@ -166,7 +166,7 @@ describe('ModalFrame: back link (DEC-651, wave 7 amendment)', () => {
     const onBack = vi.fn();
     const onClose = vi.fn();
     render(
-      <ModalFrame title="Contact detail" onClose={onClose} back={{ label: '‹ Contacts', onClick: onBack }}>
+      <ModalFrame title="Contact detail" onClose={onClose} backLink={{ label: '‹ Contacts', onClick: onBack }}>
         <p>Body</p>
       </ModalFrame>,
     );

@@ -1553,3 +1553,30 @@ a.chq-speakers-task-title:hover {
     flex-shrink: 0;
   }
 }
+
+/* DEC-393 wave-7 amendment: flush row-action anchors cannot take padding
+   without moving the ink they draw, so the floor is met on the ANCHOR
+   itself -- min-height:44px plus centred flex plus horizontal padding, with
+   an equal-and-opposite negative margin so the padded box grows without
+   shifting anything around it (the same instrument B8 already uses for the
+   selected-row edge). Applied to the anchor only, never to a container, and
+   never to the .chq-speakers-status-* dense/roomy cell tokens -- those keep
+   the 178px column the pair exists to serve. */
+@media (max-width: 700px) {
+  .chq-speakers-name-link,
+  .chq-speaker-detail-back,
+  .chq-speakers-file-link,
+  .chq-speakers-task-title,
+  .chq-speakers-import-link,
+  .chq-speakers-head-actions a,
+  .chq-speakers-pager-actions a,
+  .chq-speaker-detail-actions a,
+  .chq-speaker-detail-logistics-actions a,
+  .chq-speakers-write-failure-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+}
