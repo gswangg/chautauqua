@@ -140,7 +140,7 @@ const REGISTER_TABLE: RegisterRow[] = [
     desktop: "44px",
     phone: "29px",
     source:
-      "docs/design/README.md typography table (\"Overview headline\"); docs/design/Chautauqua Home.dc.html:239 (Between-cycles/Fresh-deploy empty states); DEC-990 wave-49 amendment",
+      "docs/design/README.md typography table (\"Overview headline\"); Chautauqua Home.dc.html:239 (Between-cycles/Fresh-deploy empty states, cited with its strict form, and receipted, below); DEC-990 wave-49 amendment",
   },
   {
     role: "overview headline (event hub state)",
@@ -148,7 +148,7 @@ const REGISTER_TABLE: RegisterRow[] = [
     desktop: "44px",
     phone: "30px",
     source:
-      "docs/design/Chautauqua Home.dc.html:124 (the hub's own H1 is the odd one out among the three home states, per home.css.ts:193-198's own note); DEC-990 wave-49 amendment (phone value pre-existing, untouched)",
+      "Chautauqua Home.dc.html:124 (the hub's own H1 is the odd one out among the three home states, per home.css.ts:193-198's own note, cited with its strict form, and receipted, below); DEC-990 wave-49 amendment (phone value pre-existing, untouched)",
   },
   {
     role: "page title (CFP intro)",
@@ -225,6 +225,31 @@ describe("public page-title register scan (DEC-990 amendment)", () => {
       }
     }
     expect(badHits, badHits.join("\n") || "no offender found").toHaveLength(0);
+  });
+
+  function declaredFontSizes(selector: string): Set<string> {
+    const declared = new Set<string>();
+    for (const file of TARGET_FILES) {
+      const src = readFileSync(file, "utf8");
+      for (const rule of extractRules(src)) {
+        if (rule.selector !== selector) continue;
+        const fontSize = fontSizeOf(rule.body);
+        if (fontSize) declared.add(fontSize);
+      }
+    }
+    return declared;
+  }
+
+  it("docs/design/Chautauqua Home.dc.html:239 `font-size:29px; font-weight:700; letter-spacing:-0.042em; line-height:1.07` -- the \"overview headline\" REGISTER_TABLE row's phone size (Between-cycles/Fresh-deploy empty states) is declared by some customer-facing sheet", () => {
+    const row = rowFor(".chq-home-hero h1");
+    expect(row?.phone).toBe("29px");
+    expect(declaredFontSizes(".chq-home-hero h1").has("29px")).toBe(true);
+  });
+
+  it("docs/design/Chautauqua Home.dc.html:124 `font-size:30px; font-weight:700; letter-spacing:-0.042em; line-height:1.05` -- the \"overview headline (event hub state)\" REGISTER_TABLE row's phone size is declared by some customer-facing sheet", () => {
+    const row = rowFor(".chq-home-body:has(.chq-home-row) .chq-home-hero h1");
+    expect(row?.phone).toBe("30px");
+    expect(declaredFontSizes(".chq-home-body:has(.chq-home-row) .chq-home-hero h1").has("30px")).toBe(true);
   });
 
   it("every REGISTER_TABLE row is still declared by some customer-facing sheet (no stale rows)", () => {

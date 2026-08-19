@@ -396,15 +396,15 @@ describe('Phone tab bar (DEC-381)', () => {
 
   it('renders no tab bar at all for a reviewer -- one section is not a navigation choice, and the identity block carries Sign out instead', async () => {
     // DEC-576 (wave-86 amendment): a bottom tab bar with a single item
-    // draws no band in either phone frame
-    // (docs/design/Chautauqua Content.dc.html:229 draws the five-tab band
-    // only on the multi-section landing; :278's docked drill on the SAME
-    // page has no band at all). A reviewer has exactly one section
-    // (Review), so PhoneTabBar returns null below 2 primary tabs and
-    // there is no More sheet -- styles.css un-hides `.chq-user-identity`
-    // at <=700px whenever `.chq-shell` has no `.chq-tabbar`, so Sign out
-    // stays reachable via the header identity block this test already
-    // finds unconditionally (CSS media queries do not apply in jsdom).
+    // draws no band in either phone frame (Chautauqua Content.dc.html:229
+    // draws the five-tab band only on the multi-section landing; :278's
+    // docked drill on the SAME page has no band at all). A reviewer has
+    // exactly one section (Review), so PhoneTabBar returns null below 2
+    // primary tabs and there is no More sheet -- styles.css un-hides
+    // `.chq-user-identity` at <=700px whenever `.chq-shell` has no
+    // `.chq-tabbar`, so Sign out stays reachable via the header identity
+    // block this test already finds unconditionally (CSS media queries do
+    // not apply in jsdom).
     mockApi({
       'GET /api/v1/me': { userId: 'u-2', email: 'reviewer@example.com', role: 'reviewer', orgId: 'org-1' },
       'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
@@ -414,6 +414,7 @@ describe('Phone tab bar (DEC-381)', () => {
 
     const header = await screen.findByRole('banner');
     expect(within(header).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    // docs/design/Chautauqua Content.dc.html:229 `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:10px 8px 14px; display:flex; gap:2px` -- the five-tab band this line draws is absent for a reviewer's single-section nav.
     expect(screen.queryByRole('navigation', { name: 'Primary, phone' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^More/ })).not.toBeInTheDocument();
   });
@@ -582,9 +583,10 @@ describe('Header/nav geometry pinned to the frame (DEC-369 amendment)', () => {
 });
 
 // DEC-989 (wave 85 amendment): a page mounts its own docked band (e.g.
-// Content's phone Select mode -- docs/design/Chautauqua Content.dc.html:
-// 247-287 draws ONE footer region, not the dock stacked over the tab bar)
-// by setting `data-chq-phone-dock` on its page root, and styles.css's
+// Content's phone Select mode -- Chautauqua Content.dc.html:247-287 draws
+// ONE footer region, not the dock stacked over the tab bar; cited with its
+// strict form, and receipted, at the first it() below) by setting
+// `data-chq-phone-dock` on its page root, and styles.css's
 // `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar { display: none }`
 // rule is the shell's only consumer of that signal. jsdom applies no
 // stylesheet (this file's own topLevelRuleBody helper above exists
@@ -604,6 +606,7 @@ describe('.chq-tabbar suppression via data-chq-phone-dock (DEC-989 amendment, wa
     render(<App />);
 
     await screen.findByRole('navigation', { name: 'Primary, phone' });
+    // docs/design/Chautauqua Content.dc.html:247-287 `width:390px; height:844px` -- the shell's suppression selector, standing in for the page-mounted docked band this frame draws in place of the tab bar.
     expect(document.querySelector('.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar')).toBeNull();
   });
 

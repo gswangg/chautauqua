@@ -203,7 +203,7 @@ describe("cfp.css.ts — phone wizard chrome (w14-f)", () => {
     expect(mediaBody).not.toMatch(/\.chq-cfp-save-draft\s*\{[^}]*display:\s*none/);
   });
 
-  it("gives .chq-cfp-save-draft the frame's :1063 dock geometry (docs/design/Chautauqua Public and Portal.dc.html:1063 -- \"border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600\")", () => {
+  it("gives .chq-cfp-save-draft the frame's :1063 dock geometry (docs/design/Chautauqua Public and Portal.dc.html:1063 `border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600`)", () => {
     const mediaBody = CFP_CSS.slice(CFP_CSS.indexOf("@media (max-width: 700px)"));
     const match = mediaBody.match(/\.chq-cfp-save-draft\s*\{([^}]*)\}/);
     expect(match, ".chq-cfp-save-draft has no rule inside the 700px media query").not.toBeNull();
