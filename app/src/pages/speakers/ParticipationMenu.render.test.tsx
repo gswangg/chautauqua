@@ -142,7 +142,10 @@ describe('ParticipationMenu: v12 weight inversion and density pairing', () => {
 
     // Both halves of the pair, asserted together -- editing one alone is the
     // regression the ruling names.
-    expect(extractRule(SPEAKERS_CSS, '.chq-speakers-status-dense')).toMatch(/padding:\s*3px 0/);
+    expect(extractRule(SPEAKERS_CSS, '.chq-speakers-status-dense')).toMatch(/padding:\s*3px 6px/);
+    // User-filed ring breathing room: the inline padding is cancelled, so
+    // dense is still the natural size.
+    expect(extractRule(SPEAKERS_CSS, '.chq-speakers-status-dense')).toMatch(/margin-inline:\s*-6px/);
     const roomy = extractRule(SPEAKERS_CSS, '.chq-speakers-status-roomy');
     expect(roomy).toMatch(/min-height:\s*44px/);
     expect(roomy).toMatch(/padding:\s*0 10px/);

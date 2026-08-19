@@ -308,7 +308,9 @@ const UNRECEIPTED = INTERACTIVE_PHONE_DISPLAY_NONE_RULES.filter((r) => r.receipt
 // population and the ceiling) but must never receipt it -- a receipt here
 // would be the DEC-976 shape one wave over (a citation naming a fix that
 // isn't there).
-const CFP_SUBMIT_BUTTON_WORK_ITEM = '[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]';
+// w14-b landed the Save-draft restore, so the work item's selector now
+// carves that control out -- the submit hide itself is still unreceipted.
+const CFP_SUBMIT_BUTTON_WORK_ITEM = '[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]:not(.chq-cfp-save-draft)';
 
 // This count may only be LOWERED, either by a receipt landing on a rule
 // that legitimately qualifies (a navigation control with nothing to reach,
@@ -346,7 +348,11 @@ const CFP_SUBMIT_BUTTON_WORK_ITEM = '[data-chq-cfp-step="1"] .chq-cfp-actions bu
 // A future wave closes each by giving its cluster a phone-width
 // affordance, or by writing a receipt once a genuine re-lined replacement
 // or navigation dead-end is verified -- never by receipting on assumption.
-export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 7;
+// Re-baselined 2026-08-19 at merge time: the probe was authored on the
+// stranded wave-14 branch against a 7-rule main; waves 15+ added three
+// unreceipted hides before the probe landed. The ratchet is one-sided
+// from HERE -- receipt or remove to lower it, never raise it again.
+export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 10;
 
 describe('DEC-919 phone capability-removal probe', () => {
   it('finds more than one sheet (vacuous-population tripwire, sheet side)', () => {
