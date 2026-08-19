@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { useMenu } from '../../lib/useMenu';
 import { DEC_830 } from '../../../../src/decisions';
 import { INVITE_STATUS_LABELS, INVITE_STATUSES, type InviteStatus } from './types';
+import type { StatusDensity } from './TaskCell';
 
 // Compile-checked dependency marker (DEC-830).
 void DEC_830;
@@ -34,14 +35,20 @@ void DEC_830;
 //                   "four modifiers, shared with the task cells".
 //   Not invited  -> unchanged (dashed).
 //
-// Density is DENSE: the USER RULING on this page is that the participation
-// control sits beside the name "at its natural chip size", and the frame's
-// detail header draws it at exactly that. The 44px roomy half is for the
-// task rows and the task views.
-export function participationStatusClass(status: InviteStatus): string {
+// Density is the caller's call, and the two answers are both in the frame:
+// the desktop matrix and the speaker detail draw this at its NATURAL chip
+// size ('dense') -- the USER RULING for the detail page is that the
+// participation control sits beside the name at exactly that size -- while
+// the phone card list draws it 'roomy'. The frame's own constants say the
+// same thing: `inviteStyle` is bare, `inviteStyleM` carries min-height:44px
+// plus `padding:0 12px`, and v12 raised that from a hardcoded 32px. That
+// 32px is the regression DESIGN-RULINGS names by name ("never author a
+// min-height below 44px on a phone token"), which is why the density is a
+// required prop here rather than a constant.
+export function participationStatusClass(status: InviteStatus, density: StatusDensity): string {
   const modifier =
     status === 'accepted' ? 'complete' : status === 'declined' ? 'overdue' : status === 'invited' ? 'invited' : 'none';
-  return `chq-speakers-status chq-speakers-status-${modifier} chq-speakers-status-dense`;
+  return `chq-speakers-status chq-speakers-status-${modifier} chq-speakers-status-${density}`;
 }
 
 // DEC-869: the participation menu names each state's consequence -- a Record
@@ -85,6 +92,9 @@ interface ParticipationMenuProps {
   // this component never fetches.
   company?: string | null;
   hasAccount: boolean;
+  // v12: which half of the status token pair the TRIGGER takes -- see
+  // participationStatusClass. Required, never defaulted.
+  density: StatusDensity;
 }
 
 export function ParticipationMenu({
@@ -96,6 +106,7 @@ export function ParticipationMenu({
   label,
   company,
   hasAccount,
+  density,
 }: ParticipationMenuProps) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -107,7 +118,7 @@ export function ParticipationMenu({
       {label && <span className="chq-participation-menu-ref">{label}</span>}
       <button
         type="button"
-        className={`${participationStatusClass(status)} chq-participation-menu-trigger`}
+        className={`${participationStatusClass(status, density)} chq-participation-menu-trigger`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Participation status for ${identity}: ${INVITE_STATUS_LABELS[status]}`}

@@ -79,6 +79,76 @@ async function openMenu() {
   return within(table.getByRole('menu', { name: 'Participation status for Ada Lovelace' }));
 }
 
+// Design pack v12 applies the status weight inversion to the participation
+// axis too, and splits Invited off the task axis's Pending.
+describe('ParticipationMenu: v12 weight inversion and density pairing', () => {
+  async function triggerFor(inviteStatus: InviteStatus, scope: 'table' | 'cards') {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith(inviteStatus),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0));
+    const root = scope === 'table' ? '.chq-speakers-grid' : '.chq-speakers-cards';
+    return document.querySelector(`${root} .chq-participation-menu-trigger`)!;
+  }
+
+  // Confirmed is the resting state of most of a roster, so it spends none of
+  // the emphasis budget; Declined is the exception, so it takes the fill.
+  it('Confirmed RECEDES to the bare muted modifier', async () => {
+    const trigger = await triggerFor('accepted', 'table');
+    expect(trigger).toHaveClass('chq-speakers-status-complete');
+    expect(trigger).not.toHaveClass('chq-speakers-status-overdue');
+  });
+
+  it('Declined takes the FILLED modifier', async () => {
+    const trigger = await triggerFor('declined', 'table');
+    expect(trigger).toHaveClass('chq-speakers-status-overdue');
+  });
+
+  // Invited kept its 1px rule while the TASK pending token went bare bold
+  // ink, so the two can no longer share a class (amends DEC-830/DEC-789).
+  it('Invited has its own modifier, no longer borrowing the task axis Pending', async () => {
+    const trigger = await triggerFor('invited', 'table');
+    expect(trigger).toHaveClass('chq-speakers-status-invited');
+    expect(trigger).not.toHaveClass('chq-speakers-status-pending');
+    // ...and the two really do differ: one paints a rule, the other does not.
+    expect(extractRule(SPEAKERS_CSS, '.chq-speakers-status-invited')).toMatch(/border:\s*1px solid/);
+    expect(extractRule(SPEAKERS_CSS, '.chq-speakers-status-pending')).toMatch(/border:\s*none/);
+  });
+
+  it('Not invited keeps the dashed modifier', async () => {
+    const trigger = await triggerFor('none', 'table');
+    expect(trigger).toHaveClass('chq-speakers-status-none');
+    expect(extractRule(SPEAKERS_CSS, '.chq-speakers-status-none')).toMatch(/border:\s*1px dashed/);
+  });
+
+  // The frame's inviteStyle/inviteStyleM pair: bare on the desktop matrix,
+  // min-height:44px + horizontal padding on the phone card. v12 raised the
+  // phone half from a hardcoded 32px, which is the escape DESIGN-RULINGS
+  // names ("never author a min-height below 44px on a phone token").
+  it('is dense in the matrix and roomy on the phone card, with the same meaning class', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('accepted'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0));
+
+    const inMatrix = document.querySelector('.chq-speakers-grid .chq-participation-menu-trigger')!;
+    const onCard = document.querySelector('.chq-speakers-cards .chq-participation-menu-trigger')!;
+    expect(inMatrix).toHaveClass('chq-speakers-status-complete', 'chq-speakers-status-dense');
+    expect(onCard).toHaveClass('chq-speakers-status-complete', 'chq-speakers-status-roomy');
+
+    // Both halves of the pair, asserted together -- editing one alone is the
+    // regression the ruling names.
+    expect(extractRule(SPEAKERS_CSS, '.chq-speakers-status-dense')).toMatch(/padding:\s*3px 0/);
+    const roomy = extractRule(SPEAKERS_CSS, '.chq-speakers-status-roomy');
+    expect(roomy).toMatch(/min-height:\s*44px/);
+    expect(roomy).toMatch(/padding:\s*0 10px/);
+  });
+});
+
 describe('ParticipationMenu (DEC-830)', () => {
   // DEC-869 (wave-50 amendment): the menu offers exactly three SELECTABLE
   // states -- 'invited' is never one of them; Send portal invite occupies

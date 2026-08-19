@@ -990,6 +990,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                             }
                             onSendInvite={() => sendPortalInvite(row.contact.id)}
                             sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                            density="dense"
                           />
                         ))}
                         {/* DEC-805/DEC-934: quiet, conditional — a contact who
@@ -1079,6 +1080,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       </>
                     )}
                   </span>
+                  {/* v12: the frame's inviteStyleM -- a card row is a real
+                      target, so the phone half of the token pair takes the
+                      44px box (min-height PLUS horizontal padding) the
+                      desktop matrix cannot afford. It replaces a hardcoded
+                      32px, which is the escape DESIGN-RULINGS names. */}
                   {row.contact.participations.map((participation) => (
                     <ParticipationMenu
                       key={participation.participantId}
@@ -1092,6 +1098,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       }
                       onSendInvite={() => sendPortalInvite(row.contact.id)}
                       sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                      density="roomy"
                     />
                   ))}
                   {declinedOnly ? (

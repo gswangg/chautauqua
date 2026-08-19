@@ -550,6 +550,9 @@ export function SpeakerDetailPage() {
                                 status={participation.inviteStatus}
                                 onSelectStatus={(desired) => setSessionInviteStatus(participation, desired)}
                                 onSendInvite={sendPortalInvite}
+                                /* USER RULING: the participation control sits at
+                                   its NATURAL chip size on this page. Dense. */
+                                density="dense"
                                 company={detail.contact.company}
                                 hasAccount={detail.contact.hasAccount}
                               />
