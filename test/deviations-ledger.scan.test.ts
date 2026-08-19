@@ -372,7 +372,7 @@ const LEDGER: LedgerEntry[] = [
     reason: "the validation itself SHIPPED; only the 560-card/no-step-rail/download-the-rows PRESENTATION is deferred -- recorded as scope, not disguised as built.",
   },
   {
-    key: "embed-editor-drill-page-anatomy-09-15-sessionboard-importer-modal-per-entity-dispositions-09-25-plan-editor-footer-draft-vs-open-model-email-html-shells-cta-callout-signature-anatomy-07-09-12-shared-confirmdialog-480-subtitle-typed-label-anatomy-09-21-22-portal-resources-block-rework-09-13-docs-ia-expansion-14-further-articles",
+    key: "embed-editor-drill-page-anatomy-09-15-sessionboard-importer-modal-per-entity-dispositions-09-25-plan-editor-footer-draft-vs-open-model-email-html-shells-cta-callout-signature-anatomy-07-09-12-shared-confirmdialog-480-subtitle-typed-label-anatomy-09-21-22-portal-resources-block-rework-09-13-docs-ia-expansion-14-further-articles-the-sessionboard-importer-modal-is-drawn-at-docs-design-chautauqua-settings-dc-html-1507-import-from-sessionboard",
     status: "gap",
     reason: "reworks larger than the freeze window -- a bundle of deferred anatomy changes, none built.",
   },

@@ -233,7 +233,11 @@ const EXPECTED_PER_FILE: Record<string, number> = {
 
 const EXPECTED_TOTAL_LABELS = 161;
 const EXPECTED_TOTAL_DESKTOP_PRE_EXCLUSION = 108;
-const EXPECTED_TOTAL = 102;
+// Renamed from EXPECTED_TOTAL (DEC-976 wave-107 amendment): this is the
+// population BEFORE the deviation-deferred exclusion below. The exact-102
+// assertion this guards is unchanged -- only its name, so the population
+// can never be shrunk by breaking the label grammar.
+const EXPECTED_TOTAL_PRE_DEVIATION = 102;
 
 // -- Claims: every *.test.ts/*.test.tsx under test/ or app/src/ ------------
 // Identical machinery to the phone ledger's own claim side.
@@ -322,6 +326,81 @@ for (const frame of ALL_FRAMES) {
   if (citation) CLAIMS.push({ frame, citation });
 }
 
+// -- Deviation-deferred exclusion (DEC-976 wave-107 amendment) --------------
+// docs/design/DEVIATIONS.md's "## 6. Deferred post-deadline" section is a
+// USER RULING (2026-08-16, G13 sweep) that certain frames draw features or
+// reworks the build deliberately does not carry -- scope decisions, not
+// defects. The ledger's own population can never reach its total while it
+// keeps counting frames the ruling itself puts out of scope, so this is a
+// THIRD exclusion class, beside the template-interpolation (pattern) and
+// explainer-panel (hand-listed) ones above. It is DERIVED, never hand-listed
+// (DEC-808): every `docs/design/<file>.dc.html:<line>` citation inside §6's
+// text names an excluded frame, full stop -- no separate allowlist to drift
+// out of sync with the document.
+
+const DEVIATIONS_PATH = join(REPO_ROOT, 'docs', 'design', 'DEVIATIONS.md');
+const DEFERRED_HEADING = '## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)';
+
+/** Every line belonging to the `## 6. Deferred post-deadline` section,
+ * stopping at the next `## ` heading or end of file. Throws if the heading
+ * is absent, so a renamed/moved section can never silently zero this out. */
+function deferredSectionText(): string {
+  const text = readFileSync(DEVIATIONS_PATH, 'utf-8');
+  const lines = text.split('\n');
+  const startIdx = lines.findIndex((l) => l.trim() === DEFERRED_HEADING);
+  if (startIdx === -1) {
+    throw new Error(`docs/design/DEVIATIONS.md has no "${DEFERRED_HEADING}" section`);
+  }
+  const rest = lines.slice(startIdx + 1);
+  const endIdx = rest.findIndex((l) => l.startsWith('## '));
+  return (endIdx === -1 ? rest : rest.slice(0, endIdx)).join('\n');
+}
+
+interface DeviationCitation {
+  fileName: string;
+  line: number;
+}
+
+/** Every `docs/design/<file>.dc.html:<line>` citation inside §6, using the
+ * same CITATION_RE grammar the claim side uses. */
+function deviationCitations(): DeviationCitation[] {
+  const text = deferredSectionText();
+  const out: DeviationCitation[] = [];
+  for (const m of text.matchAll(CITATION_RE)) {
+    out.push({ fileName: m[1]!, line: firstLineNumber(m[2]!) });
+  }
+  return out;
+}
+
+const DEVIATION_CITATIONS = deviationCitations();
+
+/** Every §6 citation that lands exactly on a real desktop frame LABEL line.
+ * Not every §6 citation opens a frame -- e.g. the "reviewer-row Swap" and
+ * "Portal task-list dock" entries cite specific geometry rule lines inside
+ * a frame's body, not the frame's own font-size:19px label -- so this is a
+ * FILTER, not a throw: a citation that does not resolve to a label line is
+ * simply not naming a frame to exclude. Dedupe by file:line so a frame
+ * cited twice in §6 is only excluded once. */
+const EXCLUDED: Frame[] = (() => {
+  const seen = new Set<string>();
+  const out: Frame[] = [];
+  for (const cite of DEVIATION_CITATIONS) {
+    const frame = ALL_FRAMES.find((f) => f.fileName === cite.fileName && f.line === cite.line);
+    if (!frame) continue;
+    const key = `${frame.file}:${frame.line}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(frame);
+  }
+  return out;
+})();
+
+const EXPECTED_DEVIATION_DEFERRED = 2;
+const EXPECTED_DEVIATION_CITATIONS = [
+  { fileName: 'Chautauqua Settings.dc.html', line: 1111 },
+  { fileName: 'Chautauqua Settings.dc.html', line: 1507 },
+];
+
 // -- Ratchet -----------------------------------------------------------------
 // Measured on this branch (v12m-w2-f): 16 of 102 desktop frames are cited by
 // an existing test. May only be RAISED in a future wave as more frames get
@@ -373,13 +452,13 @@ describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile camp
     expect(droppedCount).toBe(EXPECTED_TEMPLATE_TITLES.length + EXPLAINER_PANELS.length);
   });
 
-  it('enumerates exactly 102 desktop frames across 13 files after exclusion (vacuous-population guard)', () => {
+  it('enumerates exactly 102 desktop frames across 13 files after exclusion, before the deviation-deferred exclusion (vacuous-population guard)', () => {
     const actualPerFile: Record<string, number> = {};
     for (const frame of ALL_FRAMES) {
       actualPerFile[frame.fileName] = (actualPerFile[frame.fileName] ?? 0) + 1;
     }
     expect(actualPerFile).toEqual(EXPECTED_PER_FILE);
-    expect(ALL_FRAMES.length).toBe(EXPECTED_TOTAL);
+    expect(ALL_FRAMES.length).toBe(EXPECTED_TOTAL_PRE_DEVIATION);
   });
 
   it(`claims at least CLAIMED_FLOOR (${CLAIMED_FLOOR}) of 102 desktop frames, and never fewer than the ratchet`, () => {
@@ -427,5 +506,46 @@ describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile camp
         `${claim.citation.citingFile}: "${claim.citation.matchText}" cites ${claim.frame.fileName}:${claim.citation.firstLine}, which does not exist in that frame file`
     );
     expect(bad).toEqual([]);
+  });
+
+  it(`the DEVIATIONS §6 deviation-deferred exclusion is derived and exact: exactly ${EXPECTED_DEVIATION_DEFERRED} excluded desktop frames, each resolving to a real frame label line whose title is quoted verbatim in the deferring bullet`, () => {
+    expect(EXCLUDED.length).toBe(EXPECTED_DEVIATION_DEFERRED);
+    const actual = EXCLUDED.map((f) => ({ fileName: f.fileName, line: f.line })).sort(
+      (a, b) => a.fileName.localeCompare(b.fileName) || a.line - b.line
+    );
+    const expected = [...EXPECTED_DEVIATION_CITATIONS].sort(
+      (a, b) => a.fileName.localeCompare(b.fileName) || a.line - b.line
+    );
+    expect(actual).toEqual(expected);
+
+    const deviationsText = readFileSync(DEVIATIONS_PATH, 'utf-8');
+    for (const frame of EXCLUDED) {
+      expect(
+        deviationsText.includes(`\`${frame.title}\``),
+        `DEVIATIONS.md does not quote the excluded frame's title "${frame.title}" verbatim in backticks`
+      ).toBe(true);
+    }
+  });
+
+  it('no deviation-deferred exclusion is claimed by any test file (an exclusion a claim has overtaken is stale and must be deleted, never carried)', () => {
+    const overtaken = EXCLUDED.filter((frame) => ALL_CITATIONS.some((c) => citationClaims(c, frame))).map(
+      (f) => `${f.file}:${f.line} -- ${f.title}`
+    );
+    expect(overtaken, overtaken.join('\n')).toEqual([]);
+  });
+
+  it(`desktop half of the v12 mobile campaign goal: claimed frames plus deviation-deferred frames reaches CLAIMED_FLOOR (${CLAIMED_FLOOR}) + EXPECTED_DEVIATION_DEFERRED (${EXPECTED_DEVIATION_DEFERRED})`, () => {
+    const claimedKeys = new Set(CLAIMS.map((c) => `${c.frame.file}:${c.frame.line}`));
+    const excludedKeys = new Set(EXCLUDED.map((f) => `${f.file}:${f.line}`));
+    const remaining = ALL_FRAMES.filter(
+      (f) => !claimedKeys.has(`${f.file}:${f.line}`) && !excludedKeys.has(`${f.file}:${f.line}`)
+    ).map((f) => `${f.file} :${f.line} -- ${f.title}`);
+    if (CLAIMS.length + EXCLUDED.length < CLAIMED_FLOOR + EXPECTED_DEVIATION_DEFERRED) {
+      throw new Error(
+        `claimed ${CLAIMS.length} + excluded ${EXCLUDED.length} = ${CLAIMS.length + EXCLUDED.length}, below ` +
+          `the goal of ${CLAIMED_FLOOR + EXPECTED_DEVIATION_DEFERRED}. Remaining frames:\n${remaining.join('\n')}`
+      );
+    }
+    expect(CLAIMS.length + EXCLUDED.length).toBeGreaterThanOrEqual(CLAIMED_FLOOR + EXPECTED_DEVIATION_DEFERRED);
   });
 });
