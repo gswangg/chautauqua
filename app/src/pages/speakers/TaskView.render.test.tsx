@@ -188,10 +188,16 @@ describe('design pack v12 task view: "One task, every speaker" / "One task · st
     expect(chips.filter((c) => c.className.includes('chq-speakers-status-overdue'))).toHaveLength(1);
   });
 
-  it('the bulk bar appears only once something is selected, and its verbs follow the tab', async () => {
+  it('the bulk bar is always mounted, idle until something is selected, and its verbs follow the tab', async () => {
     await mountLoaded();
 
     expect(screen.queryByText('Marking complete sends nothing')).not.toBeInTheDocument();
+    const idleBar = document.querySelector('.chq-bulkbar');
+    expect(idleBar).not.toBeNull();
+    expect(idleBar!.className).toContain('chq-bulkbar-idle');
+    expect(idleBar!.querySelectorAll('.chq-bulkbar-hint')).toHaveLength(1);
+    expect(idleBar!.querySelectorAll('button')).toHaveLength(0);
+    expect(screen.getByText('Tick rows to mark complete, reopen, or export.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Priya Raman' }));
     expect(screen.getByText('1 selected')).toBeInTheDocument();

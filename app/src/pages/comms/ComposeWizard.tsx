@@ -915,37 +915,49 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               />
             </label>
           </div>
-          {/* DEC-350 amendment (wave 51, ruling A1): the selection bar sits
-              below the filters and directly above the table, only when the
-              selection is non-empty. It keeps both constraints the panel
-              note used to carry alone -- selection survives filter changes,
-              and the recipient cap fact -- in chrome voice (counts and
-              nouns, no explanatory clauses). Frame 07-comms--05: the action
-              cluster (Select all &middot; Clear) is right-flushed, never
-              mid-row. */}
-          {selection.selectedIds.size > 0 && (
-            <div className="chq-bulkbar" role="toolbar" aria-label="Selection">
-              <span className="chq-bulkbar-count">{countOf(selection.selectedIds.size, 'submission')} selected</span>
-              <span className="chq-bulkbar-note">
-                Kept as you change filters &middot; {selection.selectedIds.size} is{' '}
-                {selection.selectedIds.size > MAX_COMPOSE_RECIPIENTS ? 'over' : 'under'} the {MAX_COMPOSE_RECIPIENTS}-recipient cap
-              </span>
-              <div className="chq-bulkbar-actions">
-                <button type="button" className="chq-btn chq-btn-tertiary" disabled={total === 0} onClick={() => void selectAllShown()}>
-                  {statusFilter.length === 1
-                    ? `Select all ${total} ${STATUS_LABELS[statusFilter[0]!].toLowerCase()}`
-                    : `Select all ${total} shown`}
-                </button>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-tertiary"
-                  onClick={() => dispatchSelection({ type: 'CLEAR' })}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          )}
+          {/* DEC-919 wave-96: the 2026-08-16 user ruling (DEVIATIONS.md §2)
+              supersedes DEC-350 wave-51 ruling A1 for every multi-select
+              surface -- the selection bar is now ALWAYS mounted below the
+              filters and directly above the table, idle a visible quiet
+              state (.chq-bulkbar-idle, one muted .chq-bulkbar-hint line, no
+              aria-hidden) with geometry identical to the armed bar so first
+              selection never shifts the table. Armed, it keeps both
+              constraints the panel note used to carry alone -- selection
+              survives filter changes, and the recipient cap fact -- in
+              chrome voice (counts and nouns, no explanatory clauses). Frame
+              07-comms--05: the action cluster (Select all &middot; Clear) is
+              right-flushed, never mid-row. */}
+          <div
+            className={selection.selectedIds.size > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}
+            role="toolbar"
+            aria-label="Selection"
+          >
+            {selection.selectedIds.size === 0 ? (
+              <span className="chq-bulkbar-hint">Tick rows to email selected submissions.</span>
+            ) : (
+              <>
+                <span className="chq-bulkbar-count">{countOf(selection.selectedIds.size, 'submission')} selected</span>
+                <span className="chq-bulkbar-note">
+                  Kept as you change filters &middot; {selection.selectedIds.size} is{' '}
+                  {selection.selectedIds.size > MAX_COMPOSE_RECIPIENTS ? 'over' : 'under'} the {MAX_COMPOSE_RECIPIENTS}-recipient cap
+                </span>
+                <div className="chq-bulkbar-actions">
+                  <button type="button" className="chq-btn chq-btn-tertiary" disabled={total === 0} onClick={() => void selectAllShown()}>
+                    {statusFilter.length === 1
+                      ? `Select all ${total} ${STATUS_LABELS[statusFilter[0]!].toLowerCase()}`
+                      : `Select all ${total} shown`}
+                  </button>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-tertiary"
+                    onClick={() => dispatchSelection({ type: 'CLEAR' })}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* DEC-678 (wave-3/wave-8, proven by app/src/admin-first-paint.
               render.test.tsx): the recipient table is Comms' main region on
