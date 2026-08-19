@@ -4,7 +4,7 @@ Numbered findings the 15-minute task window could not resolve. Frame
 citations are verbatim literals from `docs/design/Chautauqua Speakers.dc.html`
 per DEC-976.
 
-## 1. "Speakers · a write failed" frame (:549) draws PRE-v12 status pills, contradicting every other v12 frame in the same file
+## 1. RESOLVED (DEC-730 w87 amendment) — "Speakers · a write failed" frame (:549) draws PRE-v12 status pills, contradicting every other v12 frame in the same file
 
 The `Complete`/`Overdue · not saved`/`Pending` cells in this frame are
 hand-styled inline rather than referencing the shared `DONE`/`PEND`/`LATE`
@@ -36,6 +36,22 @@ code change: (a) confirm the frame is stale and should be ignored in favor
 of the inverted tokens (my narrow-interpretation guess, not applied), or
 (b) confirm write-failure states really do get a distinct, pre-inversion
 status vocabulary and word that ruling explicitly.
+
+**Resolution (DEC-730, wave-87 amendment):** option (a). Frame `:549` is
+stale. The same document's `:28`/`:129` ("Onboarding grid · 1600"), `:598`
+("One task, every speaker") and `:665` ("One task · still waiting") all draw
+Complete/Overdue/Pending through the shared `DONE`/`PEND`/`LATE` (and their
+`_M` roomy siblings) constants -- the v12-inverted vocabulary -- and agree
+with each other byte-for-byte. `:549`'s hand-styled filled-olive Complete /
+ink-outlined Overdue / outlined Pending cells are the one place in the file
+that was never re-cut when that inversion landed; a rollback banner is a
+banner, not a second status vocabulary, and no ruling anywhere says a
+write-failure state repaints the grid's meaning. The app's
+`.chq-speakers-status-*` classes and `TaskCell.tsx`'s `statusCellClass`
+already implement the inverted set everywhere, including under a
+write-failure banner (`notSaved` reuses the `overdue` modifier, never a new
+one) -- this is correct as shipped. NO STATUS CODE CHANGED: this entry
+records the ruling, it is not a re-skin.
 
 ## 2. "Speakers · search found nothing" (:442) filtered empty state names the excluding facet; the shared EmptyState component does not
 
@@ -96,3 +112,18 @@ left for that lane to reconcile — flagging rather than touching the file.
   banner itself (title/body/Reload the grid/Try again) already rendered as
   drawn — see finding 1 above for the status-pill vocabulary caveat inside
   that same frame.
+- **(e) w5-h, TaskView audit against `:598`/`:665`**: FIXED a real
+  divergence — frame `:648` draws the ANSWERED tab's speaker name as a
+  plain `<span>` (no link), while `:713` draws the WAITING tab's name as an
+  `<a>`. `TaskView.tsx` rendered both tabs' names as a `<Link>` to the
+  speaker detail unconditionally. Now the answered tab renders a plain
+  `<span className="chq-taskview-name">` (its one target is "Open", the
+  response viewer) and the waiting tab keeps the `<Link>` (it has no other
+  route to the speaker). Everything else audited against both frames —
+  header actions/order per tab, the two column-track sets (already fixed as
+  (c) above), head-row labels, the answered/waiting row typography and
+  colour tokens, the bulk bar's per-tab verbs/microcopy, the tab pills and
+  right-flushed reminder meta, the roomy-density status chip on the waiting
+  tab (DEC-730), and the export/foot copy — matched the frames verbatim; no
+  further divergence found. Updated `TaskView.render.test.tsx` to assert
+  the answered name is a `<span>`, never a link.

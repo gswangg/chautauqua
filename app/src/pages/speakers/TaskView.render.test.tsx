@@ -149,6 +149,11 @@ describe('design pack v12 task view: "One task, every speaker" / "One task · st
     expect(
       screen.getByText('Exporting sends the selected answers as a CSV · nothing is emailed to the speakers'),
     ).toBeInTheDocument();
+    // Frame :648 draws the answered-tab name as a plain span, never a link
+    // -- "Open" is the row's one target here, unlike the waiting tab (:713)
+    // where the name itself is the link.
+    expect(within(table).getByText('Priya Raman').tagName).toBe('SPAN');
+    expect(within(table).queryByRole('link', { name: 'Priya Raman' })).not.toBeInTheDocument();
   });
 
   it('the waiting table renders Where it stands / Last reminded / Status, with the name a link to the speaker', async () => {
