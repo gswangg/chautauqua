@@ -146,8 +146,17 @@ describe('"Portal · Your session" 390 (docs/design/Chautauqua Public and Portal
 describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and Portal.dc.html:600-679)', () => {
   // `width:390px; height:844px` -- the standard phone-frame card this
   // describe block's whole extent is drawn inside.
-  it("frame container (:600) is the standard 390x844 phone card", () => {
+  it("frame container (:600) is the standard 390x844 phone card, and the tree actually gives this page phone-card treatment", () => {
     expect(readFileSync(join(REPO_ROOT, "docs/design/Chautauqua Public and Portal.dc.html"), "utf8").split("\n")[599]).toContain("width:390px; height:844px");
+    // The citation is not self-proving (DEC-967) -- assert the rendered
+    // page is the exact shell PORTAL_CSS's @media (max-width:700px) block
+    // conditions its phone geometry on, so this frame's 390 width maps
+    // onto a real, narrower-than-700 override in the tree. `html` and
+    // `phoneBlock` are defined further down/above this describe block but
+    // captured by closure, same as every other it() here.
+    expect(html).toContain('class="chq-portal-shell"');
+    expect(PORTAL_CSS).toMatch(/@media \(max-width: 700px\)/);
+    expect(phoneBlock).toMatch(/\.chq-portal-shell\b/);
   });
 
   const DATA: EditableSubmissionData = {

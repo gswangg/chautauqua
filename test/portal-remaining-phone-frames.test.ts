@@ -51,8 +51,15 @@ const BRANDING = { eventName: "Arbitrary Con", welcomeMessage: null, accentColor
 describe('"Portal · Resources" 390 frame (docs/design/Chautauqua Public and Portal.dc.html:1561)', () => {
   // `width:390px; height:844px` -- the standard phone-frame card this
   // describe block's whole extent is drawn inside.
-  it("frame container (:1561) is the standard 390x844 phone card", () => {
+  it("frame container (:1561) is the standard 390x844 phone card, and the tree actually gives this page phone-card treatment", () => {
     expect(dcLine(1561)).toContain("width:390px; height:844px");
+    // The frame's citation is not self-proving (DEC-967) -- assert the
+    // rendered page is the exact shell the appended @media (max-width:700px)
+    // block conditions its phone geometry on, so this frame's 390 width
+    // maps onto a real, narrower-than-700 override in the tree.
+    expect(html).toContain('class="chq-portal-shell"');
+    expect(APPENDED).toContain("@media (max-width: 700px)");
+    expect(APPENDED).toMatch(/\.chq-portal-shell\b/);
   });
 
   const groups: PortalResourceGroup[] = [
@@ -120,8 +127,14 @@ describe('"Portal · Resources" 390 frame (docs/design/Chautauqua Public and Por
 describe('"Portal · co-presenter rejected" 390 frame (docs/design/Chautauqua Public and Portal.dc.html:1304)', () => {
   // `width:390px; height:844px` -- the standard phone-frame card this
   // describe block's whole extent is drawn inside.
-  it("frame container (:1304) is the standard 390x844 phone card", () => {
+  it("frame container (:1304) is the standard 390x844 phone card, and the tree actually gives this page phone-card treatment", () => {
     expect(dcLine(1304)).toContain("width:390px; height:844px");
+    // Same real-tree check as the Resources frame above: the rendered edit
+    // page is the exact shell the appended @media (max-width:700px) block
+    // conditions its phone geometry on.
+    expect(html).toContain('class="chq-portal-shell"');
+    expect(APPENDED).toContain("@media (max-width: 700px)");
+    expect(APPENDED).toMatch(/\.chq-portal-shell\b/);
   });
 
   const participants: PortalParticipant[] = [
