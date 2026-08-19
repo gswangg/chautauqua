@@ -1051,9 +1051,7 @@ export function SubmissionDetailPage() {
             unchanged. Never a second link for the same destination. */}
         <Link to="/submissions" className="chq-detail-back">
           &lsaquo; <span className="chq-detail-back-full">All submissions</span>
-          <span className="chq-detail-back-short" style={{ display: 'none' }}>
-            Triage
-          </span>
+          <span className="chq-detail-back-short">Triage</span>
         </Link>
         {listPosition && (
           <span className="chq-detail-ref-position">
@@ -1064,7 +1062,7 @@ export function SubmissionDetailPage() {
             <span className="chq-detail-ref-position-full">
               {detail.ref} &middot; {listPosition.position} of {listPosition.total}
             </span>
-            <span className="chq-detail-ref-position-count" style={{ display: 'none' }}>
+            <span className="chq-detail-ref-position-count">
               {listPosition.position} of {listPosition.total}
             </span>
           </span>
@@ -1121,7 +1119,7 @@ export function SubmissionDetailPage() {
               has no participants at all. Hidden on desktop -- the frame's
               full speaker rail already covers that case there. */}
           {speaker && (
-            <p className="chq-detail-byline" style={{ display: 'none' }}>
+            <p className="chq-detail-byline">
               {speaker.name}
               {speaker.company ? <> &middot; {speaker.company}</> : null}
             </p>
