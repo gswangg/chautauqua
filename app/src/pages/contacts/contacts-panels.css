@@ -221,6 +221,7 @@
 }
 
 .chq-contacts-pipeline-card-fit-edit {
+  font-family: inherit;
   font-size: 0.85em;
 }
 
@@ -443,113 +444,6 @@
   border-bottom: 1px solid var(--chq-hairline);
 }
 
-/* v12 phone frame "Pipeline · 390" — "One column at a time"
-   (docs/design/Chautauqua Contacts.dc.html:447 `width:390px;
-   height:844px; background:#F4F1E8`, frame body :440-478). The frame is a back
-   link + H1 + "20 people" header, then a FIXED stage scroller closed by a
-   hairline, then the scrolling card list, then a pinned pair of footer
-   actions. DEC-385: every rule here is a max-width override; the desktop
-   board above is untouched. */
-@media (max-width: 700px) {
-  .chq-contacts-pipeline-columns {
-    display: none;
-  }
-
-  /* Frame: the header stacks and its one action goes full width -- the
-     desktop head is a space-between row whose right-hand "Add to the
-     pipeline" button shrinks to a sliver beside a wrapped H1 at 390. */
-  .chq-contacts-pipeline-head {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .chq-contacts-pipeline-head > .chq-btn {
-    width: 100%;
-    min-height: 48px;
-    padding: 0 16px;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  /* The stage strip is the frame's own band: a horizontal scroller closed
-     by a hairline, sitting between the header and the list. .chq-chipstrip
-     (styles.css) already supplies overflow-x + flex-shrink:0 children; the
-     band's rule and inset are what the frame adds. */
-  .chq-contacts-pipeline-phone-stages {
-    display: flex;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  /* min-height:44px alone is not a tap target -- without padding the hit
-     box is only as wide as "Identified · 7". Frame: padding 0 14px. */
-  .chq-contacts-pipeline-phone-stages .chq-pill {
-    padding: 0 14px;
-  }
-
-  .chq-contacts-pipeline-phone-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .chq-contacts-pipeline-phone-card {
-    padding: 15px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .chq-contacts-pipeline-phone-card-body {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-
-  /* Frame draws the phone card's name a step up from the desktop card's
-     14px -- it is the line you scan down a one-column list. */
-  .chq-contacts-pipeline-phone-card .chq-contacts-pipeline-card-name {
-    font-size: 16px;
-  }
-
-  /* The frame's right-flushed "Move ›": bordered, surface-sunk, radius 6,
-     min-height 44 with horizontal padding, never shrinking below its
-     label. .chq-btn-secondary already carries the fill and border;
-     styles.css floors .chq-btn at 44px on phone. */
-  .chq-contacts-pipeline-phone-card-move {
-    flex-shrink: 0;
-    align-self: center;
-    padding: 0 13px;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  .chq-contacts-duplicate-group {
-    grid-template-columns: 1fr;
-  }
-
-  .chq-contacts-duplicate-names {
-    white-space: normal;
-  }
-
-  /* The duplicate row's Merge / Keep both pair sits on its own full-width
-     line once the group stacks -- nowrap on a 390 row pushed the two
-     buttons under their own minimum. */
-  .chq-contacts-duplicate-group .chq-contacts-import-actions {
-    flex-wrap: wrap;
-  }
-
-  .chq-contacts-duplicate-group .chq-contacts-import-actions .chq-btn {
-    flex: 1 1 45%;
-    padding: 0 14px;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-}
-
 /* ---------------------------------------------------------------------- */
 /* Duplicates + merge                                                     */
 /* ---------------------------------------------------------------------- */
@@ -755,6 +649,7 @@
   background: none;
   border: none;
   padding: 0;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
   color: var(--chq-brand);
@@ -815,53 +710,6 @@
   align-items: center;
   gap: 14px;
   padding-top: 6px;
-}
-
-/* v12 phone frame "Merge · 390" — "Pick a side, field by field"
-   (docs/design/Chautauqua Contacts.dc.html:522 `width:390px;
-   height:844px; background:#F4F1E8`, frame body :515-545). Phone: merge compare
-   grid stacks to one column (label, then kept value, then discarded value)
-   inside .chq-contacts-merge-page too; the page's 28px desktop inset drops
-   to the frame's 16px; and the footer's actions become full-width 48px
-   targets. DEC-385: max-width overrides only. */
-@media (max-width: 700px) {
-  .chq-contacts-merge-page {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  /* The title band is a space-between row on desktop (back link + H1 left,
-     pair counter right); the frame stacks the three at 390. */
-  .chq-contacts-merge-titleband {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .chq-contacts-merge-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .chq-contacts-merge-footer .chq-btn {
-    min-height: 48px;
-    padding: 0 16px;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  /* "Not a duplicate" is a bare <button> -- background:none, border:none,
-     padding:0 -- so it carries no .chq-btn class and the shared 44px phone
-     floor in styles.css never reaches it. This is exactly the evasion the
-     ruling names: it needs min-height + centred flex + HORIZONTAL padding,
-     or the hit box is only as wide as the words. */
-  .chq-contacts-merge-not-duplicate {
-    align-self: stretch;
-    min-height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 16px;
-  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1244,166 +1092,6 @@
   color: var(--chq-muted);
 }
 
-/* Phone: merge compare grid stacks to one column (label, then kept value,
-   then discarded value -- the DOM order already reads that way, so the
-   grid collapse alone is enough, no reordering); the import wizard's match-
-   columns grid (w1-i) already stacks to one column via
-   .chq-contacts-import-columns above; the step strip becomes a horizontal
-   scroller so the last step stays reachable (DEC-385). */
-@media (max-width: 700px) {
-  .chq-contacts-merge-compare-head {
-    display: none;
-  }
-
-  .chq-contacts-merge-compare-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    align-items: stretch;
-    padding: 15px 0;
-  }
-
-  /* Frame "Merge · 390": with the head row gone, each row's label becomes
-     the micro-label above the pair (11/800 tracked caps, muted) -- the
-     same eyebrow every other 390 frame in this pack uses for a field
-     name. Desktop keeps its 13/600 ink-2 column label. */
-  .chq-contacts-merge-compare-label {
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--chq-muted);
-  }
-
-  /* Frame: the kept value is a brand-outlined box on the light surface and
-     the discarded one a plain bordered box, both min-height:48px with
-     centred flex and 13px of horizontal padding, so "which side wins" is
-     legible without a column head to read them against. Colour and weight
-     are unchanged from the desktop pair -- only geometry differs (the
-     status-tokens-pair-by-density rule); the three alternate discard
-     renderings take the SAME box, so a row never changes shape depending
-     on which outcome it drew. */
-  .chq-contacts-merge-compare-keep {
-    border: 1px solid var(--chq-brand);
-    border-radius: var(--chq-r-ctl-phone);
-    background: var(--chq-surface);
-    min-height: 48px;
-    display: flex;
-    align-items: center;
-    padding: 0 13px;
-    font-size: 15px;
-    word-break: break-word;
-  }
-
-  .chq-contacts-merge-compare-drop,
-  .chq-contacts-merge-compare-combine,
-  .chq-contacts-merge-compare-blank,
-  .chq-contacts-merge-compare-empty {
-    border: 1px solid var(--chq-border);
-    border-radius: var(--chq-r-ctl-phone);
-    min-height: 48px;
-    display: flex;
-    align-items: center;
-    padding: 0 13px;
-    font-size: 15px;
-    word-break: break-word;
-  }
-
-  .chq-contacts-import .chq-steps {
-    display: flex;
-    grid-template-columns: none;
-    overflow-x: auto;
-    border-top: 1px solid var(--chq-rule);
-  }
-
-  .chq-contacts-import .chq-step {
-    flex-shrink: 0;
-  }
-
-  /* v12m-w1-f (planner ruling, DEC-026 amendment): the frame does NOT
-     stack the desktop select-per-column list -- it pages one source
-     column at a time with a RADIO LIST of targets (docs/design/
-     Chautauqua Contacts.dc.html:483 `Import CSV · 390`, body :487-511).
-     The stacked-select treatment this block used to draw is wrong and is
-     replaced, not kept alongside, by ImportWizard.tsx's phone-only
-     `.chq-contacts-import-phone-*` markup below (own block, appended at
-     the end of this file per DEC-385 single-direction convention). The
-     desktop grid this hides keeps its own 262px/48% select untouched
-     (see the desktop rules above, outside this @media block). */
-  .chq-contacts-import-columns {
-    display: none;
-  }
-
-  /* v12m-w9-h (correction to the wave-87 amendment above): .chq-contacts-
-     import-dedupe is ONE node read at both widths, not a desktop-only
-     note -- hiding it was a misread. The frame re-spaces it under the
-     phone radio list (docs/design/Chautauqua Contacts.dc.html:483
-     `Import CSV · 390`, body :487-511, `padding:16px 0 0`). */
-  .chq-contacts-import-dedupe {
-    padding-top: 16px;
-  }
-
-  .chq-contacts-import-match-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  /* Frame footer: the step's actions are full-width 48px targets stacked
-     in the primary-first order the markup already has. */
-  .chq-contacts-import-actions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .chq-contacts-import-actions .chq-btn {
-    width: 100%;
-    min-height: 48px;
-    padding: 0 16px;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  /* The enroll dialog's result rows are bare <button>s (padding 8px 10px,
-     no .chq-btn class), so the shared 44px phone floor never reaches them
-     -- the same evasion as "Not a duplicate" on the merge page. */
-  .chq-contacts-pipeline-enroll-result {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-  }
-
-  .chq-contacts-import-review-table thead {
-    display: none;
-  }
-
-  .chq-contacts-import-review-table,
-  .chq-contacts-import-review-table tbody {
-    display: block;
-    width: 100%;
-  }
-
-  .chq-contacts-import-review-table tbody tr {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  .chq-contacts-import-review-table tbody tr:first-child {
-    padding-top: 0;
-  }
-
-  .chq-contacts-import-review-table tbody td {
-    display: block;
-    padding: 0;
-    border-bottom: none;
-    overflow-wrap: anywhere;
-  }
-}
-
 /* ---------------------------------------------------------------------- */
 /* Add to an event (item 11, frame 08-contacts--11)                       */
 /* ---------------------------------------------------------------------- */
@@ -1505,7 +1193,323 @@
    Desktop's stacked select list (.chq-contacts-import-columns) is hidden
    above; this is a SEPARATE phone-only rendering of the same `mapping`
    state (ImportWizard.tsx), not a restyle of the select markup. */
+/* DEC-385 wave-102 consolidation: this is now the file's ONE terminal
+   max-width block. Bodies from the file's four other former phone blocks
+   ("Pipeline · 390", "Merge · 390" page inset/footer, merge-compare grid +
+   import wizard steps, and this "Import CSV · 390" pager) are concatenated
+   here in ASCENDING source order, followed by the block that already lived
+   here (the DEC-385 wave-7 cascade-repair rules). No rule is reordered,
+   reworded or deduplicated except where two moved rules share BOTH a
+   selector and a property, which is called out explicitly at the point of
+   collapse. Comments travel with the rules they document. */
+
+/* v12m-w1-c (DEC-919 amendment wave 98): the phone-only spans the terminal
+   block below surfaces (pair-count name suffix, primary phone label)
+   default to hidden here, at TOP LEVEL -- a plain rule, not inside the
+   media block. Single-direction responsive (DEC-385): this unconditional
+   default sits BEFORE the <=700px override in source order so the
+   override wins the equal-specificity tie; the override then flips each
+   to visible only inside the max-width block. */
+.chq-contacts-merge-pair-count-name,
+.chq-contacts-merge-primary-phone-label {
+  display: none;
+}
+
 @media (max-width: 700px) {
+  /* -- from the former "Pipeline · 390" block ------------------------- */
+  .chq-contacts-pipeline-columns {
+    display: none;
+  }
+
+  /* Frame: the header stacks and its one action goes full width -- the
+     desktop head is a space-between row whose right-hand "Add to the
+     pipeline" button shrinks to a sliver beside a wrapped H1 at 390. */
+  .chq-contacts-pipeline-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .chq-contacts-pipeline-head > .chq-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 16px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* The stage strip is the frame's own band: a horizontal scroller closed
+     by a hairline, sitting between the header and the list. .chq-chipstrip
+     (styles.css) already supplies overflow-x + flex-shrink:0 children; the
+     band's rule and inset are what the frame adds. */
+  .chq-contacts-pipeline-phone-stages {
+    display: flex;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  /* min-height:44px alone is not a tap target -- without padding the hit
+     box is only as wide as "Identified · 7". Frame: padding 0 14px. */
+  .chq-contacts-pipeline-phone-stages .chq-pill {
+    padding: 0 14px;
+  }
+
+  .chq-contacts-pipeline-phone-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chq-contacts-pipeline-phone-card {
+    padding: 15px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .chq-contacts-pipeline-phone-card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  /* Frame draws the phone card's name a step up from the desktop card's
+     14px -- it is the line you scan down a one-column list. */
+  .chq-contacts-pipeline-phone-card .chq-contacts-pipeline-card-name {
+    font-size: 16px;
+  }
+
+  /* The frame's right-flushed "Move ›": bordered, surface-sunk, radius 6,
+     min-height 44 with horizontal padding, never shrinking below its
+     label. .chq-btn-secondary already carries the fill and border;
+     styles.css floors .chq-btn at 44px on phone. */
+  .chq-contacts-pipeline-phone-card-move {
+    flex-shrink: 0;
+    align-self: center;
+    padding: 0 13px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* .chq-contacts-duplicate-group, .chq-contacts-duplicate-names and
+     .chq-contacts-duplicate-group .chq-contacts-import-actions were each
+     declared a second time, byte-identically, further down this same
+     concatenated block (originally the file's wave-7 terminal repair,
+     which beat the desktop rules at :578/:608 that were shadowing THIS
+     declaration before consolidation). Per DEC-385 wave-102: the later
+     declaration already won the cascade and still must, so it is the one
+     that survives below; these three duplicates are discarded here. */
+
+  .chq-contacts-duplicate-group .chq-contacts-import-actions .chq-btn {
+    flex: 1 1 45%;
+    padding: 0 14px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* -- from the former "Merge · 390" page-inset/footer block ---------- */
+  .chq-contacts-merge-page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* The title band is a space-between row on desktop (back link + H1 left,
+     pair counter right); the frame stacks the three at 390. */
+  .chq-contacts-merge-titleband {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .chq-contacts-merge-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-contacts-merge-footer .chq-btn {
+    min-height: 48px;
+    padding: 0 16px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* "Not a duplicate" is a bare <button> -- background:none, border:none,
+     padding:0 -- so it carries no .chq-btn class and the shared 44px phone
+     floor in styles.css never reaches it. This is exactly the evasion the
+     ruling names: it needs min-height + centred flex + HORIZONTAL padding,
+     or the hit box is only as wide as the words. (A second declaration of
+     this same selector, adding border/border-radius only, is concatenated
+     further below from the former merge-page-detail block -- different
+     properties, no collision, both apply.) */
+  .chq-contacts-merge-not-duplicate {
+    align-self: stretch;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+  }
+
+  /* -- from the former merge-compare-grid / import-wizard-steps block -- */
+  /* Phone: merge compare grid stacks to one column (label, then kept value,
+     then discarded value -- the DOM order already reads that way, so the
+     grid collapse alone is enough, no reordering); the import wizard's
+     match-columns grid (w1-i) already stacks to one column via
+     .chq-contacts-import-columns above; the step strip becomes a
+     horizontal scroller so the last step stays reachable (DEC-385). */
+  .chq-contacts-merge-compare-head {
+    display: none;
+  }
+
+  .chq-contacts-merge-compare-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    align-items: stretch;
+    padding: 15px 0;
+  }
+
+  /* Frame "Merge · 390": with the head row gone, each row's label becomes
+     the micro-label above the pair (11/800 tracked caps, muted) -- the
+     same eyebrow every other 390 frame in this pack uses for a field
+     name. Desktop keeps its 13/600 ink-2 column label. */
+  .chq-contacts-merge-compare-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  /* Frame: the kept value is a brand-outlined box on the light surface and
+     the discarded one a plain bordered box, both min-height:48px with
+     centred flex and 13px of horizontal padding, so "which side wins" is
+     legible without a column head to read them against. Colour and weight
+     are unchanged from the desktop pair -- only geometry differs (the
+     status-tokens-pair-by-density rule); the three alternate discard
+     renderings take the SAME box, so a row never changes shape depending
+     on which outcome it drew. */
+  .chq-contacts-merge-compare-keep {
+    border: 1px solid var(--chq-brand);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface);
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 13px;
+    font-size: 15px;
+    word-break: break-word;
+  }
+
+  .chq-contacts-merge-compare-drop,
+  .chq-contacts-merge-compare-combine,
+  .chq-contacts-merge-compare-blank,
+  .chq-contacts-merge-compare-empty {
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 13px;
+    font-size: 15px;
+    word-break: break-word;
+  }
+
+  .chq-contacts-import .chq-steps {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    border-top: 1px solid var(--chq-rule);
+  }
+
+  .chq-contacts-import .chq-step {
+    flex-shrink: 0;
+  }
+
+  /* v12m-w1-f (planner ruling, DEC-026 amendment): the frame does NOT
+     stack the desktop select-per-column list -- it pages one source
+     column at a time with a RADIO LIST of targets (docs/design/
+     Chautauqua Contacts.dc.html:483 `Import CSV · 390`, body :487-511).
+     The stacked-select treatment this block used to draw is wrong and is
+     replaced, not kept alongside, by ImportWizard.tsx's phone-only
+     `.chq-contacts-import-phone-*` markup below. The desktop grid this
+     hides keeps its own 262px/48% select untouched (see the desktop rules
+     above, outside this @media block). */
+  .chq-contacts-import-columns {
+    display: none;
+  }
+
+  /* v12m-w9-h (correction to the wave-87 amendment above): .chq-contacts-
+     import-dedupe is ONE node read at both widths, not a desktop-only
+     note -- hiding it was a misread. The frame re-spaces it under the
+     phone radio list (docs/design/Chautauqua Contacts.dc.html:483
+     `Import CSV · 390`, body :487-511, `padding:16px 0 0`). */
+  .chq-contacts-import-dedupe {
+    padding-top: 16px;
+  }
+
+  .chq-contacts-import-match-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  /* Frame footer: the step's actions are full-width 48px targets stacked
+     in the primary-first order the markup already has. */
+  .chq-contacts-import-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .chq-contacts-import-actions .chq-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 16px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* The enroll dialog's result rows are bare <button>s (padding 8px 10px,
+     no .chq-btn class), so the shared 44px phone floor never reaches them
+     -- the same evasion as "Not a duplicate" on the merge page. */
+  .chq-contacts-pipeline-enroll-result {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
+
+  .chq-contacts-import-review-table thead {
+    display: none;
+  }
+
+  .chq-contacts-import-review-table,
+  .chq-contacts-import-review-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-contacts-import-review-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-contacts-import-review-table tbody tr:first-child {
+    padding-top: 0;
+  }
+
+  .chq-contacts-import-review-table tbody td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+    overflow-wrap: anywhere;
+  }
+
+  /* -- from the former "Import CSV · 390" phone-pager block ------------ */
   .chq-contacts-import-phone-column {
     display: flex;
     flex-direction: column;
@@ -1632,43 +1636,32 @@
     padding: 0 16px;
     border-radius: var(--chq-r-ctl-phone);
   }
-}
 
-/* DEC-385 wave-7 amendment: cascade repair. Three declarations below this
-   file's earlier @media (max-width: 700px) blocks are shadowed by
-   later-declared, higher-source-order top-level rules of equal
-   specificity -- source order alone decides when specificity ties, so the
-   fix is a single terminal override block, appended here rather than by
-   reordering (37 other worktrees hold hunks in this file). Also carries
-   the DEC-393 wave-7 tap-floor technique for the merge page's back
-   control: grow the anchor itself, absorb the padding with an equal
-   negative inline margin. */
+  /* -- from the file's original terminal block (DEC-385 wave-7 cascade
+     repair) -------------------------------------------------------------
+     Three declarations below were shadowed by later-declared,
+     higher-source-order top-level rules of equal specificity -- source
+     order alone decides when specificity ties, so the fix was a single
+     terminal override block, appended rather than by reordering. Also
+     carries the DEC-393 wave-7 tap-floor technique for the merge page's
+     back control: grow the anchor itself, absorb the padding with an
+     equal negative inline margin. */
 
-/* v12m-w1-c (DEC-919 amendment wave 98): the phone-only spans the terminal
-   block below surfaces (pair-count name suffix, primary phone label)
-   default to hidden here, at TOP LEVEL -- a plain rule, not a second media
-   block. Single-direction responsive (DEC-385): this unconditional default
-   sits BEFORE the <=700px override in source order so the override wins
-   the equal-specificity tie; the override then flips each to visible only
-   inside the max-width block. */
-.chq-contacts-merge-pair-count-name,
-.chq-contacts-merge-primary-phone-label {
-  display: none;
-}
-
-@media (max-width: 700px) {
   /* beats the top-level `grid-template-columns: minmax(0, 1fr) auto auto`
-     at :578. */
+     at :578. (The identical earlier declaration from the former "Pipeline
+     · 390" block above is the discarded duplicate named above.) */
   .chq-contacts-duplicate-group {
     grid-template-columns: 1fr;
   }
 
-  /* beats the top-level `white-space: nowrap` at :608. */
+  /* beats the top-level `white-space: nowrap` at :608. (Identical earlier
+     duplicate discarded, see above.) */
   .chq-contacts-duplicate-names {
     white-space: normal;
   }
 
-  /* beats the top-level `flex-wrap: nowrap` on the same selector. */
+  /* beats the top-level `flex-wrap: nowrap` on the same selector.
+     (Identical earlier duplicate discarded, see above.) */
   .chq-contacts-duplicate-group .chq-contacts-import-actions {
     flex-wrap: wrap;
   }
@@ -1691,6 +1684,9 @@
      1. Back link :524 draws `‹ Duplicates` -- ONE anchor, the
         "Contacts · " prefix (kept in its own span in MergePage.tsx) is
         hidden here only. */
+  /* phone-hidden: shape 3, bare navigational glyph prefix (DEC-919 wave
+     101) -- the `‹` stays, "Duplicates" remains visible and remains the
+     tap target on .chq-contacts-merge-back above. */
   .chq-contacts-merge-back-prefix {
     display: none;
   }

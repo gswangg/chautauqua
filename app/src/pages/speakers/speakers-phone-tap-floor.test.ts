@@ -41,10 +41,14 @@ const TASK_VIEW_PHONE_BLOCK = lastPhoneBlock(TASK_VIEW_CSS);
 // and the body runs to the next `}`).
 function ruleBodyFor(css: string, selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Selector must be its own comma-list entry: preceded by `{`, `,`, or start
-  // of string (after whitespace), and followed by `,` or `{` (after whitespace).
+  // Selector must be its own comma-list entry: preceded by `{`, `,`, `}`
+  // (the previous rule's close -- DEC-385 wave-102 consolidated five
+  // former blocks into one, so most selectors now follow a sibling rule's
+  // closing brace rather than sitting first-after-`{` or mid comma-list),
+  // or start of string (after whitespace), and followed by `,` or `{`
+  // (after whitespace).
   const re = new RegExp(
-    `(?:^|[{,])\\s*${escaped}\\s*(?=[,{])[\\s\\S]*?\\{([^}]*)\\}`,
+    `(?:^|[{,}])\\s*${escaped}\\s*(?=[,{])[\\s\\S]*?\\{([^}]*)\\}`,
   );
   const m = css.match(re);
   expect(m, `expected to find a rule for ${selector} in the phone block`).not.toBeNull();

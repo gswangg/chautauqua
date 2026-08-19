@@ -1154,23 +1154,186 @@
   }
 }
 
+
+
+/* w17-a: DEC-883 -- the merged-reviewer-feedback block inside the preview
+   pane. Preview chrome only; appended per lane-file convention. */
+.chq-comms-preview-body-paragraph {
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.chq-comms-feedback {
+  margin: 0;
+  border-left: 3px solid var(--chq-brand);
+  padding: 2px 0 2px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chq-comms-feedback-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+/* DEC-793 amendment (wave 28): the blocked banner's per-recipient list,
+   each row pairing the named recipient with its own "Place on the agenda"
+   way out, plus the partial-send secondary action and the "cheap to fix"
+   caption below it. */
+.chq-comms-blocked-list {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.chq-comms-blocked-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Frame 07-comms--13 + DESIGN-RULINGS "Errors are set in weight and rule,
+   never colour alone": a refusal takes a 1px ink border with a 3px ink
+   LEFT edge, over the same --chq-surface-sunk fill .chq-error-banner
+   already uses everywhere else. Page-scoped: .chq-error-banner itself
+   (styles.css) keeps its plain all-round border for every other caller in
+   the app; only the compose pre-flight refusal gets the heavier edge. */
+.chq-comms-refusal-banner.chq-error-banner {
+  border: 1px solid var(--chq-ink);
+  border-left: 3px solid var(--chq-ink);
+  background: var(--chq-surface-sunk);
+}
+
+/* Frame 07-comms--13: the caption ("Sending cannot be undone...") sits left,
+   the action cluster right-flushed, both on one row. */
+.chq-comms-refusal-footer {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.chq-comms-refusal-caption {
+  margin: 0;
+}
+
+.chq-comms-refusal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* ---------------------------------------------------------------------- */
-/* Phone (DEC-385: one switch at 700px in every stylesheet). The 900px    */
-/* collapse above still applies (cascades down) — these rules only add    */
-/* the phone-specific card/strip treatments the mock calls for. This page */
-/* never redefines .chq-steps (shared, already single-column <=700px in   */
-/* ../../styles.css) or .chq-meta itself — the send-history override      */
-/* below is scoped under .chq-comms-history-row (the .chq-meta child      */
-/* selector below), matching the .chq-step .chq-comms-step-title          */
-/* contextual-override pattern used above. .chq-comms-history-row itself  */
-/* and its > span:nth-child(3) sibling rule were deleted (DEC-970/DEC-976 */
-/* dead-rule scan): RecentSends.tsx renders send-history rows as          */
-/* .chq-comms-batch-row / .chq-comms-recipient-row, never                 */
-/* .chq-comms-history-row -- .chq-comms-history-when/-subject (still      */
-/* live below) are the row's real class hooks.                           */
+/* History tab (DEC-603 amendment, wave 18): task-w18-f                   */
 /* ---------------------------------------------------------------------- */
 
+.chq-comms-history-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.chq-comms-history-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-comms-history-breadcrumb {
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* The Export CSV anchor sits opposite .chq-comms-history-titles in the
+   space-between head above. It must keep its intrinsic width when that head
+   wraps (flex-wrap: wrap) instead of being squeezed by the flexible titles
+   block. .chq-btn already zeroes text-decoration for anchor-as-button. */
+.chq-comms-history-export {
+  flex: 0 0 auto;
+}
+
+.chq-comms-history-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+}
+
+/* DEC-603 (wave-56 amendment, frame :625-631): the chips row, bounded by a
+   hairline top and bottom -- 'All sends' plus one chip per template
+   (rendered with the shared .chq-pill/.is-active vocabulary, DEC-372,
+   the same idiom every other page's filter-chip row already uses), the
+   search input pushed right into the same row. */
+.chq-comms-history-chips {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-top: 1px solid var(--chq-hairline);
+  border-bottom: 1px solid var(--chq-hairline);
+  padding: 12px 0;
+  flex-wrap: wrap;
+}
+
+.chq-comms-history-chips .chq-comms-history-search {
+  margin-left: auto;
+  min-width: 230px;
+  width: auto;
+  max-width: none;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Trailing phone block (DEC-385: still one direction -- max-width only,   */
+/* so desktop is untouched).                                              */
+/*                                                                        */
+/* Why a SECOND @media block rather than more lines in the one above: this */
+/* file appends new desktop base rules AFTER its 700px query (the History  */
+/* tab block above, the refusal-banner block, the preview-body block), and */
+/* at equal specificity a later rule wins regardless of the media gate. A  */
+/* phone override for any of those classes written in the earlier block is */
+/* silently dead -- measured at 390: `.chq-comms-history-head` kept its    */
+/* desktop `align-items: flex-end`, which right-flushed the whole titles   */
+/* column including the `‹ Comms` back link. Every phone rule for a class  */
+/* declared below the first query belongs here.                           */
+/*                                                                        */
+/* v12 phone frame "Send history · 390" (docs/design/Chautauqua Comms      */
+/* .dc.html) -- Every send, with its recipients: `‹ Comms` on its own line */
+/* at the column's left edge, then the H1, then "57 sends · 4 in the last  */
+/* 7 days", then the chips and search.                                    */
+
+
+/* w8-c (DEC-393 wave-90 amendment, task w8-c): tap-floor + 358px-overflow
+   fixes for the Comms cluster, appended as a NEW terminal block per the
+   wave-90 ruling -- never an edit inside the 700px block above, never a
+   reorder. Every fix here lands on the ANCHOR/interactive child of a
+   row-action container, never on the container itself: a container's own
+   min-height would stretch its whole flex row rather than the tap target.
+   .chq-bulkbar-actions is deliberately excluded (styles.css shell lane,
+   DEC-393 wave-90 amendment part (a)). */
 @media (max-width: 700px) {
+  /* -- former "Send history / batch cards / templates / compose" block, concatenated first per DEC-385 wave-102 ascending-source-order rule -- */
+
   .chq-comms-history-row .chq-meta {
     margin-top: 2px;
     font-size: 10px;
@@ -1297,14 +1460,15 @@
      trailing-cell sliver. `justify-self` is inert in flex, so the
      desktop end-alignment is restated here as `align-self`, plus the
      44px floor the shared .chq-link-button never carries. */
-  .chq-comms-send-detail > .chq-link-button {
-    justify-self: auto;
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding-right: 16px;
-  }
+  /* display/align-items/min-height/padding-right below were shadowed by
+     the later w8-c tap-floor declaration for this selector further down
+     this now-consolidated block (display:flex wins over inline-flex;
+     padding-inline:10px wins over padding-right:16px); justify-self and
+     align-self are unique and are merged into that later declaration
+     instead of kept here (it is split out of the shared recent-sends/
+     blocked-list grouping below since those two selectors don't carry
+     the same grid/flex-item context), so a selector-body lookup finds
+     every declaration in one place (DEC-385 wave-102). */
 
   .chq-comms-send-detail-body {
     width: 100%;
@@ -1456,24 +1620,25 @@
     gap: 6px;
   }
 
-  /* NOTE: the "Send history · 390" HEAD rules are not here. Their desktop
-     base rules (.chq-comms-history-head / -titles / -breadcrumb /
-     -head-actions and the chips-row search) are declared BELOW this media
-     block, at the foot of the file, so at equal specificity they would win
-     over anything written here. They live in the trailing
-     @media (max-width: 700px) block at the end of this file instead --
-     same for the compose refusal footer, whose base is also down there. */
+  /* NOTE (stale after DEC-385 wave-102 consolidation, kept for history):
+     the "Send history · 390" HEAD rules used to live in a separate
+     trailing block because their desktop base rules (.chq-comms-history-
+     head / -titles / -breadcrumb / -head-actions and the chips-row
+     search) are declared further down the file, so at equal specificity
+     they would have won over anything written here. That trailing block
+     is now concatenated into this same terminal block, further below --
+     same for the compose refusal footer, whose base is also further
+     down. */
 
   /* "All history" is a bare .chq-link-button, which carries no floor of
      its own (styles.css gives it padding:0). Same right-growing hit box
      as the breadcrumbs above, mirrored to the left since it is
-     right-flushed in its section head. */
-  .chq-comms-recent-sends .chq-section-head .chq-link-button {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding-left: 16px;
-  }
+     right-flushed in its section head. Every declaration here (display,
+     align-items, min-height, padding-left) is shadowed by the later w8-c
+     grouped tap-floor declaration for this same selector further down
+     this now-consolidated block (display:flex wins over inline-flex;
+     padding-inline:10px wins over padding-left:16px) -- discarded here
+     per DEC-385 wave-102, nothing unique survives. */
 
   /* ------------------------------------------------------------------ */
   /* v12 phone frame "Templates · 390" -- the merge-field list            */
@@ -1572,11 +1737,12 @@
     gap: 8px;
   }
 
-  .chq-comms-select-actions > .chq-btn,
-  .chq-comms-template-actions > .chq-btn,
-  .chq-comms-preview-actions > .chq-btn {
-    flex: 1 1 0;
-  }
+  /* flex:1 1 0 for these three selectors is merged into their individual
+     w8-c tap-floor rules further down this now-consolidated block (DEC-385
+     wave-102) -- no property collision (flex vs min-height/display/align-
+     items/padding-inline/margin-inline), both apply, kept as one rule per
+     selector rather than two partial ones so a selector-body lookup finds
+     every declaration in one place. */
 
   /* A18's revealed evaluation-plan select: 26px margin + 12px padding is
      a 38px indent out of 358 usable pixels at 390. */
@@ -1595,13 +1761,13 @@
   }
 
   /* The pre-flight refusal's per-recipient "Place on the agenda ›" ways
-     out are <a class="chq-link-button">: no floor of their own. */
-  .chq-comms-blocked-list li .chq-link-button {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding-right: 16px;
-  }
+     out are <a class="chq-link-button">: no floor of their own. Every
+     declaration here (display, align-items, min-height, padding-right) is
+     shadowed by the later w8-c grouped tap-floor declaration for this
+     same selector further down this now-consolidated block (display:flex
+     wins over inline-flex; padding-inline:10px wins over
+     padding-right:16px) -- discarded here per DEC-385 wave-102, nothing
+     unique survives. */
 
   /* ------------------------------------------------------------------ */
   /* Step 4's send REPORT at 390. Same reasoning as compose above: framed */
@@ -1617,13 +1783,13 @@
     font-size: 24px;
   }
 
-  .chq-comms-send-report-all-history {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding-right: 16px;
-    white-space: normal;
-  }
+  /* display/align-items/min-height/padding-right below were shadowed by
+     the later w8-c tap-floor declaration for this selector further down
+     this now-consolidated block (display:flex wins over inline-flex;
+     padding-inline:10px wins over padding-right:16px); white-space:normal
+     is unique and is merged into that later declaration instead of kept
+     here, so a selector-body lookup finds every declaration in one place
+     (DEC-385 wave-102). */
 
   /* The definition grid keeps its two columns -- a label above its own
      value loses the pairing the grid exists to state -- on a narrower
@@ -1660,9 +1826,9 @@
     gap: 8px;
   }
 
-  .chq-comms-send-report-footer-actions > .chq-btn {
-    flex: 1 1 0;
-  }
+  /* flex:1 1 0 for this selector is merged into its individual w8-c
+     tap-floor rule further down this now-consolidated block (DEC-385
+     wave-102) -- no property collision, both apply, kept as one rule. */
 
   /* DEC-621 amendment (v12 mobile campaign w1): phone landing swap --
      while the visitor hasn't entered via the draft card yet, hide the
@@ -1680,174 +1846,9 @@
     flex-direction: column;
     gap: 16px;
   }
-}
 
-/* w17-a: DEC-883 -- the merged-reviewer-feedback block inside the preview
-   pane. Preview chrome only; appended per lane-file convention. */
-.chq-comms-preview-body-paragraph {
-  margin: 0;
-  padding: 0;
-  white-space: pre-wrap;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  color: inherit;
-}
+  /* -- former "Trailing phone block" (History-tab head / refusal footer / phone-landing content), concatenated second -- */
 
-.chq-comms-feedback {
-  margin: 0;
-  border-left: 3px solid var(--chq-brand);
-  padding: 2px 0 2px 13px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.chq-comms-feedback-eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--chq-muted);
-}
-
-/* DEC-793 amendment (wave 28): the blocked banner's per-recipient list,
-   each row pairing the named recipient with its own "Place on the agenda"
-   way out, plus the partial-send secondary action and the "cheap to fix"
-   caption below it. */
-.chq-comms-blocked-list {
-  margin: 8px 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-}
-
-.chq-comms-blocked-list li {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* Frame 07-comms--13 + DESIGN-RULINGS "Errors are set in weight and rule,
-   never colour alone": a refusal takes a 1px ink border with a 3px ink
-   LEFT edge, over the same --chq-surface-sunk fill .chq-error-banner
-   already uses everywhere else. Page-scoped: .chq-error-banner itself
-   (styles.css) keeps its plain all-round border for every other caller in
-   the app; only the compose pre-flight refusal gets the heavier edge. */
-.chq-comms-refusal-banner.chq-error-banner {
-  border: 1px solid var(--chq-ink);
-  border-left: 3px solid var(--chq-ink);
-  background: var(--chq-surface-sunk);
-}
-
-/* Frame 07-comms--13: the caption ("Sending cannot be undone...") sits left,
-   the action cluster right-flushed, both on one row. */
-.chq-comms-refusal-footer {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.chq-comms-refusal-caption {
-  margin: 0;
-}
-
-.chq-comms-refusal-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* ---------------------------------------------------------------------- */
-/* History tab (DEC-603 amendment, wave 18): task-w18-f                   */
-/* ---------------------------------------------------------------------- */
-
-.chq-comms-history-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-
-.chq-comms-history-titles {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.chq-comms-history-breadcrumb {
-  font-size: 13px;
-}
-
-/* The Export CSV anchor sits opposite .chq-comms-history-titles in the
-   space-between head above. It must keep its intrinsic width when that head
-   wraps (flex-wrap: wrap) instead of being squeezed by the flexible titles
-   block. .chq-btn already zeroes text-decoration for anchor-as-button. */
-.chq-comms-history-export {
-  flex: 0 0 auto;
-}
-
-.chq-comms-history-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex: 0 0 auto;
-}
-
-/* DEC-603 (wave-56 amendment, frame :625-631): the chips row, bounded by a
-   hairline top and bottom -- 'All sends' plus one chip per template
-   (rendered with the shared .chq-pill/.is-active vocabulary, DEC-372,
-   the same idiom every other page's filter-chip row already uses), the
-   search input pushed right into the same row. */
-.chq-comms-history-chips {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  border-top: 1px solid var(--chq-hairline);
-  border-bottom: 1px solid var(--chq-hairline);
-  padding: 12px 0;
-  flex-wrap: wrap;
-}
-
-.chq-comms-history-chips .chq-comms-history-search {
-  margin-left: auto;
-  min-width: 230px;
-  width: auto;
-  max-width: none;
-}
-
-/* ---------------------------------------------------------------------- */
-/* Trailing phone block (DEC-385: still one direction -- max-width only,   */
-/* so desktop is untouched).                                              */
-/*                                                                        */
-/* Why a SECOND @media block rather than more lines in the one above: this */
-/* file appends new desktop base rules AFTER its 700px query (the History  */
-/* tab block above, the refusal-banner block, the preview-body block), and */
-/* at equal specificity a later rule wins regardless of the media gate. A  */
-/* phone override for any of those classes written in the earlier block is */
-/* silently dead -- measured at 390: `.chq-comms-history-head` kept its    */
-/* desktop `align-items: flex-end`, which right-flushed the whole titles   */
-/* column including the `‹ Comms` back link. Every phone rule for a class  */
-/* declared below the first query belongs here.                           */
-/*                                                                        */
-/* v12 phone frame "Send history · 390" (docs/design/Chautauqua Comms      */
-/* .dc.html) -- Every send, with its recipients: `‹ Comms` on its own line */
-/* at the column's left edge, then the H1, then "57 sends · 4 in the last  */
-/* 7 days", then the chips and search.                                    */
-/* ---------------------------------------------------------------------- */
-@media (max-width: 700px) {
   .chq-comms-history-head {
     flex-direction: column;
     align-items: stretch;
@@ -1879,9 +1880,9 @@
     gap: 8px;
   }
 
-  .chq-comms-history-head-actions > .chq-btn {
-    flex: 1 1 0;
-  }
+  /* flex:1 1 0 for this selector is merged into its individual w8-c
+     tap-floor rule further down this now-consolidated block (DEC-385
+     wave-102) -- no property collision, both apply, kept as one rule. */
 
   /* The chips row's search is `margin-left: auto` at desktop; at 390 that
      strands it mid-row on the wrapped line, so it takes its own
@@ -2052,17 +2053,9 @@
     font-size: 12px;
     color: var(--chq-muted);
   }
-}
 
-/* w8-c (DEC-393 wave-90 amendment, task w8-c): tap-floor + 358px-overflow
-   fixes for the Comms cluster, appended as a NEW terminal block per the
-   wave-90 ruling -- never an edit inside the 700px block above, never a
-   reorder. Every fix here lands on the ANCHOR/interactive child of a
-   row-action container, never on the container itself: a container's own
-   min-height would stretch its whole flex row rather than the tap target.
-   .chq-bulkbar-actions is deliberately excluded (styles.css shell lane,
-   DEC-393 wave-90 amendment part (a)). */
-@media (max-width: 700px) {
+  /* -- former w8-c tap-floor block, already terminal, concatenated last (unchanged) -- */
+
   .chq-comms-editor-actions > .chq-btn,
   .chq-comms-editor-actions > .chq-link-button {
     min-height: 44px;
@@ -2080,20 +2073,26 @@
     margin-inline: -10px;
   }
 
+  /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
+     consolidation) -- no property collision with the tap-floor set. */
   .chq-comms-history-head-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
     padding-inline: 10px;
     margin-inline: -10px;
+    flex: 1 1 0;
   }
 
+  /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
+     consolidation) -- no property collision with the tap-floor set. */
   .chq-comms-preview-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
     padding-inline: 10px;
     margin-inline: -10px;
+    flex: 1 1 0;
   }
 
   .chq-comms-refusal-actions > .chq-btn {
@@ -2104,39 +2103,68 @@
     margin-inline: -10px;
   }
 
+  /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
+     consolidation) -- no property collision with the tap-floor set. */
   .chq-comms-select-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
     padding-inline: 10px;
     margin-inline: -10px;
+    flex: 1 1 0;
   }
 
+  /* white-space:normal merged in from the former earlier declaration of
+     this selector (DEC-385 wave-102 consolidation); display/align-items/
+     min-height/padding-right from that earlier declaration were already
+     shadowed by this rule and are not carried forward. */
   .chq-comms-send-report-all-history {
     min-height: 44px;
     display: flex;
     align-items: center;
     padding-inline: 10px;
     margin-inline: -10px;
+    white-space: normal;
   }
 
+  /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
+     consolidation) -- no property collision with the tap-floor set. */
   .chq-comms-send-report-footer-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
     padding-inline: 10px;
     margin-inline: -10px;
+    flex: 1 1 0;
   }
 
+  /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
+     consolidation) -- no property collision with the tap-floor set. */
   .chq-comms-template-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
     padding-inline: 10px;
     margin-inline: -10px;
+    flex: 1 1 0;
   }
 
-  .chq-comms-send-detail > .chq-link-button,
+  /* justify-self/align-self merged in from the former earlier declaration
+     of this selector (DEC-385 wave-102 consolidation); display/align-
+     items/min-height/padding-right from that earlier declaration were
+     already shadowed by this rule and are not carried forward. Split out
+     of the grouped rule below since recent-sends/blocked-list have no
+     such unique properties. */
+  .chq-comms-send-detail > .chq-link-button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+    justify-self: auto;
+    align-self: flex-start;
+  }
+
   .chq-comms-recent-sends .chq-section-head .chq-link-button,
   .chq-comms-blocked-list li .chq-link-button {
     min-height: 44px;
