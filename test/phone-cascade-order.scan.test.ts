@@ -237,7 +237,11 @@ function allShadowedPairs(): string[] {
 // Per DEC-385 (wave-93 amendment) "the merge train re-measures once for the
 // batch", so this constant is set by the megabatch merge train after all lanes
 // land, not by any single lane.
-export const SHADOWED_CEILING = 19;
+//
+// Re-measured 19 -> 16 by the megabatch merge train after landing
+// v12m-w2-{m,k,p,q,r,o}: w2-o's contacts/comms/speakers sheet sweeps removed
+// three shadowed declarations. One re-measurement for the whole batch.
+export const SHADOWED_CEILING = 16;
 
 describe('phone cascade order (DEC-385 single-direction, DEC-808 enumerating scan)', () => {
   it('does not exceed the shadowed-declaration ceiling', () => {

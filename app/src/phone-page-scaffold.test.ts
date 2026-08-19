@@ -166,6 +166,35 @@ describe('v12 phone page-scaffold: DEC-576 amendment', () => {
     expect(primary).toMatch(/flex:\s*1/);
   });
 
+  // The scaffold's whole thesis is that ONE set of rules serves EVERY 390
+  // frame, so a second frame must draw the same two bands verbatim -- the
+  // claim this file's header used to make in prose (a frame list is not an
+  // assertion, DEC-976 wave-102), asserted here at its own it() instead.
+  it('Settings · Event draws the dock and back-link declarations verbatim identically to Speakers -- one scaffold, not two', () => {
+    const styleOf = (line: string): string | undefined => {
+      const m = line.match(/style="([^"]*)"/);
+      return m ? m[1]!.replace(/\s+/g, ' ').trim() : undefined;
+    };
+    const frameLines = (name: string): string[] =>
+      readFileSync(join(REPO_ROOT, 'docs/design', name), 'utf-8').split('\n');
+    const settings = frameLines('Chautauqua Settings.dc.html');
+    const speakers = frameLines('Chautauqua Speakers.dc.html');
+
+    // docs/design/Chautauqua Settings.dc.html:334 draws the docked action bar
+    // `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
+    expect(styleOf(settings[333]!)).toBe(
+      'flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px'
+    );
+    expect(styleOf(settings[333]!)).toBe(styleOf(speakers[277]!));
+
+    // docs/design/Chautauqua Settings.dc.html:318 draws the back link
+    // `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center`
+    expect(styleOf(settings[317]!)).toBe(
+      'font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center'
+    );
+    expect(styleOf(settings[317]!)).toBe(styleOf(speakers[261]!));
+  });
+
   it('.chq-phone-back clears the 44px floor with centred flex', () => {
     // docs/design/Chautauqua Speakers.dc.html:262
     // `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center`
