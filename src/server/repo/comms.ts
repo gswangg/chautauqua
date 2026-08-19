@@ -3,7 +3,7 @@
 // the compose pipeline. Only this file (and repo/email.ts) touches drizzle
 // row types for comms; src/domain/compose.ts stays pure.
 
-import { and, asc, eq, gte, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -14,6 +14,8 @@ import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { slotWithinEventRange } from "./public/gates";
 import { dedupeKey } from "../../domain/comms-dedupe";
 import { submittedEvaluationCondition } from "./review/evaluations";
+import { DEC_271 } from "../../decisions";
+void DEC_271;
 
 // ---------------------------------------------------------------------------
 // Templates
@@ -274,7 +276,12 @@ export async function loadComposeSubmissions(
  * round's comments alongside the composing round's) — same filter
  * (submittedAt not null, non-blank comment) and the same asc(createdAt),
  * asc(id) ordering per submission; a submission with zero qualifying
- * comments in that plan+round is simply absent from the returned map. */
+ * comments in that plan+round is simply absent from the returned map.
+ * DEC-271 (wave-110 amendment): a recused reviewer's comment is excluded via
+ * a set-based left-join-is-null anti-join against review_recusal on
+ * (planId, submissionId, reviewerId) in the SAME batched query — scoring
+ * then recusing is legal (src/routes/review/recusals.ts places no
+ * evaluation check), so the merge must never trust submittedAt alone. */
 export async function listFeedbackCommentsForSubmissions(
   db: Db,
   submissionIds: string[],
@@ -290,12 +297,21 @@ export async function listFeedbackCommentsForSubmissions(
         submittedAt: schema.evaluation.submittedAt,
       })
       .from(schema.evaluation)
+      .leftJoin(
+        schema.reviewRecusal,
+        and(
+          eq(schema.reviewRecusal.planId, schema.evaluation.planId),
+          eq(schema.reviewRecusal.submissionId, schema.evaluation.submissionId),
+          eq(schema.reviewRecusal.userId, schema.evaluation.reviewerId),
+        ),
+      )
       .where(
         and(
           inArray(schema.evaluation.submissionId, batch),
           eq(schema.evaluation.planId, scope.planId),
           eq(schema.evaluation.round, scope.round),
           submittedEvaluationCondition(),
+          isNull(schema.reviewRecusal.id),
         ),
       )
       .orderBy(asc(schema.evaluation.createdAt), asc(schema.evaluation.id));

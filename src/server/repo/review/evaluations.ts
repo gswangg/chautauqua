@@ -1,7 +1,7 @@
 // Evaluations (DEC-018): the recorded scores/comments a reviewer submits for
 // a submission within a plan round.
 
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
@@ -12,6 +12,8 @@ import { parseEvaluationScoresJson } from "../../../domain/evaluation/scores-jso
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
 import { MAX_PLAN_SUBMISSION_SCAN } from "./submissions";
+import { DEC_271 } from "../../../decisions";
+void DEC_271;
 
 // DEC-346 amendment (wave 62): the ceiling listEvaluationScoresForPlan's
 // scan refuses past -- mirrors MAX_PLAN_SUBMISSION_SCAN
@@ -77,6 +79,21 @@ export async function listEvaluationScoresForPlan(
       scoresJson: schema.evaluation.scoresJson,
     })
     .from(schema.evaluation)
+    // DEC-271 (wave-110 amendment): a recusal retracts the score from every
+    // downstream read, including this plan-mean aggregation -- set-based
+    // left-join-is-null anti-join against review_recusal on (planId,
+    // submissionId, reviewerId), same shape as
+    // src/server/repo/comms.ts's listFeedbackCommentsForSubmissions so the
+    // "non-recused reviews are merged" caption and the ranked-results mean
+    // can never disagree about which reviewer's row counts.
+    .leftJoin(
+      schema.reviewRecusal,
+      and(
+        eq(schema.reviewRecusal.planId, schema.evaluation.planId),
+        eq(schema.reviewRecusal.submissionId, schema.evaluation.submissionId),
+        eq(schema.reviewRecusal.userId, schema.evaluation.reviewerId),
+      ),
+    )
     .where(
       and(
         eq(schema.evaluation.planId, planId),
@@ -85,6 +102,7 @@ export async function listEvaluationScoresForPlan(
         // enters the results/weighted-mean computation -- only a submitted
         // evaluation was actually recorded.
         submittedEvaluationCondition(),
+        isNull(schema.reviewRecusal.id),
       ),
     )
     .orderBy(asc(schema.evaluation.submissionId), asc(schema.evaluation.id))
