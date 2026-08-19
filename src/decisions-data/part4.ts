@@ -363,7 +363,7 @@ export const DEC_985 = "HTML_ROUTE_EXCLUDED holds only routes that render no HTM
 export const DEC_986 = "Amendment (wave 93): a control that is display:none must not be constraint-validatable (phone CFP wizard)";
 export const DEC_987 = "One pluralization vocabulary per package, and the scan that enforces it carries no legacy allow-list";
 export const DEC_988 = "Portal branding is edited where it is summarised: the Speaker-portal section's Change drill carries the WHOLE portal_settings record, and there is exactly one save path for it";
-export const DEC_989 = "Amendment (wave 93): a stale overflow-exempt comment is deleted the moment its rule stops being flagged";
+export const DEC_989 = "Amendment (wave 95): a ratchet ceiling is re-measured in the change that reads it, and an exemption over an empty rule body is a licence with no subject";
 export const DEC_990 = "Amendment (wave 92): the docs article H1 at 390 is the frame's literal 28px, not the SPA shell's phone-drill token";
 export const DEC_991 = "A display-face line-height <= 1 is legal exactly where a v12 frame declares it";
 export const DEC_992 = "The merge compare table names BOTH records and their vintages, and the primary names its target with the swap beside it";
