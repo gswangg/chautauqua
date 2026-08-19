@@ -1082,6 +1082,12 @@
   font-style: italic;
 }
 
+/* tap-floor-exempt: DuplicateRow.tsx renders only a `chq-btn`-classed
+   Merge <Link> and a `chq-btn`-classed Keep-both <button> here -- both
+   already excluded from the bare-anchor population by their own class --
+   so this container never reaches a bare anchor; .chq-btn already carries
+   the shared 44px phone floor (app/src/styles.css:1137-1139, DEC-393
+   wave-90 amendment). */
 .chq-contacts-import-actions {
   display: flex;
   align-items: center;

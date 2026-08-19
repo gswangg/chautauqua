@@ -799,6 +799,12 @@
   text-align: right;
 }
 
+/* tap-floor-exempt: ContactDrawer.tsx renders only <button
+   className="chq-btn ..."> children here (Delete this contact / Email /
+   Add to event / Cancel / Save) -- never a bare <a>/<Link> -- so there is
+   no anchor for the row-action floor to reach; .chq-btn already carries
+   the shared 44px phone floor (app/src/styles.css:1137-1139, DEC-393
+   wave-90 amendment). */
 .chq-contacts-drawer-actions {
   display: flex;
   justify-content: space-between;
@@ -808,6 +814,10 @@
   flex-wrap: wrap;
 }
 
+/* tap-floor-exempt: scoped to .chq-contacts-drawer-actions, which (see the
+   tap-floor-exempt comment above it) only ever renders <button> children
+   -- this container never reaches a bare anchor (DEC-393 wave-90
+   amendment). */
 .chq-contacts-drawer-actions-right {
   display: flex;
   align-items: center;
@@ -933,6 +943,41 @@
     align-items: center;
     padding-inline: 10px;
     margin-inline: -10px;
+  }
+}
+
+/* DEC-989 wave-90 amendment: 390-overflow closeout, 358px budget (390 -
+   .chq-main's 16px phone gutter on each side). Each of these carries an
+   unconditional `white-space: nowrap` with nothing beneath it to shrink
+   into -- the nowrap-with-no-escape shape -- so at phone width it gets
+   `overflow:hidden; text-overflow:ellipsis; min-width:0`, all three
+   together: without `min-width:0` a flex child's `min-width:auto` refuses
+   to shrink below its own content and the ellipsis never fires. The base
+   (desktop) `white-space: nowrap` rules are untouched. */
+@media (max-width: 700px) {
+  .chq-contacts-drawer-actions .chq-btn,
+  .chq-contacts-drawer-actions .chq-btn-tertiary {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-contacts-filter-match-count {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-contacts-filter-rules-cap {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-contacts-filter-rules-caption {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
 }
 
