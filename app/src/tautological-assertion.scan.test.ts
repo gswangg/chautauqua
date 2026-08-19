@@ -117,13 +117,23 @@ describe('no tautological assertion survives in any test file (DEC-967 wave-57 a
 // SAME design-file string. Such a test passes forever regardless of what
 // the app renders -- it is a citation with a receipt stapled to itself.
 //
-// Two live examples say so in their own titles:
-// `app/src/pages/settings/settings-phone-390.frames.test.ts:236` and `:260`
-// ("... (gap: read-drilled view does not yet render it)"). v12m-w2-a builds
-// the two controls those titles describe in the same batch; once landed,
-// OFFENDER_CEILING below should be LOWERED to reflect it, never raised.
-// This file does not touch settings-phone-390.frames.test.ts -- that lane
-// owns it.
+// A live example says so in its own title:
+// `test/portal-remaining-phone-frames.test.ts:54` ("frame container (:1561)
+// is the standard 390x844 phone card") -- the describe title carries the
+// citation and the it() asserts only `dcLine(1561)`, i.e. the design file
+// reading itself back.
+//
+// This anchor USED to be settings-phone-390.frames.test.ts:236/:260 ("...
+// (gap: read-drilled view does not yet render it)"). Those two blocks did
+// not stop being tautological -- they left THIS scan's population, because
+// the DEC-976 wave-87 receipting pass moved their citations out of the
+// `describe(...)` titles and down into it()-level COMMENTS, and a
+// comment-only citation is deliberately excluded from the search below (see
+// POPULATION/SUBJECT). Two contracts pull opposite ways on the same text:
+// DEC-976 wants the citation in the it() beside its quote and expect(),
+// DEC-967 reads titles. The tripwire fired exactly as designed when the
+// file silently dropped out, so it is repointed at a citation that still
+// lives in a title rather than deleted.
 //
 // POPULATION (DEC-808, never a hand-listed manifest): every *.test.ts /
 // *.test.tsx under app/src/ and test/, found via the same `allTestFiles`
@@ -483,12 +493,13 @@ function scanFrameReceiptAssertions(files: { abs: string; rel: string }[]): Fram
  * expect() subject resolves ONLY to a design-file read -- measured on this
  * branch by the same technique this test runs. TWO-SIDED so it can only
  * TIGHTEN (`toBeLessThanOrEqual`, never raised to paper over a regression),
- * NOT an allowlist. The two known offenders inside
- * settings-phone-390.frames.test.ts (:236, :260 -- see header) are expected
- * inside this ceiling; v12m-w2-a builds their missing controls in the same
- * batch, and once that lands this ceiling should be LOWERED to 3, never
- * raised back. */
-const FRAME_RECEIPT_OFFENDER_CEILING = 5;
+ * NOT an allowlist. Lowered 5 -> 3 on the merge of v12m-w2-l: the two
+ * settings-phone-390.frames.test.ts offenders this ceiling used to carry
+ * left the population when DEC-976 wave-87 receipting moved their citations
+ * from the describe titles into it()-level comments (see header). The three
+ * that remain are the portal frame containers. Measured, not guessed --
+ * lowering only, never raised back. */
+const FRAME_RECEIPT_OFFENDER_CEILING = 3;
 
 describe('a frame receipt asserts about the tree, not about the frame (DEC-967 wave-99 amendment)', () => {
   const population = [
@@ -555,10 +566,10 @@ describe('a frame receipt asserts about the tree, not about the frame (DEC-967 w
     expect(citationBlockCount).toBeGreaterThan(100);
   });
 
-  it('known-good: settings-phone-390.frames.test.ts:236 is a known offender inside the seeded ceiling (guards against the scan going silently empty)', () => {
+  it('known-good: portal-remaining-phone-frames.test.ts:54 is a known offender inside the seeded ceiling (guards against the scan going silently empty)', () => {
     const { offenders } = scanFrameReceiptAssertions(population);
     const known = offenders.some(
-      (o) => o.file === 'app/src/pages/settings/settings-phone-390.frames.test.ts' && o.line === 236
+      (o) => o.file === 'test/portal-remaining-phone-frames.test.ts' && o.line === 54
     );
     expect(known).toBe(true);
   });
