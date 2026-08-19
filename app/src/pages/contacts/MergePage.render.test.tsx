@@ -232,13 +232,25 @@ describe('MergePage render (DEC-802: honest discard column head and impact line)
     });
     expect(screen.queryByText('Discard')).not.toBeInTheDocument();
 
-    // Item 10: the impact line now also states the discarded-record
-    // deletion fact inline, in the same consequence box.
+    // Item 10 / w2-c: the impact line now also states the discarded-record
+    // deletion fact inline, in the same consequence paragraph as the
+    // combine rule. Desktop names the kept record directly; the
+    // generic-phrasing sibling span exists (for the phone swap) but is not
+    // what desktop reads.
     await waitFor(() => {
-      expect(
-        screen.getByText('3 submissions and 1 task move to Jane Doe. The discarded record is deleted.'),
-      ).toBeInTheDocument();
+      const rule = document.querySelector('.chq-contacts-merge-rule-box-rule') as HTMLElement;
+      expect(rule).toHaveTextContent(/Labels combine, notes are appended/);
+      expect(rule).toHaveTextContent(/3 submissions and 1 task move to/);
+      expect(rule).toHaveTextContent(/The discarded record is deleted\./);
     });
+    expect(
+      document.querySelector('.chq-contacts-merge-impact-name') as HTMLElement,
+    ).toHaveTextContent('Jane Doe');
+    expect(
+      document.querySelector('.chq-contacts-merge-impact-generic') as HTMLElement,
+    ).toHaveTextContent('the record you keep');
+    // Exactly one paragraph carries the whole consequence line.
+    expect(document.querySelectorAll('.chq-contacts-merge-rule-box-rule')).toHaveLength(1);
   });
 });
 
@@ -501,11 +513,14 @@ describe('MergePage render (item 10, frame 08-contacts--05: one tinted consequen
     });
 
     const ruleBox = await waitFor(() => document.querySelector('.chq-contacts-merge-rule-box') as HTMLElement);
-    expect(
-      within(ruleBox).getByText('3 submissions and 1 task move to Jane Doe. The discarded record is deleted.'),
-    ).toBeInTheDocument();
-    // Still in the same box as the combine rule -- one consequence block.
-    expect(within(ruleBox).getByText('Labels combine, notes are appended')).toBeInTheDocument();
+    // w2-c: rule and impact now render as ONE paragraph -- assert the
+    // combined text content rather than a standalone impact node.
+    expect(ruleBox).toHaveTextContent(/Labels combine, notes are appended/);
+    expect(within(ruleBox).getByText('Jane Doe', { selector: '.chq-contacts-merge-impact-name' })).toBeInTheDocument();
+    expect(ruleBox).toHaveTextContent(/3 submissions and 1 task move to/);
+    expect(ruleBox).toHaveTextContent(/The discarded record is deleted\./);
+    // Exactly one paragraph -- no split rule/impact <p>s.
+    expect(document.querySelectorAll('.chq-contacts-merge-rule-box-rule')).toHaveLength(1);
   });
 
   it('states the discarded record is deleted in the confirm dialog body', async () => {
