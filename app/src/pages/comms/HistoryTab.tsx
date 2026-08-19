@@ -8,6 +8,9 @@ import { paginationSummary } from '../../lib/pagination-summary';
 import { countOf } from '../../lib/plural';
 import type { SendRhythm } from './sendRhythm';
 import type { EmailBatchRow } from './types';
+import { DEC_621 } from '../../../../src/decisions';
+
+void DEC_621;
 
 // DEC-603 amendment (findings wave 8): GET /email-log pages like every list
 // route (server default 50/page, src/routes/api/email-log.ts) -- History
@@ -114,15 +117,29 @@ export function HistoryTab({
   // mounted alongside it (see app/src/pages/comms/TemplatesTab.tsx:185) --
   // there is no single-h1 rule on this page to reconcile with, so History
   // follows the same two-h1 precedent rather than inventing a third pattern.
-  // DEC-603 amendment (wave 66, gate-11 sweep item 6): the rhythm clause was
-  // dropped from this line -- Comms.tsx already renders the SAME
-  // formatSendRhythm(rhythm) sentence, once, in the page head directly above
-  // this tab's own titles block (Comms.tsx:225). Printing it a second time
-  // here made the tab's own caption an unlabelled echo of the page head. The
-  // `rhythm` prop is kept unused-here but still threaded to RecentSends
-  // below, which needs it for its own (columnHeads-suppressed) subtitle
-  // slot -- see RecentSends.tsx's own rhythm doc comment.
-  const countLine = countOf(total, 'send');
+  // DEC-603 amendment (wave 66, gate-11 sweep item 6): the FULL rhythm
+  // sentence (formatSendRhythm(rhythm), "N sent in the last 7 days · last
+  // <date>") was dropped from this line -- Comms.tsx already renders it,
+  // once, in the page head directly above this tab's own titles block
+  // (Comms.tsx:225); printing the whole sentence a second time here made
+  // the tab's own caption an unlabelled echo of the page head. `rhythm` is
+  // still threaded to RecentSends below for its own (columnHeads-
+  // suppressed) subtitle slot -- see RecentSends.tsx's own rhythm doc
+  // comment -- and, per the wave-98 amendment directly below, its
+  // `sentLast7Days` FIGURE ALONE (not the full sentence) is now also
+  // reused here for the drill head's own count clause, which is not an
+  // echo of anything Comms.tsx's head prints.
+  // DEC-621 (wave-98 amendment): the drill head's count clause --
+  // docs/design/Chautauqua Comms.dc.html:339 draws `57 sends · 4 in the
+  // last 7 days`. `rhythm.sentLast7Days` is the SAME figure Comms.tsx
+  // already fetched once (two dedicated ?since=&perPage=1 requests read
+  // off res.total, sendRhythm.ts) and hands down to both its own head and
+  // this tab as `rhythm` -- reusing it here is "data already on the page",
+  // never a second request or a new endpoint. When `rhythm` hasn't
+  // settled yet (undefined/null), the clause is honestly omitted rather
+  // than guessed (DEC-678).
+  const countLine =
+    rhythm != null ? `${countOf(total, 'send')} · ${rhythm.sentLast7Days} in the last 7 days` : countOf(total, 'send');
   const exportParams = new URLSearchParams();
   exportParams.set('format', 'csv');
   if (q.trim()) exportParams.set('q', q.trim());

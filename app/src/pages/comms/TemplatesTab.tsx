@@ -8,11 +8,12 @@ import { EmptyState } from '../../components/EmptyState';
 import { formatDate } from '../../lib/dates';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { EmailTemplate } from './types';
-import { DEC_993 } from '../../../../src/decisions';
+import { DEC_993, DEC_621 } from '../../../../src/decisions';
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
 import './templates.css';
 
 void DEC_993;
+void DEC_621;
 
 interface DraftTemplate {
   name: string;
@@ -192,7 +193,7 @@ export function TemplatesTab({ eventId, onBack }: { eventId: string; onBack?: ()
   }
 
   return (
-    <div className="chq-comms-templates-tab">
+    <div className="chq-comms-templates-tab" {...(editingId ? { 'data-chq-phone-dock': true } : {})}>
       {/* v12 phone frame "Templates · 390" (docs/design/Chautauqua
           Comms.dc.html:286): the drill head is the shell's own
           .chq-phone-head/-head-drill vocabulary (styles.css:2190, :2209),
@@ -214,6 +215,16 @@ export function TemplatesTab({ eventId, onBack }: { eventId: string; onBack?: ()
             &lsaquo; Comms
           </button>
           <h1 className="chq-page-title">Templates</h1>
+          {/* DEC-621 (wave-98 amendment): a third line inside the phone
+              drill head band -- docs/design/Chautauqua Comms.dc.html:290
+              draws `5 saved` directly under the H1. Phone-only copy (the
+              desktop pin at Comms.dc.html:227-229 carries no count line,
+              and `.chq-section-head`'s own `Saved · {templates.length}`
+              line below stays exactly where it is at every width) --
+              hidden by default, shown only inside templates.css's terminal
+              max-width:700px block. Sourced from the same `templates`
+              array the section head already reads, never a second fetch. */}
+          <span className="chq-comms-templates-head-count">{templates.length} saved</span>
         </div>
         <button type="button" className="chq-btn chq-btn-primary" onClick={startNew}>
           New template
@@ -339,7 +350,15 @@ export function TemplatesTab({ eventId, onBack }: { eventId: string; onBack?: ()
                 A brand-new, unsaved draft has no id to send with yet, so it
                 gets Cancel (back to whatever was selected before "New
                 template") in that one slot instead. */}
-            <div className="chq-comms-editor-actions">
+            {/* DEC-621 (wave-98 amendment): the frame's pinned Save/Cancel
+                dock (docs/design/Chautauqua Comms.dc.html:323-324) is the
+                shell's own `.chq-phone-dock` geometry (styles.css:2267),
+                composed onto this EXISTING footer wrapper -- one Save
+                control, one save() call (DEC-547), never a second button.
+                `data-chq-phone-dock` on the page root above suppresses the
+                shell's bottom tab bar while the editor is open
+                (styles.css:430), so the frame's footer stays ONE region. */}
+            <div className="chq-comms-editor-actions chq-phone-dock">
               <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
                 Save
               </button>

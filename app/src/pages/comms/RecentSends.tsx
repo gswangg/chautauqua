@@ -387,7 +387,11 @@ export function RecentSends({
                   compose mount no longer hands off to History per row. */}
               <button
                 type="button"
-                className="chq-btn chq-btn-secondary chq-comms-batch-toggle"
+                className={
+                  columnHeads
+                    ? 'chq-btn chq-btn-secondary chq-comms-batch-toggle chq-comms-batch-toggle-recipients'
+                    : 'chq-btn chq-btn-secondary chq-comms-batch-toggle'
+                }
                 aria-expanded={isExpanded}
                 onClick={() => toggle(batch.batchKey)}
               >

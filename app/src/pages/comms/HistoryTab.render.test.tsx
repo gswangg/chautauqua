@@ -85,13 +85,17 @@ afterEach(() => {
 });
 
 describe('HistoryTab', () => {
-  // DEC-603 amendment (wave 18, wave-66 amendment): the head mirrors
-  // TemplatesTab's -- a breadcrumb, an h1, and a count line built from
-  // `total` alone -- plus an Export CSV anchor onto the existing email-log
-  // export (src/routes/api/exports.ts, kind=email-log) carrying only q. The
-  // rhythm sentence is NOT repeated here (wave 66, gate-11 sweep item 6):
-  // Comms.tsx already renders it once in the page head above this tab.
-  it('renders the head with a count line built from total alone (no rhythm echo), and an Export CSV anchor scoped to email-log + the live q', async () => {
+  // DEC-603 amendment (wave 18, wave-66 amendment), DEC-621 (wave-98
+  // amendment): the head mirrors TemplatesTab's -- a breadcrumb, an h1,
+  // and a count line built from `total` plus the rhythm's own
+  // `sentLast7Days` figure alone -- plus an Export CSV anchor onto the
+  // existing email-log export (src/routes/api/exports.ts, kind=email-log)
+  // carrying only q. The FULL rhythm sentence (formatSendRhythm) is still
+  // NOT repeated here (wave 66, gate-11 sweep item 6): Comms.tsx already
+  // renders it once in the page head above this tab -- only the bare
+  // figure is reused for the drill head's own "N in the last 7 days"
+  // clause (docs/design/Chautauqua Comms.dc.html:339).
+  it('renders the head with a count line built from total + rhythm.sentLast7Days (no full-sentence echo), and an Export CSV anchor scoped to email-log + the live q', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batch()], { total: 57 }),
     });
@@ -110,7 +114,7 @@ describe('HistoryTab', () => {
 
     expect(screen.getByRole('heading', { name: 'History' })).toBeInTheDocument();
     const countLine = document.querySelector('.chq-comms-history-titles .chq-comms-head-subtitle')!;
-    expect(countLine).toHaveTextContent('57 sends');
+    expect(countLine).toHaveTextContent('57 sends · 4 in the last 7 days');
     expect(countLine).not.toHaveTextContent('sent in the last 7 days');
 
     const exportLink = screen.getByRole('link', { name: 'Export CSV' });
