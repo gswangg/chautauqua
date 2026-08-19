@@ -1167,6 +1167,122 @@
    a duplicate top-level selector is invisible to a source-scan test that
    only finds the first match.) */
 
+
+/* DEC-931: a refused track/room delete names the blocking rows inline,
+   under the row that was clicked -- a lead line ("Can't delete --
+   referenced by sessions:") plus one <li> per named blocker. Sits inside
+   a .chq-settings-panel <li>, so the nested list has to opt out of the
+   panel's row vocabulary above: no per-item hairline, no 14px row
+   padding, no column-flex stretch -- those style the panel's own rows,
+   not a message body nested inside one. Declared after the phone media
+   query so the opt-out holds at every width (same specificity, later in
+   source order). Muted ink, meta size: an explanation of why the action
+   didn't happen, not a row of its own. */
+.chq-settings-delete-blockers {
+  margin: 2px 0 0;
+  font-size: var(--chq-type-meta-size);
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-delete-blockers p {
+  margin: 0;
+}
+
+.chq-settings-delete-blockers ul {
+  list-style: disc;
+  margin: 2px 0 0;
+  padding: 0 0 0 18px;
+}
+
+.chq-settings-delete-blockers li {
+  display: list-item;
+  padding: 0;
+  border-bottom: none;
+  gap: 0;
+}
+
+/* The per-field error-row/survival-note pair that used to live here
+   (w28-d) is gone: the DEC-124 amendment moved Event settings onto the
+   shared ErrorSummary, which carries the "nothing was lost" survival copy
+   once at the top of the form instead of repeating it beside each field's
+   error text. The error text itself is the shared .chq-field-error /
+   .chq-field-invalid vocabulary from error-states.css, so this page needs
+   no local layout rule for it. */
+
+/* DEC-896 amendment (wave 20): the Public pages section head's
+   right-flushed consequence micro-label -- "Unpublishing returns 404 to
+   anyone holding the link" (docs/design/Chautauqua Settings.dc.html:131
+   `font-size:11px; font-weight:600; letter-spacing:0.04em;
+   text-transform:uppercase`).
+   No existing settings.css/settings-lists.css eyebrow class matches this
+   register (11px/600/uppercase/.04em, muted), so this is appended here per
+   task instructions rather than widening an unrelated class. */
+.chq-settings-section-head-consequence {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+
+
+/* ---------------------------------------------------------------------- */
+/* w4-e/DEC-375 wave-86: the index/drill SWITCH at <=700px, and the       */
+/* three list drills' body anatomy (Tracks and rooms, Your data, People   */
+/* and roles) -- docs/design/Chautauqua Settings.dc.html:275/347/393/552. */
+/* Appended LAST (DEC-385 wave-85 cascade note: settings.css's mid-file   */
+/* phone block at :158 is shadowed by any later unconditional rule for    */
+/* the same selector) so nothing declared above can outrank these.        */
+/* Namespaced to `.chq-settings-rail-link-*`, `.chq-settings-questions-   */
+/* block`, `.chq-settings-drill-title` and `.chq-settings-tracks-rooms-   */
+/* phone-caption` -- disjoint from any other lane appending to this same  */
+/* trailing block (e.g. v12m-w4-f); never reorders or edits a rule that   */
+/* isn't one of these.                                                    */
+/* ---------------------------------------------------------------------- */
+
+/* The phone-only elements below render unconditionally in the DOM (JSX
+   keeps them viewport-agnostic; only CSS decides visibility) -- so every
+   one of them needs an explicit desktop `display:none` OUTSIDE the media
+   block, never left to rely on "no rule = invisible". */
+.chq-settings-drill-title,
+.chq-settings-tracks-rooms-phone-caption,
+.chq-settings-rail-link-open,
+.chq-settings-questions-block {
+  display: none;
+}
+
+
+
+
+/* task-w4-f/DEC-375/DEC-967: the four-drill phone body conformance sweep
+   (docs/design/Chautauqua Settings.dc.html:444 CFP
+   `<div style="width:390px; height:844px; background:#F4F1E8; border:1px
+   solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex;
+   flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`,
+   :481 Public pages, :510 Speaker portal, :578 Saved embeds).
+   Consolidated (DEC-976 wave-91) into this same terminal max-width block,
+   in original relative order.
+
+   Shared vocabulary across the four drills:
+   - a 15px-padded field row = an 11px/800/0.1em uppercase muted label over
+     a 46px bordered readout (border/radius/bg/min-height:46px/padding:0
+     13px) -- opted into per-row via SummarySectionRow's own rowClassName
+     prop (chq-settings-drill-field-row), never a blanket override of the
+     shared .chq-settings-row-value every other settings drill (Event,
+     Tracks and rooms, People) also renders through;
+   - a 2px ink section rule under an 11px uppercase cap ("Questions · 8",
+     "Resources") -- the existing .chq-settings-numbered
+     .chq-settings-section-head/.chq-section-label pair, reused verbatim
+     (CallForPapersPanel's new QuestionsSection, PortalSettingsPanel's
+     Resources cap) rather than a third heading vocabulary;
+   - 14px list rows with a 44px bordered inline action;
+   - the Public-pages and Saved-embeds cards end their row in bordered
+     44px actions;
+   - the Speaker-portal chip set is 44px pills, filled for on/bordered for
+     off (the existing .chq-pill/.chq-pill-static vocabulary, sized here). */
+
 @media (max-width: 700px) {
   .chq-settings-layout {
     display: block;
@@ -1208,6 +1324,13 @@
     color: var(--chq-ink);
   }
 
+  /* DEC-976 wave-91 cascade check (test/phone-cascade-order.scan.test.ts):
+     this `display: block` is shadowed by the top-level `display: none`
+     rule below (unmoved by this consolidation) and then re-declared as
+     `display: inline-block` further down in this same merged block --
+     that later declaration is the one that actually wins at phone width
+     and matches Chautauqua Settings.dc.html:275-296's inline "Open" link.
+     Kept as-is (dead but harmless, not this lane's rule-value to edit). */
   .chq-settings-rail-link-open {
     display: block;
     font-size: 13px;
@@ -1446,75 +1569,17 @@
   .chq-settings-row-hint {
     align-self: flex-end;
   }
-}
-
-/* DEC-931: a refused track/room delete names the blocking rows inline,
-   under the row that was clicked -- a lead line ("Can't delete --
-   referenced by sessions:") plus one <li> per named blocker. Sits inside
-   a .chq-settings-panel <li>, so the nested list has to opt out of the
-   panel's row vocabulary above: no per-item hairline, no 14px row
-   padding, no column-flex stretch -- those style the panel's own rows,
-   not a message body nested inside one. Declared after the phone media
-   query so the opt-out holds at every width (same specificity, later in
-   source order). Muted ink, meta size: an explanation of why the action
-   didn't happen, not a row of its own. */
-.chq-settings-delete-blockers {
-  margin: 2px 0 0;
-  font-size: var(--chq-type-meta-size);
-  color: var(--chq-ink-2);
-}
-
-.chq-settings-delete-blockers p {
-  margin: 0;
-}
-
-.chq-settings-delete-blockers ul {
-  list-style: disc;
-  margin: 2px 0 0;
-  padding: 0 0 0 18px;
-}
-
-.chq-settings-delete-blockers li {
-  display: list-item;
-  padding: 0;
-  border-bottom: none;
-  gap: 0;
-}
-
-/* The per-field error-row/survival-note pair that used to live here
-   (w28-d) is gone: the DEC-124 amendment moved Event settings onto the
-   shared ErrorSummary, which carries the "nothing was lost" survival copy
-   once at the top of the form instead of repeating it beside each field's
-   error text. The error text itself is the shared .chq-field-error /
-   .chq-field-invalid vocabulary from error-states.css, so this page needs
-   no local layout rule for it. */
-
-/* DEC-896 amendment (wave 20): the Public pages section head's
-   right-flushed consequence micro-label -- "Unpublishing returns 404 to
-   anyone holding the link" (docs/design/Chautauqua Settings.dc.html:131
-   `font-size:11px; font-weight:600; letter-spacing:0.04em;
-   text-transform:uppercase`).
-   No existing settings.css/settings-lists.css eyebrow class matches this
-   register (11px/600/uppercase/.04em, muted), so this is appended here per
-   task instructions rather than widening an unrelated class. */
-.chq-settings-section-head-consequence {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--chq-muted);
-}
 
 /* task-w3-f/DEC-032 (wave-85 amendment): phone geometry for the Call for
    papers, Public pages and Speaker portal read-view drills
-   (docs/design/Chautauqua Settings.dc.html:444-477 / :481-506 /
-   :510-548). Max-width only (DEC-385) -- every selector below is
-   invisible above 700px, so desktop stays exactly as drawn by the 1600
-   frames. Appended at the true end of the file per task instructions
-   (w3-e is consolidating this file's phone blocks to its end in the same
-   batch). */
-@media (max-width: 700px) {
+   (docs/design/Chautauqua Settings.dc.html:444-477
+   `<div style="width:390px; height:844px; background:#F4F1E8; border:1px
+   solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex;
+   flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">` /
+   :481-506 / :510-548). Max-width only (DEC-385) -- every selector below
+   is invisible above 700px, so desktop stays exactly as drawn by the 1600
+   frames. Consolidated (DEC-976 wave-91) into this same terminal max-width
+   block, in original relative order. */
   /* :451 `font-size:11px; font-weight:800; letter-spacing:0.1em;
      text-transform:uppercase; color:#565A4B">Public link` -- every
      SummarySection read row's label becomes this eyebrow register on
@@ -1646,35 +1711,7 @@
     align-self: stretch;
     width: 100%;
   }
-}
 
-
-/* ---------------------------------------------------------------------- */
-/* w4-e/DEC-375 wave-86: the index/drill SWITCH at <=700px, and the       */
-/* three list drills' body anatomy (Tracks and rooms, Your data, People   */
-/* and roles) -- docs/design/Chautauqua Settings.dc.html:275/347/393/552. */
-/* Appended LAST (DEC-385 wave-85 cascade note: settings.css's mid-file   */
-/* phone block at :158 is shadowed by any later unconditional rule for    */
-/* the same selector) so nothing declared above can outrank these.        */
-/* Namespaced to `.chq-settings-rail-link-*`, `.chq-settings-index-hint`, */
-/* `.chq-settings-drill-title` and `.chq-settings-tracks-rooms-phone-     */
-/* caption` -- disjoint from any other lane appending to this same        */
-/* trailing block (e.g. v12m-w4-f); never reorders or edits a rule that   */
-/* isn't one of these.                                                    */
-/* ---------------------------------------------------------------------- */
-
-/* The phone-only elements below render unconditionally in the DOM (JSX
-   keeps them viewport-agnostic; only CSS decides visibility) -- so every
-   one of them needs an explicit desktop `display:none` OUTSIDE the media
-   block, never left to rely on "no rule = invisible". */
-.chq-settings-drill-title,
-.chq-settings-tracks-rooms-phone-caption,
-.chq-settings-rail-link-open,
-.chq-settings-questions-block {
-  display: none;
-}
-
-@media (max-width: 700px) {
   /* -- The switch itself -------------------------------------------- */
   /* DEC-375: index OR one drilled section, never the rail stacked above
      its content. The mid-file block at :158 already toggles
@@ -1823,34 +1860,7 @@
   .chq-settings-summary-row {
     padding: 14px 0;
   }
-}
 
-
-/* task-w4-f/DEC-375/DEC-967: the four-drill phone body conformance sweep
-   (docs/design/Chautauqua Settings.dc.html:444 CFP, :481 Public pages,
-   :510 Speaker portal, :578 Saved embeds). Trailing max-width block, kept
-   the file's LAST top-level construct (DEC-385 wave-85) -- v12m-w4-e's own
-   Settings.tsx/index-drill work appends its own disjoint selectors above
-   this comment, never below it.
-
-   Shared vocabulary across the four drills:
-   - a 15px-padded field row = an 11px/800/0.1em uppercase muted label over
-     a 46px bordered readout (border/radius/bg/min-height:46px/padding:0
-     13px) -- opted into per-row via SummarySectionRow's own rowClassName
-     prop (chq-settings-drill-field-row), never a blanket override of the
-     shared .chq-settings-row-value every other settings drill (Event,
-     Tracks and rooms, People) also renders through;
-   - a 2px ink section rule under an 11px uppercase cap ("Questions · 8",
-     "Resources") -- the existing .chq-settings-numbered
-     .chq-settings-section-head/.chq-section-label pair, reused verbatim
-     (CallForPapersPanel's new QuestionsSection, PortalSettingsPanel's
-     Resources cap) rather than a third heading vocabulary;
-   - 14px list rows with a 44px bordered inline action;
-   - the Public-pages and Saved-embeds cards end their row in bordered
-     44px actions;
-   - the Speaker-portal chip set is 44px pills, filled for on/bordered for
-     off (the existing .chq-pill/.chq-pill-static vocabulary, sized here). */
-@media (max-width: 700px) {
   /* CFP Public link / Closes (:444-478) and Speaker portal Welcome note
      (:510-549): the row's value becomes a bordered readout box instead of
      bare text, scoped to rows that opt in via rowClassName so every other
@@ -1993,16 +2003,17 @@
     text-align: left;
     white-space: normal;
   }
-}
 
 /* task w8-f/DEC-393 wave-90 amendment, DEC-989 wave-90 amendment: Settings
    cluster's measured 44px-floor + 390-overflow backlog
    (docs/design/audit/tap-floor-v12.md, docs/design/audit/
-   overflow-390-v12.md). Appended as a NEW terminal @media block -- the four
-   existing blocks above (:1170, :1517, :1677, :1863) are untouched, never
-   reordered or edited into. .chq-pill is deliberately absent: its base rule
-   lives in app/src/styles.css (shell lane's to fix once, DEC-393 ruling). */
-@media (max-width: 700px) {
+   overflow-390-v12.md). w9-c/DEC-976 wave-91: this file's five max-width
+   blocks are consolidated into one terminal block ending here -- the
+   rules below are unreordered and unedited, only unwrapped from their
+   original four separate `@media` blocks (each preserved above, in
+   original relative order). .chq-pill is deliberately absent: its base
+   rule lives in app/src/styles.css (shell lane's to fix once, DEC-393
+   ruling). */
   /* --- tap floor: the ANCHOR inside each container gets the floor, never
      the container itself. --- */
 
