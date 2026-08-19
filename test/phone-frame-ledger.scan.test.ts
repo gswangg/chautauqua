@@ -250,10 +250,12 @@ for (const frame of ALL_FRAMES) {
 }
 
 // -- Ratchet -----------------------------------------------------------------
-// Measured on this branch (v12m-w1-j): 6 of 53 frames are cited by an
-// existing test. May only be RAISED in a future wave as more frames get
-// real phone-parity coverage; never lowered.
-export const CLAIMED_FLOOR = 6;
+// Measured on this branch (v12m-w3-j, rebased off main after several w2
+// citation-landing lanes merged): 11 of 53 frames are cited by an existing
+// test -- not the 6 recorded when this const was first written. May only
+// be RAISED in a future wave as more frames get real phone-parity
+// coverage; never lowered.
+export const CLAIMED_FLOOR = 11;
 
 describe('phone-frame claim ledger (DEC-808 amendment wave 83, v12 mobile campaign)', () => {
   it('enumerates exactly 53 phone frames across 13 files (vacuous-population guard)', () => {
