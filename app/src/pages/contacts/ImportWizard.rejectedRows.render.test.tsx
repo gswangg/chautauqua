@@ -1,13 +1,13 @@
-// docs/design/Chautauqua Contacts.dc.html:800 draws THREE actions on the
-// file-level "Import CSV · the file will not do" refusal: 'Import the 205
-// good rows', 'Upload a different file', and a tertiary `Download the 9
-// rows` link (13px, weight 700, padding 0 6px). DEC-745 (wave-108
-// amendment): BUILT, not deferred -- ImportWizard.tsx already holds
-// header, allDataRows and badRows (each carrying its 1-based `line`),
-// which is exactly the rejected set the frame offers to download. See
-// decisions/DEC-745.md's wave-108 amendment and
-// docs/design/audit/desktop-frame-ledger-v12.md's "Divergences found while
-// claiming" entry for Contacts.dc.html:800 (now resolved).
+// The file-level "Import CSV · the file will not do" refusal draws THREE
+// actions, not two: alongside the primary and secondary the frame adds a
+// tertiary download of the rejected rows. DEC-745 (wave-108 amendment):
+// BUILT, not deferred -- ImportWizard.tsx already holds header, allDataRows
+// and badRows (each carrying its 1-based `line`), which is exactly the
+// rejected set the frame offers to download. See decisions/DEC-745.md's
+// wave-108 amendment and docs/design/audit/desktop-frame-ledger-v12.md's
+// "Divergences found while claiming" entry (now resolved). The frame
+// citation itself is receipted at the assertion that proves it, below,
+// rather than here -- a claim about the pack belongs next to its expect().
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -42,6 +42,10 @@ describe('ImportWizard: DEC-745 third action on the file-level refusal (Contacts
     expect(screen.getByRole('button', { name: 'Import the 2 good rows' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Upload a different file' })).toBeInTheDocument();
 
+    // docs/design/Chautauqua Contacts.dc.html:800 draws the third action as
+    // `Download the 9 rows` -- a tertiary link beside the two buttons above,
+    // its count naming the REJECTED rows (9 of the pack's 205-row file, 3 of
+    // this fixture's 5).
     const download = screen.getByRole('button', { name: 'Download the 3 rows' });
     expect(download).toBeInTheDocument();
     // Reads app source, not the pack: the app's existing tertiary-link
