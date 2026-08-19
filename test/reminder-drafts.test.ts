@@ -220,6 +220,22 @@ const ROWS: OutstandingRowShape[] = [
     timezone: "America/Los_Angeles",
     assignmentCreatedAt: new Date(0),
   },
+  {
+    assignmentId: "assign_3",
+    taskId: "task_3",
+    taskTitle: "Confirm bio",
+    dueDate: new Date(Date.parse("2020-01-06T00:00:00Z")),
+    status: "pending",
+    lastRemindedAt: null,
+    contactId: "contact_2",
+    firstName: "Jamal",
+    lastName: "Okoye",
+    email: "jamal@example.com",
+    eventId: "event_1",
+    eventName: "DevFlow Conf 2027",
+    timezone: "America/Los_Angeles",
+    assignmentCreatedAt: new Date(0),
+  },
 ];
 
 describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
@@ -286,5 +302,33 @@ describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
       // matches a real send except for the token value itself.
       expect(normalizeClaimToken(draft?.text ?? "")).toBe(normalizeClaimToken(call.text));
     }
+  });
+
+  // DEC-441 wave-110 amendment: the review dialog frame draws a
+  // per-recipient task list (name, dueLabel, overdue), built from the SAME
+  // assignments buildReminderMessage consumes -- never re-derived from the
+  // rendered text.
+  it("carries each recipient's own outstanding task summary (title, dueLabel, overdue)", async () => {
+    const { db } = fakeDb(ROWS);
+
+    const result = await previewRemindNow(db, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
+
+    const priya = result.drafts.find((d) => d.contactId === "contact_1");
+    expect(priya).toBeDefined();
+    // dueDate 2027-03-02T07:30:00Z is well AFTER NOW (2023-11-14), so it is
+    // not yet overdue.
+    expect(priya?.tasks).toEqual([
+      { title: "Hotel stay requirement form", dueLabel: "Tue 2 Mar 2027", overdue: false },
+    ]);
+
+    const jamal = result.drafts.find((d) => d.contactId === "contact_2");
+    expect(jamal).toBeDefined();
+    // Sorted dueDate-ascending with null last (sortReminderAssignments):
+    // the overdue "Confirm bio" (due 2020) precedes the no-due-date
+    // "Speaker agreement".
+    expect(jamal?.tasks).toEqual([
+      { title: "Confirm bio", dueLabel: "Mon 6 Jan 2020", overdue: true },
+      { title: "Speaker agreement", dueLabel: "No due date", overdue: false },
+    ]);
   });
 });

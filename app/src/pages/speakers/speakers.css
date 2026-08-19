@@ -142,19 +142,87 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
   max-height: 160px;
   overflow-y: auto;
   font-size: 14px;
 }
 
+/* v12 frame :505 `grid-template-columns:1fr auto` -- name/tasks column
+   plus the right-flushed overdue flag, hairline between rows. */
+.chq-speakers-remind-recipient {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 16px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-speakers-remind-recipient:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.chq-speakers-remind-recipient-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chq-speakers-remind-recipient-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* DEC-441: THAT PERSON'S outstanding task names -- built server-side from
+   the same assignments buildReminderMessage renders, never scraped back
+   out of the draft text. */
+.chq-speakers-remind-recipient-tasks {
+  font-size: 13px;
+  color: var(--chq-muted);
+  line-height: 1.5;
+}
+
+/* v12: overdue is the ONE strong mark, filled ink -- never red (DEC-367),
+   the same vocabulary the onboarding grid/detail page use for OVERDUE. */
+.chq-speakers-remind-flag {
+  align-self: baseline;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  background: var(--chq-ink);
+  color: var(--chq-on-ink);
+  border-radius: var(--chq-r-ctl, 4px);
+  padding: 2px 8px;
+}
+
 .chq-speakers-remind-draft {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+}
+
+/* v12 frame :518 -- the inset band the email card sits inside. #E9E7E2 has
+   no exact palette token (palette.scan.test.ts forbids a new hex literal);
+   --chq-surface-sunk (#EFEBDF) is the nearest declared tone. */
+.chq-speakers-remind-card-band {
   background: var(--chq-surface-sunk);
+  border: 1px solid var(--chq-rule);
   border-radius: var(--chq-r-ctl, 4px);
-  padding: 14px 16px;
+  padding: 16px;
+}
+
+/* v12 frame :519 -- the card itself, #F4F1E8 (an exact --chq-paper match). */
+.chq-speakers-remind-card {
+  background: var(--chq-paper);
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card, 5px);
+  padding: 16px 18px;
 }
 
 .chq-speakers-remind-draft-text {
@@ -1477,11 +1545,20 @@ button.chq-speakers-status-overdue:hover {
   min-height: 46px;
 }
 
-/* User-filed (release night): the preview's personalization disclosure --
-   quiet line under the sample draft. */
+/* DEC-441 wave-110 amendment: the frame's :533 caption -- "Each speaker's
+   list is their own ... not typed" -- reuses this quiet-line class,
+   previously the user-filed personalization disclosure it now replaces. */
 .chq-speakers-remind-draft-note {
   font-size: 12px;
   color: var(--chq-muted);
+}
+
+/* v12 frame :540 `Logged in Comms history` -- sits beside Send/Cancel in
+   .chq-modal-actions, which already provides the 10px gap flex row. */
+.chq-speakers-remind-logged {
+  font-size: 12px;
+  color: var(--chq-muted);
+  line-height: 1.5;
 }
 
 /* v12 mobile campaign w2-c. DEC-385 single-direction: every rule below is
