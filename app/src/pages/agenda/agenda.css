@@ -1126,13 +1126,16 @@
   }
 
   /* docs/design/Chautauqua Agenda.dc.html:130
-     `font-size:20px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-2.5px` */
+     `font-size:20px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-2.5px`
+     DEC-991 wave-27 amendment bans line-height:1 on the display face; the
+     declaration is omitted so `normal` (the font's own line box) applies.
+     The optical nudge is line-height-invariant (DESIGN-RULINGS.md, "The
+     wordmark needs an optical nudge") so top:-2.5px at 20px is unchanged. */
   .chq-phone-agenda-wordmark {
     font-family: var(--chq-font-display);
     font-size: 20px;
     font-weight: 700;
     letter-spacing: -0.03em;
-    line-height: 1;
     position: relative;
     top: -2.5px;
   }
@@ -1147,14 +1150,15 @@
   }
 
   /* docs/design/Chautauqua Agenda.dc.html:133
-     `margin:0; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1` */
+     `margin:0; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1`
+     DEC-991 wave-27 amendment bans line-height:1 on the display face; the
+     declaration is omitted so `normal` (the font's own line box) applies. */
   .chq-phone-agenda-h1 {
     margin: 0;
     font-family: var(--chq-font-display);
     font-size: 27px;
     font-weight: 700;
     letter-spacing: -0.04em;
-    line-height: 1;
   }
 
   /* docs/design/Chautauqua Agenda.dc.html:134
