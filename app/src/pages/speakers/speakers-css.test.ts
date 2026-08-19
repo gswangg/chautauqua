@@ -265,8 +265,11 @@ describe('speaker-detail action row is one control height (user-filed)', () => {
     expect(css).not.toMatch(/\.chq-speaker-detail-actions[^{]*\.chq-participation-menu-trigger/);
     // v12: "natural size" is now the DENSE half of the token pair, which is
     // what ParticipationMenu asks for on every surface. The roomy half is
-    // reserved for the task rows below, which are real targets.
-    expect(topLevelRuleBody(css, '.chq-speakers-status-dense')).toMatch(/padding:\s*3px 0/);
+    // reserved for the task rows below, which are real targets. The 6px
+    // inline padding is cancelled by margin-inline (user-filed ring
+    // breathing room), so the rendered size IS still natural.
+    expect(topLevelRuleBody(css, '.chq-speakers-status-dense')).toMatch(/padding:\s*3px 6px/);
+    expect(topLevelRuleBody(css, '.chq-speakers-status-dense')).toMatch(/margin-inline:\s*-6px/);
   });
 
   it('keeps the row centred so the three controls share a baseline', () => {
