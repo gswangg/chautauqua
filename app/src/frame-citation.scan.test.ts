@@ -357,6 +357,29 @@ const EXPECT_PROXIMITY_LINES = 6;
  * files to force it down -- honest debt beats a green scan that hides it. */
 const UNRECEIPTED_CLAIM_CEILING = 14;
 
+/** Shared receipt check (quote presence + nearby `expect(`), factored out so
+ * the phone describe block below and the new desktop block (DEC-808 wave-107
+ * task w3-v) run the identical rule rather than each re-implementing it --
+ * a second copy of a vocabulary is a trap with a delay fuse (DEC-613). */
+function computeUnreceiptedCitations(
+  citations: readonly (Citation & { sourceLine: number; flat: string; raw: string })[]
+): string[] {
+  const unreceipted: string[] = [];
+  for (const c of citations) {
+    const quote = quoteAfter(c.flat, c.index);
+    if (!quote || quote.length === 0) {
+      unreceipted.push(`${c.file}:${c.sourceLine} — ${c.matchText} (no backtick-quoted literal)`);
+      continue;
+    }
+    const rawLines = c.raw.split('\n');
+    const window = rawLines.slice(c.sourceLine - 1, c.sourceLine - 1 + EXPECT_PROXIMITY_LINES);
+    if (!window.some((l) => l.includes('expect('))) {
+      unreceipted.push(`${c.file}:${c.sourceLine} — ${c.matchText} (no expect( within ${EXPECT_PROXIMITY_LINES} lines beneath)`);
+    }
+  }
+  return unreceipted;
+}
+
 describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-87 amendment, task w5-j)', () => {
   it('the test-file phone-frame citation population is non-empty and contains a known-good example', () => {
     expect(TEST_PHONE_CITATIONS.length).toBeGreaterThan(0);
@@ -376,19 +399,7 @@ describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-
   });
 
   it(`every test-file phone-frame citation is receipted: a backtick quote in the same comment, and a real expect( within ${EXPECT_PROXIMITY_LINES} source lines beneath it (ceiling: UNRECEIPTED_CLAIM_CEILING, may only be lowered)`, () => {
-    const unreceipted: string[] = [];
-    for (const c of TEST_PHONE_CITATIONS) {
-      const quote = quoteAfter(c.flat, c.index);
-      if (!quote || quote.length === 0) {
-        unreceipted.push(`${c.file}:${c.sourceLine} — ${c.matchText} (no backtick-quoted literal)`);
-        continue;
-      }
-      const rawLines = c.raw.split('\n');
-      const window = rawLines.slice(c.sourceLine - 1, c.sourceLine - 1 + EXPECT_PROXIMITY_LINES);
-      if (!window.some((l) => l.includes('expect('))) {
-        unreceipted.push(`${c.file}:${c.sourceLine} — ${c.matchText} (no expect( within ${EXPECT_PROXIMITY_LINES} lines beneath)`);
-      }
-    }
+    const unreceipted = computeUnreceiptedCitations(TEST_PHONE_CITATIONS);
     if (unreceipted.length > UNRECEIPTED_CLAIM_CEILING) {
       throw new Error(
         `${unreceipted.length} test-file phone-frame citations are unreceipted, above the ratchet ` +
@@ -397,5 +408,205 @@ describe('test-file claims are receipted: quote + nearby expect() (DEC-976 wave-
       );
     }
     expect(unreceipted.length).toBeLessThanOrEqual(UNRECEIPTED_CLAIM_CEILING);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-808 wave-107 amendment (task w3-v): a symmetric DESKTOP receipt
+// population. The two describe blocks above (wave-23 file-level receipts and
+// wave-87's test-file phone-frame receipts) only ever checked PHONE claims;
+// the wave-107 planner amendment to DEC-808 measured that 64 desktop frames
+// are claimed today (99 once the in-flight w4-k/w5-a..e lanes land) with NO
+// receipt population checking them at all -- the desktop ledger
+// (test/desktop-frame-ledger.scan.test.ts) only asserts a claiming citation
+// RESOLVES to a real line, never that it carries a quote or a nearby
+// `expect(`. This block closes that gap for test-file citations, reusing
+// this file's own `findCitations`, `flatten`, `quoteAfter`,
+// `locateSourceIndex`, `lineNumberAt` and the new `computeUnreceiptedCitations`
+// helper above rather than re-implementing any of them (DEC-613).
+//
+// DESKTOP CLASSIFICATION: test/desktop-frame-ledger.scan.test.ts derives "is
+// this label-opened frame desktop" itself but exports ONLY `CLAIMED_FLOOR`,
+// not a reusable classifier function -- so this block DERIVES the identical
+// grammar rather than diverge from it (a second copy of a vocabulary is a
+// trap with a delay fuse, DEC-613; if the ledger ever exports a classifier,
+// import it here instead of re-deriving):
+//   - a label line is `font-size:19px` plus a closing tag with a title
+//     inside it, matched by />([^<]+)<\//  (wider than this file's own
+//     phone-oriented `isLabelLine`, which requires `</span>` specifically --
+//     the ledger widens to any closing tag because some desktop labels sit
+//     on an `<a>`, e.g. Chautauqua Home.dc.html:205);
+//   - a label opens a frame whose extent runs to the next label line (or
+//     EOF);
+//   - the frame is DESKTOP when that extent contains no `width:390px` +
+//     `height:844` line anywhere in it (this file's own `isFrameLine`,
+//     reused verbatim -- that part of the grammar is common to both files
+//     already and is not duplicated here).
+// This block does NOT reproduce the ledger's further exclusions (template
+// interpolations, explainer panels) -- those narrow which frames count
+// toward the desktop POPULATION total; this block only asks the narrower
+// geometric question "does this cited line fall inside a desktop frame's
+// extent", which the exclusions do not change.
+const DESKTOP_LABEL_RE = />([^<]+)<\//;
+
+function isDesktopLabelLine(line: string): boolean {
+  return line.includes('font-size:19px') && DESKTOP_LABEL_RE.test(line);
+}
+
+interface DesktopFrameExtent {
+  fileName: string;
+  line: number;
+  extentEnd: number;
+}
+
+function desktopFrameExtentsInFile(fileName: string): DesktopFrameExtent[] {
+  const lines = readFileSync(join(DESIGN_ROOT, fileName), 'utf-8').split('\n');
+  const labelLineNums: number[] = [];
+  lines.forEach((content, idx) => {
+    if (isDesktopLabelLine(content)) labelLineNums.push(idx + 1);
+  });
+  const out: DesktopFrameExtent[] = [];
+  labelLineNums.forEach((line, i) => {
+    const extentEnd = labelLineNums[i + 1] ?? Infinity;
+    const extentLines = lines.slice(line - 1, extentEnd === Infinity ? lines.length : extentEnd - 1);
+    if (extentLines.some(isFrameLine)) return; // has a width:390px+height:844 line -- phone, not desktop
+    out.push({ fileName, line, extentEnd });
+  });
+  return out;
+}
+
+const ALL_DESKTOP_FRAME_EXTENTS: DesktopFrameExtent[] = designFileNames().flatMap(desktopFrameExtentsInFile);
+
+function isInsideADesktopFrame(frameFile: string, firstLine: number): boolean {
+  return ALL_DESKTOP_FRAME_EXTENTS.some(
+    (f) => f.fileName === frameFile && firstLine >= f.line && firstLine < f.extentEnd
+  );
+}
+
+const TEST_DESKTOP_CITATIONS: TestPhoneCitation[] = [];
+for (const file of TEST_TARGET_FILES) {
+  const relPath = relative(REPO_ROOT, file);
+  const raw = readFileSync(file, 'utf-8');
+  const flat = flatten(raw);
+  const citations = findCitations(relPath, flat).filter((c) => isInsideADesktopFrame(c.frameFile, c.firstLine));
+  let cursor = 0;
+  for (const c of citations) {
+    const idx = locateSourceIndex(raw, c.matchText, cursor);
+    cursor = idx + c.matchText.length;
+    TEST_DESKTOP_CITATIONS.push({ ...c, flat, raw, sourceLine: lineNumberAt(raw, idx) });
+  }
+}
+
+/** Ratchet ceiling, mirroring UNRECEIPTED_CLAIM_CEILING's own contract
+ * exactly, for the desktop half: the count of test-file desktop-frame
+ * citations that are NOT fully receipted, measured on THIS branch by
+ * running the scan (never copied from an audit doc, DEC-989 clause a). A
+ * ceiling on debt, not a floor on coverage -- may only be LOWERED as
+ * unreceipted claims get fixed, never raised to paper over a regression.
+ * This task does not fix other lanes' test files to force it down. */
+const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 28;
+
+describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
+  it('the test-file desktop-frame citation population is non-empty (guards against a silently-empty scan)', () => {
+    expect(TEST_DESKTOP_CITATIONS.length).toBeGreaterThan(0);
+  });
+
+  it(`every test-file desktop-frame citation is receipted: a backtick quote in the same comment, and a real expect( within ${EXPECT_PROXIMITY_LINES} source lines beneath it (ceiling: DESKTOP_UNRECEIPTED_CLAIM_CEILING, may only be lowered)`, () => {
+    const unreceipted = computeUnreceiptedCitations(TEST_DESKTOP_CITATIONS);
+    if (unreceipted.length > DESKTOP_UNRECEIPTED_CLAIM_CEILING) {
+      throw new Error(
+        `${unreceipted.length} test-file desktop-frame citations are unreceipted, above the ratchet ` +
+          `ceiling of ${DESKTOP_UNRECEIPTED_CLAIM_CEILING} (DESKTOP_UNRECEIPTED_CLAIM_CEILING may only ` +
+          `be LOWERED, never raised to paper over a regression):\n${unreceipted.join('\n')}`
+      );
+    }
+    expect(unreceipted.length).toBeLessThanOrEqual(DESKTOP_UNRECEIPTED_CLAIM_CEILING);
+  });
+
+  // Two-sided companion (DEC-808 wave-106's requirement that every campaign
+  // ratchet gets one): FAILS when the measured count falls BELOW the
+  // constant, so a stale ceiling that's higher than reality cannot survive a
+  // wave that fixes desktop-receipt debt. DESKTOP_UNRECEIPTED_CLAIM_CEILING
+  // is seeded at exactly what this branch measures (28), so this companion is
+  // expected GREEN today (measured 28, ceiling 28) -- unlike
+  // UNRECEIPTED_CLAIM_CEILING's own companion below, which is deliberately
+  // red because that constant is DEC-385 wave-93 merge-train-only and this
+  // task does not edit it.
+  it(`never measures FEWER unreceipted desktop-frame citations than DESKTOP_UNRECEIPTED_CLAIM_CEILING (${DESKTOP_UNRECEIPTED_CLAIM_CEILING}) without the ceiling being lowered to match (a stale ceiling hides fixed debt)`, () => {
+    const unreceipted = computeUnreceiptedCitations(TEST_DESKTOP_CITATIONS);
+    if (unreceipted.length < DESKTOP_UNRECEIPTED_CLAIM_CEILING) {
+      throw new Error(
+        `measured ${unreceipted.length} unreceipted test-file desktop-frame citations, below the ` +
+          `ratchet ceiling of ${DESKTOP_UNRECEIPTED_CLAIM_CEILING}. This is the ratchet working -- debt ` +
+          `got fixed. Lower the ceiling by replacing the line:\n` +
+          `  const DESKTOP_UNRECEIPTED_CLAIM_CEILING = ${unreceipted.length};`
+      );
+    }
+    expect(unreceipted.length).toBeGreaterThanOrEqual(DESKTOP_UNRECEIPTED_CLAIM_CEILING);
+  });
+});
+
+// Two-sided companion for UNRECEIPTED_CLAIM_CEILING (the PHONE ceiling
+// above), which DEC-808 wave-106 requires of every campaign ratchet but
+// which the wave-87 amendment never added. FAILS when the measured count
+// falls BELOW the constant, printing the exact replacement line -- mirroring
+// desktop-frame-ledger.scan.test.ts's own CLAIMED_FLOOR "never claims MORE"
+// companion in shape (a two-sided ratchet, not a one-way floor). This
+// company is EXPECTED RED right now: this branch measures 2 unreceipted
+// phone-frame citations against a constant of 14 (DEC-808 wave-107's own
+// planning pass measured 1 on a slightly different tree; this task
+// re-measured on its own branch per DEC-989 clause a -- never trust a prior
+// measurement, re-derive it -- and got 2, still far below 14). That is the
+// ratchet working exactly as intended -- debt got fixed on some other branch
+// since wave-87 seeded 14, and the constant is stale. DEC-385 wave-93 rules
+// UNRECEIPTED_CLAIM_CEILING itself is a merge-train-only edit, so this task
+// adds the companion but does not touch the constant; the merge train
+// re-measures and tightens it once per batch, same as CLAIMED_FLOOR.
+describe('UNRECEIPTED_CLAIM_CEILING companion (two-sided ratchet, DEC-808 wave-106 requirement)', () => {
+  it(`never measures FEWER unreceipted phone-frame citations than UNRECEIPTED_CLAIM_CEILING (${UNRECEIPTED_CLAIM_CEILING}) without the ceiling being lowered to match by the merge train (a stale ceiling hides fixed debt) -- EXPECTED RED on this branch (measured 2 < 14; DEC-385 wave-93 makes UNRECEIPTED_CLAIM_CEILING merge-train-only, this task does not edit it)`, () => {
+    const unreceipted = computeUnreceiptedCitations(TEST_PHONE_CITATIONS);
+    if (unreceipted.length < UNRECEIPTED_CLAIM_CEILING) {
+      throw new Error(
+        `measured ${unreceipted.length} unreceipted test-file phone-frame citations, below the ` +
+          `ratchet ceiling of ${UNRECEIPTED_CLAIM_CEILING}. This is the ratchet working -- debt got ` +
+          `fixed. The merge train (not a worker mid-lane, DEC-385 wave-93) should lower the ceiling ` +
+          `by replacing the line:\n  const UNRECEIPTED_CLAIM_CEILING = ${unreceipted.length};`
+      );
+    }
+    expect(unreceipted.length).toBeGreaterThanOrEqual(UNRECEIPTED_CLAIM_CEILING);
+  });
+});
+
+// Synthetic controls (DEC-808 wave-107, task w3-v item 3): run the receipt
+// logic itself through this file's own `flatten`/`findCitations`/
+// `quoteAfter` helpers (never a re-implementation) against small fixture
+// strings, so the receipt rule's two failure modes -- missing quote, and
+// quote-present-but-no-nearby-expect -- are each independently confirmed to
+// fire (negative control) and independently confirmed NOT to fire when the
+// citation is fully receipted (positive control).
+describe('receipt-checking synthetic controls (positive/negative, DEC-808 wave-107, task w3-v)', () => {
+  it('flags a citation with no following backtick quote at all (negative control)', () => {
+    const src = 'see docs/design/Chautauqua Speakers.dc.html:261 for the rule, no quote follows this at all';
+    const flat = flatten(src);
+    const [citation] = findCitations('fixture.ts', flat);
+    expect(citation).toBeDefined();
+    const quote = quoteAfter(flat, citation!.index);
+    expect(quote === null || quote.length === 0).toBe(true);
+  });
+
+  it('does not flag a citation with a quote AND a nearby expect( (positive control)', () => {
+    const src = [
+      '// docs/design/Chautauqua Speakers.dc.html:261 `.chq-speaker-name{font-weight:600}`',
+      'expect(el).toHaveStyle("font-weight:600");',
+    ].join('\n');
+    const flat = flatten(src);
+    const [citation] = findCitations('fixture.ts', flat);
+    expect(citation).toBeDefined();
+    const quote = quoteAfter(flat, citation!.index);
+    expect(quote).toBe('.chq-speaker-name{font-weight:600}');
+    expect(quote === null || quote.length === 0).toBe(false);
+    const rawLines = src.split('\n');
+    const window = rawLines.slice(0, EXPECT_PROXIMITY_LINES);
+    expect(window.some((l) => l.includes('expect('))).toBe(true);
   });
 });
