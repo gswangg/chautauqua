@@ -66,8 +66,11 @@ describe('FormsPage discloses the real MAX_FORM_FIELDS ceiling at Add-a-question
       </MemoryRouter>,
     );
 
+    // v12 phone frame (w1-i) added a second "Add a question" control (a
+    // full-width dashed button, hidden at desktop, DEC-390 phone-selector
+    // precedent) alongside the desktop link this test waits on.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add a question' })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: 'Add a question' })).toHaveLength(2);
     });
 
     // G13 lane-D fix (02-submissions--04): the frame draws a 2-item FIELDS

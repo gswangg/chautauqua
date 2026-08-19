@@ -411,11 +411,15 @@
   display: none;
 }
 
-/* v12 phone frame (docs/design/Chautauqua Submissions.dc.html:479
-   `<span style="font-size:12px; color:#565A4B">{{ f.type }} · {{ f.req }}</span>`):
-   second markup for the combined kind/required line FieldList renders
-   alongside the desktop kind/required columns -- display:none at desktop,
-   shown by the 700px block below. */
+/* v12 phone frame -- the frame citation for this row lives in
+   FieldList.tsx (see its own comment there), not repeated verbatim here:
+   the cited frame line's sc-for placeholder syntax pairs literal braces
+   the way a nested rule would, which defeats this repo's
+   single-level-nesting @media stripper (phone-tap-target.scan.test.ts /
+   the old forms-header-measure.test.ts helper) on a block this size.
+   Second markup for the combined kind/required line FieldList renders
+   alongside the desktop kind/required columns -- display:none at
+   desktop, shown by the 700px block below. */
 .chq-forms-field-phone-meta {
   display: none;
 }
@@ -496,9 +500,10 @@
     grid-area: label;
   }
 
-  /* v12 frame `<span style="font-family:'Familjen Grotesk', sans-serif;
-     font-size:16px; font-weight:600; letter-spacing:-0.015em">{{
-     f.label }}</span>`: steps up from the desktop 15px/-0.01em face. */
+  /* v12 frame's display-label span (braces in its sc-for placeholder
+     omitted here, see the phone-meta rule's comment above for why): steps
+     up from the desktop 15px/-0.01em face to font-size:16px,
+     letter-spacing:-0.015em. */
   .chq-forms-field-label-text {
     font-size: 16px;
     letter-spacing: -0.015em;
