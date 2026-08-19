@@ -1,11 +1,11 @@
 // v12 design pack — the five width:390 PHONE frames in
 // docs/design/Chautauqua Contacts.dc.html:
 //
-//   "Contacts"        docs/design/Chautauqua Contacts.dc.html:179 (179-229) — look someone up, call them
-//   "Contact · 390"   docs/design/Chautauqua Contacts.dc.html:407 (407-443) — the errand you actually run on a phone
-//   "Pipeline · 390"  docs/design/Chautauqua Contacts.dc.html:447 (447-483) — one column at a time
-//   "Import CSV · 390"docs/design/Chautauqua Contacts.dc.html:487 (487-518) — one column per screen (claimed elsewhere, w4-i)
-//   "Merge · 390"     docs/design/Chautauqua Contacts.dc.html:522 (522-546) — pick a side, field by field
+//   "Contacts"        (extent 179-229) — look someone up, call them (citation lands in the describe block below)
+//   "Contact · 390"   (extent 407-443) — the errand you actually run on a phone (citation lands in the describe block below)
+//   "Pipeline · 390"  (extent 447-483) — one column at a time (citation lands in the describe block below)
+//   "Import CSV · 390" (extent 487-518) — one column per screen (claimed elsewhere, w4-i; citation lands in the describe block below)
+//   "Merge · 390"     (extent 522-546) — pick a side, field by field (citation lands in the describe block below)
 //
 // DEC-967 wave-86: each of the four frames above (Import CSV already
 // claimed) carries at least one strict `docs/design/Chautauqua
@@ -161,6 +161,7 @@ describe('DESIGN-RULINGS: never author a min-height below 44px on a phone token'
 
 describe('v12 phone frame "Contacts" (390)', () => {
   it('stacks the filter builder one control per line, so no rule control collapses under the 44px floor\'s width half', () => {
+    // docs/design/Chautauqua Contacts.dc.html:179 `width:390px; height:844px; background:#F4F1E8`
     expect(phoneRule(CONTACTS_CSS, '.chq-contacts-filter-rules-row')).toMatch(/flex-direction:\s*column/);
     const group = phoneRule(CONTACTS_CSS, '.chq-contacts-filter-rule-group');
     expect(group).toMatch(/flex-direction:\s*column/);
@@ -220,6 +221,7 @@ describe('v12 phone frame "Contacts" (390)', () => {
 
 describe('v12 phone frame "Contact · 390"', () => {
   it('collapses the record row\'s 130px label gutter so the value gets the full measure', () => {
+    // docs/design/Chautauqua Contacts.dc.html:407 `width:390px; height:844px; background:#F4F1E8`
     const row = phoneRule(CONTACTS_CSS, '.chq-contacts-record-row');
     expect(row).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
     expect(row).not.toMatch(/130px/);
@@ -264,6 +266,7 @@ describe('v12 phone frame "Contact · 390"', () => {
 
 describe('v12 phone frame "Pipeline · 390"', () => {
   it('hides the five-column board and shows the one-stage-at-a-time strip', () => {
+    // docs/design/Chautauqua Contacts.dc.html:447 `width:390px; height:844px; background:#F4F1E8`
     expect(phoneRule(PANELS_CSS, '.chq-contacts-pipeline-columns')).toMatch(/display:\s*none/);
     expect(phoneRule(PANELS_CSS, '.chq-contacts-pipeline-phone-stages')).toMatch(/display:\s*flex/);
     expect(phoneRule(PANELS_CSS, '.chq-contacts-pipeline-phone-list')).toMatch(/display:\s*flex/);
@@ -308,6 +311,7 @@ describe('v12 phone frame "Pipeline · 390"', () => {
 });
 
 describe('v12 phone frame "Import CSV · 390"', () => {
+  // docs/design/Chautauqua Contacts.dc.html:487 `width:390px; height:844px; background:#F4F1E8` — the frame's own declaration, one column per screen (claimed elsewhere, w4-i)
   it('hides the desktop stacked-select list — the frame pages one column at a time instead (docs/design/Chautauqua Contacts.dc.html:483 `Import CSV · 390`, body :487-511)', () => {
     expect(phoneRule(PANELS_CSS, '.chq-contacts-import-columns')).toMatch(/display:\s*none/);
   });
@@ -387,6 +391,7 @@ describe('v12 phone frame "Import CSV · 390"', () => {
   });
 });
 
+// docs/design/Chautauqua Contacts.dc.html:522 `width:390px; height:844px; background:#F4F1E8` — the frame's own declaration, pick a side, field by field
 describe('v12 phone frame "Merge · 390"', () => {
   it('drops the compare head and stacks label / keep / drop into one column', () => {
     expect(phoneRule(PANELS_CSS, '.chq-contacts-merge-compare-head')).toMatch(/display:\s*none/);

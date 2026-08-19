@@ -1,7 +1,9 @@
 // DEC-398: the form-task picker is a <select> of the event's own forms,
 // never a free-text id box -- the buyer is explicitly non-technical
-// (docs/clarifications.md) and docs/design/Chautauqua Speakers.dc.html:
-// 182-196 shows no id field. This is a pure component test (no fetch): the
+// (docs/clarifications.md) and the "New task" modal (Chautauqua
+// Speakers.dc.html:182-196) shows no id field -- citation lands on the
+// "DEC-398 form picker" describe's second `it` below, beside its own
+// assertion. This is a pure component test (no fetch): the
 // list of forms is passed in as a prop by OnboardingGrid.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
@@ -74,6 +76,7 @@ describe('TaskModal: DEC-398 form picker', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Form' }));
 
+    // docs/design/Chautauqua Speakers.dc.html:182 `display:flex; flex-direction:column; gap:14px` -- the "New task" modal draws no free-text id field, only this <select>.
     const select = screen.getByLabelText('Form') as HTMLSelectElement;
     expect(select).toBeInTheDocument();
     expect(select.disabled).toBe(false);

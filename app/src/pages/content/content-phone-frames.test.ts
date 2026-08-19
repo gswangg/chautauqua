@@ -156,7 +156,7 @@ describe('v12 phone frame "Content" (docs/design/Chautauqua Content.dc.html:198)
     expect(row).toMatch(/align-items:\s*stretch/);
   });
 
-  it('gives the filter chips real horizontal padding on top of the shared 44px floor -- docs/design/Chautauqua Content.dc.html:210 `min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600`', () => {
+  it('gives the filter chips real horizontal padding on top of the shared 44px floor', () => {
     // .chq-pill is shared/frozen from this page's own scope (DEC-368: this
     // page never redefines it here). Its shared phone rule (styles.css)
     // supplies the min-height:44px + centred flex half of the frame's chip
@@ -166,6 +166,7 @@ describe('v12 phone frame "Content" (docs/design/Chautauqua Content.dc.html:198)
     // governs: geometry binds, sample numbers don't), so no phone-only
     // override was needed to reach the floor's "padding, not just height"
     // half.
+    // docs/design/Chautauqua Content.dc.html:210 `min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600`
     const shared = phoneRule(STYLES_CSS, '.chq-pill');
     expect(shared).toMatch(/min-height:\s*44px/);
     expect(shared).toMatch(/display:\s*inline-flex/);
@@ -196,13 +197,13 @@ describe('v12 phone frame "Content" (docs/design/Chautauqua Content.dc.html:198)
   });
 });
 
-describe('v12 phone frame "Content · selecting" (docs/design/Chautauqua Content.dc.html:247)', () => {
+describe('v12 phone frame "Content · selecting"', () => {
   it('shows the "N selected / All N / Done" meta row in place of the rest-state summary + Select toggle', () => {
     // Frame head, docs/design/Chautauqua Content.dc.html:248 -- same head
     // geometry as the rest-state frame (`padding:14px 16px; flex-shrink:0;
     // display:flex; flex-direction:column; gap:11px`); the selecting meta
     // row (:255-257) replaces the summary line, never coexists with it
-    // (ContentApp.tsx's phoneSelectMode switch).
+    // (ContentApp.tsx's phoneSelectMode switch). docs/design/Chautauqua Content.dc.html:247 `width:390px; height:844px; background:#F4F1E8`
     expect(phoneRule(CONTENT_CSS, '.chq-content-phone-selecting-meta')).toMatch(/display:\s*flex/);
   });
 
@@ -242,13 +243,15 @@ describe('v12 phone frame "Content · selecting" (docs/design/Chautauqua Content
   });
 });
 
-describe('v12 phone frame "Files · 390" (docs/design/Chautauqua Content.dc.html:338)', () => {
-  it('gives the Files H1 the 25px back-linked drill register, not the 27px cluster-landing default -- docs/design/Chautauqua Content.dc.html:341 `font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05`', () => {
+describe('v12 phone frame "Files · 390"', () => {
+  it('gives the Files H1 the 25px back-linked drill register, not the 27px cluster-landing default', () => {
     // DEC-643 wave-83: 27px cluster landing / 25px back-linked drill. The
     // shared .chq-page-title phone rule (styles.css) defaults every page
     // to the 27px landing size; this page's own breadcrumb column scopes
     // the drill register onto the SAME --chq-type-page-title-phone-drill
     // token DEC-643 already declares, single-sourced.
+    // docs/design/Chautauqua Content.dc.html:338 `width:390px; height:844px; background:#F4F1E8`
+    // docs/design/Chautauqua Content.dc.html:341 `font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05`
     const h1 = phoneRule(CONTENT_CSS, '.chq-content-files-titles .chq-page-title');
     expect(h1).toMatch(/font-size:\s*var\(--chq-type-page-title-phone-drill\)/);
     expect(h1).toMatch(/line-height:\s*1\.05/);
@@ -292,7 +295,7 @@ describe('v12 phone frame "Session · deliverable" (docs/design/Chautauqua Conte
     expect(title).toMatch(/line-height:\s*1\.2/);
   });
 
-  it('wraps the status band actions full-measure, matching docs/design/Chautauqua Content.dc.html:378-383\'s stacked "Content status" label + Approve row', () => {
+  it('wraps the status band actions full-measure, matching docs/design/Chautauqua Content.dc.html:378-383 `display:flex; align-items:center; gap:12px; padding-top:4px` -- stacked "Content status" label + Approve row', () => {
     const band = phoneRule(CONTENT_CSS, '.chq-content-status-band');
     expect(band).toMatch(/flex-wrap:\s*wrap/);
     expect(phoneRule(CONTENT_CSS, '.chq-content-status-band-actions')).toMatch(/flex:\s*1 1 100%/);
