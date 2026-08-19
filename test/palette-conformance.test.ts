@@ -67,10 +67,30 @@ const boxShadowScopeFiles = [
 // files are excluded from rule 1.
 const DECISIONS_FILE = join(REPO_ROOT, "src/decisions.ts");
 const DECISIONS_DATA_DIR = join(REPO_ROOT, "src/decisions-data");
-const wholeTreeFiles = [
+
+/** A file whose basename ends `.test.ts` or `.test.tsx` is a test module: its
+ * CSS-shaped string literals are fixtures built inline to prove a cascade or
+ * scan assertion (e.g. a synthetic `.chq-appended-after { color: red; }`
+ * block), never a declaration reaching a rendered surface. Three independent
+ * lanes (agenda-phone-floor, content-phone-floor, overview-phone-floor) each
+ * reached for the literal word "red" as a throwaway sentinel colour to prove
+ * cascade order, and a fourth kind of file -- this population's own scan
+ * fixtures below -- deliberately embeds the banned literals to prove the
+ * regexes still fire. None of these strings is ever served to a browser, so
+ * rule 3 excludes the whole population the same way it excludes the
+ * decisions registry immediately above.
+ */
+function isTestFile(f: string): boolean {
+  return f.endsWith(".test.ts") || f.endsWith(".test.tsx");
+}
+
+const wholeTreeFilesUnfiltered = [
   ...glob(join(REPO_ROOT, "app/src"), [".ts", ".tsx", ".css"]),
   ...glob(join(REPO_ROOT, "src"), [".ts", ".tsx", ".css"]),
 ].filter((f) => f !== DECISIONS_FILE && !f.startsWith(DECISIONS_DATA_DIR + "/"));
+
+const wholeTreeFiles = wholeTreeFilesUnfiltered.filter((f) => !isTestFile(f));
+const excludedTestFileCount = wholeTreeFilesUnfiltered.length - wholeTreeFiles.length;
 
 describe("palette closure guard (DEC-383)", () => {
   it("scanned at least one page sheet and one SSR surface module", () => {
@@ -182,5 +202,39 @@ describe("palette closure guard (DEC-383)", () => {
     }
 
     expect(violations).toEqual([]);
+  });
+
+  it("positive control: the banned-literal and banned-word regexes still fire on a non-test fixture", () => {
+    const bannedLiteral = [/#c0392b/i, /#fdecea/i];
+    const bannedWord = [/\bred\b/i, /\bcrimson\b/i];
+
+    const hexFixture = "background: #c0392b; border: 1px solid #fdecea;";
+    expect(bannedLiteral.some((re) => re.test(hexFixture))).toBe(true);
+
+    const wordFixture = ".chq-test { color: red; } .chq-other { color: crimson; }";
+    expect(bannedWord.some((re) => re.test(wordFixture))).toBe(true);
+  });
+
+  it("the test-file carve-out does not vacuously empty rule 3's population", () => {
+    expect(wholeTreeFiles.length).toBeGreaterThan(0);
+    expect(wholeTreeFiles.some((f) => f.endsWith(".tsx"))).toBe(true);
+    expect(
+      wholeTreeFiles.some((f) => f.endsWith(".ts") && !isTestFile(f)),
+    ).toBe(true);
+    expect(wholeTreeFiles.some((f) => f.endsWith(".css"))).toBe(true);
+    // The filtered population must have shrunk by exactly the number of
+    // test files removed -- not hard-coded, so it tracks the tree instead
+    // of rotting into a stale total.
+    expect(wholeTreeFilesUnfiltered.length - wholeTreeFiles.length).toBe(
+      excludedTestFileCount,
+    );
+    expect(excludedTestFileCount).toBeGreaterThan(0);
+  });
+
+  it("negative control: the filter keys on the `.test.` suffix, not the word 'test' anywhere in the name", () => {
+    expect(isTestFile("app/src/pages/agenda/agenda-phone-floor.test.ts")).toBe(true);
+    expect(isTestFile("app/src/pages/agenda/agenda-phone-floor.test.tsx")).toBe(true);
+    expect(isTestFile("app/src/testing/fixtures-test-utils.ts")).toBe(false);
+    expect(isTestFile("app/src/pages/review/test-helpers.ts")).toBe(false);
   });
 });
