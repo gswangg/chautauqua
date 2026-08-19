@@ -195,29 +195,83 @@ describe('CommsPage: phone landing (DEC-621 amendment, v12 landing)', () => {
   });
 });
 
-describe('PhoneDraftCard (DEC-621 amendment): renders only when a draft exists', () => {
+describe('PhoneDraftCard (DEC-621 wave-87 amendment): renders only when a draft exists', () => {
   it('renders nothing when draft is null', () => {
     const { container } = render(<PhoneDraftCard draft={null} onReadDraft={() => {}} />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders the frame\'s card shape when a draft is supplied', () => {
+  it("renders the frame's card shape when a draft is supplied, recipient count alone (no fabricated provenance)", () => {
     const onReadDraft = vi.fn();
     render(
       <PhoneDraftCard
-        draft={{ subject: 'Your talk has been accepted', recipientCount: 23, provenance: 'reviewer feedback merged' }}
+        draft={{ subject: 'Your talk has been accepted', recipientCount: 23 }}
         onReadDraft={onReadDraft}
       />,
     );
 
     expect(screen.getByText('Draft in progress')).toBeInTheDocument();
     expect(screen.getByText('Your talk has been accepted')).toBeInTheDocument();
-    expect(screen.getByText('23 recipients · reviewer feedback merged')).toBeInTheDocument();
+    // Frame line 191 draws "23 recipients · reviewer feedback merged", but
+    // the app has no source for the provenance clause -- see
+    // docs/design/audit/comms-v12.md finding 1 and PhoneDraftCard's own doc
+    // comment. Rendered alone, never fabricated.
+    expect(screen.getByText('23 recipients')).toBeInTheDocument();
     expect(screen.getByText('Better on a laptop')).toBeInTheDocument();
 
     const button = screen.getByRole('button', { name: 'Read the draft' });
     fireEvent.click(button);
     expect(onReadDraft).toHaveBeenCalledOnce();
+  });
+});
+
+describe('CommsPage phone landing: the draft card is wired to a real localStorage record (DEC-621 wave-87 amendment)', () => {
+  it('renders the draft card when composeDraft.ts holds a record for this event', async () => {
+    window.localStorage.setItem(
+      `chq.composeDraft.${EVENT_ID}`,
+      JSON.stringify({
+        templateName: 'Acceptance',
+        subject: 'Your talk has been accepted',
+        recipientCount: 23,
+        updatedAt: 1700000000000,
+      }),
+    );
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByRole('heading', { name: 'Comms' });
+
+    const landing = document.querySelector<HTMLElement>('.chq-comms-phone-landing')!;
+    const card = landing.querySelector('.chq-comms-phone-draft-card');
+    expect(card).not.toBeNull();
+    expect(within(card as HTMLElement).getByText('Your talk has been accepted')).toBeInTheDocument();
+    expect(within(card as HTMLElement).getByText('23 recipients')).toBeInTheDocument();
+  });
+
+  it('renders no card, and does not throw, when no record is stored', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByRole('heading', { name: 'Comms' });
+
+    const landing = document.querySelector<HTMLElement>('.chq-comms-phone-landing')!;
+    expect(landing.querySelector('.chq-comms-phone-draft-card')).toBeNull();
   });
 });
 

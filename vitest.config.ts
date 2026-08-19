@@ -22,6 +22,8 @@ import react from "@vitejs/plugin-react";
 // w53-e (DEC-700 amendment): api-mutation-bump.scan.test.ts's behavioural
 // half uses renderHook(useMutationVersion) to prove apiUpload's bump reaches
 // a subscriber, which needs a real `document`, same treatment.
+// v12m-w5-f (DEC-621 wave-87 amendment): composeDraft.test.ts needs a real
+// `window.localStorage` despite its plain .test.ts name, same treatment.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -49,6 +51,7 @@ export default defineConfig({
       ["app/src/lib/api.unauthorized.render.test.ts", "jsdom"],
       ["app/src/pages/review/planEditor-refusal-shapes.test.ts", "jsdom"],
       ["app/src/lib/api-mutation-bump.scan.test.ts", "jsdom"],
+      ["app/src/pages/comms/composeDraft.test.ts", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",
