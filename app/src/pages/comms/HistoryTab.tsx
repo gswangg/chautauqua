@@ -34,10 +34,12 @@ export function HistoryTab({
   eventId,
   templatesById,
   rhythm,
+  onBack,
 }: {
   eventId: string;
   templatesById: Record<string, string>;
   rhythm?: SendRhythm | null;
+  onBack?: () => void;
 }) {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
@@ -129,8 +131,22 @@ export function HistoryTab({
   return (
     <div className="chq-comms-history-tab">
       <div className="chq-comms-history-head">
-        <div className="chq-comms-history-titles">
-          <button type="button" className="chq-link-button chq-comms-history-breadcrumb" onClick={goToCompose}>
+        {/* docs/design/Chautauqua Comms.dc.html:337 (Send history, 390)
+            draws this band as the shell's own drill head -- mount the
+            shared .chq-phone-head/.chq-phone-head-drill vocabulary (DEC-576
+            wave-7 amendment) rather than a second declaration. At desktop
+            widths neither class carries a top-level rule, so this wrapper
+            stays an unstyled div in normal flow and the desktop titles
+            block is unchanged. */}
+        <div className="chq-comms-history-titles chq-phone-head chq-phone-head-drill">
+          <button
+            type="button"
+            className="chq-link-button chq-comms-history-breadcrumb chq-phone-back"
+            onClick={() => {
+              onBack?.();
+              goToCompose();
+            }}
+          >
             &lsaquo; Comms
           </button>
           <h1 className="chq-page-title">History</h1>

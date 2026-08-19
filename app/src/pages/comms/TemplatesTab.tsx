@@ -42,7 +42,7 @@ function derivePurpose(t: EmailTemplate): string {
   return 'Custom template';
 }
 
-export function TemplatesTab({ eventId }: { eventId: string }) {
+export function TemplatesTab({ eventId, onBack }: { eventId: string; onBack?: () => void }) {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -194,8 +194,22 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
   return (
     <div className="chq-comms-templates-tab">
       <div className="chq-comms-templates-head">
-        <div className="chq-comms-templates-titles">
-          <button type="button" className="chq-link-button chq-comms-templates-breadcrumb" onClick={() => navigate('/comms?tab=compose')}>
+        {/* docs/design/Chautauqua Comms.dc.html:288 (Templates, 390) draws
+            this band as the shell's own drill head -- mount the shared
+            .chq-phone-head/.chq-phone-head-drill vocabulary (DEC-576 wave-7
+            amendment) rather than a second declaration. At desktop widths
+            neither class carries a top-level rule, so this wrapper stays an
+            unstyled div in normal flow and the desktop titles block is
+            unchanged. */}
+        <div className="chq-comms-templates-titles chq-phone-head chq-phone-head-drill">
+          <button
+            type="button"
+            className="chq-link-button chq-comms-templates-breadcrumb chq-phone-back"
+            onClick={() => {
+              onBack?.();
+              navigate('/comms?tab=compose');
+            }}
+          >
             &lsaquo; Comms
           </button>
           <h1 className="chq-page-title">Templates</h1>
