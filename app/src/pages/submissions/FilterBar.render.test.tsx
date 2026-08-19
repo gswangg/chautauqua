@@ -1,10 +1,11 @@
-// DEC-919 (v12 mobile campaign w2 ruling, task w2-a). Closes audit finding 2
-// (docs/design/audit/submissions-v12.md): at 390 .chq-submissions-filterbar
-// renders only two of the six SUBMISSION_STATUSES pills plus the search box
-// -- the Status caption, the other four pills, the divider, the track
-// <select>, and the ColumnPicker <details> are hidden via submissions.css's
-// phone block (submissions-css.test.ts asserts the CSS side; this file
-// asserts the DOM carries the hooks that CSS needs).
+// v12 mobile campaign wave 6 (task w6-f), superseding the wave-2 DEC-919
+// interpretation this file's comment previously described. At 390 every
+// status pill, the track <select> and the ColumnPicker stay reachable in a
+// horizontally scrolling strip (submissions-css.test.ts asserts the CSS
+// side); only the Status caption and the hairline divider go away, as
+// chrome rather than a capability. This file asserts the DOM carries the
+// hooks the phone CSS keys off of (data-status, the distinguishing sort
+// select class) -- unaffected by which classes submissions.css hides.
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';

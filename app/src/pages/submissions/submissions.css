@@ -786,39 +786,48 @@
   max-width: calc(100vw - 40px);
 }
 
-/* DEC-919 (v12 mobile campaign w2 ruling), audit finding 2 (docs/design/
-   audit/submissions-v12.md). Frame docs/design/Chautauqua
-   Submissions.dc.html:138
-   `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:12px`
-   draws the phone head as a search box over EXACTLY three chips ("Needs
-   triage" / "Accepted" / "All 47", lines 149-151) -- no Status caption, no
-   divider, no track select, no column picker. The app's status-pill
-   vocabulary (STATUS_LABELS/
-   SUBMISSION_STATUSES, types.ts) has no "Needs triage" or "All" member and
-   no live total this component is handed, so this narrows to hiding down
-   to the two REAL pills the frame's copy most plausibly names ('pending'
-   -> Pending, 'accepted' -> Accepted) plus the search box, one markup tree
-   (DEC-386), nothing duplicated -- a synthetic third "All 47" chip is out
-   of this task's narrow interpretation (no total-count prop reaches
-   FilterBar, and inventing one is a content/IA call the audit already
-   flagged as unresolved, not a CSS geometry fix). Appended at the true end
-   of the file (not inside the earlier phone block) so this @media block
-   always wins ties at equal specificity, per the campaign's own content.css/
-   comms.css lesson. */
+/* v12 mobile campaign wave 6 (task w6-f) ruling, superseding the wave-2
+   DEC-919 interpretation previously here. Frame docs/design/Chautauqua
+   Submissions.dc.html:137-152 draws the phone head as: H1 + summary on a
+   shared baseline, then a full-width 44px search field on its OWN line,
+   then a 7px-gap horizontally scrolling chip strip. DESIGN-RULINGS'
+   governing principle is that a 390 frame keeps the desktop design's
+   CAPABILITIES -- nothing is deleted at phone width -- so the frame's
+   anatomy is honoured by RE-LINING the search/sort row and the filter row,
+   not by hiding the sort select, the track select, the column picker, or
+   any status pill. Only the 'Status' caption and the hairline divider go
+   away: they are a label and chrome the frame draws neither of, not
+   capabilities. Appended at the true end of the file (not inside the
+   earlier phone block) so this @media block always wins ties at equal
+   specificity, per the campaign's own content.css/comms.css lesson. */
 @media (max-width: 700px) {
-  .chq-submissions-status-label,
-  .chq-submissions-filterbar-divider,
-  .chq-submissions-filterbar .chq-submissions-filterbar-select,
-  .chq-submissions-columnpicker,
+  /* (a) docs/design/Chautauqua Submissions.dc.html:147: a full-width 44px
+     search field on its own line, with the sort <select> dropping beneath
+     it instead of sharing the row. The 44px floor on both controls already
+     comes from .chq-submissions-filterbar-search/-select above (line
+     597-600); this only re-lines the row into a column. */
+  .chq-submissions-filterbar-searchsort {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .chq-submissions-filterbar-searchsort .chq-submissions-filterbar-search,
   .chq-submissions-filterbar-searchsort .chq-submissions-filterbar-sort-select {
+    width: 100%;
+  }
+
+  /* (b) the frame draws neither the 'Status' caption nor the hairline
+     divider -- chrome and a label, not capabilities. */
+  .chq-submissions-status-label,
+  .chq-submissions-filterbar-divider {
     display: none;
   }
 
-  /* Reason recorded (per task instruction): at 390 the table stacks into
-     cards (see the phone block above), so a column picker governing
-     columns that are not on the screen has nothing to govern -- it is
-     hidden above, not relocated. */
-  .chq-status-pills [data-status]:not([data-status='pending']):not([data-status='accepted']) {
-    display: none;
-  }
+  /* (c) every status pill, the track select and the ColumnPicker summary
+     all remain reachable -- the earlier phone block (line 579-591) already
+     turns .chq-submissions-filterbar into a nowrap horizontally scrolling
+     strip with 44px floors on the select and the picker summary; nothing
+     here narrows that population back down. */
 }
