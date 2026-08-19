@@ -31,7 +31,7 @@
 
     <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
-        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-3px">chautauqua</span>
         <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
           <a href="#" style="color:#565A4B; padding:4px 0">Overview</a>
           <a href="#" style="color:#565A4B; padding:4px 0">Submissions</a>
@@ -54,7 +54,7 @@
         <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
           <div style="display:flex; align-items:baseline; gap:14px">
             <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">Speakers</h1>
-            <span style="font-size:13px; color:#565A4B">12 accepted · 9 tasks open · <strong style="color:#1B1D17">3 overdue</strong></span>
+            <span style="font-size:13px; color:#565A4B">12 accepted · <strong style="color:#1B1D17">3 overdue</strong></span>
           </div>
           <div style="display:flex; gap:9px">
             <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Add speaker</a>
@@ -65,20 +65,24 @@
 
         <div style="display:flex; align-items:center; gap:12px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:13px 0; flex-wrap:wrap">
           <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; color:#565A4B; background:#FAF8F2; min-width:230px">Search speaker or company…</div>
-          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">All tasks<span style="color:#565A4B; padding-left:6px">▾</span></div>
-          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Any task status<span style="color:#565A4B; padding-left:6px">▾</span></div>
-          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Any participation<span style="color:#565A4B; padding-left:6px">▾</span></div>
-          <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:6px 13px; font-size:12px; font-weight:600">Overdue only</span>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600; white-space:nowrap; flex-shrink:0">All tasks<span style="color:#565A4B; padding-left:6px">▾</span></div>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600; white-space:nowrap; flex-shrink:0">Any task status<span style="color:#565A4B; padding-left:6px">▾</span></div>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600; white-space:nowrap; flex-shrink:0">Any participation<span style="color:#565A4B; padding-left:6px">▾</span></div>
+          <span style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:12px; font-weight:500; color:#3F4237">Overdue only</span>
           <span style="margin-left:auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Skips anyone emailed in the last hour</span>
         </div>
 
         <div style="overflow-x:auto; -webkit-overflow-scrolling:touch">
           <div style="min-width:1060px; display:grid; grid-template-columns:230px repeat(6, 1fr); gap:12px; padding:0 0 10px; border-bottom:2px solid #1B1D17">
-            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Speaker · participation</span>
+            <div style="display:flex; align-items:baseline; gap:12px">
+              <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Speaker · participation</span>
+              <a href="#" style="font-size:11px; font-weight:700; white-space:nowrap">Edit tasks</a>
+            </div>
             <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="6">
               <div style="display:flex; flex-direction:column; gap:2px">
-                <span style="font-size:12px; font-weight:700; line-height:1.25">{{ t.title }}</span>
+                <a href="#" style="font-size:12px; font-weight:700; line-height:1.25; color:#1B1D17" style-hover="color:#4E5C31">{{ t.title }}</a>
                 <span style="font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">{{ t.due }}</span>
+                <span style="{{ t.doneStyle }}">{{ t.done }}</span>
               </div>
             </sc-for>
           </div>
@@ -98,20 +102,15 @@
                 </sc-if>
               </div>
               <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="6">
-                <div style="display:flex; align-items:center; gap:7px">
+                <div style="display:flex; align-items:center; gap:6px">
                   <span style="{{ cell.style }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ cell.label }}</span>
-                  <sc-if value="{{ cell.file }}" hint-placeholder-val="{{ false }}">
-                    <a href="#" style="font-size:11px; font-weight:700">File</a>
-                  </sc-if>
-                  <sc-if value="{{ cell.response }}" hint-placeholder-val="{{ false }}">
-                    <a href="#" style="font-size:11px; font-weight:700">Response</a>
-                  </sc-if>
                 </div>
               </sc-for>
             </div>
           </sc-for>
           <div style="display:flex; align-items:center; gap:16px; padding:15px 0 0">
             <span style="font-size:13px; color:#565A4B">Showing 1–6 of 12</span>
+            <span style="font-size:12px; color:#565A4B">Overdue is filled · pending is bold ink · complete recedes · a task name opens that task across every speaker</span>
             <span style="font-size:13px; color:#565A4B">Click any status to mark it complete or pending</span>
             
             <div style="margin-left:auto; display:flex; gap:9px">
@@ -134,11 +133,11 @@
     <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:12px">
         <div style="display:flex; align-items:center; gap:10px">
-          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-2.5px">chautauqua</span>
           <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">DevFlow 2027</span>
         </div>
         <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">Speakers</h1>
-        <span style="font-size:13px; color:#565A4B; line-height:1.5">12 accepted · 9 tasks open · <strong style="color:#1B1D17">3 overdue</strong></span>
+        <span style="font-size:13px; color:#565A4B; line-height:1.5">12 accepted · <strong style="color:#1B1D17">3 overdue</strong></span>
         <div style="display:flex; gap:8px">
           <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700">Remind outstanding</span>
           <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Filter</span>
@@ -158,10 +157,7 @@
                 <div style="display:flex; align-items:center; gap:10px; justify-content:space-between">
                   <span style="font-size:13px; color:#3F4237">{{ cell.task }}</span>
                   <div style="display:flex; align-items:center; gap:9px">
-                    <sc-if value="{{ cell.response }}" hint-placeholder-val="{{ false }}">
-                      <a href="#" style="font-size:12px; font-weight:700; min-height:44px; display:inline-flex; align-items:center">Response</a>
-                    </sc-if>
-                    <span style="{{ cell.style }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ cell.label }}</span>
+                    <span style="{{ cell.styleM }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ cell.label }}</span>
                   </div>
                 </div>
               </sc-for>
@@ -326,13 +322,13 @@
 
     <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
-        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-3px">chautauqua</span>
         <span style="font-size:13px; font-weight:600; color:#565A4B">Speakers · Priya Raman</span>
         <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
       </header>
 
       <div style="max-width:1440px; margin:0 auto; width:100%; padding:26px 34px 36px; display:flex; flex-direction:column; gap:26px">
-        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:24px">
           <div style="display:flex; align-items:center; gap:16px">
             <div style="width:64px; height:64px; border-radius:50%; background:repeating-linear-gradient(135deg, #E1DDCE 0 6px, #D8D3C2 6px 12px); display:grid; place-items:center; flex-shrink:0"><span style="font-family:ui-monospace, monospace; font-size:10px; color:#565A4B">headshot</span></div>
             <div style="display:flex; flex-direction:column; gap:5px">
@@ -342,9 +338,20 @@
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:10px">
-            <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#F7F9F0; background:#4E5C31; border-radius:3px; padding:4px 10px">Confirmed<span style="color:#565A4B; padding-left:6px">▾</span></span>
+            <span style="font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#565A4B; border-radius:3px; padding:4px 0; cursor:pointer">Confirmed<span style="color:#565A4B; padding-left:6px">▾</span></span>
+          </div>
+        </div>
+
+        <div style="max-width:76ch; display:flex; flex-direction:column; gap:10px">
+          <p style="margin:0; font-size:16px; line-height:1.7; color:#3F4237">Priya Raman leads the build-tooling platform team at Latticework Systems. She maintained the open-source task runner gantry and speaks on build systems and CI reliability.</p>
+          <a href="#" style="font-size:14px; font-weight:700">Edit in the contact record ›</a>
+        </div>
+
+        <div style="display:flex; align-items:center gap:10px">
+          <div style="display:flex; align-items:center; gap:10px">
             <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Email Priya</span>
             <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Remind Priya</span>
+            <span style="font-size:12px; color:#565A4B; line-height:1.5; padding-left:6px">Reminded 3× · last 4 Aug</span>
           </div>
         </div>
 
@@ -366,12 +373,12 @@
                 <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Tasks · 2 outstanding</span>
                 <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Click a status to change it</span>
               </div>
-              <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="6">
-                <div style="display:grid; grid-template-columns:1fr 150px 130px auto; gap:18px; align-items:center; padding:12px 0; border-bottom:1px solid #E1DDCE">
+              <sc-for list="{{ speakerTasks }}" as="t" hint-placeholder-count="6">
+                <div style="display:grid; grid-template-columns:1fr 132px 96px 150px; gap:18px; align-items:center; padding:12px 0; border-bottom:1px solid #E1DDCE">
                   <span style="font-size:15px">{{ t.title }}</span>
-                  <span style="font-size:13px; color:#565A4B">{{ t.due }}</span>
-                  <span style="{{ t.style }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ t.state }}</span>
-                  <a href="#" style="font-size:12px; font-weight:700; color:#565A4B">Remind this task</a>
+                  <span style="font-size:13px; color:#565A4B; white-space:nowrap">{{ t.due }}</span>
+                  <span style="{{ t.styleM }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ t.state }}</span>
+                  <a href="#" style="font-size:12px; font-weight:700; color:#565A4B; white-space:nowrap; justify-self:end">{{ t.remind }}</a>
                 </div>
               </sc-for>
             </section>
@@ -438,7 +445,7 @@
 
     <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
-        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-3px">chautauqua</span>
         <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
           <a href="#" style="color:#565A4B; padding:4px 0">Overview</a>
           <a href="#" style="color:#565A4B; padding:4px 0">Submissions</a>
@@ -545,7 +552,7 @@
 
     <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
-        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-3px">chautauqua</span>
         <span style="font-size:13px; font-weight:600; color:#565A4B">Speakers</span>
         <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
       </header>
@@ -553,7 +560,7 @@
       <div style="max-width:1440px; margin:0 auto; width:100%; padding:30px 34px 40px; display:flex; flex-direction:column; gap:22px">
         <div style="display:flex; align-items:baseline; gap:14px">
           <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">Speakers</h1>
-          <span style="font-size:13px; color:#565A4B">12 accepted · 9 outstanding tasks</span>
+          <span style="font-size:13px; color:#565A4B">12 accepted · 3 overdue</span>
         </div>
 
         <div style="border:1px solid #1B1D17; border-left:4px solid #1B1D17; border-radius:5px; background:#EFEBDF; padding:16px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap">
@@ -585,25 +592,166 @@
     </div>
   </div>
 
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">One task, every speaker</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Opened from a column head · where answers get read</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-3px">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Speakers</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="max-width:1180px; margin:0 auto; width:100%; padding:30px 34px 40px; display:flex; flex-direction:column; gap:22px">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+          <div style="display:flex; flex-direction:column; gap:5px">
+            <a href="#" style="font-size:13px; font-weight:700">‹ Speakers</a>
+            <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">Hotel stay form</h1>
+            <span style="font-size:13px; color:#565A4B">Due 15 Aug · required · 6 answered of 9 who need it</span>
+          </div>
+          <div style="display:flex; gap:9px">
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Export answers</a>
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Move the due date</a>
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:10px 15px; font-size:13px; font-weight:700">Remind the missing</span>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:9px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:12px 0">
+          <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600">Answered · 6</span>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Still waiting · 3</a>
+          <span style="margin-left:auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">4 reminder sends · last 4 Aug</span>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:16px; background:#EFEBDF; border-radius:4px; padding:11px 15px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600">3 selected</span>
+          <span style="font-size:12px; color:#565A4B">Marking complete sends nothing</span>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:9px">
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:36px; display:inline-flex; align-items:center; padding:0 15px; font-size:12px; font-weight:700">Mark complete</span>
+            <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:36px; display:inline-flex; align-items:center; padding:0 14px; font-size:12px; font-weight:600; color:#2E2A24">Reopen</span>
+            <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:36px; display:inline-flex; align-items:center; padding:0 14px; font-size:12px; font-weight:600; color:#2E2A24">Export</span>
+            <a href="#" style="font-size:12px; font-weight:700; padding:7px 4px">Clear</a>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:grid; grid-template-columns:26px 178px 1fr 132px 90px; gap:18px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span style="width:17px; height:17px; border:1px solid #4E5C31; background:#4E5C31; border-radius:3px; display:inline-block"></span><span>Speaker</span><span>Their answers</span><span>Answered</span><span></span>
+          </div>
+          <sc-for list="{{ taskAnswers }}" as="a" hint-placeholder-count="4">
+            <div style="display:grid; grid-template-columns:26px 178px 1fr 132px 90px; gap:18px; align-items:baseline; padding:15px 0; border-bottom:1px solid #E1DDCE">
+              <span style="{{ a.boxStyle }}">{{ a.tick }}</span>
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <span style="font-size:15px; font-weight:600">{{ a.name }}</span>
+                <span style="font-size:12px; color:#565A4B">{{ a.company }}</span>
+              </div>
+              <span style="font-size:14px; line-height:1.6; color:#3F4237">{{ a.answers }}</span>
+              <span style="{{ a.whenStyle }}">{{ a.when }}</span>
+              <a href="#" style="font-size:12px; font-weight:700">{{ a.action }}</a>
+            </div>
+          </sc-for>
+          <div style="padding:15px 0 0; font-size:13px; color:#565A4B; line-height:1.5">Exporting sends the selected answers as a CSV · nothing is emailed to the speakers</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">One task · still waiting</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Same bar, different verbs</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-3px">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Speakers</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="max-width:1180px; margin:0 auto; width:100%; padding:30px 34px 40px; display:flex; flex-direction:column; gap:22px">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+          <div style="display:flex; flex-direction:column; gap:5px">
+            <a href="#" style="font-size:13px; font-weight:700">‹ Speakers</a>
+            <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">Hotel stay form</h1>
+            <span style="font-size:13px; color:#565A4B">Due 15 Aug · required · 6 answered of 9 who need it</span>
+          </div>
+          <div style="display:flex; gap:9px">
+            <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Move the due date</a>
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:10px 15px; font-size:13px; font-weight:700">Remind all waiting</span>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:9px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:12px 0">
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Answered · 6</a>
+          <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600">Still waiting · 3</span>
+          <span style="margin-left:auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">4 reminder sends · last 4 Aug</span>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:16px; background:#EFEBDF; border-radius:4px; padding:11px 15px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600">2 selected</span>
+          <span style="font-size:12px; color:#565A4B">A reminder names only this task · skips anyone emailed in the last hour · the due date moves for everyone, from the header</span>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:9px">
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:36px; display:inline-flex; align-items:center; padding:0 15px; font-size:12px; font-weight:700">Remind</span>
+            <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:36px; display:inline-flex; align-items:center; padding:0 14px; font-size:12px; font-weight:600; color:#2E2A24">Not needed</span>
+            <a href="#" style="font-size:12px; font-weight:700; padding:7px 4px">Clear</a>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:grid; grid-template-columns:26px 178px 1fr 148px 132px; gap:18px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span style="width:17px; height:17px; border:1px solid #4E5C31; background:#4E5C31; border-radius:3px; display:inline-block"></span><span>Speaker</span><span>Where it stands</span><span>Last reminded</span><span>Status</span>
+          </div>
+          <sc-for list="{{ taskWaiting }}" as="w" hint-placeholder-count="4">
+            <div style="display:grid; grid-template-columns:26px 178px 1fr 148px 132px; gap:18px; align-items:center; padding:14px 0; border-bottom:1px solid #E1DDCE">
+              <span style="{{ w.boxStyle }}">{{ w.tick }}</span>
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <a href="#" style="font-size:15px; font-weight:600; color:#1B1D17">{{ w.name }}</a>
+                <span style="font-size:12px; color:#565A4B">{{ w.company }}</span>
+              </div>
+              <span style="font-size:14px; line-height:1.55; color:#3F4237">{{ w.note }}</span>
+              <span style="{{ w.remindStyle }}">{{ w.reminded }}</span>
+              <span style="{{ w.style }}">{{ w.state }}</span>
+            </div>
+          </sc-for>
+          <div style="padding:15px 0 0; font-size:13px; color:#565A4B; line-height:1.5">Marking a task not needed removes it for that speaker only · it stays on everyone else</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
-const DONE = 'font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#F7F9F0; background:#4E5C31; border-radius:3px; padding:3px 8px; cursor:pointer';
-const PEND = 'font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B; border:1px solid #BAB6A6; border-radius:3px; padding:2px 8px; cursor:pointer';
-const LATE = 'font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#1B1D17; border:1px solid #1B1D17; border-radius:3px; padding:2px 8px; cursor:pointer';
+const DONE = 'font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B; padding:3px 0; cursor:pointer';
+const PEND = 'font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#1B1D17; padding:3px 0; cursor:pointer';
+const LATE = 'font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#F4F1E8; background:#1B1D17; border-radius:3px; padding:3px 8px; cursor:pointer';
 const NONE = 'font-size:11px; color:#6B665B';
 
-const TASKS = ['Confirm participation', 'Upload headshot', 'Bio and profile', 'Final slides', 'Speaker release', 'Hotel stay form'];
+// The pair varies by DENSITY, not by device — the suffix is historical. `style` is the
+// dense variant, for a cell that must fit a 178px column twelve times over; `styleM` is
+// the roomy variant, used wherever a row can carry a real target: the phone cards, the
+// speaker detail and the task views. Same colour and weight in both, geometry only.
+const M_BASE = 'min-height:44px; display:inline-flex; align-items:center; padding:0 10px; border-radius:3px; cursor:pointer';
+const DONE_M = 'font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B; ' + M_BASE;
+const PEND_M = 'font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#1B1D17; ' + M_BASE;
+const LATE_M = 'font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#F4F1E8; background:#1B1D17; ' + M_BASE;
+const NONE_M = 'font-size:11px; color:#6B665B; min-height:44px; display:inline-flex; align-items:center';
+
+const TASKS = ['Confirm participation', 'Upload headshot', 'Bio and profile', 'Speaker release', 'Hotel stay form', 'Final slides'];
 // only a form-kind task can carry a response, and only once complete
-const FORM_TASKS = [5];
+const FORM_TASKS = [4];
 
 function cells(states, files) {
   return states.map((s, i) => ({
     task: TASKS[i],
     label: s === 'c' ? 'Complete' : s === 'l' ? 'Overdue' : s === 'n' ? '—' : 'Pending',
     style: s === 'c' ? DONE : s === 'l' ? LATE : s === 'n' ? NONE : PEND,
-    file: !!(files && files.includes(i)),
-    response: s === 'c' && FORM_TASKS.includes(i),
+    styleM: s === 'c' ? DONE_M : s === 'l' ? LATE_M : s === 'n' ? NONE_M : PEND_M,
   }));
 }
 
@@ -611,9 +759,9 @@ function cells(states, files) {
 // Same DEC-730 control shapes; the caret marks it as a menu, not a toggle.
 const INV_BASE = 'font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; border-radius:3px; padding:2px 8px; cursor:pointer; align-self:flex-start';
 const INV = {
-  Confirmed: 'color:#F7F9F0; background:#4E5C31; font-weight:800; ' + INV_BASE,
+  Confirmed: 'color:#565A4B; font-weight:600; padding-left:0; ' + INV_BASE,
   Invited: 'color:#3F4237; border:1px solid #BAB6A6; ' + INV_BASE,
-  Declined: 'color:#1B1D17; border:1px solid #1B1D17; font-weight:800; ' + INV_BASE,
+  Declined: 'color:#F4F1E8; background:#1B1D17; font-weight:800; ' + INV_BASE,
   'Not invited': 'color:#565A4B; border:1px dashed #BAB6A6; ' + INV_BASE,
 };
 
@@ -624,7 +772,7 @@ function withRemind(rows) {
     outstanding: r.cells.some((c) => c.label === 'Pending' || c.label === 'Overdue'),
     inviteStyle: INV[r.invite],
     needsInvite: r.invite === 'Not invited',
-    inviteStyleM: INV[r.invite] + '; min-height:32px; display:inline-flex; align-items:center',
+    inviteStyleM: INV[r.invite] + '; min-height:44px; padding:0 12px; display:inline-flex; align-items:center',
   }));
 }
 
@@ -632,22 +780,58 @@ const M_ROW = 'display:flex; align-items:center; gap:12px; padding:11px 20px; cu
 const M_ROW_ON = M_ROW + '; background:#EFEBDF';
 const M_LABEL = 'font-size:15px; font-weight:600';
 
+// A column head is the one place a per-task aggregate belongs — it answers "which task
+// is lagging?" while scanning, which the old per-cell mark could not. Complete columns
+// recede; anything short of the roster reads in ink.
+function withDone(rows) {
+  return rows.map((t) => ({
+    ...t,
+    done: t.done === (t.of || 12) ? 'All ' + (t.of || 12) + ' done' : t.done + ' of ' + (t.of || 12) + ' done',
+    doneStyle: t.done === (t.of || 12)
+      ? 'font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B'
+      : 'font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#1B1D17',
+  }));
+}
+
+// a real box, not a glyph — ☑/☐ render differently in every font and cannot take the
+// olive fill the rest of the system uses for a checked control
+const BOX_ON = 'width:17px; height:17px; border:1px solid #4E5C31; background:#4E5C31; border-radius:3px; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#F7F9F0; cursor:pointer';
+const BOX_OFF = 'width:17px; height:17px; border:1px solid #8E8A7A; border-radius:3px; display:inline-block; cursor:pointer';
+
 class Component extends DCLogic {
   renderVals() {
     return {
-      tasks: [
-        { title: 'Confirm participation', due: 'Was due 1 Apr', state: 'Complete', style: DONE },
-        { title: 'Upload headshot', due: 'Was due 10 Apr', state: 'Complete', style: DONE },
-        { title: 'Bio and profile', due: 'Due 10 Apr', state: 'Pending', style: PEND },
-        { title: 'Final slides', due: 'Due 1 May', state: 'Pending', style: PEND },
-        { title: 'Speaker release', due: 'Was due 20 Apr', state: 'Complete', style: DONE },
-        { title: 'Hotel stay form', due: 'Due 25 Apr', state: 'Complete', style: DONE },
+      speakerTasks: [
+        { title: 'Confirm participation', remind: 'Remind · never sent', due: 'Was due 1 Apr', state: 'Complete', style: DONE, styleM: DONE_M },
+        { title: 'Upload headshot', remind: 'Remind · sent once', due: 'Was due 10 Apr', state: 'Complete', style: DONE, styleM: DONE_M },
+        { title: 'Bio and profile', remind: 'Remind · 3rd time', due: 'Due 10 Apr', state: 'Pending', style: PEND, styleM: PEND_M },
+        { title: 'Speaker release', remind: 'Remind · never sent', due: 'Was due 20 Apr', state: 'Complete', style: DONE, styleM: DONE_M },
+        { title: 'Hotel stay form', remind: 'Remind · sent once', due: 'Due 25 Apr', state: 'Complete', style: DONE, styleM: DONE_M },
+        { title: 'Final slides', remind: 'Remind · 2nd time', due: 'Due 1 May', state: 'Pending', style: PEND, styleM: PEND_M },
       ],
+
       speakerFiles: [
         { tag: 'v3', name: 'taming-ci-devflow.pdf', when: 'Yesterday' },
         { tag: 'v2', name: 'taming-ci-devflow.pdf', when: '8 days ago' },
         { tag: 'v1', name: 'taming-ci-draft.key', when: '22 days ago' },
       ],
+      taskWaiting: [
+        { name: 'Ruth Adeyemi', company: 'Meridian Tools', note: 'Nothing yet · opened her portal 6 Aug', reminded: '3 sends · last 4 Aug', remindStyle: 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase', tick: '✓', boxStyle: BOX_ON, state: 'Pending', style: PEND },
+        { name: 'Marcus Okafor', company: 'Cloudreach Labs', note: 'Nothing yet · opened his portal 8 Aug', reminded: '1 send · 4 Aug', remindStyle: 'font-size:13px; color:#565A4B', tick: '✓', boxStyle: BOX_ON, state: 'Pending', style: PEND },
+        { name: 'Tomas Bell', company: 'Riverbed', note: 'Added to the roster yesterday', reminded: 'Never', remindStyle: 'font-size:13px; color:#565A4B', tick: '', boxStyle: BOX_OFF, state: 'Pending', style: PEND },
+      ],
+
+
+      taskAnswers: [
+        { name: 'Priya Raman', company: 'Latticework Systems', tick: '', boxStyle: BOX_OFF, answers: 'Two nights · 11–13 May · no accessibility needs · happy to share a hotel', when: '2 Aug', whenStyle: 'font-size:13px; color:#565A4B', action: 'Open' },
+        { name: 'Nadia Ferrone', company: 'Northwind Data', tick: '', boxStyle: BOX_OFF, answers: 'No room needed — staying with family', when: '29 Jul', whenStyle: 'font-size:13px; color:#565A4B', action: 'Open' },
+        { name: 'Iris Bell', company: 'Latticework Systems', tick: '✓', boxStyle: BOX_ON, answers: 'Three nights · 11–14 May · arriving late on the 11th', when: '30 Jul', whenStyle: 'font-size:13px; color:#565A4B', action: 'Open' },
+        { name: 'Dana Whitmore', company: 'Fieldnote Docs', tick: '✓', boxStyle: BOX_ON, answers: 'One night · 12–13 May · quiet room if there is one', when: '1 Aug', whenStyle: 'font-size:13px; color:#565A4B', action: 'Open' },
+        { name: 'Ezra Lindqvist', company: 'Riverbed', tick: '✓', boxStyle: BOX_ON, answers: 'Two nights · 12–14 May · travelling with a guide dog', when: '5 Aug', whenStyle: 'font-size:13px; color:#565A4B', action: 'Open' },
+        { name: 'Oskar Vance', company: 'Independent', tick: '', boxStyle: BOX_OFF, answers: 'Two nights · 12–14 May · step-free access required', when: 'Today', whenStyle: 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase', action: 'Open' },
+      ],
+
+
       remindPreview: [
         { name: 'Marcus Okafor', tasks: 'Upload headshot · Complete your bio', flag: '1 overdue', flagStyle: 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; white-space:nowrap' },
         { name: 'Ruth Adeyemi', tasks: 'Upload final slides', flag: '1 overdue', flagStyle: 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; white-space:nowrap' },
@@ -666,21 +850,23 @@ class Component extends DCLogic {
         { label: 'Confirmed', detail: 'They told you another way', rowStyle: 'display:flex; align-items:center; gap:12px; padding:11px 20px; cursor:pointer', labelStyle: 'font-size:15px; font-weight:600', current: false },
         { label: 'Declined', detail: 'They are not speaking this year', rowStyle: 'display:flex; align-items:center; gap:12px; padding:11px 20px; cursor:pointer', labelStyle: 'font-size:15px; font-weight:600', current: false },
       ],
-      tasks: [
-        { title: 'Confirm participation', due: 'Due 1 Apr · required' },
-        { title: 'Upload headshot', due: 'Due 10 Apr · required' },
-        { title: 'Bio and profile', due: 'Due 10 Apr' },
-        { title: 'Final slides', due: 'Due 1 May · required' },
-        { title: 'Speaker release', due: 'Due 20 Apr' },
-        { title: 'Hotel stay form', due: 'Due 25 Apr · form' },
-      ],
+      // ordered by due date: the soonest deadline is the leftmost column, so reading
+      // left to right is reading the order things fall due
+      tasks: withDone([
+        { title: 'Confirm participation', due: 'Due 1 Apr · required', done: 11 },
+        { title: 'Upload headshot', due: 'Due 10 Apr · required', done: 9 },
+        { title: 'Bio and profile', due: 'Due 10 Apr', done: 7 },
+        { title: 'Speaker release', due: 'Due 20 Apr', done: 8 },
+        { title: 'Hotel stay form', due: 'Due 25 Apr · form', done: 6, of: 9 },
+        { title: 'Final slides', due: 'Due 1 May · required', done: 4 },
+      ]),
       speakers: withRemind([
-        { name: 'Priya Raman', invite: 'Confirmed', meta: 'Latticework Systems · has account', cells: cells(['c','c','p','p','c','c'], [1]) },
+        { name: 'Priya Raman', invite: 'Confirmed', meta: 'Latticework Systems · has account', cells: cells(['c','c','p','c','c','p'], [1]) },
         { name: 'Marcus Okafor', invite: 'Confirmed', meta: 'Cloudreach Labs · has account', cells: cells(['c','l','p','p','p','p']) },
-        { name: 'Ruth Adeyemi', invite: 'Invited', meta: 'Meridian Tools', cells: cells(['p','p','p','l','p','p']) },
-        { name: 'Oskar Vance', invite: 'Declined', meta: 'Independent', cells: cells(['c','c','c','c','l','c'], [3]) },
-        { name: 'Nadia Ferrone', invite: 'Confirmed', meta: 'Northwind Data · has account', cells: cells(['c','c','c','p','c','p']) },
-        { name: 'Wei Chen', invite: 'Not invited', meta: 'Northwind Data', cells: cells(['c','p','p','n','p','n']) },
+        { name: 'Ruth Adeyemi', invite: 'Invited', meta: 'Meridian Tools', cells: cells(['p','p','p','p','p','l']) },
+        { name: 'Oskar Vance', invite: 'Declined', meta: 'Independent', cells: cells(['c','c','c','l','c','c'], [5]) },
+        { name: 'Nadia Ferrone', invite: 'Confirmed', meta: 'Northwind Data · has account', cells: cells(['c','c','c','c','c','p']) },
+        { name: 'Wei Chen', invite: 'Not invited', meta: 'Northwind Data', cells: cells(['c','p','p','p','n','n']) },
       ]),
       tabs: [
         { label: 'Overview', dot: 'width:8px; height:8px; border-radius:50%; background:#BAB6A6', text: 'font-size:11px; font-weight:600; color:#565A4B' },
