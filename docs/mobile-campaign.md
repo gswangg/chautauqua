@@ -52,3 +52,40 @@ tasks must not touch shell files and instead record shell needs as findings.
 - Workers run TARGETED tests only; the full suite runs at merge-train
   batches and verification waves.
 - macOS zsh: never write bare `==`/`===` tokens in shell commands.
+
+## Wave-1 handoff findings (pre-campaign lanes; planner must schedule)
+
+Shell lane (T1, blocking several page frames):
+- Phone page scaffold: frames draw header (flex-shrink:0) / body (flex:1,
+  overflow-y:auto) / pinned footer inside the 390 viewport; pages scroll as
+  one document today. Needed by: Contacts drawer errand flow, Submissions
+  detail decision bar, Content docked bars (Approve N / Download all /
+  Ask for changes).
+- Bottom tab bar: CSS exists (styles.css:390-402) but Submissions reports
+  nothing renders the five-item nav; reconcile and mount it.
+- .chq-drawer phone inset 16px (now 20px 26px; sticky-bar negative margins
+  at styles.css:1128-1145 are paired to the 26px and must move with it).
+- Drawer back-link header (`‹ Contacts` 44px) — ModalFrame affordance.
+- .chq-header phone slot treatment (selection counter "2 of 318").
+- .chq-page-title phone size (Files H1 wants 25px at 390).
+- Global: .chq-table td:first/last-child 16px inset stacks on .chq-main's
+  gutter at 390 (32px total) for every card-stacking table; comms
+  neutralized its own two tables; fix globally.
+
+Unclaimed frame: "CFP form · 390" (Chautauqua Submissions.dc.html:468)
+renders from app/src/pages/forms/** — no lane owned it. Schedule it.
+
+Feature-shaped gaps (frame draws behavior, not just geometry — schedule as
+tasks, or record as DEVIATIONS if the planner judges them out of scope):
+- Comms.tsx phone landing: frame draws a DRAFT IN PROGRESS card + "Read the
+  draft" over Recent sends, superseding the DEC-621 three-button chooser.
+- Content queue "Select mode" (Select link swaps row verbs for a docked
+  bar; header becomes "3 selected · All 5 · Done").
+- Import CSV one-column-per-screen pagination (Next column / Skip).
+- Submissions card third action: frame draws bordered "Read"; app has
+  borderless tertiary "Waitlist" — design decision needed.
+
+Cascade rule (two lanes hit it independently): a stylesheet whose desktop
+rules are declared AFTER its max-width block silently kills equal-
+specificity phone overrides. content.css and comms.css are fixed and
+pinned; sweep the remaining stylesheets for the same exposure.
