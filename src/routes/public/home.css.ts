@@ -32,7 +32,13 @@ const HOME_BODY_MEASURE = "max-width: 820px; width: 100%; margin-inline: auto; p
 export const HOME_CSS = `
   .chq-home-shell { display: flex; flex-direction: column; }
   .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding-block: 15px; ${HOME_CHROME_GUTTER} display: flex; align-items: center; gap: 20px; }
-  .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
+  /* Design pack v12 (the wordmark optical nudge) -- docs/design/Chautauqua
+     Home.dc.html:34 carries the org name in the wordmark's slot and the
+     header is align-items:center, so the nudge rides this span. -2.5px is
+     the ruling's value at 20px (-3px at 22px, -2px at 17px). Familjen
+     Grotesk's asymmetric box drops the ink below the flex box's centre;
+     the offset is line-height-invariant, so no line-height is set here. */
+  .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; position: relative; top: -2.5px; }
   .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; text-decoration: none; }
 
   .chq-home-body { padding-block: 36px 40px; ${HOME_BODY_MEASURE} display: flex; flex-direction: column; gap: 34px; }

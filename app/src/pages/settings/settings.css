@@ -1312,15 +1312,23 @@
   white-space: nowrap;
 }
 
-/* w5-e/DEC-691 amendment: the undeletable self row's actions read in the
-   disabled ink rather than the tertiary-link color. Deliberately placed
-   AFTER the base .chq-settings-row-hint rule above -- it is an override, and
+/* w5-e/DEC-691 amendment: the undeletable self row's actions read quieter
+   than the tertiary-link color.
+   Design pack v12 (the two-legal-uses Disabled rule): this is a HINT --
+   prose explaining why the row has no Remove -- not an inert control and
+   not a drag handle, so it is one of the escapes the ruling names. The
+   disabled token fails 4.5:1 at 3.06:1 on paper, and a sentence carrying
+   meaning may not be drawn in it. De-emphasis is weight, not lightness:
+   600 at --chq-muted (#565A4B, 6.28:1), the resting register.
+   Deliberately placed AFTER the base .chq-settings-row-hint rule above --
+   it is an override, and
    the CSS-contract test helpers read a rule body by first match of the
    selector text, so a descendant rule that precedes its own base rule masks
    that base from every `topLevelRuleBody(css, '.chq-settings-row-hint')`
    assertion in the suite. */
 .chq-settings-people-actions .chq-settings-row-hint {
-  color: var(--chq-disabled);
+  color: var(--chq-muted);
+  font-weight: 600;
 }
 
 @media (max-width: 700px) {

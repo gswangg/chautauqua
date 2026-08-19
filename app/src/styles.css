@@ -308,10 +308,20 @@ a:hover {
      display face; 1.08 is the ruled floor, and its leading splits evenly
      so the user-tuned optical center below is unchanged. */
   line-height: 1.08;
-  /* -2.5px: -1.75px matched the ink-measured x-height band centers, but
-     the bold lowercase mass + q descender still read low to the eye —
-     user-tuned a final 0.75px above metric center (gate-12 era). */
-  transform: translateY(-2.5px);
+  /* Design pack v12 (docs/design/DESIGN-RULINGS.md, "The wordmark needs an
+     optical nudge, and it depends on the alignment mode"): Familjen Grotesk
+     reports ascent 23 / descent 5 at 22px, so the ink sits ~3px below the
+     box center however the box is sized -- growing line-height by d moves
+     the baseline and the box center by the same d/2, so the required nudge
+     is line-height-invariant and 1.08 (DEC-991's floor) needs the same -3px
+     the frames' line-height:1 headers do. `.chq-header` is align-items:
+     center, so per the ruling the nudge rides the wordmark itself; the
+     frames write it as position/top rather than a transform, which is what
+     the baseline-run sites (.chq-docs-brandrow, .chq-portal-brandline) need,
+     so all four sites now spell the nudge the same way. -3px at 22px,
+     -2.5px at 20px, -2px at 17px. */
+  position: relative;
+  top: -3px;
 }
 
 /* DEC-369 amendment (wave 22): the fitted 10.625px gap and +13px margin-left

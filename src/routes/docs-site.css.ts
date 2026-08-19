@@ -37,7 +37,14 @@ export const DOCS_SITE_CSS = `
   .chq-docs-shell { display: flex; flex-direction: column; }
 
   .chq-docs-header { border-bottom: 1px solid var(--chq-ink); padding-block: 15px; padding-inline: 34px; display: flex; align-items: center; gap: 14px; }
-  .chq-docs-brandrow { display: flex; align-items: baseline; gap: 10px; }
+  /* Design pack v12 ("nudge the OUTERMOST element that carries the
+     wordmark's ink") -- docs/design/Chautauqua Docs.dc.html:34 is the frame
+     for exactly this pairing. The brandrow is align-items:baseline, so the
+     nudge rides the RUN, not .chq-docs-wordmark inside it: baseline
+     alignment reconciles wordmark and "Docs" with each other, never the
+     pair with the centred header bar, and a top offset on the inner span is
+     post-layout, which baseline alignment cannot absorb. -3px at 22px. */
+  .chq-docs-brandrow { display: flex; align-items: baseline; gap: 10px; position: relative; top: -3px; }
   .chq-docs-wordmark { font-family: var(--chq-font-display); font-size: 22px; font-weight: 700; letter-spacing: -0.03em; text-decoration: none; color: var(--chq-ink); }
   .chq-docs-suffix { font-size: 13px; font-weight: 600; color: var(--chq-muted); }
   .chq-docs-leaving {

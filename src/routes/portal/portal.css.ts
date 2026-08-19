@@ -81,10 +81,23 @@ export const PORTAL_CSS = `
      the identity cluster is the 11px caps micro register. The sign-out
      button strips its UA chrome so it reads as the frame's text control
      while keeping the POST semantics. */
+  /* Design pack v12 ("nudge the OUTERMOST element that carries the
+     wordmark's ink"): this run is align-items:baseline, so baseline
+     alignment reconciles the wordmark with the event name beside it but
+     never reconciles the PAIR with the centred header bar -- the run's box
+     centres while the Familjen Grotesk ink sits ~3px low inside it. The
+     -3px therefore rides the run; nudging the inner .chq-wordmark instead
+     would break the shared baseline, since a top offset is post-layout and
+     baseline alignment cannot absorb it. Hence the reset below. */
   .chq-portal-brandline {
     display: inline-flex;
     align-items: baseline;
     gap: 10px;
+    position: relative;
+    top: -3px;
+  }
+  .chq-portal-shell .chq-wordmark {
+    position: static;
   }
   .chq-portal-shell .chq-eventmark {
     font-size: 14px;

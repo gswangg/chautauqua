@@ -456,6 +456,18 @@ export const THEME_CSS = `
     text-transform: lowercase;
     color: var(--chq-ink);
     text-decoration: none;
+    /* Design pack v12 ("The wordmark needs an optical nudge, and it depends
+       on the alignment mode"): Familjen Grotesk's font box is asymmetric
+       (ascent 23 / descent 5 at 22px), so the ink lands ~3px below the box
+       center whatever the line box is -- the offset is line-height-
+       invariant, which is why no line-height is set here (DEC-991 bans <= 1
+       on the display face) and the nudge alone does the work. .chq-header
+       is align-items:center, so the nudge rides the wordmark. The portal's
+       header instead nests this span in an align-items:baseline run
+       (.chq-portal-brandline), which takes the nudge on the RUN and resets
+       this one -- see portal.css.ts. */
+    position: relative;
+    top: -3px;
   }
   /* DEC-884: the customer's event name is never lowercased -- .chq-wordmark's
      text-transform: lowercase is reserved for the literal product wordmark

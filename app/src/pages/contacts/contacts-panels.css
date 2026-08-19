@@ -966,8 +966,16 @@
   border-top: 1px solid var(--chq-hairline);
 }
 
+/* Design pack v12 (the two-legal-uses Disabled rule): the import preview's
+   "(blank)" marker is an EMPTY VALUE -- content, not an inert control and
+   not a drag handle -- and the ruling names empty field values as one of
+   the three escapes the disabled token made in consecutive rounds. At
+   3.06:1 it is unreadable by anyone who needs the contrast, and the reader
+   has to read it to know the column would import nothing. De-emphasis is
+   weight, not lightness: 600 at --chq-muted (#565A4B, 6.28:1). */
 .chq-contacts-import-preview-cell-skip {
-  color: var(--chq-disabled);
+  color: var(--chq-muted);
+  font-weight: 600;
   font-style: italic;
 }
 

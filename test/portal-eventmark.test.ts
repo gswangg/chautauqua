@@ -96,6 +96,37 @@ describe("no CSS rule reaching .chq-eventmark declares text-transform (DEC-884)"
   });
 });
 
+// Design pack v12 ("nudge the OUTERMOST element that carries the wordmark's
+// ink"): the portal header is the app's second align-items:baseline run --
+// .chq-portal-brandline pairs the wordmark with the event name. The -3px
+// optical nudge therefore rides the RUN, and theme.ts's own .chq-wordmark
+// nudge (which is correct for the centred operator headers this same class
+// serves) must be reset inside the portal shell, or the two children lose
+// the shared baseline the run exists to give them. The full inventory lives
+// in test/wordmark-optical-nudge.scan.test.ts; this pin sits here because
+// it is a property of the portal header's anatomy, which this file owns.
+describe("the portal header's brandline is a baseline run, so it carries the nudge itself (v12)", () => {
+  const portalCss = readFileSync(join(__dirname, "..", "src", "routes", "portal", "portal.css.ts"), "utf8").replace(
+    /\/\*[\s\S]*?\*\//g,
+    "",
+  );
+
+  it(".chq-portal-brandline aligns on the baseline and takes the -3px", () => {
+    const match = portalCss.match(/\.chq-portal-brandline\s*\{([^}]*)\}/);
+    expect(match).not.toBeNull();
+    expect(match![1]).toMatch(/align-items:\s*baseline/);
+    expect(match![1]).toMatch(/position:\s*relative/);
+    expect(match![1]).toMatch(/top:\s*-3px/);
+  });
+
+  it(".chq-portal-shell .chq-wordmark resets theme.ts's own nudge to static", () => {
+    const match = portalCss.match(/\.chq-portal-shell \.chq-wordmark\s*\{([^}]*)\}/);
+    expect(match).not.toBeNull();
+    expect(match![1]).toMatch(/position:\s*static/);
+    expect(match![1]).not.toMatch(/(^|;)\s*top\s*:/);
+  });
+});
+
 describe("PortalLayout no longer exposes showTagline (DEC-884)", () => {
   it("the shared.tsx source contains no showTagline reference", () => {
     const source = readFileSync(join(__dirname, "..", "src", "routes", "portal", "shared.tsx"), "utf8");
