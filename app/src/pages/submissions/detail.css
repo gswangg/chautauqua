@@ -842,6 +842,7 @@
    intermediate one-column collapse; this block layers phone-only
    metrics on top of it. */
 @media (max-width: 700px) {
+
   /* Frame 'Submission detail · 390' header block: the back link is a real
      44px target (DESIGN-RULINGS "44px floor" -- a bare text link's hit box
      is its line box, ~18px, which is the floor's second evasion mode), the
@@ -1077,24 +1078,22 @@
     text-align: center;
     border-radius: var(--chq-r-ctl-phone);
   }
-}
 
-/* G13 lane-D (02-submissions--02): the row-variant title text span keeps a
-   rule so the css-contract scan sees the class (the numbered ::before it
-   used to carry is retired). */
-.chq-detail-section-title-text {
-  display: inline;
-}
+  /* G13 lane-D (02-submissions--02): the row-variant title text span keeps a
+     rule so the css-contract scan sees the class (the numbered ::before it
+     used to carry is retired). */
+  .chq-detail-section-title-text {
+    display: inline;
+  }
 
-/* DEC-610 (v12 mobile campaign w2 ruling), audit finding 1 (docs/design/
-   audit/submissions-v12.md). SubmissionDetailPage.tsx renders the decision
-   rail's SAME markup inside .chq-phone-dock at 390 (the shared scaffold,
-   app/src/styles.css, w1-a) instead of inside .chq-detail-aside -- these
-   rules only shape it once it's there. Appended at the true end of the
-   file (not inside the existing phone block above) so this @media block
-   always wins ties at equal specificity, per the campaign's own content.css/
-   comms.css lesson. */
-@media (max-width: 700px) {
+  /* DEC-610 (v12 mobile campaign w2 ruling), audit finding 1 (docs/design/
+     audit/submissions-v12.md). SubmissionDetailPage.tsx renders the decision
+     rail's SAME markup inside .chq-phone-dock at 390 (the shared scaffold,
+     app/src/styles.css, w1-a) instead of inside .chq-detail-aside -- these
+     rules only shape it once it's there. Appended at the true end of the
+     file (not inside the existing phone block above) so this @media block
+     always wins ties at equal specificity, per the campaign's own content.css/
+     comms.css lesson. */
   /* docs/design/Chautauqua Submissions.dc.html:388
      `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
      -- the rail fills the dock and matches the frame's 8px gap between its
@@ -1149,26 +1148,24 @@
   .chq-phone-dock .chq-detail-decision-back {
     width: 100%;
   }
-}
 
-/* v12m-w6-h: 44px floor audit (docs/design/audit/phone-tap-floor-links.md).
-   Appended at the true end of the file, per the campaign's own
-   content.css/comms.css lesson -- a third block always wins ties at equal
-   specificity over the two blocks above it, so it never gets shadowed by
-   source order.
+  /* v12m-w6-h: 44px floor audit (docs/design/audit/phone-tap-floor-links.md).
+     Appended at the true end of the file, per the campaign's own
+     content.css/comms.css lesson -- a third block always wins ties at equal
+     specificity over the two blocks above it, so it never gets shadowed by
+     source order.
 
-   .chq-detail-content-link already inherits min-height:44px from its
-   co-occurring .chq-btn.chq-btn-tertiary (styles.css:1104/1109-1116), but
-   the page-local phone rule at :1049 above (width/text-align/radius only)
-   never stated a floor of its OWN -- ROOMY per DESIGN-RULINGS.md:189, and
-   this makes that explicit rather than relying on a class that lives in a
-   file this wave never touches.
+     .chq-detail-content-link already inherits min-height:44px from its
+     co-occurring .chq-btn.chq-btn-tertiary (styles.css:1104/1109-1116), but
+     the page-local phone rule at :1049 above (width/text-align/radius only)
+     never stated a floor of its OWN -- ROOMY per DESIGN-RULINGS.md:189, and
+     this makes that explicit rather than relying on a class that lives in a
+     file this wave never touches.
 
-   .chq-detail-delete-link never had a phone rule at all: it composes with
-   .chq-link-button (styles.css:783), which carries no floor anywhere, so
-   the desktop 13px muted text link (:820) had no 44px hit box on any
-   width below 700px. */
-@media (max-width: 700px) {
+     .chq-detail-delete-link never had a phone rule at all: it composes with
+     .chq-link-button (styles.css:783), which carries no floor anywhere, so
+     the desktop 13px muted text link (:820) had no 44px hit box on any
+     width below 700px. */
   .chq-detail-content-link {
     display: inline-flex;
     align-items: center;
@@ -1249,3 +1246,4 @@
     justify-content: flex-start;
   }
 }
+

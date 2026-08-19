@@ -481,12 +481,110 @@
   display: none;
 }
 
+
+
+/* DEC-886: session delete confirmation page (mirrors
+   .chq-contacts-merge-* -- an irreversible action gets its own page). Every
+   colour below composes the shared var(--chq-*) vocabulary in styles.css --
+   no literal hex here (DEC-383 palette closure). */
+.chq-submissions-delete-page {
+  max-width: var(--chq-measure);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chq-submissions-delete-topbar {
+  display: flex;
+  align-items: center;
+}
+
+.chq-submissions-delete-back {
+  color: var(--chq-muted);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+
+
+.chq-submissions-delete-intro {
+  color: var(--chq-ink-2);
+  margin: 0;
+}
+
+.chq-submissions-delete-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-card);
+}
+
+.chq-submissions-delete-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-submissions-delete-list-item:last-child {
+  border-bottom: none;
+}
+
+.chq-submissions-delete-list-item > div:first-child {
+  display: flex;
+  gap: 12px;
+}
+
+.chq-submissions-delete-list-ref {
+  font-family: var(--chq-font-ui);
+  font-weight: 600;
+  color: var(--chq-muted);
+  flex-shrink: 0;
+}
+
+.chq-submissions-delete-list-title {
+  color: var(--chq-ink);
+}
+
+.chq-submissions-delete-list-blast {
+  color: var(--chq-muted);
+  font-size: 13px;
+}
+
+.chq-submissions-delete-refused {
+  border: 1px solid var(--chq-border);
+  background: var(--chq-surface-sunk);
+  border-radius: var(--chq-r-card);
+  padding: 8px 12px;
+  color: var(--chq-ink);
+}
+
+.chq-submissions-delete-refused ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.chq-submissions-delete-footer {
+  display: flex;
+  gap: 8px;
+}
+
+/* G13 lane-D fix (02-submissions--07): the save-view dialog is drawn at
+   440, narrower than the shared 560 .chq-modal. */
+.chq-submissions-save-view-modal {
+  width: 440px;
+  max-width: calc(100vw - 40px);
+}
+
 /* Phone (DEC-385/386): one markup tree, no duplicated DOM. The table body
    rows become cards purely through CSS -- `td`s are reflowed onto separate
    lines with the `order` property (DOM order in the document is untouched;
    only the *visual* order changes), and the ref/status pair is pulled onto
    one shared line via a shared flex line + `justify-content: space-between`. */
 @media (max-width: 700px) {
+
   .chq-submissions-table-wrap {
     overflow-x: visible;
   }
@@ -722,33 +820,9 @@
     font-size: 13px;
     padding: 0 13px;
   }
-}
 
-/* DEC-886: session delete confirmation page (mirrors
-   .chq-contacts-merge-* -- an irreversible action gets its own page). Every
-   colour below composes the shared var(--chq-*) vocabulary in styles.css --
-   no literal hex here (DEC-383 palette closure). */
-.chq-submissions-delete-page {
-  max-width: var(--chq-measure);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.chq-submissions-delete-topbar {
-  display: flex;
-  align-items: center;
-}
-
-.chq-submissions-delete-back {
-  color: var(--chq-muted);
-  text-decoration: none;
-  font-size: 14px;
-}
-
-/* DEC-393 wave-87 amendment: the back link is a bare <Link> (no
-   `.chq-btn`) -- the 44px row-action-anchor floor. */
-@media (max-width: 700px) {
+  /* DEC-393 wave-87 amendment: the back link is a bare <Link> (no
+     `.chq-btn`) -- the 44px row-action-anchor floor. */
   .chq-submissions-delete-back {
     display: flex;
     align-items: center;
@@ -756,94 +830,21 @@
     padding: 0 4px;
     margin: 0 -4px;
   }
-}
 
-.chq-submissions-delete-intro {
-  color: var(--chq-ink-2);
-  margin: 0;
-}
-
-.chq-submissions-delete-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--chq-border);
-  border-radius: var(--chq-r-card);
-}
-
-.chq-submissions-delete-list-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--chq-hairline);
-}
-
-.chq-submissions-delete-list-item:last-child {
-  border-bottom: none;
-}
-
-.chq-submissions-delete-list-item > div:first-child {
-  display: flex;
-  gap: 12px;
-}
-
-.chq-submissions-delete-list-ref {
-  font-family: var(--chq-font-ui);
-  font-weight: 600;
-  color: var(--chq-muted);
-  flex-shrink: 0;
-}
-
-.chq-submissions-delete-list-title {
-  color: var(--chq-ink);
-}
-
-.chq-submissions-delete-list-blast {
-  color: var(--chq-muted);
-  font-size: 13px;
-}
-
-.chq-submissions-delete-refused {
-  border: 1px solid var(--chq-border);
-  background: var(--chq-surface-sunk);
-  border-radius: var(--chq-r-card);
-  padding: 8px 12px;
-  color: var(--chq-ink);
-}
-
-.chq-submissions-delete-refused ul {
-  margin: 4px 0 0;
-  padding-left: 18px;
-}
-
-.chq-submissions-delete-footer {
-  display: flex;
-  gap: 8px;
-}
-
-/* G13 lane-D fix (02-submissions--07): the save-view dialog is drawn at
-   440, narrower than the shared 560 .chq-modal. */
-.chq-submissions-save-view-modal {
-  width: 440px;
-  max-width: calc(100vw - 40px);
-}
-
-/* v12 mobile campaign wave 6 (task w6-f) ruling, superseding the wave-2
-   DEC-919 interpretation previously here. Frame docs/design/Chautauqua
-   Submissions.dc.html:137-152 `width:390px` draws the phone head as: H1 + summary on a
-   shared baseline, then a full-width 44px search field on its OWN line,
-   then a 7px-gap horizontally scrolling chip strip. DESIGN-RULINGS'
-   governing principle is that a 390 frame keeps the desktop design's
-   CAPABILITIES -- nothing is deleted at phone width -- so the frame's
-   anatomy is honoured by RE-LINING the search/sort row and the filter row,
-   not by hiding the sort select, the track select, the column picker, or
-   any status pill. Only the 'Status' caption and the hairline divider go
-   away: they are a label and chrome the frame draws neither of, not
-   capabilities. Appended at the true end of the file (not inside the
-   earlier phone block) so this @media block always wins ties at equal
-   specificity, per the campaign's own content.css/comms.css lesson. */
-@media (max-width: 700px) {
+  /* v12 mobile campaign wave 6 (task w6-f) ruling, superseding the wave-2
+     DEC-919 interpretation previously here. Frame docs/design/Chautauqua
+     Submissions.dc.html:137-152 `width:390px` draws the phone head as: H1 + summary on a
+     shared baseline, then a full-width 44px search field on its OWN line,
+     then a 7px-gap horizontally scrolling chip strip. DESIGN-RULINGS'
+     governing principle is that a 390 frame keeps the desktop design's
+     CAPABILITIES -- nothing is deleted at phone width -- so the frame's
+     anatomy is honoured by RE-LINING the search/sort row and the filter row,
+     not by hiding the sort select, the track select, the column picker, or
+     any status pill. Only the 'Status' caption and the hairline divider go
+     away: they are a label and chrome the frame draws neither of, not
+     capabilities. Appended at the true end of the file (not inside the
+     earlier phone block) so this @media block always wins ties at equal
+     specificity, per the campaign's own content.css/comms.css lesson. */
   /* (a) docs/design/Chautauqua Submissions.dc.html:147 `padding:0 13px`: a full-width 44px
      search field on its own line, with the sort <select> dropping beneath
      it instead of sharing the row. The 44px floor on both controls already
@@ -888,27 +889,25 @@
      with a 44px floor on the select; nothing here narrows that population
      back down. The ColumnPicker's `> summary` retains its own 44px floor
      rule for desktop; only the top-level control is hidden at phone width. */
-}
 
-/* v12m-w7-e (DEC-919 amendment, wave 7). docs/design/Chautauqua
-   Submissions.dc.html:138-152 `border-bottom:1px solid #1B1D17` draws the phone head as two clean bands with
-   NO action buttons: a wordmark row (the shell header already supplies this
-   at 390) and a title row (:143-146), then the 44px search (:147) and the
-   scrolling chip row (:148-151). The app's .chq-submissions-head-actions
-   (Forms / Export CSV / New submission) has no phone rule at all today, so
-   three .chq-btn's wrap raggedly into the titles row instead of getting
-   their own band. DEC-919 is re-line, never remove: the head goes
-   flex-column with the titles first and the actions on their own full-width
-   row beneath, mirroring the frame's own card action triple at :164-167
-   (flex:1 / flex:1 / auto) -- Forms and Export CSV (short labels) share the
-   row at equal width, New submission (the longer label, and the one
-   *primary* action, matching the frame's filled 'Accept' in the first
-   slot) sizes to its own content. Every .chq-btn already carries the global
-   44px phone floor (styles.css:1105) -- nothing new is set here. Appended
-   at the true end of the file so this block wins ties at equal specificity
-   over every earlier phone block in this file (the campaign's own
-   content.css/comms.css source-order lesson). */
-@media (max-width: 700px) {
+  /* v12m-w7-e (DEC-919 amendment, wave 7). docs/design/Chautauqua
+     Submissions.dc.html:138-152 `border-bottom:1px solid #1B1D17` draws the phone head as two clean bands with
+     NO action buttons: a wordmark row (the shell header already supplies this
+     at 390) and a title row (:143-146), then the 44px search (:147) and the
+     scrolling chip row (:148-151). The app's .chq-submissions-head-actions
+     (Forms / Export CSV / New submission) has no phone rule at all today, so
+     three .chq-btn's wrap raggedly into the titles row instead of getting
+     their own band. DEC-919 is re-line, never remove: the head goes
+     flex-column with the titles first and the actions on their own full-width
+     row beneath, mirroring the frame's own card action triple at :164-167
+     (flex:1 / flex:1 / auto) -- Forms and Export CSV (short labels) share the
+     row at equal width, New submission (the longer label, and the one
+     *primary* action, matching the frame's filled 'Accept' in the first
+     slot) sizes to its own content. Every .chq-btn already carries the global
+     44px phone floor (styles.css:1105) -- nothing new is set here. Appended
+     at the true end of the file so this block wins ties at equal specificity
+     over every earlier phone block in this file (the campaign's own
+     content.css/comms.css source-order lesson). */
   .chq-submissions-head {
     flex-direction: column;
     align-items: stretch;
@@ -927,3 +926,4 @@
     flex: 1;
   }
 }
+

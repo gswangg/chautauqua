@@ -24,9 +24,13 @@ scan itself, not this file, is the ground truth; re-run it before sizing a
 follow-up rather than trusting this table.
 
 20 sheets were non-conformant on the branch this file was last measured
-against; task w3-j fixed `app/src/pages/review/review.css` (row below), so 19
-remain non-conformant. **This list is a snapshot** (see above) — re-run the
-scan before sizing further follow-up rather than trusting this count.
+against. Task w3-j fixed `app/src/pages/review/review.css`, task w3-l fixed
+the two `app/src/pages/submissions/*.css` rows (all three rows below, kept in
+the table and marked FIXED), and task w2-t fixed four SSR sheets (rows removed
+from the table below) — so 13 remain non-conformant. That is still more than
+three, flagged plainly per task w1-d's own instruction. **This list is a
+snapshot** (see above) — re-run the scan before sizing further follow-up
+rather than trusting this count.
 
 Task w2-t (SSR sheet group C) fixed `src/routes/auth.css.ts`,
 `src/routes/public/css/agenda.css.ts`, `src/routes/public/css/cards.css.ts`
@@ -44,6 +48,9 @@ button[type=submit]`, `.chq-auth-cancel`; `rail.css.ts`'s
 `.chq-pub-surface-title`). These four rows are removed from the table
 below.
 
+Task w3-l fixed the two `submissions/*.css` rows below by forward-merge, with
+no selector/property/value changed.
+
 | Sheet | Cluster | Measured |
 |---|---|---|
 | `app/src/components/error-states.css` | shared components | 2 blocks (lines 95, 154) |
@@ -57,8 +64,8 @@ below.
 | `app/src/pages/review/review.css` | review-admin | **FIXED (task w3-j)** — was 11 blocks (lines 354, 1084, 1230, 1401, 1571, 1675, 1756, 2114, 2244, 2598, 2614 on the branch this task read); now exactly 1 terminal block, all ten earlier blocks' bodies forward-merged into the final block in ascending source order (no selector/property/value changed, no in-block reordering; the two duplicate declarations already shared by the last two original blocks are kept verbatim). `phone-cascade-order.scan.test.ts` shadowed-pair count for this file fell from 2 to 0 (`.chq-review-reviewer-row grid-template-columns` and `.chq-review-summary-grid grid-template-columns`, previously shadowed by top-level desktop rules at old lines ~1689/1697); tree-wide count fell 17 -> 15. Neither fixed pair is a NEW winner at 390 — both selectors already carried a non-shadowed identical duplicate declaration later in the file (the wave-7/w6-b source-order-fix duplicates), so the value that reaches the browser at 390 is unchanged and no frame contradiction check was triggered. |
 | `app/src/pages/speakers/speakers.css` | speakers | 5 blocks (lines 100, 880, 1294, 1474, 1572) |
 | `app/src/pages/speakers/task-view.css` | speakers (TaskView) | 2 blocks (lines 253, 280) |
-| `app/src/pages/submissions/detail.css` | submissions | 3 blocks (lines 844, 1097, 1171) |
-| `app/src/pages/submissions/submissions.css` | submissions | 4 blocks (lines 477, 739, 834, 889) |
+| ~~`app/src/pages/submissions/detail.css`~~ | submissions | **FIXED (task w3-l)**: was 3 blocks (lines 844, 1097, 1171), forward-merged into the single terminal block at 844. Cascade-shadow sweep read 0 shadowed pairs for this file both before and after (no frame contradiction to delete). `detail-css.test.ts:188`'s "a second phone block exists" pin (the same shape as the retired `settings-phone-floor` `>=5` pin) was retired and `dockBlock` re-anchored on the single terminal block via the file's existing `mediaBlockBody` helper. |
+| ~~`app/src/pages/submissions/submissions.css`~~ | submissions | **FIXED (task w3-l)**: was 4 blocks (lines 489, 751, 846, 911), forward-merged into the single terminal block. The `.chq-submissions-columnpicker` phone `display:none` (DEC-919 wave-102, DEVIATIONS.md:89 "stands") was carried verbatim into the merged block. Cascade-shadow sweep read 0 shadowed pairs for this file both before and after. |
 | `app/src/styles.css` | shell / global | 5 blocks (lines 381, 1127, 2048, 2214, 2360) |
 | `src/routes/public/css/chrome.css.ts` | public chrome (SSR) | 1 block, NOT terminal — trailing `.chq-pub-searchform` rule follows its close |
 | `src/views/theme.ts` | shared SSR theme (every SSR surface) | 2 blocks (lines 561, 575) |
