@@ -210,12 +210,14 @@ export const DOCS_SITE_CSS = `
     .chq-docs-article-frame { grid-template-columns: 1fr; padding: 24px 16px 40px; gap: 0; }
     /* docs/design/Chautauqua Docs.dc.html:166
        \`<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">\`
-       An article is a back-linked drill-in (reached via the '‹ Docs' back
-       link, never a cluster landing) -- theme.ts's 25px
-       --chq-type-page-title-phone-drill register applies, not the 27px
-       cluster-landing --chq-type-page-title-phone-size used by
-       .chq-docs-intro h1 on the index page. */
-    .chq-docs-article-head h1 { font-size: var(--chq-type-page-title-phone-drill); }
+       DEC-990 wave-5 amendment: an article is its own register ("docs
+       article", 38px desktop / 28px phone), not the SPA shell's back-linked
+       drill-in token -- theme.ts's --chq-type-page-title-phone-drill is 25px
+       (app/src/styles.css's register, a different surface entirely) and was
+       borrowed here in error. docs/design/Chautauqua Docs.dc.html:175
+       \`font-size:28px; font-weight:700; letter-spacing:-0.04em;
+       line-height:1.08\` draws the literal this row restores. */
+    .chq-docs-article-head h1 { font-size: 28px; }
 
     /* The search submit is a real tap target, so it takes the phone tap
        floor here (DEC-367) rather than in the base rule. */
@@ -282,7 +284,12 @@ export const DOCS_SITE_CSS = `
          background:#F4F1E8; color:#2E2A24; min-height:46px; display:flex;
          align-items:center; justify-content:center; font-size:13px;
          font-weight:600\` -- Previous and Next share one button shape,
-         drawn twice at :201/:202. */
+         drawn twice at :201/:202. The frame's 46px already clears
+         DESIGN-RULINGS.md's 44px floor; padding-inline is the piece the
+         floor doctrine adds on top ("padding alone does not reach the
+         floor", but a target with no horizontal padding at all is the
+         evasion that ruling names -- min-height plus centred flex plus a
+         real inset is the full requirement, not min-height alone). */
       flex: 1;
       margin-left: 0;
       border: 1px solid var(--chq-border-strong);
@@ -293,6 +300,7 @@ export const DOCS_SITE_CSS = `
       display: flex;
       align-items: center;
       justify-content: center;
+      padding-inline: 16px;
       font-size: 13px;
       font-weight: 600;
     }

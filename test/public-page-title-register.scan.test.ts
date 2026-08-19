@@ -138,8 +138,33 @@ const REGISTER_TABLE: RegisterRow[] = [
     role: "overview headline",
     selectorPattern: ".chq-home-hero h1",
     desktop: "44px",
+    phone: "29px",
+    source:
+      "docs/design/README.md typography table (\"Overview headline\"); docs/design/Chautauqua Home.dc.html:239 (Between-cycles/Fresh-deploy empty states); DEC-990 wave-49 amendment",
+  },
+  {
+    role: "overview headline (event hub state)",
+    selectorPattern: ".chq-home-body:has(.chq-home-row) .chq-home-hero h1",
+    desktop: "44px",
     phone: "30px",
-    source: "docs/design/README.md typography table (\"Overview headline\"); DEC-990 wave-49 amendment (phone value pre-existing, untouched)",
+    source:
+      "docs/design/Chautauqua Home.dc.html:124 (the hub's own H1 is the odd one out among the three home states, per home.css.ts:193-198's own note); DEC-990 wave-49 amendment (phone value pre-existing, untouched)",
+  },
+  {
+    role: "page title (CFP intro)",
+    selectorPattern: ".chq-cfp-intro h1",
+    desktop: "36px",
+    phone: "25px",
+    source:
+      "docs/design/README.md typography table (\"Page title (phone)\", 25-27px range); src/routes/public/cfp.css.ts:216 (pre-existing task-w49-h DEC-990 amendment; desktop size comes from the co-applied .chq-pub-surface-title class, so this selector carries no desktop declaration of its own)",
+  },
+  {
+    role: "page title (CFP confirm)",
+    selectorPattern: ".chq-cfp-confirm h1",
+    desktop: "36px",
+    phone: "27px",
+    source:
+      "docs/design/README.md typography table (\"Page title (phone)\", 25-27px range); src/routes/public/cfp.css.ts:220 (pre-existing task-w49-h DEC-990 amendment; desktop size comes from the co-applied .chq-pub-surface-title class, so this selector carries no desktop declaration of its own)",
   },
   {
     role: "docs index",

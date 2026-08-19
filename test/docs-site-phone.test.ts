@@ -1,6 +1,7 @@
-// v12m-w2-f: docs article at 390 (Tier 1, SSR; DEC-385). Frame:
-// docs/design/Chautauqua Docs.dc.html:166
-// `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+// v12m-w2-f: docs article at 390 (Tier 1, SSR; DEC-385) -- the "Docs · an
+// article · 390" frame, receipted below at the describe block that actually
+// exercises it (DEC-976: one quoted citation next to its expect(), not a
+// second copy restated here with none nearby).
 //
 // Two kinds of coverage, mirroring test/account-password-phone.test.ts's
 // split:
@@ -48,16 +49,12 @@ function buildApp() {
 // (a) live-request coverage
 // -----------------------------------------------------------------------
 
-describe("GET /docs/:slug — phone article markup (docs/design/Chautauqua Docs.dc.html:166)", () => {
+describe("GET /docs/:slug — phone article markup (docs/design/Chautauqua Docs.dc.html:166 `<div style=\"width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)\">`)", () => {
   it("renders the phone back link, an article figure, and (when neighbours exist) the pager", async () => {
     // An article with a real figure block, so the edge-to-edge-bleed
     // markup is actually exercised on the wire, not just in fixtures.
-    const withFigure = DOCS_ARTICLES.find((a) => a.blocks.some((b) => b.kind === "figure"));
-    if (!withFigure) throw new Error("no fixture article carries a figure block");
-
-    const app = buildApp();
-    const res = await app.request(`/docs/${withFigure.slug}`);
-    expect(res.status).toBe(200);
+    const withFigure = DOCS_ARTICLES.find((a) => a.blocks.some((b) => b.kind === "figure")) ?? (() => { throw new Error("no fixture article carries a figure block"); })();
+    const res = await buildApp().request(`/docs/${withFigure.slug}`); expect(res.status).toBe(200);
     const html = await res.text();
 
     // Head: the '‹ Docs' back link the phone chrome shows in place of the
@@ -151,22 +148,29 @@ describe("docs-site.css.ts phone block (DEC-385, source-scan)", () => {
     expect(DOCS_SITE_CSS).not.toMatch(/\.chq-phone-/);
   });
 
-  it("the pager is a real 44px target pair — flex:1, centred, with horizontal padding — for BOTH prev and next", () => {
+  it("the pager clears the 44px floor — min-height, centred flex, and real horizontal padding — for BOTH prev and next (docs/design/Chautauqua Docs.dc.html:201 `min-height:46px; display:flex; align-items:center; justify-content:center`)", () => {
     const block = extract700Blocks(DOCS_SITE_CSS)[0]!;
     const rule = block.match(/\.chq-docs-pager-prev,\s*\.chq-docs-pager-next\s*\{([^}]*)\}/);
     expect(rule).not.toBeNull();
     const body = rule![1]!;
-    expect(body).toMatch(/min-height:\s*44px/);
+    // The frame draws 46px, which already clears the 44px floor -- the
+    // floor is a minimum, not a hand-authored literal to restate.
+    expect(body).toMatch(/min-height:\s*46px/);
     expect(body).toMatch(/display:\s*flex/);
     expect(body).toMatch(/align-items:\s*center/);
     expect(body).toMatch(/justify-content:\s*center/);
+    // Padding alone doesn't reach the floor (DESIGN-RULINGS.md), but its
+    // absence is the more common evasion -- assert the real inset exists.
     expect(body).toMatch(/padding-inline:\s*16px/);
     expect(body).toMatch(/flex:\s*1/);
   });
 
-  it("the article H1 uses the tokenised 25px back-linked drill-in register, never a hand-authored size", () => {
+  it("the article H1 is the frame's own 28px literal (docs/design/Chautauqua Docs.dc.html:175 `font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1.08`), never the SPA shell's 25px drill-in token", () => {
     const block = extract700Blocks(DOCS_SITE_CSS)[0]!;
-    expect(block).toMatch(/\.chq-docs-article-head h1\s*\{\s*font-size:\s*var\(--chq-type-page-title-phone-drill\)/);
+    expect(block).toMatch(/\.chq-docs-article-head h1\s*\{\s*font-size:\s*28px/);
+    // The stale token must not be the DECLARED value any more, even
+    // though it may still be named in surrounding prose explaining why.
+    expect(block).not.toMatch(/font-size:\s*var\(--chq-type-page-title-phone-drill\)/);
   });
 });
 
