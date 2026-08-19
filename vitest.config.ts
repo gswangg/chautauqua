@@ -22,6 +22,11 @@ import react from "@vitejs/plugin-react";
 // w53-e (DEC-700 amendment): api-mutation-bump.scan.test.ts's behavioural
 // half uses renderHook(useMutationVersion) to prove apiUpload's bump reaches
 // a subscriber, which needs a real `document`, same treatment.
+// v12m-w7-e (DEC-919 amendment): submissions-landing-phone-frame.test.ts
+// renders SubmissionsTable via React.createElement (no JSX, plain .test.ts
+// name, same mirror as planEditor-refusal-shapes.test.ts) alongside its
+// CSS-source-scan pins, and needs a real `window`/`document` for the render
+// half's localStorage + testing-library assertions, same treatment.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -49,6 +54,7 @@ export default defineConfig({
       ["app/src/lib/api.unauthorized.render.test.ts", "jsdom"],
       ["app/src/pages/review/planEditor-refusal-shapes.test.ts", "jsdom"],
       ["app/src/lib/api-mutation-bump.scan.test.ts", "jsdom"],
+      ["app/src/pages/submissions/submissions-landing-phone-frame.test.ts", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",

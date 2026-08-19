@@ -809,8 +809,7 @@
   .chq-submissions-status-label,
   .chq-submissions-filterbar-divider,
   .chq-submissions-filterbar .chq-submissions-filterbar-select,
-  .chq-submissions-columnpicker,
-  .chq-submissions-filterbar-searchsort .chq-submissions-filterbar-sort-select {
+  .chq-submissions-columnpicker {
     display: none;
   }
 
@@ -820,5 +819,43 @@
      hidden above, not relocated. */
   .chq-status-pills [data-status]:not([data-status='pending']):not([data-status='accepted']) {
     display: none;
+  }
+}
+
+/* v12m-w7-e (DEC-919 amendment, wave 7). docs/design/Chautauqua
+   Submissions.dc.html:138-152 draws the phone head as two clean bands with
+   NO action buttons: a wordmark row (the shell header already supplies this
+   at 390) and a title row (:143-146), then the 44px search (:147) and the
+   scrolling chip row (:148-151). The app's .chq-submissions-head-actions
+   (Forms / Export CSV / New submission) has no phone rule at all today, so
+   three .chq-btn's wrap raggedly into the titles row instead of getting
+   their own band. DEC-919 is re-line, never remove: the head goes
+   flex-column with the titles first and the actions on their own full-width
+   row beneath, mirroring the frame's own card action triple at :164-167
+   (flex:1 / flex:1 / auto) -- Forms and Export CSV (short labels) share the
+   row at equal width, New submission (the longer label, and the one
+   *primary* action, matching the frame's filled 'Accept' in the first
+   slot) sizes to its own content. Every .chq-btn already carries the global
+   44px phone floor (styles.css:1105) -- nothing new is set here. Appended
+   at the true end of the file so this block wins ties at equal specificity
+   over every earlier phone block in this file (the campaign's own
+   content.css/comms.css source-order lesson). */
+@media (max-width: 700px) {
+  .chq-submissions-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-submissions-head-actions {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .chq-submissions-head-actions .chq-btn {
+    flex-shrink: 0;
+  }
+
+  .chq-submissions-head-actions .chq-btn-secondary {
+    flex: 1;
   }
 }

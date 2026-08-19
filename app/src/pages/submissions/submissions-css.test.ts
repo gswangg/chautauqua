@@ -45,11 +45,22 @@ describe('submissions.css phone filterbar reduction (DEC-919)', () => {
     expect(PHONE).toMatch(
       /\.chq-submissions-filterbar \.chq-submissions-filterbar-select,[\s\S]{0,400}display:\s*none/,
     );
-    expect(PHONE).toMatch(/\.chq-submissions-columnpicker,[\s\S]{0,400}display:\s*none/);
+    // v12m-w7-e (DEC-919 amendment wave 7): .chq-submissions-columnpicker is
+    // now the last selector in its group (the sort-select's display:none
+    // sibling below it was deleted), so it no longer has a trailing comma.
+    expect(PHONE).toMatch(/\.chq-submissions-columnpicker[\s\S]{0,400}display:\s*none/);
   });
 
-  it('hides the Sort select (FilterBarSearchSort row) via its own distinguishing class', () => {
-    expect(PHONE).toMatch(/\.chq-submissions-filterbar-searchsort \.chq-submissions-filterbar-sort-select[\s\S]{0,400}display:\s*none/);
+  // v12m-w7-e (DEC-919 amendment, wave 7): reversed. Sorting is a capability
+  // the frame never removes (docs/design/Chautauqua Submissions.dc.html has
+  // no phone rule dropping it), and the filterbar strip it sits in already
+  // scrolls -- so the Sort select re-lines into the strip at the 44px floor
+  // instead of vanishing. See submissions-landing-phone-frame.test.ts for
+  // the positive assertion.
+  it('no longer hides the Sort select (FilterBarSearchSort row) -- DEC-919 amendment wave 7', () => {
+    expect(PHONE).not.toMatch(
+      /\.chq-submissions-filterbar-searchsort \.chq-submissions-filterbar-sort-select[\s\S]{0,400}display:\s*none/,
+    );
   });
 
   it('hides every status pill except pending and accepted', () => {
