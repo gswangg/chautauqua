@@ -178,7 +178,7 @@ export const DEC_381 = "The phone tab bar's five destinations are Overview, Subm
 export const DEC_382 = "The three operator surfaces (/, /docs/api, /dev/mailbox) share one TOOLS_CSS module and the shell pattern; they are chrome, not designed screens";
 export const DEC_383 = "Page and surface stylesheets carry no colour literal at all; one allowlisted exception; no drop shadow anywhere";
 export const DEC_384 = "The wave-3 render-sweep gate is log-only; its open items become wave-4 tasks, never in-lane patches";
-export const DEC_385 = "Amendment (wave 104): a local phone-block-count pin is RETIRED, not satisfied — and the shared terminal-block audit table is edited one row per lane, never its total";
+export const DEC_385 = "Amendment (wave 105): a retired local pin is REPLACED, not deleted; and ratchet constants plus audit-doc totals are merge-train property for the whole batch";
 export const DEC_386 = "Phone cards come from CSS on the same markup, and a phone card shows exactly the desktop row's cells";
 export const DEC_387 = "The render sweep gains an admin mobile pass, advisory in the wave that introduces it";
 export const DEC_388 = "D1 bind values are primitives: a timestamp comparison inside a raw sql template interpolates epoch milliseconds, never a Date";
@@ -186,7 +186,7 @@ export const DEC_389 = "A gate script reports; it never throws";
 export const DEC_390 = "The phone card transform adds no markup by default; ambiguous cells get a data-label mirrored from their own th";
 export const DEC_391 = "The two mock affordances DEC-380 and DEC-386 dropped are settled, not deferred";
 export const DEC_392 = "The admin phone chrome is the tab bar alone: at <=700px the desktop nav strip and the identity text are hidden, and the More control is unconditional so Sign out is always reachable";
-export const DEC_393 = "The 44px floor's third evasion is the row-action anchor: a bare <a>/<Link> is on the floor, and reaching it takes min-height AND horizontal padding";
+export const DEC_393 = "Amendment (wave 105): the anchor-floor scan's `(no CSS rule)` row is a population artifact, and its sanctioned closure is a top-level restatement that is provably pixel-neutral";
 export const DEC_394 = "For this wave only, the shared-CSS lane splits by surface: styles.css + event-switcher.css to the SPA shell lane, theme.ts to the SSR floor lane";
 export const DEC_395 = "A reviewer session never requests organizer-only aggregates: the nav-badge hook gates on role, not on catch()";
 export const DEC_396 = "compose/preview and compose/send take a bounded id array: the one bulk endpoint DEC-182 missed";
