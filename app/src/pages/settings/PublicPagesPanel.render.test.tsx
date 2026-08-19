@@ -215,4 +215,61 @@ describe('PublicPagesPanel', () => {
     const section = await screen.findByRole('region', { name: 'Public pages' });
     expect(within(section).getByText('Unpublishing returns 404 to anyone holding the link')).toBeInTheDocument();
   });
+
+  // Eval D16 / DEC-700: the writer that creates a saved embed is EmbedsPanel,
+  // a sibling of SavedEmbedsPanel. SavedEmbedsPanel's read was a fetch-once
+  // effect keyed on eventId alone, so after Save the list and its
+  // "N on · M off" count kept describing the state before the organiser's
+  // last action until a full page reload. The successful POST bumps the
+  // module-level mutation counter in api.ts and the list re-reads.
+  it("re-reads the saved-embed list and its count after a save in the sibling builder", async () => {
+    let embedGets = 0;
+    mockEvent({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: () => {
+        embedGets += 1;
+        return listEnvelope(
+          embedGets === 1
+            ? [{ id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true }]
+            : [
+                { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+                { id: 'emb2', name: 'Sidebar widget', surface: 'sessions', format: 'iframe', options: {}, enabled: false },
+              ],
+        );
+      },
+      [`POST /api/v1/events/${EVENT_ID}/embeds`]: {
+        status: 201,
+        body: { id: 'emb2', name: 'Sidebar widget', surface: 'sessions', format: 'iframe', options: {}, enabled: false },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
+
+    const savedSection = await screen.findByRole('region', { name: 'Saved embeds' });
+    await waitFor(() => {
+      expect(within(savedSection).getByText('1 on · 0 off')).toBeInTheDocument();
+    });
+    expect(within(savedSection).queryByText('Sidebar widget')).not.toBeInTheDocument();
+
+    const publicPagesSection = screen.getByRole('region', { name: 'Public pages' });
+    fireEvent.click(within(publicPagesSection).getAllByRole('button', { name: 'Embed code' })[0]!);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Homepage sessions widget'), {
+      target: { value: 'Sidebar widget' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save embed' }));
+
+    // The list re-reads with no reload: the new row and the recomputed
+    // count, which is the half a stale list hides most quietly.
+    await waitFor(() => {
+      expect(within(savedSection).getByText('Sidebar widget')).toBeInTheDocument();
+    });
+    expect(within(savedSection).getByText('1 on · 1 off')).toBeInTheDocument();
+  });
 });

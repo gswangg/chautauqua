@@ -41,6 +41,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { useMutationVersion } from '../../lib/mutationSignal';
 import { buildSnippet, type EmbedFormat, type EmbedOptions, type EmbedSurface } from './embedSnippet';
 import { formatEmbedRecipe } from './embedRecipe';
 import { EmbedCodeReadout } from './EmbedCodeReadout';
@@ -70,6 +71,18 @@ interface Props {
 
 export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
   const { eventId } = useCurrentEvent();
+  // DEC-700 (eval D16): the writer that creates a saved embed lives in a
+  // SIBLING component -- EmbedsPanel's Save, mounted beside this one by
+  // PublicPagesPanel -- so a fetch-once effect keyed on eventId alone left
+  // both the list and the "N on · M off" count showing whatever was true
+  // before the organiser's last action, until a full reload. This is the
+  // exact shape DEC-700 names ("a badge computed from a fetch-once effect
+  // goes stale the moment the action that would have changed its answer
+  // succeeds ELSEWHERE in the app"), so it takes DEC-700's answer rather
+  // than a bespoke callback prop: every successful non-GET already bumps
+  // the module-level counter in api.ts, and subscribing re-runs load()
+  // whichever component issued the write.
+  const mutationVersion = useMutationVersion();
   const [searchParams] = useSearchParams();
   const [embeds, setEmbeds] = useState<SavedEmbed[] | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -95,7 +108,8 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
     // DEC-856 (wave 71 amendment): clear the page-level banner at the
     // start of load, before any read is issued -- so a stale refusal
     // never sits beside a later successful reload (TracksRoomsPanel's
-    // shape). load() runs both at mount and after every mutation.
+    // shape). load() runs at mount and after every successful mutation,
+    // this panel's own and any sibling's, via `mutationVersion` below.
     setError(undefined);
     apiList<SavedEmbed>(`/events/${eventId}/embeds`)
       .then((res) => setEmbeds(res.items))
@@ -105,7 +119,7 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
   }
 
-  useEffect(load, [eventId]);
+  useEffect(load, [eventId, mutationVersion]);
 
   const trackNameById: Record<string, string> = Object.fromEntries(tracks.map((t) => [t.id, t.name]));
 
@@ -122,8 +136,10 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
     setError(undefined);
     setRowFieldErrors((prev) => ({ ...prev, [embed.id]: {} }));
     try {
+      // No explicit load(): the successful PATCH bumps the mutation counter
+      // and the effect above re-reads. One refetch path for this panel, the
+      // organiser's own writes and a sibling's alike.
       await apiPatch(`/embeds/${embed.id}`, { enabled: !embed.enabled });
-      load();
     } catch (err) {
       // DEC-856: a fields map is never collapsed to err.message -- `enabled`
       // routes to the toggle control itself, anything else renders labelled.
@@ -150,8 +166,8 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
     setError(undefined);
     setRowFieldErrors((prev) => ({ ...prev, [embed.id]: {} }));
     try {
+      // Same as handleToggle: the DELETE's own bump drives the refetch.
       await apiDelete(`/embeds/${embed.id}`);
-      load();
     } catch (err) {
       if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
         setRowFieldErrors((prev) => ({ ...prev, [embed.id]: err.fields as Record<string, string> }));
