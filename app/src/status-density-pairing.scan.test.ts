@@ -227,6 +227,15 @@ const IDENTITY_PROPS = [
   'border-right',
   'border-radius',
 ];
+// DEC-730 (wave-101 amendment): B8's own words are the rule -- "Colour and
+// weight are identical in both; only geometry differs." margin/margin-inline
+// /margin-block (and their -start/-end longhands) move nothing about a
+// chip's ink, hue or weight; they are pure geometry, exactly like padding
+// and border above. `.chq-speakers-status-dense`'s `margin-inline:-6px`
+// (commit 0abe77cf) gives the 20px dense matrix cell breathing room for
+// B8's hover ring with zero glyph movement -- a legitimate density
+// difference, not a vocabulary divergence. This is a fix to the scan's own
+// property classification, never a licence: DIVERGENCE_CEILING stays 0.
 const GEOMETRY_ONLY_PROPS = new Set([
   'min-height',
   'padding',
@@ -241,6 +250,13 @@ const GEOMETRY_ONLY_PROPS = new Set([
   'border-left',
   'border-right',
   'border-radius',
+  'margin',
+  'margin-inline',
+  'margin-inline-start',
+  'margin-inline-end',
+  'margin-block',
+  'margin-block-start',
+  'margin-block-end',
 ]);
 
 /** Split a chq class into {stem, member} at the LAST -status-/-state- segment. */

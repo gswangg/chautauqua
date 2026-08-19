@@ -1,11 +1,9 @@
 // v12 phone page-scaffold primitives (DEC-576/643/368/616 amendments, wave
 // 83, v12 mobile campaign w1) -- the same three-part phone band anatomy
-// drawn identically across every 390 frame:
-//
-//   docs/design/Chautauqua Speakers.dc.html:261-278
-//   docs/design/Chautauqua Settings.dc.html:316-337
-//   docs/design/Chautauqua Contacts.dc.html:487-509
-//   docs/design/Chautauqua Public and Portal.dc.html:476-500
+// drawn identically across every 390 frame, e.g. the Speakers, Settings,
+// Contacts and Public-and-Portal design docs (DEC-976 wave-102: a header
+// inventory names its frames in prose, no strict citation form -- each
+// frame's own strict citation, quoted and asserted, lives at its own it()).
 //
 // jsdom applies no stylesheet and evaluates no @media rule, so -- mirroring
 // app/src/pages/contacts/contacts-phone-frames.test.ts and
@@ -16,6 +14,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { DEC_976 } from '../../src/decisions'; // compile-checked: wave-101/102 amendments below
+void DEC_976;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..');
@@ -102,13 +102,13 @@ describe('DEC-385: no min-width media query anywhere in styles.css', () => {
   });
 });
 
-describe('DEC-976: chq-phone-* selectors have no top-level rule (phone-block-visibility contract)', () => {
-  it('.chq-phone-head, .chq-phone-body, .chq-phone-dock, .chq-phone-back have no rule outside a max-width block', () => {
-    for (const selector of ['.chq-phone-head', '.chq-phone-body', '.chq-phone-dock', '.chq-phone-back']) {
-      expect(() => ruleIn(STYLES_DESKTOP, selector)).toThrow();
+describe('DEC-976/DEC-576 (wave-101): no top-level PAINT rule -- no rule at all, or exactly display:none', () => {
+  it('.chq-phone-head/-body/-dock/-back: no top-level rule, or exactly display:none', () => {
+    for (const s of ['.chq-phone-head', '.chq-phone-body', '.chq-phone-dock', '.chq-phone-back']) {
+      let r: string; try { r = ruleIn(STYLES_DESKTOP, s); } catch { continue; }
+      expect(r.split(';').map((x) => x.trim()).filter(Boolean), s).toEqual(['display: none']);
     }
-  });
-});
+  }); });
 
 describe('v12 phone page-scaffold: DEC-576 amendment', () => {
   it('.chq-phone-head is a sticky, full-bleed-cancelling header band', () => {
@@ -129,18 +129,12 @@ describe('v12 phone page-scaffold: DEC-576 amendment', () => {
   });
 
   it('.chq-phone-body has NO overflow-y of its own -- .chq-main is the sole scroll region (DEC-576 amendment, wave 85)', () => {
+    const body = ruleIn(STYLES_PHONE, '.chq-phone-body');
     // docs/design/Chautauqua Speakers.dc.html:266 draws
     // `flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px`, but
-    // the frame's own overflow-y is a rendering shortcut, not the binding
-    // rule -- DEC-576's wave-83 amendment (this same file, ".chq-shell is a
-    // flex column ... .chq-main is the ONLY scrolling region") is. A second
-    // scroll container nested between two position:sticky bands
-    // (.chq-phone-head/-dock) breaks their stickiness, because `sticky`
-    // positions against its OWN nearest scrolling ancestor, not the
-    // page's -- so .chq-phone-body must NOT declare overflow-y even though
-    // the frame's text does. flex:1/min-height:0 stay (the body still has
-    // to shrink, not push the sticky dock off-screen), just not the scroll.
-    const body = ruleIn(STYLES_PHONE, '.chq-phone-body');
+    // a nested scroll region breaks its sibling sticky bands, so
+    // .chq-phone-body must NOT declare overflow-y (DEC-576 wave-83:
+    // .chq-main is the ONLY scrolling region).
     expect(body).toMatch(/flex:\s*1/);
     expect(body).toMatch(/min-height:\s*0/);
     expect(body).not.toMatch(/overflow-y/);

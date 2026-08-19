@@ -416,9 +416,10 @@ a:hover {
      its OWN Sign out inside its .chq-phone-dock band, so un-hiding the
      header identity's Sign out here as well would draw two -- the frame
      (docs/design/Chautauqua Review.dc.html:414-421/441-443) draws exactly
-     one. The drill-in's page root carries data-chq-phone-signout for this
+     one: `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:9px`.
+     The drill-in's page root carries data-chq-phone-signout for this
      exact purpose; the second :not(:has(...)) clause excludes it, same
-     attribute-contract idiom as `.chq-main:has([data-chq-phone-dock])`
+     attribute-contract idiom as .chq-main:has([data-chq-phone-dock])
      below. The hub (ReviewerQueue.tsx, plan-list branch) sets no such
      attribute and keeps this rule's control (DEC-874 wave-86). */
   .chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout])) .chq-header-identity .chq-user-identity {
