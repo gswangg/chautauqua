@@ -24,13 +24,14 @@
 // public.css.ts's PUBLIC_CSS already uses to compose CHROME_CSS/CARDS_CSS/
 // AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374, DEC_377, DEC_657, DEC_919, DEC_989 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_377, DEC_643, DEC_657, DEC_919, DEC_989 } from "../../decisions";
 import { ERROR_STATES_CSS } from "../../views/error-states.css";
 import { EMPTY_CSS } from "../public/css/empty.css";
 
 void DEC_373;
 void DEC_374;
 void DEC_377; // captions below only ever restate fields the portal repo already returns
+void DEC_643; // amendment (v12 mobile campaign w1): the 25px back-linked-drill-in H1 register, wired up here for TaskFormPage/EditPage (chq-portal-hero-drill)
 void DEC_657; // wave 28 amendment: the portal's own error vocabulary is the hoisted shared one, never a private copy
 void DEC_919; // amendment (wave 52): the portal's zero-states compose the same PublicEmptyState renderer/CSS as the public surfaces
 void DEC_989; // ruling B6 (wave 25 amendment): portal content column clamps to --chq-portal-measure, not the shared reading measure
@@ -527,6 +528,58 @@ export const PORTAL_CSS = `
       gap: 12px;
     }
     .chq-portal-footer-band > *:last-child { margin-left: auto; }
+
+    /* w3-b (DEC-643 amendment): a back-linked drill-in page's H1 takes the
+       25px drill register, not the 27px cluster-landing size every
+       .chq-portal-hero gets above -- --chq-type-page-title-phone-drill
+       (src/views/theme.ts) had zero readers before this. Scoped to a
+       dedicated modifier class, applied only on the two back-linked pages
+       this task owns (TaskFormPage/EditPage) -- /portal's own dashboard
+       H1 (cluster-landing, no back link) keeps the 27px base rule, and
+       every other .chq-portal-hero page (owned by other lanes) is
+       untouched. */
+    .chq-portal-hero-drill { font-size: var(--chq-type-page-title-phone-drill); }
+
+    /* w3-b: docs/design/Chautauqua Public and Portal.dc.html:507-517
+       ("Portal · Hotel stay form") / :645-661 ("Portal · Edit your
+       session", add-a-co-presenter block) -- at 390 the desktop-only
+       two-up/paired field groupings (portal.css.ts's unmediated
+       .chq-portal-copresenter-* rules, B10 form spec) reduce to plain
+       single-column full-measure fields. The name pair already reaches
+       this by construction (both flex:1, so a wrapped item fills the row)
+       -- only the role select needs an explicit override, since its
+       flex:0 1 190/min-width:140 base rule keeps it narrow even once it
+       wraps onto its own line. */
+    .chq-portal-copresenter-role {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    /* w3-b: docs/design/Chautauqua Public and Portal.dc.html:667-671
+       ("Portal · Edit your session", the footer dock) -- Save changes and
+       Cancel stay side by side in ONE row at 390, Save (primary) taking
+       flex:1 and leading visually, Cancel at its own padded width -- never
+       the full-width stacked column every other .chq-portal-actions row
+       gets under the DEC-989 ruling B6 above. Scoped to the edit-session
+       footer only (page-local combinator), so no other .chq-portal-actions
+       row on any other portal page is touched. DEC-385: this is a
+       max-width-only VISUAL reorder (flex order) -- the DOM keeps the
+       desktop-ruled Cancel-then-Save sequence (B10, "Desktop is drawn, not
+       just ruled") untouched, so desktop stays frozen. The footer note
+       (:672) sits below the button row -- its own default order (0)
+       already follows the button row's order:-1. */
+    .chq-portal-actions-footer .chq-portal-actions {
+      flex-direction: row;
+      justify-content: flex-start;
+      order: -1;
+    }
+    .chq-portal-actions-footer .chq-portal-actions .chq-btn {
+      width: auto;
+    }
+    .chq-portal-actions-footer .chq-btn-primary {
+      flex: 1;
+      order: -1;
+    }
   }
 
   /* DEC-696: chq-cfp-option vocabulary shared with src/routes/public/cfp.css.ts
