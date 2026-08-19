@@ -49,6 +49,28 @@ function allTsxFiles(root: string): string[] {
   return out.sort();
 }
 
+/** True if `src` (the contents of a .tsx file at `path`) either calls a
+ * mutating helper directly, or imports a local (relative-path) `use*` hook
+ * module that itself calls one -- a custodian split (e.g.
+ * TracksRoomsPanel.tsx -> tracksRooms/useTracksRoomsPanel.ts) can move the
+ * mutating calls one hop away into a hook with no JSX of its own, and the
+ * component that renders the hook's state is still the DOM-proof site DEC-
+ * 505 asks about. One hop only -- deep enough for a hook, not a general
+ * call-graph walker. */
+function callsMutatingHelper(path: string, src: string): boolean {
+  if (MUTATING_CALL_RE.test(src)) return true;
+  const importRe = /^import\s+(?:type\s+)?\{[^}]*\buse[A-Za-z0-9]*\b[^}]*\}\s+from\s+['"](\.[^'"]+)['"]/gm;
+  for (const match of src.matchAll(importRe)) {
+    const specifier = match[1]!;
+    for (const candidate of [`${specifier}.ts`, `${specifier}.tsx`, `${specifier}/index.ts`]) {
+      const resolved = join(dirname(path), candidate);
+      if (!existsSync(resolved)) continue;
+      if (MUTATING_CALL_RE.test(readFileSync(resolved, 'utf-8'))) return true;
+    }
+  }
+  return false;
+}
+
 /** The derived population: every non-test .tsx file that calls a mutating
  * API helper, as a path relative to app/src (posix-style, so the ledger's
  * keys are stable across machines). */
@@ -56,7 +78,7 @@ function derivePopulation(root: string): string[] {
   const out: string[] = [];
   for (const path of allTsxFiles(root)) {
     const src = readFileSync(path, 'utf-8');
-    if (MUTATING_CALL_RE.test(src)) {
+    if (callsMutatingHelper(path, src)) {
       out.push(path.slice(root.length + 1).split('\\').join('/'));
     }
   }
