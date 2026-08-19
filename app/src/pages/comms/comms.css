@@ -1018,6 +1018,7 @@
   background: var(--chq-hairline);
 }
 
+/* overflow-exempt: a merge-field token truncated is a token misread */
 .chq-insert-field-menu-item-token {
   font-weight: 700;
   color: var(--chq-ink);
@@ -2050,5 +2051,119 @@
   .chq-comms-phone-recent-template {
     font-size: 12px;
     color: var(--chq-muted);
+  }
+}
+
+/* w8-c (DEC-393 wave-90 amendment, task w8-c): tap-floor + 358px-overflow
+   fixes for the Comms cluster, appended as a NEW terminal block per the
+   wave-90 ruling -- never an edit inside the 700px block above, never a
+   reorder. Every fix here lands on the ANCHOR/interactive child of a
+   row-action container, never on the container itself: a container's own
+   min-height would stretch its whole flex row rather than the tap target.
+   .chq-bulkbar-actions is deliberately excluded (styles.css shell lane,
+   DEC-393 wave-90 amendment part (a)). */
+@media (max-width: 700px) {
+  .chq-comms-editor-actions > .chq-btn,
+  .chq-comms-editor-actions > .chq-link-button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-comms-head-actions > .chq-pill {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-comms-history-head-actions > .chq-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-comms-preview-actions > .chq-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-comms-refusal-actions > .chq-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-comms-select-actions > .chq-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-comms-send-report-all-history {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-comms-send-report-footer-actions > .chq-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-comms-template-actions > .chq-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-comms-send-detail > .chq-link-button,
+  .chq-comms-recent-sends .chq-section-head .chq-link-button,
+  .chq-comms-blocked-list li .chq-link-button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* 358px content budget (390 minus .chq-main's 16px phone gutter):
+     nowrap offenders re-declared here with the ellipsis escape. Desktop
+     stays frozen -- these three properties never touch the base rule. */
+  .chq-comms-compose-col-slot {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-comms-compose-table td:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-comms-send-report-skipped-retry {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
 }
