@@ -241,7 +241,13 @@ function allShadowedPairs(): string[] {
 // Re-measured 19 -> 16 by the megabatch merge train after landing
 // v12m-w2-{m,k,p,q,r,o}: w2-o's contacts/comms/speakers sheet sweeps removed
 // three shadowed declarations. One re-measurement for the whole batch.
-export const SHADOWED_CEILING = 16;
+//
+// Re-measured 16 -> 0 by the megabatch merge train after landing the wave-21
+// terminal-block lanes (v12m-w3-{j,k,l} and v12m-w2-t): review.css, styles.css
+// and the two submissions sheets were forward-merged into single terminal
+// phone blocks, which removed every remaining shadowed declaration in the
+// tree. One re-measurement for the whole batch.
+export const SHADOWED_CEILING = 0;
 
 describe('phone cascade order (DEC-385 single-direction, DEC-808 enumerating scan)', () => {
   it('does not exceed the shadowed-declaration ceiling', () => {

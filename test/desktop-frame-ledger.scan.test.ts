@@ -326,7 +326,12 @@ for (const frame of ALL_FRAMES) {
 // Measured on this branch (v12m-w2-f): 16 of 102 desktop frames are cited by
 // an existing test. May only be RAISED in a future wave as more frames get
 // real desktop-parity coverage; never lowered.
-export const CLAIMED_FLOOR = 16;
+//
+// Re-measured 16 -> 64 by the megabatch merge train after landing the wave-21
+// desktop-claim lanes (v12m-w3-{n,o,p,q,r,s}, which added
+// test/desktop-frames-{account,contacts,speakers,submissions,comms,public}.test.ts).
+// One re-measurement for the whole batch, per DEC-385 wave-93.
+export const CLAIMED_FLOOR = 64;
 
 describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile campaign)', () => {
   it('enumerates exactly 161 font-size:19px label spans across 13 files (vacuous-grammar guard)', () => {
