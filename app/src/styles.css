@@ -2344,3 +2344,69 @@ a:hover {
     padding: 16px 16px 20px;
   }
 }
+
+/* DEC-385 amendment (wave 7): terminal cascade-shadow repair. The first
+   @media (max-width: 700px) block above (:381) sits ABOVE the 12 top-level
+   declarations it means to override, and media queries add no specificity --
+   source order alone decides, so all 12 were losing at every phone width.
+   ADDITIVE ONLY: this block re-states exactly those 12 declarations so the
+   phone value now wins as the LAST declaration in source order. Do not
+   reorder or delete the block at :381; it stays as the historical/first
+   phone override and this block is the fix. Two pairs already had matching
+   values on both sides of the shadow and are intentionally NOT restated
+   here as no-ops: .chq-bulkbar-actions{flex-wrap:wrap} (already wrap on
+   both sides) and .chq-checkbox-label{align-items:center} (already center
+   on both sides). */
+@media (max-width: 700px) {
+  .chq-main {
+    /* beats the desktop .chq-main{padding} at :487-491 */
+    padding: 16px;
+  }
+
+  .chq-page-title {
+    /* beats the desktop .chq-page-title{font-size} at :513-519 */
+    font-size: var(--chq-type-page-title-phone-size);
+  }
+
+  .chq-page {
+    /* beats the desktop .chq-page{gap} at :1361-1365 */
+    gap: 22px;
+  }
+
+  .chq-measure {
+    /* beats the desktop .chq-measure{max-width} at :494-497 */
+    max-width: none;
+  }
+
+  .chq-steps {
+    /* beats the desktop .chq-steps{grid-template-columns,border-top} at :1137-1141 */
+    grid-template-columns: 1fr;
+    border-top: none;
+  }
+
+  .chq-step {
+    /* beats the desktop .chq-step{border-left} at :1143-1149 */
+    border-left: none;
+  }
+
+  .chq-bulkbar {
+    /* beats the desktop .chq-bulkbar{align-items:center} at :1229-1237 */
+    align-items: stretch;
+  }
+
+  .chq-toolbar {
+    /* beats the desktop .chq-toolbar{align-items:center} at :527-535 */
+    align-items: stretch;
+  }
+
+  .chq-rail {
+    /* beats the desktop .chq-rail{position,flex-direction} at :1286-1292 */
+    position: static;
+    flex-direction: row;
+  }
+
+  .chq-checkbox-label {
+    /* beats the desktop .chq-checkbox-label{display:flex} at :1439-1445 */
+    display: inline-flex;
+  }
+}
