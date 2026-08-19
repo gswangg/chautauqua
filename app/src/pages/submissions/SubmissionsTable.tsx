@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 // DEC-755: createSubmission below no longer needs a follow-up apiPatch call
 // now that trackIds/format ride the create POST body directly.
 import { apiList, apiGet, ApiError, apiPost } from '../../lib/api';
+import { useCachedList } from '../../lib/useCachedRead';
 import { formatDate, formatDateOnly } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
@@ -85,8 +86,6 @@ export function SubmissionsTable() {
   const { eventId } = useCurrentEvent();
 
   const [filters, setFilters] = useState<SubmissionsFilterState>({ ...DEFAULT_FILTER_STATE, includeAnswers: true });
-  const [items, setItems] = useState<SubmissionListItem[]>([]);
-  const [total, setTotal] = useState(0);
   // null while in flight or on failure -- never a fabricated number.
   const [pendingTotal, setPendingTotal] = useState<number | null>(null);
   // G13 lane-D (02-submissions--08/09): the CFP's open date (fresh empty
@@ -102,8 +101,6 @@ export function SubmissionsTable() {
   // column (if the form has one) is auto-shown on first load.
   const [pickerInitialized, setPickerInitialized] = useState(false);
   const [selection, setSelection] = useState(EMPTY_SELECTION);
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -151,22 +148,32 @@ export function SubmissionsTable() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
   }, [eventId]);
 
-  useEffect(() => {
-    if (!eventId) return;
-    setLoading(true);
-    setError(null);
-    const qs = buildSubmissionsQuery(filters);
-    apiList<SubmissionListItem>(`/events/${eventId}/submissions${qs}`)
-      .then((res) => {
-        setItems(res.items);
-        setTotal(res.total);
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'))
-      .finally(() => {
-        setLoading(false);
-        setLoaded(true);
-      });
-  }, [eventId, filters, refreshToken]);
+  // D21 (DEC_678/DEC_518/DEC_024): the main list's own path, memoised over
+  // exactly the facets that change it -- null while inert (no eventId),
+  // preserving today's `if (!eventId) return;` behaviour exactly.
+  const submissionsPath = useMemo(() => {
+    if (!eventId) return null;
+    return `/events/${eventId}/submissions${buildSubmissionsQuery(filters)}`;
+  }, [eventId, filters]);
+  const submissions = useCachedList<SubmissionListItem>(submissionsPath, 'Failed to load submissions');
+  const items = submissions.data?.items ?? [];
+  const total = submissions.data?.total ?? 0;
+
+  // D21: `items` is now a cache-derived value with no local setter, so the
+  // row/bulk triage actions' optimistic flip (and loud rollback-on-failure)
+  // are re-expressed as a thin display-only overlay keyed by id, cleared as
+  // soon as either the write settles (success) or fails (letting the
+  // cache-derived row show again, which for a single-row failure IS the old
+  // setItems(previous) rollback since nothing on the server actually
+  // changed).
+  const [statusOverrides, setStatusOverrides] = useState<Map<string, SubmissionStatus>>(new Map());
+  const displayItems = useMemo(
+    () =>
+      statusOverrides.size === 0
+        ? items
+        : items.map((item) => (statusOverrides.has(item.id) ? { ...item, status: statusOverrides.get(item.id)! } : item)),
+    [items, statusOverrides],
+  );
 
   // Second, independent parallel fetch for the head summary's "N awaiting
   // triage" figure -- a count of status='pending' regardless of the current
@@ -184,7 +191,16 @@ export function SubmissionsTable() {
       .catch(() => setAllTotal(null));
   }, [eventId, refreshToken]);
 
-  const pageIds = items.map((item) => item.id);
+  const pageIds = displayItems.map((item) => item.id);
+
+  // D21: one funnel refreshes both the counts effect (:185, keyed on
+  // refreshToken) and the cached main list (useCachedList's own
+  // mutationVersion re-read is not triggered by refreshToken, so the
+  // explicit refetch is still required here).
+  function reloadSubmissions() {
+    setRefreshToken((n) => n + 1);
+    void submissions.refetch();
+  }
 
   function applySavedView(config: SavedViewConfig) {
     const { filters: nextFilters, visibleFieldIds: nextVisible } = applyViewConfig(config);
@@ -205,7 +221,7 @@ export function SubmissionsTable() {
       ...(input.format ? { format: input.format } : {}),
     });
     setShowNewModal(false);
-    setRefreshToken((n) => n + 1);
+    reloadSubmissions();
   }
 
   async function cloneSubmission(id: string) {
@@ -213,7 +229,7 @@ export function SubmissionsTable() {
     setError(null);
     try {
       const result = await apiPost<{ droppedFileAnswers: number }>(`/submissions/${id}/clone`);
-      setRefreshToken((n) => n + 1);
+      reloadSubmissions();
       if (result.droppedFileAnswers > 0) {
         const noun = result.droppedFileAnswers === 1 ? 'file answer was' : 'file answers were';
         setToast(`Copied. ${result.droppedFileAnswers} ${noun} not copied — uploads stay with the original session.`);
@@ -230,8 +246,17 @@ export function SubmissionsTable() {
     const ids = [...selection.selectedIds];
     setBulkPending(true);
     setError(null);
-    // Optimistic update.
-    setItems((prev) => prev.map((item) => (ids.includes(item.id) ? { ...item, status } : item)));
+    // D21: `items` has no local setter anymore -- the optimistic update is
+    // a display-only overlay (see statusOverrides above), cleared on both
+    // success and failure. DEC-193: on failure, batches already committed
+    // must not be visually rolled back -- clearing the overlay and calling
+    // reloadSubmissions() lets the cache's own refetch supply server truth
+    // rather than restoring the stale pre-update snapshot.
+    setStatusOverrides((prev) => {
+      const next = new Map(prev);
+      for (const id of ids) next.set(id, status);
+      return next;
+    });
     const batches = chunkSelection(ids);
     let completed = 0;
     try {
@@ -241,13 +266,20 @@ export function SubmissionsTable() {
         completed += 1;
       }
       setSelection((s) => selectionReducer(s, { type: 'CLEAR' }));
+      setStatusOverrides((prev) => {
+        const next = new Map(prev);
+        for (const id of ids) next.delete(id);
+        return next;
+      });
     } catch (err) {
-      // DEC-193: batches already committed on the server must not be
-      // visually rolled back. Refetch server truth instead of restoring
-      // the stale pre-update snapshot.
+      setStatusOverrides((prev) => {
+        const next = new Map(prev);
+        for (const id of ids) next.delete(id);
+        return next;
+      });
       const message = err instanceof ApiError ? err.message : 'unknown error';
       setError(`Bulk status update failed after ${completed} of ${batches.length} batches: ${message}`);
-      setRefreshToken((n) => n + 1);
+      reloadSubmissions();
     } finally {
       setBulkPending(false);
     }
@@ -255,19 +287,33 @@ export function SubmissionsTable() {
 
   // Phone-width per-row triage (docs/mandates/SYNTHESIS.md Tier 3: 'phone
   // triage actions GONE'). Mirrors Overview.tsx's handleTriageAction mapping
-  // (Accept -> accepted, Decline -> declined, Waitlist -> accept_queue) and
-  // applyBulkStatus's optimistic-update / loud-rollback shape, but against a
-  // single id via the same POST /submissions/status endpoint.
+  // (Accept -> accepted, Decline -> declined, Waitlist -> accept_queue), but
+  // against a single id via the same POST /submissions/status endpoint. D21:
+  // no client-side optimistic mutation -- `items` is derived from the
+  // cache, and the apiPost below bumps mutationVersion on resolve, which
+  // reconciles the row from server truth (DEC-518's replace-wholesale) with
+  // no rollback branch needed.
   async function applyRowTriage(id: string, status: SubmissionStatus) {
     if (!eventId) return;
     setTriagingId(id);
     setError(null);
-    const previous = items;
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+    setStatusOverrides((prev) => new Map(prev).set(id, status));
     try {
       await apiPost<{ updated: number }>(`/events/${eventId}/submissions/status`, { ids: [id], status });
+      setStatusOverrides((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
     } catch (err) {
-      setItems(previous);
+      // Nothing changed on the server -- dropping the overlay entry lets
+      // the cache-derived row show again, which for a single id IS the old
+      // setItems(previous) rollback.
+      setStatusOverrides((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
       setError(err instanceof ApiError ? `Status update failed: ${err.message}` : 'Status update failed');
     } finally {
       setTriagingId(null);
@@ -290,7 +336,7 @@ export function SubmissionsTable() {
   // persistent "New submission" button already is the collection's one
   // primary action, so EmptyState renders no `action` of its own here
   // (a second identical button would break "exactly one primary action").
-  const showEmpty = loaded && !loading && items.length === 0;
+  const showEmpty = submissions.data !== undefined && items.length === 0;
   const activeFacet = showEmpty ? describeActiveFacet(filters, tracks) : null;
   const showChrome = !showEmpty || activeFacet !== null;
   // G13 lane-D fix (02-submissions--09): zero rows under ONLY the pending
@@ -313,7 +359,7 @@ export function SubmissionsTable() {
           <h1 className="chq-page-title">Submissions</h1>
           {/* G13 lane-D fix (01-overview--06): the count appears once the
               list read resolves -- never '0 total' while rows are loading. */}
-          {loaded && (
+          {submissions.data !== undefined && (
             <span className="chq-summary">
               {total} total{pendingTotal !== null ? ` · ${pendingTotal} awaiting triage` : ''}
             </span>
@@ -332,7 +378,7 @@ export function SubmissionsTable() {
         </div>
       </div>
 
-      {error && <div className="chq-error">{error}</div>}
+      {(error ?? submissions.error) && <div className="chq-error">{error ?? submissions.error}</div>}
       {toast && (
         <div className="chq-toast" role="status">
           {toast}
@@ -460,15 +506,15 @@ export function SubmissionsTable() {
             </tr>
           </thead>
           <tbody>
-            {loading && (
+            {submissions.loading && (
               <tr>
                 <td className="chq-submissions-loading" colSpan={9 + shownColumns.length}>
                   <PageSkeleton variant="table" />
                 </td>
               </tr>
             )}
-            {!loading &&
-              items.map((item) => (
+            {!submissions.loading &&
+              displayItems.map((item) => (
                 <tr key={item.id}>
                   <td>
                     <input
@@ -566,7 +612,7 @@ export function SubmissionsTable() {
       {/* G13 lane-D fix (01-overview--06): no pagination summary while the
           list is still loading -- 'Showing 0 of 0' over a skeleton asserts
           a count not yet measured. */}
-      {showChrome && loaded && (
+      {showChrome && submissions.data !== undefined && (
       <div className="chq-submissions-pagination">
         <span className="chq-submissions-pagination-summary">
           {paginationSummary(filters.page, filters.perPage, total)}
