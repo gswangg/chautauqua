@@ -130,9 +130,10 @@ export const HOME_CSS = `
   .chq-home-footer-link-end { margin-left: auto; font-size: 12px; }
   /* FINDING (v12 mobile campaign w2, not fixed in this lane): the
      between_cycles frame draws the footer "API docs" anchor on its 390
-     sibling (docs/design/Chautauqua Home.dc.html:261 \`Running on <a ...
-     min-height:44px">\` followed by a standalone API-docs anchor at :173's
-     phone pattern) but NOT on its own 900 twin (:220 -- footer text ends at
+     sibling as a standalone anchor beside the ":260" "Running on" span
+     (docs/design/Chautauqua Home.dc.html:261 \`margin-left:auto;
+     font-size:12px; font-weight:700; min-height:44px\`, the same phone
+     pattern :173 draws) but NOT on its own 900 twin (:220 -- footer text ends at
      "management" with no second anchor) -- a genuine width-only divergence
      for this one state. Reproducing it needs the anchor unconditionally in
      root.tsx's DOM (a \`.chq-home-footer-link-end-quiet\` CSS width toggle,

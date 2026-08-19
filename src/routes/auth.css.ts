@@ -366,7 +366,7 @@ export const AUTH_CSS = `
 
     /* -----------------------------------------------------------------
        w2-e: "Sign in · 390" (docs/design/Chautauqua Account.dc.html:121
-       \`<div style="width:390px; height:844px; ...\`), scoped to
+       \`<div style="width:390px; height:844px;\`), scoped to
        .chq-auth-stack -- the wrapper only /login's LoginPage renders --
        so ClaimPage/ForgotPasswordPage/ResetPasswordPage, which share the
        same .chq-auth-card/.chq-auth-tertiary/.chq-auth-wordmark classes
@@ -416,7 +416,7 @@ export const AUTH_CSS = `
 
     /* -----------------------------------------------------------------
        w2-e: "Change password · 390" (docs/design/Chautauqua Account.dc.html:153
-       \`<div style="width:390px; height:844px; ...\`) -- head/body/dock
+       \`<div style="width:390px; height:844px;\`) -- head/body/dock
        band geometry layered onto the wave-13 action-bar structure this
        file already owns. Scoped to
        .chq-bare-page:has(.chq-auth-fields), the account-password page's
