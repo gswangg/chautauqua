@@ -819,4 +819,86 @@ ${ERROR_STATES_CSS}
       order: -1;
     }
   }
-.chq-portal-shell .chq-pub-empty-block-fresh { padding-top: 10px; }`;
+.chq-portal-shell .chq-pub-empty-block-fresh { padding-top: 10px; }
+
+/* v12m-w5-a: Portal's last two 390 frames -- Resources
+   (docs/design/Chautauqua Public and Portal.dc.html:1561) and the
+   co-presenter-rejected state of the edit screen (:1304). Appended as one
+   terminal, contiguous block per DEC-385 (narrow overrides wide via
+   max-width only, and a phone block declared after the desktop rules is
+   the only one that wins the cascade) -- the existing phone block near
+   :444 is mid-rewrite on other branches and is never touched here. Every
+   class this block styles is new growth with no base-rule counterpart
+   above, so at desktop widths these elements render in plain unstyled
+   flow; only <=700px carries the frame's geometry. */
+@media (max-width: 700px) {
+  /* Resources (dc.html:1564): a back-linked drill page (DEC-643 amendment
+     -- 25px --chq-type-page-title-phone-drill, not the 27px cluster-
+     landing token the shared .chq-portal-hero phone rule near :447
+     carries for every /portal/* H1 today). A page-specific modifier
+     rather than editing that shared rule, which two other branches are
+     mid-rewriting; the cascade already puts this block after it. */
+  .chq-portal-resources-hero { font-size: var(--chq-type-page-title-phone-drill); }
+
+  /* Resources (dc.html:1565): the subtitle line under the H1. */
+  .chq-portal-resources-footer-note,
+  .chq-portal-sub { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
+
+  /* Resources (dc.html:1570/1575): each row goes horizontal -- title (+
+     wiki detail, when present) on the left, the Open control right-hand
+     and never shrinking under the 44px floor. */
+  .chq-portal-resource-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 0;
+  }
+  .chq-portal-resource-row .chq-portal-row-title { flex: 1; min-width: 0; }
+  .chq-portal-resource-row .chq-portal-actions { padding-top: 0; flex-shrink: 0; }
+  .chq-portal-resource-row .chq-portal-actions .chq-btn {
+    min-height: 44px;
+    width: auto;
+    padding: 0 14px;
+    background: var(--chq-surface-sunk);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* Resources (dc.html:1580): the docked footer note, carried through
+     PortalLayout's existing footerExtra slot -- .chq-portal-footer is
+     already the docked border-top/background region (phone block near
+     :444), this only styles the note's own type inside it. */
+  .chq-portal-resources-footer-note { display: block; }
+
+  /* Co-presenter rejected (dc.html:1312): the "Nobody was added" callout
+     -- a modifier alongside the frozen desktop .chq-error-summary class,
+     never redefining that shared class itself. */
+  .chq-portal-copresenter-notice {
+    border-left: 4px solid var(--chq-ink);
+    border-radius: 5px;
+    background: var(--chq-surface-sunk);
+    padding: 14px 16px;
+    gap: 5px;
+  }
+  .chq-portal-copresenter-notice h2 { font-size: 14px; font-weight: 700; margin: 0; }
+  .chq-portal-copresenter-notice p { font-size: 13px; line-height: 1.55; color: var(--chq-ink-2); }
+
+  /* Co-presenter rejected (dc.html:1348): the flagged email field carries
+     its own left rule, on top of the shared .chq-input the field keeps at
+     every width. */
+  .chq-portal-copresenter-email-flagged { border-left: 3px solid var(--chq-ink); }
+
+  /* Co-presenter rejected (dc.html:1335): first/last name go two-up on a
+     grid at 390 -- the wide rendition keeps its own flex-wrap technique
+     above, this is the phone-only override. */
+  .chq-portal-copresenter-names {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .chq-portal-copresenter-names .chq-input,
+  .chq-portal-copresenter-email-role .chq-input,
+  .chq-portal-copresenter-role select {
+    min-height: 48px;
+  }
+}`;

@@ -281,6 +281,15 @@ function ParticipantsSection(props: {
   // A plain field-validation error (missing name, bad email format) stays a
   // bare inline field message, never a banner naming a "did not happen".
   const isDuplicate = errors?.email === CO_PRESENTER_DUPLICATE_MESSAGE;
+  // v12m-w5-a (docs/design/Chautauqua Public and Portal.dc.html:1314): the
+  // 390 frame's callout names the person already on the session instead of
+  // repeating the raw server message a second time — that message still
+  // renders once, unchanged, at the email field below (dc.html:1349).
+  // Matched by email against the participants the caller already loaded;
+  // no server call, no server text touched.
+  const duplicateMatch = isDuplicate
+    ? participants.find((p) => p.email.toLowerCase() === (values?.email ?? "").toLowerCase())
+    : undefined;
   return (
     <section aria-label="Participants" class="chq-section">
       {/* G13 (frames 10--09/22/23): 'ON THIS SESSION' with the count
@@ -291,10 +300,9 @@ function ParticipantsSection(props: {
         <span class="chq-portal-session-count">{participants.length}</span>
       </div>
       {isDuplicate ? (
-        <div class="chq-error-summary" role="alert">
-          <h2>Co-presenter not added</h2>
-          <p>{errors!.email}</p>
-          <p>Everything you typed is still below.</p>
+        <div class="chq-error-summary chq-portal-copresenter-notice" role="alert">
+          <h2>Nobody was added</h2>
+          <p>{duplicateMatch ? duplicateMatch.name : "This person"} is already on this session. Everything you typed is still below.</p>
         </div>
       ) : null}
       {participants.length === 0 ? (
@@ -373,7 +381,14 @@ function ParticipantsSection(props: {
             <label class="chq-portal-field-label" for="cp-email">
               Email
             </label>
-            <input id="cp-email" class="chq-input" type="email" name="email" value={values?.email ?? ""} maxLength={MAX_TEXT_LENGTH} />
+            <input
+              id="cp-email"
+              class={isDuplicate ? "chq-input chq-portal-copresenter-email-flagged" : "chq-input"}
+              type="email"
+              name="email"
+              value={values?.email ?? ""}
+              maxLength={MAX_TEXT_LENGTH}
+            />
             {/* G13 (frame 10--23, MINOR): the one place the form says the
                 email resolves against the org's contacts rather than
                 creating a stranger. */}
