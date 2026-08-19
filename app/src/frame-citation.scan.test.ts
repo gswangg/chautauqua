@@ -354,8 +354,13 @@ const EXPECT_PROXIMITY_LINES = 6;
  * test/phone-frame-ledger.scan.test.ts, which this file never touches): it
  * may only be LOWERED as unreceipted claims get fixed, never raised to
  * paper over a regression, and this task does not fix other lanes' test
- * files to force it down -- honest debt beats a green scan that hides it. */
-const UNRECEIPTED_CLAIM_CEILING = 14;
+ * files to force it down -- honest debt beats a green scan that hides it.
+ *
+ * Lowered 14 -> 2 by the wave-107 merge train (DEC-385 wave-93 rules this
+ * constant merge-train-only), re-measured on the integrated tree per DEC-989
+ * clause a rather than copied from any branch's note. The two-sided companion
+ * at the bottom of this file is what forced the tightening. */
+const UNRECEIPTED_CLAIM_CEILING = 2;
 
 /** Shared receipt check (quote presence + nearby `expect(`), factored out so
  * the phone describe block below and the new desktop block (DEC-808 wave-107
@@ -551,19 +556,19 @@ describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() 
 // which the wave-87 amendment never added. FAILS when the measured count
 // falls BELOW the constant, printing the exact replacement line -- mirroring
 // desktop-frame-ledger.scan.test.ts's own CLAIMED_FLOOR "never claims MORE"
-// companion in shape (a two-sided ratchet, not a one-way floor). This
-// company is EXPECTED RED right now: this branch measures 2 unreceipted
-// phone-frame citations against a constant of 14 (DEC-808 wave-107's own
-// planning pass measured 1 on a slightly different tree; this task
-// re-measured on its own branch per DEC-989 clause a -- never trust a prior
-// measurement, re-derive it -- and got 2, still far below 14). That is the
-// ratchet working exactly as intended -- debt got fixed on some other branch
-// since wave-87 seeded 14, and the constant is stale. DEC-385 wave-93 rules
-// UNRECEIPTED_CLAIM_CEILING itself is a merge-train-only edit, so this task
-// adds the companion but does not touch the constant; the merge train
-// re-measures and tightens it once per batch, same as CLAIMED_FLOOR.
+// companion in shape (a two-sided ratchet, not a one-way floor).
+//
+// This companion was born RED on task w3-v's branch: it measured 2
+// unreceipted phone-frame citations against a constant of 14 that wave-87
+// had seeded and that other branches' fixes had since made stale. Because
+// DEC-385 wave-93 rules UNRECEIPTED_CLAIM_CEILING a merge-train-only edit,
+// w3-v added the companion but left the constant alone, and the wave-107
+// merge train re-measured on the integrated tree (still 2, per DEC-989
+// clause a -- re-derived, not copied) and lowered 14 -> 2. Both sides now
+// sit at the measured value, so this is GREEN and the phone ceiling is
+// honest again, matching the desktop pair above.
 describe('UNRECEIPTED_CLAIM_CEILING companion (two-sided ratchet, DEC-808 wave-106 requirement)', () => {
-  it(`never measures FEWER unreceipted phone-frame citations than UNRECEIPTED_CLAIM_CEILING (${UNRECEIPTED_CLAIM_CEILING}) without the ceiling being lowered to match by the merge train (a stale ceiling hides fixed debt) -- EXPECTED RED on this branch (measured 2 < 14; DEC-385 wave-93 makes UNRECEIPTED_CLAIM_CEILING merge-train-only, this task does not edit it)`, () => {
+  it(`never measures FEWER unreceipted phone-frame citations than UNRECEIPTED_CLAIM_CEILING (${UNRECEIPTED_CLAIM_CEILING}) without the ceiling being lowered to match by the merge train (a stale ceiling hides fixed debt)`, () => {
     const unreceipted = computeUnreceiptedCitations(TEST_PHONE_CITATIONS);
     if (unreceipted.length < UNRECEIPTED_CLAIM_CEILING) {
       throw new Error(
