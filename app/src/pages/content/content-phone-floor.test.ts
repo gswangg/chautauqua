@@ -95,7 +95,11 @@ function topLevelConstructEnds(src: string): number[] {
  * CSS text (no nested rules expected inside `src`). */
 function ruleBody(src: string, selector: string): string | null {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`(?:^|\\})\\s*${escaped}\\s*\\{([^{}]*)\\}`);
+  // Allow arbitrary whitespace AND block comments between the previous
+  // rule's closing brace (or the block's own start) and the selector --
+  // every subsection in the appended phone block opens with a `/* ... */`
+  // header comment directly above its first rule.
+  const re = new RegExp(`(?:^|\\})(?:\\s|\\/\\*[\\s\\S]*?\\*\\/)*${escaped}\\s*\\{([^{}]*)\\}`);
   const m = re.exec(src);
   return m ? (m[1] ?? '') : null;
 }
