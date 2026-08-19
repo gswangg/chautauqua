@@ -4,7 +4,7 @@ Numbered findings the 15-minute task window could not resolve. Frame
 citations are verbatim literals from `docs/design/Chautauqua Speakers.dc.html`
 per DEC-976.
 
-## 1. RESOLVED (DEC-730 w87 amendment) — "Speakers · a write failed" frame (:549) draws PRE-v12 status pills, contradicting every other v12 frame in the same file
+## 1. RESOLVED (DEC-730, wave-90 amendment) — "Speakers · a write failed" frame (:549) draws PRE-v12 status pills, contradicting every other v12 frame in the same file
 
 The `Complete`/`Overdue · not saved`/`Pending` cells in this frame are
 hand-styled inline rather than referencing the shared `DONE`/`PEND`/`LATE`
@@ -31,13 +31,13 @@ while a rollback banner is showing — which cannot be right, and no ruling
 says the vocabulary is meant to change under a write-failure banner.
 
 Read as: this one frame section was not re-cut when the pack's status-token
-inversion landed elsewhere in the same file. Needs a design call before any
-code change: (a) confirm the frame is stale and should be ignored in favor
-of the inverted tokens (my narrow-interpretation guess, not applied), or
-(b) confirm write-failure states really do get a distinct, pre-inversion
-status vocabulary and word that ruling explicitly.
+inversion landed elsewhere in the same file. Settled — DEC-730's wave-90
+amendment rules the frame stale rather than open a second vocabulary: a
+status field cannot change its meaning-to-appearance mapping depending on
+an unrelated write outcome, so the frame's literal reading was never a
+viable option. No future audit should re-open this.
 
-**Resolution (DEC-730, wave-87 amendment):** option (a). Frame `:549` is
+**Resolution (DEC-730, wave-90 amendment):** frame `:549` is
 stale. The same document's `:28`/`:129` ("Onboarding grid · 1600"), `:598`
 ("One task, every speaker") and `:665` ("One task · still waiting") all draw
 Complete/Overdue/Pending through the shared `DONE`/`PEND`/`LATE` (and their
