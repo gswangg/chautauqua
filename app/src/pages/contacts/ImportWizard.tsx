@@ -1012,7 +1012,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
                 (!!eventId && attachToEvent && sessionTitle.trim() === '') ||
                 !!mappingValidationError;
               return (
-                <div className="chq-contacts-import-phone-dock">
+                <div className="chq-contacts-import-phone-dock" data-chq-phone-dock>
                   <button
                     type="button"
                     className="chq-btn chq-btn-primary chq-contacts-import-phone-next"
