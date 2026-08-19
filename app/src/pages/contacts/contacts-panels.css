@@ -1333,15 +1333,13 @@
     display: none;
   }
 
-  /* DEC-663 (wave-87 amendment, contacts-v12.md finding 2): the same-file
-     dedupe note is now DESKTOP-ONLY -- it sits "beneath the column grid,
-     where it is true" and is hidden here rather than repositioned under
-     the phone radio list appended below. The frame's phone position for
-     an existing-contact note is answered only by the dry run's own
-     plan.updated (.chq-contacts-import-matched, on the Review step),
-     never by the in-file dedupe count, which measures a different thing. */
+  /* v12m-w9-h (correction to the wave-87 amendment above): .chq-contacts-
+     import-dedupe is ONE node read at both widths, not a desktop-only
+     note -- hiding it was a misread. The frame re-spaces it under the
+     phone radio list (docs/design/Chautauqua Contacts.dc.html:483
+     `Import CSV · 390`, body :487-511, `padding:16px 0 0`). */
   .chq-contacts-import-dedupe {
-    display: none;
+    padding-top: 16px;
   }
 
   .chq-contacts-import-match-head {

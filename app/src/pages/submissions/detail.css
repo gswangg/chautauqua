@@ -858,7 +858,7 @@
   .chq-detail-back,
   .chq-detail-position-prev,
   .chq-detail-position-next {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     min-height: 44px;
     padding: 0 4px;
