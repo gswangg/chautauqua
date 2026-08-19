@@ -6,7 +6,7 @@ DEVIATIONS.md (user overrides). This file is the campaign mandate the planner
 works from, tiered.
 
 ## TIER 0 (2026-08-19 meta-probe, VERIFIED reds — work these before all else)
-docs/probes/metafid-phoneA-2026-08-19.md: phone clusters A audit. Start with
+docs/probes/metafid-phoneA-2026-08-19.md (clusters A) AND docs/probes/metafid-phoneB-ssr-2026-08-19.md (clusters B+SSR) are the verified red sets. The two CRITICALS in B are being fixed by a META lane — do not duplicate; take everything else. Start with
 its two disproportionate root fixes (bordered-control negative-margin misuse;
 settings section-action floor), then the S1 breaks, then S2 structure.
 
