@@ -1189,6 +1189,10 @@
      is the leak, so it is the one that goes; the strip also carries the
      "Clashes are flagged, not blocked" note, which the frame's phone head
      band likewise does not have. */
+  /* phone-hidden: desktop twin of a phone-only sibling (DEC-919 wave-101
+     shape 1) -- the day-selection capability is drawn by
+     app/src/pages/agenda/PhoneAgenda.tsx:160-175 as .chq-phone-day-chips
+     (frame :134-137), wired to the same setActiveDay this strip calls. */
   .chq-agenda-day-tabs {
     display: none;
   }
@@ -1537,5 +1541,68 @@
      wrapping rule never is. */
   .chq-agenda-clash-note {
     white-space: normal;
+  }
+
+  /* -------------------------------------------------------------------- */
+  /* Desktop-chrome leaks at 390 (meta-fidelity probe C, final pass).      */
+  /*                                                                      */
+  /* Agenda.tsx renders .chq-agenda-head and .chq-agenda-armed-bar OUTSIDE */
+  /* its `isPhone ? <PhoneAgenda/> : <desktop/>` ternary, so at phone      */
+  /* width they paint ABOVE the phone head band and the page draws its     */
+  /* identity twice: "Agenda" + "1 unplaced · 2 conflicts · 93% placed"    */
+  /* over the frame's own "chautauqua" / "1 unplaced · 2 clash" /          */
+  /* "Agenda" band (docs/design/Chautauqua Agenda.dc.html:129-133), and    */
+  /* Auto-schedule twice (head row + frame :199 dock).                     */
+  /*                                                                      */
+  /* What goes is what the phone band RE-LINES, and only that. DEC-919 is  */
+  /* "re-line, never remove": the frame's 390 column draws no Breaks and   */
+  /* no Publish schedule, but neither capability exists anywhere else on   */
+  /* the phone surface, so hiding them would take a capability off the     */
+  /* phone rather than match the frame. They stay, as the head's own       */
+  /* full-width action row at the 44px floor (the row above), which is     */
+  /* DEC-919 wave-7's named remedy for a head the frame draws clean.       */
+  /* -------------------------------------------------------------------- */
+
+  /* Re-lined by .chq-phone-agenda-h1 (frame :133), which is also an <h1>:
+     leaving both mounted paints the page title twice and puts TWO <h1>
+     elements in the phone accessibility tree. */
+  .chq-agenda-head .chq-page-title {
+    display: none;
+  }
+
+  /* Re-lined by .chq-phone-agenda-counts (frame :131) -- the same
+     unplaced/clash counts in the frame's own vocabulary. */
+  .chq-agenda-summary {
+    display: none;
+  }
+
+  /* phone-hidden: desktop twin of a phone-only sibling (DEC-919 wave-101
+     shape 1) -- the SAME auto-schedule act is drawn by the frame's dock at
+     docs/design/Chautauqua Agenda.dc.html:200 and rendered by
+     app/src/pages/agenda/PhoneAgenda.tsx:308-315 as
+     .chq-btn-primary.chq-phone-footer-btn, wired to the same
+     onAutoSchedule/autoScheduling props this button uses. Scoped to
+     .chq-btn-secondary because that is the only secondary button in this
+     row (Breaks is a .chq-link-button, Publish is .chq-btn-primary), both
+     of which STAY -- neither is re-lined on the phone surface. */
+  .chq-agenda-head-actions .chq-btn-secondary {
+    display: none;
+  }
+
+  /* With the title and summary re-lined away, the action row is the head's
+     only remaining child; margin-left:auto would flush two controls to the
+     right edge of an otherwise empty band. */
+  .chq-agenda-head-actions {
+    margin-left: 0;
+  }
+
+  /* The desktop placing bar (DEC-794) can never arm at phone width:
+     Agenda.tsx passes `onArm={setArmed}` only to DayGrid/UnscheduledTray,
+     both inside the `!isPhone` arm, and PhoneAgenda keeps its own `armed`
+     state and draws its own .chq-phone-footer-armed (frame :190-197). So
+     at 390 this is 44px of permanently empty, aria-hidden chrome sitting
+     between the head and the phone band. */
+  .chq-agenda-armed-bar {
+    display: none;
   }
 }
