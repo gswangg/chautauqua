@@ -24,7 +24,7 @@
 // public.css.ts's PUBLIC_CSS already uses to compose CHROME_CSS/CARDS_CSS/
 // AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374, DEC_377, DEC_643, DEC_657, DEC_919, DEC_989 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_377, DEC_643, DEC_657, DEC_919, DEC_989, DEC_576, DEC_154 } from "../../decisions";
 import { ERROR_STATES_CSS } from "../../views/error-states.css";
 import { EMPTY_CSS } from "../public/css/empty.css";
 
@@ -35,6 +35,8 @@ void DEC_643; // amendment (v12 mobile campaign w1): the 25px back-linked-drill-
 void DEC_657; // wave 28 amendment: the portal's own error vocabulary is the hoisted shared one, never a private copy
 void DEC_919; // amendment (wave 52): the portal's zero-states compose the same PublicEmptyState renderer/CSS as the public surfaces
 void DEC_989; // ruling B6 (wave 25 amendment): portal content column clamps to --chq-portal-measure, not the shared reading measure
+void DEC_576; // wave-110 amendment: the phone dock band's own children (.chq-portal-dock)
+void DEC_154; // wave-110 amendment: the footer's duplicate Sign out is stood down at 390 only
 
 export const PORTAL_CSS = `
   /* --- verbatim starting point (moved from PortalLayout's inline <style>) --- */
@@ -931,6 +933,30 @@ ${ERROR_STATES_CSS}
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+  }
+
+  /* DEC-576/DEC-154 (wave-110 amendments): docs/design/Chautauqua Public
+     and Portal.dc.html:492-495 ("Your tasks") and :586-589 ("Your
+     session") -- the dock's own children only; the band's border-top/
+     background/padding is already the .chq-portal-shell > .chq-portal-footer
+     rule above (:789-794), unchanged. */
+  .chq-portal-dock {
+    display: flex;
+    gap: 8px;
+  }
+  .chq-portal-dock .chq-btn-primary {
+    flex: 1;
+    min-height: 48px;
+  }
+  .chq-portal-dock .chq-btn-secondary {
+    min-height: 48px;
+  }
+  /* DEC-154: the header identity cluster (:199 shared.tsx) already carries
+     Sign out at 390 -- the footer's copy is the duplicate DEC-154 names,
+     stood down here only; desktop (where the dock does not draw) keeps
+     both exactly as before. */
+  .chq-portal-shell > .chq-portal-footer .chq-portal-signout {
+    display: none;
   }
 }
 `;
