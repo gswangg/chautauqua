@@ -349,7 +349,7 @@ describe('OnboardingGrid: DEC-694 per-row remind', () => {
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
     screen.getAllByRole('button', { name: 'Remind Ada' })[0]!.click();
 
-    const dialog = await screen.findByRole('dialog', { name: 'Review reminders' });
+    const dialog = await screen.findByRole('dialog', { name: 'Review these reminders' });
     expect(dialog).toBeInTheDocument();
 
     await waitFor(() => expect(screen.getAllByText(/Ada Lovelace/).length).toBeGreaterThan(0));
@@ -360,7 +360,7 @@ describe('OnboardingGrid: DEC-694 per-row remind', () => {
     expect(previewCall).toBeDefined();
     expect(JSON.parse(previewCall![1]!.body as string)).toEqual({ contactIds: ['ct1'] });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send 1 reminder' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send these 1' }));
 
     await waitFor(() => {
       const sendCall = fetchMock.mock.calls.find(([input, init]) => {
@@ -399,7 +399,7 @@ describe('OnboardingGrid: DEC-441 amendment surfaces the preview batch-cap remai
 
     fireEvent.click(screen.getByRole('button', { name: 'Remind all outstanding' }));
 
-    await screen.findByRole('dialog', { name: 'Review reminders' });
+    await screen.findByRole('dialog', { name: 'Review these reminders' });
     await waitFor(() => {
       expect(screen.getByText('4 contacts still outstanding — run it again to continue.')).toBeInTheDocument();
     });

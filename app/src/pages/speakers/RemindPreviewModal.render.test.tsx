@@ -44,7 +44,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         onCancel={vi.fn()}
       />,
     );
-    const dialog = screen.getByRole('dialog', { name: 'Review reminders' });
+    const dialog = screen.getByRole('dialog', { name: 'Review these reminders' });
     expect(dialog).toBeInTheDocument();
     expect(screen.getAllByText('Loading...').length).toBeGreaterThan(0);
   });
@@ -73,7 +73,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
     // Second recipient's draft is not shown -- only the first draft renders.
     expect(screen.queryByText(/Speaker agreement — No due date/)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send 2 reminders' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send these 2' }));
     expect(onSend).toHaveBeenCalledTimes(1);
   });
 
@@ -127,7 +127,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.getByRole('button', { name: 'Send 0 reminders' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send these 0' })).toBeDisabled();
   });
 
   // DEC-829 amendment: the modal prints the server's own skipped figure
@@ -222,7 +222,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
       expect(screen.queryByText('0 recipients')).not.toBeInTheDocument();
       expect(document.querySelector('.chq-speakers-remind-recipients')).not.toBeInTheDocument();
       // Send stays present but disabled -- its action is genuinely inert.
-      expect(screen.getByRole('button', { name: 'Send 0 reminders' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Send these 0' })).toBeDisabled();
     });
 
     it('names "nothing outstanding" when skipped is zero too', () => {
@@ -241,7 +241,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
       expect(screen.getByText('Nothing outstanding to remind about.')).toBeInTheDocument();
       expect(screen.queryByText('0 recipients')).not.toBeInTheDocument();
       expect(document.querySelector('.chq-speakers-remind-recipients')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Send 0 reminders' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Send these 0' })).toBeDisabled();
     });
 
     it('keeps the remaining line even in the zero-draft state', () => {
