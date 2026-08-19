@@ -133,10 +133,14 @@ describe("Submit a talk field stacking -- docs/design/Chautauqua Public and Port
 
 describe("Submitted phone links -- docs/design/Chautauqua Public and Portal.dc.html:1092", () => {
   // `          <a href="#" style="font-size:14px; font-weight:700; min-height:44px; display:flex; align-items:center">Browse the sessions ›</a>`
-  it("gives .chq-cfp-links a and .chq-cfp-confirm-actions a a centred-flex 44px floor with horizontal padding", () => {
+  // D9 amendment: the selector is scoped `a:not(.chq-btn)` -- the filled
+  // primary CTA inside .chq-cfp-confirm-actions already carries theme.ts's
+  // own phone 44px floor AND its 0.5rem 1rem padding, which this rule's
+  // `padding: 0 2px` would otherwise outrank and squash.
+  it("gives .chq-cfp-links a and .chq-cfp-confirm-actions a:not(.chq-btn) a centred-flex 44px floor with horizontal padding", () => {
     const body = mediaBlock();
-    const match = body.match(/\.chq-cfp-links a,\s*\n\s*\.chq-cfp-confirm-actions a\s*\{([^}]*)\}/);
-    expect(match, ".chq-cfp-links a, .chq-cfp-confirm-actions a has a rule inside the phone media query").not.toBeNull();
+    const match = body.match(/\.chq-cfp-links a,\s*\n\s*\.chq-cfp-confirm-actions a:not\(\.chq-btn\)\s*\{([^}]*)\}/);
+    expect(match, ".chq-cfp-links a, .chq-cfp-confirm-actions a:not(.chq-btn) has a rule inside the phone media query").not.toBeNull();
     expect(match![1]).toMatch(/min-height:\s*44px/);
     expect(match![1]).toMatch(/align-items:\s*center/);
     expect(match![1]).toMatch(/padding:\s*0\s+2px/);

@@ -7,6 +7,7 @@
 // submitter how long they can still edit.
 
 import { describe, expect, it } from "vitest";
+import { CFP_CSS } from "../src/routes/public/cfp.css";
 import { ClosedPage, ConfirmationPage, NotYetOpenPage } from "../src/routes/public/submit-views";
 
 const EVENT_ROW = {
@@ -120,6 +121,59 @@ describe("DEC-961 (amended G13): ClosedPage / NotYetOpenPage way-forward link", 
     expect(html).toContain("The call for papers opens on");
     expect(html).toMatch(/href="\/e\/test-conf\/sessions"/);
     expect(html).not.toMatch(/href="\/">/);
+  });
+});
+
+// D9 (eval MAJOR, live on prod): the confirmation page's filled primary CTA
+// rendered brand-on-brand (1:1 contrast, an invisible button) because
+// cfp.css.ts's `.chq-cfp-confirm-actions a { color: var(--chq-brand) }` --
+// specificity 0,1,1 -- outranked theme.ts's `.chq-btn-primary { color:
+// var(--chq-on-brand) }` at 0,1,0. The assertions below are the pair that
+// pins the fix: (1) the CTA really is a .chq-btn-primary in BOTH branches
+// that render one, and (2) no colour rule in CFP_CSS targets an anchor
+// inside .chq-cfp-confirm-actions without scoping itself off .chq-btn.
+describe("D9: confirmation-page primary CTA keeps theme.ts's on-brand label colour", () => {
+  /** Every selector in CFP_CSS belonging to a rule that declares `color`
+   * (media blocks included -- the phone override block is part of the same
+   * cascade). Selector lists are split on commas. */
+  function colorRuleSelectors(css: string): string[] {
+    const out: string[] = [];
+    for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const selectorList = rule[1] ?? "";
+      const decls = rule[2] ?? "";
+      if (!/(^|;|\s)color\s*:/.test(decls)) continue;
+      for (const sel of selectorList.split(",")) {
+        const trimmed = sel.trim();
+        // Skip the at-rule preludes the regex above also sweeps up.
+        if (trimmed === "" || trimmed.startsWith("@")) continue;
+        out.push(trimmed);
+      }
+    }
+    return out;
+  }
+
+  it("no CFP_CSS colour rule repaints an anchor inside .chq-cfp-confirm-actions without excluding .chq-btn", () => {
+    const offenders = colorRuleSelectors(CFP_CSS).filter(
+      (sel) => /\.chq-cfp-confirm-actions\b[^,]*\ba\b/.test(sel) && !sel.includes(":not(.chq-btn)"),
+    );
+    expect(offenders, "an unscoped .chq-cfp-confirm-actions anchor colour rule would win over .chq-btn-primary").toEqual(
+      [],
+    );
+  });
+
+  it("has-account: 'Log in to track it' is a .chq-btn .chq-btn-primary anchor", () => {
+    const html = render("has-account");
+    expect(html).toMatch(/<a class="chq-btn chq-btn-primary" href="\/login">\s*Log in to track it\s*<\/a>/);
+  });
+
+  it("fresh: 'Create a password' is a .chq-btn .chq-btn-primary anchor on the claim path", () => {
+    const html = render("fresh");
+    expect(html).toMatch(/<a class="chq-btn chq-btn-primary" href="\/claim\/tok-123">\s*Create a password\s*<\/a>/);
+  });
+
+  it("the plain tertiary 'Log in ›' anchor beside it carries no .chq-btn class (it keeps the olive register)", () => {
+    const html = render("fresh");
+    expect(html).toMatch(/<a href="\/login">Log in/);
   });
 });
 

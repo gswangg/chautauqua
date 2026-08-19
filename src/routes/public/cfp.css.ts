@@ -162,9 +162,20 @@ export const CFP_CSS = `
   .chq-cfp-links { display: flex; flex-direction: row; flex-wrap: wrap; gap: 18px; font-size: 13px; font-weight: 700; }
   /* G13 (frames 10--16/17/19/25, MAJOR): dead-end/confirmation links are
      the B8 tertiary register -- olive, no rest-state underline (underline
-     is the hover state). */
-  .chq-cfp-links a, .chq-cfp-confirm-actions a { color: var(--chq-brand); text-decoration: none; }
-  .chq-cfp-links a:hover, .chq-cfp-confirm-actions a:hover { text-decoration: underline; }
+     is the hover state).
+     SCOPED OFF .chq-btn (mirrors theme.ts's own a:not(.chq-btn) idiom at
+     src/views/theme.ts:215): .chq-cfp-confirm-actions ALSO holds the
+     confirmation page's filled primary CTA -- the anchor each branch of
+     submit-views.tsx's ConfirmationState switch renders with
+     class="chq-btn chq-btn-primary". (No UI copy is quoted in this file:
+     CFP_CSS ships inside every CFP page's <style>, so a quoted label here
+     would read as page text to any copy assertion.) Unscoped, this rule's
+     0,1,1 selector outranks .chq-btn-primary's 0,1,0
+     (src/views/theme.ts:433-437) and repainted that button's label
+     --chq-brand ON the --chq-brand fill -- brand-on-brand, 1:1 contrast,
+     an invisible primary CTA on the live public page. */
+  .chq-cfp-links a, .chq-cfp-confirm-actions a:not(.chq-btn) { color: var(--chq-brand); text-decoration: none; }
+  .chq-cfp-links a:hover, .chq-cfp-confirm-actions a:not(.chq-btn):hover { text-decoration: underline; }
 
   /* w14-f (DEC-986): phone-only two-step CFP wizard chrome. Every class
      below is inert on desktop (display: none, no other declaration) --
@@ -224,13 +235,21 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
        pill sizes to padding on desktop, per docs/design/README.md
        §Controls. */
     .chq-cfp-option.chq-cfp-pill { min-height: 44px; }
-    /* :1092/:1135 -- the confirmation page's plain-anchor forward paths
-       ("Submit another talk"/"Browse the sessions", "Log in") carry no
-       .chq-btn class, so they miss theme.ts's shared button/.chq-nav-a
-       floor (src/views/theme.ts:625-630) -- own floor here: min-height +
-       centred flex + horizontal padding, never a bare min-height. */
+    /* :1092/:1135 -- the confirmation page's PLAIN-ANCHOR forward paths
+       (the .chq-cfp-links row, plus the tertiary log-in link beside the
+       primary CTA) carry no .chq-btn class, so they miss theme.ts's
+       shared button/.chq-nav-a phone floor (its max-width:700px block, the
+       "button, input[type=submit], .chq-btn" min-height:44px rule) -- own
+       floor here: min-height + centred flex + horizontal padding, never a
+       bare min-height.
+       Scoped off .chq-btn for the same reason the colour rule above is:
+       .chq-cfp-confirm-actions ALSO holds the filled primary CTA, which
+       DOES carry .chq-btn and so already has theme.ts's 44px floor. Left
+       unscoped, this rule's padding:0 2px would also outrank the shared
+       button/.chq-btn padding:0.5rem 1rem (src/views/theme.ts:413) and
+       squash that button on phone. */
     .chq-cfp-links a,
-    .chq-cfp-confirm-actions a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 2px; }
+    .chq-cfp-confirm-actions a:not(.chq-btn) { min-height: 44px; display: inline-flex; align-items: center; padding: 0 2px; }
 
     /* CfpStepsScript is the only thing that ever changes
        data-chq-cfp-step away from its markup default of "all" (server-
