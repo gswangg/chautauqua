@@ -663,8 +663,18 @@ export const THEME_CSS = `
     padding: 15px 0 0;
   }
 
-  @media (max-width: 700px) {
-    body { overflow-wrap: anywhere; }
+  /* DEC-383 (wave-60 amendment), B8 "Respect the system setting": under
+     prefers-reduced-motion, colour transitions go to 0ms -- states still
+     change, nothing travels. Re-bind the duration tokens themselves rather
+     than adding a parallel rule set, so every consumer that already
+     references var(--chq-motion-color) inherits the reduced value for
+     free. Mirrors app/src/styles.css's block. */
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --chq-motion-color: 0ms;
+      --chq-motion-appear: 0ms;
+      --chq-motion-geometry: 0ms;
+    }
   }
 
   /* DEC-367 amendment (wave 48): the >=44px tap floor is a PHONE rule, not a
@@ -678,6 +688,8 @@ export const THEME_CSS = `
      desktop they fall back to the padding-only box the base rule already
      sets (~34px for fields, ~36px for buttons). */
   @media (max-width: 700px) {
+    body { overflow-wrap: anywhere; }
+
     input[type=search], input[type=text], input[type=email], input[type=tel],
     input[type=url], input[type=password], select, textarea {
       min-height: 44px;
@@ -703,20 +715,6 @@ export const THEME_CSS = `
     }
     .chq-nav a {
       min-height: 44px;
-    }
-  }
-
-  /* DEC-383 (wave-60 amendment), B8 "Respect the system setting": under
-     prefers-reduced-motion, colour transitions go to 0ms -- states still
-     change, nothing travels. Re-bind the duration tokens themselves rather
-     than adding a parallel rule set, so every consumer that already
-     references var(--chq-motion-color) inherits the reduced value for
-     free. Mirrors app/src/styles.css's block. */
-  @media (prefers-reduced-motion: reduce) {
-    :root {
-      --chq-motion-color: 0ms;
-      --chq-motion-appear: 0ms;
-      --chq-motion-geometry: 0ms;
     }
   }
 `;
