@@ -65,6 +65,17 @@
   color: var(--chq-ink);
 }
 
+/* DEC-032 w85 amendment: phone-only landing furniture (label+Open row's
+   Open span, the detail line, the closing note). Hidden at desktop by
+   default -- the phone media block below is the only place that turns
+   them on (DEC-385 narrow-overrides-wide), so desktop keeps rendering the
+   rail-link's bare label text exactly as before. */
+.chq-settings-rail-link-open,
+.chq-settings-rail-link-detail,
+.chq-settings-rail-note {
+  display: none;
+}
+
 /* B8 (G13 fix): "Selected / active row: #EFEBDF fill plus a 3px olive left
    edge. The edge is what distinguishes selected from merely hovered." The
    fill is the token that IS #EFEBDF (--chq-surface-sunk); the border
@@ -155,163 +166,6 @@
    into flex blocks, no cell dropped — DEC-386), with a mirrored
    `data-label` + `td::before` at the 10px floor for cells that are
    meaningless without their column header (DEC-390). */
-@media (max-width: 700px) {
-  .chq-settings-layout {
-    display: block;
-  }
-
-  .chq-settings-rail {
-    position: static;
-    gap: 0;
-  }
-
-  .chq-settings-rail-link {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  .chq-settings-content {
-    display: none;
-    max-width: none;
-  }
-
-  .chq-settings-section {
-    display: none;
-  }
-
-  .chq-settings-layout[data-drilled='true'] .chq-settings-rail {
-    display: none;
-  }
-
-  .chq-settings-layout[data-drilled='true'] .chq-settings-content {
-    display: flex;
-  }
-
-  .chq-settings-layout[data-drilled='true'] .chq-settings-back {
-    display: inline-flex;
-  }
-
-  .chq-settings-layout[data-drilled='true'] .chq-settings-section-active {
-    display: block;
-  }
-
-  /* Controls: full-width, 44px, phone control radius (DEC-383 token, no
-     literal hex). */
-  .chq-settings-panel .chq-input,
-  .chq-settings-panel .chq-select,
-  .chq-settings-panel .chq-textarea {
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  /* Tracks/Rooms/Resources lists: each <li> is already, in DOM order,
-     value-control(s) then a trailing action — a column flex direction is a
-     pure reflow of the existing markup, label above value, action on its
-     own 44px line. */
-  .chq-settings-panel ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .chq-settings-panel li {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  .chq-settings-panel li:last-child {
-    border-bottom: none;
-  }
-
-  .chq-settings-panel li .chq-color-swatch {
-    align-self: flex-start;
-  }
-
-  /* Row actions (Delete/Edit/Save/Revoke) become a boxed 44px tap target,
-     matching the mock's boxed row action. */
-  .chq-settings-panel .chq-link-button {
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    padding: 0 14px;
-    border: 1px solid var(--chq-border);
-    border-radius: var(--chq-r-ctl-phone);
-    background: var(--chq-surface-sunk);
-    font-weight: 600;
-    font-size: 13px;
-    color: var(--chq-ink);
-  }
-
-  /* API tokens / Exports tables -> card stack on the SAME markup
-     (DEC-386): thead hidden, tr/td become flex blocks, no cell dropped. */
-  .chq-settings-panel .chq-table thead {
-    display: none;
-  }
-
-  .chq-settings-panel .chq-table,
-  .chq-settings-panel .chq-table tbody {
-    display: block;
-    width: 100%;
-  }
-
-  .chq-settings-panel .chq-table tbody tr {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  .chq-settings-panel .chq-table tbody tr:last-child {
-    border-bottom: none;
-  }
-
-  .chq-settings-panel .chq-table tbody td {
-    display: block;
-    padding: 0;
-    border-bottom: none;
-  }
-
-  .chq-settings-panel .chq-table tbody td:last-child {
-    padding-top: 4px;
-  }
-
-  /* DEC-390 escape hatch: a cell that's meaningless without its column
-     header (a masked token, a last-used date) gets the th string mirrored
-     onto data-label, rendered through td::before at the 10px type floor —
-     no wrapper element, no second copy of the string. */
-  .chq-settings-panel .chq-table tbody td[data-label]::before {
-    content: attr(data-label) ': ';
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--chq-muted);
-  }
-
-  /* Embeds field picker: checkbox rows reach a 44px tap target via
-     centred flex. */
-  .chq-settings-panel fieldset {
-    border: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .chq-settings-panel fieldset label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 44px;
-  }
-}
 
 /* w1-b/DEC-728: SummarySection (the settings summary/edit-drill primitive)
    reuses this exact numbered-section-head/-row vocabulary rather than
@@ -848,13 +702,6 @@
   flex-direction: column;
 }
 
-@media (max-width: 700px) {
-  .chq-settings-embed-field-pair {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-}
 
 /* w15-e/DEC-691, w5-e amendment: People and roles -- Chautauqua Settings.dc.html
    :978-1001 4-track row (identity, role, scope, actions). */
@@ -913,33 +760,6 @@
   font-weight: 700;
 }
 
-@media (max-width: 700px) {
-  .chq-settings-public-pages-row {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .chq-settings-saved-embed-row {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .chq-settings-people-row {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .chq-settings-people-actions {
-    justify-self: stretch;
-    justify-content: flex-start;
-  }
-}
 
 /* task-w3-c/DEC-747: a SummarySection row with no label (Tracks and
    rooms' two-column grid has no row caption in the mock) collapses the
@@ -1331,24 +1151,6 @@
   font-weight: 600;
 }
 
-@media (max-width: 700px) {
-  .chq-settings-tracks-rooms-grid {
-    grid-template-columns: 1fr;
-    gap: 20px 0;
-  }
-
-  .chq-settings-portal-resource-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  .chq-settings-portal-resource-list li:last-child {
-    border-bottom: none;
-  }
-}
 
 /* w18-f/DEC-896, consolidated w1-e/DEC-781: SummarySectionRow is the
    frame's three-column definition grid (label / value / hint) -- mock
@@ -1366,6 +1168,272 @@
    only finds the first match.) */
 
 @media (max-width: 700px) {
+  .chq-settings-layout {
+    display: block;
+  }
+
+  .chq-settings-rail {
+    position: static;
+    gap: 0;
+  }
+
+  /* DEC-032 w85 amendment: the landing is a one-column list of panel
+     groups (Chautauqua Settings.dc.html :283-292), not the desktop rail
+     reflowed -- 18px vertical padding, hairline separator, label (16/600)
+     baseline-aligned against brand-olive "Open" (13/700), a 13px muted
+     detail line underneath. Replaces the bare 44px/14px link the desktop
+     rail otherwise renders. */
+  .chq-settings-rail-link {
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 9px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-settings-rail-link-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .chq-settings-rail-link-label {
+    font-family: var(--chq-font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--chq-ink);
+  }
+
+  .chq-settings-rail-link-open {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-brand);
+  }
+
+  .chq-settings-rail-link-detail {
+    display: block;
+    font-size: 13px;
+    color: var(--chq-ink-2);
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  /* Closing sentence (:307-309): plain text, not a control -- the
+     disabled token has exactly two legal uses (inert control, drag
+     handle) and this is neither. */
+  .chq-settings-rail-note {
+    display: block;
+    padding: 18px 0 0;
+    font-size: 13px;
+    color: var(--chq-ink-2);
+    line-height: 1.5;
+  }
+
+  .chq-settings-content {
+    display: none;
+    max-width: none;
+  }
+
+  .chq-settings-section {
+    display: none;
+  }
+
+  .chq-settings-layout[data-drilled='true'] .chq-settings-rail {
+    display: none;
+  }
+
+  .chq-settings-layout[data-drilled='true'] .chq-settings-content {
+    display: flex;
+  }
+
+  /* Drill shell: back link at the 44px floor, Settings-local 26px H1
+     register (DEC-643 wave-83 amendment -- Settings drills sit at 26px,
+     not the 25px general drill-in register; Chautauqua Settings.dc.html
+     :350/:396 both draw the drilled h1 at font-size:26px). The footer is
+     the shell tab bar (App.tsx), not a page-level dock -- nothing to
+     build here. */
+  .chq-settings-layout[data-drilled='true'] .chq-settings-back {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .chq-settings-page[data-drilled='true'] .chq-page-title {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .chq-settings-layout[data-drilled='true'] .chq-settings-section-active {
+    display: block;
+  }
+
+  /* Controls: full-width, 44px, phone control radius (DEC-383 token, no
+     literal hex). */
+  .chq-settings-panel .chq-input,
+  .chq-settings-panel .chq-select,
+  .chq-settings-panel .chq-textarea {
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* Tracks/Rooms/Resources lists: each <li> is already, in DOM order,
+     value-control(s) then a trailing action — a column flex direction is a
+     pure reflow of the existing markup, label above value, action on its
+     own 44px line. */
+  .chq-settings-panel ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chq-settings-panel li {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-settings-panel li:last-child {
+    border-bottom: none;
+  }
+
+  .chq-settings-panel li .chq-color-swatch {
+    align-self: flex-start;
+  }
+
+  /* Row actions (Delete/Edit/Save/Revoke) become a boxed 44px tap target,
+     matching the mock's boxed row action. */
+  .chq-settings-panel .chq-link-button {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--chq-ink);
+  }
+
+  /* API tokens / Exports tables -> card stack on the SAME markup
+     (DEC-386): thead hidden, tr/td become flex blocks, no cell dropped. */
+  .chq-settings-panel .chq-table thead {
+    display: none;
+  }
+
+  .chq-settings-panel .chq-table,
+  .chq-settings-panel .chq-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-settings-panel .chq-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-settings-panel .chq-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .chq-settings-panel .chq-table tbody td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .chq-settings-panel .chq-table tbody td:last-child {
+    padding-top: 4px;
+  }
+
+  /* DEC-390 escape hatch: a cell that's meaningless without its column
+     header (a masked token, a last-used date) gets the th string mirrored
+     onto data-label, rendered through td::before at the 10px type floor —
+     no wrapper element, no second copy of the string. */
+  .chq-settings-panel .chq-table tbody td[data-label]::before {
+    content: attr(data-label) ': ';
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  /* Embeds field picker: checkbox rows reach a 44px tap target via
+     centred flex. */
+  .chq-settings-panel fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chq-settings-panel fieldset label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+  }
+  .chq-settings-embed-field-pair {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .chq-settings-public-pages-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .chq-settings-saved-embed-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .chq-settings-people-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .chq-settings-people-actions {
+    justify-self: stretch;
+    justify-content: flex-start;
+  }
+  .chq-settings-tracks-rooms-grid {
+    grid-template-columns: 1fr;
+    gap: 20px 0;
+  }
+
+  .chq-settings-portal-resource-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-settings-portal-resource-list li:last-child {
+    border-bottom: none;
+  }
   /* Phone rows already reflow as a single-column stack (label above
      value); the definition grid is a desktop-width layout only. The hint
      stays visible, right-aligned under the value. */
