@@ -2567,3 +2567,65 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* v12m-w7-b, DEC-385 wave-7 amendment: source order, not specificity, decides
+   between a phone `@media` block and a later top-level rule on the same
+   selector -- a phone override placed BEFORE a wider top-level re-declaration
+   loses the cascade at every width, including 390. Two shadowed pairs exist
+   in this file; this terminal block re-states both so the phone-narrow value
+   is the one that actually wins. Additive only, appended at file end. */
+@media (max-width: 700px) {
+  /* Beats the top-level 5-track grid at :1675-1677
+     (grid-template-columns: 1fr 140px 90px auto auto), which source-order
+     overrides the phone-narrow 1fr set inside the earlier phone block at
+     :1208-1212. */
+  .chq-review-reviewer-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* Beats the top-level 2-up grid at :1667-1670
+     (grid-template-columns: repeat(2, minmax(0, 1fr))), which source-order
+     overrides the phone-narrow 1fr 1fr set inside the earlier phone block at
+     :1380-1382. */
+  .chq-review-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* DEC-393 wave-7 amendment: DESIGN-RULINGS.md:189 names the bare-anchor
+     evasion -- a row action styled only by font-size/weight with no height
+     or padding measures under the 44px floor. :115 rules that a row action
+     with a real target gets the roomy variant. Grow the hit box on the
+     anchors themselves (not their flex container, which has no intrinsic
+     height of its own) in both axes: min-height for the vertical floor,
+     padding-inline for the horizontal one -- and cancel the added
+     horizontal space with an equal-and-opposite margin-inline so the ink
+     stays exactly where the frame draws it. */
+  .chq-review-plan-actions > a,
+  .chq-review-plan-actions > .chq-link-button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-reviewer-plan-row-action {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* Back links: same evasion, same fix -- .chq-review-back (:27) and
+     .chq-review-editor-back-link (:1594) are both plain-text anchors with no
+     height or padding declared anywhere in this file. */
+  .chq-review-back,
+  .chq-review-editor-back-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+}
