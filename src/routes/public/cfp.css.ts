@@ -270,7 +270,11 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
     /* Back has nothing to return to on step 1 -- the frame's step-1 dock
        never draws it. test/cfp-phone-steps.test.ts pins the two selectors
        above byte-for-byte; this one is additive, not a replacement. */
+    /* phone-hidden: navigation control with nothing to reach -- step 1 is
+       the first step, there is no previous step to go back to (DEC-919). */
     [data-chq-cfp-step="1"] .chq-cfp-step-back { display: none; }
+    /* phone-hidden: navigation control with nothing to reach -- step 2 is
+       the last step of the wizard, there is no next step (DEC-919). */
     [data-chq-cfp-step="2"] .chq-cfp-step-next { display: none; }
   }
 
