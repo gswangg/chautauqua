@@ -219,6 +219,17 @@
    frame gives sentence-case ink -- wave-19 correction: frame :80 sizes it
    12px/700/line-height:1.25, not 15px. This overrides the title only;
    .chq-speakers-task-due keeps the shared register unchanged. */
+/* v12: the column head is a three-line stack -- name · due · "7 of 12
+   done" (frame: `display:flex; flex-direction:column; gap:2px`). */
+.chq-speakers-task-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* v12: the task NAME is now the LINK into the task view (one task, every
+   speaker). Same 12px/700 ink register the plain title carried -- a column
+   head that is also the entry point, so the grid adds no controls. */
 .chq-speakers-task-title {
   font-size: 12px;
   font-weight: 700;
@@ -228,8 +239,32 @@
   color: var(--chq-ink);
 }
 
+a.chq-speakers-task-title:hover {
+  color: var(--chq-brand);
+}
+
+/* v12's per-column aggregate: "which task is lagging across the roster" is
+   the one question worth answering while scanning, and the head is the one
+   place it belongs. In INK when short of the assigned set (there is work
+   left), muted 600 when the column is finished -- de-emphasis by weight,
+   never by the --chq-disabled token, which fails the contrast floor and
+   whose escape into "a finished-column count" DESIGN-RULINGS names by
+   name. */
+.chq-speakers-task-done {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-ink);
+}
+
+.chq-speakers-task-done-settled {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--chq-muted);
+}
+
 .chq-speakers-task-due {
-  margin-top: 2px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -244,21 +279,80 @@
   border-bottom: 2px solid var(--chq-ink);
 }
 
-/* Ruling A12 (DEC-662 amendment, wave 25): title + the ONE quiet Edit
-   control share a line -- Remove moved inside the editor Edit opens, so a
-   column header is no longer a two-link row (six columns of Edit+Remove
-   read as twelve controls whose job was labelling). */
+/* Ruling A12 (DEC-662 amendment, wave 25) put ONE quiet Edit control per
+   task column. v12 finishes the collapse Ruling A12 started: the six
+   per-column Edit links become ONE "Edit tasks" control beside the SPEAKER
+   column head, so the six heads carry nothing but the label, the date and
+   the aggregate. This row is now that head. */
 .chq-speakers-task-title-row {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
 }
 
+/* v12 frame: 11px/700, in the link register (not the muted 10px/600 the
+   per-column Edit used) -- there is one of these on the page now, and it
+   opens a real editor. */
 .chq-speakers-task-edit {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: normal;
   text-transform: none;
+  white-space: nowrap;
+}
+
+/* The menu "Edit tasks" opens: one row per task on the event, each opening
+   that task's existing editor. Reuses the anchored-dropdown shape of
+   .chq-participation-menu-panel below (same useMenu hook) rather than
+   inventing a second menu idiom. */
+.chq-speakers-task-edit-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.chq-speakers-task-edit-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  background: var(--chq-surface);
+  border: 1px solid var(--chq-border);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--chq-hairline);
+}
+
+.chq-speakers-task-edit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 9px 16px;
+  border: none;
+  background: none;
+  font-family: var(--chq-font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--chq-ink);
+  cursor: pointer;
+}
+
+.chq-speakers-task-edit-item:hover {
+  background: var(--chq-surface-sunk);
+  /* Re-assert the label colour: a <button> that ever renders as an <a>, or
+     inherits a UA :hover rule, otherwise loses its ink against the new
+     fill (test/filled-control-hover-label.scan.test.ts). */
+  color: var(--chq-ink);
+}
+
+.chq-speakers-task-edit-item-due {
+  font-size: 11px;
+  font-weight: 600;
   color: var(--chq-muted);
 }
 
@@ -281,10 +375,13 @@
   color: var(--chq-muted);
 }
 
+/* v12: a cell carries status and nothing else, so the frame tightens the
+   row gap from 7px to 6px -- the gap now only has to clear the hover ring,
+   not separate a pill from two links. */
 .chq-speakers-cell {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -296,19 +393,45 @@
   opacity: 0.5;
 }
 
-/* One control family for all three onboarding statuses (DEC-730): shared
-   box metrics, a hover ring, cursor:pointer -- fill/outline/ink-outline is
-   the ONLY difference, so overdue reads as clickable like its siblings. */
+/* One control family for all onboarding statuses (DEC-730): shared type, a
+   hover ring, cursor:pointer.
+   ---------------------------------------------------------------------
+   DESIGN PACK v12 -- STATUS WEIGHT INVERSION. This base rule no longer
+   carries padding or border-radius, and no longer sets a 700 weight,
+   because v12 splits the family along TWO independent axes that must be
+   read (and edited) separately:
+
+     axis 1, MEANING -- carried by .chq-speakers-status-<state>. Colour and
+       weight ONLY, identical at every density, so the same field never
+       changes vocabulary between screens.
+     axis 2, DENSITY -- carried by .chq-speakers-status-dense /
+       .chq-speakers-status-roomy. Geometry ONLY.
+
+   v12's ruling ("Weight goes to the exception, never to the resting
+   state"): complete is 30-odd of 42 cells in the seeded event, so rendering
+   it filled olive turned the page into a wall of the one status nobody
+   needs to act on. Inverted, per frame Chautauqua Speakers.dc.html's DONE/
+   PEND/LATE constants:
+
+     overdue  -> FILLED ink; the only strong mark on the page
+     pending  -> bold ink, no fill and no rule
+     complete -> muted 600 text, no fill, no border, no radius
+
+   This OVERRIDES DEC-730's original "complete is a filled pill, pending is
+   an outline pill, overdue is ink-outlined" reading, which the v12 pack
+   supersedes wholesale (docs/design/DESIGN-RULINGS.md).
+
+   NOTE the frame's own legend says "pending is bold ink", while the
+   RULINGS prose says "pending outlined". The frame is geometry authority
+   (it is what the screens render), so pending is bold ink here and the
+   grid's legend quotes the frame's sentence verbatim. */
 .chq-speakers-status {
   display: inline-flex;
   align-items: center;
   font-family: var(--chq-font-ui);
   font-size: 11px;
-  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  border-radius: 3px;
-  padding: 3px 8px;
   cursor: pointer;
 }
 
@@ -316,42 +439,65 @@
    the status-cell ring is OUTSET, not inset -- it reads as a halo drawn
    around the pill rather than a bevel eaten out of it. The table's own
    td padding (10px 14px, styles.css .chq-table th/td) and the cell's own
-   7px inter-pill gap (.chq-speakers-cell) both clear the 2px ring with
+   6px inter-pill gap (.chq-speakers-cell) both clear the 2px ring with
    room to spare, so no neighbour clips it. Hover paints no new background
    (fill/outline stay owned by the -complete/-pending/-overdue modifiers
-   below), so the ring is the only hover affordance here. */
+   below), so the ring is the only hover affordance here -- and after v12's
+   inversion two of the three states paint no box at all, which is exactly
+   why the ring cannot become a fill: it is the only thing telling a bare
+   COMPLETE word that it is a control. */
 .chq-speakers-status:hover {
   box-shadow: 0 0 0 2px var(--chq-border-strong);
 }
 
-/* Complete: filled olive pill. */
+/* ---- axis 1: MEANING (colour + weight only; never geometry) ---------- */
+
+/* Complete RECEDES (v12): muted 600 text, no fill, no border, no radius.
+   Weight, not lightness, is what de-emphasises -- 600 on var(--chq-muted)
+   is 6.28:1, where the old --chq-disabled route fails the 4.5 floor
+   (DESIGN-RULINGS, "Disabled ... has exactly two legal uses"). */
 .chq-speakers-status-complete {
-  color: var(--chq-on-brand);
-  background: var(--chq-brand);
+  color: var(--chq-muted);
+  font-weight: 600;
+  background: none;
   border: none;
 }
 
-/* Pending, not overdue: outline pill -- the shared "not done" axis. */
+/* Pending, not overdue: bold ink, bare -- frame constant PEND. No rule and
+   no fill, so the only boxed mark left in a column is the overdue one. */
 .chq-speakers-status-pending {
-  color: var(--chq-muted);
-  font-weight: 600;
+  color: var(--chq-ink);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  background: none;
+  border: none;
+}
+
+/* Overdue: the exception, and the ONE strong mark on the page -- filled ink
+   (frame constant LATE). Never colour/red (DEC-367). */
+.chq-speakers-status-overdue {
+  color: var(--chq-on-ink);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  background: var(--chq-ink);
+  border: none;
+}
+
+/* Invited (participation only). v12 splits this off .chq-speakers-status-
+   pending, which the two axes shared while both were outlined: the frame's
+   INV.Invited is still `1px solid #BAB6A6` on #3F4237 while the TASK
+   pending token went bare bold-ink, so one class can no longer serve both.
+   Amends DEC-830/DEC-789's "one control family, four modifiers". */
+.chq-speakers-status-invited {
+  color: var(--chq-ink-2);
+  font-weight: 700;
+  letter-spacing: 0.08em;
   background: none;
   border: 1px solid var(--chq-border);
 }
 
-/* Overdue: same family, ink-outlined bold caps -- the urgency modifier,
-   never colour/red (DEC-367/DEC-730). */
-.chq-speakers-status-overdue {
-  color: var(--chq-ink);
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  background: none;
-  border: 1px solid var(--chq-ink);
-}
-
-/* Not invited: dashed outline -- the fourth DEC-730 modifier, distinct from
-   the pending task cells' solid outline so the two status axes never look
-   like one control family (DEC-830). */
+/* Not invited: dashed outline -- distinct from the invited chip's solid
+   rule so "nothing sent yet" never reads as "invited" (DEC-830). */
 .chq-speakers-status-none {
   color: var(--chq-muted);
   font-weight: 600;
@@ -374,9 +520,64 @@
   border: 1px solid var(--chq-border);
 }
 
+/* ---- axis 2: DENSITY (geometry only; never colour or weight) ---------
+   v12 ruling, "Status tokens pair by density, not by device": the DENSE
+   variant is for a matrix cell that must fit a 178px column twelve times
+   over; the ROOMY variant is for anywhere a row can carry a real target --
+   the phone cards, the speaker detail's task rows, the task views. Frame
+   constants: DONE/PEND/LATE are dense, DONE_M/PEND_M/LATE_M are roomy, and
+   the pair differs ONLY in `min-height` + horizontal padding.
+
+   THESE TWO BLOCKS MUST BE EDITED TOGETHER. The ruling names the exact
+   failure that follows from editing one alone: a bordered Pending box came
+   back on three phone frames after the desktop one had gone bare, because
+   only the dense half of the pair was touched. Anything that changes the
+   look of a state belongs in the MEANING block above, which both densities
+   share; only min-height/padding/radius belongs here.
+
+   The 44px floor is also a phone-tap-target rule (DESIGN-RULINGS): the
+   floor is min-height PLUS horizontal padding -- padding alone does not
+   reach it, and without padding the hit box is only as wide as the text.
+   Never author a min-height below 44px on the roomy half. */
+.chq-speakers-status-dense {
+  padding: 3px 0;
+}
+
+.chq-speakers-status-roomy {
+  min-height: 44px;
+  padding: 0 10px;
+}
+
+/* The states that PAINT a box (a fill or a rule) need horizontal breathing
+   room and a radius at BOTH densities; the bare ones (complete, pending)
+   take neither, in either -- "complete recedes ... no fill, border or
+   radius". Frame: LATE keeps `padding:3px 8px; border-radius:3px` while
+   DONE/PEND sit at `padding:3px 0` with no radius at all. */
+.chq-speakers-status-overdue,
+.chq-speakers-status-invited,
+.chq-speakers-status-none,
+.chq-speakers-status-neutral {
+  border-radius: 3px;
+}
+
+.chq-speakers-status-dense.chq-speakers-status-overdue,
+.chq-speakers-status-dense.chq-speakers-status-invited,
+.chq-speakers-status-dense.chq-speakers-status-none,
+.chq-speakers-status-dense.chq-speakers-status-neutral {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* The "—" a speaker with no assignment of this task carries. v12's Disabled
+   ruling: that token has exactly TWO legal uses (an inert control and a drag
+   handle), and an empty VALUE is neither -- it fails the 4.5 floor at 3.06:1,
+   so anything carrying meaning in it is unreadable by someone who needs the
+   contrast. De-emphasis is weight, not lightness: 600 on var(--chq-muted)
+   (6.28:1) is the register every other resting state uses. */
 .chq-speakers-cell-none {
   font-size: 11px;
-  color: var(--chq-disabled);
+  font-weight: 600;
+  color: var(--chq-muted);
 }
 
 /* DEC-830: the participation menu (ParticipationMenu.tsx) replaces the old
@@ -433,7 +634,12 @@
    inherited chain -- each modifier still declares its own `color`
    (var(--chq-muted) or var(--chq-ink)) on the trigger, which the caret
    now inherits instead of re-declaring, reproducing today's rendered
-   colour exactly on -pending/-overdue/-none/-neutral. */
+   colour exactly on -pending/-overdue/-none/-neutral.
+   v12 note: the inversion moved the fill from Confirmed (-complete) to
+   Declined (-overdue), so the collision this rule prevents now lives on a
+   different modifier. `color: inherit` is why nothing had to change --
+   which is the argument for keeping it inherit rather than naming a
+   token. */
 .chq-participation-menu-caret {
   margin-left: 6px;
   font-size: 11px;
@@ -590,10 +796,16 @@
   font-size: 11px;
 }
 
-.chq-speakers-file-link,
-.chq-speakers-response-link {
+/* v12: `.chq-speakers-response-link` is GONE with the per-cell Response
+   link it dressed -- the grid routes to one speaker by row and to one task
+   by column head, and a third per-cell path to the same two things was
+   what the pack removed ("Reading an artifact is not a grid job"). The file
+   link survives only where a document is the row's subject (the speaker
+   detail's deliverables list, the response modal's answer fields), and v12
+   drops it from 700 to 600 so it stops out-shouting the status beside it. */
+.chq-speakers-file-link {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* DEC-829 amendment (wave 59): the quiet row-level marker a declined-only
@@ -710,6 +922,16 @@
 
 .chq-speakers-grid-caption {
   font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* v12: the legend the weight inversion needs -- three states that are no
+   longer three pills have to be named once, in the frame's own words, or
+   nobody learns the vocabulary. Frame :73, quoted verbatim. Sits between
+   the pagination summary and the click-to-toggle caption, one step quieter
+   than both (12px) because it teaches rather than instructs. */
+.chq-speakers-grid-legend {
+  font-size: 12px;
   color: var(--chq-muted);
 }
 
@@ -909,7 +1131,7 @@
    buttons also looks inconsistent here", then USER RULING: the participation
    control moved up beside the name (one control, chip-sized, in the header
    rollup line) and this row is Email + Remind only. The frame
-   (docs/design/Chautauqua Speakers.dc.html: 346-347) pins both buttons at
+   (docs/design/Chautauqua Speakers.dc.html: 352-353) pins both buttons at
    `min-height:46px`; the app rendered 42.8px vs 35px because .chq-btn
    declares no line-height, so the Email <a> inherits body's 1.6 while the
    Remind <button> takes the UA's default. Fixing that on the global .chq-btn is
@@ -978,13 +1200,34 @@
    copy: every row now resolves the same four tracks whether or not it
    carries the link. The Files row keeps `auto` legitimately -- its last cell
    is a Download link on every row, so `auto` cannot differ there. */
+/* Design pack v12 re-cut these tracks to `1fr 132px 96px 150px` (frame
+   :375). Two of the three fixed tracks moved for a reason: the STATUS track
+   narrowed 130 -> 96 because the v12 chip no longer carries a border box on
+   two of its three states, and the ACTION track widened 110 -> 150 because
+   the Remind link now carries its own reminder history rather than the fixed
+   words "Remind this task". This OVERRIDES the `1fr 150px 130px 110px`
+   shipped for the user-filed alignment fix -- that fix's substance (a FIXED
+   action track, never `auto`, so a completed row that renders no link cannot
+   slide the other three columns sideways) is what mattered and is kept. */
 .chq-speaker-detail-tasks-row {
   display: grid;
-  grid-template-columns: 1fr 150px 130px 110px;
+  grid-template-columns: 1fr 132px 96px 150px;
   gap: 18px;
   align-items: center;
   padding: 12px 0;
   border-bottom: 1px solid var(--chq-hairline);
+}
+
+/* Frame :376/:378: the due date never wraps, and the action cell is flushed
+   to the row's right edge inside its own fixed track. Addressed on the row's
+   CHILDREN, not on the link -- the grid items here are the role="cell"
+   wrappers, so justify-self on the inner button would do nothing. */
+.chq-speaker-detail-tasks-row > :nth-child(2) {
+  white-space: nowrap;
+}
+
+.chq-speaker-detail-tasks-row > :nth-child(4) {
+  justify-self: end;
 }
 
 .chq-speaker-detail-files-row {
@@ -1012,6 +1255,17 @@
 
 .chq-speaker-detail-task-remind {
   font-size: 12px;
+  white-space: nowrap;
+}
+
+/* v12: the reminder-history caption beside the two 46px action controls
+   (frame :347). Quiet by design -- it is context for the button next to it,
+   not a control. */
+.chq-speaker-detail-remind-history {
+  font-size: 12px;
+  line-height: 1.5;
+  padding-left: 6px;
+  color: var(--chq-muted);
 }
 
 /* DEC-385: narrow overrides wide via max-width only -- each header-ruled

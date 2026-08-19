@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { DEC_827 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { useMenu } from '../../lib/useMenu';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { GridFilters } from './GridFilters';
 import { TaskCell, formatDueDate, isRowNotChased } from './TaskCell';
 import { TaskModal } from './TaskModal';
-import { ResponseModal } from './ResponseModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
@@ -20,7 +20,6 @@ import { MAX_TASK_ASSIGNEES } from '../../lib/batch-caps';
 import {
   DEFAULT_GRID_FILTERS,
   INVITE_STATUS_LABELS,
-  type AssignmentResponseDetail,
   type AssignmentStatus,
   type EventForm,
   type GridFilterState,
@@ -50,6 +49,96 @@ function taskDueLabel(task: { dueDate: number | null; required: boolean }, now: 
   if (task.dueDate === null) return `No due date${suffix}`;
   const base = `Due ${formatDueDate(task.dueDate, now)}`;
   return `${base}${suffix}`;
+}
+
+/** Design pack v12: the column head's third line -- the per-task aggregate.
+ *
+ * The pack arrived at this by rejecting two weaker marks in the cells
+ * themselves: the per-cell File/Response links (a third route to two things
+ * already routed) and then a muted attachment glyph ("is something
+ * attached?" is not a question anyone asks while scanning, because it is not
+ * actionable). What IS actionable at a glance is which task is lagging
+ * across the roster, and the head is the one place that belongs.
+ *
+ * `settled` is the weight decision, not a second sentence: a finished column
+ * recedes to muted 600 and an unfinished one reads in ink. Note that a
+ * finished column is deliberately NOT rendered in --chq-disabled --
+ * DESIGN-RULINGS names "a finished-column count" as one of the three places
+ * that token escaped into a design as "the quiet version of something", and
+ * it fails the contrast floor at 3.06:1. De-emphasis is weight, not
+ * lightness. */
+export function taskDoneLabel(task: OnboardingTask): { text: string; settled: boolean } | null {
+  const { assigned, complete } = task;
+  if (assigned === undefined || complete === undefined) return null;
+  // Nobody carries this task, so there is no progress to state. Saying "all
+  // 0 done" would read as finished; this says what is actually true.
+  if (assigned === 0) return { text: 'Assigned to no one', settled: true };
+  if (complete >= assigned) return { text: `All ${assigned} done`, settled: true };
+  return { text: `${complete} of ${assigned} done`, settled: false };
+}
+
+/** Frame Chautauqua Speakers.dc.html:73, quoted verbatim. The frame's own
+ * legend and the RULINGS prose disagree on the middle clause -- the prose
+ * says "pending outlined", the frame says "pending is bold ink" and its PEND
+ * constant carries no border at all. The frame is what the screens render,
+ * so the frame wins, here and in speakers.css. */
+export const GRID_STATUS_LEGEND =
+  'Overdue is filled · pending is bold ink · complete recedes · a task name opens that task across every speaker';
+
+/** The single "Edit tasks" control v12 puts beside the Speaker column head,
+ * in place of the six per-column Edit links.
+ *
+ * The frame draws the control but not what it opens, so this reuses what
+ * already exists rather than inventing a screen: a menu of the event's
+ * tasks, each row opening THAT task's existing editor (TaskModal, which
+ * still owns Remove per Ruling A12). Same useMenu primitive and the same
+ * anchored-panel shape as ParticipationMenu -- DEC-969's one menu
+ * behaviour, not a second dropdown idiom. */
+function EditTasksMenu({
+  tasks,
+  now,
+  onEdit,
+}: {
+  tasks: OnboardingTask[];
+  now: number;
+  onEdit: (task: OnboardingTask) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const { containerRef, onPanelKeyDown } = useMenu(open, close);
+
+  return (
+    <span className="chq-speakers-task-edit-menu" ref={containerRef}>
+      <button
+        type="button"
+        className="chq-link-button chq-speakers-task-edit"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        Edit tasks
+      </button>
+      {open && (
+        <div className="chq-speakers-task-edit-panel" role="menu" aria-label="Edit tasks" onKeyDown={onPanelKeyDown}>
+          {tasks.map((task) => (
+            <button
+              key={task.id}
+              type="button"
+              role="menuitem"
+              className="chq-speakers-task-edit-item"
+              onClick={() => {
+                onEdit(task);
+                close();
+              }}
+            >
+              <span>{task.title}</span>
+              <span className="chq-speakers-task-edit-item-due">{taskDueLabel(task, now)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
 }
 
 /** Builds the DEC-340 query string from the current filters + page — every
@@ -288,12 +377,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   // DEC-805: tracks in-flight per-row portal-invite sends so the quiet
   // control can't be double-clicked into two overlapping sends.
   const [invitingContactIds, setInvitingContactIds] = useState<Set<string>>(new Set());
-  const [viewingResponse, setViewingResponse] = useState<{ assignmentId: string; contactName: string } | null>(
-    null,
-  );
-  const [responseLoading, setResponseLoading] = useState(false);
-  const [responseError, setResponseError] = useState<string | null>(null);
-  const [responseDetail, setResponseDetail] = useState<AssignmentResponseDetail | null>(null);
+  // Design pack v12: the response READER moved off this page entirely. The
+  // per-cell "Response" link was its only entry point, and v12 deletes that
+  // link (a grid cell carries status and nothing else) -- answers are read
+  // on the task view, where one task's answers sit side by side and can
+  // actually be compared. ResponseModal + its open/patch/rollback state
+  // went with it rather than being left here unreachable.
   // DEC-933: the task column being edited (Edit control) / offered for
   // removal (Remove control) -- null when neither modal/dialog is open.
   const [editingTask, setEditingTask] = useState<OnboardingTask | null>(null);
@@ -632,75 +721,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     }
   }
 
-  async function openResponse(assignmentId: string, contactName: string) {
-    setViewingResponse({ assignmentId, contactName });
-    setResponseDetail(null);
-    setResponseError(null);
-    setResponseLoading(true);
-    try {
-      const detail = await apiGet<AssignmentResponseDetail>(`/task-assignments/${assignmentId}/response`);
-      setResponseDetail(detail);
-    } catch (err) {
-      setResponseError(err instanceof ApiError ? err.message : 'Failed to load response');
-    } finally {
-      setResponseLoading(false);
-    }
-  }
-
-  function closeResponse() {
-    setViewingResponse(null);
-    setResponseDetail(null);
-    setResponseError(null);
-  }
-
-  // DEC-599/DEC-694: 'Reopen this task' in the response modal writes the
-  // same PATCH /task-assignments/:id status the grid cells write, and
-  // reconciles optimistically with loud rollback on ApiError (matching
-  // toggleCell) -- the grid row AND the open modal's status must agree.
-  // DEC-265 amendment: the rollback now surfaces through the shared
-  // pendingFailure banner (naming the speaker + task) rather than a bare
-  // responseError string, and the reverted grid cell keeps its 'not saved'
-  // marker until the banner clears.
-  async function applyResponseStatus(assignmentId: string, desired: AssignmentStatus, speakerName: string, taskTitle: string) {
-    if (!grid) return;
-    const previousGrid = grid;
-    const previousDetail = responseDetail;
-    const completedAt = desired === 'complete' ? now : null;
-
-    setGrid({
-      ...grid,
-      rows: grid.rows.map((row) => ({
-        ...row,
-        cells: row.cells.map((cell) =>
-          cell.assignmentId === assignmentId ? { ...cell, status: desired, completedAt } : cell,
-        ),
-      })),
-    });
-    setResponseDetail((prev) => (prev ? { ...prev, status: desired, completedAt } : prev));
-    setResponseError(null);
-
-    try {
-      await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
-      setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
-    } catch (err) {
-      setGrid(previousGrid);
-      setResponseDetail(previousDetail);
-      setPendingFailure({
-        assignmentId,
-        message: cellFailureMessage(speakerName, taskTitle, err),
-        retry: () => {
-          void applyResponseStatus(assignmentId, desired, speakerName, taskTitle);
-        },
-      });
-    }
-  }
-
-  async function changeResponseStatus(assignmentId: string, desired: AssignmentStatus) {
-    if (!grid) return;
-    const { speakerName, taskTitle } = findCellNaming(grid, assignmentId);
-    await applyResponseStatus(assignmentId, desired, speakerName, taskTitle);
-  }
-
   async function handleCreateTask(input: NewTaskInput) {
     if (!eventId) return;
     await apiPost(`/events/${eventId}/tasks`, input);
@@ -779,8 +799,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         <div className="chq-speakers-head-titles">
           <h1 className="chq-page-title">Speakers</h1>
           <span className="chq-summary">
-            <strong>{counts?.speakers ?? 0}</strong> accepted &middot; <strong>{counts?.outstandingRequired ?? 0}</strong>{' '}
-            tasks open &middot; <strong>{counts?.overdue ?? 0}</strong> overdue
+            {/* v12 drops the middle "N tasks open" clause: the column
+                heads now carry per-task progress, which is the same fact
+                broken down usefully, and the page line is left with the
+                two numbers that are actually a summary. */}
+            <strong>{counts?.speakers ?? 0}</strong> accepted &middot; <strong>{counts?.overdue ?? 0}</strong> overdue
           </span>
         </div>
         <div className="chq-speakers-head-actions">
@@ -879,27 +902,49 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
             <table className="chq-table chq-speakers-grid">
               <thead>
                 <tr>
-                  <th>Speaker &middot; Participation</th>
-                  {visibleTasks.map((task) => (
-                    <th key={task.id}>
-                      {/* Ruling A12 (DEC-662 amendment, wave 25): ONE quiet
-                          Edit control per column, on the same line as the
-                          title -- Remove now lives inside the editor Edit
-                          opens (six columns of Edit+Remove was twelve
-                          controls in a row whose job is labelling). */}
-                      <div className="chq-speakers-task-title-row">
-                        <span className="chq-speakers-task-title">{task.title}</span>
-                        <button
-                          type="button"
-                          className="chq-link-button chq-speakers-task-edit"
-                          onClick={() => setEditingTask(task)}
-                        >
-                          Edit
-                        </button>
-                      </div>
-                      <div className="chq-speakers-task-due">{taskDueLabel(task, now)}</div>
-                    </th>
-                  ))}
+                  {/* Design pack v12 finishes the collapse Ruling A12
+                      (DEC-662 amendment, wave 25) started: A12 cut each
+                      column's Edit+Remove pair down to one Edit, and v12
+                      cuts the six surviving Edits down to ONE "Edit tasks"
+                      beside the Speaker head. Six columns whose job is
+                      labelling carried six controls; now they carry none,
+                      and the one control that remains sits where a
+                      table-wide action belongs. */}
+                  <th>
+                    <div className="chq-speakers-task-title-row">
+                      <span>Speaker &middot; Participation</span>
+                      <EditTasksMenu tasks={visibleTasks} now={now} onEdit={setEditingTask} />
+                    </div>
+                  </th>
+                  {visibleTasks.map((task) => {
+                    const done = taskDoneLabel(task);
+                    return (
+                      <th key={task.id}>
+                        {/* v12: name · due · "N of M done". The NAME is the
+                            link into the task view -- the head is both the
+                            aggregate and the entry point, so the grid adds
+                            no controls and answers a question it previously
+                            could not. */}
+                        <div className="chq-speakers-task-head">
+                          <Link className="chq-speakers-task-title" to={`/speakers/tasks/${task.id}`}>
+                            {task.title}
+                          </Link>
+                          <span className="chq-speakers-task-due">{taskDueLabel(task, now)}</span>
+                          {done && (
+                            <span
+                              className={
+                                done.settled
+                                  ? 'chq-speakers-task-done chq-speakers-task-done-settled'
+                                  : 'chq-speakers-task-done'
+                              }
+                            >
+                              {done.text}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -998,7 +1043,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           now={now}
                           timezone={grid.timezone}
                           onToggle={toggleCell}
-                          onOpenResponse={openResponse}
+                          density="dense"
                           notChased={declinedOnly}
                           interactive={notChased === null}
                           notSaved={
@@ -1077,7 +1122,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         now={now}
                         timezone={grid.timezone}
                         onToggle={toggleCell}
-                        onOpenResponse={openResponse}
+                        density="roomy"
                         notChased={declinedOnly}
                         interactive={notChased === null}
                         notSaved={
@@ -1103,6 +1148,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       {!loading && grid && !(visibleRows.length === 0 && !hasActiveNarrowing(filters)) && (
         <div className="chq-speakers-pager">
           <span className="chq-summary">{paginationSummary(page, PER_PAGE, total, visibleRows.length)}</span>
+          <span className="chq-speakers-grid-legend">{GRID_STATUS_LEGEND}</span>
           <span className="chq-speakers-grid-caption">Click any status to mark it complete or pending</span>
           <div className="chq-speakers-pager-actions">
             <button
@@ -1184,16 +1230,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         />
       )}
 
-      {viewingResponse && (
-        <ResponseModal
-          contactName={viewingResponse.contactName}
-          loading={responseLoading}
-          error={responseError}
-          detail={responseDetail}
-          onStatusChange={(status) => changeResponseStatus(viewingResponse.assignmentId, status)}
-          onClose={closeResponse}
-        />
-      )}
     </div>
   );
 }

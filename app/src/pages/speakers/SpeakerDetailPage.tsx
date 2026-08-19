@@ -53,8 +53,13 @@ const TASK_STATUS_LABELS: Record<SpeakerDetailTaskStatus, string> = {
 // complete/pending/overdue meaning (richer enums than the invite/task-done
 // axis), so both share the one added neutral modifier -- the label text,
 // not the pill shape, carries the distinction (DEC-367).
+//
+// v12 density: DENSE. These are read-only LABELS on a session/content row,
+// not controls -- the roomy half of the pair is for a row that is a real
+// target, and inflating a label to a 44px box would claim a tap that leads
+// nowhere. The task rows below take 'roomy'; these do not.
 function neutralStatusClass(): string {
-  return 'chq-speakers-status chq-speakers-status-neutral';
+  return 'chq-speakers-status chq-speakers-status-neutral chq-speakers-status-dense';
 }
 
 // User-filed (speaker detail, Elliot Ekström): the tasks list arrived in
@@ -98,13 +103,45 @@ export function sortSpeakerDetailTasks(tasks: readonly SpeakerDetailTask[]): Spe
 // statusCellClass -- never a second mapping here. The overdue arm is what
 // the user-filed report was missing: a past-due pending row rendered
 // identically to an on-time one while the section header counted it.
+//
+// v12 density: ROOMY. The pack's rule is that the roomy half belongs
+// "anywhere a row can carry a real target -- phone cards, the speaker
+// detail, the task views", and every one of these rows IS a click that
+// flips the status. Same colour and weight as the matrix's dense cells;
+// only min-height and horizontal padding differ, so a speaker's Overdue
+// reads identically here and in the grid.
 function taskStatusClass(status: SpeakerDetailTaskStatus, overdue: boolean): string {
-  return statusCellClass(status, overdue);
+  return statusCellClass(status, overdue, 'roomy');
 }
 
 function taskStatusLabel(status: SpeakerDetailTaskStatus, overdue: boolean): string {
   if (status !== 'complete' && overdue) return OVERDUE_LABEL;
   return TASK_STATUS_LABELS[status];
+}
+
+// Design pack v12: the row's Remind link carries its own reminder history
+// ("Remind · never sent" / "Remind · sent once" / "Remind · 3rd time" in the
+// frame) rather than repeating "Remind this task" six times down a column
+// where the verb is already obvious from the section caption.
+//
+// HONEST DEGRADATION: the frame's ordinal ("3rd time") needs a per-assignment
+// SEND COUNT, and no such column exists -- task_assignment records only
+// `last_reminded_at`, and email_log records a contact and a sent_at but never
+// a task, so no count is derivable for a given task. Rather than fabricate a
+// tally or invent a column for one caption, the link states the fact the
+// schema actually holds: never sent, or the date of the last send. The frame's
+// shape (verb · history, right-flushed in its own fixed track) is preserved.
+export function taskRemindLabel(lastRemindedAt: number | null): string {
+  if (lastRemindedAt === null) return 'Remind · never sent';
+  return `Remind · last ${formatDateOnly(lastRemindedAt)}`;
+}
+
+/** The most recent reminder this speaker received about ANY of their tasks,
+ * or null if they have never been reminded -- the person-level counterpart of
+ * taskRemindLabel above, read from the same one column. */
+export function lastRemindedAcross(tasks: readonly SpeakerDetailTask[]): number | null {
+  const sent = tasks.map((t) => t.lastRemindedAt).filter((v): v is number => v !== null);
+  return sent.length === 0 ? null : Math.max(...sent);
 }
 
 // DEC-930 wave-19 amendment: the Files row-grid's 52px lead track is a
@@ -454,6 +491,17 @@ export function SpeakerDetailPage() {
                   Remind {firstNameOf(detail.contact.name)}
                 </button>
               )}
+              {/* Design pack v12 adds a reminder-history caption beside the
+                  two 46px controls, so "Remind" is pressed against what has
+                  already been sent rather than in the dark. The frame reads
+                  "Reminded 3× · last 4 Aug"; the × count is not derivable
+                  (see taskRemindLabel), so this states the last send only and
+                  is absent entirely when nothing has ever been sent. */}
+              {lastRemindedAcross(detail.tasks) !== null && (
+                <span className="chq-speaker-detail-remind-history">
+                  Last reminded {formatDateOnly(lastRemindedAcross(detail.tasks))}
+                </span>
+              )}
             </div>
           </div>
 
@@ -563,7 +611,7 @@ export function SpeakerDetailPage() {
                               className="chq-link-button chq-speaker-detail-task-remind"
                               onClick={openRemindReview}
                             >
-                              Remind this task
+                              {taskRemindLabel(task.lastRemindedAt)}
                             </button>
                           </span>
                         ) : (

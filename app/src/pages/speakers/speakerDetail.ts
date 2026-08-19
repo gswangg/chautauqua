@@ -113,6 +113,12 @@ export interface SpeakerDetailTask {
   dueDate: number | null;
   status: SpeakerDetailTaskStatus;
   completedAt: number | null;
+  // Design pack v12: the reminder-history qualifier the row's Remind link
+  // reads. null means never reminded. There is NO per-assignment send count
+  // in the schema (email_log carries a contact and a sent_at, never a task),
+  // so the frame's "sent once"/"3rd time" copy degrades honestly to a last-
+  // send date rather than a fabricated tally.
+  lastRemindedAt: number | null;
   file: SpeakerDetailFile | null;
   // User-filed (speaker detail, Elliot Ekström): lateness per ROW, not only
   // as a header count. Server-derived from the same DEC-801 predicate result

@@ -902,12 +902,15 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     // three concurrent waves (WAVE 1 = tasks/event/speakers/counts, WAVE 2 =
     // total/contacts/overdue, WAVE 3 = participations+cells), so this
     // call-order-based queue is ordered 0=tasks, 1=event, 2=speakers,
-    // 3=counts, 4=total, 5=contacts, 6=overdue.
+    // 3=counts, 4=perTaskDone, 5=total, 6=contacts, 7=overdue. Index 4 is
+    // design pack v12's per-column "N of M done" aggregate, which is
+    // event-wide and filter-independent like `counts`, so it joins WAVE 1.
     const gridDb = fakeGridDb([
       TASK_ROWS, // tasks
       [{ recordPrefix: "SES", timezone: "America/New_York" }], // DEC-801: event row (recordPrefix + timezone), resolved once
       [{ count: 5 }], // DEC-754: speakers roster COUNT(*) (own query now)
       [{ outstandingRequired: 0, outstandingContacts: 3 }], // counts
+      [], // v12 per-task done aggregate (irrelevant to the counts this test compares)
       [{ count: 0 }], // total
       [], // contacts page (empty; unrelated to the counts aggregate)
       [{ count: 1 }], // DEC-776: overdue roster-scoped COUNT(*) (own query now)

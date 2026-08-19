@@ -205,6 +205,11 @@ describe("DEC-930 getSpeakerDetail", () => {
           status: "pending",
           completedAt: null,
           file: { id: "file-1", filename: "slides.pdf", sizeBytes: 1024, versionNo: 2 },
+          // Design pack v12: the detail's Remind link states this speaker's
+          // reminder history for THIS task. null = never reminded, which is
+          // the only reminder fact the schema records per assignment (there
+          // is no per-task send COUNT anywhere).
+          lastRemindedAt: null,
           // User-filed (speaker detail): lateness now rides on the ROW, from
           // the same overdue query the counts line below is read from — this
           // fakeDb's no-op WHERE makes that query return every seeded

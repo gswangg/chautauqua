@@ -364,7 +364,14 @@ const DYNAMIC_CLASS_TOKENS = new Set<string>([
   'chq-speakers-status-complete',
   'chq-speakers-status-pending',
   'chq-speakers-status-overdue',
+  // v12: participation's Invited split off the task axis's Pending when the
+  // task token went bare bold-ink and INV.Invited kept its 1px rule.
+  'chq-speakers-status-invited',
   'chq-speakers-status-none',
+  // v12 density half of the status token pair -- built as
+  // `chq-speakers-status-${density}` in the same statusCellClass.
+  'chq-speakers-status-dense',
+  'chq-speakers-status-roomy',
   // Built as `chq-settings-field-${width}` in
   // app/src/pages/settings/SettingsEditForm.tsx's SettingsField (width in
   // 'date' | 'seats' | 'name' | 'slug' | 'full', DEC-896 amendment wave

@@ -34,10 +34,22 @@ const STATUS_MODIFIERS = [
   'chq-speakers-status-complete',
   'chq-speakers-status-pending',
   'chq-speakers-status-overdue',
+  'chq-speakers-status-invited',
   'chq-speakers-status-none',
 ];
 
-const OUTLINE_MODIFIERS = ['chq-speakers-status-pending', 'chq-speakers-status-overdue', 'chq-speakers-status-none'];
+// Design pack v12: the modifiers that still PAINT a box -- a fill or a rule.
+// Everything else in the family is now bare text.
+const BOXED_MODIFIERS = [
+  'chq-speakers-status-overdue',
+  'chq-speakers-status-invited',
+  'chq-speakers-status-none',
+  'chq-speakers-status-neutral',
+];
+
+// The two states v12 stripped to bare text: complete recedes and pending is
+// bold ink, so neither may carry a fill, a border or a radius at ANY density.
+const BARE_MODIFIERS = ['chq-speakers-status-complete', 'chq-speakers-status-pending'];
 
 describe('speakers.css participation chip vs. trigger reset (DEC-880/DEC-940)', () => {
   const css = readFileSync(CSS_PATH, 'utf-8');
@@ -56,29 +68,113 @@ describe('speakers.css participation chip vs. trigger reset (DEC-880/DEC-940)', 
     expect(body).toMatch(/cursor:\s*pointer/);
   });
 
-  it('the base chip declares the shared box metrics and type every state needs', () => {
+  // v12 moved padding and border-radius OFF the base rule and onto the two
+  // density variants + the boxed modifiers, because the family now has two
+  // independent axes. What the base must still own is the shared TYPE, which
+  // is what the DEC-880/DEC-940 collisions kept erasing.
+  it('the base chip declares the shared type every state needs, and no geometry of its own', () => {
     const body = topLevelRuleBody(css, '.chq-speakers-status');
-    expect(body).toMatch(/padding:\s*3px 8px/);
     expect(body).toMatch(/font-size:\s*11px/);
-    expect(body).toMatch(/font-weight:\s*700/);
     expect(body).toMatch(/font-family:/);
+    expect(body).toMatch(/text-transform:\s*uppercase/);
+    expect(body).not.toMatch(/\bpadding:/);
+    expect(body).not.toMatch(/border-radius:/);
+  });
+});
+
+// Design pack v12 -- STATUS WEIGHT INVERSION. "Weight goes to the exception,
+// never to the resting state": complete is 30-odd of 42 cells in the seeded
+// event, so a filled-olive complete made a wall of the one status nobody
+// needs to act on and buried the three that mattered. Overdue takes the fill
+// instead; pending is bold ink; complete recedes to muted 600.
+describe('speakers.css status weight inversion (design pack v12)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  it('OVERDUE is the filled mark -- ink background, never an outline', () => {
+    const body = topLevelRuleBody(css, '.chq-speakers-status-overdue');
+    expect(body).toMatch(/background:\s*var\(--chq-ink\)/);
+    expect(body).toMatch(/color:\s*var\(--chq-on-ink\)/);
+    expect(body).toMatch(/font-weight:\s*800/);
+    expect(body).toMatch(/border:\s*none/);
   });
 
-  it('Complete keeps a non-none background so its text is not invisible on the brand fill', () => {
+  it('PENDING is bold ink with no fill and no rule', () => {
+    const body = topLevelRuleBody(css, '.chq-speakers-status-pending');
+    expect(body).toMatch(/color:\s*var\(--chq-ink\)/);
+    expect(body).toMatch(/font-weight:\s*800/);
+    expect(body).toMatch(/background:\s*none/);
+    expect(body).toMatch(/border:\s*none/);
+  });
+
+  it('COMPLETE recedes -- muted 600 text, no fill and no border', () => {
     const body = topLevelRuleBody(css, '.chq-speakers-status-complete');
-    expect(body).toMatch(/background:\s*var\(--chq-brand\)/);
-    expect(body).not.toMatch(/background:\s*none/);
+    expect(body).toMatch(/color:\s*var\(--chq-muted\)/);
+    expect(body).toMatch(/font-weight:\s*600/);
+    expect(body).toMatch(/background:\s*none/);
+    expect(body).toMatch(/border:\s*none/);
   });
 
-  it.each(OUTLINE_MODIFIERS)('%s keeps a visible (non-none) border', (selector) => {
-    const body = topLevelRuleBody(css, `.${selector}`);
-    expect(body).toMatch(/border(-\w+)?:\s*1px/);
-    expect(body).not.toMatch(/border:\s*none/);
+  // The token that must NOT reappear here: --chq-disabled fails the 4.5
+  // floor at 3.06:1, and DESIGN-RULINGS names a "finished" value rendered in
+  // it as one of the three escapes to distrust. Complete de-emphasises by
+  // dropping 800 -> 600 and keeping a readable colour.
+  it('no status modifier de-emphasises with the disabled token', () => {
+    for (const modifier of [...STATUS_MODIFIERS, 'chq-speakers-status-neutral']) {
+      expect(topLevelRuleBody(css, `.${modifier}`)).not.toMatch(/var\(--chq-disabled\)/);
+    }
   });
 
-  it.each(STATUS_MODIFIERS)('%s still declares its own border', (selector) => {
-    const body = topLevelRuleBody(css, `.${selector}`);
-    expect(body).toMatch(/border(-\w+)?:/);
+  it.each(BARE_MODIFIERS)('%s carries no border-radius, at either density', (modifier) => {
+    // A radius is only ever declared for the boxed modifiers, so a bare
+    // state can never acquire one by sharing a selector list with them.
+    const radiusSelectors = css.match(/^[^@{}]*\{[^}]*border-radius[^}]*\}/gm) ?? [];
+    for (const rule of radiusSelectors) {
+      const selector = rule.slice(0, rule.indexOf('{'));
+      if (selector.includes(modifier)) throw new Error(`${modifier} takes a border-radius in: ${selector.trim()}`);
+    }
+  });
+
+  it.each(BOXED_MODIFIERS)('%s keeps a radius, since it paints a box', (modifier) => {
+    expect(css).toMatch(new RegExp(`\\.${modifier}[^{]*\\{[^}]*border-radius`));
+  });
+});
+
+// v12 ruling: "Status tokens pair by density, not by device." The dense
+// variant fits a 178px matrix column twelve times over; the roomy variant is
+// for anywhere a row is a real target. Colour and weight are identical in
+// both -- ONLY geometry differs. The ruling also names the regression that
+// follows from editing one half alone, so both halves are pinned together.
+describe('speakers.css dense/roomy status pairing (design pack v12)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  it('the dense half is geometry only -- no colour, weight or fill', () => {
+    const body = topLevelRuleBody(css, '.chq-speakers-status-dense');
+    expect(body).toMatch(/padding:\s*3px 0/);
+    expect(body).not.toMatch(/\bcolor:/);
+    expect(body).not.toMatch(/font-weight:/);
+    expect(body).not.toMatch(/\bbackground:/);
+  });
+
+  it('the roomy half reaches the 44px floor with min-height AND horizontal padding', () => {
+    const body = topLevelRuleBody(css, '.chq-speakers-status-roomy');
+    expect(body).toMatch(/min-height:\s*44px/);
+    // Padding alone does not reach the floor, and without padding the hit box
+    // is only as wide as the text -- the ruling requires both.
+    expect(body).toMatch(/padding:\s*0 10px/);
+    expect(body).not.toMatch(/\bcolor:/);
+    expect(body).not.toMatch(/font-weight:/);
+  });
+
+  it('the roomy half never authors a min-height below the 44px floor', () => {
+    const body = topLevelRuleBody(css, '.chq-speakers-status-roomy');
+    const declared = body.match(/min-height:\s*(\d+)px/);
+    expect(declared).not.toBeNull();
+    expect(Number(declared?.[1])).toBeGreaterThanOrEqual(44);
+  });
+
+  it('both halves exist -- neither may be edited away without the other', () => {
+    expect(() => topLevelRuleBody(css, '.chq-speakers-status-dense')).not.toThrow();
+    expect(() => topLevelRuleBody(css, '.chq-speakers-status-roomy')).not.toThrow();
   });
 });
 
@@ -148,7 +244,7 @@ describe('speakers.css toolbar control shrink is max-width-only (DEC-385)', () =
 // buttons also looks inconsistent here", then USER RULING: the participation
 // control moved up beside the name at its natural chip size, and the actions
 // row is Email + Remind alone on the frame's one 46px box (docs/design/
-// Chautauqua Speakers.dc.html:346-347). Pinned in CSS text (jsdom applies no
+// Chautauqua Speakers.dc.html:352-353). Pinned in CSS text (jsdom applies no
 // external stylesheet); the roster grid's chips keep their table metrics.
 describe('speaker-detail action row is one control height (user-filed)', () => {
   const css = readFileSync(CSS_PATH, 'utf-8');
@@ -163,8 +259,10 @@ describe('speaker-detail action row is one control height (user-filed)', () => {
     // The inflated-chip cure was rejected by the user; the trigger must not
     // be box-grown or re-padded anywhere in this stylesheet.
     expect(css).not.toMatch(/\.chq-speaker-detail-actions[^{]*\.chq-participation-menu-trigger/);
-    // The shared chip keeps the roster grid's 3px 8px box.
-    expect(topLevelRuleBody(css, '.chq-speakers-status')).toMatch(/padding:\s*3px 8px/);
+    // v12: "natural size" is now the DENSE half of the token pair, which is
+    // what ParticipationMenu asks for on every surface. The roomy half is
+    // reserved for the task rows below, which are real targets.
+    expect(topLevelRuleBody(css, '.chq-speakers-status-dense')).toMatch(/padding:\s*3px 0/);
   });
 
   it('keeps the row centred so the three controls share a baseline', () => {

@@ -110,10 +110,10 @@ const LEGAL_USES: Record<string, string> = {
  * equality: fixing one must not turn this suite red for the lane that fixed
  * it — delete the row in the same change. A NEW escape still fails loudly,
  * which is the whole point of the scan. */
-const KNOWN_ESCAPES_OTHER_LANE: Record<string, string> = {
-  '.chq-speakers-cell-none':
-    'empty value ("—" for a speaker with no assignment of that task) — a v12 violation owned by the speakers-grid lane (app/src/pages/speakers/speakers.css)',
-};
+// Emptied by the speakers-grid lane: .chq-speakers-cell-none now reads
+// 600/var(--chq-muted) like every other resting state. Kept as an empty map
+// rather than deleted so the dead-allowlist tripwire below keeps a subject.
+const KNOWN_ESCAPES_OTHER_LANE: Record<string, string> = {};
 
 interface Hit {
   file: string;

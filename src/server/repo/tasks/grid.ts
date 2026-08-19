@@ -27,6 +27,15 @@ export interface GridTask {
   // CNT-01: the task's free-text brief, so the organizer's edit modal can
   // prefill it without a second round-trip.
   instructions: string | null;
+  // Design pack v12: the per-column aggregate the grid's task head renders
+  // as "7 of 12 done". EVENT-WIDE and filter-independent, exactly like
+  // `counts` below and for the same reason -- a head that counted only the
+  // current filtered page would answer "which task is lagging" with a
+  // number that changes when you search, which is worse than not answering
+  // it. `assigned` is the denominator (the frame's "6 of 9 done" for a task
+  // only nine of twelve speakers carry), never the roster size.
+  assigned: number;
+  complete: number;
 }
 
 export interface GridCell {
@@ -158,7 +167,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   // concurrently rather than as four sequential round trips. Array order is
   // preserved from the pre-wave-62 sequential order for the call-order-based
   // mocks in this file's tests.
-  const [taskRows, eventRows, speakersCountRows, countsRow] = await Promise.all([
+  const [taskRows, eventRows, speakersCountRows, countsRow, perTaskRows] = await Promise.all([
     db
       .select({
         id: schema.task.id,
@@ -202,7 +211,27 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
       .where(and(eq(schema.task.eventId, eventId), chaseableContactExistsForTaskEvent())),
+    // Design pack v12: one GROUP BY over this event's assignments gives every
+    // column head its "N of M done" in a single round trip -- never one query
+    // per column, and never derived from `rows` (which is the current
+    // FILTERED, PAGINATED page and would make the aggregate move when the
+    // organiser searches). Composes no timezone/whereExpr, so it joins wave 1.
+    db
+      .select({
+        taskId: schema.taskAssignment.taskId,
+        assigned: sql<number>`count(${schema.taskAssignment.id})`,
+        complete: sql<number>`count(case when ${schema.taskAssignment.status} = 'complete' then 1 end)`,
+      })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
+      .where(eq(schema.task.eventId, eventId))
+      .groupBy(schema.taskAssignment.taskId),
   ]);
+
+  // A task with no assignments at all never appears in the GROUP BY result,
+  // so it reads 0/0 -- which the SPA renders as "assigned to no one", not as
+  // "all 0 done".
+  const perTask = new Map(perTaskRows.map((r) => [r.taskId, r]));
 
   const tasks: GridTask[] = taskRows.map((t) => ({
     id: t.id,
@@ -211,6 +240,8 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     dueDate: t.dueDate ? t.dueDate.getTime() : null,
     required: t.required,
     instructions: t.instructions,
+    assigned: Number(perTask.get(t.id)?.assigned ?? 0),
+    complete: Number(perTask.get(t.id)?.complete ?? 0),
   }));
 
   const emptyCounts: OnboardingGridCounts = {

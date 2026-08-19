@@ -30,6 +30,14 @@ export interface OnboardingTask {
   // as null) means "none", so existing OnboardingTask fixtures/mocks that
   // predate this field keep compiling.
   instructions?: string | null;
+  // Design pack v12: the per-column aggregate the grid's task head renders
+  // ("7 of 12 done" / "All 12 done"). EVENT-WIDE and filter-independent --
+  // served by src/server/repo/tasks/grid.ts, never counted from `rows`,
+  // which is only the current filtered/paginated page. Optional so the
+  // fixtures/mocks that predate v12 keep compiling; a head with neither
+  // number says nothing rather than guessing.
+  assigned?: number;
+  complete?: number;
 }
 
 // GET /api/v1/tasks/:id/delete-preview (DEC-933 amendment, wave 63): names

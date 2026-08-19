@@ -1,15 +1,19 @@
-// DEC-291 render smoke test: the OnboardingGrid's per-cell "Response"
-// control (DEC-662: renamed from "View response", a quiet text link) only
-// appears on kind='form' columns AND only once that cell is complete --
-// clicking it fetches GET /api/v1/task-assignments/:id/response and opens
-// ResponseModal with the fetched fields.
+// OnboardingGrid render tests. Design pack v12 reshaped this surface: the
+// status weight inverted (overdue fills, pending is bold ink, complete
+// recedes), the column heads gained a per-task aggregate and became the link
+// into the task view, the per-cell File/Response links were removed, and the
+// six per-column Edit links collapsed into one "Edit tasks" beside the
+// Speaker head. The pins below were rewritten to that vocabulary rather than
+// dropped -- where an affordance MOVED (reading a response), the coverage
+// moved with it (TaskView.render.test.tsx); where one was REMOVED, its pin
+// became an assertion that it is gone.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { OnboardingGrid } from './OnboardingGrid';
+import { GRID_STATUS_LEGEND, OnboardingGrid } from './OnboardingGrid';
 import { mockApi } from '../../test-utils/mockApi';
-import type { AssignmentResponseDetail, OnboardingGridResponse } from './types';
+import type { OnboardingGridResponse } from './types';
 
 const EVENT_ID = 'evt-response-render';
 
@@ -41,18 +45,6 @@ const GRID: OnboardingGridResponse = {
   perPage: 50,
   counts: { speakers: 2, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
       timezone: 'UTC',
-};
-
-const DETAIL: AssignmentResponseDetail = {
-  assignmentId: 'as2',
-  taskTitle: 'Hotel stay requirement form',
-  contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com' },
-  status: 'complete',
-  completedAt: 1700000000000,
-  fields: [
-    { label: 'Hotel name', value: 'The Grand' },
-    { label: 'Check-out date', value: '' },
-  ],
 };
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
@@ -132,6 +124,129 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
 // DEC-662 amendment (wave 55): the title-action row carries a quiet link
 // into the Contacts importer, event preselected -- Import is Contacts' job,
 // this is just the door in.
+// Design pack v12: the column head is name · due · "N of M done", the name
+// is the link into the task view, and the footer carries the legend the
+// weight inversion needs.
+describe('OnboardingGrid: v12 column heads carry the per-task aggregate', () => {
+  function aggregateGrid(tasks: OnboardingGridResponse['tasks']): OnboardingGridResponse {
+    return {
+      tasks,
+      rows: [
+        {
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }] },
+          cells: tasks.map((t, i) => ({
+            taskId: t.id,
+            assignmentId: `as${i}`,
+            status: 'pending' as const,
+            completedAt: null,
+            fileId: null,
+            fileName: null,
+            assignedAt: 0,
+          })),
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
+    };
+  }
+
+  it('reads "7 of 12 done" in ink while short of the assigned set, and recedes once the column is finished', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: aggregateGrid([
+        { id: 'task-1', kind: 'general', title: 'Bio and profile', dueDate: null, required: false, assigned: 12, complete: 7 },
+        { id: 'task-2', kind: 'general', title: 'Confirm participation', dueDate: null, required: false, assigned: 12, complete: 12 },
+        { id: 'task-3', kind: 'form', title: 'Hotel stay form', dueDate: null, required: false, assigned: 9, complete: 6 },
+        { id: 'task-4', kind: 'general', title: 'Nobody has this', dueDate: null, required: false, assigned: 0, complete: 0 },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0));
+
+    const lagging = screen.getByText('7 of 12 done');
+    expect(lagging).toHaveClass('chq-speakers-task-done');
+    // In INK: the settled modifier is what mutes a finished column, so a
+    // lagging one must not carry it.
+    expect(lagging).not.toHaveClass('chq-speakers-task-done-settled');
+
+    // The denominator is the ASSIGNED set, not the roster -- the frame's
+    // own "6 of 9 done" for a task only nine of twelve speakers carry.
+    expect(screen.getByText('6 of 9 done')).not.toHaveClass('chq-speakers-task-done-settled');
+
+    // A finished column recedes.
+    expect(screen.getByText('All 12 done')).toHaveClass('chq-speakers-task-done-settled');
+
+    // 0 of 0 is not "finished" -- saying "All 0 done" would read as done.
+    expect(screen.getByText('Assigned to no one')).toBeInTheDocument();
+    expect(screen.queryByText('All 0 done')).not.toBeInTheDocument();
+  });
+
+  it('makes the task NAME the link into that task across every speaker', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: aggregateGrid([
+        { id: 'task-1', kind: 'general', title: 'Bio and profile', dueDate: null, required: false, assigned: 12, complete: 7 },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0));
+
+    const link = screen.getByRole('link', { name: 'Bio and profile' });
+    expect(link).toHaveAttribute('href', '/speakers/tasks/task-1');
+    expect(link).toHaveClass('chq-speakers-task-title');
+  });
+
+  it('states the weight vocabulary once, in the frame\'s own words', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: aggregateGrid([
+        { id: 'task-1', kind: 'general', title: 'Bio and profile', dueDate: null, required: false, assigned: 12, complete: 7 },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0));
+
+    // Frame Chautauqua Speakers.dc.html:73, verbatim. Note the frame says
+    // "pending is bold ink" where the RULINGS prose says "pending outlined";
+    // the frame is what the screens render, so the frame wins.
+    expect(screen.getByText(GRID_STATUS_LEGEND)).toHaveClass('chq-speakers-grid-legend');
+    // The interaction rule stays beside it -- the legend teaches the
+    // vocabulary, the caption states what a click does.
+    expect(screen.getByText('Click any status to mark it complete or pending')).toBeInTheDocument();
+  });
+
+  it('pairs the densities across the two breakpoints: dense in the matrix, roomy on the phone cards', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: aggregateGrid([
+        { id: 'task-1', kind: 'general', title: 'Bio and profile', dueDate: null, required: false, assigned: 12, complete: 7 },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0));
+
+    // Both halves are in the DOM at once (a CSS media query toggles them),
+    // which is what lets one assertion prove the pair never drifts: SAME
+    // meaning class, DIFFERENT density class.
+    // Scoped to the CELL, not the row: the identity cell's participation
+    // trigger is also a .chq-speakers-status (dense too, per the USER
+    // RULING that it keeps its natural chip size).
+    const inMatrix = document.querySelector('.chq-speakers-grid .chq-speakers-cell .chq-speakers-status')!;
+    const onCard = document.querySelector('.chq-speakers-cards .chq-speakers-cell .chq-speakers-status')!;
+    expect(inMatrix).toHaveClass('chq-speakers-status-pending', 'chq-speakers-status-dense');
+    expect(onCard).toHaveClass('chq-speakers-status-pending', 'chq-speakers-status-roomy');
+    expect(inMatrix).not.toHaveClass('chq-speakers-status-roomy');
+    expect(onCard).not.toHaveClass('chq-speakers-status-dense');
+  });
+});
+
 describe('OnboardingGrid: DEC-662 import link', () => {
   it('renders NO import link on the grid — ruling A13 places it on the roster (G13 lane-D fix, 04-speakers--00)', async () => {
     mockApi({
@@ -152,11 +267,18 @@ describe('OnboardingGrid: DEC-662 import link', () => {
   });
 });
 
-describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
-  it('shows the control only on a complete form cell (never on a pending one), and opens the modal with fetched fields', async () => {
+// Design pack v12 REMOVED the per-cell Response control (and the File link
+// below). Both were a third path to two things already routed -- one speaker
+// (row -> detail) and one task across everyone (column head -> task view) --
+// and a cell now carries status and NOTHING else. The coverage did not
+// disappear: reading an answer, and reopening a task from that reader, are
+// pinned on the task view (TaskView.render.test.tsx), which is where the
+// response reader lives now. This block keeps everything about the grid row
+// that v12 did NOT change, and pins the two removals.
+describe('OnboardingGrid: v12 cells carry status and nothing else', () => {
+  it('renders no Response control on a complete form cell, and keeps the row meta v12 left alone', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
-      'GET /api/v1/task-assignments/as2/response': DETAIL,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
@@ -178,37 +300,22 @@ describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
     expect(screen.getAllByText(/Acme.*has account/).length).toBeGreaterThan(0);
     expect(document.querySelector('.chq-pill.chq-speakers-has-account')).not.toBeInTheDocument();
 
-    // Ada's task-2 cell is complete -- one "Response" control on the desktop
-    // grid and one on the phone card list (toggled by CSS, both in the DOM).
-    const responseButtons = screen.getAllByRole('button', { name: 'Response' });
-    expect(responseButtons).toHaveLength(2);
+    // Ada's task-2 cell IS complete and its task IS form-kind -- exactly the
+    // case that used to grow a Response link in both the table and the card
+    // list. v12 renders neither.
+    expect(screen.queryByRole('button', { name: 'Response' })).not.toBeInTheDocument();
 
-    // Grace's task-2 cell is pending -- the toggle still renders (task
-    // completion is independent of the form-response control), but no
-    // control at all, not even disabled: an affordance with nothing to
-    // show renders nothing.
+    // The status toggle itself is untouched: v12 changed what a cell LOOKS
+    // like and what else it carries, never that the status is a control.
     expect(
       screen.getAllByRole('button', { name: 'Toggle Hotel stay requirement form for Grace Hopper' }).length,
     ).toBeGreaterThan(0);
 
-    responseButtons[0]!.click();
+    // ...and with no Response control there is no route from a cell into the
+    // response dialog at all.
+    expect(screen.queryByRole('dialog', { name: 'Task response' })).not.toBeInTheDocument();
 
-    const dialog = await screen.findByRole('dialog', { name: 'Task response' });
-    expect(dialog).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getByText('Hotel name')).toBeInTheDocument();
-    });
-    expect(screen.getByText('The Grand')).toBeInTheDocument();
-    // Unanswered field renders an em dash, not omitted.
-    expect(screen.getByText('Check-out date')).toBeInTheDocument();
-
-    screen.getByRole('button', { name: 'Close' }).click();
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Task response' })).not.toBeInTheDocument();
-    });
-
-    // DEC-378: Escape closes the New task dialog too.
+    // DEC-378: Escape still closes the New task dialog.
     screen.getByRole('button', { name: 'New task' }).click();
     const taskDialog = await screen.findByRole('dialog', { name: 'New task' });
     expect(taskDialog).toBeInTheDocument();
@@ -217,90 +324,6 @@ describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'New task' })).not.toBeInTheDocument();
     });
-  });
-});
-
-// DEC-599/DEC-694 (design v4): the response modal offers exactly ONE
-// action, 'Reopen this task', which writes the assignment back to pending
-// via the existing PATCH /task-assignments/:id -- reconciled optimistically
-// against the grid cell (matching toggleCell), with a loud visible rollback
-// if the PATCH fails.
-describe('OnboardingGrid: DEC-599/DEC-694 reopen from response modal', () => {
-  it('PATCHes status back to pending on Reopen this task and updates the grid cell', async () => {
-    const fetchMock = mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
-      'GET /api/v1/task-assignments/as2/response': DETAIL,
-      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
-      'PATCH /api/v1/task-assignments/as2': { body: {} },
-    });
-
-    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
-
-    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
-    screen.getAllByRole('button', { name: 'Response' })[0]!.click();
-
-    await screen.findByRole('dialog', { name: 'Task response' });
-    await waitFor(() => expect(screen.getByText('Hotel name')).toBeInTheDocument());
-
-    const reopen = screen.getByRole('button', { name: 'Reopen this task' });
-    const caption = screen.getByText('Sets it back to pending — the next reminder picks it up');
-    expect(caption).toBeInTheDocument();
-    // v6 frame: the caption sits BELOW the action inside the actions slot.
-    expect(
-      reopen.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    fireEvent.click(reopen);
-
-    await waitFor(() => {
-      const calls = fetchMock.mock.calls.filter(([input, init]) => {
-        const url = typeof input === 'string' ? input : (input as Request | URL).toString();
-        return url.includes('/task-assignments/as2') && init?.method === 'PATCH';
-      });
-      expect(calls.length).toBe(1);
-      expect(JSON.parse(calls[0]![1]!.body as string)).toEqual({ status: 'pending' });
-    });
-
-    // The dialog offers no action once pending -- 'Reopen this task' is the
-    // ONE action, only shown against a completed response (design v4).
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Reopen this task' })).not.toBeInTheDocument();
-    });
-  });
-
-  it('rolls back visibly when the reopen PATCH fails', async () => {
-    mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
-      'GET /api/v1/task-assignments/as2/response': DETAIL,
-      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
-      'PATCH /api/v1/task-assignments/as2': { status: 500, body: { error: { code: 'internal', message: 'boom' } } },
-    });
-
-    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
-
-    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
-    screen.getAllByRole('button', { name: 'Response' })[0]!.click();
-
-    await screen.findByRole('dialog', { name: 'Task response' });
-    await waitFor(() => expect(screen.getByText('Hotel name')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByRole('button', { name: 'Reopen this task' }));
-
-    // Optimistic flip happens first: the action disappears (status is now
-    // pending, which renders no action).
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Reopen this task' })).not.toBeInTheDocument();
-    });
-
-    // ...then rolls back visibly on the failed PATCH: the modal reverts to
-    // showing 'Reopen this task' again and a banner names the row and the
-    // server-fault cause, not a silent no-op.
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Reopen this task' })).toBeInTheDocument();
-    });
-    // DEC-856 (wave-13 amendment): the bound ApiError's own message ('boom')
-    // now reaches the banner inside the naming frame -- never collapsed to
-    // the generic "didn't save" sentence.
-    expect(screen.getByText('Ada Lovelace · Hotel stay requirement form: boom')).toBeInTheDocument();
   });
 });
 
@@ -782,8 +805,15 @@ describe('OnboardingGrid: toolbar caption names the actual reminder skip rule', 
 // "File" with a generic "Has file" label) -- a cell with an uploaded
 // deliverable now reads its accessible name off the filename the server
 // joined in (src/server/repo/tasks/grid.ts), never a fixed placeholder.
-describe('OnboardingGrid: DEC-920 file link names the file', () => {
-  it("renders the cell's file link with the filename as its accessible name and title, not 'Has file'", async () => {
+// DEC-920 made the cell's file link NAME its file rather than say "File".
+// Design pack v12 OVERRIDES that by removing the per-cell file link outright:
+// "is something attached?" is not a question anyone asks while scanning,
+// because it is not actionable -- the task is done either way. The file is
+// still reachable (the speaker detail lists deliverables, the task view reads
+// answers), just not from a matrix cell. DEC-920's own naming rule survives
+// where the link survives -- see SpeakerDetailPage.render.test.tsx.
+describe('OnboardingGrid: v12 removes the per-cell file link (overrides DEC-920)', () => {
+  it('renders no file link even on a complete file_request cell that carries a real file', async () => {
     const fileGrid: OnboardingGridResponse = {
       tasks: [{ id: 'task-1', kind: 'file_request', title: 'Upload headshot', dueDate: null, required: true }],
       rows: [
@@ -820,23 +850,22 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
       expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
     });
 
-    const links = screen.getAllByRole('link', { name: 'Download ada-headshot-final-v2.jpg' });
-    // Both the table cell (:552-563) and the card mount (:648-659) render
-    // the link, so the DEC-920 guarantee holds at both breakpoints.
-    expect(links.length).toBe(2);
-    for (const link of links) {
-      expect(link).toHaveAttribute('title', 'ada-headshot-final-v2.jpg');
-      expect(link).toHaveAttribute('href', '/files/file-1');
-      expect(link).toHaveAttribute('target', '_blank');
-      expect(link).toHaveAttribute('rel', 'noreferrer');
-      expect(link).toHaveTextContent('ada-headshot-final-v2.jpg');
-    }
+    // Neither breakpoint carries it: the pinned table and the phone card
+    // list share ONE cell renderer, which is what stops the two drifting.
+    expect(screen.queryByRole('link', { name: 'Download ada-headshot-final-v2.jpg' })).not.toBeInTheDocument();
+    expect(screen.queryByText('ada-headshot-final-v2.jpg')).not.toBeInTheDocument();
+    // ...and no interim glyph took its place. The pack rejected a muted
+    // attachment mark for a sharper reason than the link: a glyph needing a
+    // legend to answer a question nobody asked is worse than nothing.
+    expect(screen.queryByText('◆')).not.toBeInTheDocument();
     expect(screen.queryByText('Has file')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Has file' })).not.toBeInTheDocument();
     expect(screen.queryByText('File', { selector: 'a' })).not.toBeInTheDocument();
+
+    // The cell still renders its status, which is now the whole of it.
+    expect(screen.getAllByRole('button', { name: /Toggle Upload headshot for Ada Lovelace/ }).length).toBeGreaterThan(0);
   });
 
-  it('renders no file link when a cell has no file (fileId/fileName null)', async () => {
+  it('renders no file link when a cell has no file either -- the two cases are now identical', async () => {
     const noFileGrid: OnboardingGridResponse = {
       tasks: [{ id: 'task-1', kind: 'file_request', title: 'Upload headshot', dueDate: null, required: true }],
       rows: [
@@ -1033,6 +1062,17 @@ describe('OnboardingGrid: one participation menu per session (DEC-936)', () => {
 
 // DEC-933/DEC-934 (task-w24-c): task column Edit/Remove controls + the
 // DEC-934 not-chasing strip for 'invited'/'declined' rows.
+// v12 routes every task editor through the ONE "Edit tasks" menu beside the
+// Speaker column head. Six call sites opened the old per-column link; they
+// share this helper rather than repeating the two clicks, so the day the
+// control moves again there is one place to change.
+async function openTaskEditor(taskTitle: string) {
+  const speakerHead = within(screen.getByRole('columnheader', { name: /Speaker/ }));
+  fireEvent.click(speakerHead.getByRole('button', { name: 'Edit tasks' }));
+  const menu = await screen.findByRole('menu', { name: 'Edit tasks' });
+  fireEvent.click(within(menu).getByRole('menuitem', { name: new RegExp(taskTitle) }));
+}
+
 describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', () => {
   const TASK_GRID: OnboardingGridResponse = {
     tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
@@ -1107,12 +1147,17 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     ).toBeInTheDocument();
 
     // The printed summary reads straight off the server's counts (which
-    // already exclude ct3/ct4's stray assignments) -- "1", never "2".
-    expect(screen.getByText('1', { selector: 'strong' })).toBeInTheDocument();
-    const summary = screen.getByText(/tasks open/).closest('span');
+    // already exclude ct3/ct4's stray assignments).
+    //
+    // Design pack v12 DROPPED the middle "N tasks open" clause: the column
+    // heads now carry per-task progress, which is the same fact broken down
+    // usefully, so the page line keeps only the two numbers that are
+    // genuinely a summary. The counts payload is unchanged; what the header
+    // chooses to print from it is what moved.
+    const summary = screen.getByText(/accepted/).closest('span');
     expect(summary).toHaveTextContent('4 accepted');
-    expect(summary).toHaveTextContent('1 tasks open');
     expect(summary).toHaveTextContent('0 overdue');
+    expect(summary).not.toHaveTextContent('tasks open');
   });
 
   // DEC-829 amendment (wave 59): a declined-only row renders its actual
@@ -1144,7 +1189,13 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     ).not.toBeInTheDocument();
   });
 
-  it('Ruling A12: the task column header renders exactly one Edit link and no Remove link, and Remove appears once the editor is open', async () => {
+  // Ruling A12 (wave 25) cut each column's Edit+Remove pair down to one
+  // Edit. Design pack v12 finishes the collapse: the six surviving Edits
+  // become ONE "Edit tasks" beside the SPEAKER head, so the task heads carry
+  // no controls at all -- only name, due and the per-column aggregate. A12's
+  // substance survives (Remove still lives inside the editor, never in a
+  // header); only its count changes, from six to one.
+  it('v12: ONE "Edit tasks" control beside the Speaker head, and none in any task head', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
@@ -1153,11 +1204,23 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
-    const header = within(screen.getByRole('columnheader', { name: /Sign speaker agreement/ }));
-    expect(header.getAllByRole('button', { name: 'Edit' })).toHaveLength(1);
-    expect(header.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+    const taskHead = within(screen.getByRole('columnheader', { name: /Sign speaker agreement/ }));
+    expect(taskHead.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(taskHead.queryByRole('button', { name: 'Edit tasks' })).not.toBeInTheDocument();
+    expect(taskHead.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
 
-    fireEvent.click(header.getByRole('button', { name: 'Edit' }));
+    // Exactly one on the whole table, and it sits in the Speaker head.
+    const speakerHead = within(screen.getByRole('columnheader', { name: /Speaker/ }));
+    expect(within(screen.getByRole('table')).getAllByRole('button', { name: 'Edit tasks' })).toHaveLength(1);
+    const trigger = speakerHead.getByRole('button', { name: 'Edit tasks' });
+    expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+
+    // It opens a menu of the event's tasks; picking one opens THAT task's
+    // existing editor, which still owns Remove (Ruling A12's other half).
+    fireEvent.click(trigger);
+    const menu = await screen.findByRole('menu', { name: 'Edit tasks' });
+    fireEvent.click(within(menu).getByRole('menuitem', { name: /Sign speaker agreement/ }));
+
     const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
     expect(within(editDialog).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
   });
@@ -1172,8 +1235,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
-    const table = within(screen.getByRole('table'));
-    fireEvent.click(table.getByRole('button', { name: 'Edit' }));
+    await openTaskEditor('Sign speaker agreement');
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit task' });
     const titleInput = within(dialog).getByRole('textbox', { name: 'Task' }) as HTMLInputElement;
@@ -1218,9 +1280,9 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
-    const table = within(screen.getByRole('table'));
-    // Ruling A12: Remove now lives inside the editor Edit opens.
-    fireEvent.click(table.getByRole('button', { name: 'Edit' }));
+    // Ruling A12: Remove still lives inside the editor, which v12 reaches
+    // through the one "Edit tasks" menu rather than a per-column link.
+    await openTaskEditor('Sign speaker agreement');
     const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
     fireEvent.click(within(editDialog).getByRole('button', { name: 'Remove' }));
 
@@ -1285,8 +1347,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
-    const table = within(screen.getByRole('table'));
-    fireEvent.click(table.getByRole('button', { name: 'Edit' }));
+    await openTaskEditor('Sign speaker agreement');
     const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
     fireEvent.click(within(editDialog).getByRole('button', { name: 'Remove' }));
 
@@ -1321,8 +1382,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
-    const table = within(screen.getByRole('table'));
-    fireEvent.click(table.getByRole('button', { name: 'Edit' }));
+    await openTaskEditor('Sign speaker agreement');
     const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
     fireEvent.click(within(editDialog).getByRole('button', { name: 'Remove' }));
 

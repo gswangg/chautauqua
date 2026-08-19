@@ -52,6 +52,7 @@ function baseDetail(): SpeakerDetailResponse {
         status: 'pending',
         completedAt: null,
         file: null,
+        lastRemindedAt: null,
         overdue: false,
       },
     ],

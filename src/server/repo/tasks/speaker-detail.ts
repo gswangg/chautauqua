@@ -278,6 +278,14 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       status: schema.taskAssignment.status,
       completedAt: schema.taskAssignment.completedAt,
       fileId: schema.taskAssignment.fileId,
+      // Design pack v12: the detail's task rows carry a reminder-history
+      // qualifier ("Remind · never sent" / "Remind · last 4 Aug") in place of
+      // the bare "Remind this task". This column is the ONLY reminder fact
+      // the schema records per assignment -- there is no send COUNT anywhere
+      // (email_log records a contact and a sent_at but no task), so the row
+      // states the last send, never an invented tally. See SpeakerDetailPage
+      // .tsx's taskRemindLabel.
+      lastRemindedAt: schema.taskAssignment.lastRemindedAt,
       fileName: schema.file.filename,
       fileSizeBytes: schema.file.sizeBytes,
       fileVersionNo: schema.file.versionNo,
@@ -317,6 +325,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       dueDate: r.dueDate ? r.dueDate.getTime() : null,
       status: r.status,
       completedAt: r.completedAt ? r.completedAt.getTime() : null,
+      lastRemindedAt: r.lastRemindedAt ? r.lastRemindedAt.getTime() : null,
       file:
         r.fileId != null && r.fileName != null && r.fileSizeBytes != null
           ? { id: r.fileId, filename: r.fileName, sizeBytes: r.fileSizeBytes, versionNo: r.fileVersionNo }

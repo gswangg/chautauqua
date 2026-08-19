@@ -72,16 +72,39 @@ function cellDueTitle(
   return `due ${formatDueDate(effectiveDueDate, now)}`;
 }
 
+/** The DENSITY half of the v12 status token pair (design pack v12,
+ * DESIGN-RULINGS "Status tokens pair by density, not by device").
+ *
+ *   'dense' -- a matrix cell that must fit a 178px column twelve times
+ *              over: ~20px tall, no horizontal padding.
+ *   'roomy' -- anywhere a row is a REAL TARGET: the phone cards, the
+ *              speaker detail's task rows, the task views. min-height 44px
+ *              plus horizontal padding, which is what actually reaches the
+ *              tap floor (padding alone does not; without padding the hit
+ *              box is only as wide as the text).
+ *
+ * Colour and weight are identical in both -- ONLY geometry differs -- so
+ * the same field never changes vocabulary between screens. The parameter is
+ * required rather than defaulted: a default is how the pair drifts, and the
+ * ruling names the exact regression (a bordered Pending box back on three
+ * phone frames after the desktop one had gone bare). */
+export type StatusDensity = 'dense' | 'roomy';
+
 /** One control family for all three cell states (DEC-730): complete/pending/
- * overdue share box metrics, a hover ring and cursor:pointer -- only the
- * fill/outline/ink-outline modifier differs. Exported because the speaker
- * DETAIL page's task rows are the same status control over the same
- * pending|complete domain: a second hand-rolled mapping there is exactly how
- * that page ended up showing no overdue mark at all (user-filed, Elliot
- * Ekström) while its header counted one. */
-export function statusCellClass(status: AssignmentStatus, overdue: boolean): string {
+ * overdue share a hover ring and cursor:pointer -- only the weight/fill
+ * modifier differs. Exported because the speaker DETAIL page's task rows and
+ * the task view's rows are the same status control over the same
+ * pending|complete domain: a second hand-rolled mapping is exactly how the
+ * detail page ended up showing no overdue mark at all (user-filed, Elliot
+ * Ekström) while its header counted one.
+ *
+ * Design pack v12 INVERTS what the three modifiers look like -- overdue
+ * fills, pending is bold ink, complete recedes to muted 600 -- but not
+ * which one a given (status, overdue) pair selects, so every call site is
+ * unchanged apart from naming its density. */
+export function statusCellClass(status: AssignmentStatus, overdue: boolean, density: StatusDensity): string {
   const modifier = status === 'complete' ? 'complete' : overdue ? 'overdue' : 'pending';
-  return `chq-speakers-status chq-speakers-status-${modifier}`;
+  return `chq-speakers-status chq-speakers-status-${modifier} chq-speakers-status-${density}`;
 }
 
 interface TaskCellProps {
@@ -91,7 +114,6 @@ interface TaskCellProps {
   now: number;
   timezone: string;
   onToggle: (assignmentId: string, status: AssignmentStatus) => void;
-  onOpenResponse: (assignmentId: string, contactName: string) => void;
   // DEC-829 amendment: true for a row whose every participation has
   // declined (isRowNotChased above) -- an incomplete cell renders muted;
   // a complete cell is unaffected, because the completion history is real
@@ -101,23 +123,44 @@ interface TaskCellProps {
   // invited/mixed-invited (OnboardingGrid's notChasingStatus) -- the cell
   // still RENDERS (a stray assignment can exist even though the product
   // will never chase it further) but carries no assign/complete/toggle
-  // affordance: a plain <span>, never a <button>, with no Response link
-  // either. Defaults true (every other caller keeps the live control).
+  // affordance: a plain <span>, never a <button>. Defaults true (every
+  // other caller keeps the live control).
   interactive?: boolean;
   // DEC-265 amendment (error-states rule 8): true while this cell's last
   // write is the one a rollback banner names -- the optimistic flip was
   // reverted but the cell must keep announcing that until the banner is
   // dismissed (Try again / Reload the grid), never quietly settle back to
   // its pre-click look (that reads as the click never registering). Reuses
-  // the overdue vocabulary -- weight and rule, never a new colour (DEC-367:
+  // the overdue vocabulary -- weight and fill, never a new colour (DEC-367:
   // there is no red in this system).
   notSaved?: boolean;
+  // v12: which half of the status token pair this caller wants. The pinned
+  // matrix is 'dense' (a 178px column, twelve times over); the phone card
+  // list is 'roomy' (a card row is a real target). Required, never
+  // defaulted -- a default is how the pair drifts (see statusCellClass).
+  density: StatusDensity;
 }
 
 /** Renders exactly one grid cell's contents -- the em-dash "no assignment"
- * state, or the status toggle + optional file link + optional Response
- * link. Callers supply their own wrapper (<td> for the pinned table, a
- * labelled <div> for the phone card list). */
+ * state, or the status control, and NOTHING ELSE.
+ *
+ * Design pack v12 removed the per-cell File and Response links: they were a
+ * third path to two things already routed -- one speaker (row -> detail) and
+ * one task across everyone (column head -> task view). An interim design
+ * replaced them with a muted attachment glyph, which the pack rejected for a
+ * sharper reason: "is something attached?" is not a question anyone asks
+ * while scanning, because it is not actionable -- the task is done either
+ * way. What IS actionable at a glance is per-column progress, which now
+ * lives in the column head (OnboardingGrid.tsx).
+ *
+ * This OVERRIDES DEC-920 (which made the cell's file link NAME its file
+ * rather than say "File") and the per-cell arm of DEC-291 (the Response
+ * link): the v12 pack supersedes both rather than fixing them. Neither
+ * artifact became unreachable -- the speaker detail lists deliverables and
+ * the task view reads answers -- only un-duplicated.
+ *
+ * Callers supply their own wrapper (<td> for the pinned table, a labelled
+ * <div> for the phone card list). */
 export function TaskCell({
   task,
   cell,
@@ -125,10 +168,10 @@ export function TaskCell({
   now,
   timezone,
   onToggle,
-  onOpenResponse,
   notChased = false,
   interactive = true,
   notSaved = false,
+  density,
 }: TaskCellProps) {
   if (!cell) {
     return <span className="chq-speakers-cell-none">&mdash;</span>;
@@ -138,7 +181,7 @@ export function TaskCell({
   // DEC-265 amendment: a rolled-back write borrows the overdue class family
   // too -- weight/rule, never a new colour -- so the reverted cell keeps
   // announcing itself until the banner is dismissed.
-  const cellClass = statusCellClass(cell.status, overdue || notSaved);
+  const cellClass = statusCellClass(cell.status, overdue || notSaved, density);
   const effectiveDueDate = effectiveAssignmentDueDayLabel(task.dueDate, cell.assignedAt, timezone);
   const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(task, cell, now, timezone) : null;
   const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
@@ -166,27 +209,6 @@ export function TaskCell({
         <span className={cellClass} title={cellTitleText ?? undefined}>
           {label}
         </span>
-      )}
-      {cell.fileId && cell.fileName && (
-        <a
-          href={`/files/${cell.fileId}`}
-          target="_blank"
-          rel="noreferrer"
-          className="chq-speakers-file-link"
-          aria-label={`Download ${cell.fileName}`}
-          title={cell.fileName}
-        >
-          {cell.fileName}
-        </a>
-      )}
-      {interactive && task.kind === 'form' && cell.status === 'complete' && (
-        <button
-          type="button"
-          className="chq-link-button chq-speakers-response-link"
-          onClick={() => onOpenResponse(cell.assignmentId, contactName)}
-        >
-          Response
-        </button>
       )}
     </div>
   );

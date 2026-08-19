@@ -66,6 +66,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
         status: 'complete',
         completedAt: 1700000000000,
         file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2 },
+        lastRemindedAt: null,
         overdue: false,
       },
       {
@@ -78,6 +79,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
         status: 'pending',
         completedAt: null,
         file: null,
+        lastRemindedAt: null,
         overdue: false,
       },
     ],
@@ -234,18 +236,30 @@ describe('SpeakerDetailPage render smoke', () => {
     const actions = document.querySelector('.chq-speaker-detail-actions');
     expect(actions).not.toBeNull();
 
-    // Exactly two controls, in the frame's order: Email then Remind.
-    const children = [...(actions?.children ?? [])];
-    expect(children).toHaveLength(2);
-    expect(children[0]).toHaveClass('chq-btn', 'chq-btn-secondary');
-    expect(children[0]).toHaveTextContent(/Email Ada/);
-    expect(children[1]).toHaveClass('chq-btn', 'chq-btn-primary');
-    expect(children[1]).toHaveTextContent(/Remind Ada/);
+    // Exactly two CONTROLS, in the frame's order: Email then Remind. The
+    // USER RULING that this row is Email + Remind alone (no state chip, one
+    // 46px box) is unchanged by v12; what v12 adds beside them is a caption,
+    // not a third control, so the .chq-btn count is still the assertion that
+    // matters.
     expect(actions?.querySelectorAll(':scope > .chq-btn')).toHaveLength(2);
+    const buttons = [...(actions?.querySelectorAll(':scope > .chq-btn') ?? [])];
+    expect(buttons[0]).toHaveClass('chq-btn', 'chq-btn-secondary');
+    expect(buttons[0]).toHaveTextContent(/Email Ada/);
+    expect(buttons[1]).toHaveClass('chq-btn', 'chq-btn-primary');
+    expect(buttons[1]).toHaveTextContent(/Remind Ada/);
+    // No participation chip in this row -- it belongs to the session rows.
+    expect(actions?.querySelector('.chq-participation-menu-trigger')).toBeNull();
 
-    // The state changer: the roster's chip family, in the session row.
+    // The state changer: the roster's chip family, in the session row. v12
+    // flipped Confirmed onto the RECEDING modifier (plain muted text) --
+    // weight goes to the exception, and Confirmed is the resting state of
+    // most of a roster.
     const trigger = document.querySelector('.chq-speaker-detail-sessions-row .chq-participation-menu-trigger');
     expect(trigger).toHaveClass('chq-speakers-status', 'chq-speakers-status-complete');
+    // ...at its natural (dense) size, per the USER RULING -- never inflated
+    // to the roomy 44px half, which is for the task rows below.
+    expect(trigger).toHaveClass('chq-speakers-status-dense');
+    expect(trigger).not.toHaveClass('chq-speakers-status-roomy');
   });
 
   it('the rail carries both Notes and the other-events list', async () => {
@@ -374,6 +388,7 @@ describe('SpeakerDetailPage render smoke', () => {
             status: 'complete',
             completedAt: 1700000000000,
             file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2 },
+            lastRemindedAt: null,
             overdue: false,
           },
         ],
@@ -385,7 +400,7 @@ describe('SpeakerDetailPage render smoke', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
 
     expect(screen.queryByRole('button', { name: /^Remind/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Remind this task' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Remind · / })).not.toBeInTheDocument();
   });
 
   // DEC-936 (USER RULING final form): the header asserts NO participation
@@ -538,7 +553,12 @@ describe('SpeakerDetailPage render smoke', () => {
     // Only the pending row's link renders -- the completed row's does not.
     // DEC-930 wave-24 amendment: the row's cell role lives on a wrapper
     // <span>, so this per-row control keeps its implicit button role.
-    expect(screen.getAllByRole('button', { name: 'Remind this task' })).toHaveLength(1);
+    // v12: the row's Remind link carries its own reminder history. There is
+    // no per-assignment SEND COUNT in the schema (task_assignment holds only
+    // last_reminded_at; email_log holds a contact and a sent_at but never a
+    // task), so the frame's "sent once"/"3rd time" ordinals degrade honestly
+    // to never-sent / last-sent rather than a fabricated tally.
+    expect(screen.getAllByRole('button', { name: 'Remind · never sent' })).toHaveLength(1);
   });
 
   // DEC-738 amendment (wave 75): the portal-written bio and social links
@@ -606,6 +626,7 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
       status: t.status,
       completedAt: t.status === 'complete' ? 1700000000000 : null,
       file: null,
+      lastRemindedAt: null,
       overdue: t.overdue,
     }));
   }
@@ -693,7 +714,7 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
       expect(within(row).getAllByRole('cell')).toHaveLength(4);
     }
     // Only the three pending rows carry the per-task Remind control.
-    expect(screen.getAllByRole('button', { name: 'Remind this task' })).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: /^Remind · / })).toHaveLength(3);
 
     // jsdom applies no external stylesheet, so the track shape is read from
     // the stylesheet text: a fixed action track, never `auto` (an `auto`
@@ -708,9 +729,13 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
     expect(tracks).toBeDefined();
     expect(tracks!.split(/\s+/)).toHaveLength(4);
     expect(tracks).not.toMatch(/auto/);
-    // The frame's own title/due/status tracks are untouched (docs/design/
-    // Chautauqua Speakers.dc.html:371).
-    expect(tracks).toMatch(/^1fr 150px 130px /);
+    // Design pack v12 re-cut the fixed tracks (frame Chautauqua
+    // Speakers.dc.html:375): status narrows 130 -> 96 because two of its
+    // three states no longer paint a box, and the action track widens
+    // 110 -> 150 for the Remind link's new reminder-history suffix. The
+    // FIXED-not-auto property above is what the user-filed fix was actually
+    // about, and it survives the re-cut.
+    expect(tracks).toBe('1fr 132px 96px 150px');
   });
 
   it('ticking the overdue task complete restates the header counts, so the header never names a row the reader cannot find', async () => {

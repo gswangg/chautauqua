@@ -16,14 +16,32 @@ import { INVITE_STATUS_LABELS, INVITE_STATUSES, type InviteStatus } from './type
 // Compile-checked dependency marker (DEC-830).
 void DEC_830;
 
-// DEC-789/DEC-730: one control family, four modifiers -- filled olive =
-// Confirmed, outlined = Invited, ink-outlined caps = Declined, dashed = Not
-// invited (the new "no state chosen yet" mark; the other three already
-// existed in speakers.css for the task cells).
+// DEC-789/DEC-730: one control family, four modifiers.
+//
+// Design pack v12 INVERTS two of the four and splits a third off the task
+// axis (frame Chautauqua Speakers.dc.html's INV map):
+//
+//   Confirmed    -> plain muted 600 text, no fill and no rule. Confirmed is
+//                   the resting state of most of the roster, and "weight
+//                   goes to the exception, never to the resting state".
+//   Declined     -> the FILLED ink treatment. It is the exception, and the
+//                   one participation worth catching while scanning.
+//   Invited      -> unchanged (outlined), but no longer shares a class with
+//                   the task axis's Pending: v12 took the task token bare
+//                   bold-ink while INV.Invited kept its 1px rule, so one
+//                   class can no longer serve both. Hence the dedicated
+//                   -invited modifier, which AMENDS DEC-830/DEC-789's
+//                   "four modifiers, shared with the task cells".
+//   Not invited  -> unchanged (dashed).
+//
+// Density is DENSE: the USER RULING on this page is that the participation
+// control sits beside the name "at its natural chip size", and the frame's
+// detail header draws it at exactly that. The 44px roomy half is for the
+// task rows and the task views.
 export function participationStatusClass(status: InviteStatus): string {
   const modifier =
-    status === 'accepted' ? 'complete' : status === 'declined' ? 'overdue' : status === 'invited' ? 'pending' : 'none';
-  return `chq-speakers-status chq-speakers-status-${modifier}`;
+    status === 'accepted' ? 'complete' : status === 'declined' ? 'overdue' : status === 'invited' ? 'invited' : 'none';
+  return `chq-speakers-status chq-speakers-status-${modifier} chq-speakers-status-dense`;
 }
 
 // DEC-869: the participation menu names each state's consequence -- a Record

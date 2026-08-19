@@ -29,7 +29,7 @@ function makeCell(overrides: Partial<OnboardingCell> = {}): OnboardingCell {
 describe('TaskCell', () => {
   it('renders the em-dash "no assignment" state when cell is undefined', () => {
     render(
-      <TaskCell task={TASK} cell={undefined} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
+      <TaskCell task={TASK} cell={undefined} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={vi.fn()} density="dense" />,
     );
     expect(screen.getByText('—')).toBeInTheDocument();
   });
@@ -37,14 +37,21 @@ describe('TaskCell', () => {
   it('calls onToggle with the assignment id and current status when clicked', () => {
     const onToggle = vi.fn();
     render(
-      <TaskCell task={TASK} cell={makeCell()} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={onToggle} onOpenResponse={vi.fn()} />,
+      <TaskCell task={TASK} cell={makeCell()} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={onToggle} density="dense" />,
     );
     screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' }).click();
     expect(onToggle).toHaveBeenCalledWith('as1', 'pending');
   });
 
-  it('shows a Response link only for a complete form-kind cell, calling onOpenResponse with assignmentId/contactName', () => {
-    const onOpenResponse = vi.fn();
+  // Design pack v12 REMOVED the per-cell Response and File links. They were
+  // a third path to two things already routed -- one speaker (row -> detail)
+  // and one task across everyone (column head -> task view). The interim
+  // replacement, a muted attachment glyph, was rejected for a sharper
+  // reason: "is something attached?" is not a question anyone asks while
+  // scanning, because it is not actionable. A cell now carries status and
+  // NOTHING else. This overrides DEC-920 (the file link naming its file) and
+  // the per-cell arm of DEC-291 (the Response link).
+  it('renders no Response control on a complete form-kind cell', () => {
     const formTask: OnboardingTask = { ...TASK, kind: 'form' };
     render(
       <TaskCell
@@ -54,14 +61,13 @@ describe('TaskCell', () => {
         now={Date.now()}
         timezone="UTC"
         onToggle={vi.fn()}
-        onOpenResponse={onOpenResponse}
+        density="dense"
       />,
     );
-    screen.getByRole('button', { name: 'Response' }).click();
-    expect(onOpenResponse).toHaveBeenCalledWith('as1', 'Ada Lovelace');
+    expect(screen.queryByRole('button', { name: 'Response' })).not.toBeInTheDocument();
   });
 
-  it('renders a file link when the cell carries a fileId/fileName', () => {
+  it('renders no file link even when the cell carries a fileId/fileName', () => {
     render(
       <TaskCell
         task={TASK}
@@ -70,11 +76,32 @@ describe('TaskCell', () => {
         now={Date.now()}
         timezone="UTC"
         onToggle={vi.fn()}
-        onOpenResponse={vi.fn()}
+        density="dense"
       />,
     );
-    const link = screen.getByRole('link', { name: 'Download slides.pdf' });
-    expect(link).toHaveAttribute('href', '/files/file-1');
+    expect(screen.queryByRole('link', { name: 'Download slides.pdf' })).not.toBeInTheDocument();
+    expect(screen.queryByText('slides.pdf')).not.toBeInTheDocument();
+  });
+
+  // v12 density pairing: the SAME (status, overdue) pair must produce the
+  // same meaning class at both densities, and differ only in the density
+  // class -- that is the whole point of the pair, and editing one half alone
+  // is the regression the ruling names.
+  it('carries the caller\'s density class, and the same meaning class at either density', () => {
+    const { container: dense } = render(
+      <TaskCell task={TASK} cell={makeCell()} contactName="Ada" now={Date.now()} timezone="UTC" onToggle={vi.fn()} density="dense" />,
+    );
+    const { container: roomy } = render(
+      <TaskCell task={TASK} cell={makeCell()} contactName="Ada" now={Date.now()} timezone="UTC" onToggle={vi.fn()} density="roomy" />,
+    );
+    const denseBtn = dense.querySelector('button')!;
+    const roomyBtn = roomy.querySelector('button')!;
+    expect(denseBtn.className).toContain('chq-speakers-status-dense');
+    expect(roomyBtn.className).toContain('chq-speakers-status-roomy');
+    expect(denseBtn.className).toContain('chq-speakers-status-pending');
+    expect(roomyBtn.className).toContain('chq-speakers-status-pending');
+    expect(denseBtn.className).not.toContain('chq-speakers-status-roomy');
+    expect(roomyBtn.className).not.toContain('chq-speakers-status-dense');
   });
 
   // DEC-829 amendment: notChased mutes an INCOMPLETE cell (visual only --
@@ -89,8 +116,8 @@ describe('TaskCell', () => {
         now={Date.now()}
         timezone="UTC"
         onToggle={vi.fn()}
-        onOpenResponse={vi.fn()}
-        notChased={true}
+       
+        notChased={true} density="dense"
       />,
     );
     const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
@@ -106,8 +133,8 @@ describe('TaskCell', () => {
         now={Date.now()}
         timezone="UTC"
         onToggle={vi.fn()}
-        onOpenResponse={vi.fn()}
-        notChased={true}
+       
+        notChased={true} density="dense"
       />,
     );
     const completeBtn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
@@ -116,7 +143,7 @@ describe('TaskCell', () => {
 
   it('does not mute when notChased is false/omitted', () => {
     render(
-      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
+      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={vi.fn()} density="dense" />,
     );
     const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
     expect(btn.closest('.chq-speakers-cell')).not.toHaveClass('chq-speakers-cell-muted');
@@ -134,8 +161,8 @@ describe('TaskCell', () => {
         now={Date.now()}
         timezone="UTC"
         onToggle={vi.fn()}
-        onOpenResponse={vi.fn()}
-        notSaved={true}
+       
+        notSaved={true} density="dense"
       />,
     );
     const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
@@ -145,7 +172,7 @@ describe('TaskCell', () => {
 
   it('does not append the marker when notSaved is false/omitted', () => {
     render(
-      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
+      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} timezone="UTC" onToggle={vi.fn()} density="dense" />,
     );
     const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
     expect(btn).toHaveTextContent('Pending');
