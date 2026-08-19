@@ -99,7 +99,14 @@ lane, per the field guide's "OFF-LIMITS by branch" convention): the
 (speakers.css, task-view.css), and `chq-submissions-delete-back` /
 `chq-submissions-table-title` (submissions.css).
 
-`chq-overview-link-btn` needs a design decision, not just a CSS fix: one
-class currently serves both a row-action chip (ROOMY) and prose linking to a
-public URL (INLINE) — splitting it into two classes would let each carry
-the right treatment.
+RESOLVED (DEC-393 wave-106, task w2-d): `chq-overview-link-btn` was split.
+The four row-action call sites (`Overview.tsx:350,355,424,464`) keep
+`chq-overview-link-btn`, floored to 44px/flex/centred/padded inside
+overview.css's last `max-width: 700px` block. The fifth site
+(`Overview.tsx:498`, the `/e/{slug}` public URL sitting inside
+`.chq-overview-row-meta` running prose) now carries `chq-overview-link-inline`
+instead, a top-level (no @media) rule with the same brand colour/weight/hover
+treatment but deliberately no `min-height`, no `display: flex`, and no block
+padding — per DESIGN-RULINGS.md:189, the floor governs controls, and flooring
+a URL mid-sentence would break the line box. See
+app/src/pages/overview/overview-link-register.test.ts.

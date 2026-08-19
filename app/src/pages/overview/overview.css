@@ -438,6 +438,23 @@
   }
 }
 
+/* DEC-393 wave-106: DESIGN-RULINGS.md:189's floor governs controls; a URL
+   inside a sentence is content, and flooring it would break the line box. */
+.chq-overview-link-inline {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--chq-font-ui);
+  color: var(--chq-brand);
+  text-decoration: underline;
+}
+
+@media (hover: hover) {
+  .chq-overview-link-inline:hover {
+    color: var(--chq-brand-hover);
+    text-decoration: underline;
+  }
+}
+
 .chq-overview-empty {
   padding: 14px 0;
   color: var(--chq-muted);
