@@ -441,94 +441,6 @@ export const PORTAL_CSS = `
     text-transform: uppercase;
   }
 
-  @media (max-width: 700px) {
-    /* G13: the hero returns to the phone page-title token below 700px
-       (mobile geometry parked; this preserves the pre-G13 phone size). */
-    .chq-portal-hero { font-size: var(--chq-type-page-title-phone-size); }
-    /* DEC-367 amendment (wave 57): the >=44px tap floor is phone-only
-       (docs/design/README.md:92) -- these six boxes used to be
-       unconditional base rules above; moved here verbatim, no other
-       property added. */
-    .chq-portal-back { min-height: 44px; }
-    .chq-portal-footer-resources { min-height: 44px; }
-    .chq-portal-footer-profile { min-height: 44px; }
-    .chq-portal-actions .chq-btn { min-height: 44px; }
-    .chq-portal-signout-btn { min-height: 44px; }
-    .chq-portal-copresenter-submit .chq-btn { min-height: 44px; }
-    .chq-portal-row-head { align-items: flex-start; }
-    /* DEC-989 ruling B6's right-flush on .chq-portal-actions (base rule
-       above) is a desktop-only affordance: at phone width the buttons go
-       full-width in a column, so the flush is reset back to start here.
-       DEC-385 keeps this codebase single-direction -- narrow overrides
-       wide via max-width only -- so the desktop rendition lives in the
-       base rule and this block is the only override. */
-    .chq-portal-actions { flex-direction: column; justify-content: flex-start; }
-    .chq-portal-actions .chq-btn { width: 100%; }
-
-    /* w13-e: portal frame is the phone app shell -- header/main/footer
-       become a fixed three-region column so .chq-measure is the only
-       scroll surface (docs/design "Chautauqua Public and Portal.dc.html"
-       lines 414-467 / 563-591). No top-level rule for .chq-portal-shell
-       itself -- desktop stays exactly as it was. */
-    .chq-portal-shell {
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-    }
-    .chq-portal-shell > .chq-header { flex-shrink: 0; }
-    /* DEC-253 wave-25 amendment: the desktop max-width: var(--chq-portal-
-       measure) rule above (560px) applies unconditionally, and .chq-measure
-       is a flex item whose stretched cross size can still be pushed wider
-       than the viewport by its own content's intrinsic (min-content) width
-       -- the classic flex-item overflow trap. At phone width the column
-       itself must be capped to the viewport regardless of that 560px token,
-       and min-width: 0 stops it (and every constrained descendant below)
-       from falling back to its content's auto minimum. */
-    .chq-portal-shell > .chq-measure {
-      flex: 1;
-      min-height: 0;
-      min-width: 0;
-      width: 100%;
-      max-width: 100%;
-      overflow-y: auto;
-    }
-    .chq-portal-shell > .chq-portal-footer {
-      flex-shrink: 0;
-      border-top: 1px solid var(--chq-ink);
-      background: var(--chq-surface-sunk);
-      padding: 12px 16px 16px;
-    }
-    /* Descendant containers that can otherwise impose an intrinsic width
-       past the now-capped .chq-measure column -- rows/fields never need a
-       min-content floor wider than the phone viewport, and a table or
-       pre/code block gets its own scroll container instead of the page. */
-    .chq-portal-row,
-    .chq-portal-row-head,
-    .chq-portal-field,
-    .chq-field,
-    table,
-    pre,
-    code {
-      min-width: 0;
-    }
-    table {
-      display: block;
-      max-width: 100%;
-      overflow-x: auto;
-    }
-    pre {
-      max-width: 100%;
-      overflow-x: auto;
-    }
-
-    .chq-portal-footer-band {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .chq-portal-footer-band > *:last-child { margin-left: auto; }
-  }
-
   /* DEC-696: chq-cfp-option vocabulary shared with src/routes/public/cfp.css.ts
      so /portal/edit's track fieldset and /submit/:slug's track fieldset use
      the identical option class + copy. Also styles renderMarkdown's output
@@ -749,4 +661,125 @@ ${ERROR_STATES_CSS}
   font-size: 13px;
   line-height: 1.5;
 }
+
+  @media (max-width: 700px) {
+    /* G13: the hero returns to the phone page-title token below 700px
+       (mobile geometry parked; this preserves the pre-G13 phone size).
+       w3-a (docs/design/Chautauqua Public and Portal.dc.html): the three
+       390 frames this task owns -- "Speaker portal" (:414-467), "Portal ·
+       Your tasks" (:476-496), "Portal · Your profile" (:531-554) -- all
+       three draw the SAME 25px H1 register: :420 "Two things to do" reads
+       'font-size:25px; font-weight:700; letter-spacing:-0.04em;
+       line-height:1.05', :479 "Your tasks" and :534 "Your profile" are
+       byte-identical. The portal has no cluster-landing/drill split the
+       way Home does -- there is no nav to land on, every /portal/* page
+       sits one level below the single magic-link entry point -- so the
+       already-tokenised drill register (--chq-type-page-title-phone-drill,
+       DEC-643 amendment) applies uniformly across the family rather than
+       being conditioned on whether a back link precedes the H1. Flagged in
+       docs/design/audit/portal-v12.md: the delegating task's own prose
+       described the landing frame as the 27px register, which the frame's
+       bytes contradict -- the frame is the authority. */
+    .chq-portal-hero { font-size: var(--chq-type-page-title-phone-drill); }
+    /* :415 'border-bottom:1px solid #1B1D17; padding:14px 16px;
+       flex-shrink:0' -- head band padding, byte-identical across all three
+       frames (:415 / :477 / :532). flex-shrink:0 is already the unmediated
+       '.chq-portal-shell > .chq-header' rule a few lines below; only the
+       padding is new here. */
+    .chq-portal-shell > .chq-header { padding: 14px 16px; }
+    /* :424 'flex:1; min-height:0; overflow-y:auto; padding:16px' on the
+       landing frame's body vs :481 'flex:1; min-height:0; overflow-y:auto;
+       padding:14px 16px 16px' on the drill frames' (:481 "Your tasks",
+       :510 "Hotel stay form", :536 "Your profile" all agree) -- the drill
+       frames give the body 2px less top padding than its sides/bottom,
+       since the head above it already carries the back-link row. Scoped
+       by the presence of .chq-portal-back (only a drill page renders
+       PortalBackLink, per shared.tsx) rather than a second body class, so
+       no markup change is needed on either page family. */
+    .chq-portal-shell > .chq-measure { padding: 16px; }
+    .chq-portal-shell:has(.chq-portal-back) > .chq-measure { padding: 14px 16px 16px; }
+    /* DEC-367 amendment (wave 57): the >=44px tap floor is phone-only
+       (docs/design/README.md:92) -- these six boxes used to be
+       unconditional base rules above; moved here verbatim, no other
+       property added. :478/:533's back link min-height:44px matches this
+       rule exactly. */
+    .chq-portal-back { min-height: 44px; }
+    .chq-portal-footer-resources { min-height: 44px; }
+    .chq-portal-footer-profile { min-height: 44px; }
+    .chq-portal-actions .chq-btn { min-height: 44px; }
+    .chq-portal-signout-btn { min-height: 44px; }
+    .chq-portal-copresenter-submit .chq-btn { min-height: 44px; }
+    .chq-portal-row-head { align-items: flex-start; }
+    /* DEC-989 ruling B6's right-flush on .chq-portal-actions (base rule
+       above) is a desktop-only affordance: at phone width the buttons go
+       full-width in a column, so the flush is reset back to start here.
+       DEC-385 keeps this codebase single-direction -- narrow overrides
+       wide via max-width only -- so the desktop rendition lives in the
+       base rule and this block is the only override. */
+    .chq-portal-actions { flex-direction: column; justify-content: flex-start; }
+    .chq-portal-actions .chq-btn { width: 100%; }
+
+    /* w13-e: portal frame is the phone app shell -- header/main/footer
+       become a fixed three-region column so .chq-measure is the only
+       scroll surface (docs/design "Chautauqua Public and Portal.dc.html"
+       lines 414-467 / 563-591). No top-level rule for .chq-portal-shell
+       itself -- desktop stays exactly as it was. */
+    .chq-portal-shell {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    .chq-portal-shell > .chq-header { flex-shrink: 0; }
+    /* DEC-253 wave-25 amendment: the desktop max-width: var(--chq-portal-
+       measure) rule above (560px) applies unconditionally, and .chq-measure
+       is a flex item whose stretched cross size can still be pushed wider
+       than the viewport by its own content's intrinsic (min-content) width
+       -- the classic flex-item overflow trap. At phone width the column
+       itself must be capped to the viewport regardless of that 560px token,
+       and min-width: 0 stops it (and every constrained descendant below)
+       from falling back to its content's auto minimum. */
+    .chq-portal-shell > .chq-measure {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      overflow-y: auto;
+    }
+    .chq-portal-shell > .chq-portal-footer {
+      flex-shrink: 0;
+      border-top: 1px solid var(--chq-ink);
+      background: var(--chq-surface-sunk);
+      padding: 12px 16px 16px;
+    }
+    /* Descendant containers that can otherwise impose an intrinsic width
+       past the now-capped .chq-measure column -- rows/fields never need a
+       min-content floor wider than the phone viewport, and a table or
+       pre/code block gets its own scroll container instead of the page. */
+    .chq-portal-row,
+    .chq-portal-row-head,
+    .chq-portal-field,
+    .chq-field,
+    table,
+    pre,
+    code {
+      min-width: 0;
+    }
+    table {
+      display: block;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    pre {
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .chq-portal-footer-band {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .chq-portal-footer-band > *:last-child { margin-left: auto; }
+  }
 .chq-portal-shell .chq-pub-empty-block-fresh { padding-top: 10px; }`;
