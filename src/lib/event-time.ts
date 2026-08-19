@@ -245,11 +245,19 @@ export function formatEventDayRange(startMs: number, endMs: number): string {
 
 /** CFP close date label (weekday + day + month, en-GB day-before-month
  * order, no comma), rendered in the event's own IANA timezone (DEC-408: a
- * real instant, never UTC-bare), e.g. "Sun 12 May". Callers own the
- * uppercasing and "N days left" arithmetic (root.tsx's closesLine) — only
- * the Intl formatting itself lives here, per DEC-918. */
-export function formatEventCloseDateLabel(closeMs: number, timeZone: string): string {
-  return new Date(closeMs).toLocaleDateString("en-GB", {
+ * real instant, never UTC-bare), e.g. "Sun 12 May". `closeDayLabelMs` is a
+ * DEC-522 UTC-midnight DAY LABEL, not an instant — enforced upstream by
+ * isDayLabelMs (src/routes/api/validators.ts) — so it is expanded through
+ * dayLabelEndInstant before formatting; formatting the raw UTC-midnight
+ * value directly would resolve to the previous calendar day in every
+ * timezone west of UTC. This mirrors daysUntilCalendarDay below, which
+ * expands the same label the same way, so the printed date and the "N days
+ * left" count always name the same day. Callers own the uppercasing and
+ * "N days left" arithmetic (root.tsx's closesLine) — only the Intl
+ * formatting itself lives here, per DEC-918. */
+export function formatEventCloseDateLabel(closeDayLabelMs: number, timeZone: string): string {
+  const endInstant = dayLabelEndInstant(closeDayLabelMs, timeZone);
+  return new Date(endInstant).toLocaleDateString("en-GB", {
     weekday: "short",
     day: "numeric",
     month: "short",
