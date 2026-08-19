@@ -2603,3 +2603,156 @@ describe('PlanEditor: below-roster "Assign a reviewer" trigger (DEC-745 wave-98)
     expect(screen.queryByPlaceholderText('reviewer@example.com')).not.toBeInTheDocument();
   });
 });
+
+// D1/D10 (eval MAJOR, one bug): the "Who reviews what" section's summary
+// line is built from GET /plans/:id/progress's `submissionsInScope` and its
+// `total` (one row per reviewer ACCOUNT). That fetch used to be inlined in
+// the mount-only effect (deps [planId, isNew]) and no reviewer mutation
+// re-ran it, so after adding the plan's first reviewer the summary still
+// read "0 reviewers" — and a stale talk count — until a full page reload.
+// Each test below serves a DIFFERENT progress envelope on the second call,
+// so an assertion only passes if the component actually re-read the
+// endpoint rather than re-rendering its mount-time snapshot.
+describe('PlanEditor progress snapshot refetch (D1/D10)', () => {
+  const REVIEWER_OPTION = {
+    id: 'user-42',
+    email: 'reviewer@example.test',
+    role: 'reviewer',
+    contactId: null,
+    createdAt: 0,
+  };
+
+  const REVIEWER_ROW = {
+    id: 'pr-1',
+    userId: 'user-42',
+    email: 'reviewer@example.test',
+    trackId: null,
+    submissionId: null,
+    trackName: null,
+    submissionRef: null,
+    submissionTitle: null,
+  };
+
+  function progressRow(overrides: Record<string, unknown> = {}) {
+    return {
+      userId: 'user-42',
+      email: 'reviewer@example.test',
+      name: null,
+      assigned: 11,
+      completed: 0,
+      recused: 0,
+      trackName: null,
+      ...overrides,
+    };
+  }
+
+  /** Serves each envelope in `sequence` once, then repeats the last one —
+   * so "before" and "after" are distinguishable no matter how many times
+   * the component re-reads. */
+  function progressSequence(sequence: unknown[]) {
+    let call = 0;
+    return () => sequence[Math.min(call++, sequence.length - 1)];
+  }
+
+  function renderEditor() {
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('re-reads the progress endpoint after an Assign, so the summary counts the reviewer just added', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: progressSequence([
+        listEnvelope([], { total: 0, submissionsInScope: 11 }),
+        listEnvelope([progressRow()], { total: 1, submissionsInScope: 12 }),
+      ]),
+      'GET /api/v1/users': listEnvelope([REVIEWER_OPTION]),
+      [`POST /api/v1/plans/${PLAN_ID}/reviewers`]: { status: 201, body: { ...REVIEWER_ROW, scopeAdvisory: null } },
+    });
+
+    renderEditor();
+
+    // Mount snapshot: nobody assigned yet.
+    expect(await screen.findByText('11 talks · 11 reviews needed at 1 each · 0 reviewers')).toBeInTheDocument();
+
+    await openAssignForm();
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'reviewer@example.test' })).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByLabelText('Reviewer'), { target: { value: 'user-42' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Assign' }));
+
+    // Both numbers come off the REFRESHED envelope, not the mount snapshot.
+    expect(await screen.findByText('12 talks · 12 reviews needed at 1 each · 1 reviewer')).toBeInTheDocument();
+    expect(
+      screen.queryByText('11 talks · 11 reviews needed at 1 each · 0 reviewers'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('re-reads the progress endpoint after a confirmed reviewer removal', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([REVIEWER_ROW]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: progressSequence([
+        listEnvelope([progressRow()], { total: 1, submissionsInScope: 11 }),
+        listEnvelope([], { total: 0, submissionsInScope: 11 }),
+      ]),
+      'GET /api/v1/users': listEnvelope([]),
+      [`DELETE /api/v1/plans/${PLAN_ID}/reviewers/pr-1`]: { status: 200, body: {} },
+    });
+
+    renderEditor();
+
+    expect(await screen.findByText('11 talks · 11 reviews needed at 1 each · 1 reviewer')).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove reviewer' }));
+
+    expect(await screen.findByText('11 talks · 11 reviews needed at 1 each · 0 reviewers')).toBeInTheDocument();
+  });
+
+  it('re-reads the progress endpoint after a track-scoped "Assign all N" confirm', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk-1', name: 'Backend' }]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: progressSequence([
+        listEnvelope([], { total: 0, submissionsInScope: 11 }),
+        listEnvelope([progressRow({ trackName: 'Backend' })], { total: 1, submissionsInScope: 11 }),
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}/scope-preview`]: { count: 3, items: [], perPage: 200 },
+      'GET /api/v1/users': listEnvelope([REVIEWER_OPTION]),
+      [`POST /api/v1/plans/${PLAN_ID}/reviewers`]: {
+        status: 201,
+        body: { ...REVIEWER_ROW, trackId: 'trk-1', trackName: 'Backend', scopeAdvisory: null },
+      },
+    });
+
+    renderEditor();
+
+    expect(await screen.findByText('11 talks · 11 reviews needed at 1 each · 0 reviewers')).toBeInTheDocument();
+
+    await openAssignForm();
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'reviewer@example.test' })).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByLabelText('Reviewer'), { target: { value: 'user-42' } });
+    fireEvent.change(screen.getByLabelText('Assignment scope'), { target: { value: 'track' } });
+    fireEvent.change(screen.getByLabelText('Track'), { target: { value: 'trk-1' } });
+
+    // DEC-572's confirm gate: the primary button only OPENS the confirm.
+    fireEvent.click(await screen.findByRole('button', { name: 'Assign 3 submissions in Backend' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Assign all 3' }));
+
+    expect(await screen.findByText('11 talks · 11 reviews needed at 1 each · 1 reviewer')).toBeInTheDocument();
+  });
+});

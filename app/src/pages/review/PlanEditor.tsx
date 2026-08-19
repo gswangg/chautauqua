@@ -570,6 +570,31 @@ export function PlanEditor() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
   }, [eventId]);
 
+  // D1/D10 (eval MAJOR): the "Who reviews what" summary reads THREE values
+  // off GET /plans/:id/progress -- progressRows (the per-reviewer assigned/
+  // completed loads), submissionsInScope, and reviewerAccountCount (one row
+  // per reviewer ACCOUNT). Every reviewer mutation on this page changes all
+  // three, so this fetch is a named function called after each of them, not
+  // an inlined body of the mount-only effect below: while it lived there,
+  // adding the plan's first reviewer left the summary reading "0 reviewers"
+  // and a stale talk count until a full page reload.
+  function loadProgress() {
+    if (!planId) return Promise.resolve();
+    return apiList<ProgressRow>(`/plans/${planId}/progress`)
+      .then((res) => {
+        setProgressRows(res.items);
+        setSubmissionsInScope(res.submissionsInScope ?? null);
+        // w40-e/DEC-745 amendment: `total` here is one row per reviewer
+        // ACCOUNT (src/routes/review/plans-progress.ts), the true figure
+        // the cap row's summary names.
+        setReviewerAccountCount(res.total);
+      })
+      .catch(() => {
+        // Same non-blocking treatment as the reviewer roster -- rows still
+        // render with a bare email/no load count if this fails.
+      });
+  }
+
   useEffect(() => {
     if (isNew || !planId) return;
     setLoading(true);
@@ -610,19 +635,7 @@ export function PlanEditor() {
         // Reviewer roster is a nice-to-have on the editor; the plan itself
         // still loaded, so don't block the page on this failing.
       });
-    apiList<ProgressRow>(`/plans/${planId}/progress`)
-      .then((res) => {
-        setProgressRows(res.items);
-        setSubmissionsInScope(res.submissionsInScope ?? null);
-        // w40-e/DEC-745 amendment: `total` here is one row per reviewer
-        // ACCOUNT (src/routes/review/plans-progress.ts), the true figure
-        // the cap row's summary names.
-        setReviewerAccountCount(res.total);
-      })
-      .catch(() => {
-        // Same non-blocking treatment -- rows still render with a bare
-        // email/no load count if this fails.
-      });
+    loadProgress();
   }, [planId, isNew]);
 
   const errors = validatePlanDraft(draft);
@@ -950,8 +963,12 @@ export function PlanEditor() {
       // preview the organizer saw is exactly what gets written.
       await apiPost<{ created: number }>(`/plans/${planId}/assignments/distribute`, { cap: distributePreview.cap });
       cancelDistribute();
+      // D1/D10: the roster AND the progress snapshot the "Who reviews what"
+      // summary reads -- distribution writes per-reviewer assignments, so
+      // the per-row load counts above the summary go stale too.
       const [reviewersRes] = await Promise.all([
         apiList<PlanReviewer>(`/plans/${planId}/reviewers?perPage=${MAX_PER_PAGE}`),
+        loadProgress(),
       ]);
       setReviewers(reviewersRes.items);
       setReviewersTotal(reviewersRes.total);
@@ -1069,6 +1086,11 @@ export function PlanEditor() {
     // DEC-354 (amendment, wave 61): scopeAdvisory is null when nothing
     // overlapped -- clear any stale advisory from a previous add.
     setScopeAdvisory(created.scopeAdvisory ?? null);
+    // D1/D10: the new row's assigned/completed loads and the reviewer-
+    // ACCOUNT count both live on the progress endpoint, not on this create
+    // response -- refetch so the summary counts the reviewer just added.
+    // Covers both callers (assignReviewer and confirmAssignAllInTrack).
+    await loadProgress();
     return created;
   }
 
@@ -1159,6 +1181,9 @@ export function PlanEditor() {
       // DEC-354 (amendment, wave 61): null when nothing in the chosen set
       // overlapped an existing broader row.
       setScopeAdvisory(advisory ?? null);
+      // D1/D10: same refetch the single-row path does -- a batch add moves
+      // the summary's reviewer count and per-reviewer loads too.
+      await loadProgress();
       setReviewerUserId('');
       resetScopeConfirm();
       setScopePreview(null);
@@ -1200,6 +1225,9 @@ export function PlanEditor() {
       await apiDelete(`/plans/${planId}/reviewers/${id}`);
       setReviewers((prev) => prev.filter((r) => r.id !== id));
       setReviewersTotal((prev) => Math.max(0, prev - 1));
+      // D1/D10: removing a reviewer drops their queue, so the summary's
+      // reviewer-account count and the remaining rows' loads both move.
+      await loadProgress();
       setPendingUnassignReviewer(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to remove reviewer');
