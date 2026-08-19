@@ -75,8 +75,8 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
     load();
   }, []);
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
+  async function handleCreate(e?: FormEvent) {
+    e?.preventDefault();
     if (newName.trim().length === 0) return;
     setCreating(true);
     setError(null);
@@ -255,6 +255,21 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
           </tbody>
         </table>
       )}
+
+      {/* DEC-919 wave-99 amendment (task v12m-w2-a): the drill frame draws
+          "New token" a second time as a filled 46px full-width primary
+          below the API tokens list at phone (docs/design/Chautauqua
+          Settings.dc.html:426) -- the form's own submit button above stays
+          the correct desktop rendering (hidden at phone via
+          settings-lists.css); this sibling submits the SAME form. */}
+      <button
+        type="button"
+        className="chq-settings-phone-action"
+        disabled={creating || newName.trim().length === 0}
+        onClick={() => void handleCreate()}
+      >
+        New token
+      </button>
 
       {pendingDelete && (
         <ConfirmDialog

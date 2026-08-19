@@ -56,6 +56,7 @@ import { SettingsEditForm } from './SettingsEditForm';
 import { capitalizeFirst } from '../../lib/plural';
 import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
 import { DEC_747 } from '../../../../src/decisions';
+import './settings-lists.css';
 
 void DEC_747; // the invite/reset flows below implement wave-58's amendment (verb-matches-act, reveal-once shape, honest email gap) and wave-67's amendment (invite dialog form factor)
 
@@ -385,7 +386,7 @@ export function PeopleRolesPanel() {
         <h2>People &middot; {users.length}</h2>
         <button
           type="button"
-          className="chq-settings-section-action chq-link-button"
+          className="chq-settings-section-action chq-settings-people-invite-action chq-link-button"
           onClick={() => setInviting(true)}
         >
           Invite someone
@@ -670,6 +671,19 @@ export function PeopleRolesPanel() {
           </p>
         </>
       )}
+      {/* DEC-919 wave-99 amendment (task v12m-w2-a): the drill frame draws
+          "Invite someone" a second time as a filled 46px full-width primary
+          below the people list at phone (docs/design/Chautauqua
+          Settings.dc.html:568) -- the head link above stays the correct
+          desktop rendering (hidden at phone via settings-lists.css); this
+          sibling opens the SAME dialog. */}
+      <button
+        type="button"
+        className="chq-settings-phone-action"
+        onClick={() => setInviting(true)}
+      >
+        Invite someone
+      </button>
       </SettingsEditForm>
     </SummarySection>
   );

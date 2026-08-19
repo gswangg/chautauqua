@@ -80,3 +80,48 @@
   color: var(--chq-ink);
   font-weight: 700;
 }
+
+/* DEC-919 wave-99 amendment (task v12m-w2-a): the drill frames draw
+   "New token" / "Invite someone" as a filled 46px full-width primary BELOW
+   their list at phone -- the app's desktop head link is the frame's own
+   correct desktop twin and must not change (DEC-919: the capability
+   renders TWICE in the DOM, exactly ONCE on screen). This element renders
+   unconditionally in the DOM, so it needs an explicit desktop
+   `display:none` OUTSIDE the media block below, same shape as
+   .chq-settings-tracks-rooms-phone-caption (settings.css:1252). */
+.chq-settings-phone-action {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  /* docs/design/Chautauqua Settings.dc.html:426
+     `        <span style="display:flex; align-items:center; justify-content:center; margin-top:12px; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; font-size:14px; font-weight:700">New token</span>`
+     docs/design/Chautauqua Settings.dc.html:568
+     `        <span style="display:flex; align-items:center; justify-content:center; margin-top:14px; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; font-size:14px; font-weight:700">Invite someone</span></div>` */
+  .chq-settings-phone-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 12px;
+    background: #4E5C31;
+    color: #F7F9F0;
+    border: none;
+    border-radius: 6px;
+    min-height: 46px;
+    font-family: var(--chq-font-display);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  /* Desktop twins of the two phone-only primaries above stay mounted in
+     the DOM (DEC-919) -- hide each at phone so the capability shows
+     exactly once on screen. Scoped past the shared
+     .chq-settings-section-action token (also used by TracksRoomsPanel's
+     unconverted "Add a track"/"Add a room" head links, out of this
+     task's scope) via each panel's own extra class. */
+  .chq-settings-token-create .chq-btn-primary,
+  .chq-settings-people-invite-action {
+    display: none;
+  }
+}

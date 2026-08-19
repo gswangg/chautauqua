@@ -295,7 +295,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
@@ -330,7 +330,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
     const sendButton = screen.getByRole('button', { name: 'Create the account' });
     expect(sendButton).toBeDisabled();
 
@@ -358,7 +358,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
 
     expect(screen.queryByRole('button', { name: 'Send invitation' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Invite$/ })).not.toBeInTheDocument();
@@ -378,7 +378,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
 
     const reviewerChip = screen.getByRole('radio', { name: 'Reviewer' });
     const organizerChip = screen.getByRole('radio', { name: 'Organizer' });
@@ -413,7 +413,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
@@ -457,7 +457,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
@@ -489,7 +489,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Otherton' } });
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Person' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: OTHER.email } });
@@ -553,7 +553,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
@@ -578,7 +578,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
@@ -616,7 +616,7 @@ describe('PeopleRolesPanel', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByLabelText('First name')).toBeInTheDocument();
@@ -640,7 +640,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
@@ -706,5 +706,33 @@ describe('PeopleRolesPanel', () => {
     // OTHER is a nameless legacy row (no `name` on the wire payload) -- it
     // still reads correctly via the email fallback.
     expect(screen.getByText(OTHER.email)).toBeInTheDocument();
+  });
+
+  // DEC-919 wave-99 amendment (task v12m-w2-a): the drill frame draws
+  // "Invite someone" a second time as a filled 46px full-width primary
+  // below the people list at phone.
+  it('renders the control exactly twice once drilled in -- the head link and the phone-only sibling below the list -- both opening the same dialog', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    // docs/design/Chautauqua Settings.dc.html:568
+    // `        <span style="display:flex; align-items:center; justify-content:center; margin-top:14px; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; font-size:14px; font-weight:700">Invite someone</span></div>`
+    const buttons = screen.getAllByRole('button', { name: 'Invite someone' });
+    expect(buttons).toHaveLength(2);
+
+    const [headLink, phoneSibling] = buttons;
+    expect(headLink).toHaveClass('chq-settings-section-action');
+    expect(phoneSibling).toHaveClass('chq-settings-phone-action');
+    expect(phoneSibling).not.toHaveClass('chq-settings-section-action');
+
+    // The phone sibling opens the same invite dialog as the head link.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(phoneSibling!);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('Email')).toBeInTheDocument();
   });
 });
