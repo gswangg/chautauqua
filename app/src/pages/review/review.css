@@ -1194,6 +1194,13 @@
   padding-top: 14px;
 }
 
+/* Same fix, second half: bottoms aligning is not enough when the button is
+   37px against the input's 44px -- equal heights make bottom-alignment read
+   as centred. Scoped to this row; the shared .chq-btn is untouched. */
+.chq-review-reviewer-form .chq-btn {
+  min-height: 44px;
+}
+
 /* DEC-468: /users?role=reviewer's picker is now page-capped -- this note
    discloses the truncation next to the <select> instead of letting it
    silently imply the roster is exhaustive. */

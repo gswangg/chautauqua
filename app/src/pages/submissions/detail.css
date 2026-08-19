@@ -834,7 +834,16 @@
 }
 
 .chq-detail-delete-link {
+  /* User-filed (v12 review): as a bare inline 13px anchor this read as
+     unstyled lost text. DEC-886 wants QUIET, not invisible: keep the muted
+     register but give it a real control box (44px floor at every width,
+     no mid-phrase wrap) so it reads as a deliberate action. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  white-space: nowrap;
   font-size: 13px;
+  font-weight: 600;
   color: var(--chq-muted);
 }
 
