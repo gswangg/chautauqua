@@ -128,11 +128,32 @@ function isReviewerNav(section: NavSection): boolean {
   return section.path === '/review/*';
 }
 
-// DEC-381: the phone tab bar's four primary destinations, fixed by an
-// explicit ordered path list so the set can never drift with NAV_SECTIONS
-// order (NAV_SECTIONS orders Review third, which previously pushed Content
-// out of the tab bar's `.slice(0, 4)`).
-const PHONE_TAB_PATHS = ['/overview', '/submissions', '/speakers', '/content'] as const;
+// DEC-381 (wave-109 amendment): slots 1-3 of the phone tab bar are fixed
+// by an explicit ordered path list so the set can never drift with
+// NAV_SECTIONS order (NAV_SECTIONS orders Review third, which previously
+// pushed Content out of the tab bar's `.slice(0, 4)`). Slot 4 is
+// contextual -- every frame's own `tabs: [...]` data array agrees slot 4
+// is Contacts on the Contacts section, Comms on the Comms section, and
+// Content everywhere else:
+// docs/design/Chautauqua Contacts.dc.html:1015 `tabs: [`, slot 4
+// "Contacts"; docs/design/Chautauqua Comms.dc.html:970 `tabs: [`, slot 4
+// "Comms"; docs/design/Chautauqua Content.dc.html:501 `tabs: [`, slot 4
+// "Content"; docs/design/Chautauqua Overview.dc.html:835 `tabs: [`, slot 4
+// "Content"; docs/design/Chautauqua Speakers.dc.html:871 `tabs: [`, slot 4
+// "Content"; docs/design/Chautauqua Settings.dc.html:1702 `tabs: [`, slot 4
+// "Content"; docs/design/Chautauqua Submissions.dc.html:796 `tabs: [`,
+// slot 4 "Content".
+const PHONE_TAB_FIXED_PATHS = ['/overview', '/submissions', '/speakers'] as const;
+
+function phoneTabSlotFour(pathname: string): '/contacts' | '/comms' | '/content' {
+  if (pathname.startsWith('/contacts')) return '/contacts';
+  if (pathname.startsWith('/comms')) return '/comms';
+  return '/content';
+}
+
+function phoneTabPaths(pathname: string): readonly string[] {
+  return [...PHONE_TAB_FIXED_PATHS, phoneTabSlotFour(pathname)];
+}
 
 // DEC-154/DEC-874 (wave-91 amendment): sign-out is now the ONE contract
 // exported from lib/api.ts (POST /logout, CSRF header, redirect to /login
@@ -254,21 +275,35 @@ function PhoneTabBar() {
   const { me } = useMe();
   const exceptions = useNavExceptions();
   const tabsNavigate = useNavigate();
+  const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const isReviewer = me?.role === 'reviewer';
   const sections = isReviewer ? NAV_SECTIONS.filter(isReviewerNav) : NAV_SECTIONS;
 
-  // DEC-381: primary tabs are built from an explicit ordered path list
-  // intersected with the role-filtered sections, so the set cannot drift
-  // when NAV_SECTIONS' own order changes. A reviewer has exactly one
-  // section (Review) and shows it alone, with no More control.
+  // DEC-381 (wave-109 amendment): primary tabs are built from the ordered
+  // path list (slots 1-3 fixed, slot 4 contextual on the current
+  // location) intersected with the role-filtered sections, so the set
+  // cannot drift when NAV_SECTIONS' own order changes. A reviewer has
+  // exactly one section (Review) and shows it alone, with no More
+  // control.
   const primaryTabs = isReviewer
     ? sections
-    : PHONE_TAB_PATHS.map((path) => sections.find((s) => s.path === path)).filter(
-        (s): s is NavSection => s !== undefined,
-      );
+    : phoneTabPaths(location.pathname)
+        .map((path) => sections.find((s) => s.path === path))
+        .filter((s): s is NavSection => s !== undefined);
   const moreSections = sections.filter((section) => !primaryTabs.includes(section));
+  // DEC-381 (wave-109 amendment): More is DOT_ON whenever the current
+  // section is none of the rendered primary tabs -- the Settings frame's
+  // DOT_ON member (docs/design/Chautauqua Settings.dc.html:1702-1708).
+  // Matching mirrors NavLink's own (non-`end`) semantics: a nested route
+  // like /speakers/123 still counts as the /speakers tab.
+  const moreIsActive =
+    !isReviewer &&
+    !primaryTabs.some((s) => {
+      const base = s.path.replace(/\/\*$/, '');
+      return location.pathname === base || location.pathname.startsWith(`${base}/`);
+    });
   const closeMore = () => setMoreOpen(false);
   useEscapeKey(moreOpen, closeMore);
   const anyBadgeLive = Boolean(exceptions.late) || Boolean(exceptions.clash);
@@ -312,16 +347,38 @@ function PhoneTabBar() {
             >
               {({ isActive }) => (
                 <>
+                  {/* DEC-381 (wave-109 amendment): the frame's row draws
+                      the dot BEFORE the label, every tab (not just the
+                      active one) -- docs/design/Chautauqua
+                      Submissions.dc.html:175-178
+                      (`flex:1; min-height:44px; display:flex;
+                      flex-direction:column; align-items:center;
+                      justify-content:center; gap:5px`, dot span first,
+                      label span second). */}
+                  <span className={`chq-dot${isActive ? ' is-on' : ''}`} aria-hidden="true" />
                   {section.label}
-                  {isActive && <span className="chq-dot is-on" aria-hidden="true" />}
                 </>
               )}
             </NavLink>
           );
         })}
-        <button type="button" className="chq-nav-link" onClick={() => setMoreOpen(true)}>
+        <button
+          type="button"
+          className={`chq-nav-link${moreIsActive ? ' is-active' : ''}`}
+          onClick={() => setMoreOpen(true)}
+        >
+          {/* DEC-381 (wave-109 amendment): More carries the same
+              before-label dot as every other tab, is-on when the current
+              section is none of the four rendered tabs (the Settings
+              frame's DOT_ON member,
+              docs/design/Chautauqua Settings.dc.html:1702-1708). */}
+          <span className={`chq-dot${moreIsActive ? ' is-on' : ''}`} aria-hidden="true" />
           More
-          {anyBadgeLive && <span className="chq-dot" aria-hidden="true" />}
+          {/* DEC-919: the live-exceptions badge is re-lined, not removed --
+              its own modifier class (`chq-badge-dot`) so a live badge on
+              an inactive More stays distinguishable from the plain
+              before-label dot above. */}
+          {anyBadgeLive && <span className="chq-dot chq-badge-dot" aria-hidden="true" />}
         </button>
       </nav>
 
