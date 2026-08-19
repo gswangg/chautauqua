@@ -1305,59 +1305,32 @@
     flex-shrink: 0;
   }
 
-  /* v12 phone frame "Import CSV · 390" — "One column per screen"
-     (docs/design/Chautauqua Contacts.dc.html:487 `width:390px;
-     height:844px; background:#F4F1E8`, frame body :480-513). The frame gives one
-     CSV column the whole screen: the column name large in the display
-     face, its sample values beneath, then the target choice, then a
-     full-width footer pair. We keep the desktop step's single scrolling
-     list of all columns (a phone-only pagination would fork the wizard's
-     state machine, not just its stylesheet -- see the lane report), and
-     reproduce the frame's per-column BLOCK: the name/sample/target row
-     stops being a horizontal three-part row and becomes a stacked block
-     with a full-width target control. */
+  /* v12m-w1-f (planner ruling, DEC-026 amendment): the frame does NOT
+     stack the desktop select-per-column list -- it pages one source
+     column at a time with a RADIO LIST of targets (docs/design/
+     Chautauqua Contacts.dc.html:483 `Import CSV · 390`, body :487-511).
+     The stacked-select treatment this block used to draw is wrong and is
+     replaced, not kept alongside, by ImportWizard.tsx's phone-only
+     `.chq-contacts-import-phone-*` markup below (own block, appended at
+     the end of this file per DEC-385 single-direction convention). The
+     desktop grid this hides keeps its own 262px/48% select untouched
+     (see the desktop rules above, outside this @media block). */
+  .chq-contacts-import-columns {
+    display: none;
+  }
+
+  /* .chq-contacts-import-dedupe is NOT hidden here -- it is the single
+     shared same-file dedupe note (ImportWizard.tsx), rendered once and
+     read at BOTH widths: below the (now-hidden) desktop select grid, and
+     below the phone radio list this block adds. Duplicating it into a
+     second, phone-only node would collide with getByText in
+     ImportWizard.reviewFilter.render.test.tsx and be a real a11y
+     duplicate, not just a CSS-hidden one. */
+
   .chq-contacts-import-match-head {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
-  }
-
-  .chq-contacts-import-column-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 16px 0;
-  }
-
-  /* The mid-row "→" says "this column maps to that target" only while the
-     two sit side by side; once they stack it points at nothing. */
-  .chq-contacts-import-column-arrow {
-    display: none;
-  }
-
-  .chq-contacts-import-column-header {
-    font-family: var(--chq-font-display);
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-  }
-
-  /* Desktop truncates the sample to keep the row on one line; stacked, the
-     sample has the full width and the values are what the choice is made
-     from, so they wrap instead of ellipsing away. */
-  .chq-contacts-import-column-sample {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-  }
-
-  /* Frame: the target control is full width, not the desktop's 262px
-     right-flushed select. max-width:48% would otherwise pin it to ~170px
-     at 390 -- under the width half of the 44px floor. */
-  .chq-contacts-import-column-select {
-    width: 100%;
-    max-width: none;
-    border-radius: var(--chq-r-ctl-phone);
   }
 
   /* Frame footer: the step's actions are full-width 48px targets stacked
@@ -1487,4 +1460,170 @@
    direction. */
 .chq-modal.chq-contacts-add-to-event-modal {
   width: min(480px, 100%);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Import CSV, phone-only pager (v12m-w1-f)                               */
+/* ---------------------------------------------------------------------- */
+
+/* Top-level hidden (phone-block-visibility.test.ts): these two wrapper
+   classes carry a "phone" segment and sit directly under
+   .chq-contacts-import-match, which IS visible at desktop, so each needs
+   its OWN top-level display:none rather than inheriting a hidden parent.
+   Nested classes below (eyebrow/name/samples/rule/targets/dedupe/next/
+   skip) need no top-level rule of their own -- their parent already
+   removes them from the render tree at desktop. */
+.chq-contacts-import-phone-column {
+  display: none;
+}
+
+.chq-contacts-import-phone-dock {
+  display: none;
+}
+
+/* v12 phone frame "Import CSV · 390" — "One column per screen"
+   (docs/design/Chautauqua Contacts.dc.html:483 `Import CSV · 390`, body
+   :487-511). One source column gets the whole screen: an uppercase
+   eyebrow naming its position, the column name at the display face, its
+   first three sample values, a 2px rule labelled "Import it as", the
+   target choices as a marked radio list, then the same-file dedupe note.
+   Desktop's stacked select list (.chq-contacts-import-columns) is hidden
+   above; this is a SEPARATE phone-only rendering of the same `mapping`
+   state (ImportWizard.tsx), not a restyle of the select markup. */
+@media (max-width: 700px) {
+  .chq-contacts-import-phone-column {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 0 16px;
+  }
+
+  .chq-contacts-import-phone-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  .chq-contacts-import-phone-name {
+    font-family: var(--chq-font-display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  .chq-contacts-import-phone-samples {
+    font-size: 13px;
+    color: var(--chq-muted);
+  }
+
+  .chq-contacts-import-phone-rule {
+    border-bottom: 2px solid var(--chq-ink);
+    padding-bottom: 8px;
+    margin-top: 8px;
+  }
+
+  .chq-contacts-import-phone-rule-label {
+    font-family: var(--chq-font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .chq-contacts-import-phone-targets {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+  }
+
+  /* The frame draws the target choices as marked ROWS, not a <select> --
+     each row is a real 44px tap target (min-height + centred flex +
+     horizontal padding), not just a bumped line-height. */
+  .chq-contacts-import-phone-target-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 4px;
+    font-size: 15px;
+  }
+
+  /* The native radio input still receives focus/keyboard input and stays
+     in the a11y tree; only its box is replaced by the mark span below so
+     the row can draw the frame's own selected-state mark. */
+  .chq-contacts-import-phone-target-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .chq-contacts-import-phone-target-mark {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--chq-border);
+    background: var(--chq-surface);
+  }
+
+  .chq-contacts-import-phone-target-input:checked + .chq-contacts-import-phone-target-mark {
+    border: 5px solid var(--chq-ink);
+  }
+
+  .chq-contacts-import-phone-target-input:focus-visible + .chq-contacts-import-phone-target-mark {
+    outline: 2px solid var(--chq-ink);
+    outline-offset: 2px;
+  }
+
+  /* The shared dedupe note (see the top-level comment on
+     .chq-contacts-import-dedupe above) gets the frame's :507 spacing --
+     `padding:16px 0 0` -- once it sits directly under the phone radio
+     list instead of the desktop grid. */
+  .chq-contacts-import-dedupe {
+    padding-top: 16px;
+    border-top: none;
+  }
+
+  /* Frame dock: filled "Next column" + bordered "Skip", both 48px full-
+     width targets with real horizontal padding -- page-owned, sticky at
+     the bottom of the scrolling step content, distinct from the shared
+     ModalFrame footer (see ImportWizard.tsx's finding comment and
+     docs/design/audit/contacts-v12.md). */
+  .chq-contacts-import-phone-dock {
+    display: flex;
+    gap: 8px;
+    position: sticky;
+    bottom: 0;
+    background: var(--chq-surface-sunk);
+    border-top: 1px solid var(--chq-ink);
+    padding: 12px 0 16px;
+    margin: 0 -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .chq-contacts-import-phone-next {
+    flex: 1;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-contacts-import-phone-skip {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
 }

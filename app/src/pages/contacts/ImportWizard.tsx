@@ -125,10 +125,32 @@ function listedBadRows(rows: BadRow[]): BadRow[] {
   return rows.slice(0, 10);
 }
 
+/** The same three choices the desktop `<select>` offers for a column --
+ * skip, the standard fields, full-name, custom -- as an ordered list, for
+ * the phone one-column-per-screen radio list (v12m-w1-f, frame
+ * "Import CSV · 390" `Import it as`). Desktop's <select> stays a <select>;
+ * this is a second rendering of the SAME mapping choices, not a second
+ * source of truth -- both write through setColumnMapping. */
+function phoneImportTargetOptions(col: string): Array<{ value: string; label: string }> {
+  return [
+    { value: '', label: 'Skip this column' },
+    ...STANDARD_IMPORT_FIELDS.map((f) => ({ value: f, label: importFieldLabel(f) })),
+    { value: FULL_NAME_TARGET, label: 'Full name (splits into first / last)' },
+    { value: `custom.${col}`, label: `Custom: ${col}` },
+  ];
+}
+
 export function ImportWizard({ onClose, onImported, eventId, eventName }: Props) {
   const [csvText, setCsvText] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
+  // v12m-w1-f: PHONE-ONLY pagination through the match-columns step, one
+  // source column at a time (frame "Import CSV · 390", `Column 2 of 5`).
+  // This is presentation state only -- it never touches `mapping`, the
+  // injective-mapping check (mappingValidationError below) or the
+  // runPreview() POST body, all of which stay exactly as they were.
+  // Desktop keeps rendering every column at once and ignores this index.
+  const [phoneColumnIndex, setPhoneColumnIndex] = useState(0);
   // DEC-290 (wave-59 amendment): a supplied eventId is a CANDIDATE, not an
   // instruction -- unchecked by default, this is the ONE control every
   // add-to-event behaviour below (the session-title field, its
@@ -268,6 +290,15 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     lastAutoMappedHeader.current = signature;
     const suggested = suggestMapping(header);
     if (Object.keys(suggested).length > 0) setMapping(suggested);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [header.join('\u0000')]);
+
+  // v12m-w1-f: a new file (new header signature) always restarts the
+  // phone-only pager (below) at its first column -- otherwise a shorter
+  // second file could leave the index pointing past the end of the new
+  // header.
+  useEffect(() => {
+    setPhoneColumnIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [header.join('\u0000')]);
 
@@ -869,14 +900,118 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
             })}
           </div>
 
+          {/* v12m-w1-f: PHONE-ONLY -- one source column at a time (frame
+              "Import CSV · 390" `One column per screen`, docs/design/
+              Chautauqua Contacts.dc.html:483, body :487-511: `Column 2 of
+              5` eyebrow, the column name at display-face 22px, a "First
+              three values" line, an "Import it as" rule, then the target
+              choices as a marked radio list -- not the desktop <select>
+              above). Hidden by default; shown only inside contacts-
+              panels.css's max-width:700px layer. Reads/writes the SAME
+              `mapping` state as the desktop grid above -- `mapping`, the
+              injective check and the POST body are unchanged by this
+              block; `phoneColumnIndex` only decides which column is
+              currently in view. */}
+          {header.length > 0 &&
+            (() => {
+              const col = header[Math.min(phoneColumnIndex, header.length - 1)]!;
+              const colIdx = header.indexOf(col);
+              const samples = dataRows
+                .slice(0, 3)
+                .map((row) => row[colIdx] ?? '')
+                .filter((v) => v !== '');
+              const current = mapping[col] ?? '';
+              return (
+                <div className="chq-contacts-import-phone-column">
+                  <span className="chq-contacts-import-phone-eyebrow">
+                    Column {phoneColumnIndex + 1} of {header.length}
+                  </span>
+                  <span className="chq-contacts-import-phone-name">{col}</span>
+                  {samples.length > 0 && (
+                    <span className="chq-contacts-import-phone-samples">
+                      First three values: {samples.join(', ')}
+                    </span>
+                  )}
+                  <div className="chq-contacts-import-phone-rule">
+                    <span className="chq-contacts-import-phone-rule-label">Import it as</span>
+                  </div>
+                  <div
+                    className="chq-contacts-import-phone-targets"
+                    role="radiogroup"
+                    aria-label={`Map column ${col}`}
+                  >
+                    {phoneImportTargetOptions(col).map((opt) => (
+                      <label key={opt.value || '(skip)'} className="chq-contacts-import-phone-target-row">
+                        <input
+                          type="radio"
+                          className="chq-contacts-import-phone-target-input"
+                          name={`phone-target-${col}`}
+                          checked={current === opt.value}
+                          onChange={() => setColumnMapping(col, opt.value)}
+                        />
+                        <span className="chq-contacts-import-phone-target-mark" aria-hidden="true" />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
           {/* w49-f: conditional-and-quiet -- names the in-file collision it
               actually counted (an earlier row in THIS file with the same
               email), and renders nothing at zero rather than a false "0
-              rows match existing contacts". */}
+              rows match existing contacts". A SINGLE node covers both
+              widths: the frame draws this note below both the desktop
+              select grid and the phone radio list, so one paragraph
+              (never a phone-only duplicate, which would collide with
+              getByText in ImportWizard.reviewFilter.render.test.tsx and
+              be a genuine a11y duplicate, not just a CSS-hidden one)
+              serves both. w1-f finding: the frame's own literal text at
+              this spot is "9 rows match an existing contact by email ·
+              those get updated" -- a count only the server's dry run can
+              answer (plan.updated), unavailable pre-dry-run; reusing the
+              same-file dedupe note here instead of inventing an
+              existing-contact count with no data behind it, filed in
+              docs/design/audit/contacts-v12.md. */}
           {dedupeCount > 0 && (
             <p className="chq-contacts-import-dedupe">
               Same-file email repeat: {countOf(dedupeCount, 'row')} · the later row wins
             </p>
+          )}
+
+          {/* v12m-w1-f: PHONE-ONLY sticky dock for the pager above --
+              page-owned (this component + contacts-panels.css only), NOT
+              the shared ModalFrame footer (`actions`, rendered below by
+              ModalFrame regardless of width) -- consolidating the two
+              phone docks is out of this task's scope; see
+              docs/design/audit/contacts-v12.md. "Next column" keeps
+              whatever mapping choice is already selected for the current
+              column and advances; "Skip" clears this column's mapping
+              (same as picking "Skip this column" above) and advances.
+              Neither ever submits -- runPreview() is still reached only
+              through ModalFrame's own primary action. */}
+          {header.length > 0 && (
+            <div className="chq-contacts-import-phone-dock">
+              <button
+                type="button"
+                className="chq-btn chq-btn-primary chq-contacts-import-phone-next"
+                onClick={() => setPhoneColumnIndex((i) => Math.min(i + 1, header.length - 1))}
+              >
+                Next column
+              </button>
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary chq-contacts-import-phone-skip"
+                onClick={() => {
+                  const col = header[Math.min(phoneColumnIndex, header.length - 1)]!;
+                  setColumnMapping(col, '');
+                  setPhoneColumnIndex((i) => Math.min(i + 1, header.length - 1));
+                }}
+              >
+                Skip
+              </button>
+            </div>
           )}
         </div>
       )}

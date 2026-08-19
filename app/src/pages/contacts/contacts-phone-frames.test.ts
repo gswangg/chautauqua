@@ -104,6 +104,24 @@ function phoneRuleGroup(css: string, selector: string): string {
   return bodies.join('\n');
 }
 
+/** A selector's rule body OUTSIDE any @media block -- mirrors
+ * app/src/phone-block-visibility.test.ts's stripMedia + topLevelRuleBodies
+ * pair (same brace-matched @media strip, any condition, not just phone
+ * widths). Used to pin v12m-w1-f's phone-only wrapper classes
+ * (.chq-contacts-import-phone-column/-dock) `display: none` at the top
+ * level, so they never render unstyled underneath the desktop layout. */
+function stripAnyMedia(css: string): string {
+  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+}
+
+function topLevelRuleBody(css: string, selector: string): string {
+  const withoutMedia = stripAnyMedia(css);
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = new RegExp(`${escaped}\\s*\\{([^}]*)\\}`).exec(withoutMedia);
+  if (!m || m[1] === undefined) throw new Error(`no top-level rule for ${selector}`);
+  return m[1];
+}
+
 const BOTH: [string, string][] = [
   ['contacts.css', CONTACTS_CSS],
   ['contacts-panels.css', PANELS_CSS],
@@ -265,24 +283,67 @@ describe('v12 phone frame "Pipeline · 390"', () => {
 });
 
 describe('v12 phone frame "Import CSV · 390"', () => {
-  it('stacks each column block and drops the mid-row arrow that no longer points anywhere', () => {
-    const row = phoneRule(PANELS_CSS, '.chq-contacts-import-column-row');
-    expect(row).toMatch(/flex-direction:\s*column/);
-    expect(row).toMatch(/align-items:\s*stretch/);
-    expect(phoneRule(PANELS_CSS, '.chq-contacts-import-column-arrow')).toMatch(/display:\s*none/);
+  it('hides the desktop stacked-select list — the frame pages one column at a time instead (docs/design/Chautauqua Contacts.dc.html:483 `Import CSV · 390`, body :487-511)', () => {
+    expect(phoneRule(PANELS_CSS, '.chq-contacts-import-columns')).toMatch(/display:\s*none/);
   });
 
-  it('gives the column name the frame\'s display face and lets the sample values wrap', () => {
-    const header = phoneRule(PANELS_CSS, '.chq-contacts-import-column-header');
-    expect(header).toMatch(/font-family:\s*var\(--chq-font-display\)/);
-    expect(header).toMatch(/font-size:\s*20px/);
-    expect(phoneRule(PANELS_CSS, '.chq-contacts-import-column-sample')).toMatch(/white-space:\s*normal/);
+  it('re-spaces (never duplicates) the shared same-file dedupe note under the phone radio list', () => {
+    // .chq-contacts-import-dedupe is ONE node read at both widths (see
+    // ImportWizard.tsx) -- the phone layer only overrides its spacing to
+    // the frame's `padding:16px 0 0` (:507), it never hides or clones it.
+    const dedupe = phoneRule(PANELS_CSS, '.chq-contacts-import-dedupe');
+    expect(dedupe).toMatch(/padding-top:\s*16px/);
+    expect(dedupe).not.toMatch(/display:\s*none/);
   });
 
-  it('takes the target select full width — the desktop 262px/max-width:48% pins it under the floor at 390', () => {
-    const select = phoneRule(PANELS_CSS, '.chq-contacts-import-column-select');
-    expect(select).toMatch(/width:\s*100%/);
-    expect(select).toMatch(/max-width:\s*none/);
+  it('shows the phone-only per-column block and dock, both display:none outside the phone layer', () => {
+    expect(topLevelRuleBody(PANELS_CSS, '.chq-contacts-import-phone-column')).toMatch(/display:\s*none/);
+    expect(topLevelRuleBody(PANELS_CSS, '.chq-contacts-import-phone-dock')).toMatch(/display:\s*none/);
+    expect(phoneRule(PANELS_CSS, '.chq-contacts-import-phone-column')).toMatch(/display:\s*flex/);
+    expect(phoneRule(PANELS_CSS, '.chq-contacts-import-phone-dock')).toMatch(/display:\s*flex/);
+  });
+
+  it('gives the column name the frame\'s display face (`email_address` at 22px/700/-0.03em)', () => {
+    const name = phoneRule(PANELS_CSS, '.chq-contacts-import-phone-name');
+    expect(name).toMatch(/font-family:\s*var\(--chq-font-display\)/);
+    expect(name).toMatch(/font-size:\s*22px/);
+    expect(name).toMatch(/font-weight:\s*700/);
+    expect(name).toMatch(/letter-spacing:\s*-0\.03em/);
+  });
+
+  it('sets the eyebrow at 11px/800/0.1em uppercase, matching `Column 2 of 5`', () => {
+    const eyebrow = phoneRule(PANELS_CSS, '.chq-contacts-import-phone-eyebrow');
+    expect(eyebrow).toMatch(/font-size:\s*11px/);
+    expect(eyebrow).toMatch(/font-weight:\s*800/);
+    expect(eyebrow).toMatch(/letter-spacing:\s*0\.1em/);
+    expect(eyebrow).toMatch(/text-transform:\s*uppercase/);
+  });
+
+  it('draws the "Import it as" rule as a 2px ink underline, matching the frame', () => {
+    expect(phoneRule(PANELS_CSS, '.chq-contacts-import-phone-rule')).toMatch(
+      /border-bottom:\s*2px solid var\(--chq-ink\)/,
+    );
+  });
+
+  it('renders the target choices as marked 44px radio rows, not a <select>', () => {
+    const row = phoneRule(PANELS_CSS, '.chq-contacts-import-phone-target-row');
+    expect(row).toMatch(/min-height:\s*44px/);
+    expect(row).toMatch(/display:\s*flex/);
+    expect(row).toMatch(/align-items:\s*center/);
+    expect(row).toMatch(/padding:\s*0 4px/);
+    expect(phoneRule(PANELS_CSS, '.chq-contacts-import-phone-target-mark')).toMatch(/border-radius:\s*50%/);
+  });
+
+  it('stacks the phone dock as a sticky 48px "Next column" + "Skip" pair', () => {
+    const dock = phoneRule(PANELS_CSS, '.chq-contacts-import-phone-dock');
+    expect(dock).toMatch(/position:\s*sticky/);
+    expect(dock).toMatch(/bottom:\s*0/);
+    const next = phoneRule(PANELS_CSS, '.chq-contacts-import-phone-next');
+    expect(next).toMatch(/min-height:\s*48px/);
+    expect(next).toMatch(/padding:\s*0 16px/);
+    const skip = phoneRule(PANELS_CSS, '.chq-contacts-import-phone-skip');
+    expect(skip).toMatch(/min-height:\s*48px/);
+    expect(skip).toMatch(/padding:\s*0 16px/);
   });
 
   it('stacks the step actions as full-width 48px targets', () => {
