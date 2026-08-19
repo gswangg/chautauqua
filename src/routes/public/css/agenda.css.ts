@@ -472,6 +472,21 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
   .chq-pub-agenda-block-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-off { display: none; }
   .chq-pub-agenda-block-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-on { display: inline; }
 
+  /* DEC-576 (wave 110 amendment): the SSR phone dock band -- the WIDE
+     (base) declaration hides both surfaces' footer band; the terminal
+     phone block below (DEC-385 single-direction) is what un-hides it.
+     Model: src/routes/auth.css.ts:449-478's .chq-auth-actions, an in-flow
+     band at the true end of the page's own content, not a fixed/sticky
+     overlay -- these two classes are its agenda/schedule twins, kept
+     separate (not shared) because their min-height differs (46px agenda /
+     48px my-schedule, docs/design/Chautauqua Public and Portal.dc.html:
+     399-402 / 885-888), the same "identical color/weight, separate dense/
+     roomy selector" shape .chq-pub-agenda-layout/.chq-pub-schedule-layout
+     already use a few lines above (rail.css.ts) for their own near-
+     identical pair. */
+  .chq-pub-agenda-dock,
+  .chq-pub-schedule-dock { display: none; }
+
   /* DEC-385 wave-102 amendment: this sheet's two ≤700px blocks
      (single phone switch shared by every stylesheet -- header/main
      gutters, session-row stacking, itinerary controls, the phone-list
@@ -545,5 +560,80 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     .chq-pub-speaker-list-photo .chq-pub-headshot-fallback { width: 64px; height: 64px; }
     .chq-pub-speaker-list-info { grid-area: info; }
     .chq-pub-speaker-list-row .chq-pub-speaker-sessions { grid-area: sessions; padding-left: 84px; }
+
+    /* DEC-576 (wave 110 amendment): the SSR phone dock -- narrow overrides
+       the WIDE display:none above with the frame's own band geometry
+       (docs/design/Chautauqua Public and Portal.dc.html:399-402 public
+       agenda / :885-888 my-schedule): \`flex-shrink:0; border-top:1px
+       solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px;
+       display:flex; gap:8px\`, identical on both frames. Model: src/routes
+       /auth.css.ts:449-478's .chq-auth-actions. */
+    .chq-pub-agenda-dock,
+    .chq-pub-schedule-dock {
+      display: flex;
+      flex-shrink: 0;
+      border-top: 1px solid var(--chq-ink);
+      background: var(--chq-surface-sunk);
+      padding: 12px 16px 16px;
+      gap: 8px;
+    }
+    /* :401 \`flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px;
+       min-height:46px; display:flex; align-items:center;
+       justify-content:center; font-size:14px; font-weight:700\` -- the
+       band's ONLY primary. Paired with .chq-pub-itinerary-cta (base rule
+       above) for its border/background/color/[aria-disabled] handling;
+       this override widens it to fill the row at the frame's 46px floor
+       and 14px/700 register instead of that class's rail-scoped
+       align-self:flex-start/13px/600 intrinsic-width shape. */
+    .chq-pub-agenda-dock-ics {
+      flex: 1;
+      min-height: 46px;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 0;
+    }
+    /* :888 \`flex:1; ... min-height:48px; ... font-size:14px;
+       font-weight:700\` -- the my-schedule frame's one px taller than
+       the agenda frame's 46px; DEC-385's dense/roomy pair (same colour,
+       same weight, separate selector) rather than a shared rule with a
+       modifier. */
+    .chq-pub-schedule-dock-ics {
+      flex: 1;
+      min-height: 48px;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 0;
+    }
+    /* :402 \`border:1px solid #BAB6A6; border-radius:6px; min-height:46px;
+       display:flex; align-items:center; padding:0 16px; font-size:13px;
+       font-weight:600\` -- the band's bordered secondary (Speakers),
+       transparent fill (unlike .chq-pub-schedule-remove's sunk
+       background a few lines above -- the frame draws no fill here). */
+    .chq-pub-agenda-dock-cross {
+      border: 1px solid var(--chq-border);
+      border-radius: var(--chq-r-ctl-phone);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 46px;
+      text-decoration: none;
+      color: var(--chq-ink);
+    }
+    /* :888's bordered secondary (All sessions), same 48px floor as this
+       frame's own primary above. */
+    .chq-pub-schedule-dock-cross {
+      border: 1px solid var(--chq-border);
+      border-radius: var(--chq-r-ctl-phone);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 48px;
+      text-decoration: none;
+      color: var(--chq-ink);
+    }
   }
 `;

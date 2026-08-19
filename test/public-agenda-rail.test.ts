@@ -225,3 +225,58 @@ describe("DEC-683 amendment (wave 67-d): public agenda rail + Save persistence",
     }
   });
 });
+
+// DEC-576 (wave 110 amendment): the SSR phone dock -- public agenda and
+// my-schedule get the docked action band their 390 frames draw
+// (docs/design/Chautauqua Public and Portal.dc.html:399-402 / :885-888).
+// Both controls carry the SAME capability the page already renders (the
+// rail's #chq-ics-link route, PublicShell's Speakers nav link / the
+// header's "Browse all sessions" route) -- a second DOM instance switched
+// by agenda.css.ts's >700px/<=700px pair, never a new destination.
+describe("DEC-576 (wave 110 amendment): the SSR phone dock band", () => {
+  it("GET /e/conf/agenda mounts .chq-pub-agenda-dock with a working .ics link (>=44px) and a bordered Speakers link (>=44px) to the SAME /speakers route the nav already renders", async () => {
+    installFakeCaches();
+    const app = buildApp();
+    const res = await app.request("/e/conf/agenda", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    // docs/design/Chautauqua Public and Portal.dc.html:399-402: the band
+    // itself, then its two children.
+    expect(html).toContain('class="chq-pub-agenda-dock"');
+
+    // :401 `flex:1; ... min-height:46px; ...">Download .ics` -- a SECOND
+    // .ics anchor (id chq-ics-link-dock) beside the rail's #chq-ics-link,
+    // targeting the exact same route.
+    const dockIcsMatch = html.match(/<a id="chq-ics-link-dock"[^>]*>([^<]*)<\/a>/);
+    expect(dockIcsMatch).toBeTruthy();
+    expect(dockIcsMatch![0]).toContain('href="/e/conf/schedule.ics"');
+    expect(dockIcsMatch![0]).toContain('aria-disabled="true"');
+    expect(dockIcsMatch![1]!.trim()).toBe("Download .ics");
+
+    // :402 `border:1px solid #BAB6A6; ... min-height:46px; ...">Speakers`
+    // -- the SAME /speakers route PublicShell's <nav> already links.
+    expect(html).toContain('class="chq-pub-agenda-dock-cross" href="/e/conf/speakers"');
+    expect(html).toContain(">Speakers</a>");
+
+    // The 44px floor (DESIGN-RULINGS): both children reach >=44px via the
+    // sheet's own authored min-height, checked against the CSS source
+    // rather than jsdom (no stylesheet is applied here).
+    const { AGENDA_CSS } = await import("../src/routes/public/css/agenda.css");
+    const phoneBlock = AGENDA_CSS.slice(AGENDA_CSS.lastIndexOf("@media (max-width: 700px)"));
+    const icsHeight = Number(phoneBlock.match(/\.chq-pub-agenda-dock-ics\s*\{[^}]*min-height:\s*(\d+)px/)?.[1]);
+    const crossHeight = Number(phoneBlock.match(/\.chq-pub-agenda-dock-cross\s*\{[^}]*min-height:\s*(\d+)px/)?.[1]);
+    expect(icsHeight).toBeGreaterThanOrEqual(44);
+    expect(crossHeight).toBeGreaterThanOrEqual(44);
+  });
+
+  it("GET /embed/conf/agenda renders no dock band (DEC-672/683: chromeless-closed, same gate as the rail)", async () => {
+    installFakeCaches();
+    const app = buildApp();
+    const res = await app.request("/embed/conf/agenda", {}, TEST_ENV);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain('class="chq-pub-agenda-dock"');
+    expect(html).not.toContain("chq-ics-link-dock");
+  });
+});
