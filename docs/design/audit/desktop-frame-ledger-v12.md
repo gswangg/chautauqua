@@ -225,3 +225,55 @@ Chautauqua Submissions.dc.html :561 -- Submissions · before the CFP opens
 Chautauqua Submissions.dc.html :605 -- Submissions · triage queue clear
 Chautauqua Submissions.dc.html :655 -- CFP form · edit a question
 ```
+
+## Divergences found while claiming
+
+Filed by task `v12m-w3-s` (wave 21), which claimed the 7 **public** desktop
+frames in `Chautauqua Public and Portal.dc.html` (:28, :132, :249, :680,
+:730, :779, :894 -- `test/desktop-frames-public.test.ts`). Per DEC-976
+wave-103: a frame the tree contradicts stays UNCLAIMED and the divergence is
+recorded here rather than absorbed by weakening the assertion.
+
+- **Gallery grid gap: 18px drawn vs 16px shipped.** `Chautauqua Public and
+  Portal.dc.html:760` draws the grid gallery as
+  `grid-template-columns:repeat(6, 1fr); gap:18px`. Shipped
+  (`src/routes/public/css/agenda.css.ts:447`,
+  `.chq-pub-gallery-grid { grid-template-columns: repeat(6, 1fr); gap: 16px; }`)
+  carries `gap: 16px`, with an in-code rationale attached (DEC-990 amendment,
+  wave 40): "repeat(6, 1fr) + 16px gaps is ~1180, matching the 'wide' measure
+  class shell.tsx now assigns this surface". This is a considered,
+  already-cited adjudication living in the shipping file's own comment, not
+  an unexamined drift -- filed here so the 2px gap is visible next to the
+  claim rather than silently asserted-around. The frame's own
+  `test/desktop-frames-public.test.ts` claim for :730 quotes only the
+  `grid-template-columns:repeat(6, 1fr)` portion of that line, which does
+  match, and does not assert the gap value.
+
+- **Wide-shell chrome padding: 44px/40px drawn vs 34px/34px shipped (and the
+  consequent 1268px vs 1248px content max-width).** Every 1600-canvas public
+  frame in this file (:28, :132, :249, :779 among the ones this task
+  examined) draws its inner content container as `max-width:1268px; ...
+  padding:26px 44px 40px` (e.g. `Chautauqua Public and Portal.dc.html:794`
+  for the My-schedule frame), which is `--chq-measure-wide` (1180px,
+  `src/views/theme.ts:109`) plus 44px of side padding doubled: 1180 + 88 =
+  1268. Shipped, `main.chq-pub-main { padding: 26px var(--chq-pub-main-pad-x)
+  34px; }` with `--chq-pub-main-pad-x: 34px` (`src/views/theme.ts:128`,
+  `src/routes/public/css/chrome.css.ts:253`) gives 1180 + 68 = 1248, and a
+  bottom padding of 34px rather than the frame's 40px. `--chq-pub-main-pad-x`
+  carries its own explicit DEC-683 (wave 1, task w1-a) rationale computed
+  "at a 1440 viewport" -- a deliberate token contract, not an oversight --
+  but its literal pixel value does not match what this 1600-canvas frame
+  draws. Every claim in `test/desktop-frames-public.test.ts` for the four
+  affected frames cites the shared `.chq-pub-sessions-layout` /
+  `.chq-pub-agenda-layout` / `.chq-pub-schedule-layout` grid
+  (`grid-template-columns:minmax(0, 820px) 300px; gap:60px`, shipped as
+  `grid-template-columns: 1fr 300px; gap: 60px;`) instead, which does match
+  -- the padding/max-width numbers above are named here rather than folded
+  into those claims.
+
+Six further desktop frames in this file (:1101 CFP closed, :1167 Public
+sessions · nothing published, :1211 Submit a talk · rejected on submit,
+:1373 Portal · Edit your session · desktop, :1473 Portal preview, :1532 CFP
+not open yet) are the **portal/refusal** half of this cluster and are
+explicitly OUT OF SCOPE for `v12m-w3-s` -- scheduled for a later wave, not
+dropped.
