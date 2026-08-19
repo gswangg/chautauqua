@@ -302,3 +302,34 @@ describe('ContactsTable phone card label source (DEC-937 wave-24)', () => {
     expect(phoneBlock).toMatch(/td\[data-label\]::before\s*\{\s*content:\s*attr\(data-label\)/);
   });
 });
+
+describe('ContactsTable phone card caption suppression (DEC-937 wave-110 amendment)', () => {
+  const contactsCss = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), 'contacts.css'),
+    'utf-8',
+  );
+
+  it('suppresses the attr(data-label) caption for .chq-contacts-table at 390 (frame: Chautauqua Contacts.dc.html:200-208 draws no COMPANY:/LABELS: caption)', () => {
+    expect(contactsCss).toMatch(
+      /\.chq-contacts-table tbody td\[data-label\]::before\s*\{\s*content:\s*none;\s*\}/,
+    );
+  });
+
+  it('joins company and role onto one ellipsised 13px line at 390 (frame line 206)', () => {
+    expect(contactsCss).toMatch(
+      /\.chq-contacts-company-cell\s*\{[^}]*white-space:\s*nowrap;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*min-width:\s*0;[^}]*font-size:\s*13px;/,
+    );
+    expect(contactsCss).toMatch(
+      /\.chq-contacts-company-cell > span:first-child::after\s*\{\s*content:\s*' · ';\s*\}/,
+    );
+  });
+
+  it('gives .chq-contacts-labels-meta the 11px/700/0.06em uppercase treatment at 390 (frame line 207)', () => {
+    const phoneBlockMatch = contactsCss.match(/@media \(max-width: 700px\) \{([\s\S]*)\}\s*$/);
+    expect(phoneBlockMatch).not.toBeNull();
+    const phoneBlock = phoneBlockMatch![1]!;
+    expect(phoneBlock).toMatch(
+      /\.chq-contacts-labels-meta\s*\{\s*font-size:\s*11px;\s*font-weight:\s*700;\s*letter-spacing:\s*0\.06em;\s*text-transform:\s*uppercase;\s*color:\s*var\(--chq-muted\);\s*\}/,
+    );
+  });
+});
