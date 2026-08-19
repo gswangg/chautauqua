@@ -228,8 +228,10 @@ Chautauqua Submissions.dc.html :655 -- CFP form · edit a question
 
 ## Divergences found while claiming
 
-Frames the tree contradicts stay UNCLAIMED rather than being absorbed by a
-weakened assertion (DEC-976, wave 103). Format: frame line, drawn value,
+Filed by claim lanes as they cite frames, per DEC-976 wave-103: a frame the
+tree contradicts stays UNCLAIMED (or is claimed only against its correct
+current behaviour, with the stale line explicitly not asserted) rather than
+having its assertion weakened to match. Format: frame line, drawn value,
 shipped value.
 
 - **`Chautauqua Contacts.dc.html:800`** ("Import CSV · the file will not
@@ -243,3 +245,16 @@ shipped value.
   This is a missing capability, not a copy/geometry drift — a planner
   decision (build the download, or bless the omission), out of this
   task's tests-only scope.
+
+- **`Chautauqua Submissions.dc.html:187` (task v12m-w3-q).** Drawn: the
+  co-presenter row's explainer reads "A new co-presenter is emailed a
+  portal link · the lead presenter is not changed". Shipped:
+  `SubmissionDetailPage.tsx:1747-1752` reads "Adding a co-presenter here
+  sends no email — sending a portal invite is a separate, explicit action.
+  The lead presenter is not changed." -- DEC-604 (wave-70 amendment)
+  deliberately corrected the frame's claim; `POST
+  /submissions/:id/participants` never sent an email. Consistent with the
+  field guide's w79 note that the portal-side co-presenter door states the
+  same fact and "neither door sends". `test/desktop-frames-submissions.test.ts`
+  claims this frame against the corrected, current copy rather than the
+  frame's stale line.
