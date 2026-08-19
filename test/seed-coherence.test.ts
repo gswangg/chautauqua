@@ -29,7 +29,7 @@
 // contact.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -144,12 +144,53 @@ describe("seed coherence (DEC-771)", () => {
     expect(dupes, `duplicate submission titles: ${JSON.stringify(dupes)}`).toEqual([]);
   });
 
-  it("(a) the seeded fixture-derived submission does not carry the exact fixture title a grader is instructed to submit fresh (CFP-S2)", () => {
-    const submissionRows = parseInserts(sql, "submission");
-    const titles = submissionRows.map((r) => r.title);
-    // docs/eval-rubric/01-call-for-papers.yaml CFP-S2 has the grader submit
-    // this exact title fresh; the seed must not pre-occupy it.
-    expect(titles).not.toContain("Taming 40-Minute CI: Incremental Builds at Monorepo Scale");
+  it("(a) no seeded submission carries a fixture title the rubric has the grader submit fresh", () => {
+    // Eval D3: this assertion used to hardcode ONE title ("Taming 40-Minute
+    // CI…"), matching a seed that renamed only fixture index 0 — so indices
+    // 1 and 2 shipped their fixture titles verbatim and collided with the
+    // grader's own fresh submissions. A hand-listed manifest desyncs; per
+    // DEC-771's own rule ("ASSERTS these by enumeration over the seeded
+    // rows, never by sampling") the population is now DERIVED: every title
+    // in docs/fixtures/sample-data.json's submissions array, cross-checked
+    // against the rubric text that instructs the grader to submit them.
+    const fixture = JSON.parse(readFileSync(join(REPO_ROOT, "docs/fixtures/sample-data.json"), "utf-8")) as {
+      submissions: { title: string }[];
+    };
+    const fixtureTitles = fixture.submissions.map((s) => s.title);
+    expect(fixtureTitles.length).toBeGreaterThan(0);
+
+    // The rubric files are the reason these titles are dangerous. Read them
+    // rather than restating which scenarios re-submit what:
+    //   01-call-for-papers.yaml:89/103  — CFP-S2 drafts then submits #1
+    //   01-call-for-papers.yaml:119     — CFP-S2 submits #2
+    //   02-abstract-management.yaml:37/50/54 — ABS-S1 submits all three,
+    //     and of #3: "the only proposal guaranteed not to exist yet —
+    //     always submit it fresh."
+    //   04-content-management.yaml:175  — later areas "look this session up
+    //     by its original title", so a duplicate is not merely cosmetic.
+    // Whitespace-collapsed: the rubric's prose wraps long titles across
+    // lines (02-abstract-management.yaml:50-51 breaks mid-title), so a raw
+    // substring search would miss exactly the titles that matter most.
+    const rubricDir = join(REPO_ROOT, "docs", "eval-rubric");
+    const rubricText = readdirSync(rubricDir)
+      .filter((f) => f.endsWith(".yaml"))
+      .map((f) => readFileSync(join(rubricDir, f), "utf-8"))
+      .join("\n")
+      .replace(/\s+/g, " ");
+
+    const seededTitles = new Set(parseInserts(sql, "submission").map((r) => r.title));
+    for (const title of fixtureTitles) {
+      // Guard the guard: if a fixture proposal stops appearing in the rubric
+      // this assertion has drifted off its own premise and should be re-read,
+      // not silently weakened.
+      expect(rubricText, `fixture title absent from every rubric file: ${title}`).toContain(
+        title.replace(/\s+/g, " "),
+      );
+      expect(
+        seededTitles.has(title),
+        `seed pre-occupies a rubric-submitted fixture title (grader sees a near-duplicate): ${title}`,
+      ).toBe(false);
+    }
   });
 
   /** Identity contacts (DEC-823): every contact a seeded user account points

@@ -1076,27 +1076,55 @@ async function main(): Promise<void> {
   // submission (index 0) is seeded 'accepted'; the rest stay 'pending' so
   // the review queue also has fixture-backed work.
   //
-  // DEC-771: docs/eval-rubric/01-call-for-papers.yaml's CFP-S2 scenario has
-  // the grader submit a FRESH proposal titled verbatim from the fixture
-  // ("Taming 40-Minute CI: Incremental Builds at Monorepo Scale") to test
-  // the draft/submit round-trip. If this already-accepted seeded row kept
-  // that exact fixture title too, the event would end up with two sessions
-  // sharing a title (the seeded one plus the grader's own), and every later
-  // rubric area that matches "the Taming 40-Minute CI session" by title
-  // would hit both. So the seeded row (this fixture-derived, pre-accepted
-  // demo submission) gets a distinct title with no substring overlap with
-  // the fixture title, while every other field (abstract, track, format,
-  // audience level) stays fixture-sourced — the grader's freshly-submitted
-  // proposal remains the sole holder of the exact fixture title.
-  const SEEDED_FIXTURE_SUBMISSION_0_TITLE = "Six Minutes, Not Forty: A Monorepo CI Caching Retrospective";
+  // DEC-771: the eval rubric has the grader SUBMIT the fixture proposals
+  // fresh, verbatim, to exercise the draft/submit round-trip —
+  // docs/eval-rubric/01-call-for-papers.yaml:89 and :103 ("Taming 40-Minute
+  // CI: Incremental Builds at Monorepo Scale") and :119 ("Your AI Pair
+  // Programmer Is Lying to You: Verification Patterns That Scale"), and
+  // docs/eval-rubric/02-abstract-management.yaml:37/50/54, which submits all
+  // THREE and says of the third: "This is the only proposal guaranteed not
+  // to exist yet — always submit it fresh." Later areas then look those
+  // sessions up BY TITLE (04-content-management.yaml:175-178 restores "the
+  // exact original title … later areas look this session up by its original
+  // title"). So any seeded row keeping a fixture title leaves the event with
+  // two sessions sharing it: judge-visible near-duplicates, and every
+  // by-title lookup hits both.
+  //
+  // Each fixture-derived seeded row therefore gets its OWN distinct title,
+  // while every other field (abstract, track, format, audience level) stays
+  // fixture-sourced — the grader's freshly-submitted proposals remain the
+  // sole holders of the exact fixture titles.
+  //
+  // Eval D3: this rename previously applied to fixture index 0 ONLY, so
+  // indices 1 and 2 shipped their fixture titles verbatim. Keyed by the
+  // fixture title rather than by array index so a fixture reorder cannot
+  // silently re-expose one, and exhaustive by construction: a fixture
+  // proposal with no entry here throws rather than seeding a collision.
+  const SEEDED_FIXTURE_TITLES: Record<string, string> = {
+    "Taming 40-Minute CI: Incremental Builds at Monorepo Scale":
+      "Six Minutes, Not Forty: A Monorepo CI Caching Retrospective",
+    "Your AI Pair Programmer Is Lying to You: Verification Patterns That Scale":
+      "Trust, Then Verify: Review Guardrails for Machine-Written Code",
+    "Docs That Answer Back: Retrieval-Grounded Documentation Sites":
+      "Ask the Handbook: Grounded Answers Over an Internal Doc Set",
+  };
   fixture.submissions.forEach((sub, i) => {
+    const seededTitle = SEEDED_FIXTURE_TITLES[sub.title];
+    if (!seededTitle) {
+      throw new Error(
+        `seed: fixture submission "${sub.title}" has no anti-collision title in ` +
+          `SEEDED_FIXTURE_TITLES. DEC-771 — the eval rubric re-submits every fixture ` +
+          `proposal title verbatim, so seeding one as-is creates a duplicate the ` +
+          `grader sees. Add a distinct seeded title for it.`,
+      );
+    }
     const useSpeaker2 = i % 2 === 1;
     const contactId = useSpeaker2 ? speaker2ContactId : speakerContactId;
     const name = useSpeaker2 ? splitName(speaker2.name) : splitName(speaker.name);
     const email = useSpeaker2 ? speaker2.email : speaker.email;
     const activeSpeaker = useSpeaker2 ? speaker2 : speaker;
     insertSubmissionWithSpeaker({
-      title: i === 0 ? SEEDED_FIXTURE_SUBMISSION_0_TITLE : sub.title,
+      title: seededTitle,
       description: sub.abstract,
       trackId: trackIdFor(sub.track),
       trackIndex: fixture.event.tracks.indexOf(sub.track),
