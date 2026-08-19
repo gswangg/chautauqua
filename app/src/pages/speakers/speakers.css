@@ -86,6 +86,7 @@
 .chq-speakers-toolbar .chq-input,
 .chq-speakers-toolbar .chq-select {
   padding: 8px 12px;
+  font-family: inherit;
   font-size: 13px;
   min-height: 0;
 }
@@ -97,14 +98,7 @@
   padding-right: 36px;
 }
 
-@media (max-width: 700px) {
-  .chq-speakers-toolbar .chq-input,
-  .chq-speakers-toolbar .chq-select {
-    padding: 0 13px;
-    font-size: 15px;
-    min-height: 44px;
-  }
-}
+
 
 /* DEC-827: Speakers carries a wayfinding LINK into the Contacts importer,
    not a second import capability -- so it reads as a quiet tertiary link in
@@ -958,48 +952,7 @@ button.chq-speakers-status-overdue:hover {
   display: none;
 }
 
-@media (max-width: 700px) {
-  .chq-speakers-grid-wrap {
-    display: none;
-  }
 
-  .chq-speakers-cards {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .chq-speakers-card {
-    padding: 16px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-    display: flex;
-    flex-direction: column;
-    gap: 11px;
-  }
-
-  .chq-speakers-card-head {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .chq-speakers-card-tasks {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .chq-speakers-card-task {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .chq-speakers-card-task-label {
-    font-size: 13px;
-    color: var(--chq-ink-2);
-  }
-}
 
 .chq-speakers-pager {
   display: flex;
@@ -1369,17 +1322,7 @@ button.chq-speakers-status-overdue:hover {
   color: var(--chq-muted);
 }
 
-/* DEC-385: narrow overrides wide via max-width only -- each header-ruled
-   row grid collapses to a single stacked column under 700px, matching the
-   onboarding grid's own card treatment. */
-@media (max-width: 700px) {
-  .chq-speaker-detail-sessions-row,
-  .chq-speaker-detail-tasks-row,
-  .chq-speaker-detail-files-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-}
+
 
 /* DEC-930 wave-19 amendment: each rail section is a flex child of the
    fixed 320px .chq-speaker-detail-rail column, so it needs min-width: 0 plus
@@ -1552,7 +1495,96 @@ button.chq-speakers-status-overdue:hover {
   display: none;
 }
 
+
+
+/* DEC-385 wave-102 consolidation: this file's five former
+   `@media (max-width: 700px)` blocks are concatenated into ONE terminal
+   block (test/phone-terminal-block.scan.test.ts). Bodies are appended in
+   ASCENDING source order -- the toolbar-input/select restore, the
+   matrix-to-cards block, the detail-row grid collapse, the phone-head/
+   roster-drillin block, then this block (DEC-393 wave-7's tap-floor +
+   ellipsis-escape fixes), which already lived last. No selector in any
+   of the five blocks collides with a selector in another (verified by
+   brace-matched extraction before the move), so no rule needed
+   collapsing -- every rule below is unchanged from its original block,
+   only relocated. Desktop rules and the two top-level "hidden on wide"
+   defaults between the former blocks are NOT moved -- they stay exactly
+   where they were, byte-unchanged (DEC-385 single-direction). */
+/* DEC-393 wave-7 amendment: flush row-action anchors cannot take padding
+   without moving the ink they draw, so the floor is met on the ANCHOR
+   itself -- min-height:44px plus centred flex plus horizontal padding, with
+   an equal-and-opposite negative margin so the padded box grows without
+   shifting anything around it (the same instrument B8 already uses for the
+   selected-row edge). Applied to the anchor only, never to a container, and
+   never to the .chq-speakers-status-* dense/roomy cell tokens -- those keep
+   the 178px column the pair exists to serve. */
 @media (max-width: 700px) {
+  /* -- from the former toolbar-input/select restore block -- */
+
+  .chq-speakers-toolbar .chq-input,
+  .chq-speakers-toolbar .chq-select {
+    padding: 0 13px;
+    font-size: 15px;
+    min-height: 44px;
+  }
+
+  /* -- from the former "matrix becomes cards" block -- */
+
+  .chq-speakers-grid-wrap {
+    display: none;
+  }
+
+  .chq-speakers-cards {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chq-speakers-card {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .chq-speakers-card-head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .chq-speakers-card-tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chq-speakers-card-task {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .chq-speakers-card-task-label {
+    font-size: 13px;
+    color: var(--chq-ink-2);
+  }
+
+  /* -- from the former detail-row grid-collapse block -- DEC-385: narrow
+     overrides wide via max-width only -- each header-ruled row grid
+     collapses to a single stacked column under 700px, matching the
+     onboarding grid's own card treatment. -- */
+
+  .chq-speaker-detail-sessions-row,
+  .chq-speaker-detail-tasks-row,
+  .chq-speaker-detail-files-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  /* -- from the former phone-head/roster-drillin block (v12m wave 2-c) -- */
+
   /* docs/design/Chautauqua Speakers.dc.html:130 `Matrix becomes one card
      per speaker` -- the desktop's three-button row has no room at 390, so
      it hides and the phone action row (declared hidden above) takes over.
@@ -1640,17 +1672,7 @@ button.chq-speakers-status-overdue:hover {
   .chq-speakers-roster-open {
     flex-shrink: 0;
   }
-}
 
-/* DEC-393 wave-7 amendment: flush row-action anchors cannot take padding
-   without moving the ink they draw, so the floor is met on the ANCHOR
-   itself -- min-height:44px plus centred flex plus horizontal padding, with
-   an equal-and-opposite negative margin so the padded box grows without
-   shifting anything around it (the same instrument B8 already uses for the
-   selected-row edge). Applied to the anchor only, never to a container, and
-   never to the .chq-speakers-status-* dense/roomy cell tokens -- those keep
-   the 178px column the pair exists to serve. */
-@media (max-width: 700px) {
   .chq-speakers-name-link,
   .chq-speaker-detail-back,
   .chq-speakers-file-link,

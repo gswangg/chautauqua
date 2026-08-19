@@ -181,6 +181,7 @@
    with only the size/weight/case overridden here since it sits inside the
    uppercase .chq-forms-section-title row and must not inherit that. */
 .chq-forms-add-question {
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
   text-transform: none;
@@ -237,6 +238,7 @@
   border: none;
   padding: 0;
   color: var(--chq-muted);
+  font-family: inherit;
   font-size: 14px;
   width: 20px;
   text-align: left;
@@ -612,10 +614,20 @@
     font-weight: 600;
   }
 
+  /* phone-hidden: re-lined elsewhere -- Delete (the row's last action) is
+     reachable inside FieldModal's own "Delete this question" footer
+     action (DEC-650 wave-66 amendment), opened via the remaining visible
+     Edit control on this same row; no capability is lost, only the
+     access path changes. */
   .chq-forms-field-actions .chq-btn:last-child {
     display: none;
   }
 
+  /* phone-hidden: shape 1, desktop twin of a phone-only sibling -- this
+     head link is redrawn as the full-width dashed
+     `.chq-forms-add-question-phone` control below the field list (frame
+     citation two rules below), so hiding the head twin removes no
+     capability. */
   .chq-forms-add-question {
     display: none;
   }

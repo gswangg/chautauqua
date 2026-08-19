@@ -15,12 +15,17 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, 'comms.css');
 const TSX_PATH = join(HERE, 'ComposeWizard.tsx');
 
-/** Extracts the body text of the FIRST 700px media block -- the card-reflow
- * block this file's assertions are about. Brace-matched (not a greedy
- * `[\s\S]*` span to the file's last closing brace) so a later, unrelated
- * `@media (max-width: 700px)` block appended further down the file (e.g.
- * DEC-393 wave-90's terminal tap-floor/overflow block, task w8-c) is never
- * folded into "the card-reflow block". */
+/** Extracts the body text of the file's one 700px media block. Brace-matched
+ * (not a greedy `[\s\S]*` span to the file's last closing brace) so a
+ * `{{ }}` mock template string inside a comment can't truncate it early.
+ * DEC-385 wave-102 amendment: comms.css used to carry the card-reflow
+ * block and DEC-393 wave-90's tap-floor/overflow block separately, and this
+ * helper deliberately read only the first; the two are now consolidated
+ * into ONE terminal block (test/phone-terminal-block.scan.test.ts), so
+ * `phone` below covers both, and the assertions further down are scoped to
+ * WIDTH declarations rather than mere class-name presence so the w8-c
+ * overflow-escape rule for `.chq-comms-compose-col-slot` (which sets no
+ * width) does not trip the "card-reflow stays unwidthed" check. */
 function phoneBlockBody(css: string): string {
   const openRe = /@media \(max-width: 700px\) \{/;
   const openMatch = openRe.exec(css);
@@ -66,8 +71,18 @@ describe('comms.css compose step-1 table column allocation (DEC-902, task w21-a)
     expect(phone).toMatch(/\.chq-comms-compose-table\s*\{\s*table-layout:\s*auto;?\s*\}/);
   });
 
-  it('keeps the card-reflow block free of the new fixed-layout column classes', () => {
-    expect(phone).not.toMatch(/chq-comms-compose-col-/);
+  it('keeps every pinned column class free of a WIDTH declaration inside the phone block (fixed-layout is reset to auto for the card reflow; a class may still appear there for an unrelated overflow-escape treatment)', () => {
+    const widthed = [
+      'chq-comms-compose-col-select',
+      'chq-comms-compose-col-speaker',
+      'chq-comms-compose-col-status',
+      'chq-comms-compose-col-slot',
+      'chq-comms-compose-col-title',
+    ];
+    for (const cls of widthed) {
+      const re = new RegExp(`\\.${cls}\\s*\\{[^}]*width:\\s*\\d+px`);
+      expect(phone, cls).not.toMatch(re);
+    }
   });
 });
 
