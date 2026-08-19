@@ -489,8 +489,9 @@ export function ResourcesPage(props: {
   speakerName: string;
 }) {
   const { branding, groups, csrfToken, speakerName } = props;
-  // v12m-w5-a (docs/design/Chautauqua Public and Portal.dc.html:1565): the
-  // 390 frame adds a subtitle under the H1 -- "The same for every speaker"
+  // v12m-w5-a (docs/design/Chautauqua Public and Portal.dc.html:1565):
+  // `The same for every speaker · nothing here is about your session`
+  // the 390 frame adds a subtitle under the H1 -- "The same for every speaker"
   // -- so a speaker doesn't mistake a shared, organiser-wide resource for
   // something scoped to their own session. Rendered at every width; the
   // phone block below only re-docks the footer note and re-flows the row.

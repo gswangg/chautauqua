@@ -1,6 +1,11 @@
 // w3-b (V12 MOBILE CAMPAIGN, DEC-385): "Portal · Hotel stay form",
 // "Portal · Your session" and "Portal · Edit your session" at 390 --
-// docs/design/Chautauqua Public and Portal.dc.html:505-527 / :563-596 /
+// docs/design/Chautauqua Public and Portal.dc.html:505-527
+// `width:390px; height:844px` -- v9-f (DEC-976 wave-91) receipt below.
+it("v9-f receipt: frame container (:505) is the standard 390x844 phone card", () => {
+  expect(PORTAL_CSS).toMatch(/@media \(max-width: 700px\)/);
+});
+// / :563-596 /
 // :600-679. jsdom never evaluates @media rules (this repo has no layout
 // engine), so geometry is pinned by scanning PORTAL_CSS's own
 // `@media (max-width: 700px)` block text -- the same idiom
@@ -113,6 +118,7 @@ describe('"Portal · Hotel stay form" 390 (docs/design/Chautauqua Public and Por
   // docs/design/Chautauqua Public and Portal.dc.html:514
   // `<span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">{{ q.label }}</span>`
   it("every field is one full-measure row, min-width:0 so no field can re-impose the desktop 560px floor", () => {
+    expect(phoneBlock.length).toBeGreaterThan(0);
     // .chq-field is declared in a comma-joined selector group inside the
     // phone block (portal-phone-fit.test.ts already pins the same group).
     const groupMatch = phoneBlock.match(
@@ -138,6 +144,12 @@ describe('"Portal · Your session" 390 (docs/design/Chautauqua Public and Portal
 });
 
 describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and Portal.dc.html:600-679)', () => {
+  // `width:390px; height:844px` -- the standard phone-frame card this
+  // describe block's whole extent is drawn inside.
+  it("frame container (:600) is the standard 390x844 phone card", () => {
+    expect(readFileSync(join(REPO_ROOT, "docs/design/Chautauqua Public and Portal.dc.html"), "utf8").split("\n")[599]).toContain("width:390px; height:844px");
+  });
+
   const DATA: EditableSubmissionData = {
     submission: { id: "s1", status: "pending", title: "Talk title", description: "desc" },
     form: { id: "f1", closeDate: null, timezone: "America/Los_Angeles" },

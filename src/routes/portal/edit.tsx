@@ -163,7 +163,8 @@ export function EditPage(props: {
       {/* G13 (frames 10--09/22/23): the frames title this page 'Edit your
           session' at both widths. */}
       {/* w3-b (DEC-643 amendment): back-linked drill-in -> 25px phone
-          register, docs/design/Chautauqua Public and Portal.dc.html:603. */}
+          register, docs/design/Chautauqua Public and Portal.dc.html:603.
+          `font-size:25px; font-weight:700; letter-spacing:-0.04em` */}
       <h1 class="chq-portal-hero chq-portal-hero-drill">Edit your session</h1>
       {/* DEC-604 (wave-56 amendment): the window is the FORM's close date,
           not acceptance — canEditSubmission gates on it, so the header
@@ -281,8 +282,9 @@ function ParticipantsSection(props: {
   // A plain field-validation error (missing name, bad email format) stays a
   // bare inline field message, never a banner naming a "did not happen".
   const isDuplicate = errors?.email === CO_PRESENTER_DUPLICATE_MESSAGE;
-  // v12m-w5-a (docs/design/Chautauqua Public and Portal.dc.html:1314): the
-  // 390 frame's callout names the person already on the session instead of
+  // v12m-w5-a (docs/design/Chautauqua Public and Portal.dc.html:1314):
+  // `Priya is already on this session. Everything you typed is still below.`
+  // the 390 frame's callout names the person already on the session instead of
   // repeating the raw server message a second time — that message still
   // renders once, unchanged, at the email field below (dc.html:1349).
   // Matched by email against the participants the caller already loaded;
