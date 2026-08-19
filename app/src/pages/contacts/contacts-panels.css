@@ -1627,3 +1627,26 @@
     border-radius: var(--chq-r-ctl-phone);
   }
 }
+
+/* w6-b: source-order fix. These three phone overrides were declared
+   earlier in the file (:531, :535, :542) than the top-level desktop
+   rules for the same selectors that follow them (:578, :608, :587), so
+   at equal specificity the later desktop declaration always won on a
+   390 viewport -- the duplicate-contact group kept its 3-column grid,
+   the name column kept its single-line ellipsis, and the Merge/Keep-both
+   actions kept nowrap, none of which fit a 390 row. DEC-385: narrow
+   overrides wide via max-width only -- restated here, appended after
+   every rule it must beat, never reordered in place. */
+@media (max-width: 700px) {
+  .chq-contacts-duplicate-group {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-contacts-duplicate-names {
+    white-space: normal;
+  }
+
+  .chq-contacts-duplicate-group .chq-contacts-import-actions {
+    flex-wrap: wrap;
+  }
+}
