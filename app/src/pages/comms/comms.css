@@ -1918,14 +1918,18 @@
 
   /* Frame line 183: `font-size:27px; font-weight:700;
      letter-spacing:-0.04em; line-height:1">Comms</h1>`. A <p>, not a
-     second <h1> -- see the doc comment at this element in Comms.tsx. */
+     second <h1> -- see the doc comment at this element in Comms.tsx.
+     The frame's `line-height:1` is deliberately NOT carried: DEC-991's
+     wave-27 amendment rules a bare line-height 1 on the display face a
+     clip risk and requires deleting the declaration outright (never a
+     tighter-but-legal substitute), leaving the font's own `normal` line
+     box. Pinned by test/display-heading-line-height.scan.test.ts. */
   .chq-comms-phone-landing-title {
     margin: 0;
     font-family: var(--chq-font-display);
     font-size: 27px;
     font-weight: 700;
     letter-spacing: -0.04em;
-    line-height: 1;
     color: var(--chq-ink);
   }
 

@@ -409,10 +409,13 @@ export const AUTH_CSS = `
       flex-direction: column;
       gap: 10px;
     }
-    /* :141/:142 \`font-size:15px; font-weight:700; min-height:44px\` --
-       one size up from the desktop card's 14px link (44px floor already
-       comes from the shared .chq-auth-footer-links a rule above). */
-    .chq-auth-footer .chq-auth-footer-links a { font-size: 15px; }
+    /* :141/:142 \`font-size:15px; font-weight:700\` -- one size up from the
+       desktop card's 14px link. Deliberately NOT re-declared as a
+       .chq-auth-footer-scoped descendant rule on .chq-auth-footer-links a:
+       DEC-367's wave-57 amendment retired that scoped override, and
+       test/auth-card-rhythm-w6.test.ts asserts it never returns. The 15px
+       lands on the unscoped .chq-auth-footer-links a rule in the trailing
+       phone block instead, which reaches these same links. */
 
     /* -----------------------------------------------------------------
        w2-e: "Change password · 390" (docs/design/Chautauqua Account.dc.html:153
