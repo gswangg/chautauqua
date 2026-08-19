@@ -12,7 +12,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { TaskView } from './TaskView';
 import { mockApi } from '../../test-utils/mockApi';
-import type { TaskViewResponse, TaskViewRow } from './taskRoster';
+import type { TaskViewResponse, TaskViewRow, TaskViewTask } from './taskRoster';
 
 const TASK_ID = 'task-hotel';
 const EVENT_ID = 'evt-1';
@@ -288,6 +288,112 @@ describe('design pack v12 task view: "One task, every speaker" / "One task · st
       expect(patch).toBeDefined();
       expect(String(patch![0])).toBe(`/api/v1/tasks/${TASK_ID}`);
       expect(JSON.parse(String((patch![1] as RequestInit).body))).toEqual({ dueDate: Date.UTC(2027, 8, 20) });
+    });
+  });
+});
+
+// ---------------------------------------------------------------------
+// Per-kind row action (the answered tab).
+//
+// The v12 frame only ever seeds a FORM task, so its hard-coded
+// `{{ a.action }}` = 'Open' (docs/design/Chautauqua Speakers.dc.html:654,
+// :825-832) describes the form case alone. Offering it on every row shipped
+// a dead end: DEC-291's GET /task-assignments/:id/response reads a form
+// response and 4xxs on anything else, so a file or acknowledgement task's
+// "Open" could only ever raise a modal saying the task is not a form task.
+// These pins fix the action per KIND -- form opens the response, a file
+// task's row hands over the FILE (the frame's own file idiom, :395
+// `Download`, and the speaker detail's Files list), an acknowledgement has
+// no artefact and gets no action at all.
+// ---------------------------------------------------------------------
+describe('the answered row action follows the task kind, never the row', () => {
+  const FILE_ROWS: TaskViewRow[] = [
+    row({
+      contactId: 'ct-priya',
+      name: 'Priya Raman',
+      status: 'complete',
+      completedAt: Date.now() - 3 * DAY,
+      fileId: 'file-deck-1',
+      fileName: 'taming-ci-devflow.pdf',
+    }),
+    // Complete, but nothing ever landed -- there is no file to hand over,
+    // so this row gets no action either. Same outcome as a general task,
+    // reached by the data rather than by the kind.
+    row({ contactId: 'ct-iris', name: 'Iris Bell', status: 'complete', completedAt: Date.now() - DAY }),
+  ];
+
+  const GENERAL_ROWS: TaskViewRow[] = [
+    row({ contactId: 'ct-priya', name: 'Priya Raman', status: 'complete', completedAt: Date.now() - 3 * DAY }),
+  ];
+
+  async function mountKind(kind: TaskViewTask['kind'], rows: TaskViewRow[], routes: Record<string, unknown> = {}) {
+    const view = payload({ rows: [...rows, ...WAITING] });
+    const fetchMock = mockApi({
+      [`GET /api/v1/tasks/${TASK_ID}/roster`]: { ...view, task: { ...view.task, kind, formId: kind === 'form' ? 'form-1' : null } },
+      ...routes,
+    });
+    renderPage();
+    await screen.findByRole('heading', { name: 'Hotel stay form' });
+    return fetchMock;
+  }
+
+  it('form: every answered row offers Open, and nothing offers a download', async () => {
+    await mountKind('form', ANSWERED);
+
+    const table = screen.getByRole('table', { name: 'Answers' });
+    expect(within(table).getAllByRole('button', { name: 'Open' })).toHaveLength(2);
+    expect(within(table).queryByRole('link', { name: /Download/ })).not.toBeInTheDocument();
+  });
+
+  it('file_request: the row hands over the file itself, and never offers Open', async () => {
+    await mountKind('file_request', FILE_ROWS);
+
+    const table = screen.getByRole('table', { name: 'Answers' });
+    expect(within(table).queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
+
+    const download = within(table).getByRole('link', { name: 'Download taming-ci-devflow.pdf' });
+    // The same root-relative serve route the speaker detail's Files list
+    // uses (SpeakerDetailPage.tsx) -- never the SPA router, never a
+    // per-row fetch to learn the id: fileId/fileName already ride in the
+    // roster payload.
+    expect(download).toHaveAttribute('href', '/files/file-deck-1');
+    expect(download).toHaveAttribute('target', '_blank');
+    expect(download).toHaveAttribute('rel', 'noreferrer');
+    expect(download).toHaveTextContent('Download');
+  });
+
+  it('file_request: a completed row with no file offers nothing at all', async () => {
+    await mountKind('file_request', FILE_ROWS);
+
+    const table = screen.getByRole('table', { name: 'Answers' });
+    expect(within(table).getAllByRole('link', { name: /Download/ })).toHaveLength(1);
+    expect(within(table).getByText('Iris Bell')).toBeInTheDocument();
+  });
+
+  it('general: an acknowledgement row offers no action -- no Open, no download', async () => {
+    await mountKind('general', GENERAL_ROWS);
+
+    const table = screen.getByRole('table', { name: 'Answers' });
+    expect(within(table).queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
+    expect(within(table).queryByRole('link', { name: /Download/ })).not.toBeInTheDocument();
+    // The row still says what is known: who, and when it was marked done.
+    expect(within(table).getByText('Priya Raman')).toBeInTheDocument();
+    expect(within(table).getByText('Marked complete — no answers were recorded')).toBeInTheDocument();
+  });
+
+  it('Mark complete and Reopen keep working on a kind that has no row action', async () => {
+    const fetchMock = await mountKind('general', GENERAL_ROWS, {
+      'PATCH /api/v1/task-assignments/as-ct-priya': { id: 'as-ct-priya' },
+    });
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Priya Raman' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen' }));
+
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH');
+      expect(patch).toBeDefined();
+      expect(String(patch![0])).toBe('/api/v1/task-assignments/as-ct-priya');
+      expect(JSON.parse(String((patch![1] as RequestInit).body))).toEqual({ status: 'pending' });
     });
   });
 });

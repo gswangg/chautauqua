@@ -856,6 +856,13 @@ a:hover {
   flex: 1 1 auto;
 }
 
+/* The bare `select` rides along with the house class here and in the
+   native-control section below, exactly as it does in THEME_CSS: every
+   select in the SPA wears .chq-select today, so this changes nothing on
+   screen -- it only means a select that forgets the class cannot fall back
+   to the platform's own widget (and, with it, the platform's own focus
+   ring) the way checkboxes and radios did. */
+select,
 .chq-input,
 .chq-select,
 .chq-textarea {
@@ -889,16 +896,8 @@ a:hover {
   min-height: 88px;
 }
 
-/* tap-floor-exempt: native checkbox visual (18px, browser-rendered) --
-   enlarging the checkbox itself to 44px is a system-wide visual redesign
-   touching every table/form checkbox in the product (header select-all
-   cells, row selection, field-modal option lists) and is out of scope for
-   the additive w25-d fix; tracked as a follow-up rather than resized here. */
-.chq-check {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--chq-brand);
-}
+/* The checkbox/radio box itself is declared once, with the other native
+   controls DEC-577 took over -- see "Native control styling" below. */
 
 .chq-table {
   width: 100%;
@@ -2007,11 +2006,117 @@ a:hover {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Native control styling (DEC-577) -- file / date / select               */
+/* Native control styling (DEC-577) -- file / date / select / check       */
 /* w1-i: the first sighting of a page must never be a browser-default     */
 /* control sitting next to a fully designed table. Kept in its own        */
 /* section, separate from any other lane's edits to this file.            */
 /* ---------------------------------------------------------------------- */
+
+/* DEC-409 / DEC-577 (speakers-defect wave): checkboxes and radios were the
+   LAST browser-drawn controls in the product -- file, date and select were
+   taken over here, but these two kept `accent-color` on top of the
+   platform's own widget. A browser-drawn widget also draws the platform's
+   own focus treatment INSIDE the design system's olive ring, which is what
+   an organizer reads as "native focus rings": on the v12 speakers surfaces
+   (the task view's select-all and row selectors) a keyboard tab painted a
+   rounded white OS box with its own grey inner edge, wrapped in the house
+   2px olive square. DEC-409 forbids removing an outline and nothing here
+   does -- the fix is to stop the platform drawing a second one, by drawing
+   the box ourselves so the house ring is the ONLY focus mark on the
+   control.
+
+   Geometry is the frame's: docs/design/Chautauqua Speakers.dc.html:642
+   draws the grid's select-all box as `width:17px; height:17px; border:1px
+   solid #4E5C31; background:#4E5C31; border-radius:3px` -- a brand-filled,
+   brand-bordered, small-radius square when ticked. The radius reads from
+   the shared control token rather than the frame's bare 3px, so a checkbox
+   rounds with every other control in the product; the 18px box is the
+   product-wide size this class already declared. Only the painting is new.
+
+   The mark itself is CSS, no asset and no colour literal -- the same
+   choice .chq-select's caret makes below (two gradients rather than an SVG
+   data URI, whose percent-encoded hex would sit outside the token system
+   the palette scan reads). */
+/* tap-floor-exempt: the 18px box is the control's VISUAL, unchanged from
+   the browser-drawn size it replaces -- enlarging it to 44px is a
+   system-wide redesign of every table and form checkbox in the product
+   (header select-all cells, row selection, field-modal option lists). The
+   phone tap floor is met by padding on the label around it, not by
+   inflating the box. */
+input[type='checkbox'],
+input[type='radio'],
+.chq-check {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+  background: var(--chq-surface);
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-ctl);
+  cursor: pointer;
+}
+
+input[type='radio'] {
+  border-radius: 50%;
+}
+
+input[type='checkbox']:checked,
+input[type='checkbox']:indeterminate,
+input[type='radio']:checked {
+  background: var(--chq-brand);
+  border-color: var(--chq-brand);
+}
+
+/* The tick: two adjacent borders of an empty box, rotated -- the house's
+   asset-free mark, painted in the on-brand cream that every filled olive
+   surface in the product uses for its content. */
+input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--chq-on-brand);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Partial selection (the shared select-all contract in ContactsTable /
+   ComposeWizard / SessionList sets .indeterminate on the header input) is
+   a bar, never a tick -- the row set it stands for is neither all in nor
+   all out. */
+input[type='checkbox']:indeterminate::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 7px;
+  width: 10px;
+  height: 2px;
+  background: var(--chq-on-brand);
+}
+
+input[type='radio']:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chq-on-brand);
+}
+
+input[type='checkbox']:disabled,
+input[type='radio']:disabled {
+  background: var(--chq-disabled-bg);
+  border-color: var(--chq-border-strong);
+  cursor: default;
+}
 
 /* input[type=file]: the pseudo-element file-selector-button gets the
    secondary-button tier; the remaining "no file chosen" text is Muted. */
@@ -2073,6 +2178,7 @@ a:hover {
 }
 
 /* select: appearance reset + a CSS-only caret (no SVG asset). */
+select,
 .chq-select {
   appearance: none;
   -webkit-appearance: none;
@@ -2088,6 +2194,7 @@ a:hover {
   background-repeat: no-repeat;
 }
 
+select:focus-visible,
 .chq-select:focus-visible {
   outline: 2px solid var(--chq-brand);
   outline-offset: 2px;

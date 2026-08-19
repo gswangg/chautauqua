@@ -70,9 +70,34 @@ describe("THEME_CSS native control coverage (DEC-585)", () => {
     expect(THEME_CSS).toMatch(/input\[type=date\]\s*\{[^}]*border-radius:\s*4px[^}]*\}/s);
   });
 
-  it("styles checkbox and radio with accent-color and an explicit box size", () => {
-    expect(THEME_CSS).toMatch(/input\[type=checkbox\], input\[type=radio\]\s*\{[^}]*accent-color:\s*var\(--chq-brand\)[^}]*\}/s);
+  // DEC-585 amendment (speakers-defect wave): accent-color TINTS the
+  // platform's own checkbox; it does not replace it. A platform widget also
+  // draws the platform's own focus treatment inside the house ring declared
+  // at the top of this sheet, which is what a user reported as "native focus
+  // rings" on the v12 speakers surfaces. The box is drawn here instead, so
+  // the :focus-visible rule is the ONLY focus mark these two ever wear. The
+  // 18px box size the previous form of this test pinned is kept; what
+  // changed is that the box is now ours. Twin of the same takeover in
+  // app/src/styles.css (app/src/focus-treatment.scan.test.ts holds both
+  // roots to it).
+  it("draws its own checkbox and radio box rather than tinting the platform's", () => {
+    expect(THEME_CSS).toMatch(/input\[type=checkbox\], input\[type=radio\]\s*\{[^}]*appearance:\s*none[^}]*\}/s);
     expect(THEME_CSS).toMatch(/input\[type=checkbox\], input\[type=radio\]\s*\{[^}]*width:\s*18px[^}]*\}/s);
+    expect(THEME_CSS).toMatch(/input\[type=checkbox\], input\[type=radio\]\s*\{[^}]*height:\s*18px[^}]*\}/s);
+    expect(THEME_CSS).toMatch(/input\[type=checkbox\], input\[type=radio\]\s*\{[^}]*border:\s*1px solid var\(--chq-border\)[^}]*\}/s);
+    // No accent-color survives: a tint on a widget we no longer render
+    // would be a dead declaration claiming to own the control's colour.
+    expect(THEME_CSS.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/accent-color/);
+  });
+
+  it("fills the checked checkbox and radio with brand and marks them in on-brand", () => {
+    // The frame's own ticked box: docs/design/Chautauqua Speakers.dc.html:642
+    // `border:1px solid #4E5C31; background:#4E5C31; border-radius:3px`.
+    expect(THEME_CSS).toMatch(/input\[type=checkbox\]:checked,[^{]*\{[^}]*background:\s*var\(--chq-brand\)[^}]*\}/s);
+    expect(THEME_CSS).toMatch(/input\[type=checkbox\]:checked::after\s*\{[^}]*var\(--chq-on-brand\)[^}]*\}/s);
+    // Partial selection (the shared select-all contract) is a bar, not a tick.
+    expect(THEME_CSS).toMatch(/input\[type=checkbox\]:indeterminate::after\s*\{[^}]*var\(--chq-on-brand\)[^}]*\}/s);
+    expect(THEME_CSS).toMatch(/input\[type=radio\]:checked::after\s*\{[^}]*var\(--chq-on-brand\)[^}]*\}/s);
   });
 
   // DEC-919 (wave-1 amendment) supersedes this test's original "CSS-only

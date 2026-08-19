@@ -302,6 +302,14 @@ export function requireAtLeastOneField(supplied: Record<string, unknown>, names:
 // navigation -- an HTML navigation never ends as a JSON blob. Same status as
 // the JSON envelope would have used; message is the visible text; 'Go back'
 // links to the referring path (same-origin only) or '/'.
+//
+// focus-treatment-exempt: this is the last-resort error document, emitted
+// from the error handler itself. It carries no stylesheet at all -- not
+// THEME_CSS, not a link -- deliberately, because it must render when the
+// failure that produced it may be in the very module a shell would import.
+// Its one interactive element is a plain anchor, which wears the browser's
+// own focus mark on an unstyled page rather than a house ring that is not
+// there to give.
 function renderHtmlError(message: string, referer: string | undefined, requestUrl: string): string {
   const safeMessage = escapeHtml(message);
   const backHref = safeReferrerPath(referer, requestUrl);

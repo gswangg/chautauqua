@@ -6,6 +6,11 @@
 // CTA button, and a footer naming the event and the reason the recipient
 // received the message.
 //
+// focus-treatment-exempt: an email body is not a surface of this product --
+// it renders inside somebody else's mail client, which strips <style>
+// blocks, resolves no custom properties (see below) and has no keyboard
+// focus model of ours to join. THEME_CSS would be discarded on arrival.
+//
 // Colour literals are permitted and expected in THIS FILE ONLY: email
 // clients do not resolve CSS custom properties (no `var(--...)` support in
 // Gmail/Outlook/etc.), so the surface-CSS "no colour literal" scan does not

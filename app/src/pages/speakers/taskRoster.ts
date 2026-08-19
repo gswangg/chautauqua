@@ -65,3 +65,41 @@ export interface TaskViewResponse {
 export function isAnswered(row: TaskViewRow): boolean {
   return row.status === 'complete' || row.answerSummary !== null || row.fileId !== null;
 }
+
+/** What an answered row's action cell offers, decided by the TASK's kind --
+ * never offered uniformly. The v12 frame ("One task, every speaker",
+ * docs/design/Chautauqua Speakers.dc.html:654 `{{ a.action }}`) only ever
+ * seeds a form-kind task, so its hard-coded `Open` describes the form case
+ * alone; the vocabulary for the other two kinds comes from the repo's own
+ * rulings:
+ *
+ *  - form         -> 'response'. DEC-291: "the UI offers 'View response'
+ *                    only on form-kind columns" -- GET
+ *                    /task-assignments/:id/response is a FORM response
+ *                    reader and 4xxs on anything else, so offering it on
+ *                    every row shipped a dead modal.
+ *  - file_request -> 'file', when a file actually landed. The row already
+ *                    carries fileId/fileName, so the action is the frame's
+ *                    own file idiom (:395 `Download`, the speaker detail's
+ *                    Files list) pointed at /files/:fileId -- no per-row
+ *                    fetch, no new endpoint.
+ *  - general      -> null. There is nothing to open: an acknowledgement has
+ *                    no artefact, and the row's answers cell + Answered date
+ *                    already say everything that is known. The frame's
+ *                    waiting table (:709) likewise carries no action column.
+ *
+ * A file_request row with no file is 'complete' with nothing to read, so it
+ * gets no action either -- the same rule as general, reached by data rather
+ * than by kind. */
+export type TaskRowAction =
+  | { readonly kind: 'response' }
+  | { readonly kind: 'file'; readonly fileId: string; readonly fileName: string | null }
+  | null;
+
+export function rowAction(taskKind: TaskKind, row: TaskViewRow): TaskRowAction {
+  if (taskKind === 'form') return { kind: 'response' };
+  if (taskKind === 'file_request' && row.fileId !== null) {
+    return { kind: 'file', fileId: row.fileId, fileName: row.fileName };
+  }
+  return null;
+}

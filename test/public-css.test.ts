@@ -163,13 +163,34 @@ function ruleBlocksWithAppearanceNone(css: string): string[] {
   return blocks;
 }
 
-describe("w1-b: appearance:none never ships without a replacement caret affordance", () => {
-  it("every appearance:none rule in THEME_CSS and PUBLIC_CSS also declares a background-image caret and clearing padding-right", () => {
-    const blocks = [...ruleBlocksWithAppearanceNone(THEME_CSS), ...ruleBlocksWithAppearanceNone(PUBLIC_CSS)];
-    expect(blocks.length).toBeGreaterThan(0);
-    for (const block of blocks) {
+describe("w1-b: appearance:none never ships without a replacement affordance", () => {
+  const blocks = () => [...ruleBlocksWithAppearanceNone(THEME_CSS), ...ruleBlocksWithAppearanceNone(PUBLIC_CSS)];
+
+  // A select's replacement affordance is the caret the reset removed.
+  it("every select-like appearance:none rule declares a background-image caret and clearing padding-right", () => {
+    const selectBlocks = blocks().filter((block) => !/input\[type=(checkbox|radio)\]/.test(block));
+    expect(selectBlocks.length).toBeGreaterThan(0);
+    for (const block of selectBlocks) {
       expect(block).toMatch(/background-image:\s*url\(/);
       expect(block).toMatch(/padding(-right)?:\s*[^;]*(\d)/);
+    }
+  });
+
+  // DEC-585 amendment (speakers-defect wave): a checkbox/radio's reset
+  // removes a BOX, not a caret, so its replacement affordance is a box --
+  // border, radius and an explicit size, with the ticked/selected mark
+  // pinned in test/theme.test.ts. Without appearance:none these two stay
+  // platform widgets, which draw the platform's own focus ring inside the
+  // house ring (the defect this rule exists to prevent), so the reset is
+  // required here and the affordance is what this assertion checks.
+  it("every checkbox/radio appearance:none rule replaces the box it reset", () => {
+    const boxBlocks = blocks().filter((block) => /input\[type=(checkbox|radio)\]/.test(block) && /appearance:\s*none/.test(block));
+    expect(boxBlocks.length).toBeGreaterThan(0);
+    for (const block of boxBlocks) {
+      expect(block).toMatch(/border:\s*1px solid var\(--chq-border\)/);
+      expect(block).toMatch(/border-radius:/);
+      expect(block).toMatch(/width:\s*18px/);
+      expect(block).toMatch(/height:\s*18px/);
     }
   });
 });

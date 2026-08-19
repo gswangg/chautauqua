@@ -35,7 +35,7 @@ import { countOf } from '../../lib/plural';
 import { dateInputToMs, formatDate, formatRelativeDays, msToDateInput } from '../../lib/dates';
 import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
 import type { AssignmentResponseDetail, AssignmentStatus, ReminderDraft } from './types';
-import { isAnswered, type TaskViewResponse, type TaskViewRow } from './taskRoster';
+import { isAnswered, rowAction, type TaskViewResponse, type TaskViewRow } from './taskRoster';
 // The ONE CSV writer in the codebase (src/domain/csv.ts, pure core) --
 // crossed the app/ -> src/ boundary with a direct relative import, the same
 // idiom TaskCell.tsx uses for src/domain/task-due.ts.
@@ -119,6 +119,9 @@ export function TaskView() {
 
   // The answered tab's `Open` action -- DEC-291's response viewer, which
   // this page now owns (the grid's per-cell Response link is gone in v12).
+  // Reached only from a FORM-kind task's rows: DEC-291's endpoint reads a
+  // form response and refuses anything else, so rowAction() decides which
+  // rows may open it at all.
   const [openRow, setOpenRow] = useState<TaskViewRow | null>(null);
   const [responseDetail, setResponseDetail] = useState<AssignmentResponseDetail | null>(null);
   const [responseLoading, setResponseLoading] = useState(false);
@@ -523,6 +526,7 @@ export function TaskView() {
           {tabRows.map((row) => {
             const answeredToday = row.completedAt !== null && formatRelativeDays(row.completedAt, now) === 'today';
             const isMostReminded = row.remindCount > 0 && row.remindCount === mostReminded;
+            const action = rowAction(task.kind, row);
             return (
               <div className="chq-taskview-row" role="row" key={row.contactId}>
                 <span role="cell">
@@ -571,9 +575,31 @@ export function TaskView() {
                 )}
                 {tab === 'answered' ? (
                   <span role="cell">
-                    <button type="button" className="chq-link-button chq-taskview-open" onClick={() => void openResponse(row)}>
-                      Open
-                    </button>
+                    {/* The action is the TASK's, not the row's -- see
+                        taskRoster.ts's rowAction. Open reads a FORM
+                        response; a file task's artefact is the file
+                        itself; a general task has no artefact at all. */}
+                    {action?.kind === 'response' && (
+                      <button
+                        type="button"
+                        className="chq-link-button chq-taskview-open"
+                        onClick={() => void openResponse(row)}
+                      >
+                        Open
+                      </button>
+                    )}
+                    {action?.kind === 'file' && (
+                      <a
+                        href={`/files/${action.fileId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="chq-taskview-open"
+                        aria-label={action.fileName === null ? undefined : `Download ${action.fileName}`}
+                        title={action.fileName ?? undefined}
+                      >
+                        Download
+                      </a>
+                    )}
                   </span>
                 ) : (
                   <span role="cell">

@@ -296,13 +296,79 @@ export const THEME_CSS = `
   /* Explicit box size keeps the visual control small; the 44px phone tap
      floor is met by padding on the surrounding label, not by inflating the
      box itself (that lives in the page/surface markup, not this shared
-     sheet). */
+     sheet).
+
+     DEC-585 amendment (speakers-defect wave): appearance:none here for the
+     same reason it is on the select below -- accent-color merely TINTS the
+     platform's own widget, and a platform widget also draws the platform's
+     own focus treatment inside the house ring declared above, which reads
+     as a native (doubled) focus ring. The box is drawn here instead, so
+     the :focus-visible rule at the top of this sheet is the ONLY focus
+     mark a checkbox or radio ever wears. Twin of the same takeover in
+     app/src/styles.css's "Native control styling" section -- the two
+     stylesheet roots DEC-409 names must agree. The mark is CSS, never an
+     asset. */
   input[type=checkbox], input[type=radio] {
-    accent-color: var(--chq-brand);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    position: relative;
     width: 18px;
     height: 18px;
     margin: 0;
     flex-shrink: 0;
+    background: var(--chq-surface);
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl);
+    cursor: pointer;
+  }
+
+  input[type=radio] { border-radius: 50%; }
+
+  input[type=checkbox]:checked,
+  input[type=checkbox]:indeterminate,
+  input[type=radio]:checked {
+    background: var(--chq-brand);
+    border-color: var(--chq-brand);
+  }
+
+  input[type=checkbox]:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: solid var(--chq-on-brand);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  input[type=checkbox]:indeterminate::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 7px;
+    width: 10px;
+    height: 2px;
+    background: var(--chq-on-brand);
+  }
+
+  input[type=radio]:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--chq-on-brand);
+  }
+
+  input[type=checkbox]:disabled, input[type=radio]:disabled {
+    background: var(--chq-disabled-bg);
+    border-color: var(--chq-border-strong);
+    cursor: default;
   }
 
   /* w1-b: appearance:none strips the native OS caret from every select
