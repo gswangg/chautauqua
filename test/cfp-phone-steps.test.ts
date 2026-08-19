@@ -181,9 +181,41 @@ describe("cfp.css.ts — phone wizard chrome (w14-f)", () => {
     expect(CFP_CSS).toMatch(/\[data-chq-cfp-step="2"\] \.chq-cfp-step-talk \{\s*display:\s*none;\s*\}/);
   });
 
-  it("hides submit-type action buttons on step 1, and the Next control on step 2", () => {
-    expect(CFP_CSS).toMatch(/\[data-chq-cfp-step="1"\] \.chq-cfp-actions button\[type="submit"\] \{\s*display:\s*none;\s*\}/);
+  it("hides submit-type action buttons on step 1 except .chq-cfp-save-draft, and the Next control on step 2", () => {
+    expect(CFP_CSS).toMatch(/\[data-chq-cfp-step="1"\] \.chq-cfp-actions button\[type="submit"\]:not\(\.chq-cfp-save-draft\) \{\s*display:\s*none;\s*\}/);
     expect(CFP_CSS).toMatch(/\[data-chq-cfp-step="2"\] \.chq-cfp-step-next \{\s*display:\s*none;\s*\}/);
+  });
+
+  it("does not hide .chq-cfp-save-draft on step 1 (an anonymous phone submitter can save a draft before advancing)", () => {
+    const mediaBody = CFP_CSS.slice(CFP_CSS.indexOf("@media (max-width: 700px)"));
+    // No rule scoped under [data-chq-cfp-step="1"] whose selector matches
+    // .chq-cfp-save-draft (i.e. not excluded via :not()) may declare
+    // display:none.
+    const stepOneRules = mediaBody.match(/\[data-chq-cfp-step="1"\][^{]*\{[^}]*\}/g) ?? [];
+    for (const rule of stepOneRules) {
+      const selector = rule.slice(0, rule.indexOf("{"));
+      const excludesSaveDraft = /:not\(\.chq-cfp-save-draft\)/.test(selector);
+      const targetsSaveDraft = /\.chq-cfp-save-draft/.test(selector) && !excludesSaveDraft;
+      if (targetsSaveDraft) {
+        expect(rule).not.toMatch(/display:\s*none/);
+      }
+    }
+    expect(mediaBody).not.toMatch(/\.chq-cfp-save-draft\s*\{[^}]*display:\s*none/);
+  });
+
+  it("gives .chq-cfp-save-draft the frame's :1063 dock geometry (docs/design/Chautauqua Public and Portal.dc.html:1063 -- \"border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600\")", () => {
+    const mediaBody = CFP_CSS.slice(CFP_CSS.indexOf("@media (max-width: 700px)"));
+    const match = mediaBody.match(/\.chq-cfp-save-draft\s*\{([^}]*)\}/);
+    expect(match, ".chq-cfp-save-draft has no rule inside the 700px media query").not.toBeNull();
+    const body = match![1];
+    expect(body).toMatch(/min-height:\s*48px/);
+    expect(body).toMatch(/display:\s*inline-flex/);
+    expect(body).toMatch(/align-items:\s*center/);
+    expect(body).toMatch(/padding:\s*0 16px/);
+    expect(body).toMatch(/border:\s*1px solid var\(--chq-border\)/);
+    expect(body).toMatch(/border-radius:\s*6px/);
+    expect(body).toMatch(/font-size:\s*13px/);
+    expect(body).toMatch(/font-weight:\s*600/);
   });
 
   it("gives the step controls a >=44px minimum touch target inside the media query", () => {

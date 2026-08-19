@@ -257,22 +257,3 @@ instead of re-flagging.
   v12 inversion is one vocabulary in every state, including under a
   write-failure banner. No code changed; the app already implements the
   inverted vocabulary everywhere.
-
-## v12 frame errata
-
-- "Submit a talk" phone step-1 dock (`docs/design/Chautauqua Public and
-  Portal.dc.html:1027-1028`) draws a primary "Next: about you" control
-  beside a secondary "Draft" control together in the same dock. The build's
-  step-1 CSS (`src/routes/public/cfp.css.ts`,
-  `[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"] {
-  display: none; }`) hides EVERY `type="submit"` button at step 1,
-  including "Save draft" — the only control that could serve as the
-  frame's "Draft" action — because `test/cfp-phone-steps.test.ts:184-186`
-  pins that selector byte-for-byte with no way to except one submit button
-  from the other. Giving Save draft its own non-submit trigger (or its own
-  distinguishing class the pinned selector can key off) is a
-  `cfp-phone-steps` test change, out of this task's file ownership
-  (`src/routes/public/cfp.css.ts`, `src/routes/public/submit-views.tsx`,
-  `test/cfp-phone-frames.test.ts` only) — filed here rather than worked
-  around.
-  measure token (DEC-744/DEC-808).

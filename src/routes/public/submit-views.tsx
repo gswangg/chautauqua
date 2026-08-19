@@ -660,7 +660,7 @@ export function SubmitPage(props: {
               </button>
               <button
                 type="submit"
-                class="chq-btn chq-btn-secondary"
+                class="chq-btn chq-btn-secondary chq-cfp-save-draft"
                 formaction={`/submit/${event.slug}/save-draft`}
                 formnovalidate
               >
