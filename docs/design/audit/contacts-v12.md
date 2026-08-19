@@ -11,7 +11,9 @@
 > record by `{keepContact.firstName} {keepContact.lastName}` rather than
 > the frame's generic "the record you keep" — left OPEN, and left for task
 > `v12m-w2-c`, which owns landing this in the same batch; not pre-closed
-> here.
+> here. Findings 1 and 2 (the match-columns/phone-pager findings, distinct
+> from the "Finding 3" above) are RESOLVED as of the DEC-663 wave-108
+> amendment (task `v12m-w4-m`) — see that section below for receipts.
 
 Findings surfaced building the "Import CSV · 390" one-column-per-screen
 pager against `docs/design/Chautauqua Contacts.dc.html:483` ('Import CSV ·
@@ -23,37 +25,42 @@ need a decision or land outside this task's scope
 `ImportWizard.*.render.test.tsx` files; no shared page header/footer band,
 no touching `app/src/styles.css` or `src/views/theme.ts`).
 
-1. **Two phone docks now stack at the bottom of the match-columns step.**
-   The frame draws exactly one footer pair at :508-511 (`Next column` /
-   `Skip`), full-width and pinned below the scrolling body. This task
-   built that pair as a page-owned sticky band inside
-   `.chq-contacts-import-match`
-   (`.chq-contacts-import-phone-dock`), per its explicit scope note ("do
-   not build a page header/footer band — shared `.chq-phone-head`/
-   `.chq-phone-dock` land in v12m-w1-a"). But `ModalFrame`'s own shared
-   footer (`.chq-modal-actions`, rendered from the `actions` prop) is
-   unconditional across every width, and still shows "Import N rows" /
-   Cancel below our new sticky band regardless of the pager's position —
-   so a phone user of this step sees TWO stacked docks, not the frame's
-   one. Once the v12m-w1-a header/footer scaffold lands, this wizard's
-   phone-only actions should route through it instead of a second,
-   page-owned band; that consolidation is out of this task's scope.
+1. **RESOLVED (DEC-663 wave-108, ruling B).** Two phone docks used to stack
+   at the bottom of the match-columns step. The frame draws exactly one
+   footer pair at :508-511 (`Next column` / `Skip`), full-width and pinned
+   below the scrolling body. `contacts-panels.css`'s terminal
+   `@media (max-width: 700px)` block now hides ModalFrame's shared footer
+   (`.chq-modal-actions`) whenever the page-owned
+   `.chq-contacts-import-phone-dock` is present, via
+   `.chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions {
+   display: none; }` (`app/src/pages/contacts/contacts-panels.css:1777`,
+   appended at the sheet's single terminal block per DEC-385) —
+   reusing the same `[data-chq-phone-dock]` attribute contract
+   `app/src/styles.css:2262` already uses. `.chq-modal-actions`'s "Import N
+   rows" / "Cancel" survive elsewhere on screen: "Import N rows" ->
+   the phone dock's own last-column primary ("Review N rows",
+   `ImportWizard.tsx` ~1028); "Cancel" -> ModalFrame's header Close control
+   (`.chq-modal-close-btn`, `app/src/components/ModalFrame.tsx` ~132),
+   which is never hidden at any width. Pinned by
+   `ImportWizard.phoneColumns.render.test.tsx`'s "hides the shared
+   ModalFrame footer..." test.
 
-2. **The frame's "N rows match an existing contact" note has no client-
-   side data to back it.** Frame :507's literal text is "9 rows match an
-   existing contact by email · those get updated" — a count that can only
-   come from the server's dry-run response (`plan.updated`), which does
-   not exist until `runPreview()` is called from the Review step, well
-   after the match-columns step this note sits in. Rather than fabricate
-   an existing-contact count with nothing behind it, this task reused the
-   wizard's existing, already-computed same-file dedupe note ("Same-file
-   email repeat: N rows · the later row wins", sourced from
-   `dedupeCount`) at that position for phone, unchanged from what desktop
-   already shows below its column grid. This is a narrower claim than the
-   frame's literal copy and should be revisited if/when a planner wants a
-   real per-column existing-contact match count computed some other way
-   (e.g. a lightweight pre-check endpoint), which is a product decision,
-   not a CSS/markup fix.
+2. **RESOLVED (DEC-663 wave-108, ruling A).** The frame's "N rows match an
+   existing contact" note position (`docs/design/Chautauqua
+   Contacts.dc.html:506`, `padding: 16px 0 0`) does render at phone — but
+   as the wizard's own, already-computed same-file dedupe note
+   ("Same-file email repeat: N rows · the later row wins", sourced from
+   `dedupeCount`), not the frame's literal existing-contact-match wording
+   (which needs `plan.updated`, unavailable until the dry run runs).
+   `contacts-panels.css`'s `.chq-contacts-import-dedupe { padding-top:
+   16px; }` (line 1464, landed wave v12m-w9-h) re-spaces this SAME node
+   under the phone radio list rather than hiding it — the previous
+   `display: none` phone-hidden rule this finding described was itself
+   stale by the time wave-108 re-derived it. The frame-accurate
+   plan-sourced sentence still lands separately on the Review step
+   (`.chq-contacts-import-matched`) once the dry run has actually run.
+   Pinned by `ImportWizard.phoneColumns.render.test.tsx`'s "re-spaces the
+   same-file dedupe note..." test.
 
 3. **"Next column" and "Skip" never reach the primary Import action.**
    The frame does not show what happens after the last column (:508-511

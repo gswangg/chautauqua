@@ -967,19 +967,25 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
           {/* w49-f: conditional-and-quiet -- names the in-file collision it
               actually counted (an earlier row in THIS file with the same
               email), and renders nothing at zero rather than a false "0
-              rows match existing contacts". DEC-663 (wave-87 amendment,
-              finding 2): this note sits beneath the DESKTOP column grid
-              only -- .chq-contacts-import-dedupe is hidden at phone width
-              (contacts-panels.css) rather than repositioned under the
-              phone radio list. The frame's own literal text at that phone
-              position ("9 rows match an existing contact by email · those
-              get updated") can only come from the dry run's plan.updated,
-              which does not exist at this step; rather than fabricate that
-              count from the in-file dedupe measurement, the phone pager
-              shows nothing here and the true, plan-sourced note
-              (.chq-contacts-import-matched below) appears once the dry run
-              has actually run, on the Review step. See
-              docs/design/audit/contacts-v12.md finding 2. */}
+              rows match existing contacts". DEC-663 (wave-108 amendment,
+              ruling A / finding 2, superseding the wave-87 amendment this
+              block used to describe): this SAME node renders at 390, not a
+              desktop-only one -- docs/design/Chautauqua Contacts.dc.html
+              :506 ("Import CSV · 390") draws a 13px muted body note at
+              exactly this slot (`padding: 16px 0 0`), and
+              contacts-panels.css's phone block (`.chq-contacts-import-
+              dedupe { padding-top: 16px }`, v12m-w9-h) already re-spaces it
+              under the phone radio list instead of hiding it. The frame's
+              own literal wording at that slot ("9 rows match an existing
+              contact by email · those get updated") can only come from the
+              dry run's plan.updated, which does not exist at this step; the
+              wizard ships a TRUE, differently-worded statement it can
+              actually compute here -- the in-file dedupe count above --
+              rather than fabricate the frame's plan-sourced count early.
+              The frame-accurate plan.updated sentence still lands on the
+              Review step (.chq-contacts-import-matched below) once the dry
+              run has actually run. See docs/design/audit/contacts-v12.md
+              finding 2 (RESOLVED). */}
           {dedupeCount > 0 && (
             <p className="chq-contacts-import-dedupe">
               Same-file email repeat: {countOf(dedupeCount, 'row')} · the later row wins
