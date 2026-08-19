@@ -260,11 +260,6 @@ export const DOCS_SITE_CSS = `
     .chq-docs-figure-frame { border-left: none; border-right: none; border-radius: 0; }
     .chq-docs-figure-caption { padding-inline: 16px; }
 
-    /* Docs · an article · 390 (docs/design/Chautauqua Docs.dc.html:166
-       \`width:390px; height:844px;\`) -- the H1 already lands at the
-       frame's number (:175 \`font-size:28px;\`), pinned here rather than
-       restated. */
-
     /* Prev/next pager (:200 \`border-top:1px solid #1B1D17;
        background:#EFEBDF; padding:12px 16px 16px; display:flex;
        gap:8px\`) -- a filled, edge-to-edge footer bar on phone, not the
