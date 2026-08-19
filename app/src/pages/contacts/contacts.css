@@ -985,5 +985,55 @@
     text-overflow: ellipsis;
     min-width: 0;
   }
+
+  /* DEC-937 wave-110 amendment: the 390 directory row (Chautauqua
+     Contacts.dc.html:200-208) draws exactly three lines plus one action --
+     name, `company · role`, tags -- with no `COMPANY:` / `LABELS:` caption
+     above them. The DEC-937 wave-24 sourcing rule (contacts.css:595) still
+     stands for tables that DO want the caption; this table opts out of it
+     by suppressing the pseudo-element's content rather than deleting the
+     base rule or the `data-label` attributes it reads from. */
+  .chq-contacts-table tbody td[data-label]::before {
+    content: none;
+  }
+
+  /* Frame line 206: `{{ row.company }} · {{ row.role }}` renders as ONE
+     13px #565A4B line with `white-space:nowrap; overflow:hidden;
+     text-overflow:ellipsis` -- not the desktop record's stacked
+     company/title pair. The dot is CSS content on the first span, not new
+     markup, so no baseline (desktop) rule has to change to keep it hidden
+     above 700px. */
+  .chq-contacts-company-cell {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    font-size: 13px;
+    color: var(--chq-muted);
+  }
+
+  .chq-contacts-company-cell span {
+    font-size: inherit;
+    color: inherit;
+  }
+
+  .chq-contacts-company-cell > span:first-child::after {
+    content: ' · ';
+  }
+
+  /* Frame line 207: the tags line is 11px/700/0.06em uppercase #565A4B.
+     .chq-contacts-labels-meta already carries this unconditionally
+     (contacts.css:254) via the shared .chq-meta colour -- restated here,
+     scoped to the phone card, so the terminal block documents the phone
+     contract for this cell explicitly rather than relying on a desktop
+     rule the reader has to go find. */
+  .chq-contacts-labels-meta {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
 }
 
