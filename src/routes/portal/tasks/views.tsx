@@ -486,10 +486,19 @@ export function ResourcesPage(props: {
   speakerName: string;
 }) {
   const { branding, groups, csrfToken, speakerName } = props;
+  // v12m-w5-a (docs/design/Chautauqua Public and Portal.dc.html:1565): the
+  // 390 frame adds a subtitle under the H1 -- "The same for every speaker"
+  // -- so a speaker doesn't mistake a shared, organiser-wide resource for
+  // something scoped to their own session. Rendered at every width; the
+  // phone block below only re-docks the footer note and re-flows the row.
+  const footerExtra = (
+    <span class="chq-portal-resources-footer-note">Questions? Reply to any of our emails.</span>
+  );
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
+    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName} footerExtra={footerExtra}>
       <PortalBackLink to="/portal" />
-      <h1 class="chq-portal-hero">Resources</h1>
+      <h1 class="chq-portal-hero chq-portal-resources-hero">Resources</h1>
+      <p class="chq-portal-sub">The same for every speaker · nothing here is about your session</p>
       {groups.length === 0 ? (
         <PublicEmptyState
           variant="fresh"
@@ -501,13 +510,17 @@ export function ResourcesPage(props: {
           <section aria-label={group.eventName} class="chq-section">
             <div class="chq-section-label">{group.eventName}</div>
             {group.resources.map((r) => (
-              <div class="chq-portal-row">
+              <div class="chq-portal-row chq-portal-resource-row">
                 <span class="chq-portal-row-title">{r.title}</span>
                 {r.kind === "wiki" ? (
                   <div class="chq-portal-detail" dangerouslySetInnerHTML={{ __html: renderMarkdown(r.content ?? "") }} />
                 ) : (
                   <div class="chq-portal-actions">
-                    <a href={`/portal/resources/${r.id}/download`} class="chq-btn chq-btn-secondary">Download</a>
+                    {/* v12m-w5-a (dc.html:1575): "Open", not "Download" --
+                        this same route also serves wiki resources rendered
+                        inline above, so "Download" was never true for the
+                        whole population sharing this row shape. */}
+                    <a href={`/portal/resources/${r.id}/download`} class="chq-btn chq-btn-secondary">Open</a>
                   </div>
                 )}
               </div>
