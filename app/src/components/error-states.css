@@ -142,3 +142,20 @@
   margin: 0;
   color: var(--chq-ink);
 }
+
+/* v12m-w6-h: 44px floor audit (docs/design/audit/phone-tap-floor-links.md).
+   This sheet had NO @media block at all before this wave -- one anchor per
+   problem, each on its own <li> row inside the error summary list
+   (ErrorSummary.tsx:32), is the ROOMY case DESIGN-RULINGS.md:189 names:
+   the only interactive element on its own line gets min-height:44px PLUS
+   centred flex PLUS horizontal padding. Appended per DEC-385 (single-
+   direction responsive, max-width only) -- desktop rule above is
+   untouched. */
+@media (max-width: 700px) {
+  .chq-error-summary-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 8px;
+  }
+}

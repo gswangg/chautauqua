@@ -1150,3 +1150,37 @@
     width: 100%;
   }
 }
+
+/* v12m-w6-h: 44px floor audit (docs/design/audit/phone-tap-floor-links.md).
+   Appended at the true end of the file, per the campaign's own
+   content.css/comms.css lesson -- a third block always wins ties at equal
+   specificity over the two blocks above it, so it never gets shadowed by
+   source order.
+
+   .chq-detail-content-link already inherits min-height:44px from its
+   co-occurring .chq-btn.chq-btn-tertiary (styles.css:1104/1109-1116), but
+   the page-local phone rule at :1049 above (width/text-align/radius only)
+   never stated a floor of its OWN -- ROOMY per DESIGN-RULINGS.md:189, and
+   this makes that explicit rather than relying on a class that lives in a
+   file this wave never touches.
+
+   .chq-detail-delete-link never had a phone rule at all: it composes with
+   .chq-link-button (styles.css:783), which carries no floor anywhere, so
+   the desktop 13px muted text link (:820) had no 44px hit box on any
+   width below 700px. */
+@media (max-width: 700px) {
+  .chq-detail-content-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .chq-detail-delete-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 8px;
+  }
+}

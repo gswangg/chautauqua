@@ -46,6 +46,22 @@ const ALLOWLIST: Record<string, string> = {
     "SSR-only: the public CFP builder groups radio/checkbox options in a <fieldset>, which needs padding-left reset to 0 (no left padding to preserve); the SPA has no fieldset-based invalid control.",
 };
 
+/**
+ * Properties declared on only one side of a selector that DOES exist on
+ * both sides -- narrower than ALLOWLIST above (which is selector-level).
+ * v12m-w6-h (docs/design/audit/phone-tap-floor-links.md): the SPA's
+ * `.chq-error-summary-link` gained a `@media (max-width: 700px)` phone
+ * floor (display/align-items/min-height/padding, DESIGN-RULINGS.md:189's
+ * 44px tap-target rule) -- the SSR module has no responsive breakpoint
+ * concept at all (grep confirms zero `@media` blocks in
+ * src/views/error-states.css.ts), so there is no SSR side for a phone-only
+ * addition to mirror. The shared desktop properties (font-size,
+ * font-weight, color, text-decoration) still match byte-for-byte.
+ */
+const PHONE_ONLY_PROPERTIES: Record<string, string[]> = {
+  ".chq-error-summary-link": ["display", "align-items", "min-height", "padding"],
+};
+
 /** Strips CSS block comments so a comment mentioning a selector by name
  * is never mistaken for a declaration site. */
 function stripComments(css: string): string {
@@ -126,10 +142,12 @@ describe("DEC-124: the SSR and SPA error vocabularies agree property-for-propert
       const ssrProps = SSR_RULES.get(selector)!;
       const spaProps = SPA_RULES.get(selector)!;
       const allProps = new Set([...ssrProps.keys(), ...spaProps.keys()]);
+      const phoneOnly = PHONE_ONLY_PROPERTIES[selector] ?? [];
       for (const prop of allProps) {
         const ssrVal = ssrProps.get(prop);
         const spaVal = spaProps.get(prop);
         if (ssrVal === undefined) {
+          if (phoneOnly.includes(prop)) continue;
           offenders.push(`"${selector}" { ${prop} }: present in SPA only (value "${spaVal}")`);
         } else if (spaVal === undefined) {
           offenders.push(`"${selector}" { ${prop} }: present in SSR only (value "${ssrVal}")`);
