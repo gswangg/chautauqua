@@ -785,3 +785,40 @@
   width: 440px;
   max-width: calc(100vw - 40px);
 }
+
+/* DEC-919 (v12 mobile campaign w2 ruling), audit finding 2 (docs/design/
+   audit/submissions-v12.md). Frame docs/design/Chautauqua
+   Submissions.dc.html:138
+   `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:12px`
+   draws the phone head as a search box over EXACTLY three chips ("Needs
+   triage" / "Accepted" / "All 47", lines 149-151) -- no Status caption, no
+   divider, no track select, no column picker. The app's status-pill
+   vocabulary (STATUS_LABELS/
+   SUBMISSION_STATUSES, types.ts) has no "Needs triage" or "All" member and
+   no live total this component is handed, so this narrows to hiding down
+   to the two REAL pills the frame's copy most plausibly names ('pending'
+   -> Pending, 'accepted' -> Accepted) plus the search box, one markup tree
+   (DEC-386), nothing duplicated -- a synthetic third "All 47" chip is out
+   of this task's narrow interpretation (no total-count prop reaches
+   FilterBar, and inventing one is a content/IA call the audit already
+   flagged as unresolved, not a CSS geometry fix). Appended at the true end
+   of the file (not inside the earlier phone block) so this @media block
+   always wins ties at equal specificity, per the campaign's own content.css/
+   comms.css lesson. */
+@media (max-width: 700px) {
+  .chq-submissions-status-label,
+  .chq-submissions-filterbar-divider,
+  .chq-submissions-filterbar .chq-submissions-filterbar-select,
+  .chq-submissions-columnpicker,
+  .chq-submissions-filterbar-searchsort .chq-submissions-filterbar-sort-select {
+    display: none;
+  }
+
+  /* Reason recorded (per task instruction): at 390 the table stacks into
+     cards (see the phone block above), so a column picker governing
+     columns that are not on the screen has nothing to govern -- it is
+     hidden above, not relocated. */
+  .chq-status-pills [data-status]:not([data-status='pending']):not([data-status='accepted']) {
+    display: none;
+  }
+}
