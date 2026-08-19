@@ -394,10 +394,17 @@ describe('Phone tab bar (DEC-381)', () => {
     expect(within(tabbar).getByRole('button', { name: /^More/ })).toBeInTheDocument();
   });
 
-  it('shows Review alone plus a More control for a reviewer, whose sheet carries Sign out', async () => {
-    // DEC-392: reviewers have exactly one section (Review), so the More
-    // sheet is their only route to Sign out once the phone header drops
-    // the desktop identity block's Sign out button.
+  it('renders no tab bar at all for a reviewer -- one section is not a navigation choice, and the identity block carries Sign out instead', async () => {
+    // DEC-576 (wave-86 amendment): a bottom tab bar with a single item
+    // draws no band in either phone frame
+    // (docs/design/Chautauqua Content.dc.html:229 draws the five-tab band
+    // only on the multi-section landing; :278's docked drill on the SAME
+    // page has no band at all). A reviewer has exactly one section
+    // (Review), so PhoneTabBar returns null below 2 primary tabs and
+    // there is no More sheet -- styles.css un-hides `.chq-user-identity`
+    // at <=700px whenever `.chq-shell` has no `.chq-tabbar`, so Sign out
+    // stays reachable via the header identity block this test already
+    // finds unconditionally (CSS media queries do not apply in jsdom).
     mockApi({
       'GET /api/v1/me': { userId: 'u-2', email: 'reviewer@example.com', role: 'reviewer', orgId: 'org-1' },
       'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
@@ -405,15 +412,10 @@ describe('Phone tab bar (DEC-381)', () => {
 
     render(<App />);
 
-    const tabbar = await screen.findByRole('navigation', { name: 'Primary, phone' });
-    expect(within(tabbar).getByRole('link', { name: /^Review/ })).toBeInTheDocument();
-    const moreButton = within(tabbar).getByRole('button', { name: /^More/ });
-    expect(moreButton).toBeInTheDocument();
-
-    moreButton.click();
-
-    const dialog = await screen.findByRole('dialog', { name: 'More' });
-    expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    const header = await screen.findByRole('banner');
+    expect(within(header).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Primary, phone' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^More/ })).not.toBeInTheDocument();
   });
 
   it('reveals a Sign out control in the More sheet, which stays closed by default', async () => {

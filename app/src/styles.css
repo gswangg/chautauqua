@@ -391,6 +391,17 @@ a:hover {
     display: none;
   }
 
+  /* DEC-576 (wave-86 amendment): a reviewer has exactly one primary
+     section (App.tsx's PhoneTabBar returns null below 2 primary tabs), so
+     no `.chq-tabbar` and no More sheet ever mount for them -- the phone
+     path for Sign out (DEC-369 wave-72) does not exist. Un-hide the
+     identity block's Sign out whenever the shell has no tab bar, so a
+     reviewer keeps the one button. `.chq-btn-tertiary` already carries
+     `min-height:44px` at this width (above), so no new floor is needed. */
+  .chq-shell:not(:has(.chq-tabbar)) .chq-header-identity .chq-user-identity {
+    display: inline-flex;
+  }
+
   /* v12m-w3-i: geometry pinned against both frames that draw the tab bar --
      docs/design/Chautauqua Settings.dc.html:299 and docs/design/Chautauqua
      Submissions.dc.html:173-180, byte-identical in both:
@@ -2275,6 +2286,19 @@ a:hover {
 
   .chq-phone-dock .chq-btn-primary {
     flex: 1;
+  }
+
+  /* DEC-576 (wave-86 amendment): a docked drill-in and the bottom tab bar
+     are never both on screen. docs/design/Chautauqua Content.dc.html:229
+     draws the five-tab band on the landing
+     (`border-top:1px solid #1B1D17; background:#EFEBDF; padding:10px 8px 14px`)
+     while :278 draws the dock on the SAME page in select mode with no band
+     at all (`flex-shrink:0; border-top:1px solid #1B1D17;
+     background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`) --
+     Settings, Submissions and Review's docked drills agree. `:has()`
+     already ships in this product (settings.css:406). */
+  .chq-shell:has(.chq-phone-dock) .chq-tabbar {
+    display: none;
   }
 
   /* docs/design/Chautauqua Speakers.dc.html:262

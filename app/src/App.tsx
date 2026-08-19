@@ -276,7 +276,14 @@ function PhoneTabBar() {
   useEscapeKey(moreOpen, closeMore);
   const anyBadgeLive = Boolean(exceptions.late) || Boolean(exceptions.clash);
 
-  if (primaryTabs.length === 0) {
+  // DEC-576 (wave-86 amendment): a bottom tab bar with a single item is
+  // not a navigation choice, and a reviewer's one section (Review,
+  // App.tsx:269 above) draws no band in either phone frame
+  // (docs/design/Chautauqua Content.dc.html:229 draws the five-tab band
+  // only on the multi-section landing). Below 2 primary tabs there is
+  // also no More sheet, so styles.css un-hides `.chq-user-identity`
+  // (`.chq-shell:not(:has(.chq-tabbar)) ...`) to keep Sign out reachable.
+  if (primaryTabs.length < 2) {
     return null;
   }
 
