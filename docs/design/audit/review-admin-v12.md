@@ -6,35 +6,33 @@ own), plus the deliberate carve-outs taken instead. Frame citations are
 verbatim literals from `docs/design/Chautauqua Review.dc.html`'s "Plan
 editor · 390" frame (starts `:594`), per DEC-967.
 
-## 1. The frame's per-criterion TYPE select has no equivalent control in this editor
+## 1. The frame's per-criterion TYPE select — RESOLVED (DEC-018 Amendment, wave 102, shipped w2-p)
 
-`:608` draws a per-row type control:
+`:608` draws a per-row type control (phone):
 
 `<div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 13px; font-size:14px">{{ c.typeLabel }} <span style="color:#565A4B; padding-left:6px">▾</span></div>`
 
-The live app has no path that changes an *existing* criterion's kind —
-`kind` is picked once, at "Add criterion" time, via the segmented control
-(`PlanEditor.tsx`'s `pickingKind` block), and never again. Two options were
-considered:
+The same control is also drawn on **two desktop frames** — `:500` (`Plan
+editor · /review/plans/:id`) and `:747` (`New plan · /review/plans/new`) —
+which settled the design call this finding used to be open on: growing the
+editable criterion row's grid past its pre-V12 five tracks is
+frame-demanded, not a frozen-desktop violation (`:492`'s
+`grid-template-columns:20px 1fr 232px 128px 122px 62px` names the sixth,
+122px TYPE track explicitly).
 
-- **A genuinely inert `<select disabled>`** styled with the shared
-  `.chq-select` caret (DESIGN-RULINGS B8), carrying the criterion's one
-  true kind. Honest, and geometrically close to the frame. Rejected this
-  wave because it is an *unconditionally rendered* element and would grow
-  the editable criterion row's child count past the desktop grid-track
-  parity `PlanEditor.render.test.tsx` pins ("declares at least as many
-  grid tracks as an editable criterion row has non-error children",
-  expects exactly 5) — a file this task does not own, and the fix (adding
-  a 6th grid track) is a desktop-affecting change out of this task's
-  frozen-desktop scope.
-- **A phone-only, CSS-hidden-at-wide element.** Same DOM-count problem:
-  jsdom evaluates no `@media` rule, so a "hidden at desktop" element is
-  still a rendered child in that test's count.
-
-Needs a design call: either (a) accept the type row is decorative-only on
-phone and drop it from the frame (my narrow-interpretation guess), or (b)
-grow `PlanEditor.render.test.tsx`'s grid-track pin to 6 first, in a
-separate change that owns that file, then add the disabled select here.
+Shipped: a real, enabled `<select class="chq-select">` in the editable
+criterion row, over `CRITERION_KIND_LABELS` (`rating | dropdown | text`),
+`disabled={activeRoundIsLocked}` like its sibling controls, writing
+through the existing `updateCriterion(c, id, { kind })` path
+(`PlanEditor.tsx`). Changing kind re-derives the kind-specific fields
+(`weight` / `options` / `required`) the same way `addCriterion` seeds a
+brand-new row of that kind — a rating row's weight does not strand onto a
+dropdown row, and switching to `dropdown` always leaves 2 blank option
+rows the existing `Add an option` block can edit. `.chq-review-criterion-row,
+.chq-review-criteria-head-row` moved to the frame's six-track template
+(`review.css`), and `PlanEditor.render.test.tsx`'s non-error-children pin
+moved 5 → 6 in the same commit. The readonly/locked row's own TYPE cell
+was already built and is untouched.
 
 ## 2. The Reviewers roster's per-row action is "Remove", not the frame's "Swap"
 
