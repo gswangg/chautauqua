@@ -1,5 +1,28 @@
 # Tap-floor v12 audit: row-action-anchor evasion offenders (task w5-c)
 
+## Unreceipted phone `display:none` on an interactive control (task w2-t)
+
+`app/src/phone-capability-removal.scan.test.ts` counts
+`src/routes/auth.css.ts :: .chq-auth-stack .chq-auth-tertiary { display:
+none; }` as one of its unreceipted interactive phone hides. DEC-919
+wave-101 allows exactly three receipt shapes (desktop twin of a phone-only
+sibling, drag handle, bare navigational glyph); this rule fits none of
+them. It is also not eligible for RE-LINING within this task's scope: the
+sheet's later (w1-h) rules already re-line the SAME `.chq-auth-tertiary`
+class for every OTHER auth page (`Back to sign in`, etc.) via an unscoped
+`.chq-auth-tertiary` rule, but `.chq-auth-stack .chq-auth-tertiary`'s
+extra specificity means /login's own "Forgot your password?" link still
+resolves to `display:none` regardless of source order — deleting the
+scoped hide would change what /login renders (the link would reappear,
+unstyled by the re-lined 44px-floor treatment, contradicting
+`test/account-signin-phone.test.ts:117`'s pinned expectation that the
+390 frame draws no Forgot link inside the Sign-in stack at all). Left
+counted per DEC-919 wave-101's own text ("never receipting on
+assumption"); a future wave that either re-scopes the re-lined
+`.chq-auth-tertiary` treatment to also win inside `.chq-auth-stack`, or
+gets a design ruling to drop the /login Forgot link's phone hide test
+pin, can close this row.
+
 Measured by `app/src/phone-tap-target.scan.test.ts`'s row-action-anchor scan (DEC-393 wave-87 amendment) on this branch. Each row names a CSS selector that mentions a bare-anchor or row-action-container token (DESIGN-RULINGS.md:189's evasion) with no conforming `@media (max-width: 700px)` rule (`min-height:>=44px` + `display:flex` + `align-items:center` + non-zero horizontal padding, all three, reaching the anchor) and no `tap-floor-exempt` comment. Every row here lives OUTSIDE this task's scope (`app/src/components/*.css`, `app/src/pages/submissions/*.css`) and is left for its owning cluster/wave to fix or exempt.
 
 Total: 92 offenders, matching `ANCHOR_FLOOR_OFFENDERS_CEILING` in the scan file.

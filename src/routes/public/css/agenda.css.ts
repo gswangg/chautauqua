@@ -379,63 +379,6 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     .chq-pub-speaker-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   }
 
-  /* DEC-385: single phone switch shared by every stylesheet. Collapses
-     the header/main gutters, stacks the session row's when/room line
-     above the title instead of a fixed 126px column, and keeps the
-     agenda day grid scrolling inside its own box rather than widening
-     the document. */
-  @media (max-width: 700px) {
-    .chq-pub-header { padding: 16px; }
-    main.chq-pub-main { padding: 16px; }
-    .chq-pub-header-title { font-size: 25px; }
-    .chq-pub-session-row {
-      grid-template-columns: 1fr;
-      gap: 6px;
-    }
-    .chq-pub-session-when {
-      flex-direction: row;
-      gap: 8px;
-      align-items: baseline;
-      order: -1;
-    }
-    .chq-pub-speaker-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-    .chq-pub-itinerary-cta { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
-    /* DEC-367 (wave 50 amendment): the phone tap floor -- the day-switcher
-       pill sizes to padding on desktop, per docs/design/README.md
-       §Controls. */
-    .${ACCENT_BOUND_CLASSES[1]} { min-height: 44px; }
-    /* docs/design/Chautauqua Public and Portal.dc.html:395
-       \`<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; margin-top:2px">{{ s.action }}</span>\`
-       -- the phone list's per-row action is a bordered button (border,
-       radius, sunk fill, centred, 44px floor), not the plain text link the
-       row renders at every other width -- .chq-pub-itinerary-row previously
-       carried only a bare min-height, leaving the hit box the width of the
-       "Save"/"Saved" text and no drawn button at all. Phone-only, DEC-385
-       single-direction; matches .chq-pub-save's own vocabulary (rail.css.ts)
-       without dragging that rule's box styling into every other width this
-       wrapper renders at. */
-    .chq-pub-itinerary-row {
-      border: 1px solid var(--chq-border);
-      /* --chq-r-ctl-phone (theme.ts): the 6px phone control radius the frame
-         draws its bordered buttons at, distinct from --chq-r-ctl's 4px
-         desktop radius. */
-      border-radius: var(--chq-r-ctl-phone);
-      background: var(--chq-surface-sunk);
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 2px;
-    }
-    .chq-pub-agenda-day-scroll { max-width: 100%; }
-
-    /* DEC-584: exactly one of the two agenda markups is in the a11y tree
-       at a time -- the desktop room-grid wrapper hides below 700px and the
-       phone list takes over. */
-    .chq-pub-agenda-desktop { display: none; }
-    .chq-pub-agenda-list { display: block; }
-  }
-
   /* DEC-990 Amendment (wave 40): the grid view is six COUNTED ~184px square
      tiles at the WIDE desktop measure (repeat(6, 1fr) + 16px gaps is
      ~1180, matching the 'wide' measure class shell.tsx now assigns this
@@ -453,18 +396,6 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
 
   @media (max-width: 900px) {
     .chq-pub-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-  }
-  @media (max-width: 700px) {
-    .chq-pub-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-    .chq-pub-speaker-list-row {
-      grid-template-columns: 64px 1fr;
-      grid-template-areas: "photo info" "sessions sessions";
-    }
-    .chq-pub-speaker-list-photo { grid-area: photo; width: 64px; }
-    .chq-pub-speaker-list-photo img,
-    .chq-pub-speaker-list-photo .chq-pub-headshot-fallback { width: 64px; height: 64px; }
-    .chq-pub-speaker-list-info { grid-area: info; }
-    .chq-pub-speaker-list-row .chq-pub-speaker-sessions { grid-area: sessions; padding-left: 84px; }
   }
 
   /* EMB-01/EMB-08: Format chip, styled like a track chip but without the
@@ -541,4 +472,78 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
   .chq-pub-agenda-block-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-off { display: none; }
   .chq-pub-agenda-block-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-on { display: inline; }
 
+  /* DEC-385 wave-102 amendment: this sheet's two ≤700px blocks
+     (single phone switch shared by every stylesheet -- header/main
+     gutters, session-row stacking, itinerary controls, the phone-list
+     swap -- and the gallery/speaker-list overflow-sweep block) are
+     consolidated HERE, in ascending source order, as the sheet's ONE
+     terminal phone block -- a non-terminal phone block can be silently
+     shadowed by a later desktop rule (phone-terminal-block.scan.test.ts).
+     No selector/declaration/value is reordered, reworded or deduped;
+     none of the moved selectors collide with each other or with any
+     top-level rule this move now sits after (.chq-pub-format-chip,
+     .chq-pub-select-active, .chq-pub-agenda-block-meta/-list-item
+     .chq-pub-track-chip::before, .chq-pub-agenda-block-save). */
+  @media (max-width: 700px) {
+    .chq-pub-header { padding: 16px; }
+    main.chq-pub-main { padding: 16px; }
+    .chq-pub-header-title { font-size: 25px; }
+    .chq-pub-session-row {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+    .chq-pub-session-when {
+      flex-direction: row;
+      gap: 8px;
+      align-items: baseline;
+      order: -1;
+    }
+    .chq-pub-speaker-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .chq-pub-itinerary-cta { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    /* DEC-367 (wave 50 amendment): the phone tap floor -- the day-switcher
+       pill sizes to padding on desktop, per docs/design/README.md
+       §Controls. */
+    .${ACCENT_BOUND_CLASSES[1]} { min-height: 44px; }
+    /* docs/design/Chautauqua Public and Portal.dc.html:395
+       \`<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; margin-top:2px">{{ s.action }}</span>\`
+       -- the phone list's per-row action is a bordered button (border,
+       radius, sunk fill, centred, 44px floor), not the plain text link the
+       row renders at every other width -- .chq-pub-itinerary-row previously
+       carried only a bare min-height, leaving the hit box the width of the
+       "Save"/"Saved" text and no drawn button at all. Phone-only, DEC-385
+       single-direction; matches .chq-pub-save's own vocabulary (rail.css.ts)
+       without dragging that rule's box styling into every other width this
+       wrapper renders at. */
+    .chq-pub-itinerary-row {
+      border: 1px solid var(--chq-border);
+      /* --chq-r-ctl-phone (theme.ts): the 6px phone control radius the frame
+         draws its bordered buttons at, distinct from --chq-r-ctl's 4px
+         desktop radius. */
+      border-radius: var(--chq-r-ctl-phone);
+      background: var(--chq-surface-sunk);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .chq-pub-agenda-day-scroll { max-width: 100%; }
+
+    /* DEC-584: exactly one of the two agenda markups is in the a11y tree
+       at a time -- the desktop room-grid wrapper hides below 700px and the
+       phone list takes over. */
+    .chq-pub-agenda-desktop { display: none; }
+    .chq-pub-agenda-list { display: block; }
+
+    .chq-pub-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .chq-pub-speaker-list-row {
+      grid-template-columns: 64px 1fr;
+      grid-template-areas: "photo info" "sessions sessions";
+    }
+    .chq-pub-speaker-list-photo { grid-area: photo; width: 64px; }
+    .chq-pub-speaker-list-photo img,
+    .chq-pub-speaker-list-photo .chq-pub-headshot-fallback { width: 64px; height: 64px; }
+    .chq-pub-speaker-list-info { grid-area: info; }
+    .chq-pub-speaker-list-row .chq-pub-speaker-sessions { grid-area: sessions; padding-left: 84px; }
+  }
 `;
