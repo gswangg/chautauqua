@@ -431,7 +431,7 @@ function findAnchorFloorOffenders(): string[] {
 // `docs/design/audit/tap-floor-v12.md` for its owning cluster/wave. This
 // number may only be LOWERED by a future wave closing more of the audit
 // file's rows -- never raised to accommodate a new offender.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 999999;
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 92;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {
