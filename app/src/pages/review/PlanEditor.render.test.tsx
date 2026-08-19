@@ -2464,3 +2464,140 @@ describe('criteria/reviewer/distribute row tracks (DEC-745 wave-21 amendment)', 
     ).toHaveAttribute('href', '#plan-max-evaluations');
   });
 });
+
+// w1-g/DEC-745 wave-98 amendment (review-admin-v12.md §3): docs/design/
+// Chautauqua Review.dc.html:663 draws a SECOND, dashed "Assign a reviewer"
+// control below the roster/cap row, phone-only, distinct from the
+// section-head toggle (:643/:2087). Both drive the ONE assignFormOpen
+// state -- one form, two triggers, never two forms and never two open
+// states. The head toggle keeps the exact accessible name "Assign a
+// reviewer" (queried by openAssignForm() above); the below-roster control
+// carries a distinguishing aria-label so the two are never ambiguous. The
+// trigger is gated by useIsPhone (matchMedia(700px)), the same hook
+// Scorecard.tsx/Agenda.tsx already use -- mirroring the FakeMediaQueryList
+// pattern SubmissionDetailPage.phone-dock.render.test.tsx uses to force
+// that hook's split in jsdom, which implements no matchMedia at all (every
+// OTHER render test in this file keeps exercising the desktop tree by
+// default, unstubbed).
+class FakeMediaQueryList {
+  matches = true;
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+function stubPhoneMatchMedia() {
+  vi.stubGlobal('matchMedia', () => new FakeMediaQueryList());
+}
+
+describe('PlanEditor: below-roster "Assign a reviewer" trigger (DEC-745 wave-98)', () => {
+  function mockPlanWithOneReviewer() {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
+        { id: 'pr-1', userId: 'user-42', email: 'reviewer@example.test', trackId: null, submissionId: null },
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+  }
+
+  it('desktop (jsdom default, no matchMedia): only the head toggle exists, no below-roster trigger', async () => {
+    mockPlanWithOneReviewer();
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('button', { name: 'Assign a reviewer' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Assign a reviewer, below the roster' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('phone (matchMedia stubbed true): renders both triggers with distinct, non-colliding accessible names', async () => {
+    stubPhoneMatchMedia();
+    mockPlanWithOneReviewer();
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const headToggle = await screen.findByRole('button', { name: 'Assign a reviewer' });
+    const belowRoster = await screen.findByRole('button', {
+      name: 'Assign a reviewer, below the roster',
+    });
+    expect(headToggle).toBeInTheDocument();
+    expect(belowRoster).toBeInTheDocument();
+    expect(headToggle).not.toBe(belowRoster);
+  });
+
+  it('phone: opening the ONE form from the below-roster trigger flips the head toggle to Close too, and closing from either closes both', async () => {
+    stubPhoneMatchMedia();
+    mockPlanWithOneReviewer();
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const belowRoster = await screen.findByRole('button', {
+      name: 'Assign a reviewer, below the roster',
+    });
+    fireEvent.click(belowRoster);
+
+    // One form, opened by the below-roster trigger: the account-creation
+    // control (only ever rendered while assignFormOpen is true) appears...
+    expect(await screen.findByPlaceholderText('reviewer@example.com')).toBeInTheDocument();
+    // ...and the head toggle reflects the SAME state, not a stale one --
+    // it now reads "Close", never a lingering "Assign a reviewer".
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Assign a reviewer' })).not.toBeInTheDocument();
+
+    // Closing from the head toggle closes the one form -- the below-roster
+    // trigger's own label reverts too (no stale "Close" left behind on the
+    // control that did not initiate the close).
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByPlaceholderText('reviewer@example.com')).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Assign a reviewer' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: 'Assign a reviewer, below the roster' }),
+    ).toBeInTheDocument();
+  });
+
+  it('phone: opening from the head toggle also opens the below-roster trigger\'s state (no independent open states)', async () => {
+    stubPhoneMatchMedia();
+    mockPlanWithOneReviewer();
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Assign a reviewer' }));
+    expect(await screen.findByPlaceholderText('reviewer@example.com')).toBeInTheDocument();
+
+    // Closing via the below-roster trigger (now labelled the same way the
+    // head toggle would be, but with the distinguishing aria-label) closes
+    // the one shared form.
+    const belowRosterNowOpen = screen.getByRole('button', {
+      name: 'Assign a reviewer, below the roster',
+    });
+    fireEvent.click(belowRosterNowOpen);
+    expect(screen.queryByPlaceholderText('reviewer@example.com')).not.toBeInTheDocument();
+  });
+});
