@@ -22,6 +22,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
 import { DEC_888, DEC_731 } from '../../../../src/decisions';
 import { MAX_LONG_TEXT_LENGTH, MAX_NAME_LENGTH } from '../../../../src/forms/validate';
+import { kindLabel, type FormFieldKind } from '../forms/types';
 
 void DEC_888;
 void DEC_731;
@@ -76,6 +77,8 @@ interface CfpField {
   id: string;
   label: string;
   locked: boolean;
+  kind: FormFieldKind;
+  required: boolean;
 }
 
 interface CfpForm {
@@ -98,6 +101,47 @@ function customQuestionsSummary(fields: CfpField[] | undefined): string {
   const custom = fields.filter((f) => !f.locked);
   if (custom.length === 0) return '0';
   return `${custom.length} — ${custom.map((f) => f.label).join(', ')}`;
+}
+
+// docs/design/Chautauqua Settings.dc.html:444-478 ('Settings · Call for
+// papers', phone drill): below the Public link / Closes readouts, a
+// 2px-ruled 'Questions · N' cap over a 14px list row per custom question
+// (label + kind/required, 44px bordered Edit action). Rendered as a
+// full-width row (chq-settings-row-full) alongside the existing 'Custom
+// questions' summary line -- kept, not replaced, so the pre-existing count
+// summary stays intact for its own read (DEC-781) while this adds the
+// frame's per-question listing. 'Edit' opens the same form builder the
+// panel's own 'Open the form builder' link already reaches -- there is no
+// per-field deep link in the builder route, so every row's Edit lands on
+// the same destination rather than inventing field-level routing.
+function QuestionsSection({ fields }: { fields: CfpField[] | undefined }) {
+  const list = (fields ?? []).filter((f) => !f.locked);
+  return (
+    <div className="chq-settings-questions-block">
+      <div className="chq-settings-section-head">
+        <h3 className="chq-section-label">{`Questions · ${list.length}`}</h3>
+      </div>
+      {list.length === 0 ? (
+        <p className="chq-settings-empty">No custom questions yet.</p>
+      ) : (
+        <ul className="chq-settings-questions-list">
+          {list.map((field) => (
+            <li key={field.id} className="chq-settings-questions-row">
+              <div className="chq-settings-questions-row-info">
+                <span className="chq-settings-questions-row-label">{field.label}</span>
+                <span className="chq-settings-questions-row-meta">
+                  {`${kindLabel(field.kind)} · ${field.required ? 'Required' : 'Optional'}`}
+                </span>
+              </div>
+              <Link to="/submissions/forms" className="chq-link-button chq-settings-inline-action">
+                Edit
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 export function CallForPapersPanel() {
@@ -321,7 +365,7 @@ export function CallForPapersPanel() {
   const rows =
     event && form
       ? [
-          { label: 'Public link', value: publicLinkValue },
+          { label: 'Public link', value: publicLinkValue, rowClassName: 'chq-settings-drill-field-row' },
           {
             label: 'Closes',
             value: (
@@ -330,8 +374,10 @@ export function CallForPapersPanel() {
                 {closeCallFastPath}
               </>
             ),
+            rowClassName: 'chq-settings-drill-field-row',
           },
           { label: 'Custom questions', value: customQuestionsSummary(form.fields) },
+          { label: '', value: <QuestionsSection fields={form.fields} />, rowClassName: 'chq-settings-row-full' },
         ]
       : [];
 

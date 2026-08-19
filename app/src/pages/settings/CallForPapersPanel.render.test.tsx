@@ -38,9 +38,9 @@ function mockCfp(overrides: Record<string, unknown> = {}) {
       closeDate: 1769904000000, // 2026-02-01T00:00:00Z
       tracks: ['trk1'],
       fields: [
-        { id: 'f1', label: 'Title', locked: true },
-        { id: 'f2', label: 'Format', locked: false },
-        { id: 'f3', label: 'Audience level', locked: false },
+        { id: 'f1', label: 'Title', locked: true, kind: 'text', required: true },
+        { id: 'f2', label: 'Format', locked: false, kind: 'dropdown', required: false },
+        { id: 'f3', label: 'Audience level', locked: false, kind: 'dropdown', required: false },
       ],
     },
     [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([
@@ -86,6 +86,28 @@ describe('CallForPapersPanel', () => {
     expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
   });
 
+  // docs/design/Chautauqua Settings.dc.html:461 `Questions · 8`: the phone
+  // drill's per-question list, additive to (never replacing) the existing
+  // 'Custom questions' summary line above.
+  it('renders a Questions · N list with a kind/required row per custom question and an Edit link, locked fields excluded', async () => {
+    mockCfp();
+    render(
+      <MemoryRouter>
+        <CallForPapersPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Call for papers' });
+    await waitFor(() => {
+      expect(within(section).getByText('Questions · 2')).toBeInTheDocument();
+    });
+    expect(within(section).queryByText('Title')).not.toBeInTheDocument();
+    expect(within(section).getByText('Format')).toBeInTheDocument();
+    expect(within(section).getAllByText('Single choice · Optional')).toHaveLength(2);
+    expect(within(section).getByText('Audience level')).toBeInTheDocument();
+    expect(within(section).getAllByRole('link', { name: 'Edit' })).toHaveLength(2);
+  });
+
   it('drills into the existing intro/open/close/tracks form via the Edit the form action, and Save returns to the summary', async () => {
     mockCfp();
     render(
@@ -128,9 +150,9 @@ describe('CallForPapersPanel', () => {
         closeDate: 1769904000000,
         tracks: ['trk1'],
         fields: [
-          { id: 'f1', label: 'Title', locked: true },
-          { id: 'f2', label: 'Format', locked: false },
-          { id: 'f3', label: 'Audience level', locked: false },
+          { id: 'f1', label: 'Title', locked: true, kind: 'text', required: true },
+          { id: 'f2', label: 'Format', locked: false, kind: 'dropdown', required: false },
+          { id: 'f3', label: 'Audience level', locked: false, kind: 'dropdown', required: false },
         ],
       },
     });
@@ -237,9 +259,9 @@ describe('CallForPapersPanel', () => {
         closeDate: 1769904000000,
         tracks: ['trk1'],
         fields: [
-          { id: 'f1', label: 'Title', locked: true },
-          { id: 'f2', label: 'Format', locked: false },
-          { id: 'f3', label: 'Audience level', locked: false },
+          { id: 'f1', label: 'Title', locked: true, kind: 'text', required: true },
+          { id: 'f2', label: 'Format', locked: false, kind: 'dropdown', required: false },
+          { id: 'f3', label: 'Audience level', locked: false, kind: 'dropdown', required: false },
         ],
       },
     });
@@ -287,7 +309,7 @@ describe('CallForPapersPanel', () => {
         openDate: farFuture,
         closeDate: farFuture + 1000 * 60 * 60 * 24 * 7,
         tracks: ['trk1'],
-        fields: [{ id: 'f1', label: 'Title', locked: true }],
+        fields: [{ id: 'f1', label: 'Title', locked: true, kind: 'text', required: true }],
       },
     });
     render(
@@ -318,7 +340,7 @@ describe('CallForPapersPanel', () => {
         openDate: now - 1000 * 60 * 60 * 24,
         closeDate: now + 1000 * 60 * 60 * 24 * 30,
         tracks: ['trk1'],
-        fields: [{ id: 'f1', label: 'Title', locked: true }],
+        fields: [{ id: 'f1', label: 'Title', locked: true, kind: 'text', required: true }],
       },
     });
     render(
@@ -395,7 +417,7 @@ describe('CallForPapersPanel', () => {
           openDate: now - 1000 * 60 * 60 * 24,
           closeDate: Date.UTC(2031, 1, 1),
           tracks: ['trk1'],
-          fields: [{ id: 'f1', label: 'Title', locked: true }],
+          fields: [{ id: 'f1', label: 'Title', locked: true, kind: 'text', required: true }],
         },
       });
       render(
@@ -423,7 +445,7 @@ describe('CallForPapersPanel', () => {
           openDate: now - 1000 * 60 * 60 * 24,
           closeDate: now + 1000 * 60 * 60 * 24 * 30,
           tracks: ['trk1'],
-          fields: [{ id: 'f1', label: 'Title', locked: true }],
+          fields: [{ id: 'f1', label: 'Title', locked: true, kind: 'text', required: true }],
         },
       });
       render(
@@ -446,7 +468,7 @@ describe('CallForPapersPanel', () => {
           openDate: now - 1000 * 60 * 60 * 24,
           closeDate: now,
           tracks: ['trk1'],
-          fields: [{ id: 'f1', label: 'Title', locked: true }],
+          fields: [{ id: 'f1', label: 'Title', locked: true, kind: 'text', required: true }],
         },
         [`PATCH /api/v1/forms/form1`]: {
           id: 'form1',
@@ -456,7 +478,7 @@ describe('CallForPapersPanel', () => {
           openDate: now - 1000 * 60 * 60 * 24,
           closeDate: now,
           tracks: ['trk1'],
-          fields: [{ id: 'f1', label: 'Title', locked: true }],
+          fields: [{ id: 'f1', label: 'Title', locked: true, kind: 'text', required: true }],
         },
       });
       fireEvent.click(confirmButton);
