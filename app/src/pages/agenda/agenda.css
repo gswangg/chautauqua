@@ -1140,6 +1140,12 @@
      The optical nudge is line-height-invariant (DESIGN-RULINGS.md, "The
      wordmark needs an optical nudge") so top:-2.5px at 20px is unchanged. */
   .chq-phone-agenda-wordmark {
+    /* The top-level leak-guard above sets display:none on every
+       .chq-phone-* class; a rule here that only sets type/colour never
+       takes the element back out of it. Frame :130 is a bare <span> in the
+       :129 flex row, so its used display is the blockified `block` -- state
+       it outright rather than leaning on an inherited default. */
+    display: block;
     font-family: var(--chq-font-display);
     font-size: 20px;
     font-weight: 700;
@@ -1151,6 +1157,8 @@
   /* docs/design/Chautauqua Agenda.dc.html:131
      `margin-left:auto; font-size:12px; font-weight:600; color:#565A4B` */
   .chq-phone-agenda-counts {
+    /* Frame :131 -- a <span> flex item of the :129 row; blockified `block`. */
+    display: block;
     margin-left: auto;
     font-size: 12px;
     font-weight: 600;
@@ -1162,11 +1170,27 @@
      DEC-991 wave-27 amendment bans line-height:1 on the display face; the
      declaration is omitted so `normal` (the font's own line box) applies. */
   .chq-phone-agenda-h1 {
+    /* Frame :133 is an <h1> -- a block box, and the head band's second
+       flex item. */
+    display: block;
     margin: 0;
     font-family: var(--chq-font-display);
     font-size: 27px;
     font-weight: 700;
     letter-spacing: -0.04em;
+  }
+
+  /* The desktop day-tab strip (app/src/pages/Agenda.tsx:410) renders
+     OUTSIDE the isPhone branch, so at phone width it stood above
+     PhoneAgenda's own .chq-phone-day-chips and the page showed the day
+     selector TWICE ("Wed 12 May" tabs over "Wed 12" chips). The frame's
+     390 column (docs/design/Chautauqua Agenda.dc.html:127-144) has exactly
+     one day selector, inside the head band -- the chips. The desktop strip
+     is the leak, so it is the one that goes; the strip also carries the
+     "Clashes are flagged, not blocked" note, which the frame's phone head
+     band likewise does not have. */
+  .chq-agenda-day-tabs {
+    display: none;
   }
 
   /* docs/design/Chautauqua Agenda.dc.html:134
@@ -1208,7 +1232,15 @@
     font-weight: 600;
   }
 
+  /* docs/design/Chautauqua Agenda.dc.html:140
+     `border-radius:99px; min-height:44px; display:flex; align-items:center; gap:8px; padding:0 14px`
+     -- the chip composes .chq-pill (styles.css), whose own display is
+     inline-flex; restating it here is what takes the chip back out of the
+     leak-guard's display:none without changing the composed box (the chip
+     is a flex item of .chq-chipstrip, so inline-flex is used as flex). */
   .chq-phone-room-chip {
+    display: inline-flex;
+    align-items: center;
     min-height: 44px;
     padding: 0 14px;
     gap: 8px;
@@ -1242,7 +1274,9 @@
     gap: 10px;
   }
 
+  /* Frame :149 -- the 50px gutter cell of the :148 two-column grid. */
   .chq-phone-slot-time {
+    display: block;
     font-size: 11px;
     font-weight: 600;
     color: var(--chq-muted);
@@ -1263,12 +1297,18 @@
     cursor: pointer;
   }
 
+  /* Frame :153/:155 -- ref·length and speaker lines, stacked flex items of
+     the :152 column card. */
   .chq-phone-slot-card-meta {
+    display: block;
     font-size: 11px;
     color: var(--chq-muted);
   }
 
+  /* Frame :154 (placed card) and :163/:169 (clash panel) -- one stacked
+     line in a flex column either way. */
   .chq-phone-slot-card-title {
+    display: block;
     font-family: var(--chq-font-display);
     font-size: 14px;
     font-weight: 600;
@@ -1276,7 +1316,13 @@
     color: var(--chq-ink);
   }
 
+  /* docs/design/Chautauqua Agenda.dc.html:160
+     `background:#1B1D17; border-radius:6px; padding:13px; display:flex; flex-direction:column; gap:9px`
+     -- the ink panel composes .chq-panel (styles.css), which already carries
+     the flex column and its 9px gap; display is restated so the leak-guard's
+     display:none no longer wins on the composed element. */
   .chq-phone-slot-clash {
+    display: flex;
     border-radius: var(--chq-r-ctl-phone);
     padding: 13px;
   }
@@ -1321,13 +1367,18 @@
     cursor: pointer;
   }
 
+  /* Frame :177/:178 -- the "Place here" / "N min free" pair sits side by
+     side in the :176 centred flex row, so each is a blockified flex item;
+     neither is an inline run inside prose. */
   .chq-phone-slot-free-label {
+    display: block;
     font-size: 13px;
     font-weight: 700;
     color: var(--chq-brand);
   }
 
   .chq-phone-slot-free-length {
+    display: block;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -1380,7 +1431,11 @@
     letter-spacing: 0.1em;
   }
 
+  /* Frame :193 -- a stacked line in the :191 flex column, and the one that
+     ellipsizes: text-overflow needs a block box, so `block` is load-bearing
+     here rather than merely equivalent to the blockified default. */
   .chq-phone-footer-armed-title {
+    display: block;
     font-family: var(--chq-font-display);
     font-size: 14px;
     font-weight: 600;
@@ -1389,12 +1444,24 @@
     text-overflow: ellipsis;
   }
 
+  /* Frame :194 -- third stacked line of the same :191 column. */
   .chq-phone-footer-armed-ref {
+    display: block;
     font-size: 11px;
     color: var(--chq-muted);
   }
 
+  /* docs/design/Chautauqua Agenda.dc.html:196
+     `min-height:44px; display:flex; align-items:center; padding:0 14px`
+     -- these are .chq-btn elements (Cancel/Unschedule in the armed row,
+     Unscheduled/Auto-schedule in the actions row, Close in the sheet), so
+     the restore is .chq-btn's own inline-flex. Only the actions-row
+     instances were reachable before, via the tap-floor block at the end of
+     this file; the armed-row and sheet buttons stayed hidden. */
   .chq-phone-footer-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: 44px;
   }
 
@@ -1407,7 +1474,13 @@
     flex: 1;
   }
 
+  /* The unscheduled sheet is a .chq-modal (styles.css) inside .chq-scrim --
+     a flex column whose 16px gap this rule tightens to 12px. `gap` does
+     nothing without a flex/grid box, and the leak-guard had taken the box
+     away entirely, so the sheet opened onto nothing. */
   .chq-phone-sheet {
+    display: flex;
+    flex-direction: column;
     gap: 12px;
   }
 

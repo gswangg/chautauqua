@@ -668,7 +668,9 @@ export function SubmitPage(props: {
               </button>
               {/* w14-f: phone-only step navigation -- type="button" so
                   neither control ever submits the form; CfpStepsScript owns
-                  all step-switching, no validation runs on Next. */}
+                  all step-switching, and per DEC-986 its Next handler
+                  validates this section's controls before advancing (the
+                  real Submit above never carries formnovalidate). */}
               <button type="button" class="chq-btn chq-btn-primary chq-cfp-step-next">
                 Next: about you
               </button>

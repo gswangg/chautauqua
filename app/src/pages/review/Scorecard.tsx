@@ -472,13 +472,40 @@ export function Scorecard() {
   // rather than review.css hard-coding a step count.
   const ratingScaleStepCount = ratingScaleValues(plan.scale).length;
 
+  // The two shell regions this page takes over at phone width, declared on
+  // its own page root -- the attribute contract, never a URL selector.
+  //
+  //   data-chq-phone-dock  the page draws its own docked footer, so the
+  //                        shell's tab bar stands down (DEC-989, wave-85
+  //                        amendment; styles.css `.chq-main:has(...) ~
+  //                        .chq-tabbar`).
+  //   data-chq-phone-head  the header-region twin. Both 390 frames --
+  //                        docs/design/Chautauqua Review.dc.html:281 and
+  //                        :935, the same literal `border-bottom:1px solid
+  //                        #1B1D17; padding:14px 16px; flex-shrink:0;
+  //                        display:flex; flex-direction:column` -- draw
+  //                        THIS page's head band as the first child of the
+  //                        390x844 phone shell with no app-shell header
+  //                        above it, so styles.css's
+  //                        `.chq-shell:has([data-chq-phone-head])
+  //                        .chq-header` stands the shell header down.
+  //                        Without it, the reviewer carve-out that un-hides
+  //                        .chq-user-identity for a tab-bar-less shell drew
+  //                        "SAM WHITFIELD · Sign out" past the right edge
+  //                        (documentElement.scrollWidth 422 at 390) AND
+  //                        doubled the "N of N done" counter, which the
+  //                        head band's own :284 span already draws.
+  const phoneRegionDeclarations = isPhone
+    ? ({ 'data-chq-phone-dock': true, 'data-chq-phone-head': true } as const)
+    : {};
+
   return (
     <div
       className="chq-page chq-review-page chq-measure-wide"
       style={{ '--chq-review-scale-steps': ratingScaleStepCount } as React.CSSProperties}
       onKeyDown={handleKeyDown}
       tabIndex={-1}
-      {...(isPhone ? { 'data-chq-phone-dock': true } : {})}
+      {...phoneRegionDeclarations}
     >
       {/* DEC-939 (wave-65 amendment, frame 03--01): two work surfaces --
           the reading column (submission context) on the left, the scoring
@@ -518,8 +545,17 @@ export function Scorecard() {
                   group) rather than printing here. Renders nothing when
                   that node isn't mounted (a Scorecard mounted alone in a
                   render test), same as it always rendered nothing before
-                  queueProgress resolved. */}
-              {queueProgress &&
+                  queueProgress resolved.
+
+                  Desktop-only, the mirror of the phone counter above: the
+                  390 frames draw the counter ONCE, in the head band beside
+                  the back link (:284), and the shell header they draw no
+                  part of is the portal's host. Mounting both put the same
+                  string in the DOM twice at 390. Gated the same way the
+                  phone span is (a mount, never a CSS-only hide), so each
+                  width has exactly one counter node. */}
+              {!isPhone &&
+                queueProgress &&
                 queueProgress.total > 0 &&
                 typeof document !== 'undefined' &&
                 document.getElementById('chq-header-slot') &&

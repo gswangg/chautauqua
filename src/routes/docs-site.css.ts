@@ -203,7 +203,61 @@ export const DOCS_SITE_CSS = `
   .chq-docs-article-row-leaving .chq-docs-leaving-row-link { display: inline-flex; align-items: center; gap: 4px; color: var(--chq-muted); }
 
   @media (max-width: 700px) {
-    .chq-docs-header { padding-inline: 16px; }
+    /* Phone header (meta-fidelity probe C, 390x844: on an ARTICLE the header
+       measured 171px tall with a.chq-docs-wordmark crushed to 23.8x140 --
+       "chautauqua" broken to two letters per line -- and the compact search
+       pinned at its 260px floor). Two causes, both measured:
+
+       1. The three header children (brandrow + the 260px-floor compact search
+          + the leaving link) want ~544px inside a 358px content box, so the
+          row overflows and flex shrinks whatever it can.
+       2. theme.ts's DEC-404 \`body { overflow-wrap: anywhere }\` -- a PROSE
+          rule for user-supplied strings -- inherits into the header, and
+          \`anywhere\` (unlike \`break-word\`) also collapses an element's
+          MIN-CONTENT contribution to a single character. That is what let
+          flex shrink a one-word wordmark down to 23.8px instead of stopping
+          at the word.
+
+       The frame draws the phone bar as one 44px row of chrome with the rest
+       stacked beneath it (docs/design/Chautauqua Docs.dc.html:167
+       \`border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0;
+       display:flex; align-items:center; gap:12px\`, with :168's two bar items
+       at \`min-height:44px; display:flex; align-items:center\` and the second
+       pushed right by \`margin-left:auto\`). So: the bar keeps the brand run
+       and the leaving link, and the search drops to its own full-width row
+       underneath. */
+    .chq-docs-header { padding: 14px 16px; gap: 12px; flex-wrap: wrap; }
+    /* Chrome opts back out of the prose rule -- scoped to the header only, so
+       .chq-docs-prose / .chq-docs-list / .chq-docs-deflist keep inheriting
+       \`anywhere\` from body and long URLs in docs body text still break. */
+    .chq-docs-header,
+    .chq-docs-brandrow,
+    .chq-docs-wordmark,
+    .chq-docs-suffix,
+    .chq-docs-leaving {
+      overflow-wrap: normal;
+    }
+    /* The brand run is chrome at a fixed measure: it sets the bar's height and
+       must never shrink below its own word. */
+    .chq-docs-brandrow { flex-shrink: 0; }
+    /* Row 1 is brandrow + leaving link (order 0 / 1), row 2 is the search
+       (order 2, basis 100% so it always breaks to a line of its own). The
+       base rule's \`margin-left: auto\` is zeroed by the :has() rule above
+       whenever a compact search is present; on phone the search is no longer
+       on this row, so the leaving link takes the push-right back. Same
+       selector as that rule, later in source, so it wins on order. */
+    .chq-docs-header:has(.chq-docs-search-compact) .chq-docs-leaving { margin-left: auto; }
+    .chq-docs-leaving {
+      order: 1;
+      flex-shrink: 0;
+      min-height: 44px;
+    }
+    .chq-docs-search-compact {
+      order: 2;
+      flex: 1 0 100%;
+      min-width: 0;
+      margin-left: 0;
+    }
     .chq-docs-body { padding: 24px 16px 40px; gap: 24px; }
     .chq-docs-intro h1 { font-size: 30px; }
     .chq-docs-article-grid { grid-template-columns: 1fr; }

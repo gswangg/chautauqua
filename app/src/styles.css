@@ -2204,6 +2204,38 @@ select:focus-visible,
     padding: 14px 16px;
   }
 
+  /* v12m-w3-review (probe: /admin/review/plans/:id/submissions/:id at 390
+     measured documentElement.scrollWidth 422 against clientWidth 390 --
+     +32, the overflowing nodes being `span.chq-user-identity` (right edge
+     416) and its `button.chq-header-signout` (right edge 422), both drawn
+     by the shell header because the reviewer carve-out below un-hides the
+     identity block for any shell with no `.chq-tabbar`).
+
+     Both 390 scorecard frames draw the phone shell with the page's OWN
+     head band as the first child and NO app-shell header above it:
+     docs/design/Chautauqua Review.dc.html:281 and :935 are the same
+     literal, `border-bottom:1px solid #1B1D17; padding:14px 16px;
+     flex-shrink:0; display:flex; flex-direction:column`, sitting directly
+     inside the 390x844 phone shell -- no wordmark, no identity, no
+     Sign out. The only chrome either frame draws is the back affordance
+     (:283/:936 `‹ Wave 2 queue`) and the counter beside it (:284).
+
+     This is the header-region twin of the footer-region contract at
+     `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` below: a page
+     that draws its OWN phone head band declares it on its page root as
+     data-chq-phone-head and the shell's header stands down, exactly as a
+     page that draws its own docked footer suppresses the tab bar. Rooted
+     at `.chq-shell:has(...)` (not `.chq-main:has(...) ~`) because the
+     header is an EARLIER sibling of .chq-main, so no sibling combinator
+     can reach it -- same shape as
+     `.chq-shell:has(.chq-phone-dock) .chq-tabbar` below. Opt-in per page,
+     never a URL selector: the reviewer's queue drill-in keeps the shell
+     header (its frame, :414-421, draws wordmark + reviewer name) and sets
+     no such attribute. */
+  .chq-shell:has([data-chq-phone-head]) .chq-header {
+    display: none;
+  }
+
   .chq-nav {
     display: none;
   }

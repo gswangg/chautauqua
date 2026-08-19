@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { JSDOM } from "jsdom";
 import type { FormFieldDef } from "../src/forms/types";
+import { FormatChoices } from "../src/routes/public/submit-views";
 import { FieldRulesScript, FormField, FormFieldsSection } from "../src/views/form-render";
 import {
   RULE_MATCH_JS,
@@ -216,8 +218,8 @@ describe("FieldRulesScript emits a transitive fixed point for a chain (DEC-681/D
     const inputA = makeInput("a", "no");
     const inputB = makeInput("b", "yes"); // stale: still shows the value from when it was visible
     const inputC = makeInput("c", "irrelevant");
-    const wrapB = { style: { display: "" }, querySelector: () => inputB };
-    const wrapC = { style: { display: "" }, querySelector: () => inputC };
+    const wrapB = { style: { display: "" }, querySelectorAll: () => [inputB] };
+    const wrapC = { style: { display: "" }, querySelectorAll: () => [inputC] };
 
     const byId: Record<string, unknown> = {
       "chq-field-rules": rulesScriptEl,
@@ -295,8 +297,8 @@ describe("FieldRulesScript emits a transitive fixed point for a chain (DEC-681/D
     // itself is hidden (gate !== "Open").
     const inputTrigger = makeInput("trigger", { type: "checkbox", checked: false });
     const inputDependent = makeInput("dependent", { type: "text", value: "irrelevant" });
-    const wrapTrigger = { style: { display: "" }, querySelector: () => inputTrigger };
-    const wrapDependent = { style: { display: "" }, querySelector: () => inputDependent };
+    const wrapTrigger = { style: { display: "" }, querySelectorAll: () => [inputTrigger] };
+    const wrapDependent = { style: { display: "" }, querySelectorAll: () => [inputDependent] };
 
     const byId: Record<string, unknown> = {
       "chq-field-rules": rulesScriptEl,
@@ -373,8 +375,8 @@ describe("FieldRulesScript emits a transitive fixed point for a chain (DEC-681/D
     // for it yet, so getValue returns undefined; the canonicalizer treats an
     // absent checkbox as false, and ne:true against false is true.
     const inputDependent = makeInput("dependent", { type: "text", value: "irrelevant" });
-    const wrapTrigger = { style: { display: "" }, querySelector: () => null };
-    const wrapDependent = { style: { display: "" }, querySelector: () => inputDependent };
+    const wrapTrigger = { style: { display: "" }, querySelectorAll: () => [] };
+    const wrapDependent = { style: { display: "" }, querySelectorAll: () => [inputDependent] };
 
     const byId: Record<string, unknown> = {
       "chq-field-rules": rulesScriptEl,
@@ -445,7 +447,7 @@ describe("getValue is radio-group aware (w54-e)", () => {
       checked: r.checked,
     }));
     const materialsInput = { dataset: { fieldId: "materials", required: "true" }, type: "text", value: "", required: false };
-    const wrapMaterials = { style: { display: "" }, querySelector: () => materialsInput };
+    const wrapMaterials = { style: { display: "" }, querySelectorAll: () => [materialsInput] };
 
     const byId: Record<string, unknown> = {
       "chq-field-rules": { textContent: rulesMatch[1] },
@@ -500,5 +502,91 @@ describe("getValue is radio-group aware (w54-e)", () => {
     new Function("document", inlineJs)(fakeDocument);
     expect(wrapMaterials.style.display).toBe("none");
     expect(materialsInput.required).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-986: a choice field renders N controls sharing ONE data-field-id.
+// FieldRulesScript's apply() must un-require EVERY one of them when the wrap
+// goes display:none -- the singular querySelector it used to call cleared
+// only radio 1, leaving radios 2..N `required` inside a hidden section, where
+// the browser aborts submission on a control it can neither focus nor
+// annotate. Executed in a REAL jsdom document (jsdom parses + runs the inline
+// script), because the hand-rolled fake `document` above cannot express a
+// NodeList of same-id controls.
+// ---------------------------------------------------------------------------
+describe("FieldRulesScript un-requires EVERY control sharing a hidden field's id (DEC-986)", () => {
+  const gateField: FormFieldDef = {
+    id: "gate",
+    section: "session",
+    kind: "dropdown",
+    label: "Gate",
+    required: true,
+    position: 0,
+    options: ["Yes", "No"],
+  };
+  const formatField: FormFieldDef = {
+    id: "session-format",
+    section: "session",
+    kind: "dropdown",
+    label: "Session format",
+    required: true,
+    position: 1,
+    role: "session_format",
+    options: ["Talk", "Workshop", "Panel", "Lightning"],
+  };
+
+  function renderRadioGroupDom(gateAnswer: string) {
+    const ruledFormat: FormFieldDef = {
+      ...formatField,
+      rule: { fieldId: "gate", op: "eq", value: "Yes" },
+    };
+    const gateHtml = FormFieldsSection({
+      fields: [gateField],
+      section: "session",
+      answers: { gate: gateAnswer },
+      isVisible: () => true,
+    }).toString();
+    // The radio-card rendering of the same field id -- N inputs, one
+    // data-field-id, `required` on every one of them.
+    const formatHtml = FormatChoices({ field: ruledFormat, value: undefined, visible: true }).toString();
+    const rulesHtml = FieldRulesScript({ fields: [gateField, ruledFormat] }).toString();
+    const dom = new JSDOM(
+      `<!doctype html><html><body><form>${gateHtml}${formatHtml}</form>${rulesHtml}</body></html>`,
+      { url: "https://example.test/submit/test-conf", runScripts: "dangerously" },
+    );
+    return dom.window.document;
+  }
+
+  it("renders more than one control under the single data-field-id (the precondition the bug needed)", () => {
+    const document = renderRadioGroupDom("Yes");
+    const radios = document.querySelectorAll('[data-field-id="session-format"]');
+    expect(radios.length).toBe(4);
+  });
+
+  it("clears `required` on ALL N radios when the wrap is hidden, not just the first", () => {
+    const document = renderRadioGroupDom("No"); // rule wants "Yes" -> hidden
+    const wrap = document.getElementById("chq-field-wrap-session-format");
+    expect(wrap).not.toBeNull();
+    expect(wrap!.style.display).toBe("none");
+
+    const radios = Array.from(
+      document.querySelectorAll('[data-field-id="session-format"]'),
+    ) as HTMLInputElement[];
+    expect(radios.length).toBeGreaterThan(1);
+    expect(radios.map((r) => r.required)).toEqual(radios.map(() => false));
+    // ...and therefore nothing in the hidden wrap can block a submit.
+    expect(document.querySelectorAll('[data-field-id="session-format"]:invalid').length).toBe(0);
+  });
+
+  it("restores `required` on ALL N radios when the wrap is shown", () => {
+    const document = renderRadioGroupDom("Yes"); // rule matches -> visible
+    const wrap = document.getElementById("chq-field-wrap-session-format");
+    expect(wrap!.style.display).toBe("");
+
+    const radios = Array.from(
+      document.querySelectorAll('[data-field-id="session-format"]'),
+    ) as HTMLInputElement[];
+    expect(radios.map((r) => r.required)).toEqual(radios.map(() => true));
   });
 });

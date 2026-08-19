@@ -33,6 +33,10 @@ function read(file: string): string {
 }
 
 const SCORECARD_CSS = read('scorecard.css');
+const STYLES_CSS = read('../../styles.css');
+/** Raw (comments intact is irrelevant here; what matters is that JSX
+ * comment stripping cannot eat the markup these regexes match). */
+const SCORECARD_TSX = readFileSync(join(HERE, 'Scorecard.tsx'), 'utf-8');
 
 /** Brace-matched concatenation of every `@media (max-width: …)` block's
  * body — mirrors contacts-phone-frames.test.ts's phoneLayer so a nested
@@ -168,5 +172,51 @@ describe('v12 phone frame "Scorecard · a criterion unscored" (390) — docs/des
     const rule = phoneRule(SCORECARD_CSS, '.chq-review-rating-btn');
     expect(rule).toMatch(/border-radius:\s*var\(--chq-r-ctl-phone\)/);
     expect(rule).toMatch(/font-size:\s*16px/);
+  });
+});
+
+// v12m-w3-review. Probe (390x844, authenticated reviewer, live app):
+// `document.documentElement.scrollWidth` measured 422 against a
+// clientWidth of 390 on /review/plans/:id/submissions/:id, and the DOM
+// walk named exactly two nodes crossing the right edge --
+// `span.chq-user-identity` (right 416) and the
+// `button.chq-btn.chq-btn-tertiary.chq-header-signout` inside it (right
+// 422). Both belong to the SHELL header, which the reviewer carve-out
+// (`.chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout]))`)
+// un-hides for a tab-bar-less shell. Neither 390 scorecard frame draws
+// any of it, and the same header hosted a SECOND "N of N done" via the
+// #chq-header-slot portal while the head band already drew the frame's
+// own counter at :284.
+describe('v12 phone frames: the shell header stands down where the scorecard draws its own head band', () => {
+  it("docs/design/Chautauqua Review.dc.html:281 `<div style=\"border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:9px\">` — the head band is the FIRST child of the 390 phone shell, so styles.css stands the app-shell header down under the attribute contract", () => {
+    expect(phoneRule(STYLES_CSS, '.chq-shell:has([data-chq-phone-head]) .chq-header')).toMatch(/display:\s*none/);
+  });
+
+  it('the stand-down is single-direction (DEC-385): the rule exists ONLY inside a max-width layer, so desktop keeps its header', () => {
+    expect(() => topLevelRuleBody(STYLES_CSS, '.chq-shell:has([data-chq-phone-head]) .chq-header')).toThrow();
+    // control: the helper DOES find a real top-level rule in this sheet,
+    // so the throw above is the absence of the rule, not a broken scan.
+    expect(topLevelRuleBody(STYLES_CSS, '.chq-tabbar')).toMatch(/display:\s*none/);
+  });
+
+  it('the scorecard declares BOTH shell regions it takes over on its own page root, gated on useIsPhone — an attribute contract, never a URL selector', () => {
+    expect(SCORECARD_TSX).toMatch(
+      /const phoneRegionDeclarations = isPhone\s*\n?\s*\?\s*\(\{ 'data-chq-phone-dock': true, 'data-chq-phone-head': true \} as const\)\s*\n?\s*:\s*\{\};/,
+    );
+    expect(SCORECARD_TSX).toMatch(/\{\.\.\.phoneRegionDeclarations\}/);
+  });
+
+  it("docs/design/Chautauqua Review.dc.html:284 `<span style=\"margin-left:auto; font-size:12px; font-weight:600; color:#565A4B\">7 of 18 done</span>` — the counter is drawn once: the #chq-header-slot portal is mounted only when NOT phone, mirroring the phone span's own `isPhone &&` gate", () => {
+    expect(SCORECARD_TSX).toMatch(
+      /\{isPhone && queueProgress && queueProgress\.total > 0 && \(\s*\n\s*<span className="chq-review-scorecard-phone-progress">/,
+    );
+    expect(SCORECARD_TSX).toMatch(
+      /\{!isPhone &&\s*\n\s*queueProgress &&\s*\n\s*queueProgress\.total > 0 &&[\s\S]{0,200}?createPortal\(/,
+    );
+  });
+
+  it("docs/design/Chautauqua Review.dc.html:283 `<a href=\"#\" style=\"font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center\">‹ Wave 2 queue</a>` — the back affordance the frame DOES draw survives: only chrome the frame omits stands down", () => {
+    expect(SCORECARD_TSX).toMatch(/<Link to=\{`\/review\/plans\/\$\{planId\}`\} className="chq-review-back">/);
+    expect(SCORECARD_TSX).toMatch(/&lsaquo; \{plan\.name\} queue/);
   });
 });

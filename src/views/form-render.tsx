@@ -275,8 +275,14 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
       if (!wrap) return;
       var visible = !hidden[r.fieldId];
       wrap.style.display = visible ? '' : 'none';
-      var input = wrap.querySelector('[data-field-id="' + r.fieldId + '"]');
-      if (input) { input.required = visible && input.dataset.required === 'true'; }
+      // DEC-986: querySelectorAll, NOT querySelector -- a choice field
+      // renders N controls sharing one data-field-id (Format and Audience
+      // are radio groups), so the singular lookup left radios 2..N
+      // required inside a display:none wrap, where the browser aborts
+      // submission on a control it cannot focus or annotate.
+      wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(function(input){
+        input.required = visible && input.dataset.required === 'true';
+      });
     });
   }
   document.addEventListener('change', apply);

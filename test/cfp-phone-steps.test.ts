@@ -4,6 +4,7 @@
 // on the css module and the inline script string.
 
 import { describe, expect, it } from "vitest";
+import { JSDOM } from "jsdom";
 import { Hono } from "hono";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
@@ -245,5 +246,105 @@ describe("cfp-steps-script — refuses to engage when the form already carries a
     expect(js).toContain("if (hasError) return;");
     // No fetch, no change to the POST target.
     expect(js).not.toContain("fetch(");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-986 clause (2): "Next" must run constraint validation over the OUTGOING
+// step and refuse to advance while it fails. Without this, advancing hid step
+// 1 (display:none) with its controls still `required`, and the real Submit on
+// step 2 -- which deliberately carries no formnovalidate, clause (3) -- was
+// aborted by the browser on a control it could neither focus nor annotate:
+// no message, no server hit, no recovery. jsdom does implement the constraint
+// validation API, so the behaviour is executable here even though the layout
+// that makes it reachable is phone-only.
+// ---------------------------------------------------------------------------
+describe("cfp-steps-script — Next validates step 1 before advancing (DEC-986)", () => {
+  async function stepScriptJs(): Promise<string> {
+    const mod = await import("../src/routes/public/cfp-steps-script");
+    const el = mod.CfpStepsScript() as unknown as { props: { dangerouslySetInnerHTML: { __html: string } } };
+    return el.props.dangerouslySetInnerHTML.__html;
+  }
+
+  it("calls checkValidity over the outgoing section and reportValidity on the first invalid control", async () => {
+    const js = await stepScriptJs();
+    expect(js).toContain("checkValidity()");
+    expect(js).toContain("reportValidity()");
+    expect(js).toContain(".chq-cfp-step-talk");
+    // Still no fetch, still no change to the POST target (DEC-986's shape).
+    expect(js).not.toContain("fetch(");
+    expect(js).not.toContain("formnovalidate");
+  });
+
+  it("never advances unconditionally: setStep('2') is not the whole Next handler", async () => {
+    const js = await stepScriptJs();
+    expect(js).not.toMatch(/next\.addEventListener\('click',\s*function\(\)\{\s*setStep\('2'\);\s*\}\)/);
+  });
+
+  async function runWizard(fill: boolean) {
+    const js = await stepScriptJs();
+    const dom = new JSDOM(
+      `<!doctype html><html><body>
+        <form id="chq-cfp-submit-form" data-chq-cfp-step="all">
+          <div class="chq-cfp-steps">
+            <span class="chq-cfp-steps-label">Step 1 of 2</span>
+            <div class="chq-cfp-steps-bar"><div class="chq-cfp-steps-bar-fill"></div></div>
+          </div>
+          <section class="chq-cfp-step chq-cfp-step-talk">
+            <input class="chq-input" name="f_title" required value="${fill ? "A talk" : ""}">
+            <label><input type="radio" name="trackIds" value="t1" required ${fill ? "checked" : ""}>Main</label>
+            <label><input type="radio" name="trackIds" value="t2" required>Side</label>
+          </section>
+          <section class="chq-cfp-step chq-cfp-step-you">
+            <input class="chq-input" name="f_email" required>
+          </section>
+          <div class="chq-cfp-actions">
+            <button type="submit" class="chq-btn">Submit this talk</button>
+            <button type="button" class="chq-btn chq-cfp-step-next">Next: about you</button>
+            <button type="button" class="chq-btn chq-cfp-step-back">Back</button>
+          </div>
+        </form>
+        <script>${js}</script>
+      </body></html>`,
+      { url: "https://example.test/submit/test-conf", runScripts: "dangerously" },
+    );
+    // jsdom implements constraint validation but not scrollIntoView; stub it
+    // so setStep's final line does not throw inside the click handler.
+    dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+    const document = dom.window.document;
+    // The script arms itself on DOMContentLoaded, which jsdom dispatches
+    // asynchronously once it finishes parsing -- wait for it before asserting.
+    if (document.readyState === "loading") {
+      await new Promise<void>((resolve) => document.addEventListener("DOMContentLoaded", () => resolve()));
+    }
+    const form = document.getElementById("chq-cfp-submit-form")!;
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("1");
+    const invalidEvents: string[] = [];
+    form.addEventListener("invalid", (e: Event) => invalidEvents.push((e.target as HTMLInputElement).name), true);
+    (document.querySelector(".chq-cfp-step-next") as HTMLElement).click();
+    return { form, document, invalidEvents };
+  }
+
+  it("an empty step 1 stays on step 1 and raises the browser's own validity report", async () => {
+    const { form, invalidEvents } = await runWizard(false);
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("1");
+    // reportValidity() on the first invalid control fires `invalid` at it --
+    // that is the browser bubble the speaker sees, on a still-visible field.
+    expect(invalidEvents.length).toBeGreaterThan(0);
+    expect(invalidEvents[0]).toBe("f_title");
+  });
+
+  it("a complete step 1 advances to step 2 and re-labels the progress chrome", async () => {
+    const { form, document } = await runWizard(true);
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("2");
+    expect(document.querySelector(".chq-cfp-steps-label")!.textContent).toContain("Step 2 of 2");
+    expect((document.querySelector(".chq-cfp-steps-bar-fill") as HTMLElement).style.width).toBe("100%");
+  });
+
+  it("does not validate step 2 on the way back (Back is always available)", async () => {
+    const { form, document } = await runWizard(true);
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("2");
+    (document.querySelector(".chq-cfp-step-back") as HTMLElement).click();
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("1");
   });
 });
