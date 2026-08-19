@@ -567,7 +567,7 @@ a:hover {
 
 .chq-row-title {
   font-family: var(--chq-font-display);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.015em;
   color: var(--chq-ink);
@@ -2287,5 +2287,78 @@ a:hover {
   .chq-contacts-drawer-actions {
     margin: 0 -16px 0;
     padding: 16px 16px 20px;
+  }
+}
+
+/* ------------------------------------------------------------------- */
+/* Phone source-order fix (v12m-w6-a): the first `@media (max-width:    */
+/* 700px)` block above (line 381) declares twelve phone-intent values   */
+/* that later TOP-LEVEL rules in this same file re-declare the same     */
+/* selector+property at desktop specificity -- since both live at       */
+/* equal specificity, source order decides, and the later top-level     */
+/* rule always wins, silently discarding the phone value at every       */
+/* width <=700px. This is the same "second @media block at the foot"    */
+/* pattern already used by comms.css:1834-1848 and detail.css:1071 --   */
+/* APPEND ONLY, never reorder or edit the original block: sibling       */
+/* v12m-w* branches hold live commits with hunks inside styles.css and  */
+/* a reorder of existing blocks cannot merge with them. Two of the      */
+/* twelve pairs below restate an already-matching value                */
+/* (chq-bulkbar-actions flex-wrap, chq-checkbox-label align-items) so   */
+/* the shadow count for this file reads zero, not "ten of twelve        */
+/* fixed."                                                              */
+/*                                                                       */
+/* NOTE (shell finding, out of scope for this wave): .chq-phone-body    */
+/* (styles.css:2216-2220) is the one remaining orphan scaffold rule --  */
+/* its `flex:1; overflow-y:auto` contradicts .chq-main being the app's  */
+/* single scroll region and it has no renderer. It sits inside a live   */
+/* sibling hunk above and must not be touched here; a later wave        */
+/* should delete it once that branch lands.                             */
+/* ------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  .chq-main {
+    padding: 16px;
+  }
+
+  .chq-page-title {
+    font-size: var(--chq-type-page-title-phone-size);
+  }
+
+  .chq-page {
+    gap: 22px;
+  }
+
+  .chq-measure {
+    max-width: none;
+  }
+
+  .chq-steps {
+    grid-template-columns: 1fr;
+    border-top: none;
+  }
+
+  .chq-step {
+    border-left: none;
+  }
+
+  .chq-bulkbar {
+    align-items: stretch;
+  }
+
+  .chq-bulkbar-actions {
+    flex-wrap: wrap;
+  }
+
+  .chq-toolbar {
+    align-items: stretch;
+  }
+
+  .chq-rail {
+    position: static;
+    flex-direction: row;
+  }
+
+  .chq-checkbox-label {
+    display: inline-flex;
+    align-items: center;
   }
 }
