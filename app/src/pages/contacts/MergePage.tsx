@@ -343,15 +343,38 @@ export function MergePage() {
               table (rule box above, impact line below); the frame draws
               them as one box after it. The frame's box also states the
               discarded-record deletion inline (not only in the confirm
-              dialog), so this line now carries it too. */}
+              dialog), so this line now carries it too.
+
+              w2-c (DEC-919, contacts-v12.md finding 3): the frame's
+              consequence line (docs/design/Chautauqua Contacts.dc.html:535
+              `<div style="padding:16px 0 0; font-size:13px; color:#565A4B;
+              line-height:1.5">Labels combine, notes are appended · 3
+              submissions and 1 task move to the record you keep</div>`) is
+              ONE line, not two stacked <p>s -- the rule and the impact now
+              render inline in a single paragraph. The frame's own referent
+              is generic ("the record you keep") because the head band at
+              :526 already names the kept record ("1 of 6 pairs · Marcus
+              Okafor"); this page's head band does the same (see the
+              chq-contacts-merge-pair-count-name swap above), so desktop
+              keeps naming the record directly while phone swaps to the
+              frame's generic phrasing via the two sibling spans below. */}
           <div className="chq-contacts-merge-rule-box">
-            <p className="chq-contacts-merge-rule-box-rule">Labels combine, notes are appended</p>
-            {impact && keepContact && (
-              <p className="chq-contacts-merge-impact">
-                {countOf(impact.submissions, 'submission')} and {countOf(impact.tasks, 'task')} move to{' '}
-                {keepContact.firstName} {keepContact.lastName}. The discarded record is deleted.
-              </p>
-            )}
+            <p className="chq-contacts-merge-rule-box-rule">
+              Labels combine, notes are appended
+              {impact && keepContact && (
+                <>
+                  {' · '}
+                  <span className="chq-contacts-merge-impact">
+                    {countOf(impact.submissions, 'submission')} and {countOf(impact.tasks, 'task')} move to{' '}
+                    <span className="chq-contacts-merge-impact-name">
+                      {keepContact.firstName} {keepContact.lastName}
+                    </span>
+                    <span className="chq-contacts-merge-impact-generic">the record you keep</span>
+                    . The discarded record is deleted.
+                  </span>
+                </>
+              )}
+            </p>
           </div>
 
           {blocked && <div className="chq-error chq-contacts-merge-blocked">{blocked.message}</div>}

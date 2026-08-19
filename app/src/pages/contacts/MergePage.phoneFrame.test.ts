@@ -148,6 +148,24 @@ describe('v12 phone frame "Merge · 390" (docs/design/Chautauqua Contacts.dc.htm
     expect(topLevelRule(CSS, '.chq-contacts-merge-not-duplicate')).toMatch(/border:\s*none/);
   });
 
+  // docs/design/Chautauqua Contacts.dc.html:535 `<div style="padding:16px 0 0; font-size:13px; color:#565A4B; line-height:1.5">Labels combine, notes are appended · 3 submissions and 1 task move to the record you keep</div>`
+  it('consequence block: ONE paragraph carries the rule and the impact, generic phrasing swaps in at <=700px', () => {
+    // Exactly one rule-box paragraph -- the frame draws one line, not two
+    // stacked <p>s.
+    expect(TSX.match(/className="chq-contacts-merge-rule-box-rule"/g)?.length).toBe(1);
+    expect(TSX).toMatch(/Labels combine, notes are appended/);
+    expect(TSX).toMatch(/\{' · '\}/);
+    expect(TSX).toMatch(/className="chq-contacts-merge-impact-name">\s*\{keepContact\.firstName\} \{keepContact\.lastName\}/);
+    expect(TSX).toMatch(/className="chq-contacts-merge-impact-generic">the record you keep</);
+    expect(TSX).toMatch(/The discarded record is deleted\./);
+    // Desktop default: the generic span is hidden, the name span has no
+    // top-level override (a bare <span> is inline by default).
+    expect(topLevelRule(CSS, '.chq-contacts-merge-impact-generic')).toMatch(/display:\s*none/);
+    // Phone swap: name hides, generic shows.
+    expect(phoneRule(CSS, '.chq-contacts-merge-impact-name')).toMatch(/display:\s*none/);
+    expect(phoneRule(CSS, '.chq-contacts-merge-impact-generic')).toMatch(/display:\s*inline/);
+  });
+
   it('DEC-385: every rule above lives only inside a max-width media query, never a min-width one', () => {
     expect(CSS).not.toMatch(/@media\s*\(min-width/);
   });

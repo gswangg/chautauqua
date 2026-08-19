@@ -662,11 +662,27 @@
   opacity: 0.6;
 }
 
+/* w2-c (DEC-919, contacts-v12.md finding 3): the frame draws the combine
+   rule and the impact as ONE line (docs/design/Chautauqua Contacts.dc.html
+   :535 `<div style="padding:16px 0 0; font-size:13px; color:#565A4B;
+   line-height:1.5">Labels combine, notes are appended · 3 submissions and
+   1 task move to the record you keep</div>`); the impact span is now
+   `inline` (was a block <p>) so it flows onto the rule's own line, and no
+   longer carries a block-level margin. */
 .chq-contacts-merge-impact {
-  margin: 0;
+  display: inline;
   font-size: 13px;
   color: var(--chq-ink-2);
   font-weight: 600;
+}
+
+/* w2-c: the frame's referent is generic ("the record you keep") because
+   its head band already names the kept record; the page's head band does
+   the same, so desktop names the record directly (this span hidden by
+   default) while phone swaps to the frame's generic phrasing (see the
+   max-width:700px override below). */
+.chq-contacts-merge-impact-generic {
+  display: none;
 }
 
 /* w47-e: the merge-conflict preflight banner. chq-error already carries the
@@ -1721,5 +1737,17 @@
   .chq-contacts-merge-not-duplicate {
     border: 1px solid var(--chq-border);
     border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* 5. Consequence line :535 reads generic on phone -- "the record you
+     keep", not the kept record's name (the name is redundant here since
+     change 2's head subtitle already carries it). Swap the two sibling
+     spans; desktop keeps the named reading. */
+  .chq-contacts-merge-impact-name {
+    display: none;
+  }
+
+  .chq-contacts-merge-impact-generic {
+    display: inline;
   }
 }
