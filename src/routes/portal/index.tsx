@@ -43,13 +43,14 @@ import {
 } from "../../server/repo/portal";
 import { getFileVersionNumber } from "../../server/repo/files";
 import { formatBytes } from "../../domain/files";
-import { DEC_729, DEC_777, DEC_884 } from "../../decisions";
+import { DEC_729, DEC_777, DEC_884, DEC_576 } from "../../decisions";
 import { isDefaultParticipantRole } from "../../domain/participant-roles";
 import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
 void DEC_729;
 void DEC_777;
 void DEC_884;
+void DEC_576; // wave-110 amendment: SubmissionDetailPage's primary+secondary move into PortalLayout's dock
 import {
   parseCookies,
   newCsrfToken,
@@ -458,13 +459,37 @@ function SubmissionDetailPage(props: {
   const withLine = coPresenters
     .map((p) => (isDefaultParticipantRole(p.role) ? p.name : `${p.name} (${p.roleLabel.toLowerCase()})`))
     .join(", ");
+  // DEC-576: the frame's dock is this page's primary [+ secondary] --
+  // exactly the same controls that used to render inline below the status
+  // row (unchanged hrefs/labels/order), now passed to PortalLayout so
+  // PortalShell renders them once inside .chq-portal-footer instead of a
+  // second copy in <main>.
+  // Not wrapped in .chq-portal-actions -- that class's own phone rule
+  // (portal.css.ts, ~:775) forces a full-width stacked column, which would
+  // fight the dock's flex:1-primary/bordered-secondary row (docs/design
+  // :586-589). .chq-portal-dock (added by PortalLayout) owns the dock's
+  // row layout directly on these two controls instead.
+  const dock =
+    editable || fileRequestTask ? (
+      <>
+        {fileRequestTask ? (
+          <a href={taskActionHref(fileRequestTask)} class="chq-btn chq-btn-primary">
+            {taskActionLabel(fileRequestTask)}
+          </a>
+        ) : null}
+        {editable ? (
+          <a href={`/portal/submissions/${detail.id}/edit`} class="chq-btn chq-btn-secondary">Edit submission</a>
+        ) : null}
+      </>
+    ) : null;
   return (
-    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName} dock={dock}>
       {/* G13 (frame 10--08, MAJOR): the page names itself -- back link,
           H1 'Your session', THEN the status eyebrow and the session title
           -- the session title no longer occupies the H1 slot. The page's
           primary is the upload action (olive), with Edit as the secondary
-          beside it. */}
+          beside it -- DEC-576 (wave-110 amendment): both now render in the
+          dock band (PortalLayout's footer), not inline here. */}
       <div class="chq-portal-back-row">
         <PortalBackLink to="/portal/submissions" />
       </div>
@@ -479,18 +504,6 @@ function SubmissionDetailPage(props: {
       {coPresenters.length > 0 ? <p class="chq-portal-sub">With {withLine}</p> : null}
       {placed ? (
         <p class="chq-portal-sub">{formatPlacement(detail.day!, detail.startMin!, detail.roomName)}</p>
-      ) : null}
-      {editable || fileRequestTask ? (
-        <div class="chq-portal-actions">
-          {editable ? (
-            <a href={`/portal/submissions/${detail.id}/edit`} class="chq-btn chq-btn-secondary">Edit submission</a>
-          ) : null}
-          {fileRequestTask ? (
-            <a href={taskActionHref(fileRequestTask)} class="chq-btn chq-btn-primary">
-              {taskActionLabel(fileRequestTask)}
-            </a>
-          ) : null}
-        </div>
       ) : null}
 
       <div class="chq-section-label">Abstract</div>

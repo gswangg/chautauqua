@@ -8,7 +8,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import type { AppEnv } from "../../server/env";
 import { ThemeStyles } from "../../views/theme";
 import { PORTAL_CSS } from "./portal.css";
-import { DEC_374, DEC_884, DEC_371, DEC_945 } from "../../decisions";
+import { DEC_374, DEC_884, DEC_371, DEC_945, DEC_576, DEC_154 } from "../../decisions";
 import { normalizeHexColor } from "../../domain/color";
 import { matchesPortalRoute } from "../../lib/portal-routes";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
@@ -23,6 +23,8 @@ void DEC_374;
 void DEC_884;
 void DEC_371;
 void DEC_945;
+void DEC_576;
+void DEC_154;
 
 // DEC-374: strict hex guard on the per-event accent before it ever reaches a
 // rendered attribute — falls back to the brand olive on anything that isn't
@@ -147,6 +149,18 @@ export function PortalLayout(props: {
   // ahead of the sign-out control — placement only, never touching the
   // sign-out form/button below (a sibling task owns that cascade).
   footerExtra?: unknown;
+  // DEC-576/DEC-154 (wave-110 amendments): the frame's dock band holds a
+  // page's own primary [+ secondary] action, not a copy of `footerExtra`
+  // (which w15-b already owns for the unrelated "name · company / Profile"
+  // cluster on the tasks empty-state footer). A distinct, clearly-named
+  // prop rather than reusing footerExtra so the two callers never collide:
+  // a page passes its EXISTING primary/secondary controls (unmodified —
+  // DEC-967 wave-106: the dock's geometry may be built for whatever
+  // primary a page already renders, but a second control is never
+  // manufactured just to fill the band) and PortalShell renders them
+  // inside the same .chq-portal-footer element the phone media block
+  // already turns into the bordered/sunk dock band.
+  dock?: unknown;
   // G13: /portal/preview is read-only impersonation -- its identity slot
   // renders in the header cluster but it must NOT grow a second mutating
   // form (test/portal-preview.test.ts's zero-mutating-controls contract).
@@ -210,6 +224,16 @@ export function PortalLayout(props: {
               semantics and CSRF proof (DEC-181) are unchanged. */}
           <footer class="chq-portal-footer">
             {props.footerExtra as any}
+            {/* DEC-576: the frame's dock (docs/design/Chautauqua Public and
+                Portal.dc.html:492-495, :586-589) is this same footer element,
+                phone-restyled by the media block at the tail of
+                portal.css.ts -- not a second, separate band. */}
+            {props.dock ? <div class="chq-portal-dock">{props.dock as any}</div> : null}
+            {/* DEC-154: sign out lives once at 390 -- the header cluster
+                already carries it (:199 above); this control is hidden by
+                the phone media block only, so desktop (which has no header
+                identity cluster on every page) keeps both exactly as
+                before. */}
             <form method="post" action="/logout" class="chq-portal-signout">
               <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
               <button type="submit" class="chq-btn chq-btn-tertiary chq-portal-signout-btn">Sign out</button>

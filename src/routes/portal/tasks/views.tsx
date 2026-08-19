@@ -21,6 +21,10 @@ import { effectiveAssignmentDueDayLabel, isAssignmentOverdue } from "../../../do
 import { renderMarkdown } from "../../../lib/markdown";
 import type { FileCommentRow } from "../../../server/repo/files";
 import { PROFILE_TASK_TITLE } from "../../../domain/acceptance";
+import { DEC_576, DEC_967 } from "../../../decisions";
+
+void DEC_576; // wave-110 amendment: TasksPage's dock carries the first incomplete task's own primary control
+void DEC_967; // wave-106 amendment: the frame's "Later" secondary has no verb behind it — geometry only, never manufactured
 
 // DEC-242: display data for a completed file_request assignment — the
 // current file's name/version and its comment thread, loaded up front on
@@ -370,6 +374,47 @@ export function TaskFormPage(props: {
   );
 }
 
+// DEC-576/DEC-967 (wave-110 amendments): docs/design/Chautauqua Public and
+// Portal.dc.html:492-495 draws a fixed dock under "Your tasks" holding
+// "Mark the release signed" (primary) + "Later" (secondary). The portal
+// task model is complete-or-not only — there is no snooze/defer verb
+// behind "Later" anywhere in src/routes/portal/**.tsx, so DEC-967's
+// wave-106 amendment rules that only the dock's GEOMETRY is built here,
+// for whatever primary the page already renders; the second control is
+// never manufactured. This resolves the frame's single pinned action to
+// the first NOT-complete assignment's own existing control — the same
+// href/label/form the row itself would render, reused rather than
+// duplicated content — and renders nothing when that control is a
+// multipart file upload (DEC-967: reusing a <input type=file> form in two
+// places on one page is not "the same control", it's a second, empty
+// upload widget) or when every task is already complete.
+function tasksPageDockPrimary(
+  assignments: PortalTaskAssignment[],
+  csrfToken: string,
+  formLinkFor: (a: PortalTaskAssignment) => string | null,
+): unknown {
+  const next = assignments.find((a) => a.status !== "complete");
+  if (!next) return null;
+  if (next.kind === "form") {
+    return (
+      <a href={formLinkFor(next) ?? "#"} class="chq-btn chq-btn-primary">Fill out form</a>
+    );
+  }
+  if (next.kind === "general" && next.title === PROFILE_TASK_TITLE) {
+    return <a href="/portal/profile" class="chq-btn chq-btn-primary">Update your bio and headshot &rsaquo;</a>;
+  }
+  if (next.kind === "general") {
+    return (
+      <form method="post" action={`/portal/tasks/${next.id}/complete`}>
+        <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+        <button type="submit" class="chq-btn chq-btn-primary">Mark complete</button>
+      </form>
+    );
+  }
+  // file_request: no dockable single control (see comment above).
+  return null;
+}
+
 export function TasksPage(props: {
   branding: PortalBrandingChrome;
   assignments: PortalTaskAssignment[];
@@ -416,8 +461,9 @@ export function TasksPage(props: {
   const newSeriesAssignment = newSeriesAssignmentId
     ? assignments.find((a) => a.id === newSeriesAssignmentId)
     : undefined;
+  const dock = tasksPageDockPrimary(assignments, csrfToken, formLinkFor);
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
+    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName} dock={dock}>
       {/* G13 (frame 10--05, MINOR): the page's own chrome says '‹ Your
           portal' -- the H1 keeps the same voice ('Your tasks'), and the
           undrawn progress bar is gone (the frame draws none). */}
