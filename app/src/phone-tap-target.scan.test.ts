@@ -73,14 +73,23 @@ function stripTsxComments(src: string): string {
  * captured non-greedily up to the next `>` -- adequate for the plain
  * `className="..."`/`className={...条件...}` attribute shapes this codebase
  * uses on form controls (no `>` literal inside those attribute values). */
-function tapTargetTagTokens(src: string): string[] {
+const SPA_CLASS_ATTR_RE = /className\s*=\s*(\{[^}]*\}|"[^"]*")/;
+/** Hono JSX (every src/** SSR view) writes the DOM attribute name, `class`,
+ * where React writes `className`. Same attribute, same token grammar -- so
+ * the SSR population passes this variant into the SAME extractor rather
+ * than growing a second one (DEC-613: a second copy of a vocabulary is a
+ * trap with a delay fuse). `className` stays accepted here too: a few SSR
+ * views are shared with the SPA. */
+const SSR_CLASS_ATTR_RE = /\bclass(?:Name)?\s*=\s*(\{[^}]*\}|"[^"]*")/;
+
+function tapTargetTagTokens(src: string, classAttrRe: RegExp = SPA_CLASS_ATTR_RE): string[] {
   const out = new Set<string>();
   const tagRe = /<(input|select|button|a)\b([^>]*)>/g;
   let m: RegExpExecArray | null;
   while ((m = tagRe.exec(src)) !== null) {
     const tag = m[1];
     const attrs = m[2] ?? '';
-    const classMatch = attrs.match(/className\s*=\s*(\{[^}]*\}|"[^"]*")/);
+    const classMatch = attrs.match(classAttrRe);
     if (!classMatch) continue;
     const classText = classMatch[1] ?? '';
     const tokens = [...classText.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]);
@@ -561,5 +570,293 @@ describe('phone tap-target floor scan (DEC-253 amendment, DEC-367)', () => {
       offenders,
       `sub-44px tap targets with no phone-width override and no tap-floor-exempt comment:\n${offenders.join('\n')}`,
     ).toEqual([]);
+  });
+});
+
+// --- SSR population widening (mandate item 5) ---------------------------
+//
+// Everything above scans app/src ONLY: the SPA bundle's *.css sheets and
+// its React *.tsx views. The SSR half of the product -- src/routes/public
+// (the CFP, the public event site), src/routes/portal, src/routes/docs-site,
+// src/routes/auth -- ships its own Hono JSX views and its own CSS-in-TS
+// stylesheets, and NO tap-target scan has ever looked at it. That is the
+// same hole DEC-808 names as A DIRECTORY IS NOT A POPULATION: the scan was
+// honest about everything it could see, and blind to half the surface. The
+// meta-fidelity probe (scratchpad/metafid-c/out-public.txt) measured the
+// consequence directly at 390 -- `button.chq-pub-search-submit` at 40x44,
+// `a.chq-docs-wordmark` at 112.6x28, `button.chq-auth-demo-btn` at
+// 269.8x17 -- live sub-floor controls on public routes, every one of them
+// outside this file's population until now.
+//
+// SCOPE, stated plainly: this widening's job is to SEE the surface, not to
+// fix it. The offender count is recorded as a ratchet seeded at the
+// measured truth and may only be LOWERED -- one-sided by deliberate
+// choice, unlike the two-sided ratchets elsewhere in this repo. Driving
+// these to zero is engine work (the SSR sheets have no shared control-face
+// primitive the way app/src's `.chq-btn` does), and a two-sided ratchet
+// would demand that work be finished in the same change that makes it
+// visible. Seeing first, then fixing, is the point.
+//
+// POPULATION is derived the way phone-horizontal-overflow.scan.test.ts
+// derives its own SSR half -- by what a module's SOURCE declares (`export
+// const *CSS`), never by a `.css.ts` filename convention, because
+// src/views/theme.ts exports THEME_CSS without that suffix and a filename
+// glob silently drops the one sheet every SSR surface loads (DEC-808,
+// wave-96 finding).
+
+const SSR_ROOT = join(REPO_ROOT, 'src');
+const CSS_EXPORT_RE = /export const [A-Z0-9_]*CSS\s*=\s*/;
+
+/** Every src/**\/*.ts module whose source exports a CSS template literal. */
+function ssrCssModuleFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.ts') || entry.name.includes('.test.')) continue;
+    const absPath = join(entry.parentPath, entry.name);
+    if (CSS_EXPORT_RE.test(readFileSync(absPath, 'utf-8'))) out.push(absPath);
+  }
+  return out.sort();
+}
+
+/** Every src/**\/*.tsx SSR view, excluding tests. */
+function ssrTsxFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.tsx') || entry.name.includes('.test.')) continue;
+    out.push(join(entry.parentPath, entry.name));
+  }
+  return out.sort();
+}
+
+/** The literal CSS text out of a CSS-in-TS module, with `${...}`
+ * interpolations stripped -- each names another module's own exported
+ * constant, itself enumerated and scanned as that module's own file. */
+function extractCssTsLiteral(raw: string): string {
+  return [...raw.matchAll(/`([\s\S]*?)`/g)]
+    .map((m) => m[1] ?? '')
+    .join('\n')
+    .replace(/\$\{[^}]*\}/g, '');
+}
+
+const SSR_CSS_MODULES = ssrCssModuleFiles(SSR_ROOT);
+const SSR_TSX_FILES = ssrTsxFiles(SSR_ROOT);
+
+function allSsrTapTargetTokens(): Set<string> {
+  const out = new Set<string>();
+  for (const path of SSR_TSX_FILES) {
+    const src = stripTsxComments(readFileSync(path, 'utf-8'));
+    for (const t of tapTargetTagTokens(src, SSR_CLASS_ATTR_RE)) out.add(t);
+  }
+  return out;
+}
+
+/** Same three-step judgement as findOffenders() above -- top-level
+ * sub-floor height, no <=700px override, no named exemption -- run over
+ * the SSR populations. */
+function findSsrOffenders(): string[] {
+  const tokens = allSsrTapTargetTokens();
+  const offenders: string[] = [];
+  for (const path of SSR_CSS_MODULES) {
+    const label = relative(REPO_ROOT, path);
+    const raw = extractCssTsLiteral(readFileSync(path, 'utf-8'));
+    for (const { selector, body, exempt } of topLevelRulesWithExemption(raw)) {
+      const matchingTokens = [...tokens].filter((t) => selectorDeclaresBareClass(selector, t));
+      if (matchingTokens.length === 0) continue;
+      const height = declaredHeightPx(body);
+      if (height === undefined || height >= TAP_FLOOR_PX) continue;
+      if (exempt) continue;
+      const narrow = narrowMediaRules(raw, 700).some((r) => {
+        if (!matchingTokens.some((t) => selectorDeclaresBareClass(r.selector, t))) return false;
+        const h = declaredHeightPx(r.body);
+        return h !== undefined && h >= TAP_FLOOR_PX;
+      });
+      if (narrow) continue;
+      offenders.push(`${label}: "${selector}" (${height}px, tokens: ${matchingTokens.join(', ')})`);
+    }
+  }
+  return offenders.sort();
+}
+
+/**
+ * The SECOND, stronger lens -- and the one that actually sees this surface.
+ *
+ * findSsrOffenders() above only catches a control that DECLARES a sub-44px
+ * height. Measured on this branch that is zero, and the zero is honest but
+ * nearly vacuous: the SSR sheets mostly declare no height at all, so their
+ * controls collapse to content height and the probe measured them at 17-28px
+ * live (`button.chq-auth-demo-btn` 269.8x17,
+ * scratchpad/metafid-c/out-public.txt) while declaring nothing for a
+ * text-scan to flag. app/src does not have this shape because its controls
+ * compose `.chq-btn`, which carries the floor; the SSR sheets have no such
+ * shared control-face primitive.
+ *
+ * So: an SSR tap-target token whose CSS never declares a >=44px
+ * height/min-height ANYWHERE -- neither top-level nor inside a <=700px
+ * block, on any selector mentioning it -- is an offender. A token with no
+ * CSS rule at all is reported too (it inherits whatever its bare tag gives
+ * it, which is never 44px).
+ */
+function findSsrUnflooredTokens(): string[] {
+  const tokens = [...allSsrTapTargetTokens()];
+  const perFile = SSR_CSS_MODULES.map((path) => {
+    const raw = extractCssTsLiteral(readFileSync(path, 'utf-8'));
+    return {
+      label: relative(REPO_ROOT, path),
+      raw,
+      rules: [
+        // NOTE: topLevelRulesWithExemption's own `exempt` flag is not used
+        // here. It is set by `m[0].trimStart().startsWith('/*')`, i.e. by
+        // ANY comment preceding the rule -- and these SSR sheets are
+        // comment-dense (every rule carries a DEC receipt), so consulting
+        // it would silently exempt nearly the whole population. This lens
+        // asks hasExemptionForToken() for a real, named
+        // `tap-floor-exempt:` comment instead. The SPA scan above is
+        // unaffected: there the loose flag only ever relaxes a rule that
+        // already declared a sub-floor height, a far smaller set.
+        ...topLevelRulesWithExemption(raw).map((r) => ({ selector: r.selector, body: r.body })),
+        ...narrowMediaRules(raw, 700).map((r) => ({ selector: r.selector, body: r.body })),
+      ],
+    };
+  });
+
+  const offenders: string[] = [];
+  for (const token of tokens) {
+    let owner: string | undefined;
+    let floored = false;
+    let exempted = false;
+    for (const { label, raw, rules } of perFile) {
+      for (const r of rules) {
+        if (!selectorMentionsToken(r.selector, token)) continue;
+        owner ??= label;
+        if (hasExemptionForToken(raw, token)) exempted = true;
+        // declaredHeightPx returns the SMALLEST declared px value, so a
+        // rule declaring both `height: 20px` and `min-height: 44px` must
+        // still count as floored -- hence the second, direct test.
+        const declared = declaredHeightPx(r.body);
+        if (declared !== undefined && declared >= TAP_FLOOR_PX) floored = true;
+        if (/(?:min-height|height)\s*:\s*(?:44|4[5-9]|[5-9]\d|\d{3,})px/.test(r.body)) floored = true;
+      }
+    }
+    if (floored || exempted) continue;
+    offenders.push(`${owner ?? '(no CSS rule)'} — .${token}`);
+  }
+  return offenders.sort();
+}
+
+/**
+ * Seeded at the count measured when this population was first scanned
+ * (mandate item 5). ONE-SIDED: may only be LOWERED, never raised.
+ *
+ * This is a TO-DO LIST, not a licence, and deliberately NOT the two-sided
+ * ratchet the rest of this repo prefers. Giving the SSR route sheets a
+ * shared control-face primitive that carries the 44px floor is engine work
+ * with its own frame-fidelity consequences; forcing it to be finished in
+ * the same change that first makes the surface visible is exactly the
+ * trade that keeps a surface invisible. Seeing first, then fixing.
+ */
+export const SSR_UNFLOORED_TOKENS_CEILING = 14;
+
+// The 14 measured on this branch, recorded here so the next wave inherits
+// the reading rather than the number. TWO of them are independently
+// corroborated by the live 390 probe, which is what validates the lens
+// rather than merely running it: `.chq-auth-demo-btn` (measured 269.8x17)
+// and `.chq-pub-search-submit` (measured 40x44 -- floor met by accident of
+// content, declared nowhere). The rest are `.chq-docs-search-input`,
+// `.chq-portal-copresenter-email-flagged`, `.chq-portal-header-signout-btn`,
+// `.chq-portal-preview-download`, `.chq-itinerary-toggle`, `.chq-pub-select`,
+// `.chq-pub-select-active`, `.chq-pub-search`, `.chq-visually-hidden`,
+// `.chq-field-invalid`, `.chq-btn-secondary`, `.chq-btn-tertiary`.
+//
+// KNOWN NOISE, named rather than quietly filtered (a filter tuned to the
+// current reading hides the next real one): `.chq-visually-hidden` is a
+// screen-reader-only utility and can never be a tap target;
+// `.chq-btn-secondary`/`-tertiary` and `.chq-field-invalid` are MODIFIERS
+// that compose a base class carrying the floor, and a per-token text scan
+// cannot follow composition. Three of fourteen. Whoever lowers this ceiling
+// should retire those three with named `tap-floor-exempt:` comments on
+// their rules -- the escape this scan already honours -- and fix the
+// remaining eleven for real.
+
+/** Seeded at the count measured when this population was first scanned
+ * (mandate item 5). ONE-SIDED: may only be LOWERED, never raised. There is
+ * deliberately no companion "ceiling is not stale" test -- see the SCOPE
+ * note above; the engine work that would drive this to zero is not this
+ * change's job, and a two-sided ratchet would force it to be. */
+export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;
+
+describe('phone tap-target floor scan — SSR routes (public/portal/docs/auth)', () => {
+  it('derives a non-empty SSR population from both halves (vacuous-scan tripwire)', () => {
+    expect(SSR_CSS_MODULES.length).toBeGreaterThan(5);
+    expect(SSR_TSX_FILES.length).toBeGreaterThan(5);
+    // The four route families the mandate names must each be represented,
+    // asserted by path rather than count so a silently-emptied population
+    // cannot pass by staying "non-empty" on one family alone.
+    const labels = SSR_CSS_MODULES.map((p) => relative(REPO_ROOT, p));
+    for (const family of ['src/routes/public/', 'src/routes/portal/', 'src/routes/docs-site.css.ts', 'src/routes/auth.css.ts']) {
+      expect(labels.some((l) => l.startsWith(family) || l === family), `no SSR stylesheet under ${family}`).toBe(true);
+    }
+  });
+
+  it('reads Hono JSX `class=` where the SPA extractor reads `className=` (positive control)', () => {
+    const ssr = `export const X = () => <button class="chq-pub-search-submit">Search</button>;`;
+    // The SPA-shaped extractor is blind to it -- which is exactly why the
+    // SSR half went unscanned for so long.
+    expect(tapTargetTagTokens(ssr)).toEqual([]);
+    expect(tapTargetTagTokens(ssr, SSR_CLASS_ATTR_RE)).toContain('chq-pub-search-submit');
+  });
+
+  it('extracts rules out of a CSS-in-TS template literal, interpolations stripped (positive control)', () => {
+    const mod = 'export const FAKE_CSS = `.chq-x-ssr-btn { min-height: 26px; }\n${OTHER_CSS}\n`;';
+    const css = extractCssTsLiteral(mod);
+    expect(css).toContain('.chq-x-ssr-btn');
+    expect(css).not.toContain('OTHER_CSS');
+    const rule = topLevelRulesWithExemption(css).find((r) =>
+      selectorDeclaresBareClass(r.selector, 'chq-x-ssr-btn'),
+    )!;
+    expect(declaredHeightPx(rule.body)).toBe(26);
+  });
+
+  it('honours the same <=700px override and tap-floor-exempt escapes as the SPA scan (negative controls)', () => {
+    const overridden = 'export const FAKE_CSS = `.chq-x-ssr-btn { min-height: 26px; }\n@media (max-width: 700px) { .chq-x-ssr-btn { min-height: 44px; } }`;';
+    const css = extractCssTsLiteral(overridden);
+    expect(
+      narrowMediaRules(css, 700).some(
+        (r) => selectorDeclaresBareClass(r.selector, 'chq-x-ssr-btn') && (declaredHeightPx(r.body) ?? 0) >= TAP_FLOOR_PX,
+      ),
+    ).toBe(true);
+
+    const exempted = extractCssTsLiteral(
+      'export const FAKE_CSS = `/* tap-floor-exempt: decorative */\n.chq-x-ssr-chip { min-height: 20px; }`;',
+    );
+    expect(
+      topLevelRulesWithExemption(exempted).find((r) => selectorDeclaresBareClass(r.selector, 'chq-x-ssr-chip'))!.exempt,
+    ).toBe(true);
+  });
+
+  it('stays at or under the SSR declared-sub-floor ceiling, and never raises it silently', () => {
+    const offenders = findSsrOffenders();
+    expect(
+      offenders.length,
+      `SSR sub-44px tap targets with no phone-width override and no tap-floor-exempt comment ` +
+        `(${offenders.length}, ceiling ${SSR_TAP_FLOOR_OFFENDERS_CEILING} -- may only be LOWERED):\n${offenders.join('\n')}`,
+    ).toBeLessThanOrEqual(SSR_TAP_FLOOR_OFFENDERS_CEILING);
+  });
+
+  it('the unfloored-token population is non-empty and includes a token the live probe measured sub-floor (tripwire)', () => {
+    // A scan that silently stopped matching would report zero and look
+    // like progress. Pin it to a token the meta-fidelity probe measured at
+    // 390 with its own eyes, so "clean" can never mean "blind".
+    const tokens = allSsrTapTargetTokens();
+    expect(tokens.size).toBeGreaterThan(20);
+    expect(tokens.has('chq-auth-demo-btn')).toBe(true);
+  });
+
+  it('stays at or under the SSR unfloored-token ceiling, and never raises it silently', () => {
+    const offenders = findSsrUnflooredTokens();
+    expect(
+      offenders.length,
+      `SSR tap targets whose CSS never declares a >=44px floor at any width ` +
+        `(${offenders.length}, ceiling ${SSR_UNFLOORED_TOKENS_CEILING} -- may only be LOWERED):\n${offenders.join('\n')}`,
+    ).toBeLessThanOrEqual(SSR_UNFLOORED_TOKENS_CEILING);
   });
 });
