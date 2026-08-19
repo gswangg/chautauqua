@@ -251,7 +251,22 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
 
     [data-chq-cfp-step="1"] .chq-cfp-step-you { display: none; }
     [data-chq-cfp-step="2"] .chq-cfp-step-talk { display: none; }
-    [data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"] { display: none; }
+    [data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]:not(.chq-cfp-save-draft) { display: none; }
+    /* :1063 -- the step-1 dock's secondary "Draft" control, next to the
+       primary Next at flex:1 (.chq-cfp-step-next, above). Geometry only:
+       the accessible name stays "Save draft" per DEC-613 wave-96 amendment
+       (one control, one name at every width -- the frame's "Draft" is a
+       drawing abbreviation, not a label to ship). */
+    .chq-cfp-save-draft {
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 16px;
+      border: 1px solid var(--chq-border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+    }
     /* Back has nothing to return to on step 1 -- the frame's step-1 dock
        never draws it. test/cfp-phone-steps.test.ts pins the two selectors
        above byte-for-byte; this one is additive, not a replacement. */
