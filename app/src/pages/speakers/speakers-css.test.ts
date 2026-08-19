@@ -12,7 +12,7 @@
 // page-measure.test.ts / shell-geometry.test.ts), so this reads the
 // stylesheet's own text and asserts on the declarations directly rather than
 // rendering + measuring computed style.
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -279,5 +279,42 @@ describe('speakers toolbar selects keep caret clearance', () => {
     const css = readFileSync(CSS_PATH, 'utf-8');
     const rule = css.match(/\.chq-speakers-toolbar \.chq-select \{[^}]*padding-right: 36px[^}]*\}/);
     expect(rule).not.toBeNull();
+  });
+});
+
+// Caught in the sandbox, not by a test: TaskView.tsx rendered every OVERDUE
+// as plain text because it imported only its own task-view.css. jsdom applies
+// no external stylesheet, so no render test can see this -- the classes were
+// all correct, the rules simply were not on the page. The invariant is
+// structural: any module that reaches for the shared .chq-speakers-status
+// family must import the stylesheet that defines it.
+describe('every user of the shared status family imports speakers.css', () => {
+  const files = readdirSync(HERE)
+    .filter((f) => (f.endsWith('.tsx') || f.endsWith('.ts')) && !f.includes('.test.'))
+    .map((f) => ({ name: f, src: readFileSync(join(HERE, f), 'utf-8') }));
+
+  // The entry points that MOUNT a surface -- the ones a route renders
+  // directly. A leaf component (TaskCell, ParticipationMenu) is always
+  // rendered inside one of these, so the import belongs on the page.
+  const PAGE_ENTRY_POINTS = ['SpeakerDetailPage.tsx', 'TaskView.tsx'];
+
+  it.each(PAGE_ENTRY_POINTS)('%s imports speakers.css', (name) => {
+    const file = files.find((f) => f.name === name);
+    if (!file) throw new Error(`no such module: ${name}`);
+    expect(file.src).toMatch(/import '\.\/speakers\.css'/);
+  });
+
+  it('names every module that uses the family, so a new page cannot be missed', () => {
+    // A module "uses the family" when it builds one of these class strings
+    // itself or calls the helper that does. Leaf components are excluded by
+    // name (they never own a route); everything else must be an entry point
+    // above, or this test fails and the list gets updated deliberately.
+    const LEAVES = ['TaskCell.tsx', 'ParticipationMenu.tsx'];
+    const users = files
+      .filter((f) => /statusCellClass\(|participationStatusClass\(|chq-speakers-status/.test(f.src))
+      .map((f) => f.name)
+      .filter((n) => !LEAVES.includes(n))
+      .sort();
+    expect(users).toEqual([...PAGE_ENTRY_POINTS].sort());
   });
 });

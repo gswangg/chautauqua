@@ -36,6 +36,12 @@ import { isAnswered, type TaskViewResponse, type TaskViewRow } from './taskRoste
 // crossed the app/ -> src/ boundary with a direct relative import, the same
 // idiom TaskCell.tsx uses for src/domain/task-due.ts.
 import { toCsv } from '../../../../src/domain/csv';
+// The status chips on this page are the SHARED .chq-speakers-status family
+// (statusCellClass above), which lives in speakers.css -- without this import
+// the route loads its own stylesheet only, and every OVERDUE renders as plain
+// text instead of v12's filled ink mark. The other two speakers surfaces
+// (Speakers.tsx, SpeakerDetailPage.tsx) each import it for the same reason.
+import './speakers.css';
 import './task-view.css';
 
 type Tab = 'answered' | 'waiting';
