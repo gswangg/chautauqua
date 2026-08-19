@@ -1368,7 +1368,14 @@ describe('PlanEditor render smoke', () => {
 
   // --- DEC-882: criteria table column headers + read-only lock + open-plan header ---
 
-  it('renders the CRITERION / GUIDANCE / WEIGHT column headers above the criteria rows', async () => {
+  // DEC-882 (wave-110 amendment): `Chautauqua Review.dc.html:493` spells
+  // six header cells in order --
+  // `<span></span><span>Criterion</span><span>Guidance for reviewers ·
+  // optional</span><span>Type</span><span>Weight</span><span></span>` --
+  // over the frame's `20px 1fr 232px 128px 122px 62px` tracks (:492). Assert
+  // all six cells, in order, so Type never again silently drops off the head
+  // row while the body rows keep their TYPE <select> track.
+  it('renders all six of the frame\'s column headers, in order, above the criteria rows', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: {
@@ -1389,17 +1396,13 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => expect(screen.getByText('Criterion')).toBeInTheDocument());
-    // w48-b: the suffix is now its own <span> (OPTIONAL_SUFFIX, DEC-917) so
-    // the head cell's own text and the suffix live in separate nodes --
-    // match on the head cell's combined textContent, and independently
-    // assert the suffix reads lowercase (never '· OPTIONAL', which its
-    // uppercasing container used to force before the w48-b CSS override).
-    const guidanceHeadCell = screen
-      .getAllByText((_, el) => el?.className === 'chq-review-criteria-head-cell')
-      .find((el) => el.textContent?.includes('Guidance for reviewers'));
-    expect(guidanceHeadCell).toBeDefined();
-    expect(guidanceHeadCell?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Guidance for reviewers · optional');
-    expect(screen.getByText('Weight')).toBeInTheDocument();
+
+    const headRow = document.querySelector('.chq-review-criteria-head-row');
+    expect(headRow).not.toBeNull();
+    const cellTexts = Array.from(headRow?.children ?? []).map((el) =>
+      (el.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    );
+    expect(cellTexts).toEqual(['', 'Criterion', 'Guidance for reviewers · optional', 'Type', 'Weight', '']);
   });
 
   // DEC-882: a locked round's criteria render zero form controls -- no

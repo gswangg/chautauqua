@@ -932,14 +932,14 @@
    docs/design/Chautauqua Review.dc.html:492 `grid-template-columns:20px 1fr
    232px 128px 122px 62px` (head) / :496 (rows). The editable editor and its
    header now render the frame's SIX tracks -- drag 20px / Criterion
-   (remainder) / Guidance 232px / Weight 128px / Type 122px / Remove 62px,
+   (remainder) / Guidance 232px / Type 128px / Weight 122px / Remove 62px,
    gap 16 -- now that the per-row TYPE <select> (PlanEditor.tsx) lands the
-   122px column the Scale-or-Choice editor needed (the readonly row below
+   128px column the Scale-or-Choice editor needed (the readonly row below
    already carried its own TYPE cell). The drag column is a pinned 20px, not
    `auto`: an `auto` track sizes from that row's OWN content, and a locked
    row's blank handle cell differs in content from an unlocked row's handle
    button, which is exactly the drift this column exists to prevent (see the
-   paragraph above). Guidance/Weight/Type are fixed so Criterion
+   paragraph above). Guidance/Type/Weight are fixed so Criterion
    (minmax(0,1fr)) takes the remainder instead of splitting the measure with
    the other cells. Head and body share this one declaration so they cannot
    drift apart. */
