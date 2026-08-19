@@ -205,7 +205,8 @@ instead of re-flagging.
 
 **Unbuilt features (no data model or endpoint behind the drawing):**
 - "Your data" edit view: retention select, keeping-and-deleting checkboxes,
-  revoke-every-token footer (09--16).
+  revoke-every-token footer (09--16). Drawn at
+  `docs/design/Chautauqua Settings.dc.html:1111` (`Settings · editing your data`).
 - Tracks/rooms drag-handle reordering — no server-side order field (09--12).
 - Public-pages Publish/Unpublish control (09--07) and saved-embed "in use on"
   host column (09--09) — no backing data.
@@ -245,6 +246,8 @@ instead of re-flagging.
   email HTML shells' CTA/callout/signature anatomy (07--09..12), shared
   ConfirmDialog 480/subtitle/typed-label anatomy (09--21/22), portal
   resources-block rework (09--13), docs IA expansion (14 further articles).
+  The Sessionboard importer modal is drawn at
+  `docs/design/Chautauqua Settings.dc.html:1507` (`Import from Sessionboard`).
 
 **Adjudications recorded:**
 - Portal measure WIDENED against the frames: --chq-portal-measure 560px (drawn)
