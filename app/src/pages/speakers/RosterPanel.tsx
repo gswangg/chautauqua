@@ -446,7 +446,12 @@ export function RosterDrillIn({
         </span>
       </div>
 
-      <div className="chq-phone-body chq-speakers-roster-body">
+      {/* DEC-937 w9-d: the shared .chq-phone-body already supplies the
+          scroll/flex geometry (styles.css) and .chq-speakers-roster-row
+          supplies its own row padding/border-bottom (speakers.css) -- no
+          rule ever existed for a distinct roster-body class, so the extra
+          hook is dropped rather than left dead. */}
+      <div className="chq-phone-body">
         {rows.map((row) => (
           <div key={row.contact.id} className="chq-speakers-roster-row">
             <div className="chq-speakers-roster-row-identity">

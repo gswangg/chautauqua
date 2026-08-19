@@ -1668,9 +1668,9 @@
    one of them needs an explicit desktop `display:none` OUTSIDE the media
    block, never left to rely on "no rule = invisible". */
 .chq-settings-drill-title,
-.chq-settings-index-hint,
 .chq-settings-tracks-rooms-phone-caption,
-.chq-settings-rail-link-open {
+.chq-settings-rail-link-open,
+.chq-settings-questions-block {
   display: none;
 }
 
@@ -1755,16 +1755,6 @@
   }
 
   .chq-settings-rail-link-detail {
-    font-size: 13px;
-    color: var(--chq-ink-2);
-    line-height: 1.5;
-  }
-
-  /* docs/design/Chautauqua Settings.dc.html:296: the closing hint under
-     the index, phone-only. */
-  .chq-settings-index-hint {
-    display: block;
-    padding: 18px 0 0;
     font-size: 13px;
     color: var(--chq-ink-2);
     line-height: 1.5;
@@ -1880,7 +1870,16 @@
   }
 
   /* CFP Questions section (:461 `Questions · 8`) -- a 2px-ruled cap over
-     14px list rows, each with a 44px bordered Edit action. */
+     14px list rows, each with a 44px bordered Edit action. QuestionsSection
+     (CallForPapersPanel.tsx) renders unconditionally in the DOM at every
+     width -- desktop keeps its own pre-existing 'Custom questions' summary
+     line (DEC-781), so this block is phone-only, matching every other
+     unconditionally-rendered element on this page (display:none default
+     above, shown here). */
+  .chq-settings-questions-block {
+    display: block;
+  }
+
   .chq-settings-questions-list {
     list-style: none;
     margin: 0;
