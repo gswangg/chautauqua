@@ -272,3 +272,19 @@
     gap: 10px;
   }
 }
+
+/* DEC-393 wave-7 amendment: flush row-action anchors take the floor on the
+   anchor itself -- min-height:44px plus centred flex plus horizontal
+   padding, with an equal-and-opposite negative margin so nothing shifts.
+   Applied to the anchor only, never to a container. */
+@media (max-width: 700px) {
+  .chq-taskview-back,
+  .chq-taskview-name,
+  .chq-taskview-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+}
