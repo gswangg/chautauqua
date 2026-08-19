@@ -167,8 +167,12 @@ describe('v12 phone frame "Submissions" (390) — docs/design/Chautauqua Submiss
       );
     });
 
-    it('keeps the column picker hidden -- it governs columns not on the screen once the table stacks into cards, the one legal DEC-919 case', () => {
-      expect(phoneRule(CSS, '.chq-submissions-columnpicker')).toMatch(/display:\s*none/);
+    it('v12m-w9-h correction: keeps the column picker reachable, riding the same horizontally scrolling strip as the status pills and track select -- docs/design/Chautauqua Submissions.dc.html:148 `display:flex; gap:7px; overflow-x:auto` never singles it out for removal, it is data still on screen, not chrome', () => {
+      const layer = phoneLayer(CSS);
+      // Scoped to the columnpicker ROOT selector only (bare, comma- or
+      // brace-terminated) -- never its `> summary::-webkit-details-marker`
+      // child, whose native-marker `display:none` is unrelated chrome.
+      expect(layer).not.toMatch(/\.chq-submissions-columnpicker(?![\w-])(?!\s*>)[,\s{][\s\S]{0,200}display:\s*none/);
     });
   });
 });
