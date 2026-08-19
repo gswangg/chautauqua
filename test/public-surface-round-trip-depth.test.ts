@@ -59,6 +59,11 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicSpeakers: tracked("speakers", { items: [], total: 0 }),
     getPublicAgenda: tracked("agenda", { items: [], total: 0 }),
     getPublicBreaksByDay: tracked("breaks", []),
+    // DEC-745 (wave-107 amendment): resolved only on the sessions
+    // fresh-empty branch (see dispatch.tsx's isFreshEmpty) -- every mocked
+    // sessions read here returns total:0, so the no-filter/non-embed shape
+    // below is fresh-empty and does issue this read.
+    getPriorPublicEvent: tracked("lastYear", null),
   };
 });
 
@@ -120,10 +125,15 @@ describe("DEC-774 wave-34 amendment: public surfaces collapse their render water
     expect(state.tracker.max).toBeGreaterThanOrEqual(2);
   });
 
-  it("sessions non-embed, no filter: total call count unchanged (tracks/rooms/formatOptions/sessions/dayCounts/cfpWindow, no grandTotal probe)", async () => {
+  it("sessions non-embed, no filter: total call count unchanged plus DEC-745's fresh-empty lastYear probe (tracks/rooms/formatOptions/sessions/dayCounts/cfpWindow/lastYear, no grandTotal probe)", async () => {
     resetTracker();
     await renderSurfaceContent(DB, EVENT, "sessions", {});
-    expect(state.tracker.calls.sort()).toEqual(["cfpWindow", "dayCounts", "formatOptions", "rooms", "sessions", "tracks"].sort());
+    // Every mocked getPublicSessions call here returns total:0 with no
+    // filter active, i.e. the fresh-empty branch (DEC-745) -- so
+    // getPriorPublicEvent is the one extra read this shape issues.
+    expect(state.tracker.calls.sort()).toEqual(
+      ["cfpWindow", "dayCounts", "formatOptions", "lastYear", "rooms", "sessions", "tracks"].sort(),
+    );
   });
 
   it("sessions non-embed, filter active: total call count unchanged (adds exactly one grandTotal probe)", async () => {

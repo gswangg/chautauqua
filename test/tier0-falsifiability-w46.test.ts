@@ -71,6 +71,7 @@ describe("item 1: saved embeds exist and resolve for real (DEC-785/DEC-822)", ()
         getPublicSpeakers: vi.fn(async () => ({ items: [], total: 0 })),
         getPublicScheduleDayCounts: vi.fn(async () => []),
         getPublicCfpWindow: vi.fn(async () => null),
+        getPriorPublicEvent: vi.fn(async () => null),
         getPublicRooms: vi.fn(async () => []),
         getPublicFormatOptions: vi.fn(async () => []),
       };

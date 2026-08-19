@@ -31,6 +31,7 @@ export {
   getPublicCfpWindow,
   getPublicRooms,
   getPublicFormatOptions,
+  getPriorPublicEvent,
 } from "./public/event";
 export type { PublicEvent, PublicTrack, PublicRoom } from "./public/event";
 

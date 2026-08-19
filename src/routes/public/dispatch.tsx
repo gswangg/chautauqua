@@ -12,6 +12,7 @@ import {
   getPublicRooms,
   getPublicFormatOptions,
   getPublicBreaksByDay,
+  getPriorPublicEvent,
   type PublicEvent,
 } from "../../server/repo/public";
 import type { Surface } from "./shell";
@@ -21,10 +22,11 @@ import { SessionsContent } from "./sessions";
 import { SpeakersContent, GalleryContent } from "./speakers";
 import { AgendaContent, ScheduleContent } from "./agenda";
 import { eventDays } from "../../domain/event-days";
-import { DEC_851, DEC_774 } from "../../decisions";
+import { DEC_851, DEC_774, DEC_745 } from "../../decisions";
 
 void DEC_851;
 void DEC_774;
+void DEC_745;
 
 // w1-i + DEC-783: the /agenda and /schedule surfaces honour ?q=/?trackId=
 // exactly as /sessions does — as SQL-level predicates inside getPublicAgenda,
@@ -103,6 +105,15 @@ export async function renderSurfaceContent(
       ]);
       const { items, total } = sessionsPage;
       const grandTotal = anyFilter ? grandTotalPage!.total : total;
+      // DEC-745 (wave-107 amendment): the "Last year" aside is resolved
+      // ONLY on the fresh-empty branch (no facet in flight AND the
+      // unfiltered total is 0 -- the exact isFresh predicate SessionsContent
+      // computes) and NEVER for /embed (DEC-672: chromeless is closed both
+      // ways). Every other request -- filtered, populated, or embedded --
+      // pays zero extra queries; this read is issued only after the main
+      // wave above has already told us the branch is fresh-empty.
+      const isFreshEmpty = !query.embed && !anyFilter && grandTotal === 0;
+      const lastYear = isFreshEmpty ? await getPriorPublicEvent(db, event) : null;
       return {
         title: `Sessions - ${event.name}`,
         content: (
@@ -127,6 +138,7 @@ export async function renderSurfaceContent(
             accent={query.accent ?? null}
             dayCounts={dayCounts}
             cfpWindow={cfpWindow}
+            lastYear={lastYear}
           />
         ),
       };
