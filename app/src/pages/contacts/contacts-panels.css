@@ -658,6 +658,8 @@
   font-weight: 700;
   color: var(--chq-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chq-contacts-merge-compare-head {
@@ -993,6 +995,8 @@
   font-weight: 700;
   color: var(--chq-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* G13 (frame 08-contacts--03): the match step is a full-width row list --
@@ -1136,6 +1140,8 @@
 .chq-contacts-import-review-col-line {
   width: 56px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chq-contacts-import-review-col-email {
@@ -1145,6 +1151,8 @@
 .chq-contacts-import-review-col-skip {
   width: 112px; /* real width: 1px shrink-hack is literal under table-layout:fixed (gate-9 scan) */
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* w49-f: the existing-contacts claim on the review step, sourced from the
