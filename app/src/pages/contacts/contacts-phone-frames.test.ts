@@ -1,11 +1,18 @@
 // v12 design pack — the five width:390 PHONE frames in
 // docs/design/Chautauqua Contacts.dc.html:
 //
-//   "Contacts"        (line 175) — look someone up, call them
-//   "Contact · 390"   (line 403) — the errand you actually run on a phone
-//   "Pipeline · 390"  (line 443) — one column at a time
-//   "Import CSV · 390"(line 483) — one column per screen
-//   "Merge · 390"     (line 518) — pick a side, field by field
+//   "Contacts"        docs/design/Chautauqua Contacts.dc.html:179 (179-229) — look someone up, call them
+//   "Contact · 390"   docs/design/Chautauqua Contacts.dc.html:407 (407-443) — the errand you actually run on a phone
+//   "Pipeline · 390"  docs/design/Chautauqua Contacts.dc.html:447 (447-483) — one column at a time
+//   "Import CSV · 390"docs/design/Chautauqua Contacts.dc.html:487 (487-518) — one column per screen (claimed elsewhere, w4-i)
+//   "Merge · 390"     docs/design/Chautauqua Contacts.dc.html:522 (522-546) — pick a side, field by field
+//
+// DEC-967 wave-86: each of the four frames above (Import CSV already
+// claimed) carries at least one strict `docs/design/Chautauqua
+// Contacts.dc.html:<line>` citation, landing inside its extent, with the
+// cited line's literal quoted verbatim in backticks and a real assertion
+// beneath it pinning what that literal declares — see the dedicated `it`
+// blocks below each carrying such a citation in its leading comment.
 //
 // jsdom applies no stylesheet and evaluates no @media rule, so — mirroring
 // app/src/shell-geometry.test.ts and ContactsApp.newContact.render.test.tsx
@@ -196,6 +203,12 @@ describe('v12 phone frame "Contacts" (390)', () => {
     expect(phoneRule(CONTACTS_CSS, '.chq-contacts-table tbody td[colspan]')).toMatch(/grid-column:\s*1 \/ -1/);
   });
 
+  // docs/design/Chautauqua Contacts.dc.html:205 `font-size:16px; font-weight:600; letter-spacing:-0.02em`
+  it('pins the directory row\'s name to the frame\'s display face', () => {
+    const name = phoneRule(CONTACTS_CSS, '.chq-contacts-name');
+    expect(name).toMatch(/font-size:\s*16px/);
+  });
+
   it('keeps the DEC-937 attribute-sourced card label, never a positional one', () => {
     const layer = phoneLayer(CONTACTS_CSS);
     expect(layer).toMatch(/td\[data-label\]::before\s*\{\s*content:\s*attr\(data-label\)/);
@@ -210,6 +223,13 @@ describe('v12 phone frame "Contact · 390"', () => {
     const row = phoneRule(CONTACTS_CSS, '.chq-contacts-record-row');
     expect(row).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
     expect(row).not.toMatch(/130px/);
+  });
+
+  // docs/design/Chautauqua Contacts.dc.html:418 `padding:13px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:4px`
+  it('pins the record row\'s frame spacing: 13px vertical padding, 4px gap between label and value', () => {
+    const row = phoneRule(CONTACTS_CSS, '.chq-contacts-record-row');
+    expect(row).toMatch(/padding:\s*13px 0/);
+    expect(row).toMatch(/gap:\s*4px/);
   });
 
   it('collapses the "Across your events" row the same way and steps the event name to 14px', () => {
@@ -253,6 +273,11 @@ describe('v12 phone frame "Pipeline · 390"', () => {
     const strip = phoneRule(PANELS_CSS, '.chq-contacts-pipeline-phone-stages');
     expect(strip).toMatch(/border-bottom:\s*1px solid var\(--chq-hairline\)/);
     expect(strip).toMatch(/padding-bottom:\s*12px/);
+    expect(phoneRule(PANELS_CSS, '.chq-contacts-pipeline-phone-stages .chq-pill')).toMatch(/padding:\s*0 14px/);
+  });
+
+  // docs/design/Chautauqua Contacts.dc.html:453 `padding:0 14px`
+  it('pins the "Identified · 7" stage pill\'s horizontal padding to the frame\'s value', () => {
     expect(phoneRule(PANELS_CSS, '.chq-contacts-pipeline-phone-stages .chq-pill')).toMatch(/padding:\s*0 14px/);
   });
 
@@ -375,6 +400,16 @@ describe('v12 phone frame "Merge · 390"', () => {
     expect(label).toMatch(/text-transform:\s*uppercase/);
     expect(label).toMatch(/font-size:\s*11px/);
     expect(label).toMatch(/color:\s*var\(--chq-muted\)/);
+  });
+
+  // docs/design/Chautauqua Contacts.dc.html:531 `border:1px solid #4E5C31; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 13px`
+  it('pins the kept value box to the frame\'s brand border, 48px height, centred flex and 13px padding', () => {
+    const keep = phoneRule(PANELS_CSS, '.chq-contacts-merge-compare-keep');
+    expect(keep).toMatch(/border:\s*1px solid var\(--chq-brand\)/);
+    expect(keep).toMatch(/min-height:\s*48px/);
+    expect(keep).toMatch(/display:\s*flex/);
+    expect(keep).toMatch(/align-items:\s*center/);
+    expect(keep).toMatch(/padding:\s*0 13px/);
   });
 
   it('boxes the kept value in brand and the discarded one in the border token, both at 48px', () => {
