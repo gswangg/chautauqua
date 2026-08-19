@@ -410,11 +410,11 @@ describe("account/password phone action bar CSS source-scan (DEC-385)", () => {
 // specificity and lose, per this module's own header comment).
 // -----------------------------------------------------------------------
 
-describe('"Change password · 390" phone geometry (docs/design/Chautauqua Account.dc.html:153)', () => {
+describe('"Change password · 390" phone geometry (frame at Chautauqua Account.dc.html:153, cited with its strict form, and receipted, below)', () => {
   const blocks = extract700Blocks(AUTH_CSS_TS);
   const trailing = blocks[blocks.length - 1]!;
 
-  it("the trailing 700px block lands after BARE_PAGE_CSS's composition, not before it", () => {
+  it("docs/design/Chautauqua Account.dc.html:153 `width:390px; height:844px` -- the trailing 700px block lands after BARE_PAGE_CSS's composition, not before it", () => {
     const bareIdx = AUTH_CSS_TS.indexOf("${BARE_PAGE_CSS}");
     const trailingBlockIdx = AUTH_CSS_TS.lastIndexOf("@media (max-width: 700px)");
     expect(bareIdx).toBeGreaterThan(-1);

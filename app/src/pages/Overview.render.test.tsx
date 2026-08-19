@@ -696,8 +696,8 @@ describe('overview top-third spacing measure (Gate-4 wave-6 amendment)', () => {
   });
 });
 
-// docs/design/Chautauqua Overview.dc.html:190
-// `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+// Chautauqua Overview.dc.html:190 (cited with its strict form, and
+// receipted, at the first it() below)
 // "Same five sections, one column" (task w2-g): the DOM contract that
 // carries the phone reflow -- the deadline strip sits in the shared
 // .chq-phone-head sticky scaffold, the rest of the page (headline + all
@@ -722,6 +722,7 @@ describe('overview phone (390) DOM contract (task w2-g)', () => {
 
     await waitFor(() => expect(screen.getByText('Marcus Okafor')).toBeInTheDocument());
 
+    // docs/design/Chautauqua Overview.dc.html:190 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">` -- the phone frame this DOM contract carries.
     const head = document.querySelector('.chq-phone-head');
     expect(head).not.toBeNull();
     expect(head!.querySelector('.chq-overview-deadlines')).not.toBeNull();
@@ -761,8 +762,8 @@ describe('overview phone (390) DOM contract (task w2-g)', () => {
   });
 });
 
-// docs/design/Chautauqua Overview.dc.html:190
-// `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+// Chautauqua Overview.dc.html:190 (cited with its strict form, and
+// receipted, at the first it() below)
 // Source-scan (jsdom applies no @media rule, mirroring the top-third
 // spacing describe block above): pins the phone-only behaviour of the two
 // new hooks, and that desktop (outside any max-width block) declares no
@@ -775,7 +776,7 @@ describe('overview phone (390) CSS contract (task w2-g)', () => {
   const maxWidthBlocks = [...css.matchAll(/@media\s*\(max-width:\s*700px\)\s*\{([\s\S]*?)\n\}/g)].map((m) => m[1]!);
   const phoneCss = maxWidthBlocks.join('\n');
 
-  it('desktop (outside any max-width block) declares no rule for the two phone-only hooks', () => {
+  it('docs/design/Chautauqua Overview.dc.html:190 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">` -- desktop (outside any max-width block) declares no rule for the two phone-only hooks', () => {
     expect(withoutMedia).not.toMatch(/\.chq-overview-btn-waitlist\s*\{/);
     expect(withoutMedia).not.toMatch(/\.chq-overview-link-btn-read\s*\{/);
   });

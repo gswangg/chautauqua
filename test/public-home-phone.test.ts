@@ -156,16 +156,15 @@ describe("DEC-582 (wave 84): the hub head is declared once, identical across all
 
 describe("DEC-582 (wave 84): the hub footer is declared once -- never a fourth footer per state", () => {
   // NOTE (v12 mobile campaign w2, flagged not fixed here): the between_cycles
-  // frame draws the footer's "API docs" anchor on its 390 sibling
-  // (docs/design/Chautauqua Home.dc.html:261) but not on its own 900 twin
-  // (:220) -- a genuine width-only divergence this lane's frozen-desktop
-  // constraint cannot close without touching root.tsx's Footer() render
-  // branch AND test/public-home-state-actions.test.ts's DOM-count pin
-  // ("the footer's 'API docs' link renders on the full hub only"), neither
-  // of which is an owned file here. This test pins the PRE-EXISTING
-  // (unchanged) contract instead; see home.css.ts's phone-block comment for
-  // the gap itself.
-  it("full carries the API docs anchor; between_cycles and fresh do not (unchanged root.tsx contract)", async () => {
+  // frame draws the footer's "API docs" anchor on its 390 sibling but not on
+  // its own 900 twin (:220) -- a genuine width-only divergence this lane's
+  // frozen-desktop constraint cannot close without touching root.tsx's
+  // Footer() render branch AND test/public-home-state-actions.test.ts's
+  // DOM-count pin ("the footer's 'API docs' link renders on the full hub
+  // only"), neither of which is an owned file here. This test pins the
+  // PRE-EXISTING (unchanged) contract instead; see home.css.ts's phone-block
+  // comment for the gap itself.
+  it("full carries the API docs anchor; between_cycles and fresh do not (unchanged root.tsx contract) -- docs/design/Chautauqua Home.dc.html:261 `<a href=\"#\" style=\"margin-left:auto; font-size:12px; font-weight:700; min-height:44px; display:flex; align-items:center\">API docs</a>` draws this anchor on the 390 sibling only", async () => {
     const full = footerOf(await renderState("full"));
     const between = footerOf(await renderState("between_cycles"));
     const fresh = footerOf(await renderState("fresh"));

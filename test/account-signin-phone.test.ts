@@ -1,6 +1,7 @@
-// DEC-385 (v12 mobile campaign, w2-e): "Sign in · 390"
-// (docs/design/Chautauqua Account.dc.html:121 `<div style="width:390px;
-// height:844px; ...`) -- wordmark/input/button sizing, the dropped
+// DEC-385 (v12 mobile campaign, w2-e): "Sign in · 390" (frame at
+// Chautauqua Account.dc.html:121, `width:390px; height:844px`; cited with
+// its strict form, and receipted, at the source-scan describe block below)
+// -- wordmark/input/button sizing, the dropped
 // "Forgot your password?" link, and the "No account?" footer's phone
 // stacking, layered onto the desktop .chq-auth-card/.chq-auth-stack
 // LoginPage this file's sibling suites (auth-card-geometry.test.ts etc.)
@@ -111,7 +112,7 @@ describe("Sign in / Change password 390 CSS source-scan (DEC-385)", () => {
   const blocks = extract700Blocks(AUTH_CSS_TS);
   const joined = blocks.join("\n");
 
-  it("the Sign-in phone rules (wordmark, inputs, hidden Forgot link, full-width button, stacked footer) live inside a 700px block", () => {
+  it("docs/design/Chautauqua Account.dc.html:121 `width:390px; height:844px` -- the Sign-in phone rules (wordmark, inputs, hidden Forgot link, full-width button, stacked footer) live inside a 700px block", () => {
     expect(joined).toMatch(/\.chq-auth-stack \.chq-auth-wordmark\s*\{[^}]*font-size:\s*26px/);
     expect(joined).toMatch(/\.chq-auth-stack \.chq-auth-card input\[type=email\][\s\S]*?min-height:\s*50px/);
     expect(joined).toMatch(/\.chq-auth-stack \.chq-auth-tertiary\s*\{[^}]*display:\s*none/);

@@ -1,11 +1,16 @@
 // v12 design pack — Tier 0, wave 86 (DEC-967 amendment): the two
 // UNCLAIMED width:390 PHONE frames in docs/design/Chautauqua Home.dc.html --
 //
-//   "Event hub · phone"    docs/design/Chautauqua Home.dc.html:116-180
+//   "Event hub · phone"    Chautauqua Home.dc.html lines 116-180
 //                           (label at :113) -- the full state: open CFPs,
-//                           published programmes, past events.
-//   "Fresh deploy · phone" docs/design/Chautauqua Home.dc.html:302-325
-//                           (label at :299) -- nothing has ever run.
+//                           published programmes, past events. Cited with
+//                           its strict form (and receipted) at the describe
+//                           block below, "v12 phone frame 'Event hub'".
+//   "Fresh deploy · phone" Chautauqua Home.dc.html lines 302-325
+//                           (label at :299) -- nothing has ever run. Cited
+//                           with its strict form (and receipted) at the
+//                           describe block below, "v12 phone frame 'Fresh
+//                           deploy'".
 //
 // "Between cycles · phone" (:231-268, label :228) is claimed by
 // test/public-home-phone.test.ts (its :261 citation) and is NOT re-claimed
@@ -163,12 +168,12 @@ describe("v12 phone frame 'Event hub' (docs/design/Chautauqua Home.dc.html:116-1
     expect(hero).toMatch(/gap:\s*8px/);
   });
 
+  // .chq-home-row only ever renders in state === "full" (hubState()
+  // guarantees at least one openCfp/published row there, and none in
+  // between_cycles/fresh), so :has(.chq-home-row) is the CSS-only proxy
+  // for "this is the Event hub frame's own H1", without a state class on
+  // the DOM.
   it("docs/design/Chautauqua Home.dc.html:124 `font-size:30px; font-weight:700; letter-spacing:-0.042em; line-height:1.05` -- H1 'Events' is 30px/1.05 (desktop is 44px/1.2), full-state-scoped since :239/:310 pin 29px/1.07 for the two empty states sharing the same .chq-home-hero h1 selector", () => {
-    // .chq-home-row only ever renders in state === "full" (hubState()
-    // guarantees at least one openCfp/published row there, and none in
-    // between_cycles/fresh), so :has(.chq-home-row) is the CSS-only proxy
-    // for "this is the Event hub frame's own H1", without a state class on
-    // the DOM.
     const h1 = phoneRule(PHONE, ".chq-home-body:has(.chq-home-row) .chq-home-hero h1");
     expect(h1).toMatch(/font-size:\s*30px/);
     expect(h1).toMatch(/line-height:\s*1\.05/);
@@ -277,12 +282,12 @@ describe("v12 phone frame 'Fresh deploy' (docs/design/Chautauqua Home.dc.html:30
   });
 });
 
+// .chq-home-action-tertiary ("API docs ›") renders only in the fresh
+// state's signin-row (root.tsx) -- the CSS-only proxy for "this is the
+// Fresh deploy frame", mirroring the .chq-home-row proxy used for the
+// Event hub frame above.
 describe("v12 phone frame 'Fresh deploy' (docs/design/Chautauqua Home.dc.html:302-325) — body", () => {
   it("docs/design/Chautauqua Home.dc.html:308 `flex:1; min-height:0; padding:34px 16px 20px; display:flex; flex-direction:column; gap:18px` -- diverges from the Event hub/Between cycles body (20px/24px): no scroll-region top-padding, tighter 18px gap", () => {
-    // .chq-home-action-tertiary ("API docs ›") renders only in the fresh
-    // state's signin-row (root.tsx) -- the CSS-only proxy for "this is the
-    // Fresh deploy frame", mirroring the .chq-home-row proxy used for the
-    // Event hub frame above.
     const body = phoneRule(PHONE, ".chq-home-body:has(.chq-home-action-tertiary)");
     expect(body).toMatch(/padding-block:\s*34px 20px/);
     expect(body).toMatch(/gap:\s*18px/);
