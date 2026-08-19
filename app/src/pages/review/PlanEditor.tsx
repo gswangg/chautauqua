@@ -1695,9 +1695,12 @@ export function PlanEditor() {
               <p className="chq-review-criteria-empty-footer">You can save this as a draft plan and open it later</p>
             </div>
           )}
-          {/* DEC-882: the criteria list names its columns, in the
-              section-label type this page already uses, aligned to the
-              existing criterion row's grid columns. */}
+          {/* DEC-882: the criteria list names all six of the frame's
+              columns -- `Chautauqua Review.dc.html:493`:
+              `<span></span><span>Criterion</span><span>Guidance for
+              reviewers · optional</span><span>Type</span><span>Weight</span>
+              <span></span>` -- in the section-label type this page already
+              uses, aligned to the existing criterion row's grid columns. */}
           <div className="chq-review-criteria-head-row" aria-hidden="true">
             {/* DEC-715: the drag-handle column has no header label of its own. */}
             <span> </span>
@@ -1706,9 +1709,7 @@ export function PlanEditor() {
               Guidance for reviewers
               <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
             </span>
-            {/* w5-e: the KIND column (rating/dropdown) is dropped -- it read
-                as internal plumbing between Guidance and Weight, not
-                information the frame names. */}
+            <span className="chq-review-criteria-head-cell">Type </span>
             <span className="chq-review-criteria-head-cell">Weight </span>
             <span> </span>
           </div>
