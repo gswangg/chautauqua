@@ -139,11 +139,14 @@ const PHONE_TAB_PATHS = ['/overview', '/submissions', '/speakers', '/content'] a
 // only on a 2xx, never swallow a rejection) -- App.tsx calls it rather than
 // hand-copying the fetch.
 //
-// Calls signOut() without swallowing a rejection into `void` -- a failed
-// sign-out must surface (fail loudly) rather than be silently discarded.
-function handleSignOutClick(): void {
+// v12m-w14-c: a rejected signOut() used to be re-thrown into the click
+// handler, which only produces an unhandled promise rejection -- no
+// message reaches the operator and the (still-live) session looks
+// unchanged. Callers now pass their own setter so the failure lands in a
+// visible chq-error alert instead.
+function handleSignOutClick(setError: (message: string) => void): void {
   signOut().catch((err) => {
-    throw err;
+    setError(err instanceof Error ? err.message : 'Failed to sign out');
   });
 }
 
@@ -197,6 +200,7 @@ function Header() {
   const { me } = useMe();
   const isReviewer = me?.role === 'reviewer';
   const sections = isReviewer ? NAV_SECTIONS.filter(isReviewerNav) : NAV_SECTIONS;
+  const [signOutError, setSignOutError] = useState<string | null>(null);
 
   return (
     <header className="chq-header">
@@ -212,6 +216,11 @@ function Header() {
             caption) whenever no page portals into it. */}
         <div id="chq-header-slot" className="chq-header-slot" />
         <EventSwitcher />
+        {signOutError && (
+          <div className="chq-error" role="alert">
+            {signOutError}
+          </div>
+        )}
         {/* DEC-369 amendment (wave 72): no bottom chrome bar -- Sign out
             rejoins the header identity, "JORDAN A. · SIGN OUT", a real
             button one click from any page, never a menu. It's nested
@@ -223,7 +232,11 @@ function Header() {
         {me && (
           <span className="chq-user-identity">
             {identityLabel(me.name, me.email, me.role as 'organizer' | 'reviewer' | 'speaker')}
-            <button type="button" className="chq-btn chq-btn-tertiary chq-header-signout" onClick={handleSignOutClick}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-tertiary chq-header-signout"
+              onClick={() => handleSignOutClick(setSignOutError)}
+            >
               Sign out
             </button>
           </span>
@@ -242,6 +255,7 @@ function PhoneTabBar() {
   const exceptions = useNavExceptions();
   const tabsNavigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const isReviewer = me?.role === 'reviewer';
   const sections = isReviewer ? NAV_SECTIONS.filter(isReviewerNav) : NAV_SECTIONS;
 
@@ -326,7 +340,16 @@ function PhoneTabBar() {
               </button>
             </div>
             <NavLinks sections={moreSections} onNavigate={closeMore} />
-            <button type="button" className="chq-btn chq-btn-secondary" onClick={handleSignOutClick}>
+            {signOutError && (
+              <div className="chq-error" role="alert">
+                {signOutError}
+              </div>
+            )}
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              onClick={() => handleSignOutClick(setSignOutError)}
+            >
               Sign out
             </button>
           </div>
