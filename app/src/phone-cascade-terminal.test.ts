@@ -8,6 +8,18 @@
 // file that restates exactly those 12 declarations, so they become the LAST
 // declaration in source order and win again.
 //
+// v12m-w3-k (DEC-385 wave-100/102 amendment): the file's four earlier
+// max-width:700px blocks (including the wave-7 "first" block named above)
+// have since been forward-merged into this one terminal block, in
+// ascending source order, per DEC-385's one-terminal-block-per-sheet
+// contract -- there is only ONE max-width:700px block in the file now,
+// and it is both the first and the last. The shadow-repair reasoning
+// above (source order alone decides the cascade at equal specificity)
+// still holds; only the "second, separate block" shape it describes has
+// changed. See the "the file carries exactly one max-width:700px block,
+// forward-merged" test below (it replaces the old "does not touch the
+// original phone block at :381" test, which asserted the pre-merge shape).
+//
 // This is a source-scan, brace-matched (not a naive /\{[^}]*\}/, which
 // truncates at the first nested '}' and would treat an @media block's
 // first nested rule as the whole block) parse of app/src/styles.css:
@@ -204,11 +216,26 @@ describe('phone cascade terminal repair (DEC-385, wave 7)', () => {
     expect(last?.body).toContain('.chq-checkbox-label');
   });
 
-  it('does not touch the original phone block at :381 (still first, still present)', () => {
-    const firstMedia = top.find((c) => c.isMedia);
-    expect(firstMedia).toBeDefined();
-    expect(firstMedia?.header).toMatch(/max-width:\s*700px/);
-    expect(firstMedia?.body).toContain('.chq-header');
-    expect(firstMedia?.body).toContain('.chq-tabbar');
+  it('the file carries exactly one max-width:700px block, forward-merged (DEC-385 wave-100/102 amendment, v12m-w3-k)', () => {
+    // This test used to assert the wave-7 fix's ORIGINAL shape: a first,
+    // untouched historical block at :381 plus a second, separate terminal
+    // block appended at the file's end. DEC-385 wave-100/102 superseded
+    // that shape with a one-terminal-block contract for every sheet, and
+    // v12m-w3-k forward-merged this file's four earlier @media
+    // (max-width: 700px) blocks into the sheet's one remaining block, in
+    // ascending source order -- so there is no longer a separate first
+    // block to leave untouched. The one block that remains is both the
+    // file's first AND its last max-width:700px construct, and it still
+    // carries the content the old first block held (.chq-header,
+    // .chq-tabbar) alongside the twelve restated shadow-repair
+    // declarations (.chq-main, .chq-checkbox-label, ...) checked above.
+    const phoneMedia = top.filter((c) => c.isMedia && /max-width:\s*700px/.test(c.header));
+    expect(phoneMedia.length).toBe(1);
+    const sole = phoneMedia[0];
+    expect(sole).toBeDefined();
+    expect(sole?.body).toContain('.chq-header');
+    expect(sole?.body).toContain('.chq-tabbar');
+    expect(sole?.body).toContain('.chq-main');
+    expect(sole?.body).toContain('.chq-checkbox-label');
   });
 });

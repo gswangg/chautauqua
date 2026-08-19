@@ -258,7 +258,17 @@ describe('phone @media declarations are never shadowed by a later top-level rule
     // nothing -- or matches only one block -- still fails) at the actual
     // measured population instead of a number that would make this test
     // permanently red.
-    expect(result.maxWidthBlockCount).toBeGreaterThanOrEqual(4);
+    //
+    // v12m-w3-k (DEC-385 wave-100/102 amendment): styles.css's four
+    // max-width:700px blocks were forward-merged into the sheet's one
+    // terminal block, per DEC-385's one-terminal-block-per-sheet contract
+    // -- the file now carries exactly 1 top-level max-width block, not 4.
+    // The DECLARATION count this tripwire also guards is unaffected (the
+    // merge moved rules between blocks, it did not remove any), so that
+    // floor stays put; only the block-count floor drops to reflect the
+    // legitimate post-merge shape (still comfortably above zero, so a
+    // parser that silently matches nothing still fails).
+    expect(result.maxWidthBlockCount).toBeGreaterThanOrEqual(1);
     expect(result.phoneDeclarations.length).toBeGreaterThanOrEqual(100);
   });
 
