@@ -94,3 +94,19 @@ Both rulings are implemented in `ImportWizard.tsx` (the phone dock's
 button logic) and `contacts-panels.css` (`.chq-contacts-import-dedupe`'s
 phone-hidden rule); new coverage in
 `ImportWizard.phoneColumns.render.test.tsx`.
+
+**Finding 3 — filed by v12m-w1-c, not fixed (out of that task's file
+scope).** `docs/design/Chautauqua Contacts.dc.html:535` ("Merge · 390")
+draws the consequence block as ONE line: `Labels combine, notes are
+appended · 3 submissions and 1 task move to the record you keep`.
+`MergePage.tsx`'s `.chq-contacts-merge-rule-box` (around line 330) splits
+this across TWO `<p>` elements (`.chq-contacts-merge-rule-box-rule` for
+the combine rule, `.chq-contacts-merge-impact` for the submissions/tasks
+line) and names the kept record by first/last name
+(`{keepContact.firstName} {keepContact.lastName}`) instead of the
+frame's generic "the record you keep." Reconciling this touches the
+component's core data-flow (the impact paragraph currently needs
+`keepContact` for its name interpolation and is conditionally rendered
+only when `impact` has loaded) and is a copy/structure decision, not a
+one-line fix -- left for a future wave rather than expanding v1-c's
+scope beyond its four assigned divergences.
