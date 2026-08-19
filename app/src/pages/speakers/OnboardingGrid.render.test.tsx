@@ -2078,11 +2078,11 @@ describe('OnboardingGrid: P3 #21 taskId narrowing collapses the rendered columns
   });
 });
 
-// v12 mobile campaign w2-c: docs/design/Chautauqua Speakers.dc.html:133
-// `Matrix becomes one card per speaker` -- the phone card's bottom action
-// pair (frame :165 `Remind` / `Open profile`) and the phone head's own
-// Remind-outstanding/Filter row + Roster entry link (frame :135-142,
-// :260).
+// v12 mobile campaign w2-c: the phone card grid -- Matrix becomes one card
+// per speaker -- the phone card's bottom action pair (frame :165 `Remind` /
+// `Open profile`) and the phone head's own Remind-outstanding/Filter row +
+// Roster entry link (frame :135-142, :260). Citation lands on the `it`
+// below, beside its own assertion.
 describe('v12m-w2-c: Speakers phone frames', () => {
   it('each phone card carries a Remind / Open profile action pair, and the profile link targets the contact', async () => {
     mockApi({
@@ -2097,6 +2097,7 @@ describe('v12m-w2-c: Speakers phone frames', () => {
     );
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
+    // docs/design/Chautauqua Speakers.dc.html:133 `width:390px; height:844px; background:#F4F1E8` -- the phone card grid frame.
     const cards = within(document.querySelector('.chq-speakers-cards') as HTMLElement);
     const adaCard = cards.getByText('Ada Lovelace').closest('.chq-speakers-card') as HTMLElement;
     const actions = within(adaCard).getByText('Open profile').closest('.chq-speakers-card-actions') as HTMLElement;

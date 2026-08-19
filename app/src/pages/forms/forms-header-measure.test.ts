@@ -6,7 +6,8 @@
 // two different right edges on the same page. w40-b's fix made BOTH blocks
 // share the page root's single measure by declaring no clamp of their own.
 //
-// Frame 04 (docs/design/Chautauqua Submissions.dc.html:358-414) instead
+// Frame 04 (Chautauqua Submissions.dc.html:358-414, citation lands on the
+// first `it` below beside its own assertion) instead
 // draws the header bar full bleed at 1440 (title at the shell's own gutter,
 // Preview/Save at the far right) with the field-list CONTENT staying at the
 // narrower 820 builder measure -- the same "chrome full bleed, content
@@ -79,6 +80,7 @@ function topLevelRuleBody(css: string, selector: string): string {
 
 describe('forms.css header measure (frame-04 anatomy, task-w5-h)', () => {
   it('.chq-forms-header declares no max-width of its own, stretching to the page root\'s full 1440 measure', () => {
+    // docs/design/Chautauqua Submissions.dc.html:358 `width:390px; height:844px; background:#F4F1E8`
     expect(topLevelRuleBody(CSS, '.chq-forms-header')).not.toMatch(/max-width/);
   });
 

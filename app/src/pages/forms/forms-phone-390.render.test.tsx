@@ -1,11 +1,8 @@
 // v12 mobile campaign, task w2-h: CFP form builder at 390 (Tier 1, SPA).
-// Frame docs/design/Chautauqua Submissions.dc.html:468 `<div style="width:
-// 390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0;
-// border-radius:20px; overflow:hidden; display:flex; flex-direction:column;
-// box-shadow:0 18px 44px rgba(27,29,23,0.13)">` (frame 03--06 "CFP form ·
-// 390"): head "‹ Submissions" + "CFP form" + "Closes … · N received", body
-// one row per question with a ⋮⋮ drag handle and a right-flushed Edit, dock
-// filled "Save the form" over bordered "Preview".
+// Frame 03--06 "CFP form · 390" (citation lands on the first `it` below,
+// beside its own assertion): head "‹ Submissions" + "CFP form" + "Closes …
+// · N received", body one row per question with a ⋮⋮ drag handle and a
+// right-flushed Edit, dock filled "Save the form" over bordered "Preview".
 //
 // jsdom applies no @media rule, so this asserts the phone-only markup is
 // PRESENT (real content, real data), not that it is visually shown --
@@ -81,6 +78,7 @@ describe('FormsPage phone drill head + dock (frame 03--06, task w2-h)', () => {
     // Head: back link + drill H1 + the real closes-date/received meta line,
     // carried by the SAME markup as the desktop header (no duplicate
     // heading), tagged with the landed v12 scaffold classes.
+    // docs/design/Chautauqua Submissions.dc.html:468 `width:390px; height:844px; background:#F4F1E8` -- frame 03--06 "CFP form · 390".
     const header = document.querySelector('.chq-forms-header') as HTMLElement;
     expect(header).toHaveClass('chq-phone-head', 'chq-phone-head-drill');
     const backLink = within(header).getByRole('link', { name: /Submissions/ });

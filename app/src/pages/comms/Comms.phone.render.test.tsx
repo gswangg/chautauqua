@@ -119,10 +119,11 @@ describe('comms.css: phone landing hidden at desktop width', () => {
 });
 
 // v12 mobile campaign w1 (DEC-621 amendment; planner's ruling): the phone
-// landing is now the frame's own dashboard, frame docs/design/Chautauqua
-// Comms.dc.html:177 (`width:390px; height:844px`), the 'Comms' · 390
+// landing is now the frame's own dashboard, the 'Comms' · 390
 // screen -- a title+subtitle, an optional "Draft in progress" card, and a
-// read-only "Recent sends" list -- replacing the old three-way chooser.
+// read-only "Recent sends" list -- replacing the old three-way chooser
+// (frame citation lands on the first `it` below, beside its own
+// assertion).
 describe('CommsPage: phone landing (DEC-621 amendment, v12 landing)', () => {
   it('renders the frame\'s title/subtitle and recent-sends list, hidden by default (JS-state class, not width check)', async () => {
     mockApi({
@@ -143,6 +144,7 @@ describe('CommsPage: phone landing (DEC-621 amendment, v12 landing)', () => {
     // stays a SINGLE match, not getAllByRole.
     await screen.findByRole('heading', { name: 'Comms' });
 
+    // docs/design/Chautauqua Comms.dc.html:177 `width:390px; height:844px; background:#F4F1E8` -- the 'Comms' · 390 phone landing dashboard.
     const landing = document.querySelector<HTMLElement>('.chq-comms-phone-landing');
     expect(landing).not.toBeNull();
     expect(landing).toHaveClass('chq-comms-phone-landing-show');

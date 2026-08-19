@@ -1,8 +1,10 @@
 // v12 mobile campaign wave 6 (task w6-e): closes the two Comms phone frames
-// nothing in the tree claimed -- docs/design/Chautauqua Comms.dc.html:286
-// ("Templates · 390") and docs/design/Chautauqua Comms.dc.html:335 ("Send
+// nothing in the tree claimed -- Chautauqua Comms.dc.html:286
+// ("Templates · 390") and Chautauqua Comms.dc.html:335 ("Send
 // history · 390") -- per test/phone-frame-ledger.scan.test.ts's citation
-// form (`docs/design/<file>.dc.html:<line>`, DEC-976), each landing inside
+// form (`docs/design/<file>.dc.html:<line>`, DEC-976; the two strict
+// citations themselves live on the describe blocks below, beside their own
+// assertions), each landing inside
 // its own frame's extent (the width:390px/height:844 line up to the next
 // frame-label line) and each sitting beside a real assertion, never a bare
 // comment.
@@ -55,11 +57,12 @@ function template(overrides: Partial<EmailTemplate> = {}): EmailTemplate {
   } as EmailTemplate;
 }
 
-describe('docs/design/Chautauqua Comms.dc.html:286 -- "Templates · 390" drill head', () => {
+describe('"Templates · 390" drill head', () => {
   // Frame extent check: line 286 is the frame's own width:390px/height:844
   // line, and it carries the "Templates · 390" label the ledger resolves
   // titles from (nearest preceding font-size:19px label span, line 279).
   it("line 286 is the frame's own width:390px/height:844 declaration", () => {
+    // docs/design/Chautauqua Comms.dc.html:286 `width:390px; height:844px; background:#F4F1E8`
     const line = FRAME_LINES[286 - 1];
     expect(line).toMatch(/width:390px/);
     expect(line).toMatch(/height:844/);
@@ -87,8 +90,9 @@ describe('docs/design/Chautauqua Comms.dc.html:286 -- "Templates · 390" drill h
   });
 });
 
-describe('docs/design/Chautauqua Comms.dc.html:335 -- "Send history · 390" drill head', () => {
+describe('"Send history · 390" drill head', () => {
   it("line 335 is the frame's own width:390px/height:844 declaration", () => {
+    // docs/design/Chautauqua Comms.dc.html:335 `width:390px; height:844px; background:#F4F1E8`
     const line = FRAME_LINES[335 - 1];
     expect(line).toMatch(/width:390px/);
     expect(line).toMatch(/height:844/);

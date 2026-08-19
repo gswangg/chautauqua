@@ -1,7 +1,7 @@
-// v12m-w2-b: the phone-only "one column per screen" pager added for frame
-// docs/design/Chautauqua Contacts.dc.html:487 (`<div style="width:390px;
-// height:844px; ...">`, the "Import CSV · 390" frame body :487-511). This
-// exercises the component-state pager itself -- phoneColumnIndex, the radio
+// v12m-w2-b: the phone-only "one column per screen" pager added for the
+// "Import CSV · 390" frame body :487-511 (citation lands on the first `it`
+// below, beside its own assertion). This exercises the component-state
+// pager itself -- phoneColumnIndex, the radio
 // target list, and the Next column/Skip dock -- against jsdom, which never
 // evaluates the `@media (max-width: 700px)` layer that actually hides this
 // markup at desktop widths, so the phone block and the desktop select grid
@@ -108,6 +108,7 @@ describe('ImportWizard: phone-only Import CSV pager (v12m-w2-b, frame :487)', ()
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
 
     await screen.findByText('Column 1 of 4');
+    // docs/design/Chautauqua Contacts.dc.html:487 `width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0` -- the "Import CSV · 390" frame body :487-511.
     expect(phoneColumnName().textContent).toBe('First Name');
     expect(within(phoneColumn()).getByText('First three values: John')).toBeInTheDocument();
   });
