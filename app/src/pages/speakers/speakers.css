@@ -182,8 +182,8 @@
   min-width: 0;
 }
 
-/* overflow-exempt: docs/design/Chautauqua Speakers.dc.html:130 "Matrix
-   becomes one card per speaker" -- the 390 frame at :133 replaces this
+/* overflow-exempt: docs/design/Chautauqua Speakers.dc.html:130 `Matrix
+   becomes one card per speaker` -- the 390 frame at :133 replaces this
    matrix with .chq-speakers-cards (below), and .chq-speakers-grid-wrap is
    set to display:none in the terminal max-width:700px block further down,
    so the desktop measure below never reaches the phone viewport. Re-lined
@@ -655,8 +655,9 @@ a.chq-speakers-task-title:hover {
 
 /* DEC-830 wave-19 amendment: the panel is a fixed-width three-band card
    (identity header / body / footer) rather than a padded+gapped list --
-   frame Chautauqua Speakers.dc.html:296-317. Each band owns its own
-   padding; the panel itself carries none. */
+   frame Chautauqua Speakers.dc.html:295-317 `Northwind Data · no portal
+   account`. Each band owns its own padding; the panel itself carries
+   none. */
 .chq-participation-menu-panel {
   position: absolute;
   z-index: 20;
@@ -1471,7 +1472,7 @@ a.chq-speakers-task-title:hover {
 }
 
 @media (max-width: 700px) {
-  /* docs/design/Chautauqua Speakers.dc.html:133 `Matrix becomes one card
+  /* docs/design/Chautauqua Speakers.dc.html:130 `Matrix becomes one card
      per speaker` -- the desktop's three-button row has no room at 390, so
      it hides and the phone action row (declared hidden above) takes over.
      The H1/summary above it (.chq-speakers-head-titles) is untouched --
@@ -1480,7 +1481,7 @@ a.chq-speakers-task-title:hover {
     display: none;
   }
 
-  /* docs/design/Chautauqua Speakers.dc.html:138
+  /* docs/design/Chautauqua Speakers.dc.html:141
      `display:flex; gap:8px` -- Remind outstanding / Filter. */
   .chq-speakers-phone-head-actions {
     display: flex;
@@ -1522,7 +1523,7 @@ a.chq-speakers-task-title:hover {
     flex: 1;
   }
 
-  /* docs/design/Chautauqua Speakers.dc.html:260 `Roster · 390` -- the
+  /* docs/design/Chautauqua Speakers.dc.html:257 `Roster · 390` -- the
      drill-in screen (RosterPanel.tsx's RosterDrillIn). Stacks head/body/
      dock as a column; the shared .chq-phone-head/-body/-dock classes
      supply their own sticky/scroll geometry. */
@@ -1603,10 +1604,11 @@ a.chq-speakers-task-title:hover {
     min-width: 0;
   }
 
-  /* docs/design/Chautauqua Speakers.dc.html:296-317 draws the participation
-     panel as a fixed 420px card on desktop; nothing in the 390 frames widens
-     the phone content column past 358px, so the panel takes the full
-     available width there instead of overflowing it. */
+  /* docs/design/Chautauqua Speakers.dc.html:295-317 `Northwind Data · no
+     portal account` draws the participation panel as a fixed 420px card on
+     desktop; nothing in the 390 frames widens the phone content column past
+     358px, so the panel takes the full available width there instead of
+     overflowing it. */
   .chq-participation-menu-panel {
     width: 100%;
     min-width: 0;

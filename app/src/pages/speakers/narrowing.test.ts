@@ -20,7 +20,7 @@ describe('activeFacet', () => {
     expect(facet).not.toBeNull();
     expect(facet!.key).toBe('q');
     expect(facet!.reason('Marcus Okafor')).toBe('No speakers match "Marcus Okafor".');
-    expect(facet!.escapeLabel).toBe('Clear the search ›');
+    expect(facet!.escapeLabel).toBe('Clear the search filter ›');
     expect(facet!.clear(filters({ q: 'Marcus Okafor', overdueOnly: true }))).toEqual(
       filters({ q: '', overdueOnly: true }),
     );
