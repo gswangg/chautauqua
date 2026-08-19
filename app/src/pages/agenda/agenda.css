@@ -1184,8 +1184,9 @@
      OUTSIDE the isPhone branch, so at phone width it stood above
      PhoneAgenda's own .chq-phone-day-chips and the page showed the day
      selector TWICE ("Wed 12 May" tabs over "Wed 12" chips). The frame's
-     390 column (docs/design/Chautauqua Agenda.dc.html:127-144) has exactly
-     one day selector, inside the head band -- the chips. The desktop strip
+     390 column (docs/design/Chautauqua Agenda.dc.html:127-144
+     `width:390px; height:844px`) has exactly one day selector, inside the
+     head band -- the chips. The desktop strip
      is the leak, so it is the one that goes; the strip also carries the
      "Clashes are flagged, not blocked" note, which the frame's phone head
      band likewise does not have. */
@@ -1551,8 +1552,9 @@
   /* width they paint ABOVE the phone head band and the page draws its     */
   /* identity twice: "Agenda" + "1 unplaced · 2 conflicts · 93% placed"    */
   /* over the frame's own "chautauqua" / "1 unplaced · 2 clash" /          */
-  /* "Agenda" band (docs/design/Chautauqua Agenda.dc.html:129-133), and    */
-  /* Auto-schedule twice (head row + frame :199 dock).                     */
+  /* "Agenda" band (docs/design/Chautauqua Agenda.dc.html:129-133          */
+  /* `display:flex; align-items:center; gap:10px`), and Auto-schedule      */
+  /* twice (head row + frame :199 dock).                                   */
   /*                                                                      */
   /* What goes is what the phone band RE-LINES, and only that. DEC-919 is  */
   /* "re-line, never remove": the frame's 390 column draws no Breaks and   */
@@ -1578,7 +1580,8 @@
 
   /* phone-hidden: desktop twin of a phone-only sibling (DEC-919 wave-101
      shape 1) -- the SAME auto-schedule act is drawn by the frame's dock at
-     docs/design/Chautauqua Agenda.dc.html:200 and rendered by
+     docs/design/Chautauqua Agenda.dc.html:200
+     `min-height:44px; display:flex; align-items:center` and rendered by
      app/src/pages/agenda/PhoneAgenda.tsx:308-315 as
      .chq-btn-primary.chq-phone-footer-btn, wired to the same
      onAutoSchedule/autoScheduling props this button uses. Scoped to
