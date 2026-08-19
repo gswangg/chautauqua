@@ -264,5 +264,18 @@ export const CHROME_CSS = `
     max-width: calc(var(--chq-measure-wide) + (var(--chq-pub-main-pad-x) * 2));
   }
 
-
+  /* B8 (DESIGN-RULINGS, DEC-808 wave-99 amendment): the search submit
+     button above transitions background-color via var(--chq-motion-color).
+     THEME_CSS's :root already re-binds --chq-motion-color to 0ms under
+     prefers-reduced-motion (theme.ts:705-711) and is inlined ahead of this
+     sheet on every page (shell.tsx), so the token itself is already
+     reduced -- this local re-bind is the belt-and-suspenders form every
+     sheet with its own transition carries (mirrors home.css.ts:89-95),
+     kept independent of load order so this fragment stays correct even if
+     it is ever inlined standalone. */
+  @media (prefers-reduced-motion: reduce) {
+    button.chq-pub-search-submit[type=submit] {
+      transition-duration: 0ms;
+    }
+  }
 `;
