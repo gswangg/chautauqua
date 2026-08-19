@@ -471,10 +471,6 @@ export const PORTAL_CSS = `
      right-flush -- adding a co-presenter is an aside, not the page's
      primary action. */
   .chq-portal-copresenter-submit { padding-top: 2px; }
-  /* DEC-029: the co-presenter block's plain container (holds the name/email
-     rows + submit; no form of its own -- edit.tsx:359). Stacks its rows at
-     the section's own rhythm. */
-  .chq-portal-copresenter-fields { display: flex; flex-direction: column; gap: 10px; }
   /* DEC-367 amendment (wave 57): moved to the phone media block
      at the tail of this module -- phone-only tap floor. */
 
