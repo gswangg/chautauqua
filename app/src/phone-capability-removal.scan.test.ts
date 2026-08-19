@@ -323,36 +323,44 @@ const CFP_SUBMIT_BUTTON_WORK_ITEM = '[data-chq-cfp-step="1"] .chq-cfp-actions bu
 // counted.
 //
 // UNOWNED WORK ITEMS (named per the field-guide rule: read a ratchet's
-// closing sentence as a work item, not as prose). Measured on this branch
-// at authoring time, the seven remaining unreceipted interactive rules
-// are, each, a capability with no phone home -- none is exempted here
-// because none is either a proven dead-end navigation control or a
-// verified re-lined replacement:
+// closing sentence as a work item, not as prose). Re-measured wave-106
+// (task v12m-w2-b) after settings-lists.css's two desktop-twin hides
+// gained their DEC-919 receipt: the six remaining unreceipted interactive
+// rules are, each, a capability with no phone home -- none is exempted
+// here because none is either a proven dead-end navigation control or a
+// verified re-lined replacement. The forms.css pair cited by an earlier
+// wave's count is gone (field-row action and add-question control now
+// have phone renderers); a new offender, `.chq-detail-back-full`, has
+// appeared in its place:
 //   * `[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]`
 //     (cfp.css.ts:254) -- step 1 renders no submit control of any kind;
 //     explicitly out of THIS task's scope (owned by task v12m-w14-b).
 //   * `.chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-tertiary`
 //     (content.css) -- the bulk-selection secondary action disappears at
 //     390 with no phone equivalent found.
-//   * `.chq-forms-field-actions .chq-btn:last-child` and
-//     `.chq-forms-add-question` (forms.css) -- a field-row action and the
-//     add-question control both drop out at 390.
 //   * `.chq-overview-btn-waitlist` (overview.css) -- the waitlist action
 //     has no phone equivalent found.
 //   * `.chq-review-criterion-row > .chq-forms-field-drag` (review.css) --
 //     a drag handle is a legal disabled-token use, not a legal
 //     display:none use; this rule removes the reorder capability outright
 //     at 390 rather than disabling it in place.
+//   * `.chq-detail-back-full` (submissions/detail.css) -- a back-navigation
+//     control drops out at 390 with no verified phone equivalent found
+//     (not receipted on assumption -- a genuine dead-end must be verified
+//     before it earns a `phone-hidden:` reason).
 //   * `.chq-auth-stack .chq-auth-tertiary` (auth.css) -- the tertiary auth
-//     action drops out at 390 with no phone equivalent found.
+//     action drops out at 390 with no phone equivalent found; a ruling is
+//     owned by task v12m-w13-d.
 // A future wave closes each by giving its cluster a phone-width
 // affordance, or by writing a receipt once a genuine re-lined replacement
 // or navigation dead-end is verified -- never by receipting on assumption.
-// Re-baselined 2026-08-19 at merge time: the probe was authored on the
-// stranded wave-14 branch against a 7-rule main; waves 15+ added three
-// unreceipted hides before the probe landed. The ratchet is one-sided
-// from HERE -- receipt or remove to lower it, never raise it again.
-export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 10;
+// Re-measured 2026-08-19 (wave 106, task v12m-w2-b) against this branch's
+// tree: truth is 6, down from the stale ceiling of 10 this file shipped
+// with. Tightening this constant is a merge-train act performed once per
+// batch (re-measure the whole tree, not a worker's mid-lane snapshot) --
+// the ratchet remains one-sided from HERE: receipt or remove to lower it,
+// never raise it again to accommodate a new unreceipted rule.
+export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 6;
 
 describe('DEC-919 phone capability-removal probe', () => {
   it('finds more than one sheet (vacuous-population tripwire, sheet side)', () => {
@@ -450,6 +458,30 @@ describe('DEC-919 phone capability-removal probe', () => {
       UNRECEIPTED.length,
       `unreceipted interactive phone display:none rules (${UNRECEIPTED.length}, ceiling ${PHONE_HIDDEN_UNRECEIPTED_CEILING}):\n${detail}`,
     ).toBeLessThanOrEqual(PHONE_HIDDEN_UNRECEIPTED_CEILING);
+  });
+
+  // Companion to the ceiling test above, mirroring
+  // test/phone-frame-ledger.scan.test.ts's stale-floor companion (DEC-808):
+  // a ceiling that sits ABOVE the measured truth is just as much a lie as
+  // one that sits below it -- it licenses stagnation instead of forbidding
+  // debt. This FAILS whenever the measured unreceipted count falls BELOW
+  // PHONE_HIDDEN_UNRECEIPTED_CEILING, printing the exact replacement line.
+  // Re-tightening the constant is a merge-train act performed once per
+  // batch (re-measure the whole tree, never a worker's mid-lane edit) --
+  // the ratchet's one-sided half still stands: this companion only ever
+  // asks for a LOWER number, never licenses raising the ceiling back up to
+  // accommodate a new unreceipted rule.
+  it('never sits ABOVE the measured truth without the ceiling being tightened to match (a stale ceiling licenses stagnation)', () => {
+    if (UNRECEIPTED.length < PHONE_HIDDEN_UNRECEIPTED_CEILING) {
+      throw new Error(
+        `${UNRECEIPTED.length} unreceipted interactive phone display:none rule(s), below the ` +
+          `ratchet ceiling of ${PHONE_HIDDEN_UNRECEIPTED_CEILING}. This is the ratchet working: ` +
+          `coverage landed. Tighten the ceiling in the same commit (a merge-train act, never a ` +
+          `worker's edit mid-lane) by replacing the line:\n` +
+          `  export const PHONE_HIDDEN_UNRECEIPTED_CEILING = ${UNRECEIPTED.length};`,
+      );
+    }
+    expect(UNRECEIPTED.length).toBeGreaterThanOrEqual(PHONE_HIDDEN_UNRECEIPTED_CEILING);
   });
 });
 
