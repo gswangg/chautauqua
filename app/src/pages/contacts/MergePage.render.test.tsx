@@ -82,9 +82,14 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
       expect(screen.getByText('Merge two records')).toBeInTheDocument();
     });
 
-    // "1 of N pairs" counter above the compare table.
+    // "1 of N pairs" counter above the compare table. v12m-w1-c (DEC-919
+    // amendment wave 98): the same <p> now also carries a phone-only
+    // "· <kept name>" suffix span (hidden on desktop by CSS, but still
+    // present in the DOM -- textContent doesn't respect display:none), so
+    // this asserts the element's own textContent rather than an exact
+    // getByText match against the visible-only string.
     await waitFor(() => {
-      expect(screen.getByText('1 of 2 pairs')).toBeInTheDocument();
+      expect(document.querySelector('.chq-contacts-merge-pair-count')?.textContent).toContain('1 of 2 pairs');
     });
 
     // DEC-992: column heads name both the record AND its vintage --
