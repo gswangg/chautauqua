@@ -24,13 +24,14 @@
 // public.css.ts's PUBLIC_CSS already uses to compose CHROME_CSS/CARDS_CSS/
 // AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374, DEC_377, DEC_657, DEC_919, DEC_989 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_377, DEC_643, DEC_657, DEC_919, DEC_989 } from "../../decisions";
 import { ERROR_STATES_CSS } from "../../views/error-states.css";
 import { EMPTY_CSS } from "../public/css/empty.css";
 
 void DEC_373;
 void DEC_374;
 void DEC_377; // captions below only ever restate fields the portal repo already returns
+void DEC_643; // amendment (v12 mobile campaign w1): the 25px back-linked-drill-in H1 register, wired up here for TaskFormPage/EditPage (chq-portal-hero-drill)
 void DEC_657; // wave 28 amendment: the portal's own error vocabulary is the hoisted shared one, never a private copy
 void DEC_919; // amendment (wave 52): the portal's zero-states compose the same PublicEmptyState renderer/CSS as the public surfaces
 void DEC_989; // ruling B6 (wave 25 amendment): portal content column clamps to --chq-portal-measure, not the shared reading measure
@@ -781,5 +782,41 @@ ${ERROR_STATES_CSS}
       gap: 12px;
     }
     .chq-portal-footer-band > *:last-child { margin-left: auto; }
+
+    /* v12 phone (w3-b): a back-linked portal DRILL H1 takes the 25px drill
+       register, not the 27px cluster-landing size -- scoped to a dedicated
+       modifier applied only on TaskFormPage/EditPage; /portal's own
+       dashboard H1 keeps the 27px base rule. */
+    .chq-portal-hero-drill { font-size: var(--chq-type-page-title-phone-drill); }
+
+    /* v12 phone (w3-b): at 390 the desktop two-up co-presenter field pair
+       reduces to plain single-column full-measure fields. The name pair
+       already reaches this by construction (both flex:1); only the role
+       select needs the explicit override, since its flex:0 1 190 /
+       min-width:140 base rule keeps it narrow even once it wraps. */
+    .chq-portal-copresenter-role {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    /* v12 phone (w3-b): the edit-session footer's button row keeps a
+       side-by-side row at 390 with the primary first. Scoped to the
+       edit-session footer only (page-local combinator). DEC-385: this is a
+       max-width-only VISUAL reorder (flex order) -- the DOM keeps the
+       desktop-ruled Cancel-then-Save sequence, so desktop stays frozen.
+       The footer note's own default order (0) already follows the button
+       row's order:-1. */
+    .chq-portal-actions-footer .chq-portal-actions {
+      flex-direction: row;
+      justify-content: flex-start;
+      order: -1;
+    }
+    .chq-portal-actions-footer .chq-portal-actions .chq-btn {
+      width: auto;
+    }
+    .chq-portal-actions-footer .chq-btn-primary {
+      flex: 1;
+      order: -1;
+    }
   }
 .chq-portal-shell .chq-pub-empty-block-fresh { padding-top: 10px; }`;

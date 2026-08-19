@@ -146,7 +146,7 @@ export function EditPage(props: {
     return (
       <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
         <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
-        <h1 class="chq-portal-hero">Editing closed</h1>
+        <h1 class="chq-portal-hero chq-portal-hero-drill">Editing closed</h1>
         <p role="alert">
           This submission can no longer be edited — the form's submission window has closed.
         </p>
@@ -162,7 +162,9 @@ export function EditPage(props: {
       <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
       {/* G13 (frames 10--09/22/23): the frames title this page 'Edit your
           session' at both widths. */}
-      <h1 class="chq-portal-hero">Edit your session</h1>
+      {/* w3-b (DEC-643 amendment): back-linked drill-in -> 25px phone
+          register, docs/design/Chautauqua Public and Portal.dc.html:603. */}
+      <h1 class="chq-portal-hero chq-portal-hero-drill">Edit your session</h1>
       {/* DEC-604 (wave-56 amendment): the window is the FORM's close date,
           not acceptance — canEditSubmission gates on it, so the header
           states the deadline the speaker is actually working against.

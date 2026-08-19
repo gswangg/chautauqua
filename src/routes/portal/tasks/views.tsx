@@ -353,7 +353,10 @@ export function TaskFormPage(props: {
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to="/portal/tasks" />
-      <h1 class="chq-portal-hero">{assignment.title}</h1>
+      {/* w3-b (DEC-643 amendment): back-linked drill-in -> 25px phone
+          register, docs/design/Chautauqua Public and Portal.dc.html:508
+          ("Portal · Hotel stay form" -- a form-kind task assignment). */}
+      <h1 class="chq-portal-hero chq-portal-hero-drill">{assignment.title}</h1>
       {assignment.description ? <p class="chq-portal-sub">{assignment.description}</p> : null}
       <form method="post" action={`/portal/tasks/${assignment.id}/form`} enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
