@@ -463,7 +463,7 @@ export function FormsPage() {
           button already calls -- the header's Save action hides at phone
           width (.chq-forms-header-actions), so this is the one place left
           to persist an Opens/Closes edit once the CFP window strip stays
-          visible in the scrolling content above. */}
+          visible in the scrolling content above.
           .chq-phone-dock is the landed v12 scaffold class
           (app/src/styles.css:2225-2249) supplying the sticky band/48px
           button geometry; forms.css only gates its display:none/flex and

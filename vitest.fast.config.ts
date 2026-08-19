@@ -41,6 +41,13 @@ export default defineConfig({
       // vitest.config.ts pins it to jsdom and the derived predicate in
       // test/test-tiers.test.ts calls it SLOW.
       "app/src/lib/api-mutation-bump.scan.test.ts",
+      // v12m megabatch: plain-.test.ts names pinned to jsdom in
+      // vitest.config.ts (render halves), so the derived predicate in
+      // test/test-tiers.test.ts calls them SLOW -- same shape as above.
+      "app/src/components/modal-frame-phone.test.ts",
+      "app/src/pages/comms/comms-drill-phone-frames.test.ts",
+      "app/src/pages/comms/comms-drill-phone-frames.w7d.test.ts",
+      "app/src/pages/submissions/submissions-landing-phone-frame.test.ts",
       "test/itinerary-script-persistence.test.ts",
       "test/embed-element.test.ts",
       "test/gate4-residue-closure.test.ts",

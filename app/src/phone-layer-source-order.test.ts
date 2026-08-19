@@ -223,7 +223,9 @@ function findShadows(result: ParseResult): Shadow[] {
     const hasPhone = occurrences.some((o) => o.isPhone);
     if (!hasPhone) continue; // not a pair this scan cares about
     occurrences.sort((a, b) => a.line - b.line);
-    const winner = occurrences[occurrences.length - 1];
+    // hasPhone above guarantees at least one occurrence, so the last index
+    // is always present -- assert it rather than widening the type.
+    const winner = occurrences[occurrences.length - 1]!;
     if (winner.isPhone) continue; // a phone declaration wins the cascade -- fine
     const lastPhoneBeforeWinner = [...occurrences].filter((o) => o.isPhone && o.line < winner.line).pop();
     if (!lastPhoneBeforeWinner) continue; // defensive; hasPhone guarantees this exists
