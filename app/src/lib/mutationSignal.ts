@@ -16,7 +16,7 @@ export function bumpMutationVersion(): void {
   for (const notify of subscribers) notify();
 }
 
-function subscribe(callback: () => void): () => void {
+export function subscribeToMutationVersion(callback: () => void): () => void {
   subscribers.add(callback);
   return () => {
     subscribers.delete(callback);
@@ -28,5 +28,5 @@ function getSnapshot(): number {
 }
 
 export function useMutationVersion(): number {
-  return useSyncExternalStore(subscribe, getSnapshot);
+  return useSyncExternalStore(subscribeToMutationVersion, getSnapshot);
 }

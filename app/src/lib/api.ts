@@ -3,9 +3,66 @@
 // ApiError on any error envelope. This is the ONLY module the SPA uses to
 // talk to /api/v1 — page code must never call fetch() directly.
 
-import { bumpMutationVersion } from './mutationSignal';
+import { bumpMutationVersion, subscribeToMutationVersion } from './mutationSignal';
+import { DEC_013, DEC_700, DEC_678, DEC_851 } from '../../../src/decisions';
+void DEC_013;
+void DEC_700;
+void DEC_678;
+void DEC_851;
 
 const API_PREFIX = '/api/v1';
+
+// DEC_013: SWR read cache, opt-in per call site via apiGetCached/apiListCached.
+// Keyed on the exact request URL (the identical string handed to fetch), so
+// two different paths never collide and the same path always hits.
+// DEC_851: this cache must never land without a page reading it — see
+// ContactsApp.tsx's directory list, its first page reader.
+const readCache = new Map<string, unknown>();
+const READ_CACHE_LIMIT = 32;
+
+function cacheKey(path: string): string {
+  return `${API_PREFIX}${path}`;
+}
+
+function cacheSet(key: string, value: unknown): void {
+  // Least-recently-read eviction: delete-then-set moves an existing key to
+  // the end of Map's insertion order, and a full cache evicts the oldest
+  // (first) entry before inserting.
+  readCache.delete(key);
+  if (readCache.size >= READ_CACHE_LIMIT) {
+    const oldest = readCache.keys().next().value;
+    if (oldest !== undefined) readCache.delete(oldest);
+  }
+  readCache.set(key, value);
+}
+
+/** Synchronous cache peek — no request, no React import, safe to call from
+ * a useState initializer (DEC_678: a cached payload is on screen on the
+ * first frame). Re-inserts on read to refresh recency for the LRU bound. */
+export function peekCachedRead<T>(path: string): T | undefined {
+  const key = cacheKey(path);
+  if (!readCache.has(key)) return undefined;
+  const value = readCache.get(key) as T;
+  readCache.delete(key);
+  readCache.set(key, value);
+  return value;
+}
+
+// DEC_700: the mutation bump IS the cache's invalidation clock. Wired once,
+// here, by subscription — every present and future mutating helper that
+// calls bumpMutationVersion() (request()'s non-GET branch, apiUpload)
+// invalidates the read cache for free. Do NOT add a second clear beside
+// bumpMutationVersion() itself.
+function clearReadCache(): void {
+  readCache.clear();
+}
+subscribeToMutationVersion(clearReadCache);
+
+/** Test-only seam: empties the read cache between test cases. Never called
+ * from production code (mirrors useCurrentEvent.ts's resetEventsCacheForTests). */
+export function resetApiCacheForTests(): void {
+  readCache.clear();
+}
 
 export type ApiErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid' | 'conflict' | 'internal';
 
@@ -139,6 +196,22 @@ export function apiGet<T>(path: string): Promise<T> {
 
 export function apiList<T>(path: string): Promise<ListEnvelope<T>> {
   return request<ListEnvelope<T>>(path, { method: 'GET' });
+}
+
+// DEC_013: cached read helpers. Delegate to the SAME request() as
+// apiGet/apiList (never a second fetch call) and write the resolved
+// payload into the cache on success only — an ApiError throws before the
+// cache write runs, so a failed read never poisons the cache.
+export async function apiGetCached<T>(path: string): Promise<T> {
+  const result = await request<T>(path, { method: 'GET' });
+  cacheSet(cacheKey(path), result);
+  return result;
+}
+
+export async function apiListCached<T>(path: string): Promise<ListEnvelope<T>> {
+  const result = await request<ListEnvelope<T>>(path, { method: 'GET' });
+  cacheSet(cacheKey(path), result);
+  return result;
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {
