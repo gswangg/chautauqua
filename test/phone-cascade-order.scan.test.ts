@@ -232,7 +232,12 @@ function allShadowedPairs(): string[] {
 // the ceiling DOWN as part of that same merge-train step, printing the
 // exact new count the assertion below reports — never edit this number
 // from inside a worker lane that isn't the one doing the fix.
-export const SHADOWED_CEILING = 22;
+//
+// v12m-w10-a (wave 92, planner-authorized merge-train step): a prior lane's
+// sheet fix dropped the measured count to 20. The planner explicitly
+// authorized this ceiling bump (see w10-a task text) rather than leaving
+// the two-sided ratchet stuck licensing stagnation. Bumped 22 -> 20.
+export const SHADOWED_CEILING = 20;
 
 describe('phone cascade order (DEC-385 single-direction, DEC-808 enumerating scan)', () => {
   it('does not exceed the shadowed-declaration ceiling', () => {
