@@ -11,6 +11,7 @@ import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { formatEventDate } from "../src/lib/event-time";
+import { dayLabelEndInstant } from "../src/lib/timezone";
 import type { EditableSubmissionData, PortalParticipant } from "../src/server/repo/portal-edit";
 
 vi.mock("../src/server/repo/portal", async () => {
@@ -142,8 +143,22 @@ describe("EditPage co-presenter frame (DEC-604 wave-56 amendment)", () => {
   it("renders the window sub-line under the h1 when the form has a close date", () => {
     const html = render();
     expect(html).toContain("You can change this until the form closes on");
-    expect(html).toContain(formatEventDate(DATA.form.closeDate!, DATA.form.timezone));
+    expect(html).toContain(formatEventDate(dayLabelEndInstant(DATA.form.closeDate!, DATA.form.timezone), DATA.form.timezone));
     expect(html).not.toContain("Edits are live on the public pages straight away");
+  });
+
+  // D8 (eval MAJOR): DATA.form.closeDate is Date.UTC(2026, 7, 16) -- a
+  // DEC-522 UTC-midnight DAY LABEL -- and the form's timezone is
+  // America/Los_Angeles, i.e. WEST of UTC. Formatting the raw label there
+  // resolves to 17:00 on the 15th, so this screen printed "Sat 15 Aug 2026"
+  // while the public confirmation page (which expands the same label
+  // through dayLabelEndInstant, submit-views.tsx:728) printed the 16th for
+  // the same form. The pin is the literal calendar day, not just a
+  // round-trip through the helper.
+  it("names the label's own calendar day west of UTC, never the day before (D8)", () => {
+    const html = render();
+    expect(html).toContain("Sun 16 Aug 2026");
+    expect(html).not.toContain("Sat 15 Aug 2026");
   });
 
   it("omits the window sub-line entirely when the form has no close date, never synthesizing one", () => {

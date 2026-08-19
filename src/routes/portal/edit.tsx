@@ -23,6 +23,7 @@ import {
   type PortalParticipant,
 } from "../../server/repo/portal-edit";
 import { formatEventDate } from "../../lib/event-time";
+import { dayLabelEndInstant } from "../../lib/timezone";
 import { canEditSubmission, canEditTracks } from "../../domain/edit-lock";
 import { validateAnswers, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
@@ -173,10 +174,19 @@ export function EditPage(props: {
           close date. Replaces the earlier "Edits are live on the public
           pages straight away" sub-line, which contradicted the
           Participants section's "not yet published" fact on the same
-          screen. */}
+          screen.
+          D8 (eval MAJOR): closeDate is a DEC-522 UTC-midnight DAY LABEL,
+          not an instant, so it is expanded through dayLabelEndInstant
+          before formatting -- exactly the idiom submit-views.tsx:126 and
+          sessions.tsx:107 already use, and the failure mode
+          formatEventCloseDateLabel's docstring (src/lib/event-time.ts:250)
+          names: formatting the raw label in a zone west of UTC resolves to
+          the PREVIOUS calendar day, so this screen printed one date and
+          the public confirmation page printed another for the same form. */}
       {data.form.closeDate !== null ? (
         <p class="chq-portal-sub">
-          You can change this until the form closes on {formatEventDate(data.form.closeDate, data.form.timezone)}
+          You can change this until the form closes on{" "}
+          {formatEventDate(dayLabelEndInstant(data.form.closeDate, data.form.timezone), data.form.timezone)}
         </p>
       ) : null}
       {/* DEC-040 amendment (wave 70): this form's FormFieldsSection calls
