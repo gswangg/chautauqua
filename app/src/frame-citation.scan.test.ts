@@ -358,9 +358,15 @@ const EXPECT_PROXIMITY_LINES = 6;
  *
  * Lowered 14 -> 2 by the wave-107 merge train (DEC-385 wave-93 rules this
  * constant merge-train-only), re-measured on the integrated tree per DEC-989
- * clause a rather than copied from any branch's note. The two-sided companion
- * at the bottom of this file is what forced the tightening. */
-const UNRECEIPTED_CLAIM_CEILING = 2;
+ * clause a rather than copied from any branch's note. Lowered 2 -> 0 by
+ * task w5-r (DEC-976 wave-109 amendment): fixed this file's own negative
+ * control (was anchored on a real frame path), tightened the proximity of
+ * one describe block's citation, and re-measured -- the other two named
+ * offenders in the ImportWizard phoneColumns test were already receipted
+ * on this main SHA (fixed upstream between the wave-109 report and this
+ * task). The two-sided companion at the bottom of this file is what forced
+ * the tightening. */
+const UNRECEIPTED_CLAIM_CEILING = 0;
 
 /** Shared receipt check (quote presence + nearby `expect(`), factored out so
  * the phone describe block below and the new desktop block (DEC-808 wave-107
@@ -591,7 +597,13 @@ describe('UNRECEIPTED_CLAIM_CEILING companion (two-sided ratchet, DEC-808 wave-1
 // citation is fully receipted (positive control).
 describe('receipt-checking synthetic controls (positive/negative, DEC-808 wave-107, task w3-v)', () => {
   it('flags a citation with no following backtick quote at all (negative control)', () => {
-    const src = 'see docs/design/Chautauqua Speakers.dc.html:261 for the rule, no quote follows this at all';
+    // DEC-976 wave-109 amendment (task w5-r): this fixture must NOT use a real
+    // frame path -- a synthetic sentinel anchored on a real artefact joins the
+    // population the scan exists to police (field guide, wave-107/108). The
+    // fixture filename below deliberately names a frame that does not exist
+    // in docs/design/, so this control still exercises the missing-quote
+    // branch without resolving to any real citation.
+    const src = 'see docs/design/Chautauqua Fixture.dc.html:261 for the rule, no quote follows this at all';
     const flat = flatten(src);
     const [citation] = findCitations('fixture.ts', flat);
     expect(citation).toBeDefined();
