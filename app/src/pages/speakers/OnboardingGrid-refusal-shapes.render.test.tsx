@@ -66,6 +66,46 @@ function mockBase(overrides: Record<string, unknown> = {}) {
   });
 }
 
+const GRID_TWO_TASKS: OnboardingGridResponse = {
+  tasks: [
+    { id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true },
+    { id: 'task-2', kind: 'general', title: 'Submit bio', dueDate: null, required: true },
+  ],
+  rows: [
+    {
+      contact: {
+        id: 'ct1',
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        company: 'Acme',
+        hasAccount: true,
+        participations: [{ participantId: 'p-ct1', submissionId: 'sub-ct1', ref: 'SES-001', title: 'Talk', inviteStatus: 'accepted' }],
+      },
+      cells: [
+        { taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 },
+        { taskId: 'task-2', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 },
+      ],
+    },
+  ],
+  total: 1,
+  page: 1,
+  perPage: 50,
+  counts: { speakers: 1, outstandingRequired: 2, overdue: 0, outstandingContacts: 1 },
+  timezone: 'UTC',
+};
+
+/** A deferred promise -- lets the test control exactly when each of two
+ * concurrent PATCH requests settles, independent of registration order. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 describe('OnboardingGrid task-cell refusal shapes (DEC-505/DEC-856)', () => {
   it("a task-assignment PATCH 404 ('Task assignment not found') names the server wording, not the generic sentence", async () => {
     mockBase({
@@ -86,6 +126,74 @@ describe('OnboardingGrid task-cell refusal shapes (DEC-505/DEC-856)', () => {
     const banner = await screen.findByRole('alert');
     expect(within(banner).getByText(/Task assignment not found/)).toBeInTheDocument();
     expect(within(banner).queryByText(/Someone else may have edited this speaker\./)).not.toBeInTheDocument();
+  });
+
+  it('DEC-265 wave-110 amendment: a slow failing flip rolls back only its own cell, not a concurrent flip that already succeeded', async () => {
+    const d1 = deferred<Response>();
+    const d2 = deferred<Response>();
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const path = rawUrl.startsWith('http') ? new URL(rawUrl).pathname : rawUrl.split('?')[0];
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (method === 'GET' && path === `/api/v1/events/${EVENT_ID}/onboarding`) {
+        return Promise.resolve(
+          new Response(JSON.stringify(GRID_TWO_TASKS), { status: 200, headers: { 'content-type': 'application/json' } }),
+        );
+      }
+      if (method === 'GET' && path === `/api/v1/events/${EVENT_ID}/forms`) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ forms: [] }), { status: 200, headers: { 'content-type': 'application/json' } }),
+        );
+      }
+      if (method === 'PATCH' && path === '/api/v1/task-assignments/as1') return d1.promise;
+      if (method === 'PATCH' && path === '/api/v1/task-assignments/as2') return d2.promise;
+      throw new Error(`unexpected fetch: ${method} ${path}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter>
+        <OnboardingGrid onAddSpeaker={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    const table = within(await screen.findByRole('table'));
+    // Two flips go in-flight: as1 (will fail slowly) then as2 (will succeed
+    // quickly).
+    fireEvent.click(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' }));
+    fireEvent.click(table.getByRole('button', { name: 'Toggle Submit bio for Ada Lovelace' }));
+
+    const as1Button = table.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
+    const as2Button = table.getByRole('button', { name: 'Toggle Submit bio for Ada Lovelace' });
+
+    // as2 resolves first, landing its optimistic flip for real.
+    d2.resolve(
+      new Response(JSON.stringify({ status: 'complete' }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+    await vi.waitFor(() => expect(as2Button).toHaveTextContent('Complete'));
+
+    // as1 rejects after as2 already succeeded.
+    d1.resolve(
+      new Response(JSON.stringify(errorEnvelope('not_found', 'Task assignment not found')), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    const banner = await screen.findByRole('alert');
+    expect(within(banner).getByText(/Task assignment not found/)).toBeInTheDocument();
+    // The banner names only the failed row (Sign speaker agreement), never
+    // the row that already succeeded.
+    expect(within(banner).queryByText(/Submit bio/)).not.toBeInTheDocument();
+
+    // as1's cell rolled back to its pre-flip status (pending, marked not
+    // saved) -- a functional, per-cell rollback.
+    expect(as1Button).toHaveTextContent('Pending · not saved');
+    // as2's cell kept its new (successful) value -- a whole-grid snapshot
+    // rollback would have clobbered it back to Pending too.
+    expect(as2Button).toHaveTextContent('Complete');
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
 
