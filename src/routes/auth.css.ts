@@ -13,7 +13,7 @@
 // any quoted font-family name or url(). AUTH_CSS must stay a fixed,
 // value-free module constant, never interpolated with request/user data.
 
-import { DEC_367, DEC_373, DEC_374, DEC_944, DEC_945, DEC_124 } from "../decisions";
+import { DEC_367, DEC_373, DEC_374, DEC_944, DEC_945, DEC_124, DEC_385 } from "../decisions";
 import { ERROR_STATES_CSS } from "../views/error-states.css";
 import { BARE_PAGE_CSS } from "../views/bare-page.css";
 
@@ -23,6 +23,13 @@ void DEC_374;
 void DEC_944;
 void DEC_945;
 void DEC_124;
+// DEC-385: single-direction responsive -- the "Sign in · 390" and "Change
+// password · 390" band geometry added at the tail of this file's existing
+// max-width:700px block narrows the wide (desktop) rules above it; nothing
+// here restates or overrides the shared 700px switch/band metrics theme.ts
+// (src/views/theme.ts) already owns, and no phone-shell class name (the SPA
+// vocabulary this SSR surface deliberately does not wear) is introduced.
+void DEC_385;
 
 // DEC-945 amendment (wave 25): the V8 intake redrew 11-account--00 ("a
 // card, not a stretched phone") and SUPERSEDES the pair-6 box-math ruling
@@ -356,6 +363,129 @@ export const AUTH_CSS = `
     }
     .chq-auth-cancel { display: inline-flex; }
     .chq-auth-hint { display: none; }
+
+    /* -----------------------------------------------------------------
+       w2-e: "Sign in · 390" (docs/design/Chautauqua Account.dc.html:121
+       \`<div style="width:390px; height:844px; ...\`), scoped to
+       .chq-auth-stack -- the wrapper only /login's LoginPage renders --
+       so ClaimPage/ForgotPasswordPage/ResetPasswordPage, which share the
+       same .chq-auth-card/.chq-auth-tertiary/.chq-auth-wordmark classes
+       but have no ruling frame here, are untouched.
+       ------------------------------------------------------------- */
+    /* :124 \`font-size:26px; font-weight:700; letter-spacing:-0.04em;
+       line-height:1">chautauqua\` -- phone wordmark is one size down from
+       the desktop card's 28px. */
+    .chq-auth-stack .chq-auth-wordmark { font-size: 26px; }
+    /* :130 \`border-radius:6px; ... min-height:50px; ... font-size:16px\`
+       (Email/Password fields). */
+    .chq-auth-stack .chq-auth-card input[type=email],
+    .chq-auth-stack .chq-auth-card input[type=password] {
+      min-height: 50px;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    /* The 390 frame draws no "Forgot your password?" link at all inside
+       the Email/Password stack -- just Email, Password, a full-width
+       Sign in. */
+    .chq-auth-stack .chq-auth-tertiary { display: none; }
+    /* :136 \`background:#4E5C31; ... border-radius:6px; min-height:50px;
+       ... justify-content:center; font-size:15px; font-weight:700">Sign
+       in\` -- full-width, centred, one size down from the desktop card's
+       14px/46px/22px-padded intrinsic button. */
+    .chq-auth-stack .chq-auth-card button[type=submit] {
+      width: 100%;
+      min-height: 50px;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+    /* :138 \`border-top:1px solid #E1DDCE; padding-top:18px; display:flex;
+       flex-direction:column; gap:10px\` wraps the label AND both links as
+       one column (no wrapping row) -- unlike the desktop card's
+       .chq-auth-footer-links row. Scoped to .chq-auth-footer so the
+       expired-claim page and the /admin/* 404 card, which render
+       .chq-auth-footer-links with no .chq-auth-footer wrapper, keep their
+       own row layout. */
+    .chq-auth-footer .chq-auth-footer-links {
+      flex-direction: column;
+      gap: 10px;
+    }
+    /* :141/:142 \`font-size:15px; font-weight:700; min-height:44px\` --
+       one size up from the desktop card's 14px link (44px floor already
+       comes from the shared .chq-auth-footer-links a rule above). */
+    .chq-auth-footer .chq-auth-footer-links a { font-size: 15px; }
+
+    /* -----------------------------------------------------------------
+       w2-e: "Change password · 390" (docs/design/Chautauqua Account.dc.html:153
+       \`<div style="width:390px; height:844px; ...\`) -- head/body/dock
+       band geometry layered onto the wave-13 action-bar structure this
+       file already owns. Scoped to
+       .chq-bare-page:has(.chq-auth-fields), the account-password page's
+       own anchor selector (already used two rules above), so the
+       expired-claim page and the /admin/* 404 card -- both plain
+       .chq-bare-page with a .chq-auth-titlerow but no .chq-auth-fields
+       form -- are untouched.
+       ------------------------------------------------------------- */
+    .chq-bare-page:has(.chq-auth-fields) {
+      /* BARE_PAGE_CSS's shared 48px/20px padding and 22px inter-child gap
+         are a reading-column rhythm; the frame's head/body/dock band owns
+         its own padding on each region instead, with nothing between
+         them. */
+      padding: 0;
+      gap: 0;
+    }
+    /* :154 \`border-bottom:1px solid #1B1D17; padding:14px 16px;
+       flex-shrink:0; display:flex; flex-direction:column; gap:7px\`. */
+    .chq-bare-page:has(.chq-auth-fields) .chq-auth-titlerow {
+      border-bottom: 1px solid var(--chq-ink);
+      padding: 14px 16px;
+      margin: 0;
+      gap: 7px;
+    }
+    /* :156 \`font-size:25px; font-weight:700; letter-spacing:-0.04em;
+       line-height:1.05">Change your password\` -- the drill-in H1
+       register (back-linked, one size down from the 27px cluster-landing
+       register), already tokenised in theme.ts. */
+    .chq-bare-page:has(.chq-auth-fields) .chq-auth-title {
+      font-size: var(--chq-type-page-title-phone-drill);
+      margin-top: 8px;
+    }
+    /* Body: the frame's scrollable region (:157 \`padding:16px;
+       display:flex; flex-direction:column; gap:16px\`) is
+       .chq-auth-fieldstack, already flex:1/min-height:0/overflow-y:auto
+       from the wave-13 rule above -- only the padding/gap are new here. */
+    .chq-auth-fieldstack {
+      padding: 16px;
+      gap: 16px;
+    }
+    /* Dock: :172 \`border-top:1px solid #1B1D17; background:#EFEBDF;
+       padding:12px 16px 16px; display:flex; gap:8px\` -- same sunk-band
+       vocabulary as src/routes/portal/portal.css.ts's phone footer
+       (border-top var(--chq-ink) + var(--chq-surface-sunk) fill), spent
+       here on .chq-auth-actions instead of introducing the SPA's
+       phone-shell class vocabulary (DEC-385 forbids that on an SSR
+       surface). */
+    .chq-auth-actions {
+      border-top: 1px solid var(--chq-ink);
+      background: var(--chq-surface-sunk);
+      padding: 12px 16px 16px;
+      margin-top: 0;
+      gap: 8px;
+    }
+    /* :173 \`flex:1; background:#4E5C31; ... border-radius:6px;
+       min-height:48px; ... font-size:14px\` -- "Change it" grows to fill
+       the dock row; "Cancel" (below) stays intrinsic-width beside it. */
+    .chq-auth-actions button[type=submit] {
+      flex: 1;
+      min-height: 48px;
+      border-radius: 6px;
+    }
+    /* :175 \`border:1px solid #BAB6A6; border-radius:6px; min-height:48px;
+       ... font-size:13px; font-weight:600">Cancel\`. */
+    .chq-auth-cancel {
+      min-height: 48px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
   }
 ${ERROR_STATES_CSS}
 ${BARE_PAGE_CSS}
