@@ -110,3 +110,8 @@ pinned; sweep the remaining stylesheets for the same exposure.
   silently discards unsaved title/abstract/track edits (a55cce81, by the page's
   own inviting copy order). Schedule a fix (preserve the draft across the POST or
   make the add row-scoped).
+
+## Ruling needed (from the tracks/rooms refusal fix, bbcf8b06)
+`discardDirtyAndClose` clears row errors but not the add forms' field errors,
+so Done-with-discard parks an add refusal for the next drill-in. Needs a
+ruling: does Done-discard also drop an unsaved add draft + its refusal?
