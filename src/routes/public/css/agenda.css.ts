@@ -401,10 +401,32 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     .chq-pub-speaker-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
     .chq-pub-itinerary-cta { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
     /* DEC-367 (wave 50 amendment): the phone tap floor -- the day-switcher
-       pill and itinerary row size to padding on desktop, per
-       docs/design/README.md §Controls. */
+       pill sizes to padding on desktop, per docs/design/README.md
+       §Controls. */
     .${ACCENT_BOUND_CLASSES[1]} { min-height: 44px; }
-    .chq-pub-itinerary-row { min-height: 44px; }
+    /* docs/design/Chautauqua Public and Portal.dc.html:395
+       \`<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; margin-top:2px">{{ s.action }}</span>\`
+       -- the phone list's per-row action is a bordered button (border,
+       radius, sunk fill, centred, 44px floor), not the plain text link the
+       row renders at every other width -- .chq-pub-itinerary-row previously
+       carried only a bare min-height, leaving the hit box the width of the
+       "Save"/"Saved" text and no drawn button at all. Phone-only, DEC-385
+       single-direction; matches .chq-pub-save's own vocabulary (rail.css.ts)
+       without dragging that rule's box styling into every other width this
+       wrapper renders at. */
+    .chq-pub-itinerary-row {
+      border: 1px solid var(--chq-border);
+      /* --chq-r-ctl-phone (theme.ts): the 6px phone control radius the frame
+         draws its bordered buttons at, distinct from --chq-r-ctl's 4px
+         desktop radius. */
+      border-radius: var(--chq-r-ctl-phone);
+      background: var(--chq-surface-sunk);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
     .chq-pub-agenda-day-scroll { max-width: 100%; }
 
     /* DEC-584: exactly one of the two agenda markups is in the a11y tree
