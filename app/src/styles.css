@@ -877,11 +877,10 @@ a:hover {
    This family is the link-like half of the house's quiet register, so it
    takes the link convention -- the same `color + text-decoration: underline`
    pair .chq-btn-tertiary (the button-like half) already carries, and the
-   same one .chq-speakers-import-link uses. The bare-chip family is
-   deliberately NOT given either treatment: its hover is the frame's 2px
-   box-shadow ring (speakers.css, .chq-speakers-status:hover), because after
-   v12's inversion a bare COMPLETE has no box at all and the ring is the
-   only thing saying it is a control.
+   same one .chq-speakers-import-link uses. The bare-chip family takes the
+   OTHER convention the user named: a quiet background tint on hover
+   (speakers.css, button.chq-speakers-status:hover), because a status word
+   is a button-like control, not a link.
    :not(:disabled) keeps the G13 rule below intact -- a disabled
    link-shaped control still has NO hover response at all. */
 .chq-link-button:hover:not(:disabled) {

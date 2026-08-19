@@ -220,9 +220,15 @@
   font-size: 12px;
 }
 
+/* Cancelled-padding invariant (styles.css, .chq-link-button): the quiet
+   action families pull 12px off their facing edges so the focus/hover ring
+   can breathe without moving a glyph. Where two of them sit side by side,
+   the rule owning their separation adds that back, or the rendered gap
+   closes. 12 -> 24 here (measured: the pair rendered 0px apart before
+   this bump; scratchpad harness collide.mjs/adj.mjs). */
 .chq-contacts-rail-duplicate-actions {
   display: flex;
-  gap: 12px;
+  gap: 24px;
 }
 
 .chq-contacts-name-cell,

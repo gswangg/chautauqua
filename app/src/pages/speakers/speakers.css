@@ -439,21 +439,46 @@ a.chq-speakers-task-title:hover {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
+  /* B8/DEC-383: colour only, never `all` -- animating `all` would animate
+     the focus ring too. var(--chq-motion-color) is zeroed by the shared
+     prefers-reduced-motion block in styles.css. */
+  transition: background-color var(--chq-motion-color) var(--chq-ease-state);
 }
 
-/* DEC-383/DEC-989 (wave-64 amendment, docs/design/DESIGN-RULINGS.md:113):
-   the status-cell ring is OUTSET, not inset -- it reads as a halo drawn
-   around the pill rather than a bevel eaten out of it. The table's own
-   td padding (10px 14px, styles.css .chq-table th/td) and the cell's own
-   6px inter-pill gap (.chq-speakers-cell) both clear the 2px ring with
-   room to spare, so no neighbour clips it. Hover paints no new background
-   (fill/outline stay owned by the -complete/-pending/-overdue modifiers
-   below), so the ring is the only hover affordance here -- and after v12's
-   inversion two of the three states paint no box at all, which is exactly
-   why the ring cannot become a fill: it is the only thing telling a bare
-   COMPLETE word that it is a control. */
-.chq-speakers-status:hover {
-  box-shadow: 0 0 0 2px var(--chq-border-strong);
+/* USER DEVIATION (docs/design/DEVIATIONS.md, v12 review): hover on this
+   family is a quiet BACKGROUND TINT, not the frame's style-hover box-shadow
+   ring.
+   The superseded reasoning is preserved because it was right about the
+   problem and wrong about the answer: the wave-64 rule read the frame's
+   2px outset halo (DEC-383/DEC-989, DESIGN-RULINGS.md:113) as the only
+   affordance that could tell a bare COMPLETE word it is a control, since
+   after v12's weight inversion two of the three states paint no box at
+   all. In the browser that halo reads as a rectangle FLOATING around
+   loose text -- the frame drew it around filled pills, which no longer
+   exist here. The tint solves the same problem the way the rest of the
+   product already does it (.chq-nav-link, .chq-table tbody tr,
+   .chq-contacts-row all tint with --chq-surface-sunk), and it is rounded
+   by the density rules' control radius, so it reads as one control
+   lighting up rather than a box appearing.
+
+   Two scoping rules ride with it:
+   - `button.` -- ONLY where this family is a real control (grid cells,
+     participation triggers). The same classes render as read-only <span>
+     labels (the task view's roomy chips, content/session neutral chips);
+     hover feedback on a non-control is a false affordance.
+   - the filled state keeps its own register. -overdue is the one modifier
+     that paints a fill (var(--chq-ink)); tinting it cream would erase the
+     page's one strong mark, so it lightens one step within the ink family
+     instead -- the same "each tier darkens/lightens on hover, nothing
+     moves" shape DEC-383 gives the button tiers, on an existing token.
+   Transition is property-scoped on the base rule below, so the shared
+   prefers-reduced-motion override zeroes it. */
+button.chq-speakers-status:hover {
+  background: var(--chq-surface-sunk);
+}
+
+button.chq-speakers-status-overdue:hover {
+  background: var(--chq-ink-2);
 }
 
 /* ---- axis 1: MEANING (colour + weight only; never geometry) ---------- */
@@ -547,7 +572,7 @@ a.chq-speakers-task-title:hover {
    Never author a min-height below 44px on the roomy half. */
 .chq-speakers-status-dense {
   /* User-filed (v12 review): "can we round the corners on the focus ring".
-     An outline -- and the hover box-shadow above -- follow the element's
+     An outline -- and the hover tint above -- follow the element's
      border-radius, so the ring is rounded by giving the DENSITY rule the
      house control radius. It sits here, on the geometry axis, and never on
      a MEANING modifier: a bare COMPLETE/PENDING still paints no box at rest

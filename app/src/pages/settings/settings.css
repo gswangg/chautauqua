@@ -247,10 +247,16 @@
   color: var(--chq-ink-2);
 }
 
+/* Cancelled-padding invariant (styles.css, .chq-link-button): the quiet
+   action families pull 6px off their facing edges so the focus/hover ring
+   can breathe without moving a glyph. Where two of them sit side by side,
+   the rule owning their separation adds that back, or the rendered gap
+   closes. 12 -> 18 here (measured: the pair rendered 6px apart before
+   this bump; scratchpad harness collide.mjs/adj.mjs). */
 .chq-settings-row-value {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
   flex-wrap: wrap;
 }
 
@@ -633,10 +639,16 @@
   color: var(--chq-ink-2);
 }
 
+/* Cancelled-padding invariant (styles.css, .chq-link-button): the quiet
+   action families pull 12px off their facing edges so the focus/hover ring
+   can breathe without moving a glyph. Where two of them sit side by side,
+   the rule owning their separation adds that back, or the rendered gap
+   closes. 10 -> 22 here (measured: the pair rendered -2px (overlapping) apart before
+   this bump; scratchpad harness collide.mjs/adj.mjs). */
 .chq-settings-saved-embed-actions {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 22px;
   flex-wrap: nowrap;
   justify-self: end;
   padding-right: 4px;

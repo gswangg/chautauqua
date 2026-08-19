@@ -387,10 +387,16 @@
 /* Saved views as a visible tab row (DEC-648) -- replaces the old
    `.chq-submissions-views` <details> disclosure entirely; there is no
    floating panel anymore. */
+/* Cancelled-padding invariant (styles.css, .chq-link-button): the quiet
+   action families pull 6px off their facing edges so the focus/hover ring
+   can breathe without moving a glyph. Where two of them sit side by side,
+   the rule owning their separation adds that back, or the rendered gap
+   closes. 12 -> 18 here (measured: the pair rendered 6px apart before
+   this bump; scratchpad harness collide.mjs/adj.mjs). */
 .chq-submissions-viewtabs {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
   flex-wrap: wrap;
 }
 
@@ -423,10 +429,16 @@
   color: var(--chq-on-ink);
 }
 
+/* Cancelled-padding invariant (styles.css, .chq-link-button): the quiet
+   action families pull 6px off their facing edges so the focus/hover ring
+   can breathe without moving a glyph. Where two of them sit side by side,
+   the rule owning their separation adds that back, or the rendered gap
+   closes. 2 -> 8 here (measured: the pair rendered -4px (overlapping) apart before
+   this bump; scratchpad harness collide.mjs/adj.mjs). */
 .chq-submissions-viewtabs-item {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
 }
 
 .chq-submissions-viewtabs-save {

@@ -389,3 +389,64 @@ describe('v12m-w2-c: Speakers phone frames + DEC-368', () => {
     expect(phone).toMatch(/\.chq-speakers-roster-drillin\s*\{[^}]*display:\s*flex;\s*flex-direction:\s*column/);
   });
 });
+
+// User-filed (v12 review), ring geometry + hover convention. Extends the
+// dense-chip pins above rather than replacing them: the cancelled padding
+// they already assert is what gave the ring a box to round, and these hold
+// the rest of that decision.
+describe('speakers.css ring geometry and hover convention (user-filed, v12 review)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  it('both density halves round the ring from the shared control token', () => {
+    // A radius on the GEOMETRY axis, never on a meaning modifier -- it
+    // paints nothing at rest (the bare states carry no fill and no border),
+    // it only shapes the focus outline and the hover tint. The
+    // "bare modifiers carry no border-radius" pin above still holds and is
+    // what keeps this from drifting onto -complete/-pending.
+    expect(topLevelRuleBody(css, '.chq-speakers-status-dense')).toMatch(/border-radius:\s*var\(--chq-r-ctl\)/);
+    expect(topLevelRuleBody(css, '.chq-speakers-status-roomy')).toMatch(/border-radius:\s*var\(--chq-r-ctl\)/);
+  });
+
+  it('hover is a quiet tint on the CONTROL, and the frame style-hover ring is gone', () => {
+    // USER DEVIATION, docs/design/DEVIATIONS.md 2026-08-19: the frame's 2px
+    // outset halo was drawn around filled pills and reads as a rectangle
+    // floating around loose text after v12's inversion.
+    expect(css).not.toMatch(/\.chq-speakers-status:hover\s*\{[^}]*box-shadow/);
+    expect(css).toMatch(/button\.chq-speakers-status:hover\s*\{[^}]*background:\s*var\(--chq-surface-sunk\)/s);
+    // Scoped to `button.` so the identical classes rendered as read-only
+    // <span> labels get no hover feedback at all -- a false affordance.
+    expect(css).not.toMatch(/(^|[^.\w])\.chq-speakers-status:hover/m);
+    // The one filled state keeps its own register instead of tinting cream.
+    expect(css).toMatch(/button\.chq-speakers-status-overdue:hover\s*\{[^}]*background:\s*var\(--chq-ink-2\)/s);
+    // Colour-only transition, token-driven, so the shared reduced-motion
+    // override zeroes it (never `all`, which would animate the ring).
+    expect(topLevelRuleBody(css, '.chq-speakers-status')).toMatch(
+      /transition:\s*background-color var\(--chq-motion-color\)/,
+    );
+  });
+
+  it('the participation row widens its gap by both cancelled paddings', () => {
+    // DEC-936 renders one captioned menu per participation as siblings here.
+    // Each dense trigger pulls 6px off both sides, so a 4px gap left the two
+    // triggers' boxes OVERLAPPING by 8px and the pair read as one line.
+    // 4 + 2x6 = 16 restores the 4px between their boxes exactly.
+    expect(topLevelRuleBody(css, '.chq-speakers-row-participation')).toMatch(/gap:\s*16px/);
+  });
+
+  it('the quiet per-row actions cancel their padding so their labels stay in the identity column', () => {
+    // These sit under the name/company/ref/chip stack, all of which start at
+    // the cell's left edge; an uncancelled 8px padding pushed their LABEL
+    // 8px in and read as an odd indent.
+    for (const selector of ['.chq-speakers-remind-one', '.chq-speakers-not-chased-marker']) {
+      const body = topLevelRuleBody(css, selector);
+      expect(body, `${selector} keeps its ring padding`).toMatch(/padding:\s*2px 8px/);
+      expect(body, `${selector} does not cancel its padding`).toMatch(/margin-inline:\s*-8px/);
+    }
+    // Sits beside Remind, so it carries the adjacent-siblings invariant
+    // instead of a plain margin-inline: 4 + 8 + 8 keeps the two boxes 4px
+    // apart, as they were before either cancelled.
+    const invite = topLevelRuleBody(css, '.chq-speakers-invite-one');
+    expect(invite).toMatch(/margin-left:\s*20px/);
+    expect(invite).toMatch(/margin-right:\s*-8px/);
+  });
+});

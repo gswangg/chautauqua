@@ -2157,3 +2157,103 @@ describe('v12m-w2-c: Speakers phone frames', () => {
     expect(screen.getByRole('heading', { name: 'Speakers' })).toBeInTheDocument();
   });
 });
+
+// User-filed regression (v12 review, screenshot): the two-session identity
+// cell. The behavioural pin above already holds that each participation gets
+// its OWN menu and PATCHes its own participantId; what broke was the cell's
+// SHAPE -- the dense chip's cancelled padding ate the row's 4px gap, the two
+// triggers' boxes overlapped, and the pair read as one jumbled line rather
+// than two separately labelled talks (the exact thing DEC-936's caption
+// exists to produce). The rendered geometry is measured in the browser
+// (scratchpad harness collide.mjs; the gap itself is pinned in
+// speakers-css.test.ts), so what this holds is the ANATOMY that geometry
+// applies to: one menu per participation, each caption INSIDE its own menu
+// next to the trigger it labels -- never a shared row of refs above a shared
+// row of triggers, which is how the collapsed version read.
+describe('the two-session identity cell keeps one captioned menu per participation (DEC-936, user-filed)', () => {
+  const twoSessionGrid: OnboardingGridResponse = {
+    tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
+    rows: [
+      {
+        contact: {
+          id: 'ct-multi',
+          name: 'Elliot Ekström',
+          email: 'elliot@example.com',
+          company: 'Eastbrook Digital',
+          hasAccount: true,
+          participations: [
+            { participantId: 'p-1', submissionId: 'sub-1', ref: 'SES-008', title: 'Talk One', inviteStatus: 'accepted' },
+            { participantId: 'p-2', submissionId: 'sub-2', ref: 'SES-009', title: 'Talk Two', inviteStatus: 'accepted' },
+          ],
+        },
+        cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 }],
+      },
+    ],
+    total: 1,
+    page: 1,
+    perPage: 50,
+    counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+    timezone: 'UTC',
+  };
+
+  async function mountTwoSession() {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: twoSessionGrid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Elliot Ekström').length).toBeGreaterThan(0));
+    return screen.getByRole('table');
+  }
+
+  it('renders exactly two menus, each with its own ref caption as a sibling of its own trigger', async () => {
+    // Scoped to the desktop table: the grid mounts the phone card list too
+    // (CSS decides which is seen), so an unscoped query counts both halves.
+    const tableEl = await mountTwoSession();
+    const table = within(tableEl);
+    const menus = tableEl.querySelectorAll('.chq-participation-menu');
+    expect(menus).toHaveLength(2);
+
+    const refs = [...menus].map((menu) => menu.querySelector('.chq-participation-menu-ref')?.textContent);
+    expect(refs).toEqual(['SES-008', 'SES-009']);
+
+    // Each caption is inside the menu that owns it, next to that menu's own
+    // trigger -- the anatomy that lets two adjacent chips be read as two.
+    for (const menu of menus) {
+      expect(menu.querySelectorAll('.chq-participation-menu-ref')).toHaveLength(1);
+      expect(menu.querySelectorAll('.chq-participation-menu-trigger')).toHaveLength(1);
+    }
+    expect(table.getByRole('button', { name: 'Participation status for Elliot Ekström — SES-008: Confirmed' })).toBeInTheDocument();
+    expect(table.getByRole('button', { name: 'Participation status for Elliot Ekström — SES-009: Confirmed' })).toBeInTheDocument();
+  });
+
+  it('puts both menus in the one gapped participation row, and the per-row quiet action below it', async () => {
+    const tableEl = await mountTwoSession();
+    const row = tableEl.querySelector('.chq-speakers-row-participation');
+    expect(row, 'the two menus must share one row -- the rule that owns their separation').toBeTruthy();
+    expect(row!.querySelectorAll('.chq-participation-menu')).toHaveLength(2);
+    // Remind is a SIBLING of the row, not a third item inside it: it belongs
+    // to the speaker, not to either session.
+    expect(row!.querySelector('.chq-speakers-remind-one')).toBeNull();
+  });
+
+  it('a single-participation row still renders no caption at all', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: {
+        ...twoSessionGrid,
+        rows: [
+          {
+            ...twoSessionGrid.rows[0]!,
+            contact: { ...twoSessionGrid.rows[0]!.contact, participations: [twoSessionGrid.rows[0]!.contact.participations[0]!] },
+          },
+        ],
+      },
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Elliot Ekström').length).toBeGreaterThan(0));
+    const tableEl = screen.getByRole('table');
+    expect(tableEl.querySelectorAll('.chq-participation-menu')).toHaveLength(1);
+    expect(tableEl.querySelector('.chq-participation-menu-ref')).toBeNull();
+  });
+});

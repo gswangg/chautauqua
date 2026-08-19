@@ -257,3 +257,35 @@ instead of re-flagging.
   v12 inversion is one vocabulary in every state, including under a
   write-failure banner. No code changed; the app already implements the
   inverted vocabulary everywhere.
+
+- Speakers status-chip HOVER: quiet background tint, NOT the frame's
+  style-hover box-shadow ring. USER RULING 2026-08-19 (v12 review): the
+  frame's 2px outset halo (`Chautauqua Speakers.dc.html` style-hover;
+  DEC-383/DEC-989, DESIGN-RULINGS.md:113) was drawn around FILLED status
+  pills. After v12's weight inversion two of the three states paint no box
+  at all, so on screen the halo reads as a rectangle floating around loose
+  text rather than a control lighting up. The family now tints with
+  `--chq-surface-sunk` on hover -- the same quiet-tint register
+  `.chq-nav-link`, `.chq-table tbody tr` and `.chq-contacts-row` already
+  use -- rounded by the density rules' `var(--chq-r-ctl)`. Scoped to
+  `button.chq-speakers-status`: the identical classes also render as
+  read-only `<span>` labels (the task view's roomy chips, the neutral
+  content/session chips), and hover feedback on a non-control is a false
+  affordance. `-overdue`, the one modifier that paints a fill, lightens one
+  step inside the ink family instead of tinting cream, so the page keeps its
+  one strong mark. Keyboard `:focus-visible` is untouched and still wears
+  the 2px brand ring -- now rounded by the same radius. This supersedes the
+  wave-64 reasoning that deliberately KEPT the `#CFC7B7` shadow.
+- Focus/hover ring GEOMETRY on bare-text controls: cancelled inline padding.
+  USER RULING 2026-08-19 (v12 review): a control with no inline padding
+  shrink-wraps its ring around the glyphs, which reads as a cramped native
+  ring. The quiet-action families (`.chq-link-button`, `.chq-btn-tertiary`
+  in both stylesheet roots, the dense/roomy status chips) carry
+  `padding-inline` cancelled by an equal-and-opposite negative
+  `margin-inline`, so the ring and the hit box gain room while no glyph
+  moves. The invariant that rides with it: wherever such a family renders as
+  ADJACENT SIBLINGS, the rule owning their separation adds the cancelled
+  padding back, or the rendered gap closes (this regressed the two-session
+  identity cell on the roster grid before it was measured and fixed). The
+  ring is rounded with `var(--chq-r-ctl)`, the same corner `.chq-btn`
+  already uses.

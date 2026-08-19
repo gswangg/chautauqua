@@ -194,3 +194,92 @@ describe('focus treatment: every SSR document shell reaches the SSR root (DEC-37
     ).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------
+// Ring GEOMETRY (user-filed, v12 review). The treatment was right and the
+// geometry was cramped: a bare-text control with no inline padding
+// shrink-wraps its focus outline (and any hover box) around the glyphs,
+// which is what read as a native ring in the first place. The house answer
+// is equal-and-opposite cancelled padding -- `padding-inline: N` cancelled
+// by `margin-inline: -N` -- so the ring and the hit box gain N px while no
+// glyph moves and no layout rhythm shifts, plus the control radius so the
+// ring is rounded rather than a hard rectangle.
+//
+// These pins hold the two halves that can silently break:
+//   1. the pair must stay EQUAL and OPPOSITE. A padding without its
+//      cancellation moves every glyph in the row; a cancellation without
+//      its padding is a control reaching into its neighbours for nothing.
+//   2. the ring must be rounded from the shared control token, never a
+//      hand-written radius.
+// The third half -- adjacent siblings whose separation the cancellation
+// eats -- cannot be read off CSS text (it needs layout), so it is measured
+// in the browser instead: scratchpad harness collide.mjs flags any two
+// focusable controls whose boxes end up less than 2px apart. That is the
+// check that caught the two-session identity cell regression.
+// ---------------------------------------------------------------------
+interface IdiomFamily {
+  readonly root: string;
+  readonly selector: string;
+  readonly px: number;
+}
+
+const CANCELLED_PADDING_FAMILIES: readonly IdiomFamily[] = [
+  { root: 'app/src/styles.css (SPA root)', selector: '.chq-link-button', px: 6 },
+  { root: 'app/src/styles.css (SPA root)', selector: '.chq-btn-tertiary', px: 6 },
+  { root: 'src/views/theme.ts THEME_CSS (SSR root)', selector: '.chq-btn-tertiary', px: 6 },
+];
+
+function ruleFor(rootLabel: string, selector: string): CssRule | undefined {
+  const root = ROOTS.find((r) => r.label === rootLabel);
+  if (!root) throw new Error(`no stylesheet root labelled ${rootLabel}`);
+  return rules(root.css).find((rule) =>
+    rule.selector
+      .split(',')
+      .map((part) => part.trim())
+      .includes(selector),
+  );
+}
+
+/** The inline (left/right) padding a rule declares, via either the
+ * `padding` shorthand's second value or `padding-inline`. */
+function inlinePadding(body: string): number | null {
+  const inline = /padding-inline:\s*(-?\d+)px/.exec(body);
+  if (inline) return Number(inline[1]);
+  const shorthand = /padding:\s*(?:0|-?[\d.]+(?:px|rem))\s+(-?\d+)px\s*;/.exec(body);
+  if (shorthand) return Number(shorthand[1]);
+  return null;
+}
+
+function inlineMargin(body: string): number | null {
+  const inline = /margin-inline:\s*(-?\d+)px/.exec(body);
+  return inline ? Number(inline[1]) : null;
+}
+
+describe('focus treatment: the cancelled-padding idiom stays equal and opposite', () => {
+  for (const family of CANCELLED_PADDING_FAMILIES) {
+    it(`${family.selector} in ${family.root} pads ${family.px}px inline and cancels it exactly`, () => {
+      const rule = ruleFor(family.root, family.selector);
+      expect(rule, `${family.selector} has no own rule in ${family.root}`).toBeTruthy();
+      const padding = inlinePadding(rule!.body);
+      const margin = inlineMargin(rule!.body);
+      expect(padding, `${family.selector} declares no inline padding -- its ring will shrink-wrap the glyphs`).toBe(
+        family.px,
+      );
+      expect(
+        margin,
+        `${family.selector} pads ${String(padding)}px inline but does not cancel it -- every glyph in its row moves`,
+      ).toBe(-family.px);
+    });
+  }
+
+  it('the SPA quiet-action families round their ring from the shared control token', () => {
+    for (const selector of ['.chq-link-button']) {
+      const rule = ruleFor('app/src/styles.css (SPA root)', selector);
+      expect(rule?.body, `${selector} draws a hard-cornered ring`).toMatch(/border-radius:\s*var\(--chq-r-ctl\)/);
+    }
+    // .chq-btn-tertiary inherits the same token through .chq-btn, which
+    // every instance carries (no bare .chq-btn-tertiary exists in the app).
+    const btn = ruleFor('app/src/styles.css (SPA root)', '.chq-btn');
+    expect(btn?.body).toMatch(/border-radius:\s*var\(--chq-r-ctl\)/);
+  });
+});
