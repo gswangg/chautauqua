@@ -461,7 +461,13 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     });
   }
 
-  async function runPreview() {
+  // DEC-663 (wave-87 amendment): runPreview optionally takes the mapping to
+  // build the request from, rather than always reading the `mapping` state
+  // closure. The phone pager's last-column "Skip" both clears that column's
+  // mapping AND runs the preview in the same click -- setColumnMapping's
+  // setState is async, so without this override runPreview would build its
+  // request from the STALE pre-Skip mapping.
+  async function runPreview(overrideMapping?: Record<string, string>) {
     if (eventId && attachToEvent && sessionTitle.trim() === '') {
       setError('Enter a session title for this batch.');
       return;
@@ -473,7 +479,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     try {
       // Split any full-name-mapped column into first/last before the
       // server ever sees it (see expandFullNameMapping in ./csv.ts).
-      const expanded = expandFullNameMapping(header, dataRows, mapping);
+      const expanded = expandFullNameMapping(header, dataRows, overrideMapping ?? mapping);
       const expandedCsvText = toCsvVerbatim([expanded.header, ...expanded.rows]);
       const request: PlannedRequest = {
         csvText: expandedCsvText,
@@ -619,7 +625,7 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
           (!!eventId && attachToEvent && sessionTitle.trim() === '') ||
           !!mappingValidationError
         }
-        onClick={runPreview}
+        onClick={() => void runPreview()}
       >
         Import {countOf(dataRows.length, 'row')}
       </button>
@@ -961,58 +967,87 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
           {/* w49-f: conditional-and-quiet -- names the in-file collision it
               actually counted (an earlier row in THIS file with the same
               email), and renders nothing at zero rather than a false "0
-              rows match existing contacts". A SINGLE node covers both
-              widths: the frame draws this note below both the desktop
-              select grid and the phone radio list, so one paragraph
-              (never a phone-only duplicate, which would collide with
-              getByText in ImportWizard.reviewFilter.render.test.tsx and
-              be a genuine a11y duplicate, not just a CSS-hidden one)
-              serves both. w1-f finding: the frame's own literal text at
-              this spot is "9 rows match an existing contact by email ·
-              those get updated" -- a count only the server's dry run can
-              answer (plan.updated), unavailable pre-dry-run; reusing the
-              same-file dedupe note here instead of inventing an
-              existing-contact count with no data behind it, filed in
-              docs/design/audit/contacts-v12.md. */}
+              rows match existing contacts". DEC-663 (wave-87 amendment,
+              finding 2): this note sits beneath the DESKTOP column grid
+              only -- .chq-contacts-import-dedupe is hidden at phone width
+              (contacts-panels.css) rather than repositioned under the
+              phone radio list. The frame's own literal text at that phone
+              position ("9 rows match an existing contact by email · those
+              get updated") can only come from the dry run's plan.updated,
+              which does not exist at this step; rather than fabricate that
+              count from the in-file dedupe measurement, the phone pager
+              shows nothing here and the true, plan-sourced note
+              (.chq-contacts-import-matched below) appears once the dry run
+              has actually run, on the Review step. See
+              docs/design/audit/contacts-v12.md finding 2. */}
           {dedupeCount > 0 && (
             <p className="chq-contacts-import-dedupe">
               Same-file email repeat: {countOf(dedupeCount, 'row')} · the later row wins
             </p>
           )}
 
-          {/* v12m-w1-f: PHONE-ONLY sticky dock for the pager above --
-              page-owned (this component + contacts-panels.css only), NOT
-              the shared ModalFrame footer (`actions`, rendered below by
-              ModalFrame regardless of width) -- consolidating the two
-              phone docks is out of this task's scope; see
-              docs/design/audit/contacts-v12.md. "Next column" keeps
+          {/* v12m-w1-f, DEC-663 (wave-87 amendment, finding 3): PHONE-ONLY
+              sticky dock for the pager above -- page-owned (this component
+              + contacts-panels.css only), NOT the shared ModalFrame footer
+              (`actions`, rendered below by ModalFrame regardless of
+              width) -- consolidating the two phone docks is out of this
+              task's scope; see docs/design/audit/contacts-v12.md finding
+              1. On every column but the last, "Next column" keeps
               whatever mapping choice is already selected for the current
               column and advances; "Skip" clears this column's mapping
-              (same as picking "Skip this column" above) and advances.
-              Neither ever submits -- runPreview() is still reached only
-              through ModalFrame's own primary action. */}
-          {header.length > 0 && (
-            <div className="chq-contacts-import-phone-dock">
-              <button
-                type="button"
-                className="chq-btn chq-btn-primary chq-contacts-import-phone-next"
-                onClick={() => setPhoneColumnIndex((i) => Math.min(i + 1, header.length - 1))}
-              >
-                Next column
-              </button>
-              <button
-                type="button"
-                className="chq-btn chq-btn-secondary chq-contacts-import-phone-skip"
-                onClick={() => {
-                  const col = header[Math.min(phoneColumnIndex, header.length - 1)]!;
-                  setColumnMapping(col, '');
-                  setPhoneColumnIndex((i) => Math.min(i + 1, header.length - 1));
-                }}
-              >
-                Skip
-              </button>
-            </div>
-          )}
+              (same as picking "Skip this column" above) and advances. On
+              the LAST column both buttons instead run the same
+              runPreview() the desktop Review step runs, advancing into
+              the dry run -- "Next column"/"Skip" become a path INTO the
+              plan rather than clamping at a dead end. Skip passes
+              runPreview an explicit override mapping (the column just
+              cleared) rather than relying on the not-yet-applied
+              setColumnMapping state update. */}
+          {header.length > 0 &&
+            (() => {
+              const isLastPhoneColumn = phoneColumnIndex >= header.length - 1;
+              const previewBlocked =
+                busy ||
+                dataRows.length === 0 ||
+                (!!eventId && attachToEvent && sessionTitle.trim() === '') ||
+                !!mappingValidationError;
+              return (
+                <div className="chq-contacts-import-phone-dock">
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-primary chq-contacts-import-phone-next"
+                    disabled={isLastPhoneColumn && previewBlocked}
+                    onClick={() => {
+                      if (isLastPhoneColumn) {
+                        void runPreview();
+                      } else {
+                        setPhoneColumnIndex((i) => Math.min(i + 1, header.length - 1));
+                      }
+                    }}
+                  >
+                    {isLastPhoneColumn ? `Review ${countOf(dataRows.length, 'row')}` : 'Next column'}
+                  </button>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary chq-contacts-import-phone-skip"
+                    disabled={isLastPhoneColumn && previewBlocked}
+                    onClick={() => {
+                      const col = header[Math.min(phoneColumnIndex, header.length - 1)]!;
+                      setColumnMapping(col, '');
+                      if (isLastPhoneColumn) {
+                        const nextMapping = { ...mapping };
+                        delete nextMapping[col];
+                        void runPreview(nextMapping);
+                      } else {
+                        setPhoneColumnIndex((i) => Math.min(i + 1, header.length - 1));
+                      }
+                    }}
+                  >
+                    Skip
+                  </button>
+                </div>
+              );
+            })()}
         </div>
       )}
 

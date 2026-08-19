@@ -13,14 +13,68 @@
 // against the shared `mapping` state) or the POST payload -- both are
 // untouched by this phone-only presentation layer, per the task's own
 // framing.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ImportWizard } from './ImportWizard';
+import { mockApi } from '../../test-utils/mockApi';
+import type { ImportPlan } from './types';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+// jsdom applies no stylesheet, so a "hidden at phone width" claim can only
+// be verified against the CSS TEXT (mirrors contacts-phone-frames.test.ts's
+// phoneLayer/phoneRule pair -- a local, minimal copy rather than an import,
+// since that file is v12m-w4-a's and stays untouched here).
+function phoneLayerRuleBody(css: string, selector: string): string {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const opener = /@media\s*\(max-width:\s*\d+px\)\s*\{/g;
+  let m: RegExpExecArray | null;
+  const layers: string[] = [];
+  while ((m = opener.exec(withoutComments)) !== null) {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const start = i;
+    while (i < withoutComments.length && depth > 0) {
+      if (withoutComments[i] === '{') depth += 1;
+      else if (withoutComments[i] === '}') depth -= 1;
+      i += 1;
+    }
+    layers.push(withoutComments.slice(start, i - 1));
+  }
+  const layer = layers.join('\n');
+  const rule = /([^{}]+)\{([^{}]*)\}/g;
+  let rm: RegExpExecArray | null;
+  while ((rm = rule.exec(layer)) !== null) {
+    const selectors = rm[1]!
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (selectors.includes(selector)) return rm[2]!;
+  }
+  throw new Error(`no phone rule for ${selector}`);
+}
+
+const PANELS_CSS = readFileSync(join(HERE, 'contacts-panels.css'), 'utf-8');
 
 afterEach(() => {
   cleanup();
 });
+
+// DEC-663 (wave-87 amendment, contacts-v12.md findings 2 & 3): on the LAST
+// column the pager's primary reads "Review N rows" and runs the SAME
+// runPreview() the desktop Review step runs -- "Next column"/"Skip" become
+// a path INTO the dry run rather than clamping at a dead end. The plan
+// below is a minimal, valid ImportPlan shape.
+const PLAN: ImportPlan = {
+  rows: [{ line: 2, email: 'john@example.com', action: 'create' }],
+  created: 1,
+  updated: 0,
+  skipped: 0,
+};
 
 const CSV = ['First Name,Last Name,Email,Company', 'John,Doe,john@example.com,Acme'].join('\n');
 
@@ -119,5 +173,69 @@ describe('ImportWizard: phone-only Import CSV pager (v12m-w2-b, frame :487)', ()
     expect(within(radiogroup).getByRole('radio', { name: 'Skip this column' })).toBeInTheDocument();
     expect(within(radiogroup).getByRole('radio', { name: 'Full name (splits into first / last)' })).toBeInTheDocument();
     expect(within(radiogroup).getByRole('radio', { name: 'Custom: First Name' })).toBeInTheDocument();
+  });
+
+  // DEC-663 (wave-87 amendment): contacts-v12.md finding 3 -- "Next
+  // column"/"Skip" clamp through columns 1..N-1 exactly as before, but on
+  // the LAST column the primary reads "Review N rows" instead of "Next
+  // column" and runs the same dry-run POST the desktop Review step runs.
+  it('on the last column the primary reads "Review N rows" and runs the dry run instead of advancing further', async () => {
+    const fetchMock = mockApi({ 'POST /api/v1/contacts/import': { body: PLAN } });
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+    await screen.findByText('Column 1 of 4');
+
+    const next = screen.getByRole('button', { name: 'Next column' });
+    fireEvent.click(next); // -> 2 of 4
+    fireEvent.click(next); // -> 3 of 4
+    fireEvent.click(next); // -> 4 of 4 (last column)
+    await screen.findByText('Column 4 of 4');
+
+    const primary = screen.getByRole('button', { name: 'Review 1 row' });
+    expect(primary).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next column' })).not.toBeInTheDocument();
+
+    fireEvent.click(primary);
+    await screen.findByText('Review the import');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/contacts/import'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  // DEC-663 (wave-87 amendment): "Skip" on the last column clears that
+  // column's mapping AND runs the dry run in the same click -- the request
+  // must reflect the just-cleared mapping (via runPreview's override
+  // argument), never the stale pre-Skip mapping.
+  it('"Skip" on the last column clears its mapping and still runs the dry run, into the review step', async () => {
+    const fetchMock = mockApi({ 'POST /api/v1/contacts/import': { body: PLAN } });
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+    await screen.findByText('Column 1 of 4');
+
+    const next = screen.getByRole('button', { name: 'Next column' });
+    fireEvent.click(next); // -> 2 of 4
+    fireEvent.click(next); // -> 3 of 4
+    fireEvent.click(next); // -> 4 of 4 (last column, "Company")
+    await screen.findByText('Column 4 of 4');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    await screen.findByText('Review the import');
+
+    const call = fetchMock.mock.calls.find(([, init]) => (init as RequestInit)?.method === 'POST');
+    expect(call).toBeDefined();
+    const requestBody = JSON.parse((call![1] as RequestInit).body as string);
+    expect(requestBody.mapping.Company).toBeUndefined();
+  });
+
+  // DEC-663 (wave-87 amendment, contacts-v12.md finding 2): the frame's
+  // phone-position "N rows match an existing contact" note has no data at
+  // this step (the dry run hasn't run) -- the same-file dedupe note this
+  // wizard used to reuse there is now desktop-only, hidden at phone width
+  // rather than repositioned under the phone radio list. jsdom applies no
+  // stylesheet, so this is a source-scan pin on the CSS text, not computed
+  // style (see phoneLayerRuleBody above).
+  it('hides the same-file dedupe note at phone width -- nothing stands in for the plan-sourced note before the dry run has run', () => {
+    expect(phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-dedupe')).toMatch(/display:\s*none/);
   });
 });

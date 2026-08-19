@@ -51,3 +51,46 @@ no touching `app/src/styles.css` or `src/views/theme.ts`).
    dock). If the intended flow is instead "Next column" on the last
    column advances straight to Review/commit, that is a state-machine
    decision this task's scope forbids inventing.
+
+## Resolution (DEC-663, wave-87 amendment, task w5-g)
+
+Findings 2 and 3 are decided. Finding 1 (two stacked docks) is unchanged
+and stays filed — it belongs to the shell/header-footer lane.
+
+**Finding 3 — RULED.** On the LAST column, the phone pager's primary no
+longer reads "Next column"; it reads `Review N rows` (the same
+`countOf(dataRows.length, 'row')` phrase the desktop primary already
+used) and runs the exact same `runPreview()` call the desktop Review step
+runs, landing on the Review step. "Skip" on the last column does the
+same, after first clearing that column's mapping — it passes `runPreview`
+an explicit override-mapping argument rather than reading the `mapping`
+state closure, since `setColumnMapping`'s state update has not yet
+applied when the click handler calls `runPreview` in the same tick.
+`Next column` / `Skip` are, on every column but the last, unchanged.
+There is no longer a cul-de-sac: the pager's own footer becomes a path
+into the dry run, and the organizer never has to fall back on the shared
+modal footer's primary to finish matching columns (finding 1's stacked
+second dock remains visible during pagination, but is no longer the only
+way forward on the last column).
+
+**Finding 2 — RULED.** The frame's phone-position note ("N rows match an
+existing contact by email · those get updated") renders ONLY from the
+dry run's own `plan.updated` count, and renders NOTHING before that plan
+exists. Concretely: the wizard already had exactly this note on the
+Review step (`.chq-contacts-import-matched`, sourced from `plan.updated`,
+landed with the desktop review-step redesign) — nothing new was needed
+there. What changed is the match-columns/phone-pager step: the same-file
+dedupe note (`.chq-contacts-import-dedupe`, sourced from `dedupeCount`,
+a different measurement — an in-file email collision, not an
+existing-contact match) that this task previously substituted at that
+phone position is now DESKTOP-ONLY. `contacts-panels.css` hides
+`.chq-contacts-import-dedupe` at `max-width:700px` instead of
+repositioning it under the phone radio list; it keeps rendering "beneath
+the column grid" on desktop, where it is true. The phone pager shows
+nothing in that position pre-dry-run — a missing line, never a number
+with no plan behind it.
+
+Both rulings are implemented in `ImportWizard.tsx` (the phone dock's
+button logic) and `contacts-panels.css` (`.chq-contacts-import-dedupe`'s
+phone-hidden rule); new coverage in
+`ImportWizard.phoneColumns.render.test.tsx`.
