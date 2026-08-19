@@ -236,10 +236,12 @@ for (const frame of ALL_FRAMES) {
 }
 
 // -- Ratchet -----------------------------------------------------------------
-// Measured on this branch (v12m-w1-j): 6 of 53 frames are cited by an
-// existing test. May only be RAISED in a future wave as more frames get
-// real phone-parity coverage; never lowered.
-export const CLAIMED_FLOOR = 6;
+// Measured on this branch (v12m-w3-j, rebased off main after several w2
+// citation-landing lanes merged): 11 of 53 frames are cited by an existing
+// test -- not the 6 recorded when this const was first written. May only
+// be RAISED in a future wave as more frames get real phone-parity
+// coverage; never lowered.
+export const CLAIMED_FLOOR = 11;
 
 describe('phone-frame claim ledger (DEC-808 amendment wave 83, v12 mobile campaign)', () => {
   it('enumerates exactly 53 phone frames across 13 files (vacuous-population guard)', () => {
@@ -269,6 +271,33 @@ describe('phone-frame claim ledger (DEC-808 amendment wave 83, v12 mobile campai
     }
     expect(CLAIMS.length).toBeGreaterThanOrEqual(CLAIMED_FLOOR);
     // goalComplete for the v12 mobile campaign is this reaching 53 of 53.
+  });
+
+  it('fails when CLAIMS exceeds CLAIMED_FLOOR, so the floor cannot go stale (DEC-808 w85)', () => {
+    // The floor asserted above is a FLOOR, not a ceiling: a scan that only
+    // checks ">=" reads green forever once real coverage outgrows the
+    // recorded number -- exactly the staleness the field guide calls out
+    // ("A FLOOR THAT NEVER RISES IS A CEILING ON AMBITION", DEC-808 w85).
+    // This assertion is the missing upper half: it fails LOUD the moment
+    // CLAIMS.length walks past CLAIMED_FLOOR, naming the exact integer to
+    // write.
+    //
+    // Bumping CLAIMED_FLOOR is a MERGE-TRAIN act, performed once per batch
+    // after the batch's citing lanes have actually landed on the branch
+    // being measured -- never a worker's edit mid-lane. A worker who bumps
+    // it here, on a single lane, would only re-create the exact staleness
+    // this assertion exists to catch one batch later: the next lane to
+    // land a citation would once again read green against a floor that no
+    // longer reflects the truth on ITS branch.
+    if (CLAIMS.length > CLAIMED_FLOOR) {
+      throw new Error(
+        `CLAIMS.length is ${CLAIMS.length}, above CLAIMED_FLOOR (${CLAIMED_FLOOR}). ` +
+          `The floor has gone stale: update CLAIMED_FLOOR to ${CLAIMS.length} in a MERGE-TRAIN ` +
+          `pass over the integrated batch (never as a mid-lane edit by a single worker, which ` +
+          `would only re-create this staleness for the next lane that lands a citation).`
+      );
+    }
+    expect(CLAIMS.length).toBeLessThanOrEqual(CLAIMED_FLOOR);
   });
 
   it('every citation that claimed a frame resolves to a real line in the named frame file', () => {
