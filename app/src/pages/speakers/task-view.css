@@ -252,10 +252,18 @@
   height: 17px;
 }
 
+/* v12m-w7-b (DEC-385): forward-merged terminal phone block for this sheet.
+   Consolidates the two @media (max-width: 700px) blocks that previously
+   lived at original lines 255 and 282 into this single terminal block, in
+   ascending source order, per the one-terminal-phone-block contract
+   (test/phone-terminal-block.scan.test.ts). No declarations reordered,
+   reworded, or dropped; no selector recurred across the two blocks so
+   nothing needed collapsing. */
 @media (max-width: 700px) {
   /* Phone: the two tabs and the row-level links become real targets, and
      the five-track grids collapse -- a 178px name column beside a 1fr
-     answer does not survive a 360px viewport. */
+     answer does not survive a 360px viewport. (originally @700px block at
+     line 255) */
   .chq-taskview-tab,
   .chq-taskview-open,
   .chq-taskview-clear {
@@ -273,16 +281,15 @@
     align-items: start;
     gap: 10px;
   }
-}
 
-/* DEC-393 wave-7 amendment: flush row-action anchors take the floor on the
-   anchor itself -- min-height:44px plus centred flex plus horizontal
-   padding, with an equal-and-opposite negative margin so nothing shifts.
-   Applied to the anchor only, never to a container. */
-@media (max-width: 700px) {
   .chq-taskview-back,
   .chq-taskview-name,
   .chq-taskview-actions a {
+    /* DEC-393 wave-7 amendment: flush row-action anchors take the floor on
+       the anchor itself -- min-height:44px plus centred flex plus
+       horizontal padding, with an equal-and-opposite negative margin so
+       nothing shifts. Applied to the anchor only, never to a container.
+       (originally @700px block at line 282) */
     min-height: 44px;
     display: flex;
     align-items: center;

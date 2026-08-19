@@ -96,21 +96,6 @@
   min-height: 46px;
 }
 
-/* DEC-393 wave-87 amendment: `.chq-modal-actions` is a slot for arbitrary
-   caller content (ModalFrame.tsx's `actions` prop) and can hold a bare
-   anchor with no `.chq-btn` -- give any such anchor the 44px floor on
-   phone without touching the styled `.chq-btn` action buttons above,
-   which already clear it at 46px. */
-@media (max-width: 700px) {
-  .chq-modal-actions a:not(.chq-btn) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    padding: 0 16px;
-  }
-}
-
 /* FormRow (DEC-685): the ONE form-row skeleton. Label above the control,
    full measure, optional help caption, error distinguished by a leading
    glyph + weight (never colour alone, DEC-367). */
@@ -147,12 +132,6 @@
   text-transform: none;
 }
 
-@media (max-width: 700px) {
-  .chq-form-row-pair {
-    grid-template-columns: 1fr;
-  }
-}
-
 .chq-form-row-control {
   display: flex;
   flex-direction: column;
@@ -173,23 +152,49 @@
    in app/src/components/error-states.css, the ONE error-vocabulary module
    -- declared exactly once, not here. */
 
+/* v12m-w7-b (DEC-385): forward-merged terminal phone block for this sheet.
+   Consolidates the four @media (max-width: 700px) blocks that previously
+   lived at original lines 104, 150, 176 and 192 into this single terminal
+   block, in ascending source order, per the one-terminal-phone-block
+   contract (test/phone-terminal-block.scan.test.ts). No declarations
+   reordered, reworded, or dropped; no selector recurred across the four
+   blocks so nothing needed collapsing. */
 @media (max-width: 700px) {
+  /* DEC-393 wave-87 amendment (originally @700px block at line 104):
+     `.chq-modal-actions` is a slot for arbitrary caller content
+     (ModalFrame.tsx's `actions` prop) and can hold a bare anchor with no
+     `.chq-btn` -- give any such anchor the 44px floor on phone without
+     touching the styled `.chq-btn` action buttons above, which already
+     clear it at 46px. */
+  .chq-modal-actions a:not(.chq-btn) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 16px;
+  }
+
+  /* (originally @700px block at line 150) */
+  .chq-form-row-pair {
+    grid-template-columns: 1fr;
+  }
+
+  /* (originally @700px block at line 176) */
   .chq-form-row-control > .chq-input,
   .chq-form-row-control > .chq-select,
   .chq-form-row-control > .chq-textarea {
     min-height: 44px;
   }
-}
 
-/* w6-d: un-hide the phone back link inside the drawer's header, and
-   re-pair the head to the drawer's phone inset -- styles.css:2283-2285
-   cuts .chq-drawer's own padding to 16px at <=700px, so the head's
-   negative margin/padding here must equal that SAME number, never a
-   second re-derivation of it, or the header band overhangs the drawer /
-   sits its title on a mismatched gutter (measured at 26px vs 16px before
-   this fix). Scoped to `.chq-drawer` so a plain `.chq-modal` (which keeps
-   20px/26px at every width) is untouched. */
-@media (max-width: 700px) {
+  /* w6-d: un-hide the phone back link inside the drawer's header, and
+     re-pair the head to the drawer's phone inset -- styles.css:2283-2285
+     cuts .chq-drawer's own padding to 16px at <=700px, so the head's
+     negative margin/padding here must equal that SAME number, never a
+     second re-derivation of it, or the header band overhangs the drawer /
+     sits its title on a mismatched gutter (measured at 26px vs 16px before
+     this fix). Scoped to `.chq-drawer` so a plain `.chq-modal` (which keeps
+     20px/26px at every width) is untouched. (originally @700px block at
+     line 192) */
   .chq-drawer .chq-modal-head {
     margin: -16px -16px 0;
     padding: 0 16px 16px;
