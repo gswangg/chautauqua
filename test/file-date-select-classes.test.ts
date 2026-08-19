@@ -1,6 +1,9 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { DEC_383 } from "../src/decisions";
+
+void DEC_383; // wave-100 amendment: strip comments before judging a stylesheet's hex literals
 
 // DEC-577 (w1-i): the SPA never styled native form controls, so a judge's
 // first sighting of Content was a browser-default file input beside a fully
@@ -253,10 +256,27 @@ describe("app/src/styles.css DEC-577 controls section", () => {
   });
 
   it("references only existing --chq-* custom properties, never a new hex literal", () => {
-    const hexLiterals = section.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+    // DEC-383 (wave-100 amendment): the DEC-976 frame-citation campaign
+    // quotes v12 frame hex literals (e.g. #4E5C31) inside COMMENTS in this
+    // section, to document which frame a rule matches. A comment is not a
+    // declaration -- strip comments before matching, same shape as
+    // test/design-token-reader.scan.test.ts:21-23.
+    const stripped = stripComments(section);
+    const hexLiterals = stripped.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
     expect(hexLiterals).toEqual([]);
     // and it does lean on the frozen token set (not styled with no color at all)
     expect(section).toMatch(/var\(--chq-surface-sunk\)/);
     expect(section).toMatch(/var\(--chq-border-strong\)/);
+  });
+
+  it("falsifiability control: a real hex literal in a real declaration is still reported (the comment strip cannot silently disable the rule)", () => {
+    const fixture = `
+      /* a v12 frame cites #4E5C31 here, just a comment */
+      .chq-synthetic-offender {
+        color: #4E5C31;
+      }
+    `;
+    const hexLiterals = stripComments(fixture).match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+    expect(hexLiterals).toEqual(["#4E5C31"]);
   });
 });

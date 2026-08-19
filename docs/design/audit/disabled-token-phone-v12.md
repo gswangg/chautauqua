@@ -1,4 +1,4 @@
-# Disabled token audit — phone (<=700px) blocks (DEC-367, wave-87 amendment, w5-i)
+# Disabled token audit — phone (<=700px) blocks (DEC-367, wave-87 amendment, w5-i; re-derived DEC-745, wave-100, task w3-c)
 
 `test/disabled-token-uses.scan.test.ts` was extended in its own idiom: the
 population gains every rule inside a `@media (max-width: <=700px)` block
@@ -27,6 +27,14 @@ Disabled token inside a phone (<=700px) block:
   in the selector; this is the same pager-arrow-with-no-page-to-go-to rule
   the ruling itself cites as an example, already named in the base scan's
   `LEGAL_USES` table).
+
+This is unchanged by the wave-100 amendment below — the checkbox/radio
+`:disabled` rules the base (non-phone) scan was missing are both top-level
+declarations (`app/src/styles.css:2114` sits after its enclosing
+`@media (max-width: 700px)` block already closed at line ~2000; `src/views/theme.ts:368`
+carries no enclosing `@media` at all), so neither one ever entered the
+phone-block population above. The phone-block result was, and remains,
+exactly one hit.
 
 No offender was found anywhere else in the tree, including in every
 cluster held by a live wave-4/wave-5 lane (`styles.css`, `review.css`,
@@ -58,3 +66,47 @@ genuine third case that is neither should get a
 the comment, so a stale exemption over a since-fixed or since-moved rule
 fails loudly with an explicit delete-this-line message rather than quietly
 outliving the code it once excused).
+
+## Wave-100 amendment (DEC-745): the BASE scan gained two named accounts
+
+This audit had gone stale on one point: it only ever measured the
+phone-block extension (DEC-367), and never re-derived the BASE
+(non-phone) scan's own live population after `no LEGAL_USES row is dead`
+and the "unaccounted rules" check went red on main. Re-run against the
+live tree (task w3-c), the base scan's population is **14** rules
+composing `var(--chq-disabled)` / `var(--chq-disabled-bg)` across the
+whole tree (12 already had a named `LEGAL_USES` account; 2 did not):
+
+```
+app/src/pages/comms/comms.css :: .chq-comms-preview-nav button:disabled
+app/src/pages/review/review.css :: .chq-review-add-link[aria-disabled='true']
+app/src/pages/review/review.css :: .chq-review-field-disabled
+app/src/pages/review/review.css :: .chq-review-field-disabled .chq-review-checkbox-label
+app/src/pages/submissions/detail.css :: .chq-detail-session-details-fields #submission-format:disabled, .chq-detail-session-details-fields #submission-audience-level:disabled
+app/src/pages/submissions/submissions.css :: .chq-submissions-clone:disabled
+app/src/styles.css :: .chq-btn:disabled, .chq-btn[aria-disabled='true']
+app/src/styles.css :: .chq-btn:disabled:hover, .chq-btn[aria-disabled='true']:hover, .chq-btn:disabled:active, .chq-btn[aria-disabled='true']:active
+app/src/styles.css :: .chq-link-button:disabled, .chq-link-button:disabled:hover
+app/src/styles.css :: input[type='checkbox']:disabled, input[type='radio']:disabled           <- was unaccounted
+src/routes/portal/portal.css.ts :: .chq-portal-preview-download
+src/views/theme.ts :: input[type=checkbox]:disabled, input[type=radio]:disabled               <- was unaccounted
+src/views/theme.ts :: button:disabled, .chq-btn:disabled, button[aria-disabled=true], .chq-btn[aria-disabled=true]
+src/views/theme.ts :: button:disabled:hover, .chq-btn:disabled:hover, button[aria-disabled=true]:hover, .chq-btn[aria-disabled=true]:hover, button:disabled:active, .chq-btn:disabled:active, button[aria-disabled=true]:active, .chq-btn[aria-disabled=true]:active
+```
+
+Per DEC-745, a checkbox/radio that cannot be toggled is B8's first legal
+use (an inert control) — the same door `button:disabled` already walks
+through. `test/disabled-token-uses.scan.test.ts` gained two named
+`LEGAL_USES` accounts, one per file/spelling (`app/src/styles.css` quotes
+its attribute values, `src/views/theme.ts` does not, so the two selector
+strings never collide):
+
+- `input[type='checkbox']:disabled, input[type='radio']:disabled` (`app/src/styles.css`)
+- `input[type=checkbox]:disabled, input[type=radio]:disabled` (`src/views/theme.ts`)
+
+Neither styles.css nor theme.ts was edited — both were already correct
+(the ruling was about the GUARD, not the CSS). A new `NAMED_FILE_ACCOUNTS`
+stale-account tripwire (mirroring
+`app/src/phone-horizontal-overflow.scan.test.ts`'s `STALE_EXEMPTIONS`
+shape) now fails loudly, naming the file, if either account's selector
+ever stops matching a rule in its own named file.
