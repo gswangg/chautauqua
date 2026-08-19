@@ -1117,6 +1117,22 @@
     align-items: center;
   }
 
+  /* DEC-643 wave-83: Files is a back-linked drill ("‹ Content" breadcrumb
+     above), not a cluster landing, so its H1 takes the 25px drill register,
+     never the 27px landing size the shared .chq-page-title phone rule gives
+     every page by default (styles.css). The shared `.chq-phone-head-drill`
+     wrapper has no consumer anywhere in the tree (field guide: THE
+     SCAFFOLD HAS NO READER) -- scoping to this page's own breadcrumb
+     column reaches the frame's :341 `font-size:25px; font-weight:700;
+     letter-spacing:-0.04em; line-height:1.05` without adopting that unused
+     scaffold or touching the shared stylesheet. Single-sourced against the
+     SAME --chq-type-page-title-phone-drill token DEC-643's other consumer
+     reads, so the two registers cannot drift apart. */
+  .chq-content-files-titles .chq-page-title {
+    font-size: var(--chq-type-page-title-phone-drill);
+    line-height: 1.05;
+  }
+
   .chq-content-files-header-actions {
     flex-direction: column;
     align-items: stretch;
@@ -1336,6 +1352,15 @@
      one-primary-fills-the-row grammar the queue card's Approve uses. */
   .chq-content-comment-actions {
     gap: 8px;
+  }
+
+  /* Frame :422-424: BOTH "Ask for changes" and "Send note only" sit at
+     min-height:48px -- the shared .chq-btn phone rule (styles.css) only
+     floors every button at 44px, which is correct for most controls but
+     undershoots this composer's own dock-adjacent pair. Scoped to this
+     class so the shared rule itself stays untouched (DEC-368). */
+  .chq-content-comment-actions .chq-btn {
+    min-height: 48px;
   }
 
   .chq-content-comment-actions .chq-btn-primary {
