@@ -70,7 +70,7 @@ const DISCLOSURE_TOGGLE_OK: Array<[file: string, line: number, reason: string]> 
   ],
   [
     'app/src/pages/submissions/SubmissionDetailPage.tsx',
-    1265,
+    1305,
     "expand/collapse criteria disclosure toggle ({criteriaOpen ? '▾' : '▸'} " +
       'count) -- same disclosure affordance as ResultsTable.tsx:485.',
   ],

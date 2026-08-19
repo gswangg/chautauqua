@@ -136,3 +136,17 @@ A future wave should re-run the population scan (the test's own offender
 list, with `console.log`) before spending a lane on this list — several of
 the listed branches may have landed the fix as a side effect of their own
 work by then, which would shrink the ceiling on its own.
+
+## Merge-train addendum (wave-99 integration)
+
+The table above was measured on this task's branch, which was cut before
+main landed `.chq-review-assign-below` in
+`app/src/pages/review/review.css` (DEC-745, wave-98 adjudication). That
+rule sets `font-size`/`font-weight` with no `font-family` on a control
+class, so it is a 35th offender the enumeration above never saw — the
+ceiling of 34 was calibrated against a stale base, not against main.
+
+Rather than widen the ratchet (the constant's own comment forbids that:
+it may only tighten), the merge train applied the standard fix
+`font-family: inherit;` to that rule. The measured truth is 34 again and
+the enumeration above stands unchanged.

@@ -341,6 +341,7 @@
   min-height: 46px;
   font-size: 13px;
   font-weight: 700;
+  font-family: inherit;
   color: var(--chq-brand);
   background: transparent;
 }
