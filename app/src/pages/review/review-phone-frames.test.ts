@@ -103,9 +103,14 @@ describe('DEC-385: the review phone layer is single-direction', () => {
   });
 });
 
-describe('DEC-874 wave-86: neither reviewer list surface mints its own Sign out', () => {
-  it('ReviewerQueue.tsx never renders a "Sign out" control', () => {
-    expect(REVIEWER_QUEUE_TSX).not.toMatch(/Sign out/);
+describe('DEC-154/DEC-874 wave-91 amendment: ReviewerQueue.tsx uses the ONE sign-out contract', () => {
+  it('ReviewerQueue.tsx makes no fetch() call and has no second \'/logout\' literal', () => {
+    expect(REVIEWER_QUEUE_TSX).not.toMatch(/fetch\(/);
+    expect(REVIEWER_QUEUE_TSX).not.toMatch(/\/logout/);
+  });
+
+  it('ReviewerQueue.tsx imports signOut from lib/api', () => {
+    expect(REVIEWER_QUEUE_TSX).toMatch(/import\s*\{[^}]*\bsignOut\b[^}]*\}\s*from\s*'\.\.\/\.\.\/lib\/api'/);
   });
 });
 
@@ -226,7 +231,12 @@ describe('"Reviewer queue · /review/plans/:id" -- docs/design/Chautauqua Review
     const footerLiteral =
       '      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; align-items:center; gap:12px">';
     expect(frameLine(441)).toBe(footerLiteral);
-    expect(REVIEWER_QUEUE_TSX).toMatch(/className="chq-review-queue-footer chq-phone-dock"/);
+    // DEC-385 wave-91 amendment: this is the DESKTOP queue footer -- the
+    // ONE phone dock per surface lives at ReviewerQueue.tsx's separate
+    // `.chq-phone-dock chq-review-phone-dock` standing band (asserted
+    // below), so this row no longer mints `.chq-phone-dock` itself.
+    expect(REVIEWER_QUEUE_TSX).toMatch(/className="chq-review-queue-footer">/);
+    expect(REVIEWER_QUEUE_TSX).toMatch(/className="chq-phone-dock chq-review-phone-dock"/);
     const dockRule = ruleIn(STYLES_PHONE, '.chq-phone-dock');
     expect(dockRule).toMatch(/position:\s*sticky/);
     expect(dockRule).toMatch(/bottom:\s*0/);

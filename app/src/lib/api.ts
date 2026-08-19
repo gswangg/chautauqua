@@ -171,6 +171,31 @@ export function apiDelete<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'DELETE' });
 }
 
+// DEC-154/DEC-874 (wave-91 amendment): sign-out. Mirrors this module's own
+// CSRF convention (x-chq-csrf header on mutations, credentials 'include')
+// even though /logout isn't under /api/v1 -- it's not routed through
+// request() because that helper hardcodes the /api/v1 prefix. This is the
+// ONE sign-out contract; every caller (App.tsx's header/nav controls, the
+// review phone dock) imports this rather than hand-copying the fetch.
+//
+// Only navigate to /login when the /logout response is ok. If it isn't (or
+// the fetch itself throws), the chq_session cookie is still live
+// server-side -- navigating to /login anyway would assert a sign-out that
+// did not happen, silently leaving an authenticated session behind a page
+// that looks signed-out. Instead this throws, so the rejection surfaces to
+// the caller instead of being swallowed.
+export async function signOut(): Promise<void> {
+  const res = await fetch('/logout', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'x-chq-csrf': '1' },
+  });
+  if (!res.ok) {
+    throw new Error(`Sign-out failed: /logout responded ${res.status}`);
+  }
+  window.location.assign('/login');
+}
+
 // DEC-160: POST that returns a binary body (application/zip) rather than
 // JSON — the files-library bulk-download endpoint. Deliberately bypasses
 // `request()`'s JSON parsing but mirrors its csrf + credentials + ApiError

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useMe } from './lib/useMe';
+import { signOut } from './lib/api';
 import { guardedNavigate, useNavExceptions } from './lib/useNavExceptions';
 import { useEscapeKey } from './lib/useEscapeKey';
 import { identityLabel } from './lib/identity';
@@ -133,29 +134,11 @@ function isReviewerNav(section: NavSection): boolean {
 // out of the tab bar's `.slice(0, 4)`).
 const PHONE_TAB_PATHS = ['/overview', '/submissions', '/speakers', '/content'] as const;
 
-// DEC-154: sign-out. Mirrors app/src/lib/api.ts's CSRF convention
-// (x-chq-csrf header on mutations, credentials 'include') even though
-// /logout isn't under /api/v1 — it's not routed through api.ts's request()
-// helper because that helper hardcodes the /api/v1 prefix.
+// DEC-154/DEC-874 (wave-91 amendment): sign-out is now the ONE contract
+// exported from lib/api.ts (POST /logout, CSRF header, redirect to /login
+// only on a 2xx, never swallow a rejection) -- App.tsx calls it rather than
+// hand-copying the fetch.
 //
-// DEC-154 (wave 14 amendment): only navigate to /login when the /logout
-// response is ok. If it isn't (or the fetch itself throws), the chq_session
-// cookie is still live server-side -- navigating to /login anyway would
-// assert a sign-out that did not happen, silently leaving an authenticated
-// session behind a page that looks signed-out. Instead this throws, so the
-// rejection surfaces to the caller instead of being swallowed.
-async function signOut(): Promise<void> {
-  const res = await fetch('/logout', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'x-chq-csrf': '1' },
-  });
-  if (!res.ok) {
-    throw new Error(`Sign-out failed: /logout responded ${res.status}`);
-  }
-  window.location.assign('/login');
-}
-
 // Calls signOut() without swallowing a rejection into `void` -- a failed
 // sign-out must surface (fail loudly) rather than be silently discarded.
 function handleSignOutClick(): void {
