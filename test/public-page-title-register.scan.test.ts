@@ -172,6 +172,7 @@ const REGISTER_TABLE: RegisterRow[] = [
     desktop: "40px",
     phone: "30px",
     source: "docs/design/Chautauqua Docs.dc.html:134; DEC-990 wave-5 amendment (sha ee8ceffa)",
+    // cited line: `font-size:38px`
   },
   {
     role: "docs article",
@@ -179,6 +180,7 @@ const REGISTER_TABLE: RegisterRow[] = [
     desktop: "38px",
     phone: "28px",
     source: "docs/design/Chautauqua Docs.dc.html:60 (desktop), :175 (phone); DEC-990 wave-5 amendment (sha ee8ceffa)",
+    // cited line: `font-size:40px`
   },
 ];
 

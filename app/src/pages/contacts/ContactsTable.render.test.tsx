@@ -196,6 +196,7 @@ describe('ContactsTable empty states (B7 rule 6, DEC-678)', () => {
 });
 
 // w20-c (DEC-902 amendment): docs/design/Chautauqua Contacts.dc.html:97/101
+// (`display:grid; grid-template-columns:26px 1fr 130px 118px auto`)
 // give the directory table an exact track list -- 26px 1fr 130px 118px
 // auto -- but table-layout:auto left every column unwidthed. Pin the width
 // class on each <th> and the table-layout:fixed + widths in styles.css.

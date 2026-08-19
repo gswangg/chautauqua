@@ -278,7 +278,8 @@ describe('Desktop header single row + identity (DEC-576/369)', () => {
 
   // DEC-369: the two design sources differ deliberately -- organizer chrome
   // reads "JORDAN A." (initials form), reviewer chrome reads the full
-  // surname, "SAM WHITFIELD" (docs/design/Chautauqua Review.dc.html:152,313).
+  // surname, "SAM WHITFIELD" (docs/design/Chautauqua Review.dc.html:152,313
+  // `</div>`).
   it('renders the reviewer full name, not the organizer initials form', async () => {
     mockApi({
       'GET /api/v1/me': {
@@ -570,12 +571,16 @@ describe('RoleGate blocks routed content while /me is unresolved (DEC-857)', () 
 // measurement.
 describe('Header/nav geometry pinned to the frame (DEC-369 amendment)', () => {
   it('.chq-header: padding 15px 34px, gap 22px (docs/design/Chautauqua Overview.dc.html:33)', () => {
+    // docs/design/Chautauqua Overview.dc.html:33 `border-bottom:1px solid #1B1D17;
+    // padding:15px 34px; display:flex; align-items:center; gap:22px`
     const body = topLevelRuleBody(STYLES_CSS, '.chq-header');
     expect(body).toMatch(/padding:\s*15px 34px/);
     expect(body).toMatch(/gap:\s*22px/);
   });
 
   it('.chq-nav: item gap 15px, no margin-left (docs/design/Chautauqua Overview.dc.html:35)', () => {
+    // docs/design/Chautauqua Overview.dc.html:35 `display:flex; align-items:center;
+    // gap:15px; font-size:13px; font-weight:600; line-height:1`
     const body = topLevelRuleBody(STYLES_CSS, '.chq-nav');
     expect(body).toMatch(/gap:\s*15px/);
     expect(body).not.toMatch(/margin-left/);

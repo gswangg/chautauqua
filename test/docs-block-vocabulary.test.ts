@@ -1,5 +1,6 @@
 // task-w4-c: DEC-650 (wave-4 amendment) states the drawn element library
-// (docs/design/Chautauqua Docs.dc.html:226-346) is a CLOSED set of nine
+// (docs/design/Chautauqua Docs.dc.html:226-346, `Docs · the element library`)
+// is a CLOSED set of nine
 // block kinds -- "Nothing outside this set may appear in an article". This
 // test derives the set of block kinds actually used across DOCS_ARTICLES
 // and asserts it is a subset of the declared nine-member union, asserts no

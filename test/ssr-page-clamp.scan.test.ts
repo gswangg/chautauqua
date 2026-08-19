@@ -147,7 +147,10 @@ const NAMED_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
   ],
   // Wave 4 (task-w4-b) moved this row's SELECTOR, not its ruling: the
   // article page gained the frame's 216px nav column
-  // (docs/design/Chautauqua Docs.dc.html:44), so the clamp now sits on the
+  // (docs/design/Chautauqua Docs.dc.html:44, `max-width:1240px; margin:0 auto;
+  // width:100%; padding:34px 34px 48px; display:grid;
+  // grid-template-columns:216px minmax(0, 1fr); gap:44px;
+  // align-items:start`), so the clamp now sits on the
   // two-column shell .chq-docs-article-frame and .chq-docs-article-body is
   // the unclamped fluid column inside it. 1240 is the drawn frame value and
   // still the same argument: 1240 - 68px gutter - 216px nav - 44px gap

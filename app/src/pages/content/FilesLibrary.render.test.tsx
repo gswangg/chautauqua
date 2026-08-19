@@ -149,7 +149,7 @@ describe('FilesLibrary render smoke', () => {
     await screen.findByText('slides.pdf');
 
     // Frame: docs/design/Chautauqua Content.dc.html:311 --
-    // grid-template-columns: 1fr 190px 108px 92px auto; gap:16px.
+    // `display:grid; grid-template-columns:1fr 190px 108px 92px auto; gap:16px`.
     // File carries no width class (takes the 1fr remainder); the other
     // three are pinned classes styled in content.css.
     const table = screen.getByRole('table');
@@ -162,8 +162,8 @@ describe('FilesLibrary render smoke', () => {
   });
 
   // Frame: docs/design/Chautauqua Content.dc.html:311 --
-  // grid-template-columns: 1fr 190px 108px 92px auto; gap:16px. File takes
-  // the 1fr remainder (no width class); Session/Version/Size are pinned.
+  // `display:grid; grid-template-columns:1fr 190px 108px 92px auto; gap:16px`.
+  // File takes the 1fr remainder (no width class); Session/Version/Size are pinned.
   it('pins the four Files table column-width literals to the frame (w4-c, DEC-902)', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
     const sessionMatch = css.match(/\.chq-content-files-table \.chq-content-files-col-session\s*\{([^}]*)\}/);

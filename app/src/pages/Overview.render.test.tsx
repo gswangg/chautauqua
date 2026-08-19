@@ -681,6 +681,9 @@ describe('overview top-third spacing measure (Gate-4 wave-6 amendment)', () => {
   });
 
   it('§01 row pitch (DEC-369 amendment, docs/design/Chautauqua Overview.dc.html:79): the overdue row padding matches the shared row padding at 16px', () => {
+    // docs/design/Chautauqua Overview.dc.html:79 `display:grid;
+    // grid-template-columns:1fr 1.15fr auto; gap:20px; align-items:baseline;
+    // padding:16px 0; border-bottom:1px solid #E1DDCE`
     expect(ruleBody('.chq-overview-row-overdue')).toMatch(/padding:\s*16px 0/);
     expect(ruleBody('.chq-overview-row')).toMatch(/padding:\s*16px 0/);
   });
@@ -691,6 +694,9 @@ describe('overview top-third spacing measure (Gate-4 wave-6 amendment)', () => {
   });
 
   it('"No action needed" quiet-row pitch (DEC-369 amendment, docs/design/Chautauqua Overview.dc.html:172): vertical padding is 14px, value column grid is 200px 1fr', () => {
+    // docs/design/Chautauqua Overview.dc.html:172 `display:grid;
+    // grid-template-columns:200px 1fr; gap:20px; align-items:baseline;
+    // padding:14px 0; border-bottom:1px solid #E1DDCE`
     expect(ruleBody('.chq-overview-row-quiet')).toMatch(/padding:\s*14px 0/);
     expect(ruleBody('.chq-overview-row-quiet')).toMatch(/grid-template-columns:\s*200px 1fr/);
   });
