@@ -8,10 +8,12 @@ import {
   formatEventDateTimeWithSeconds,
   formatEventDayRange,
   formatEventCloseDateLabel,
+  daysUntilCalendarDay,
   formatDayShort,
   formatDayLong,
   formatDayMedium,
 } from "../src/lib/event-time";
+import { dayLabelStartInstant } from "../src/lib/timezone";
 
 describe("formatEventDateTime (DEC-408)", () => {
   it("renders a March instant in America/Los_Angeles as PST with the right wall-clock hour", () => {
@@ -229,22 +231,54 @@ describe("formatEventDayRange (DEC-918)", () => {
   });
 });
 
-// DEC-408/DEC-918: the CFP close-date label renders in the event's own IANA
-// timezone (a real instant), en-GB day-before-month order. Only the Intl
+// DEC-408/DEC-918/DEC-522: the CFP close-date label takes a UTC-midnight DAY
+// LABEL (enforced upstream by isDayLabelMs, src/routes/api/validators.ts),
+// not an instant, and expands it through dayLabelEndInstant before
+// formatting -- the same expansion daysUntilCalendarDay uses -- so the
+// printed date never disagrees with the "N days left" count. Only the Intl
 // formatting itself lives here -- uppercasing/"N days left" arithmetic stays
 // with the caller (root.tsx's closesLine).
-describe("formatEventCloseDateLabel (DEC-408, DEC-918)", () => {
-  it("renders a weekday/day/month label in the given IANA timezone, en-GB order", () => {
-    // 2027-05-12T23:59:00Z is still 2027-05-12 16:59 in America/Los_Angeles (PDT).
-    const ms = Date.UTC(2027, 4, 12, 23, 59, 0);
-    expect(formatEventCloseDateLabel(ms, "America/Los_Angeles")).toBe("Wed 12 May");
+describe("formatEventCloseDateLabel (DEC-408, DEC-918, DEC-522)", () => {
+  it("renders the correct calendar day for a UTC-midnight day label in a western zone", () => {
+    // A naive instant-format of this label (UTC midnight) would render as
+    // "Sun 28 Feb" in America/Los_Angeles -- the previous day.
+    const dayLabelMs = Date.UTC(2027, 2, 1);
+    expect(formatEventCloseDateLabel(dayLabelMs, "America/Los_Angeles")).toBe("Mon 1 Mar");
   });
 
-  it("shifts the calendar day across a timezone boundary, unlike the day-label formatters", () => {
-    // 2027-05-13T02:00:00Z is 2027-05-12 19:00 in America/Los_Angeles (PDT) --
-    // a genuine instant, so it renders on the PREVIOUS calendar day locally.
-    const ms = Date.UTC(2027, 4, 13, 2, 0, 0);
-    expect(formatEventCloseDateLabel(ms, "America/Los_Angeles")).toBe("Wed 12 May");
-    expect(formatEventCloseDateLabel(ms, "UTC")).toBe("Thu 13 May");
+  it("renders the correct calendar day for the same day label in an eastern zone", () => {
+    const dayLabelMs = Date.UTC(2027, 2, 1);
+    expect(formatEventCloseDateLabel(dayLabelMs, "Asia/Tokyo")).toBe("Mon 1 Mar");
+  });
+
+  it("renders the correct calendar day for the same day label in UTC", () => {
+    const dayLabelMs = Date.UTC(2027, 2, 1);
+    expect(formatEventCloseDateLabel(dayLabelMs, "UTC")).toBe("Mon 1 Mar");
+  });
+
+  it("seam: when 'now' is the closing day itself, both readers agree it's the last day", () => {
+    // nowMs = the exact local start of the target day, in each zone (via
+    // dayLabelStartInstant, the same expansion primitive
+    // formatEventCloseDateLabel and daysUntilCalendarDay both build on top
+    // of, through dayLabelEndInstant). If the two readers ever disagreed
+    // about which calendar day the label names, one of these two
+    // assertions would fail: either "today" (nowMs's own calendar day,
+    // read independently via Intl) would stop matching the label, or the
+    // countdown would stop reading 1 ("closes today") on the label's own
+    // day.
+    const dayLabelMs = Date.UTC(2027, 7, 20); // 2027-08-20
+    for (const timeZone of ["America/Los_Angeles", "Asia/Tokyo", "UTC"]) {
+      const label = formatEventCloseDateLabel(dayLabelMs, timeZone);
+      const nowMs = dayLabelStartInstant(dayLabelMs, timeZone);
+
+      const today = new Date(nowMs).toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        timeZone,
+      });
+      expect(today).toBe(label);
+      expect(daysUntilCalendarDay(dayLabelMs, timeZone, nowMs)).toBe(1);
+    }
   });
 });
