@@ -275,8 +275,8 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
       if (!wrap) return;
       var visible = !hidden[r.fieldId];
       wrap.style.display = visible ? '' : 'none';
-      var input = wrap.querySelector('[data-field-id="' + r.fieldId + '"]');
-      if (input) { input.required = visible && input.dataset.required === 'true'; }
+      var inputs = wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]');
+      inputs.forEach(function(input){ input.required = visible && input.dataset.required === 'true'; });
     });
   }
   document.addEventListener('change', apply);

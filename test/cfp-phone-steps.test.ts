@@ -247,3 +247,75 @@ describe("cfp-steps-script — refuses to engage when the form already carries a
     expect(js).not.toContain("fetch(");
   });
 });
+
+// DEC-986 wave 108: the Next handler must validate the outgoing step before
+// advancing, and a step transition must un-require every control it hides
+// and restore the original required-ness when that step is shown again.
+// jsdom runs no constraint validation, so these are source-level assertions
+// on the emitted script text (mirroring the suite above), never
+// browser-driven checkValidity()/reportValidity() calls.
+describe("cfp-steps-script — DEC-986: validates before advancing, un-requires what it hides", () => {
+  async function getScript(): Promise<string> {
+    const mod = await import("../src/routes/public/cfp-steps-script");
+    const el = mod.CfpStepsScript() as unknown as { props: { dangerouslySetInnerHTML: { __html: string } } };
+    return el.props.dangerouslySetInnerHTML.__html;
+  }
+
+  it("clause 2: Next runs checkValidity()/reportValidity() over the outgoing (talk) section and refuses to advance on failure", async () => {
+    const js = await getScript();
+    expect(js).toContain("checkValidity");
+    expect(js).toContain("reportValidity");
+    // The Next click handler must gate setStep('2') behind the validation
+    // result -- i.e. the handler body checks validateSection(talkSection)
+    // before calling setStep, not after.
+    const nextHandlerMatch = js.match(/if \(next\) \{ next\.addEventListener\('click', function\(\)\{([\s\S]*?)\}\); \}/);
+    expect(nextHandlerMatch, "no Next click handler found").not.toBeNull();
+    const nextHandlerBody = nextHandlerMatch![1];
+    expect(nextHandlerBody).toMatch(/if \(!validateSection\(talkSection\)\) \{\s*return;\s*\}/);
+    expect(nextHandlerBody).toContain("setStep('2')");
+    // validateSection must return false (refusing to advance) without ever
+    // itself calling setStep -- it only reports/focuses.
+    const validateFnMatch = js.match(/function validateSection\(section\)\{([\s\S]*?)\n    \}/);
+    expect(validateFnMatch, "no validateSection function found").not.toBeNull();
+    expect(validateFnMatch![1]).toContain("checkValidity");
+    expect(validateFnMatch![1]).toContain("reportValidity");
+    expect(validateFnMatch![1]).toContain("return false");
+    expect(validateFnMatch![1]).not.toContain("setStep");
+  });
+
+  it("clause 1: a step transition un-requires the section it hides and restores the original required-ness of the section it shows, stashed on a data attribute (never a JS-side map)", async () => {
+    const js = await getScript();
+    expect(js).toContain("data-chq-cfp-required-orig");
+    const applyFnMatch = js.match(/function applyRequiredState\(section, visible\)\{([\s\S]*?)\n    \}/);
+    expect(applyFnMatch, "no applyRequiredState function found").not.toBeNull();
+    const body = applyFnMatch![1];
+    // Original required-ness is read from (or written to, once) the
+    // element's own data attribute, not a closure-scoped object/Map.
+    expect(body).toMatch(/hasAttribute\('data-chq-cfp-required-orig'\)/);
+    expect(body).toMatch(/setAttribute\('data-chq-cfp-required-orig'/);
+    expect(body).not.toMatch(/\bnew Map\(/);
+    // setStep must call applyRequiredState for both sections on every
+    // transition, driven by the target step, so the hidden section is
+    // un-required and the shown section is restored.
+    const setStepMatch = js.match(/function setStep\(step\)\{([\s\S]*?)\n    \}/);
+    expect(setStepMatch, "no setStep function found").not.toBeNull();
+    const setStepBody = setStepMatch![1];
+    expect(setStepBody).toMatch(/applyRequiredState\(talkSection, step === '1'\)/);
+    expect(setStepBody).toMatch(/applyRequiredState\(youSection, step === '2'\)/);
+  });
+
+  it("clause 3: 'Submit this talk' is never suppressed via formnovalidate -- the guard lives in the step script only", async () => {
+    const js = await getScript();
+    expect(js).not.toContain("formnovalidate");
+    expect(js).not.toContain("formNoValidate");
+  });
+
+  it("negative control: a script with the validation guard removed would fail the clause-2 assertion", () => {
+    // Demonstrates the assertion above is load-bearing: strip the guard and
+    // the same regex-based check must fail.
+    const withoutGuard = "if (next) { next.addEventListener('click', function(){ setStep('2'); }); }";
+    const nextHandlerMatch = withoutGuard.match(/if \(next\) \{ next\.addEventListener\('click', function\(\)\{([\s\S]*?)\}\); \}/);
+    expect(nextHandlerMatch).not.toBeNull();
+    expect(nextHandlerMatch![1]).not.toMatch(/if \(!validateSection\(talkSection\)\) \{\s*return;\s*\}/);
+  });
+});

@@ -216,8 +216,8 @@ describe("FieldRulesScript emits a transitive fixed point for a chain (DEC-681/D
     const inputA = makeInput("a", "no");
     const inputB = makeInput("b", "yes"); // stale: still shows the value from when it was visible
     const inputC = makeInput("c", "irrelevant");
-    const wrapB = { style: { display: "" }, querySelector: () => inputB };
-    const wrapC = { style: { display: "" }, querySelector: () => inputC };
+    const wrapB = { style: { display: "" }, querySelector: () => inputB, querySelectorAll: () => [inputB] };
+    const wrapC = { style: { display: "" }, querySelector: () => inputC, querySelectorAll: () => [inputC] };
 
     const byId: Record<string, unknown> = {
       "chq-field-rules": rulesScriptEl,
@@ -295,8 +295,8 @@ describe("FieldRulesScript emits a transitive fixed point for a chain (DEC-681/D
     // itself is hidden (gate !== "Open").
     const inputTrigger = makeInput("trigger", { type: "checkbox", checked: false });
     const inputDependent = makeInput("dependent", { type: "text", value: "irrelevant" });
-    const wrapTrigger = { style: { display: "" }, querySelector: () => inputTrigger };
-    const wrapDependent = { style: { display: "" }, querySelector: () => inputDependent };
+    const wrapTrigger = { style: { display: "" }, querySelector: () => inputTrigger, querySelectorAll: () => [inputTrigger] };
+    const wrapDependent = { style: { display: "" }, querySelector: () => inputDependent, querySelectorAll: () => [inputDependent] };
 
     const byId: Record<string, unknown> = {
       "chq-field-rules": rulesScriptEl,
@@ -373,8 +373,8 @@ describe("FieldRulesScript emits a transitive fixed point for a chain (DEC-681/D
     // for it yet, so getValue returns undefined; the canonicalizer treats an
     // absent checkbox as false, and ne:true against false is true.
     const inputDependent = makeInput("dependent", { type: "text", value: "irrelevant" });
-    const wrapTrigger = { style: { display: "" }, querySelector: () => null };
-    const wrapDependent = { style: { display: "" }, querySelector: () => inputDependent };
+    const wrapTrigger = { style: { display: "" }, querySelector: () => null, querySelectorAll: () => [] };
+    const wrapDependent = { style: { display: "" }, querySelector: () => inputDependent, querySelectorAll: () => [inputDependent] };
 
     const byId: Record<string, unknown> = {
       "chq-field-rules": rulesScriptEl,
@@ -445,7 +445,7 @@ describe("getValue is radio-group aware (w54-e)", () => {
       checked: r.checked,
     }));
     const materialsInput = { dataset: { fieldId: "materials", required: "true" }, type: "text", value: "", required: false };
-    const wrapMaterials = { style: { display: "" }, querySelector: () => materialsInput };
+    const wrapMaterials = { style: { display: "" }, querySelector: () => materialsInput, querySelectorAll: () => [materialsInput] };
 
     const byId: Record<string, unknown> = {
       "chq-field-rules": { textContent: rulesMatch[1] },
@@ -500,5 +500,93 @@ describe("getValue is radio-group aware (w54-e)", () => {
     new Function("document", inlineJs)(fakeDocument);
     expect(wrapMaterials.style.display).toBe("none");
     expect(materialsInput.required).toBe(false);
+  });
+});
+
+// DEC-986: a Format/Audience group renders N radios sharing one
+// data-field-id (FormatChoices/AudienceChoices). When that group's own wrap
+// is hidden, EVERY radio in it -- not just the first DOM match -- must be
+// un-required, or radios 2..N stay required inside a display:none wrap and
+// the browser aborts submission on a non-focusable invalid control.
+describe("apply() un-requires every member of a hidden radio group, not just the first (DEC-986)", () => {
+  const gate: FormFieldDef = {
+    id: "gate",
+    section: "session",
+    kind: "dropdown",
+    label: "Gate",
+    required: false,
+    position: 0,
+    options: ["Open", "Closed"],
+  };
+  const audience: FormFieldDef = {
+    id: "audience",
+    section: "session",
+    kind: "dropdown",
+    label: "Audience",
+    required: true,
+    position: 1,
+    rule: { fieldId: "gate", op: "eq", value: "Open" },
+  };
+
+  function buildFakeDocument(gateValue: string) {
+    const html = FieldRulesScript({ fields: [gate, audience] }).toString();
+    const rulesMatch = html.match(
+      /<script type="application\/json" id="chq-field-rules">([\s\S]*?)<\/script>/,
+    );
+    if (!rulesMatch || rulesMatch[1] === undefined) throw new Error("chq-field-rules script tag not found");
+    const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>\s*$/);
+    if (!scriptMatch || scriptMatch[1] === undefined) throw new Error("inline script not found");
+    const inlineJs = scriptMatch[1];
+
+    const inputGate = { dataset: { fieldId: "gate" }, type: "text", value: gateValue, required: false };
+    // Three radios sharing data-field-id="audience", as FormatChoices /
+    // AudienceChoices actually render -- all three carry required=true
+    // going in, exercising the querySelectorAll fix over the old singular
+    // querySelector (which only ever reached radioA).
+    const radioA = { dataset: { fieldId: "audience", required: "true" }, type: "radio", value: "Devs", checked: false, required: true };
+    const radioB = { dataset: { fieldId: "audience", required: "true" }, type: "radio", value: "Ops", checked: false, required: true };
+    const radioC = { dataset: { fieldId: "audience", required: "true" }, type: "radio", value: "Exec", checked: false, required: true };
+    const radios = [radioA, radioB, radioC];
+    const wrapAudience = {
+      style: { display: "" },
+      querySelector: () => radioA,
+      querySelectorAll: (sel: string) => (sel === '[data-field-id="audience"]' ? radios : []),
+    };
+
+    const byId: Record<string, unknown> = {
+      "chq-field-rules": { textContent: rulesMatch[1] },
+      "chq-field-wrap-audience": wrapAudience,
+    };
+    function querySelector(sel: string) {
+      if (sel === '[data-field-id="gate"]') return inputGate;
+      if (sel === '[data-field-id="audience"]') return radioA;
+      return null;
+    }
+    const fakeDocument = {
+      getElementById: (id: string) => byId[id] ?? null,
+      querySelector,
+      addEventListener: () => {},
+    };
+    return { inlineJs, fakeDocument, wrapAudience, radioA, radioB, radioC };
+  }
+
+  it("hides the group and un-requires all three radios, not just the first", () => {
+    const { inlineJs, fakeDocument, wrapAudience, radioA, radioB, radioC } = buildFakeDocument("Closed");
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function("document", inlineJs)(fakeDocument);
+    expect(wrapAudience.style.display).toBe("none");
+    expect(radioA.required).toBe(false);
+    expect(radioB.required).toBe(false);
+    expect(radioC.required).toBe(false);
+  });
+
+  it("shows the group and keeps all three radios required when visible", () => {
+    const { inlineJs, fakeDocument, wrapAudience, radioA, radioB, radioC } = buildFakeDocument("Open");
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function("document", inlineJs)(fakeDocument);
+    expect(wrapAudience.style.display).toBe("");
+    expect(radioA.required).toBe(true);
+    expect(radioB.required).toBe(true);
+    expect(radioC.required).toBe(true);
   });
 });
