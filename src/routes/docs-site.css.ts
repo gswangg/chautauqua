@@ -208,7 +208,14 @@ export const DOCS_SITE_CSS = `
     .chq-docs-intro h1 { font-size: 30px; }
     .chq-docs-article-grid { grid-template-columns: 1fr; }
     .chq-docs-article-frame { grid-template-columns: 1fr; padding: 24px 16px 40px; gap: 0; }
-    .chq-docs-article-head h1 { font-size: 28px; }
+    /* docs/design/Chautauqua Docs.dc.html:166
+       \`<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">\`
+       An article is a back-linked drill-in (reached via the '‹ Docs' back
+       link, never a cluster landing) -- theme.ts's 25px
+       --chq-type-page-title-phone-drill register applies, not the 27px
+       cluster-landing --chq-type-page-title-phone-size used by
+       .chq-docs-intro h1 on the index page. */
+    .chq-docs-article-head h1 { font-size: var(--chq-type-page-title-phone-drill); }
 
     /* The search submit is a real tap target, so it takes the phone tap
        floor here (DEC-367) rather than in the base rule. */
@@ -241,6 +248,30 @@ export const DOCS_SITE_CSS = `
     }
     .chq-docs-figure-frame { border-left: none; border-right: none; border-radius: 0; }
     .chq-docs-figure-caption { padding-inline: 16px; }
+
+    /* docs/design/Chautauqua Docs.dc.html:166
+       \`<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">\`
+       Footer pager: the frame draws '‹ Previous' / 'Next ›' as a real
+       side-by-side 44px+ target pair, not the desktop's plain top-rule
+       links -- flex:1 each, centred, bordered. .chq-docs-pager-next's
+       desktop margin-left:auto is cancelled here since flex:1 on both
+       already splits the row evenly. */
+    .chq-docs-pager { max-width: none; gap: 8px; flex-wrap: nowrap; }
+    .chq-docs-pager-prev,
+    .chq-docs-pager-next {
+      flex: 1;
+      min-width: 0;
+      min-height: 44px;
+      margin-left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding-inline: 16px;
+      border: 1px solid var(--chq-border);
+      border-radius: 6px;
+      background: var(--chq-surface);
+    }
   }
 `;
 
