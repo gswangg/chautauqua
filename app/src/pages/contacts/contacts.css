@@ -917,3 +917,22 @@
   }
 }
 
+/* DEC-393 wave-7 amendment: the tap-target scan's population is
+   `<input|select|button>` plus `.chq-btn`-classed `<a>` only -- a bare
+   anchor (react-router `<Link>` included) whose hit box is only as wide as
+   its text, exactly the evasion DESIGN-RULINGS.md names, is invisible to
+   it. `.chq-contacts-title-actions`'s Export CSV link and
+   `.chq-contacts-rail-duplicate-actions`'s Merge link are both that shape.
+   Grow the anchor, absorb the padding with an equal negative inline
+   margin so the row's layout does not shift. */
+@media (max-width: 700px) {
+  .chq-contacts-title-actions a,
+  .chq-contacts-rail-duplicate-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+}
+

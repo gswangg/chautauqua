@@ -1630,25 +1630,37 @@
   }
 }
 
-/* w6-b: source-order fix. These three phone overrides were declared
-   earlier in the file (:531, :535, :542) than the top-level desktop
-   rules for the same selectors that follow them (:578, :608, :587), so
-   at equal specificity the later desktop declaration always won on a
-   390 viewport -- the duplicate-contact group kept its 3-column grid,
-   the name column kept its single-line ellipsis, and the Merge/Keep-both
-   actions kept nowrap, none of which fit a 390 row. DEC-385: narrow
-   overrides wide via max-width only -- restated here, appended after
-   every rule it must beat, never reordered in place. */
+/* DEC-385 wave-7 amendment: cascade repair. Three declarations below this
+   file's earlier @media (max-width: 700px) blocks are shadowed by
+   later-declared, higher-source-order top-level rules of equal
+   specificity -- source order alone decides when specificity ties, so the
+   fix is a single terminal override block, appended here rather than by
+   reordering (37 other worktrees hold hunks in this file). Also carries
+   the DEC-393 wave-7 tap-floor technique for the merge page's back
+   control: grow the anchor itself, absorb the padding with an equal
+   negative inline margin. */
 @media (max-width: 700px) {
+  /* beats the top-level `grid-template-columns: minmax(0, 1fr) auto auto`
+     at :578. */
   .chq-contacts-duplicate-group {
     grid-template-columns: 1fr;
   }
 
+  /* beats the top-level `white-space: nowrap` at :608. */
   .chq-contacts-duplicate-names {
     white-space: normal;
   }
 
+  /* beats the top-level `flex-wrap: nowrap` on the same selector. */
   .chq-contacts-duplicate-group .chq-contacts-import-actions {
     flex-wrap: wrap;
+  }
+
+  .chq-contacts-merge-back {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
   }
 }

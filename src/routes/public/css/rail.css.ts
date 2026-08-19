@@ -395,4 +395,15 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
       padding: 0 16px;
     }
   }
+
+  /* DEC-385 wave-7 amendment: cascade repair. The earlier ≤700px block
+     above (task-w4-a) sets .chq-pub-surface-title to font-size: 26px, but
+     the top-level .chq-pub-surface-title rule (task-w27-a/DEC-990, later
+     in this same file) re-declares font-size: 36px at equal specificity --
+     source order alone decides a tie, so every public surface title
+     rendered 36px at phone width. Terminal override, appended rather than
+     reordering (other worktrees hold hunks in this file). */
+  @media (max-width: 700px) {
+    .chq-pub-surface-title { font-size: 26px; }
+  }
 `;
