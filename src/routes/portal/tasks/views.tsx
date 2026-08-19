@@ -355,6 +355,7 @@ export function TaskFormPage(props: {
       <PortalBackLink to="/portal/tasks" />
       {/* w3-b (DEC-643 amendment): back-linked drill-in -> 25px phone
           register, docs/design/Chautauqua Public and Portal.dc.html:508
+          `margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05`
           ("Portal · Hotel stay form" -- a form-kind task assignment). */}
       <h1 class="chq-portal-hero chq-portal-hero-drill">{assignment.title}</h1>
       {assignment.description ? <p class="chq-portal-sub">{assignment.description}</p> : null}

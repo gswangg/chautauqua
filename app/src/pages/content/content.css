@@ -1737,13 +1737,13 @@
   .chq-content-phone-select-toggle {
   }
 
-  /* docs/design/Chautauqua Content.dc.html:254 -- selecting-state header:
+  /* docs/design/Chautauqua Content.dc.html:256 -- selecting-state header:
      `<a href="#" style="margin-left:auto; font-size:13px; font-weight:700;
      min-height:44px; display:inline-flex; align-items:center;
      white-space:nowrap">All 5</a>` -- truncating this would risk hiding
      the exact "All N" count the selecting header states. */
   /* overflow-exempt: the selecting header states a count that must stay
-     exact (Chautauqua Content.dc.html:254 pins white-space:nowrap on the
+     exact (Chautauqua Content.dc.html:256 pins white-space:nowrap on the
      frame's "All 5" link) */
   .chq-content-phone-selecting-all {
   }
