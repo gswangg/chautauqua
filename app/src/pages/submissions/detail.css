@@ -914,11 +914,22 @@
   }
 
   /* DEC-878 rail: the primary + secondary pair keep phone control radius,
-     the pair staying on one row (frame lines 268-271). */
-  .chq-detail-decision-primary,
-  .chq-detail-decision-secondary-pair .chq-btn {
+     the pair staying on one row. Split into two rules (audit fix, v12
+     mobile campaign w1): the aside's own desktop action row --
+     docs/design/Chautauqua Submissions.dc.html:311 `min-height:46px;
+     display:flex; align-items:center; justify-content:center;
+     font-size:14px; font-weight:700` for the primary -- draws the
+     secondary pair one notch shorter, docs/design/Chautauqua Submissions.dc.html:314
+     `min-height:44px` -- not the same 46px the primary carries, which is
+     what the prior combined rule gave both. */
+  .chq-detail-decision-primary {
     border-radius: var(--chq-r-ctl-phone);
     min-height: 46px;
+  }
+
+  .chq-detail-decision-secondary-pair .chq-btn {
+    border-radius: var(--chq-r-ctl-phone);
+    min-height: 44px;
   }
 
   /* Frame 'Submission detail · 390' action bar: Accept, Decline and

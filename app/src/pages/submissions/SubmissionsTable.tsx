@@ -539,14 +539,20 @@ export function SubmissionsTable() {
                         >
                           Decline
                         </button>
-                        <button
-                          type="button"
-                          className="chq-btn chq-btn-tertiary"
-                          disabled={triagingId === item.id}
-                          onClick={() => applyRowTriage(item.id, 'accept_queue')}
+                        {/* DEC-610 amendment (v12 mobile campaign w1): the
+                            phone card's third action is 'Read' -- a plain
+                            navigation link to the detail page, not a status
+                            write, so it carries no disabled/triagingId
+                            wiring. Waitlist is removed from the card; it
+                            remains reachable from the detail rail
+                            (SubmissionDetailPage.tsx) and the bulk-action
+                            bar (BulkActionBar.tsx). */}
+                        <Link
+                          to={`/submissions/${item.id}${buildSubmissionsQuery(filters)}`}
+                          className="chq-btn chq-btn-secondary"
                         >
-                          Waitlist
-                        </button>
+                          Read
+                        </Link>
                       </div>
                     )}
                   </td>
