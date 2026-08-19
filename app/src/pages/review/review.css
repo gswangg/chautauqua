@@ -346,55 +346,6 @@
   background: transparent;
 }
 
-/* Results table -> cards (DEC-386/390): thead hidden, table/tbody/tr/td go
-   block-level on the SAME markup (no cell dropped); each td's data-label
-   attribute (set in ResultsTable.tsx from the same string its <th> uses)
-   renders through ::before as a micro-label. Progress row collapses to a
-   single column alongside it. */
-@media (max-width: 700px) {
-  .chq-review-results-table {
-    table-layout: auto;
-  }
-
-  .chq-review-results-table thead {
-    display: none;
-  }
-
-  .chq-review-results-table,
-  .chq-review-results-table tbody,
-  .chq-review-results-table tr {
-    display: block;
-    width: 100%;
-  }
-
-  .chq-review-results-table tbody tr {
-    padding: 14px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  .chq-review-results-table td {
-    display: block;
-    padding: 6px 0;
-    border-bottom: none;
-  }
-
-  .chq-review-results-table td[data-label]::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--chq-muted);
-    margin-bottom: 3px;
-  }
-
-  .chq-review-progress-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-}
-
 /* DEC-632/DEC-633: results-row status pill and "Reviews (n)" expand toggle
    + the reviews-behind-a-decision detail row it opens. DEC-367: decision
    state is carried by type only (uppercase/weight/letter-spacing), never a
@@ -1081,12 +1032,6 @@
   color: var(--chq-ink-2);
 }
 
-@media (max-width: 700px) {
-  .chq-review-criterion-row {
-    grid-template-columns: 1fr;
-  }
-}
-
 .chq-review-add-criteria {
   display: flex;
   gap: 9px;
@@ -1225,12 +1170,6 @@
   align-items: baseline;
   padding: 13px 0;
   border-bottom: 1px solid var(--chq-hairline);
-}
-
-@media (max-width: 700px) {
-  .chq-review-reviewer-row {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* (The .chq-review-reviewer-action rule that lived here styled the
@@ -1398,12 +1337,6 @@
   max-width: var(--chq-measure);
 }
 
-@media (max-width: 700px) {
-  .chq-review-summary-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
 .chq-review-scale-inputs {
   display: flex;
   align-items: center;
@@ -1568,17 +1501,6 @@
   gap: 9px;
 }
 
-@media (max-width: 700px) {
-  .chq-review-title-row {
-    align-items: flex-start;
-  }
-
-  .chq-review-title-actions {
-    margin-left: 0;
-    width: 100%;
-  }
-}
-
 /* w3-e */
 /* DEC-745: the plan editor's own title row -- back-link + the plan NAME as
    an editable title <input> stacked on the left, Duplicate/Save (or
@@ -1672,17 +1594,6 @@
   flex-shrink: 0;
 }
 
-@media (max-width: 700px) {
-  .chq-review-editor-title-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .chq-review-editor-title-actions {
-    width: 100%;
-  }
-}
-
 /* DEC-745: the 2x2 field grid (Opens/Closes/Reviews per talk/Rating scale)
    replaces the earlier 4-across summary row -- overrides the DEC-709 rule
    above on the same class name. */
@@ -1748,15 +1659,6 @@
   background: var(--chq-brand);
   color: var(--chq-on-brand);
   border-color: var(--chq-brand);
-}
-
-/* Tap-target floor (DEC-253 amendment, DEC-367): the desktop 40px segment
-   height sits just under the 44px minimum for a touch target. Raised
-   here, phone-only -- the desktop 40px value is untouched. */
-@media (max-width: 700px) {
-  .chq-review-rating-btn {
-    height: 44px;
-  }
 }
 
 .chq-review-criterion-weight-caption {
@@ -2111,7 +2013,97 @@
   display: none;
 }
 
+/* v12m-w7-b, DEC-385 wave-7 amendment: source order, not specificity, decides
+   between a phone `@media` block and a later top-level rule on the same
+   selector -- a phone override placed BEFORE a wider top-level re-declaration
+   loses the cascade at every width, including 390. Two shadowed pairs exist
+   in this file; this terminal block re-states both so the phone-narrow value
+   is the one that actually wins. Additive only, appended at file end. */
 @media (max-width: 700px) {
+  /* Results table -> cards (DEC-386/390): thead hidden, table/tbody/tr/td go
+     block-level on the SAME markup (no cell dropped); each td's data-label
+     attribute (set in ResultsTable.tsx from the same string its <th> uses)
+     renders through ::before as a micro-label. Progress row collapses to a
+     single column alongside it. */
+  .chq-review-results-table {
+    table-layout: auto;
+  }
+
+  .chq-review-results-table thead {
+    display: none;
+  }
+
+  .chq-review-results-table,
+  .chq-review-results-table tbody,
+  .chq-review-results-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-review-results-table tbody tr {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-review-results-table td {
+    display: block;
+    padding: 6px 0;
+    border-bottom: none;
+  }
+
+  .chq-review-results-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+    margin-bottom: 3px;
+  }
+
+  .chq-review-progress-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .chq-review-criterion-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-review-reviewer-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-review-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .chq-review-title-row {
+    align-items: flex-start;
+  }
+
+  .chq-review-title-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .chq-review-editor-title-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-review-editor-title-actions {
+    width: 100%;
+  }
+
+  /* Tap-target floor (DEC-253 amendment, DEC-367): the desktop 40px segment
+     height sits just under the 44px minimum for a touch target. Raised
+     here, phone-only -- the desktop 40px value is untouched. */
+  .chq-review-rating-btn {
+    height: 44px;
+  }
+
   /* --- "Your plans" hub cards (docs/design/Chautauqua Review.dc.html:804-816
      `<sc-for list="{{ hubPlans }}" as="p" hint-placeholder-count="3">`) ---
      .chq-reviewer-plan-row-name-line is unwrapped via display:contents so
@@ -2233,15 +2225,13 @@
   .chq-review-scoped-progress {
     height: 6px;
   }
-}
 
-/* docs/design/Chautauqua Review.dc.html:413
-   `width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)`
-   -- the reviewer queue's phone drill-in (/review/plans/:id). This block
-   must stay the LAST @media (max-width: 700px) block in this file: a
-   phone block placed before a later desktop (non-media) rule loses ties
-   at equal specificity (DEC-385 single-direction responsive). */
-@media (max-width: 700px) {
+  /* docs/design/Chautauqua Review.dc.html:413
+     `width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)`
+     -- the reviewer queue's phone drill-in (/review/plans/:id). This block
+     must stay the LAST @media (max-width: 700px) block in this file: a
+     phone block placed before a later desktop (non-media) rule loses ties
+     at equal specificity (DEC-385 single-direction responsive). */
   /* docs/design/Chautauqua Review.dc.html:441's dock row:
      `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; align-items:center; gap:12px`
      -- chq-phone-dock (styles.css) already supplies the sticky band itself
@@ -2584,18 +2574,16 @@
   .chq-review-editor-title-actions .chq-btn-secondary {
     flex: 0 0 auto;
   }
-}
 
-/* w6-b: source-order fix. The phone overrides for these two selectors
-   above (:1209-1211, :1380-1382) were declared BEFORE the top-level
-   DEC-745 rules at :1675-1677 and :1667-1670, so at equal specificity the
-   later same-selector desktop rule always won on a 390 viewport --
-   .chq-review-reviewer-row rendered its five-track desktop grid and
-   .chq-review-summary-grid its 4-column grid, both inside the phone
-   frame. DEC-385: narrow overrides wide via max-width only -- restated
-   here, appended after every rule it must beat, never reordered in
-   place. */
-@media (max-width: 700px) {
+  /* w6-b: source-order fix. The phone overrides for these two selectors
+     above (:1209-1211, :1380-1382) were declared BEFORE the top-level
+     DEC-745 rules at :1675-1677 and :1667-1670, so at equal specificity the
+     later same-selector desktop rule always won on a 390 viewport --
+     .chq-review-reviewer-row rendered its five-track desktop grid and
+     .chq-review-summary-grid its 4-column grid, both inside the phone
+     frame. DEC-385: narrow overrides wide via max-width only -- restated
+     here, appended after every rule it must beat, never reordered in
+     place. */
   .chq-review-reviewer-row {
     grid-template-columns: 1fr;
   }
@@ -2603,15 +2591,7 @@
   .chq-review-summary-grid {
     grid-template-columns: 1fr 1fr;
   }
-}
 
-/* v12m-w7-b, DEC-385 wave-7 amendment: source order, not specificity, decides
-   between a phone `@media` block and a later top-level rule on the same
-   selector -- a phone override placed BEFORE a wider top-level re-declaration
-   loses the cascade at every width, including 390. Two shadowed pairs exist
-   in this file; this terminal block re-states both so the phone-narrow value
-   is the one that actually wins. Additive only, appended at file end. */
-@media (max-width: 700px) {
   /* Beats the top-level 5-track grid at :1675-1677
      (grid-template-columns: 1fr 140px 90px auto auto), which source-order
      overrides the phone-narrow 1fr set inside the earlier phone block at

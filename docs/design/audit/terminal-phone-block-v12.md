@@ -23,8 +23,10 @@ and what the scan measured on this branch. **This list is a snapshot** — the
 scan itself, not this file, is the ground truth; re-run it before sizing a
 follow-up rather than trusting this table.
 
-20 sheets are non-conformant on this branch (more than three — flagged per
-task w1-d's own instruction to say so plainly if that threshold is crossed).
+20 sheets were non-conformant on the branch this file was last measured
+against; task w3-j fixed `app/src/pages/review/review.css` (row below), so 19
+remain non-conformant. **This list is a snapshot** (see above) — re-run the
+scan before sizing further follow-up rather than trusting this count.
 
 | Sheet | Cluster | Measured |
 |---|---|---|
@@ -36,7 +38,7 @@ task w1-d's own instruction to say so plainly if that threshold is crossed).
 | `app/src/pages/contacts/contacts.css` | contacts | 4 blocks (lines 382, 856, 938, 957) |
 | `app/src/pages/content/content.css` | content | 2 blocks (lines 925, 1638) |
 | `app/src/pages/overview/overview.css` | overview | 3 blocks (lines 447, 557, 585) |
-| `app/src/pages/review/review.css` | review-admin | 11 blocks (lines 333, 1062, 1208, 1379, 1549, 1653, 1734, 2092, 2222, 2573, 2589) |
+| `app/src/pages/review/review.css` | review-admin | **FIXED (task w3-j)** — was 11 blocks (lines 354, 1084, 1230, 1401, 1571, 1675, 1756, 2114, 2244, 2598, 2614 on the branch this task read); now exactly 1 terminal block, all ten earlier blocks' bodies forward-merged into the final block in ascending source order (no selector/property/value changed, no in-block reordering; the two duplicate declarations already shared by the last two original blocks are kept verbatim). `phone-cascade-order.scan.test.ts` shadowed-pair count for this file fell from 2 to 0 (`.chq-review-reviewer-row grid-template-columns` and `.chq-review-summary-grid grid-template-columns`, previously shadowed by top-level desktop rules at old lines ~1689/1697); tree-wide count fell 17 -> 15. Neither fixed pair is a NEW winner at 390 — both selectors already carried a non-shadowed identical duplicate declaration later in the file (the wave-7/w6-b source-order-fix duplicates), so the value that reaches the browser at 390 is unchanged and no frame contradiction check was triggered. |
 | `app/src/pages/speakers/speakers.css` | speakers | 5 blocks (lines 100, 880, 1294, 1474, 1572) |
 | `app/src/pages/speakers/task-view.css` | speakers (TaskView) | 2 blocks (lines 253, 280) |
 | `app/src/pages/submissions/detail.css` | submissions | 3 blocks (lines 844, 1097, 1171) |
