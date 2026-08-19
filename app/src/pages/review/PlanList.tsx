@@ -284,14 +284,33 @@ export function PlanList() {
                 )}
               </span>
               <PlanProgress rows={progressByPlan[plan.id]} />
+              {/* DEC-393 w87: an independent reviewer measured these three
+                  react-router Links at 21px on a phone. review.css's
+                  appended phone block floors each at min-height:44px +
+                  centred flex + non-zero horizontal padding via this class
+                  -- padding alone does not reach the floor, and a bare
+                  text link's hit box is only as wide as its text
+                  (DESIGN-RULINGS.md:189). */}
               <div className="chq-review-plan-actions">
-                <Link to={`/review/plans/${plan.id}/progress`} onClick={(e) => e.stopPropagation()}>
+                <Link
+                  className="chq-review-plan-action-link"
+                  to={`/review/plans/${plan.id}/progress`}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   Progress
                 </Link>
-                <Link to={`/review/plans/${plan.id}/results`} onClick={(e) => e.stopPropagation()}>
+                <Link
+                  className="chq-review-plan-action-link"
+                  to={`/review/plans/${plan.id}/results`}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   Results
                 </Link>
-                <Link to={`/review/plans/${plan.id}`} onClick={(e) => e.stopPropagation()}>
+                <Link
+                  className="chq-review-plan-action-link"
+                  to={`/review/plans/${plan.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   Edit
                 </Link>
               </div>
