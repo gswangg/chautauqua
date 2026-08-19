@@ -109,6 +109,54 @@ describe('YourDataPanel', () => {
     expect(within(section).getByRole('heading', { name: 'Import from Sessionboard' })).toBeInTheDocument();
   });
 
+  // v12m-w2-h (DEC-728 + DEC-919 wave-99 amendments): the Exports 390
+  // drill draws each row as name-over-detail beside a separate boxed
+  // "Download" action -- `.chq-pill` fuses name and action into one
+  // element and can never present that. The phone-only row list reuses
+  // renderExportPills's own hrefs/handler (one list of export kinds, not
+  // two) so a Download anchor points at the exact same href as its pill.
+  it('renders a phone-only Exports row list beside the pill strip, each row sharing the pill\'s own href/handler (DEC-728/DEC-919 wave-99)', async () => {
+    mockYourData();
+    render(
+      <MemoryRouter>
+        <YourDataPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Your data' });
+    fireEvent.click(within(section).getByRole('button', { name: 'Change' }));
+
+    const submissionsPill = await waitFor(() =>
+      within(section).getByRole('link', { name: 'Submissions CSV' }),
+    );
+    const submissionsHref = submissionsPill.getAttribute('href')!;
+
+    // docs/design/Chautauqua Settings.dc.html:409
+    // `border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+    // min-height:44px; display:flex; align-items:center; padding:0 14px;
+    // font-size:13px; font-weight:600`
+    const phoneRows = section.querySelectorAll('.chq-settings-drillrow-export-row');
+    expect(phoneRows).toHaveLength(4);
+    expect(within(phoneRows[0] as HTMLElement).getByText('Submissions CSV')).toBeInTheDocument();
+    const submissionsDownload = within(phoneRows[0] as HTMLElement).getByRole('link', { name: 'Download' });
+    expect(submissionsDownload).toHaveAttribute('href', submissionsHref);
+    expect(submissionsDownload).toHaveClass('chq-settings-drillrow-export-download');
+
+    expect(within(phoneRows[1] as HTMLElement).getByText('Contacts CSV')).toBeInTheDocument();
+    expect(within(phoneRows[2] as HTMLElement).getByText('Schedule ICS')).toBeInTheDocument();
+
+    // The bundling button: same handler as the pill -- clicking the
+    // phone row's own Download triggers the same download flow.
+    expect(within(phoneRows[3] as HTMLElement).getByText('Everything, JSON')).toBeInTheDocument();
+    const everythingDownload = within(phoneRows[3] as HTMLElement).getByRole('button', { name: 'Download' });
+    expect(everythingDownload).toBeInTheDocument();
+
+    // The desktop pill strip is wrapped for the phone media query to hide
+    // (DEC-919 wave-99); it is still mounted here (jsdom does not
+    // evaluate @media), never removed.
+    expect(submissionsPill.closest('.chq-settings-drillrow-pills-desktop')).not.toBeNull();
+  });
+
   // DEC-815 (wave-41 amendment): 'Everything JSON' fails per kind, not per
   // bundle -- one refused kind must not vanish the other five.
   describe('Everything JSON per-kind failure', () => {

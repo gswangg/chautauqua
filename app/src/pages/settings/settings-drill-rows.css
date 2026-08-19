@@ -1,0 +1,136 @@
+/* New page-local sheet (DEC-385 wave-99 amendment: a new page-local sheet
+   is the legal way to keep a contended stylesheet from growing another
+   owner). settings.css and settings-lists.css are both contended this
+   wave, so this task's phone-only geometry lands here instead. Imported
+   by TracksRoomsPanel.tsx and YourDataPanel.tsx. No measure/width clamp
+   (app/src/page-measure.test.ts's enumeration stays green), no class
+   already owned by app/src/styles.css (DEC-613), exactly one terminal
+   @media (max-width: 700px) block below, as its last top-level construct.
+
+   DEC-728 wave-99 amendment: the Settings 390 drill frames
+   (docs/design/Chautauqua Settings.dc.html) depict the DRILLED view, and
+   two of its anatomies were left unbuilt when the per-row 'Edit' question
+   was answered (DEVIATIONS §6 already blessed the always-editable
+   dirty-reveal rows the app ships) --
+     (a) the dashed 44px 'Add a track'/'Add a room' controls drawn BELOW
+         each list (:367, :382), vs. the plain 13px head links the app
+         ships today (desktop twins :822/:841, unchanged);
+     (b) the Exports list (:409 'Download'), a name-over-detail stack
+         beside a separate boxed 44px action -- unreachable through
+         `.chq-pill`, which fuses a row's name and its action into one
+         anchor/button.
+
+   DEC-919 wave-99 amendment: the capability renders TWICE in the DOM,
+   ONCE on screen. Every phone-only element below is unconditional JSX
+   (only CSS decides visibility), so it gets an explicit desktop
+   `display:none` OUTSIDE the media block below -- exactly the precedent
+   already living in this same panel, settings.css's
+   `.chq-settings-tracks-rooms-phone-caption` -- never left to "no rule =
+   invisible". The two controls this sheet HIDES at phone (the desktop
+   head 'Add a track'/'Add a room' links, the desktop Exports pill strip)
+   keep their base (visible) rule in settings.css, owned by another lane
+   and untouched here; this sheet only adds the phone `display:none` for
+   them, from its own terminal block, via classes this sheet defines. */
+
+.chq-settings-drillrow-add,
+.chq-settings-drillrow-exports-phone {
+  display: none;
+}
+
+/* docs/design/Chautauqua Settings.dc.html:367
+   `border:1px dashed #BAB6A6; border-radius:6px; min-height:44px;
+   font-size:13px; font-weight:700; color:#4E5C31` -- the dashed Add
+   control, full width, below the list. :382 draws the byte-identical
+   rule for "Add a room"; both ride this one class. */
+.chq-settings-drillrow-add {
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 12px;
+  border: 1px dashed var(--chq-border);
+  border-radius: var(--chq-r-ctl-phone);
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  background: transparent;
+}
+
+/* docs/design/Chautauqua Settings.dc.html:409
+   `border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+   min-height:44px; display:flex; align-items:center; padding:0 14px;
+   font-size:13px; font-weight:600` -- the Exports row's boxed action,
+   beside a name-over-detail stack. */
+.chq-settings-drillrow-export-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-settings-drillrow-export-row:last-child {
+  border-bottom: none;
+}
+
+.chq-settings-drillrow-export-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.chq-settings-drillrow-export-name {
+  font-family: var(--chq-font-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.chq-settings-drillrow-export-detail {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-settings-drillrow-export-download {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-ctl-phone);
+  background: var(--chq-surface-sunk);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink);
+  text-decoration: none;
+}
+
+@media (max-width: 700px) {
+  .chq-settings-drillrow-add {
+    display: flex;
+  }
+
+  .chq-settings-drillrow-exports-phone {
+    display: block;
+  }
+
+  /* DEC-919 wave-99: "the existing head action gains display:none inside
+     the sheet's terminal max-width block" -- TracksRoomsPanel.tsx adds
+     this class alongside the existing `chq-settings-section-action`
+     class on the two desktop "Add a track"/"Add a room" head links, so
+     the base (visible, settings.css-owned) rule for that class is never
+     touched. */
+  .chq-settings-drillrow-head-hide {
+    display: none;
+  }
+
+  /* The desktop pill strip (YourDataPanel's renderExportPills, wrapped in
+     this class); the phone row list above replaces it. */
+  .chq-settings-drillrow-pills-desktop {
+    display: none;
+  }
+}

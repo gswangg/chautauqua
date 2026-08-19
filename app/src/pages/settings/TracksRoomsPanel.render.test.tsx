@@ -90,10 +90,13 @@ describe('TracksRoomsPanel', () => {
     expect(within(section).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
     expect(within(section).queryByPlaceholderText('New room name')).not.toBeInTheDocument();
 
-    fireEvent.click(within(section).getByRole('button', { name: 'Add a track' }));
+    // DEC-919 wave-99 amendment: the capability now renders TWICE in the
+    // DOM (the desktop head link, then the phone-only sibling after the
+    // list) -- [0] is the desktop head link this test has always driven.
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a track' })[0]!);
     expect(within(section).getByPlaceholderText('New track name')).toBeInTheDocument();
 
-    fireEvent.click(within(section).getByRole('button', { name: 'Add a room' }));
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a room' })[0]!);
     expect(within(section).getByPlaceholderText('New room name')).toBeInTheDocument();
   });
 
@@ -108,8 +111,11 @@ describe('TracksRoomsPanel', () => {
     const section = await openEdit();
     expect(within(section).getByText('Tracks · 2')).toBeInTheDocument();
     expect(within(section).getByText('Rooms · 2')).toBeInTheDocument();
-    expect(within(section).getByRole('button', { name: 'Add a track' })).toBeInTheDocument();
-    expect(within(section).getByRole('button', { name: 'Add a room' })).toBeInTheDocument();
+    // DEC-919 wave-99 amendment: two DOM copies (desktop head + phone
+    // sibling) -- see the dedicated frame-receipt test below for the
+    // phone-only sibling's own geometry and shared-handler assertions.
+    expect(within(section).getAllByRole('button', { name: 'Add a track' })).toHaveLength(2);
+    expect(within(section).getAllByRole('button', { name: 'Add a room' })).toHaveLength(2);
 
     expect(section.querySelectorAll('.chq-btn-primary')).toHaveLength(1);
     expect(within(section).getByRole('button', { name: 'Done' })).toHaveClass('chq-btn-primary');
@@ -168,5 +174,56 @@ describe('TracksRoomsPanel', () => {
     ).toHaveStyle({ background: TRACK_SWATCHES[1].value });
     expect(within(platformRow).queryByRole('radiogroup')).not.toBeInTheDocument();
     expect(section.querySelector('input[type="color"]')).not.toBeInTheDocument();
+  });
+
+  // v12m-w2-h (DEC-728 + DEC-919 wave-99 amendments): the 390 drill draws
+  // the dashed "Add a track"/"Add a room" controls BELOW each list, full
+  // width, distinct from the plain head links the app already ships at
+  // desktop -- rendered as a phone-only DOM sibling per DEC-919's "renders
+  // twice, exactly once on screen" ruling, wired to the SAME toggle
+  // handler as the head link so opening either reveals the same form.
+  it('renders a phone-only "Add a track"/"Add a room" sibling below each list, sharing the head link\'s own handler (DEC-728/DEC-919 wave-99)', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+
+    // docs/design/Chautauqua Settings.dc.html:367
+    // `border:1px dashed #BAB6A6; border-radius:6px; min-height:44px;
+    // font-size:13px; font-weight:700; color:#4E5C31`
+    const trackButtons = within(section).getAllByRole('button', { name: 'Add a track' });
+    expect(trackButtons).toHaveLength(2);
+    const [trackHead, trackPhone] = trackButtons;
+    expect(trackPhone).toHaveClass('chq-settings-drillrow-add');
+    expect(trackPhone).not.toHaveClass('chq-settings-drillrow-head-hide');
+    expect(trackHead).toHaveClass('chq-settings-drillrow-head-hide');
+
+    // The phone sibling sits after the tracks <ul>, not inside the head.
+    const trackList = section.querySelectorAll('ul.chq-settings-edit-list')[0]!;
+    expect(trackList.compareDocumentPosition(trackPhone!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(trackPhone!.closest('.chq-settings-section-head')).toBeNull();
+
+    // docs/design/Chautauqua Settings.dc.html:382
+    // `border:1px dashed #BAB6A6; border-radius:6px; min-height:44px;
+    // font-size:13px; font-weight:700; color:#4E5C31`
+    const roomButtons = within(section).getAllByRole('button', { name: 'Add a room' });
+    expect(roomButtons).toHaveLength(2);
+    const [roomHead, roomPhone] = roomButtons;
+    expect(roomPhone).toHaveClass('chq-settings-drillrow-add');
+    expect(roomHead).toHaveClass('chq-settings-drillrow-head-hide');
+
+    // Same handler: clicking the PHONE sibling reveals the same add-track
+    // form the head link would.
+    expect(within(section).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
+    fireEvent.click(trackPhone!);
+    expect(within(section).getByPlaceholderText('New track name')).toBeInTheDocument();
+
+    expect(within(section).queryByPlaceholderText('New room name')).not.toBeInTheDocument();
+    fireEvent.click(roomPhone!);
+    expect(within(section).getByPlaceholderText('New room name')).toBeInTheDocument();
   });
 });
