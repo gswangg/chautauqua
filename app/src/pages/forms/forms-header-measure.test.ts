@@ -24,9 +24,36 @@ import { describe, expect, it } from 'vitest';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS = readFileSync(join(HERE, 'forms.css'), 'utf-8');
 
+/** Strips every top-level `@media { ... }` block via linear brace-depth
+ * counting (mirroring forms-phone-frames.test.ts's phoneLayer helper)
+ * rather than the `(?:[^{}]*\{[^{}]*\}[^{}]*)*` backtracking regex this
+ * used to use -- that pattern is catastrophically slow once the @media
+ * block's content grows past a few rules (ambiguous empty-match
+ * boundaries between iterations), which the v12 phone pass's larger block
+ * hit in practice. */
+function stripMedia(css: string): string {
+  let out = '';
+  let i = 0;
+  const opener = /@media[^{]*\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = opener.exec(css)) !== null) {
+    out += css.slice(i, m.index);
+    let depth = 1;
+    let j = m.index + m[0].length;
+    while (j < css.length && depth > 0) {
+      if (css[j] === '{') depth += 1;
+      else if (css[j] === '}') depth -= 1;
+      j += 1;
+    }
+    i = j;
+    opener.lastIndex = j;
+  }
+  return out + css.slice(i);
+}
+
 /** Every top-level (non-@media) `selector { body }` rule. */
 function topLevelRules(css: string): Array<{ selector: string; body: string }> {
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = stripMedia(css);
   const rules: Array<{ selector: string; body: string }> = [];
   const re = /([^{}]+)\{([^{}]*)\}/g;
   let m: RegExpExecArray | null;
@@ -42,7 +69,7 @@ function topLevelRules(css: string): Array<{ selector: string; body: string }> {
  * comment sitting between the previous rule's `}` and this selector's `{`
  * can't shift the captured selector text. */
 function topLevelRuleBody(css: string, selector: string): string {
-  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const withoutMedia = stripMedia(css);
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
   const body = match?.[1];

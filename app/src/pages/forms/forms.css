@@ -411,6 +411,27 @@
   display: none;
 }
 
+/* v12 phone frame -- the frame citation for this row lives in
+   FieldList.tsx (see its own comment there), not repeated verbatim here:
+   the cited frame line's sc-for placeholder syntax pairs literal braces
+   the way a nested rule would, which defeats this repo's
+   single-level-nesting @media stripper (phone-tap-target.scan.test.ts /
+   the old forms-header-measure.test.ts helper) on a block this size.
+   Second markup for the combined kind/required line FieldList renders
+   alongside the desktop kind/required columns -- display:none at
+   desktop, shown by the 700px block below. */
+.chq-forms-field-phone-meta {
+  display: none;
+}
+
+/* v12 phone frame (docs/design/Chautauqua Submissions.dc.html:484
+   `<span style="display:flex; align-items:center; justify-content:center; margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; font-size:13px; font-weight:700; color:#4E5C31">Add a question</span>`):
+   second markup for the phone-only dashed "Add a question" control --
+   display:none at desktop, shown by the 700px block below. */
+.chq-forms-add-question-phone {
+  display: none;
+}
+
 /* Phone frame (DEC-385: the one phone switch, 700px, for every stylesheet).
    Fixed-header / scrolling-body / fixed-footer shell (mock 424-445):
    .chq-forms-header stays in-flow flex-shrink:0, .chq-forms-content
@@ -437,58 +458,132 @@
     font-size: 25px;
   }
 
+  /* v12 frame (docs/design/Chautauqua Submissions.dc.html:473
+     `<div style="flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px">`):
+     the scrolling body's own inset drops from the desktop 32px-each-side
+     gutter to the frame's 14px top / 16px sides / 16px bottom. */
   .chq-forms-content {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding-top: 16px;
-    padding-bottom: 16px;
+    padding: 14px 16px 16px;
   }
 
   .chq-forms-field-modal {
     max-width: none;
   }
 
+  /* v12 frame row anatomy (docs/design/Chautauqua Submissions.dc.html:475
+     `<div style="padding:14px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:12px">`):
+     one row, drag glyph / label stack / actions -- the desktop kind and
+     required columns fold into the label stack's phone-only combined
+     caption (below) instead of their own tracks, so the row no longer
+     needs the 3-row grid the pre-v12 phone pass used here. */
   .chq-forms-field-row {
     grid-template-columns: 16px 1fr auto;
-    grid-template-areas:
-      'drag label actions'
-      'drag kind actions'
-      'drag required actions';
-    row-gap: 6px;
+    grid-template-areas: 'drag label actions';
+    gap: 12px;
+    padding: 14px 0;
   }
 
   .chq-forms-field-drag {
     grid-area: drag;
+    /* v12 frame `<span style="font-size:16px; color:#8E8A7A">⋮⋮</span>` --
+       #8E8A7A is the app's --chq-border-hover token (styles.css), the one
+       existing custom property at that value; there is no separate
+       "muted-2" token defined anywhere in the app. */
+    font-size: 16px;
+    color: var(--chq-border-hover);
   }
 
   .chq-forms-field-label {
     grid-area: label;
   }
 
-  .chq-forms-field-kind {
-    grid-area: kind;
+  /* v12 frame's display-label span (braces in its sc-for placeholder
+     omitted here, see the phone-meta rule's comment above for why): steps
+     up from the desktop 15px/-0.01em face to font-size:16px,
+     letter-spacing:-0.015em. */
+  .chq-forms-field-label-text {
+    font-size: 16px;
+    letter-spacing: -0.015em;
   }
 
+  /* The frame's row carries exactly one caption line -- "type ·
+     required?" -- not the desktop's separate kind/required columns plus
+     whatever helpText/condition line the row also carries; the phone-meta
+     span (FieldList.tsx) stands in for all four. */
+  .chq-forms-field-kind,
   .chq-forms-field-required,
-  .chq-forms-field-optional {
-    grid-area: required;
+  .chq-forms-field-optional,
+  .chq-forms-field-help,
+  .chq-forms-field-condition {
+    display: none;
+  }
+
+  .chq-forms-field-phone-meta {
+    display: block;
+    font-size: 12px;
+    color: var(--chq-muted);
   }
 
   .chq-forms-field-actions {
     grid-area: actions;
-    align-self: start;
   }
 
-  /* Every interactive control in the field list reaches 44px via a
-     centred flex box, never padding (DEC-385), with the phone control
-     radius (DEC-383 token, no literal hex). */
+  /* v12 frame (docs/design/Chautauqua Submissions.dc.html:481
+     `<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Edit</span>`):
+     the frame draws only the Edit control at this width (Delete is
+     reachable inside it via FieldModal's own "Delete this question" footer
+     action, DEC-650 wave-66) -- every interactive control here reaches
+     44px via a centred flex box plus horizontal padding, never padding
+     alone (DEC-385), with the phone control radius (DEC-383 token, no
+     literal hex) and the shared border/sunk-fill tokens. */
   .chq-forms-field-list .chq-btn {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
     border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .chq-forms-field-actions .chq-btn:last-child {
+    display: none;
+  }
+
+  .chq-forms-add-question {
+    display: none;
+  }
+
+  /* v12 frame (docs/design/Chautauqua Submissions.dc.html:484
+     `<span style="display:flex; align-items:center; justify-content:center; margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; font-size:13px; font-weight:700; color:#4E5C31">Add a question</span>`):
+     full-width dashed control below the row list, replacing the desktop
+     link in the FIELDS header. */
+  .chq-forms-add-question-phone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 14px;
+    border: 1px dashed var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    min-height: 46px;
+    font-family: var(--chq-font-ui);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-brand);
+    background: none;
+    cursor: pointer;
+  }
+
+  .chq-forms-add-question-phone:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   /* Header actions move into the fixed footer at phone width -- the
@@ -498,22 +593,35 @@
     display: none;
   }
 
+  /* v12 frame dock (docs/design/Chautauqua Submissions.dc.html:485
+     `<div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">`),
+     "Save the form" (docs/design/Chautauqua Submissions.dc.html:486
+     `<span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save the form</span>`)
+     and "Preview" (docs/design/Chautauqua Submissions.dc.html:487
+     `<span style="border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Preview</span>`). */
   .chq-forms-phone-footer {
     flex-shrink: 0;
     border-top: 1px solid var(--chq-ink);
     background: var(--chq-surface-sunk);
-    padding: 12px 0 0;
+    padding: 12px 16px 16px;
     display: flex;
     gap: 8px;
   }
 
   .chq-forms-phone-footer .chq-btn {
-    flex: 1;
     min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-forms-phone-save {
+    flex: 1;
+  }
+
+  .chq-forms-phone-footer .chq-btn-secondary {
+    padding: 0 16px;
   }
 }
 

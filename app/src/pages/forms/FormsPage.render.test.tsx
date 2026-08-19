@@ -152,8 +152,13 @@ describe('FormsPage render smoke', () => {
     expect(headerSave).toBeDisabled();
 
     // FieldModal (create). Frame 04: "Add a question" is a green text link
-    // on the section rule, not a bordered button.
-    const addButton = screen.getByRole('button', { name: 'Add a question' });
+    // on the section rule, not a bordered button. v12 phone frame (w1-i)
+    // added a SECOND "Add a question" control (a full-width dashed button,
+    // hidden at desktop, DEC-390 phone-selector precedent) -- the desktop
+    // link is the FIRST of the two by DOM order.
+    const addButtons = screen.getAllByRole('button', { name: 'Add a question' });
+    expect(addButtons).toHaveLength(2);
+    const addButton = addButtons[0]!;
     expect(addButton).toHaveClass('chq-link-button');
     expect(addButton).not.toHaveClass('chq-btn-secondary');
     addButton.click();

@@ -394,6 +394,21 @@ export function FormsPage() {
               onMove={handleMoveField}
             />
 
+            {/* v12 phone frame (docs/design/Chautauqua Submissions.dc.html:484
+                `<span style="display:flex; align-items:center; justify-content:center; margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; font-size:13px; font-weight:700; color:#4E5C31">Add a question</span>`):
+                a SECOND markup (DEC-390 precedent), not a repositioning of the
+                desktop "Add a question" link in the FIELDS header row above --
+                hidden at desktop, shown as this full-width dashed control
+                below the row list once forms.css's 700px block takes over. */}
+            <button
+              type="button"
+              className="chq-forms-add-question-phone"
+              onClick={() => setModal({ mode: 'create' })}
+              disabled={busy}
+            >
+              Add a question
+            </button>
+
             <div className="chq-forms-fields-footer">
               <span className="chq-forms-fields-footer-label">Public link</span>
               <span className="chq-forms-fields-footer-value">{publicLinkDisplay}</span>
@@ -416,14 +431,27 @@ export function FormsPage() {
         </section>
       </div>
 
-      {/* Phone-only fixed footer (DEC-650 mock, 390px frame): display:none
-          at desktop; forms.css switches at 700px. Frozen (mobile is
-          out of scope for the wave-72 window editor): the header's
-          window-editing Save is desktop-only chrome (.chq-forms-header-
-          actions hides at phone width), and the CFP window can still be
-          edited via Settings › Call for papers on phone -- the only
-          remaining phone action here is Preview. */}
+      {/* Phone-only fixed footer (v12 frame, docs/design/Chautauqua
+          Submissions.dc.html:485
+          `<div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">`):
+          display:none at desktop; forms.css switches at 700px. "Save the
+          form" is the frame's filled primary action (docs/design/Chautauqua
+          Submissions.dc.html:486
+          `<span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save the form</span>`)
+          and reuses the SAME handleSaveWindow the desktop header's Save
+          button already calls -- the header's Save action hides at phone
+          width (.chq-forms-header-actions), so this is the one place left
+          to persist an Opens/Closes edit once the CFP window strip stays
+          visible in the scrolling content above. */}
       <div className="chq-forms-phone-footer">
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary chq-forms-phone-save"
+          disabled={!windowDirty || windowSaving}
+          onClick={() => void handleSaveWindow()}
+        >
+          {windowSaving ? 'Saving…' : 'Save the form'}
+        </button>
         <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
           Preview
         </a>

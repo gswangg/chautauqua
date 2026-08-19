@@ -318,6 +318,16 @@ export function FieldList({ fields, tracks, busy, onEdit, onDelete, onMove }: Fi
               <span className="chq-forms-field-label-text">{row.label}</span>
               {row.caption && <span className="chq-forms-field-help">{row.caption}</span>}
               {row.condition && <span className="chq-forms-field-condition">{row.condition}</span>}
+              {/* v12 phone frame (docs/design/Chautauqua Submissions.dc.html:479
+                  `<span style="font-size:12px; color:#565A4B">{{ f.type }} · {{ f.req }}</span>`):
+                  a SECOND markup, not a text swap over the desktop kind/required
+                  columns (DEC-390 phone-selector precedent) -- hidden at desktop,
+                  shown in place of the desktop kind/required/help/condition lines
+                  once forms.css's 700px block collapses them below the row's own
+                  measure. */}
+              <span className="chq-forms-field-phone-meta">
+                {row.kindText} · {row.field.required ? 'Required' : 'Optional'}
+              </span>
             </div>
 
             <span className="chq-forms-field-kind">{row.kindText}</span>
