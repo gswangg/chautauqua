@@ -193,9 +193,19 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
 
   return (
     <div className="chq-comms-templates-tab">
-      <div className="chq-comms-templates-head">
+      {/* v12 phone frame "Templates · 390" (docs/design/Chautauqua
+          Comms.dc.html:286): the drill head is the shell's own
+          .chq-phone-head/-head-drill vocabulary (styles.css:2190, :2209),
+          composed onto this page-local head rather than replacing it --
+          the page-local classes stay so TemplatesTab.render.test.tsx and
+          Comms.phone.render.test.tsx keep reading them unchanged. */}
+      <div className="chq-comms-templates-head chq-phone-head chq-phone-head-drill">
         <div className="chq-comms-templates-titles">
-          <button type="button" className="chq-link-button chq-comms-templates-breadcrumb" onClick={() => navigate('/comms?tab=compose')}>
+          <button
+            type="button"
+            className="chq-link-button chq-comms-templates-breadcrumb chq-phone-back"
+            onClick={() => navigate('/comms?tab=compose')}
+          >
             &lsaquo; Comms
           </button>
           <h1 className="chq-page-title">Templates</h1>
