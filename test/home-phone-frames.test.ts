@@ -1,10 +1,15 @@
-// v12 design pack — the three width:390 PHONE frames in
-// docs/design/Chautauqua Home.dc.html:
+// v12 design pack — Tier 0, wave 86 (DEC-967 amendment): the two
+// UNCLAIMED width:390 PHONE frames in docs/design/Chautauqua Home.dc.html --
 //
-//   "Event hub · phone"     (line 113) — the full state: open CFPs,
-//                            published programmes, past events
-//   "Between cycles · phone"(line 228) — no open CFP, past programmes only
-//   "Fresh deploy · phone"  (line 299) — nothing has ever run
+//   "Event hub · phone"    docs/design/Chautauqua Home.dc.html:116-180
+//                           (label at :113) -- the full state: open CFPs,
+//                           published programmes, past events.
+//   "Fresh deploy · phone" docs/design/Chautauqua Home.dc.html:302-325
+//                           (label at :299) -- nothing has ever run.
+//
+// "Between cycles · phone" (:231-268, label :228) is claimed by
+// test/public-home-phone.test.ts (its :261 citation) and is NOT re-claimed
+// here.
 //
 // Their desktop twins are at :28, :181, :269 — desktop is FROZEN, and this
 // file only asserts against the phone (`@media (max-width: 700px)`) layer
@@ -12,7 +17,12 @@
 //
 // jsdom applies no stylesheet and evaluates no @media rule, so — mirroring
 // app/src/pages/contacts/contacts-phone-frames.test.ts — these are
-// source-scan pins on the CSS TEXT of HOME_CSS, not computed style.
+// source-scan pins on the CSS TEXT of HOME_CSS, not computed style. Every
+// `it` below cites the exact docs/design/Chautauqua Home.dc.html line its
+// assertion pins, quotes that line's literal verbatim in backticks, and
+// then asserts what the literal declares (DEC-967 wave-86: a citation is
+// not an assertion until it lands inside the frame's own extent and is
+// followed by a real check).
 //
 // Two standing rules are pinned alongside the frame geometry:
 //
@@ -117,20 +127,21 @@ describe("DESIGN-RULINGS: never author a min-height below 44px on a phone token"
   });
 });
 
-describe("v12 phone frame 'Event hub' (390) — header band", () => {
-  it("header: 14px 16px padding, 12px gap, centred flex", () => {
+describe("v12 phone frame 'Event hub' (docs/design/Chautauqua Home.dc.html:116-180) — header band", () => {
+  it("docs/design/Chautauqua Home.dc.html:117 `padding:14px 16px; flex-shrink:0; display:flex; align-items:center; gap:12px` -- header narrows to 14px/16px padding and 12px gap", () => {
     const header = phoneRule(PHONE, ".chq-home-header");
     expect(header).toMatch(/padding-block:\s*14px/);
     expect(header).toMatch(/padding-inline:\s*16px/);
     expect(header).toMatch(/gap:\s*12px/);
   });
 
-  it("org name narrows to 17px display face (weight/letter-spacing inherited from base)", () => {
+  it("docs/design/Chautauqua Home.dc.html:118 `font-size:17px; font-weight:700; letter-spacing:-0.03em; ... top:-2px` -- org name narrows to the 17px display face", () => {
     const org = phoneRule(PHONE, ".chq-home-org");
     expect(org).toMatch(/font-size:\s*17px/);
+    expect(org).toMatch(/top:\s*-2px/);
   });
 
-  it("Sign in reaches the 44px floor with centred flex AND horizontal padding", () => {
+  it("docs/design/Chautauqua Home.dc.html:119 `margin-left:auto; font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center` -- Sign in reaches the 44px floor with centred flex AND horizontal padding", () => {
     const signin = phoneRule(PHONE, ".chq-home-signin");
     expect(signin).toMatch(/min-height:\s*44px/);
     expect(signin).toMatch(/display:\s*flex/);
@@ -139,84 +150,94 @@ describe("v12 phone frame 'Event hub' (390) — header band", () => {
   });
 });
 
-describe("v12 phone frame 'Event hub' (390) — body", () => {
-  it("body: 20px 16px padding, 24px gap", () => {
+describe("v12 phone frame 'Event hub' (docs/design/Chautauqua Home.dc.html:116-180) — body", () => {
+  it("docs/design/Chautauqua Home.dc.html:122 `flex:1; min-height:0; overflow-y:auto; padding:20px 16px 20px; display:flex; flex-direction:column; gap:24px` -- body: 20px 16px padding, 24px gap", () => {
     const body = phoneRule(PHONE, ".chq-home-body");
     expect(body).toMatch(/padding-block:\s*20px/);
     expect(body).toMatch(/padding-inline:\s*16px/);
     expect(body).toMatch(/gap:\s*24px/);
   });
 
-  it("H1 'Events' is 30px/1.05 (desktop is 44px/1.2)", () => {
-    const h1 = phoneRule(PHONE, ".chq-home-hero h1");
+  it("docs/design/Chautauqua Home.dc.html:123 `display:flex; flex-direction:column; gap:8px` -- the hero stack's own gap narrows to 8px", () => {
+    const hero = phoneRule(PHONE, ".chq-home-hero");
+    expect(hero).toMatch(/gap:\s*8px/);
+  });
+
+  it("docs/design/Chautauqua Home.dc.html:124 `font-size:30px; font-weight:700; letter-spacing:-0.042em; line-height:1.05` -- H1 'Events' is 30px/1.05 (desktop is 44px/1.2), full-state-scoped since :239/:310 pin 29px/1.07 for the two empty states sharing the same .chq-home-hero h1 selector", () => {
+    // .chq-home-row only ever renders in state === "full" (hubState()
+    // guarantees at least one openCfp/published row there, and none in
+    // between_cycles/fresh), so :has(.chq-home-row) is the CSS-only proxy
+    // for "this is the Event hub frame's own H1", without a state class on
+    // the DOM.
+    const h1 = phoneRule(PHONE, ".chq-home-body:has(.chq-home-row) .chq-home-hero h1");
     expect(h1).toMatch(/font-size:\s*30px/);
     expect(h1).toMatch(/line-height:\s*1\.05/);
   });
 
-  it("intro paragraph is 14px/1.6 (desktop is 16px/1.65)", () => {
+  it("docs/design/Chautauqua Home.dc.html:125 `margin:0; font-size:14px; line-height:1.6; color:#3F4237` -- intro paragraph is 14px/1.6 (desktop is 16px/1.65)", () => {
     const p = phoneRule(PHONE, ".chq-home-hero p");
     expect(p).toMatch(/font-size:\s*14px/);
     expect(p).toMatch(/line-height:\s*1\.6\b/);
   });
 
-  it("section label letter-spacing narrows to 0.1em (desktop is 0.12em)", () => {
+  it("docs/design/Chautauqua Home.dc.html:130 `font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase` -- section label letter-spacing narrows to 0.1em (desktop is 0.12em)", () => {
     const label = phoneRule(PHONE, ".chq-home-section-label");
     expect(label).toMatch(/letter-spacing:\s*0\.1em/);
   });
 });
 
-describe("v12 phone frame 'Event hub' (390) — Open for submissions row", () => {
-  it("the row collapses to a single stacked column", () => {
+describe("v12 phone frame 'Event hub' (docs/design/Chautauqua Home.dc.html:116-180) — Open for submissions row", () => {
+  it("docs/design/Chautauqua Home.dc.html:133 `padding:16px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:8px` -- the row collapses to a single stacked column", () => {
     const row = phoneRule(PHONE, ".chq-home-row");
     expect(row).toMatch(/grid-template-columns:\s*1fr\b/);
   });
 
-  it("name is 20px", () => {
+  it("docs/design/Chautauqua Home.dc.html:134 `font-size:20px; font-weight:600; letter-spacing:-0.025em; line-height:1.2` -- name is 20px", () => {
     expect(phoneRule(PHONE, ".chq-home-name")).toMatch(/font-size:\s*20px/);
   });
 
-  it("dates and venue share the frame's muted 13px treatment", () => {
+  it("docs/design/Chautauqua Home.dc.html:135 `font-size:13px; color:#565A4B; line-height:1.5` -- dates and venue share the frame's muted 13px treatment", () => {
     const dates = phoneRule(PHONE, ".chq-home-dates");
     expect(dates).toMatch(/font-size:\s*13px/);
     expect(dates).toMatch(/color:\s*var\(--chq-muted\)/);
     expect(phoneRule(PHONE, ".chq-home-venue")).toMatch(/font-size:\s*13px/);
   });
 
-  it("'Submit a talk' stretches full-width, staying at the 48px floor set at base scope", () => {
+  it("docs/design/Chautauqua Home.dc.html:137 `min-height:48px; display:flex; align-items:center; justify-content:center` -- 'Submit a talk' stretches full-width, staying at the 48px floor set at base scope", () => {
     const primary = phoneRule(PHONE, ".chq-home-action-primary");
     expect(primary).toMatch(/width:\s*100%/);
     expect(primary).toMatch(/justify-content:\s*center/);
   });
 });
 
-describe("v12 phone frame 'Event hub' (390) — Programme published row", () => {
-  it("published-row name narrows to 18px, overriding the desktop 21px override by selector specificity", () => {
+describe("v12 phone frame 'Event hub' (docs/design/Chautauqua Home.dc.html:116-180) — Programme published row", () => {
+  it("docs/design/Chautauqua Home.dc.html:148 `font-size:18px; font-weight:600; letter-spacing:-0.022em; line-height:1.25` -- published-row name narrows to 18px, overriding the desktop 21px override by selector specificity", () => {
     const name = phoneRule(PHONE, ".chq-home-row-published .chq-home-name");
     expect(name).toMatch(/font-size:\s*18px/);
     expect(name).toMatch(/letter-spacing:\s*-0\.022em/);
   });
 
-  it("'Browse sessions' narrows from the desktop 46px to the frame's 44px", () => {
+  it("docs/design/Chautauqua Home.dc.html:150 `border:1px solid #CFC7B7; border-radius:6px; background:#EFEBDF; min-height:44px` -- 'Browse sessions' narrows from the desktop 46px to the frame's 44px", () => {
     expect(phoneRuleAll(PHONE, ".chq-home-action-secondary")).toMatch(/min-height:\s*44px/);
   });
 });
 
-describe("v12 phone frame 'Event hub' / 'Between cycles' (390) — Already happened row", () => {
-  it("archive row is a compact grid with the name/meta pair on the left, action right-flushed", () => {
+describe("v12 phone frame 'Event hub' (docs/design/Chautauqua Home.dc.html:116-180) — Already happened row", () => {
+  it("docs/design/Chautauqua Home.dc.html:160 `padding:14px 0; border-bottom:1px solid #E1DDCE; display:flex; align-items:center; gap:12px` -- archive row is a compact grid with the name/meta pair on the left, action right-flushed", () => {
     const row = phoneRule(PHONE, ".chq-home-archive-row");
     expect(row).toMatch(/grid-template-columns:\s*1fr auto/);
     expect(row).toMatch(/align-items:\s*center/);
   });
 
-  it("archive name narrows to 16px (desktop is 17px)", () => {
+  it("docs/design/Chautauqua Home.dc.html:162 `font-size:16px; font-weight:600; letter-spacing:-0.02em` -- archive name narrows to 16px (desktop is 17px)", () => {
     expect(phoneRule(PHONE, ".chq-home-archive-name")).toMatch(/font-size:\s*16px/);
   });
 
-  it("archive row's meta line narrows to 12px, scoped so the shared .chq-home-meta base stays 13px elsewhere", () => {
+  it("docs/design/Chautauqua Home.dc.html:163 `font-size:12px; color:#565A4B` -- archive row's meta line narrows to 12px, scoped so the shared .chq-home-meta base stays 13px elsewhere", () => {
     expect(phoneRule(PHONE, ".chq-home-archive-row .chq-home-meta")).toMatch(/font-size:\s*12px/);
   });
 
-  it("'Sessions ›' reaches the 44px floor with centred flex, horizontal padding, and flex-shrink:0", () => {
+  it("docs/design/Chautauqua Home.dc.html:165 `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center; white-space:nowrap` -- 'Sessions ›' reaches the 44px floor with centred flex, horizontal padding, and flex-shrink:0", () => {
     const quiet = phoneRule(PHONE, ".chq-home-action-quiet");
     expect(quiet).toMatch(/min-height:\s*44px/);
     expect(quiet).toMatch(/padding:\s*0 \d+px/);
@@ -224,20 +245,84 @@ describe("v12 phone frame 'Event hub' / 'Between cycles' (390) — Already happe
   });
 });
 
-describe("v12 phone frame 'Event hub' (390) — footer band", () => {
-  it("footer uses the frame's stronger ink border, not the desktop rule border", () => {
+describe("v12 phone frame 'Event hub' (docs/design/Chautauqua Home.dc.html:116-180) — footer band", () => {
+  it("docs/design/Chautauqua Home.dc.html:171 `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; align-items:center; gap:14px` -- footer uses the frame's stronger ink border, not the desktop rule border", () => {
     const footer = phoneRule(PHONE, ".chq-home-footer");
     expect(footer).toMatch(/border-top-color:\s*var\(--chq-ink\)/);
     expect(footer).toMatch(/padding-block:\s*12px 16px/);
     expect(footer).toMatch(/padding-inline:\s*16px/);
   });
 
-  it("'API docs' reaches the 44px floor with centred flex AND horizontal padding", () => {
+  it("docs/design/Chautauqua Home.dc.html:173 `margin-left:auto; font-size:12px; font-weight:700; min-height:44px; display:flex; align-items:center` -- 'API docs' reaches the 44px floor with centred flex AND horizontal padding", () => {
     const apiDocs = phoneRule(PHONE, ".chq-home-footer-link-end");
     expect(apiDocs).toMatch(/min-height:\s*44px/);
     expect(apiDocs).toMatch(/display:\s*flex/);
     expect(apiDocs).toMatch(/align-items:\s*center/);
     expect(apiDocs).toMatch(/padding:\s*0 \d+px/);
+  });
+});
+
+describe("v12 phone frame 'Fresh deploy' (docs/design/Chautauqua Home.dc.html:302-325) — header and footer bands", () => {
+  it("docs/design/Chautauqua Home.dc.html:303 `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; align-items:center; gap:12px` -- shares the fleet's one header band rule with the Event hub frame", () => {
+    const header = phoneRule(PHONE, ".chq-home-header");
+    expect(header).toMatch(/padding-block:\s*14px/);
+    expect(header).toMatch(/padding-inline:\s*16px/);
+    expect(header).toMatch(/gap:\s*12px/);
+  });
+
+  it("docs/design/Chautauqua Home.dc.html:317 `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; align-items:center; gap:14px` -- shares the fleet's one footer band rule too (no 'API docs' end-link in this state's DOM, so no CSS is needed for its absence)", () => {
+    const footer = phoneRule(PHONE, ".chq-home-footer");
+    expect(footer).toMatch(/border-top-color:\s*var\(--chq-ink\)/);
+    expect(footer).toMatch(/padding-block:\s*12px 16px/);
+  });
+});
+
+describe("v12 phone frame 'Fresh deploy' (docs/design/Chautauqua Home.dc.html:302-325) — body", () => {
+  it("docs/design/Chautauqua Home.dc.html:308 `flex:1; min-height:0; padding:34px 16px 20px; display:flex; flex-direction:column; gap:18px` -- diverges from the Event hub/Between cycles body (20px/24px): no scroll-region top-padding, tighter 18px gap", () => {
+    // .chq-home-action-tertiary ("API docs ›") renders only in the fresh
+    // state's signin-row (root.tsx) -- the CSS-only proxy for "this is the
+    // Fresh deploy frame", mirroring the .chq-home-row proxy used for the
+    // Event hub frame above.
+    const body = phoneRule(PHONE, ".chq-home-body:has(.chq-home-action-tertiary)");
+    expect(body).toMatch(/padding-block:\s*34px 20px/);
+    expect(body).toMatch(/gap:\s*18px/);
+  });
+
+  it("docs/design/Chautauqua Home.dc.html:309 `display:flex; flex-direction:column; gap:9px` -- the hero stack's gap here is 9px, one more than the Event hub frame's 8px", () => {
+    const hero = phoneRule(PHONE, ".chq-home-body:has(.chq-home-action-tertiary) .chq-home-hero");
+    expect(hero).toMatch(/gap:\s*9px/);
+  });
+
+  it("docs/design/Chautauqua Home.dc.html:310 `font-size:29px; font-weight:700; letter-spacing:-0.042em; line-height:1.07` -- H1 'Nothing here yet' is 29px/1.07, the empty-state size (Event hub's own H1 is the 30px/1.05 outlier, see the body describe above)", () => {
+    const h1 = phoneRule(PHONE, ".chq-home-hero h1");
+    expect(h1).toMatch(/font-size:\s*29px/);
+    expect(h1).toMatch(/line-height:\s*1\.07/);
+  });
+
+  it("docs/design/Chautauqua Home.dc.html:311 `margin:0; font-size:14px; line-height:1.6; color:#3F4237` -- intro paragraph is 14px/1.6, matching the Event hub frame's own paragraph rule", () => {
+    const p = phoneRule(PHONE, ".chq-home-hero p");
+    expect(p).toMatch(/font-size:\s*14px/);
+    expect(p).toMatch(/line-height:\s*1\.6\b/);
+  });
+});
+
+describe("v12 phone frame 'Fresh deploy' (docs/design/Chautauqua Home.dc.html:302-325) — Sign in / API docs stack", () => {
+  it("docs/design/Chautauqua Home.dc.html:308 `gap:18px` (the two actions have no row wrapper in the frame, only the body's own gap between them) -- the signin-row stacks to a column with the same 18px gap and full-width stretch", () => {
+    const row = phoneRule(PHONE, ".chq-home-body:has(.chq-home-action-tertiary) .chq-home-signin-row");
+    expect(row).toMatch(/flex-direction:\s*column/);
+    expect(row).toMatch(/align-items:\s*stretch/);
+    expect(row).toMatch(/gap:\s*18px/);
+  });
+
+  it("docs/design/Chautauqua Home.dc.html:313 `background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700` -- 'Sign in' reaches the 48px floor set at base scope and stretches full-width via the stacked signin-row's align-items:stretch", () => {
+    const primary = phoneRuleAll(PHONE, ".chq-home-action-primary");
+    expect(primary).toMatch(/width:\s*100%/);
+    expect(primary).toMatch(/justify-content:\s*center/);
+  });
+
+  it("docs/design/Chautauqua Home.dc.html:314 `font-size:14px; font-weight:700; min-height:44px; display:flex; align-items:center` -- 'API docs ›' reaches the 44px floor with centred flex AND horizontal padding, set at base scope and re-asserted phone-only per DEC-367", () => {
+    const tertiary = phoneRule(PHONE, ".chq-home-action-tertiary");
+    expect(tertiary).toMatch(/min-height:\s*44px/);
   });
 });
 
@@ -270,6 +355,11 @@ describe("desktopLayer freeze pin — base-scope rules untouched by this task", 
     expect(p).toMatch(/line-height:\s*1\.65/);
   });
 
+  it("desktop hero container keeps its 10px gap (phone narrows to 8px/9px)", () => {
+    const hero = /\.chq-home-hero\s*\{([^}]*)\}/.exec(DESKTOP)?.[1] ?? "";
+    expect(hero).toMatch(/gap:\s*10px/);
+  });
+
   it("desktop section label keeps 0.12em letter-spacing", () => {
     const label = /\.chq-home-section-label\s*\{([^}]*)\}/.exec(DESKTOP)?.[1] ?? "";
     expect(label).toMatch(/letter-spacing:\s*0\.12em/);
@@ -292,5 +382,11 @@ describe("desktopLayer freeze pin — base-scope rules untouched by this task", 
   it("desktop .chq-home-action-quiet still declares no min-height (base-scope, pinned by public-home-full-bleed too)", () => {
     const quiet = /\.chq-home-action-quiet\s*\{([^}]*)\}/.exec(DESKTOP)?.[1] ?? "";
     expect(quiet).not.toMatch(/min-height\s*:/);
+  });
+
+  it("desktop signin-row keeps its horizontal row layout (align-items:center, no flex-direction)", () => {
+    const row = /\.chq-home-signin-row\s*\{([^}]*)\}/.exec(DESKTOP)?.[1] ?? "";
+    expect(row).toMatch(/align-items:\s*center/);
+    expect(row).not.toMatch(/flex-direction/);
   });
 });
