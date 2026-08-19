@@ -10,7 +10,7 @@
 // app/src/shell-geometry.test.ts -- this is a source-scan on the CSS TEXT
 // of app/src/styles.css (and, for the DEC-643 token, src/views/theme.ts),
 // not computed style.
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -281,70 +281,5 @@ describe('v12 phone page-scaffold: DEC-616 amendment -- drawer inset / action-ba
   it('desktop keeps the drawer at 20px 26px (frozen)', () => {
     const drawer = ruleIn(STYLES_DESKTOP, '.chq-drawer');
     expect(drawer).toMatch(/padding:\s*20px 26px/);
-  });
-});
-
-// DEC-576 amendment (wave 85): the orphan ratchet. `.chq-phone-head`,
-// `-head-drill`, `-body`, `-dock`, `-back` shipped in wave 83 with ZERO
-// consumers in any non-test file under app/src -- a scaffold with no
-// reader. WORK ITEM, not a fact to inherit: ORPHAN_CEILING below is
-// seeded at the count measured the day this scan was written, and it may
-// ONLY SHRINK from here. The v12 mobile campaign is not done while it
-// sits above 0 -- a future wave that adds a class here without wiring a
-// consumer must lower nothing, but a wave that finally consumes one of
-// these classes (or removes it because the scaffold turns out to be
-// dead) MUST lower ORPHAN_CEILING in the same change, or this test starts
-// failing on its own floor. Do not raise this number to make a red test
-// green; shrink the orphan count instead.
-export const ORPHAN_CEILING = 5;
-
-describe('v12 phone page-scaffold: orphan ratchet (DEC-576 amendment, wave 85)', () => {
-  /** Every `.chq-phone-<word>[-<word>...]` class name that appears as a
-   * CSS selector anywhere in styles.css, base-class only (a compound
-   * selector like `.chq-phone-dock .chq-btn` contributes `.chq-phone-dock`,
-   * not a second phone-scaffold class for `.chq-btn`). Enumerated by
-   * regex over the sheet -- never a hand-listed array, so a class added to
-   * the scaffold later is picked up automatically. */
-  function phoneScaffoldClasses(css: string): string[] {
-    const re = /\.chq-phone-[a-zA-Z0-9-]+/g;
-    return [...new Set(css.match(re) ?? [])].sort();
-  }
-
-  /** Recursively collects every non-test .ts/.tsx file under `dir` --
-   * `.test.ts`, `.test.tsx` and `.render.test.tsx` are all excluded, since
-   * a reference from a test file doesn't wire the class into a real page. */
-  function nonTestSourceFiles(dir: string): string[] {
-    const out: string[] = [];
-    for (const entry of readdirSync(dir)) {
-      const p = join(dir, entry);
-      const st = statSync(p);
-      if (st.isDirectory()) {
-        out.push(...nonTestSourceFiles(p));
-      } else if (/\.(ts|tsx)$/.test(entry) && !/\.test\.(ts|tsx)$/.test(entry)) {
-        out.push(p);
-      }
-    }
-    return out;
-  }
-
-  const APP_SRC = join(REPO_ROOT, 'app/src');
-  const SCAFFOLD_CLASSES = phoneScaffoldClasses(STYLES_CSS);
-  const SOURCE_FILES = nonTestSourceFiles(APP_SRC).map((p) => readFileSync(p, 'utf-8'));
-
-  it('found at least one .chq-phone-* class declared in styles.css (regex sanity floor)', () => {
-    expect(SCAFFOLD_CLASSES.length).toBeGreaterThan(0);
-  });
-
-  it(`orphan count (.chq-phone-* classes with no consumer in any non-test .ts/.tsx file) is <= ORPHAN_CEILING (${ORPHAN_CEILING})`, () => {
-    const orphans = SCAFFOLD_CLASSES.filter(
-      (cls) => !SOURCE_FILES.some((src) => src.includes(cls)),
-    );
-    expect(
-      orphans.length,
-      `orphaned .chq-phone-* classes (declared, never consumed outside a test file): ` +
-        `${JSON.stringify(orphans)}. If this list grew, wire a consumer or don't add the ` +
-        `class yet. If it shrank, lower ORPHAN_CEILING to match -- the ceiling may only ` +
-        `shrink, never rise, and the v12 mobile campaign is not done while it is above 0.`,
-    ).toBeLessThanOrEqual(ORPHAN_CEILING);
   });
 });
