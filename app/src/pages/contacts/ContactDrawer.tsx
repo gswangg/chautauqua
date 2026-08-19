@@ -539,6 +539,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         onClose={onClose}
         closeDisabled={closeDisabled}
         modalClassName="chq-drawer chq-contacts-drawer"
+        back={{ label: '‹ Contacts', onClick: onClose }}
       >
         {loading && <DelayedLoading />}
         {error && <div className="chq-error">{error}</div>}

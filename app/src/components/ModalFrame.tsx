@@ -14,6 +14,11 @@ interface ModalFrameBaseProps {
   onClose: () => void;
   /** Disables the header Close control + Escape + scrim-click (e.g. while a request is in flight). */
   closeDisabled?: boolean;
+  /** DEC-651 (wave 7 amendment): renders a `.chq-phone-back` link as the
+   * FIRST child of .chq-modal-head, above the title -- the drill head's
+   * back line per the frames (e.g. Chautauqua Contacts.dc.html:409's
+   * `‹ Contacts`). Omit for dialogs with no "back to X" relationship. */
+  back?: { label: string; onClick: () => void };
   /** Extra class(es) appended to the .chq-modal element for page-specific sizing/layout. */
   modalClassName?: string;
   /** Widens the frame itself. Default 560px; 'wide' is 640px (adds
@@ -99,7 +104,7 @@ export function FormRowPair({ children }: { children: ReactNode }) {
 // and a .chq-modal-actions slot. Every dialog in the app should be built on
 // this frame so the header/action-order contract can't drift per-modal.
 export function ModalFrame(props: ModalFrameProps) {
-  const { title, subtitle, ariaLabel, onClose, closeDisabled = false, modalClassName, size = 'default', children, actions } = props;
+  const { title, subtitle, ariaLabel, onClose, closeDisabled = false, modalClassName, size = 'default', children, actions, back } = props;
 
   useEscapeKey(!closeDisabled, onClose);
 
@@ -109,6 +114,11 @@ export function ModalFrame(props: ModalFrameProps) {
 
   const head = (
     <div className="chq-modal-head">
+      {back && (
+        <button type="button" className="chq-link-button chq-phone-back" onClick={back.onClick}>
+          {back.label}
+        </button>
+      )}
       <div className="chq-modal-head-titles">
         <h2 className="chq-modal-title">{title}</h2>
         {subtitle !== undefined && <span className="chq-modal-sub">{subtitle}</span>}

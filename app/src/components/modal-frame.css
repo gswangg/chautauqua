@@ -157,3 +157,21 @@
     min-height: 44px;
   }
 }
+
+/* DEC-651 (wave 7 amendment), THE OVERHANG: at phone, styles.css:2283 cuts
+   .chq-drawer's own padding from the desktop 20px 26px (styles.css:994,
+   :1010) down to 16px, but this file's .chq-modal-head margin/padding
+   (above) was never re-paired -- it stayed at the desktop -20px/-26px/26px
+   trio, so the header band overhung both sides of a phone drawer by 10px
+   left / 10px more right, against a 16px body. Scoped to `.chq-drawer` only
+   -- `.chq-modal` (the non-drawer dialog) keeps its 26px pairing at every
+   width because nothing changes ITS own padding at phone.
+   INVARIANT: the margin magnitude, the padding magnitude, and .chq-drawer's
+   own phone padding (styles.css:2283-2285) must all stay equal to each
+   other. This pairing is exactly what broke -- do not let it drift again. */
+@media (max-width: 700px) {
+  .chq-drawer .chq-modal-head {
+    margin: -16px -16px 0;
+    padding: 0 16px 16px;
+  }
+}

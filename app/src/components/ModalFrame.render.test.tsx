@@ -121,6 +121,62 @@ describe('ModalFrame: FormRow', () => {
   });
 });
 
+describe('ModalFrame: back link (DEC-651, wave 7 amendment)', () => {
+  it('renders no .chq-phone-back when the back prop is omitted', () => {
+    render(
+      <ModalFrame title="No back" onClose={vi.fn()}>
+        <p>Body</p>
+      </ModalFrame>,
+    );
+
+    // Portaled to document.body -- the render-root container never holds it.
+    expect(document.body.querySelector('.chq-phone-back')).toBeNull();
+  });
+
+  it('renders the back link as the FIRST child of .chq-modal-head when the prop is present', () => {
+    const onBack = vi.fn();
+    render(
+      <ModalFrame title="Contact detail" onClose={vi.fn()} back={{ label: '‹ Contacts', onClick: onBack }}>
+        <p>Body</p>
+      </ModalFrame>,
+    );
+
+    const head = document.body.querySelector('.chq-modal-head');
+    expect(head).not.toBeNull();
+    const back = head!.firstElementChild;
+    expect(back).not.toBeNull();
+    expect(back).toHaveClass('chq-phone-back');
+    expect(back!.textContent).toBe('‹ Contacts');
+  });
+
+  it('renders the back link as a real <button>, not a bare anchor', () => {
+    render(
+      <ModalFrame title="Contact detail" onClose={vi.fn()} back={{ label: '‹ Contacts', onClick: vi.fn() }}>
+        <p>Body</p>
+      </ModalFrame>,
+    );
+
+    const back = screen.getByRole('button', { name: '‹ Contacts' });
+    expect(back.tagName).toBe('BUTTON');
+    expect(back).toHaveAttribute('type', 'button');
+    expect(back).toHaveClass('chq-link-button');
+  });
+
+  it('calls the back handler on click, independent of onClose', () => {
+    const onBack = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <ModalFrame title="Contact detail" onClose={onClose} back={{ label: '‹ Contacts', onClick: onBack }}>
+        <p>Body</p>
+      </ModalFrame>,
+    );
+
+    screen.getByRole('button', { name: '‹ Contacts' }).click();
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
 describe('ModalFrame: root portal (DEC-732)', () => {
   it('renders the dialog as a child of document.body, not of the caller-supplied React tree', () => {
     // An ancestor that sets text-transform: uppercase -- the exact shape of
