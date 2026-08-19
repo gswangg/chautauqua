@@ -6,7 +6,21 @@ v12 landing against `docs/design/Chautauqua Comms.dc.html:177` ('Comms'
 file, not a shell file, per the task). The items below need a decision or
 land outside this task's scope.
 
-1. **"Draft in progress" cannot honestly render — no draft source exists.**
+1. **RESOLVED (v12 mobile campaign w5, DEC-621 wave-87 amendment).** The
+   ruling: the card becomes real, because deleting it loses the frame and
+   the frame is the authority. `app/src/pages/comms/composeDraft.ts` is the
+   single-purpose localStorage contract this finding asked for --
+   `ComposeWizard.tsx` writes a record (template name, resolved subject,
+   recipient count, updatedAt) on each step advance (never on keystroke, so
+   this stays clear of DEC-967's wave-54 silent-pre-fill ban) and clears it
+   on a successful send; `Comms.tsx` reads it on mount and hands it to
+   `PhoneDraftCard`, rendering nothing when absent. The frame's "reviewer
+   feedback merged" provenance clause (line 191) is dropped, not
+   fabricated -- no signal for it exists anywhere in the app, so the card
+   renders the recipient count alone. Original finding text below, for the
+   record.
+
+   **"Draft in progress" cannot honestly render — no draft source exists.**
    Frame lines 188-193 draw a card naming the in-progress compose draft's
    subject, recipient count, and provenance ("reviewer feedback merged").
    `ComposeWizard`'s step state (selection, template, rendered previews) is

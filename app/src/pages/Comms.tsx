@@ -9,6 +9,7 @@ import { ComposeWizard } from './comms/ComposeWizard';
 import { HistoryTab } from './comms/HistoryTab';
 import { RecentSends, sentCountLabel } from './comms/RecentSends';
 import { PhoneDraftCard } from './comms/PhoneDraftCard';
+import { readComposeDraft, type ComposeDraft } from './comms/composeDraft';
 import { formatSendRhythm, formatPhoneSendRhythm } from './comms/sendRhythm';
 import { formatDateTime } from '../lib/dates';
 import type { EmailBatchRow, EmailLogRow, EmailTemplate } from './comms/types';
@@ -63,6 +64,18 @@ export function CommsPage() {
   // moment a send succeeds rather than staying on whatever was true before
   // the organizer's last action.
   const mutationVersion = useMutationVersion();
+
+  // v12 mobile campaign w5 (DEC-621 wave-87 amendment): the draft the
+  // landing's "Draft in progress" card draws, read from ComposeWizard's own
+  // localStorage record (composeDraft.ts) -- see PhoneDraftCard's doc
+  // comment for why the frame's provenance clause is dropped rather than
+  // fabricated. Re-read on `mutationVersion` too, so a successful send
+  // (which clears the stored record) drops the card without a reload.
+  const [draftRecord, setDraftRecord] = useState<ComposeDraft | null>(null);
+  useEffect(() => {
+    if (!eventId) return;
+    setDraftRecord(readComposeDraft(eventId));
+  }, [eventId, mutationVersion]);
 
   // DEC-518 wave-43 amendment: the head's send-rhythm subtitle and Recent
   // Sends both depend on the two fetches below -- a failed read must not
@@ -295,12 +308,19 @@ export function CommsPage() {
             re-derived) -- see formatPhoneSendRhythm. */}
         {rhythm && <p className="chq-comms-phone-landing-subtitle">{formatPhoneSendRhythm(rhythm)}</p>}
 
-        {/* Frame lines 188-193: "Draft in progress" card. Always null --
-            see PhoneDraftCard's own doc comment and
-            docs/design/audit/comms-v12.md for why no real draft source is
-            wired here. onReadDraft would land the visitor on the compose
-            tab, same as any other landing entry, once a real draft exists. */}
-        <PhoneDraftCard draft={null} onReadDraft={() => choosePhoneTab('compose')} />
+        {/* Frame lines 188-193: "Draft in progress" card. v12 mobile
+            campaign w5 (DEC-621 wave-87 amendment): draftRecord comes from
+            composeDraft.ts's localStorage record, written by ComposeWizard
+            on each step advance -- null (card absent) whenever this event
+            has no in-progress draft, exactly the frame's own conditional
+            composition. onReadDraft lands the visitor on the compose tab,
+            where ComposeWizard picks its own step up from where it left
+            off (it never re-derives step from the stored record -- see
+            ComposeWizard's own doc comment). */}
+        <PhoneDraftCard
+          draft={draftRecord && { subject: draftRecord.subject, recipientCount: draftRecord.recipientCount }}
+          onReadDraft={() => choosePhoneTab('compose')}
+        />
 
         {/* Frame lines 196-205: read-only "Recent sends" -- the same
             all-time batch list the head's rhythm line and both tab-body

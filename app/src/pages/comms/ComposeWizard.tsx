@@ -21,6 +21,7 @@ import { countOf, capitalizeFirst, plural, spellCount } from '../../lib/plural';
 import { isoToMs, formatDayLabel } from '../../lib/dates';
 import { clockHHMM } from '../../lib/clock';
 import { paginationSummary } from '../../lib/pagination-summary';
+import { writeComposeDraft, clearComposeDraft } from './composeDraft';
 import type { ComposePreviewPlan, ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
 import { DEC_317, DEC_793, DEC_967, DEC_993 } from '../../../../src/decisions';
@@ -586,6 +587,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       setSendResult(res);
       setSentAt(Date.now());
       setPartialExcludedIds(excludeIds);
+      // v12 mobile campaign w5 (DEC-621 wave-87 amendment): a successful
+      // send is the draft record's one clear point -- there is no longer an
+      // in-progress draft once this batch is logged.
+      clearComposeDraft(eventId);
     } catch (err) {
       if (err instanceof ApiError) {
         const unscheduled = extractIcsUnscheduledIds(err);
@@ -616,6 +621,32 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   useEffect(() => {
     if (step === 'template') templatePrimaryRef.current?.focus();
     else if (step === 'preview') previewPrimaryRef.current?.focus();
+  }, [step]);
+
+  // v12 mobile campaign w5 (DEC-621 wave-87 amendment): the Comms phone
+  // landing's "Draft in progress" card (composeDraft.ts) is written HERE --
+  // on step advance -- and nowhere else. The effect's dependency array is
+  // `[step]` alone (not subject/bodyText/templateName), so it fires exactly
+  // once per step transition and never on a keystroke; `prevStepIndexRef`
+  // further limits it to a FORWARD transition, so pressing Back never
+  // overwrites the record with an earlier step's now-stale figures. Step 1
+  // has nothing worth recording yet (no template, no rendered subject), so
+  // the first write happens on arrival at step 2.
+  const prevStepIndexRef = useRef(STEP_ORDER.indexOf('select'));
+  useEffect(() => {
+    const idx = STEP_ORDER.indexOf(step);
+    const advanced = idx > prevStepIndexRef.current;
+    prevStepIndexRef.current = idx;
+    if (!advanced || step === 'select') return;
+    // Same resolved-subject rule as `resolvedSendSubject` below (DEC-967):
+    // merge fields applied where a preview row exists, the raw typed
+    // subject otherwise.
+    writeComposeDraft(eventId, {
+      templateName: templateName || null,
+      subject: preview[0]?.subject ?? subject,
+      recipientCount: selection.selectedIds.size,
+      updatedAt: Date.now(),
+    });
   }, [step]);
 
   // w12-c (DEC-967 amendment): Enter advances steps 1-3 via each step's own

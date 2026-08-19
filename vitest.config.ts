@@ -31,6 +31,8 @@ import react from "@vitejs/plugin-react";
 // name, same mirror as planEditor-refusal-shapes.test.ts) alongside its
 // CSS-source-scan pins, and needs a real `window`/`document` for the render
 // half's localStorage + testing-library assertions, same treatment.
+// v12m-w5-f (DEC-621 wave-87 amendment): composeDraft.test.ts needs a real
+// `window.localStorage` despite its plain .test.ts name, same treatment.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -68,6 +70,7 @@ export default defineConfig({
       // time -- see that file's header); same jsdom treatment.
       ["app/src/pages/comms/comms-drill-phone-frames.w7d.test.ts", "jsdom"],
       ["app/src/pages/submissions/submissions-landing-phone-frame.test.ts", "jsdom"],
+      ["app/src/pages/comms/composeDraft.test.ts", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",

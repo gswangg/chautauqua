@@ -1,21 +1,21 @@
-// v12 mobile campaign w1 (DEC-621 amendment; planner's ruling): the phone
-// landing's "Draft in progress" card, frame
+// v12 mobile campaign w1 (DEC-621 amendment), made real in w5 (DEC-621
+// wave-87 amendment): the phone landing's "Draft in progress" card, frame
 // docs/design/Chautauqua Comms.dc.html:188 (`border:1px solid #BAB6A6;
 // border-radius:6px; background:#FAF8F2; padding:15px; display:flex;
 // flex-direction:column; gap:9px`), part of the 'Comms' · 390 screen. A
 // presentational card that renders ONLY when a draft exists -- CommsPage
-// has no source of an in-progress compose draft to hand it: ComposeWizard's
-// step state is component-local, never lifted to CommsPage or persisted
-// anywhere, and this task's file scope (app/src/pages/comms/**) forbids
-// both adding a server endpoint and inventing a proxy signal the loaded
-// data can't actually answer. Wired with draft={null} in Comms.tsx, so the
-// card never renders in production today -- kept here, structurally
-// ready, so a future task wiring a real draft source only has to supply
-// the prop. See docs/design/audit/comms-v12.md for the full gap writeup.
+// reads it from composeDraft.ts (localStorage, written by ComposeWizard on
+// each step advance) and hands it in here.
+//
+// The frame's line 191 draws `23 recipients · reviewer feedback merged`,
+// but nothing in the app records WHY a draft includes reviewer feedback --
+// docs/design/audit/comms-v12.md finding 1 names this gap and its own rule
+// ("fail loudly, never invent a number/signal the payload can't answer")
+// forbids fabricating that provenance clause. This card renders the
+// recipient count alone; there is no `provenance` field to fake it with.
 export interface PhoneDraft {
   subject: string;
   recipientCount: number;
-  provenance: string;
 }
 
 export function PhoneDraftCard({
@@ -34,10 +34,10 @@ export function PhoneDraftCard({
       <span className="chq-comms-phone-draft-eyebrow">Draft in progress</span>
       {/* Frame line 190: the draft's rendered subject line. */}
       <span className="chq-comms-phone-draft-subject">{draft.subject}</span>
-      {/* Frame line 191: `23 recipients · reviewer feedback merged` */}
-      <span className="chq-comms-phone-draft-meta">
-        {draft.recipientCount} recipients · {draft.provenance}
-      </span>
+      {/* Frame line 191: `23 recipients · reviewer feedback merged` -- the
+          provenance clause is dropped, not fabricated (see doc comment
+          above). */}
+      <span className="chq-comms-phone-draft-meta">{draft.recipientCount} recipients</span>
       {/* Frame line 192: `font-size:13px; line-height:1.55;
           color:#3F4237">Better on a laptop` -- the honest steer, verbatim. */}
       <span className="chq-comms-phone-draft-honesty">Better on a laptop</span>
