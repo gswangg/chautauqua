@@ -2185,4 +2185,58 @@
   .chq-settings-saved-embed-actions .chq-link-button {
     margin-inline: 0;
   }
+
+  /* ------------------------------------------------------------------ */
+  /* DEC-781 wave-109 amendment (task v12m-w5-p): People/roles grid and  */
+  /* edit-view field widths are desktop geometry that overflow 390.     */
+  /* Lane v12m-w5-o appends its own separately-commented sub-section    */
+  /* for control geometry to this same terminal block -- kept textually */
+  /* distinct so a merge keeps both.                                   */
+  /* ------------------------------------------------------------------ */
+
+  /* VERIFIED CAUSE 1 -- People and roles. .chq-settings-people-table's
+     --chq-people-grid (:287, minmax(0,1fr) 170px 190px 200px) is 560px of
+     fixed tracks plus gaps against a ~358px phone content box, consumed by
+     both the header row (:304) and every person row (:720): the Person
+     column collapses to zero width, Change password and Remove overlap,
+     and the panel overflows by roughly 240px. Redefined here to a single
+     track. .chq-settings-people-row already switches to
+     display:flex/flex-direction:column above (this same block, :1547) and
+     stops reading the variable once it does, but
+     .chq-settings-people-header-row still reads it directly via
+     grid-template-columns, so the variable itself must also collapse.
+     PERSON / ROLE / SCOPE column labels have no meaning once every row is
+     a stacked card -- hidden outright, the same treatment
+     task-view.css's .chq-taskview-head-row gives its own stacked rows at
+     this width. */
+  .chq-settings-people-table {
+    --chq-people-grid: 1fr;
+  }
+
+  .chq-settings-people-header-row {
+    display: none;
+  }
+
+  /* VERIFIED CAUSE 2a -- the desktop pair grid (auto auto, B10: a paired
+     field keeps its own width token rather than stretching to half the
+     820px column) sizes Start date / End date side by side; that does not
+     fit a 358px column, so the pair collapses to one column here and the
+     two fields stack. */
+  .chq-settings-field-pair {
+    grid-template-columns: 1fr;
+  }
+
+  /* VERIFIED CAUSE 2b -- edit-view fields. The six selectors below pin
+     desktop widths from the --chq-field-w-* tokens (:827-853) so a field
+     does not stretch across the 820px measure; that reason does not
+     survive a 358px column -- Event-edit overflows 390 by 86px, CFP-edit
+     by 46px. Every field goes full width here instead. */
+  .chq-settings-field-date,
+  .chq-settings-field-seats,
+  .chq-settings-field-name,
+  .chq-settings-field-slug,
+  .chq-settings-field-venue,
+  .chq-settings-field-timezone {
+    width: 100%;
+  }
 }
