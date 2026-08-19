@@ -80,4 +80,50 @@ describe('SubmissionsTable phone-card class hooks render (DEC-610, task w14-h)',
       expect(container.querySelector('td.chq-submissions-table-custom')).not.toBeNull();
     });
   });
+
+  // The 390 frame's card action row is flex:1 / flex:1 / auto, and the phone
+  // CSS spells that with `.chq-btn:nth-child(1)` and `:nth-child(2)`. Those
+  // two positional selectors are only correct while the triage group renders
+  // exactly three buttons in the Accept, Decline, Waitlist order -- reorder
+  // or insert one and the frame's geometry silently lands on the wrong pair.
+  // This pins the coupling the stylesheet cannot express.
+  it('the triage group renders exactly three buttons, Accept and Decline first (phone nth-child coupling)', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk About Testing',
+          status: 'pending',
+          contentStatus: 'pending',
+          speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+          answers: {},
+        },
+      ]),
+    });
+
+    const { container } = render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
+    });
+
+    const group = container.querySelector('.chq-submissions-row-triage');
+    expect(group).not.toBeNull();
+    const buttons = Array.from(group!.querySelectorAll('button'));
+    expect(buttons.map((b) => b.textContent)).toEqual(['Accept', 'Decline', 'Waitlist']);
+    // Every child of the group is a button, so :nth-child(n) and "the nth
+    // action" cannot drift apart via a non-button element slipping in.
+    expect(group!.children.length).toBe(3);
+  });
 });

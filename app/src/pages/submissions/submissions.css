@@ -613,8 +613,30 @@
     width: 100%;
   }
 
+  /* Frame 'Submissions · 390' card action row: the first two actions share
+     the line at equal width and the third sizes to its own label -- the
+     frame's flex:1 / flex:1 / auto triple. Without the two flex:1 rules the
+     buttons collapse to their text width and leave the card's action line
+     half empty, which is what the frame's full-bleed pair rules out.
+     Phone control radius (6px) matches every other 390 control. */
   .chq-submissions-row-triage .chq-btn {
     min-height: 44px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-submissions-row-triage .chq-btn:nth-child(1),
+  .chq-submissions-row-triage .chq-btn:nth-child(2) {
+    flex: 1;
+  }
+
+  /* Chip strip type: the frame draws the status chips at 13px with 13px of
+     side padding; the shared .chq-pill is a 12px/5px-12px desktop chip. The
+     44px height itself already comes from the global phone .chq-pill rule
+     in styles.css -- only the type scale is restated here, scoped to this
+     filter bar so no other screen's chips move. */
+  .chq-submissions-filterbar .chq-pill {
+    font-size: 13px;
+    padding: 0 13px;
   }
 }
 

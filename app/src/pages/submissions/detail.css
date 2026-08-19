@@ -826,8 +826,38 @@
    intermediate one-column collapse; this block layers phone-only
    metrics on top of it. */
 @media (max-width: 700px) {
+  /* Frame 'Submission detail · 390' header block: the back link is a real
+     44px target (DESIGN-RULINGS "44px floor" -- a bare text link's hit box
+     is its line box, ~18px, which is the floor's second evasion mode), the
+     ref/position string sits opposite it, and the Previous/Next pair wraps
+     to its own line rather than being dropped (DEC-386: the phone frame
+     reflows capability, it never removes it -- the frame simply has no
+     room to draw the pager on the same line). */
+  .chq-detail-ref-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+    column-gap: 12px;
+  }
+
+  .chq-detail-back,
+  .chq-detail-position-prev,
+  .chq-detail-position-next {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Frame header: 10px eyebrow over a 22px title (the desktop pair is
+     11px/30px), tighter tracking and a slightly looser line so a long
+     title wraps to three lines inside 390 without touching. */
+  .chq-detail-eyebrow {
+    font-size: 10px;
+  }
+
   .chq-detail-heading h1 {
-    font-size: 24px;
+    font-size: 22px;
+    letter-spacing: -0.035em;
+    line-height: 1.2;
   }
 
   .chq-detail-layout {
@@ -840,20 +870,43 @@
     max-width: none;
   }
 
-  /* Answer/meta rows collapse to a single column: 13px muted label
-     above the value, no more fixed 190px label rail. */
+  /* Answer/meta rows collapse to a single column with the label carried as
+     a MICRO-LABEL above its value (frame: 11px/800/0.09em uppercase over a
+     14px value) -- the same phone-card idiom review.css uses for its
+     data-label ::before, restated here because these rows are a real <dl>
+     whose <dt> already holds the label text. The desktop 190px label rail
+     is gone; the 13px/600 muted <dt> it used to leave behind is not the
+     register the frame draws. */
   .chq-answer-row {
     grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
-    padding: 12px 0;
+    gap: 3px;
+    padding: 13px 0;
   }
 
   .chq-answer-row dt {
-    font-size: 13px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
   }
 
   .chq-answer-row dd {
     font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* Abstract + reviewer comments step down one notch from their desktop
+     16px/1.7 and 15px/1.7 (frame draws 15px/1.65 and 13px/1.55) -- the
+     measure at 390 is ~40 characters, so the desktop leading reads loose. */
+  .chq-detail-abstract {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .chq-review-comment {
+    font-size: 13px;
+    line-height: 1.55;
   }
 
   .chq-detail-section-body p {
@@ -865,6 +918,35 @@
   .chq-detail-decision-primary,
   .chq-detail-decision-secondary-pair .chq-btn {
     border-radius: var(--chq-r-ctl-phone);
+    min-height: 46px;
+  }
+
+  /* Frame 'Submission detail · 390' action bar: Accept, Decline and
+     Waitlist read as ONE row of three, not a full-width primary stacked
+     over a pair. The rail becomes a wrapping row whose children are
+     full-width by default -- the triage/stated label, the un-decide link
+     and the caption all keep their own lines -- and only the primary and
+     the pair opt back onto a shared line. Written this way (rather than a
+     3-column grid) because the decided state has no primary at all: the
+     pair alone then grows to fill the row on its own. */
+  .chq-detail-decision-rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .chq-detail-decision-rail > * {
+    width: 100%;
+  }
+
+  .chq-detail-decision-rail > .chq-detail-decision-primary {
+    width: auto;
+    flex: 1 1 40%;
+  }
+
+  .chq-detail-decision-rail > .chq-detail-decision-secondary-pair {
+    width: auto;
+    flex: 2 1 55%;
   }
 
   /* Edit form + co-presenter search: stack full-width on phone. */

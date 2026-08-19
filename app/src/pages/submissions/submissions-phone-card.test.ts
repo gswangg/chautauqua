@@ -76,3 +76,45 @@ describe('submissions.css phone card rules (DEC-610, task w14-h)', () => {
     expect(mediaBody).toMatch(/nth-child\(1\)[\s\S]*?min-height:\s*44px/);
   });
 });
+
+// Phone pins for the v12 'Submissions · 390' frame's card action row and
+// chip strip. The frame draws the row as flex:1 / flex:1 / auto, so the two
+// leading actions fill the card's width instead of collapsing to their text.
+describe('submissions.css phone card action row + chip strip (390 frame)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+  const mediaBody = mediaBlockBody(css);
+  const outside = withoutMediaBlocks(css);
+
+  it('the triage buttons clear the 44px floor and carry the phone control radius', () => {
+    expect(mediaBody).toMatch(
+      /\.chq-submissions-row-triage \.chq-btn \{[^}]*min-height:\s*44px[^}]*border-radius:\s*var\(--chq-r-ctl-phone\)/,
+    );
+  });
+
+  it('the first two triage actions share the line at equal width, the third sizes to its label', () => {
+    expect(mediaBody).toMatch(
+      /\.chq-submissions-row-triage \.chq-btn:nth-child\(1\),\s*\.chq-submissions-row-triage \.chq-btn:nth-child\(2\) \{[^}]*flex:\s*1/,
+    );
+    // No nth-child(3) rule: the third button keeps its intrinsic width,
+    // which is what makes the row read flex:1 / flex:1 / auto.
+    expect(mediaBody).not.toMatch(/\.chq-submissions-row-triage \.chq-btn:nth-child\(3\)/);
+  });
+
+  it('the status chips take the frame 13px type, scoped to this filter bar', () => {
+    expect(mediaBody).toMatch(/\.chq-submissions-filterbar \.chq-pill \{[^}]*font-size:\s*13px/);
+    expect(mediaBody).toMatch(/\.chq-submissions-filterbar \.chq-pill \{[^}]*padding:\s*0 13px/);
+    // Scoped -- a bare `.chq-pill` rule here would move every other
+    // screen's chips, which is not this lane's to change.
+    expect(mediaBody).not.toMatch(/(^|[,{}])\s*\.chq-pill\s*\{/m);
+  });
+
+  it('DESKTOP PRESERVED: the action row and chip metrics stay phone-only', () => {
+    // .chq-submissions-row-triage keeps its desktop rule and gains no
+    // phone-only declaration outside the 700px block (DEC-385).
+    expect(outside).toMatch(/\.chq-submissions-row-triage\s*\{/);
+    expect(outside).not.toMatch(/\.chq-submissions-row-triage[^{]*\{[^}]*min-height:\s*44px/);
+    expect(outside).not.toMatch(/\.chq-submissions-row-triage[^{]*\{[^}]*flex:\s*1/);
+    expect(outside).not.toMatch(/\.chq-submissions-filterbar \.chq-pill/);
+    expect(outside).not.toContain('--chq-r-ctl-phone');
+  });
+});
