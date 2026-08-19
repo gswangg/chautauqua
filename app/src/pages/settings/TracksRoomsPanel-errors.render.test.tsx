@@ -204,4 +204,92 @@ describe('TracksRoomsPanel captions, consequence line, and field-level refusals'
     // per-field <span role="alert">s) never fires for a fields-map refusal.
     expect(section.querySelector('p[role="alert"]')).not.toBeInTheDocument();
   });
+
+  // Eval (unfiled, from D6's investigation). Both "Add a track" toggle call
+  // sites did a bare `setShowAddTrack((v) => !v)`, which reset neither
+  // trackFieldErrors nor the draft -- so hiding the form and re-showing it
+  // re-rendered the previous attempt's refusal over an empty field, a
+  // "Required" about nothing the organiser had done. Closing the form now
+  // retires that form's whole attempt, DEC-856 wave-72's "per error STATE"
+  // read the way PeopleRolesPanel.closeInviteDialog reads it.
+  it('closing the add-track form clears its own refusal and draft, so re-opening starts clean', async () => {
+    mockTracksRooms({
+      [`POST /api/v1/events/${EVENT_ID}/tracks`]: {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Invalid track', fields: { name: 'Required' } } },
+      },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a track' })[0]!);
+    fireEvent.change(within(section).getByPlaceholderText('New track name'), {
+      target: { value: 'Half-typed track' },
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Add track' }));
+
+    await waitFor(() => {
+      expect(within(section).getAllByText('Required').length).toBeGreaterThan(0);
+    });
+
+    // Hide, then re-show.
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a track' })[0]!);
+    expect(within(section).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a track' })[0]!);
+
+    const reopened = within(section).getByPlaceholderText('New track name');
+    expect(reopened).toHaveValue('');
+    expect(reopened).not.toHaveClass('chq-field-invalid');
+    expect(within(section).queryByText('Required')).not.toBeInTheDocument();
+  });
+
+  // Eval (unfiled, from D6's investigation), decided AGAINST the shape it was
+  // filed as. DEC-856 wave 72 rules "per error STATE, not per panel: a
+  // component holding two error states owes each one its own clear" -- so a
+  // successful ROOM add must NOT clear the TRACK refusal. Clearing it would
+  // be a room write erasing the only record of why a track add failed, while
+  // that track form is still open beside it with the refusal's own control.
+  // Pinned so the isolation reads as deliberate rather than as an omission
+  // someone later "fixes".
+  it('a successful room add leaves the track form\'s refusal standing (per error STATE)', async () => {
+    mockTracksRooms({
+      [`POST /api/v1/events/${EVENT_ID}/tracks`]: {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Invalid track', fields: { name: 'Required' } } },
+      },
+      [`POST /api/v1/events/${EVENT_ID}/rooms`]: {
+        status: 200,
+        body: { id: 'rm-new', name: 'Annex', capacity: null, sessionCount: 0 },
+      },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a track' })[0]!);
+    fireEvent.click(within(section).getByRole('button', { name: 'Add track' }));
+    await waitFor(() => {
+      expect(within(section).getAllByText('Required').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a room' })[0]!);
+    fireEvent.change(within(section).getByPlaceholderText('New room name'), { target: { value: 'Annex' } });
+    fireEvent.click(within(section).getByRole('button', { name: 'Add room' }));
+
+    // The room add succeeded and cleared its OWN form...
+    await waitFor(() => {
+      expect(within(section).getByPlaceholderText('New room name')).toHaveValue('');
+    });
+    // ...and the track refusal, about a control the room write does not own,
+    // is still there beside its own invalid input.
+    expect(within(section).getAllByText('Required').length).toBeGreaterThan(0);
+    expect(within(section).getByPlaceholderText('New track name')).toHaveClass('chq-field-invalid');
+  });
 });

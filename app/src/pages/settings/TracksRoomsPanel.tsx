@@ -62,9 +62,9 @@ export function TracksRoomsPanel() {
     confirmingDiscard,
     setConfirmingDiscard,
     showAddTrack,
-    setShowAddTrack,
+    toggleAddTrack,
     showAddRoom,
-    setShowAddRoom,
+    toggleAddRoom,
     dirtyRowNames,
     handleDone,
     discardDirtyAndClose,
@@ -162,7 +162,7 @@ export function TracksRoomsPanel() {
             <button
               type="button"
               className="chq-settings-section-action chq-link-button chq-settings-drillrow-head-hide"
-              onClick={() => setShowAddTrack((v) => !v)}
+              onClick={toggleAddTrack}
             >
               Add a track
             </button>
@@ -199,7 +199,7 @@ export function TracksRoomsPanel() {
           <button
             type="button"
             className="chq-settings-drillrow-add"
-            onClick={() => setShowAddTrack((v) => !v)}
+            onClick={toggleAddTrack}
           >
             Add a track
           </button>
@@ -258,7 +258,7 @@ export function TracksRoomsPanel() {
             <button
               type="button"
               className="chq-settings-section-action chq-link-button chq-settings-drillrow-head-hide"
-              onClick={() => setShowAddRoom((v) => !v)}
+              onClick={toggleAddRoom}
             >
               Add a room
             </button>
@@ -290,7 +290,7 @@ export function TracksRoomsPanel() {
           <button
             type="button"
             className="chq-settings-drillrow-add"
-            onClick={() => setShowAddRoom((v) => !v)}
+            onClick={toggleAddRoom}
           >
             Add a room
           </button>

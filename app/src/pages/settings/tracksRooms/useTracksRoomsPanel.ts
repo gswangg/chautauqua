@@ -149,6 +149,38 @@ export function useTracksRoomsPanel(sectionKey: string) {
     closeEdit();
   }
 
+  /** DEC-856 wave-72 ("the rule is per error STATE, not per panel: a
+   * component holding two error states owes each one its own clear"): the ONE
+   * way the add-a-track form opens or closes, whichever control triggers it
+   * (the desktop section-head link or the phone add row). Closing it retires
+   * that form's whole attempt — the refusal AND the draft it was about — so
+   * re-opening can never re-render a refusal describing an attempt the
+   * organiser already walked away from. Both call sites previously did a bare
+   * `setShowAddTrack((v) => !v)`, which cleared neither: hide then re-show
+   * redisplayed "Required" over an empty field, a refusal about nothing.
+   * PeopleRolesPanel.closeInviteDialog's idiom, applied per form.
+   *
+   * It touches the TRACK form's state and nothing else. The room form's
+   * refusal is a different error state and owes its own clear (below), never
+   * one driven from here — a control erasing a refusal about a control it
+   * does not own is the same silence in the other direction. */
+  function toggleAddTrack() {
+    if (showAddTrack) {
+      setTrackFieldErrors({});
+      setNewTrack(EMPTY_TRACK);
+    }
+    setShowAddTrack((visible) => !visible);
+  }
+
+  /** The room half of toggleAddTrack, same rule, same isolation. */
+  function toggleAddRoom() {
+    if (showAddRoom) {
+      setRoomFieldErrors({});
+      setNewRoom(EMPTY_ROOM);
+    }
+    setShowAddRoom((visible) => !visible);
+  }
+
   function isTrackDirty(track: Track): boolean {
     const draft = trackDrafts[track.id];
     if (!draft) return false;
@@ -366,10 +398,13 @@ export function useTracksRoomsPanel(sectionKey: string) {
     setPendingDelete,
     confirmingDiscard,
     setConfirmingDiscard,
+    // The raw setters are deliberately NOT exported: toggleAddTrack/
+    // toggleAddRoom are the only way to flip these, so no view call site can
+    // reopen a form over its own stale refusal.
     showAddTrack,
-    setShowAddTrack,
+    toggleAddTrack,
     showAddRoom,
-    setShowAddRoom,
+    toggleAddRoom,
     dirtyRowNames,
     handleDone,
     discardDirtyAndClose,
