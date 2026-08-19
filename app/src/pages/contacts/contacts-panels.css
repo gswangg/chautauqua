@@ -1319,13 +1319,16 @@
     display: none;
   }
 
-  /* .chq-contacts-import-dedupe is NOT hidden here -- it is the single
-     shared same-file dedupe note (ImportWizard.tsx), rendered once and
-     read at BOTH widths: below the (now-hidden) desktop select grid, and
-     below the phone radio list this block adds. Duplicating it into a
-     second, phone-only node would collide with getByText in
-     ImportWizard.reviewFilter.render.test.tsx and be a real a11y
-     duplicate, not just a CSS-hidden one. */
+  /* DEC-663 (wave-87 amendment, contacts-v12.md finding 2): the same-file
+     dedupe note is now DESKTOP-ONLY -- it sits "beneath the column grid,
+     where it is true" and is hidden here rather than repositioned under
+     the phone radio list appended below. The frame's phone position for
+     an existing-contact note is answered only by the dry run's own
+     plan.updated (.chq-contacts-import-matched, on the Review step),
+     never by the in-file dedupe count, which measures a different thing. */
+  .chq-contacts-import-dedupe {
+    display: none;
+  }
 
   .chq-contacts-import-match-head {
     flex-direction: column;
@@ -1580,15 +1583,6 @@
   .chq-contacts-import-phone-target-input:focus-visible + .chq-contacts-import-phone-target-mark {
     outline: 2px solid var(--chq-ink);
     outline-offset: 2px;
-  }
-
-  /* The shared dedupe note (see the top-level comment on
-     .chq-contacts-import-dedupe above) gets the frame's :507 spacing --
-     `padding:16px 0 0` -- once it sits directly under the phone radio
-     list instead of the desktop grid. */
-  .chq-contacts-import-dedupe {
-    padding-top: 16px;
-    border-top: none;
   }
 
   /* Frame dock: filled "Next column" + bordered "Skip", both 48px full-
