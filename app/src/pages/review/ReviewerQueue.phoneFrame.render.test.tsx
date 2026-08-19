@@ -215,7 +215,7 @@ describe('ReviewerQueue phone frame (docs/design/Chautauqua Review.dc.html:413)'
     );
   });
 
-  it('the dock\'s Sign out does NOT navigate when /logout fails, and surfaces the rejection (fail loudly)', async () => {
+  it('the dock\'s Sign out does NOT navigate when /logout fails, and surfaces the failure on screen (fail loudly)', async () => {
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}`]: { timezone: 'America/New_York' },
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
@@ -232,21 +232,17 @@ describe('ReviewerQueue phone frame (docs/design/Chautauqua Review.dc.html:413)'
       'POST /logout': { status: 400, body: {} },
     });
     const assignSpy = stubLocationAssign();
-    const rejections: unknown[] = [];
-    const onRejection = (reason: unknown) => rejections.push(reason);
-    process.on('unhandledRejection', onRejection);
 
     renderQueue();
 
     const signOutButton = await screen.findByRole('button', { name: 'Sign out' });
     signOutButton.click();
 
-    await vi.waitFor(() => {
-      expect(rejections.length).toBeGreaterThan(0);
-    });
-    expect((rejections[0] as Error).message).toBe('Sign-out failed: /logout responded 400');
+    // v12m-w14-c: a failed sign-out no longer just rejects into the void --
+    // it lands in the drill-in's existing routePlanError state, rendered as
+    // a chq-error alert the operator can actually see, instead of an
+    // unhandled promise rejection with no on-screen message.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sign-out failed: /logout responded 400');
     expect(assignSpy).not.toHaveBeenCalled();
-
-    process.off('unhandledRejection', onRejection);
   });
 });

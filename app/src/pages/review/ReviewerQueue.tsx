@@ -61,11 +61,15 @@ function closesInDaysLabel(closeDate: number | null, timezone: string): string |
 // POST to the session endpoint with the CSRF header, redirect to /login
 // only on a 2xx, never swallow a rejection.
 //
-// Calls signOut() without swallowing a rejection into `void` -- a failed
-// sign-out must surface (fail loudly) rather than be silently discarded.
-function handlePhoneSignOutClick(): void {
+// v12m-w14-c: a rejected signOut() used to be re-thrown into the click
+// handler, which only produces an unhandled promise rejection -- no
+// message reaches the operator and the (still-live) session looks
+// unchanged. The caller passes its own error setter (the drill-in's
+// existing routePlanError state, already rendered as a chq-error alert
+// just above this dock) so the failure lands on screen.
+function handlePhoneSignOutClick(setError: (message: string) => void): void {
   signOut().catch((err) => {
-    throw err;
+    setError(err instanceof Error ? err.message : 'Failed to sign out');
   });
 }
 
@@ -189,8 +193,11 @@ function PlanSection({
     // `width:390px; height:844px; ...`
     // -- the queue body is the scrolling region between the sticky head
     // (rendered by the routePlanId branch below) and the standing phone
-    // dock; chq-phone-body has no rule outside the max-width:700px block
-    // (styles.css) so this is a no-op at desktop.
+    // dock; chq-phone-body is an additive layout modifier with no
+    // top-level rule (styles.css), so it stays a no-op at desktop --
+    // unlike chq-phone-dock below, which DOES carry a top-level
+    // display:none precisely because it renders bare, unpaired with any
+    // desktop class.
     <section className="chq-section chq-phone-body">
       {error && (
         <div className="chq-error" role="alert">
@@ -599,7 +606,16 @@ export function ReviewerQueue() {
       : null;
 
     return (
-      <div className="chq-page chq-review-page chq-measure">
+      // data-chq-phone-signout: this drill-in mints its OWN Sign out inside
+      // the phone dock below (chq-review-phone-signout), so the shell's
+      // carve-out for a tab-bar-less shell (styles.css, `.chq-shell:not(:has
+      // (.chq-tabbar))...`) must not ALSO un-hide the header identity's
+      // Sign out at this width -- the attribute lets that selector name and
+      // exclude this exact root, same idiom as .chq-main's
+      // data-chq-phone-dock carve-out above (styles.css:421-430). The hub
+      // root below sets no such attribute and keeps the shell's one control
+      // (DEC-874 wave-86).
+      <div className="chq-page chq-review-page chq-measure" data-chq-phone-signout="true">
         <p>
           {/* docs/design/Chautauqua Review.dc.html:413
               `width:390px; height:844px; ...`
@@ -698,11 +714,18 @@ export function ReviewerQueue() {
             -- the phone frame's dock is a STANDING band (present whether or
             not anything is scored yet, unlike PlanSection's totalRows > 0
             gated footer above), carrying the reassurance and Sign out
-            together; chq-phone-dock has no rule outside the
-            max-width:700px block, so this is a no-op at desktop. */}
+            together; chq-phone-dock carries a top-level display:none
+            (styles.css) precisely because, unlike the additive
+            chq-phone-* modifiers above, it mounts bare here with no
+            paired desktop class -- the media query flips it to a docked
+            flex band only at 700px and below. */}
         <div className="chq-phone-dock chq-review-phone-dock">
           <span className="chq-review-phone-dock-note">Scores stay hidden from other reviewers</span>
-          <button type="button" className="chq-review-phone-signout" onClick={handlePhoneSignOutClick}>
+          <button
+            type="button"
+            className="chq-review-phone-signout"
+            onClick={() => handlePhoneSignOutClick(setRoutePlanError)}
+          >
             Sign out
           </button>
         </div>

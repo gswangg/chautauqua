@@ -378,6 +378,19 @@ a:hover {
   flex-shrink: 0;
 }
 
+/* v12m-w14-c: .chq-phone-dock (below, @media max-width:700px block,
+   `.chq-phone-dock { position: sticky; ... }`) had no top-level rule, so
+   above 700px it fell back to its element default (block) instead of
+   staying hidden -- ReviewerQueue.tsx's drill-in and RosterPanel.tsx both
+   mount it as a bare direct child of desktop-visible markup, leaking the
+   dock's note + Sign out band onto frozen desktop. Same "hidden above the
+   breakpoint, flipped to flex/visible inside the media query" contract as
+   app/src/pages/review/review.css:2088's
+   `.chq-reviewer-plans-phone-note { display: none; }`. */
+.chq-phone-dock {
+  display: none;
+}
+
 @media (max-width: 700px) {
   .chq-header {
     padding: 14px 16px;
@@ -397,8 +410,18 @@ a:hover {
      path for Sign out (DEC-369 wave-72) does not exist. Un-hide the
      identity block's Sign out whenever the shell has no tab bar, so a
      reviewer keeps the one button. `.chq-btn-tertiary` already carries
-     `min-height:44px` at this width (above), so no new floor is needed. */
-  .chq-shell:not(:has(.chq-tabbar)) .chq-header-identity .chq-user-identity {
+     `min-height:44px` at this width (above), so no new floor is needed.
+
+     v12m-w14-c: a reviewer's back-linked drill-in (ReviewerQueue.tsx) mints
+     its OWN Sign out inside its .chq-phone-dock band, so un-hiding the
+     header identity's Sign out here as well would draw two -- the frame
+     (docs/design/Chautauqua Review.dc.html:414-421/441-443) draws exactly
+     one. The drill-in's page root carries data-chq-phone-signout for this
+     exact purpose; the second :not(:has(...)) clause excludes it, same
+     attribute-contract idiom as `.chq-main:has([data-chq-phone-dock])`
+     below. The hub (ReviewerQueue.tsx, plan-list branch) sets no such
+     attribute and keeps this rule's control (DEC-874 wave-86). */
+  .chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout])) .chq-header-identity .chq-user-identity {
     display: inline-flex;
   }
 
