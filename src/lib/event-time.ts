@@ -244,12 +244,21 @@ export function formatEventDayRange(startMs: number, endMs: number): string {
 }
 
 /** CFP close date label (weekday + day + month, en-GB day-before-month
- * order, no comma), rendered in the event's own IANA timezone (DEC-408: a
- * real instant, never UTC-bare), e.g. "Sun 12 May". Callers own the
- * uppercasing and "N days left" arithmetic (root.tsx's closesLine) — only
- * the Intl formatting itself lives here, per DEC-918. */
+ * order, no comma), e.g. "Sun 12 May". `closeMs` is a DEC-522 UTC-midnight
+ * day label (form.close_date) — it is expanded through dayLabelEndInstant
+ * before formatting (DEC-522 wave-7 amendment: expansion is part of the
+ * DISPLAY contract, not only the gate contract), so a zone west of UTC
+ * renders the deadline's own calendar day rather than the day before it.
+ * Callers own the uppercasing and "N days left" arithmetic (root.tsx's
+ * closesLine) — only the Intl formatting itself lives here, per DEC-918.
+ * Throws if `timeZone` is empty, matching the fail-loudly contract of its
+ * neighbours (daysUntilCalendarDay) above. */
 export function formatEventCloseDateLabel(closeMs: number, timeZone: string): string {
-  return new Date(closeMs).toLocaleDateString("en-GB", {
+  if (!timeZone) {
+    throw new Error("formatEventCloseDateLabel: timeZone must not be empty");
+  }
+  const expanded = dayLabelEndInstant(closeMs, timeZone);
+  return new Date(expanded).toLocaleDateString("en-GB", {
     weekday: "short",
     day: "numeric",
     month: "short",
