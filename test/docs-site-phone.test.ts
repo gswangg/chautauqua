@@ -165,6 +165,41 @@ describe("docs-site.css.ts phone block (DEC-385, source-scan)", () => {
     expect(body).toMatch(/flex:\s*1/);
   });
 
+  it("the header stacks — brand run + leaving link on the bar, search full-width on its own row (docs/design/Chautauqua Docs.dc.html:167 `padding:14px 16px; flex-shrink:0; display:flex; align-items:center; gap:12px`)", () => {
+    const block = extract700Blocks(DOCS_SITE_CSS)[0]!;
+    // The bar wraps, so the search can take a row of its own.
+    expect(block).toMatch(/\.chq-docs-header\s*\{[^}]*flex-wrap:\s*wrap/);
+    expect(block).toMatch(/\.chq-docs-header\s*\{[^}]*padding:\s*14px 16px/);
+    // Search: last in visual order, and a 100% basis so it always breaks.
+    const search = block.match(/\.chq-docs-search-compact\s*\{([^}]*)\}/);
+    expect(search).not.toBeNull();
+    expect(search![1]!).toMatch(/flex:\s*1 0 100%/);
+    expect(search![1]!).toMatch(/order:\s*2/);
+    // The leaving link rides the bar (order 1) and keeps its push-right,
+    // which the base :has() rule zeroes whenever a search is present.
+    expect(block).toMatch(/\.chq-docs-leaving\s*\{[^}]*order:\s*1/);
+    expect(block).toMatch(/\.chq-docs-header:has\(\.chq-docs-search-compact\) \.chq-docs-leaving\s*\{\s*margin-left:\s*auto/);
+    // The brand run is chrome at a fixed measure: it never shrinks, and it
+    // opts out of theme.ts's DEC-404 `body { overflow-wrap: anywhere }`,
+    // which otherwise collapses the wordmark's min-content contribution to
+    // a single character (probe C measured a.chq-docs-wordmark at 23.8x140
+    // on a 390 article — "chautauqua" set two letters to a line).
+    expect(block).toMatch(/\.chq-docs-brandrow\s*\{[^}]*flex-shrink:\s*0/);
+    const optOut = block.match(/((?:\s*\.chq-docs-[a-z-]+,)+\s*\.chq-docs-[a-z-]+)\s*\{\s*overflow-wrap:\s*normal;\s*\}/);
+    expect(optOut).not.toBeNull();
+    for (const sel of [".chq-docs-header", ".chq-docs-brandrow", ".chq-docs-wordmark", ".chq-docs-suffix", ".chq-docs-leaving"]) {
+      expect(optOut![1]!).toContain(sel);
+    }
+    // ...and the opt-out stays on chrome: prose keeps inheriting `anywhere`
+    // so a long URL in docs body text still breaks at 390.
+    for (const proseSel of [".chq-docs-prose", ".chq-docs-list", ".chq-docs-deflist", ".chq-docs-article-head"]) {
+      expect(optOut![1]!).not.toContain(proseSel);
+    }
+    // The prose rule itself is still owned by theme.ts (DEC-404), never
+    // restated here — this block only opts chrome out of it.
+    expect(THEME_TS).toMatch(/body\s*\{\s*overflow-wrap:\s*anywhere;\s*\}/);
+  });
+
   it("the article H1 is the frame's own 28px literal (docs/design/Chautauqua Docs.dc.html:175 `font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1.08`), never the SPA shell's 25px drill-in token", () => {
     const block = extract700Blocks(DOCS_SITE_CSS)[0]!;
     expect(block).toMatch(/\.chq-docs-article-head h1\s*\{\s*font-size:\s*28px/);
