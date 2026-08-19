@@ -25,59 +25,56 @@ pin, can close this row.
 
 Measured by `app/src/phone-tap-target.scan.test.ts`'s row-action-anchor scan (DEC-393 wave-87 amendment) on this branch. Each row names a CSS selector that mentions a bare-anchor or row-action-container token (DESIGN-RULINGS.md:189's evasion) with no conforming `@media (max-width: 700px)` rule (`min-height:>=44px` + `display:flex` + `align-items:center` + non-zero horizontal padding, all three, reaching the anchor) and no `tap-floor-exempt` comment. Every row here lives OUTSIDE this task's scope (`app/src/components/*.css`, `app/src/pages/submissions/*.css`) and is left for its owning cluster/wave to fix or exempt.
 
-Total: 92 offenders, matching `ANCHOR_FLOOR_OFFENDERS_CEILING` in the scan file.
+**Refreshed wave 108 (v12m-w4-o, DEC-808 amendment).** Measurement method:
+copy `app/src/phone-tap-target.scan.test.ts`, force
+`ANCHOR_FLOOR_OFFENDERS_CEILING` to `-1` so the offender-ceiling `it()`
+fails unconditionally, run `npx vitest run app/src/phone-tap-target.scan.test.ts`,
+and read the offender list the failure message prints — never trust a
+previously recorded number or an audit doc's own count. Do this in a
+throwaway copy of the test file (or revert the edit after reading the
+output); do not commit the forced `-1`.
 
-## `(no CSS rule)` (Overview)
+Total: 64 offenders, matching `ANCHOR_FLOOR_OFFENDERS_CEILING` in the scan
+file (re-measured this wave — down from the previously recorded 92, which
+had gone stale as other lanes fixed offenders — including the entire
+agenda cluster and every `app/src/pages/contacts/*.css` row below — without
+lowering the ratchet).
 
+## `(no CSS rule)`
+
+- `.chq-overview-link-btn-read`
 - `.chq-overview-row-actions-stacked`
+- `.chq-review-plan-action-link`
+- `.chq-settings-public-pages-view-action`
+- `.chq-speakers-card-actions`
 
-## `app/src/pages/agenda/agenda.css` (Agenda)
+## `app/src/components/modal-frame.css` (shared modal chrome)
 
-- `.chq-agenda-head-actions`
-- `.chq-breaks-add-actions`
-- `.chq-breaks-row-actions`
-- `.chq-phone-footer-actions`
-- `.chq-toolbar-link`
+- `.chq-modal-head .chq-phone-back`
 
 ## `app/src/pages/comms/comms.css` (Comms)
 
 - `.chq-bulkbar-actions`
-- `.chq-comms-editor-actions`
-- `.chq-comms-head-actions`
 - `.chq-comms-history-head-actions`
 - `.chq-comms-preview-actions`
 - `.chq-comms-refusal-actions`
 - `.chq-comms-select-actions`
-- `.chq-comms-send-detail > .chq-link-button, .chq-comms-recent-sends .chq-section-head .chq-link-button, .chq-comms-blocked-list li .chq-link-button`
-- `.chq-comms-send-report-all-history`
 - `.chq-comms-send-report-footer-actions`
 - `.chq-comms-template-actions`
 
 ## `app/src/pages/contacts/contacts-panels.css` (Contacts)
 
-- `.chq-contacts-import-actions`
-- `.chq-contacts-merge-back`
 - `.chq-modal-actions`
-
-## `app/src/pages/contacts/contacts.css` (Contacts)
-
-- `.chq-contacts-drawer-actions`
-- `.chq-contacts-drawer-actions-right`
-- `.chq-contacts-rail-duplicate-actions`
-- `.chq-contacts-title-actions`
 
 ## `app/src/pages/content/content.css` (Content)
 
 - `.chq-bulkbar-actions`
 - `.chq-content-actions`
 - `.chq-content-comment-actions`
-- `.chq-content-detail-action-link`
 - `.chq-content-detail-actions`
-- `.chq-content-detail-speaker-link`
 - `.chq-content-files-header-actions`
 - `.chq-content-status-band-actions`
 - `.chq-content-summary-actions`
-- `.chq-content-version-name`
 - `.chq-content-worklist-col-actions`
 - `.chq-pill`
 
@@ -91,62 +88,53 @@ Total: 92 offenders, matching `ANCHOR_FLOOR_OFFENDERS_CEILING` in the scan file.
 
 ## `app/src/pages/overview/overview.css` (Overview)
 
-- `.chq-overview-link-btn`
-- `.chq-overview-row-actions`
-- `.chq-overview-row-actions-column`
-- `.chq-overview-row-actions-inline`
-- `.chq-overview-section-action`
+- `.chq-overview-deadline-cell`
+- `.chq-overview-link-inline`
+- `.chq-overview-toolbar-btn`
+- `.chq-overview-toolbar-btn-primary`
 
 ## `app/src/pages/review/review.css` (Review)
 
 - `.chq-pill`
-- `.chq-review-add-link`
-- `.chq-review-back`
 - `.chq-review-criteria-empty-actions`
+- `.chq-review-criterion-options-footer .chq-review-add-link, .chq-review-add-criteria .chq-review-add-link`
 - `.chq-review-decision-actions`
 - `.chq-review-editor-actions`
-- `.chq-review-editor-back-link`
 - `.chq-review-editor-title-actions`
-- `.chq-review-plan-actions`
 - `.chq-review-queue-title`
 - `.chq-review-results-head-actions`
 - `.chq-review-scope-confirm-actions`
-- `.chq-review-section-head-actions`
+- `.chq-review-section-head-actions .chq-link-button`
 - `.chq-review-title-actions`
-- `.chq-reviewer-plan-row-action`
 
 ## `app/src/pages/review/scorecard.css` (Review)
 
 - `.chq-review-editor-actions`
 
+## `app/src/pages/settings/settings-drill-rows.css` (Settings)
+
+- `.chq-settings-drillrow-export-download`
+
 ## `app/src/pages/settings/settings.css` (Settings)
 
-- `.chq-pill`
-- `.chq-settings-edit-row-actions`
-- `.chq-settings-inline-action`
-- `.chq-settings-people-actions`
-- `.chq-settings-saved-embed-actions`
+- `.chq-settings-summary-pills .chq-pill, .chq-settings-portal-pills .chq-pill`
 - `.chq-settings-tokens-col-actions`
 
 ## `app/src/pages/speakers/speakers.css` (Speakers)
 
 - `.chq-pill`
-- `.chq-speaker-detail-actions`
-- `.chq-speaker-detail-back`
-- `.chq-speaker-detail-logistics-actions`
-- `.chq-speakers-file-link`
-- `.chq-speakers-head-actions`
-- `.chq-speakers-import-link`
-- `.chq-speakers-name-link`
-- `.chq-speakers-pager-actions`
-- `.chq-speakers-task-title`
-- `.chq-speakers-write-failure-actions`
+- `.chq-row-title`
+- `.chq-speakers-phone-head-actions`
 
 ## `app/src/pages/speakers/task-view.css` (Speakers)
 
-- `.chq-taskview-actions`
-- `.chq-taskview-back`
-- `.chq-taskview-name`
+- `.chq-taskview-tab, .chq-taskview-open, .chq-taskview-clear`
+
+## `app/src/pages/submissions/detail.css` (Submissions)
+
+- `.chq-detail-back, .chq-detail-position-prev, .chq-detail-position-next` (first rule)
+- `.chq-detail-back, .chq-detail-position-prev, .chq-detail-position-next` (second, distinct rule reaching the same selector text)
+- `.chq-detail-back, .chq-detail-position-prev, .chq-detail-position-next, .chq-detail-back-full, .chq-detail-back-short`
 
 ## `app/src/styles.css` (Shell (shared app/src/styles.css))
 
@@ -157,7 +145,7 @@ Total: 92 offenders, matching `ANCHOR_FLOOR_OFFENDERS_CEILING` in the scan file.
 - `.chq-empty-actions`
 - `.chq-link-button`
 - `.chq-modal-actions`
-- `.chq-pill,`
+- `.chq-pill, .chq-rail-link, .chq-checkbox-label, .chq-btn-tertiary`
 - `.chq-row-title`
 - `.chq-section-action`
 
