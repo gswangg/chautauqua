@@ -1297,8 +1297,18 @@ describe('ResultsTable results table is fixed-layout on the frame\'s seven track
 
     // The phone-card media block resets to auto-layout explicitly rather
     // than relying on display:block to silently override table-layout.
-    const mediaBlock = sheet.slice(sheet.indexOf('@media (max-width: 700px)'), sheet.indexOf('@media (max-width: 700px)') + 600);
-    expect(mediaBlock).toContain('table-layout: auto;');
+    // Re-anchored on the `.chq-review-results-table` selector's own rule
+    // body inside the sheet's single terminal phone block (DEC-385 wave
+    // 103/task w3-j merged all `@media (max-width: 700px)` blocks into one
+    // terminal block, so a fixed byte-offset window from the block's open
+    // brace no longer reliably contains this selector's rule).
+    const mediaStart = sheet.indexOf('@media (max-width: 700px)');
+    expect(mediaStart).toBeGreaterThan(-1);
+    const tableRuleStart = sheet.indexOf('.chq-review-results-table {', mediaStart);
+    expect(tableRuleStart).toBeGreaterThan(mediaStart);
+    const tableRuleEnd = sheet.indexOf('}', tableRuleStart);
+    const tableRule = sheet.slice(tableRuleStart, tableRuleEnd);
+    expect(tableRule).toContain('table-layout: auto;');
   });
 
   // User-filed (prod screenshot): the Choice-distribution footer rendered its
