@@ -104,7 +104,18 @@ function parseRules(css: string): CssRule[] {
     const close = readBalanced(j + 1);
     const body = clean.slice(j + 1, close);
     rules.push({ selector: prelude, body, mediaStack: [...mediaStack] });
-    i = close; // will hit the '}' handling next loop iteration
+    // DEC-385 wave-111 (task w7-a) fix: a plain rule never pushes onto
+    // kindStack, so leaving `i` at its own closing '}' for the generic
+    // handler above to consume erroneously popped the ENCLOSING @media
+    // context (kindStack.pop() removed the entry the @media itself
+    // pushed) after the first plain rule inside any multi-rule block --
+    // every subsequent rule in that block then read back an empty
+    // mediaStack. Surfaced by overview.css's DEC-385 terminal-block
+    // consolidation (multiple rules now share one @media (max-width:
+    // 700px) block); consuming this rule's own closing brace directly
+    // (i = close + 1) leaves the generic '}' handler to see only braces
+    // that actually belong to a pushed context.
+    i = close + 1;
   }
   return rules;
 }
