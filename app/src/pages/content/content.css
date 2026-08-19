@@ -887,6 +887,32 @@
 /* design, it never gives a field a second vocabulary.                     */
 /* ---------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------- */
+/* Phone Select mode (DEC-825 amendment, TIER 0, v12 mobile campaign w1)   */
+/*                                                                         */
+/* Frames: docs/design/Chautauqua Content.dc.html's "Content" (rest,       */
+/* :198) and "Content · selecting" (:247) 390 frames.                        */
+/*                                                                         */
+/* The ruling this task implements: row verbs (Approve/Open) and the       */
+/* docked bulk bar are EXCLUSIVE, never both. `.chq-content-worklist-      */
+/* selecting` (SessionList.tsx, driven by ContentApp.tsx's phoneSelectMode */
+/* state) is the single switch between the two states.                     */
+/*                                                                         */
+/* These two wrappers are phone-only, so their base state is the desktop   */
+/* one: hidden. The rule sits ABOVE the phone block on purpose -- DEC-385  */
+/* single-direction means content.css carries exactly ONE                  */
+/* `@media (max-width: 700px)` block and it is the LAST thing in the file  */
+/* (pinned by SessionList.render.test.tsx), so the phone overrides below   */
+/* win the equal-specificity tie by source order. A second, later phone    */
+/* block would break that invariant; the Select-mode overrides are folded  */
+/* into the one block instead.                                             */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-phone-select-toggle,
+.chq-content-phone-selecting-meta {
+  display: none;
+}
+
 @media (max-width: 700px) {
   .chq-content-page {
     gap: 16px;
@@ -1343,31 +1369,11 @@
     text-overflow: unset;
     line-height: 1.4;
   }
-}
 
-/* ---------------------------------------------------------------------- */
-/* Phone Select mode (DEC-825 amendment, TIER 0, v12 mobile campaign w1)   */
-/*                                                                         */
-/* Frames: docs/design/Chautauqua Content.dc.html's "Content" (rest,      */
-/* :198) and "Content · selecting" (:247) 390 frames. Appended at the      */
-/* END of the file, deliberately: content.css's phone cascade already      */
-/* lost one fight to source order (see the block above), so a later rule   */
-/* of EQUAL specificity is how these overrides are guaranteed to win       */
-/* rather than trusted to. DEC-385 single-direction: every rule below is a */
-/* max-width override; nothing above this comment is touched.              */
-/*                                                                         */
-/* The ruling this task implements: row verbs (Approve/Open) and the      */
-/* docked bulk bar are EXCLUSIVE, never both. `.chq-content-worklist-      */
-/* selecting` (SessionList.tsx, driven by ContentApp.tsx's phoneSelectMode */
-/* state) is the single switch between the two states below.               */
-/* ---------------------------------------------------------------------- */
-
-.chq-content-phone-select-toggle,
-.chq-content-phone-selecting-meta {
-  display: none;
-}
-
-@media (max-width: 700px) {
+  /* -- Phone Select mode (DEC-825 amendment, TIER 0) --------------------
+     Folded into this single phone block rather than appended as a second
+     one, so content.css keeps exactly one `@media (max-width: 700px)`
+     block as its last content (DEC-385 single-direction cascade). */
   /* Rest: `5 need a decision · 2 re-uploaded` (existing .chq-summary,
      untouched) plus a right-flushed `Select` link on the SAME line — frame
      :198 `width:390px; height:844px; background:#F4F1E8`, meta row :206-207
