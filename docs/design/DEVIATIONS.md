@@ -101,6 +101,21 @@ survives contact with state:
     the filterbar strip it sits in already scrolls (`overflow-x:auto`), so
     the control re-lines into the strip at the 44px floor instead of
     vanishing.
+- **Plan editor phone dock copy is the new-plan captioning, not a third
+  button pair** — `docs/design/Chautauqua Review.dc.html:665-667` draws a
+  docked "Save the plan" + "Cancel" pair. An existing plan's title-row
+  renders "Duplicate" + "Save" and has no Cancel-while-editing affordance
+  anywhere in the app; adding one here would be a behaviour change (and
+  would evict Duplicate) with no ruling behind it, which this task does not
+  make. The dock (`review.css`'s phone `.chq-review-editor-title-actions`
+  block) is a CSS-only fixed-position repositioning of whichever pair the
+  title row already renders — new-plan's Cancel/Create or an existing
+  plan's Duplicate/Save — never a second copy of the buttons, so a save
+  triggered from the dock and a save triggered from the title row are
+  always the one `save()` call. The frame's "Save the plan"/"Cancel" copy
+  is read as the new-plan state's captioning (matching the title row's own
+  "Cancel"/"Create the plan" pair for `isNew`), not as a mandate to add
+  Cancel to the existing-plan pair. DEC-745 wave-98 amendment.
 
 ## 4. Voice
 
@@ -200,6 +215,15 @@ instead of re-flagging.
 - Hotel-form save-draft, per-recipient reminder triage rows, speaker-detail
   header restructure (04/07 frames).
 - AI-assisted triage (eval ABS-14) — roadmap, never sketched in frames.
+- Plan editor reviewer-row "Swap" — `docs/design/Chautauqua Review.dc.html:652`
+  draws `<span ... >Swap</span>` as each reviewer row's action. There is no
+  reassign-in-place capability anywhere in the domain or route layer (only
+  assign and unassign exist), so the copy stays "Remove" behind
+  ConfirmDialog (DEC-941). The row's GEOMETRY already matches the frame —
+  `border:1px solid #BAB6A6; border-radius:6px; min-height:44px;
+  display:flex; align-items:center; padding:0 14px; font-size:13px;
+  font-weight:600` (`Chautauqua Review.dc.html:652`) — only the label
+  differs. DEC-745 wave-98 amendment.
 
 **Reworks larger than the freeze window:**
 - CSV import "THE FIRST THREE" rejection screen (560 card, no step rail,

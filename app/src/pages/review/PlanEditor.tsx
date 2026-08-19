@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { useIsPhone } from '../../lib/useIsPhone';
 import { setNavLeaveGuard } from '../../lib/useNavExceptions';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -282,6 +283,12 @@ export function PlanEditor() {
   const isNew = !planId || planId === 'new';
   const navigate = useNavigate();
   const { eventId } = useCurrentEvent();
+  // w1-g/DEC-745 wave-98 amendment: the same matchMedia(700px) hook
+  // Scorecard.tsx/Agenda.tsx already use to split their phone-only trees --
+  // gates the below-roster "Assign a reviewer" trigger (frame :663) so it
+  // exists only on a phone render, never hidden-by-CSS-but-present-in-the-
+  // DOM on desktop.
+  const isPhone = useIsPhone();
 
   // DEC-676: a brand-new plan prefills the three editable defaults instead
   // of an empty criteria list (isNew is stable for the component's life --
@@ -2152,6 +2159,53 @@ export function PlanEditor() {
                 </span>
               )}
             </div>
+            {/* w1-g/DEC-745 wave-98 amendment: docs/design/Chautauqua
+                Review.dc.html:663 draws a SECOND, dashed "Assign a
+                reviewer" control below the roster/cap row -- phone-only,
+                distinct from the section-head toggle above (:2087). Both
+                drive the SAME assignFormOpen state (one form, two
+                triggers, never two open states, never two forms). This
+                file owns PlanEditor.tsx but not review.css (six branches
+                own it, and the wave-98 task explicitly forbids a new rule
+                there), so rather than a CSS max-width block the control
+                is gated by isPhone (the same matchMedia(700px) hook
+                Scorecard.tsx/Agenda.tsx already use) -- it does not exist
+                in the DOM at all on desktop, and its geometry is applied
+                inline (frame literal `display:flex; align-items:center;
+                justify-content:center; border:1px dashed #BAB6A6;
+                border-radius:6px; min-height:46px; font-size:13px;
+                font-weight:700; color:#4E5C31`) since a JS-gated element
+                needs no separate CSS visibility rule. The earlier attempt
+                duplicated the toggle's accessible name ("Assign a
+                reviewer" twice) and broke `findByRole('button', { name:
+                'Assign a reviewer' })` in PlanEditor.render.test.tsx; this
+                control instead carries aria-label="Assign a reviewer,
+                below the roster" so the two triggers are queryable
+                independently, and the head toggle's own accessible name
+                is untouched. */}
+            {isPhone && (
+              <button
+                type="button"
+                aria-label="Assign a reviewer, below the roster"
+                onClick={() => setAssignFormOpen((open) => !open)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  marginTop: 9,
+                  border: '1px dashed #BAB6A6',
+                  borderRadius: 6,
+                  minHeight: 46,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: '#4E5C31',
+                  background: 'transparent',
+                }}
+              >
+                {assignFormOpen ? 'Close' : 'Assign a reviewer'}
+              </button>
+            )}
             {/* wave 49/DEC-745 amendment: the split between drafted FIELDS
                 (Save-gated) and immediate ACTIONS is legible right on the
                 section rule -- same chq-review-section-caption convention
