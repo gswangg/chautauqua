@@ -877,8 +877,12 @@
 /* Frames: docs/design/Chautauqua Content.dc.html's four width:390 frames  */
 /* -- "Content" (queue), "Content · selecting", "Files · 390" and          */
 /* "Session · deliverable". DEC-385 makes this codebase single-direction,  */
-/* so every phone rule lives in THIS one max-width block and the desktop   */
-/* rules above are never touched.                                          */
+/* so every phone rule lives in a `@media (max-width: 700px)` block and    */
+/* the desktop rules above are never touched. UPDATE (w8-e, DEC-393/       */
+/* DEC-989 wave-90 amendments): a SECOND such block now exists, appended   */
+/* at the true end of this file -- see the note there. Single-direction    */
+/* protects source order, not file count; a second terminal block is the   */
+/* sanctioned repair shape when many worktrees hold hunks mid-file.        */
 /*                                                                         */
 /* Geometry only. DESIGN-RULINGS.md ("Status tokens pair by density, not   */
 /* by device -- colour and weight are identical in both; only geometry     */
@@ -900,12 +904,17 @@
 /*                                                                         */
 /* These two wrappers are phone-only, so their base state is the desktop   */
 /* one: hidden. The rule sits ABOVE the phone block on purpose -- DEC-385  */
-/* single-direction means content.css carries exactly ONE                  */
-/* `@media (max-width: 700px)` block and it is the LAST thing in the file  */
-/* (pinned by SessionList.render.test.tsx), so the phone overrides below   */
-/* win the equal-specificity tie by source order. A second, later phone    */
-/* block would break that invariant; the Select-mode overrides are folded  */
-/* into the one block instead.                                             */
+/* single-direction means every phone override wins its equal-specificity  */
+/* tie by source order, so this hidden-by-default rule and the phone block */
+/* below it both have to sit ahead of any LATER phone block that might     */
+/* touch the same selectors. UPDATE (w8-e, DEC-385 wave-85/90 rulings): a  */
+/* second `@media (max-width: 700px)` block is appended at the true end of */
+/* this file (content-phone-floor.test.ts pins it as the LAST top-level    */
+/* construct) -- source order is what DEC-385 protects, not a one-block-   */
+/* per-file count, and a second terminal block is strictly safer than      */
+/* reopening this one while other worktrees hold hunks mid-file. The       */
+/* Select-mode overrides stay folded into THIS block; only the new w8-e    */
+/* floor/overflow fixes live in the second one.                            */
 /* ---------------------------------------------------------------------- */
 
 .chq-content-phone-select-toggle,
@@ -1557,5 +1566,185 @@
     flex: 1 1 auto;
     min-height: 48px;
     font-size: 15px;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Phone 44px floor + 390 overflow fixes (task w8-e, DEC-393 / DEC-989       */
+/* wave-90 amendments, TIER 2, v12 mobile campaign) — docs/design/audit/     */
+/* tap-floor-v12.md's Content-cluster rows.                                 */
+/*                                                                           */
+/* A SECOND `@media (max-width: 700px)` block, appended at the true end of  */
+/* the file. The two header comments above this file's first phone block    */
+/* used to say content.css "keeps exactly one" such block -- that clause    */
+/* predates DEC-385's wave-85/wave-90 rulings, which say single-direction   */
+/* protects SOURCE ORDER, not a one-block-per-file count. Appending here,   */
+/* at true EOF, wins every equal-specificity tie the first block's rules    */
+/* set (later source order beats earlier at equal specificity — no rule     */
+/* above is reordered or edited) and is strictly safer than reopening the   */
+/* first block while many other worktrees hold hunks mid-file. Any future   */
+/* Content-cluster phone fix appends a THIRD block below this one; it never */
+/* edits an existing block in place.                                        */
+/*                                                                           */
+/* TAP-FLOOR (DEC-393): the shared "every interactive element on phone      */
+/* gets min-height:44px + centred flex + horizontal padding" floor.         */
+/*   - Real anchors (`.chq-content-detail-action-link`,                     */
+/*     `.chq-content-detail-speaker-link`, `.chq-content-version-name`)     */
+/*     get the flush-row-anchor recipe directly: min-height:44px,           */
+/*     display:flex, align-items:center, padding-inline:10px cancelled by   */
+/*     margin-inline:-10px so the visible label doesn't shift.              */
+/*     `.chq-content-detail-actions` (the wrapping container of the first   */
+/*     two) is closed by growing its anchor children, never itself.         */
+/*   - JUDGEMENT CALL, recorded per the task's own instruction: five of the */
+/*     ten listed offenders (`.chq-content-actions`,                        */
+/*     `.chq-content-comment-actions`, `.chq-content-status-band-actions`,  */
+/*     `.chq-content-summary-actions`, `.chq-content-files-header-actions`) */
+/*     are flex containers whose interactive children are ALL              */
+/*     `<button class="chq-btn ...">` (SessionList.tsx, CommentThread.tsx,  */
+/*     DeliverableDetail.tsx, ContentApp.tsx, FilesLibrary.tsx) — none of   */
+/*     them holds an `<a>`/`<Link>`/`.chq-link-button`, the only shapes the */
+/*     task's flush-row-anchor recipe names. The shared `.chq-btn` base     */
+/*     (styles.css, frozen/out of scope) already gives every button         */
+/*     `display:inline-flex; align-items:center; padding:10px 16px` — real  */
+/*     horizontal padding and centring, just short on height. The           */
+/*     substantive floor gap is height alone, so these five get             */
+/*     `min-height:44px` on their `.chq-btn` descendants rather than the    */
+/*     full flush-anchor recipe, which would double up padding meant for a  */
+/*     bare text link onto a control that already has its own chrome.       */
+/*   - `.chq-content-worklist-col-actions` is an empty `<th>` (SessionList  */
+/*     .tsx, header spacer above the row-actions column, no children at     */
+/*     all) inside a `thead` this file's first phone block already sets to  */
+/*     `display:none` (line ~949) — the fix below is inert at 390 (nothing  */
+/*     ever paints it) but is applied anyway for literal audit conformance. */
+/*                                                                           */
+/* OVERFLOW (DEC-989, 358px budget = 390 minus .chq-main's 16px phone       */
+/* gutter): every listed `white-space:nowrap` offender gets                 */
+/* `overflow:hidden; text-overflow:ellipsis; min-width:0` in place, EXCEPT  */
+/* the two Select-mode header controls the frame itself pins to nowrap:     */
+/* docs/design/Chautauqua Content.dc.html:207 (rest state, the `Select`     */
+/* link: `white-space:nowrap`) and :254 (selecting state, the `All 5`       */
+/* link: `white-space:nowrap`) both author the property directly in the     */
+/* frame — truncating either would risk hiding the exact count the header   */
+/* states, so they carry a `overflow-exempt` comment instead of an          */
+/* ellipsis, per DEC-976.                                                   */
+/*                                                                           */
+/* EXCLUDED BY RULING: `.chq-bulkbar-actions` and `.chq-pill` are NOT       */
+/* re-declared here — both have their base rule in app/src/styles.css and   */
+/* belong to the shell lane (DEC-393 wave-90 amendment); a second phone     */
+/* rule for either here would mint a fifth copy of a shared vocabulary      */
+/* (DEC-613). Pinned by the negative assertions in                          */
+/* content-phone-floor.test.ts.                                             */
+/* ------------------------------------------------------------------------ */
+@media (max-width: 700px) {
+  /* -- Tap floor: real anchors ------------------------------------------ */
+
+  .chq-content-detail-action-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-content-detail-speaker-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  .chq-content-version-name {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* -- Tap floor: button containers (judgement call above) --------------- */
+
+  .chq-content-actions .chq-btn {
+    min-height: 44px;
+  }
+
+  .chq-content-comment-actions .chq-btn {
+    min-height: 44px;
+  }
+
+  .chq-content-status-band-actions .chq-btn {
+    min-height: 44px;
+  }
+
+  .chq-content-summary-actions .chq-btn {
+    min-height: 44px;
+  }
+
+  .chq-content-files-header-actions .chq-btn {
+    min-height: 44px;
+  }
+
+  /* -- Tap floor: empty header spacer (inert, see note above) ------------ */
+
+  .chq-content-worklist-col-actions {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* -- Overflow: 358px budget --------------------------------------------- */
+
+  .chq-content-files-table .chq-content-files-col-actions {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-content-files-table .chq-content-files-col-version {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-content-table thead th {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-content-worklist-table .chq-content-worklist-col-actions {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .chq-role-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  /* docs/design/Chautauqua Content.dc.html:207 -- rest-state header:
+     `<a href="#" style="margin-left:auto; font-size:13px; font-weight:700;
+     min-height:44px; display:inline-flex; align-items:center;
+     white-space:nowrap">Select</a>` -- the frame itself pins this to
+     nowrap; no visible count to lose today, but the same header vocabulary
+     as the selecting-state toggle below, kept exempt for consistency. */
+  /* overflow-exempt: the frame pins this control to white-space:nowrap
+     directly (Chautauqua Content.dc.html:207) */
+  .chq-content-phone-select-toggle {
+  }
+
+  /* docs/design/Chautauqua Content.dc.html:254 -- selecting-state header:
+     `<a href="#" style="margin-left:auto; font-size:13px; font-weight:700;
+     min-height:44px; display:inline-flex; align-items:center;
+     white-space:nowrap">All 5</a>` -- truncating this would risk hiding
+     the exact "All N" count the selecting header states. */
+  /* overflow-exempt: the selecting header states a count that must stay
+     exact (Chautauqua Content.dc.html:254 pins white-space:nowrap on the
+     frame's "All 5" link) */
+  .chq-content-phone-selecting-all {
   }
 }
