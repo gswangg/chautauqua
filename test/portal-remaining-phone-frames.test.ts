@@ -1,5 +1,9 @@
 // v12m-w5-a: Portal's last two 390 frames (DEC-029 wave-87 amendment) --
 // "Portal · Resources" (docs/design/Chautauqua Public and Portal.dc.html:1561)
+// `width:390px; height:844px` -- v9-f (DEC-976 wave-91) receipt below.
+it("v9-f receipt: frame container (:1561) is the standard 390x844 phone card", () => {
+  expect(dcLine(1561)).toContain("width:390px; height:844px");
+});
 // and "Portal · co-presenter rejected" (:1304). Each assertion below cites
 // the exact dc.html line it pins, quotes that line's literal verbatim, and
 // asserts what the literal declares -- either against the rendered SSR
@@ -45,6 +49,12 @@ const BRANDING = { eventName: "Arbitrary Con", welcomeMessage: null, accentColor
 // "Portal · Resources" (frame extent docs/design/...html:1561-1583)
 // ---------------------------------------------------------------------------
 describe('"Portal · Resources" 390 frame (docs/design/Chautauqua Public and Portal.dc.html:1561)', () => {
+  // `width:390px; height:844px` -- the standard phone-frame card this
+  // describe block's whole extent is drawn inside.
+  it("frame container (:1561) is the standard 390x844 phone card", () => {
+    expect(dcLine(1561)).toContain("width:390px; height:844px");
+  });
+
   const groups: PortalResourceGroup[] = [
     {
       eventId: "evt-1",
@@ -108,6 +118,12 @@ describe('"Portal · Resources" 390 frame (docs/design/Chautauqua Public and Por
 // "Portal · co-presenter rejected" (frame extent docs/design/...html:1304-1372)
 // ---------------------------------------------------------------------------
 describe('"Portal · co-presenter rejected" 390 frame (docs/design/Chautauqua Public and Portal.dc.html:1304)', () => {
+  // `width:390px; height:844px` -- the standard phone-frame card this
+  // describe block's whole extent is drawn inside.
+  it("frame container (:1304) is the standard 390x844 phone card", () => {
+    expect(dcLine(1304)).toContain("width:390px; height:844px");
+  });
+
   const participants: PortalParticipant[] = [
     { id: "p-1", contactId: "ct-2", name: "Priya Raman", email: "priya@example.com", role: "speaker", roleLabel: "Speaker", visible: true },
   ];

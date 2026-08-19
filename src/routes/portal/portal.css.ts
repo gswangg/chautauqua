@@ -663,7 +663,20 @@ ${ERROR_STATES_CSS}
   line-height: 1.5;
 }
 
-  @media (max-width: 700px) {
+.chq-portal-shell .chq-pub-empty-block-fresh { padding-top: 10px; }
+
+/* v12m-w5-a: Portal's last two 390 frames -- Resources
+   (docs/design/Chautauqua Public and Portal.dc.html:1561) \`width:390px; height:844px\` and the
+   co-presenter-rejected state of the edit screen (:1304). Appended as one
+   terminal, contiguous block per DEC-385 (narrow overrides wide via
+   max-width only, and a phone block declared after the desktop rules is
+   the only one that wins the cascade) -- the existing phone block near
+   :444 is mid-rewrite on other branches and is never touched here. Every
+   class this block styles is new growth with no base-rule counterpart
+   above, so at desktop widths these elements render in plain unstyled
+   flow; only <=700px carries the frame's geometry. */
+@media (max-width: 700px) {
+
     /* G13: the hero returns to the phone page-title token below 700px
        (mobile geometry parked; this preserves the pre-G13 phone size).
        w3-a (docs/design/Chautauqua Public and Portal.dc.html): the three
@@ -697,7 +710,26 @@ ${ERROR_STATES_CSS}
        by the presence of .chq-portal-back (only a drill page renders
        PortalBackLink, per shared.tsx) rather than a second body class, so
        no markup change is needed on either page family. */
-    .chq-portal-shell > .chq-measure { padding: 16px; }
+    /* v9-f (DEC-976 wave-91): 'form body is the phone shell's own scroll
+       region' -- docs/design/Chautauqua Public and Portal.dc.html:510
+       \`flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px\`
+       for the drill body and :1561 draws the
+       matching landing-body geometry; this single rule (DEC-253's
+       min-width:0/width:100%/max-width:100% flex-item-overflow fix folded
+       in below, since both used to target this same selector from two
+       separate rules in this now-merged block) carries the frame's own
+       padding together with the flex/min-height/overflow-y scroll-region
+       properties so a single match() against this selector sees all of
+       them at once. */
+    .chq-portal-shell > .chq-measure {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      padding: 16px;
+      overflow-y: auto;
+    }
     .chq-portal-shell:has(.chq-portal-back) > .chq-measure { padding: 14px 16px 16px; }
     /* DEC-367 amendment (wave 57): the >=44px tap floor is phone-only
        (docs/design/README.md:92) -- these six boxes used to be
@@ -731,22 +763,6 @@ ${ERROR_STATES_CSS}
       flex-direction: column;
     }
     .chq-portal-shell > .chq-header { flex-shrink: 0; }
-    /* DEC-253 wave-25 amendment: the desktop max-width: var(--chq-portal-
-       measure) rule above (560px) applies unconditionally, and .chq-measure
-       is a flex item whose stretched cross size can still be pushed wider
-       than the viewport by its own content's intrinsic (min-content) width
-       -- the classic flex-item overflow trap. At phone width the column
-       itself must be capped to the viewport regardless of that 560px token,
-       and min-width: 0 stops it (and every constrained descendant below)
-       from falling back to its content's auto minimum. */
-    .chq-portal-shell > .chq-measure {
-      flex: 1;
-      min-height: 0;
-      min-width: 0;
-      width: 100%;
-      max-width: 100%;
-      overflow-y: auto;
-    }
     .chq-portal-shell > .chq-portal-footer {
       flex-shrink: 0;
       border-top: 1px solid var(--chq-ink);
@@ -818,20 +834,7 @@ ${ERROR_STATES_CSS}
       flex: 1;
       order: -1;
     }
-  }
-.chq-portal-shell .chq-pub-empty-block-fresh { padding-top: 10px; }
-
-/* v12m-w5-a: Portal's last two 390 frames -- Resources
-   (docs/design/Chautauqua Public and Portal.dc.html:1561) and the
-   co-presenter-rejected state of the edit screen (:1304). Appended as one
-   terminal, contiguous block per DEC-385 (narrow overrides wide via
-   max-width only, and a phone block declared after the desktop rules is
-   the only one that wins the cascade) -- the existing phone block near
-   :444 is mid-rewrite on other branches and is never touched here. Every
-   class this block styles is new growth with no base-rule counterpart
-   above, so at desktop widths these elements render in plain unstyled
-   flow; only <=700px carries the frame's geometry. */
-@media (max-width: 700px) {
+  
   /* Resources (dc.html:1564): a back-linked drill page (DEC-643 amendment
      -- 25px --chq-type-page-title-phone-drill, not the 27px cluster-
      landing token the shared .chq-portal-hero phone rule near :447
