@@ -54,6 +54,12 @@ import { ApiTokensPanel } from './ApiTokensPanel';
 import { ExportsPanel } from './ExportsPanel';
 import { SessionboardImportPanel } from './SessionboardImportPanel';
 import { SummarySection } from './SummarySection';
+import { DEC_385, DEC_728, DEC_919 } from '../../../../src/decisions';
+import './settings-drill-rows.css';
+
+void DEC_385; // new page-local sheet, settings-drill-rows.css
+void DEC_728; // the 390 drill frame's own Exports rows, not a second tap
+void DEC_919; // phone-only export row list, desktop pill strip hidden at phone
 
 const SECTION_KEY = 'your-data';
 
@@ -160,6 +166,47 @@ export function YourDataPanel() {
     }
   }
 
+  // The set of export kinds the mock's four pills stand for -- ONE list,
+  // shared by the pill strip (renderExportPills) and the phone-only row
+  // list (renderExportRowsPhone, DEC-919 wave-99 amendment) so there is
+  // still only one place that lists the four (DEC-815 amendment, wave 4;
+  // the "no second list of export kinds" rule extends to the phone rows).
+  // 'Everything, JSON' has no href -- it is a button in both renderings.
+  interface ExportItem {
+    key: string;
+    name: string;
+    detail: string;
+    href?: string;
+  }
+
+  function exportItems(): ExportItem[] {
+    if (!eventId) return [];
+    const items: ExportItem[] = [
+      {
+        key: 'submissions',
+        name: 'Submissions CSV',
+        detail: 'CSV, every submission',
+        href: `/api/v1/events/${eventId}/export/submissions?format=csv`,
+      },
+      {
+        key: 'contacts',
+        name: 'Contacts CSV',
+        detail: 'CSV, every contact',
+        href: `/api/v1/events/${eventId}/export/contacts?format=csv`,
+      },
+    ];
+    if (event) {
+      items.push({
+        key: 'schedule',
+        name: 'Schedule ICS',
+        detail: 'Full agenda feed',
+        href: `/e/${event.slug}/agenda.ics`,
+      });
+    }
+    items.push({ key: 'everything', name: 'Everything, JSON', detail: 'Every export kind, bundled' });
+    return items;
+  }
+
   // The four real export links/button the mock's pills stand for -- shared
   // between the summary row (read-at-rest) and the edit branch so there is
   // only one place that renders this list (DEC-815 amendment, wave 4).
@@ -167,20 +214,23 @@ export function YourDataPanel() {
     if (!eventId) return null;
     return (
       <>
-        <a className="chq-pill" href={`/api/v1/events/${eventId}/export/submissions?format=csv`}>
-          Submissions CSV
-        </a>
-        <a className="chq-pill" href={`/api/v1/events/${eventId}/export/contacts?format=csv`}>
-          Contacts CSV
-        </a>
-        {event ? (
-          <a className="chq-pill" href={`/e/${event.slug}/agenda.ics`}>
-            Schedule ICS
-          </a>
-        ) : null}
-        <button type="button" className="chq-pill" disabled={bundling} onClick={() => void downloadEverythingJson()}>
-          {bundling ? 'Building…' : 'Everything, JSON'}
-        </button>
+        {exportItems().map((item) =>
+          item.href ? (
+            <a key={item.key} className="chq-pill" href={item.href}>
+              {item.name}
+            </a>
+          ) : (
+            <button
+              key={item.key}
+              type="button"
+              className="chq-pill"
+              disabled={bundling}
+              onClick={() => void downloadEverythingJson()}
+            >
+              {bundling ? 'Building…' : item.name}
+            </button>
+          ),
+        )}
         {skippedKinds && skippedKinds.length > 0 ? (
           <div role="status" className="chq-settings-row-note">
             {skippedKinds.map(({ kind, message }) => (
@@ -191,6 +241,45 @@ export function YourDataPanel() {
           </div>
         ) : null}
       </>
+    );
+  }
+
+  // docs/design/Chautauqua Settings.dc.html:409 `border:1px solid
+  // #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px;
+  // display:flex; align-items:center; padding:0 14px; font-size:13px;
+  // font-weight:600` -- the Exports 390 drill draws a name-over-detail
+  // row beside a separate boxed "Download" action, which `.chq-pill`
+  // (name and action fused into one element) can never present. DEC-919
+  // wave-99 amendment: this is the phone-only sibling of the pill strip
+  // above -- same items, same hrefs/handler, so a click here reaches the
+  // exact same endpoint or bundling function as its desktop pill.
+  function renderExportRowsPhone() {
+    if (!eventId) return null;
+    return (
+      <div className="chq-settings-drillrow-exports-phone">
+        {exportItems().map((item) => (
+          <div key={item.key} className="chq-settings-drillrow-export-row">
+            <div className="chq-settings-drillrow-export-info">
+              <span className="chq-settings-drillrow-export-name">{item.name}</span>
+              <span className="chq-settings-drillrow-export-detail">{item.detail}</span>
+            </div>
+            {item.href ? (
+              <a className="chq-settings-drillrow-export-download" href={item.href}>
+                Download
+              </a>
+            ) : (
+              <button
+                type="button"
+                className="chq-settings-drillrow-export-download"
+                disabled={bundling}
+                onClick={() => void downloadEverythingJson()}
+              >
+                {bundling ? 'Building…' : 'Download'}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
     );
   }
 
@@ -215,7 +304,7 @@ export function YourDataPanel() {
         <div className="chq-settings-row">
           <span className="chq-settings-row-label">Exports</span>
           <div className="chq-settings-row-value">
-            {renderExportPills()}
+            <div className="chq-settings-drillrow-pills-desktop">{renderExportPills()}</div>
             {eventId ? (
               <button type="button" className="chq-link-button" onClick={() => setMoreExportsOpen((v) => !v)}>
                 {moreExportsOpen ? 'Hide more export formats' : 'More export formats'}
@@ -223,6 +312,7 @@ export function YourDataPanel() {
             ) : null}
           </div>
         </div>
+        {renderExportRowsPhone()}
         {moreExportsOpen ? <ExportsPanel /> : null}
 
         <ApiTokensPanel />

@@ -24,6 +24,12 @@ import { TrackEditRow } from './tracksRooms/TrackEditRow';
 import { TRACK_SWATCHES, nextSwatch, swatchLabel } from './tracksRooms/trackSwatches';
 import { roomBaseline, trackBaseline, unownedFieldEntries, ROOM_FIELD_KEYS, TRACK_FIELD_KEYS } from './tracksRooms/types';
 import { useTracksRoomsPanel } from './tracksRooms/useTracksRoomsPanel';
+import { DEC_385, DEC_728, DEC_919 } from '../../../../src/decisions';
+import './settings-drill-rows.css';
+
+void DEC_385; // new page-local sheet, settings-drill-rows.css
+void DEC_728; // the 390 drill frame's own controls, not a second tap
+void DEC_919; // phone-only sibling, desktop head link hidden at phone
 
 export { TRACK_SWATCHES };
 
@@ -155,7 +161,7 @@ export function TracksRoomsPanel() {
             <h3 className="chq-section-label">Tracks &middot; {tracks.length}</h3>
             <button
               type="button"
-              className="chq-settings-section-action chq-link-button"
+              className="chq-settings-section-action chq-link-button chq-settings-drillrow-head-hide"
               onClick={() => setShowAddTrack((v) => !v)}
             >
               Add a track
@@ -184,6 +190,19 @@ export function TracksRoomsPanel() {
               />
             ))}
           </ul>
+          {/* docs/design/Chautauqua Settings.dc.html:367 `border:1px
+              dashed #BAB6A6; border-radius:6px; min-height:44px;
+              font-size:13px; font-weight:700; color:#4E5C31` -- the
+              phone-only sibling of the head "Add a track" link above
+              (DEC-919 wave-99 amendment); same handler, so opening it
+              opens the exact same form below. */}
+          <button
+            type="button"
+            className="chq-settings-drillrow-add"
+            onClick={() => setShowAddTrack((v) => !v)}
+          >
+            Add a track
+          </button>
           {showAddTrack ? (
             <>
               {trackAddSummaryProblems.length > 0 ? (
@@ -238,7 +257,7 @@ export function TracksRoomsPanel() {
             <h3 className="chq-section-label">Rooms &middot; {rooms.length}</h3>
             <button
               type="button"
-              className="chq-settings-section-action chq-link-button"
+              className="chq-settings-section-action chq-link-button chq-settings-drillrow-head-hide"
               onClick={() => setShowAddRoom((v) => !v)}
             >
               Add a room
@@ -262,6 +281,19 @@ export function TracksRoomsPanel() {
               />
             ))}
           </ul>
+          {/* docs/design/Chautauqua Settings.dc.html:382 `border:1px
+              dashed #BAB6A6; border-radius:6px; min-height:44px;
+              font-size:13px; font-weight:700; color:#4E5C31` -- the
+              phone-only sibling of the head "Add a room" link above
+              (DEC-919 wave-99 amendment); same handler, so opening it
+              opens the exact same form below. */}
+          <button
+            type="button"
+            className="chq-settings-drillrow-add"
+            onClick={() => setShowAddRoom((v) => !v)}
+          >
+            Add a room
+          </button>
           {showAddRoom ? (
             <>
               {roomAddSummaryProblems.length > 0 ? (
