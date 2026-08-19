@@ -115,3 +115,11 @@ pinned; sweep the remaining stylesheets for the same exposure.
 `discardDirtyAndClose` clears row errors but not the add forms' field errors,
 so Done-with-discard parks an add refusal for the next drill-in. Needs a
 ruling: does Done-discard also drop an unsaved add draft + its refusal?
+
+## Citation corrections for the doc-integrity lens
+- Commit 69baba8d and any comments citing DEC-919 for always-mounted bulk
+  bars: correct authority is DEC-752/DEC-825 (DEC-919 is the public filter
+  idiom). Sweep code comments for the propagated miscitation.
+- Anywhere citing DEC-302 for flag-not-block scheduling: correct authorities
+  are DEC-010 waves 66/71, DEC-557 clause (f), DEC-377, SPEC J9 (DEC-302 is
+  npm audit advisories).
