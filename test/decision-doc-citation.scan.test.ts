@@ -319,6 +319,140 @@ export const UNRESOLVED_CITATION_CEILING = 30;
 // quote-matching heuristic to swallow a real defect) and lower the
 // ceiling only for what it actually fixed.
 
+// VERIFICATION NOTE (DEC-967 wave-107 doc-integrity lens, task w3-u,
+// mandate step 1, second claim): docs/mobile-campaign.md's "Citation
+// corrections for the doc-integrity lens" section also claims DEC-302 is
+// miscited for flag-not-block scheduling. Grepped the whole tree
+// (app/**, src/**, test/**, docs/**, decisions/**) for every "DEC-302"
+// occurrence: all of them are inside docs/verification-log/**
+// build-test reports or decisions/DEC-308.md, and every single one is a
+// correct npm-audit dev-dependency-advisory citation ("Per DEC-302, these
+// are recorded findings, not open items" and equivalents) -- exactly what
+// decisions/DEC-302.md itself declares ("dev-dependency-only advisories
+// are accepted for stage 1 and must be recorded, not waved off"). This
+// claim does NOT hold; no sweep is needed or performed for it, per the
+// task's own instruction not to invent one.
+//
+// ---------------------------------------------------------------------------
+// WIDENED POPULATION (DEC-967 wave-107 doc-integrity lens, task w3-u): the
+// campaign's own authority documents -- docs/design/audit/*.md,
+// docs/design/DEVIATIONS.md, docs/design/DESIGN-RULINGS.md and
+// docs/mobile-campaign.md -- get the SAME two-directional grammar
+// (findCitations/resolvePath/quoteAfter/checkCitations) as
+// src/decisions-data/*.md above. Not a second grammar (DEC-613): every
+// helper function is reused verbatim, only the file population differs.
+// Kept as a SEPARATE describe block / ratchet from the decisions-data one
+// above rather than merged into it, so this task's widening cannot
+// disturb the already-tuned UNRESOLVED_CITATION_CEILING=30 exactness
+// this file shipped with; the walk itself is still literally "the same
+// walk" -- same functions, same two directions, only a longer file list.
+// ---------------------------------------------------------------------------
+
+const AUDIT_DIR = join(ROOT, "docs", "design", "audit");
+
+function auditDocFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith(".md"))
+    .map((e) => e.name)
+    .sort();
+}
+
+const AUDIT_DOC_NAMES = auditDocFiles(AUDIT_DIR);
+const AUDIT_ENTRIES: [string, string][] = AUDIT_DOC_NAMES.map((name) => [
+  `docs/design/audit/${name}`,
+  readFileSync(join(AUDIT_DIR, name), "utf-8"),
+]);
+
+const DEVIATIONS_ENTRY: [string, string] = [
+  "docs/design/DEVIATIONS.md",
+  readFileSync(join(ROOT, "docs", "design", "DEVIATIONS.md"), "utf-8"),
+];
+const DESIGN_RULINGS_ENTRY: [string, string] = [
+  "docs/design/DESIGN-RULINGS.md",
+  readFileSync(join(ROOT, "docs", "design", "DESIGN-RULINGS.md"), "utf-8"),
+];
+const MOBILE_CAMPAIGN_ENTRY: [string, string] = [
+  "docs/mobile-campaign.md",
+  readFileSync(join(ROOT, "docs", "mobile-campaign.md"), "utf-8"),
+];
+
+/** One source class = one label plus the (doc, content) pairs it
+ * contributes to the walk. Each class gets its own vacuous-population
+ * tripwire below (the task's explicit requirement: a widened population
+ * that silently contributes zero checked citations from one of its four
+ * new classes would be indistinguishable from a class that was never
+ * added). */
+const WIDENED_SOURCE_CLASSES: { label: string; entries: [string, string][] }[] = [
+  { label: "docs/design/audit/*.md", entries: AUDIT_ENTRIES },
+  { label: "docs/design/DEVIATIONS.md", entries: [DEVIATIONS_ENTRY] },
+  { label: "docs/design/DESIGN-RULINGS.md", entries: [DESIGN_RULINGS_ENTRY] },
+  { label: "docs/mobile-campaign.md", entries: [MOBILE_CAMPAIGN_ENTRY] },
+];
+
+/** Citations that DIRECTION 1 resolved (real file, in-range line) -- the
+ * "checked citation" the per-class tripwire counts. A citation that fails
+ * to resolve at all is a violation, not a "checked citation" (it never
+ * reached a state where DIRECTION 2 could apply), matching this file's
+ * existing checkCitations control flow (a `continue` right after the
+ * resolve-failure push). */
+function countResolved(entries: [string, string][]): number {
+  let n = 0;
+  for (const [doc, content] of entries) {
+    for (const c of findCitations(doc, content)) {
+      const resolved = resolvePath(c.rawPath, ROOT, ALL_REL_FILES, BASENAME_MAP);
+      if (!resolved.ok) continue;
+      const targetLines = readFileSync(join(ROOT, resolved.relPath!), "utf-8").split("\n");
+      if (c.firstLine > targetLines.length) continue;
+      n++;
+    }
+  }
+  return n;
+}
+
+const WIDENED_VIOLATIONS: Violation[] = WIDENED_SOURCE_CLASSES.flatMap(({ entries }) =>
+  entries.flatMap(([doc, content]) => checkCitations(doc, content)),
+);
+
+// Ratchet (DEC-967 wave-107, DEC-808 wave-106 two-sided-ratchet rule):
+// seeded at the count this scan itself measured on this branch (never
+// inherited from the task's own calibration prose, which is a rough
+// figure for a different, narrower slice -- "resolvable" citations under
+// DIRECTION 1 only, not this ceiling's DIRECTION-1-plus-DIRECTION-2
+// violation count). May only be LOWERED as the four new classes' drift
+// gets fixed, never raised to paper over a regression.
+export const WIDENED_UNRESOLVED_CITATION_CEILING = 42;
+
+describe("widened citation scan: campaign authority documents (DEC-967 wave-107 doc-integrity lens)", () => {
+  it.each(WIDENED_SOURCE_CLASSES)(
+    "vacuous-population tripwire: $label contributes at least one checked (DIRECTION-1-resolved) citation",
+    ({ entries }) => {
+      expect(countResolved(entries)).toBeGreaterThan(0);
+    },
+  );
+
+  it(`every citation in the widened population resolves to a real file/line and, where a backtick quote immediately follows, matches it verbatim (ceiling: WIDENED_UNRESOLVED_CITATION_CEILING, may only be lowered)`, () => {
+    if (WIDENED_VIOLATIONS.length > WIDENED_UNRESOLVED_CITATION_CEILING) {
+      throw new Error(
+        `${WIDENED_VIOLATIONS.length} widened-population citations are unresolved, above the ratchet ceiling of ` +
+          `${WIDENED_UNRESOLVED_CITATION_CEILING} (may only be LOWERED, never raised to paper over a regression):\n` +
+          WIDENED_VIOLATIONS.map((v) => v.message).join("\n"),
+      );
+    }
+    expect(WIDENED_VIOLATIONS.length).toBeLessThanOrEqual(WIDENED_UNRESOLVED_CITATION_CEILING);
+  });
+
+  it("the ceiling is not stale: the measured violation count is not below WIDENED_UNRESOLVED_CITATION_CEILING (two-sided ratchet, DEC-808 wave-106 amendment)", () => {
+    if (WIDENED_VIOLATIONS.length < WIDENED_UNRESOLVED_CITATION_CEILING) {
+      throw new Error(
+        `measured ${WIDENED_VIOLATIONS.length} unresolved widened-population citations, below the declared ` +
+          `ceiling of ${WIDENED_UNRESOLVED_CITATION_CEILING} -- lower the constant: ` +
+          `export const WIDENED_UNRESOLVED_CITATION_CEILING = ${WIDENED_VIOLATIONS.length};`,
+      );
+    }
+    expect(WIDENED_VIOLATIONS.length).toBeGreaterThanOrEqual(WIDENED_UNRESOLVED_CITATION_CEILING);
+  });
+});
+
 describe("decision-registry citation scan (DEC-976 wave-106 amendment, task w2-j)", () => {
   it("vacuous-population tripwire: finds decision docs, including the known member DEC-986.md", () => {
     expect(DECISION_DOC_NAMES.length).toBeGreaterThan(0);
@@ -423,5 +557,202 @@ describe("negative controls", () => {
   // throws, and a test asserting nothing is a tautology (DEC-967 wave-57).
   afterAll(() => {
     rmSync(tmpRoot, { recursive: true, force: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PAIRING SENTINEL (DEC-967 wave-107 doc-integrity lens, task w3-u): the
+// mandate's corrected-citation site (app/src/pages/comms/ComposeWizard.tsx
+// and its selection.render.test.tsx sibling) cited DEC-919 -- a wave-105
+// amendment about unreceipted PHONE HIDES -- for the bulk bar's
+// always-mounted contract, which DEC-752 actually names. This sentinel
+// keeps that specific miscitation from re-propagating: no CODE COMMENT
+// under app/src/**, src/** or test/** may name "DEC-919" within a short
+// line-window of bulk-bar vocabulary ("bulkbar", "bulk bar",
+// "bulk-action bar", "always mounted").
+//
+// DELIBERATELY NOT a same-file or same-comment-block check: DEC-919's OWN
+// legitimate citations sprawl across ~40-line comment blocks (e.g.
+// app/src/phone-capability-removal.scan.test.ts's UNOWNED WORK ITEMS
+// list, app/src/pages/submissions/submissions.css's phone-hide grammar
+// notes) that happen to also mention an unrelated ".chq-bulkbar-actions"
+// selector or "bulk-action bar" phrase ten-plus lines away in a different
+// bullet -- those are not the miscitation pattern and must not trip this
+// sentinel (a sentinel anchored on a real offender makes fixing that
+// offender illegal, DEC-967 wave-103; the inverse failure mode -- a
+// sentinel that also convicts everything ELSE that happens to share a
+// file -- is just as illegal). A short window (3 lines) was chosen by
+// measuring the actual miscitation (DEC-919 and "ALWAYS mounted" sat on
+// adjacent comment lines in ComposeWizard.tsx before this task's fix) and
+// verifying, at authoring time, that no other DEC-919 mention anywhere in
+// the current tree sits within that window of any vocabulary term --
+// this sentinel goes GREEN the moment step 1's fix lands, never before
+// and never by accident (field-guide rule: a sentinel anchored on a live
+// offender makes fixing that offender illegal).
+const SENTINEL_SCAN_DIRS = ["app/src", "src", "test"];
+const SENTINEL_EXTENSIONS = new Set([".ts", ".tsx", ".css"]);
+const SENTINEL_WINDOW = 3;
+const BULK_BAR_VOCAB_RE = /bulkbar|bulk bar|bulk-action bar|always mounted/i;
+const DEC_919_RE = /DEC-919/;
+
+/** Splits one file's text into its comment-only line contents (code lines
+ * and the non-comment portion of mixed lines are dropped), preserving
+ * 1-based line numbers -- covers both `//` line comments and `/* ... *\/`
+ * block comments (CSS has only the latter; TS/TSX use both). Deliberately
+ * NOT a full tokenizer (no string-literal awareness): a `//` or `/*`
+ * appearing inside a string literal in this codebase's own source is not
+ * a pattern seen anywhere in the population this sentinel walks, and
+ * treating it as a comment opener in the rare case it occurred would only
+ * make the sentinel MORE cautious (widen what counts as "in a comment"),
+ * never blind to a real miscitation. */
+function commentLines(text: string): { line: number; text: string }[] {
+  const out: { line: number; text: string }[] = [];
+  const lines = text.split("\n");
+  let inBlock = false;
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i]!;
+    let piece = "";
+    let rest = raw;
+    if (inBlock) {
+      const close = rest.indexOf("*/");
+      if (close === -1) {
+        piece += rest;
+        rest = "";
+      } else {
+        piece += rest.slice(0, close);
+        rest = rest.slice(close + 2);
+        inBlock = false;
+      }
+    }
+    // Scan the remainder of the line left-to-right for `//` or `/*`.
+    while (rest.length > 0) {
+      const lineIdx = rest.indexOf("//");
+      const blockIdx = rest.indexOf("/*");
+      if (lineIdx === -1 && blockIdx === -1) break;
+      if (lineIdx !== -1 && (blockIdx === -1 || lineIdx < blockIdx)) {
+        piece += rest.slice(lineIdx + 2);
+        rest = "";
+        break;
+      }
+      // blockIdx comes first (or is the only match)
+      const close = rest.indexOf("*/", blockIdx + 2);
+      if (close === -1) {
+        piece += rest.slice(blockIdx + 2);
+        inBlock = true;
+        rest = "";
+      } else {
+        piece += rest.slice(blockIdx + 2, close);
+        rest = rest.slice(close + 2);
+      }
+    }
+    if (piece.length > 0) out.push({ line: i + 1, text: piece });
+  }
+  return out;
+}
+
+/** Every DEC-919 mention inside a comment that also carries bulk-bar
+ * vocabulary within SENTINEL_WINDOW comment-bearing lines (in either
+ * direction) -- the reusable core the population scan and the synthetic
+ * positive control both exercise (DEC-613: one implementation). */
+function findPairingViolations(fileLabel: string, text: string): string[] {
+  const comments = commentLines(text);
+  const decIdx = comments.filter((c) => DEC_919_RE.test(c.text));
+  const vocabIdx = comments.filter((c) => BULK_BAR_VOCAB_RE.test(c.text));
+  const out: string[] = [];
+  for (const d of decIdx) {
+    for (const v of vocabIdx) {
+      if (Math.abs(d.line - v.line) <= SENTINEL_WINDOW) {
+        out.push(
+          `${fileLabel}: "DEC-919" (comment line ${d.line}) sits within ${SENTINEL_WINDOW} lines of ` +
+            `bulk-bar vocabulary (comment line ${v.line}) -- re-cite to DEC-752/DEC-825, the actual bulk ` +
+            `bar authority (DEC-919 is the wave-105 unreceipted-phone-hides amendment).`,
+        );
+      }
+    }
+  }
+  return out;
+}
+
+function walkSourceFiles(root: string, relDirs: string[], extensions: Set<string>): string[] {
+  const out: string[] = [];
+  function walk(dir: string) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        walk(join(dir, entry.name));
+      } else if (entry.isFile()) {
+        const dot = entry.name.lastIndexOf(".");
+        if (dot !== -1 && extensions.has(entry.name.slice(dot))) out.push(join(dir, entry.name));
+      }
+    }
+  }
+  for (const rel of relDirs) walk(join(root, rel));
+  return out;
+}
+
+// This file itself is excluded from the walked population: it necessarily
+// discusses the miscitation pattern in prose (this very header) and
+// carries synthetic fixture strings that literally spell "// DEC-919 ..."
+// as STRING CONTENT for the positive/negative controls below -- the
+// sentinel's own naive `//`/`/* */` scanner (no string-literal awareness,
+// documented above) would read those fixture strings as real comments and
+// convict its own defining file. Excluding it is not weakening the
+// contract: this file is the sentinel's specification, not app source
+// that could re-propagate the miscitation into shipped behaviour.
+const OWN_FILE = resolve(__dirname, "decision-doc-citation.scan.test.ts");
+
+describe("pairing sentinel: DEC-919 must never re-propagate as the bulk-bar authority (DEC-967 wave-107)", () => {
+  const SENTINEL_FILES = walkSourceFiles(ROOT, SENTINEL_SCAN_DIRS, SENTINEL_EXTENSIONS).filter(
+    (abs) => abs !== OWN_FILE,
+  );
+
+  it("population sanity: the sentinel walks a non-trivial number of source files", () => {
+    expect(SENTINEL_FILES.length).toBeGreaterThan(100);
+  });
+
+  it("no comment under app/src/**, src/** or test/** names DEC-919 within a short line-window of bulk-bar vocabulary", () => {
+    const violations = SENTINEL_FILES.flatMap((abs) =>
+      findPairingViolations(abs.slice(ROOT.length + 1), readFileSync(abs, "utf-8")),
+    );
+    if (violations.length > 0) {
+      throw new Error(
+        `${violations.length} comment(s) re-cite DEC-919 for bulk-bar behaviour (should be DEC-752/DEC-825):\n` +
+          violations.join("\n"),
+      );
+    }
+    expect(violations).toEqual([]);
+  });
+
+  // Synthetic positive control: the sentinel must actually be able to
+  // fire, not just report zero because its own logic is inert (the same
+  // house rule the negative-control block above documents).
+  it("synthetic positive control: the detector fires on a fixture reproducing the original miscitation shape", () => {
+    const fixture = [
+      "// DEC-919 wave-96: the 2026-08-16 user ruling supersedes DEC-350",
+      "// for every multi-select surface -- the selection bar is now",
+      "// ALWAYS mounted below the filters and directly above the table.",
+    ].join("\n");
+    const violations = findPairingViolations("fixture.tsx", fixture);
+    expect(violations.length).toBeGreaterThan(0);
+  });
+
+  // Negative control: a legitimate DEC-919 mention (phone-hide topic) far
+  // from any bulk-bar vocabulary must not fire.
+  it("negative control: a DEC-919 mention with no nearby bulk-bar vocabulary does not fire", () => {
+    const fixture = [
+      "// DEC-919 wave-7: the ColumnPicker is the one control legally",
+      "// hidden at phone width once the table stacks into cards.",
+    ].join("\n");
+    expect(findPairingViolations("fixture.css", fixture)).toEqual([]);
+  });
+
+  // Negative control: DEC-919 and bulk-bar vocabulary both present in the
+  // same file but far apart (the real shape seen in
+  // phone-capability-removal.scan.test.ts and submissions.css) must not
+  // fire -- the window is line-distance, not same-file co-occurrence.
+  it("negative control: DEC-919 and bulk-bar vocabulary far apart in the same comment run do not fire", () => {
+    const lines: string[] = ["// DEC-919 wave-106: gained their receipt this wave."];
+    for (let i = 0; i < 10; i++) lines.push(`// unrelated bullet point number ${i}.`);
+    lines.push("// the .chq-bulkbar-actions secondary action disappears at 390.");
+    expect(findPairingViolations("fixture2.ts", lines.join("\n"))).toEqual([]);
   });
 });
