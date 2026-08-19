@@ -30,7 +30,9 @@ describe("DEC-582 Amendment (wave 48): .chq-home-shell is full bleed, not a 900p
     const footer = rule(".chq-home-footer");
 
     // Full bleed: header/footer carry no max-width -- the vendored frame
-    // (docs/design/Chautauqua Home.dc.html:33, :101) runs them edge to edge
+    // (docs/design/Chautauqua Home.dc.html:33, `border-bottom:1px solid #1B1D17;
+    // padding:15px 44px; display:flex; align-items:center; gap:20px`, :101)
+    // runs them edge to edge
     // with 44px gutters, not a centred 820.
     for (const block of [header, footer]) {
       expect(block).not.toMatch(/max-width\s*:/);

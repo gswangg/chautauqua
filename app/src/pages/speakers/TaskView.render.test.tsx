@@ -303,7 +303,7 @@ describe('design pack v12 task view: "One task, every speaker" / "One task · st
 //
 // The v12 frame only ever seeds a FORM task, so its hard-coded
 // `{{ a.action }}` = 'Open' (docs/design/Chautauqua Speakers.dc.html:654,
-// :825-832) describes the form case alone. Offering it on every row shipped
+// `</div>`, :825-832) describes the form case alone. Offering it on every row shipped
 // a dead end: DEC-291's GET /task-assignments/:id/response reads a form
 // response and 4xxs on anything else, so a file or acknowledgement task's
 // "Open" could only ever raise a modal saying the task is not a form task.

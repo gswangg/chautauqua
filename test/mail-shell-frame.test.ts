@@ -1,5 +1,7 @@
 // DEC-037 amendment (wave 20, B9): src/mail/shell.ts is now vendored from
-// docs/design/Chautauqua Comms.dc.html:699-741 + DESIGN-RULINGS.md B9,
+// docs/design/Chautauqua Comms.dc.html:699-741 (`width:620px; background:#F4F1E8;
+// border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0
+// 18px 44px rgba(27,29,23,0.13)`) + DESIGN-RULINGS.md B9,
 // rather than an ad-hoc olive palette. This file (1) pins the frame's exact
 // values on the rendered HTML and (2) is the mail-side twin of
 // test/palette-conformance.test.ts: that scan deliberately excludes

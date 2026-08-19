@@ -130,7 +130,8 @@ describe('RecentSends', () => {
   });
 
   // DEC-238 (wave-8 amendment, sha efb77e4a): the frame's own grammar
-  // (docs/design/Chautauqua Comms.dc.html:827-832) is 'N sent · N skipped
+  // (docs/design/Chautauqua Comms.dc.html:827-832, `return rows.map(([when,
+  // subject, sent, skipped, failed, template]) => {`) is 'N sent · N skipped
   // · N failed', each clause appended only when non-zero, in that order.
   it("appends '· N skipped' only when a skip exists, before any failed clause", () => {
     render(

@@ -509,7 +509,7 @@ for (const file of TEST_TARGET_FILES) {
  * ceiling on debt, not a floor on coverage -- may only be LOWERED as
  * unreceipted claims get fixed, never raised to paper over a regression.
  * This task does not fix other lanes' test files to force it down. */
-const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 28;
+const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 23;
 
 describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
   it('the test-file desktop-frame citation population is non-empty (guards against a silently-empty scan)', () => {
@@ -532,11 +532,15 @@ describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() 
   // ratchet gets one): FAILS when the measured count falls BELOW the
   // constant, so a stale ceiling that's higher than reality cannot survive a
   // wave that fixes desktop-receipt debt. DESKTOP_UNRECEIPTED_CLAIM_CEILING
-  // is seeded at exactly what this branch measures (28), so this companion is
-  // expected GREEN today (measured 28, ceiling 28) -- unlike
-  // UNRECEIPTED_CLAIM_CEILING's own companion below, which is deliberately
-  // red because that constant is DEC-385 wave-93 merge-train-only and this
-  // task does not edit it.
+  // was lowered 28 -> 23 by task w5-s (DEC-976 wave-109 amendment), which
+  // added the missing backtick receipt to the 17 citations that had none --
+  // 5 of those 17 became fully receipted (a nearby expect( was already
+  // present), the other 12 remain unreceipted for the separate "no expect(
+  // within 6 lines" reason, out of this task's scope. Re-measured on THIS
+  // branch (DEC-989 clause a), so this companion is expected GREEN today
+  // (measured 23, ceiling 23) -- unlike UNRECEIPTED_CLAIM_CEILING's own
+  // companion below, which is deliberately red because that constant is
+  // DEC-385 wave-93 merge-train-only and this task does not edit it.
   it(`never measures FEWER unreceipted desktop-frame citations than DESKTOP_UNRECEIPTED_CLAIM_CEILING (${DESKTOP_UNRECEIPTED_CLAIM_CEILING}) without the ceiling being lowered to match (a stale ceiling hides fixed debt)`, () => {
     const unreceipted = computeUnreceiptedCitations(TEST_DESKTOP_CITATIONS);
     if (unreceipted.length < DESKTOP_UNRECEIPTED_CLAIM_CEILING) {
