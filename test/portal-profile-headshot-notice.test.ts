@@ -101,6 +101,21 @@ describe("GET /portal/profile — current headshot preview", () => {
     expect(html).toContain('src="/headshots/file-abc"');
   });
 
+  // Eval D24: the headshot rendered with alt="", i.e. presentational, so the
+  // only image on the screen was invisible to the a11y tree and a screen
+  // reader could not tell the loaded-photo branch from the empty-box one.
+  // The alt names the person, the same `${firstName} ${lastName}` idiom the
+  // public speaker renderers use (src/routes/public/detail.tsx,
+  // src/routes/public/speakers.tsx).
+  it("gives the headshot an alt naming the speaker, never the presentational alt=\"\"", async () => {
+    currentProfile = PROFILE_WITH_HEADSHOT;
+    const app = buildApp();
+    const res = await app.request("/portal/profile");
+    const html = await res.text();
+    expect(html).toContain('alt="Jane Doe"');
+    expect(html).not.toContain('alt=""');
+  });
+
   it("shows a no-headshot placeholder when none is on file", async () => {
     currentProfile = PROFILE_NO_HEADSHOT;
     const app = buildApp();

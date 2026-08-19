@@ -165,8 +165,22 @@ function ProfilePage(props: {
         <section aria-label="Headshot" class="chq-section chq-portal-profile-head">
           {/* DEC-245: headshot success renders its own 'Headshot uploaded.'
               status, distinct from the details form's 'Profile saved.' */}
+          {/* The alt names the person, matching the public speaker renderers
+              (public/detail.tsx, public/speakers.tsx, both
+              `${firstName} ${lastName}`). alt="" made the one image on this
+              screen presentational — invisible to the a11y tree — so a screen
+              reader met the "Headshot" heading with nothing under it and no
+              way to tell a loaded photo from the empty-box branch. Built from
+              profile.first/lastName, not props.speakerName, because that prop
+              is a pre-joined string that can be "". */}
           {profile.headshotUrl ? (
-            <img src={profile.headshotUrl} alt="" width={64} height={64} class="chq-portal-avatar" />
+            <img
+              src={profile.headshotUrl}
+              alt={`${profile.firstName} ${profile.lastName}`}
+              width={64}
+              height={64}
+              class="chq-portal-avatar"
+            />
           ) : (
             <div class="chq-portal-avatar" />
           )}
