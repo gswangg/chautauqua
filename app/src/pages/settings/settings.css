@@ -2140,4 +2140,49 @@
   .chq-settings-room-edit-row {
     grid-template-columns: 1fr;
   }
+
+  /* v12m-w5-o/DEC-393 wave-109 amendment, DEC-383 wave-109 amendment:
+     Settings' only route into edit mode was a 15px bare-text control, and
+     the borderless cancelled-padding idiom (padding-inline + equal negative
+     margin-inline) was leaking onto bordered subjects, bleeding 6px past
+     their container/neighbour. Both fixed in this sub-section only; no
+     other rule in this file is touched. */
+
+  /* Fix 1 (DEC-393 wave-109 amendment): .chq-settings-section-action
+     (settings.css:210 -- font-size:13px; font-weight:700; background:none;
+     border:none; padding:0) is the ONLY control that opens edit mode on
+     SummarySection.tsx:80, PeopleRolesPanel.tsx:389 and
+     TracksRoomsPanel.tsx:165/261. DESIGN-RULINGS' density standard puts a
+     real target in the ROOMY register. It is borderless, so the
+     cancelled-padding idiom is the legal shape here (DEC-383 wave-109
+     amendment): the hit box grows via padding-inline, the equal-and-
+     opposite negative margin-inline keeps the ink exactly where the frame
+     draws it. */
+  .chq-settings-section-action {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* Fix 2 (DEC-383 wave-109 amendment): the same cancelled-padding idiom
+     leaks onto two BORDERED subjects here via inheritance from the shared
+     borderless .chq-link-button base (padding:0 6px; margin-inline:-6px,
+     app/src/styles.css:710-714) -- neither rule below declares
+     margin-inline itself, so the base's negative margin still applies to a
+     box these rules already give a real border, bleeding it left of the
+     Public-pages row and closing the Saved-embeds button group's existing
+     8px flex gap into an overlap. Both are bordered/filled subjects: they
+     keep min-height:44px + centred flex and DROP the pair by resetting
+     margin-inline to 0 -- the border already gives the ring and the hit
+     box their room, and the group's own `gap` is the real gap. */
+  .chq-settings-public-pages-row > .chq-settings-inline-action,
+  .chq-settings-public-pages-row > .chq-link-button.chq-settings-inline-action {
+    margin-inline: 0;
+  }
+
+  .chq-settings-saved-embed-actions .chq-link-button {
+    margin-inline: 0;
+  }
 }
