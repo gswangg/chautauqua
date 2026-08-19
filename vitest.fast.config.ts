@@ -55,6 +55,14 @@ export default defineConfig({
       "test/itinerary-script-persistence.test.ts",
       "test/embed-element.test.ts",
       "test/gate4-residue-closure.test.ts",
+      // DEC-986 (wave 109): both grew a REAL-jsdom half when the phone-CFP
+      // dead end was closed. jsdom runs constraint validation and models a
+      // NodeList of same-id radios; the hand-rolled fake `document` these
+      // files used before can express neither, and those are exactly the
+      // two behaviours the fix turns on. Importing jsdom makes them SLOW by
+      // the derived predicate -- same shape as gate4-residue-closure above.
+      "test/cfp-phone-steps.test.ts",
+      "test/form-render-rules.test.ts",
     ],
   },
 });
