@@ -41,6 +41,10 @@ export interface SettingsSection {
   key: string;
   label: string;
   Panel: ComponentType;
+  // w4-e/DEC-375: the phone index row's detail line (docs/design/
+  // Chautauqua Settings.dc.html:275 `{{ g.detail }}`). Desktop never reads
+  // this -- the rail there is the plain link it always was.
+  detail: string;
 }
 
 // DEC-747: 'Speaker portal' is now ONE read-view section rendered entirely
@@ -53,15 +57,35 @@ export interface SettingsSection {
 // it's a row inside 'Your data' (YourDataPanel) that drills into the same
 // SessionboardImportPanel, unchanged.
 export const SECTIONS: SettingsSection[] = [
-  { key: 'event', label: 'Event', Panel: EventSettingsPanel },
-  { key: 'cfp', label: 'Call for papers', Panel: CallForPapersPanel },
-  { key: 'tracks-rooms', label: 'Tracks and rooms', Panel: TracksRoomsPanel },
-  { key: 'public-pages', label: 'Public pages', Panel: PublicPagesPanel },
-  { key: 'portal', label: 'Speaker portal', Panel: PortalSettingsPanel },
+  { key: 'event', label: 'Event', Panel: EventSettingsPanel, detail: 'Name, dates, venue and time zone' },
+  {
+    key: 'cfp',
+    label: 'Call for papers',
+    Panel: CallForPapersPanel,
+    detail: 'Public link, closing date and submission questions',
+  },
+  {
+    key: 'tracks-rooms',
+    label: 'Tracks and rooms',
+    Panel: TracksRoomsPanel,
+    detail: 'The tracks and rooms this event schedules against',
+  },
+  {
+    key: 'public-pages',
+    label: 'Public pages',
+    Panel: PublicPagesPanel,
+    detail: 'What the public schedule and speaker pages show',
+  },
+  { key: 'portal', label: 'Speaker portal', Panel: PortalSettingsPanel, detail: 'What speakers can see and edit' },
   // G13 fidelity: frames 09--10..16 draw the rail as ... Speaker portal,
   // Your data, People and roles -- Your data comes BEFORE People and roles.
-  { key: 'your-data', label: 'Your data', Panel: YourDataPanel },
-  { key: 'people', label: 'People and roles', Panel: PeopleRolesPanel },
+  { key: 'your-data', label: 'Your data', Panel: YourDataPanel, detail: 'Exports, API tokens and API docs' },
+  {
+    key: 'people',
+    label: 'People and roles',
+    Panel: PeopleRolesPanel,
+    detail: 'Who has organizer or reviewer access',
+  },
 ];
 
 export function SettingsPage() {
@@ -90,6 +114,25 @@ export function SettingsPage() {
   const editingSection = editing ? SECTIONS.find((section) => section.key === urlSection) : undefined;
   const sectionsToRender = editingSection ? [editingSection] : SECTIONS;
   const pageTitle = editingSection ? editingSection.label : 'Settings';
+
+  // w4-e/DEC-375 wave-86: phone renders the index OR one drilled section,
+  // never both -- the desktop rail-click highlight already tracks `active`
+  // (DEC-896), so a drilled phone screen's title is the SAME state, just a
+  // section label instead of 'Settings'. This is a phone-only twin of
+  // `pageTitle` (below, `.chq-settings-drill-title`, CSS-hidden at desktop
+  // in settings.css's trailing phone block) -- reusing `pageTitle` itself
+  // for phone would also retitle the DESKTOP page the moment a reader
+  // scrolls (data-drilled tracks the same `active`), which is exactly the
+  // "rail click only scrolls, never hides" invariant this file's own header
+  // comment states. `editingSection` already covers the edit-drill case;
+  // `active` covers the plain read-drill case the phone index taps into.
+  const activeSection = active !== null ? SECTIONS.find((section) => section.key === active) : undefined;
+  // Only the plain read-drill gap needs a twin title -- when editingSection
+  // is set, the ORIGINAL top-level h1 (pageTitle, above) already carries
+  // the section label for both desktop and phone; rendering a second h1
+  // with the same text here would give jsdom's role-based queries (and any
+  // screen reader) two identically-named headings for one screen.
+  const phoneDrillTitle = !editingSection ? activeSection?.label : undefined;
 
   // Keep `active` in sync whenever the URL's `section` param CHANGES (e.g.
   // navigating directly to /settings?section=cfp, or Back/Forward) without
@@ -194,11 +237,35 @@ export function SettingsPage() {
                   : 'chq-rail-link chq-settings-rail-link'
               }
               aria-current={active === section.key ? 'true' : undefined}
+              // w4-e/DEC-375: the phone row's "Open" badge and detail line
+              // are decorative context, not part of the control's name --
+              // an explicit aria-label keeps the accessible name exactly
+              // `section.label`, same as before this row grew a second
+              // line (both spans below are also aria-hidden as a second,
+              // redundant guard against a future assistive-tech reading of
+              // untagged visible text).
+              aria-label={section.label}
               onClick={() => selectSection(section.key)}
             >
-              {section.label}
+              {/* At desktop this is still the plain link text it always
+                  was (settings.css never styles these two spans outside
+                  the phone block); at phone the index row becomes
+                  {{ g.label }} + an olive "Open" on one baseline, with the
+                  detail line beneath (docs/design/Chautauqua Settings.dc.
+                  html:275). */}
+              <span className="chq-settings-rail-link-row" aria-hidden="true">
+                <span className="chq-settings-rail-link-label">{section.label}</span>
+                <span className="chq-settings-rail-link-open">Open</span>
+              </span>
+              <span className="chq-settings-rail-link-detail" aria-hidden="true">
+                {section.detail}
+              </span>
             </button>
           ))}
+          {/* docs/design/Chautauqua Settings.dc.html:296 -- phone-only
+              closing hint under the index, hidden at desktop (nowhere in
+              the mock's 51-61 desktop rail). */}
+          <p className="chq-settings-index-hint">Embed codes are easier to copy on a laptop</p>
         </nav>
         <div className="chq-settings-content">
           <button
@@ -208,6 +275,13 @@ export function SettingsPage() {
           >
             &lsaquo; Settings
           </button>
+          {phoneDrillTitle ? (
+            // w4-e/DEC-375: phone-only twin of the page h1 (settings.css
+            // hides this at desktop and hides the page-level h1 at phone
+            // whenever a section is drilled, so exactly one title is ever
+            // visible in either mode).
+            <h1 className="chq-page-title chq-settings-drill-title">{phoneDrillTitle}</h1>
+          ) : null}
           {sectionsToRender.map((section) => {
             const Panel = section.Panel;
             return (

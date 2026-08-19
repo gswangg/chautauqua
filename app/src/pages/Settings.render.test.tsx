@@ -267,9 +267,14 @@ describe('SettingsPage render smoke', () => {
     });
 
     const rail = screen.getByRole('navigation', { name: 'Settings sections' });
+    // w4-e/DEC-375: the phone index row grew a decorative "Open" badge and
+    // detail line inside each button (docs/design/Chautauqua Settings.dc.
+    // html:275) -- aria-label keeps the ACCESSIBLE name exactly the
+    // section label (asserted by name here), so this reads that rather
+    // than raw textContent, which now also carries the phone-only text.
     const labels = within(rail)
       .getAllByRole('button')
-      .map((el) => el.textContent);
+      .map((el) => el.getAttribute('aria-label'));
 
     expect(labels).toEqual([
       'Event',
