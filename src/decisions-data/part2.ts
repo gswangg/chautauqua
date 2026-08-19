@@ -160,7 +160,7 @@ export const DEC_363 = "Stage-1 exit predicate SATISFIED: all six wave-23 gate l
 export const DEC_364 = "Gate e's two 'NOT STATICALLY VERIFIABLE' items are DISCHARGED, not carried: a deferral whose designated live lanes both ran green at the same FROZEN SHA is closed";
 export const DEC_365 = "Wave-24 adjudication of the carried review-lens findings: all five are non-defects, already-fixed, or CLOSED-on-the-record — no product lane is warranted, and padding a completion wave would be a worse failure than declaring";
 export const DEC_366 = "The docs/design/ handoff is this run's binding requirement; stage-1 function is frozen and complete";
-export const DEC_367 = "The disabled token's two legal uses become executable at phone widths";
+export const DEC_367 = "Amendment (wave 90): a cascade shadow is a defect only when a DECLARATION changes value — portal.css.ts's three shadowed pairs are conformant, and the sweep the mandate ordered is complete at four sheets";
 export const DEC_368 = "CSS file ownership: one shared stylesheet owned by the shell lane, co-located page stylesheets owned by page lanes";
 export const DEC_369 = "Admin chrome: top header with horizontal nav replaces the sidebar; phone gets a five-item tab bar; nav carries destinations and exceptions only";
 export const DEC_370 = "Overview worklist payload v2: exact contract, action-endpoint mapping, and the suggestions that are deliberately omitted";
@@ -186,7 +186,7 @@ export const DEC_389 = "A gate script reports; it never throws";
 export const DEC_390 = "The phone card transform adds no markup by default; ambiguous cells get a data-label mirrored from their own th";
 export const DEC_391 = "The two mock affordances DEC-380 and DEC-386 dropped are settled, not deferred";
 export const DEC_392 = "The admin phone chrome is the tab bar alone: at <=700px the desktop nav strip and the identity text are hidden, and the More control is unconditional so Sign out is always reachable";
-export const DEC_393 = "Amendment (wave 7): a flush row-action anchor reaches the 44px floor by growing its own box and absorbing the padding with an equal negative inline margin";
+export const DEC_393 = "Amendment (wave 90): the 92-offender tap-floor backlog is closed SHEET BY SHEET in each sheet's true-terminal phone block, and a token declared in styles.css is never given a second phone rule by a cluster";
 export const DEC_394 = "For this wave only, the shared-CSS lane splits by surface: styles.css + event-switcher.css to the SPA shell lane, theme.ts to the SSR floor lane";
 export const DEC_395 = "A reviewer session never requests organizer-only aggregates: the nav-badge hook gates on role, not on catch()";
 export const DEC_396 = "compose/preview and compose/send take a bounded id array: the one bulk endpoint DEC-182 missed";
