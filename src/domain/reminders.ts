@@ -70,9 +70,14 @@ export interface ReminderGroup {
  * byte-identical regardless of the caller's array order. dueDate is a
  * calendar day (DEC-522), not an instant — rendered via formatCalendarDate,
  * never re-zoned to a reader's/event's timezone.
+ *
+ * The sort itself is factored into sortReminderAssignments below so a
+ * second renderer (DEC-441's per-recipient task summary in
+ * repo/tasks/reminders.ts's previewRemindNow) can share the ONE ordering
+ * instead of growing a second copy that could drift (DEC-613).
  */
-export function formatTaskLines(assignments: ReminderAssignment[]): string[] {
-  const sortedAssignments = [...assignments].sort((a, b) => {
+export function sortReminderAssignments(assignments: ReminderAssignment[]): ReminderAssignment[] {
+  return [...assignments].sort((a, b) => {
     if (a.dueDate !== b.dueDate) {
       if (a.dueDate === null) return 1;
       if (b.dueDate === null) return -1;
@@ -81,7 +86,10 @@ export function formatTaskLines(assignments: ReminderAssignment[]): string[] {
     if (a.taskTitle !== b.taskTitle) return a.taskTitle.localeCompare(b.taskTitle);
     return a.assignmentId.localeCompare(b.assignmentId);
   });
-  return sortedAssignments.map((a) => {
+}
+
+export function formatTaskLines(assignments: ReminderAssignment[]): string[] {
+  return sortReminderAssignments(assignments).map((a) => {
     if (a.dueDate === null) return `- ${a.taskTitle} — No due date`;
     return `- ${a.taskTitle} — due ${formatCalendarDate(a.dueDate)}`;
   });

@@ -22,15 +22,20 @@ import {
   planManualReminders,
   planReminders,
   REMINDER_OVERDUE_TAIL_MS,
+  sortReminderAssignments,
 } from "../../../domain/reminders";
 import type { KVStore } from "../../../auth/claim";
 import { resolvePortalLinks } from "../portal-link";
 import { findAccountUserIds } from "../comms";
 import { ASSIGNED_LATE_GRACE_DAYS, effectiveAssignmentDueDayLabel } from "../../../domain/task-due";
 import { ApiError } from "../../http";
-import { zonedMinutesToUtc } from "../../../lib/timezone";
+import { dayLabelEndInstant, zonedMinutesToUtc } from "../../../lib/timezone";
+import { formatCalendarDate } from "../../../lib/event-time";
 import { chaseableContactExists } from "./crud";
 import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../../lib/fanout";
+import { DEC_441 } from "../../../decisions";
+
+void DEC_441;
 
 // DEC-319 wave-56 amendment: hard ceiling on the single-event outstanding
 // scan below — a per-event reminder pass should never be reading past this
@@ -615,6 +620,31 @@ export async function remindNow(
   return { ...result, skipped: chosen.skipped, remaining: chosen.remaining };
 }
 
+/** DEC-441: the per-recipient task summary the review dialog renders
+ * (`Chautauqua Speakers.dc.html:504-541`'s per-recipient row) — built from
+ * the SAME `group.assignments` buildReminderMessage consumes below, using
+ * the shared sortReminderAssignments ordering (never a second sort that
+ * could drift, DEC-613). `dueDate` on each ReminderAssignment is already
+ * the assignment's EFFECTIVE due day label (listOutstandingForEvent), so
+ * "overdue" is judged straight against dayLabelEndInstant — no second
+ * effectiveAssignmentDueDayLabel pass, no assignedAt, no extra query. */
+function buildReminderTaskSummaries(
+  assignments: ReminderAssignment[],
+  now: number,
+  timeZone: string,
+): { title: string; dueLabel: string; overdue: boolean }[] {
+  return sortReminderAssignments(assignments).map((a) => {
+    if (a.dueDate === null) {
+      return { title: a.taskTitle, dueLabel: "No due date", overdue: false };
+    }
+    return {
+      title: a.taskTitle,
+      dueLabel: formatCalendarDate(a.dueDate),
+      overdue: now > dayLabelEndInstant(a.dueDate, timeZone),
+    };
+  });
+}
+
 /** Preview for "remind now" (SPEC §10 #3, DEC-441): runs the identical
  * listOutstandingForEvent + planManualReminders path as remindNow and
  * renders each group through the same buildReminderMessage used by the
@@ -629,7 +659,14 @@ export async function previewRemindNow(
   origin: string,
   contactIds?: string[],
 ): Promise<{
-  drafts: { contactId: string; email: string; name: string; subject: string; text: string }[];
+  drafts: {
+    contactId: string;
+    email: string;
+    name: string;
+    subject: string;
+    text: string;
+    tasks: { title: string; dueLabel: string; overdue: boolean }[];
+  }[];
   skipped: number;
   remaining: number;
 }> {
@@ -682,7 +719,14 @@ export async function previewRemindNow(
     false,
   );
 
-  const drafts: { contactId: string; email: string; name: string; subject: string; text: string }[] = [];
+  const drafts: {
+    contactId: string;
+    email: string;
+    name: string;
+    subject: string;
+    text: string;
+    tasks: { title: string; dueLabel: string; overdue: boolean }[];
+  }[] = [];
   for (const group of plan.groups) {
     const rows = outstandingByContact.get(group.contactId) ?? [];
     const first = rows[0];
@@ -696,6 +740,7 @@ export async function previewRemindNow(
       name: `${first.firstName} ${first.lastName}`.trim(),
       subject,
       text,
+      tasks: buildReminderTaskSummaries(group.assignments, now.getTime(), first.timezone),
     });
   }
   return { drafts, skipped: chosen.skipped, remaining: chosen.remaining };

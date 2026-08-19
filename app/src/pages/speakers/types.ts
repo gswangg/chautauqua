@@ -212,10 +212,15 @@ export interface EventForm {
 // SPEC §10 #3 (DEC-441): one rendered draft returned by
 // POST /api/v1/events/:eventId/onboarding/remind/preview — subject/text
 // are byte-identical to what the real send would produce for that contact.
+// DEC-441 wave-110 amendment: `tasks` is that contact's outstanding task
+// summary (built server-side from the SAME assignments buildReminderMessage
+// consumes, per docs/design/Chautauqua Speakers.dc.html:504-541's
+// per-recipient row) — never re-derived from `text` here.
 export interface ReminderDraft {
   contactId: string;
   email: string;
   name: string;
   subject: string;
   text: string;
+  tasks: { title: string; dueLabel: string; overdue: boolean }[];
 }

@@ -15,6 +15,7 @@ const DRAFTS: ReminderDraft[] = [
     name: 'Priya Raman',
     subject: 'Action needed: outstanding tasks for DevFlow Conf 2027',
     text: 'You have outstanding tasks for DevFlow Conf 2027:\n- Hotel stay requirement form — due Mon, Mar 01, 2027',
+    tasks: [{ title: 'Hotel stay requirement form', dueLabel: 'Mon, Mar 01, 2027', overdue: true }],
   },
   {
     contactId: 'contact_2',
@@ -22,6 +23,7 @@ const DRAFTS: ReminderDraft[] = [
     name: 'Jamal Okoye',
     subject: 'Action needed: outstanding tasks for DevFlow Conf 2027',
     text: 'You have outstanding tasks for DevFlow Conf 2027:\n- Speaker agreement — No due date',
+    tasks: [{ title: 'Speaker agreement', dueLabel: 'No due date', overdue: false }],
   },
 ];
 
@@ -65,8 +67,22 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
     );
 
     expect(screen.getByText('2 recipients')).toBeInTheDocument();
-    expect(screen.getByText(/priya@example\.com/)).toBeInTheDocument();
-    expect(screen.getByText(/jamal@example\.com/)).toBeInTheDocument();
+    // DEC-441 wave-110 amendment: each recipient row shows the name and
+    // THAT PERSON'S outstanding task names -- never a bare email list.
+    expect(screen.getByText('Priya Raman')).toBeInTheDocument();
+    expect(screen.getByText('Hotel stay requirement form')).toBeInTheDocument();
+    expect(screen.getByText('Jamal Okoye')).toBeInTheDocument();
+    expect(screen.getByText('Speaker agreement')).toBeInTheDocument();
+    // Priya's one task is overdue -- her row carries the OVERDUE flag;
+    // Jamal's is not, so his row carries none.
+    expect(screen.getAllByText('OVERDUE')).toHaveLength(1);
+    // The eyebrow names whose draft this is, and the caption is the
+    // frame's :533 sentence verbatim.
+    expect(screen.getByText('What Priya will read')).toBeInTheDocument();
+    expect(
+      screen.getByText("Each speaker's list is their own · the body is built from their outstanding tasks, not typed"),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Logged in Comms history')).toBeInTheDocument();
     expect(
       screen.getByText(/Hotel stay requirement form — due Mon, Mar 01, 2027/),
     ).toBeInTheDocument();

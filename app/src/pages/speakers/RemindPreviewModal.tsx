@@ -8,6 +8,20 @@ import { ModalFrame } from '../../components/ModalFrame';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { countOf } from '../../lib/plural';
 import type { ReminderDraft } from './types';
+import { OVERDUE_LABEL } from './TaskCell';
+import { DEC_441 } from '../../../../src/decisions';
+
+void DEC_441;
+
+/** DEC-441 wave-110 amendment: the row's right-flushed flag is the SAME
+ * OVERDUE vocabulary the grid/detail page use (TaskCell.tsx) -- never a
+ * third phrasing. A recipient's row flags OVERDUE the moment any one of
+ * their outstanding tasks is overdue; a due-soon-but-not-overdue recipient
+ * carries no flag (no "due soon" vocabulary exists anywhere else in the
+ * app to reuse, and DEC-441 forbids inventing one). */
+function firstNameOf(fullName: string): string {
+  return fullName.split(' ')[0] ?? fullName;
+}
 
 interface RemindPreviewModalProps {
   loading: boolean;
@@ -68,6 +82,8 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={sending}>
             Cancel
           </button>
+          {/* v12 frame :540 (`<span style="font-size:12px; color:#565A4B; line-height:1.5">Logged in Comms history</span>`) */}
+          {!isZeroState && <span className="chq-speakers-remind-logged">Logged in Comms history</span>}
         </>
       }
     >
@@ -91,24 +107,40 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
           {remaining > 0 && (
             <div className="chq-speakers-remind-remaining">{countOf(remaining, 'contact')} still outstanding &mdash; run it again to continue.</div>
           )}
+          {/* v12 frame :504-513: per-recipient row -- name over that
+              person's outstanding task names, overdue flag right-flushed. */}
           <ul className="chq-speakers-remind-recipients">
-            {drafts.map((d) => (
-              <li key={d.contactId}>
-                {d.name} &middot; {d.email}
-              </li>
-            ))}
+            {drafts.map((d) => {
+              const overdue = d.tasks.some((t) => t.overdue);
+              return (
+                <li key={d.contactId} className="chq-speakers-remind-recipient">
+                  <div className="chq-speakers-remind-recipient-info">
+                    <span className="chq-speakers-remind-recipient-name">{d.name}</span>
+                    <span className="chq-speakers-remind-recipient-tasks">
+                      {d.tasks.map((t) => t.title).join(', ')}
+                    </span>
+                  </div>
+                  {overdue && <span className="chq-speakers-remind-flag">{OVERDUE_LABEL}</span>}
+                </li>
+              );
+            })}
           </ul>
 
           {first && (
             <div className="chq-speakers-remind-draft">
-              {/* User-filed (release night): the single draft read as a
-                  shared superset message. It is one PERSONALIZED draft per
-                  contact (buildReminderMessage renders each recipient's own
-                  assignment list) -- say so, and name whose draft this is. */}
-              <div className="chq-speakers-modal-label">Draft for {first.name} &mdash; {first.subject}</div>
-              <pre className="chq-speakers-remind-draft-text">{first.text}</pre>
+              {/* v12 frame :517 (`What Marcus will read` eyebrow). */}
+              <div className="chq-speakers-modal-label">What {firstNameOf(first.name)} will read</div>
+              {/* v12 frame :518-530: inset #E9E7E2 band holding the
+                  #F4F1E8 email card -- nearest palette tokens (surface-sunk
+                  / paper), the closure scan forbids a new hex literal. */}
+              <div className="chq-speakers-remind-card-band">
+                <div className="chq-speakers-remind-card">
+                  <pre className="chq-speakers-remind-draft-text">{first.text}</pre>
+                </div>
+              </div>
+              {/* v12 frame :533 caption, verbatim. */}
               <div className="chq-speakers-remind-draft-note">
-                Each speaker gets their own message listing only their outstanding tasks.
+                Each speaker's list is their own &middot; the body is built from their outstanding tasks, not typed
               </div>
             </div>
           )}

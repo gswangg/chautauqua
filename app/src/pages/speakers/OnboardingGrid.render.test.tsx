@@ -337,7 +337,7 @@ describe('OnboardingGrid: DEC-694 per-row remind', () => {
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
       [`POST /api/v1/events/${EVENT_ID}/onboarding/remind/preview`]: {
-        drafts: [{ contactId: 'ct1', email: 'ada@example.com', name: 'Ada Lovelace', subject: 'Action needed', text: 'body' }],
+        drafts: [{ contactId: 'ct1', email: 'ada@example.com', name: 'Ada Lovelace', subject: 'Action needed', text: 'body', tasks: [{ title: 'Upload headshot', dueLabel: 'No due date', overdue: false }] }],
         skipped: 0,
         remaining: 0,
       },
@@ -388,7 +388,7 @@ describe('OnboardingGrid: DEC-441 amendment surfaces the preview batch-cap remai
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
       [`POST /api/v1/events/${EVENT_ID}/onboarding/remind/preview`]: {
-        drafts: [{ contactId: 'ct1', email: 'ada@example.com', name: 'Ada Lovelace', subject: 'Action needed', text: 'body' }],
+        drafts: [{ contactId: 'ct1', email: 'ada@example.com', name: 'Ada Lovelace', subject: 'Action needed', text: 'body', tasks: [{ title: 'Upload headshot', dueLabel: 'No due date', overdue: false }] }],
         skipped: 0,
         remaining: 4,
       },
