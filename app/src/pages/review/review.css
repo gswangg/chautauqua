@@ -1186,7 +1186,11 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  align-items: center;
+  /* User-filed (v12 review round): the label child is a two-line stack
+     (heading over input), so align-items:center centred the button against
+     the WHOLE stack and floated it above the input's midline. Bottom
+     alignment pins the button to the input's own edge. */
+  align-items: flex-end;
   padding-top: 14px;
 }
 
