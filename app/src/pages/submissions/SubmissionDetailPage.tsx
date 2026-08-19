@@ -1045,12 +1045,28 @@ export function SubmissionDetailPage() {
           the corresponding link is absent, never disabled; both keep
           location.search so paging survives the round trip. */}
       <div className="chq-detail-ref-row">
+        {/* DEC-919 wave-98 amendment: ONE anchor, two spans -- the 390
+            frame (Chautauqua Submissions.dc.html:358) reads the short
+            '‹ Triage' label; desktop keeps '‹ All submissions' byte-
+            unchanged. Never a second link for the same destination. */}
         <Link to="/submissions" className="chq-detail-back">
-          &lsaquo; All submissions
+          &lsaquo; <span className="chq-detail-back-full">All submissions</span>
+          <span className="chq-detail-back-short" style={{ display: 'none' }}>
+            Triage
+          </span>
         </Link>
         {listPosition && (
           <span className="chq-detail-ref-position">
-            {detail.ref} &middot; {listPosition.position} of {listPosition.total}
+            {/* DEC-919 wave-98: at 390 (dc.html:359) the ref prefix drops
+                and the bare 'N of M' right-flushes -- the ref itself moves
+                into the eyebrow (see chq-detail-eyebrow-ref below), it is
+                never lost. */}
+            <span className="chq-detail-ref-position-full">
+              {detail.ref} &middot; {listPosition.position} of {listPosition.total}
+            </span>
+            <span className="chq-detail-ref-position-count" style={{ display: 'none' }}>
+              {listPosition.position} of {listPosition.total}
+            </span>
           </span>
         )}
         {listPosition && (listPosition.prevId || listPosition.nextId) && (
@@ -1084,8 +1100,32 @@ export function SubmissionDetailPage() {
             detail.title alone. Eyebrow (tracks + format) and the placement
             subtitle travel with the title as one flex item. */}
         <div className="chq-detail-heading-title">
-          {eyebrowText !== null && <p className="chq-detail-eyebrow">{eyebrowText}</p>}
+          {eyebrowText !== null && (
+            // DEC-919 wave-98: at 390 (dc.html:361) the eyebrow leads with
+            // '<ref> · ' before the format text -- rendered as a phone-only
+            // CSS ::before (data-ref carries the value) rather than a real
+            // text node, so it never joins the eyebrow's own textContent
+            // (DEC-908's desktop eyebrow, ref-free, stays exactly as before).
+            <p className="chq-detail-eyebrow" data-ref={detail.ref}>
+              {eyebrowText}
+            </p>
+          )}
           <h1>{detail.title}</h1>
+          {/* DEC-919 wave-98: dc.html:363 draws a 13px muted byline under
+              the title at 390 -- 'name · company' from the SAME
+              participant already resolved for the speaker rail below
+              (named 'speaker' role, else the first participant), no new
+              request. Co-presenter sessions render whichever one that
+              resolver already picked; this task does not invent a
+              multi-speaker byline. Absent (not blank) when the submission
+              has no participants at all. Hidden on desktop -- the frame's
+              full speaker rail already covers that case there. */}
+          {speaker && (
+            <p className="chq-detail-byline" style={{ display: 'none' }}>
+              {speaker.name}
+              {speaker.company ? <> &middot; {speaker.company}</> : null}
+            </p>
+          )}
           {/* DEC-828: only rendered once the session has an actual agenda
               placement -- schedule_slot has at most one row per submission,
               null means "not scheduled yet", never a blank/placeholder line. */}
