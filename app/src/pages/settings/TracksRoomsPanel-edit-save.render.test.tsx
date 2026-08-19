@@ -223,4 +223,78 @@ describe('TracksRoomsPanel edit/save lifecycle', () => {
     const roomRow = roomNameInput.closest('.chq-settings-edit-row')!;
     expect(roomRow).toHaveClass('chq-settings-room-edit-row');
   });
+
+  // DEC-941 wave-107 amendment (a): closing the drill-in retires the whole
+  // add-a-track pass -- a refusal raised by submitting the add form empty
+  // must not survive a Done/re-enter round trip.
+  it('Done retires the add-a-track form: a raised refusal is gone on re-entry', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a track' })[0]!);
+    fireEvent.click(within(section).getByRole('button', { name: 'Add track' }));
+
+    // Submitting empty raises the field refusal.
+    await waitFor(() => {
+      expect(within(section).getAllByText('Required').length).toBeGreaterThan(0);
+    });
+
+    // Done with nothing dirty and no unsaved add draft: no confirm, closes
+    // straight to the summary.
+    fireEvent.click(within(section).getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(section).getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    });
+
+    // Re-entering: the add form is closed and shows no refusal.
+    fireEvent.click(within(section).getByRole('button', { name: 'Add' }));
+    await waitFor(() => {
+      expect(within(section).getByDisplayValue('AI Engineering')).toBeInTheDocument();
+    });
+    expect(within(section).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
+    expect(within(section).queryAllByText('Required')).toHaveLength(0);
+  });
+
+  // DEC-941 wave-107 amendment (b): a typed-but-not-yet-added new track has
+  // no saved name for dirtyRowNames to pick up, so it is its own arming
+  // condition for the discard confirm -- the mirror of "a confirm with no
+  // arming is the mirror of a delete with no confirm".
+  it('typing a new track name with no dirty rows arms the discard confirm, naming the unsaved entry', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a track' })[0]!);
+    const newTrackInput = within(section).getByPlaceholderText('New track name');
+    fireEvent.change(newTrackInput, { target: { value: 'Keynotes' } });
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Done' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Keynotes');
+    expect(within(dialog).getByRole('button', { name: 'Discard the edits' })).toBeInTheDocument();
+
+    // Cancel leaves the draft intact.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(within(section).getByDisplayValue('Keynotes')).toBeInTheDocument();
+
+    // Discard drops the draft and closes the drill-in.
+    fireEvent.click(within(section).getByRole('button', { name: 'Done' }));
+    const dialog2 = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog2).getByRole('button', { name: 'Discard the edits' }));
+    await waitFor(() => {
+      expect(within(section).getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    });
+    expect(within(section).queryByDisplayValue('Keynotes')).not.toBeInTheDocument();
+  });
 });

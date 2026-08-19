@@ -14,7 +14,7 @@
 // previous single-file version.
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { plural } from '../../lib/plural';
+import { plural, countOf } from '../../lib/plural';
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEditForm';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
@@ -66,6 +66,7 @@ export function TracksRoomsPanel() {
     showAddRoom,
     toggleAddRoom,
     dirtyRowNames,
+    unsavedAddDraftNames,
     handleDone,
     discardDirtyAndClose,
     isTrackDirty,
@@ -355,8 +356,20 @@ export function TracksRoomsPanel() {
           title="Discard unsaved edits?"
           body={
             <p>
-              {dirtyRowNames().join(', ')} {plural(dirtyRowNames().length, 'has', 'have')} unsaved edits. Each row
-              saves with its own Save control — leaving now discards these edits and keeps the saved values.
+              {dirtyRowNames().length > 0 && (
+                <>
+                  {dirtyRowNames().join(', ')} {plural(dirtyRowNames().length, 'has', 'have')} unsaved edits.{' '}
+                </>
+              )}
+              {unsavedAddDraftNames().length > 0 && (
+                <>
+                  {unsavedAddDraftNames().join(', ')} {plural(unsavedAddDraftNames().length, 'is', 'are')}{' '}
+                  {countOf(unsavedAddDraftNames().length, 'unsaved new entry', 'unsaved new entries')} not yet
+                  added.{' '}
+                </>
+              )}
+              Each row saves with its own Save control — leaving now discards these edits and keeps the saved
+              values.
             </p>
           }
           confirmLabel="Discard the edits"
