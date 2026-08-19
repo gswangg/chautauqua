@@ -1,5 +1,10 @@
 # Comms drill pair (v12 mobile, wave 7)
 
+> A finding recorded here is a claim about the tree, not a permanent record.
+> It is re-derived against current code before it is scheduled, and once it
+> stops reproducing it is rewritten as RESOLVED with a file:line citation of
+> where the behaviour now lives (DEC-976 wave-106).
+
 ## Built this wave
 
 - `docs/design/Chautauqua Comms.dc.html:288` (Templates · 390) and `:337`
@@ -22,26 +27,30 @@
 
 ## Held for a later wave — do not build without re-checking ownership first
 
-- **Templates' dock** (frame `:325-328`, the Save/Cancel pair) needs
-  `.chq-phone-dock`, per this task's brief. NOT built this wave: wiring a
-  second `.chq-phone-dock` collides with the shell dock/tab-bar
-  exclusivity ruling (DEC-576) that two in-flight branches (`v12m-w3-i`,
-  `v12m-w4-i`, per the field guide's wave-5/7 branch ledger) are both
-  landing concurrently. Re-derive which of those merged before wiring
-  this.
-- **Templates' phone-frame count line.** The frame draws a third line in
-  the head band — `5 saved` (`Chautauqua Comms.dc.html:290`) — directly
-  under the `<h1>`. `TemplatesTab.tsx`'s only count ("Saved · N") lives
-  further down, inside the desktop-shared `.chq-section-head`, not in the
-  head band, and the desktop pin (`Chautauqua Comms.dc.html:227-229`)
-  confirms the desktop head has no count line at all — so this is new
-  phone-only copy, not an existing element to relocate. Left unbuilt this
-  wave (narrowest interpretation of "wrap the existing head"); a future
-  wave should add a `{templates.length} saved` line inside the
-  `.chq-phone-head-drill` wrapper if the planner wants full frame parity
-  here.
-- **History's count line is close but not exact.** `HistoryTab.tsx`'s
-  existing `countLine` (`countOf(total, 'send')`) is wrapped into the new
-  head band as-is; the frame's fuller copy — `57 sends · 4 in the last 7
-  days` — is not reproduced (no "in the last 7 days" clause exists in this
-  file today). Not built this wave; flagged for the same reason as above.
+- **RESOLVED (wave 106, app/src/pages/comms/TemplatesTab.tsx:196,361)** —
+  Templates' dock (frame `:325-328`, the Save/Cancel pair). Re-derived
+  against main: `TemplatesTab.tsx:196` sets `data-chq-phone-dock` on the
+  page root while `editingId` is set, and the existing footer wrapper
+  (`.chq-comms-editor-actions`, line 361) now also carries
+  `.chq-phone-dock`, per DEC-621's wave-98 amendment comment at line
+  353-361 ("mount, never re-declare"). The dock/tab-bar exclusivity
+  concern is resolved by the same attribute contract `styles.css:2262`
+  (`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`) uses elsewhere.
+  Closed.
+- **RESOLVED (wave 106, app/src/pages/comms/TemplatesTab.tsx:203,227)** —
+  Templates' phone-frame count line. Re-derived against main: the head
+  band is now `.chq-comms-templates-head chq-phone-head
+  chq-phone-head-drill` (line 203) and contains
+  `<span className="chq-comms-templates-head-count">{templates.length}
+  saved</span>` (line 227), directly under the `<h1>`, matching frame
+  :290's `5 saved` line. Closed.
+- **RESOLVED (wave 106, app/src/pages/comms/HistoryTab.tsx:141-142,171)**
+  — History's count line. Re-derived against main: `HistoryTab.tsx:141-142`
+  now builds `countLine` as `` `${countOf(total, 'send')} · ${rhythm.sentLast7Days}
+  in the last 7 days` `` when `rhythm` is available (falling back to the
+  bare count otherwise), rendered at line 171 inside the
+  `.chq-phone-head-drill` band — matching frame :337's `57 sends · 4 in
+  the last 7 days` copy. Covered by
+  `app/src/pages/comms/HistoryTab.render.test.tsx`'s "renders the head
+  with a count line built from total + rhythm.sentLast7Days" test.
+  Closed.

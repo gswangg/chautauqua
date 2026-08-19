@@ -4,6 +4,11 @@ Numbered findings the 15-minute task window could not resolve. Frame
 citations are verbatim literals from `docs/design/Chautauqua Speakers.dc.html`
 per DEC-976.
 
+> A finding recorded here is a claim about the tree, not a permanent record.
+> It is re-derived against current code before it is scheduled, and once it
+> stops reproducing it is rewritten as RESOLVED with a file:line citation of
+> where the behaviour now lives (DEC-976 wave-106).
+
 ## 1. RESOLVED (DEC-730, wave-90 amendment) — "Speakers · a write failed" frame (:549) draws PRE-v12 status pills, contradicting every other v12 frame in the same file
 
 The `Complete`/`Overdue · not saved`/`Pending` cells in this frame are
@@ -53,7 +58,20 @@ write-failure banner (`notSaved` reuses the `overdue` modifier, never a new
 one) -- this is correct as shipped. NO STATUS CODE CHANGED: this entry
 records the ruling, it is not a re-skin.
 
-## 2. "Speakers · search found nothing" (:442) filtered empty state names the excluding facet; the shared EmptyState component does not
+## 2. RESOLVED (wave 106, app/src/pages/speakers/narrowing.ts:1-60, app/src/pages/speakers/OnboardingGrid.tsx:975-990) — "Speakers · search found nothing" (:442) filtered empty state names the excluding facet; the shared EmptyState component does not
+
+Re-derived against main: `narrowing.ts` (new module, header comment cites
+this exact finding) exports `activeFacet(filters)`, a `Record<FacetKey,
+FacetDef>` exhaustiveness-checked against `GridFilterState`, giving each
+single active facet its own `reason`/`escapeLabel`/`clear`. The `q` facet's
+reason (`` `No speakers match "${typed}".` ``) echoes the typed search term,
+matching frame :442's person-name clause pattern. `OnboardingGrid.tsx:975`
+calls `activeFacet(filters)` and, when non-null, renders `EmptyState` with
+`reason={facet.reason(...)}` and `escape={{ label: facet.escapeLabel, ...
+}}` instead of the generic `narrowingDescription`/`'Clear filters'` pair —
+the generic fallback is kept only for zero or two-plus active facets, where
+no single facet can be named. `app/src/pages/speakers/narrowing.test.ts` (7
+tests) passes. Closed.
 
 Frame reason line: `<span style="font-size:16px; line-height:1.65; color:#3F4237; max-width:52ch">Marcus Okafor is on the roster, but nothing of his is overdue. Clearing “Overdue only” finds him.</span>`
 and escape: `<a href="#" style="font-size:14px; font-weight:700">Clear the overdue filter ›</a>`.
@@ -68,17 +86,16 @@ need either a new EmptyState prop/variant or a page-local override, both of
 which reach outside this task's file allowlist. Flagging for the shell/
 EmptyState-owning lane.
 
-## 3. Grid speaker-name text is 18px, frame draws 16px
+## 3. RESOLVED (wave 106, app/src/styles.css:476-481) — Grid speaker-name text is 18px, frame draws 16px
 
 Frame :129 (`Speakers` 1600 grid) name link:
 `<a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; color:#1B1D17">{{ row.name }}</a>`
 
-The app renders the name via the shared `.chq-row-title` class
-(`app/src/styles.css:559`, `font-size: 18px; font-weight: 600;`) — weight
-matches (600, confirmed NOT inverted relative to the status pill's 800, see
-fixed finding (a) below), but the size is 18px not 16px. `styles.css` is
-shell-lane-owned this wave (explicitly out of scope for `w1-b`), so this is
-left for that lane to reconcile — flagging rather than touching the file.
+Re-derived against main: `.chq-row-title` now reads `font-size: 16px;
+font-weight: 600; letter-spacing: -0.015em;` at `app/src/styles.css:476-481`
+— the shell lane this finding was flagged for reconciled the size (and
+letter-spacing) to match the frame verbatim; weight was already correct
+(see fixed finding (a) below). Closed.
 
 ---
 

@@ -2,7 +2,14 @@
 
 Numbered findings the task window could not resolve as real code (a genuine
 domain/behaviour gap, or a real conflict with a file this task does not
-own), plus the deliberate carve-outs taken instead. Frame citations are
+own), plus the deliberate carve-outs taken instead.
+
+> A finding recorded here is a claim about the tree, not a permanent record.
+> It is re-derived against current code before it is scheduled, and once it
+> stops reproducing it is rewritten as RESOLVED with a file:line citation of
+> where the behaviour now lives (DEC-976 wave-106).
+
+Frame citations are
 verbatim literals from `docs/design/Chautauqua Review.dc.html`'s "Plan
 editor · 390" frame (starts `:594`), per DEC-967.
 
@@ -34,70 +41,54 @@ rows the existing `Add an option` block can edit. `.chq-review-criterion-row,
 moved 5 → 6 in the same commit. The readonly/locked row's own TYPE cell
 was already built and is untouched.
 
-## 2. The Reviewers roster's per-row action is "Remove", not the frame's "Swap"
+## 2. RESOLVED BY RULING (DEVIATIONS.md §6, DEC-745 wave-98 amendment) — The Reviewers roster's per-row action is "Remove", not the frame's "Swap"
 
-`:652` draws:
+Re-derived: this finding's own text asks whether "Swap" is a new
+capability or a v12-era rename. `docs/design/DEVIATIONS.md` §6 ("Deferred
+post-deadline") now carries an entry, "Plan editor reviewer-row 'Swap'",
+citing this exact frame (`Chautauqua Review.dc.html:652`) and ruling: no
+reassign-in-place capability exists anywhere in the domain or route layer
+(only assign/unassign), so the copy stays "Remove" behind `ConfirmDialog`
+(DEC-941); the row's geometry already matches the frame verbatim. This is
+a ruling, not a code change — cite DEVIATIONS.md §6 rather than claiming
+code moved. Closed.
 
-`<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Swap</span>`
+## 3. RESOLVED (wave 106, app/src/pages/review/PlanEditor.tsx:2229-2263, app/src/pages/review/review.css:328-333) — The frame's second "Assign a reviewer" control (dashed, below the roster) was not built
 
-The live editor's only per-reviewer action is unassignment
-(`setPendingUnassignReviewer` → `DELETE /plans/:id/reviewers/:id`,
-gated behind `ConfirmDialog` per DEC-941). There is no reassign-in-place
-capability ("swap this reviewer for a different one on the same scope")
-anywhere in the domain or the route layer. Implemented the frame's
-GEOMETRY only (44px, padding 0 14px, bordered chip) on the existing
-Remove button; the copy stays "Remove" rather than fabricating a Swap
-affordance with no capability behind it. Needs a design call: is "Swap" a
-genuinely new capability (pick a replacement reviewer, unassign the old
-one and assign the new one as one action), or is the frame's label a
-V12-era rename of the same Remove action?
-
-## 3. The frame's second "Assign a reviewer" control (dashed, below the roster) was not built
-
-`:663` draws:
+`:663` draws a SECOND "Assign a reviewer" affordance, separate from the
+section rule's toggle:
 
 `<span style="display:flex; align-items:center; justify-content:center; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; font-size:13px; font-weight:700; color:#4E5C31">Assign a reviewer</span>`
 
-— a SECOND "Assign a reviewer" affordance, separate from the section
-rule's toggle (`:643`'s row implies the toggle is elsewhere; the desktop
-editor's toggle lives in `.chq-section-head`). A first attempt rendered
-both — the existing header toggle (kept, since it is the ONE thing that
-actually opens the assign form) and a new phone-only button with the same
-accessible name and the same `setAssignFormOpen` handler. That broke
-`PlanEditor.render.test.tsx`'s `findByRole('button', { name: 'Assign a
-reviewer' })` query (now ambiguous between two matches) — a file this task
-does not own, so the second button was reverted rather than risking that
-query. What shipped instead: the ONE toggle, floored to 44px with
-non-zero horizontal padding, sitting next to the frame's bare Reviewers
-count. The frame's specific placement (a dashed control below the roster,
-after Cap each/Distribute) is not reproduced. Needs either (a) a
-distinguishing `aria-label` on one of the two controls (so the render
-test's query stays unambiguous) landed in the SAME change that touches
-`PlanEditor.render.test.tsx`, or (b) a ruling that the single toggle,
-wherever it sits, satisfies the frame's intent.
+Re-derived against main: this finding's own text names the exact blocker —
+the render test's `findByRole('button', { name: 'Assign a reviewer' })`
+query would become ambiguous with two same-named controls. That is now
+resolved per option (a) the finding itself proposed: the below-roster
+control (`PlanEditor.tsx:2246-2250`, CSS at `review.css:328-333`
+`.chq-review-assign-below`, DEC-745 wave-98 adjudication) carries
+`aria-label="Assign a reviewer, below the roster"` while the header toggle
+keeps the bare "Assign a reviewer" name. `PlanEditor.render.test.tsx`'s
+"below-roster 'Assign a reviewer' trigger (DEC-745 wave-98)" describe
+block (from line 2494) exercises both controls by their distinct
+accessible names with no ambiguity — `findByRole('button', { name:
+'Assign a reviewer' })` still resolves to exactly the header toggle. 72
+tests in that file pass. Closed.
 
-## 4. The docked footer's copy doesn't match the frame, and neither does the button set for an existing plan
+## 4. RESOLVED BY RULING (DEVIATIONS.md §3, DEC-745 wave-98 amendment) — The docked footer's copy doesn't match the frame, and neither does the button set for an existing plan
 
-`:665-667` draws the dock as `Save the plan` (flex:1, olive) + `Cancel`
-(bordered secondary) — always exactly these two. The live editor's title
-row renders **Cancel + Create the plan** only for a brand-new plan
-(`isNew`); for an existing plan (the state this frame's own content —
-"Wave 2", "AI Engineering · closes 30 Aug" — depicts) it renders
-**Duplicate + Save**, with no Cancel affordance at all on either desktop or
-phone. Implemented the frame's GEOMETRY (fixed-position dock, border-top,
-48px targets, primary at `flex:1`) applied to whichever pair the editor
-already renders in `.chq-review-editor-title-actions`, since the dock is a
-CSS-only repositioning of the SAME buttons (no new Save/Cancel markup, so
-a save from the dock and a save from the top position are always the one
-`save()` call — DEC-385/DEC-547 discipline). The copy mismatch
-("Save the plan" vs "Save", "Cancel" vs "Duplicate") is a pre-existing
-desktop behaviour difference this CSS-only phone lane did not invent and
-is out of scope to resolve (adding a Cancel-while-editing affordance is a
-behaviour change, not a phone-density change). Needs a design call: does
-an existing plan's dock genuinely need a Cancel action alongside Save on
-phone (in which case Duplicate needs a new home), or does the frame's
-copy assume the new-plan state only and this is a captioning gap in the
-design pack itself?
+Re-derived: this finding's own text asks whether an existing plan's dock
+needs a Cancel action alongside Save, or the frame's copy assumes the
+new-plan state only. `docs/design/DEVIATIONS.md` §3 ("Interpretations
+where the frames underspecify") now carries a ruling (lines ~106-118):
+the docked pair is whichever pair the title row already renders — the
+new-plan Cancel/Create pair or an existing plan's Duplicate/Save pair —
+never a second copy of the buttons, so a save from the dock and a save
+from the top position are always the one `save()` call. The frame's
+"Save the plan"/"Cancel" copy is read as GEOMETRY guidance (the existing
+plan's copy stays "Duplicate"/"Save", not a mandate to add Cancel to that
+pair). This is a ruling, not a code change beyond what the finding's own
+"What was built" section already shipped (the CSS-only dock geometry) —
+cite DEVIATIONS.md §3 rather than claiming new code. Closed.
 
 ## What was built (for completeness, not a gap)
 
