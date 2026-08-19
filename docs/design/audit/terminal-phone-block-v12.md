@@ -7,7 +7,7 @@ for each sheet with at least one `@media (max-width: 700px)` block: exactly
 one such block, and that block must be the sheet's last top-level
 construct (source order decides an equal-specificity cascade tie, so a
 non-terminal phone block can be silently shadowed by a later desktop rule —
-see `app/src/phone-cascade-order.scan.test.ts`).
+see `test/phone-cascade-order.scan.test.ts`).
 
 Task w1-d fixed `src/routes/portal/portal.css.ts` (2 blocks -> 1 terminal
 block; the earlier w5-a block's rules were moved into the w8-h block at the
@@ -23,7 +23,7 @@ header comment (`Do not reorder or delete the block at :381 ...`) predated
 DEC-385 wave-100/102's one-terminal-block contract and has been rewritten
 to say so explicitly rather than left as a stale prohibition.
 
-Cascade check (`app/src/phone-cascade-order.scan.test.ts`, DEC-385 wave
+Cascade check (`test/phone-cascade-order.scan.test.ts`, DEC-385 wave
 103): styles.css carried 12 of the tree's shadowed (selector, property)
 pairs before this fix (all twelve named by
 `app/src/phone-cascade-terminal.test.ts`'s `SHADOWED_PAIRS`, already

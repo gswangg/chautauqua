@@ -17,7 +17,7 @@
 //   by SOURCE ORDER. A phone override block that is not the sheet's LAST
 //   top-level construct can be silently shadowed by any later desktop rule
 //   touching the same (selector, property) pair -- a desktop-freeze hazard,
-//   not just a phone one (see app/src/phone-cascade-order.scan.test.ts,
+//   not just a phone one (see test/phone-cascade-order.scan.test.ts,
 //   which finds the shadows this rule exists to prevent in the first
 //   place). The rule is therefore, for every sheet that has at least one
 //   phone block: exactly ONE such block, and it must be textually terminal.
@@ -56,7 +56,7 @@
 //   (stripComments preserves length -- every non-newline character inside
 //   a comment becomes a space, newlines survive -- so an index into the
 //   comment-stripped text is always a valid index into the raw text too).
-//   This is the field-guide w94 bug (phone-cascade-order.scan.test.ts used
+//   This is the field-guide w94 bug (test/phone-cascade-order.scan.test.ts used
 //   to slice the RAW text at offsets computed on a comment-STRIPPED string
 //   of a *different* length) and this scan does not repeat it.
 //
@@ -161,7 +161,7 @@ function loadCssSheets(): Sheet[] {
 
 const SHEETS = loadCssSheets();
 
-// -- Brace-matching parser (mirrors app/src/phone-cascade-order.scan.test.ts) --
+// -- Brace-matching parser (mirrors test/phone-cascade-order.scan.test.ts) --
 
 interface BlockNode {
   header: string;
