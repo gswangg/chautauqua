@@ -281,4 +281,26 @@ describe("formatEventCloseDateLabel (DEC-408, DEC-918, DEC-522)", () => {
       expect(daysUntilCalendarDay(dayLabelMs, timeZone, nowMs)).toBe(1);
     }
   });
+
+  it("renders a UTC-midnight day label as its own calendar day in every zone (DEC-522: expansion is part of the display contract)", () => {
+    // Date.UTC(2027,2,1) is a DEC-522 UTC-midnight day label (form.close_date)
+    // -- production never mints a sub-day instant here (isDayLabelMs rejects
+    // it). It must read "Mon 1 Mar" everywhere, including a zone west of UTC
+    // (America/Los_Angeles) and a zone east of UTC (Asia/Tokyo), never the
+    // day before.
+    const dayLabel = Date.UTC(2027, 2, 1);
+    expect(formatEventCloseDateLabel(dayLabel, "America/Los_Angeles")).toBe("Mon 1 Mar");
+    expect(formatEventCloseDateLabel(dayLabel, "UTC")).toBe("Mon 1 Mar");
+    expect(formatEventCloseDateLabel(dayLabel, "Asia/Tokyo")).toBe("Mon 1 Mar");
+  });
+
+  it("regression: a UTC-midnight day label west of UTC no longer renders one day early", () => {
+    // The reported bug: Date.UTC(2027,2,1) formatted directly (without
+    // expanding through dayLabelEndInstant) renders 'Sun 28 Feb' in
+    // America/Los_Angeles, contradicting daysUntilCalendarDay's count to the
+    // correct day on the same line (root.tsx's closesLine).
+    const dayLabel = Date.UTC(2027, 2, 1);
+    expect(formatEventCloseDateLabel(dayLabel, "America/Los_Angeles")).not.toBe("Sun 28 Feb");
+    expect(formatEventCloseDateLabel(dayLabel, "America/Los_Angeles")).toBe("Mon 1 Mar");
+  });
 });

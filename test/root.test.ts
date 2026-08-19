@@ -544,9 +544,13 @@ describe("GET / — British date grammar (mandate item 31d)", () => {
 
   it("renders the CFP closes line uppercase, no comma: 'CLOSES SUN 16 AUG · N DAYS LEFT'", async () => {
     // 2026-08-16 is a Sunday; timezone left as America/Los_Angeles (DEC-408
-    // uses the event's own IANA zone) with a close instant safely inside
-    // that calendar day in both UTC and Pacific time.
-    const closeMs = Date.UTC(2026, 7, 16, 20, 0, 0);
+    // uses the event's own IANA zone). closeMs is a real DEC-522 UTC-midnight
+    // day label (form.close_date) -- production never mints a sub-day
+    // instant here (isDayLabelMs rejects it) -- and formatEventCloseDateLabel
+    // expands it through dayLabelEndInstant before formatting (DEC-522
+    // wave-7 amendment), so it renders on its own calendar day even in a
+    // zone west of UTC.
+    const closeMs = Date.UTC(2026, 7, 16);
     // ...and the clock is FROZEN a few days before it. The subject here is
     // the grammar of the closes line ("CLOSES SUN 16 AUG", uppercase, no
     // comma), but the "· N DAYS LEFT" half is computed against Date.now(),

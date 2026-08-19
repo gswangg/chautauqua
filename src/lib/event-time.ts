@@ -248,14 +248,20 @@ export function formatEventDayRange(startMs: number, endMs: number): string {
  * real instant, never UTC-bare), e.g. "Sun 12 May". `closeDayLabelMs` is a
  * DEC-522 UTC-midnight DAY LABEL, not an instant — enforced upstream by
  * isDayLabelMs (src/routes/api/validators.ts) — so it is expanded through
- * dayLabelEndInstant before formatting; formatting the raw UTC-midnight
- * value directly would resolve to the previous calendar day in every
- * timezone west of UTC. This mirrors daysUntilCalendarDay below, which
- * expands the same label the same way, so the printed date and the "N days
- * left" count always name the same day. Callers own the uppercasing and
- * "N days left" arithmetic (root.tsx's closesLine) — only the Intl
- * formatting itself lives here, per DEC-918. */
+ * dayLabelEndInstant before formatting (DEC-522 wave-7 amendment: the
+ * expansion is part of the DISPLAY contract, not only the gate contract);
+ * formatting the raw UTC-midnight value directly would resolve to the
+ * previous calendar day in every timezone west of UTC. This mirrors
+ * daysUntilCalendarDay below, which expands the same label the same way, so
+ * the printed date and the "N days left" count always name the same day.
+ * Callers own the uppercasing and "N days left" arithmetic (root.tsx's
+ * closesLine) — only the Intl formatting itself lives here, per DEC-918.
+ * Throws if `timeZone` is empty, matching the fail-loudly contract of its
+ * neighbours (daysUntilCalendarDay) below. */
 export function formatEventCloseDateLabel(closeDayLabelMs: number, timeZone: string): string {
+  if (!timeZone) {
+    throw new Error("formatEventCloseDateLabel: timeZone must not be empty");
+  }
   const endInstant = dayLabelEndInstant(closeDayLabelMs, timeZone);
   return new Date(endInstant).toLocaleDateString("en-GB", {
     weekday: "short",
