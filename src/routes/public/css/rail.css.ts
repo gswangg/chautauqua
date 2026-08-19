@@ -149,17 +149,6 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
   .chq-pub-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-off { display: none; }
   .chq-pub-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-on { display: inline; }
 
-  @media (max-width: 700px) {
-    .chq-pub-sessions-layout { grid-template-columns: 1fr; gap: 20px; }
-    /* task-w49-h (DEC-990 amendment): README's page-title phone register
-       (25-27px/700/-0.04em) inside the surface's own ≤700px breakpoint. */
-    .chq-pub-surface-title { font-size: 26px; }
-    /* DEC-367 (wave 50 amendment): the phone tap floor -- the Save/Saved
-       pill above sizes to padding on desktop, per docs/design/README.md
-       §Controls. */
-    .chq-pub-save { min-height: 44px; }
-  }
-
   /* ===== task-w1-i: itinerary label flip on /schedule + /agenda's list row,
      and the session detail-page itinerary control =====
      Owned by task-w1-i; another lane may append its own labelled block
@@ -250,9 +239,6 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
   }
   .chq-pub-agenda-col { min-width: 0; }
   .chq-pub-agenda-rail { display: flex; flex-direction: column; gap: 26px; }
-  @media (max-width: 700px) {
-    .chq-pub-agenda-layout { grid-template-columns: 1fr; gap: 20px; }
-  }
 
   /* ===== task-w1-d (DEC-555 amendment): /schedule rebuilt to frame 10--12
      =====
@@ -366,9 +352,47 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     opacity: 0;
     margin: 0;
   }
+  /* DEC-385 (w85 amendment): this fragment's THREE phone declarations are
+     consolidated into ONE block at the true end of the file -- previously
+     .chq-pub-surface-title's 26px phone override sat mid-file (after
+     .chq-pub-sessions-layout) and was silently beaten by this file's OWN
+     later top-level .chq-pub-surface-title rule (font-size 36px,
+     task-w49-h, above): same selector, same specificity, later source
+     position wins regardless of the earlier rule's @media condition
+     matching. Moving every phone rule here (after every top-level rule
+     RAIL_CSS declares) is what makes "last in source wins" agree with
+     "narrow overrides wide" again -- the DEC-385 w85 finding's exact
+     failure mode, closed for this file the same way content.css/comms.css
+     were. */
   @media (max-width: 700px) {
+    .chq-pub-sessions-layout { grid-template-columns: 1fr; gap: 20px; }
+    /* task-w49-h (DEC-990 amendment): README's page-title phone register
+       (25-27px/700/-0.04em) inside the surface's own ≤700px breakpoint. */
+    .chq-pub-surface-title { font-size: 26px; }
+    /* DEC-367 (wave 50 amendment): the phone tap floor -- the Save/Saved
+       pill above sizes to padding on desktop, per docs/design/README.md
+       §Controls. */
+    .chq-pub-save { min-height: 44px; }
+    .chq-pub-agenda-layout { grid-template-columns: 1fr; gap: 20px; }
     .chq-pub-schedule-layout { grid-template-columns: 1fr; gap: 20px; }
     .chq-pub-schedule-row { grid-template-columns: 1fr auto; }
     .chq-pub-schedule-row-gutter { grid-column: 1 / -1; flex-direction: row; gap: 10px; }
+    /* docs/design/Chautauqua Public and Portal.dc.html:880
+       \`<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Remove</span>\`
+       -- /schedule's Remove control is a bordered button at the 44px floor
+       on the 390 frame, not the plain text link .chq-pub-schedule-remove
+       renders at every other width. Phone-only per DEC-385
+       single-direction. */
+    .chq-pub-schedule-remove {
+      border: 1px solid var(--chq-border);
+      /* --chq-r-ctl-phone (theme.ts): the 6px phone control radius. */
+      border-radius: var(--chq-r-ctl-phone);
+      background: var(--chq-surface-sunk);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+    }
   }
 `;
