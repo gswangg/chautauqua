@@ -286,6 +286,13 @@ describe("SSR stylesheet CSS token + class contract (DEC-970)", () => {
         "children (.chq-pub-agenda-list, .chq-pub-agenda-list-item, etc.), not the wrapper itself.",
     ],
     [
+      "chq-portal-copresenter-fields",
+      "portal/edit.tsx: DEC-029's wave-108 amendment turned the co-presenter <form> into a plain container " +
+        "whose controls join #chq-portal-edit-form via the `form` attribute. The element it replaced carried " +
+        "no class and no bare-`form` rule ever styled it; every visual treatment lives on its children " +
+        "(.chq-portal-copresenter-names, -email-role, -role, -submit), so the wrapper itself is style-free.",
+    ],
+    [
       "chq-pub-sessions-list",
       "sessions.tsx: the <div> is the sessions-layout grid's first (1fr) column; its width comes from the " +
         "parent .chq-pub-sessions-layout grid-template-columns, and its internal spacing comes entirely from " +
