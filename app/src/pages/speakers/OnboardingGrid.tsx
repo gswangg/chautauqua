@@ -555,7 +555,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   // click that failed.
   async function applyCellStatus(assignmentId: string, desired: AssignmentStatus, speakerName: string, taskTitle: string) {
     if (!grid) return;
-    const previous = grid;
+    const previousCell = grid.rows
+      .flatMap((row) => row.cells)
+      .find((cell) => cell.assignmentId === assignmentId);
+    if (!previousCell) return;
+    const previousStatus = previousCell.status;
+    const previousCompletedAt = previousCell.completedAt;
 
     setGrid({
       ...grid,
@@ -574,7 +579,26 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
       setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
     } catch (err) {
-      setGrid(previous);
+      // DEC-265 wave-110 amendment: rewrite only the failed assignment's
+      // cell back to its pre-flip status -- a whole-grid snapshot would
+      // clobber every concurrent success that landed while this request
+      // was in flight. If the row is gone (page/filter changed underneath),
+      // there is nothing to roll back to; do not reinstate vanished rows.
+      setGrid((current) =>
+        current
+          ? {
+              ...current,
+              rows: current.rows.map((row) => ({
+                ...row,
+                cells: row.cells.map((cell) =>
+                  cell.assignmentId === assignmentId
+                    ? { ...cell, status: previousStatus, completedAt: previousCompletedAt }
+                    : cell,
+                ),
+              })),
+            }
+          : current,
+      );
       setPendingFailure({
         assignmentId,
         message: cellFailureMessage(speakerName, taskTitle, err),
@@ -616,7 +640,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     speakerName: string,
   ) {
     if (!grid) return;
-    const previous = grid;
+    const previousParticipation = grid.rows
+      .find((row) => row.contact.id === contactId)
+      ?.contact.participations.find((p) => p.participantId === participantId);
+    if (!previousParticipation) return;
+    const previousInviteStatus = previousParticipation.inviteStatus;
 
     setGrid({
       ...grid,
@@ -640,7 +668,30 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       await apiPatch(`/submissions/${submissionId}/participants/${participantId}`, { inviteStatus: desired });
       setPendingFailure((prev) => (prev && prev.participantId === participantId ? null : prev));
     } catch (err) {
-      setGrid(previous);
+      // DEC-265 wave-110 amendment: rewrite only the failed participant's
+      // inviteStatus back to its pre-flip value -- a whole-grid snapshot
+      // would clobber every concurrent success. If the row is gone (page/
+      // filter changed underneath), there is nothing to roll back to.
+      setGrid((current) =>
+        current
+          ? {
+              ...current,
+              rows: current.rows.map((row) =>
+                row.contact.id === contactId
+                  ? {
+                      ...row,
+                      contact: {
+                        ...row.contact,
+                        participations: row.contact.participations.map((p) =>
+                          p.participantId === participantId ? { ...p, inviteStatus: previousInviteStatus } : p,
+                        ),
+                      },
+                    }
+                  : row,
+              ),
+            }
+          : current,
+      );
       setPendingFailure({
         assignmentId: null,
         participantId,
