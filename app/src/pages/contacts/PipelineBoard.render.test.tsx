@@ -1166,3 +1166,93 @@ describe('PipelineBoard: empty stage column (item 5, B7 exemplar)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
+
+// v12 design pack, phone frame "Pipeline · 390" — "One column at a time"
+// (docs/design/Chautauqua Contacts.dc.html:443-478). Two things the frame
+// draws on every phone card that the strip was missing:
+//
+//   * a right-flushed "Move ›" control (min-height:44px, horizontal
+//     padding, flex-shrink:0). Drag is the desktop board's move
+//     affordance and has NO touch equivalent — ruling B8 requires every
+//     drag to have one — so at 390 the card needs a named control. It
+//     opens the SAME EntryDetailPanel the name button does, so no stage
+//     control returns to the card face (w4-c/DEC-898 stands).
+//   * the fit chip. The desktop card has carried it since DEC-821; the
+//     phone card did not, so one fact changed vocabulary between the two
+//     widths — exactly what the "status tokens pair by density, not by
+//     device" ruling forbids.
+describe('PipelineBoard phone card matches the v12 "Pipeline · 390" frame', () => {
+  function phoneCards(): HTMLElement[] {
+    const list = document.querySelector('.chq-contacts-pipeline-phone-list') as HTMLElement;
+    return [...list.querySelectorAll('.chq-contacts-pipeline-phone-card')] as HTMLElement[];
+  }
+
+  it('gives every phone card a right-flushed Move control that names the person and their stage', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const [card] = phoneCards();
+    const move = within(card!).getByRole('button', { name: 'Move Ada Lovelace out of Identified' });
+    expect(move).toHaveClass('chq-contacts-pipeline-phone-card-move');
+    // The frame draws it as the row's last element, outside the identity
+    // stack -- not another line inside the card body.
+    expect(move.parentElement).toBe(card);
+    expect(card!.querySelector('.chq-contacts-pipeline-phone-card-body')).not.toContainElement(move);
+
+    // Still no stage <select> on the card face (w4-c/DEC-898).
+    expect(card!.querySelector('select')).toBeNull();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('opens the same detail panel the name button opens, so the Stage picker stays the one move path', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': {
+        entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
+        contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
+        activity: { items: [], total: 0, page: 1, perPage: 200 },
+      },
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const [card] = phoneCards();
+    fireEvent.click(within(card!).getByRole('button', { name: 'Move Ada Lovelace out of Identified' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
+    expect((within(dialog).getByLabelText('Stage') as HTMLSelectElement).value).toBe('identified');
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('carries the same fit chip vocabulary as the desktop card — rated and unrated alike', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const list = document.querySelector('.chq-contacts-pipeline-phone-list') as HTMLElement;
+
+    // Identified is the default phone stage: Ada (fitScore null) is shown.
+    expect(within(list).getByText('Unrated')).toHaveClass('chq-contacts-pipeline-card-fit-unrated');
+
+    // Switch the strip to Contacted for Grace (fitScore 4 + a rationale).
+    const strip = document.querySelector('.chq-contacts-pipeline-phone-stages') as HTMLElement;
+    fireEvent.click(within(strip).getByRole('button', { name: /^Contacted/ }));
+
+    expect(within(list).getByText('Fit 4')).toHaveClass('chq-contacts-pipeline-card-fit-rated');
+    expect(within(list).getByText('Keynoted a similar event last year')).toHaveClass(
+      'chq-contacts-pipeline-card-rationale',
+    );
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});

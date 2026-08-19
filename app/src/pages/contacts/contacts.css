@@ -408,6 +408,45 @@
     gap: 16px;
   }
 
+  /* v12 phone frame "Contacts" (390): the filter builder is one control per
+     line. The desktop row is a wrapping baseline run of selects/inputs; at
+     390 that run collapses to slivers well under the 44px floor's WIDTH
+     half (the ruling: min-height alone is not a tap target -- the hit box
+     is only as wide as the control). Each rule group therefore becomes a
+     full-width stacked block, and the shared .chq-input/.chq-select/.chq-btn
+     44px phone rule (styles.css) supplies the height. */
+  .chq-contacts-filter-rules-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .chq-contacts-filter-rule-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .chq-contacts-filter-rules-end {
+    margin-left: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  /* The frame draws the view chips as a horizontal scroller of 44px pills
+     with real horizontal padding (0 14px, radius 99px). .chq-chipstrip
+     already scrolls and styles.css already floors .chq-pill at 44px on
+     phone; what is missing is the padding that gives the pill a hit box
+     wider than its glyphs, so it is restated here scoped to this page's
+     own strip rather than by redefining the shared token. */
+  .chq-contacts-tabstrip-row .chq-chipstrip .chq-pill {
+    padding: 0 14px;
+  }
+
   /* Search + segment controls: full-width, 44px, phone control radius,
      centred flex (DEC-383: no var(--x, #hex) fallbacks). */
   .chq-contacts-tab-filters {
@@ -460,12 +499,25 @@
     width: 100%;
   }
 
+  /* v12 phone frame "Contacts" (390): the card is NOT a stack of five
+     full-width blocks -- the frame draws one row per contact,
+     `display:flex; align-items:center; gap:13px`, with the identity stack
+     (name / company · role / labels) taking the flexible middle and the
+     row's action right-flushed and flex-shrink:0. Reproduced here as a
+     three-track grid on the same <tr>, because a <td> cannot be reparented
+     from CSS: the selection check leads (column 1), the three text cells
+     stack in column 2 (rows 1-3), and the action spans the full height on
+     the right. Explicit grid-template-rows so the two spanning cells can
+     use a `1 / 4` line pair -- `-1` resolves against the EXPLICIT grid only
+     and would silently collapse to a single implicit row. */
   .chq-contacts-table tbody tr {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 16px 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    column-gap: 13px;
+    row-gap: 3px;
+    padding: 15px 0;
     border-bottom: 1px solid var(--chq-hairline);
   }
 
@@ -483,27 +535,52 @@
     border-bottom: none;
   }
 
-  /* Selection checkbox cell sits top-right of the card, 44px tap target. */
+  /* The loading placeholder row is a single colSpan={5} cell -- under the
+     grid above its `colspan` attribute is inert, so it would sit in track 1
+     at ~0 width. Span it explicitly. */
+  .chq-contacts-table tbody td[colspan] {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  /* Selection checkbox leads the row, 44px tap target, full card height. */
   .chq-contacts-table tbody td:first-child {
-    order: 2;
-    align-self: flex-end;
+    grid-column: 1;
+    grid-row: 1 / 4;
     min-height: 44px;
     display: flex;
     align-items: center;
   }
 
   .chq-contacts-table tbody td:nth-child(2) {
-    order: 1;
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .chq-contacts-table tbody td:nth-child(3) {
-    order: 3;
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 13px;
+    color: var(--chq-ink-2);
   }
 
   .chq-contacts-table tbody td:nth-child(4) {
-    order: 4;
+    grid-column: 2;
+    grid-row: 3;
     font-size: 13px;
     color: var(--chq-ink-2);
+  }
+
+  /* Frame: the row's name is 16px display weight on phone, one step up
+     from the 15px desktop directory cell. */
+  .chq-contacts-name {
+    font-size: 16px;
+  }
+
+  /* Company · role truncates to one line rather than wrapping the card
+     open (frame: white-space:nowrap + ellipsis on that line). */
+  .chq-contacts-company-cell {
+    min-width: 0;
   }
 
   /* DEC-937 amendment (wave 24): the phone card's label is sourced from
@@ -520,9 +597,19 @@
     margin-bottom: 3px;
   }
 
+  /* The row's one action, right-flushed across the card's full height and
+     never shrunk below its label (frame: flex-shrink:0, min-height:44px,
+     padding 0 14px). styles.css floors .chq-btn-tertiary at 44px on phone;
+     the padding is what makes the hit box wider than the word "Open". */
   .chq-contacts-table tbody td:nth-child(5) {
-    order: 5;
-    align-self: flex-start;
+    grid-column: 3;
+    grid-row: 1 / 4;
+    align-self: center;
+  }
+
+  .chq-contacts-table tbody td:nth-child(5) .chq-btn {
+    padding: 0 14px;
+    border-radius: var(--chq-r-ctl-phone);
   }
 
   .chq-contacts-name-cell,
@@ -739,5 +826,93 @@
    and weight stay with .chq-btn-tertiary in styles.css. */
 .chq-contacts-delete-trigger {
   white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------- */
+/* v12 phone frame "Contact · 390" — "The errand you actually run on a     */
+/* phone" (docs/design/Chautauqua Contacts.dc.html:400-437).               */
+/*                                                                         */
+/* The frame is a three-part screen: a fixed header (back link / H1 /      */
+/* sub-line), a scrolling record body, and a pinned action bar. The drawer */
+/* already supplies the first and third (styles.css .chq-drawer is         */
+/* full-bleed at 390 via width:min(520px,100vw), and                       */
+/* .chq-contacts-drawer-actions is already position:sticky). What the      */
+/* frame changes at 390 is GEOMETRY inside those parts, and only that is   */
+/* restated here — DEC-385 single-direction, so every rule below is a      */
+/* max-width override of an unconditional desktop rule that keeps its      */
+/* exact current rendering above 700px.                                    */
+/* ---------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  /* Frame: each fact is a stacked pair — the uppercase micro-label on its
+     own line, the value beneath at 15/1.55 — not the desktop record's
+     130px label gutter, which at 390 leaves the value a ~180px column and
+     breaks every email address mid-token. */
+  .chq-contacts-record-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    align-items: stretch;
+    padding: 13px 0;
+  }
+
+  /* Same collapse for "Across your events": event name over the sentence,
+     the event at 14/600 (the frame steps it up one from the desktop
+     row's 13px, since it is the line you scan). */
+  .chq-contacts-history-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+    align-items: stretch;
+    padding: 13px 0;
+  }
+
+  .chq-contacts-history-event {
+    font-size: 14px;
+  }
+
+  /* The scope sentence right-aligns on desktop to sit over the
+     right-flushed Save; at 390 the bar's buttons are full-width, so a
+     right-ragged sentence has nothing to align to. */
+  .chq-contacts-save-scope-note {
+    text-align: left;
+  }
+
+  /* The frame's action bar: `padding:12px 16px 16px; display:flex; gap:8px`
+     with a filled primary at flex:1 and a bordered secondary beside it,
+     BOTH at min-height:48px — the frame's own floor for a footer button,
+     four above the 44px minimum. Our bar carries more than the frame's two
+     buttons (Delete, Email, Add to event, Cancel, Save), so the row wraps
+     into pairs rather than scrolling: `flex:1 1 45%` gives two per line at
+     390 and each still clears 48px with real horizontal padding. */
+  .chq-contacts-drawer-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .chq-contacts-drawer-actions-right {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chq-contacts-drawer-actions-right .chq-btn {
+    flex: 1 1 45%;
+    min-height: 48px;
+    padding: 0 16px;
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  .chq-contacts-delete-trigger {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 16px;
+  }
+
+  /* Modal frame "New contact" at 390: the two-up First/Last and
+     Company/Title rows stack — a 1fr 1fr grid inside a full-bleed phone
+     modal gives each field ~170px, under the width half of the 44px
+     floor. */
+  .chq-contacts-new-contact-row-2up {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
 }
 

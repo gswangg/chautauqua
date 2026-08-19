@@ -401,6 +401,26 @@ export function PipelineBoard() {
                       {entry.firstName} {entry.lastName}
                     </button>
                     {entry.company && <span className="chq-contacts-pipeline-card-company">{entry.company}</span>}
+                    {/* v12 phone frame "Pipeline · 390": the card body is
+                        name / company / (fit chip · why-them) / age -- the
+                        fit chip was missing from the phone strip while the
+                        desktop card has carried it since DEC-821, so the
+                        same fact silently changed vocabulary between the
+                        two widths. Same markup, same classes. */}
+                    <div className="chq-contacts-pipeline-card-fit-row">
+                      {entry.fitScore !== null ? (
+                        <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-rated">
+                          Fit {entry.fitScore}
+                        </span>
+                      ) : (
+                        <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-unrated">
+                          Unrated
+                        </span>
+                      )}
+                      {entry.rationale && (
+                        <span className="chq-contacts-pipeline-card-rationale">{entry.rationale}</span>
+                      )}
+                    </div>
                     <div className={`chq-contacts-pipeline-card-age${age.stale ? ' chq-contacts-pipeline-card-age-stale' : ''}`}>
                       {age.text}
                     </div>
@@ -418,6 +438,23 @@ export function PipelineBoard() {
                       </div>
                     )}
                   </div>
+                  {/* v12 phone frame "Pipeline · 390": every card row ends
+                      in a right-flushed, flex-shrink:0 "Move ›" control at
+                      min-height:44px with real horizontal padding. Drag is
+                      the desktop board's move affordance and has no touch
+                      equivalent (ruling B8: "every drag has a keyboard
+                      equivalent"), so the phone card needs a named one.
+                      It opens the SAME EntryDetailPanel the name button
+                      does -- where the Stage select lives -- so no stage
+                      control returns to the card face (w4-c/DEC-898). */}
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-secondary chq-contacts-pipeline-phone-card-move"
+                    aria-label={`Move ${entry.firstName} ${entry.lastName} out of ${PIPELINE_STAGE_LABELS[entry.stage]}`}
+                    onClick={() => setOpenEntryId(entry.id)}
+                  >
+                    Move &rsaquo;
+                  </button>
                 </li>
                 );
               })}
