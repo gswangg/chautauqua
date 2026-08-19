@@ -90,6 +90,16 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
     role: "organizer",
     params: { contactId: "seed_contact_0001" },
   },
+  // Design pack v12: the task view (app/src/pages/speakers/TaskView.tsx),
+  // "One task, every speaker". taskIds[0] in scripts/seed.ts is
+  // seedId("task", 1) -- the 'Hotel stay requirement form' template, the
+  // form-kind task the header comment above already names, so this row
+  // sweeps the answered tab with real saved responses behind it.
+  {
+    path: "/admin/speakers/tasks/seed_task_0001",
+    role: "organizer",
+    params: { taskId: "seed_task_0001" },
+  },
   { path: "/admin/content", role: "organizer" },
   // DEC-935: a session's content (deliverables/versions/notes) at its own
   // URL, not behind ?submissionId= on the worklist route.

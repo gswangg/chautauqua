@@ -563,6 +563,16 @@ const CASES: RouteCase[] = [
     requestPath: `/api/v1/tasks/${IDS.taskB}/assign`,
     body: { contactIds: [IDS.contactA] },
   },
+  // Joined the population with design pack v12's task view: "not needed"
+  // removes an assignment, and like /assign it reads contact ids off the
+  // body. Path names org B's own task; the body carries org A's real
+  // contact, which findContactsForOrg refuses before any delete runs.
+  {
+    method: "POST",
+    path: "/api/v1/tasks/:id/unassign",
+    requestPath: `/api/v1/tasks/${IDS.taskB}/unassign`,
+    body: { contactIds: [IDS.contactA] },
+  },
   // Joined the population in wave 59 (DEC-746 amendment made createTask
   // accept an optional contactIds subset, so the registration now reads a
   // body id). Path names org B's event; the body carries org A's real
@@ -640,6 +650,7 @@ const CROSS_ORG_BODY_LEDGER: LedgerEntry[] = [
   { method: "GET", path: "/api/v1/review/plans", expectedStatus: 404 },
   { method: "GET", path: "/api/v1/review/submissions/:id", expectedStatus: 404 },
   { method: "POST", path: "/api/v1/tasks/:id/assign", expectedStatus: 400 },
+  { method: "POST", path: "/api/v1/tasks/:id/unassign", expectedStatus: 400 },
   { method: "POST", path: "/api/v1/events/:eventId/tasks", expectedStatus: 400 },
   {
     method: "POST",

@@ -177,6 +177,10 @@ const LEDGER: Record<string, LedgerEntry> = {
     verdict: 'proven',
     test: 'pages/speakers/SpeakerDetailPage-refusal-shapes.render.test.tsx',
   },
+  'pages/speakers/TaskView.tsx': {
+    verdict: 'proven',
+    test: 'pages/speakers/TaskView-refusal-shapes.render.test.tsx',
+  },
   'pages/submissions/DeleteSubmissionsPage.tsx': {
     verdict: 'proven',
     test: 'pages/submissions/DeleteSubmissionsPage-refusal-shapes.render.test.tsx',

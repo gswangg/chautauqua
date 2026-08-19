@@ -12,3 +12,4 @@ export * from "./tasks/grid";
 export * from "./tasks/crud";
 export * from "./tasks/reminders";
 export * from "./tasks/speaker-detail";
+export * from "./tasks/task-view";

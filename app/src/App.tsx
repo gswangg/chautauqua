@@ -28,6 +28,7 @@ const pageLoaders = {
     import('./pages/submissions/SubmissionDetailPage').then((m) => ({ default: m.SubmissionDetailPage })),
   speakerDetail: () =>
     import('./pages/speakers/SpeakerDetailPage').then((m) => ({ default: m.SpeakerDetailPage })),
+  taskView: () => import('./pages/speakers/TaskView').then((m) => ({ default: m.TaskView })),
   submissionsDelete: () =>
     import('./pages/submissions/DeleteSubmissionsPage').then((m) => ({ default: m.DeleteSubmissionsPage })),
   notFound: () => import('./pages/NotFound').then((m) => ({ default: m.NotFoundPage })),
@@ -46,6 +47,7 @@ const ContactsMergePage = lazy(pageLoaders.contactsMerge);
 const SettingsPage = lazy(pageLoaders.settings);
 const SubmissionDetailPage = lazy(pageLoaders.submissionDetail);
 const SpeakerDetailPage = lazy(pageLoaders.speakerDetail);
+const TaskViewPage = lazy(pageLoaders.taskView);
 const DeleteSubmissionsPage = lazy(pageLoaders.submissionsDelete);
 const NotFoundPage = lazy(pageLoaders.notFound);
 
@@ -100,6 +102,12 @@ const ELEMENT_BY_PATTERN: Record<(typeof ADMIN_ROUTE_PATTERNS)[number], ReactNod
   // above -- a static path (/speakers) is already claimed by NAV_SECTIONS,
   // so declaration order here doesn't matter.
   '/speakers/:contactId': <SpeakerDetailPage />,
+  // Design pack v12: the task view ("One task, every speaker"), opened from
+  // a grid column head. Three segments against the two of
+  // '/speakers/:contactId' above, so React Router's ranking never has to
+  // choose between them and a contact id can never be swallowed by the
+  // literal 'tasks' segment.
+  '/speakers/tasks/:taskId': <TaskViewPage />,
   // DEC-935: a session's content (deliverables, versions, notes) lives at
   // its own URL, not behind ?submissionId= on the worklist route.
   // ContentApp itself reads the id via useParams and renders the

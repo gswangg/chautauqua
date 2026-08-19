@@ -439,6 +439,50 @@ export async function assignTask(db: Db, taskId: string, contactIds: string[]): 
   await createTaskAssignments(db, taskId, contactIds, new Date());
 }
 
+/** assignTask's mirror -- design pack v12's task view, "One task · still
+ * waiting" frame: `Marking a task not needed removes it for that speaker
+ * only · it stays on everyone else`. That is UNASSIGNMENT, not a third
+ * status: task_assignment carries only pending|complete (DESIGN-RULINGS,
+ * "A per-selection due date is not worth its cost"), so "not needed" is
+ * expressed by the row ceasing to exist for those contacts and staying
+ * untouched for everyone else. Nothing in the schema changes.
+ *
+ * Chunked (chunkIds, DEC-078) exactly as createTaskAssignments' existence
+ * pre-read is, so the caller's contact list never reaches inArray
+ * unbounded. Returns how many assignment rows were actually removed, so a
+ * caller can report the real number rather than the requested one. */
+export async function deleteTaskAssignments(db: Db, taskId: string, contactIds: string[]): Promise<number> {
+  if (contactIds.length === 0) return 0;
+  let removed = 0;
+  for (const batch of chunkIds(contactIds)) {
+    const rows = await db
+      .delete(schema.taskAssignment)
+      .where(and(eq(schema.taskAssignment.taskId, taskId), inArray(schema.taskAssignment.contactId, batch)))
+      .returning({ id: schema.taskAssignment.id });
+    removed += rows.length;
+  }
+  return removed;
+}
+
+/** The subset of `contactIds` that actually holds a task_assignment on
+ * `taskId`. The unassign route's precondition (src/routes/tasks.ts): a
+ * removal must name rows that exist, and unlike ASSIGNMENT it must NOT be
+ * gated on current roster membership -- a contact whose submission has
+ * since left 'accepted' still holds a real assignment row, and refusing to
+ * remove it would strand the very row the organizer is trying to clear.
+ * Chunked per DEC-078, mirroring filterRosterContactIds above. */
+export async function filterAssignedContactIds(db: Db, taskId: string, contactIds: string[]): Promise<Set<string>> {
+  const found = new Set<string>();
+  for (const batch of chunkIds(contactIds)) {
+    const rows = await db
+      .selectDistinct({ contactId: schema.taskAssignment.contactId })
+      .from(schema.taskAssignment)
+      .where(and(eq(schema.taskAssignment.taskId, taskId), inArray(schema.taskAssignment.contactId, batch)));
+    for (const row of rows) found.add(row.contactId);
+  }
+  return found;
+}
+
 export type TaskAssignmentStatus = "pending" | "complete";
 
 export interface AssignmentRecord {

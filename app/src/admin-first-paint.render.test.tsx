@@ -194,6 +194,9 @@ const MOUNT_CONFIG: Record<string, MountConfig> = {
   'pages/contacts/MergePage.tsx': { path: '/contacts/merge?ids=ct-1,ct-2' },
   'pages/submissions/SubmissionDetailPage.tsx': { path: '/submissions/sub-1', routePath: '/submissions/:id' },
   'pages/speakers/SpeakerDetailPage.tsx': { path: '/speakers/ct-1', routePath: '/speakers/:contactId' },
+  // Design pack v12: the task view -- one task across every speaker, opened
+  // from a grid column head.
+  'pages/speakers/TaskView.tsx': { path: '/speakers/tasks/task-1', routePath: '/speakers/tasks/:taskId' },
   'pages/submissions/DeleteSubmissionsPage.tsx': { path: '/submissions/delete?ids=sub-1' },
 };
 

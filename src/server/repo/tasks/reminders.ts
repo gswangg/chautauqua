@@ -330,6 +330,15 @@ function toReminderAssignment(r: OutstandingRow): ReminderAssignment {
   };
 }
 
+/** The event-independent head of every task-reminder subject. Extracted so
+ * the one place that COMPOSES a reminder subject (buildReminderMessage
+ * below) and the one place that RECOGNISES one in email_log
+ * (countRemindSends, ./task-view.ts — design pack v12's task view needs a
+ * per-speaker send count, which task_assignment does not carry) share one
+ * literal instead of two copies that could drift. A prefix, not the whole
+ * subject, so renaming an event never orphans its own send history. */
+export const REMINDER_SUBJECT_PREFIX = "Action needed: outstanding tasks for ";
+
 /** ONE builder for the reminder email body — used by both the real send
  * (sendReminderEmails) and the preview endpoint (previewRemindNow), so a
  * preview draft is always byte-identical to what a send would produce. */
@@ -350,7 +359,7 @@ export function buildReminderMessage(
   // '{portal_link}' idiom the CFP confirmation email uses (submit.tsx).
   const footer = renderTemplate("{portal_link}", { portal_link: portalLink });
   const text = [header, ...taskLines, "", footer].join("\n");
-  return { subject: `Action needed: outstanding tasks for ${eventName}`, text };
+  return { subject: `${REMINDER_SUBJECT_PREFIX}${eventName}`, text };
 }
 
 /** Sends one reminder email per contact via `mailer`. DEC-023 amendment

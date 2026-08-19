@@ -27,7 +27,10 @@ import {
   countTaskDeleteImpact,
   createTask,
   deleteTask,
+  deleteTaskAssignments,
+  filterAssignedContactIds,
   filterRosterContactIds,
+  getTaskView,
   getAssignmentOwnership,
   getAssignmentResponseDetail,
   getEventOrgId,
@@ -557,6 +560,98 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
 });
 
 // ---------------------------------------------------------------------------
+// Task view (design pack v12: "One task, every speaker" / "One task · still
+// waiting"). The read is a sibling of GET /events/:eventId/onboarding (one
+// grid) and GET /events/:eventId/speakers/:contactId (one speaker); the
+// write is assign's mirror.
+// ---------------------------------------------------------------------------
+
+// GET /api/v1/tasks/:id/roster
+taskRoutes.get("/tasks/:id/roster", requireOrganizer, async (c) => {
+  const auth = requireAuth(c);
+  const taskId = c.req.param("id");
+  const ownership = await getTaskOwnership(c.var.db, taskId);
+  // Existence-hiding (review-IDOR house rule), identical to the sibling
+  // task routes above: a task in another org 404s exactly like one that
+  // does not exist.
+  if (!ownership) throw new ApiError("not_found", "Task not found");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Task not found");
+
+  const view = await getTaskView(c.var.db, taskId);
+  if (!view) throw new ApiError("not_found", "Task not found");
+  return c.json(view);
+});
+
+// POST /api/v1/tasks/:id/unassign
+//
+// design pack v12, "One task · still waiting": `Marking a task not needed
+// removes it for that speaker only · it stays on everyone else`. There is
+// no third assignment status -- task_assignment carries only
+// pending|complete (DESIGN-RULINGS, "A per-selection due date is not worth
+// its cost") -- so "not needed" DELETES those speakers' assignment rows and
+// touches nobody else's.
+taskRoutes.post("/tasks/:id/unassign", requireOrganizer, csrfJson, async (c) => {
+  const auth = requireAuth(c);
+  const taskId = c.req.param("id");
+  const ownership = await getTaskOwnership(c.var.db, taskId);
+  if (!ownership) throw new ApiError("not_found", "Task not found");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Task not found");
+
+  const body = asRecord(await readOptionalJsonBody(c));
+  const contactIds = parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: MAX_TASK_ASSIGNEES }); // DEC-182, DEC-422
+
+  // DEC-120: reject cross-org contact ids before any delete -- atomic, no
+  // partial removal (DEC-019), the same refusal shape /assign uses.
+  //
+  // DEC-370: the two reads range over independent tables (the org contact
+  // directory vs. this task's own assignment rows) and neither depends on
+  // the other, so they issue as one Promise.all; the refusals below are
+  // still evaluated in SOURCE order (org first, assignment second) so a
+  // given bad payload always produces the same error.
+  //
+  // DEC-754/DEC-829 note: unlike /assign, this deliberately does NOT gate
+  // on filterRosterContactIds. Assignment must range over the roster
+  // because minting a row for a non-roster contact creates something the
+  // grid can't show and no reminder path chases; REMOVAL is the opposite
+  // case -- a contact whose submission has since left 'accepted' still
+  // holds a real assignment row, and a roster gate here would strand
+  // exactly the row the organizer is trying to clear. The precondition for
+  // a delete is that the row EXISTS, which filterAssignedContactIds checks.
+  const dedupedContactIds = Array.from(new Set(contactIds));
+  const [orgContacts, assignedIds] = await Promise.all([
+    findContactsForOrg(c.var.db, dedupedContactIds, auth.orgId),
+    filterAssignedContactIds(c.var.db, taskId, dedupedContactIds),
+  ]);
+  const foundIds = new Set(orgContacts.map((r) => r.id));
+  const missing = dedupedContactIds.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    const resolvedNames = orgContacts.map((r) => `${r.firstName} ${r.lastName}`.trim());
+    throw new ApiError("invalid", "One or more contacts do not belong to this org", {
+      contactIds: describeUnresolvedSelection(resolvedNames, missing.length, "refresh the page and reselect"),
+    });
+  }
+
+  const notAssigned = dedupedContactIds.filter((id) => !assignedIds.has(id));
+  if (notAssigned.length > 0) {
+    const resolvedNames = orgContacts.filter((r) => assignedIds.has(r.id)).map((r) => `${r.firstName} ${r.lastName}`.trim());
+    throw new ApiError("invalid", "One or more contacts do not have this task", {
+      contactIds: describeUnresolvedSelection(
+        resolvedNames,
+        notAssigned.length,
+        "the task has already been removed for them -- reload the task view",
+      ),
+    });
+  }
+
+  await deleteTaskAssignments(c.var.db, taskId, dedupedContactIds);
+  // Echo the refreshed task view back, exactly as /assign echoes the
+  // refreshed grid -- the page never re-derives what the write did.
+  const view = await getTaskView(c.var.db, taskId);
+  if (!view) throw new ApiError("not_found", "Task not found");
+  return c.json(view);
+});
+
+// ---------------------------------------------------------------------------
 // Assignment status
 // ---------------------------------------------------------------------------
 
@@ -639,6 +734,15 @@ taskRoutes.get("/task-assignments/:id/response", requireOrganizer, async (c) => 
 
 // ---------------------------------------------------------------------------
 // Bulk remind
+//
+// design pack v12's task view ("Remind the missing" / "Remind all waiting" /
+// the bulk bar's `Remind`) adds NO new reminder endpoint: this pair is
+// already task-scoped (`taskIds`) and contact-scoped (`contactIds`, DEC-694),
+// so the task view posts { taskIds: [thisTask], contactIds } here. That
+// keeps ONE reminder machine -- planManualReminders' MANUAL_DEDUPE_WINDOW_MS
+// gate, so the task view's caption "skips anyone emailed in the last hour"
+// is literally true, and formatTaskLines' per-task body, so "a reminder
+// names only this task" is true too.
 // ---------------------------------------------------------------------------
 
 // POST /api/v1/events/:eventId/onboarding/remind

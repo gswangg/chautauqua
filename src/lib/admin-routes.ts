@@ -28,6 +28,12 @@ export const ADMIN_ROUTE_PATTERNS = [
   "/submissions/delete",
   "/submissions/:id",
   "/speakers/:contactId",
+  // Design pack v12's task view ("One task, every speaker"), reached from a
+  // grid column head. THREE segments, so it can never be confused with the
+  // two-segment "/speakers/:contactId" above -- a contact id is not
+  // swallowed by the literal "tasks" segment and vice versa, in this
+  // matcher and in React Router alike.
+  "/speakers/tasks/:taskId",
   "/content/:submissionId",
 ] as const;
 

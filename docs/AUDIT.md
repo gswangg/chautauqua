@@ -64,14 +64,22 @@ route, not just this one). Comms composition, per-recipient preview, and templat
 fields are built (`/admin/comms`, `src/domain/compose.ts`). See the 100-recipient compose
 cap below.
 
-## J6 — Onboarding dashboard (`/admin/overview`, `/admin/speakers`, `/admin/speakers/:contactId`, tasks)
+## J6 — Onboarding dashboard (`/admin/overview`, `/admin/speakers`, `/admin/speakers/:contactId`, `/admin/speakers/tasks/:taskId`, tasks)
 
 Task assignments (forms, uploads, acknowledgements), reminder cron, and the producer's
 onboarding-progress dashboard are built. `/admin/speakers` is the accepted-speaker roster
 (onboarding/task status per speaker, contact/profile drill-in). `/admin/speakers/:contactId`
 (DEC-930) is the per-speaker detail page the roster's name cell links into: one bounded GET
 carrying that speaker's sessions and task assignments, each row linking to its own submission
-or deliverable. See the reminder cap and Overview row cap below.
+or deliverable. `/admin/speakers/tasks/:taskId` (design pack v12) is the roster's other
+drill-in — one task across every speaker who holds it, opened from a grid column head, with
+an Answered tab (the saved responses, read through `GET /api/v1/task-assignments/:id/response`)
+and a Still-waiting tab (per-speaker reminder history and status). Its writes are the existing
+`PATCH /api/v1/task-assignments/:id`, the task-scoped `POST
+/api/v1/events/:eventId/onboarding/remind` pair, `PATCH /api/v1/tasks/:id` (the due date moves
+for the whole task — v12 has no per-speaker due date) and `POST /api/v1/tasks/:id/unassign`
+("not needed": the task is removed for those speakers only). See the reminder cap and Overview
+row cap below.
 
 ## J7 — Speaker self-serve portal (`/portal`, `/portal/profile`, `/portal/submissions`, `/portal/submissions/:id`, `/portal/submissions/:id/edit`, `/portal/tasks`, `/portal/tasks/:assignmentId/form`, `/portal/resources`, `/portal/preview`)
 

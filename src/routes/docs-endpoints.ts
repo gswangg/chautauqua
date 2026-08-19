@@ -171,6 +171,8 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "DELETE", path: "/api/v1/tasks/:id", role: "organizer" },
       { method: "GET", path: "/api/v1/tasks/:id/delete-preview", role: "organizer (DEC-933 amendment: names what the DELETE above destroys)" },
       { method: "POST", path: "/api/v1/tasks/:id/assign", role: "organizer" },
+      { method: "GET", path: "/api/v1/tasks/:id/roster", role: "organizer (design pack v12: one task across every speaker who holds it)" },
+      { method: "POST", path: "/api/v1/tasks/:id/unassign", role: "organizer (design pack v12 'not needed': removes the task for those speakers only)" },
       { method: "PATCH", path: "/api/v1/task-assignments/:id", role: "organizer or assigned speaker" },
       { method: "GET", path: "/api/v1/task-assignments/:id/response", role: "organizer (kind='form' only)" },
       { method: "POST", path: "/api/v1/events/:eventId/onboarding/remind", role: "organizer" },

@@ -1,0 +1,274 @@
+/* Design pack v12's task view -- the "One task, every speaker" and "One
+   task · still waiting" frames in docs/design/Chautauqua Speakers.dc.html.
+   Page lane: every class here is `.chq-taskview-*` and nothing in
+   styles.css or speakers.css is redefined. The status chips the waiting
+   tab renders come from statusCellClass (./TaskCell) and are styled in
+   speakers.css -- their meaning/density declarations are deliberately NOT
+   restated here. */
+
+.chq-taskview-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* Header: back link over the task title over one factual sub-line, with
+   the tab-dependent action set flushed right and baselined to it. */
+.chq-taskview-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.chq-taskview-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.chq-taskview-back {
+  font-size: 13px;
+  font-weight: 700;
+  align-self: flex-start;
+}
+
+/* The frame draws this at line-height:1; DEC-991's wave-27 amendment
+   overrides that -- a bare line-height:1 on the display face is not
+   guaranteed to contain its own glyphs, so the declaration is dropped
+   rather than substituted with a tighter-but-legal number. */
+.chq-taskview-title {
+  font-family: var(--chq-font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+
+.chq-taskview-sub {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-taskview-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* The tab row is ruled top and bottom -- it is the seam between "which
+   half of the roster am I looking at" and the rows themselves. */
+.chq-taskview-tabs {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
+  padding: 12px 0;
+  flex-wrap: wrap;
+}
+
+/* Outlined (inactive) and filled-ink (active) pills. The two paddings
+   differ by exactly the outlined pill's 1px border, so switching tabs
+   never moves the row by a pixel. */
+.chq-taskview-tab {
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--chq-ink-2);
+  background: none;
+  border: 1px solid var(--chq-border);
+  border-radius: 99px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background-color var(--chq-motion-color);
+}
+
+/* Both hovers re-assert their own colour: a bare background change would
+   let the shell's a:hover ink win and repaint the label. */
+.chq-taskview-tab:hover {
+  background: var(--chq-surface-sunk);
+  color: var(--chq-ink-2);
+}
+
+.chq-taskview-tab:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: 2px;
+}
+
+.chq-taskview-tab-on {
+  font-weight: 600;
+  color: var(--chq-on-ink);
+  background: var(--chq-ink);
+  border: 0;
+  padding: 7px 14px;
+}
+
+.chq-taskview-tab-on:hover {
+  background: var(--chq-ink);
+  color: var(--chq-on-ink);
+}
+
+.chq-taskview-tabmeta {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+/* The bulk bar itself is the shared .chq-bulkbar (styles.css) -- same
+   surface, radius, padding and gap the frame draws. Only the two type
+   registers inside it are page-scoped. */
+.chq-taskview-bulk-count {
+  font-family: var(--chq-font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-taskview-bulk-note {
+  font-size: 12px;
+}
+
+.chq-taskview-clear {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 4px;
+}
+
+/* Both tables: a header row closed by the 2px ink rule, rows separated by
+   a hairline. The two tabs differ only in track widths and vertical
+   alignment -- answers are baselined (the answer text wraps and must sit
+   on the same first line as the name), waiting rows are centred (every
+   cell is one line). */
+.chq-taskview-head-row {
+  display: grid;
+  gap: 18px;
+  padding: 0 0 9px;
+  border-bottom: 2px solid var(--chq-ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-taskview-row {
+  display: grid;
+  gap: 18px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-taskview-answers .chq-taskview-head-row,
+.chq-taskview-answers .chq-taskview-row {
+  grid-template-columns: 26px 178px 1fr 132px 90px;
+}
+
+.chq-taskview-answers .chq-taskview-row {
+  align-items: baseline;
+  padding: 15px 0;
+}
+
+.chq-taskview-waiting .chq-taskview-head-row,
+.chq-taskview-waiting .chq-taskview-row {
+  grid-template-columns: 26px 178px 1fr 148px 132px;
+}
+
+.chq-taskview-waiting .chq-taskview-row {
+  align-items: center;
+  padding: 14px 0;
+}
+
+.chq-taskview-row:hover {
+  background: var(--chq-surface-sunk);
+}
+
+.chq-taskview-speaker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-taskview-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-taskview-company {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-taskview-answer {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}
+
+.chq-taskview-standing {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--chq-ink-2);
+}
+
+/* The exception register. Worn by ONE row in its column -- the answer that
+   landed today, the speaker who has been chased most -- never by the
+   column as a whole. */
+.chq-taskview-emph {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-ink);
+}
+
+.chq-taskview-quiet {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-taskview-open {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chq-taskview-foot {
+  padding: 15px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
+/* tap-floor-exempt: a checkbox is a native control whose hit area is the
+   whole row cell, and styles.css's own .chq-check carries the same
+   exemption -- the frame's 17px box is the drawn size, not the target. */
+.chq-taskview-check {
+  width: 17px;
+  height: 17px;
+}
+
+@media (max-width: 700px) {
+  /* Phone: the two tabs and the row-level links become real targets, and
+     the five-track grids collapse -- a 178px name column beside a 1fr
+     answer does not survive a 360px viewport. */
+  .chq-taskview-tab,
+  .chq-taskview-open,
+  .chq-taskview-clear {
+    min-height: 44px;
+  }
+
+  .chq-taskview-answers .chq-taskview-head-row,
+  .chq-taskview-waiting .chq-taskview-head-row {
+    display: none;
+  }
+
+  .chq-taskview-answers .chq-taskview-row,
+  .chq-taskview-waiting .chq-taskview-row {
+    grid-template-columns: 26px 1fr;
+    align-items: start;
+    gap: 10px;
+  }
+}
