@@ -1,5 +1,18 @@
 # Contacts v12 phone audit (task w1-f)
 
+> A finding recorded here is a claim about the tree, not a permanent record.
+> It is re-derived against current code before it is scheduled, and once it
+> stops reproducing it is rewritten as RESOLVED with a file:line citation of
+> where the behaviour now lives (DEC-976 wave-106). Finding 3 was
+> re-derived (wave 106) against `app/src/pages/contacts/MergePage.tsx` and
+> still reproduces as written — `.chq-contacts-merge-rule-box` (line 347)
+> still splits the frame's one line across `.chq-contacts-merge-rule-box-rule`
+> (line 348) and `.chq-contacts-merge-impact` (line 350), naming the kept
+> record by `{keepContact.firstName} {keepContact.lastName}` rather than
+> the frame's generic "the record you keep" — left OPEN, and left for task
+> `v12m-w2-c`, which owns landing this in the same batch; not pre-closed
+> here.
+
 Findings surfaced building the "Import CSV · 390" one-column-per-screen
 pager against `docs/design/Chautauqua Contacts.dc.html:483` ('Import CSV ·
 390', body :487-511) and `app/src/pages/contacts/ImportWizard.tsx` +

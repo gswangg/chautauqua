@@ -2,19 +2,24 @@
 
 Numbered findings the task window could not resolve within scope.
 
-## 1. Neither reviewer-scorecard 390 frame draws a tab bar
+> A finding recorded here is a claim about the tree, not a permanent record.
+> It is re-derived against current code before it is scheduled, and once it
+> stops reproducing it is rewritten as RESOLVED with a file:line citation of
+> where the behaviour now lives (DEC-976 wave-106).
+
+## 1. RESOLVED (wave 106, app/src/pages/review/Scorecard.tsx:481, app/src/styles.css:2262, app/src/App.tsx:417) — Neither reviewer-scorecard 390 frame draws a tab bar
 
 `docs/design/Chautauqua Review.dc.html:280-350` ("Reviewer scorecard ·
 /review/plans/:id/submissions/:id") and `:934-1138` ("Scorecard · a
-criterion unscored") both draw the phone device box edge-to-edge — a
-sticky head band, a scrolling body, and a sticky action dock — with no tab
-bar row anywhere in either frame's markup. Every other 390 cluster frame
-audited so far in this campaign keeps the shell's tab bar mounted beneath
-the page content (App.tsx:290, per the field guide's wave-1 finding); this
-task's file scope (`Scorecard.tsx`, `scorecard.css`, `scorecardLogic.ts`)
-does not include the shell, so whether the reviewer scorecard's phone
-route should suppress the tab bar (a genuinely different, more app-like
-surface reviewers work through repeatedly) or whether the frame simply
-omitted it for space the way the same frames omit the abstract/form-answer
-sections is a shell-level decision, not a page-level one. Recorded here
-rather than edited into App.tsx, which task w3-g does not own.
+criterion unscored") both draw the phone device box edge-to-edge with no
+tab bar row. Re-derived against main: the shell-level decision this
+finding correctly deferred has since been made. `App.tsx`'s `PhoneTabBar`
+mounts unconditionally in the shell (`App.tsx:417`), but
+`styles.css:2255-2262` gives the shell a general attribute contract — any
+page root that sets `data-chq-phone-dock` suppresses the tab bar via
+`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar { display: none }`.
+`Scorecard.tsx:481` opts the reviewer scorecard's page root into that
+contract with `{...(isPhone ? { 'data-chq-phone-dock': true } : {})}`,
+matching both frames' edge-to-edge, no-tab-bar rendering. The contract
+itself is now enforced app-wide by
+`app/src/phone-dock-declares.scan.test.ts` (DEC-576 wave-98). Closed.
