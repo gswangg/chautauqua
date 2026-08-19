@@ -101,8 +101,11 @@ pinned; sweep the remaining stylesheets for the same exposure.
   fixes that DO NOT EXIST in the tree — cfp-steps-script.tsx:33 still calls
   setStep('2') with no reportValidity(), form-render.tsx:278 still uses singular
   querySelector. (a) Actually implement the phone-CFP step-1 validation dead-end
-  fix; (b) correct the false doc; (c) lens: audit other scribe-authored DEC docs
-  from waves 10-11 for claims not backed by the diff.
+  fix; (b) correct the false doc; (c) lens: audit scribe-authored DEC docs
+  from waves 10-11 for claims not backed by the diff, AND audit css/code
+  comments for citations of DECs that do not exist (found: agenda.css cites
+  a "DEC-021 delta-2 amendment" that grep cannot find; the 9f12f7ce commit
+  body also justified its overlay on a false premise).
 - Pre-existing UX bug (portal edit): "Add co-presenter" is a full-page POST that
   silently discards unsaved title/abstract/track edits (a55cce81, by the page's
   own inviting copy order). Schedule a fix (preserve the draft across the POST or
