@@ -495,7 +495,7 @@ export function OverviewPage() {
           {eventSlug ? (
             <span className="chq-overview-row-meta chq-overview-row-meta-sm">
               {payload.publishedSessionCount} {plural(payload.publishedSessionCount, 'session')} live, with speakers and schedule at{' '}
-              <a href={`/e/${eventSlug}`} target="_blank" rel="noreferrer" className="chq-overview-link-btn">
+              <a href={`/e/${eventSlug}`} target="_blank" rel="noreferrer" className="chq-overview-link-inline">
                 /e/{eventSlug}
               </a>
             </span>
