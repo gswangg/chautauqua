@@ -191,11 +191,10 @@ STOPS at the dry-run step so it writes nothing at all.
 
 ## 5. Pending adjudication (not yet blessed — sweep should verdict)
 
-- **Tracks-and-rooms save model** — the frame (09--12) shows ONE page-level
-  Cancel / Save-changes footer; the app saves per-row with dirty-reveal
-  Save/Cancel. A save-model change was judged too risky mid-freeze; the
-  final sweep should record a verdict (bless the per-row model or file the
-  page-footer rework as post-deadline).
+No adjudication is currently open. The tracks-and-rooms save model this
+section used to list as pending was verdicted by the G13 srv1 adjudication
+and is recorded, resolved, in §6's "Adjudications recorded" — see
+"Tracks-and-rooms save model" below.
 
 ## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)
 
@@ -224,6 +223,18 @@ instead of re-flagging.
   display:flex; align-items:center; padding:0 14px; font-size:13px;
   font-weight:600` (`Chautauqua Review.dc.html:652`) — only the label
   differs. DEC-745 wave-98 amendment.
+- Portal task-list dock "Later" — `docs/design/Chautauqua Public and
+  Portal.dc.html:492` draws the "Portal · Your tasks" dock as `Mark the
+  release signed` (flex:1, olive, min-height:48px) + `Later` (bordered
+  secondary, min-height:48px). The dock's GEOMETRY is legitimate and may
+  be built for whatever primary the page already renders — v12m-w15-b is
+  doing exactly that for the profile page's Save/Cancel pair — but the
+  portal task model exposes only complete-or-not: `src/routes/portal/**/
+  *.tsx` and `src/server/repo/portal*` carry no snooze, defer, dismiss, or
+  later capability anywhere in the tree. "Later" persists nothing, returns
+  on no schedule, and is visible to no organiser, so the second button's
+  copy is not manufactured — it names a real gap in the domain. DEC-967
+  wave-106.
 
 **Reworks larger than the freeze window:**
 - CSV import "THE FIRST THREE" rejection screen (560 card, no step rail,

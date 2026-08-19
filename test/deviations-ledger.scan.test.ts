@@ -362,6 +362,11 @@ const LEDGER: LedgerEntry[] = [
     honored: { kind: "present", file: "app/src/pages/review/review.css", literal: ".chq-review-reviewer-row {", testFile: "app/src/pages/review/PlanEditor.render.test.tsx" },
   },
   {
+    key: "portal-task-list-dock-later",
+    status: "gap",
+    reason: "the dock's GEOMETRY (Mark the release signed / Later, both min-height:48px) is legitimate future work for whatever primary the page renders, but the portal task model exposes only complete-or-not -- src/routes/portal/**/*.tsx and src/server/repo/portal* carry no snooze/defer/dismiss/later capability -- so 'Later' is recorded openly as unbuilt, not disguised as done.",
+  },
+  {
     key: "csv-import-the-first-three-rejection-screen-560-card-no-step-rail-download-the-rows-action",
     status: "gap",
     reason: "the validation itself SHIPPED; only the 560-card/no-step-rail/download-the-rows PRESENTATION is deferred -- recorded as scope, not disguised as built.",
@@ -577,8 +582,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
     expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(5);
-    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(16);
-    expect(derived.length).toBe(29);
+    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(17);
+    expect(derived.length).toBe(30);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
