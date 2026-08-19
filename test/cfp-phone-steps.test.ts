@@ -348,3 +348,98 @@ describe("cfp-steps-script — Next validates step 1 before advancing (DEC-986)"
     expect(form.getAttribute("data-chq-cfp-step")).toBe("1");
   });
 });
+
+// ---------------------------------------------------------------------------
+// DEC-986 clause (1): the required-toggle is part of HIDING. A step
+// transition un-requires every control in the section it hides and restores
+// the original required-ness when that section is shown again, with the
+// original stashed on the element (data-chq-cfp-required-orig), never in a
+// JS-side map. Clause (2) above stops an INVALID control being hidden; this
+// stops a hidden control being constraint-validatable at all -- the property
+// the wave-93 ruling actually named. Driven in a real jsdom document, which
+// does implement the constraint validation API.
+// ---------------------------------------------------------------------------
+describe("cfp-steps-script — a step transition un-requires what it hides (DEC-986 clause 1)", () => {
+  async function mountWizard() {
+    const mod = await import("../src/routes/public/cfp-steps-script");
+    const el = mod.CfpStepsScript() as unknown as { props: { dangerouslySetInnerHTML: { __html: string } } };
+    const js = el.props.dangerouslySetInnerHTML.__html;
+    const dom = new JSDOM(
+      `<!doctype html><html><body>
+        <form id="chq-cfp-submit-form" data-chq-cfp-step="all">
+          <div class="chq-cfp-steps">
+            <span class="chq-cfp-steps-label">Step 1 of 2</span>
+            <div class="chq-cfp-steps-bar"><div class="chq-cfp-steps-bar-fill"></div></div>
+          </div>
+          <section class="chq-cfp-step chq-cfp-step-talk">
+            <input class="chq-input" name="f_title" required value="A talk">
+            <input class="chq-input" name="f_notes" value="">
+          </section>
+          <section class="chq-cfp-step chq-cfp-step-you">
+            <input class="chq-input" name="f_email" required>
+            <input class="chq-input" name="f_bio" value="">
+          </section>
+          <div class="chq-cfp-actions">
+            <button type="submit" class="chq-btn">Submit this talk</button>
+            <button type="button" class="chq-btn chq-cfp-step-next">Next: about you</button>
+            <button type="button" class="chq-btn chq-cfp-step-back">Back</button>
+          </div>
+        </form>
+        <script>${js}</script>
+      </body></html>`,
+      { url: "https://example.test/submit/test-conf", runScripts: "dangerously" },
+    );
+    dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+    const document = dom.window.document;
+    if (document.readyState === "loading") {
+      await new Promise<void>((resolve) => document.addEventListener("DOMContentLoaded", () => resolve()));
+    }
+    const req = (name: string) =>
+      (document.querySelector(`[name="${name}"]`) as unknown as { required: boolean }).required;
+    return { document, req, form: document.getElementById("chq-cfp-submit-form")! };
+  }
+
+  it("un-requires the hidden step-2 section while step 1 is showing", async () => {
+    const { req } = await mountWizard();
+    // Step 1 is showing: its own required control keeps `required` ...
+    expect(req("f_title")).toBe(true);
+    // ... while step 2, which is display:none at this point, must not be
+    // constraint-validatable at all.
+    expect(req("f_email")).toBe(false);
+  });
+
+  it("restores step 2 and un-requires step 1 once the wizard advances", async () => {
+    const { document, req, form } = await mountWizard();
+    (document.querySelector(".chq-cfp-step-next") as HTMLElement).click();
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("2");
+    expect(req("f_email")).toBe(true);
+    expect(req("f_title")).toBe(false);
+  });
+
+  it("round-trips: Back restores step 1's required-ness and re-hides step 2's", async () => {
+    const { document, req, form } = await mountWizard();
+    (document.querySelector(".chq-cfp-step-next") as HTMLElement).click();
+    (document.querySelector(".chq-cfp-step-back") as HTMLElement).click();
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("1");
+    expect(req("f_title")).toBe(true);
+    expect(req("f_email")).toBe(false);
+  });
+
+  it("never promotes an optional control to required (the original value is restored, not assumed)", async () => {
+    const { document, req } = await mountWizard();
+    expect(req("f_notes")).toBe(false);
+    (document.querySelector(".chq-cfp-step-next") as HTMLElement).click();
+    expect(req("f_bio")).toBe(false);
+    (document.querySelector(".chq-cfp-step-back") as HTMLElement).click();
+    expect(req("f_notes")).toBe(false);
+  });
+
+  it("stashes the original required-ness on the element itself, not in a JS-side map", async () => {
+    const { document } = await mountWizard();
+    expect(document.querySelector('[name="f_title"]')!.getAttribute("data-chq-cfp-required-orig")).toBe("1");
+    expect(document.querySelector('[name="f_email"]')!.getAttribute("data-chq-cfp-required-orig")).toBe("1");
+    const mod = await import("../src/routes/public/cfp-steps-script");
+    const el = mod.CfpStepsScript() as unknown as { props: { dangerouslySetInnerHTML: { __html: string } } };
+    expect(el.props.dangerouslySetInnerHTML.__html).not.toContain("new Map(");
+  });
+});
