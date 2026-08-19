@@ -14,10 +14,13 @@
 // Two standing rules are pinned alongside the frame geometry:
 //
 //   * DEC-385 single-direction: the phone layer is `@media (max-width: …)`
-//     ONLY, and content.css carries exactly ONE 700px block, as the last
-//     top-level construct in the file (a second such block, or one
-//     declared earlier, would silently lose the cascade tie to whatever
-//     comes after it at equal specificity).
+//     ONLY, and every 700px block in the file (task w8-e, DEC-393/DEC-989
+//     wave-90 amendments, appended a second one) sits ABOVE the true end of
+//     the file, with the LAST such block as the file's last top-level
+//     construct (a block declared earlier than the last one, or reordered
+//     after it, would silently lose the cascade tie to whatever comes after
+//     it at equal specificity — DEC-385 protects source order, not a
+//     one-block-per-file count).
 //   * DESIGN-RULINGS "The 44px floor": no phone token may author a
 //     min-height below 44px.
 //
@@ -106,20 +109,24 @@ describe('DEC-385: the content phone layer is single-direction, one trailing blo
     expect(CONTENT_CSS).not.toMatch(/@media[^{]*min-width/);
   });
 
-  it('content.css declares exactly one 700px phone block, and it is the last top-level construct', () => {
+  it('content.css declares at least one 700px phone block, and the LAST one is the last top-level construct', () => {
     // .chq-content-group-body also carries a pre-existing, narrower
     // max-width:900px reflow (desktop-to-tablet, declared well above the
     // phone block and untouched by this task -- "Desktop FROZEN"). The
-    // DEC-385 single-trailing-block invariant this task is responsible for
-    // is specifically the 700px PHONE layer: exactly one such block, and
-    // nothing at the top level after its closing brace (phone-block-
-    // visibility.test.ts's own pinning strategy, applied to this file).
+    // DEC-385 single-DIRECTION invariant this task is responsible for is
+    // specifically the 700px PHONE layer: every such block sits above the
+    // true end of the file, and nothing at the top level follows the LAST
+    // one's closing brace (phone-block-visibility.test.ts's own pinning
+    // strategy, applied to this file). Task w8-e (DEC-393/DEC-989 wave-90
+    // amendments) appended a SECOND 700px block at true EOF -- content-
+    // phone-floor.test.ts owns pinning that block's own shape; this test
+    // only needs "the last one really is last", not "there is only one".
     const openers = [...CONTENT_CSS.matchAll(/@media\s*\(max-width:\s*700px\)\s*\{/g)];
-    expect(openers.length).toBe(1);
+    expect(openers.length).toBeGreaterThanOrEqual(1);
 
     const trimmed = CONTENT_CSS.trimEnd();
     expect(trimmed.endsWith('}')).toBe(true);
-    const opener = openers[0]!;
+    const opener = openers[openers.length - 1]!;
     let depth = 1;
     let i = opener.index + opener[0].length;
     while (i < CONTENT_CSS.length && depth > 0) {

@@ -1271,10 +1271,19 @@ describe('SessionList: worklist table takes the frame six tracks under fixed lay
 // ---------------------------------------------------------------------------
 
 /** The body of content.css's `@media (max-width: 700px)` block, brace-matched
- * so nested rules never truncate it, plus its start offset in the file. */
-function contentPhoneBlock(): { body: string; start: number; source: string } {
+ * so nested rules never truncate it, plus its start offset in the file.
+ *
+ * `opts.last` selects the LAST such block instead of the first. Task w8-e
+ * (DEC-393/DEC-989 wave-90 amendments) appended a SECOND phone block at true
+ * EOF — DEC-385 wave-85/wave-90 rulings say single-direction protects source
+ * order, not a one-block-per-file count, and a second terminal block is the
+ * sanctioned repair shape. The pre-existing default (first block) is left
+ * untouched for every call site that predates this task. */
+function contentPhoneBlock(opts?: { last?: boolean }): { body: string; start: number; source: string } {
   const source = readFileSync(join(process.cwd(), 'app/src/pages/content/content.css'), 'utf-8');
-  const open = source.indexOf('@media (max-width: 700px) {');
+  const open = opts?.last
+    ? source.lastIndexOf('@media (max-width: 700px) {')
+    : source.indexOf('@media (max-width: 700px) {');
   expect(open).toBeGreaterThan(-1);
   const bodyStart = source.indexOf('{', open) + 1;
   let depth = 1;
@@ -1302,8 +1311,12 @@ describe('Content phone block: DEC-385 single-direction cascade', () => {
   // header row) lost the equal-specificity tie to its own desktop rule and
   // did nothing at 390. Single-direction means narrow overrides wide, which
   // in a flat stylesheet means LAST.
-  it('is the last block in content.css, so a phone rule always outranks its desktop twin', () => {
-    const { start, source } = contentPhoneBlock();
+  it('the LAST phone block is the last block in content.css, so a phone rule always outranks its desktop twin', () => {
+    // Task w8-e appended a second, terminal `@media (max-width: 700px)`
+    // block (content-phone-floor.test.ts owns pinning ITS shape and that it
+    // is the file's true last top-level construct) — this pin now targets
+    // whichever block is currently last, not "the" sole block.
+    const { start, source } = contentPhoneBlock({ last: true });
     expect(source.slice(start).trimEnd().endsWith('}')).toBe(true);
     // Nothing but the block itself may follow its opening.
     const after = source.slice(start);
