@@ -143,21 +143,40 @@ describe('v12 phone frame "Submissions" (390) — docs/design/Chautauqua Submiss
       for (const h of heights) expect(h).toBeGreaterThanOrEqual(44);
     });
 
-    it('deletes the sort select\'s display:none -- sorting is a capability the frame never removes, and the filterbar strip already scrolls', () => {
-      const banks = allPhoneRules(CSS, '.chq-submissions-filterbar-searchsort .chq-submissions-filterbar-sort-select');
-      for (const body of banks) expect(body).not.toMatch(/display:\s*none/);
-      // The compound selector must not survive under a different grouping
-      // either -- grep the whole phone layer for the class name.
+    // DEC-919 wave-110 amendment (task v12m-w6-d) reverses this reading for
+    // THIS screen: docs/design/Chautauqua Submissions.dc.html:147 draws
+    // exactly ONE 44px search box on row 1, "Nothing else" -- there is no
+    // line left for a sort control, so it is stood down (receipted) rather
+    // than re-lined.
+    it('hides the sort select -- the frame\'s row 1 (:147) is the search box alone', () => {
       const layer = phoneLayer(CSS);
       const soleRule = new RegExp(
         `[^{}]*chq-submissions-filterbar-sort-select[^{}]*\\{[^{}]*display:\\s*none`,
       );
-      expect(layer).not.toMatch(soleRule);
+      expect(layer).toMatch(soleRule);
     });
 
-    it('keeps the track select hidden -- the frame draws no track control in the phone head, and this one is untouched by the amendment', () => {
+    it('keeps the track select hidden -- the frame draws no track control in the phone head (:148-151), unchanged by the wave-110 amendment', () => {
       expect(phoneRule(CSS, '.chq-submissions-filterbar .chq-submissions-filterbar-select')).toMatch(
         /display:\s*none/,
+      );
+    });
+
+    // DEC-919 wave-110 amendment: the saved-views strip (ViewTabs.tsx) has
+    // no line in the frame either (:137-152) -- stood down in full.
+    it('hides the saved-views strip -- the frame draws no saved-views row', () => {
+      const banks = allPhoneRules(CSS, '.chq-submissions-viewtabs');
+      expect(banks.some((body) => /display:\s*none/.test(body))).toBe(true);
+    });
+
+    // docs/design/Chautauqua Submissions.dc.html:148-151 names exactly
+    // three chips ('Needs triage' filled / 'Accepted' / 'All 47'); the app's
+    // real status vocabulary is narrowed to its two closest literals
+    // (`pending` / `accepted`) via data-status, CSS-only.
+    it('narrows the phone chip strip to the pending/accepted status literals', () => {
+      const layer = phoneLayer(CSS);
+      expect(layer).toMatch(
+        /\.chq-status-pills \[data-status\]:not\(\[data-status='pending'\]\):not\(\[data-status='accepted'\]\)[^{]*\{[^}]*display:\s*none/,
       );
     });
 

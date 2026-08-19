@@ -925,5 +925,65 @@
   .chq-submissions-head-actions .chq-btn-secondary {
     flex: 1;
   }
+
+  /* v12m-w6-d (DEC-919 wave-110 amendment) -- supersedes the w6-f/w7-e
+     interpretation above (and reverses its "nothing is deleted at phone
+     width" reading for this screen specifically, per that amendment's own
+     text). docs/design/Chautauqua Submissions.dc.html:137-152 draws the
+     390 head as: wordmark row, title row, ONE 44px search box on its own
+     line, then ONE `display:flex; gap:7px; overflow-x:auto` strip of
+     exactly three 44px chips ('Needs triage' filled / 'Accepted' / 'All
+     47') -- "Nothing else". That leaves no line in the frame for the
+     saved-views strip, the sort select, or the track select; each is
+     stood down below with its own capability-removal receipt (DEC-919
+     wave-96 mechanism, app/src/phone-capability-removal.scan.test.ts).
+     Appended at the true end of the file's one terminal phone block
+     (DEC-385) so these rules win every specificity tie with the earlier
+     rules above, this file's own established source-order convention. */
+
+  /* phone-hidden: DEC-919 wave-110 -- the frame draws no saved-views row
+     at 390 (:137-152); saved views (built-in presets, custom views, Save)
+     remain fully reachable on desktop, this only removes the phone line. */
+  .chq-submissions-viewtabs {
+    display: none;
+  }
+
+  /* phone-hidden: DEC-919 wave-110 -- the frame's row 1 is ONE 44px search
+     box and nothing else (:147); once the sort control is stood down the
+     search field is the row's only remaining child. Sorting remains
+     reachable on desktop. */
+  .chq-submissions-filterbar-sort-select {
+    display: none;
+  }
+
+  /* Row 1 collapses to the search field alone now the sort select above
+     it is hidden -- no stray gap left over from the column re-line. */
+  .chq-submissions-filterbar-searchsort {
+    gap: 0;
+  }
+
+  /* phone-hidden: DEC-919 wave-110 -- the frame's row 2 is the status chip
+     strip only (:148-151), no track control; the wave-7 test this amends
+     had already pinned this exact hide (submissions-landing-phone-
+     frame.test.ts's "keeps the track select hidden") without the rule
+     existing to satisfy it. Track filtering remains reachable on desktop. */
+  .chq-submissions-filterbar .chq-submissions-filterbar-select {
+    display: none;
+  }
+
+  /* phone-hidden: DEC-919 wave-110 -- the frame names exactly three chips
+     (:148-151 'Needs triage' / 'Accepted' / 'All 47'); every other status
+     pill has no chip left in the frame to be. The full status vocabulary
+     remains reachable on desktop -- this narrows the phone strip only.
+     Narrowest CSS-only mapping onto the app's real status literals
+     (`pending` / `accepted`, the closest textual/semantic match to the
+     frame's two named pills); the frame's third chip ('All 47', a
+     no-filter/show-all affordance) has no corresponding status literal in
+     SUBMISSION_STATUSES and is deliberately NOT reproduced here -- a
+     design gap flagged for a lane that can touch FilterBar.tsx/ViewTabs.tsx
+     markup, not silently dropped. */
+  .chq-status-pills [data-status]:not([data-status='pending']):not([data-status='accepted']) {
+    display: none;
+  }
 }
 
