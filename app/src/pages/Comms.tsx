@@ -7,8 +7,10 @@ import { useMutationVersion } from '../lib/mutationSignal';
 import { TemplatesTab } from './comms/TemplatesTab';
 import { ComposeWizard } from './comms/ComposeWizard';
 import { HistoryTab } from './comms/HistoryTab';
-import { RecentSends } from './comms/RecentSends';
-import { formatSendRhythm } from './comms/sendRhythm';
+import { RecentSends, sentCountLabel } from './comms/RecentSends';
+import { PhoneDraftCard } from './comms/PhoneDraftCard';
+import { formatSendRhythm, formatPhoneSendRhythm } from './comms/sendRhythm';
+import { formatDateTime } from '../lib/dates';
 import type { EmailBatchRow, EmailLogRow, EmailTemplate } from './comms/types';
 import './comms/comms.css';
 
@@ -44,13 +46,15 @@ export function CommsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
   const tab: Tab = isTab(rawTab) ? rawTab : 'compose';
-  // DEC-621: at phone width the page opens on a landing screen naming the
-  // three things Comms does, rather than dropping straight into compose
-  // step 1. SSR can't know the viewport, so both the landing block and the
-  // regular head+tab content always render; a JS app-state flag (not a
-  // width check) toggles which one the phone stylesheet shows -- desktop
-  // never reads this flag (the CSS rules that key off it only exist inside
-  // the 700px media query in comms.css).
+  // DEC-621 amendment (v12 mobile campaign w1, planner's ruling): at phone
+  // width the page opens on a landing screen -- the frame's own dashboard
+  // (head + an in-progress draft, when one exists + a read-only recent-
+  // sends list), rather than dropping straight into compose step 1. SSR
+  // can't know the viewport, so both the landing block and the regular
+  // head+tab content always render; a JS app-state flag (not a width
+  // check) toggles which one the phone stylesheet shows -- desktop never
+  // reads this flag (the CSS rules that key off it only exist inside the
+  // 700px media query in comms.css).
   const [phoneEntered, setPhoneEntered] = useState(false);
 
   // DEC-700/DEC-905: every successful non-GET already bumps this counter in
@@ -264,33 +268,64 @@ export function CommsPage() {
         {tab === 'history' && <HistoryTab eventId={eventId} templatesById={templatesById} rhythm={rhythm} />}
       </div>
 
-      {/* DEC-621: phone-only landing. Hidden by default (top-level
-          display:none in comms.css); shown inside the 700px media query
-          only while chq-comms-phone-landing-show is present, i.e. before
-          the visitor has picked one of the three destinations. */}
+      {/* v12 mobile campaign w1 (DEC-621 amendment; planner's ruling):
+          phone-only landing, frame docs/design/Chautauqua Comms.dc.html:177
+          ('Comms', 390). Hidden by default (top-level display:none in
+          comms.css); shown inside the 700px media query only while
+          chq-comms-phone-landing-show is present, i.e. before the visitor
+          has entered via the draft card below. */}
       <div
         className={
           phoneEntered ? 'chq-comms-phone-landing' : 'chq-comms-phone-landing chq-comms-phone-landing-show'
         }
       >
-        {/* The header nav (chq-header/chq-tabbar) already names this page
-            "Comms"; this block only needs to introduce the choice, not
-            repeat the page h1 (a repeated h1 would double up the
-            accessible-heading name whenever the markup for this JS-state
-            branch coexists with the main block in the DOM). */}
-        <p className="chq-comms-phone-landing-intro">Choose what you&rsquo;d like to do.</p>
-        <div className="chq-comms-phone-landing-choices">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className="chq-comms-phone-landing-choice"
-              onClick={() => choosePhoneTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
+        {/* Frame line 183: `font-size:27px; font-weight:700;
+            letter-spacing:-0.04em; line-height:1">Comms</h1>`. A styled
+            <p>, not a second <h1> -- .chq-comms-main's own h1.chq-page-title
+            already owns the page's ONE "Comms" accessible heading name and
+            stays in the DOM (display:none only, never unmounted) while this
+            block is shown; a second <h1> with the identical accessible name
+            would double the page's heading the instant CSS fails to load,
+            and unconditionally under jsdom (which evaluates no @media
+            rules) -- same reasoning this landing's original DEC-621 markup
+            recorded here. */}
+        <p className="chq-comms-phone-landing-title">Comms</p>
+        {/* Frame line 184: `4 sent in 7 days · last Tue 4:12pm`. Built from
+            the SAME rhythm figures the desktop subtitle uses (never
+            re-derived) -- see formatPhoneSendRhythm. */}
+        {rhythm && <p className="chq-comms-phone-landing-subtitle">{formatPhoneSendRhythm(rhythm)}</p>}
+
+        {/* Frame lines 188-193: "Draft in progress" card. Always null --
+            see PhoneDraftCard's own doc comment and
+            docs/design/audit/comms-v12.md for why no real draft source is
+            wired here. onReadDraft would land the visitor on the compose
+            tab, same as any other landing entry, once a real draft exists. */}
+        <PhoneDraftCard draft={null} onReadDraft={() => choosePhoneTab('compose')} />
+
+        {/* Frame lines 196-205: read-only "Recent sends" -- the same
+            all-time batch list the head's rhythm line and both tab-body
+            RecentSends mounts already hold, never a second fetch. */}
+        <div className="chq-comms-phone-recent-head">
+          <span className="chq-section-label">Recent sends</span>
         </div>
+        {recentBatches.slice(0, COMPOSE_RECENT_SENDS_LIMIT).map((batch) => {
+          const templateLabel =
+            batch.templateId && templatesById[batch.templateId] ? templatesById[batch.templateId] : '—';
+          return (
+            <div key={batch.batchKey} className="chq-comms-phone-recent-row">
+              {/* Frame line 201: `{{ h.when }} · {{ h.short }}` */}
+              <span className="chq-comms-phone-recent-when">
+                {formatDateTime(batch.sentAt)} · {sentCountLabel(batch.statusCounts)}
+              </span>
+              {/* Frame line 202: `font-family:'Familjen Grotesk', sans-serif;
+                  font-size:15px; font-weight:600; letter-spacing:-0.015em;
+                  line-height:1.35` */}
+              <span className="chq-comms-phone-recent-subject">{batch.subject}</span>
+              {/* Frame line 203: `{{ h.template }}` */}
+              <span className="chq-comms-phone-recent-template">{templateLabel}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -199,7 +199,7 @@ function BatchRecipients({
 // auditable at a glance without every healthy row carrying a zero.
 // Derived from batch.statusCounts (grouped by status in
 // src/server/repo/email.ts), never fabricated.
-function sentCountLabel(statusCounts: Record<string, number>): string {
+export function sentCountLabel(statusCounts: Record<string, number>): string {
   const sent = statusCounts.sent ?? 0;
   const skipped = statusCounts.skipped ?? 0;
   const failed = statusCounts.failed ?? 0;

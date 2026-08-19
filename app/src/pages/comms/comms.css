@@ -1129,11 +1129,17 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Phone landing (DEC-621): names the three things Comms does instead   */
-/* of dropping straight into compose step 1. Hidden at desktop by       */
-/* default (top-level display:none, verified below by conformance       */
-/* test) -- only shown inside the 700px query, and only while the       */
-/* visitor hasn't picked a destination yet (chq-comms-phone-landing-show)*/
+/* Phone landing (DEC-621 amendment, v12 mobile campaign w1, planner's  */
+/* ruling): the v12 frame's own dashboard -- the 'Comms' · 390 screen.  */
+/* docs/design/Chautauqua Comms.dc.html:177 (`width:390px; height:844px`) */
+/* -- instead of the old three-way chooser.                             */
+/* Hidden at desktop by default (top-level display:none, verified below */
+/* by conformance test) -- only shown inside the 700px query, and only  */
+/* while the visitor hasn't entered via the draft card yet               */
+/* (chq-comms-phone-landing-show). Rule bodies for the block's own      */
+/* content (title/subtitle/draft card/recent-sends list) live in the    */
+/* trailing @media block at the foot of this file -- see the comment    */
+/* there for why. */
 /* ------------------------------------------------------------------ */
 
 .chq-comms-phone-landing {
@@ -1657,11 +1663,13 @@
     flex: 1 1 0;
   }
 
-  /* DEC-621: phone landing swap -- while the visitor hasn't chosen a
-     destination yet, hide the regular head+tab content and show the
-     landing choices instead; once chosen, the JS flag drops both
-     modifier classes and the base rules (main visible, landing
-     display:none) take back over. */
+  /* DEC-621 amendment (v12 mobile campaign w1): phone landing swap --
+     while the visitor hasn't entered via the draft card yet, hide the
+     regular head+tab content and show the landing dashboard instead; once
+     entered, the JS flag drops both modifier classes and the base rules
+     (main visible, landing display:none) take back over. The landing's own
+     content rules (title/subtitle/draft card/recent-sends list) live in
+     the trailing @media block at the foot of this file. */
   .chq-comms-main-landing {
     display: none;
   }
@@ -1669,35 +1677,7 @@
   .chq-comms-phone-landing-show {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-  }
-
-  .chq-comms-phone-landing-intro {
-    font-size: 14px;
-    color: var(--chq-muted);
-  }
-
-  .chq-comms-phone-landing-choices {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .chq-comms-phone-landing-choice {
-    min-height: 56px;
-    display: flex;
-    align-items: center;
-    padding: 0 18px;
-    border: 1px solid var(--chq-border);
-    border-radius: var(--chq-r-card);
-    background: var(--chq-surface);
-    font: inherit;
-    font-family: var(--chq-font-display);
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--chq-ink);
-    text-align: left;
-    cursor: pointer;
+    gap: 16px;
   }
 }
 
@@ -1923,5 +1903,146 @@
   .chq-comms-refusal-actions {
     justify-content: flex-start;
     gap: 8px;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* v12 phone frame "Comms · 390" (docs/design/Chautauqua Comms.dc.html):  */
+  /* the phone landing's own content -- DEC-621 amendment (v12 mobile       */
+  /* campaign w1, planner's ruling, task w1-d): replaces the old three-way  */
+  /* chooser with the frame's dashboard -- a styled title+subtitle, an      */
+  /* optional "Draft in progress" card, and a read-only "Recent sends"      */
+  /* list. Declared here (not the earlier 700px block) purely to keep       */
+  /* every phone-landing content rule in one place -- these are all new     */
+  /* selectors with no desktop base rule below to lose the cascade to.      */
+  /* ------------------------------------------------------------------ */
+
+  /* Frame line 183: `font-size:27px; font-weight:700;
+     letter-spacing:-0.04em; line-height:1">Comms</h1>`. A <p>, not a
+     second <h1> -- see the doc comment at this element in Comms.tsx. */
+  .chq-comms-phone-landing-title {
+    margin: 0;
+    font-family: var(--chq-font-display);
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--chq-ink);
+  }
+
+  /* Frame line 184: `4 sent in 7 days · last Tue 4:12pm` */
+  .chq-comms-phone-landing-subtitle {
+    margin: 0;
+    font-size: 13px;
+    color: var(--chq-muted);
+  }
+
+  /* Frame line 188: `border:1px solid #BAB6A6; border-radius:6px;
+     background:#FAF8F2; padding:15px; display:flex; flex-direction:column;
+     gap:9px` */
+  .chq-comms-phone-draft-card {
+    border: 1px solid var(--chq-border);
+    border-radius: 6px;
+    background: var(--chq-surface);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  /* Frame line 189: `font-size:10px; font-weight:800; letter-spacing:0.1em;
+     text-transform:uppercase; color:#565A4B">Draft in progress` */
+  .chq-comms-phone-draft-eyebrow {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  /* Frame line 190: `font-family:'Familjen Grotesk', sans-serif;
+     font-size:17px; font-weight:600; letter-spacing:-0.02em;
+     line-height:1.3` */
+  .chq-comms-phone-draft-subject {
+    font-family: var(--chq-font-display);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+
+  /* Frame line 191: `23 recipients · reviewer feedback merged` */
+  .chq-comms-phone-draft-meta {
+    font-size: 13px;
+    color: var(--chq-muted);
+  }
+
+  /* Frame line 192: `font-size:13px; line-height:1.55;
+     color:#3F4237">Better on a laptop` */
+  .chq-comms-phone-draft-honesty {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--chq-ink-2);
+  }
+
+  /* Frame line 193: `border:1px solid #BAB6A6; border-radius:6px;
+     min-height:44px; display:flex; align-items:center;
+     justify-content:center; font-size:13px; font-weight:600">Read the
+     draft` -- the 44px floor, already met by the frame's own geometry, plus
+     horizontal padding via the full-width control itself. */
+  .chq-comms-phone-draft-read {
+    border: 1px solid var(--chq-border);
+    border-radius: 6px;
+    min-height: 44px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-ink);
+    background: none;
+    cursor: pointer;
+  }
+
+  /* Frame line 196: `padding:22px 0 8px; border-bottom:2px solid #1B1D17;
+     margin-bottom:4px` */
+  .chq-comms-phone-recent-head {
+    padding: 22px 0 8px;
+    border-bottom: 2px solid var(--chq-ink);
+    margin-bottom: 4px;
+  }
+
+  /* Frame line 200: `padding:15px 0; border-bottom:1px solid #E1DDCE;
+     display:flex; flex-direction:column; gap:5px` */
+  .chq-comms-phone-recent-row {
+    padding: 15px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  /* Frame line 201: `{{ h.when }} · {{ h.short }}` */
+  .chq-comms-phone-recent-when {
+    font-size: 12px;
+    color: var(--chq-muted);
+  }
+
+  /* Frame line 202: `font-family:'Familjen Grotesk', sans-serif;
+     font-size:15px; font-weight:600; letter-spacing:-0.015em;
+     line-height:1.35` */
+  .chq-comms-phone-recent-subject {
+    font-family: var(--chq-font-display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.35;
+  }
+
+  /* Frame line 203: `{{ h.template }}` */
+  .chq-comms-phone-recent-template {
+    font-size: 12px;
+    color: var(--chq-muted);
   }
 }

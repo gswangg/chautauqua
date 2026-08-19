@@ -1,22 +1,23 @@
-// DEC-621: (1) phone landing screen -- at phone width Comms opens on a
-// choice of the three things it does (Compose/Templates/History) instead
-// of dropping into compose step 1. jsdom does not evaluate @media rules,
-// so — mirroring app/src/shell-geometry.test.ts and
+// v12 mobile campaign w1 (DEC-621 amendment; planner's ruling): (1) phone
+// landing screen -- at phone width Comms opens on the frame's own
+// dashboard (title/subtitle, an optional draft card, a read-only recent-
+// sends list) instead of dropping into compose step 1. jsdom does not
+// evaluate @media rules, so — mirroring app/src/shell-geometry.test.ts and
 // ContactsApp.newContact.render.test.tsx — the CSS half of this is a
 // source-scan of comms.css's own text rather than computed style, and the
-// JS half asserts the landing markup exists and names all three
-// destinations, with a conformance guard proving it can't render twice
-// (no desktop display:none).
+// JS half asserts the landing markup exists, with a conformance guard
+// proving it can't render twice (no desktop display:none).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { CommsPage } from '../Comms';
 import { HistoryTab } from './HistoryTab';
 import { TemplatesTab } from './TemplatesTab';
+import { PhoneDraftCard } from './PhoneDraftCard';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import type { EmailBatchRow, EmailTemplate } from './types';
 
@@ -117,11 +118,17 @@ describe('comms.css: phone landing hidden at desktop width', () => {
   });
 });
 
-describe('CommsPage: phone landing (DEC-621)', () => {
-  it('renders a landing block naming all three destinations, hidden by default (JS-state class, not width check)', async () => {
+// v12 mobile campaign w1 (DEC-621 amendment; planner's ruling): the phone
+// landing is now the frame's own dashboard, frame docs/design/Chautauqua
+// Comms.dc.html:177 (`width:390px; height:844px`), the 'Comms' · 390
+// screen -- a title+subtitle, an optional "Draft in progress" card, and a
+// read-only "Recent sends" list -- replacing the old three-way chooser.
+describe('CommsPage: phone landing (DEC-621 amendment, v12 landing)', () => {
+  it('renders the frame\'s title/subtitle and recent-sends list, hidden by default (JS-state class, not width check)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batchRow()]),
     });
 
     render(
@@ -130,15 +137,34 @@ describe('CommsPage: phone landing (DEC-621)', () => {
       </MemoryRouter>,
     );
 
+    // .chq-comms-main's own h1.chq-page-title is the page's ONE accessible
+    // "Comms" heading; the landing's title is a styled <p>, not a second
+    // <h1> (see the doc comment at this element in Comms.tsx) -- so this
+    // stays a SINGLE match, not getAllByRole.
     await screen.findByRole('heading', { name: 'Comms' });
 
-    const landing = document.querySelector('.chq-comms-phone-landing');
+    const landing = document.querySelector<HTMLElement>('.chq-comms-phone-landing');
     expect(landing).not.toBeNull();
     expect(landing).toHaveClass('chq-comms-phone-landing-show');
 
-    const choices = landing!.querySelectorAll('.chq-comms-phone-landing-choice');
-    const labels = Array.from(choices).map((el) => el.textContent);
-    expect(labels).toEqual(['Compose', 'Templates', 'History']);
+    const title = landing!.querySelector('.chq-comms-phone-landing-title');
+    expect(title?.textContent).toBe('Comms');
+    expect(title?.tagName).toBe('P');
+
+    // The frame's read-only recent-sends row: when/short, subject, template.
+    // The SAME batch subject also renders in the always-mounted desktop
+    // compose-tab RecentSends, so this is scoped to the landing block.
+    await within(landing!).findByText('Your talk has been accepted to DevFlow Conf 2027');
+    const row = landing!.querySelector('.chq-comms-phone-recent-row')!;
+    expect(row.querySelector('.chq-comms-phone-recent-when')).not.toBeNull();
+    expect(row.querySelector('.chq-comms-phone-recent-subject')?.textContent).toBe(
+      'Your talk has been accepted to DevFlow Conf 2027',
+    );
+    expect(row.querySelector('.chq-comms-phone-recent-template')).not.toBeNull();
+
+    // No draft card: CommsPage has no draft source to hand PhoneDraftCard
+    // (see PhoneDraftCard's doc comment) -- absent, not an empty card.
+    expect(landing!.querySelector('.chq-comms-phone-draft-card')).toBeNull();
 
     // Regular head+tab content is present too (always rendered; CSS -- not
     // JS -- decides which one is visible at a given width).
@@ -147,7 +173,7 @@ describe('CommsPage: phone landing (DEC-621)', () => {
     expect(main).toHaveClass('chq-comms-main-landing');
   });
 
-  it('picking a landing destination sets the tab and drops the landing-active modifier classes', async () => {
+  it('the old three-way chooser markup is gone', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -160,17 +186,38 @@ describe('CommsPage: phone landing (DEC-621)', () => {
     );
     await screen.findByRole('heading', { name: 'Comms' });
 
-    const landing = document.querySelector('.chq-comms-phone-landing')!;
-    const templatesChoice = Array.from(landing.querySelectorAll('.chq-comms-phone-landing-choice')).find(
-      (el) => el.textContent === 'Templates',
-    ) as HTMLElement;
-    fireEvent.click(templatesChoice);
+    expect(document.querySelector('.chq-comms-phone-landing-intro')).toBeNull();
+    expect(document.querySelector('.chq-comms-phone-landing-choices')).toBeNull();
+    expect(document.querySelector('.chq-comms-phone-landing-choice')).toBeNull();
+    expect(CSS).not.toMatch(/\.chq-comms-phone-landing-intro/);
+    expect(CSS).not.toMatch(/\.chq-comms-phone-landing-choices/);
+    expect(CSS).not.toMatch(/\.chq-comms-phone-landing-choice\b/);
+  });
+});
 
-    expect(screen.getByRole('tab', { name: 'Templates', selected: true })).toBeInTheDocument();
+describe('PhoneDraftCard (DEC-621 amendment): renders only when a draft exists', () => {
+  it('renders nothing when draft is null', () => {
+    const { container } = render(<PhoneDraftCard draft={null} onReadDraft={() => {}} />);
+    expect(container).toBeEmptyDOMElement();
+  });
 
-    const mainAfter = document.querySelector('.chq-comms-main')!;
-    expect(mainAfter).not.toHaveClass('chq-comms-main-landing');
-    expect(landing).not.toHaveClass('chq-comms-phone-landing-show');
+  it('renders the frame\'s card shape when a draft is supplied', () => {
+    const onReadDraft = vi.fn();
+    render(
+      <PhoneDraftCard
+        draft={{ subject: 'Your talk has been accepted', recipientCount: 23, provenance: 'reviewer feedback merged' }}
+        onReadDraft={onReadDraft}
+      />,
+    );
+
+    expect(screen.getByText('Draft in progress')).toBeInTheDocument();
+    expect(screen.getByText('Your talk has been accepted')).toBeInTheDocument();
+    expect(screen.getByText('23 recipients · reviewer feedback merged')).toBeInTheDocument();
+    expect(screen.getByText('Better on a laptop')).toBeInTheDocument();
+
+    const button = screen.getByRole('button', { name: 'Read the draft' });
+    fireEvent.click(button);
+    expect(onReadDraft).toHaveBeenCalledOnce();
   });
 });
 
