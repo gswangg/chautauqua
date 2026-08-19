@@ -400,3 +400,54 @@ describe("account/password phone action bar CSS source-scan (DEC-385)", () => {
     expect(THEME_TS).not.toMatch(/\.chq-phone-actionbar\b/);
   });
 });
+
+// -----------------------------------------------------------------------
+// (c) task w1-h: "Change password · 390" frame geometry (docs/design/
+// Chautauqua Account.dc.html:153) -- header band, drill-register H1, field
+// min-heights and the filled footer bar all pinned against the trailing
+// @media block AUTH_CSS composes AFTER BARE_PAGE_CSS (a phone rule for
+// these same selectors placed BEFORE that composition would tie in
+// specificity and lose, per this module's own header comment).
+// -----------------------------------------------------------------------
+
+describe('"Change password · 390" phone geometry (docs/design/Chautauqua Account.dc.html:153)', () => {
+  const blocks = extract700Blocks(AUTH_CSS_TS);
+  const trailing = blocks[blocks.length - 1]!;
+
+  it("the trailing 700px block lands after BARE_PAGE_CSS's composition, not before it", () => {
+    const bareIdx = AUTH_CSS_TS.indexOf("${BARE_PAGE_CSS}");
+    const trailingBlockIdx = AUTH_CSS_TS.lastIndexOf("@media (max-width: 700px)");
+    expect(bareIdx).toBeGreaterThan(-1);
+    expect(trailingBlockIdx).toBeGreaterThan(bareIdx);
+  });
+
+  it("the bare-page shell drops its ambient reading-column padding for the password form only", () => {
+    expect(trailing).toMatch(/\.chq-bare-page:has\(\.chq-auth-fields\)\s*\{[^}]*padding:\s*0;/);
+  });
+
+  it("the drill-register H1 lands at 25px on phone, not the bare-page shell's 28px desktop title", () => {
+    expect(trailing).toMatch(/\.chq-bare-page \.chq-auth-title\s*\{[^}]*font-size:\s*25px/);
+  });
+
+  it("the header band (‹ Back + H1) draws the frame's border-bottom/padding/gap", () => {
+    expect(trailing).toMatch(
+      /\.chq-auth-titlerow:has\(\.chq-auth-back\)\s*\{[^}]*border-bottom:\s*1px solid var\(--chq-ink\);[^}]*padding:\s*14px 16px;[^}]*gap:\s*7px;/,
+    );
+  });
+
+  it("fields take the frame's 50px input min-height and 16px field-stack padding/gap", () => {
+    expect(trailing).toMatch(/\.chq-bare-page input\[type=password\]\s*\{[^}]*min-height:\s*50px/);
+    expect(trailing).toMatch(/\.chq-auth-fieldstack\s*\{[^}]*padding:\s*16px;[^}]*gap:\s*16px;/);
+  });
+
+  it("the footer is a filled, edge-to-edge band: --chq-ink border, --chq-surface-sunk fill, 12/16/16 padding, 8px gap", () => {
+    expect(trailing).toMatch(
+      /\.chq-auth-actions\s*\{[^}]*border-top:\s*1px solid var\(--chq-ink\);[^}]*background:\s*var\(--chq-surface-sunk\);[^}]*padding:\s*12px 16px 16px;[^}]*gap:\s*8px;/,
+    );
+  });
+
+  it("Change it is flex:1 at 48px; Cancel is 48px with the frame's 13px/600 label", () => {
+    expect(trailing).toMatch(/\.chq-auth-actions button\[type=submit\]\s*\{[^}]*flex:\s*1;[^}]*min-height:\s*48px;[^}]*font-size:\s*14px;/);
+    expect(trailing).toMatch(/\.chq-auth-cancel\s*\{[^}]*min-height:\s*48px;[^}]*font-size:\s*13px;[^}]*font-weight:\s*600;/);
+  });
+});

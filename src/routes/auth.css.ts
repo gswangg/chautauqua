@@ -358,4 +358,148 @@ export const AUTH_CSS = `
     .chq-auth-hint { display: none; }
   }
 ${ERROR_STATES_CSS}
-${BARE_PAGE_CSS}`;
+${BARE_PAGE_CSS}
+  /* Wave w1-h (task w1-h, docs/design/audit/account-docs-v12.md): "Sign in
+     · 390" and "Change password · 390" phone geometry. Appended AFTER the
+     ERROR_STATES_CSS/BARE_PAGE_CSS composition on purpose -- several of
+     these selectors (.chq-bare-page .chq-auth-title, .chq-bare-page
+     input[type=password], .chq-bare-page:has(.chq-auth-fields)) tie in
+     specificity with rules BARE_PAGE_CSS declares unconditionally, and a
+     phone block placed earlier in this template literal is silently dead
+     against text composed in after it -- the cascade trap this module's
+     own header comment warns about. */
+  @media (max-width: 700px) {
+    /* Sign in · 390 (docs/design/Chautauqua Account.dc.html:121
+       \`width:390px; height:844px;\`) -- phone-only overrides for the
+       credential card; every desktop number above is untouched. */
+    .chq-auth-wordmark {
+      /* docs/design/Chautauqua Account.dc.html:124 \`font-size:26px;\` --
+         26px on phone, not the desktop card's 28px. */
+      font-size: 26px;
+    }
+    .chq-auth-subtitle {
+      /* docs/design/Chautauqua Account.dc.html:123 \`gap:7px\`
+         (wordmark/subtitle stack). */
+      margin-top: 7px;
+    }
+    .chq-auth-card input[type=email],
+    .chq-auth-card input[type=password] {
+      /* docs/design/Chautauqua Account.dc.html:130 \`min-height:50px;\` --
+         50px on phone, not the desktop card's 48px. */
+      min-height: 50px;
+    }
+    /* The 390 frame draws the "Sign in" action alone, full width
+       (DESIGN-RULINGS's "full-column buttons ... are phone anatomy"
+       corollary) -- its submit row carries no "Forgot your password?"
+       link at all. Dropping live navigation isn't licensed by a geometry
+       frame alone, so the narrowest reading keeps the link and stacks it
+       under the now-full-width primary action instead of deleting it --
+       flagged as an open design gap in
+       docs/design/audit/account-docs-v12.md. */
+    .chq-auth-submitrow {
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 10px;
+    }
+    .chq-auth-card button[type=submit] {
+      /* docs/design/Chautauqua Account.dc.html:136 \`min-height:50px;
+         display:flex; align-items:center; justify-content:center;
+         font-size:15px; font-weight:700\` */
+      width: 100%;
+      min-height: 50px;
+      font-size: 15px;
+      padding: 0;
+    }
+    .chq-auth-tertiary {
+      align-self: center;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chq-auth-footer {
+      /* docs/design/Chautauqua Account.dc.html:138 \`border-top:1px solid
+         #E1DDCE; padding-top:18px;\` -- the hairline token, not the
+         desktop card's --chq-rule. */
+      border-top-color: var(--chq-hairline);
+      padding-top: 18px;
+    }
+    .chq-auth-footer-links a {
+      /* docs/design/Chautauqua Account.dc.html:140 \`font-size:15px;
+         font-weight:700; min-height:44px;\` -- 15px on phone, not the
+         desktop card's 14px (the 44px floor already lands via the
+         earlier phone block). */
+      font-size: 15px;
+    }
+
+    /* Change password · 390 (docs/design/Chautauqua Account.dc.html:153
+       \`width:390px; height:844px;\`) -- edge-to-edge header/body/footer
+       bands replace the bare-page shell's ambient reading-column inset
+       for this one page only. :has(.chq-auth-fields) scopes every rule
+       below to /account/password specifically -- the 404 notice and
+       expired-claim pages share .chq-bare-page too but carry no such
+       form, so they keep the plain reading-column padding untouched. */
+    .chq-bare-page:has(.chq-auth-fields) {
+      padding: 0;
+      gap: 0;
+    }
+    .chq-auth-fields { gap: 0; }
+    .chq-auth-titlerow:has(.chq-auth-back) {
+      /* docs/design/Chautauqua Account.dc.html:154 \`border-bottom:1px
+         solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex;
+         flex-direction:column; gap:7px\` */
+      border-bottom: 1px solid var(--chq-ink);
+      padding: 14px 16px;
+      gap: 7px;
+    }
+    .chq-bare-page .chq-auth-title {
+      /* docs/design/Chautauqua Account.dc.html:156 \`font-size:25px;\` --
+         the drill register: 25px on phone, not the bare-page shell's
+         28px desktop title (src/views/bare-page.css.ts). */
+      font-size: 25px;
+    }
+    .chq-auth-fieldstack {
+      /* docs/design/Chautauqua Account.dc.html:158 \`padding:16px;
+         display:flex; flex-direction:column; gap:16px\` -- 16px on
+         phone, not the shared 14px field-gap default. */
+      padding: 16px;
+      gap: 16px;
+    }
+    .chq-bare-page input[type=password] {
+      /* docs/design/Chautauqua Account.dc.html:161 \`min-height:50px;\`
+         -- 50px on phone, not the bare-page shell's 48px. */
+      min-height: 50px;
+    }
+    .chq-auth-actions {
+      /* docs/design/Chautauqua Account.dc.html:172 \`border-top:1px
+         solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px;
+         display:flex; gap:8px\` -- a filled, edge-to-edge footer band on
+         phone, not the desktop card's bare --chq-rule divider. */
+      border-top: 1px solid var(--chq-ink);
+      background: var(--chq-surface-sunk);
+      padding: 12px 16px 16px;
+      gap: 8px;
+      margin-top: 0;
+    }
+    .chq-auth-actions button[type=submit] {
+      /* docs/design/Chautauqua Account.dc.html:173 \`min-height:48px;
+         display:flex; align-items:center; justify-content:center;
+         font-size:14px; font-weight:700\` -- flex:1 fills the row beside
+         Cancel, per the same frame line's leading \`flex:1;\`. */
+      flex: 1;
+      width: auto;
+      min-height: 48px;
+      font-size: 14px;
+      padding: 0;
+      align-self: auto;
+    }
+    .chq-auth-cancel {
+      /* docs/design/Chautauqua Account.dc.html:174 \`min-height:48px;
+         display:flex; align-items:center; padding:0 16px; font-size:13px;
+         font-weight:600\` */
+      min-height: 48px;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+  }`;
