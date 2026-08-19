@@ -15,16 +15,34 @@
 // module-level in-flight promise cache exported below as loadEventsOnce —
 // EventSwitcher consumes the same cache so mounting both costs one round
 // trip (SPEC §7), not two.
+//
+// DEC-728 amendment (wave 108, USER RULING D19): the URL write-through
+// stays (page and context move together, no transient/split-view state),
+// but the moment a URL eventId OVERWRITES a DIFFERENT stored context, that
+// is a silent cross-event switch and must announce itself. The hook
+// captures the pre-overwrite stored id and, once both ids' names are known
+// from loadEventsOnce() (never an id in place of a name), exposes
+// `switchInfo` -- the prior event, the new event, and a `restore()` that
+// writes the prior id back to storage and re-lands the caller on the same
+// page with the `eventId` param stripped (so storage, not the URL, decides
+// on the next read).
 import { useEffect, useState } from 'react';
 import { apiList, ApiError } from './api';
 import { reconcileStoredEventId } from '../components/eventSwitcherState';
 
 const STORAGE_KEY = 'chq.currentEventId';
 
+export interface EventSwitchInfo {
+  fromEvent: EventListItem;
+  toEvent: EventListItem;
+  restore: () => void;
+}
+
 export interface UseCurrentEventResult {
   eventId: string | null;
   loading: boolean;
   error?: string;
+  switchInfo: EventSwitchInfo | null;
 }
 
 export interface EventListItem {
@@ -60,6 +78,7 @@ export function useCurrentEvent(): UseCurrentEventResult {
   const [eventId, setEventId] = useState<string | null>(idInPlay);
   const [loading, setLoading] = useState(idInPlay === null);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [switchInfo, setSwitchInfo] = useState<EventSwitchInfo | null>(null);
 
   useEffect(() => {
     // DEC-856: clear at the start of the read that can replace it, matching
@@ -84,6 +103,12 @@ export function useCurrentEvent(): UseCurrentEventResult {
       return;
     }
 
+    // DEC-728 amendment (D19): a URL id that differs from what was already
+    // stored is a silent cross-event switch -- capture the pre-overwrite
+    // id *before* the write below replaces it, so it survives to name
+    // resolution.
+    const priorStoredId = fromUrl && fromStorage && fromUrl !== fromStorage ? fromStorage : null;
+
     // An id is already in play (URL wins over storage) -- return it
     // immediately, no blocking wait.
     if (fromUrl) {
@@ -95,12 +120,32 @@ export function useCurrentEvent(): UseCurrentEventResult {
     setLoading(false);
 
     // Reconcile in the background: self-heal a stale id, fail soft on any
-    // fetch problem.
+    // fetch problem. The same fetch resolves the switch banner's two
+    // names, since both need the caller's own /events list.
     const idToReconcile = (fromUrl ?? fromStorage) as string;
     let cancelled = false;
     loadEventsOnce()
       .then((items) => {
-        if (cancelled || items.length === 0) return;
+        if (cancelled) return;
+        if (priorStoredId) {
+          const fromEvent = items.find((item) => item.id === priorStoredId);
+          const toEvent = items.find((item) => item.id === fromUrl);
+          // Render nothing until BOTH names are known -- never show an id
+          // in place of a name.
+          if (fromEvent && toEvent) {
+            setSwitchInfo({
+              fromEvent,
+              toEvent,
+              restore: () => {
+                window.localStorage.setItem(STORAGE_KEY, fromEvent.id);
+                const url = new URL(window.location.href);
+                url.searchParams.delete('eventId');
+                window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+              },
+            });
+          }
+        }
+        if (items.length === 0) return;
         const { eventId: reconciled, changed } = reconcileStoredEventId(items, idToReconcile);
         if (changed && reconciled) {
           window.localStorage.setItem(STORAGE_KEY, reconciled);
@@ -118,5 +163,5 @@ export function useCurrentEvent(): UseCurrentEventResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { eventId, loading, error };
+  return { eventId, loading, error, switchInfo };
 }

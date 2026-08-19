@@ -131,6 +131,43 @@
   color: var(--chq-brand);
 }
 
+/* w4-s (DEC-728 amendment, D19): the cross-event-switch banner --
+   "Switched to <B> · Back to <A>" -- rendered by EventSwitchBanner.tsx,
+   mounted alongside .chq-eventswitcher so it reaches every page. Sits
+   above the switcher in normal flow (this file owns no header layout, so
+   no positioning here beyond its own box). */
+.chq-event-switch-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--chq-surface-sunk);
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-ctl);
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--chq-ink);
+}
+
+.chq-event-switch-banner-text {
+  font-weight: 600;
+}
+
+.chq-event-switch-banner-sep {
+  color: var(--chq-muted);
+}
+
+.chq-event-switch-banner-restore {
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-brand);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
 @media (max-width: 700px) {
   .chq-eventswitcher-name {
     max-width: 160px;
@@ -140,5 +177,22 @@
      the height of the whole admin header. */
   .chq-eventswitcher-menu-btn {
     min-height: 44px;
+  }
+
+  /* w4-s (DEC-728 amendment, D19): the banner wraps to two lines under
+     160px of squeezed header width, and every interactive element in it
+     -- here, only the restore link -- clears the 44px floor per the
+     campaign's tap-target rule, centred flex + horizontal padding rather
+     than a bare min-height on an inline text control. */
+  .chq-event-switch-banner {
+    flex-wrap: wrap;
+  }
+
+  .chq-event-switch-banner-restore {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 8px;
   }
 }

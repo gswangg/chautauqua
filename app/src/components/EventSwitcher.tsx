@@ -12,6 +12,7 @@ import { loadEventsOnce, type EventListItem } from '../lib/useCurrentEvent';
 import { useMenu } from '../lib/useMenu';
 import { useMe } from '../lib/useMe';
 import { DateField } from './DateField';
+import { EventSwitchBanner } from './EventSwitchBanner';
 import { FormRow, FormRowPair, ModalFrame } from './ModalFrame';
 import {
   buildNewEventPayload,
@@ -206,6 +207,11 @@ export function EventSwitcher() {
   // to switch -- the control's only action (switching/creating events) is
   // impossible for that role, so it should not exist, mirroring the
   // conditional-and-quiet rule already applied to 'New event…' above.
+  // w4-s (DEC-728 amendment, D19): the switch-context banner is gated the
+  // same way -- it depends on useCurrentEvent()'s own /events fetch, which
+  // DEC-978 forbids issuing for a reviewer (GET /api/v1/events 403s
+  // server-side for that role), so it stays inside the organizer branch
+  // below rather than rendering unconditionally.
   if (!loading && me?.role !== 'organizer') return null;
 
   function switchTo(id: string) {
@@ -222,7 +228,16 @@ export function EventSwitcher() {
   }
 
   return (
-    <div className="chq-eventswitcher" ref={containerRef}>
+    <>
+      {/* w4-s (DEC-728 amendment, D19): the only mount point that reaches
+          every page (this component is nav-mounted). Its own
+          useCurrentEvent() call decides whether it renders anything --
+          nothing when the URL eventId matches what was already stored.
+          Gated the same as the rest of this component (DEC-978): its
+          useCurrentEvent() call issues its own /events fetch, which must
+          not fire before identity resolves or for a non-organizer. */}
+      {!loading && me?.role === 'organizer' && <EventSwitchBanner />}
+      <div className="chq-eventswitcher" ref={containerRef}>
       {error && <span className="chq-field-error">{error}</span>}
       {/* DEC-576: desktop header shows the current event as plain text
           (13px/600) beside a menu button, not the raw <select> this used
@@ -284,6 +299,7 @@ export function EventSwitcher() {
       )}
 
       {showNewEvent && <NewEventModal onCancel={() => setShowNewEvent(false)} onCreated={handleCreated} />}
-    </div>
+      </div>
+    </>
   );
 }
