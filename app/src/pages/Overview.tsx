@@ -276,23 +276,32 @@ export function OverviewPage() {
         </div>
       )}
 
-      <div className="chq-overview-deadlines">
-        {deadlineCells.map((cell) => (
-          <Link key={cell.key} to={cell.href} className="chq-overview-deadline-cell">
-            <span className="chq-overview-deadline-label">{cell.label}</span>
-            <span
-              className={
-                cell.isNearest
-                  ? 'chq-overview-deadline-value chq-overview-deadline-nearest'
-                  : 'chq-overview-deadline-value'
-              }
-            >
-              {cell.display}
-            </span>
-          </Link>
-        ))}
+      {/* docs/design/Chautauqua Overview.dc.html:190
+          `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+          The 390 frame draws the deadline strip inside the phone's own sticky
+          head band, above the scrolling body -- .chq-phone-head/.chq-phone-body
+          are no-ops above 700px (DEC-976: no rule outside a max-width block),
+          so this changes nothing at desktop widths (frozen). */}
+      <div className="chq-phone-head">
+        <div className="chq-overview-deadlines">
+          {deadlineCells.map((cell) => (
+            <Link key={cell.key} to={cell.href} className="chq-overview-deadline-cell">
+              <span className="chq-overview-deadline-label">{cell.label}</span>
+              <span
+                className={
+                  cell.isNearest
+                    ? 'chq-overview-deadline-value chq-overview-deadline-nearest'
+                    : 'chq-overview-deadline-value'
+                }
+              >
+                {cell.display}
+              </span>
+            </Link>
+          ))}
+        </div>
       </div>
 
+      <div className="chq-phone-body">
       <div className="chq-overview-headline-row">
         <h1 className="chq-overview-headline">{headlineText(payload)}</h1>
         <div className="chq-overview-toolbar">
@@ -391,14 +400,29 @@ export function OverviewPage() {
                 <button type="button" className="chq-overview-btn" onClick={() => handleTriageAction(row, 'declined')}>
                   Decline
                 </button>
+                {/* docs/design/Chautauqua Overview.dc.html:190
+                    `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+                    The 390 frame's §02 card draws exactly three actions --
+                    Accept, Decline, Read -- matching DEC-610 (wave 83
+                    amendment)'s Submissions phone card ruling: a third
+                    competing status verb beside a decision pair is the
+                    worklist-bar defect, so Waitlist (a holding state, not
+                    part of THIS decision) is hidden at phone width via
+                    chq-overview-btn-waitlist, not removed -- it stays fully
+                    reachable at every width from the submission detail rail
+                    and the bulk-action bar, and unhidden above 700px
+                    (desktop frozen). */}
                 <button
                   type="button"
-                  className="chq-overview-btn"
+                  className="chq-overview-btn chq-overview-btn-waitlist"
                   onClick={() => handleTriageAction(row, 'accept_queue')}
                 >
                   Waitlist
                 </button>
-                <Link to={`/submissions/${row.submissionId}`} className="chq-overview-link-btn">
+                <Link
+                  to={`/submissions/${row.submissionId}`}
+                  className="chq-overview-link-btn chq-overview-link-btn-read"
+                >
                   Read the abstract
                 </Link>
               </div>
@@ -480,6 +504,7 @@ export function OverviewPage() {
           )}
         </div>
       </section>
+      </div>
     </div>
   );
 }

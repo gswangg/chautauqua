@@ -695,3 +695,101 @@ describe('overview top-third spacing measure (Gate-4 wave-6 amendment)', () => {
     expect(ruleBody('.chq-overview-row-quiet')).toMatch(/grid-template-columns:\s*200px 1fr/);
   });
 });
+
+// docs/design/Chautauqua Overview.dc.html:190
+// `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+// "Same five sections, one column" (task w2-g): the DOM contract that
+// carries the phone reflow -- the deadline strip sits in the shared
+// .chq-phone-head sticky scaffold, the rest of the page (headline + all
+// five sections) sits in .chq-phone-body, and §02's Waitlist control is
+// tagged for phone-only hiding (DEC-610 wave-83 amendment) while Read
+// keeps a dedicated hook for its natural-width phone treatment. jsdom
+// applies no stylesheet, so this asserts the classes exist on the right
+// elements -- the CSS behaviour itself is pinned by the source-scan
+// describe block below.
+describe('overview phone (390) DOM contract (task w2-g)', () => {
+  it('wraps the deadline strip in .chq-phone-head and the rest of the page in .chq-phone-body', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': eventsListEnvelope(),
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Marcus Okafor')).toBeInTheDocument());
+
+    const head = document.querySelector('.chq-phone-head');
+    expect(head).not.toBeNull();
+    expect(head!.querySelector('.chq-overview-deadlines')).not.toBeNull();
+
+    const body = document.querySelector('.chq-phone-body');
+    expect(body).not.toBeNull();
+    expect(body!.querySelector('.chq-overview-headline')).not.toBeNull();
+    expect(body!.textContent).toContain('01 — Overdue speaker tasks');
+    expect(body!.textContent).toContain('02 — Submissions awaiting triage');
+    expect(body!.textContent).toContain('No action needed');
+    // the deadline strip is NOT duplicated into the body
+    expect(body!.querySelector('.chq-overview-deadlines')).toBeNull();
+  });
+
+  it('tags §02\'s Waitlist control for phone-only hiding and Read for its natural-width phone treatment, without touching Accept/Decline', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': eventsListEnvelope(),
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument());
+
+    const waitlistBtn = screen.getByText('Waitlist');
+    expect(waitlistBtn).toHaveClass('chq-overview-btn-waitlist');
+
+    const readLink = screen.getByText('Read the abstract');
+    expect(readLink).toHaveClass('chq-overview-link-btn-read');
+
+    expect(screen.getByText('Accept')).not.toHaveClass('chq-overview-btn-waitlist');
+    expect(screen.getByText('Decline')).not.toHaveClass('chq-overview-btn-waitlist');
+  });
+});
+
+// docs/design/Chautauqua Overview.dc.html:190
+// `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+// Source-scan (jsdom applies no @media rule, mirroring the top-third
+// spacing describe block above): pins the phone-only behaviour of the two
+// new hooks, and that desktop (outside any max-width block) declares no
+// rule for either -- "desktop frozen" is a property of the stylesheet
+// text, not just of the rendered page.
+describe('overview phone (390) CSS contract (task w2-g)', () => {
+  const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'overview', 'overview.css');
+  const css = readFileSync(cssPath, 'utf8');
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const maxWidthBlocks = [...css.matchAll(/@media\s*\(max-width:\s*700px\)\s*\{([\s\S]*?)\n\}/g)].map((m) => m[1]!);
+  const phoneCss = maxWidthBlocks.join('\n');
+
+  it('desktop (outside any max-width block) declares no rule for the two phone-only hooks', () => {
+    expect(withoutMedia).not.toMatch(/\.chq-overview-btn-waitlist\s*\{/);
+    expect(withoutMedia).not.toMatch(/\.chq-overview-link-btn-read\s*\{/);
+  });
+
+  it('§02 Waitlist is display:none at phone width (hidden, not removed from the DOM)', () => {
+    const match = phoneCss.match(/\.chq-overview-btn-waitlist\s*\{([^}]*)\}/);
+    expect(match).not.toBeNull();
+    expect(match![1]).toMatch(/display:\s*none/);
+  });
+
+  it('§02 Read sits at its natural width beside Accept/Decline, not stretched full-width', () => {
+    const match = phoneCss.match(/\.chq-overview-link-btn\.chq-overview-link-btn-read\s*\{([^}]*)\}/);
+    expect(match).not.toBeNull();
+    expect(match![1]).toMatch(/width:\s*auto/);
+    expect(match![1]).not.toMatch(/width:\s*100%/);
+  });
+});
