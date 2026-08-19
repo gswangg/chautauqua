@@ -7,8 +7,11 @@
 // gate at all). jsdom does not evaluate @media rules or apply external
 // stylesheets (mirroring app/src/shell-geometry.test.ts and
 // ContactsApp.newContact.render.test.tsx), so this is a source-scan: every
-// *.css under app/src/** plus the SSR stylesheet template-literal modules
-// (*.css.ts under src/routes/**) is read as text, and every class selector
+// *.css under app/src/** plus every SSR stylesheet template-literal module
+// under src/** (derived from source content -- any module whose text
+// exports a CSS template-literal constant, DEC-808; not a `.css.ts`
+// filename convention, which misses src/views/theme.ts) is read as text,
+// and every class selector
 // containing a `phone` segment must either have NO top-level (outside any
 // @media) rule at all — meaning it only exists inside a phone-width query
 // and inherits its parent's hidden state — or its top-level rule must
@@ -20,7 +23,12 @@ import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE;
-const ROUTES_SRC = join(HERE, '..', '..', 'src', 'routes');
+// DEC-808 (wave-96 finding): rooting only at src/routes misses src/views/**
+// entirely -- src/views/theme.ts (THEME_CSS) is loaded by every SSR surface
+// and was invisible to this scan. Repointed at src/ so the same walk covers
+// both src/routes/**/*.css.ts and src/views/**/*.css.ts (and any future
+// sibling) instead of a hand-listed subdirectory.
+const ROUTES_SRC = join(HERE, '..', '..', 'src');
 
 /** Selectors that are genuinely rendered (and thus must be visible) at
  * BOTH desktop and phone widths, so they are exempt from the top-level
@@ -123,12 +131,20 @@ interface CssSource {
   css: string;
 }
 
+// DEC-808: population derived from module SOURCE (does it export a CSS
+// template-literal constant?), not from a `.css.ts` filename convention --
+// src/views/theme.ts exports THEME_CSS without that suffix and a filename
+// glob silently drops it.
+function cssExportFiles(root: string): string[] {
+  return walk(root, '.ts').filter((file) => !file.includes('.test.') && !file.endsWith('.css.ts.d.ts'));
+}
+
 function loadSources(): CssSource[] {
   const sources: CssSource[] = [];
   for (const file of walk(APP_SRC, '.css')) {
     sources.push({ file, css: stripComments(readFileSync(file, 'utf-8')) });
   }
-  for (const file of walk(ROUTES_SRC, '.css.ts')) {
+  for (const file of cssExportFiles(ROUTES_SRC)) {
     const raw = readFileSync(file, 'utf-8');
     const match = raw.match(/export const \w+_CSS = `([\s\S]*?)`;/);
     const body = match?.[1];
@@ -142,7 +158,17 @@ const SOURCES = loadSources();
 const NOT_PHONE_ONLY_SELECTORS = new Set(NOT_PHONE_ONLY.map(([selector]) => selector));
 
 describe('phone-block visibility invariant (w6-h)', () => {
-  it('found at least 5 phone-named selectors across app/src/**/*.css and src/routes/**/*.css.ts (regex sanity floor)', () => {
+  it('the CSS-export module population is derived from source content, not a filename glob (DEC-808)', () => {
+    // Measured on main: 16 modules export a CSS template-literal constant
+    // under src/ (15 *.css.ts sheets plus src/views/theme.ts).
+    expect(cssExportFiles(ROUTES_SRC).length).toBeGreaterThanOrEqual(15);
+  });
+
+  it('the CSS-export module population includes src/views/theme.ts (positive control)', () => {
+    expect(cssExportFiles(ROUTES_SRC).some((p) => p.endsWith(join('src', 'views', 'theme.ts')))).toBe(true);
+  });
+
+  it('found at least 5 phone-named selectors across app/src/**/*.css and src/**/*.css.ts (regex sanity floor)', () => {
     const all = new Set<string>();
     for (const { css } of SOURCES) {
       for (const m of css.match(PHONE_SELECTOR_RE) ?? []) all.add(m);

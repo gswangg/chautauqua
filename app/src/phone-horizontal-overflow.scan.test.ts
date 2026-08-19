@@ -45,9 +45,11 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEC_989 } from '../../src/decisions';
+import { DEC_808, DEC_976, DEC_989 } from '../../src/decisions';
 
 void DEC_989; // this scan's whole reason to exist: DEC-989's horizontal-extent-vs-390-viewport probe
+void DEC_808; // population-by-source-content, never a hand-listed manifest or a filename convention
+void DEC_976; // an SSR sheet's exemption receipt may not cite the unloaded app/src/ SPA bundle
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = join(HERE, '..', '..');
@@ -64,7 +66,30 @@ function allFiles(root: string, extension: string): string[] {
 }
 
 const APP_CSS_FILES = allFiles(HERE, '.css');
-const CSS_TS_FILES = allFiles(SRC_ROOT, '.css.ts');
+
+/**
+ * Every `src/**\/*.ts` module (readdirSync recursive, DEC-808 -- never a
+ * hand-listed manifest) whose SOURCE TEXT exports a CSS template-literal
+ * constant (`export const X_CSS = ...`), excluding test files. Population is
+ * derived from what a module's content actually declares, not from a
+ * `.css.ts` filename convention -- src/views/theme.ts exports THEME_CSS
+ * (loaded by every SSR surface, and the sheet that carries the SSR 44px
+ * phone floor) but does not carry the `.css.ts` suffix, and a filename glob
+ * silently drops it (DEC-808, wave-96 finding).
+ */
+const CSS_EXPORT_RE = /export const [A-Z0-9_]*CSS\s*=\s*/;
+
+function cssModuleFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.ts') || entry.name.includes('.test.')) continue;
+    const absPath = join(entry.parentPath, entry.name);
+    if (CSS_EXPORT_RE.test(readFileSync(absPath, 'utf-8'))) out.push(absPath);
+  }
+  return out.sort();
+}
+
+const CSS_TS_FILES = cssModuleFiles(SRC_ROOT);
 
 /** Extracts the literal CSS text out of a `export const X_CSS = \`...\`;` module, stripping ${...} interpolations (those name another module's own exported constant, itself enumerated and scanned separately as that file). */
 function extractCssTsLiteral(raw: string): string {
@@ -333,6 +358,43 @@ for (const source of SOURCES) {
   }
 }
 
+// --- cross-bundle receipt tripwire (DEC-976) ---------------------------
+// An `overflow-exempt:`/`tap-floor-exempt:` receipt inside a `src/**` sheet
+// (an SSR surface) may not cite a path beginning `app/src/` (the SPA admin
+// bundle) -- the SSR surface never loads that bundle, so such a citation
+// names a rule the page in front of the user never runs. The SSR carrier
+// every `src/**` container exemption should name instead is
+// src/views/theme.ts:347-366 (the base .chq-btn/input rule) plus :625-627
+// (the phone 44px floor) -- all three legs of DESIGN-RULINGS.md:189.
+// One-sided ratchet, seeded at 0 (verified 0 on main today): the five
+// existing `app/src/` mentions inside `src/` are prose parity notes, none
+// sitting inside an exempt-comment receipt.
+function findCrossBundleReceiptCitations(cssText: string): string[] {
+  const out: string[] = [];
+  const re = /(?:overflow-exempt|tap-floor-exempt):\s*([^*]*?)\*\//g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(cssText)) !== null) {
+    const citation = (m[1] ?? '').trim();
+    if (/app\/src\//.test(citation)) out.push(citation);
+  }
+  return out;
+}
+
+interface CrossBundleOffender {
+  file: string;
+  citation: string;
+}
+
+const CROSS_BUNDLE_OFFENDERS: CrossBundleOffender[] = [];
+for (const source of SOURCES) {
+  if (!source.label.startsWith('src/')) continue; // only SSR sheets, never the app/src SPA bundle itself
+  for (const citation of findCrossBundleReceiptCitations(source.css)) {
+    CROSS_BUNDLE_OFFENDERS.push({ file: source.label, citation });
+  }
+}
+
+export const CROSS_BUNDLE_CITATION_CEILING = 0;
+
 // This count may only be LOWERED as offenders are fixed (measured against
 // this branch's tree at authoring time -- see docs/design/audit/
 // overflow-390-v12.md for the full, per-file breakdown). Raising it back up
@@ -346,6 +408,16 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
 
   it('the file population includes a known file (styles.css)', () => {
     expect(SOURCES.some((s) => s.label === 'app/src/styles.css')).toBe(true);
+  });
+
+  it('the CSS-export module population is derived from source content, not a filename glob (DEC-808)', () => {
+    // Measured on main: 16 modules export a CSS template-literal constant
+    // under src/ (15 *.css.ts sheets plus src/views/theme.ts).
+    expect(CSS_TS_FILES.length).toBeGreaterThanOrEqual(15);
+  });
+
+  it('the CSS-export module population includes src/views/theme.ts (positive control)', () => {
+    expect(CSS_TS_FILES.some((p) => relative(REPO_ROOT, p) === 'src/views/theme.ts')).toBe(true);
   });
 
   it("derives a positive, sane content budget from the shell's own phone gutter", () => {
@@ -396,6 +468,25 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
       (o) => o.file.startsWith('app/src/components/') || o.file === 'app/src/pages/contacts/contacts-panels.css',
     );
     expect(fixedOffenders.map((o) => `${o.file} :: ${o.selector} -- ${o.reasons.join('; ')}`)).toEqual([]);
+  });
+});
+
+describe('SSR sheet exemption receipts never cite the unloaded SPA bundle (DEC-976)', () => {
+  it('the matcher fires on a synthetic false citation (positive control)', () => {
+    const fixture = '/* overflow-exempt: see app/src/styles.css:1134-1139 for the floor rule */\n.x { width: 999px; }';
+    expect(findCrossBundleReceiptCitations(fixture)).toEqual(['see app/src/styles.css:1134-1139 for the floor rule']);
+  });
+
+  it('the matcher does not fire on a receipt citing the real SSR carrier (negative control)', () => {
+    const fixture = '/* overflow-exempt: see src/views/theme.ts:625-627 for the floor rule */\n.x { width: 999px; }';
+    expect(findCrossBundleReceiptCitations(fixture)).toEqual([]);
+  });
+
+  it('no src/** sheet exemption receipt cites an app/src/ path (one-sided ratchet, seeded at 0)', () => {
+    expect(
+      CROSS_BUNDLE_OFFENDERS.length,
+      CROSS_BUNDLE_OFFENDERS.map((o) => `${o.file} -- cites "${o.citation}"`).join('\n'),
+    ).toBeLessThanOrEqual(CROSS_BUNDLE_CITATION_CEILING);
   });
 });
 
