@@ -11,6 +11,22 @@ import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-comms-render';
 
+/** The desktop tree (.chq-comms-main).
+ *
+ * v12 mobile campaign w1 (DEC-621 amendment) renders the phone landing as a
+ * SIBLING of .chq-comms-main and hides it with a top-level `display: none`
+ * that only the 700px block lifts. jsdom evaluates no @media rules and no
+ * stylesheet at all, so the landing's read-only "Recent sends" list is in
+ * the DOM here too -- it repeats each batch's subject and the shared
+ * sentCountLabel grammar. Desktop-tab assertions therefore scope to this
+ * region so they keep pinning the desktop tree exactly as they did before
+ * the landing existed, rather than matching whichever copy comes first. */
+function desktop(): HTMLElement {
+  const el = document.querySelector('.chq-comms-main');
+  if (!el) throw new Error('.chq-comms-main not in the DOM');
+  return el as HTMLElement;
+}
+
 function submission() {
   return {
     id: 'sub-1',
@@ -148,7 +164,7 @@ describe('CommsPage render smoke', () => {
 
     fireEvent.click(await screen.findByRole('tab', { name: 'History' }));
 
-    const row = await screen.findByText('You are in!');
+    const row = await waitFor(() => within(desktop()).getByText('You are in!'));
     const batchButton = row.closest('.chq-comms-batch-row') as HTMLElement;
     expect(within(batchButton).getByText('3 sent')).toBeInTheDocument();
     // DEC-603 amendment (findings wave 8): History's batch count now prints
@@ -461,13 +477,13 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Send #1')).toBeInTheDocument();
+    expect(await waitFor(() => within(desktop()).getByText('Send #1'))).toBeInTheDocument();
     // Capped at four rows -- the fifth batch never appears here.
-    expect(screen.queryByText('Send #5')).not.toBeInTheDocument();
+    expect(within(desktop()).queryByText('Send #5')).not.toBeInTheDocument();
 
     // A batch whose statusCounts are all failures still renders -- an
     // attempted send is auditable whatever the transport did.
-    expect(screen.getByText('0 sent · 2 failed')).toBeInTheDocument();
+    expect(within(desktop()).getByText('0 sent · 2 failed')).toBeInTheDocument();
 
     // DEC-751 amendment (w15-d): the compose mount's "Open" drills in
     // place exactly like History's -- it never navigates or touches ?tab=.
@@ -520,13 +536,13 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Send #1')).toBeInTheDocument();
-    const composeRow = screen.getByText('Send #1').closest('.chq-comms-batch-row') as HTMLElement;
+    expect(await waitFor(() => within(desktop()).getByText('Send #1'))).toBeInTheDocument();
+    const composeRow = within(desktop()).getByText('Send #1').closest('.chq-comms-batch-row') as HTMLElement;
     expect(within(composeRow).getByText('Acceptance letter')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: 'History' }));
     await waitFor(() => {
-      const historyRow = screen.getByText('Send #1').closest('.chq-comms-batch-row') as HTMLElement;
+      const historyRow = within(desktop()).getByText('Send #1').closest('.chq-comms-batch-row') as HTMLElement;
       expect(within(historyRow).getByText('Acceptance letter')).toBeInTheDocument();
     });
   });
