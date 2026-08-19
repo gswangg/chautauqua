@@ -119,10 +119,13 @@ const INCLUDED_HEADINGS = [
 // Deliberately excluded (see header comment for why): a section heading
 // listed here must NEVER appear in INCLUDED_HEADINGS, enforced by its own
 // test below.
-const EXCLUDED_HEADINGS = [
-  "## 5. Pending adjudication (not yet blessed — sweep should verdict)",
-  "## v12 frame errata",
-];
+//
+// DEC-967 (wave-101 amendment): "## v12 frame errata" was dropped from this
+// list because v12m-w14-b CLOSED that section and DELETED the heading from
+// DEVIATIONS.md -- an exclusion that stops resolving is a work item that
+// closed, not a regression. The heading is never re-added to satisfy this
+// scan; a derived ledger's exclusion list is part of the derivation.
+const EXCLUDED_HEADINGS = ["## 5. Pending adjudication (not yet blessed — sweep should verdict)"];
 
 /** Slugifies a lead-in phrase into a stable, deterministic key: lowercase,
  * curly/straight quotes and backticks stripped, every run of
@@ -397,6 +400,18 @@ const LEDGER: LedgerEntry[] = [
     reason: "the inverted DONE/PEND/LATE vocabulary (complete recedes bare-text, overdue is the filled exception) is the same class family in every state, including under a write-failure banner -- no separate write-failure styling exists.",
     honored: { kind: "present", file: "app/src/pages/speakers/speakers.css", literal: ".chq-speakers-status-complete {", testFile: "app/src/pages/speakers/speakers-css.test.ts" },
   },
+  {
+    key: "speakers-status-chip-hover",
+    status: "honored",
+    reason: "USER RULING 2026-08-19 (v12 review): a quiet --chq-surface-sunk background tint on hover, not the frame's box-shadow ring -- rounded status-fill states already paint, so a floating ring read as a false affordance around loose text.",
+    honored: { kind: "present", file: "app/src/pages/speakers/speakers.css", literal: "button.chq-speakers-status:hover {", testFile: "app/src/pages/speakers/speakers-css.test.ts" },
+  },
+  {
+    key: "focus-hover-ring-geometry-on-bare-text-controls",
+    status: "honored",
+    reason: "USER RULING 2026-08-19 (v12 review): quiet-action families (e.g. .chq-link-button) cancel inline padding with an equal-and-opposite negative margin-inline, so the focus/hover ring and hit box gain room while no glyph moves.",
+    honored: { kind: "present", file: "app/src/styles.css", literal: ".chq-link-button {", testFile: "app/src/focus-treatment.scan.test.ts" },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -562,8 +577,8 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
     expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(5);
-    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(14);
-    expect(derived.length).toBe(27);
+    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(16);
+    expect(derived.length).toBe(29);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

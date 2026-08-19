@@ -1,6 +1,12 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { DEC_989 } from "../src/decisions";
+
+// DEC-989 is a compile-checked dependency of the OUTSET_RING_ALLOWLIST_FILES
+// narrowing below (wave-102 ruling): a rename/removal of DEC-989's
+// decisions-data entry breaks this file's build, not just its runtime.
+void DEC_989;
 
 // DEC-383 palette closure guard: page and surface sheets compose var(--chq-*)
 // tokens only. Colour literals live in exactly two places -- app/src/styles.css
@@ -149,15 +155,23 @@ describe("palette closure guard (DEC-383)", () => {
   });
 
   // DEC-989 (wave-64 amendment, docs/design/DESIGN-RULINGS.md:113): the
-  // status-cell ring is the ONE named exception to "inset only" -- the
-  // ruling calls for an OUTSET halo, not a bevel, at exactly these two
-  // sites (speakers.css's onboarding-status hover ring, review.css's
-  // scorecard-criterion focus ring). Every other box-shadow in scope stays
-  // inset-only; this allowlist may not spread past its two owning files.
-  const OUTSET_RING_ALLOWLIST_FILES = new Set([
-    join(REPO_ROOT, "app/src/pages/speakers/speakers.css"),
-    join(REPO_ROOT, "app/src/pages/review/review.css"),
-  ]);
+  // status-cell ring was named as an exception to "inset only" at TWO
+  // sites -- speakers.css's onboarding-status hover ring and review.css's
+  // scorecard-criterion focus ring.
+  //
+  // DEC-989 (wave-102 ruling): the speakers site was legitimately retired.
+  // DEVIATIONS.md section 6's "Speakers status-chip HOVER" USER RULING
+  // (2026-08-19) replaced the frame's outset box-shadow ring with a quiet
+  // `--chq-surface-sunk` background tint on hover (button.chq-speakers-
+  // status:hover, speakers.css) -- after v12's weight inversion, two of
+  // the three status states paint no fill at all, so the halo read as a
+  // ring floating around loose text rather than a control lighting up.
+  // Keyboard `:focus-visible` on the same family is untouched and still
+  // wears the ring. This allowlist narrows to review.css alone; it may not
+  // spread past its one remaining owning file. DESIGN-RULINGS.md:113's
+  // "exactly these two sites" is not edited -- this ruling supersedes it
+  // in behaviour, not in the ruling doc's text.
+  const OUTSET_RING_ALLOWLIST_FILES = new Set([join(REPO_ROOT, "app/src/pages/review/review.css")]);
   const OUTSET_RING_VALUE = "0 0 0 2px var(--chq-border-strong)";
 
   it("no box-shadow declaration in app/src/**/*.css, theme.ts or SSR surface modules lacks inset, except the DEC-989 status-cell ring", () => {
@@ -181,9 +195,9 @@ describe("palette closure guard (DEC-383)", () => {
       }
     }
     expect(violations).toEqual([]);
-    // Exactly one outset ring per owning file -- the allowlist may not
-    // spread to a third site or multiply within either owning file.
-    expect(outsetRingHits).toBe(2);
+    // Exactly one outset ring, at the one remaining owning file -- the
+    // allowlist may not spread to a second site.
+    expect(outsetRingHits).toBe(1);
   });
 
   it("the removed pre-redesign error/conflict palette (#c0392b, #fdecea, red, crimson) does not reappear", () => {

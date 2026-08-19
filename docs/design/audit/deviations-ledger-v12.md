@@ -18,27 +18,31 @@ The ledger derives its population from four sections only:
 - `## 1. Ruled omissions` (2 entries)
 - `## 2. State-layer additions (frames draw no row/selection states)` (6 entries)
 - `## 3. Interpretations where the frames underspecify` (5 entries)
-- `## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)` (14 entries)
+- `## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)` (16 entries)
 
-27 entries total, asserted as an exact per-section count (vacuous-population
+29 entries total, asserted as an exact per-section count (vacuous-population
 tripwire) so a broken heading match can never silently zero a section out.
 
 **Deliberately excluded**, per this task's own file-ownership boundary and
 DEC-967's amendment text:
 
-- `## v12 frame errata` — an in-flight lane (v12m-w14-b) is deleting this
-  section; transcribing it here would make the ledger red for a reason
-  unrelated to whether ITS claims are honored.
 - `## 5. Pending adjudication` — stale prose. Its one entry
   ("Tracks-and-rooms save model") is answered verbatim by section 6's
   differently-worded adjudication bullet of the same name; the test suite
   proves the derived `tracks-and-rooms-save-model` key traces to section 6,
   never to the excluded section 5.
 
-Both exclusions are asserted as code, not just prose: `INCLUDED_HEADINGS`
-never contains either excluded heading, and both excluded headings are
+This exclusion is asserted as code, not just prose: `INCLUDED_HEADINGS`
+never contains the excluded heading, and the excluded heading is
 independently confirmed present in the live document (so a rename wouldn't
 silently defeat the exclusion by making it vacuously true).
+
+DEC-967 (wave-101 amendment): `## v12 frame errata` was previously excluded
+here too, pending an in-flight lane (v12m-w14-b) deleting it. That lane
+landed and the heading is genuinely gone from DEVIATIONS.md — an exclusion
+that stops resolving is a work item that CLOSED, not a regression. The
+exclusion entry is dropped, never the heading re-added to make the scan
+green.
 
 ## Verdicts
 
