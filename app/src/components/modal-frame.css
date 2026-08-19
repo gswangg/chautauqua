@@ -72,6 +72,14 @@
   flex-shrink: 0;
 }
 
+/* w6-d: the shipped `.chq-phone-back` token (styles.css) is a ModalFrame
+   affordance -- hidden above the 700px breakpoint at top level here, and
+   un-hidden inside the max-width block below, so the sheet stays
+   single-direction (DEC-385) and this file measures zero shadowed pairs. */
+.chq-modal-head .chq-phone-back {
+  display: none;
+}
+
 /* DEC-750: the mock puts the primary action bottom-LEFT in every modal
    frame (Submissions.dc.html:476, Speakers.dc.html:213) -- one
    declaration here so every ModalFrame-built dialog aligns its action
@@ -170,5 +178,24 @@
   .chq-form-row-control > .chq-select,
   .chq-form-row-control > .chq-textarea {
     min-height: 44px;
+  }
+}
+
+/* w6-d: un-hide the phone back link inside the drawer's header, and
+   re-pair the head to the drawer's phone inset -- styles.css:2283-2285
+   cuts .chq-drawer's own padding to 16px at <=700px, so the head's
+   negative margin/padding here must equal that SAME number, never a
+   second re-derivation of it, or the header band overhangs the drawer /
+   sits its title on a mismatched gutter (measured at 26px vs 16px before
+   this fix). Scoped to `.chq-drawer` so a plain `.chq-modal` (which keeps
+   20px/26px at every width) is untouched. */
+@media (max-width: 700px) {
+  .chq-drawer .chq-modal-head {
+    margin: -16px -16px 0;
+    padding: 0 16px 16px;
+  }
+
+  .chq-modal-head .chq-phone-back {
+    display: flex;
   }
 }
