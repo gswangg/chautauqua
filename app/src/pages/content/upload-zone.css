@@ -1,0 +1,53 @@
+/* DEC-976 wave-99 amendment (task v12m-w2-g): the notes-thread drop target
+   keeps its desktop copy, drag handlers, and visually-hidden file input +
+   <label for> wiring exactly as content.css already declares them -- DEC-383's
+   standing form is "carve out by BEHAVIOUR, not by class", and a "Drop a
+   file..." instruction only means something under a pointer. At <=700px the
+   SAME label (never a second parallel control -- the label is already the
+   whole click surface, UploadZone.tsx's own header explains why) reads the
+   frame's copy instead and carries the frame's dashed 46px geometry.
+   docs/design/Chautauqua Content.dc.html:417
+   `<a href="#" style="margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#4E5C31">Upload a file for the speaker</a>` */
+
+/* Base (desktop) state: the phone-copy span is off, the desktop-copy span
+   (uploadPendingLabel.label -- "Drop a file..."/"Uploading...") shows as it
+   always has. DEC-385: this file carries no other top-level rule outside its
+   one trailing @media block -- the swap is entirely narrow-overrides-wide. */
+.chq-content-upload-prompt-phone {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  /* Frame geometry: dashed 46px strip, centred label -- content.css's
+     `.chq-content-upload-zone` already carries a dashed border and a 50px
+     min-height (w41-a); this narrows the height to the frame's 46px only. */
+  .chq-content-upload-zone {
+    min-height: 46px;
+  }
+
+  .chq-content-upload-label {
+    justify-content: center;
+  }
+
+  /* The CNT-06 caps text is a desktop-register chrome-strip readout; the
+     frame's phone control carries no second line, only the one prompt. */
+  .chq-content-upload-caps {
+    display: none;
+  }
+
+  .chq-content-upload-prompt {
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* The pending/uploading branch is untouched -- usePendingLabel still
+     renders a single unmoving line (DEC-733) and that line has no
+     desktop/phone span pair to swap, so only the rest-state copy toggles. */
+  .chq-content-upload-prompt-desktop {
+    display: none;
+  }
+
+  .chq-content-upload-prompt-phone {
+    display: inline;
+  }
+}

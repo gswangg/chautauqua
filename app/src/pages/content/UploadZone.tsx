@@ -3,6 +3,7 @@ import { validateUpload, uploadHintText, allowedUploadExtensions } from '../../.
 import type { FileKind } from './types';
 import { UploadRejectedModal } from './UploadRejectedModal';
 import { usePendingLabel } from '../../components/PendingAction';
+import './upload-zone.css';
 
 interface UploadZoneProps {
   kind: FileKind;
@@ -115,7 +116,23 @@ export function UploadZone({ kind, sessionTitle, replacesFileId, onUpload }: Upl
         htmlFor={inputId}
         className={`chq-content-upload-label ${uploadPendingLabel.buttonProps.className}`.trim()}
       >
-        <span className="chq-content-upload-prompt">{uploadPendingLabel.label}</span>
+        {/* DEC-976 wave-99 amendment (upload-zone.css): the rest-state label
+            reads two copies of the same string -- the desktop "Drop a
+            file..." drag instruction (uploadPendingLabel.label unchanged)
+            and the frame's phone copy -- toggled purely by upload-zone.css's
+            @media(max-width:700px) block, never by JS. The pending/uploading
+            branch keeps its single unmoving line untouched (DEC-733): it has
+            no span pair to swap. */}
+        <span className="chq-content-upload-prompt">
+          {pending ? (
+            uploadPendingLabel.label
+          ) : (
+            <>
+              <span className="chq-content-upload-prompt-desktop">{uploadPendingLabel.label}</span>
+              <span className="chq-content-upload-prompt-phone">Upload a file for the speaker</span>
+            </>
+          )}
+        </span>
         <span className="chq-upload-caps chq-content-upload-caps">{uploadHintText(kind)}</span>
       </label>
       <input
