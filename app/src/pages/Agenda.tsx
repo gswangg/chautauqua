@@ -382,7 +382,12 @@ export function AgendaPage() {
 
       {!loading && agenda && (
         <>
-          <div className="chq-agenda-day-tabs chq-chipstrip" role="tablist">
+          {/* DEC-794 (restored, eval D5): the placing bar is IN FLOW, above the
+             day-tab strip — never an overlay ON it. Cross-day placement is a
+             supported path (setActiveDay never clears `armed`, and handlePlace
+             reads activeDay at call time), so the day pills and the "Clashes
+             are flagged, not blocked" note must stay visible and clickable
+             mid-placement. */}
           <div className="chq-agenda-armed-bar" role="status" aria-hidden={armed ? undefined : true}>
             {armed && (
               <>
@@ -401,6 +406,8 @@ export function AgendaPage() {
               </>
             )}
           </div>
+
+          <div className="chq-agenda-day-tabs chq-chipstrip" role="tablist">
             {agenda.days.map((day) => (
               <button
                 key={day}

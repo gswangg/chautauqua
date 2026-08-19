@@ -102,11 +102,14 @@ describe('agenda ONE overlay tier (DEC-900 amendment, wave 72)', () => {
 
   it('pins the total count of z-index declarations in agenda.css', () => {
     const matches = CSS.match(/z-index\s*:/g) ?? [];
-    // 10th: .chq-agenda-armed-bar's overlay tier on the DAY-TABS strip
-    // (delta-2 amendment) -- outside .chq-day-grid, so it is not part of
-    // the grid's one-overlay-tier contract above; classified here.
-    // 11th/12th: the mid-drag drop target and its free-minutes readout
+    // 10th/11th: the mid-drag drop target and its free-minutes readout
     // (user-filed release-night fix), classified in the test above.
-    expect(matches.length).toBe(12);
+    // Was 12: the delta-2 amendment had given .chq-agenda-armed-bar a
+    // z-index: 3 so it could paint as an absolute OVERLAY on the day-tabs
+    // strip. Eval D5 reverted that bar to DEC-794's in-flow form (it buried
+    // the day pills and the clash note mid-placement), and an in-flow bar
+    // stacks with no z-index at all -- so that declaration is GONE, not
+    // re-tiered, and the count drops back to 11.
+    expect(matches.length).toBe(11);
   });
 });

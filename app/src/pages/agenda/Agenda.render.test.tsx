@@ -905,6 +905,87 @@ describe('AgendaPage render smoke', () => {
     expect(barAfter).not.toHaveAttribute('aria-hidden');
   });
 
+  // Eval D5. A delta-2 amendment made the placing bar a `position:absolute;
+  // inset:0` OVERLAY on the day-tab strip, on the premise that the day pills
+  // "are not usable mid-placement anyway". That premise is false -- see the
+  // cross-day test below -- and the overlay also covered the "Clashes are
+  // flagged, not blocked" note. The geometry is only expressible as an
+  // overlay while the bar is a CHILD of the strip, so pin it as a SIBLING
+  // that precedes the strip: no CSS can re-bury the pills from there.
+  it('renders the armed bar as a sibling BEFORE the day-tab strip, never inside it', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    const bar = document.querySelector('.chq-agenda-armed-bar')!;
+    const dayTabs = document.querySelector('.chq-agenda-day-tabs')!;
+    expect(dayTabs.contains(bar)).toBe(false);
+    expect(bar.nextElementSibling).toBe(dayTabs);
+
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
+
+    // Still outside the strip once armed, and both of the things the overlay
+    // used to cover are still in the tree alongside it.
+    expect(dayTabs.contains(document.querySelector('.chq-agenda-armed-bar'))).toBe(false);
+    expect(within(dayTabs as HTMLElement).getAllByRole('tab').length).toBe(1);
+    expect(within(dayTabs as HTMLElement).getByText('Clashes are flagged, not blocked')).toBeInTheDocument();
+  });
+
+  // Eval D5, the falsifier for the overlay's premise: setActiveDay never
+  // clears `armed`, and handlePlace reads activeDay at CALL time, so arming
+  // a card on day 1 and placing it on day 2 is a supported path -- which is
+  // exactly why the day pills must stay clickable while the bar is showing.
+  it('places an armed session on a day selected AFTER arming (cross-day placement)', async () => {
+    const twoDay = { ...agendaPayload(), days: ['2026-06-01', '2026-06-02'] };
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: twoDay,
+      'PUT /api/v1/submissions/sub-3/slot': {
+        summary: { unplaced: 0, conflicts: 1, placed: 3, total: 3 },
+        conflicts: twoDay.conflicts,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    // Arm on day 1...
+    fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
+    expect(document.querySelector('.chq-agenda-armed-bar')).not.toHaveAttribute('aria-hidden');
+
+    // ...switch days while still armed (the pill must be reachable)...
+    const dayTabs = document.querySelector('.chq-agenda-day-tabs')! as HTMLElement;
+    const secondDay = within(dayTabs).getAllByRole('tab')[1]!;
+    fireEvent.click(secondDay);
+    expect(secondDay).toHaveAttribute('aria-selected', 'true');
+    expect(document.querySelector('.chq-agenda-armed-bar')).not.toHaveAttribute('aria-hidden');
+
+    // ...and place. The PUT must carry the day chosen after arming.
+    fireEvent.click(document.querySelector('.chq-day-grid-cell-btn')!);
+
+    await waitFor(() => {
+      const put = fetchMock.mock.calls.find(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+      );
+      expect(put).toBeDefined();
+      expect(JSON.parse((put![1] as RequestInit).body as string).day).toBe('2026-06-02');
+    });
+  });
+
   // DEC-724: Cancel (armed cleared without a placement) moves focus to the
   // first cell of the grid that was showing while armed, rather than
   // dropping focus to the document body.

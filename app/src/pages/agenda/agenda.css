@@ -105,40 +105,47 @@
   white-space: nowrap;
 }
 
-/* DEC-021 (delta-2 amendment): the armed bar is an absolute OVERLAY on the
-   day-tabs strip — zero layout footprint at rest (the old version reserved
-   38px of empty band above the tabs on every visit), and zero shift when
-   arming/releasing because the strip's own height never changes; the bar
-   simply covers the day pills, which are not usable mid-placement anyway. */
-.chq-agenda-day-tabs {
-  position: relative;
-}
+/* DEC-794, restored (eval D5). The delta-2 amendment made this bar a
+   `position:absolute; inset:0` overlay ON the day-tabs strip, on the premise
+   that the day pills "are not usable mid-placement anyway". That premise is
+   false: `setActiveDay` never clears `armed` and `handlePlace` reads
+   `activeDay` at call time (Agenda.tsx), so arming on one day and placing on
+   another is a supported path — the overlay buried both the day pills and the
+   "Clashes are flagged, not blocked" note precisely when the organiser needs
+   them. Back IN FLOW, above the strip, and per DEC-794 always occupying its
+   box so arming/disarming never shifts the grid; only content and aria-hidden
+   swap.
 
+   The vertical budget that motivated the overlay is answered by making the bar
+   a COMPACT SINGLE LINE instead of by burying controls: the reserved height is
+   exactly the 44px tap-target floor of the Unschedule button it may contain
+   (46px with its 1px borders), replacing the pre-overlay 38px min-height +
+   16px vertical padding = 56px. Armed and at-rest heights are now IDENTICAL
+   rather than merely close — the old form grew when the 44px button appeared,
+   which was the residual shift DEC-794 was trying to eliminate. */
 .chq-agenda-armed-bar {
-  display: none;
-  position: absolute;
-  inset: 0;
-  z-index: 3;
+  display: flex;
   align-items: center;
   gap: 12px;
   padding: 0 14px;
+  min-height: 44px;
   border: 1px solid transparent;
   border-radius: var(--chq-r-ctl);
   font-size: 13px;
   font-weight: 600;
+  color: var(--chq-ink);
 }
 
 .chq-agenda-armed-bar:not([aria-hidden]) {
-  display: flex;
   border-color: var(--chq-brand);
   background: var(--chq-surface-sunk);
 }
 
 /* DEC-021 amendment (w55): the click/keyboard unschedule action for an
    armed PLACED session, rendered inside the already-reserved armed bar
-   (no new band). min-height meets the 44px tap-target floor even though
-   the bar itself is thinner — the button is allowed to be the tallest
-   thing in the row. */
+   (no new band). min-height meets the 44px tap-target floor, which is also
+   the bar's own reserved height — the button fills the row exactly rather
+   than growing it. */
 .chq-agenda-unschedule-btn {
   font-family: inherit;
   min-height: 44px;
