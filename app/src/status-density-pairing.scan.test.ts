@@ -9,9 +9,24 @@
 // edited together: changing one alone is what put a bordered Pending box
 // back on three phone frames after the desktop one had gone bare."
 //
-// POPULATION (DEC-808 idiom: enumerated, never hand-listed): every
-// app/src/**/*.css file is parsed into its rule blocks (comments stripped
-// first, @media context tracked via a brace-depth walk). A rule counts as a
+// POPULATION (DEC-808 idiom: enumerated, never hand-listed; wave-99
+// amendment, task v12m-w2-b): every `app/src/**/*.css` file PLUS every
+// SSR `*_CSS` module under `src/` (via `ssrCssSources()`, the same derived
+// helper `no-fitted-geometry.scan.test.ts` uses -- never a `src/**/*.css.ts`
+// filename glob, which is exactly the shape that silently dropped
+// `src/views/theme.ts` from this scan for wave after wave: `theme.ts` has
+// no `.css.ts` suffix). Half the campaign's 53 phone frames are SSR (public
+// site, CFP, portal, auth, docs) and were never read by this scan before
+// this wave. Each source (app/src file text, or SSR module's raw text) is
+// parsed into its rule blocks (comments stripped first, @media context
+// tracked via a brace-depth walk). Running the brace-walker over a whole
+// `*_CSS.ts` module's raw text (rather than just the extracted template
+// literal) is safe: TypeScript scaffolding around the CSS string is always
+// brace-balanced, `${TOKEN}` interpolations inside the CSS body are
+// themselves a single balanced `{`/`}` pair, and any bogus "selector"
+// produced from JS syntax never matches the bare-class-selector regex
+// below, so it is silently excluded from every family exactly like a real
+// CSS rule with a compound selector would be. A rule counts as a
 // STATUS/STATE TOKEN member if its selector is a single bare class
 // (`.chq-...`, no combinator/pseudo/compound) whose name contains a
 // `-status-` or `-state-` segment -- found by splitting the class name on
@@ -59,6 +74,12 @@
 // (chq-speakers-status, with complete/pending/overdue meaning members and a
 // dense/roomy density pair) -- if the stem regex ever stops matching that
 // family, this scan must fail loudly rather than pass over an empty set.
+// A second tripwire covers the SSR half specifically: the derived SSR
+// module count must be >= the count measured on main at the time this
+// amendment landed (16), and `src/views/theme.ts` -- the module a filename
+// glob has silently dropped from sibling scans before -- must be a member
+// by name. Both are >= / membership checks, not exact-equality pins, so a
+// new `*_CSS` module landing later only strengthens the tripwire.
 //
 // TWO-SIDED RATCHET: DIVERGENCE_CEILING may only be LOWERED as real
 // divergences are fixed in files this scan's owning lane can touch
@@ -74,6 +95,7 @@ import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ssrCssSources } from '../../test/helpers/ssr-css-sources';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = join(HERE, '..', '..');
@@ -87,6 +109,29 @@ function allAppCssFiles(root: string): string[] {
   }
   return out.sort();
 }
+
+/** A source of CSS-shaped text to parse: either an app/src *.css file (read
+ * from disk here) or an SSR *_CSS module (already read by ssrCssSources()).
+ * `rel` is repo-relative for divergence messages and audit-doc citations. */
+interface CssSource {
+  rel: string;
+  text: string;
+}
+
+/** The DERIVED population (DEC-808 idiom, wave-99 amendment): every
+ * app/src/**\/*.css file PLUS every SSR *_CSS module under src/, found by
+ * ssrCssSources()'s exported-const-name scan -- never a `*.css.ts` filename
+ * glob, which misses `src/views/theme.ts`. */
+function buildPopulation(): CssSource[] {
+  const appSources: CssSource[] = allAppCssFiles(HERE).map((file) => ({
+    rel: relative(REPO_ROOT, file),
+    text: readFileSync(file, 'utf8'),
+  }));
+  const ssrSources: CssSource[] = ssrCssSources().map((s) => ({ rel: s.path, text: s.text }));
+  return [...appSources, ...ssrSources].sort((a, b) => a.rel.localeCompare(b.rel));
+}
+
+const SSR_MODULE_COUNT_ON_MAIN_AT_AMENDMENT = 16;
 
 type Decl = Record<string, string>;
 
@@ -278,17 +323,17 @@ function maxWidthPx(media: string): number | null {
 // Build the population.
 // ---------------------------------------------------------------------
 
-const cssFiles = allAppCssFiles(HERE);
+const population = buildPopulation();
 const tokens = new Map<string, string>();
-for (const file of cssFiles) {
-  collectTokens(parseRules(stripComments(readFileSync(file, 'utf8'))), tokens);
+for (const source of population) {
+  collectTokens(parseRules(stripComments(source.text)), tokens);
 }
 
 const families = new Map<string, Map<string, Member>>();
 
-for (const file of cssFiles) {
-  const rel = relative(REPO_ROOT, file);
-  const rules = parseRules(stripComments(readFileSync(file, 'utf8')));
+for (const source of population) {
+  const rel = source.rel;
+  const rules = parseRules(stripComments(source.text));
   for (const rule of rules) {
     for (const sel of rule.selectors) {
       const m = SIMPLE_CLASS.exec(sel);
@@ -336,6 +381,9 @@ for (const famMap of families.values()) {
 
 interface Divergence {
   stem: string;
+  file: string;
+  selectorA: string;
+  selectorB: string;
   detail: string;
 }
 
@@ -365,7 +413,10 @@ for (const [stem, famMap] of families) {
       if (dv || rv) {
         divergences.push({
           stem,
-          detail: `density axis leaks meaning: .${stem}-dense/.${stem}-roomy declare '${prop}' (dense=${dv ?? '(none)'}, roomy=${rv ?? '(none)'})`,
+          file: denseAxis.file === roomyAxis.file ? denseAxis.file : `${denseAxis.file} + ${roomyAxis.file}`,
+          selectorA: `.${stem}-dense`,
+          selectorB: `.${stem}-roomy`,
+          detail: `density axis leaks meaning: declare '${prop}' (dense=${dv ?? '(none)'}, roomy=${rv ?? '(none)'})`,
         });
       }
     }
@@ -378,6 +429,9 @@ for (const [stem, famMap] of families) {
       if (dv !== rv) {
         divergences.push({
           stem,
+          file: denseAxis.file === roomyAxis.file ? denseAxis.file : `${denseAxis.file} + ${roomyAxis.file}`,
+          selectorA: `.${stem}-dense`,
+          selectorB: `.${stem}-roomy`,
           detail: `density axis differs on a non-geometry property '${prop}' (dense=${dv ?? '(none)'}, roomy=${rv ?? '(none)'})`,
         });
       }
@@ -398,7 +452,10 @@ for (const [stem, famMap] of families) {
       }
       divergences.push({
         stem,
-        detail: `dense member '${member.name}' (${member.file}) is re-targeted from ${hit.media} with non-hiding rules -- a phone row is always a real target`,
+        file: member.file,
+        selectorA: `.${stem}-${member.name}`,
+        selectorB: `.${stem}-${member.name} (in ${hit.media})`,
+        detail: `dense member '${member.name}' is re-targeted from ${hit.media} with non-hiding rules -- a phone row is always a real target`,
       });
     }
   }
@@ -425,6 +482,12 @@ for (const exemption of PHONE_DENSE_EXEMPTIONS) {
 // lives there today, so there is nothing this scan can fix in place. Every
 // divergence found above must be lowered by whichever lane owns the file it
 // lives in, never by raising this ceiling to swallow a new one silently.
+// Re-measured wave-99 amendment over the FULL population (app/src + SSR):
+// the two SSR classes matching the -status-/-state- stem shape
+// (chq-portal-status-row, chq-portal-status-badge in
+// src/routes/portal/portal.css.ts) declare no visual-identity property and
+// are not named dense/roomy, so neither enters a family -- the SSR half
+// contributes zero families and therefore zero divergences. Ceiling stays 0.
 const DIVERGENCE_CEILING = 0;
 
 describe('status tokens pair by density (DEC-730, B8)', () => {
@@ -438,6 +501,18 @@ describe('status tokens pair by density (DEC-730, B8)', () => {
     const names = [...(speakersFamily?.keys() ?? [])];
     expect(names).toEqual(expect.arrayContaining(['complete', 'pending', 'overdue']));
     expect(names).toEqual(expect.arrayContaining(['dense', 'roomy']));
+  });
+
+  it('SSR half of the population is present and non-vacuous (vacuous-population tripwire)', () => {
+    const ssrSources = ssrCssSources();
+    expect(ssrSources.length).toBeGreaterThanOrEqual(SSR_MODULE_COUNT_ON_MAIN_AT_AMENDMENT);
+    const paths = ssrSources.map((s) => s.path);
+    expect(paths, 'src/views/theme.ts must be a member by name, never dropped by a *.css.ts glob').toEqual(
+      expect.arrayContaining(['src/views/theme.ts']),
+    );
+    // And the population this scan actually built must agree -- not just
+    // the raw helper output.
+    expect(population.map((p) => p.rel)).toEqual(expect.arrayContaining(['src/views/theme.ts']));
   });
 
   it('classifies the speakers density axis correctly (dense ~20px, roomy >=44px)', () => {
@@ -459,7 +534,9 @@ describe('status tokens pair by density (DEC-730, B8)', () => {
       // eslint-disable-next-line no-console
       console.error(
         'status-density-pairing divergences:\n' +
-          divergences.map((d) => `  [${d.stem}] ${d.detail}`).join('\n'),
+          divergences
+            .map((d) => `  ${d.file}: ${d.selectorA} vs ${d.selectorB} -- ${d.detail}`)
+            .join('\n'),
       );
     }
     expect(divergences.length).toBeLessThanOrEqual(DIVERGENCE_CEILING);
