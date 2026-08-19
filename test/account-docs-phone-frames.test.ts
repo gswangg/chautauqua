@@ -1,9 +1,10 @@
-// Task w1-h: phone-geometry pins for "Sign in · 390" (docs/design/
-// Chautauqua Account.dc.html:121) and "Docs · an article · 390"
-// (docs/design/Chautauqua Docs.dc.html:166). Pure string scans of the
-// stylesheet .ts modules -- jsdom never evaluates @media rules, so this
-// mirrors test/account-password-phone.test.ts's own source-scan style
-// rather than asserting computed style.
+// Task w1-h: phone-geometry pins for the "Sign in · 390" and "Docs · an
+// article · 390" frames, each receipted below at its own describe block
+// (DEC-976: one quoted citation next to its expect(), not restated here
+// with none nearby). Pure string scans of the stylesheet .ts modules --
+// jsdom never evaluates @media rules, so this mirrors
+// test/account-password-phone.test.ts's own source-scan style rather than
+// asserting computed style.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -38,7 +39,7 @@ function extract700Blocks(src: string): string[] {
   return blocks;
 }
 
-describe('"Sign in · 390" phone geometry (docs/design/Chautauqua Account.dc.html:121)', () => {
+describe('"Sign in · 390" phone geometry (docs/design/Chautauqua Account.dc.html:121 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`)', () => {
   const authBlocks = extract700Blocks(AUTH_CSS_TS);
   const combined = authBlocks.join("\n");
 
@@ -63,7 +64,7 @@ describe('"Sign in · 390" phone geometry (docs/design/Chautauqua Account.dc.htm
   });
 });
 
-describe('"Docs · an article · 390" phone geometry (docs/design/Chautauqua Docs.dc.html:166)', () => {
+describe('"Docs · an article · 390" phone geometry (docs/design/Chautauqua Docs.dc.html:166 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`)', () => {
   it("H1 already lands at the frame's 28px (docs-site.css.ts's shared phone block)", () => {
     expect(DOCS_SITE_CSS_TS).toMatch(/\.chq-docs-article-head h1\s*\{[^}]*font-size:\s*28px/);
   });
