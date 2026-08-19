@@ -28,33 +28,65 @@ A second derived `it()` block was added to `tautological-assertion.scan.test.ts`
   query (`screen.`, `getBy`/`queryBy`/`findBy`, `within(`, `render(`). A
   block whose every `expect()` subject resolves only to a design-file read
   is an offender.
-- **Shape**: a two-sided ceiling seeded to the measured count
-  (`FRAME_RECEIPT_OFFENDER_CEILING = 5`, `toBeLessThanOrEqual`, so it can
-  only tighten), never an allowlist. A floor test asserts the
-  citation-carrying population is non-empty (209 blocks measured) and a
-  known-good test pins one specific known offender, so a citation regex that
-  silently stops matching fails loudly instead of passing over an empty set.
+- **Shape**: a two-sided ceiling (`FRAME_RECEIPT_OFFENDER_CEILING`,
+  `toBeLessThanOrEqual`, so it can only tighten), never an allowlist. A floor
+  test asserts the citation-carrying population is non-empty (200+ blocks
+  measured) so a citation regex that silently stops matching fails loudly
+  instead of passing over an empty set.
 
 This is a **house-technique heuristic scan**, not a real type-checker:
 identifier resolution is textual and gives up after 6 hops. It can both
 under- and over-count relative to true JS semantics; the ceiling is a
 measured snapshot of this branch, not an aspiration.
 
-## The measured offenders (5)
+## Closure (v12m-w3-m, wave 103)
+
+The population reached **0** and stays there. By the time this task ran, the
+two `settings-phone-390.frames.test.ts` offenders (#1/#2 below) had already
+left the population — `v12m-w2-a` built their controls and `v12m-w2-l`
+receipted them, dropping the ceiling 5 → 3 on main ahead of this task. The
+three that remained were the "frame container is the standard 390x844 phone
+card" sanity checks (#3–#5 below), each of which read a `dc.html` line and
+asserted only against that same string, in a `describe` block whose sibling
+`it()`s already build and assert against the real rendered page.
+
+Each of the three got a real, tree-anchored assertion added to the *same*
+`it()`, alongside the untouched frame-line read (which now serves only as
+the citation's receipt, per the task's framing):
+
+- `test/portal-remaining-phone-frames.test.ts:54` ("Portal · Resources",
+  `:1561`) — now also asserts the rendered `ResourcesPage` output carries
+  `class="chq-portal-shell"`, and that `portal.css.ts`'s appended
+  `@media (max-width: 700px)` block (the one this same test file's other
+  blocks already isolate via the `APPENDED` marker slice) both exists and
+  contains a `.chq-portal-shell` rule — i.e. the frame's 390 width maps onto
+  a real narrower-than-700 override that the rendered page's own top-level
+  class is subject to.
+- `test/portal-remaining-phone-frames.test.ts:123` ("Portal · co-presenter
+  rejected", `:1304`) — same shape, against the rendered `EditPage` output.
+- `test/portal-session-phone-frames.test.ts:149` ("Portal · Edit your
+  session", `:600`) — same shape, against `PORTAL_CSS`'s
+  `@media (max-width: 700px)` block (via this file's own `phoneBlock`
+  helper) and the rendered `EditPage` output.
+
+`FRAME_RECEIPT_OFFENDER_CEILING` is lowered **3 → 0** in
+`app/src/tautological-assertion.scan.test.ts`; its doc comment now states the
+true population (0) and what the ceiling means there: any newly-matching
+block is a regression, with no remaining allowance to spend. The
+`known-good: settings-phone-390.frames.test.ts:236 …` sentinel (which had
+already gone red on main, re-pointed nowhere — DEC-967 wave 103: a
+live-offender sentinel is deleted when its population empties, never
+re-pointed at another live offender) is deleted; the existing synthetic
+`POSITIVE control`/`NEGATIVE control` blocks a few lines above it (each
+writes its own offender/non-offender into a tmpdir) remain as the
+scan's anti-vacuity guard.
+
+## The offenders as measured before this task (5, now 0)
 
 | # | File:line | `it()` title | Owner | Status |
 |---|---|---|---|---|
-| 1 | `app/src/pages/settings/settings-phone-390.frames.test.ts:236` | "reads the frame's 46px filled full-width \"New token\" action (gap: read-drilled view does not yet render it)" | v12m-w2-a | Expected inside this ceiling — v12m-w2-a builds the "New token" control in the settings phone drill in the same batch. Once landed, lower the ceiling to 3. |
-| 2 | `app/src/pages/settings/settings-phone-390.frames.test.ts:260` | "reads the frame's 46px filled full-width \"Invite someone\" action (gap: read-drilled view does not yet render it)" | v12m-w2-a | Same as above — "Invite someone" control, same batch, same lane. Lower the ceiling to 3 once landed. |
-| 3 | `test/portal-remaining-phone-frames.test.ts:54` | "frame container (:1561) is the standard 390x844 phone card" | v12m-w5-a (portal remaining-frames lane) | A frame-anatomy sanity check (confirms the cited line really is a `width:390px; height:844px` frame opener) with no accompanying app-side assertion in the same block. The block's SIBLING `it()`s in the same `describe` do assert against the rendered `ResourcesPage`/`EditPage` output — only this one anatomy check itself is offending. Unbuilt work: none — give it a real assertion (e.g. fold it into the sibling receipt) or accept it as a structural sanity check outside this contract. |
-| 4 | `test/portal-remaining-phone-frames.test.ts:123` | "frame container (:1304) is the standard 390x844 phone card" | v12m-w5-a (portal remaining-frames lane) | Same shape as #3, for the "Portal · co-presenter rejected" frame. |
-| 5 | `test/portal-session-phone-frames.test.ts:149` | "frame container (:600) is the standard 390x844 phone card" | portal session-frames lane | Same shape as #3/#4, for the "Portal · Edit your session" frame — reads `docs/design/Chautauqua Public and Portal.dc.html` line 600 inline via `readFileSync(...).split("\n")[599]` and asserts only against that string. |
-
-Offenders #3–#5 are a different sub-shape than #1–#2: not an unbuilt-control
-gap, but a "frame container is the right size" sanity check that never
-touches the app. They are real per the amendment's rule (every `expect()`
-subject in that specific `it()` block resolves only to the design file) even
-though the enclosing `describe()` as a whole is well-receipted by its other
-`it()`s. Left as measured debt for their owning lanes to fold into a
-sibling assertion or otherwise resolve — this task does not edit files it
-does not own.
+| 1 | `app/src/pages/settings/settings-phone-390.frames.test.ts:236` | "reads the frame's 46px filled full-width \"New token\" action (gap: read-drilled view does not yet render it)" | v12m-w2-a | **Closed** — control built and receipted before this task ran; left the population at ceiling 5→3. |
+| 2 | `app/src/pages/settings/settings-phone-390.frames.test.ts:260` | "reads the frame's 46px filled full-width \"Invite someone\" action (gap: read-drilled view does not yet render it)" | v12m-w2-a | **Closed** — same as above. |
+| 3 | `test/portal-remaining-phone-frames.test.ts:54` | "frame container (:1561) is the standard 390x844 phone card" | v12m-w3-m (this task) | **Closed** — real assertion added, see above. |
+| 4 | `test/portal-remaining-phone-frames.test.ts:123` | "frame container (:1304) is the standard 390x844 phone card" | v12m-w3-m (this task) | **Closed** — real assertion added, see above. |
+| 5 | `test/portal-session-phone-frames.test.ts:149` | "frame container (:600) is the standard 390x844 phone card" | v12m-w3-m (this task) | **Closed** — real assertion added, see above. |

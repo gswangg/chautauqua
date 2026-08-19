@@ -493,13 +493,23 @@ function scanFrameReceiptAssertions(files: { abs: string; rel: string }[]): Fram
  * expect() subject resolves ONLY to a design-file read -- measured on this
  * branch by the same technique this test runs. TWO-SIDED so it can only
  * TIGHTEN (`toBeLessThanOrEqual`, never raised to paper over a regression),
- * NOT an allowlist. Lowered 5 -> 3 on the merge of v12m-w2-l: the two
- * settings-phone-390.frames.test.ts offenders this ceiling used to carry
- * left the population when DEC-976 wave-87 receipting moved their citations
- * from the describe titles into it()-level comments (see header). The three
- * that remain are the portal frame containers. Measured, not guessed --
- * lowering only, never raised back. */
-const FRAME_RECEIPT_OFFENDER_CEILING = 3;
+ * NOT an allowlist. Lowered 5 -> 3 on the merge of v12m-w2-l (the two
+ * settings-phone-390.frames.test.ts offenders left the population when
+ * DEC-976 wave-87 receipting moved their citations from the describe
+ * titles into it()-level comments), then 3 -> 0 in wave 103 (v12m-w3-m):
+ * the last three offenders -- portal-remaining-phone-frames.test.ts:54 and
+ * :123, and portal-session-phone-frames.test.ts:149, all "frame container
+ * is the standard 390x844 phone card" blocks that asserted only against
+ * `dcLine(N)` -- were each given a real assertion against the tree
+ * (the rendered page carries `.chq-portal-shell`, the exact class the
+ * portal's `@media (max-width: 700px)` block conditions its phone
+ * geometry on) alongside the existing frame-line read, which now serves
+ * only as the citation's receipt. True population is 0. At 0 this ceiling
+ * means exactly that: any block newly matching this scan's tautology
+ * shape is a regression, not a licensed backlog item -- there is no
+ * remaining allowance to spend. Measured, not guessed -- lowering only,
+ * never raised back. */
+const FRAME_RECEIPT_OFFENDER_CEILING = 0;
 
 describe('a frame receipt asserts about the tree, not about the frame (DEC-967 wave-99 amendment)', () => {
   const population = [
@@ -566,13 +576,18 @@ describe('a frame receipt asserts about the tree, not about the frame (DEC-967 w
     expect(citationBlockCount).toBeGreaterThan(100);
   });
 
-  it('known-good: portal-remaining-phone-frames.test.ts:54 is a known offender inside the seeded ceiling (guards against the scan going silently empty)', () => {
-    const { offenders } = scanFrameReceiptAssertions(population);
-    const known = offenders.some(
-      (o) => o.file === 'test/portal-remaining-phone-frames.test.ts' && o.line === 54
-    );
-    expect(known).toBe(true);
-  });
+  // DEC-967 (wave 103, v12m-w3-m): this describe block used to carry a
+  // "known-good" sentinel here asserting that a real, live offender
+  // (formerly portal-remaining-phone-frames.test.ts:54, before that
+  // settings-phone-390.frames.test.ts:236/:260) stayed inside the seeded
+  // ceiling -- a guard against the scan going silently empty. That shape
+  // is illegal once the population reaches zero: keeping a defect alive
+  // as a test fixture would make the last offenders unfixable, since
+  // fixing them would fail the sentinel. The POSITIVE control above
+  // (":510") and the NEGATIVE control above (":536") are the anti-vacuity
+  // guard now -- each writes its own offender/non-offender into a tmpdir,
+  // so they prove the detector still fires and still discriminates
+  // without any real defect surviving in the tree.
 
   it(`no more than FRAME_RECEIPT_OFFENDER_CEILING (${FRAME_RECEIPT_OFFENDER_CEILING}) frame-receipt blocks assert only about the design file, never the tree (ceiling may only be lowered)`, () => {
     const { offenders } = scanFrameReceiptAssertions(population);
