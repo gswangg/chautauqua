@@ -128,6 +128,22 @@ export const HOME_CSS = `
      baseline. In inline flow the mark's vertical-align nudge works. */
   .chq-home-footer-link { font-weight: 700; color: var(--chq-brand); white-space: nowrap; text-decoration: none; }
   .chq-home-footer-link-end { margin-left: auto; font-size: 12px; }
+  /* FINDING (v12 mobile campaign w2, not fixed in this lane): the
+     between_cycles frame draws the footer "API docs" anchor on its 390
+     sibling (docs/design/Chautauqua Home.dc.html:261 \`Running on <a ...
+     min-height:44px">\` followed by a standalone API-docs anchor at :173's
+     phone pattern) but NOT on its own 900 twin (:220 -- footer text ends at
+     "management" with no second anchor) -- a genuine width-only divergence
+     for this one state. Reproducing it needs the anchor unconditionally in
+     root.tsx's DOM (a \`.chq-home-footer-link-end-quiet\` CSS width toggle,
+     display:none here / display:flex in the phone block below), but
+     root.tsx's Footer() only renders the anchor for state === "full", and
+     that DOM-absence (not a CSS display) is pinned by
+     test/public-home-state-actions.test.ts's "the footer's 'API docs' link
+     renders on the full hub only". Fixing the frame gap would need that
+     test updated too, which is outside this lane's owned files
+     (root.tsx / test/public-home-state-actions.test.ts) -- left as a
+     between_cycles v12 gap for the planner rather than re-decided here. */
   .chq-home-github-mark { vertical-align: -2px; margin-right: 5px; }
 
   @media (max-width: 700px) {
@@ -247,5 +263,12 @@ export const HOME_CSS = `
        margin-left:auto (via .chq-home-footer-link-end) and font-size/weight
        already inherited; the 44px floor plus horizontal padding is new. */
     .chq-home-footer-link-end { min-height: 44px; display: flex; align-items: center; padding: 0 4px; }
+    /* :117-173 (Event hub), :232-261 (Between cycles), :303-318 (Fresh
+       deploy) -- all three 390 footers end at "Chautauqua</a>" with no
+       trailing "· open-source speaker..." clause; the 900 desktop frames
+       (:101-104, :219-220, :291) all keep it. One phone-wide rule, never a
+       per-state branch (DEC-582 wave-84 amendment: "a footer that changes
+       with content is a second footer"). */
+    .chq-home-footer-tagline { display: none; }
   }
 `;

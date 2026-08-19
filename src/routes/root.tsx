@@ -271,7 +271,11 @@ function heroSummary(sections: HubSections): string {
 // G13 lane-D fix (12-home--02/--04): the frames draw the footer's
 // right-hand 'API docs' link ONLY on the full hub -- between-cycles leaves
 // the right edge empty, and the fresh deploy already carries the affordance
-// once, as the hero's tertiary beside [Sign in].
+// once, as the hero's tertiary beside [Sign in]. Pinned as a strict DOM
+// count (not a CSS display) by test/public-home-state-actions.test.ts's
+// "the footer's 'API docs' link renders on the full hub only", so this stays
+// exactly as it was -- see home.css.ts's phone-block comment for the
+// resulting v12/390 gap this leaves open (flagged, not fixed here).
 function Footer(props: { state: HubState }) {
   return (
     <footer class="chq-home-footer">
@@ -281,7 +285,13 @@ function Footer(props: { state: HubState }) {
           {GITHUB_MARK}
           Chautauqua
         </a>{" "}
-        · open-source speaker and event-content management
+        {/* DEC-582 (wave 84, v12 mobile campaign w2): the tagline is a
+            WIDTH decision (home.css.ts's phone block hides
+            .chq-home-footer-tagline), never a per-state branch -- every one
+            of the three 390 frames drops it (:104 desktop keeps it,
+            :117-173/:232-261/:303-318 phone omit it) while the 900 desktop
+            frames keep it (:101-104, :219-220, :291). */}
+        <span class="chq-home-footer-tagline">· open-source speaker and event-content management</span>
       </span>
       {props.state === "full" ? (
         <a class="chq-home-footer-link chq-home-footer-link-end" href="/docs/api">
