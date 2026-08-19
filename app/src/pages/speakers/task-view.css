@@ -136,6 +136,7 @@
   font-size: 12px;
   font-weight: 700;
   padding: 7px 4px;
+  font-family: inherit;
 }
 
 /* Both tables: a header row closed by the 2px ink rule, rows separated by
@@ -233,6 +234,7 @@
 .chq-taskview-open {
   font-size: 12px;
   font-weight: 700;
+  font-family: inherit;
 }
 
 .chq-taskview-foot {

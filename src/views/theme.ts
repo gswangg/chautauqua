@@ -461,6 +461,7 @@ export const THEME_CSS = `
     color: var(--chq-ink-strong);
     border: 1px solid var(--chq-border-strong);
     font-weight: 600;
+    font-family: inherit;
   }
   .chq-btn-secondary:hover {
     background: var(--chq-secondary-hover);
@@ -475,6 +476,7 @@ export const THEME_CSS = `
     border: none;
     font-weight: 700;
     padding: 0.25rem 0;
+    font-family: inherit;
   }
   .chq-btn-tertiary:hover {
     color: var(--chq-brand-hover);

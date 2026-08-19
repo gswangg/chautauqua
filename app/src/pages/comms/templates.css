@@ -23,6 +23,7 @@
   align-self: flex-start;
   font-size: 13px;
   font-weight: 700;
+  font-family: inherit;
 }
 
 .chq-comms-templates-titles .chq-page-title {
@@ -50,6 +51,7 @@
 .chq-btn-small {
   padding: 6px 10px;
   font-size: 12px;
+  font-family: inherit;
 }
 
 /* w4-g (DEC-890 amendment): the editor eyebrow IS the template's name, with
