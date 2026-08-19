@@ -420,10 +420,13 @@ export function AgendaPage() {
             activeDay && (
               <PhoneAgenda
                 day={activeDay}
+                days={agenda.days}
+                onDayChange={setActiveDay}
                 rooms={agenda.rooms}
                 placed={agenda.placed}
                 unscheduled={agenda.unscheduled}
                 conflicts={agenda.conflicts}
+                summary={agenda.summary}
                 dayStartMin={DAY_START_MIN}
                 dayEndMin={DAY_END_MIN}
                 gridMin={GRID_MIN}

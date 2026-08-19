@@ -38,10 +38,13 @@ function baseProps(overrides: {
 }) {
   return {
     day: '2026-09-01',
+    days: ['2026-09-01'],
+    onDayChange: vi.fn(),
     rooms: [ROOM],
     placed: overrides.placed ?? [],
     unscheduled: overrides.unscheduled ?? [],
     conflicts: NO_CONFLICTS,
+    summary: { unplaced: 0, conflicts: 0, placed: 0, total: 0 },
     dayStartMin: 540,
     dayEndMin: 600,
     gridMin: 15,

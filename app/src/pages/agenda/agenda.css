@@ -854,224 +854,6 @@
 }
 
 /* ---------------------------------------------------------------------- */
-/* Phone tap-to-place (DEC-380): one room at a time, arm-then-tap          */
-/* DEC-385/w6-h: single 700px phone switch -- hidden at top level so the   */
-/* desktop DayGrid/UnscheduledTray markup never has a phone-block leak     */
-/* underneath it, JS-mount (useIsPhone) or not. */
-/* ---------------------------------------------------------------------- */
-
-.chq-phone-agenda,
-.chq-phone-room-chip,
-.chq-phone-slots,
-.chq-phone-slot,
-.chq-phone-slot-time,
-.chq-phone-slot-card,
-.chq-phone-slot-card-meta,
-.chq-phone-slot-card-title,
-.chq-phone-slot-clash,
-.chq-phone-slot-clash-item,
-.chq-phone-slot-free,
-.chq-phone-slot-free-label,
-.chq-phone-slot-free-length,
-.chq-phone-slot-place-anyway,
-.chq-phone-footer,
-.chq-phone-footer-armed,
-.chq-phone-footer-armed-info,
-.chq-phone-footer-armed-title,
-.chq-phone-footer-armed-ref,
-.chq-phone-footer-btn,
-.chq-phone-footer-actions,
-.chq-phone-sheet,
-.chq-phone-sheet-list {
-  display: none;
-}
-
-@media (max-width: 700px) {
-  .chq-phone-agenda {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    min-height: 0;
-  }
-
-  .chq-phone-room-chip {
-    min-height: 44px;
-    padding: 0 14px;
-    gap: 8px;
-  }
-
-  .chq-phone-slots {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow-y: auto;
-    min-height: 0;
-  }
-
-  .chq-phone-slot {
-    display: grid;
-    grid-template-columns: 50px 1fr;
-    gap: 10px;
-  }
-
-  .chq-phone-slot-time {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--chq-muted);
-    padding-top: 13px;
-  }
-
-  .chq-phone-slot-card {
-    background: var(--chq-surface);
-    border: 1px solid var(--chq-rule);
-    border-left: 3px solid var(--chq-brand);
-    border-radius: var(--chq-r-ctl-phone);
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    text-align: left;
-    min-height: 44px;
-    cursor: pointer;
-  }
-
-  .chq-phone-slot-card-meta {
-    font-size: 11px;
-    color: var(--chq-muted);
-  }
-
-  .chq-phone-slot-card-title {
-    font-family: var(--chq-font-display);
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.3;
-    color: var(--chq-ink);
-  }
-
-  .chq-phone-slot-clash {
-    border-radius: var(--chq-r-ctl-phone);
-    padding: 13px;
-  }
-
-  .chq-phone-slot-clash-item {
-    background: none;
-    border: none;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    text-align: left;
-    cursor: pointer;
-    min-height: 44px;
-    width: 100%;
-  }
-
-  .chq-phone-slot-clash .chq-phone-slot-card-title {
-    color: var(--chq-on-ink);
-  }
-
-  .chq-phone-slot-free {
-    border: 1px dashed var(--chq-border);
-    background: var(--chq-surface-sunk);
-    border-radius: var(--chq-r-ctl-phone);
-    min-height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    cursor: pointer;
-  }
-
-  .chq-phone-slot-free-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--chq-brand);
-  }
-
-  .chq-phone-slot-free-length {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--chq-muted);
-  }
-
-  .chq-phone-slot-place-anyway {
-    grid-column: 2;
-    border: 1px dashed var(--chq-brand);
-    background: var(--chq-surface-sunk);
-    border-radius: var(--chq-r-ctl-phone);
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    cursor: pointer;
-  }
-
-  .chq-phone-footer {
-    flex-shrink: 0;
-    border-top: 1px solid var(--chq-ink);
-    background: var(--chq-surface-sunk);
-    padding: 13px 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .chq-phone-footer-armed {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-  }
-
-  .chq-phone-footer-armed-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .chq-phone-footer-armed-title {
-    font-family: var(--chq-font-display);
-    font-size: 14px;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .chq-phone-footer-armed-ref {
-    font-size: 11px;
-    color: var(--chq-muted);
-  }
-
-  .chq-phone-footer-btn {
-    min-height: 44px;
-  }
-
-  .chq-phone-footer-actions {
-    display: flex;
-    gap: 8px;
-  }
-
-  .chq-phone-footer-actions .chq-phone-footer-btn {
-    flex: 1;
-  }
-
-  .chq-phone-sheet {
-    gap: 12px;
-  }
-
-  .chq-phone-sheet-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-}
-
-/* ---------------------------------------------------------------------- */
 /* Breaks panel (DEC-021 amendment, wave 65)                              */
 /* ---------------------------------------------------------------------- */
 
@@ -1273,4 +1055,353 @@
 .chq-agenda-held-back ul {
   margin: 4px 0 0;
   padding-left: 20px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Phone tap-to-place (DEC-380): one room at a time, arm-then-tap          */
+/* DEC-385/w6-h: single 700px phone switch -- hidden at top level so the   */
+/* desktop DayGrid/UnscheduledTray markup never has a phone-block leak     */
+/* underneath it, JS-mount (useIsPhone) or not. */
+/* ---------------------------------------------------------------------- */
+
+.chq-phone-agenda,
+.chq-phone-agenda-head,
+.chq-phone-agenda-head-top,
+.chq-phone-agenda-wordmark,
+.chq-phone-agenda-counts,
+.chq-phone-agenda-h1,
+.chq-phone-day-chips,
+.chq-phone-day-chip,
+.chq-phone-room-chip,
+.chq-phone-slots,
+.chq-phone-slot,
+.chq-phone-slot-time,
+.chq-phone-slot-card,
+.chq-phone-slot-card-meta,
+.chq-phone-slot-card-title,
+.chq-phone-slot-clash,
+.chq-phone-slot-clash-item,
+.chq-phone-slot-free,
+.chq-phone-slot-free-label,
+.chq-phone-slot-free-length,
+.chq-phone-slot-place-anyway,
+.chq-phone-footer,
+.chq-phone-footer-armed,
+.chq-phone-footer-armed-info,
+.chq-phone-footer-armed-title,
+.chq-phone-footer-armed-ref,
+.chq-phone-footer-btn,
+.chq-phone-footer-actions,
+.chq-phone-sheet,
+.chq-phone-sheet-list {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .chq-phone-agenda {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:128
+     `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:12px` */
+  .chq-phone-agenda-head {
+    border-bottom: 1px solid var(--chq-ink);
+    padding: 14px 16px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:129 -- wordmark + the
+     "N unplaced · M clash" counter, right-flushed via margin-left:auto on
+     the counter itself (:131). */
+  .chq-phone-agenda-head-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:130
+     `font-size:20px; font-weight:700; letter-spacing:-0.03em; line-height:1; position:relative; top:-2.5px` */
+  .chq-phone-agenda-wordmark {
+    font-family: var(--chq-font-display);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    position: relative;
+    top: -2.5px;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:131
+     `margin-left:auto; font-size:12px; font-weight:600; color:#565A4B` */
+  .chq-phone-agenda-counts {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--chq-muted);
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:133
+     `margin:0; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1` */
+  .chq-phone-agenda-h1 {
+    margin: 0;
+    font-family: var(--chq-font-display);
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:134
+     `display:flex; gap:7px` -- the day-pill row never scrolls (unlike the
+     room-pill row below it): a festival's day count is small and fixed,
+     while its room count is open-ended. */
+  .chq-phone-day-chips {
+    display: flex;
+    gap: 7px;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:135
+     `border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:500`
+     -- the active day is an INK fill (:135), not the shared `.chq-pill.active`
+     olive (DEC-730's vocabulary is reserved for confirmed/on toggle
+     state); a day pill is a selector among peers, not a confirmation, so it
+     gets its own active treatment rather than composing `.chq-pill`. */
+  .chq-phone-day-chip {
+    border: 1px solid var(--chq-border);
+    border-radius: 99px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 13px;
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--chq-surface);
+    color: var(--chq-ink-2);
+    cursor: pointer;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:135
+     `background:#1B1D17; color:#F4F1E8; ... font-weight:600` (the active
+     Tue-12 pill) */
+  .chq-phone-day-chip.active {
+    border-color: var(--chq-ink);
+    background: var(--chq-ink);
+    color: var(--chq-on-ink);
+    font-weight: 600;
+  }
+
+  .chq-phone-room-chip {
+    min-height: 44px;
+    padding: 0 14px;
+    gap: 8px;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:140 -- a clashing room's CLASH
+     micro-label reads `letter-spacing:0.08em`, not the shared .chq-flag's
+     0.11em, and (when the room is also the active/brand-filled pill)
+     inherits the pill's on-brand text colour rather than .chq-flag's
+     hardcoded ink -- ink-on-olive is the low-contrast pairing DEC-367's
+     "type only, never colour" flag rule exists to avoid. */
+  .chq-phone-room-chip .chq-flag {
+    letter-spacing: 0.08em;
+  }
+
+  .chq-phone-room-chip.active .chq-flag {
+    color: var(--chq-on-brand);
+  }
+
+  .chq-phone-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .chq-phone-slot {
+    display: grid;
+    grid-template-columns: 50px 1fr;
+    gap: 10px;
+  }
+
+  .chq-phone-slot-time {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--chq-muted);
+    padding-top: 13px;
+  }
+
+  .chq-phone-slot-card {
+    background: var(--chq-surface);
+    border: 1px solid var(--chq-rule);
+    border-left: 3px solid var(--chq-brand);
+    border-radius: var(--chq-r-ctl-phone);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: left;
+    min-height: 44px;
+    cursor: pointer;
+  }
+
+  .chq-phone-slot-card-meta {
+    font-size: 11px;
+    color: var(--chq-muted);
+  }
+
+  .chq-phone-slot-card-title {
+    font-family: var(--chq-font-display);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--chq-ink);
+  }
+
+  .chq-phone-slot-clash {
+    border-radius: var(--chq-r-ctl-phone);
+    padding: 13px;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:161
+     `font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase`
+     -- no colour given, so it inherits .chq-panel's on-ink text. The shared
+     .chq-flag hardcodes ink (DEC-367's "type only, never colour" flag rule,
+     tuned for a light card), which is invisible on this ink-filled panel --
+     same fix as the room chip's CLASH label above. */
+  .chq-phone-slot-clash .chq-flag {
+    color: var(--chq-on-ink);
+    letter-spacing: 0.1em;
+  }
+
+  .chq-phone-slot-clash-item {
+    background: none;
+    border: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+    cursor: pointer;
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .chq-phone-slot-clash .chq-phone-slot-card-title {
+    color: var(--chq-on-ink);
+  }
+
+  .chq-phone-slot-free {
+    border: 1px dashed var(--chq-border);
+    background: var(--chq-surface-sunk);
+    border-radius: var(--chq-r-ctl-phone);
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    cursor: pointer;
+  }
+
+  .chq-phone-slot-free-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-brand);
+  }
+
+  .chq-phone-slot-free-length {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  .chq-phone-slot-place-anyway {
+    grid-column: 2;
+    border: 1px dashed var(--chq-brand);
+    background: var(--chq-surface-sunk);
+    border-radius: var(--chq-r-ctl-phone);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    cursor: pointer;
+  }
+
+  .chq-phone-footer {
+    flex-shrink: 0;
+    border-top: 1px solid var(--chq-ink);
+    background: var(--chq-surface-sunk);
+    padding: 13px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .chq-phone-footer-armed {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .chq-phone-footer-armed-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* docs/design/Chautauqua Agenda.dc.html:192
+     `font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#4E5C31`
+     -- brand green on the paper dock, not the shared .chq-flag's ink. */
+  .chq-phone-footer-armed-info .chq-flag {
+    color: var(--chq-brand);
+    letter-spacing: 0.1em;
+  }
+
+  .chq-phone-footer-armed-title {
+    font-family: var(--chq-font-display);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chq-phone-footer-armed-ref {
+    font-size: 11px;
+    color: var(--chq-muted);
+  }
+
+  .chq-phone-footer-btn {
+    min-height: 44px;
+  }
+
+  .chq-phone-footer-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .chq-phone-footer-actions .chq-phone-footer-btn {
+    flex: 1;
+  }
+
+  .chq-phone-sheet {
+    gap: 12px;
+  }
+
+  .chq-phone-sheet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 }

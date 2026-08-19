@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { AgendaConflict, AgendaRoom, PlacedAgendaSession, UnscheduledAgendaSession } from './types';
+import type { AgendaConflict, AgendaRoom, AgendaSummary, PlacedAgendaSession, UnscheduledAgendaSession } from './types';
 import { buildPhoneSlots } from './phoneSlots';
 import { clockHHMM } from '../../lib/clock';
+import { formatDayLabel } from '../../lib/dates';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import { countOf } from '../../lib/plural';
 import { usePendingLabel } from '../../components/PendingAction';
@@ -19,10 +20,21 @@ interface Armed {
 
 interface PhoneAgendaProps {
   day: string;
+  /** Every day the event runs (AgendaPayload.days), rendered as the head
+   * band's day-pill row, in the order given -- this component never
+   * re-sorts it. */
+  days: string[];
+  onDayChange: (day: string) => void;
   rooms: AgendaRoom[];
   placed: PlacedAgendaSession[];
   unscheduled: UnscheduledAgendaSession[];
   conflicts: AgendaConflict[];
+  /** DEC-899: the head band's "N unplaced · M clash" counter reads this
+   * directly -- it is never re-derived from `unscheduled`/`conflicts`,
+   * which are scoped to the active room's slot list below and would
+   * silently under/over-count a counter meant to summarise the whole
+   * event. */
+  summary: AgendaSummary;
   dayStartMin: number;
   dayEndMin: number;
   gridMin: number;
@@ -30,6 +42,14 @@ interface PhoneAgendaProps {
   onUnschedule: (submissionId: string) => void;
   onAutoSchedule: () => void;
   autoScheduling: boolean;
+}
+
+/** "Tue 12" -- weekday + bare day-of-month, dropping formatDayLabel's month
+ * token (it renders "Tue 12 May"): the day pill has no room for the month
+ * and every pill in the row shares one, so the month would only ever
+ * repeat. */
+function dayPillLabel(day: string): string {
+  return formatDayLabel(day).split(' ').slice(0, 2).join(' ');
 }
 
 const TBD_ROOM_ID = null;
@@ -62,10 +82,13 @@ function roomHasConflict(roomId: string | null, day: string, placed: PlacedAgend
  * regardless of how much of the run the armed session's duration covers. */
 export function PhoneAgenda({
   day,
+  days,
+  onDayChange,
   rooms,
   placed,
   unscheduled,
   conflicts,
+  summary,
   dayStartMin,
   dayEndMin,
   gridMin,
@@ -126,32 +149,57 @@ export function PhoneAgenda({
 
   return (
     <div className="chq-phone-agenda">
-      <div className="chq-chipstrip">
-        {rooms.map((room) => {
-          const active = activeRoomId === room.id;
-          const conflicted = roomHasConflict(room.id, day, placed, conflicts);
-          return (
+      <div className="chq-phone-agenda-head">
+        <div className="chq-phone-agenda-head-top">
+          <span className="chq-phone-agenda-wordmark">chautauqua</span>
+          <span className="chq-phone-agenda-counts">
+            {summary.unplaced} unplaced &middot; {summary.conflicts} clash
+          </span>
+        </div>
+        <h1 className="chq-phone-agenda-h1">Agenda</h1>
+        <div className="chq-phone-day-chips">
+          {days.map((d) => {
+            const active = d === day;
+            return (
+              <button
+                key={d}
+                type="button"
+                className={`chq-phone-day-chip${active ? ' active' : ''}`}
+                aria-pressed={active}
+                onClick={() => onDayChange(d)}
+              >
+                {dayPillLabel(d)}
+              </button>
+            );
+          })}
+        </div>
+        <div className="chq-chipstrip">
+            {rooms.map((room) => {
+              const active = activeRoomId === room.id;
+              const conflicted = roomHasConflict(room.id, day, placed, conflicts);
+              return (
+                <button
+                  key={room.id}
+                  type="button"
+                  className={`chq-pill chq-phone-room-chip${active ? ' active' : ''}`}
+                  aria-pressed={active}
+                  onClick={() => setActiveRoomId(room.id)}
+                >
+                  {room.name}
+                  {conflicted && <span className="chq-flag">CLASH</span>}
+                </button>
+              );
+            })}
             <button
-              key={room.id}
               type="button"
-              className={`chq-pill chq-phone-room-chip${active ? ' active' : ''}`}
-              aria-pressed={active}
-              onClick={() => setActiveRoomId(room.id)}
+              className={`chq-pill chq-phone-room-chip${activeRoomId === TBD_ROOM_ID ? ' active' : ''}`}
+              aria-pressed={activeRoomId === TBD_ROOM_ID}
+              onClick={() => setActiveRoomId(TBD_ROOM_ID)}
             >
-              {room.name}
-              {conflicted && <span className="chq-flag">CLASH</span>}
+              TBD
+              {roomHasConflict(TBD_ROOM_ID, day, placed, conflicts) && <span className="chq-flag">CLASH</span>}
             </button>
-          );
-        })}
-        <button
-          type="button"
-          className={`chq-pill chq-phone-room-chip${activeRoomId === TBD_ROOM_ID ? ' active' : ''}`}
-          aria-pressed={activeRoomId === TBD_ROOM_ID}
-          onClick={() => setActiveRoomId(TBD_ROOM_ID)}
-        >
-          TBD
-          {roomHasConflict(TBD_ROOM_ID, day, placed, conflicts) && <span className="chq-flag">CLASH</span>}
-        </button>
+        </div>
       </div>
 
       <div className="chq-phone-slots">
