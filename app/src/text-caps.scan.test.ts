@@ -51,7 +51,7 @@ const EXEMPTIONS: Exemption[] = [
     reason: 'validated as hex color format (isValidHexColor), not length-capped',
   },
   {
-    file: 'pages/settings/TracksRoomsPanel.tsx',
+    file: 'pages/settings/tracksRooms/RoomEditRow.tsx',
     control: 'Capacity',
     reason:
       'numeric capacity rendered as a text input; validated server-side as a non-negative integer (events.ts createRoom/updateRoom), not a text length cap',
