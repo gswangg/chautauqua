@@ -6,8 +6,20 @@ import './review.css';
 import { formatScore } from '../../../../src/domain/score-copy';
 import './scorecard.css';
 import { answerDisplayText } from '../../../../src/domain/answer-text';
-import { incompleteCriteria, isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
+import {
+  incompleteCriteria,
+  isEvaluationComplete,
+  plainAverage,
+  ratingScaleValues,
+  scorecardKeyAction,
+  unscoredBannerCopy,
+} from './scorecardLogic';
 import { PageSkeleton } from '../../components/PageSkeleton';
+// DEC-939 (wave-85 amendment, task w3-g): the phone head band's local
+// counter and dock hoist both need to know which layout is live -- the
+// same matchMedia(700px) hook SubmissionDetailPage.tsx already uses for
+// its own phone dock hoist, never a second breakpoint reader.
+import { useIsPhone } from '../../lib/useIsPhone';
 import { planTrackScope } from './PlanList';
 // DEC-908 (wave-9 amendment): the scorecard head's meta line reuses the ONE
 // session-shape display vocabulary (Talk (30 min) -> 'Talk, 30 min',
@@ -111,6 +123,7 @@ function isFormFieldTarget(target: EventTarget | null): boolean {
 export function Scorecard() {
   const { planId, submissionId } = useParams<{ planId: string; submissionId: string }>();
   const navigate = useNavigate();
+  const isPhone = useIsPhone();
 
   const [plan, setPlan] = useState<EvaluationPlan | null>(null);
   const [submission, setSubmission] = useState<ReviewerSubmissionDetail | null>(null);
@@ -407,6 +420,10 @@ export function Scorecard() {
   // the submit/save validators use -- never a second definition.
   const incomplete = incompleteCriteria(criteria, scores);
   const showIncompleteNotice = attempted && incomplete.length > 0;
+  // DEC-939 (wave-85 amendment, task w3-g), frame :934-1138 ("a criterion
+  // unscored"): the phone banner is live and unconditional -- unlike
+  // showIncompleteNotice above, it is never gated on `attempted`.
+  const phoneUnscoredBanner = unscoredBannerCopy(criteria, scores);
 
   // DEC-873: computeWeightedScore throws on a missing score, so only call
   // it once every rating criterion (weight > 0) has a numeric entry;
@@ -469,32 +486,47 @@ export function Scorecard() {
           scorecard.css's one additive media query). */}
       <div className="chq-review-scorecard-grid">
         <div className="chq-review-scorecard-reading">
-          <p>
-            <Link to={`/review/plans/${planId}`} className="chq-review-back">
-              &lsaquo; {plan.name} queue
-            </Link>
-          </p>
-
-          <div className="chq-review-scorecard-head">
-            <span className="chq-section-label">{scorecardEyebrow}</span>
-            {/* frame 03--01: the 'N of N done' caption leaves the reading
-                column entirely -- it portals into App's own
-                #chq-header-slot node (rendered in the header identity
-                group) rather than printing here. Renders nothing when
-                that node isn't mounted (a Scorecard mounted alone in a
-                render test), same as it always rendered nothing before
-                queueProgress resolved. */}
-            {queueProgress &&
-              queueProgress.total > 0 &&
-              typeof document !== 'undefined' &&
-              document.getElementById('chq-header-slot') &&
-              createPortal(
-                <p className="chq-review-scoped-progress-caption">{`${queueProgress.completed} of ${queueProgress.total} done`}</p>,
-                document.getElementById('chq-header-slot') as HTMLElement,
+          {/* DEC-939 (wave-85 amendment, task w3-g), frames :280-350/:934-1138:
+              at phone this band (back link + title + meta) becomes the
+              sticky drill head -- the wrapping div is inert at desktop
+              (a plain block, no visual change) and only gains geometry
+              under scorecard.css's max-width:700px block. */}
+          <div className="chq-review-scorecard-head-band">
+            <p className="chq-review-scorecard-back-row">
+              <Link to={`/review/plans/${planId}`} className="chq-review-back">
+                &lsaquo; {plan.name} queue
+              </Link>
+              {/* frame :280 (:284) 'N of N done' -- phone-only: the desktop
+                  counter stays the portal into #chq-header-slot below;
+                  the shell's desktop header identity group has no phone
+                  analogue, so this local, non-portalled span is the
+                  narrowest way to draw the frame's counter without
+                  touching App.tsx (out of this task's file scope). Only
+                  mounted at phone (never a CSS-only hide) so it doesn't
+                  duplicate the counter text in the DOM at desktop. */}
+              {isPhone && queueProgress && queueProgress.total > 0 && (
+                <span className="chq-review-scorecard-phone-progress">{`${queueProgress.completed} of ${queueProgress.total} done`}</span>
               )}
-            <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
-              {submission.title}
-            </h1>
+            </p>
+
+            <div className="chq-review-scorecard-head">
+              <span className="chq-section-label">{scorecardEyebrow}</span>
+              {/* frame 03--01: the 'N of N done' caption leaves the reading
+                  column entirely -- it portals into App's own
+                  #chq-header-slot node (rendered in the header identity
+                  group) rather than printing here. Renders nothing when
+                  that node isn't mounted (a Scorecard mounted alone in a
+                  render test), same as it always rendered nothing before
+                  queueProgress resolved. */}
+              {queueProgress &&
+                queueProgress.total > 0 &&
+                typeof document !== 'undefined' &&
+                document.getElementById('chq-header-slot') &&
+                createPortal(
+                  <p className="chq-review-scoped-progress-caption">{`${queueProgress.completed} of ${queueProgress.total} done`}</p>,
+                  document.getElementById('chq-header-slot') as HTMLElement,
+                )}
+              <h1 className="chq-page-title chq-review-scorecard-title">{submission.title}</h1>
             {/* frame 03--01: the meta line reads ref · format(, duration) ·
                 audience level, in the frame's lowercase grammar -- reusing
                 the ONE session-shape display vocabulary (session-vocabulary.ts)
@@ -525,6 +557,7 @@ export function Scorecard() {
                 {"The speaker's name and company are hidden while this plan is anonymised."}
               </p>
             )}
+          </div>
           </div>
 
           {/* DEC-889 (wave-72 amendment): the reading column IS the frame's
@@ -564,6 +597,18 @@ export function Scorecard() {
         </div>
 
         <aside className="chq-review-scorecard-rail">
+          {/* DEC-939 (wave-85 amendment, task w3-g), frame :934-1138 ("a
+              criterion unscored"): an ink-outlined card with a 4px left
+              border stating the denominator -- a persistent state banner,
+              not a toast, so it carries no `role="alert"`. Phone-only:
+              desktop keeps its existing attempt-gated notice below the
+              rail's own controls (`showIncompleteNotice`). */}
+          {isPhone && phoneUnscoredBanner && (
+            <div className="chq-review-scorecard-unscored-banner">
+              <p className="chq-review-scorecard-unscored-heading">{phoneUnscoredBanner.heading}</p>
+              <p className="chq-review-scorecard-unscored-body">{phoneUnscoredBanner.body}</p>
+            </div>
+          )}
           {/* DEC-958 (wave-66 amendment): the server's fields map, kept
               WHOLE -- one anchor per key, pointing at that criterion's own
               row (or the comment textarea, or the raw key for a shape this
@@ -842,25 +887,52 @@ export function Scorecard() {
             </div>
           )}
 
-          <div className="chq-review-editor-actions">
-            <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
-              Submit and next
-            </button>
-            <button type="button" className="chq-btn chq-btn-secondary" disabled={saving || !!recusal} onClick={() => void saveOnly()}>
-              Save draft
-            </button>
-            {/* DEC-873 (wave 27 amendment): a draft accepts partial scores --
-                the caption sits beside the control that skips the checks, not
-                a tooltip or a disabled-state guess. */}
-            <span className="chq-review-draft-caption">Saving a draft skips these checks</span>
-            {saved && (
-              <span className="chq-review-saved-confirmation" role="status">
-                Saved as a draft
-              </span>
-            )}
-          </div>
+          {/* DEC-939 (wave-85 amendment, task w3-g), frames :280-350/:934-1138:
+              at phone the two actions move into the sticky bottom dock
+              below (hoisted past the rail so it can span the full page
+              width and stay reachable while the body scrolls) -- the
+              caption/saved-confirmation stay here, desktop-only, since
+              neither frame draws them in the dock. */}
+          {!isPhone && (
+            <div className="chq-review-editor-actions">
+              <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
+                Submit and next
+              </button>
+              <button type="button" className="chq-btn chq-btn-secondary" disabled={saving || !!recusal} onClick={() => void saveOnly()}>
+                Save draft
+              </button>
+              {/* DEC-873 (wave 27 amendment): a draft accepts partial scores --
+                  the caption sits beside the control that skips the checks, not
+                  a tooltip or a disabled-state guess. */}
+              <span className="chq-review-draft-caption">Saving a draft skips these checks</span>
+              {saved && (
+                <span className="chq-review-saved-confirmation" role="status">
+                  Saved as a draft
+                </span>
+              )}
+            </div>
+          )}
         </aside>
       </div>
+
+      {/* DEC-939 (wave-85 amendment, task w3-g), frames :280-350/:934-1138
+          (`Submit and next` 46px brand + `Save draft` 46px bordered):
+          hoisted to the end of .chq-page (SubmissionDetailPage.tsx's own
+          phone-dock pattern) so the sticky bottom band spans the full
+          page width rather than the rail's narrower column. Page-local
+          class (scorecard.css), not the shared .chq-phone-dock -- this
+          frame's own measured button height (46px) differs from the one
+          that shared class already bakes in (48px, Speakers' frame). */}
+      {isPhone && (
+        <div className="chq-review-scorecard-dock">
+          <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
+            Submit and next
+          </button>
+          <button type="button" className="chq-btn chq-btn-secondary" disabled={saving || !!recusal} onClick={() => void saveOnly()}>
+            Save draft
+          </button>
+        </div>
+      )}
     </div>
   );
 }
