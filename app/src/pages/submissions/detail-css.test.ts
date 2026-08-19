@@ -176,3 +176,40 @@ describe('detail.css phone frame (390) fidelity', () => {
     expect(topLevelRuleBody(css, '.chq-detail-back')).not.toMatch(/min-height:/);
   });
 });
+
+// DEC-610 (v12 mobile campaign w2 ruling, task w2-a): the decision rail
+// renders inside .chq-phone-dock at 390 instead of .chq-detail-aside
+// (SubmissionDetailPage.tsx). These rules live in a SECOND
+// `@media (max-width: 700px)` block appended at the true end of the file
+// (not inside the block the tests above read), so this suite locates that
+// block by hand rather than reusing mediaBlockBody's first-match search.
+describe('detail.css phone dock geometry (DEC-610)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+  const firstBlockEnd = css.indexOf('@media (max-width: 700px) {', css.indexOf('@media (max-width: 700px) {') + 1);
+  const dockBlock = firstBlockEnd === -1 ? '' : css.slice(firstBlockEnd);
+
+  it('a second phone block exists, appended after the first (ordering wins ties at equal specificity)', () => {
+    expect(dockBlock.length).toBeGreaterThan(0);
+  });
+
+  it('inside .chq-phone-dock, the rail fills the dock at the frame gap (8px, not the in-aside 9px)', () => {
+    const rail = ruleBodyIn(dockBlock, '.chq-phone-dock .chq-detail-decision-rail');
+    expect(rail).toMatch(/flex:\s*1/);
+    expect(rail).toMatch(/gap:\s*8px/);
+  });
+
+  it('Accept and Decline split the row evenly; the third control (Waitlist) sizes to its own content', () => {
+    expect(ruleBodyIn(dockBlock, '.chq-phone-dock .chq-detail-decision-primary')).toMatch(/flex:\s*1/);
+    const pairFirst = ruleBodyIn(
+      dockBlock,
+      '.chq-phone-dock .chq-detail-decision-primary ~ .chq-detail-decision-secondary-pair .chq-btn:first-child',
+    );
+    expect(pairFirst).toMatch(/flex:\s*1/);
+    const pairLast = ruleBodyIn(
+      dockBlock,
+      '.chq-phone-dock .chq-detail-decision-primary ~ .chq-detail-decision-secondary-pair .chq-btn:last-child',
+    );
+    expect(pairLast).toMatch(/flex:\s*0 0 auto/);
+    expect(pairLast).toMatch(/padding:\s*0 14px/);
+  });
+});

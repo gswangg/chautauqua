@@ -19,6 +19,7 @@ import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { buildSubmissionsQuery, parseSubmissionsQuery } from './filters';
 import { countOf } from '../../lib/plural';
+import { useIsPhone } from '../../lib/useIsPhone';
 import './detail.css';
 import {
   STATUS_LABELS,
@@ -285,6 +286,12 @@ export function SubmissionDetailPage() {
   // DEC-710/DEC-728 (settings drills, comms tabs) use the same
   // searchParams-as-source-of-truth shape.
   const [searchParams, setSearchParams] = useSearchParams();
+  // DEC-610 (v12 mobile campaign w2 ruling): at 390 the decision rail
+  // leaves .chq-detail-aside's scroll flow and renders inside the shared
+  // .chq-phone-dock scaffold instead (the Submissions detail 390 dock
+  // frame, cited below at the dock's own render site) -- same rail markup,
+  // one render location chosen by width, never both at once.
+  const isPhone = useIsPhone();
 
   const [detail, setDetail] = useState<SubmissionDetail | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -941,6 +948,93 @@ export function SubmissionDetailPage() {
   // timestamp that is truthful for every decided status -- acceptedAt only
   // ever fires for the FIRST accept transition.
   const decidedLabel = decidedStatus ? decidedDateLabel(detail.updatedAt, eventTimeZone) : null;
+
+  // DEC-610 (v12 mobile campaign w2 ruling): the SAME rail markup renders
+  // in exactly one of two places below -- inline in .chq-detail-aside at
+  // desktop, or wrapped in .chq-phone-dock at 390 -- never both, so there
+  // is never a duplicate control or a duplicate #submission-status-controls
+  // anchor on the page.
+  const decisionRail = (
+    <div className="chq-detail-decision-rail" id="submission-status-controls">
+      {/* DEC-958 (wave 66 amendment): a named-field status refusal
+          (status:'Invalid status') marks the rail instead of
+          collapsing to the page-level error banner alone. */}
+      <SectionFieldErrors
+        fields={statusFieldErrors}
+        knownMap={STATUS_FIELD_ANCHORS}
+        headingTail="before this decision can be saved"
+      />
+      {statusFieldErrors.status && (
+        <div className="chq-form-row-error" role="alert">
+          {statusFieldErrors.status}
+        </div>
+      )}
+      {decidedStatus === null ? (
+        <>
+          <p className="chq-detail-triage-label">
+            Awaiting triage{triageDays !== null ? ` · ${countOf(triageDays, 'day')}` : ''}
+          </p>
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary chq-detail-decision-primary"
+            disabled={statusPending}
+            onClick={() => changeStatus('accepted')}
+          >
+            {DECISION_ACTION_LABELS.accepted}
+          </button>
+          <div className="chq-detail-decision-secondary-pair">
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={statusPending}
+              onClick={() => changeStatus('declined')}
+            >
+              {DECISION_ACTION_LABELS.declined}
+            </button>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={statusPending}
+              onClick={() => changeStatus('waitlisted')}
+            >
+              {DECISION_ACTION_LABELS.waitlisted}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="chq-detail-decision-stated">
+            {STATUS_LABELS[decidedStatus]}
+            {decidedLabel !== null ? ` · ${decidedLabel}` : ''}
+          </p>
+          <div className="chq-detail-decision-secondary-pair">
+            {DECIDABLE_STATUSES.filter((status) => status !== decidedStatus).map((status) => (
+              <button
+                key={status}
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                disabled={statusPending}
+                onClick={() => changeStatus(status)}
+              >
+                {DECISION_ACTION_LABELS[status]}
+              </button>
+            ))}
+          </div>
+          {/* Exactly one un-decide path: a quiet link, never a
+              third 'Pending' choice among the decision buttons. */}
+          <button
+            type="button"
+            className="chq-link-button chq-detail-decision-back"
+            disabled={statusPending}
+            onClick={() => changeStatus('pending')}
+          >
+            Back to pending
+          </button>
+        </>
+      )}
+      <p className="chq-detail-decision-note">Deciding sends nothing. Notify from Comms.</p>
+    </div>
+  );
 
   return (
     <div className="chq-page chq-detail-page chq-measure-wide">
@@ -1634,85 +1728,13 @@ export function SubmissionDetailPage() {
           <section className="chq-detail-section chq-detail-decision">
             <h2 className="chq-detail-section-title">Decision</h2>
             <div className="chq-detail-section-body chq-detail-decision-body">
-              <div className="chq-detail-decision-rail" id="submission-status-controls">
-                {/* DEC-958 (wave 66 amendment): a named-field status refusal
-                    (status:'Invalid status') marks the rail instead of
-                    collapsing to the page-level error banner alone. */}
-                <SectionFieldErrors
-                  fields={statusFieldErrors}
-                  knownMap={STATUS_FIELD_ANCHORS}
-                  headingTail="before this decision can be saved"
-                />
-                {statusFieldErrors.status && (
-                  <div className="chq-form-row-error" role="alert">
-                    {statusFieldErrors.status}
-                  </div>
-                )}
-                {decidedStatus === null ? (
-                  <>
-                    <p className="chq-detail-triage-label">
-                      Awaiting triage{triageDays !== null ? ` · ${countOf(triageDays, 'day')}` : ''}
-                    </p>
-                    <button
-                      type="button"
-                      className="chq-btn chq-btn-primary chq-detail-decision-primary"
-                      disabled={statusPending}
-                      onClick={() => changeStatus('accepted')}
-                    >
-                      {DECISION_ACTION_LABELS.accepted}
-                    </button>
-                    <div className="chq-detail-decision-secondary-pair">
-                      <button
-                        type="button"
-                        className="chq-btn chq-btn-secondary"
-                        disabled={statusPending}
-                        onClick={() => changeStatus('declined')}
-                      >
-                        {DECISION_ACTION_LABELS.declined}
-                      </button>
-                      <button
-                        type="button"
-                        className="chq-btn chq-btn-secondary"
-                        disabled={statusPending}
-                        onClick={() => changeStatus('waitlisted')}
-                      >
-                        {DECISION_ACTION_LABELS.waitlisted}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="chq-detail-decision-stated">
-                      {STATUS_LABELS[decidedStatus]}
-                      {decidedLabel !== null ? ` · ${decidedLabel}` : ''}
-                    </p>
-                    <div className="chq-detail-decision-secondary-pair">
-                      {DECIDABLE_STATUSES.filter((status) => status !== decidedStatus).map((status) => (
-                        <button
-                          key={status}
-                          type="button"
-                          className="chq-btn chq-btn-secondary"
-                          disabled={statusPending}
-                          onClick={() => changeStatus(status)}
-                        >
-                          {DECISION_ACTION_LABELS[status]}
-                        </button>
-                      ))}
-                    </div>
-                    {/* Exactly one un-decide path: a quiet link, never a
-                        third 'Pending' choice among the decision buttons. */}
-                    <button
-                      type="button"
-                      className="chq-link-button chq-detail-decision-back"
-                      disabled={statusPending}
-                      onClick={() => changeStatus('pending')}
-                    >
-                      Back to pending
-                    </button>
-                  </>
-                )}
-                <p className="chq-detail-decision-note">Deciding sends nothing. Notify from Comms.</p>
-              </div>
+              {/* DEC-610 (v12 mobile campaign w2 ruling): at 390 this rail
+                  renders in .chq-phone-dock instead (below, near the end of
+                  the page) so it leaves the aside's scroll flow -- never
+                  rendered here AND there at once. Desktop (isPhone false in
+                  every jsdom render test, per useIsPhone's own contract)
+                  keeps this exact in-flow position, unchanged. */}
+              {!isPhone && decisionRail}
               {/* Content approval lives on the content screen (worklist /
                   deliverable detail), not here -- this page only points at
                   it (DEC-743). */}
@@ -1839,6 +1861,13 @@ export function SubmissionDetailPage() {
           Delete this session
         </Link>
       </div>
+
+      {/* docs/design/Chautauqua Submissions.dc.html:388
+          `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
+          -- DEC-610: the decision rail pinned below the scrolling body, as
+          the last child of .chq-page so its sticky containing block spans
+          the whole page (not just the aside's short box). */}
+      {isPhone && <div className="chq-phone-dock">{decisionRail}</div>}
 
       {pendingRemoveParticipant && (
         <ConfirmDialog

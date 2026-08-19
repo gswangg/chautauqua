@@ -31,7 +31,7 @@ export function FilterBarSearchSort({ filters, onChange }: FilterBarSearchSortPr
       />
 
       <select
-        className="chq-select chq-submissions-filterbar-select"
+        className="chq-select chq-submissions-filterbar-select chq-submissions-filterbar-sort-select"
         aria-label="Sort"
         value={filters.sort}
         onChange={(e) => onChange({ ...filters, sort: e.target.value as SortOrder, page: 1 })}
@@ -74,6 +74,10 @@ export function FilterBar({ filters, tracks, columns, visibleFieldIds, onChange,
           <button
             key={status}
             type="button"
+            // DEC-919 (v12 mobile campaign w2 ruling): data-status lets the
+            // phone media block (submissions.css) hide every pill but the
+            // frame's two named ones without a second markup tree.
+            data-status={status}
             className={filters.status.includes(status) ? 'chq-pill is-active' : 'chq-pill'}
             aria-pressed={filters.status.includes(status)}
             onClick={() => toggleStatus(status)}
