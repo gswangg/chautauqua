@@ -217,8 +217,9 @@ describe("desktopLayer freeze pin — base-scope rules untouched by this task", 
     expect(measure).not.toMatch(/padding\s*:/);
   });
 
-  it("only one @media (max-width: 700px) block exists in the file (moved, not duplicated)", () => {
-    const matches = CLEAN.match(/@media\s*\(max-width:\s*700px\)/g) ?? [];
-    expect(matches.length).toBe(1);
-  });
+  // The "exactly one terminal @media (max-width: 700px) block" rule is now
+  // owned by test/phone-terminal-block.scan.test.ts (DEC-385 amendment wave
+  // 98) -- that derived scan supersedes this file's local pin, which used
+  // to disagree with app/src/pages/settings/settings-phone-floor.test.ts
+  // about the same rule for a different sheet.
 });

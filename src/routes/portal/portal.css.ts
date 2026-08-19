@@ -665,6 +665,14 @@ ${ERROR_STATES_CSS}
 
 .chq-portal-shell .chq-pub-empty-block-fresh { padding-top: 10px; }
 
+/* v12m-w1-d (DEC-385 amendment wave 98): consolidated to ONE terminal phone
+   block, per test/phone-terminal-block.scan.test.ts. This block now carries
+   every phone (max-width:700px) rule for this sheet -- the w5-a block below
+   used to sit earlier in the file (before the w8-h overflow-sweep rule); it
+   is relocated here verbatim, in its original relative order, immediately
+   ahead of w8-h so the two form one contiguous terminal block. No selector,
+   declaration, or value changed -- pure relocation. */
+
 /* v12m-w5-a: Portal's last two 390 frames -- Resources
    (docs/design/Chautauqua Public and Portal.dc.html:1561) \`width:390px; height:844px\` and the
    co-presenter-rejected state of the edit screen (:1304). Appended as one
@@ -675,6 +683,21 @@ ${ERROR_STATES_CSS}
    class this block styles is new growth with no base-rule counterpart
    above, so at desktop widths these elements render in plain unstyled
    flow; only <=700px carries the frame's geometry. */
+
+/* w8-h (DEC-989 wave-90 amendment): 390-overflow sweep. .chq-portal-done-
+   when (the "Done" row's uppercase completion date, declared above) is
+   white-space:nowrap with no escape -- inside a baseline row that also
+   carries the task title, a long localized date can push past the 358px
+   phone budget (390 minus .chq-main's 16px gutter each side). Three-
+   property escape, not removal, per DEC-919. .chq-field-counter (also
+   declared above) gets no CSS change here: overflow-exempt, same
+   rationale as src/routes/public/cfp.css.ts's own wave-90 note -- a
+   counter truncated states a wrong count, and its printed total is sample
+   data that does not bind (DEC-650 wave-82 amendment). See
+   decisions/DEC-367.md's wave-90 amendment for the general rule. Appended
+   at the true end of this module, after every top-level rule and after
+   both existing phone blocks above (never edited/reordered), per DEC-385
+   single-direction responsive. */
 @media (max-width: 700px) {
 
     /* G13: the hero returns to the phone page-title token below 700px
@@ -904,23 +927,6 @@ ${ERROR_STATES_CSS}
   .chq-portal-copresenter-role select {
     min-height: 48px;
   }
-}
-
-/* w8-h (DEC-989 wave-90 amendment): 390-overflow sweep. .chq-portal-done-
-   when (the "Done" row's uppercase completion date, declared above) is
-   white-space:nowrap with no escape -- inside a baseline row that also
-   carries the task title, a long localized date can push past the 358px
-   phone budget (390 minus .chq-main's 16px gutter each side). Three-
-   property escape, not removal, per DEC-919. .chq-field-counter (also
-   declared above) gets no CSS change here: overflow-exempt, same
-   rationale as src/routes/public/cfp.css.ts's own wave-90 note -- a
-   counter truncated states a wrong count, and its printed total is sample
-   data that does not bind (DEC-650 wave-82 amendment). See
-   decisions/DEC-367.md's wave-90 amendment for the general rule. Appended
-   at the true end of this module, after every top-level rule and after
-   both existing phone blocks above (never edited/reordered), per DEC-385
-   single-direction responsive. */
-@media (max-width: 700px) {
   .chq-portal-done-when {
     overflow: hidden;
     text-overflow: ellipsis;
