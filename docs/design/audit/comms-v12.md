@@ -38,7 +38,36 @@ land outside this task's scope.
    or (b) rule that this card is aspirational until compose gains real
    draft persistence.
 
-2. **Consequence of (1): a phone visitor with no in-progress draft has no
+2. **RESOLVED (v12 mobile campaign w5, task w5-q, DEC-621 wave-109
+   amendment).** Confirmed live (Tier 0 S2 break in
+   `docs/probes/metafid-phoneA-2026-08-19.md`: "Comms Templates/History
+   unreachable on phone without a localStorage draft; phoneEntered ignores
+   ?tab=; landing has zero nav without a draft") and given a task, rather
+   than left for a planner ruling. Two changes:
+
+   - `phoneEntered` now initialises from `?tab=` (`isTab(rawTab)`) instead
+     of always `false` — a visitor who already named a screen (bookmark,
+     deep link, browser back/forward, DEC-710) skips the landing outright.
+   - The landing itself now always carries a route into all three tabs
+     even with no `?tab=` and no stored draft. The draft-card slot (frame
+     lines 188-193) carries the route into Compose either way:
+     `PhoneDraftCard` renders its normal frame-shaped card when a draft
+     exists, and an equivalent empty-state card — same geometry
+     (`.chq-comms-phone-draft-card`'s border/radius/background), same 44px
+     control (`.chq-comms-phone-draft-read`) — labelled "Compose" (taken
+     verbatim from the tab strip's own `TABS` vocabulary in `Comms.tsx`)
+     when it does not. The "Recent sends" head band (frame lines 196-197,
+     `padding:22px 0 8px; border-bottom:2px solid #1B1D17;
+     margin-bottom:4px`) carries the two remaining routes, Templates and
+     History, as a small button pair (`.chq-comms-phone-recent-head-
+     actions` / `-link`, each meeting the 44px floor) added beside the
+     existing "Recent sends" label — the frame draws no button in this
+     band, so this is new geometry, not a frame quote, and is documented
+     as such in `comms.css`'s own comment rather than cited to a specific
+     frame line. Labels are the tab strip's own "Templates"/"History", no
+     new copy invented. Original finding text below, for the record.
+
+   **Consequence of (1): a phone visitor with no in-progress draft has no
    way to reach Compose, Templates, or History from this landing screen.**
    The frame draws exactly three things on this screen — title/subtitle,
    the draft card, and a read-only Recent Sends list — with the visible
