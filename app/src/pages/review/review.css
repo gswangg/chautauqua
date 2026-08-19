@@ -2249,3 +2249,302 @@
     cursor: pointer;
   }
 }
+
+/* ========================================================================
+   v12m-w5-b (wave 87, DEC-018/DEC-393): review admin at 390.
+   Appended at the very end of this file per the task's own instruction --
+   v12m-w2-j edits this file in parallel, so this block stays contiguous
+   and terminal rather than interleaving with the rules above.
+
+   (1) Chautauqua Review.dc.html:594 "Plan editor · 390" -- the criteria
+       list, the reviewers list and the docked Save/Cancel footer.
+   (2) DEC-393 w87 -- PlanList.tsx's three per-plan row actions
+       (Progress/Results/Edit), measured at 21px on a phone, floored here.
+
+   Desktop is untouched: every rule below lives inside a max-width block
+   (DEC-385 single-direction), and every authored min-height meets the
+   44px floor (DESIGN-RULINGS.md "The 44px floor, and how it gets
+   evaded") -- min-height + centred flex + non-zero horizontal padding,
+   never padding alone.
+   ======================================================================== */
+
+@media (max-width: 700px) {
+  /* --- (2) DEC-393: the plan-row actions floor ------------------------- */
+  /* .chq-review-plan-actions itself (review.css:117) already declares
+     display:flex; gap:14px -- untouched. Each Link gets its own
+     min-height/centred-flex/padding: the shared .chq-btn recipe, restated
+     here since these are bare react-router <Link>s, not .chq-btn. */
+  .chq-review-plan-action-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  /* --- (1) Criteria section head: bare count, not the eyebrow sentence - */
+  .chq-review-criteria-eyebrow {
+    display: none;
+  }
+
+  .chq-review-criteria-count-phone {
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--chq-muted);
+  }
+
+  /* --- (1) Criteria rows: stacked cards, not the desktop grid ---------- */
+  /* Overrides review.css:1062's `grid-template-columns: 1fr` collapse
+     (same selector, later in the cascade wins) -- flex-wrap lets the
+     label/guidance/type/options inputs each force their own line
+     (flex-basis 100%) while the weight-or-choice-caption cell and the
+     Remove button, left un-forced, fall onto ONE shared line and the
+     Remove button's margin-left:auto pushes it to that line's right edge
+     -- Chautauqua Review.dc.html:646-658's Weight row, without moving a
+     single element in the DOM. */
+  .chq-review-criterion-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 0;
+  }
+
+  /* No drag handle on a criterion row at 390 (frame :601-658 draws none;
+     an option row's own handle, further down, is untouched). */
+  .chq-review-criterion-row > .chq-forms-field-drag {
+    display: none;
+  }
+
+  .chq-review-criterion-row > input.chq-input {
+    flex: 1 1 100%;
+    min-height: 46px;
+  }
+
+  /* The label field is the frame's 48px control (:601); guidance stays
+     the shared 46px. nth-of-type counts only <input class="chq-input">
+     siblings, so this is always the label, never the guidance field. */
+  .chq-review-criterion-row > input.chq-input:nth-of-type(1) {
+    min-height: 48px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  /* The phone-only inert type select (see PlanEditor.tsx) -- hidden at
+     every wider width, shown here at the frame's 46px with the shared
+     .chq-select right-edge caret (DESIGN-RULINGS B8). */
+  .chq-review-criterion-type-display-phone {
+    display: flex;
+    flex: 1 1 100%;
+    min-height: 46px;
+    align-items: center;
+    padding: 0 13px;
+    font-size: 14px;
+  }
+
+  .chq-review-criterion-options {
+    flex: 1 1 100%;
+  }
+
+  .chq-review-criterion-option-row {
+    min-height: 44px;
+  }
+
+  .chq-review-criterion-option-row .chq-input {
+    min-height: 46px;
+  }
+
+  .chq-review-criterion-option-row .chq-btn-tertiary {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .chq-review-criterion-options-footer .chq-review-add-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .chq-review-criterion-weight {
+    flex: 0 0 auto;
+  }
+
+  .chq-review-criterion-weight .chq-input {
+    width: 58px;
+    min-height: 44px;
+  }
+
+  .chq-review-criterion-share {
+    font-size: 13px;
+  }
+
+  .chq-review-criterion-no-weight-phone {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--chq-muted);
+  }
+
+  .chq-review-checkbox-label {
+    flex: 1 1 100%;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .chq-review-criterion-row > .chq-review-criterion-error {
+    flex: 1 1 100%;
+  }
+
+  /* The row's Remove -- right-pushed onto the weight/choice-caption's
+     line by margin-left:auto (frame :657 `margin-left:auto`). */
+  .chq-review-criterion-row > .chq-btn-tertiary {
+    flex: 0 0 auto;
+    margin-left: auto;
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .chq-review-add-criteria .chq-review-add-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .chq-review-criteria-cap-notice {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* --- (1) Reviewers section head: the toggle floored, plus a bare count */
+  /* The frame draws a bare count here ("4") instead of a toggle label, and
+     a SECOND dashed "Assign a reviewer" control below the roster (:679).
+     Duplicating this button (same accessible name twice, or a second
+     control with the same name) would make PlanEditor.render.test.tsx's
+     `findByRole('button', { name: 'Assign a reviewer' })` query ambiguous
+     -- a file this task does not own. The ONE toggle stays here, floored
+     to the 44px minimum, with the frame's count reading alongside it;
+     the relocation gap is filed in docs/design/audit/review-admin-v12.md. */
+  .chq-review-section-head-actions .chq-link-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .chq-review-reviewers-count-phone {
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--chq-muted);
+  }
+
+  /* --- (1) Reviewer rows: name/track-load stack, Swap-sized action ----- */
+  /* Overrides review.css:1208's `grid-template-columns: 1fr` collapse. */
+  .chq-review-reviewer-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+  }
+
+  .chq-review-reviewer-name {
+    font-family: var(--chq-font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .chq-review-reviewer-track,
+  .chq-review-reviewer-load {
+    display: block;
+    font-size: 12px;
+    color: var(--chq-muted);
+  }
+
+  /* The row's action button -- Chautauqua Review.dc.html:663-665 draws
+     "Swap" at this geometry; this repo's roster row still writes Remove
+     (there is no reassign-in-place capability behind this control), a
+     copy/behaviour gap filed in docs/design/audit/review-admin-v12.md
+     rather than a fabricated Swap affordance. */
+  .chq-review-reviewer-row > .chq-btn-tertiary {
+    flex: 0 0 auto;
+    margin-left: auto;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl);
+    background: var(--chq-surface-sunk);
+  }
+
+  /* --- (1) Cap row: reorders to the END of the section (frame :666-680 --
+     Cap each / Distribute / Assign a reviewer sit BELOW the roster, while
+     this repo's markup renders the cap row BEFORE it. .chq-section is a
+     flex column (styles.css); every untouched sibling keeps its default
+     `order: 0`, so giving only the cap row `order: 1` moves it after the
+     head, the caption, the advisory and every reviewer row without
+     touching the DOM. */
+  .chq-review-cap-row {
+    order: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .chq-review-cap-input {
+    min-height: 44px;
+  }
+
+  .chq-review-cap-input input {
+    width: 62px;
+    min-height: 44px;
+  }
+
+  .chq-review-cap-row > .chq-btn-secondary {
+    min-height: 46px;
+    padding: 0 16px;
+  }
+
+  .chq-review-distribute-summary {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* --- (1) Docked footer: Save/Cancel pinned to the device's bottom ---- */
+  /* The frame's Save/Cancel dock (:681-684) is a fixed-position overlay of
+     the SAME title-row buttons, not a second footer element -- no new
+     Save/Cancel markup, so a save triggered from the dock and a save
+     triggered from the (now visually hidden) top position are always the
+     one save() call. */
+  .chq-review-editor {
+    padding-bottom: 84px;
+  }
+
+  .chq-review-editor-title-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    margin: 0;
+    gap: 8px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--chq-ink);
+    background: var(--chq-surface-sunk);
+  }
+
+  .chq-review-editor-title-actions .chq-btn {
+    min-height: 48px;
+  }
+
+  .chq-review-editor-title-actions .chq-btn-primary {
+    flex: 1;
+  }
+
+  .chq-review-editor-title-actions .chq-btn-secondary {
+    flex: 0 0 auto;
+  }
+}

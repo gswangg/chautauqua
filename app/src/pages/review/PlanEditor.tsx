@@ -1509,6 +1509,15 @@ export function PlanEditor() {
             ) : (
               <span className="chq-review-criteria-eyebrow">Scores average by weight</span>
             )}
+            {/* v12m-w5-b/DEC-808: Chautauqua Review.dc.html:594 "Plan editor
+                · 390" draws the Criteria head's right slot as a bare count
+                ("3"), not the desktop eyebrow sentence -- a phone-only
+                element (hidden at every wider width, see review.css's
+                appended phone block) rather than replacing the desktop
+                eyebrow's meaning. */}
+            <span className="chq-review-criteria-count-phone" aria-hidden="true">
+              {editingCriteria.length}
+            </span>
           </div>
           {/* DEC-676: weights stay relative and plan-wide -- never forced to
               sum to 100 -- so the section states how they're used. w5-e: the
@@ -1794,7 +1803,20 @@ export function PlanEditor() {
                         setEditingCriteria((c) => updateCriterion(c, criterion.id, { guidance: e.target.value }))
                       }
                     />
-                    {/* w5-e: KIND column dropped. */}
+                    {/* w5-e: KIND column dropped. v12m-w5-b/DEC-018: the
+                        390 frame (Chautauqua Review.dc.html:594) draws a
+                        per-row type select this editor has no equivalent
+                        control for -- kind is picked once, at "Add
+                        criterion" time, and never changes after. Adding an
+                        always-rendered element here (even an inert one)
+                        would grow this row's child count past the
+                        desktop grid-track parity this file's own render
+                        test pins (PlanEditor.render.test.tsx: "declares at
+                        least as many grid tracks as an editable criterion
+                        row has non-error children"), a file this task does
+                        not own. Left unbuilt; filed in
+                        docs/design/audit/review-admin-v12.md rather than
+                        risking that pin. */}
                     {criterion.kind === 'rating' ? (
                       <span className="chq-review-criterion-weight">
                         <input
@@ -1933,6 +1955,15 @@ export function PlanEditor() {
                             </a>
                           )}
                         </div>
+                        {/* v12m-w5-b/DEC-808: Chautauqua Review.dc.html:594's
+                            Weight row reads "Recorded as a spread · no
+                            weight" for a Choice criterion (never blank) --
+                            phone-only, matching the readonly/locked row's
+                            "Not scored" readout above for the same
+                            distinction. */}
+                        <span className="chq-review-criterion-no-weight-phone" aria-hidden="true">
+                          Recorded as a spread · no weight
+                        </span>
                       </div>
                     ) : (
                       <label className="chq-review-checkbox-label">
@@ -2060,6 +2091,21 @@ export function PlanEditor() {
                 >
                   {assignFormOpen ? 'Close' : 'Assign a reviewer'}
                 </button>
+                {/* v12m-w5-b/DEC-808: the 390 frame's "Reviewers" head reads
+                    a bare count ("4"), not the toggle's label -- phone-only
+                    (the toggle above is styled to the frame's geometry at
+                    that width rather than hidden, see review.css's
+                    appended phone block, since this file's render test
+                    queries the toggle by its "Assign a reviewer" name and
+                    a second such control would make that query ambiguous).
+                    The frame also draws a second, dashed "Assign a
+                    reviewer" control below the roster (:679); duplicating
+                    the toggle's accessible name there was rejected for the
+                    same reason, and is filed in
+                    docs/design/audit/review-admin-v12.md instead. */}
+                <span className="chq-review-reviewers-count-phone" aria-hidden="true">
+                  {reviewers.length}
+                </span>
               </div>
             </div>
             {/* DEC-745 (wave-72 amendment): frame 05's PERSISTENT row --
