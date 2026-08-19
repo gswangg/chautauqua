@@ -546,7 +546,13 @@ a.chq-speakers-task-title:hover {
    reach it, and without padding the hit box is only as wide as the text.
    Never author a min-height below 44px on the roomy half. */
 .chq-speakers-status-dense {
-  padding: 3px 0;
+  /* User-filed (v12 review): with zero inline padding, the focus outline and
+     the cell's hover ring shrink-wrap the bare COMPLETE/PENDING glyphs into
+     a cramped box that reads like a native ring. The 6px inline padding is
+     cancelled by the negative margin, so no glyph moves and the column
+     rhythm is untouched -- only the ring/shadow box gains breathing room. */
+  padding: 3px 6px;
+  margin-inline: -6px;
 }
 
 .chq-speakers-status-roomy {

@@ -149,7 +149,11 @@ describe('speakers.css dense/roomy status pairing (design pack v12)', () => {
 
   it('the dense half is geometry only -- no colour, weight or fill', () => {
     const body = topLevelRuleBody(css, '.chq-speakers-status-dense');
-    expect(body).toMatch(/padding:\s*3px 0/);
+    // User-filed (v12 review): 6px inline padding cancelled by the negative
+    // margin -- ring/hover breathing room with zero glyph movement. The pair
+    // must stay equal-and-opposite or the column rhythm shifts.
+    expect(body).toMatch(/padding:\s*3px 6px/);
+    expect(body).toMatch(/margin-inline:\s*-6px/);
     expect(body).not.toMatch(/\bcolor:/);
     expect(body).not.toMatch(/font-weight:/);
     expect(body).not.toMatch(/\bbackground:/);
