@@ -131,17 +131,68 @@ export const HOME_CSS = `
   .chq-home-github-mark { vertical-align: -2px; margin-right: 5px; }
 
   @media (max-width: 700px) {
-    .chq-home-header { padding-block: 14px; padding-inline: 16px; }
+    /* Header band -- docs/design/Chautauqua Home.dc.html:117
+       \`padding:14px 16px; flex-shrink:0; display:flex; align-items:center;
+       gap:12px\`. border-bottom is already var(--chq-ink) at base scope
+       (matches); gap narrows from the desktop 20px to the frame's 12px. */
+    .chq-home-header { padding-block: 14px; padding-inline: 16px; gap: 12px; }
+    /* :118 \`font-size:17px; font-weight:700; letter-spacing:-0.03em;
+       line-height:1; position:relative; top:-2px\` -- weight/letter-spacing
+       already match the base rule; only the size and the wordmark
+       optical-nudge value (-2.5px at 20px desktop, -2px at 17px phone, per
+       the ruling above) move. */
+    .chq-home-org { font-size: 17px; top: -2px; }
+    /* :119 \`margin-left:auto; font-size:13px; font-weight:700;
+       min-height:44px; display:flex; align-items:center\` --
+       margin-left:auto/font-size/font-weight already inherited from the base
+       rule; the phone-only 44px floor needs centred flex PLUS horizontal
+       padding (DESIGN-RULINGS "The 44px floor, and how it gets evaded" --
+       the frame's own literal omits padding, but padding is still required
+       so the hit box is not just as wide as the text). */
+    .chq-home-signin { min-height: 44px; display: flex; align-items: center; padding: 0 4px; }
+
+    /* Body -- :122 \`padding:20px 16px 20px; display:flex;
+       flex-direction:column; gap:24px\`. */
     .chq-home-body { padding-block: 20px; padding-inline: 16px; gap: 24px; }
-    .chq-home-hero h1 { font-size: 30px; }
-    .chq-home-footer { padding-block: 12px 16px; padding-inline: 16px; }
+    /* :124 \`font-size:30px; font-weight:700; letter-spacing:-0.042em;
+       line-height:1.05\` -- letter-spacing already matches the base rule;
+       size and line-height (1.2 at desktop) both narrow here. */
+    .chq-home-hero h1 { font-size: 30px; line-height: 1.05; }
+    /* :125 \`margin:0; font-size:14px; line-height:1.6; color:#3F4237\` --
+       desktop is 16px/1.65. */
+    .chq-home-hero p { font-size: 14px; line-height: 1.6; }
+
+    /* :130 \`font-size:11px; font-weight:700; letter-spacing:0.1em;
+       text-transform:uppercase\` -- the section label's letter-spacing
+       narrows from the desktop 0.12em to the frame's 0.1em;
+       size/weight/uppercase already match the base rule. */
+    .chq-home-section-label { letter-spacing: 0.1em; }
 
     .chq-home-row {
       grid-template-columns: 1fr;
       gap: 8px;
       padding: 16px 0;
     }
+    /* :135 \`font-size:13px; color:#565A4B; line-height:1.5\` -- both
+       {{ e.dates }} and {{ e.venue }} share this one muted 13px treatment on
+       phone. Desktop bolds the dates in the display face (:58 15px/700) and
+       mutes the venue separately at 12px (:59); both narrow to the frame's
+       shared 13px muted line here. They stay two stacked lines (not joined
+       text) rather than growing an SSR-injected "·" separator, mirroring the
+       archive-row phone pattern below. */
+    .chq-home-when { gap: 2px; }
+    .chq-home-dates { font-family: inherit; font-size: 13px; font-weight: 400; color: var(--chq-muted); }
+    .chq-home-venue { font-size: 13px; }
+    /* :134 \`font-size:20px; font-weight:600; letter-spacing:-0.025em;
+       line-height:1.2\` -- the open-cfp row's name. */
     .chq-home-name { font-size: 20px; }
+    /* The base-scope \`.chq-home-row-published .chq-home-name\` override
+       (21px, line 114 above) outranks the bare .chq-home-name rule just
+       above on specificity alone, so the published row's own name needs its
+       own phone-scoped override to reach :148's
+       \`font-size:18px; font-weight:600; letter-spacing:-0.022em;
+       line-height:1.25\`. */
+    .chq-home-row-published .chq-home-name { font-size: 18px; letter-spacing: -0.022em; line-height: 1.25; }
     .chq-home-actions { align-items: stretch; width: 100%; }
     .chq-home-action-primary,
     .chq-home-action-secondary {
@@ -149,9 +200,24 @@ export const HOME_CSS = `
       justify-content: center;
       margin-top: 2px;
     }
+    /* :137 \`min-height:48px; display:flex; align-items:center;
+       justify-content:center\` ("Submit a talk") -- 48px already matches
+       the base rule; only the phone-only full-width treatment above is new.
+       :150 \`border:1px solid #CFC7B7; border-radius:6px;
+       background:#EFEBDF; min-height:44px\` ("Browse sessions") -- desktop
+       is 46px; the phone frame's bordered action narrows to the 44px floor
+       exactly. */
+    .chq-home-action-secondary { min-height: 44px; }
     /* DEC-367 (wave-57 amendment): the tertiary anchor's tap floor is
        phone-only -- centred flex, not padding. DEC-582's "API docs ›". */
     .chq-home-action-tertiary { min-height: 44px; }
+    /* :165 \`font-size:13px; font-weight:700; min-height:44px; display:flex;
+       align-items:center; white-space:nowrap\` ("Sessions ›") --
+       .chq-home-action-quiet is a bare desktop text link (no min-height,
+       pinned by test/public-home-full-bleed.test.ts's base-scope
+       assertion); the phone-only floor plus horizontal padding is added
+       here, scoped to this block by DEC-367's own convention. */
+    .chq-home-action-quiet { min-height: 44px; padding: 0 8px; flex-shrink: 0; }
 
     .chq-home-archive-row {
       grid-template-columns: 1fr auto;
@@ -160,5 +226,26 @@ export const HOME_CSS = `
       align-items: center;
     }
     .chq-home-archive-dates { grid-column: 1 / -1; order: -1; }
+    /* :162 \`font-size:16px; font-weight:600; letter-spacing:-0.02em\` --
+       desktop is 17px. */
+    .chq-home-archive-name { font-size: 16px; }
+    /* :163 \`font-size:12px; color:#565A4B\` -- the shared .chq-home-meta
+       class is 13px at base scope (used by every row family); the archive
+       row's own meta line narrows to the frame's 12px here. */
+    .chq-home-archive-row .chq-home-meta { font-size: 12px; }
+
+    /* Footer band -- :171 \`border-top:1px solid #1B1D17; background:#EFEBDF;
+       padding:12px 16px 16px; display:flex; align-items:center; gap:14px\`.
+       #1B1D17 is --chq-ink; the base rule is var(--chq-rule) (#D3CFC0),
+       matching the DESKTOP frame's own #D3CFC0 border-top (:101 \`border-top:
+       1px solid #D3CFC0; background:#EFEBDF; padding:18px 44px\`) -- the two
+       frames use different border tokens for this same element, so the
+       stronger ink border is phone-only. */
+    .chq-home-footer { border-top-color: var(--chq-ink); padding-block: 12px 16px; padding-inline: 16px; }
+    /* :173 \`margin-left:auto; font-size:12px; font-weight:700;
+       min-height:44px; display:flex; align-items:center\` ("API docs") --
+       margin-left:auto (via .chq-home-footer-link-end) and font-size/weight
+       already inherited; the 44px floor plus horizontal padding is new. */
+    .chq-home-footer-link-end { min-height: 44px; display: flex; align-items: center; padding: 0 4px; }
   }
 `;
