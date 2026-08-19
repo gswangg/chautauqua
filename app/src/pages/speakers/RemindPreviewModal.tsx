@@ -52,7 +52,9 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
 
   return (
     <ModalFrame
-      title="Review reminders"
+      // v12 frame `Chautauqua Speakers.dc.html`:491
+      // (`<span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Review these reminders</span>`)
+      title="Review these reminders"
       subtitle={loading ? 'Loading...' : isZeroState ? undefined : countOf(count, 'recipient')}
       onClose={onCancel}
       closeDisabled={sending}
@@ -60,7 +62,8 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, remaining,
       actions={
         <>
           <button type="button" className="chq-btn chq-btn-primary" onClick={onSend} disabled={loading || sending || count === 0}>
-            {sending ? 'Sending...' : `Send ${countOf(count, 'reminder')}`}
+            {/* v12 frame :549 (`<span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Send these 3</span>`) */}
+            {sending ? 'Sending...' : `Send these ${count}`}
           </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={sending}>
             Cancel
