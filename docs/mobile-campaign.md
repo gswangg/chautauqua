@@ -111,6 +111,21 @@ pinned; sweep the remaining stylesheets for the same exposure.
   own inviting copy order). Schedule a fix (preserve the draft across the POST or
   make the add row-scoped).
 
+## RULED (user, 2026-08-19): D19 cross-event switch — explicit, never silent
+The URL write-through in useCurrentEvent.ts:90 stays (page and context move
+together; the app keeps its one-event-at-a-time invariant), but the moment a
+URL eventId OVERWRITES a different stored context, announce it: a banner
+"Switched to <event B> · Back to <event A>" with a one-click return. No
+transient/split-view state. Pin: navigating with a URL eventId equal to the
+stored context shows no banner; differing shows exactly one, and the return
+link restores the prior context.
+
+## Scheduled: D21 stale-while-revalidate cache (swarm task)
+lib/api.ts gains an SWR cache keyed on URL + the existing mutation-bump
+counter: render last-known data on revisit (no skeleton when a cached
+payload exists), refetch in background, reconcile. Respect the bump counter
+for invalidation; add cross-page tests (contacts, speakers, submissions).
+
 ## Ruling needed (from the tracks/rooms refusal fix, bbcf8b06)
 `discardDirtyAndClose` clears row errors but not the add forms' field errors,
 so Done-with-discard parks an add refusal for the next drill-in. Needs a
