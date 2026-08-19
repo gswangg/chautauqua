@@ -262,122 +262,6 @@
   }
 }
 
-/* ---------------------------------------------------------------------- */
-/* Phone (DEC-385 single switch, DEC-386 stacked-card pattern)             */
-/* ---------------------------------------------------------------------- */
-
-@media (max-width: 700px) {
-  .chq-content-page {
-    gap: 16px;
-  }
-
-  .chq-content-detail-head,
-  .chq-content-group-body {
-    gap: 16px;
-  }
-
-  /* Every tappable control on this page gets the phone control radius —
-     scoped under .chq-content-page so the shared .chq-btn rule itself is
-     never redefined (DEC-368). */
-  .chq-content-page .chq-btn {
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  /* Worklist rows: same markup, thead hidden, tr/td collapsed to a stacked
-     card (DEC-386 — no duplicate phone-only DOM). */
-  .chq-content-table thead {
-    display: none;
-  }
-
-  .chq-content-table,
-  .chq-content-table tbody,
-  .chq-content-table tr,
-  .chq-content-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .chq-content-table tr.chq-content-row {
-    padding: 16px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  .chq-content-table td {
-    padding: 2px 0;
-    border-bottom: none;
-  }
-
-  .chq-content-actions {
-    padding-top: 8px;
-    flex-wrap: wrap;
-  }
-
-  .chq-content-actions .chq-btn {
-    flex: 1 1 0;
-  }
-
-  .chq-content-pager {
-    flex-wrap: wrap;
-    row-gap: 10px;
-  }
-
-  /* Version list: single column, meta grows for phone legibility, the
-     download link gets the same 44px tap target as a .chq-btn. */
-  .chq-content-version-item {
-    grid-template-columns: 1fr;
-    gap: 6px;
-    padding: 14px 0;
-  }
-
-  .chq-content-version-list .chq-version-meta {
-    font-size: 13px;
-  }
-
-  .chq-content-version-download {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--chq-border);
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  /* Comment thread: meta grows to 13px, composer button keeps a fixed tap
-     target rather than stretching full width. */
-  .chq-content-comment-head {
-    flex-wrap: wrap;
-    row-gap: 4px;
-  }
-
-  .chq-content-comment-item .chq-meta {
-    font-size: 13px;
-  }
-
-  .chq-content-comment-composer .chq-btn {
-    align-self: flex-start;
-  }
-
-  /* Upload zone: the prompt/caps line wraps to a stacked pair rather than
-     ellipsis-clipping the accepted-types text on a narrow phone width. */
-  .chq-content-upload-label {
-    flex-wrap: wrap;
-  }
-
-  .chq-content-upload-caps {
-    flex-basis: 100%;
-    text-align: left;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: unset;
-    line-height: 1.4;
-  }
-
-  .chq-content-status-band {
-    flex-wrap: wrap;
-    row-gap: 8px;
-    min-height: 0;
-  }
-}
 
 .chq-content-files-col {
   display: flex;
@@ -987,3 +871,476 @@
   font-weight: 600;
 }
 
+/* ---------------------------------------------------------------------- */
+/* Phone (DEC-385 single switch, DEC-386 stacked-card pattern)             */
+/*                                                                         */
+/* Frames: docs/design/Chautauqua Content.dc.html's four width:390 frames  */
+/* -- "Content" (queue), "Content · selecting", "Files · 390" and          */
+/* "Session · deliverable". DEC-385 makes this codebase single-direction,  */
+/* so every phone rule lives in THIS one max-width block and the desktop   */
+/* rules above are never touched.                                          */
+/*                                                                         */
+/* Geometry only. DESIGN-RULINGS.md ("Status tokens pair by density, not   */
+/* by device -- colour and weight are identical in both; only geometry     */
+/* differs") is why nothing here restates a colour or a font-weight that   */
+/* the desktop rule already sets: the phone card reflows the desktop       */
+/* design, it never gives a field a second vocabulary.                     */
+/* ---------------------------------------------------------------------- */
+
+@media (max-width: 700px) {
+  .chq-content-page {
+    gap: 16px;
+  }
+
+  .chq-content-group-body {
+    gap: 16px;
+  }
+
+  /* Frame "Content" header stack: the H1, then the `N need a decision · M
+     re-uploaded` line, then the row of destination actions — three lines,
+     never a baseline row whose trailing buttons get squeezed to their own
+     min-content at 390. */
+  .chq-content-summary-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .chq-content-summary-actions {
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+
+  /* Every tappable control on this page gets the phone control radius —
+     scoped under .chq-content-page so the shared .chq-btn rule itself is
+     never redefined (DEC-368). */
+  .chq-content-page .chq-btn {
+    border-radius: var(--chq-r-ctl-phone);
+  }
+
+  /* Worklist + files rows: same markup, thead hidden, tr/td collapsed to a
+     stacked card (DEC-386 — no duplicate phone-only DOM). */
+  .chq-content-table thead {
+    display: none;
+  }
+
+  .chq-content-table,
+  .chq-content-table tbody,
+  .chq-content-table tr,
+  .chq-content-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .chq-content-table tr.chq-content-row {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+
+  .chq-content-table td {
+    padding: 2px 0;
+    border-bottom: none;
+  }
+
+  /* -------------------------------------------------------------------- */
+  /* Frame "Content" / "Content · selecting" — the queue card              */
+  /* -------------------------------------------------------------------- */
+
+  /* The frame's card reads tick + status, then the session title, then one
+     muted `speaker · file` line, then the Approve/Open pair — a different
+     order from the desktop columns (select, session, speaker, latest file,
+     status, actions). A grid places the SAME cells into that reading order
+     with no phone-only DOM (DEC-386). Positional placement is safe here
+     because the six-column order is itself pinned
+     (SessionList.render.test.tsx's "six tracks" suite); nothing positional
+     ever sources a LABEL (phone-label-source.scan.test.ts) — the one
+     ::before below is a `·` separator, punctuation with no letter in it,
+     the documented submissions.css precedent. */
+  .chq-content-worklist .chq-content-table tr.chq-content-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: 9px;
+    row-gap: 9px;
+  }
+
+  .chq-content-worklist .chq-content-table tr.chq-content-row > td {
+    padding: 0;
+    min-width: 0;
+  }
+
+  /* select — row 1, leading the status flag, exactly as the "selecting"
+     frame draws the tick beside the status word. */
+  .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(1) {
+    grid-row: 1;
+    grid-column: 1;
+    align-self: center;
+  }
+
+  /* status */
+  .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(5) {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  /* session (title + ref) */
+  .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(2) {
+    grid-row: 2;
+    grid-column: 1 / span 2;
+  }
+
+  /* speaker, then latest file — each on its own full-measure line.
+     DEVIATION, recorded: the frame draws these as one `speaker · file,
+     when` line. Merging two table cells onto one line needs either a
+     phone-only wrapper (DEC-386 forbids duplicate phone DOM) or a shared
+     grid column, and the tick column cannot share its track with a speaker
+     name without the status flag on row 1 being pushed off the tick. The
+     tick/status pairing is the frame's load-bearing anatomy, so the meta
+     takes two lines instead. */
+  .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(3) {
+    grid-row: 3;
+    grid-column: 1 / span 2;
+  }
+
+  /* latest file */
+  .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(4) {
+    grid-row: 4;
+    grid-column: 1 / span 2;
+  }
+
+  /* the Approve/Open pair, full measure */
+  .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(6) {
+    grid-row: 5;
+    grid-column: 1 / span 2;
+  }
+
+  /* The frame's meta reads `file, when` on ONE line — the 200px desktop
+     column is what forces the stack, and the card has the whole measure. */
+  .chq-content-row-latest-file {
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Frame title: 17px/1.3, up from the desktop row's 15px — a 390 card has
+     one title per row where the table has twelve. */
+  .chq-content-worklist .chq-content-row-title {
+    font-size: 17px;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+
+  .chq-content-actions {
+    padding-top: 2px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chq-content-actions .chq-btn {
+    flex: 1 1 0;
+  }
+
+  /* Bulk bar: the frame docks `Approve N` as one full-measure primary with
+     the consequence line centred beneath it. Scoped under the worklist —
+     the shared .chq-bulkbar face itself is never redefined here
+     (DEC-368). */
+  .chq-content-worklist .chq-bulkbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .chq-content-worklist .chq-bulkbar-note {
+    text-align: center;
+    order: 1;
+  }
+
+  .chq-content-worklist .chq-bulkbar-actions {
+    margin-left: 0;
+    gap: 8px;
+  }
+
+  .chq-content-worklist .chq-bulkbar-actions .chq-btn-primary {
+    flex: 1 1 auto;
+    min-height: 48px;
+    font-size: 15px;
+  }
+
+  .chq-content-pager {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  /* -------------------------------------------------------------------- */
+  /* Frame "Files · 390"                                                   */
+  /* -------------------------------------------------------------------- */
+
+  /* Header stack: back link over title over the `31 files · 412 MB`
+     summary, with Download-all taking the full measure beneath rather than
+     right-flushing against a title it no longer shares a line with. */
+  .chq-content-files-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .chq-content-files-breadcrumb {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .chq-content-files-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .chq-content-files-download-all-wrap {
+    align-items: stretch;
+  }
+
+  .chq-content-files-download-all-cap,
+  .chq-content-files-download-all-scope {
+    max-width: none;
+    text-align: left;
+  }
+
+  /* The search field owns its own line above the type chips it narrows. */
+  .chq-content-files-toolbar .chq-input {
+    flex: 1 1 100%;
+  }
+
+  /* File card: name + version tag on the first line, then session, size and
+     a full-measure Download — the frame's anatomy, from the desktop cells.
+     Same positional-placement reasoning as the worklist card above. */
+  .chq-content-files-library .chq-content-table tr.chq-content-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    column-gap: 10px;
+    row-gap: 7px;
+    padding: 15px 0;
+  }
+
+  /* width:auto releases the desktop fixed-layout column widths (version
+     108, size 92, actions 150) that the tbody cells still carry — under
+     the card grid they would clamp a full-measure Download to 150px. */
+  .chq-content-files-library .chq-content-table tr.chq-content-row > td {
+    padding: 0;
+    min-width: 0;
+    width: auto;
+  }
+
+  /* file name + who */
+  .chq-content-files-library .chq-content-table tr.chq-content-row > td:nth-child(1) {
+    grid-row: 1;
+    grid-column: 1;
+    overflow-wrap: anywhere;
+  }
+
+  /* version tag, right-flushed against the name */
+  .chq-content-files-library .chq-content-table tr.chq-content-row > td:nth-child(3) {
+    grid-row: 1;
+    grid-column: 2;
+    text-align: right;
+  }
+
+  /* session */
+  .chq-content-files-library .chq-content-table tr.chq-content-row > td:nth-child(2) {
+    grid-row: 2;
+    grid-column: 1 / span 2;
+  }
+
+  /* size */
+  .chq-content-files-library .chq-content-table tr.chq-content-row > td:nth-child(4) {
+    grid-row: 3;
+    grid-column: 1 / span 2;
+    text-align: left;
+  }
+
+  /* Download, full measure */
+  .chq-content-files-library .chq-content-table tr.chq-content-row > td:nth-child(5) {
+    grid-row: 4;
+    grid-column: 1 / span 2;
+  }
+
+  /* The frame gives the row's Download a bordered 44px face rather than the
+     desktop text link — the 44px floor is reached by min-height PLUS
+     horizontal padding, never padding alone (DESIGN-RULINGS). */
+  .chq-content-files-library .chq-content-files-col-actions .chq-link-button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+  }
+
+  .chq-content-files-pager {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  /* -------------------------------------------------------------------- */
+  /* Frame "Session · deliverable"                                         */
+  /* -------------------------------------------------------------------- */
+
+  .chq-content-detail-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+  }
+
+  /* 21px/1.2 — the frame's phone H1, down from the desktop 28px. */
+  .chq-content-detail-title {
+    font-size: 21px;
+    letter-spacing: -0.035em;
+    line-height: 1.2;
+  }
+
+  .chq-content-detail-back {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* The head's tertiary links stop being a right-flushed column and become
+     a wrapping row under the subtitle; each link takes the 44px floor. */
+  .chq-content-detail-head > .chq-content-detail-actions {
+    align-self: stretch;
+    margin-top: 0;
+  }
+
+  .chq-content-detail-action-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Status band: the frame keeps `CONTENT STATUS` + the status line on the
+     left and its actions beneath at full measure — the actions row wraps as
+     a unit rather than one button at a time. */
+  .chq-content-status-band {
+    flex-wrap: wrap;
+    row-gap: 10px;
+    min-height: 0;
+  }
+
+  .chq-content-status-band-info {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .chq-content-status-band-actions {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chq-content-status-band-actions .chq-btn {
+    flex: 1 1 auto;
+  }
+
+  /* Version list: the frame keeps `vN | name+meta | NEWEST` on one line and
+     drops Download to its own full-measure row beneath, with the tertiary
+     Delete right-flushed beside it. */
+  .chq-content-version-item {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: baseline;
+    column-gap: 12px;
+    row-gap: 8px;
+    padding: 13px 0;
+  }
+
+  .chq-content-version-tag {
+    grid-row: 1;
+    grid-column: 1;
+    font-size: 15px;
+  }
+
+  .chq-content-version-info {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .chq-content-version-newest {
+    grid-row: 1;
+    grid-column: 3;
+  }
+
+  .chq-content-version-download {
+    grid-row: 2;
+    grid-column: 1 / span 2;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    font-size: 13px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+  }
+
+  .chq-content-version-delete {
+    grid-row: 2;
+    grid-column: 3;
+  }
+
+  .chq-content-version-list .chq-version-meta {
+    font-size: 13px;
+  }
+
+  /* Comment thread: meta grows to 13px for phone legibility. */
+  .chq-content-comment-head {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .chq-content-comment-item .chq-meta {
+    font-size: 13px;
+  }
+
+  /* Composer: the frame docks `Ask for changes` as a full-measure primary
+     with `Send note only` hugging its own label beside it — the same
+     one-primary-fills-the-row grammar the queue card's Approve uses. */
+  .chq-content-comment-actions {
+    gap: 8px;
+  }
+
+  .chq-content-comment-actions .chq-btn-primary {
+    flex: 1 1 auto;
+  }
+
+  /* Upload zone: the prompt/caps line wraps to a stacked pair rather than
+     ellipsis-clipping the accepted-types text on a narrow phone width, and
+     the whole strip centres the way the frame's dashed row does. */
+  .chq-content-upload-zone {
+    min-height: 46px;
+  }
+
+  .chq-content-upload-label {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 4px;
+    padding: 8px 16px;
+  }
+
+  .chq-content-upload-prompt {
+    white-space: normal;
+    text-align: center;
+  }
+
+  .chq-content-upload-caps {
+    flex-basis: 100%;
+    text-align: center;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.4;
+  }
+}
