@@ -143,3 +143,9 @@ ruling: does Done-discard also drop an unsaved add draft + its refusal?
 - Anywhere citing DEC-302 for flag-not-block scheduling: correct authorities
   are DEC-010 waves 66/71, DEC-557 clause (f), DEC-377, SPEC J9 (DEC-302 is
   npm audit advisories).
+
+## Deferred design question (agenda 390, ruled interim by meta)
+Publish schedule survives as the head's full-width action row (DEC-919
+remedy). Whether it belongs in the phone dock instead is a frame deviation
+needing a proper ruling later — the frame's dock draws only
+Unscheduled + Auto-schedule.
