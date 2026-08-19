@@ -74,6 +74,15 @@
   background: var(--chq-hairline);
 }
 
+/* DEC-621 (wave-98 amendment): the drill head's phone-only third line
+   (`{templates.length} saved`, docs/design/Chautauqua Comms.dc.html:290)
+   -- hidden at every width until the terminal max-width:700px block below
+   turns it on. The desktop pin (Comms.dc.html:227-229) carries no count
+   line at all, so this stays off at desktop widths. */
+.chq-comms-templates-head-count {
+  display: none;
+}
+
 /* w18-e (DEC-890 amendment): Delete moves into the editor's action row as a
    tertiary link in muted ink -- never a bordered button (DESIGN-RULINGS 3,
    20) -- pushed to the far end of the row away from Save / Use in a send. */
@@ -90,8 +99,8 @@
 /* DEC-385 single-direction: everything below is a max-width override, so  */
 /* the 1600 "Templates" subscreen is untouched.                            */
 /*                                                                        */
-/* Two things the frame draws that this build deliberately does NOT copy,  */
-/* both because a recorded ruling already settled them the other way:      */
+/* One thing the frame draws that this build deliberately does NOT copy,   */
+/* because a recorded ruling already settled it the other way:             */
 /*                                                                        */
 /*  1. The frame's per-row `Open` button. w18-e (DEC-890 amendment) ruled  */
 /*     that the row carries no verbs -- the NAME is the row's one control  */
@@ -99,31 +108,30 @@
 /*     put two tap targets on one row for one act. Instead the name TAKES  */
 /*     the frame's Open geometry: the 44px floor with real horizontal      */
 /*     padding, at the frame's own 16px display face.                      */
-/*  2. The frame's "5 saved" line under the H1 (docs/design/Chautauqua      */
-/*     Comms.dc.html:286, `<span style="font-size:13px; color:#565A4B">5   */
-/*     saved</span>` directly under the H1). The section head directly     */
-/*     beneath it already prints `Saved · 5`, and DEC-603's wave-66 sweep  */
-/*     removed exactly this duplication from the History head for exactly  */
-/*     this reason ("an unlabelled echo") -- w6-e (this task) re-read that  */
-/*     comment against the frame and RE-AFFIRMS the deviation rather than  */
-/*     restoring the line: restoring it would reintroduce the same         */
-/*     unlabelled-echo defect DEC-603 already ruled out for History's       */
-/*     identical shape, one section head down.                             */
 /*                                                                        */
-/*  3. The frame's pinned Save/Cancel dock (frame :319-322, the shell's own */
-/*     `.chq-phone-dock` geometry). Composing `.chq-phone-dock` here would  */
-/*     require a dedicated scroll region between a fixed head and a fixed   */
-/*     dock -- exactly the `.chq-phone-body` shape this task's ruling        */
-/*     forbids mounting, because `.chq-phone-body`'s own `overflow-y:auto`  */
-/*     contradicts `.chq-main` being the app's one scroll region            */
-/*     (styles.css:487-492). Without that dedicated body, sticking the      */
-/*     footer to the viewport would also pin it OVER the templates list      */
-/*     section above the editor, which the frame's own single-screen        */
-/*     drill never has to contend with. `.chq-comms-editor-actions` keeps    */
-/*     the frame's full-width primary + 48px controls (below) but stays     */
-/*     in-flow -- a structural head/body/dock rebuild of this tab is out    */
-/*     of this task's scope; flagged for the shell lane alongside           */
-/*     `.chq-phone-body`'s own orphan status.                               */
+/* Two items previously held here (wave 7's deferral, per                  */
+/* docs/design/audit/comms-drill-v12.md's "Held for a later wave" section) */
+/* are now built, per DEC-621's wave-98 amendment lifting that deferral:   */
+/*                                                                        */
+/*  2. The frame's "5 saved" line under the H1 (docs/design/Chautauqua      */
+/*     Comms.dc.html:290) is now real phone-only copy --                   */
+/*     `.chq-comms-templates-head-count` in TemplatesTab.tsx, reading      */
+/*     `templates.length`, hidden above and shown only below. It sits      */
+/*     directly under the H1, inside the head band -- a THIRD line, never  */
+/*     replacing the existing `.chq-section-head`'s `Saved · N` line one   */
+/*     section down, which stays exactly where it is at every width (the   */
+/*     desktop pin at Comms.dc.html:227-229 carries no count line, so      */
+/*     there is nothing there for this to echo -- DEC-621's amendment      */
+/*     settles that this is new copy, not a relocation).                   */
+/*  3. The frame's pinned Save/Cancel dock (frame :323-324) is now the      */
+/*     shell's own `.chq-phone-dock` geometry (styles.css:2267), composed  */
+/*     onto the EXISTING `.chq-comms-editor-actions` wrapper in            */
+/*     TemplatesTab.tsx -- one Save control, one save() call (DEC-547).    */
+/*     `data-chq-phone-dock` on the page root (set only while the editor   */
+/*     is open) suppresses the shell's bottom tab bar via                  */
+/*     `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` (styles.css:   */
+/*     430), so the frame's footer stays ONE region, never a dock stacked  */
+/*     over a tab bar.                                                     */
 /* ---------------------------------------------------------------------- */
 @media (max-width: 700px) {
   .chq-comms-templates-head {
@@ -149,6 +157,15 @@
   /* Frame: the header's one primary spans the column. */
   .chq-comms-templates-head > .chq-btn {
     width: 100%;
+  }
+
+  /* DEC-621 (wave-98 amendment): the phone-only third head-band line --
+     docs/design/Chautauqua Comms.dc.html:290
+     `<span style="font-size:13px; color:#565A4B">5 saved</span>`. */
+  .chq-comms-templates-head-count {
+    display: block;
+    font-size: 13px;
+    color: var(--chq-muted);
   }
 
   /* Frame row: name (16px display 600) over the purpose+subject line,
@@ -231,5 +248,31 @@
     justify-content: flex-start;
     min-height: 44px;
     padding: 0 16px 0 0;
+  }
+
+  /* DEC-621 (wave-98 amendment): the "Send history · 390" frame's per-row
+     recipients control (docs/design/Chautauqua Comms.dc.html:350) is a
+     full-width bordered 44px control, `border:1px solid #BAB6A6;
+     border-radius:6px; background:#EFEBDF; min-height:44px; display:flex;
+     align-items:center; justify-content:center; font-size:13px;
+     font-weight:600`. RecentSends.tsx's History mount (columnHeads=true)
+     already renders that button as `.chq-btn.chq-btn-secondary
+     .chq-comms-batch-toggle`, and comms.css's own phone block already
+     stretches it full-width (`.chq-comms-batch-row >
+     .chq-comms-batch-toggle{grid-column:1 / -1; width:100%}`) with the
+     44px floor, centred flex and 13px/600 label already coming from the
+     shared `.chq-btn`/`.chq-btn-secondary` classes (styles.css) -- the
+     only geometry still off the frame is the border colour/radius, which
+     `.chq-btn-secondary` sources from the general `--chq-border-strong`
+     token rather than the frame's own `--chq-border` (#BAB6A6) and
+     `--chq-r-ctl-phone` (6px). `.chq-comms-batch-toggle-recipients` is a
+     History-only marker class (set only when `columnHeads` is true, so
+     the Compose mount's identical button -- which the 390 Compose frame
+     draws with NO recipients control at all -- is untouched); comms.css
+     is a sibling lane's file, so this narrow border-colour/radius
+     correction lands here instead. */
+  .chq-comms-batch-toggle-recipients {
+    border-color: var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
   }
 }
