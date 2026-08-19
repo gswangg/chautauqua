@@ -977,23 +977,24 @@
    (a "Weight" label vs. a full number input) drifted out of alignment
    between the header and the body rows even though both declared the
    same template. */
-/* DEC-745 (wave-22 amendment): docs/design/Chautauqua Review.dc.html:492
-   `grid-template-columns:20px 1fr 232px 128px 122px 62px`
-   (head) / :496 (rows). The V12 re-cut draws SIX tracks there, adding the
-   122px TYPE cell (Scale-or-Choice intake); the unlocked editor and its
-   header keep the pre-V12 five-track shape -- drag 20px / Criterion
-   (remainder) / Guidance 260px / Weight 132px / Remove 62px, gap 16 --
-   until the Scale-or-Choice editor lands its type column (the readonly
-   row below already carries it). The drag column is a pinned 20px, not `auto`: an `auto`
-   track sizes from that row's OWN content, and a locked row's blank handle
-   cell differs in content from an unlocked row's handle button, which is
-   exactly the drift this column exists to prevent (see the paragraph
-   above). Guidance is a fixed 260px so Criterion (minmax(0,1fr)) takes the
-   remainder instead of the two splitting the measure 50/50. Head and body
-   share this one declaration so they cannot drift apart. */
+/* DEC-745 (wave-22 amendment), DEC-018 Amendment (wave 102):
+   docs/design/Chautauqua Review.dc.html:492 `grid-template-columns:20px 1fr
+   232px 128px 122px 62px` (head) / :496 (rows). The editable editor and its
+   header now render the frame's SIX tracks -- drag 20px / Criterion
+   (remainder) / Guidance 232px / Weight 128px / Type 122px / Remove 62px,
+   gap 16 -- now that the per-row TYPE <select> (PlanEditor.tsx) lands the
+   122px column the Scale-or-Choice editor needed (the readonly row below
+   already carried its own TYPE cell). The drag column is a pinned 20px, not
+   `auto`: an `auto` track sizes from that row's OWN content, and a locked
+   row's blank handle cell differs in content from an unlocked row's handle
+   button, which is exactly the drift this column exists to prevent (see the
+   paragraph above). Guidance/Weight/Type are fixed so Criterion
+   (minmax(0,1fr)) takes the remainder instead of splitting the measure with
+   the other cells. Head and body share this one declaration so they cannot
+   drift apart. */
 .chq-review-criterion-row,
 .chq-review-criteria-head-row {
-  grid-template-columns: 20px minmax(0, 1fr) 260px 132px 62px;
+  grid-template-columns: 20px minmax(0, 1fr) 232px 128px 122px 62px;
 }
 
 /* DEC-613/DEC-882 (wave 7): the locked/frozen criteria readout restores its
@@ -2367,14 +2368,17 @@
     font-weight: 600;
   }
 
-  /* DEC-937 w9-d: the phone-only inert type select this rule was styling
-     for (frame :594/:608 draws a per-row type control) was never built --
-     PlanEditor.tsx's own comment (v12m-w5-b/DEC-018) explains why: an
-     always-rendered element here would grow the editable criterion row's
-     child count past the desktop grid-track parity PlanEditor.render.test
-     pins, a file outside this lane's scope. Filed in
-     docs/design/audit/review-admin-v12.md for a lane that owns that test;
-     the orphaned rule is deleted rather than left dead. */
+  /* DEC-018 Amendment (wave 102): the per-row TYPE <select> now renders
+     (PlanEditor.tsx). Frame :608 (phone) draws `border-radius:6px;
+     padding:0 13px; min-height:46px` -- forced onto its own line like the
+     label/guidance inputs above it (flex-basis 100%), not squeezed onto
+     the weight/Remove line. */
+  .chq-review-criterion-row > select.chq-select {
+    flex: 1 1 100%;
+    min-height: 46px;
+    border-radius: 6px;
+    padding: 0 13px;
+  }
 
   .chq-review-criterion-options {
     flex: 1 1 100%;

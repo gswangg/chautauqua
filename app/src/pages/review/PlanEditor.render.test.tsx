@@ -2039,11 +2039,12 @@ describe('PlanEditor render smoke', () => {
     expect(checkbox).toBeDisabled();
   });
 
-  // w18-e/DEC-715 amendment: an editable criterion row renders five
-  // non-error children (drag handle, label input, guidance input, kind
-  // cell, Remove button) -- .chq-review-criterion-row's grid must declare
-  // at least that many explicit tracks, or Remove wraps to an implicit
-  // second row.
+  // w18-e/DEC-715 amendment, DEC-018 Amendment (wave 102): an editable
+  // criterion row renders six non-error children (drag handle, label
+  // input, guidance input, TYPE select, kind-specific cell [weight /
+  // options / required checkbox], Remove button) --
+  // .chq-review-criterion-row's grid must declare at least that many
+  // explicit tracks, or Remove wraps to an implicit second row.
   it('declares at least as many grid tracks as an editable criterion row has non-error children', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
@@ -2072,7 +2073,7 @@ describe('PlanEditor render smoke', () => {
     const nonErrorChildren = Array.from(row.children).filter(
       (child) => !child.classList.contains('chq-field-error'),
     );
-    expect(nonErrorChildren.length).toBe(5);
+    expect(nonErrorChildren.length).toBe(6);
 
     const ruleMatch = REVIEW_CSS.match(
       /\.chq-review-criterion-row,\s*\n\.chq-review-criteria-head-row\s*\{\s*\n\s*grid-template-columns:\s*([^;]+);/,
@@ -2327,19 +2328,20 @@ describe('PlanEditor round meta (DEC-147 amendment, task w8-c)', () => {
   });
 });
 
-// DEC-745 (wave-21 amendment): the criteria, reviewer and distribute-preview
-// rows now take docs/design/Chautauqua Review.dc.html's exact tracks
-// (frame :470/:474, :526, :513) rather than `auto`-derived ones. Sheet-level
-// assertions rather than layout measurement (jsdom does not compute grid
-// track sizes), matching the existing criterion-row test's approach above.
+// DEC-745 (wave-21 amendment), DEC-018 Amendment (wave 102): the criteria,
+// reviewer and distribute-preview rows take docs/design/Chautauqua
+// Review.dc.html's exact tracks (frame :492/:496, :526, :513) rather than
+// `auto`-derived ones. Sheet-level assertions rather than layout
+// measurement (jsdom does not compute grid track sizes), matching the
+// existing criterion-row test's approach above.
 describe('criteria/reviewer/distribute row tracks (DEC-745 wave-21 amendment)', () => {
-  it('gives the criterion row/head-row the frame five-track grid, shared by one rule (Chautauqua Review.dc.html:470/:474)', () => {
+  it('gives the criterion row/head-row the frame six-track grid, shared by one rule (Chautauqua Review.dc.html:492/:496)', () => {
     const ruleMatch = REVIEW_CSS.match(
       /\.chq-review-criterion-row,\s*\n\.chq-review-criteria-head-row\s*\{\s*\n\s*grid-template-columns:\s*([^;]+);/,
     );
     expect(ruleMatch).not.toBeNull();
     expect((ruleMatch![1] as string).trim()).toBe(
-      '20px minmax(0, 1fr) 260px 132px 62px',
+      '20px minmax(0, 1fr) 232px 128px 122px 62px',
     );
   });
 

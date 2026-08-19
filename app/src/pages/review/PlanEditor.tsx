@@ -54,7 +54,7 @@ import {
   isPlanOpen,
 } from '../../../../src/domain/evaluation';
 import { MAX_CRITERION_GUIDANCE_LENGTH } from '../../lib/domain-caps';
-import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124, DEC_958 } from '../../../../src/decisions';
+import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124, DEC_958, DEC_018 } from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
 // w40-e/DEC-745 amendment: the reviewer roster is the ONE place an
 // assignment can be Removed, so it must request/page through the site-wide
@@ -67,6 +67,7 @@ import { CRITERION_KIND_LABELS } from '../../lib/criterion-kind';
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
 void DEC_824; // cap-per-reviewer input + shortfall/note rendering in the confirm dialog below
+void DEC_018; // Amendment (wave 102): editable criterion row's per-row TYPE <select>, six-track grid
 void DEC_882; // locked criteria render as read-only text rows below a CRITERION|GUIDANCE|WEIGHT
 // header, lock card moved below the rows, and the open-plan header reads
 // "Open · N of M reviews in" from progressRows via progressTotals -- never
@@ -1821,20 +1822,37 @@ export function PlanEditor() {
                         setEditingCriteria((c) => updateCriterion(c, criterion.id, { guidance: e.target.value }))
                       }
                     />
-                    {/* w5-e: KIND column dropped. v12m-w5-b/DEC-018: the
-                        390 frame (Chautauqua Review.dc.html:594) draws a
-                        per-row type select this editor has no equivalent
-                        control for -- kind is picked once, at "Add
-                        criterion" time, and never changes after. Adding an
-                        always-rendered element here (even an inert one)
-                        would grow this row's child count past the
-                        desktop grid-track parity this file's own render
-                        test pins (PlanEditor.render.test.tsx: "declares at
-                        least as many grid tracks as an editable criterion
-                        row has non-error children"), a file this task does
-                        not own. Left unbuilt; filed in
-                        docs/design/audit/review-admin-v12.md rather than
-                        risking that pin. */}
+                    {/* DEC-018 Amendment (wave 102): Chautauqua Review.dc.html:500/:747
+                        (desktop) and :608 (phone) all draw this per-row TYPE
+                        control -- min-height:46px, a caret, "{{ c.typeLabel }}".
+                        Changing kind re-derives the kind-specific fields (weight
+                        / options / required) the same way a fresh row would get
+                        them from addCriterion, rather than stranding e.g. a
+                        rating row's weight on a dropdown row. */}
+                    <select
+                      className="chq-select"
+                      aria-label={`${criterion.label || 'criterion'} type`}
+                      value={criterion.kind}
+                      disabled={activeRoundIsLocked}
+                      onChange={(e) => {
+                        const kind = e.target.value as CriterionKind;
+                        if (kind === criterion.kind) return;
+                        const fresh = addCriterion([], kind)[0];
+                        if (!fresh) throw new Error('addCriterion([], kind) must return one row');
+                        setEditingCriteria((c) =>
+                          updateCriterion(c, criterion.id, {
+                            kind: fresh.kind,
+                            weight: fresh.weight,
+                            options: fresh.options,
+                            required: fresh.required,
+                          }),
+                        );
+                      }}
+                    >
+                      <option value="rating">{CRITERION_KIND_LABELS.rating}</option>
+                      <option value="dropdown">{CRITERION_KIND_LABELS.dropdown}</option>
+                      <option value="text">{CRITERION_KIND_LABELS.text}</option>
+                    </select>
                     {criterion.kind === 'rating' ? (
                       <span className="chq-review-criterion-weight">
                         <input
