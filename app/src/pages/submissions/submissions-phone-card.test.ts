@@ -91,13 +91,18 @@ describe('submissions.css phone card action row + chip strip (390 frame)', () =>
     );
   });
 
-  it('the first two triage actions share the line at equal width, the third sizes to its label', () => {
+  it('the first two triage actions share the line at equal width, the third (Read) sizes to its label', () => {
     expect(mediaBody).toMatch(
       /\.chq-submissions-row-triage \.chq-btn:nth-child\(1\),\s*\.chq-submissions-row-triage \.chq-btn:nth-child\(2\) \{[^}]*flex:\s*1/,
     );
-    // No nth-child(3) rule: the third button keeps its intrinsic width,
-    // which is what makes the row read flex:1 / flex:1 / auto.
-    expect(mediaBody).not.toMatch(/\.chq-submissions-row-triage \.chq-btn:nth-child\(3\)/);
+    // No flex on nth-child(3): the third action ('Read') keeps its
+    // intrinsic width, which is what makes the row read flex:1 / flex:1 /
+    // auto. DEC-610 amendment: it does get its own rule now, for the
+    // frame's `padding:0 14px` -- just no `flex`.
+    const nth3 = mediaBody.match(/\.chq-submissions-row-triage \.chq-btn:nth-child\(3\) \{([^}]*)\}/);
+    expect(nth3).not.toBeNull();
+    expect(nth3![1]).toMatch(/padding:\s*0 14px/);
+    expect(nth3![1]).not.toMatch(/flex:/);
   });
 
   it('the status chips take the frame 13px type, scoped to this filter bar', () => {

@@ -138,7 +138,7 @@ describe('detail.css phone frame (390) fidelity', () => {
     expect(comment).toMatch(/line-height:\s*1\.55/);
   });
 
-  it('the decision rail reads as one row of three 46px controls', () => {
+  it('the decision rail reads as one row of three controls (audit fix, v12 mobile campaign w1: primary 46px, secondary pair 44px, matching frame lines 311/314 rather than a shared 46px)', () => {
     const rail = ruleBodyIn(phone, '.chq-detail-decision-rail');
     expect(rail).toMatch(/flex-direction:\s*row/);
     expect(rail).toMatch(/flex-wrap:\s*wrap/);
@@ -149,12 +149,12 @@ describe('detail.css phone frame (390) fidelity', () => {
     expect(ruleBodyIn(phone, '.chq-detail-decision-rail > .chq-detail-decision-secondary-pair')).toMatch(
       /flex:\s*2 1 55%/,
     );
-    const controls = ruleBodyIn(
-      phone,
-      '.chq-detail-decision-primary,\n  .chq-detail-decision-secondary-pair .chq-btn',
-    );
-    expect(controls).toMatch(/min-height:\s*46px/);
-    expect(controls).toMatch(/border-radius:\s*var\(--chq-r-ctl-phone\)/);
+    const primary = ruleBodyIn(phone, '.chq-detail-decision-primary');
+    expect(primary).toMatch(/min-height:\s*46px/);
+    expect(primary).toMatch(/border-radius:\s*var\(--chq-r-ctl-phone\)/);
+    const secondaryPair = ruleBodyIn(phone, '.chq-detail-decision-secondary-pair .chq-btn');
+    expect(secondaryPair).toMatch(/min-height:\s*44px/);
+    expect(secondaryPair).toMatch(/border-radius:\s*var\(--chq-r-ctl-phone\)/);
   });
 
   it('DESKTOP PRESERVED: no phone metric escaped into a top-level rule', () => {

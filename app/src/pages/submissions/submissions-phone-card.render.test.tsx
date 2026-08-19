@@ -82,12 +82,15 @@ describe('SubmissionsTable phone-card class hooks render (DEC-610, task w14-h)',
   });
 
   // The 390 frame's card action row is flex:1 / flex:1 / auto, and the phone
-  // CSS spells that with `.chq-btn:nth-child(1)` and `:nth-child(2)`. Those
-  // two positional selectors are only correct while the triage group renders
-  // exactly three buttons in the Accept, Decline, Waitlist order -- reorder
-  // or insert one and the frame's geometry silently lands on the wrong pair.
-  // This pins the coupling the stylesheet cannot express.
-  it('the triage group renders exactly three buttons, Accept and Decline first (phone nth-child coupling)', async () => {
+  // CSS spells that with `.chq-btn:nth-child(1)` / `:nth-child(2)` /
+  // `:nth-child(3)`. Those positional selectors are only correct while the
+  // triage group renders exactly three actions in the Accept, Decline, Read
+  // order (DEC-610 amendment: 'Read' replaces 'Waitlist' as the third card
+  // action -- a navigation link, not a status write; Waitlist stays on the
+  // detail rail and the bulk-action bar) -- reorder or insert one and the
+  // frame's geometry silently lands on the wrong pair. This pins the
+  // coupling the stylesheet cannot express.
+  it('the triage group renders exactly three actions, Accept and Decline first, Read last (phone nth-child coupling)', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'user-1', email: 'organizer@example.com', name: 'Organizer', role: 'organizer', orgId: 'org-1' },
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
@@ -120,10 +123,15 @@ describe('SubmissionsTable phone-card class hooks render (DEC-610, task w14-h)',
 
     const group = container.querySelector('.chq-submissions-row-triage');
     expect(group).not.toBeNull();
-    const buttons = Array.from(group!.querySelectorAll('button'));
-    expect(buttons.map((b) => b.textContent)).toEqual(['Accept', 'Decline', 'Waitlist']);
-    // Every child of the group is a button, so :nth-child(n) and "the nth
-    // action" cannot drift apart via a non-button element slipping in.
+    // The first two actions are status writes (buttons); the third ('Read')
+    // is a navigation link -- both element kinds carry the shared .chq-btn
+    // class the phone CSS's `.chq-submissions-row-triage .chq-btn` and
+    // `:nth-child(n)` selectors key off, so :nth-child(n) and "the nth
+    // action" cannot drift apart via a non-.chq-btn element slipping in.
+    const actions = Array.from(group!.children) as HTMLElement[];
+    expect(actions.map((el) => el.tagName)).toEqual(['BUTTON', 'BUTTON', 'A']);
+    expect(actions.every((el) => el.classList.contains('chq-btn'))).toBe(true);
+    expect(actions.map((el) => el.textContent)).toEqual(['Accept', 'Decline', 'Read']);
     expect(group!.children.length).toBe(3);
   });
 });

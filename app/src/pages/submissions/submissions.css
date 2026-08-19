@@ -558,6 +558,20 @@
 
   .chq-submissions-table-muted {
     font-size: 13px;
+    /* docs/design/Chautauqua Submissions.dc.html:163
+       `font-size:13px; color:#565A4B; line-height:1.45` -- the speaker/
+       track/format summary line's own line-height, not the table's
+       tighter desktop vertical-align:baseline row measure. */
+    line-height: 1.45;
+  }
+
+  /* docs/design/Chautauqua Submissions.dc.html:145 `font-size:12px;
+     color:#565A4B">12 awaiting triage</span>` -- the head summary sits
+     at 12px on the H1's shared baseline. .chq-summary's shared 13px
+     (styles.css) is a desktop-wide default this page overrides only for
+     its own head, only at phone width. */
+  .chq-submissions-head-titles .chq-summary {
+    font-size: 12px;
   }
 
   /* Status filter pills + the view-tab row: same chip-strip treatment --
@@ -583,6 +597,36 @@
   .chq-submissions-filterbar-search,
   .chq-submissions-filterbar-select {
     min-height: 44px;
+  }
+
+  /* docs/design/Chautauqua Submissions.dc.html:147 `padding:0 13px;
+     font-size:14px; color:#565A4B; background:#FAF8F2` -- a 44px bordered
+     field with 13px side padding on the surface fill. The desktop rule
+     above (pill radius, 5px 12px padding, no explicit background) is a
+     compact desktop control, not the phone search box the frame draws. */
+  .chq-submissions-filterbar-search {
+    padding: 0 13px;
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface);
+    font-size: 14px;
+  }
+
+  /* docs/design/Chautauqua Submissions.dc.html:148 `display:flex;
+     gap:7px; overflow-x:auto` -- the chip strip's own 7px gap (the shared
+     .chq-status-pills default in styles.css is 8px). */
+  .chq-submissions-filterbar .chq-status-pills {
+    gap: 7px;
+  }
+
+  /* docs/design/Chautauqua Submissions.dc.html:149 `background:#1B1D17;
+     color:#F4F1E8` -- the active status chip fills ink, not the shared
+     .chq-pill.is-active brand-olive fill -- scoped to this filter bar's
+     chips only. */
+  .chq-submissions-filterbar .chq-pill.is-active,
+  .chq-submissions-filterbar .chq-pill.active {
+    background: var(--chq-ink);
+    border-color: var(--chq-ink);
+    color: var(--chq-on-ink);
   }
 
   .chq-submissions-pagination {
@@ -627,6 +671,15 @@
   .chq-submissions-row-triage .chq-btn:nth-child(1),
   .chq-submissions-row-triage .chq-btn:nth-child(2) {
     flex: 1;
+  }
+
+  /* DEC-610 amendment (v12 mobile campaign w1). docs/design/Chautauqua
+     Submissions.dc.html:167 `padding:0 14px; font-size:13px;
+     font-weight:600">Read</span>` -- the third action ('Read', a
+     navigation link, not a status write) keeps its intrinsic width and
+     takes the frame's own side padding instead of the flex:1 pair's. */
+  .chq-submissions-row-triage .chq-btn:nth-child(3) {
+    padding: 0 14px;
   }
 
   /* Chip strip type: the frame draws the status chips at 13px with 13px of
