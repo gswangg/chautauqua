@@ -86,9 +86,8 @@ describe('CallForPapersPanel', () => {
     expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  // docs/design/Chautauqua Settings.dc.html:461 `Questions · 8`: the phone
-  // drill's per-question list, additive to (never replacing) the existing
-  // 'Custom questions' summary line above.
+  // The phone drill's per-question list, additive to (never replacing) the
+  // existing 'Custom questions' summary line above.
   it('renders a Questions · N list with a kind/required row per custom question and an Edit link, locked fields excluded', async () => {
     mockCfp();
     render(
@@ -98,6 +97,7 @@ describe('CallForPapersPanel', () => {
     );
 
     const section = await screen.findByRole('region', { name: 'Call for papers' });
+    // docs/design/Chautauqua Settings.dc.html:461 `Questions · 8`
     await waitFor(() => {
       expect(within(section).getByText('Questions · 2')).toBeInTheDocument();
     });
