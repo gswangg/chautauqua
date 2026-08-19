@@ -127,3 +127,52 @@ describe('OnboardingGrid: per-row "Send portal invite" control (DEC-805)', () =>
     );
   });
 });
+
+// Eval regression (MAJOR, speaker-management): "'Send portal invite' reports
+// success ... but the speaker's participation badge remains 'Not invited'
+// after a FULL PAGE RELOAD." DEC-869 made this menu action the ONLY door to
+// the 'invited' state ('invited' is not a selectable radio), so the action
+// must reach the endpoint that mints it — and the grid must re-read the
+// server's answer afterwards rather than leaving a stale badge on screen.
+describe('ParticipationMenu action -> POST portal-invites (eval regression)', () => {
+  it('sends through the portal-invites endpoint and re-reads the roster', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      [`POST /api/v1/events/${EVENT_ID}/portal-invites`]: { sent: 1, skipped: 0, failed: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const gridReadsBefore = fetchMock.mock.calls.filter(([input]) =>
+      String(input).includes(`/api/v1/events/${EVENT_ID}/onboarding`),
+    ).length;
+
+    const table = within(screen.getByRole('table'));
+    const trigger = table.getByRole('button', { name: /^Participation status for Ada Lovelace/ });
+    fireEvent.click(trigger);
+
+    const panel = within(screen.getByRole('menu', { name: /^Participation status for Ada Lovelace/ }));
+    fireEvent.click(panel.getByRole('menuitem', { name: /Send portal invite/ }));
+
+    await waitFor(() => {
+      const invitePost = fetchMock.mock.calls.find(([input]) =>
+        String(input).includes(`/api/v1/events/${EVENT_ID}/portal-invites`),
+      );
+      expect(invitePost).toBeDefined();
+      const [, init] = invitePost as [unknown, RequestInit];
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body as string)).toEqual({ contactIds: ['ct-no-account'] });
+    });
+
+    // The send writes invite_status server-side; the roster re-reads so the
+    // badge shows that state without a reload.
+    await waitFor(() => {
+      const gridReadsAfter = fetchMock.mock.calls.filter(([input]) =>
+        String(input).includes(`/api/v1/events/${EVENT_ID}/onboarding`),
+      ).length;
+      expect(gridReadsAfter).toBeGreaterThan(gridReadsBefore);
+    });
+  });
+});

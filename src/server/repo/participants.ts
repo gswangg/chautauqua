@@ -7,12 +7,12 @@
 // source-scan test in test/api-participants.test.ts (DEC-009-style
 // tripwire).
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { DEC_070, DEC_258, DEC_556, DEC_604 } from "../../decisions";
-import { chunkRowsForInsert } from "../../lib/chunk";
+import { chunkIds, chunkRowsForInsert } from "../../lib/chunk";
 import { touchSubmissions } from "./submissions/touch";
 import {
   MAX_PARTICIPANTS_PER_SUBMISSION,
@@ -285,6 +285,54 @@ export async function setParticipantInviteStatus(
     .set({ inviteStatus, updatedAt: now })
     .where(eq(schema.participant.id, participantId));
   await touchSubmissions(db, [submissionId], now);
+}
+
+/** DEC-805 write half: the portal-invite SEND is the door that mints
+ * inviteStatus='invited'.
+ *
+ * DEC-869 (ParticipationMenu) deliberately dropped 'invited' from the three
+ * states an organizer can PICK -- "Send portal invite" occupies that slot as
+ * an ACTION whose caption promises "Emails a claim link and sets this to
+ * Invited". Nothing was writing that status, so the send left every
+ * participation at 'Not invited' and the promise was false after a reload.
+ * This is the missing write.
+ *
+ * Scope: every participation the contact holds on a submission in THIS event
+ * (the claim link a portal invite mints is event-scoped, so it covers all of
+ * them) that is still at 'none'. A participation already carrying the
+ * speaker's OWN answer -- 'accepted' or 'declined' -- is never walked
+ * backwards by re-sending a claim link, and one already at 'invited' needs
+ * no write. Callers pass only the contacts whose send actually SUCCEEDED, so
+ * a failed send never claims an invitation went out.
+ *
+ * Bumps the owning submissions' updatedAt through touchSubmissions for the
+ * same DEC-725 reason setParticipantInviteStatus does. */
+export async function markParticipantsInvited(db: Db, eventId: string, contactIds: string[]): Promise<void> {
+  if (contactIds.length === 0) return;
+  const now = new Date();
+  const targets: { id: string; submissionId: string }[] = [];
+  for (const batch of chunkIds(contactIds)) {
+    const rows = await db
+      .select({ id: schema.participant.id, submissionId: schema.participant.submissionId })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+      .where(
+        and(
+          eq(schema.submission.eventId, eventId),
+          inArray(schema.participant.contactId, batch),
+          eq(schema.participant.inviteStatus, "none"),
+        ),
+      );
+    targets.push(...rows);
+  }
+  if (targets.length === 0) return;
+  for (const batch of chunkIds(targets.map((t) => t.id))) {
+    await db
+      .update(schema.participant)
+      .set({ inviteStatus: "invited", updatedAt: now })
+      .where(inArray(schema.participant.id, batch));
+  }
+  await touchSubmissions(db, [...new Set(targets.map((t) => t.submissionId))], now);
 }
 
 /** DEC-900 amendment (findings wave 13): resolves the submission's LEAD

@@ -6,6 +6,7 @@ import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../../server/http";
 import * as repo from "../../server/repo/comms";
+import { markParticipantsInvited } from "../../server/repo/participants";
 import type { KVStore } from "../../auth/claim";
 import { resolvePortalLinks } from "../../server/repo/portal-link";
 import { renderEmailHtml } from "../../mail/shell";
@@ -104,17 +105,26 @@ portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrgani
     await mailer.send(attempt);
   });
   let sent = 0;
+  const invitedContactIds: string[] = [];
   results.forEach((result, i) => {
+    const r = rendered[i]!;
     if (result.status === "fulfilled") {
       sent += 1;
+      invitedContactIds.push(r.contactId);
       return;
     }
     // DEC-923: the mailer itself logs the failed attempt before
     // rethrowing — no route-level duplicate write.
-    const r = rendered[i]!;
     const err = result.reason;
     failed.push({ email: r.email, message: err instanceof Error ? err.message : String(err) });
   });
+
+  // DEC-805/DEC-869: the send OWNS the 'invited' participation state — the
+  // participation menu removed 'invited' from its selectable states because
+  // this action mints it ("Emails a claim link and sets this to Invited").
+  // Only the recipients whose send actually succeeded are marked; a recipient
+  // with no address on file, or whose send threw, keeps its current state.
+  await markParticipantsInvited(c.var.db, eventId, invitedContactIds);
 
   return c.json({ sent, skipped: 0, failed });
 });

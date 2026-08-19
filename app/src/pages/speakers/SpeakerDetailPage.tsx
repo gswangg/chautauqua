@@ -241,6 +241,13 @@ export function SpeakerDetailPage() {
       const res = await apiPost<SendResult>(`/events/${eventId}/portal-invites`, { contactIds: [detail.contact.id] });
       const lines = failureLines(res);
       setToast(`${describeSendResult(res, { one: 'contact', many: 'contacts' })}${lines ? ` ${lines}.` : ''}`);
+      // The send mints inviteStatus='invited' server-side (DEC-805/DEC-869):
+      // refetch so the session rows' participation menus show the state the
+      // action's caption promised, without waiting for a reload. Same shape
+      // as handleRemindSend's refresh below — never an optimistic guess,
+      // since the server decides which participations were bumped.
+      const refreshed = await apiGet<SpeakerDetailResponse>(`/events/${eventId}/speakers/${detail.contact.id}`);
+      setDetail(refreshed);
     } catch (err) {
       setError(err instanceof ApiError ? `Send failed: ${err.message}` : 'Send failed');
     }

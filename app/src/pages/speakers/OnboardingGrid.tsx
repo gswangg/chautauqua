@@ -728,6 +728,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       const lines = failureLines(res);
       const failedNames = lines ? ` ${lines}.` : '';
       setToast(`${describeSendResult(res, { one: 'portal invite', many: 'portal invites' })}${failedNames}`);
+      // The send mints inviteStatus='invited' server-side (DEC-805/DEC-869):
+      // refetch so the row's participation badge shows the state the action's
+      // caption promised, without waiting for a reload. Not optimistic — the
+      // server decides which of this contact's participations were bumped
+      // (an already-accepted or declined one is left alone).
+      await loadGrid(eventId, filters, page);
     } catch (err) {
       setError(err instanceof ApiError ? `Portal invite failed: ${err.message}` : 'Portal invite failed');
     } finally {

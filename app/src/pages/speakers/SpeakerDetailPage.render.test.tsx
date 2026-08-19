@@ -755,3 +755,56 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
     expect(document.querySelectorAll('.chq-speaker-detail-tasks-row .chq-speakers-status-overdue')).toHaveLength(0);
   });
 });
+
+// Eval regression (MAJOR, speaker-management): "'Send portal invite' reports
+// success ... but the speaker's participation badge remains 'Not invited'
+// after a FULL PAGE RELOAD." DEC-869 made this menu action the ONLY door to
+// the 'invited' state, so the speaker-detail per-session menus must reach the
+// endpoint that mints it, and re-read the detail afterwards.
+describe('SpeakerDetailPage: ParticipationMenu "Send portal invite" (eval regression)', () => {
+  it('POSTs the portal-invites endpoint and re-reads the speaker detail', async () => {
+    const notInvited = baseDetail({
+      contact: { ...baseDetail().contact, hasAccount: false },
+      participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'none' },
+      participationRollup: {
+        status: 'none',
+        bySubmission: [{ participantId: 'p-1', submissionId: 'sub-1', ref: 'S-001', inviteStatus: 'none' }],
+      },
+    });
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: notInvited,
+      [`POST /api/v1/events/${EVENT_ID}/portal-invites`]: { sent: 1, skipped: 0, failed: [] },
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const detailReadsBefore = fetchMock.mock.calls.filter(([input]) =>
+      String(input).includes(`/events/${EVENT_ID}/speakers/${CONTACT_ID}`),
+    ).length;
+
+    const trigger = document.querySelector('.chq-speaker-detail-sessions-row .chq-participation-menu-trigger');
+    expect(trigger).not.toBeNull();
+    fireEvent.click(trigger as Element);
+    fireEvent.click(screen.getByRole('menuitem', { name: /Send portal invite/ }));
+
+    await waitFor(() => {
+      const invitePost = fetchMock.mock.calls.find(([input]) =>
+        String(input).includes(`/events/${EVENT_ID}/portal-invites`),
+      );
+      expect(invitePost).toBeDefined();
+      const [, init] = invitePost as [unknown, RequestInit];
+      expect((init.method ?? 'GET').toUpperCase()).toBe('POST');
+      expect(JSON.parse(init.body as string)).toEqual({ contactIds: [CONTACT_ID] });
+    });
+
+    // The send writes invite_status server-side; the page re-reads so the
+    // session row's menu shows that state without a reload.
+    await waitFor(() => {
+      const detailReadsAfter = fetchMock.mock.calls.filter(([input]) =>
+        String(input).includes(`/events/${EVENT_ID}/speakers/${CONTACT_ID}`),
+      ).length;
+      expect(detailReadsAfter).toBeGreaterThan(detailReadsBefore);
+    });
+  });
+});

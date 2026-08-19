@@ -67,6 +67,21 @@ vi.mock("../src/server/repo/comms", async () => {
   };
 });
 
+// Eval regression: the send is the ONLY door to inviteStatus='invited'
+// (DEC-869 dropped it from the participation menu's selectable states), so
+// the route must call the write half. The write itself is pinned against a
+// real SQLite engine in test/portal-invite-mints-invited.test.ts; here we
+// pin that the route reaches it, and with WHICH contacts.
+vi.mock("../src/server/repo/participants", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/participants")>("../src/server/repo/participants");
+  return { ...actual, markParticipantsInvited: vi.fn(async () => {}) };
+});
+
+async function markInvitedMock() {
+  const participantsRepo = await import("../src/server/repo/participants");
+  return participantsRepo.markParticipantsInvited as unknown as ReturnType<typeof vi.fn>;
+}
+
 afterEach(() => {
   vi.clearAllMocks();
 });
@@ -141,6 +156,13 @@ describe("POST /api/v1/events/:eventId/portal-invites (DEC-805)", () => {
     expect(inserts[0].bodyText).toContain("Hi Grace Hopper,");
     expect(inserts[0].bodyText).toContain("DevCon speaker portal");
     expect(inserts[0].bodyText).toMatch(/https:\/\/events\.example\.com\/claim\//);
+
+    // Eval regression pin: a successful send MINTS the 'invited'
+    // participation state ("Emails a claim link and sets this to Invited") —
+    // without this the badge reads 'Not invited' again after a reload.
+    const markInvited = await markInvitedMock();
+    expect(markInvited).toHaveBeenCalledTimes(1);
+    expect(markInvited).toHaveBeenCalledWith(expect.anything(), "evt-1", ["ct-1"]);
   });
 
   it("rejects the whole call, naming the resolved contact and counting the unresolved one (no raw id)", async () => {
@@ -200,5 +222,26 @@ describe("POST /api/v1/events/:eventId/portal-invites (DEC-805)", () => {
     expect(failure?.message).toContain("no email address");
 
     expect(inserts).toHaveLength(0);
+
+    // Nothing was sent, so nothing is marked invited — the status records
+    // that an invite WENT OUT, never that one was attempted.
+    const markInvited = await markInvitedMock();
+    expect(markInvited).toHaveBeenCalledWith(expect.anything(), "evt-1", []);
+  });
+
+  it("marks only the recipients whose send succeeded, never the ones that failed", async () => {
+    const { db } = fakeDbWithInsertLog();
+    const app = await buildCommsApp(db);
+
+    // ct-1 has an address and sends; ct-2 has none and never reaches the
+    // mailer (DEC-805) — a mixed batch must not mark the second one.
+    const res = await post(app, "/api/v1/events/evt-1/portal-invites", { contactIds: ["ct-1", "ct-2"] });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { sent: number; failed: unknown[] };
+    expect(body.sent).toBe(1);
+    expect(body.failed).toHaveLength(1);
+
+    const markInvited = await markInvitedMock();
+    expect(markInvited).toHaveBeenCalledWith(expect.anything(), "evt-1", ["ct-1"]);
   });
 });
