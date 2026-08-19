@@ -391,12 +391,33 @@ a:hover {
     display: none;
   }
 
+  /* v12m-w3-i: geometry pinned against both frames that draw the tab bar --
+     docs/design/Chautauqua Settings.dc.html:299 and docs/design/Chautauqua
+     Submissions.dc.html:173-180, byte-identical in both:
+     `border-top:1px solid #1B1D17; background:#EFEBDF; padding:10px 8px
+     14px; display:flex; gap:2px`. */
   .chq-tabbar {
     display: flex;
     gap: 2px;
     border-top: 1px solid var(--chq-ink);
     background: var(--chq-surface-sunk);
     padding: 10px 8px 14px;
+  }
+
+  /* DEC-989 (wave 85 amendment): a page that mounts its own docked band
+     (e.g. Content's phone Select mode -- docs/design/Chautauqua
+     Content.dc.html:278
+     `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px`
+     draws ONE footer region, the dock, not the dock stacked over the tab
+     bar) sets the data-chq-phone-dock attribute on its page root.
+     .chq-main, the shell's sole scrolling region, is an ancestor of every
+     page root, so :has() reaches down into the routed subtree from here
+     to detect the declaration and suppress the tab bar, its later
+     sibling -- no shell-side wiring beyond this one rule, no route param,
+     no context. Filed as the shell-lane fix for
+     docs/design/audit/content-v12.md's open finding. */
+  .chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar {
+    display: none;
   }
 
   .chq-tabbar .chq-nav-link {
@@ -2212,11 +2233,21 @@ a:hover {
 
   /* docs/design/Chautauqua Speakers.dc.html:266
      `flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px`
-     -- the sole scroll region between the fixed head and dock. */
+     -- the frame's own text carries overflow-y:auto here, but DEC-576's
+     wave-83 amendment (styles.css:235-238, `.chq-shell is a flex column
+     ... .chq-main is the ONLY scrolling region`) is the binding rule, not
+     the frame's rendering shortcut: a second scroll container nested
+     between two position:sticky bands (.chq-phone-head/-dock) breaks
+     their stickiness, because sticky positions against its OWN nearest
+     scrolling ancestor, not the page's. Dropping overflow-y here leaves
+     flex:1/min-height:0 (still needed so the body shrinks instead of
+     pushing the sticky dock off-screen) and lets .chq-main do the one
+     scroll that was always the contract.
+     v12m-w3-i (DEC-576 amendment, wave 85): overflow-y intentionally
+     absent -- do not restore it. */
   .chq-phone-body {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
   }
 
   /* docs/design/Chautauqua Speakers.dc.html:278

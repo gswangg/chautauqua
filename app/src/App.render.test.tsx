@@ -578,3 +578,55 @@ describe('Header/nav geometry pinned to the frame (DEC-369 amendment)', () => {
     expect(body).not.toMatch(/margin-left/);
   });
 });
+
+// DEC-989 (wave 85 amendment): a page mounts its own docked band (e.g.
+// Content's phone Select mode -- docs/design/Chautauqua Content.dc.html:
+// 247-287 draws ONE footer region, not the dock stacked over the tab bar)
+// by setting `data-chq-phone-dock` on its page root, and styles.css's
+// `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar { display: none }`
+// rule is the shell's only consumer of that signal. jsdom applies no
+// stylesheet (this file's own topLevelRuleBody helper above exists
+// because of that), but jsdom's querySelector DOES evaluate real CSS
+// selector logic including :has() -- so rendering the real shell and
+// toggling the attribute on a genuine descendant of .chq-main proves the
+// selector reaches into the routed subtree and back out to its sibling,
+// in both directions, without needing to boot a specific page's own data
+// fetching.
+describe('.chq-tabbar suppression via data-chq-phone-dock (DEC-989 amendment, wave 85)', () => {
+  it('the shell-suppression selector matches nothing when no page root declares the attribute', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    await screen.findByRole('navigation', { name: 'Primary, phone' });
+    expect(document.querySelector('.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar')).toBeNull();
+  });
+
+  it('the shell-suppression selector matches the tab bar once a descendant of .chq-main declares the attribute', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    const { container } = render(<App />);
+
+    await screen.findByRole('navigation', { name: 'Primary, phone' });
+    const main = container.querySelector('main.chq-main');
+    expect(main).not.toBeNull();
+    // A page root is some descendant of .chq-main (RoleGate -> RoutedContent
+    // -> the page's own outer div) -- exercising the attribute a level
+    // below .chq-main itself proves :has() searches the whole subtree, not
+    // just direct children.
+    const pageRootStandIn = document.createElement('div');
+    pageRootStandIn.setAttribute('data-chq-phone-dock', 'true');
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    main!.appendChild(pageRootStandIn);
+
+    const suppressed = document.querySelector('.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar');
+    expect(suppressed).not.toBeNull();
+    expect(suppressed).toBe(document.querySelector('nav.chq-tabbar'));
+  });
+});

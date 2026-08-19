@@ -340,7 +340,18 @@ export function ContentApp() {
   const pageMeasureClass = submissionId && selected ? '' : 'chq-measure-table';
 
   return (
-    <div className={`chq-page chq-content-page ${pageMeasureClass}`.trim()}>
+    <div
+      className={`chq-page chq-content-page ${pageMeasureClass}`.trim()}
+      // DEC-989 (wave 85 amendment): Select mode mounts its own docked
+      // "Approve N" band (content.css's `.chq-content-worklist-selecting
+      // .chq-bulkbar`, position:sticky bottom:0) -- the frame draws that
+      // dock as the phone screen's ONE footer region, not the dock stacked
+      // over the shell's tab bar (docs/design/Chautauqua Content.dc.html:
+      // 247-287). This attribute is the shell-lane's signal (styles.css's
+      // `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar` rule) to
+      // suppress the tab bar while it's up; unset once Select mode ends.
+      {...(phoneSelectMode ? { 'data-chq-phone-dock': true } : {})}
+    >
       {(showOwnHeading || !submissionId) && (
         <div className="chq-content-summary-row">
           {showOwnHeading && <h1 className="chq-page-title">Content</h1>}
