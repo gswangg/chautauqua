@@ -45,20 +45,29 @@ function phoneLayer(css: string): string {
 
 const PHONE = phoneLayer(CSS);
 
-describe('submissions.css phone head re-lining (wave 6, task w6-f)', () => {
-  it('docs/design/Chautauqua Submissions.dc.html:144: hides the Status caption and the filterbar divider -- chrome and a label, not capabilities', () => {
-    expect(PHONE).toMatch(/\.chq-submissions-status-label,[\s\S]{0,200}display:\s*none/);
-    expect(PHONE).toMatch(/\.chq-submissions-filterbar-divider[,\s{][\s\S]{0,200}display:\s*none/);
+describe('submissions.css phone head re-lining (DEC-919 wave-7 amendment)', () => {
+  it('hides the Status caption, the filterbar divider and the ColumnPicker -- chrome, a label, and the one control DEC-919 allows to vanish (nothing left to govern once the table stacks)', () => {
+    expect(PHONE).toMatch(/\.chq-submissions-status-label,[\s\S]{0,400}display:\s*none/);
+    expect(PHONE).toMatch(/\.chq-submissions-filterbar-divider,[\s\S]{0,400}display:\s*none/);
+    expect(PHONE).toMatch(/\.chq-submissions-columnpicker[\s\S]{0,400}display:\s*none/);
   });
 
   it('docs/design/Chautauqua Submissions.dc.html:147: re-lines the search+sort row into a column so the search field spans the measure on its own line', () => {
     expect(PHONE).toMatch(/\.chq-submissions-filterbar-searchsort\s*\{[^}]*flex-direction:\s*column/);
   });
 
-  it('never hides the sort select, the track select or the ColumnPicker at phone width -- the frame keeps every desktop control reachable', () => {
+  // DEC-919 wave-7: sorting is a capability the frame never removes, and the
+  // strip it sits in already scrolls -- so the Sort select re-lines at the
+  // 44px floor instead of vanishing.
+  it('never hides the Sort select', () => {
+    expect(PHONE).not.toMatch(
+      /\.chq-submissions-filterbar-searchsort \.chq-submissions-filterbar-sort-select[\s\S]{0,400}display:\s*none/,
+    );
+  });
+
+  it('never hides the sort select or the track select at phone width -- both govern data still on screen, so they re-line rather than vanish (the ColumnPicker is the one sanctioned hide, DEC-919 wave 7 / DEVIATIONS.md)', () => {
     expect(PHONE).not.toMatch(/\.chq-submissions-filterbar-searchsort \.chq-submissions-filterbar-sort-select[\s\S]{0,200}display:\s*none/);
     expect(PHONE).not.toMatch(/\.chq-submissions-filterbar \.chq-submissions-filterbar-select[\s\S]{0,200}display:\s*none/);
-    expect(PHONE).not.toMatch(/\.chq-submissions-columnpicker[,\s{][\s\S]{0,200}display:\s*none/);
   });
 
   it('never narrows the status-pill population by data-status -- every pill stays in the scrolling strip', () => {

@@ -76,6 +76,31 @@ survives contact with state:
   box, ink-measured x-height centering + user-tuned 0.75px). The frames
   center the raw line boxes, which reads visually low; the miss exists in
   the design files too.
+- **Submissions 390 phone head, DEC-919 amendment (wave 7, task w7-e)** —
+  `docs/design/Chautauqua Submissions.dc.html:138-152` draws the phone head
+  as two clean bands (wordmark + title row, then search + chip strip) with
+  NO action buttons; the app's head carries three (Forms / Export CSV / New
+  submission) with nowhere in the frame's copy to put them. Kept, re-lined
+  per DEC-919 ("re-line, never remove"): `.chq-submissions-head` stacks the
+  titles row above a full-width `.chq-submissions-head-actions` row,
+  mirroring the frame's own card action triple at `:164-167` (`flex:1 /
+  flex:1 / auto`) — Forms and Export CSV share the row, New submission
+  (the primary action) keeps its own content width.
+  - `.chq-submissions-columnpicker`'s phone `display:none` (submissions.css)
+    **stands**: it governs table columns that are not on the screen once
+    the table stacks into cards at 390 — the one legal case DEC-919 allows
+    for a control that has nothing left to govern.
+  - `.chq-status-pills [data-status]` narrowing to the two named pills
+    (submissions.css) **stands**: the frame draws exactly three named
+    chips ("Needs triage" / "Accepted" / "All 47"), narrowed per the
+    existing wave-2 ruling to the two real status members the app's own
+    vocabulary supports (see the comment at the rule's definition).
+  - The Sort `<select>`'s phone `display:none`
+    (`.chq-submissions-filterbar-searchsort .chq-submissions-filterbar-sort-select`)
+    was **deleted**: sorting is a capability the frame never removes, and
+    the filterbar strip it sits in already scrolls (`overflow-x:auto`), so
+    the control re-lines into the strip at the 44px floor instead of
+    vanishing.
 
 ## 4. Voice
 
