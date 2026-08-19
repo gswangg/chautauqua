@@ -87,6 +87,21 @@
   text-decoration: none;
 }
 
+/* DEC-393 wave-87 amendment: the 44px row-action-anchor floor. A compound
+   selector (not the bare `.chq-error-summary-link` above) so this
+   phone-only addition can't merge into the SSR-parity scan's property map
+   for the shared selector (test/error-vocabulary-parity.scan.test.ts) --
+   the SSR twin has no phone breakpoint of its own. */
+@media (max-width: 700px) {
+  .chq-error-summary a.chq-error-summary-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+  }
+}
+
 /* DEC-575 (wave 28 amendment): the file-level, pre-mapping variant of the
    summary states its parts as <p> elements rather than an h2 + <ul> of
    anchors (there is no offending field to link to -- the problem is the

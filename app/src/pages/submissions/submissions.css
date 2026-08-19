@@ -24,6 +24,10 @@
   flex-wrap: wrap;
 }
 
+/* tap-floor-exempt: SubmissionsTable.tsx renders 'Forms' (Link) and
+   'Export CSV' (<a download>) here, both carrying `.chq-btn` -- never a
+   bare anchor -- so there is no row-action-anchor floor gap here
+   (DEC-393 wave-87 amendment). */
 .chq-submissions-head-actions {
   display: flex;
   gap: 9px;
@@ -175,6 +179,9 @@
   color: var(--chq-muted);
 }
 
+/* tap-floor-exempt: BulkActionBar.tsx renders status-move <button>s, an
+   'Email these N' <Link> carrying `.chq-btn`, and a Clear <button> here --
+   never a bare anchor (DEC-393 wave-87 amendment). */
 .chq-submissions-bulkbar-actions {
   margin-left: auto;
   display: flex;
@@ -368,6 +375,9 @@
   color: var(--chq-muted);
 }
 
+/* tap-floor-exempt: SubmissionsTable.tsx renders only Previous/Next
+   <button>s here -- never an <a>/<Link> -- so there is no bare anchor for
+   the 44px row-action floor to apply to (DEC-393 wave-87 amendment). */
 .chq-submissions-pagination-actions {
   margin-left: auto;
   display: flex;
@@ -550,7 +560,16 @@
     order: 7;
   }
 
+  /* DEC-393 wave-87 amendment: the row-title <Link> is a bare anchor (no
+     `.chq-btn`) -- the 44px row-action-anchor floor, applied without
+     disturbing the row's own baseline/flex-wrap layout above (the link's
+     own box grows, the row doesn't reflow). */
   .chq-submissions-table-title {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+    margin: 0 -4px;
     font-size: 17px;
     font-weight: 600;
     letter-spacing: -0.02em;
@@ -713,6 +732,18 @@
   color: var(--chq-muted);
   text-decoration: none;
   font-size: 14px;
+}
+
+/* DEC-393 wave-87 amendment: the back link is a bare <Link> (no
+   `.chq-btn`) -- the 44px row-action-anchor floor. */
+@media (max-width: 700px) {
+  .chq-submissions-delete-back {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+    margin: 0 -4px;
+  }
 }
 
 .chq-submissions-delete-intro {

@@ -88,6 +88,21 @@
   min-height: 46px;
 }
 
+/* DEC-393 wave-87 amendment: `.chq-modal-actions` is a slot for arbitrary
+   caller content (ModalFrame.tsx's `actions` prop) and can hold a bare
+   anchor with no `.chq-btn` -- give any such anchor the 44px floor on
+   phone without touching the styled `.chq-btn` action buttons above,
+   which already clear it at 46px. */
+@media (max-width: 700px) {
+  .chq-modal-actions a:not(.chq-btn) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 16px;
+  }
+}
+
 /* FormRow (DEC-685): the ONE form-row skeleton. Label above the control,
    full measure, optional help caption, error distinguished by a leading
    glyph + weight (never colour alone, DEC-367). */
