@@ -14,6 +14,10 @@ interface ModalFrameBaseProps {
   onClose: () => void;
   /** Disables the header Close control + Escape + scrim-click (e.g. while a request is in flight). */
   closeDisabled?: boolean;
+  /** DEC-651 (wave 7 amendment): renders a `.chq-phone-back` link as the
+   * FIRST child of .chq-modal-head, above the title -- the drill head's
+   * back line per the frames (e.g. Chautauqua Contacts.dc.html:409's
+   * `‹ Contacts`). Omit for dialogs with no "back to X" relationship. */
   /** Extra class(es) appended to the .chq-modal element for page-specific sizing/layout. */
   modalClassName?: string;
   /** Widens the frame itself. Default 560px; 'wide' is 640px (adds
