@@ -295,9 +295,14 @@ const ALL_VIOLATIONS: Violation[] = DECISION_DOC_NAMES.flatMap((name) =>
 // raised to paper over a regression, and a companion test below fails the
 // moment the true count drops below the ceiling so the constant is
 // re-tightened in the same change that fixes an offender, not left stale.
-export const UNRESOLVED_CITATION_CEILING = 30;
+// Lowered 30 -> 29 in wave 109, in the same change that landed DEC-986's
+// ruling: the fix rewrote form-render.tsx's un-require write path and
+// cfp-steps-script.tsx's Next handler, so the three docs that receipted the
+// OLD text (DEC-986, DEC-976, DEC-681) were rewritten against the new lines
+// -- the two-sided ratchet below is what forced the constant down with them.
+export const UNRESOLVED_CITATION_CEILING = 29;
 
-// The 30 measured on this branch are a MIX, not a uniform class -- future
+// The 29 measured on this branch are a MIX, not a uniform class -- future
 // lanes spending this ceiling down should expect two different repairs:
 //   (a) genuine stale line-number drift (a doc's citation pointed at the
 //       right declaration when written, a later edit moved it -- the
@@ -343,7 +348,7 @@ export const UNRESOLVED_CITATION_CEILING = 30;
 // helper function is reused verbatim, only the file population differs.
 // Kept as a SEPARATE describe block / ratchet from the decisions-data one
 // above rather than merged into it, so this task's widening cannot
-// disturb the already-tuned UNRESOLVED_CITATION_CEILING=30 exactness
+// disturb the already-tuned UNRESOLVED_CITATION_CEILING exactness
 // this file shipped with; the walk itself is still literally "the same
 // walk" -- same functions, same two directions, only a longer file list.
 // ---------------------------------------------------------------------------
