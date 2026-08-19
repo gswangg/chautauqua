@@ -26,6 +26,22 @@ follow-up rather than trusting this table.
 20 sheets are non-conformant on this branch (more than three — flagged per
 task w1-d's own instruction to say so plainly if that threshold is crossed).
 
+Task w2-t (SSR sheet group C) fixed `src/routes/auth.css.ts`,
+`src/routes/public/css/agenda.css.ts`, `src/routes/public/css/cards.css.ts`
+and `src/routes/public/css/rail.css.ts` — each now carries exactly one
+terminal `@media (max-width: 700px)` block, consolidated by concatenating
+the earlier block's body into the later (or, for `agenda.css.ts`, into a
+new block appended at the true end, since neither surviving block was
+already the sheet's last top-level construct) in ascending source order.
+No selector/declaration/value was reordered, reworded or deduped; three
+byte-identical or property-overlapping duplicate rules were collapsed
+explicitly with the discarded declaration named in a comment
+(`auth.css.ts`'s `.chq-bare-page:has(.chq-auth-fields)`,
+`.chq-auth-fieldstack`, `.chq-auth-actions`, `.chq-auth-actions
+button[type=submit]`, `.chq-auth-cancel`; `rail.css.ts`'s
+`.chq-pub-surface-title`). These four rows are removed from the table
+below.
+
 | Sheet | Cluster | Measured |
 |---|---|---|
 | `app/src/components/error-states.css` | shared components | 2 blocks (lines 95, 154) |
@@ -42,11 +58,7 @@ task w1-d's own instruction to say so plainly if that threshold is crossed).
 | `app/src/pages/submissions/detail.css` | submissions | 3 blocks (lines 844, 1097, 1171) |
 | `app/src/pages/submissions/submissions.css` | submissions | 4 blocks (lines 477, 739, 834, 889) |
 | `app/src/styles.css` | shell / global | 5 blocks (lines 381, 1127, 2048, 2214, 2360) |
-| `src/routes/auth.css.ts` | auth (SSR) | 2 blocks (lines 281, 456) |
-| `src/routes/public/css/agenda.css.ts` | public agenda (SSR) | 2 blocks (lines 373, 443) |
-| `src/routes/public/css/cards.css.ts` | public cards (SSR) | 2 blocks (lines 218, 244) |
 | `src/routes/public/css/chrome.css.ts` | public chrome (SSR) | 1 block, NOT terminal — trailing `.chq-pub-searchform` rule follows its close |
-| `src/routes/public/css/rail.css.ts` | public rail / schedule (SSR) | 2 blocks (lines 348, 387) |
 | `src/views/theme.ts` | shared SSR theme (every SSR surface) | 2 blocks (lines 561, 575) |
 
 Note on `src/routes/public/css/chrome.css.ts`: unlike every other row, this

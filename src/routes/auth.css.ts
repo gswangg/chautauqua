@@ -326,7 +326,27 @@ export const AUTH_CSS = `
     outline-offset: 2px;
   }
 
+${ERROR_STATES_CSS}
+${BARE_PAGE_CSS}
+  /* Wave w1-h (task w1-h, docs/design/audit/account-docs-v12.md): "Sign in
+     · 390" and "Change password · 390" phone geometry. Appended AFTER the
+     ERROR_STATES_CSS/BARE_PAGE_CSS composition on purpose -- several of
+     these selectors (.chq-bare-page .chq-auth-title, .chq-bare-page
+     input[type=password], .chq-bare-page:has(.chq-auth-fields)) tie in
+     specificity with rules BARE_PAGE_CSS declares unconditionally, and a
+     phone block placed earlier in this template literal is silently dead
+     against text composed in after it -- the cascade trap this module's
+     own header comment warns about. */
   @media (max-width: 700px) {
+    /* DEC-385 wave-102 amendment: this sheet's earlier ≤700px block
+       (task w2-e / wave-57, formerly a separate block above this one) is
+       consolidated HERE, in ascending source order, ahead of the w1-h
+       rules that followed it -- a non-terminal phone block can be
+       silently shadowed by a later desktop rule (phone-terminal-block.
+       scan.test.ts). No selector/declaration/value is reordered or
+       reworded; where a selector recurs below with an overlapping
+       property, the two rules are collapsed explicitly and the discarded
+       declaration is named beside it. */
     /* DEC-367 amendment (wave 57): the >=44px tap floor is phone-only
        (docs/design/README.md:92) -- these two boxes used to be unconditional
        base rules above; moved here verbatim, no other property added. */
@@ -384,9 +404,18 @@ export const AUTH_CSS = `
       border-radius: 6px;
       font-size: 16px;
     }
-    /* The 390 frame draws no "Forgot your password?" link at all inside
-       the Email/Password stack -- just Email, Password, a full-width
-       Sign in. */
+    /* DEC-919 wave-101: this hide is NOT eligible for a phone-hidden
+       receipt (none of the three legal shapes -- desktop twin of a
+       phone-only sibling, drag handle, bare navigational glyph -- apply)
+       and is deliberately left counted rather than receipted on
+       assumption. The 390 frame draws no "Forgot your password?" link at
+       all inside the Email/Password stack -- just Email, Password, a
+       full-width Sign in -- and this scoped selector (.chq-auth-stack
+       .chq-auth-tertiary) out-specifies the unscoped .chq-auth-tertiary
+       re-lined rule below, so /login's Forgot link stays hidden while
+       every OTHER auth page's tertiary link (Back to sign in, etc.) gets
+       the re-lined treatment. Filed in
+       docs/design/audit/tap-floor-v12.md (task w2-t). */
     .chq-auth-stack .chq-auth-tertiary { display: none; }
     /* :136 \`background:#4E5C31; ... border-radius:6px; min-height:50px;
        ... justify-content:center; font-size:15px; font-weight:700">Sign
@@ -414,8 +443,8 @@ export const AUTH_CSS = `
        .chq-auth-footer-scoped descendant rule on .chq-auth-footer-links a:
        DEC-367's wave-57 amendment retired that scoped override, and
        test/auth-card-rhythm-w6.test.ts asserts it never returns. The 15px
-       lands on the unscoped .chq-auth-footer-links a rule in the trailing
-       phone block instead, which reaches these same links. */
+       lands on the unscoped .chq-auth-footer-links a rule below instead,
+       which reaches these same links. */
 
     /* -----------------------------------------------------------------
        w2-e: "Change password · 390" (docs/design/Chautauqua Account.dc.html:153
@@ -423,19 +452,13 @@ export const AUTH_CSS = `
        band geometry layered onto the wave-13 action-bar structure this
        file already owns. Scoped to
        .chq-bare-page:has(.chq-auth-fields), the account-password page's
-       own anchor selector (already used two rules above), so the
-       expired-claim page and the /admin/* 404 card -- both plain
-       .chq-bare-page with a .chq-auth-titlerow but no .chq-auth-fields
-       form -- are untouched.
-       ------------------------------------------------------------- */
-    .chq-bare-page:has(.chq-auth-fields) {
-      /* BARE_PAGE_CSS's shared 48px/20px padding and 22px inter-child gap
-         are a reading-column rhythm; the frame's head/body/dock band owns
-         its own padding on each region instead, with nothing between
-         them. */
-      padding: 0;
-      gap: 0;
-    }
+       own anchor selector, so the expired-claim page and the /admin/*
+       404 card -- both plain .chq-bare-page with a .chq-auth-titlerow
+       but no .chq-auth-fields form -- are untouched. The three rules
+       below (.chq-bare-page:has(.chq-auth-fields), .chq-auth-fieldstack,
+       .chq-auth-actions) each had a byte-identical w1-h duplicate later
+       in this block; those duplicates are collapsed away below rather
+       than kept as redundant second rules, per DEC-385 wave-102. */
     /* :154 \`border-bottom:1px solid #1B1D17; padding:14px 16px;
        flex-shrink:0; display:flex; flex-direction:column; gap:7px\`. */
     .chq-bare-page:has(.chq-auth-fields) .chq-auth-titlerow {
@@ -452,56 +475,7 @@ export const AUTH_CSS = `
       font-size: var(--chq-type-page-title-phone-drill);
       margin-top: 8px;
     }
-    /* Body: the frame's scrollable region (:157 \`padding:16px;
-       display:flex; flex-direction:column; gap:16px\`) is
-       .chq-auth-fieldstack, already flex:1/min-height:0/overflow-y:auto
-       from the wave-13 rule above -- only the padding/gap are new here. */
-    .chq-auth-fieldstack {
-      padding: 16px;
-      gap: 16px;
-    }
-    /* Dock: :172 \`border-top:1px solid #1B1D17; background:#EFEBDF;
-       padding:12px 16px 16px; display:flex; gap:8px\` -- same sunk-band
-       vocabulary as src/routes/portal/portal.css.ts's phone footer
-       (border-top var(--chq-ink) + var(--chq-surface-sunk) fill), spent
-       here on .chq-auth-actions instead of introducing the SPA's
-       phone-shell class vocabulary (DEC-385 forbids that on an SSR
-       surface). */
-    .chq-auth-actions {
-      border-top: 1px solid var(--chq-ink);
-      background: var(--chq-surface-sunk);
-      padding: 12px 16px 16px;
-      margin-top: 0;
-      gap: 8px;
-    }
-    /* :173 \`flex:1; background:#4E5C31; ... border-radius:6px;
-       min-height:48px; ... font-size:14px\` -- "Change it" grows to fill
-       the dock row; "Cancel" (below) stays intrinsic-width beside it. */
-    .chq-auth-actions button[type=submit] {
-      flex: 1;
-      min-height: 48px;
-      border-radius: 6px;
-    }
-    /* :175 \`border:1px solid #BAB6A6; border-radius:6px; min-height:48px;
-       ... font-size:13px; font-weight:600">Cancel\`. */
-    .chq-auth-cancel {
-      min-height: 48px;
-      border-radius: 6px;
-      font-size: 13px;
-    }
-  }
-${ERROR_STATES_CSS}
-${BARE_PAGE_CSS}
-  /* Wave w1-h (task w1-h, docs/design/audit/account-docs-v12.md): "Sign in
-     · 390" and "Change password · 390" phone geometry. Appended AFTER the
-     ERROR_STATES_CSS/BARE_PAGE_CSS composition on purpose -- several of
-     these selectors (.chq-bare-page .chq-auth-title, .chq-bare-page
-     input[type=password], .chq-bare-page:has(.chq-auth-fields)) tie in
-     specificity with rules BARE_PAGE_CSS declares unconditionally, and a
-     phone block placed earlier in this template literal is silently dead
-     against text composed in after it -- the cascade trap this module's
-     own header comment warns about. */
-  @media (max-width: 700px) {
+
     /* Sign in · 390 (docs/design/Chautauqua Account.dc.html:121
        \`width:390px; height:844px;\`) -- phone-only overrides for the
        credential card; every desktop number above is untouched. */
@@ -572,6 +546,10 @@ ${BARE_PAGE_CSS}
        below to /account/password specifically -- the 404 notice and
        expired-claim pages share .chq-bare-page too but carry no such
        form, so they keep the plain reading-column padding untouched. */
+    /* DEC-385 wave-102: collapsed with the byte-identical w2-e block's
+       .chq-bare-page:has(.chq-auth-fields) { padding: 0; gap: 0; } rule
+       (same selector, same two properties, same values) -- one instance
+       kept, the earlier duplicate discarded. */
     .chq-bare-page:has(.chq-auth-fields) {
       padding: 0;
       gap: 0;
@@ -591,6 +569,10 @@ ${BARE_PAGE_CSS}
          28px desktop title (src/views/bare-page.css.ts). */
       font-size: 25px;
     }
+    /* DEC-385 wave-102: collapsed with the byte-identical w2-e block's
+       .chq-auth-fieldstack { padding: 16px; gap: 16px; } rule (same
+       selector, same two properties, same values) -- one instance kept,
+       the earlier duplicate discarded. */
     .chq-auth-fieldstack {
       /* docs/design/Chautauqua Account.dc.html:158 \`padding:16px;
          display:flex; flex-direction:column; gap:16px\` -- 16px on
@@ -603,6 +585,11 @@ ${BARE_PAGE_CSS}
          -- 50px on phone, not the bare-page shell's 48px. */
       min-height: 50px;
     }
+    /* DEC-385 wave-102: collapsed with the byte-identical w2-e block's
+       .chq-auth-actions { border-top / background / padding / margin-top
+       / gap } rule (same selector, same five properties, same values,
+       written in a different order) -- one instance kept, the earlier
+       duplicate discarded. */
     .chq-auth-actions {
       /* docs/design/Chautauqua Account.dc.html:172 \`border-top:1px
          solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px;
@@ -614,6 +601,12 @@ ${BARE_PAGE_CSS}
       gap: 8px;
       margin-top: 0;
     }
+    /* DEC-385 wave-102: merged with the w2-e block's
+       .chq-auth-actions button[type=submit] rule -- flex:1/min-height:48px
+       were declared identically in both and are collapsed to one
+       declaration each; border-radius:6px (the w2-e block's only unique
+       property here) is kept alongside the w1-h block's width/font-size/
+       padding/align-self, none of which the w2-e rule declared. */
     .chq-auth-actions button[type=submit] {
       /* docs/design/Chautauqua Account.dc.html:173 \`min-height:48px;
          display:flex; align-items:center; justify-content:center;
@@ -622,15 +615,23 @@ ${BARE_PAGE_CSS}
       flex: 1;
       width: auto;
       min-height: 48px;
+      border-radius: 6px;
       font-size: 14px;
       padding: 0;
       align-self: auto;
     }
+    /* DEC-385 wave-102: merged with the w2-e block's .chq-auth-cancel
+       rule -- min-height:48px/font-size:13px were declared identically in
+       both and are collapsed to one declaration each; border-radius:6px
+       (the w2-e block's only unique property here) is kept alongside the
+       w1-h block's padding/font-weight, neither of which the w2-e rule
+       declared. */
     .chq-auth-cancel {
       /* docs/design/Chautauqua Account.dc.html:174 \`min-height:48px;
          display:flex; align-items:center; padding:0 16px; font-size:13px;
          font-weight:600\` */
       min-height: 48px;
+      border-radius: 6px;
       padding: 0 16px;
       font-size: 13px;
       font-weight: 600;

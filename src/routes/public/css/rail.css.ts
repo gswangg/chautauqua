@@ -352,22 +352,35 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     opacity: 0;
     margin: 0;
   }
-  /* DEC-385 (w85 amendment): this fragment's THREE phone declarations are
-     consolidated into ONE block at the true end of the file -- previously
-     .chq-pub-surface-title's 26px phone override sat mid-file (after
-     .chq-pub-sessions-layout) and was silently beaten by this file's OWN
-     later top-level .chq-pub-surface-title rule (font-size 36px,
-     task-w49-h, above): same selector, same specificity, later source
-     position wins regardless of the earlier rule's @media condition
-     matching. Moving every phone rule here (after every top-level rule
-     RAIL_CSS declares) is what makes "last in source wins" agree with
-     "narrow overrides wide" again -- the DEC-385 w85 finding's exact
-     failure mode, closed for this file the same way content.css/comms.css
-     were. */
+  /* DEC-385 (w85 amendment, superseded in shape by wave-102 below): this
+     fragment's phone declarations are consolidated into ONE block at the
+     true end of the file -- previously .chq-pub-surface-title's 26px
+     phone override sat mid-file (after .chq-pub-sessions-layout) and was
+     silently beaten by this file's OWN later top-level
+     .chq-pub-surface-title rule (font-size 36px, task-w49-h, above): same
+     selector, same specificity, later source position wins regardless of
+     the earlier rule's @media condition matching. Moving every phone rule
+     here (after every top-level rule RAIL_CSS declares) is what makes
+     "last in source wins" agree with "narrow overrides wide" again -- the
+     DEC-385 w85 finding's exact failure mode, closed for this file the
+     same way content.css/comms.css were.
+
+     DEC-385 wave-102 amendment: a second ≤700px block (the wave-7 cascade
+     repair immediately below this one, historically) duplicated this
+     block's own .chq-pub-surface-title { font-size: 26px; } rule
+     byte-for-byte -- same selector, same property, same value. That
+     repair block is collapsed into this one (its sole rule discarded as
+     a redundant duplicate, named here) so the sheet carries exactly one
+     terminal phone block, per phone-terminal-block.scan.test.ts. No other
+     selector/declaration/value is reordered, reworded or deduped. */
   @media (max-width: 700px) {
     .chq-pub-sessions-layout { grid-template-columns: 1fr; gap: 20px; }
     /* task-w49-h (DEC-990 amendment): README's page-title phone register
-       (25-27px/700/-0.04em) inside the surface's own ≤700px breakpoint. */
+       (25-27px/700/-0.04em) inside the surface's own ≤700px breakpoint.
+       DEC-385 wave-102: this rule is what the wave-7 cascade-repair block
+       (formerly appended after this one, now collapsed into it) existed
+       to re-state -- same selector, same value -- so that duplicate is
+       gone rather than kept as a second identical rule. */
     .chq-pub-surface-title { font-size: 26px; }
     /* DEC-367 (wave 50 amendment): the phone tap floor -- the Save/Saved
        pill above sizes to padding on desktop, per docs/design/README.md
@@ -394,16 +407,5 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
       justify-content: center;
       padding: 0 16px;
     }
-  }
-
-  /* DEC-385 wave-7 amendment: cascade repair. The earlier ≤700px block
-     above (task-w4-a) sets .chq-pub-surface-title to font-size: 26px, but
-     the top-level .chq-pub-surface-title rule (task-w27-a/DEC-990, later
-     in this same file) re-declares font-size: 36px at equal specificity --
-     source order alone decides a tie, so every public surface title
-     rendered 36px at phone width. Terminal override, appended rather than
-     reordering (other worktrees hold hunks in this file). */
-  @media (max-width: 700px) {
-    .chq-pub-surface-title { font-size: 26px; }
   }
 `;

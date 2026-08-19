@@ -226,13 +226,6 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   .chq-pub-speaker-role { font-size: 13px; color: var(--chq-muted); line-height: 1.45; margin: 0; }
   .chq-pub-speaker-sessions { font-size: 13px; line-height: 1.45; margin: 0; padding-left: 1.1em; }
 
-  /* DEC-367 (wave 50 amendment): the phone tap floor -- the List | Grid
-     toggle sizes to padding on desktop, per docs/design/README.md
-     §Controls. */
-  @media (max-width: 700px) {
-    .chq-pub-view-toggle-option { min-height: 44px; }
-  }
-
   /* G13 (frames 10--10/11, MINOR): the headshot link must not propagate the
      UA underline onto a photo-less card's initials monogram -- the frame
      draws the placeholder with no underline. */
@@ -255,7 +248,16 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
      of claiming a fixed 280px column that can't fit. Appended at the true
      end of this module, after every top-level rule, per DEC-385
      single-direction responsive. */
+  /* DEC-385 wave-102 amendment: this sheet's earlier ≤700px block (DEC-367
+     wave-50, the List | Grid toggle's phone tap floor) is consolidated
+     HERE, in ascending source order, ahead of the w8-h overflow-sweep
+     rules that already lived in this terminal block -- a non-terminal
+     phone block can be silently shadowed by a later desktop rule
+     (phone-terminal-block.scan.test.ts). No selector/declaration/value is
+     reordered, reworded or deduped; .chq-pub-view-toggle-option does not
+     recur below, so no collapse is needed. */
   @media (max-width: 700px) {
+    .chq-pub-view-toggle-option { min-height: 44px; }
     .chq-pub-speaker-list-row {
       grid-template-columns: 76px 1fr;
       row-gap: 8px;
