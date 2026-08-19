@@ -84,7 +84,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
       },
     ],
     counts: { outstandingRequired: 1, overdue: 0 },
-    otherEvents: [{ eventId: 'evt-2025', name: 'DevFlow 2025' }],
+    otherEvents: [{ eventId: 'evt-2025', name: 'DevFlow 2025', participation: 'Submitted, declined' }],
     otherEventsCount: 1,
     ...overrides,
   };
@@ -279,6 +279,13 @@ describe('SpeakerDetailPage render smoke', () => {
     // Contact block (email/phone) also lives in the rail.
     expect(rail).toHaveTextContent('ada@example.com');
     expect(rail).toHaveTextContent('+1 415 555 0134');
+
+    // DEC-829 wave-110 amendment: each row is two lines -- the event name
+    // and its participation sentence -- rendered as separate elements, not
+    // one concatenated string.
+    const row = rail?.querySelector('.chq-speaker-detail-other-events-list li');
+    expect(row?.querySelector('.chq-speaker-detail-other-event-name')).toHaveTextContent('DevFlow 2025');
+    expect(row?.querySelector('.chq-speaker-detail-other-event-participation')).toHaveTextContent('Submitted, declined');
   });
 
   it('a null headshot renders no broken image and no dead Download link', async () => {
@@ -349,6 +356,20 @@ describe('SpeakerDetailPage render smoke', () => {
       expect(block.querySelector('.chq-empty-escape')).not.toBeInTheDocument();
     }
 
+    // DEC-829 wave-110 amendment: the rail's empty state is the SAME
+    // EmptyState component as the main column's, scoped down to rail
+    // register (one muted 14px line) purely via the `.chq-speaker-detail-rail`
+    // ancestor selector in speakers.css -- never a second empty-state
+    // component. Assert the DOM carries that ancestor, not a rail-local
+    // clone.
+    const railEmptyWhat = rail?.querySelector('.chq-empty-block-fresh .chq-empty-what');
+    expect(railEmptyWhat).toHaveTextContent('No other events.');
+    const mainEmptyWhat = main?.querySelector('.chq-empty-block-fresh .chq-empty-what');
+    expect(mainEmptyWhat).not.toBeNull();
+    const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'speakers.css');
+    const css = readFileSync(cssPath, 'utf-8');
+    expect(css).toMatch(/\.chq-speaker-detail-rail\s+\.chq-empty-what\s*\{/);
+
     // The notes field's bare `.chq-empty` paragraph is the ONE surviving
     // non-collection site and is left exactly as it was.
     const notesSection = rail?.querySelector('.chq-speaker-detail-notes');
@@ -358,7 +379,7 @@ describe('SpeakerDetailPage render smoke', () => {
   });
 
   it('caps otherEvents at 5 even if the server sends more', async () => {
-    const many = Array.from({ length: 7 }, (_, i) => ({ eventId: `evt-${i}`, name: `Conf ${i}` }));
+    const many = Array.from({ length: 7 }, (_, i) => ({ eventId: `evt-${i}`, name: `Conf ${i}`, participation: 'Submitted, declined' }));
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({ otherEvents: many, otherEventsCount: 7 }),
     });

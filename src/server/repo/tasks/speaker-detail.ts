@@ -15,9 +15,10 @@ import { overdueAssignmentConditions, rosterParticipantConditions } from "./crud
 import { safeExternalUrl } from "../../../domain/contacts";
 import { parseSocialLinks } from "../profile";
 import { parseContactCustomFields } from "../contacts/crud";
-import { DEC_930, DEC_738 } from "../../../decisions";
+import { DEC_930, DEC_738, DEC_829 } from "../../../decisions";
 
 void DEC_930; // this file is the ONE bounded GET DEC-930 mandates.
+void DEC_829; // rail row is two lines, rail empty state is one line
 void DEC_738; // wave 75: the org-wide contact record (bio/socialLinks, alongside
 // title/company/customFields) is projected here too -- the CRM drawer stays
 // the one place it's edited (this record carries a link there, not a form).
@@ -58,6 +59,12 @@ export interface SpeakerDetailContact {
 export interface SpeakerDetailOtherEvent {
   eventId: string;
   name: string;
+  // DEC-829 wave-110 amendment: the rail's second line ("Spoke · <title>",
+  // "Submitted, declined") -- derived from the SAME submission row already
+  // grouped below, never a second query. Absent when that submission has no
+  // decided state to speak of (pending/accept_queue/decline_queue/waitlisted),
+  // rather than inventing a line for an undecided outcome.
+  participation: string | null;
 }
 
 export interface SpeakerDetailParticipation {
@@ -366,6 +373,8 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       eventId: schema.event.id,
       eventName: schema.event.name,
       eventStartDate: schema.event.startDate,
+      submissionTitle: schema.submission.title,
+      submissionStatus: schema.submission.status,
     })
     .from(schema.submission)
     .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
@@ -373,16 +382,24 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
     .where(and(eq(schema.participant.contactId, contactId), ne(schema.submission.eventId, eventId)))
     .orderBy(schema.event.startDate);
 
-  const otherEventsByEvent = new Map<string, { eventId: string; name: string; startDate: string }>();
+  const otherEventsByEvent = new Map<string, { eventId: string; name: string; startDate: string; participation: string | null }>();
   for (const r of otherEventRows) {
     if (!otherEventsByEvent.has(r.eventId)) {
-      otherEventsByEvent.set(r.eventId, { eventId: r.eventId, name: r.eventName, startDate: r.eventStartDate });
+      let participation: string | null;
+      if (r.submissionStatus === "accepted") {
+        participation = `Spoke · ${r.submissionTitle}`;
+      } else if (r.submissionStatus === "declined") {
+        participation = "Submitted, declined";
+      } else {
+        participation = null;
+      }
+      otherEventsByEvent.set(r.eventId, { eventId: r.eventId, name: r.eventName, startDate: r.eventStartDate, participation });
     }
   }
   const otherEventsSorted = [...otherEventsByEvent.values()].sort((a, b) => (a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0));
   const otherEvents: SpeakerDetailOtherEvent[] = otherEventsSorted
     .slice(0, OTHER_EVENTS_LIMIT)
-    .map((e) => ({ eventId: e.eventId, name: e.name }));
+    .map((e) => ({ eventId: e.eventId, name: e.name, participation: e.participation }));
 
   return {
     contact: {
