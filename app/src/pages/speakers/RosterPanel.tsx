@@ -4,7 +4,10 @@
 // restoring mock density means exactly one <h1> and one action row on this
 // page). RosterPanel is a controlled panel: `mode` says which body (if any)
 // is open, `onClose` collapses it (Cancel / successful add / wizard close),
-// `onChanged` tells the page to reload the grid.
+// `onChanged` tells the page to reload the grid. The panel itself stays
+// mounted across a close (it owns the post-add toast), so each body it opens
+// is a SEPARATE mount-gated component holding its own state -- see
+// AddSpeakerModal below.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../lib/api';
@@ -90,9 +93,24 @@ interface RosterPanelProps {
   onChanged: () => void;
 }
 
-export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
-  const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+interface AddSpeakerModalProps {
+  eventId: string;
+  onClose: () => void;
+  /** Called with the added person's name once the add succeeded -- the parent
+   * owns the toast (which outlives this dialog) and the grid reload. */
+  onAdded: (name: string) => void;
+}
 
+// Eval finding (wave-5 retest): the add-speaker dialog owns its own state and
+// is MOUNTED ONLY WHILE OPEN -- the same shape ContactsApp gives every one of
+// its dialogs (`{showNewContact && <NewContactModal ... />}`), where closing
+// unmounts and reopening therefore starts clean. RosterPanel itself cannot be
+// unmounted (it still renders the post-add toast under mode 'none'), so the
+// form/refusal/duplicate-check state lives HERE rather than there: while it
+// sat on RosterPanel it survived a close, and reopening Add speaker
+// redisplayed the previous attempt's typed values and its 409 banner
+// ("<someone> already uses this email") on top of the new person being typed.
+function AddSpeakerModal({ eventId, onClose, onAdded }: AddSpeakerModalProps) {
   const [form, setForm] = useState<NewSpeakerForm>(EMPTY_FORM);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +121,6 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
   // are never reset here.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [conflict, setConflict] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [duplicateMatch, setDuplicateMatch] = useState<DuplicateCandidateMatch | null>(null);
 
   function updateField<K extends keyof NewSpeakerForm>(key: K, value: NewSpeakerForm[K]) {
@@ -142,7 +159,6 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
 
   async function handleAddSpeaker(e: React.FormEvent) {
     e.preventDefault();
-    if (!eventId) return;
     setAdding(true);
     setError(null);
     setConflict(false);
@@ -160,10 +176,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
         // event requires naming the session here.
         sessionTitle: form.sessionTitle,
       });
-      setToast(`Added ${form.firstName} ${form.lastName}.`);
-      setForm(EMPTY_FORM);
-      onChanged();
-      onClose();
+      onAdded(`${form.firstName} ${form.lastName}`);
     } catch (err) {
       if (err instanceof ApiError) {
         // DEC-788/DEC-958: the conflict path forwards to
@@ -200,6 +213,169 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
     label: FIELD_LABELS[key],
   }));
 
+  return (
+    <ModalFrame
+      as="form"
+      onSubmit={handleAddSpeaker}
+      title="Add speaker"
+      onClose={onClose}
+      closeDisabled={adding}
+      modalClassName="chq-speakers-add-modal"
+      actions={
+        <>
+          <button type="submit" className="chq-btn chq-btn-primary" disabled={adding}>
+            {adding ? 'Adding...' : 'Add speaker'}
+          </button>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={adding}>
+            Cancel
+          </button>
+        </>
+      }
+    >
+      {/* G13 lane-D fix (04-speakers--00, ruling A13): 'the roster is
+          where adding people lives' — the CSV-import link sits here
+          beside Add a speaker, off the grid's title row, carrying the
+          event id so the Contacts wizard preselects this event. */}
+      <Link
+        to={`/contacts?import=1&eventId=${encodeURIComponent(eventId)}`}
+        className="chq-link-button chq-speakers-import-link"
+      >
+        Import speakers from a CSV
+      </Link>
+      {error && <div className="chq-error">{error}</div>}
+      {errorSummaryProblems.length > 0 && (
+        <ErrorSummary
+          heading={countHeading(errorSummaryProblems.length, 'before this speaker can be added')}
+          kept="Nothing was lost. Your typed values are still below."
+          problems={errorSummaryProblems}
+        />
+      )}
+      {conflict && (
+        <DuplicateEmailNotice
+          email={form.email}
+          addToEvent={{
+            eventId,
+            sessionTitle: form.sessionTitle,
+            onAdded,
+          }}
+        />
+      )}
+      <FormRow label="First name" htmlFor="roster-first-name" error={fieldErrors.firstName}>
+        <input
+          id="roster-first-name"
+          className={fieldClassName('firstName', 'chq-input')}
+          type="text"
+          maxLength={MAX_NAME_LENGTH}
+          required
+          aria-invalid={fieldAriaInvalid('firstName')}
+          value={form.firstName}
+          onChange={(e) => updateField('firstName', e.target.value)}
+        />
+      </FormRow>
+      <FormRow label="Last name" htmlFor="roster-last-name" error={fieldErrors.lastName}>
+        <input
+          id="roster-last-name"
+          className={fieldClassName('lastName', 'chq-input')}
+          type="text"
+          maxLength={MAX_NAME_LENGTH}
+          required
+          aria-invalid={fieldAriaInvalid('lastName')}
+          value={form.lastName}
+          onChange={(e) => updateField('lastName', e.target.value)}
+        />
+      </FormRow>
+      <FormRow
+        label="Session title"
+        htmlFor="roster-session-title"
+        help="Added as an accepted session on this event. No email is sent."
+        error={fieldErrors.sessionTitle}
+      >
+        <input
+          id="roster-session-title"
+          className={fieldClassName('sessionTitle', 'chq-input')}
+          type="text"
+          maxLength={MAX_NAME_LENGTH}
+          required
+          placeholder="e.g. Scaling Kubernetes at 2am"
+          aria-invalid={fieldAriaInvalid('sessionTitle')}
+          value={form.sessionTitle}
+          onChange={(e) => updateField('sessionTitle', e.target.value)}
+        />
+      </FormRow>
+      <FormRow label="Email" htmlFor="roster-email" error={fieldErrors.email}>
+        <input
+          id="roster-email"
+          className={fieldClassName('email', 'chq-input')}
+          type="email"
+          maxLength={MAX_NAME_LENGTH}
+          required
+          aria-invalid={fieldAriaInvalid('email')}
+          value={form.email}
+          onChange={(e) => updateField('email', e.target.value)}
+        />
+      </FormRow>
+      <FormRow label="Title" htmlFor="roster-title" optional error={fieldErrors.title}>
+        <input
+          id="roster-title"
+          className={fieldClassName('title', 'chq-input')}
+          type="text"
+          maxLength={MAX_NAME_LENGTH}
+          aria-invalid={fieldAriaInvalid('title')}
+          value={form.title}
+          onChange={(e) => updateField('title', e.target.value)}
+        />
+      </FormRow>
+      <FormRow label="Company" htmlFor="roster-company" optional error={fieldErrors.company}>
+        <input
+          id="roster-company"
+          className={fieldClassName('company', 'chq-input')}
+          type="text"
+          maxLength={MAX_NAME_LENGTH}
+          aria-invalid={fieldAriaInvalid('company')}
+          value={form.company}
+          onChange={(e) => updateField('company', e.target.value)}
+        />
+      </FormRow>
+      <FormRow label="Bio" htmlFor="roster-bio" optional error={fieldErrors.bio}>
+        <textarea
+          id="roster-bio"
+          className={fieldClassName('bio', 'chq-textarea')}
+          maxLength={MAX_LONG_TEXT_LENGTH}
+          aria-invalid={fieldAriaInvalid('bio')}
+          value={form.bio}
+          onChange={(e) => updateField('bio', e.target.value)}
+        />
+      </FormRow>
+      {duplicateMatch && (
+        <p className="chq-speakers-roster-duplicate-hint" role="status">
+          Possible duplicate:{' '}
+          {/* DEC-834 / DEC-837: the router's basename is already '/admin' -- a
+              `to` starting with '/admin/contacts' resolves to
+              '/admin/admin/contacts' and 404s. */}
+          <Link to={`/contacts?openContact=${duplicateMatch.id}`}>
+            {duplicateMatch.firstName} {duplicateMatch.lastName}
+            {duplicateMatch.company ? `, ${duplicateMatch.company}` : ''}
+          </Link>
+        </p>
+      )}
+    </ModalFrame>
+  );
+}
+
+export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
+  const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+
+  // The toast outlives the dialog that produced it -- it is what the closed
+  // panel renders under mode 'none' -- so it stays here while every piece of
+  // add-form state lives on the mount-gated AddSpeakerModal above.
+  const [toast, setToast] = useState<string | null>(null);
+
+  function handleAdded(name: string) {
+    setToast(`Added ${name}.`);
+    onChanged();
+    onClose();
+  }
+
   if (eventLoading) {
     return null;
   }
@@ -230,157 +406,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
         </div>
       )}
 
-      {mode === 'add' && (
-        <ModalFrame
-          as="form"
-          onSubmit={handleAddSpeaker}
-          title="Add speaker"
-          onClose={onClose}
-          closeDisabled={adding}
-          modalClassName="chq-speakers-add-modal"
-          actions={
-            <>
-              <button type="submit" className="chq-btn chq-btn-primary" disabled={adding}>
-                {adding ? 'Adding...' : 'Add speaker'}
-              </button>
-              <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={adding}>
-                Cancel
-              </button>
-            </>
-          }
-        >
-          {/* G13 lane-D fix (04-speakers--00, ruling A13): 'the roster is
-              where adding people lives' — the CSV-import link sits here
-              beside Add a speaker, off the grid's title row, carrying the
-              event id so the Contacts wizard preselects this event. */}
-          <Link
-            to={`/contacts?import=1&eventId=${encodeURIComponent(eventId)}`}
-            className="chq-link-button chq-speakers-import-link"
-          >
-            Import speakers from a CSV
-          </Link>
-          {error && <div className="chq-error">{error}</div>}
-          {errorSummaryProblems.length > 0 && (
-            <ErrorSummary
-              heading={countHeading(errorSummaryProblems.length, 'before this speaker can be added')}
-              kept="Nothing was lost. Your typed values are still below."
-              problems={errorSummaryProblems}
-            />
-          )}
-          {conflict && (
-            <DuplicateEmailNotice
-              email={form.email}
-              addToEvent={{
-                eventId,
-                sessionTitle: form.sessionTitle,
-                onAdded: (name) => {
-                  setToast(`Added ${name}.`);
-                  onChanged();
-                  onClose();
-                },
-              }}
-            />
-          )}
-          <FormRow label="First name" htmlFor="roster-first-name" error={fieldErrors.firstName}>
-            <input
-              id="roster-first-name"
-              className={fieldClassName('firstName', 'chq-input')}
-              type="text"
-              maxLength={MAX_NAME_LENGTH}
-              required
-              aria-invalid={fieldAriaInvalid('firstName')}
-              value={form.firstName}
-              onChange={(e) => updateField('firstName', e.target.value)}
-            />
-          </FormRow>
-          <FormRow label="Last name" htmlFor="roster-last-name" error={fieldErrors.lastName}>
-            <input
-              id="roster-last-name"
-              className={fieldClassName('lastName', 'chq-input')}
-              type="text"
-              maxLength={MAX_NAME_LENGTH}
-              required
-              aria-invalid={fieldAriaInvalid('lastName')}
-              value={form.lastName}
-              onChange={(e) => updateField('lastName', e.target.value)}
-            />
-          </FormRow>
-          <FormRow
-            label="Session title"
-            htmlFor="roster-session-title"
-            help="Added as an accepted session on this event. No email is sent."
-            error={fieldErrors.sessionTitle}
-          >
-            <input
-              id="roster-session-title"
-              className={fieldClassName('sessionTitle', 'chq-input')}
-              type="text"
-              maxLength={MAX_NAME_LENGTH}
-              required
-              placeholder="e.g. Scaling Kubernetes at 2am"
-              aria-invalid={fieldAriaInvalid('sessionTitle')}
-              value={form.sessionTitle}
-              onChange={(e) => updateField('sessionTitle', e.target.value)}
-            />
-          </FormRow>
-          <FormRow label="Email" htmlFor="roster-email" error={fieldErrors.email}>
-            <input
-              id="roster-email"
-              className={fieldClassName('email', 'chq-input')}
-              type="email"
-              maxLength={MAX_NAME_LENGTH}
-              required
-              aria-invalid={fieldAriaInvalid('email')}
-              value={form.email}
-              onChange={(e) => updateField('email', e.target.value)}
-            />
-          </FormRow>
-          <FormRow label="Title" htmlFor="roster-title" optional error={fieldErrors.title}>
-            <input
-              id="roster-title"
-              className={fieldClassName('title', 'chq-input')}
-              type="text"
-              maxLength={MAX_NAME_LENGTH}
-              aria-invalid={fieldAriaInvalid('title')}
-              value={form.title}
-              onChange={(e) => updateField('title', e.target.value)}
-            />
-          </FormRow>
-          <FormRow label="Company" htmlFor="roster-company" optional error={fieldErrors.company}>
-            <input
-              id="roster-company"
-              className={fieldClassName('company', 'chq-input')}
-              type="text"
-              maxLength={MAX_NAME_LENGTH}
-              aria-invalid={fieldAriaInvalid('company')}
-              value={form.company}
-              onChange={(e) => updateField('company', e.target.value)}
-            />
-          </FormRow>
-          <FormRow label="Bio" htmlFor="roster-bio" optional error={fieldErrors.bio}>
-            <textarea
-              id="roster-bio"
-              className={fieldClassName('bio', 'chq-textarea')}
-              maxLength={MAX_LONG_TEXT_LENGTH}
-              aria-invalid={fieldAriaInvalid('bio')}
-              value={form.bio}
-              onChange={(e) => updateField('bio', e.target.value)}
-            />
-          </FormRow>
-          {duplicateMatch && (
-            <p className="chq-speakers-roster-duplicate-hint" role="status">
-              Possible duplicate:{' '}
-              {/* DEC-834 / DEC-837: the router's basename is already '/admin' -- a
-                  `to` starting with '/admin/contacts' resolves to
-                  '/admin/admin/contacts' and 404s. */}
-              <Link to={`/contacts?openContact=${duplicateMatch.id}`}>
-                {duplicateMatch.firstName} {duplicateMatch.lastName}
-                {duplicateMatch.company ? `, ${duplicateMatch.company}` : ''}
-              </Link>
-            </p>
-          )}
-        </ModalFrame>
-      )}
+      {mode === 'add' && <AddSpeakerModal eventId={eventId} onClose={onClose} onAdded={handleAdded} />}
 
       {mode === 'import' && (
         <ImportWizard

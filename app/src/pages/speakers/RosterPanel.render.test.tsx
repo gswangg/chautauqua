@@ -39,10 +39,14 @@ afterEach(() => {
 });
 
 function renderPanel(props: { mode: 'none' | 'add' | 'import'; onClose: () => void; onChanged: () => void }) {
-  return render(
+  return render(panelTree(props));
+}
+
+function panelTree(props: { mode: 'none' | 'add' | 'import'; onClose: () => void; onChanged: () => void }) {
+  return (
     <MemoryRouter>
       <RosterPanel {...props} />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -222,6 +226,74 @@ describe('RosterPanel', () => {
       );
       await waitFor(() => expect(onChanged).toHaveBeenCalled());
       expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  // Eval finding (wave-5 retest): the dialog is mount-gated on mode === 'add',
+  // so closing it discards the whole attempt. Before that, its state sat on
+  // the always-mounted RosterPanel and survived the close: reopening to type
+  // Marcus Okafor still showed Ada's typed values, Priya Raman's 409 banner
+  // and Priya's duplicate hint.
+  describe('close and reopen', () => {
+    it('starts clean: no typed values, no 409 banner, no duplicate hint', async () => {
+      apiPostMock.mockRejectedValue(new ApiError(409, 'conflict', 'Priya Raman already uses this email'));
+      apiGetMock.mockImplementation((path: string) => {
+        if (path.startsWith('/contacts/duplicates/check')) {
+          return Promise.resolve({
+            items: [
+              {
+                id: 'ct-existing',
+                firstName: 'Priya',
+                lastName: 'Raman',
+                email: 'ada@example.com',
+                company: 'Latticework',
+                reason: 'email',
+              },
+            ],
+          });
+        }
+        if (path.startsWith('/contacts?q=')) {
+          return Promise.resolve({
+            items: [
+              { id: 'ct-existing', firstName: 'Priya', lastName: 'Raman', email: 'ada@example.com', company: 'Latticework' },
+            ],
+          });
+        }
+        return Promise.resolve({ items: [] });
+      });
+
+      const onClose = vi.fn();
+      const onChanged = vi.fn();
+      const { rerender } = renderPanel({ mode: 'add', onClose, onChanged });
+
+      fillAddForm();
+      fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
+
+      // The full stale set is on screen before the close: the 409 banner, the
+      // forward-path notice it renders, and the debounced duplicate hint.
+      expect(await screen.findByText('Priya Raman already uses this email')).toBeInTheDocument();
+      expect(await screen.findByRole('link', { name: 'Open this contact' })).toBeInTheDocument();
+      expect(await screen.findByText(/Possible duplicate:/)).toBeInTheDocument();
+
+      // Cancel / Escape / scrim all land on the same onClose the page turns
+      // into mode 'none'.
+      rerender(panelTree({ mode: 'none', onClose, onChanged }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+      rerender(panelTree({ mode: 'add', onClose, onChanged }));
+
+      expect((screen.getByLabelText('First name') as HTMLInputElement).value).toBe('');
+      expect((screen.getByLabelText('Last name') as HTMLInputElement).value).toBe('');
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('');
+      expect((screen.getByLabelText(/Session title/) as HTMLInputElement).value).toBe('');
+      expect(screen.queryByText('Priya Raman already uses this email')).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Open this contact' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/Possible duplicate:/)).not.toBeInTheDocument();
+
+      // ...and stays clean: an empty form never re-runs the duplicate check,
+      // so nothing can arrive late and repaint the stale hint.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(screen.queryByText(/Possible duplicate:/)).not.toBeInTheDocument();
     });
   });
 });
