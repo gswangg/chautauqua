@@ -172,14 +172,36 @@ export const HOME_CSS = `
     .chq-home-signin { min-height: 44px; display: flex; align-items: center; padding: 0 4px; }
 
     /* Body -- :122 \`padding:20px 16px 20px; display:flex;
-       flex-direction:column; gap:24px\`. */
+       flex-direction:column; gap:24px\` (Event hub) and :237 (Between
+       cycles, same numbers). The Fresh deploy frame (:308) diverges --
+       \`padding:34px 16px 20px; gap:18px\`, no overflow-y:auto -- so this
+       base-scope phone rule carries the two-of-three numbers and the
+       :has(.chq-home-action-tertiary) override below carries the third. */
     .chq-home-body { padding-block: 20px; padding-inline: 16px; gap: 24px; }
-    /* :124 \`font-size:30px; font-weight:700; letter-spacing:-0.042em;
-       line-height:1.05\` -- letter-spacing already matches the base rule;
-       size and line-height (1.2 at desktop) both narrow here. */
-    .chq-home-hero h1 { font-size: 30px; line-height: 1.05; }
+    /* Fresh deploy only (:308) -- \`.chq-home-action-tertiary\` (the "API
+       docs ›" anchor) renders only in the fresh state's signin-row
+       (root.tsx), so :has() scopes this override without a state class on
+       the DOM (precedent: auth.css.ts's \`.chq-bare-page:has(...)\`). */
+    .chq-home-body:has(.chq-home-action-tertiary) { padding-block: 34px 20px; gap: 18px; }
+    /* :123 \`display:flex; flex-direction:column; gap:8px\` (Event hub) and
+       :238 (Between cycles, same 8px) -- the hero's own gap narrows from
+       the desktop 10px to the frame's 8px. Fresh deploy (:309) diverges to
+       9px; carried by the :has() override just below, mirroring the body
+       split above. */
+    .chq-home-hero { gap: 8px; }
+    .chq-home-body:has(.chq-home-action-tertiary) .chq-home-hero { gap: 9px; }
+    /* :239 \`font-size:29px; ... line-height:1.07\` (Between cycles) and
+       :310 (Fresh deploy, same 29px/1.07) -- the empty-state H1 narrows
+       less than the full hub's. Event hub's own H1 (:124
+       \`font-size:30px; ... line-height:1.05\`) is the odd one out, so it
+       carries the override below (\`.chq-home-row\` only ever renders in
+       the "full" state -- hubState() guarantees at least one when
+       state === "full", and never otherwise). */
+    .chq-home-hero h1 { font-size: 29px; line-height: 1.07; }
+    .chq-home-body:has(.chq-home-row) .chq-home-hero h1 { font-size: 30px; line-height: 1.05; }
     /* :125 \`margin:0; font-size:14px; line-height:1.6; color:#3F4237\` --
-       desktop is 16px/1.65. */
+       desktop is 16px/1.65; :240 and :311 carry the identical 14px/1.6 for
+       the other two states, so this stays a single unscoped rule. */
     .chq-home-hero p { font-size: 14px; line-height: 1.6; }
 
     /* :130 \`font-size:11px; font-weight:700; letter-spacing:0.1em;
@@ -231,6 +253,25 @@ export const HOME_CSS = `
     /* DEC-367 (wave-57 amendment): the tertiary anchor's tap floor is
        phone-only -- centred flex, not padding. DEC-582's "API docs ›". */
     .chq-home-action-tertiary { min-height: 44px; }
+    /* Fresh deploy (:308-314) stacks "Sign in" over "API docs ›" as two
+       full-width siblings sharing the body's own 18px gap -- there is no
+       row wrapper in the frame at all, unlike the base-scope
+       \`.chq-home-signin-row\` (a horizontal row at desktop, reused here for
+       both the fresh and between_cycles states). Scoped by the same
+       :has(.chq-home-action-tertiary) marker as the body/hero overrides
+       above, so between_cycles' own (currently row-hidden-at-390, see the
+       FINDING above the base-scope rule) signin-row is untouched.
+       align-items:stretch is required, not just flex-direction:column --
+       .chq-home-signin-row is align-items:center at base scope, and
+       stretch is what gives "Sign in"/"API docs ›" their full width here
+       (the .chq-home-action-primary/-secondary width:100% rule above does
+       not reach .chq-home-action-tertiary, which has no width rule of its
+       own). */
+    .chq-home-body:has(.chq-home-action-tertiary) .chq-home-signin-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 18px;
+    }
     /* :165 \`font-size:13px; font-weight:700; min-height:44px; display:flex;
        align-items:center; white-space:nowrap\` ("Sessions ›") --
        .chq-home-action-quiet is a bare desktop text link (no min-height,
