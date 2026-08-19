@@ -2023,7 +2023,9 @@
     gap: 5px;
   }
 
-  /* Frame line 201: `{{ h.when }} · {{ h.short }}` */
+  /* Frame line 201: the "h.when · h.short" mock placeholder pair (opaque
+     mock data -- no literal string to match; brace-free here on purpose,
+     see this file's tap-target note below). */
   .chq-comms-phone-recent-when {
     font-size: 12px;
     color: var(--chq-muted);
@@ -2040,7 +2042,7 @@
     line-height: 1.35;
   }
 
-  /* Frame line 203: `{{ h.template }}` */
+  /* Frame line 203: the "h.template" mock placeholder. */
   .chq-comms-phone-recent-template {
     font-size: 12px;
     color: var(--chq-muted);
