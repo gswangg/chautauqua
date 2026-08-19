@@ -324,6 +324,15 @@
   max-width: 560px;
 }
 
+/* G13 lane-D fix (02-submissions--10, B10): SECTION and KIND render two-up
+   in a 1fr 1fr grid at a 16px gap, per the drawn 245px pair. */
+.chq-forms-field-modal-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
 /* DEC-650 (wave-66 amendment, DESIGN-RULINGS.md:314): Delete sits far left
    in the footer, Cancel/Save right-flushed in their own group -- override
    the base ModalFrame actions row (flex-start, DEC-750) scoped to this one
@@ -411,6 +420,15 @@
   display: none;
 }
 
+/* Phone drill head's "Closes … · N received" meta line (docs/design/
+   Chautauqua Submissions.dc.html:468 `<div style="width:390px;
+   height:844px; ...">`): hidden at desktop -- the strip above already
+   carries these as separate Opens/Closes/Received cells there -- becomes
+   visible under the H1 below 700px. */
+.chq-forms-phone-meta {
+  display: none;
+}
+
 /* Phone frame (DEC-385: the one phone switch, 700px, for every stylesheet).
    Fixed-header / scrolling-body / fixed-footer shell (mock 424-445):
    .chq-forms-header stays in-flow flex-shrink:0, .chq-forms-content
@@ -428,13 +446,30 @@
     gap: 0;
   }
 
+  /* docs/design/Chautauqua Submissions.dc.html:468
+     `<div style="width:390px; height:844px; ...">` (frame 03--06 "CFP
+     form · 390"): the head stacks back-link / H1 / "Closes … · N
+     received" -- flex-shrink:0/padding/border-bottom/background already
+     come from the .chq-phone-head/.chq-phone-head-drill classes applied
+     in FormsPage.tsx (app/src/styles.css:2190-2260); align-items must be
+     reset here because the base (desktop, unconditional) rule above sets
+     align-items:flex-end for its ROW layout, which the shared class's
+     flex-direction:column would otherwise cross-axis-align to the right
+     edge instead of the frame's left-aligned stack. */
   .chq-forms-header {
-    flex-shrink: 0;
-    padding-bottom: 12px;
+    align-items: flex-start;
   }
 
   .chq-forms-header-titles h1 {
     font-size: 25px;
+  }
+
+  /* Desktop-hidden by default (declared with the phone footer above);
+     becomes the frame's "Closes 16 Aug · 47 received" line under the H1. */
+  .chq-forms-phone-meta {
+    display: block;
+    font-size: 13px;
+    color: var(--chq-muted);
   }
 
   .chq-forms-content {
@@ -450,7 +485,7 @@
   }
 
   .chq-forms-field-row {
-    grid-template-columns: 16px 1fr auto;
+    grid-template-columns: 44px 1fr auto;
     grid-template-areas:
       'drag label actions'
       'drag kind actions'
@@ -458,8 +493,22 @@
     row-gap: 6px;
   }
 
+  /* Ruling (a) (frame caption "Reorder and edit one question at a time",
+     docs/design/Chautauqua Submissions.dc.html:468 `<div style="width:
+     390px; height:844px; ...">"): the ⋮⋮ handle becomes a real 44px
+     target at 390 -- DEC-715 already establishes the handle IS a button,
+     so this is a size change inside the phone block, not a new
+     affordance. Centred flex + horizontal padding per the campaign's
+     44px floor (never bare min-height on a glyph-width column), the grid
+     column above widened from 16px to 44px to match. */
   .chq-forms-field-drag {
     grid-area: drag;
+    min-height: 44px;
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
   }
 
   .chq-forms-field-label {
@@ -498,30 +547,25 @@
     display: none;
   }
 
+  /* docs/design/Chautauqua Submissions.dc.html:468 `<div style="width:
+     390px; height:844px; ...">` (frame 03--06): dock filled "Save the
+     form" over bordered "Preview". flex-shrink/border-top/background/
+     padding/gap come from .chq-phone-dock (app/src/styles.css:2225-2249,
+     applied alongside .chq-forms-phone-footer in FormsPage.tsx); this
+     block only supplies the display:none -> flex toggle (forms.css's own
+     unconditional display:none above must be beaten locally, same file,
+     regardless of stylesheet load order) and the two buttons' widths --
+     "Save the form" fills (chq-phone-dock's own .chq-btn-primary rule),
+     "Preview" stays its natural bordered width, never forced to flex:1. */
   .chq-forms-phone-footer {
-    flex-shrink: 0;
-    border-top: 1px solid var(--chq-ink);
-    background: var(--chq-surface-sunk);
-    padding: 12px 0 0;
     display: flex;
-    gap: 8px;
   }
 
   .chq-forms-phone-footer .chq-btn {
-    flex: 1;
-    min-height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     border-radius: var(--chq-r-ctl-phone);
   }
-}
 
-/* G13 lane-D fix (02-submissions--10, B10): SECTION and KIND render two-up
-   in a 1fr 1fr grid at a 16px gap, per the drawn 245px pair. */
-.chq-forms-field-modal-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: start;
+  .chq-forms-phone-footer .chq-btn-secondary {
+    flex: 0 1 auto;
+  }
 }

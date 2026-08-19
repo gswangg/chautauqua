@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { msToDateInput, dateInputToMs } from '../../lib/dates';
+import { msToDateInput, dateInputToMs, formatDateOnly } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -272,6 +272,17 @@ export function FormsPage() {
   }
 
   const receivedText = received === 'loading' || received === 'error' ? '—' : `${received.total} submissions`;
+  // Phone drill head (docs/design/Chautauqua Submissions.dc.html:468
+  // `<div style="width:390px; height:844px; ...">`, the 390 CFP-form frame's
+  // head band draws "Closes 16 Aug · 47 received" under the H1 -- the SAME
+  // close date and received total the desktop Opens/Closes/Received strip
+  // already reads, restated as one line since the strip itself is desktop
+  // chrome (see .chq-forms-phone-meta / .chq-forms-strip below). Real
+  // numbers only, never the frame's sample "47" -- '—' while the count is
+  // loading/failed, same fallback the strip's own receivedText already uses.
+  const receivedCountText = received === 'loading' || received === 'error' ? '—' : String(received.total);
+  const closesText = form.closeDate ? formatDateOnly(form.closeDate) : 'No close date set';
+  const phoneMetaText = `Closes ${closesText} · ${receivedCountText} received`;
   // Shared with FieldModal's header line (DEC-650(d)/wave-66 amendment):
   // the same real count, never a second fetch or a fabricated number.
   const answeredCount = received === 'loading' || received === 'error' ? null : received.total;
@@ -303,12 +314,22 @@ export function FormsPage() {
 
   return (
     <div className="chq-page chq-forms-page chq-measure-table">
-      <header className="chq-forms-header">
+      {/* Phone drill head (docs/design/Chautauqua Submissions.dc.html:468
+          `<div style="width:390px; height:844px; ...">`, frame 03--06 "CFP
+          form · 390"): ONE header markup for both widths, not a duplicate
+          band (avoids a second "CFP form" heading in the accessibility
+          tree) -- .chq-phone-head/-head-drill/-back are the landed v12
+          scaffold classes (app/src/styles.css:2190-2260), silent outside a
+          max-width block (DEC-976), so they add nothing at desktop; the new
+          .chq-forms-phone-meta line is desktop-hidden by forms.css and
+          becomes the frame's "Closes … · N received" line only below 700px. */}
+      <header className="chq-forms-header chq-phone-head chq-phone-head-drill">
         <div className="chq-forms-header-titles">
-          <Link to="/submissions" className="chq-forms-back">
+          <Link to="/submissions" className="chq-forms-back chq-phone-back">
             &lsaquo; Submissions
           </Link>
-          <h1>CFP form</h1>
+          <h1 className="chq-page-title">CFP form</h1>
+          <span className="chq-forms-phone-meta">{phoneMetaText}</span>
         </div>
         <div className="chq-forms-header-actions">
           <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
@@ -416,14 +437,28 @@ export function FormsPage() {
         </section>
       </div>
 
-      {/* Phone-only fixed footer (DEC-650 mock, 390px frame): display:none
-          at desktop; forms.css switches at 700px. Frozen (mobile is
-          out of scope for the wave-72 window editor): the header's
-          window-editing Save is desktop-only chrome (.chq-forms-header-
-          actions hides at phone width), and the CFP window can still be
-          edited via Settings › Call for papers on phone -- the only
-          remaining phone action here is Preview. */}
-      <div className="chq-forms-phone-footer">
+      {/* Phone dock (docs/design/Chautauqua Submissions.dc.html:468
+          `<div style="width:390px; height:844px; ...">`, frame 03--06):
+          "Save the form" filled + bordered "Preview", display:none at
+          desktop -- forms.css switches at 700px. Second markup, not a text
+          swap over the desktop header actions (DEC-390 precedent, already
+          the shape this block had for Preview alone). "Save the form"
+          reuses the SAME dirty-gated CFP-window save the desktop header's
+          Save button already calls -- the only Save concept this page has;
+          no new endpoint or wire shape. .chq-phone-dock is the landed v12
+          scaffold class (app/src/styles.css:2225-2249) that supplies the
+          sticky band/48px-button geometry; forms.css only gates its
+          display:none/flex and Preview's un-flexed (bordered, natural)
+          width. */}
+      <div className="chq-forms-phone-footer chq-phone-dock">
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          disabled={!windowDirty || windowSaving}
+          onClick={() => void handleSaveWindow()}
+        >
+          {windowSaving ? 'Saving…' : 'Save the form'}
+        </button>
         <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
           Preview
         </a>
