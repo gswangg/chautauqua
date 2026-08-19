@@ -182,6 +182,12 @@
   min-width: 0;
 }
 
+/* overflow-exempt: docs/design/Chautauqua Speakers.dc.html:130 "Matrix
+   becomes one card per speaker" -- the 390 frame at :133 replaces this
+   matrix with .chq-speakers-cards (below), and .chq-speakers-grid-wrap is
+   set to display:none in the terminal max-width:700px block further down,
+   so the desktop measure below never reaches the phone viewport. Re-lined
+   per the frame, not a scrolling matrix -- DEC-989 wave-90 amendment. */
 .chq-speakers-grid {
   /* DEC-989/v6: the matrix's columns are bounded by the event's task list,
      so it sits at the table measure and scrolls horizontally below its own
@@ -1578,5 +1584,31 @@ a.chq-speakers-task-title:hover {
     align-items: center;
     padding-inline: 10px;
     margin-inline: -10px;
+  }
+
+  /* v12m wave 8 (DEC-989 wave-90 amendment). These four `white-space:nowrap`
+     fields have no escape on desktop by design (a due date or an action
+     label never wraps into a second line there), but the same nowrap forces
+     the 358px phone content column (390 minus .chq-main's 16px gutter)
+     wider than it has -- so at phone width only, clip with an ellipsis
+     instead. Base rules are untouched; desktop stays frozen. Kept inside
+     this SAME terminal block (not a second one) so it stays the LAST
+     top-level construct in the file, appended rather than inserted. */
+  .chq-speaker-detail-task-remind,
+  .chq-speaker-detail-tasks-row > :nth-child(2),
+  .chq-speakers-task-edit,
+  .chq-speakers-task-remove {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  /* docs/design/Chautauqua Speakers.dc.html:296-317 draws the participation
+     panel as a fixed 420px card on desktop; nothing in the 390 frames widens
+     the phone content column past 358px, so the panel takes the full
+     available width there instead of overflowing it. */
+  .chq-participation-menu-panel {
+    width: 100%;
+    min-width: 0;
   }
 }
