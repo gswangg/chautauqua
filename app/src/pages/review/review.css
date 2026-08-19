@@ -2548,3 +2548,22 @@
     flex: 0 0 auto;
   }
 }
+
+/* w6-b: source-order fix. The phone overrides for these two selectors
+   above (:1209-1211, :1380-1382) were declared BEFORE the top-level
+   DEC-745 rules at :1675-1677 and :1667-1670, so at equal specificity the
+   later same-selector desktop rule always won on a 390 viewport --
+   .chq-review-reviewer-row rendered its five-track desktop grid and
+   .chq-review-summary-grid its 4-column grid, both inside the phone
+   frame. DEC-385: narrow overrides wide via max-width only -- restated
+   here, appended after every rule it must beat, never reordered in
+   place. */
+@media (max-width: 700px) {
+  .chq-review-reviewer-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chq-review-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
