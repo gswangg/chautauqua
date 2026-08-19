@@ -24,8 +24,8 @@
 //      (`.chq-review-back`, `.chq-review-editor-back-link`). Each gets
 //      `min-height:44px` + centred flex + `padding-inline:10px` with an
 //      equal-and-opposite `margin-inline:-10px` so the added hit box does
-//      not shift the ink the frame draws (docs/design/Chautauqua
-//      Review.dc.html:793, the 390 "Your plans · /review" frame).
+//      not shift the ink the frame draws (Chautauqua Review.dc.html:793,
+//      the 390 "Your plans · /review" frame -- receipted below).
 //
 // jsdom applies no stylesheet and evaluates no @media rule, so this is a
 // source-scan pin on the CSS TEXT, mirroring the read/phoneLayer helper
@@ -169,6 +169,9 @@ describe('review.css 44px tap-target floor (DEC-393 wave-7 amendment)', () => {
     { selector: '.chq-review-editor-back-link', label: 'editor back link' },
   ];
 
+  // docs/design/Chautauqua Review.dc.html:793
+  // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+  // -- the 390 frame each anchor below sits inside.
   it.each(FLOOR_ANCHORS)('$selector ($label) carries all four floor declarations inside a max-width:700px block', ({ selector }) => {
     const occ = occurrences(selector).filter((r) => isMaxWidth700(r.media));
     expect(occ.length).toBeGreaterThan(0);
