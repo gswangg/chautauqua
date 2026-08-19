@@ -234,17 +234,18 @@ current behaviour, with the stale line explicitly not asserted) rather than
 having its assertion weakened to match. Format: frame line, drawn value,
 shipped value.
 
-- **`Chautauqua Contacts.dc.html:800`** ("Import CSV · the file will not
-  do", drawn as part of :770's frame) draws `Download the 9 rows` — a
-  tertiary link offering the rejected rows as a downloadable file. The
-  shipped `ImportWizard.tsx` file-level email-warning block
-  (`showFileWarning`) renders only `Import the N good rows` and `Upload a
-  different file`; there is no download/export affordance for the rejected
-  rows anywhere in the component. Not claimed by task w3-o's `it()` for
-  this frame, which asserts only the two controls that are actually built.
-  This is a missing capability, not a copy/geometry drift — a planner
-  decision (build the download, or bless the omission), out of this
-  task's tests-only scope.
+- **`Chautauqua Contacts.dc.html:800`** — **RESOLVED (task v12m-w4-r, DEC-745
+  wave-108 amendment).** Ruled BUILT, not deferred: the "no data model
+  behind the drawing" exemption did not apply, since `ImportWizard.tsx`
+  already held `header`, `allDataRows` and `badRows` (each with its
+  1-based `line`) — exactly the rejected set the frame offers to download.
+  The third action, `Download the {N} rows` (`.chq-btn.chq-btn-tertiary`),
+  is now built in the `showFileWarning` branch and downloads the header
+  plus the rejected rows verbatim (never re-derived/re-ordered), via
+  `downloadRejectedRows()` in `app/src/pages/contacts/ImportWizard.tsx`
+  (immediately above the `actions` declaration at line 609, itself at
+  line 596). Covered by
+  `app/src/pages/contacts/ImportWizard.rejectedRows.render.test.tsx`.
 
 - **`Chautauqua Submissions.dc.html:187` (task v12m-w3-q).** Drawn: the
   co-presenter row's explainer reads "A new co-presenter is emailed a

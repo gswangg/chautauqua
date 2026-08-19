@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiPost, ApiError } from '../../lib/api';
 import { expandFullNameMapping, importEmailProblem, mapImportRow, parseCsv, suggestMapping, toCsvVerbatim, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
+import { toCsv } from '../../../../src/domain/csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { usePendingLabel } from '../../components/PendingAction';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
@@ -574,6 +575,37 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
     }
   }
 
+  // docs/design/Chautauqua Contacts.dc.html:800 draws a third, tertiary
+  // action on the file-level refusal -- `Download the 9 rows` -- beside
+  // `Import the N good rows` / `Upload a different file`. DEC-745
+  // (wave-108 amendment): BUILT, not deferred -- the component already
+  // holds header, allDataRows and badRows (each carrying its 1-based
+  // `line`), which is exactly the rejected set the frame offers, so "no
+  // data model behind the drawing" does not apply. No src/decisions.ts
+  // export exists for this DEC-745 amendment to compile-check against
+  // (same as the DEC-290 note above; never hand-add one here).
+  //
+  // Serialized VERBATIM -- the header plus the rejected rows in their
+  // original order, never re-derived and never re-ordered -- because the
+  // point of the download is that the organiser fixes those exact rows in
+  // the file and re-uploads it. Uses the shared toCsv (not toCsvVerbatim,
+  // which is reserved for this component's own preview->commit round trip
+  // and must never back an export surface -- see ./csv.ts) so the
+  // downloaded file gets the same DEC-179 formula-injection neutralization
+  // as every other CSV export in the app.
+  function downloadRejectedRows() {
+    const badLines = new Set(badRows.map((r) => r.line));
+    const rejected = allDataRows.filter((_, i) => badLines.has(i + 2));
+    const csv = toCsv([header, ...rejected]);
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    const base = (fileName ?? 'import.csv').replace(/\.csv$/i, '');
+    anchor.download = `${base}-rejected-rows.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   const actions = showSizeRefusal ? (
     <button type="button" className="chq-btn chq-btn-secondary" onClick={resetToChooseFile}>
       Choose a different file
@@ -589,6 +621,9 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
       </button>
       <button type="button" className="chq-btn chq-btn-secondary" onClick={resetToChooseFile}>
         Upload a different file
+      </button>
+      <button type="button" className="chq-btn chq-btn-tertiary" onClick={downloadRejectedRows}>
+        Download the {countOf(badRows.length, 'row')}
       </button>
     </>
   ) : result ? (
