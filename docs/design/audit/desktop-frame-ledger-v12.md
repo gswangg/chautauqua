@@ -225,3 +225,21 @@ Chautauqua Submissions.dc.html :561 -- Submissions · before the CFP opens
 Chautauqua Submissions.dc.html :605 -- Submissions · triage queue clear
 Chautauqua Submissions.dc.html :655 -- CFP form · edit a question
 ```
+
+## Divergences found while claiming
+
+Frames the tree contradicts stay UNCLAIMED rather than being absorbed by a
+weakened assertion (DEC-976, wave 103). Format: frame line, drawn value,
+shipped value.
+
+- **`Chautauqua Contacts.dc.html:800`** ("Import CSV · the file will not
+  do", drawn as part of :770's frame) draws `Download the 9 rows` — a
+  tertiary link offering the rejected rows as a downloadable file. The
+  shipped `ImportWizard.tsx` file-level email-warning block
+  (`showFileWarning`) renders only `Import the N good rows` and `Upload a
+  different file`; there is no download/export affordance for the rejected
+  rows anywhere in the component. Not claimed by task w3-o's `it()` for
+  this frame, which asserts only the two controls that are actually built.
+  This is a missing capability, not a copy/geometry drift — a planner
+  decision (build the download, or bless the omission), out of this
+  task's tests-only scope.
