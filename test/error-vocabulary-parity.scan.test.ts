@@ -44,6 +44,8 @@ const ALLOWLIST: Record<string, string> = {
     "SPA-only: ModalFrame's FormRow error text sits alongside .chq-field-error as an equivalent hook for the wrapper pattern; the SSR module has no FormRow concept.",
   "fieldset.chq-field-invalid":
     "SSR-only: the public CFP builder groups radio/checkbox options in a <fieldset>, which needs padding-left reset to 0 (no left padding to preserve); the SPA has no fieldset-based invalid control.",
+  ".chq-error-summary a.chq-error-summary-link":
+    "SPA-only (DEC-393 wave-87 amendment): the phone-only 44px row-action-anchor floor, deliberately scoped to a compound selector so it can't merge into the bare .chq-error-summary-link parity check above -- the SSR twin has no phone breakpoint of its own (app/src/components/error-states.css:90-101).",
 };
 
 /**
