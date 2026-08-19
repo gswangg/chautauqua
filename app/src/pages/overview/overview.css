@@ -565,3 +565,41 @@
     padding: 0 13px;
   }
 }
+
+/* ---------------------------------------------------------------------- */
+/* Tier-2 tap-floor + overflow fixes (task w8-g; DEC-393/DEC-989 wave-90   */
+/* amendment). Appended at the TRUE END of the file -- never edit or      */
+/* reorder the blocks above, source order alone decides (DEC-385).        */
+/*                                                                        */
+/* Tap-floor (DEC-393): "the floor is reached by the anchor, not its      */
+/* container" -- .chq-overview-row-actions/-inline/-column are containers */
+/* whose .chq-overview-btn children get the floor here (the existing      */
+/* phone block above already sizes .chq-overview-row-actions/-inline's    */
+/* children but never declares a padding property inside that phone       */
+/* rule itself, and .chq-overview-row-actions-column has no phone         */
+/* override at all today). .chq-overview-link-btn and                    */
+/* .chq-overview-section-action are themselves the tappable control       */
+/* (a <button>/<a>/<Link>, app/src/pages/Overview.tsx) so they are grown  */
+/* directly.                                                              */
+/* ---------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  .chq-overview-row-actions .chq-overview-btn,
+  .chq-overview-row-actions-inline .chq-overview-btn,
+  .chq-overview-row-actions-column .chq-overview-btn,
+  .chq-overview-link-btn,
+  .chq-overview-section-action {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* Overflow escapes (DEC-989 wave-90 amendment). */
+  .chq-overview-btn,
+  .chq-overview-section-action {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+}
