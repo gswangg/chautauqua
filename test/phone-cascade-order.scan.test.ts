@@ -12,6 +12,17 @@
 //     *.css.ts under src/routes" that a hand-scoped `src/routes` walk could
 //     silently miss if a future SSR sheet lands outside that directory)
 //
+//   This was a CLAIM until wave-108's DEC-613 amendment, which deleted the
+//   independently-authored app/src/phone-cascade-order.scan.test.ts (same
+//   rule, same rough population, a one-sided SHADOWED_CEILING=20 over an
+//   already-clean tree) after PROVING containment: this file's population
+//   (43 files: 27 app/src *.css + 16 SSR *_CSS modules) is a strict
+//   superset of the deleted copy's (40 files: 27 app/src *.css + 13
+//   *.css.ts under src/routes) — every one of the deleted copy's 40 files
+//   appears here too, plus 3 SSR *_CSS modules outside src/routes/. See
+//   src/decisions-data/DEC-613.md, "Amendment (wave 108)" for the measured
+//   file lists.
+//
 // RULE: for every declaration inside a `@media (max-width: …)` block, flag
 // it when the SAME selector is re-declared at TOP LEVEL for the SAME
 // property AFTER that block closes. In a flat, single-direction stylesheet
@@ -137,6 +148,25 @@ function normaliseSelector(sel: string): string {
   return sel.trim().replace(/\s+/g, ' ');
 }
 
+/** Excludes template-literal interpolation artefacts (`.${SOME_CONST}`) from
+ * being treated as a real selector header. `${` is itself a spurious
+ * balanced-brace pair to `parseTopLevelBlocks`'s naive char scan, so a
+ * `*.css.ts` interpolated selector desyncs the header/body split for that
+ * one block (ported from app/src/phone-cascade-order.scan.test.ts's
+ * `isSelectorHeader`, wave-108 DEC-613 amendment: proven on
+ * src/routes/public/css/agenda.css.ts's `.${ACCENT_BOUND_CLASSES[1]}` phone
+ * rule, which the unfiltered parser silently dropped via an empty-header
+ * side effect rather than an intentional exclusion). Excluding it here is
+ * explicit and can only make the scan UNDER-count (a missed shadow behind
+ * an interpolated selector), never fabricate one, so it cannot inflate
+ * SHADOWED_CEILING. */
+function isSelectorHeader(header: string): boolean {
+  const t = header.trim();
+  if (!t) return false;
+  if (t.includes('$') || t.includes('`')) return false;
+  return true;
+}
+
 /** Extracts (selector, property) declarations from a plain rule's body.
  * A comma-separated selector list is split into its whole members — never
  * substring-matched — so `.a` and `.b .a` are distinct declarations. */
@@ -185,6 +215,7 @@ function classify(css: string): { mediaDecls: MediaDecl[]; topDecls: Decl[] } {
         const inner = css.slice(block.bodyStart, block.bodyEnd);
         for (const nested of parseTopLevelBlocks(inner)) {
           if (nested.header.startsWith('@')) continue;
+          if (!isSelectorHeader(nested.header)) continue;
           const decls = extractDecls(
             nested.header,
             block.bodyStart + nested.bodyStart,
@@ -197,6 +228,7 @@ function classify(css: string): { mediaDecls: MediaDecl[]; topDecls: Decl[] } {
       continue; // non-max-width @media blocks are opaque
     }
     if (block.header.startsWith('@')) continue; // other at-rules opaque
+    if (!isSelectorHeader(block.header)) continue;
     topDecls.push(...extractDecls(block.header, block.bodyStart, block.bodyEnd, css));
   }
   return { mediaDecls, topDecls };
