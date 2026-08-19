@@ -14,6 +14,8 @@ import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { DuplicateEmailNotice } from '../contacts/DuplicateEmailNotice';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
+import { ParticipationMenu } from './ParticipationMenu';
+import type { InviteStatus, OnboardingRow } from './types';
 
 // DEC-958 (wave 58): every wire key POST /contacts's crud.ts validator can
 // name on this form's own submitted body (src/routes/api/contacts/crud.ts
@@ -390,5 +392,112 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
         />
       )}
     </>
+  );
+}
+
+// docs/design/Chautauqua Speakers.dc.html:260 `Roster · 390` -- a drill-in
+// off the Speakers phone cluster (the entry link lives in OnboardingGrid's
+// phone head, itself hidden above 700px, so this screen is a phone-only
+// state and never contests the frozen desktop layout). It reuses the SAME
+// roster rows and invite-status handlers OnboardingGrid already threads
+// into its phone cards -- no second fetch, no second mutation path, just a
+// simpler read of a shared data source.
+export interface RosterDrillInProps {
+  rows: readonly OnboardingRow[];
+  acceptedCount: number;
+  notClaimedCount: number;
+  // DEC-662/DEC-746: 'Add speaker' opens RosterPanel's own 'add' mode, which
+  // Speakers.tsx (outside this task's owned files) already wires to
+  // OnboardingGrid's `onAddSpeaker` prop -- reused verbatim rather than
+  // inventing a second trigger path.
+  onAddSpeaker: () => void;
+  onBack: () => void;
+  eventId: string;
+  onSelectStatus: (contactId: string, submissionId: string, participantId: string, status: InviteStatus) => void;
+  onSendInvite: (contactId: string) => void;
+  invitingContactIds: ReadonlySet<string>;
+}
+
+export function RosterDrillIn({
+  rows,
+  acceptedCount,
+  notClaimedCount,
+  onAddSpeaker,
+  onBack,
+  eventId,
+  onSelectStatus,
+  onSendInvite,
+  invitingContactIds,
+}: RosterDrillInProps) {
+  return (
+    <div className="chq-speakers-roster-drillin">
+      {/* docs/design/Chautauqua Speakers.dc.html:261
+          `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0;
+          display:flex; flex-direction:column; gap:7px` -- the drill-in
+          register (25px H1), landed classes shared with every other 390
+          drill-in (DEC-643 amendment). */}
+      <div className="chq-phone-head chq-phone-head-drill">
+        <button type="button" className="chq-phone-back" onClick={onBack}>
+          &lsaquo; Speakers
+        </button>
+        <h1 className="chq-page-title">Roster</h1>
+        <span className="chq-summary">
+          <strong>{acceptedCount}</strong> accepted &middot; <strong>{notClaimedCount}</strong> not claimed
+        </span>
+      </div>
+
+      <div className="chq-phone-body chq-speakers-roster-body">
+        {rows.map((row) => (
+          <div key={row.contact.id} className="chq-speakers-roster-row">
+            <div className="chq-speakers-roster-row-identity">
+              <Link className="chq-row-title chq-speakers-name-link" to={`/speakers/${row.contact.id}`}>
+                {row.contact.name}
+              </Link>
+              <span className="chq-meta chq-speakers-roster-row-meta">{row.contact.company ?? '—'}</span>
+              {row.contact.participations.map((participation) => (
+                <ParticipationMenu
+                  key={participation.participantId}
+                  contactName={row.contact.name}
+                  label={row.contact.participations.length > 1 ? participation.ref : undefined}
+                  status={participation.inviteStatus}
+                  company={row.contact.company}
+                  hasAccount={row.contact.hasAccount}
+                  onSelectStatus={(status) =>
+                    onSelectStatus(row.contact.id, participation.submissionId, participation.participantId, status)
+                  }
+                  onSendInvite={() => onSendInvite(row.contact.id)}
+                  sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                  density="dense"
+                />
+              ))}
+            </div>
+            <Link className="chq-btn chq-btn-secondary chq-speakers-roster-open" to={`/speakers/${row.contact.id}`}>
+              Open
+            </Link>
+          </div>
+        ))}
+      </div>
+
+      {/* docs/design/Chautauqua Speakers.dc.html:278
+          `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
+          padding:12px 16px 16px; display:flex; gap:8px` -- 'Add a speaker'
+          opens RosterPanel's own 'add' mode (DEC-290); 'Import CSV' points
+          at the SAME Contacts-page import link this file's own 'add' modal
+          already carries a few lines above (Import speakers from a CSV),
+          since G13 lane-D fix (04-speakers--00) moved CSV import off this
+          page's grid and onto Contacts -- there is no second import path to
+          invent here. */}
+      <div className="chq-phone-dock">
+        <button type="button" className="chq-btn chq-btn-primary" onClick={onAddSpeaker}>
+          Add a speaker
+        </button>
+        <Link
+          className="chq-btn chq-btn-secondary"
+          to={`/contacts?import=1&eventId=${encodeURIComponent(eventId)}`}
+        >
+          Import CSV
+        </Link>
+      </div>
+    </div>
   );
 }

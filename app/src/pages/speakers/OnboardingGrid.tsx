@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { DEC_827 } from '../../../../src/decisions';
+import { DEC_678, DEC_827 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { useMenu } from '../../lib/useMenu';
 import { PageSkeleton } from '../../components/PageSkeleton';
@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
 import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
 import { ParticipationMenu } from './ParticipationMenu';
+import { RosterDrillIn } from './RosterPanel';
 import { countOf } from '../../lib/plural';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { firstNameOf } from '../../lib/identity';
@@ -34,6 +35,10 @@ import {
 // Compile-checked dependency marker: DEC-827 (import lives in Contacts;
 // Speakers links to it with the event already chosen).
 void DEC_827;
+// Compile-checked dependency marker: DEC-678 (v2-c amendment) -- the
+// single-active-facet empty-state naming/escape below (activeNarrowingFacets
+// / clearSingleNarrowingFacet / singleFacetClearLabel).
+void DEC_678;
 
 function nextStatus(status: AssignmentStatus): AssignmentStatus {
   return status === 'complete' ? 'pending' : 'complete';
@@ -256,6 +261,66 @@ function narrowingDescription(filters: GridFilterState, tasks: OnboardingTask[])
   return parts.join(' and ');
 }
 
+/** The single narrowing predicate currently set, or null when zero or two+
+ * are active. Same five checks as hasActiveNarrowing/narrowingDescription,
+ * kept as one array so a caller can both count them and clear exactly one
+ * without a second, possibly-drifting definition of "which facets exist". */
+type NarrowingFacet = 'q' | 'taskId' | 'status' | 'overdueOnly' | 'inviteStatus';
+
+function activeNarrowingFacets(filters: GridFilterState): NarrowingFacet[] {
+  const facets: NarrowingFacet[] = [];
+  if (filters.q.trim()) facets.push('q');
+  if (filters.taskId) facets.push('taskId');
+  if (filters.status) facets.push('status');
+  if (filters.overdueOnly) facets.push('overdueOnly');
+  if (filters.inviteStatus) facets.push('inviteStatus');
+  return facets;
+}
+
+/** DEC-678 amendment (w2-c, matching
+ * docs/design/Chautauqua Speakers.dc.html:442
+ * `Marcus Okafor is on the roster, but nothing of his is overdue. Clearing
+ * "Overdue only" finds him.` / `Clear the overdue filter ›`): when exactly
+ * one predicate is narrowing the roster, the escape clears only that
+ * predicate, not every facet -- clearNarrowingFacets stays reserved for the
+ * two-or-more case, where naming one of several active facets would be
+ * misleading about what the link actually restores. */
+function clearSingleNarrowingFacet(filters: GridFilterState, facet: NarrowingFacet): GridFilterState {
+  switch (facet) {
+    case 'q':
+      return { ...filters, q: '' };
+    case 'taskId':
+      return { ...filters, taskId: null };
+    case 'status':
+      return { ...filters, status: null };
+    case 'overdueOnly':
+      return { ...filters, overdueOnly: false };
+    case 'inviteStatus':
+      return { ...filters, inviteStatus: null };
+  }
+}
+
+/** The escape link's label for the single-facet case -- names the same
+ * facet narrowingDescription already isolated (there's exactly one part
+ * when activeNarrowingFacets has one entry), so the two can never disagree
+ * about which filter "Clear the X filter" refers to. */
+function singleFacetClearLabel(facet: NarrowingFacet, filters: GridFilterState, tasks: OnboardingTask[]): string {
+  switch (facet) {
+    case 'q':
+      return 'Clear the search filter ›';
+    case 'taskId': {
+      const task = tasks.find((t) => t.id === filters.taskId);
+      return task ? `Clear the "${task.title}" filter ›` : 'Clear the task filter ›';
+    }
+    case 'status':
+      return 'Clear the task-status filter ›';
+    case 'overdueOnly':
+      return 'Clear the overdue filter ›';
+    case 'inviteStatus':
+      return 'Clear the participation filter ›';
+  }
+}
+
 // DEC-934: a roster row whose participation is 'invited'/'declined' is one
 // the product will never chase (task expansion only covers
 // ACTIVE_INVITE_STATUSES) -- it now renders ITS ACTUAL task cells (quiet,
@@ -353,6 +418,18 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const [filters, setFilters] = useState<GridFilterState>(DEFAULT_GRID_FILTERS);
   const [page, setPage] = useState(1);
   const [showNewTask, setShowNewTask] = useState(false);
+  // docs/design/Chautauqua Speakers.dc.html:133 `Matrix becomes one card
+  // per speaker`: the phone head's "Filter" control reveals the SAME
+  // GridFilters toolbar the desktop page shows inline -- no second filter
+  // vocabulary, just a disclosure the desktop layout never needed because
+  // it has room to show the toolbar always. Phone-only; unread at
+  // widths above 700px where the toolbar is never hidden.
+  const [phoneFiltersOpen, setPhoneFiltersOpen] = useState(false);
+  // docs/design/Chautauqua Speakers.dc.html:260 `Roster · 390`: a phone-only
+  // drill-in reached from a link this file adds inside the phone head
+  // (hidden above 700px, so this state is unreachable -- and thus never
+  // rendered -- on the frozen desktop layout).
+  const [showRosterDrillIn, setShowRosterDrillIn] = useState(false);
   const [taskForms, setTaskForms] = useState<EventForm[]>([]);
   // DEC-746 (wave-59 amendment): the New task modal's subset picker
   // roster, fetched with the SAME effect shape as taskForms above -- only
@@ -783,6 +860,27 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     );
   }
 
+  if (showRosterDrillIn) {
+    const rosterRows = grid?.rows ?? [];
+    return (
+      <div className="chq-page chq-speakers-page chq-measure-table">
+        <RosterDrillIn
+          rows={rosterRows}
+          acceptedCount={counts?.speakers ?? 0}
+          notClaimedCount={rosterRows.filter((r) => !r.contact.hasAccount).length}
+          onAddSpeaker={onAddSpeaker}
+          onBack={() => setShowRosterDrillIn(false)}
+          eventId={eventId}
+          onSelectStatus={(contactId, submissionId, participantId, status) =>
+            setInviteStatus(contactId, submissionId, participantId, status)
+          }
+          onSendInvite={(contactId) => sendPortalInvite(contactId)}
+          invitingContactIds={invitingContactIds}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="chq-page chq-speakers-page chq-measure-table">
       {error && <div className="chq-error">{error}</div>}
@@ -795,6 +893,16 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         </div>
       )}
 
+      {/* DEC-662: exactly ONE <h1>/summary pair on this page, desktop and
+          phone alike -- docs/design/Chautauqua Speakers.dc.html:133 draws
+          the same 27px H1 and "N accepted · N overdue" summary the desktop
+          frame already has (only the font-size token differs, and that is
+          already phone-scaled globally by .chq-page-title's own @media
+          rule in app/src/styles.css). Only the ACTION ROW beneath it
+          swaps: the desktop's three buttons have no room at 390, so a
+          second, phone-only row (Remind outstanding / Filter, frame
+          :135-142) sits alongside it and the two toggle via this file's
+          own phone @media block below -- never a duplicate heading. */}
       <div className="chq-speakers-head">
         <div className="chq-speakers-head-titles">
           <h1 className="chq-page-title">Speakers</h1>
@@ -827,6 +935,35 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
               the grid — the link now lives in RosterPanel's Add-speaker
               dialog. */}
         </div>
+        <div className="chq-speakers-phone-head-actions">
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary"
+            onClick={() => openRemindReview()}
+            disabled={!grid || grid.rows.length === 0}
+          >
+            Remind outstanding
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            aria-expanded={phoneFiltersOpen}
+            onClick={() => setPhoneFiltersOpen((open) => !open)}
+          >
+            Filter
+          </button>
+        </div>
+        {/* Entry into the Roster drill-in (:260) -- phone-only via CSS
+            (below). The frame draws no control for this; it is this
+            task's own narrowest addition to make the drill-in genuinely
+            reachable rather than dead code. */}
+        <button
+          type="button"
+          className="chq-link-button chq-speakers-phone-roster-link"
+          onClick={() => setShowRosterDrillIn(true)}
+        >
+          Roster &rsaquo;
+        </button>
       </div>
 
       {/* DEC-265 amendment / G13 lane-D fix (04-speakers--09): the
@@ -848,7 +985,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         </div>
       )}
 
-      <div className="chq-speakers-toolbar">
+      <div className={phoneFiltersOpen ? 'chq-speakers-toolbar is-phone-open' : 'chq-speakers-toolbar'}>
         {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}
         {/* w7-f: "Remind all outstanding" (this page's bulk send) runs
             planManualReminders, which drops any assignment whose
@@ -882,19 +1019,35 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           above uses, so this message and that caption can never disagree.
           'fresh' (no facet at all -- the roster has never held a row) never
           claims a filter excluded anything. */}
-      {!loading && grid && visibleRows.length === 0 && (
-        <EmptyState
-          variant={hasActiveNarrowing(filters) ? 'filtered' : 'fresh'}
-          what={hasActiveNarrowing(filters) ? 'No speakers match the current filters.' : 'No speakers on the roster yet.'}
-          reason={
-            hasActiveNarrowing(filters)
-              ? narrowingDescription(filters, grid.tasks)
-              : 'Speakers appear here once a submission is accepted.'
-          }
-          action={null}
-          escape={hasActiveNarrowing(filters) ? { label: 'Clear filters', onClick: clearNarrowingFacets } : null}
-        />
-      )}
+      {!loading && grid && visibleRows.length === 0 && (() => {
+        // DEC-678 amendment (w2-c): one active facet gets its own name and
+        // its own escape (frame :442); two or more keep the prior
+        // multi-facet sentence and clear-all escape, unchanged.
+        const activeFacets = activeNarrowingFacets(filters);
+        const onlyFacet = activeFacets.length === 1 ? activeFacets[0] : null;
+        return (
+          <EmptyState
+            variant={hasActiveNarrowing(filters) ? 'filtered' : 'fresh'}
+            what={hasActiveNarrowing(filters) ? 'No speakers match the current filters.' : 'No speakers on the roster yet.'}
+            reason={
+              hasActiveNarrowing(filters)
+                ? narrowingDescription(filters, grid.tasks)
+                : 'Speakers appear here once a submission is accepted.'
+            }
+            action={null}
+            escape={
+              onlyFacet
+                ? {
+                    label: singleFacetClearLabel(onlyFacet, filters, grid.tasks),
+                    onClick: () => handleFiltersChange(clearSingleNarrowingFacet(filters, onlyFacet)),
+                  }
+                : hasActiveNarrowing(filters)
+                  ? { label: 'Clear filters', onClick: clearNarrowingFacets }
+                  : null
+            }
+          />
+        );
+      })()}
 
       {!loading && grid && visibleRows.length > 0 && (
         <>
@@ -1101,17 +1254,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       density="roomy"
                     />
                   ))}
-                  {declinedOnly ? (
-                    <span className="chq-speakers-not-chased-marker">{NOT_CHASED_MARKER}</span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
-                      onClick={() => openRemindReview([row.contact.id])}
-                    >
-                      Remind {firstNameOf(row.contact.name)}
-                    </button>
-                  )}
+                  {declinedOnly && <span className="chq-speakers-not-chased-marker">{NOT_CHASED_MARKER}</span>}
                   {/* DEC-934 amendment (wave 4): same identity-cell caption
                       as the pinned table -- the cells below still render. */}
                   {notChased !== null && (
@@ -1139,6 +1282,26 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       />
                     </div>
                   ))}
+                </div>
+                {/* docs/design/Chautauqua Speakers.dc.html:165
+                    `display:flex; gap:8px; padding-top:2px` -- the card's
+                    bottom action pair. A declined-only row has nothing for
+                    Remind to do (no live assignment will ever be chased --
+                    see NOT_CHASED_MARKER above), so it renders alone
+                    rather than as a disabled twin. */}
+                <div className="chq-speakers-card-actions">
+                  {!declinedOnly && (
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-secondary chq-speakers-remind-one"
+                      onClick={() => openRemindReview([row.contact.id])}
+                    >
+                      Remind {firstNameOf(row.contact.name)}
+                    </button>
+                  )}
+                  <Link className="chq-btn chq-btn-secondary" to={`/speakers/${row.contact.id}`}>
+                    Open profile
+                  </Link>
                 </div>
               </div>
               );
