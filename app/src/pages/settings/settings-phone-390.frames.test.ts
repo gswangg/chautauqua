@@ -10,10 +10,10 @@
 // v12 design pack -- the four PHONE frames this lane (w4-e, DEC-375/967)
 // owns: the Settings index and its three list drills.
 //
-//   "Settings"                          (docs/design/Chautauqua Settings.dc.html:275, extent 275-313)
-//   "Settings · Tracks and rooms"       (docs/design/Chautauqua Settings.dc.html:347, extent 347-390)
-//   "Settings · Your data"              (docs/design/Chautauqua Settings.dc.html:393, extent 393-441)
-//   "Settings · People and roles"       (docs/design/Chautauqua Settings.dc.html:552, extent 552-575)
+//   "Settings"                          (frame line 275, extent 275-313 -- receipted in its `it()` below)
+//   "Settings · Tracks and rooms"       (frame line 347, extent 347-390 -- receipted in its `it()` below)
+//   "Settings · Your data"              (frame line 393, extent 393-441 -- receipted in its `it()` below)
+//   "Settings · People and roles"       (frame line 552, extent 552-575 -- receipted in its `it()` below)
 //
 // DEC-967 ("a citation is not an assertion"): every frame below is claimed
 // with a strict citation landing inside its extent, a verbatim backticked
@@ -135,13 +135,14 @@ describe('DEC-385: settings.css declares no min-width media query', () => {
   });
 });
 
-describe('v12 phone frame "Settings" (390) -- docs/design/Chautauqua Settings.dc.html:275', () => {
+describe('v12 phone frame "Settings" (390)', () => {
   it('draws the index row as `{{ g.label }}` beside an olive "Open" on one baseline', () => {
     verbatimLine(
       DESIGN_FILE,
       289,
       '              <span style="font-size:13px; font-weight:700; color:#4E5C31">Open</span>',
     );
+    // docs/design/Chautauqua Settings.dc.html:289 `              <span style="font-size:13px; font-weight:700; color:#4E5C31">Open</span>`
     const row = ruleIn(SETTINGS_PHONE, '.chq-settings-rail-link-row');
     expect(row).toMatch(/justify-content:\s*space-between/);
     const open = ruleIn(SETTINGS_PHONE, '.chq-settings-rail-link-open');
@@ -160,9 +161,9 @@ describe('v12 phone frame "Settings" (390) -- docs/design/Chautauqua Settings.dc
       '          <span style="font-size:13px; color:#565A4B; line-height:1.5">Embed codes are easier to copy on a laptop</span>',
     );
     expect(SETTINGS_TSX).toContain('Embed codes are easier to copy on a laptop');
-    const hint = ruleIn(SETTINGS_PHONE, '.chq-settings-index-hint');
+    const hint = ruleIn(SETTINGS_PHONE, '.chq-settings-rail-note');
     expect(hint).toMatch(/display:\s*block/);
-    expect(ruleIn(SETTINGS_DESKTOP, '.chq-settings-index-hint')).toMatch(/display:\s*none/);
+    expect(ruleIn(SETTINGS_DESKTOP, '.chq-settings-rail-note')).toMatch(/display:\s*none/);
   });
 
   it('floors every phone-layer min-height at 44px (DESIGN-RULINGS "the 44px floor")', () => {
@@ -172,7 +173,7 @@ describe('v12 phone frame "Settings" (390) -- docs/design/Chautauqua Settings.dc
   });
 });
 
-describe('v12 phone frame "Settings · Tracks and rooms" (390) -- docs/design/Chautauqua Settings.dc.html:347', () => {
+describe('v12 phone frame "Settings · Tracks and rooms" (390)', () => {
   it('opens with the 44px `‹ Settings` link over the 26px cluster-local title', () => {
     verbatimLine(
       DESIGN_FILE,
@@ -184,6 +185,7 @@ describe('v12 phone frame "Settings · Tracks and rooms" (390) -- docs/design/Ch
       350,
       '        <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.04em; line-height:1">Tracks and rooms</h1>',
     );
+    // docs/design/Chautauqua Settings.dc.html:350 `        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.04em; line-height:1">Tracks and rooms</h1>`
     const title = ruleIn(SETTINGS_PHONE, '.chq-settings-drill-title');
     expect(title).toMatch(/font-size:\s*26px/);
     // Never the OTHER drill-in register (Roster/Import CSV/etc's shared
@@ -211,7 +213,7 @@ describe('v12 phone frame "Settings · Tracks and rooms" (390) -- docs/design/Ch
   });
 });
 
-describe('v12 phone frame "Settings · Your data" (390) -- docs/design/Chautauqua Settings.dc.html:393', () => {
+describe('v12 phone frame "Settings · Your data" (390)', () => {
   it('boxes each export/token row action at 44px, bordered, sunk-fill -- "Download"/"Revoke"', () => {
     verbatimLine(
       DESIGN_FILE,
@@ -223,6 +225,7 @@ describe('v12 phone frame "Settings · Your data" (390) -- docs/design/Chautauqu
       423,
       '            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Revoke</span>',
     );
+    // docs/design/Chautauqua Settings.dc.html:409 `            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Download</span>`
     const action = ruleIn(SETTINGS_PHONE, '.chq-settings-panel .chq-link-button');
     expect(action).toMatch(/min-height:\s*44px/);
     expect(action).toMatch(/border:\s*1px solid var\(--chq-border\)/);
@@ -244,13 +247,14 @@ describe('v12 phone frame "Settings · Your data" (390) -- docs/design/Chautauqu
   });
 });
 
-describe('v12 phone frame "Settings · People and roles" (390) -- docs/design/Chautauqua Settings.dc.html:552', () => {
+describe('v12 phone frame "Settings · People and roles" (390)', () => {
   it('boxes the per-person "Change" action at 44px, bordered, sunk-fill, and stacks the 14px rows', () => {
     verbatimLine(
       DESIGN_FILE,
       565,
       '            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Change</span>',
     );
+    // docs/design/Chautauqua Settings.dc.html:565 `            <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Change</span>`
     const action = ruleIn(SETTINGS_PHONE, '.chq-settings-panel .chq-link-button');
     expect(action).toMatch(/min-height:\s*44px/);
     const row = ruleIn(SETTINGS_PHONE, '.chq-settings-people-row');

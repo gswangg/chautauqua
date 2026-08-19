@@ -265,6 +265,12 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "imports it exclusively via `import type`.",
   "app/src/pages/overview/types.ts":
     "Type-only module -- every consumer (AgendaWorkSection, rows.ts) imports it exclusively via `import type`.",
+  "app/src/pages/settings/TracksRoomsPanel.render-helpers.ts":
+    "Test-only fixture module for a custodian-split render suite -- five sibling suites " +
+    "(TracksRoomsPanel.render.test.tsx, -errors.render.test.tsx, -remove.render.test.tsx, " +
+    "-edit-save.render.test.tsx, -css.test.ts) import it, but it carries a plain `.ts` extension " +
+    "precisely so vitest's include globs never collect it as a suite of its own, which is why the " +
+    "reachability walk -- which excludes test files as entry points -- cannot see its importers.",
   "app/src/pages/speakers/speakerDetail.ts":
     "Type-only module (every export is an interface or a string-literal union type) -- its one consumer, " +
     "SpeakerDetailPage.tsx, imports it exclusively via `import type`.",

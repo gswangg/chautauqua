@@ -1,7 +1,7 @@
 // task-w3-f/DEC-032 (wave-85 amendment): SETTINGS AT 390 (II) -- Call for
-// papers, Public pages and Speaker portal phone-drill geometry
-// (docs/design/Chautauqua Settings.dc.html:444-477 / :481-506 /
-// :510-548). Deliberately `.test.ts`, not `.test.tsx` -- vitest.config.ts's
+// papers, Public pages and Speaker portal phone-drill geometry (frame
+// spans 444-477 / 481-506 / 510-548, each receipted in its own `describe`
+// block below). Deliberately `.test.ts`, not `.test.tsx` -- vitest.config.ts's
 // include globs only pick up `app/src/**/*.test.ts` and
 // `app/src/**/*.render.test.tsx`, so a `.tsx` scan here would run nowhere
 // and report nothing (field guide, wave-85 note).

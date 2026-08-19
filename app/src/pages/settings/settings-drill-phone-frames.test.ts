@@ -1,7 +1,7 @@
 // task-w4-f (DEC-375, DEC-967): Settings at 390 -- the four form-and-card
-// drills (docs/design/Chautauqua Settings.dc.html:444 'Settings · Call for
-// papers', :481 'Settings · Public pages', :510 'Settings · Speaker
-// portal', :578 'Settings · Saved embeds').
+// drills (frame line 444 'Settings · Call for papers', line 481 'Settings ·
+// Public pages', line 510 'Settings · Speaker portal', line 578 'Settings ·
+// Saved embeds' -- each receipted in its own `describe` block below).
 //
 // This is a source-scan test (jsdom does not evaluate @media rules, and
 // this directory's own precedent -- shell-geometry.test.ts,
@@ -85,6 +85,7 @@ describe('DEC-385 (wave-85): task-w4-f\'s block is the trailing, last top-level 
 });
 
 describe('CFP drill (docs/design/Chautauqua Settings.dc.html:444 \'Settings · Call for papers\')', () => {
+  // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
   it('line 444 declares the phone frame shell', () => {
     expect(frameLine(444)).toBe(
       '<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',
@@ -113,6 +114,7 @@ describe('CFP drill (docs/design/Chautauqua Settings.dc.html:444 \'Settings · C
 });
 
 describe('Public pages drill (docs/design/Chautauqua Settings.dc.html:481 \'Settings · Public pages\')', () => {
+  // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
   it('line 481 declares the phone frame shell', () => {
     expect(frameLine(481)).toBe(
       '<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',
@@ -129,6 +131,7 @@ describe('Public pages drill (docs/design/Chautauqua Settings.dc.html:481 \'Sett
 });
 
 describe('Speaker portal drill (docs/design/Chautauqua Settings.dc.html:510 \'Settings · Speaker portal\')', () => {
+  // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
   it('line 510 declares the phone frame shell', () => {
     expect(frameLine(510)).toBe(
       '<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',
@@ -157,6 +160,7 @@ describe('Speaker portal drill (docs/design/Chautauqua Settings.dc.html:510 \'Se
 });
 
 describe('Saved embeds drill (docs/design/Chautauqua Settings.dc.html:578 \'Settings · Saved embeds\')', () => {
+  // `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
   it('line 578 declares the phone frame shell', () => {
     expect(frameLine(578)).toBe(
       '<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">',
