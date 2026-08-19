@@ -10,19 +10,38 @@ asserts its renderer either applies the shared `chq-phone-dock` class or sets
 `.chq-shell:has(.chq-phone-dock) .chq-tabbar`) to suppress the phone tab bar
 underneath a docked footer.
 
-Two real offenders were found this wave. One was in reach and fixed in this
-task (`.chq-review-editor-title-actions` / `app/src/pages/review/
+Two real offenders were found in an earlier wave. One was in reach and fixed
+then (`.chq-review-editor-title-actions` / `app/src/pages/review/
 PlanEditor.tsx` -- the page root now sets `data-chq-phone-dock` when
-`isPhone`, matching Scorecard.tsx's idiom). The other is a structural gap,
-not a one-attribute fix, and is recorded here rather than patched:
+`isPhone`, matching Scorecard.tsx's idiom). The other -- the ModalFrame
+portal gap below -- is FIXED as of wave-106:
 
-| class | sheet | renderer | owning cluster | why it can't be a one-line fix |
+| class | sheet | renderer | owning cluster | status |
 |---|---|---|---|---|
-| `.chq-contacts-import-phone-dock` | `app/src/pages/contacts/contacts-panels.css:1605` | `app/src/pages/contacts/ImportWizard.tsx:1015` | Contacts | `ImportWizard` renders through `ModalFrame`, which `createPortal`s its whole tree to `document.body` (`app/src/components/ModalFrame.tsx:161-177`) -- entirely outside `.chq-shell`/`.chq-main`. Neither shell selector (`.chq-shell:has(...)`, `.chq-main:has(...) ~ .chq-tabbar`) can ever match a node in a sibling DOM subtree, so setting `data-chq-phone-dock` anywhere inside the modal is a no-op regardless of placement. Suppressing the tab bar under this dock needs either a shell-side "a modal with a phone dock is open" signal (e.g. a body-level class toggled by `ModalFrame` itself, matched with a plain descendant/sibling combinator instead of `:has()` across the portal boundary) or a rethink of where the modal portals on phone. That's a shell/`ModalFrame` decision, not a page-local one -- out of this task's scope (`app/src/styles.css` and `App.tsx` are both off-limits here), and `ModalFrame.tsx` is shared infrastructure other clusters render through, so it isn't a narrow single-page fix either. |
+| `.chq-contacts-import-phone-dock` | `app/src/pages/contacts/contacts-panels.css:1605` | `app/src/pages/contacts/ImportWizard.tsx:1015` | Contacts | FIXED (DEC-576 wave-106). |
 
-No ratchet is seeded for this: the scan's assertion (`every real docked
-footer class declares itself to the shell`) stays un-relaxed and will
-correctly stay RED on `.chq-contacts-import-phone-dock` until a future wave
-either fixes `ModalFrame`'s portal boundary or the shell's suppression
-mechanism. A ceiling above the truth is a licence (field guide, wave 95) --
-this row is a to-do, not an exemption list entry in the scan itself.
+`ImportWizard` renders through `ModalFrame`, which `createPortal`s its whole
+tree to `document.body` (`app/src/components/ModalFrame.tsx:161-177`) --
+entirely outside `.chq-shell`/`.chq-main`, so neither existing shell
+`:has()` selector (scoped to `.chq-shell`/`.chq-main` descendants) could
+reach a `data-chq-phone-dock` set anywhere inside the modal. `.chq-tabbar`
+and `.chq-scrim` (`ModalFrame`'s portal root) are both descendants of
+`<body>`, so a body-rooted `:has()` is the one combinator that spans the
+portal boundary. `app/src/styles.css`'s terminal
+`@media (max-width: 700px)` block now adds a third suppression rule beside
+the two existing ones:
+
+```
+body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar { display: none; }
+```
+
+scoped to `.chq-scrim` on purpose, so only a MODAL dock reaches across the
+portal boundary -- an in-shell dock keeps using the two narrower rules.
+`ImportWizard.tsx`'s `.chq-contacts-import-phone-dock` element now carries
+`data-chq-phone-dock`, the same attribute contract other page-local docks
+already use, closing this row without any rework of `ModalFrame` itself.
+
+`app/src/phone-dock-declares.scan.test.ts`'s `KNOWN_UNFIXABLE_BY_ATTRIBUTE`
+array is now empty (kept exported, for the next genuine structural gap)
+and a new assertion checks the body-rooted rule is actually present in
+`styles.css`, so the attribute alone can't pass this scan by accident.

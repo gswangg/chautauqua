@@ -2491,6 +2491,20 @@ select:focus-visible,
     display: none;
   }
 
+  /* DEC-576 wave-106: ImportWizard.tsx renders its phone dock through
+     ModalFrame, which createPortals to document.body under a .chq-scrim
+     root (ModalFrame.tsx:161-177) -- outside .chq-shell and .chq-main, so
+     neither rule above can reach it (both are scoped to descendants of
+     .chq-shell or .chq-main). .chq-tabbar and .chq-scrim are both
+     descendants of body, so a body-rooted :has() is the one combinator
+     that spans the portal boundary. This is deliberately scoped to
+     .chq-scrim, not to body generally, so only a MODAL dock reaches
+     across the portal -- an in-shell dock keeps using the two narrower
+     rules above it. */
+  body:has(.chq-scrim [data-chq-phone-dock]) .chq-tabbar {
+    display: none;
+  }
+
   /* docs/design/Chautauqua Speakers.dc.html:262
      `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center` */
   .chq-phone-back {

@@ -39,19 +39,34 @@ function stripComments(css: string): string {
 }
 
 /** Extracts the body text of every @media block whose condition mentions
- * the phone-width breakpoint (700px), mirroring phone-block-visibility.
- * test.ts's extractPhoneMediaBodies -- one level of nested braces inside
- * @media, which is all this codebase's stylesheets use. */
+ * the phone-width breakpoint (700px). Same one-level-of-nesting semantics
+ * as phone-block-visibility.test.ts's extractPhoneMediaBodies (this
+ * codebase's stylesheets never nest @media deeper than one level), but
+ * implemented as a linear-time brace-depth walk rather than that file's
+ * `(?:[^{}]*\{[^{}]*\}[^{}]*)*` regex: on a stylesheet this size (thousands
+ * of `{...}` rule pairs inside one @media block) that regex's overlapping
+ * `[^{}]*` boundaries between iterations exhibit catastrophic backtracking
+ * (confirmed to not terminate in 3+ CPU-minutes on this file), which would
+ * hang every test in this file. DEC-576 wave-106. */
 function extractPhoneMediaBodies(css: string): string {
-  const re = /@media([^{]*)\{((?:[^{}]*\{[^{}]*\}[^{}]*)*)\}/g;
   let out = '';
+  const re = /@media([^{]*)\{/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(css))) {
     const condition = m[1];
-    const body = m[2];
-    if (condition !== undefined && body !== undefined && /max-width:\s*700px/.test(condition)) {
+    const bodyStart = re.lastIndex;
+    let depth = 1;
+    let i = bodyStart;
+    for (; i < css.length && depth > 0; i++) {
+      if (css[i] === '{') depth++;
+      else if (css[i] === '}') depth--;
+    }
+    const bodyEnd = i - 1;
+    const body = css.slice(bodyStart, bodyEnd);
+    if (condition !== undefined && /max-width:\s*700px/.test(condition)) {
       out += `${body}\n`;
     }
+    re.lastIndex = i;
   }
   return out;
 }
@@ -130,16 +145,7 @@ function loadRendererSources(): CssSource[] {
  * docs/design/audit/phone-dock-declaration-v12.md, not a licence: removing
  * a row here should always be because the underlying gap was fixed, never
  * because the scan got noisy. */
-export const KNOWN_UNFIXABLE_BY_ATTRIBUTE: Array<[className: string, reason: string]> = [
-  [
-    'chq-contacts-import-phone-dock',
-    'ImportWizard.tsx renders through ModalFrame, which createPortals its ' +
-      'whole tree to document.body (ModalFrame.tsx:161-177) -- entirely ' +
-      'outside .chq-shell/.chq-main, so neither shell :has() selector can ' +
-      'ever match a data-chq-phone-dock set anywhere inside the modal. ' +
-      'See docs/design/audit/phone-dock-declaration-v12.md.',
-  ],
-];
+export const KNOWN_UNFIXABLE_BY_ATTRIBUTE: Array<[className: string, reason: string]> = [];
 const KNOWN_UNFIXABLE_SET = new Set(KNOWN_UNFIXABLE_BY_ATTRIBUTE.map(([c]) => c));
 
 interface Offender {
@@ -246,6 +252,27 @@ describe('every page-local phone dock declares itself to the shell (DEC-576, wav
     for (const [className] of KNOWN_UNFIXABLE_BY_ATTRIBUTE) {
       expect(allClasses.has(className)).toBe(true);
     }
+  });
+
+  it('the ModalFrame-portal dock (DEC-576 wave-106) is reachable via a body-rooted :has() rule, not just the attribute', () => {
+    const stylesPath = join(APP_SRC, 'styles.css');
+    const stylesCss = readFileSync(stylesPath, 'utf8');
+    const phoneBody = stripComments(extractPhoneMediaBodies(stylesCss));
+    const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+    let found = false;
+    let m: RegExpExecArray | null;
+    while ((m = ruleRe.exec(phoneBody))) {
+      const selectorList = m[1];
+      const body = m[2];
+      if (selectorList === undefined || body === undefined) continue;
+      if (
+        /body:has\(\.chq-scrim \[data-chq-phone-dock\]\)/.test(selectorList) &&
+        /display\s*:\s*none/.test(body)
+      ) {
+        found = true;
+      }
+    }
+    expect(found).toBe(true);
   });
 
   it('every real docked footer class declares itself to the shell', () => {
