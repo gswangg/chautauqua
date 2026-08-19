@@ -149,3 +149,14 @@ Publish schedule survives as the head's full-width action row (DEC-919
 remedy). Whether it belongs in the phone dock instead is a frame deviation
 needing a proper ruling later — the frame's dock draws only
 Unscheduled + Auto-schedule.
+
+## Worker discipline (meta-observed, 2026-08-19)
+- Commit d3f6bf0c staged with `git add -A`, sweeping 23 files from four
+  OTHER lanes under an unrelated message. HARD RULE (restated): path-scoped
+  staging only, never `git add -A` — a worker commits exactly the files its
+  own task touched. Merge trains: attribute d3f6bf0c's swept content to the
+  meta fix lane (CFP/agenda/scorecard/docs fixes).
+- `git stash` is unsafe in the shared repo (two workers raced stashes);
+  stash@{1} "merge-train: planner decision docs" is stranded and needs its
+  owner to apply or drop it. Workers: never stash on shared main — commit or
+  leave the tree alone.
