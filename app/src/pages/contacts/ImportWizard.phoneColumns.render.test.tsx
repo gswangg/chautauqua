@@ -229,14 +229,47 @@ describe('ImportWizard: phone-only Import CSV pager (v12m-w2-b, frame :487)', ()
     expect(requestBody.mapping.Company).toBeUndefined();
   });
 
-  // DEC-663 (wave-87 amendment, contacts-v12.md finding 2): the frame's
-  // phone-position "N rows match an existing contact" note has no data at
-  // this step (the dry run hasn't run) -- the same-file dedupe note this
-  // wizard used to reuse there is now desktop-only, hidden at phone width
-  // rather than repositioned under the phone radio list. jsdom applies no
-  // stylesheet, so this is a source-scan pin on the CSS text, not computed
-  // style (see phoneLayerRuleBody above).
-  it('hides the same-file dedupe note at phone width -- nothing stands in for the plan-sourced note before the dry run has run', () => {
-    expect(phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-dedupe')).toMatch(/display:\s*none/);
+  // DEC-663 (wave-108 amendment, ruling A / contacts-v12.md finding 2,
+  // RESOLVED -- supersedes the wave-87 "hidden at phone width" pin this
+  // test used to carry): docs/design/Chautauqua Contacts.dc.html:506
+  // ("Import CSV · 390") draws a 13px muted body note at exactly this slot
+  // with `padding: 16px 0 0`, and .chq-contacts-import-dedupe is ONE node
+  // read at both widths (v12m-w9-h) -- the phone layer re-spaces it under
+  // the radio list rather than hiding it. jsdom applies no stylesheet, so
+  // this is a source-scan pin on the CSS text, not computed style (see
+  // phoneLayerRuleBody above).
+  it('re-spaces the same-file dedupe note under the phone radio list -- same node, both widths', () => {
+    expect(phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import-dedupe')).toMatch(/padding-top:\s*16px/);
+  });
+
+  // DEC-663 (wave-108 amendment, ruling B / contacts-v12.md finding 1,
+  // RESOLVED): the frame draws exactly ONE footer pair at 390
+  // (docs/design/Chautauqua Contacts.dc.html:508-511) -- the page-owned
+  // `.chq-contacts-import-phone-dock` (Next column / Skip, or Review N
+  // rows on the last column). ModalFrame's own `.chq-modal-actions`
+  // (Import N rows / Cancel) must be hidden whenever that page-owned dock
+  // is present, via the shared `[data-chq-phone-dock]` attribute contract
+  // (styles.css:2262 uses the same idiom) -- not a new class, not a TSX
+  // prop.
+  it('hides the shared ModalFrame footer at phone width when the page-owned phone dock is present', () => {
+    expect(phoneLayerRuleBody(PANELS_CSS, '.chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions')).toMatch(
+      /display:\s*none/,
+    );
+  });
+
+  // Falsifiability control: a synthetic sheet that never declares the
+  // hide rule must NOT be flagged as having it -- phoneLayerRuleBody
+  // throws (its own "no phone rule for <selector>" contract) rather than
+  // silently matching something else, so a sheet lacking the rule fails
+  // this assertion instead of passing it by accident.
+  it('phoneLayerRuleBody does not manufacture a match for a sheet that lacks the hide rule', () => {
+    const sheetWithoutTheRule = `
+      @media (max-width: 700px) {
+        .chq-contacts-import-dedupe { padding-top: 16px; }
+      }
+    `;
+    expect(() =>
+      phoneLayerRuleBody(sheetWithoutTheRule, '.chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions'),
+    ).toThrow(/no phone rule for/);
   });
 });

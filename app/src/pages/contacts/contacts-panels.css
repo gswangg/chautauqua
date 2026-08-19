@@ -1750,4 +1750,31 @@
   .chq-contacts-merge-impact-generic {
     display: inline;
   }
+
+  /* v12m-w4-m (DEC-663 wave-108 amendment, finding 1): the frame draws
+     exactly ONE footer pair at 390 (docs/design/Chautauqua Contacts.dc.html
+     :508-511, "Import CSV · 390") -- "Next column" / "Skip". The page-owned
+     `.chq-contacts-import-phone-dock` above already IS that pair; ModalFrame
+     unconditionally also renders its own `.chq-modal-actions` ("Import N
+     rows" / "Cancel" on the match-columns step, per ImportWizard.tsx's
+     `actions` expression), stacking a second dock beneath the first. Use
+     the existing `[data-chq-phone-dock]` attribute contract (already used
+     by styles.css:2262's `.chq-main:has([data-chq-phone-dock])`) to hide
+     the shared footer whenever the page-owned dock is present, rather than
+     add a TSX prop or a new class.
+
+     DEC-919 capability receipt -- both hidden `.chq-modal-actions` controls
+     survive elsewhere on screen at 390:
+       - "Import N rows" (primary) -> the phone dock's own last-column
+         primary, which reads "Review N rows" once `isLastPhoneColumn` is
+         true (ImportWizard.tsx ~1028; asserted by
+         ImportWizard.phoneColumns.render.test.tsx).
+       - "Cancel" (secondary)      -> ModalFrame's header Close control
+         (`.chq-modal-close-btn`, ModalFrame.tsx ~132), which lives in
+         `.chq-modal-head`, not `.chq-modal-actions`, and is never hidden at
+         any width (modal-frame.css has no rule hiding it below 700px) --
+         verified before writing this receipt. */
+  .chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions {
+    display: none;
+  }
 }
