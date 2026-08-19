@@ -92,7 +92,7 @@ describe("POST /portal/submissions/:id/participants route", () => {
     loadEditableSubmissionMock.mockResolvedValue(BASE_DATA);
   });
 
-  it("redirects to the edit page on success, calling addCoPresenter with the posted fields", async () => {
+  it("renders the edit page directly at 200 on success (DEC-029: a redirect here is what discarded the draft), calling addCoPresenter with the posted fields", async () => {
     addCoPresenterMock.mockResolvedValueOnce({ ok: true });
     const app = buildApp();
     const res = await postParticipant(app, {
@@ -101,8 +101,8 @@ describe("POST /portal/submissions/:id/participants route", () => {
       email: "marcus@example.com",
       role: "co-presenter",
     });
-    expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/portal/submissions/s1/edit");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
     const [, submitted] = addCoPresenterMock.mock.calls[0] as [unknown, Record<string, unknown>];
     expect(submitted).toMatchObject({
       submissionId: "s1",
@@ -112,6 +112,121 @@ describe("POST /portal/submissions/:id/participants route", () => {
       email: "marcus@example.com",
       role: "co-presenter",
     });
+  });
+
+  it("DEC-029: a REFUSAL (duplicate co-presenter) re-renders a posted, unsaved title into the edit form instead of falling back to the stored answer", async () => {
+    addCoPresenterMock.mockResolvedValueOnce({ ok: false, errors: { email: "This person is already on the session" } });
+    loadEditableSubmissionMock.mockResolvedValue({
+      ...BASE_DATA,
+      fields: [{ id: "title", kind: "text", label: "Title", required: true, section: "session" } as never],
+      answers: { title: "Stored title from the database" },
+    });
+    const app = buildApp();
+    const params = new URLSearchParams();
+    params.append("chq_csrf", CSRF_TOKEN);
+    params.append("field__title", "A brand new unsaved title");
+    params.append("firstName", "Marcus");
+    params.append("lastName", "Okafor");
+    params.append("email", "marcus@example.com");
+    params.append("role", "co-presenter");
+    const res = await app.request("/portal/submissions/s1/participants", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie: `chq_csrf=${CSRF_TOKEN}`,
+      },
+      body: params.toString(),
+    });
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("A brand new unsaved title");
+    expect(html).not.toContain("Stored title from the database");
+  });
+
+  it("DEC-029: a SUCCESS also re-renders a posted, unsaved title into the edit form instead of the stored answer", async () => {
+    addCoPresenterMock.mockResolvedValueOnce({ ok: true });
+    loadEditableSubmissionMock.mockResolvedValue({
+      ...BASE_DATA,
+      fields: [{ id: "title", kind: "text", label: "Title", required: true, section: "session" } as never],
+      answers: { title: "Stored title from the database" },
+    });
+    const app = buildApp();
+    const params = new URLSearchParams();
+    params.append("chq_csrf", CSRF_TOKEN);
+    params.append("field__title", "A brand new unsaved title");
+    params.append("firstName", "Marcus");
+    params.append("lastName", "Okafor");
+    params.append("email", "marcus@example.com");
+    params.append("role", "co-presenter");
+    const res = await app.request("/portal/submissions/s1/participants", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie: `chq_csrf=${CSRF_TOKEN}`,
+      },
+      body: params.toString(),
+    });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("A brand new unsaved title");
+    expect(html).not.toContain("Stored title from the database");
+  });
+
+  it("DEC-029: the add persists nothing it posted — only addCoPresenter's own write happens, never a saveSubmissionEdits-shaped write of the draft answers", async () => {
+    // The route module never imports saveSubmissionEdits for this handler;
+    // the only write path exercised for POST /participants is addCoPresenter
+    // itself, called once with exactly the co-presenter fields (never the
+    // draft answers) — asserting this against the SAME mocked repo module
+    // the route imports is the narrowest proof available at this layer that
+    // Save changes stays the only writer of submission answers.
+    addCoPresenterMock.mockResolvedValueOnce({ ok: true });
+    loadEditableSubmissionMock.mockResolvedValue({
+      ...BASE_DATA,
+      fields: [{ id: "title", kind: "text", label: "Title", required: true, section: "session" } as never],
+      answers: { title: "Stored title from the database" },
+    });
+    const app = buildApp();
+    const params = new URLSearchParams();
+    params.append("chq_csrf", CSRF_TOKEN);
+    params.append("field__title", "A brand new unsaved title");
+    params.append("firstName", "Marcus");
+    params.append("lastName", "Okafor");
+    params.append("email", "marcus@example.com");
+    params.append("role", "co-presenter");
+    await app.request("/portal/submissions/s1/participants", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie: `chq_csrf=${CSRF_TOKEN}`,
+      },
+      body: params.toString(),
+    });
+    expect(addCoPresenterMock).toHaveBeenCalledTimes(1);
+    const [, submitted] = addCoPresenterMock.mock.calls[0] as [unknown, Record<string, unknown>];
+    expect(submitted).not.toHaveProperty("title");
+    expect(submitted).not.toHaveProperty("answers");
+    // Re-reading the submission (loadEditableSubmission, the only read the
+    // route performs of submission state) still returns the unmodified
+    // stored answer — nothing the add posted overwrote it.
+    const reread = await loadEditableSubmissionMock();
+    expect(reread.answers.title).toBe("Stored title from the database");
+  });
+
+  it("DEC-986 class: none of the four co-presenter controls carries `required`, so adding a co-presenter can never block the page's primary Save", async () => {
+    const app = buildApp();
+    const res = await app.request("/portal/submissions/s1/edit");
+    const html = await res.text();
+    for (const id of ["cp-first-name", "cp-last-name", "cp-email", "cp-role"]) {
+      const start = html.indexOf(`id="${id}"`);
+      expect(start).toBeGreaterThan(-1);
+      // Look at a bounded window around the tag for a `required` attribute
+      // rather than the whole document (some other control on the page
+      // could legitimately carry one).
+      const windowStart = Math.max(0, start - 200);
+      const tagWindow = html.slice(windowStart, start + 200);
+      expect(tagWindow).not.toMatch(/\brequired\b/);
+      expect(tagWindow).toContain('form="chq-portal-edit-form"');
+    }
   });
 
   it("re-renders the edit page with field errors on failure (400, not a redirect)", async () => {
