@@ -107,15 +107,23 @@ describe("frame docs/design's \"Chautauqua Submissions\" frame ('Submissions' 39
   // docs/design/Chautauqua Submissions.dc.html:148
   // `display:flex; gap:7px; overflow-x:auto`
   // DEC-919 wave-92/102: three status pills only -- ColumnPicker hidden.
-  it('the status pills and track select remain in one horizontally scrolling strip; the ColumnPicker is hidden', () => {
+  // DEC-919 wave-110 amendment (task v12m-w6-d) supersedes this file's own
+  // wave-6/7 ruling above for THIS one claim: docs/design/Chautauqua
+  // Submissions.dc.html:148-151 draws exactly three chips ('Needs triage' /
+  // 'Accepted' / 'All 47') and no track control -- both are now stood down
+  // (receipted, app/src/phone-capability-removal.scan.test.ts), narrower
+  // than the full six-status/track-select strip this file previously
+  // asserted. The ColumnPicker hide stands unchanged.
+  it('the status chip strip is narrowed to pending/accepted and the track select is hidden; the ColumnPicker is hidden', () => {
     expect(PHONE).toMatch(/\.chq-submissions-filterbar,[\s\S]{0,200}overflow-x:\s*auto/);
     expect(PHONE).toMatch(/\.chq-submissions-filterbar \.chq-status-pills\s*\{[^}]*gap:\s*7px/);
-    expect(PHONE).not.toMatch(/\.chq-status-pills \[data-status\][^{]*:not\(/);
-    expect(PHONE).not.toMatch(/\.chq-submissions-filterbar \.chq-submissions-filterbar-select[\s\S]{0,200}display:\s*none/);
+    expect(PHONE).toMatch(
+      /\.chq-status-pills \[data-status\]:not\(\[data-status='pending'\]\):not\(\[data-status='accepted'\]\)[^{]*\{[^}]*display:\s*none/,
+    );
+    expect(PHONE).toMatch(/\.chq-submissions-filterbar \.chq-submissions-filterbar-select[^{]*\{[^}]*display:\s*none/);
     expect(PHONE).toMatch(/\.chq-submissions-columnpicker[\s\S]{0,200}display:\s*none/);
-    // The remaining track select clears the 44px floor; the ColumnPicker's
-    // `> summary` rule is a desktop-only pin that survives the hide unreached.
-    expect(PHONE).toMatch(/\.chq-submissions-filterbar-select\s*\{[^}]*min-height:\s*44px/);
+    // The ColumnPicker's `> summary` rule is a desktop-only pin that
+    // survives the hide unreached.
     expect(PHONE).toMatch(/\.chq-submissions-columnpicker > summary\s*\{[^}]*min-height:\s*44px/);
   });
 

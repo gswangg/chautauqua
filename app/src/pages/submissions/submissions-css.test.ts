@@ -1,15 +1,16 @@
-// v12 mobile campaign wave 6 (task w6-f), superseding the wave-2 DEC-919
-// interpretation this test file previously pinned. Frame docs/design/
-// Chautauqua Submissions.dc.html:137-152 (further citations name any line
-// in :137-:180, the frame's extent) draws the phone head as an H1+summary
-// baseline, a full-width 44px search field on its own line, then a 7px-gap
-// horizontally scrolling chip strip. DESIGN-RULINGS' governing principle
-// -- a 390 frame keeps the desktop design's CAPABILITIES, nothing is
-// deleted at phone width -- means the frame's anatomy is honoured by
-// RE-LINING, not by hiding the sort select, the track select, the
-// ColumnPicker, or any status pill beyond the two named in the frame's
-// copy. Only the 'Status' caption and the hairline divider (chrome, not a
-// capability) go away. jsdom applies no external stylesheet's @media rule
+// v12 mobile campaign wave 110 (task v12m-w6-d, DEC-919 amendment),
+// superseding the wave-6 (task w6-f) interpretation this test file
+// previously pinned. Frame docs/design/Chautauqua Submissions.dc.html:
+// 137-152 draws the 390 head as: wordmark row, title row (H1 + summary on
+// a shared baseline), ONE 44px search box on its own line (:147), then ONE
+// `display:flex; gap:7px; overflow-x:auto` strip of exactly three 44px
+// chips (:148-151 'Needs triage' filled / 'Accepted' / 'All 47') -- "Nothing
+// else". That is a NARROWER anatomy than wave-6/7's "re-line, never remove"
+// reading: this amendment explicitly reverses it for this screen -- the
+// saved-views strip and the sort/track selects have no line left in the
+// frame and are stood down (each with its own DEC-919 wave-96
+// capability-removal receipt, app/src/phone-capability-removal.scan.test.ts)
+// rather than re-lined. jsdom applies no external stylesheet's @media rule
 // (mirrors detail-css.test.ts's own note), so this reads submissions.css's
 // own text.
 import { readFileSync } from 'node:fs';
@@ -47,7 +48,7 @@ function phoneLayer(css: string): string {
 
 const PHONE = phoneLayer(CSS);
 
-describe('submissions.css phone head re-lining (DEC-919 wave-7 amendment)', () => {
+describe('submissions.css phone head re-lining (DEC-919 wave-110 amendment)', () => {
   it('hides the Status caption, the filterbar divider and the ColumnPicker -- chrome, a label, and the one control DEC-919 allows to vanish (nothing left to govern once the table stacks)', () => {
     expect(PHONE).toMatch(/\.chq-submissions-status-label,[\s\S]{0,400}display:\s*none/);
     expect(PHONE).toMatch(/\.chq-submissions-filterbar-divider,[\s\S]{0,400}display:\s*none/);
@@ -61,36 +62,58 @@ describe('submissions.css phone head re-lining (DEC-919 wave-7 amendment)', () =
     expect(PHONE).toMatch(/\.chq-submissions-filterbar-searchsort\s*\{[^}]*flex-direction:\s*column/);
   });
 
-  // DEC-919 wave-7: sorting is a capability the frame never removes, and the
-  // strip it sits in already scrolls -- so the Sort select re-lines at the
-  // 44px floor instead of vanishing.
-  it('never hides the Sort select', () => {
-    expect(PHONE).not.toMatch(
-      /\.chq-submissions-filterbar-searchsort \.chq-submissions-filterbar-sort-select[\s\S]{0,400}display:\s*none/,
-    );
+  // docs/design/Chautauqua Submissions.dc.html:147 draws ONE 44px search
+  // box on row 1 -- "Nothing else". Reverses the wave-7 "sorting is a
+  // capability the frame never removes" reading for THIS screen: the
+  // frame's row 1 has no line left for a sort control.
+  it('hides the Sort select at 390 -- the frame draws no sort control on the search row (:147)', () => {
+    const banks = [
+      ...PHONE.matchAll(/\.chq-submissions-filterbar-sort-select[^{]*\{([^}]*)\}/g),
+      ...PHONE.matchAll(/\.chq-submissions-filterbar-searchsort \.chq-submissions-filterbar-sort-select[^{]*\{([^}]*)\}/g),
+    ];
+    expect(banks.length).toBeGreaterThan(0);
+    expect(banks.some((m) => /display:\s*none/.test(m[1]!))).toBe(true);
   });
 
-  it('never hides the sort select or the track select at phone width -- both govern data still on screen, so they re-line rather than vanish (the ColumnPicker is the one sanctioned hide, DEC-919 wave 7 / DEVIATIONS.md)', () => {
-    expect(PHONE).not.toMatch(/\.chq-submissions-filterbar-searchsort \.chq-submissions-filterbar-sort-select[\s\S]{0,200}display:\s*none/);
-    expect(PHONE).not.toMatch(/\.chq-submissions-filterbar \.chq-submissions-filterbar-select[\s\S]{0,200}display:\s*none/);
+  // docs/design/Chautauqua Submissions.dc.html:148-151 draws ONE chip strip
+  // (status chips only) as row 2 -- "Nothing else". Reverses the wave-7
+  // "track filtering ... re-lines rather than vanish[es]" reading: the
+  // frame's row 2 has no line left for a track control either.
+  it('hides the track select at 390 -- the frame draws no track control on the chip-strip row (:148-151)', () => {
+    expect(PHONE).toMatch(/\.chq-submissions-filterbar \.chq-submissions-filterbar-select[^{]*\{[^}]*display:\s*none/);
   });
 
-  it('never narrows the status-pill population by data-status -- every pill stays in the scrolling strip', () => {
-    expect(PHONE).not.toMatch(/\.chq-status-pills \[data-status\][^{]*:not\(/);
+  // docs/design/Chautauqua Submissions.dc.html:137-152 draws no saved-views
+  // row at all -- the whole strip (ViewTabs.tsx) is stood down, not re-lined.
+  it('hides the saved-views strip at 390 -- the frame has no line for it', () => {
+    expect(PHONE).toMatch(/\.chq-submissions-viewtabs[^{]*\{[^}]*display:\s*none/);
+  });
+
+  // docs/design/Chautauqua Submissions.dc.html:148-151 names exactly three
+  // chips ('Needs triage' / 'Accepted' / 'All 47'). Reverses the wave-6/7
+  // "every pill stays in the scrolling strip" ruling this test previously
+  // pinned: the frame's chip strip is a NARROWED population, not the full
+  // six-status vocabulary. (The frame's third chip, 'All 47', has no
+  // corresponding status literal in SUBMISSION_STATUSES and is a known gap,
+  // not reproduced by this CSS-only narrowing -- see the rule's own comment.)
+  it('narrows the status-pill population by data-status to the two status literals the frame names', () => {
+    expect(PHONE).toMatch(/\.chq-status-pills \[data-status\]:not\(\[data-status='pending'\]\):not\(\[data-status='accepted'\]\)[^{]*\{[^}]*display:\s*none/);
   });
 
   // docs/design/Chautauqua Submissions.dc.html:148
   // `display:flex; gap:7px; overflow-x:auto`
-  // -- three status pills only (no ColumnPicker, DEC-919 wave-92/102).
-  it('keeps .chq-submissions-filterbar as one horizontally scrolling strip (status pills + track select) at the 44px floor', () => {
+  // -- the surviving status chips scroll horizontally at the 44px floor.
+  it('keeps .chq-submissions-filterbar as one horizontally scrolling chip strip at the 44px floor', () => {
     expect(PHONE).toMatch(/\.chq-submissions-filterbar,[\s\S]{0,200}overflow-x:\s*auto/);
-    expect(PHONE).toMatch(/\.chq-submissions-filterbar-select\s*\{[^}]*min-height:\s*44px/);
-    expect(PHONE).toMatch(/\.chq-submissions-columnpicker > summary\s*\{[^}]*min-height:\s*44px/);
+    expect(PHONE).toMatch(/\.chq-submissions-filterbar-search,[\s\S]{0,60}\.chq-submissions-filterbar-select\s*\{[^}]*min-height:\s*44px/);
   });
 
   it('desktop keeps every control (no display:none for these selectors outside a media block)', () => {
     const withoutMedia = CSS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
     expect(withoutMedia).not.toMatch(/\.chq-submissions-status-label\s*\{[^}]*display:\s*none/);
     expect(withoutMedia).not.toMatch(/\.chq-submissions-columnpicker\s*\{[^}]*display:\s*none/);
+    expect(withoutMedia).not.toMatch(/\.chq-submissions-viewtabs\s*\{[^}]*display:\s*none/);
+    expect(withoutMedia).not.toMatch(/\.chq-submissions-filterbar-sort-select\s*\{[^}]*display:\s*none/);
+    expect(withoutMedia).not.toMatch(/\.chq-submissions-filterbar-select\s*\{[^}]*display:\s*none/);
   });
 });
