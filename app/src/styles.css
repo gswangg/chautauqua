@@ -732,13 +732,18 @@ a:hover {
   cursor: progress;
 }
 
+/* Cancelled-padding idiom -- see .chq-link-button above for the rule and
+   its adjacent-siblings invariant. The tertiary tier is the other bare-text
+   register in the house (Sign out, Clear, Add a rule, the auth and portal
+   quiet actions), and it had the same shrink-wrapped ring. */
 .chq-btn-tertiary {
   font-family: inherit;
   background: none;
   border: none;
   color: var(--chq-brand);
   font-weight: 700;
-  padding: 4px 0;
+  padding: 4px 6px;
+  margin-inline: -6px;
 }
 
 @media (hover: hover) {
@@ -835,18 +840,53 @@ a:hover {
 
 /* Inline text-styled button (row cells that act as links but must stay
    real <button> elements for keyboard/AT). */
+/* User-filed (v12 review), the cancelled-padding idiom -- same shape the
+   dense status chips took in 0abe77cf: a bare-text control with zero inline
+   padding shrink-wraps its focus outline (and any hover ring) into a tight
+   box around the glyphs, which is what reads as a cramped, native-looking
+   ring. The 6px inline padding is cancelled by an equal-and-opposite
+   negative margin, so NO glyph moves and no layout rhythm shifts -- only
+   the ring/hover box, and the real hit box, gain breathing room.
+
+   The invariant that comes with it: where this family can render as
+   ADJACENT SIBLINGS separated by a gap or margin, that separation must be
+   widened by 2x6px on the rule that owns it, or each control's -6px eats
+   into the neighbour's box (scratchpad harness collide.mjs measures
+   exactly this; .chq-speakers-row-participation below is the case that
+   caught it in the wild). */
 .chq-link-button {
   background: none;
   border: none;
-  padding: 0;
+  padding: 0 6px;
+  margin-inline: -6px;
+  /* User-filed (v12 review): "can we round the corners on the focus ring".
+     An outline follows its element's border-radius in every engine we
+     target, so the ring is rounded by giving the BOX the house control
+     radius -- the same token .chq-btn already uses, so a quiet action's
+     ring matches a button's corner for corner. It paints nothing at rest:
+     this family has no fill and no border, so the radius is visible only
+     as the shape of the ring (and of any hover box). */
+  border-radius: var(--chq-r-ctl);
   font: inherit;
   color: var(--chq-brand);
   cursor: pointer;
   text-align: left;
 }
 
-.chq-link-button:hover {
+/* User-filed (v12 review): "normally things are underlined when hovered".
+   This family is the link-like half of the house's quiet register, so it
+   takes the link convention -- the same `color + text-decoration: underline`
+   pair .chq-btn-tertiary (the button-like half) already carries, and the
+   same one .chq-speakers-import-link uses. The bare-chip family is
+   deliberately NOT given either treatment: its hover is the frame's 2px
+   box-shadow ring (speakers.css, .chq-speakers-status:hover), because after
+   v12's inversion a bare COMPLETE has no box at all and the ring is the
+   only thing saying it is a control.
+   :not(:disabled) keeps the G13 rule below intact -- a disabled
+   link-shaped control still has NO hover response at all. */
+.chq-link-button:hover:not(:disabled) {
   color: var(--chq-brand-hover);
+  text-decoration: underline;
 }
 
 /* G13 fix (B8 + DEVIATIONS §2): a disabled link-shaped control reads as

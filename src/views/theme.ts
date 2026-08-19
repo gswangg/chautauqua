@@ -470,12 +470,20 @@ export const THEME_CSS = `
   .chq-btn-secondary:active {
     background: var(--chq-secondary-active);
   }
+  /* User-filed (v12 review): the cancelled-padding idiom, twin of the same
+     rule in app/src/styles.css. A bare-text control with zero inline padding
+     shrink-wraps the focus ring declared at the top of this sheet into a
+     tight box around the glyphs; 6px of inline padding cancelled by an
+     equal-and-opposite negative margin gives the ring (and the hit box)
+     breathing room while no glyph moves. Where two of these can sit side by
+     side, the rule that owns their separation must widen it by 2x6px. */
   .chq-btn-tertiary {
     background: transparent;
     color: var(--chq-brand);
     border: none;
     font-weight: 700;
-    padding: 0.25rem 0;
+    padding: 0.25rem 6px;
+    margin-inline: -6px;
     font-family: inherit;
   }
   .chq-btn-tertiary:hover {

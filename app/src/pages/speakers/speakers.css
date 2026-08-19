@@ -546,6 +546,16 @@ a.chq-speakers-task-title:hover {
    reach it, and without padding the hit box is only as wide as the text.
    Never author a min-height below 44px on the roomy half. */
 .chq-speakers-status-dense {
+  /* User-filed (v12 review): "can we round the corners on the focus ring".
+     An outline -- and the hover box-shadow above -- follow the element's
+     border-radius, so the ring is rounded by giving the DENSITY rule the
+     house control radius. It sits here, on the geometry axis, and never on
+     a MEANING modifier: a bare COMPLETE/PENDING still paints no box at rest
+     (no fill, no border), so this radius is invisible except as the shape
+     of the ring and of the hover ring -- which is exactly the intent the
+     "bare modifiers carry no radius" pin protects, and why that pin reads
+     the modifier selectors rather than banning the property outright. */
+  border-radius: var(--chq-r-ctl);
   /* User-filed (v12 review): with zero inline padding, the focus outline and
      the cell's hover ring shrink-wrap the bare COMPLETE/PENDING glyphs into
      a cramped box that reads like a native ring. The 6px inline padding is
@@ -558,6 +568,9 @@ a.chq-speakers-task-title:hover {
 .chq-speakers-status-roomy {
   min-height: 44px;
   padding: 0 10px;
+  /* Same rounded ring as the dense half -- the two halves of the density
+     pair differ in geometry, never in what the ring looks like. */
+  border-radius: var(--chq-r-ctl);
 }
 
 /* The states that PAINT a box (a fill or a rule) need horizontal breathing
@@ -786,25 +799,57 @@ a.chq-speakers-task-title:hover {
 /* Frame: the participation pill(s) and the Send-portal-invite control
    share one row; Remind sits on its own line below (see the block comment at
    the JSX call site). */
+/* User-filed regression (v12 review, speaker with two sessions): the dense
+   status chip took the cancelled-padding idiom in 0abe77cf -- 6px inline
+   padding, -6px inline margin -- and DEC-936 renders one captioned menu per
+   participation as siblings in this row. Two chips each pulling 6px off
+   both sides ate 12px of a 4px gap, so the two triggers' boxes OVERLAPPED
+   by 8px: their rings and hover boxes intersected and the pair read as one
+   jumbled line instead of two separately labelled talks.
+
+   The gap absorbs both cancellations (4 + 2x6 = 16) rather than the chip
+   giving up its ring breathing room. That restores the pre-idiom 4px
+   between the two chips' BOXES exactly, and the SES-008 / SES-009 captions
+   above them separate by the same 16px, which is what makes the two menus
+   legible as two -- the thing DEC-936's caption exists to do. This is the
+   general invariant that rides with the idiom (styles.css,
+   .chq-link-button): wherever a cancelled-padding family renders as
+   adjacent siblings, the rule owning their separation widens it by 2x the
+   cancelled padding. */
 .chq-speakers-row-participation {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
-/* Per-speaker reminder action: scoped to the one contact in its row (DEC-694). */
+/* Per-speaker reminder action: scoped to the one contact in its row
+   (DEC-694).
+
+   User-filed alongside the two-session regression above: this control's 8px
+   inline padding was never cancelled, so its LABEL sat 8px right of the
+   identity cell's glyph column (name / company / SES caption / chip all
+   start at the same x, "Remind Elliot" started 8px in) -- read as an odd
+   indent under the chips. Same equal-and-opposite cancellation as the rest
+   of the family: the padding stays, so the ring and hit box keep their
+   breathing room, and the negative margin puts the glyph back in column. */
 .chq-speakers-remind-one {
   margin-top: 4px;
+  margin-inline: -8px;
   padding: 2px 8px;
   font-size: 11px;
 }
 
 /* Per-speaker portal invitation: same quiet family, conditional on the row
    not already having an account (DEC-805). */
+/* Sits beside .chq-speakers-remind-one, so it carries the same cancellation
+   AND the adjacent-siblings invariant: 4px of separation plus both
+   cancelled paddings (4 + 8 + 8) keeps the two controls' boxes exactly 4px
+   apart, as they were before either cancelled. */
 .chq-speakers-invite-one {
   margin-top: 4px;
-  margin-left: 4px;
+  margin-left: 20px;
+  margin-right: -8px;
   padding: 2px 8px;
   font-size: 11px;
 }
@@ -829,6 +874,11 @@ a.chq-speakers-task-title:hover {
 .chq-speakers-not-chased-marker {
   display: inline-block;
   margin-top: 4px;
+  /* This marker renders INSTEAD of the remind action, and the comment above
+     makes the metrics parity load-bearing ("the swap never changes the
+     row's pitch"). It therefore cancels its padding too, or the swap would
+     shift the glyph 8px out of the identity column. */
+  margin-inline: -8px;
   padding: 2px 8px;
   font-size: 11px;
   font-style: italic;
