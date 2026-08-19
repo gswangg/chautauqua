@@ -2061,15 +2061,25 @@
 
 /* task w4-g / DEC-874 wave-86 amendment: phone parity for the reviewer's
    two list surfaces --
-     docs/design/Chautauqua Review.dc.html:793-830 ("Your plans · /review")
-     docs/design/Chautauqua Review.dc.html:413-451 ("Reviewer queue ·
+     docs/design/Chautauqua Review.dc.html:793-830 `<div style="width:390px;
+       height:844px; background:#F4F1E8; border:1px solid #D3CFC0;
+       border-radius:20px; overflow:hidden; display:flex;
+       flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+       ("Your plans · /review")
+     docs/design/Chautauqua Review.dc.html:413-451 `<div style="width:390px;
+       height:844px; background:#F4F1E8; border:1px solid #D3CFC0;
+       border-radius:20px; overflow:hidden; display:flex;
+       flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+       ("Reviewer queue ·
        /review/plans/:id")
    -- landing here, appended AFTER the block above so it wins (DEC-385
    wave-85: review.css's first phone block at :333 is cascade-shadowed by
    anything declared later at equal specificity; this is the file's
    trailing max-width block). */
 
-/* docs/design/Chautauqua Review.dc.html:820-821: the hub's docked
+/* docs/design/Chautauqua Review.dc.html:820-821 `<div style="flex-shrink:0;
+   border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px;
+   display:flex; align-items:center; gap:12px">`: the hub's docked
    hidden-scores note. No top-level rule exists above for this selector, so
    it stays display:none (invisible) until the media query below flips it
    to a docked band -- same "hidden above the breakpoint" contract
@@ -2080,7 +2090,8 @@
 }
 
 @media (max-width: 700px) {
-  /* --- "Your plans" hub cards (docs/design/Chautauqua Review.dc.html:804-816) ---
+  /* --- "Your plans" hub cards (docs/design/Chautauqua Review.dc.html:804-816
+     `<sc-for list="{{ hubPlans }}" as="p" hint-placeholder-count="3">`) ---
      .chq-reviewer-plan-row-name-line is unwrapped via display:contents so
      its two children (name, meta) become direct grid items of the row
      alongside the pill/bar/action siblings -- the only way to put the
@@ -2153,7 +2164,9 @@
     align-items: center;
   }
 
-  /* --- Reviewer queue rows (docs/design/Chautauqua Review.dc.html:429-437) ---
+  /* --- Reviewer queue rows (docs/design/Chautauqua Review.dc.html:429-437
+     `<div style="padding:15px 0; border-bottom:1px solid #E1DDCE;
+     display:flex; flex-direction:column; gap:8px">`) ---
      the desktop two-column grid (1fr/176px) collapses to a single stacked
      column -- ref+state stay the existing baseline pair
      (.chq-review-queue-row-top, untouched), the 20px desktop title drops
@@ -2182,7 +2195,9 @@
     margin-top: 2px;
   }
 
-  /* --- Scoped queue head band (docs/design/Chautauqua Review.dc.html:414-425) ---
+  /* --- Scoped queue head band (docs/design/Chautauqua Review.dc.html:414-425
+     `<div style="border-bottom:1px solid #1B1D17; padding:14px 16px;
+     flex-shrink:0; display:flex; flex-direction:column; gap:9px">`) ---
      the H1 itself already reads 25px through .chq-phone-head-drill
      .chq-page-title (app/src/styles.css, DEC-643); this scopes only the
      eyebrow's weight/tracking/colour (:419) and the progress hairline's
@@ -2248,27 +2263,27 @@
     color: var(--chq-ink);
     cursor: pointer;
   }
-}
 
-/* ========================================================================
-   v12m-w5-b (wave 87, DEC-018/DEC-393): review admin at 390.
-   Appended at the very end of this file per the task's own instruction --
-   v12m-w2-j edits this file in parallel, so this block stays contiguous
-   and terminal rather than interleaving with the rules above.
+  /* ========================================================================
+     v12m-w5-b (wave 87, DEC-018/DEC-393): review admin at 390. Folded into
+     this, the file's single terminal @media (max-width: 700px) block
+     (DEC-385 wave-91 amendment), rather than reopened as a second one --
+     source order, not specificity, decides the cascade, so a second
+     terminal block placed after this one would silently re-open the same
+     "must stay LAST" exposure this block's own header warns about.
 
-   (1) Chautauqua Review.dc.html:594 "Plan editor · 390" -- the criteria
-       list, the reviewers list and the docked Save/Cancel footer.
-   (2) DEC-393 w87 -- PlanList.tsx's three per-plan row actions
-       (Progress/Results/Edit), measured at 21px on a phone, floored here.
+     (1) Chautauqua Review.dc.html:594 "Plan editor · 390" -- the criteria
+         list, the reviewers list and the docked Save/Cancel footer.
+     (2) DEC-393 w87 -- PlanList.tsx's three per-plan row actions
+         (Progress/Results/Edit), measured at 21px on a phone, floored here.
 
-   Desktop is untouched: every rule below lives inside a max-width block
-   (DEC-385 single-direction), and every authored min-height meets the
-   44px floor (DESIGN-RULINGS.md "The 44px floor, and how it gets
-   evaded") -- min-height + centred flex + non-zero horizontal padding,
-   never padding alone.
-   ======================================================================== */
+     Desktop is untouched: every rule below lives inside this max-width
+     block (DEC-385 single-direction), and every authored min-height meets
+     the 44px floor (DESIGN-RULINGS.md "The 44px floor, and how it gets
+     evaded") -- min-height + centred flex + non-zero horizontal padding,
+     never padding alone.
+     ======================================================================== */
 
-@media (max-width: 700px) {
   /* --- (2) DEC-393: the plan-row actions floor ------------------------- */
   /* .chq-review-plan-actions itself (review.css:117) already declares
      display:flex; gap:14px -- untouched. Each Link gets its own
