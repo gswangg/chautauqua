@@ -2056,7 +2056,16 @@
 
   /* -- former w8-c tap-floor block, already terminal, concatenated last (unchanged) -- */
 
-  .chq-comms-editor-actions > .chq-btn,
+  /* DEC-383 wave-109 amendment: the cancelled-padding idiom is scoped to
+     borderless controls only. .chq-btn paints a box, so it keeps the
+     tap-floor sizing but drops padding-inline/margin-inline; .chq-link-button
+     is borderless and keeps the idiom. */
+  .chq-comms-editor-actions > .chq-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
   .chq-comms-editor-actions > .chq-link-button {
     min-height: 44px;
     display: flex;
@@ -2065,59 +2074,61 @@
     margin-inline: -10px;
   }
 
+  /* DEC-383 wave-109 amendment: .chq-pill is a filled/bordered control --
+     cancelled padding is not layout-neutral on it. */
   .chq-comms-head-actions > .chq-pill {
     min-height: 44px;
     display: flex;
     align-items: center;
-    padding-inline: 10px;
-    margin-inline: -10px;
   }
 
   /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
-     consolidation) -- no property collision with the tap-floor set. */
+     consolidation) -- no property collision with the tap-floor set.
+     DEC-383 wave-109 amendment: .chq-btn is bordered, cancelled padding
+     dropped. */
   .chq-comms-history-head-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
-    padding-inline: 10px;
-    margin-inline: -10px;
     flex: 1 1 0;
   }
 
   /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
-     consolidation) -- no property collision with the tap-floor set. */
+     consolidation) -- no property collision with the tap-floor set.
+     DEC-383 wave-109 amendment: .chq-btn is bordered, cancelled padding
+     dropped. */
   .chq-comms-preview-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
-    padding-inline: 10px;
-    margin-inline: -10px;
     flex: 1 1 0;
   }
 
+  /* DEC-383 wave-109 amendment: .chq-btn is bordered, cancelled padding
+     dropped. */
   .chq-comms-refusal-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
-    padding-inline: 10px;
-    margin-inline: -10px;
   }
 
   /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
-     consolidation) -- no property collision with the tap-floor set. */
+     consolidation) -- no property collision with the tap-floor set.
+     DEC-383 wave-109 amendment: .chq-btn is bordered, cancelled padding
+     dropped. */
   .chq-comms-select-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
-    padding-inline: 10px;
-    margin-inline: -10px;
     flex: 1 1 0;
   }
 
   /* white-space:normal merged in from the former earlier declaration of
      this selector (DEC-385 wave-102 consolidation); display/align-items/
      min-height/padding-right from that earlier declaration were already
-     shadowed by this rule and are not carried forward. */
+     shadowed by this rule and are not carried forward. Borderless text
+     link (chq-brand colour, no box) -- keeps the cancelled-padding idiom
+     per DEC-383 wave-109 amendment. */
   .chq-comms-send-report-all-history {
     min-height: 44px;
     display: flex;
@@ -2128,24 +2139,24 @@
   }
 
   /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
-     consolidation) -- no property collision with the tap-floor set. */
+     consolidation) -- no property collision with the tap-floor set.
+     DEC-383 wave-109 amendment: .chq-btn is bordered, cancelled padding
+     dropped. */
   .chq-comms-send-report-footer-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
-    padding-inline: 10px;
-    margin-inline: -10px;
     flex: 1 1 0;
   }
 
   /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
-     consolidation) -- no property collision with the tap-floor set. */
+     consolidation) -- no property collision with the tap-floor set.
+     DEC-383 wave-109 amendment: .chq-btn is bordered, cancelled padding
+     dropped. */
   .chq-comms-template-actions > .chq-btn {
     min-height: 44px;
     display: flex;
     align-items: center;
-    padding-inline: 10px;
-    margin-inline: -10px;
     flex: 1 1 0;
   }
 

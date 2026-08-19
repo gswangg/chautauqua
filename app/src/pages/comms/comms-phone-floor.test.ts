@@ -62,10 +62,25 @@ function ruleBodyFor(rawCss: string, selector: string): string {
   return body;
 }
 
-function expectFloorDeclarations(body: string, label: string) {
+// DEC-383 wave-109 amendment: the cancelled-padding idiom (padding-inline
+// cancelled by an equal-and-opposite negative margin-inline) is scoped to
+// borderless controls only -- on a bordered/filled control (.chq-btn,
+// .chq-pill) it is not layout-neutral, so those selectors keep the floor
+// sizing but drop the cancelled-padding pair (task w5-n).
+function expectFloorDeclarations(body: string, label: string, expectCancelledPadding: boolean) {
   expect(body, `${label}: min-height:44px`).toMatch(/min-height:\s*44px/);
   expect(body, `${label}: display:flex`).toMatch(/display:\s*flex/);
   expect(body, `${label}: align-items:center`).toMatch(/align-items:\s*center/);
+
+  if (!expectCancelledPadding) {
+    expect(body, `${label}: no padding-inline on a bordered/filled control`).not.toMatch(
+      /padding-inline/,
+    );
+    expect(body, `${label}: no margin-inline on a bordered/filled control`).not.toMatch(
+      /margin-inline/,
+    );
+    return;
+  }
 
   const paddingMatch = body.match(/padding-inline:\s*(-?\d+)px/);
   expect(paddingMatch, `${label}: padding-inline present`).not.toBeNull();
@@ -86,20 +101,27 @@ function expectOverflowEscape(body: string, label: string) {
 
 const COMMS_PHONE_BLOCK = lastPhoneBlock(COMMS_CSS);
 
-const TAP_FLOOR_SELECTORS = [
-  '.chq-comms-editor-actions > .chq-btn',
+// Borderless (quiet-action family): keeps the cancelled-padding idiom.
+const TAP_FLOOR_BORDERLESS_SELECTORS = [
   '.chq-comms-editor-actions > .chq-link-button',
+  '.chq-comms-send-report-all-history',
+  '.chq-comms-send-detail > .chq-link-button',
+  '.chq-comms-recent-sends .chq-section-head .chq-link-button',
+  '.chq-comms-blocked-list li .chq-link-button',
+];
+
+// Bordered/filled (.chq-btn, .chq-pill): DEC-383 wave-109 amendment drops
+// the cancelled-padding pair -- it is not layout-neutral on a control that
+// paints a box.
+const TAP_FLOOR_BORDERED_SELECTORS = [
+  '.chq-comms-editor-actions > .chq-btn',
   '.chq-comms-head-actions > .chq-pill',
   '.chq-comms-history-head-actions > .chq-btn',
   '.chq-comms-preview-actions > .chq-btn',
   '.chq-comms-refusal-actions > .chq-btn',
   '.chq-comms-select-actions > .chq-btn',
-  '.chq-comms-send-report-all-history',
   '.chq-comms-send-report-footer-actions > .chq-btn',
   '.chq-comms-template-actions > .chq-btn',
-  '.chq-comms-send-detail > .chq-link-button',
-  '.chq-comms-recent-sends .chq-section-head .chq-link-button',
-  '.chq-comms-blocked-list li .chq-link-button',
 ];
 
 const OVERFLOW_SELECTORS = [
@@ -109,10 +131,21 @@ const OVERFLOW_SELECTORS = [
 ];
 
 describe('Comms phone tap-floor + overflow fixes (DEC-393 wave-90 amendment, task w8-c)', () => {
-  it.each(TAP_FLOOR_SELECTORS)('%s reaches the 44px floor with centred flex and cancelling padding', (selector) => {
-    const body = ruleBodyFor(COMMS_PHONE_BLOCK, selector);
-    expectFloorDeclarations(body, selector);
-  });
+  it.each(TAP_FLOOR_BORDERLESS_SELECTORS)(
+    '%s reaches the 44px floor with centred flex and cancelling padding (borderless)',
+    (selector) => {
+      const body = ruleBodyFor(COMMS_PHONE_BLOCK, selector);
+      expectFloorDeclarations(body, selector, true);
+    },
+  );
+
+  it.each(TAP_FLOOR_BORDERED_SELECTORS)(
+    '%s reaches the 44px floor with centred flex and NO cancelled padding (bordered/filled, DEC-383 wave-109 amendment)',
+    (selector) => {
+      const body = ruleBodyFor(COMMS_PHONE_BLOCK, selector);
+      expectFloorDeclarations(body, selector, false);
+    },
+  );
 
   it.each(OVERFLOW_SELECTORS)('%s gets the hidden/ellipsis/min-width:0 escape at phone width', (selector) => {
     const body = ruleBodyFor(COMMS_PHONE_BLOCK, selector);
