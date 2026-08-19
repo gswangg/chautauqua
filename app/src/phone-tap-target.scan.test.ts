@@ -309,7 +309,7 @@ function rowActionContainerTokens(): Set<string> {
     const raw = readFileSync(path, 'utf-8');
     let m: RegExpExecArray | null;
     while ((m = re.exec(raw)) !== null) {
-      const token = m[1];
+      const token = m[1] ?? '';
       if (/-actions(?:-[a-z0-9-]+)?$/.test(token)) out.add(token);
     }
   }
@@ -349,10 +349,10 @@ function horizontalPaddingNonZero(body: string): boolean {
     return t !== '0' && t !== '0px';
   };
   for (const m of body.matchAll(/padding-(?:left|right|inline)\s*:\s*([^;]+)/g)) {
-    if (nonZero(m[1])) return true;
+    if (nonZero(m[1] ?? '')) return true;
   }
   for (const m of body.matchAll(/(?<![\w-])padding\s*:\s*([^;]+)/g)) {
-    const parts = m[1].trim().split(/\s+/).filter(Boolean);
+    const parts = (m[1] ?? '').trim().split(/\s+/).filter(Boolean);
     const horiz =
       parts.length <= 1
         ? [parts[0]]
