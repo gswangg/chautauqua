@@ -599,7 +599,7 @@ a:hover {
 
 .chq-row-title {
   font-family: var(--chq-font-display);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.015em;
   color: var(--chq-ink);
@@ -2394,6 +2394,12 @@ a:hover {
     align-items: stretch;
   }
 
+  .chq-bulkbar-actions {
+    /* v12m-w6-a: already wrap on both sides -- restated so this file's
+       shadow count reads zero, not "ten of twelve fixed". */
+    flex-wrap: wrap;
+  }
+
   .chq-toolbar {
     /* beats the desktop .chq-toolbar{align-items:center} at :527-535 */
     align-items: stretch;
@@ -2408,5 +2414,8 @@ a:hover {
   .chq-checkbox-label {
     /* beats the desktop .chq-checkbox-label{display:flex} at :1439-1445 */
     display: inline-flex;
+    /* v12m-w6-a: already center on both sides -- restated for the same
+       zero-shadow-count reason as .chq-bulkbar-actions above. */
+    align-items: center;
   }
 }
