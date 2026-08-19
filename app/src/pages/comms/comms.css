@@ -2012,11 +2012,18 @@
   }
 
   /* Frame line 196: `padding:22px 0 8px; border-bottom:2px solid #1B1D17;
-     margin-bottom:4px` */
+     margin-bottom:4px`. DEC-621 wave-109 amendment (task w5-q): now a row
+     (label left, the band's two tab entries right) rather than a bare
+     label, so the padding/border/margin geometry the frame draws is kept
+     unchanged and only the layout axis is added. */
   .chq-comms-phone-recent-head {
     padding: 22px 0 8px;
     border-bottom: 2px solid var(--chq-ink);
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   /* Frame line 200: `padding:15px 0; border-bottom:1px solid #E1DDCE;
@@ -2212,5 +2219,33 @@
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+  }
+
+  /* DEC-621 wave-109 amendment (task w5-q): the two remaining landing
+     routes (into Templates and History -- Compose already has one via
+     the draft-card slot, see PhoneDraftCard) carried by the "Recent
+     sends" head band. No frame geometry to cite -- the band's two-button
+     group is new, not drawn by the frame -- so the 44px floor is applied
+     directly: min-height PLUS centred flex PLUS horizontal padding, the
+     same pattern documented on .chq-comms-history-breadcrumb above. */
+  .chq-comms-phone-recent-head-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .chq-comms-phone-recent-head-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--chq-ink);
+    background: none;
+    border: none;
+    cursor: pointer;
   }
 }

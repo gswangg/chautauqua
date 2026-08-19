@@ -56,7 +56,19 @@ export function CommsPage() {
   // check) toggles which one the phone stylesheet shows -- desktop never
   // reads this flag (the CSS rules that key off it only exist inside the
   // 700px media query in comms.css).
-  const [phoneEntered, setPhoneEntered] = useState(false);
+  //
+  // DEC-621 wave-109 amendment (task w5-q): a recognised `?tab=` names a
+  // screen the visitor already chose (a bookmark, a deep link, browser
+  // back/forward per DEC-710) -- the landing would otherwise reassert
+  // itself over that choice every time this component mounts, since
+  // `phoneEntered` used to always start false. Read once, at mount, from
+  // `isTab(rawTab)` (the same predicate `tab` above already uses) rather
+  // than kept in sync by an effect: `setPhoneEntered(false)` (the drill-
+  // ins' `onBack`) must be able to return to the landing without an
+  // effect immediately re-deriving `true` from a `?tab=` that is still
+  // sitting in the URL -- an initializer only runs once, so the back path
+  // never fights it.
+  const [phoneEntered, setPhoneEntered] = useState(() => isTab(rawTab));
 
   // DEC-700/DEC-905: every successful non-GET already bumps this counter in
   // api.ts -- subscribing here means both the Recent Sends mount and the
@@ -324,9 +336,29 @@ export function CommsPage() {
 
         {/* Frame lines 196-205: read-only "Recent sends" -- the same
             all-time batch list the head's rhythm line and both tab-body
-            RecentSends mounts already hold, never a second fetch. */}
+            RecentSends mounts already hold, never a second fetch.
+            DEC-621 wave-109 amendment (task w5-q): with no stored draft
+            the draft-card slot's only route is into Compose (see
+            PhoneDraftCard's empty-state branch), so this band carries the
+            landing's other two routes -- into Templates and into History
+            -- the frame's own dashboard otherwise being a dead end for
+            them (Tier 0 S2 break, docs/probes/metafid-phoneA-2026-08-19
+            .md). Labels are taken verbatim from the tab strip's own
+            vocabulary (the TABS array above), inventing no new copy. */}
         <div className="chq-comms-phone-recent-head">
           <span className="chq-section-label">Recent sends</span>
+          <div className="chq-comms-phone-recent-head-actions">
+            {TABS.filter((t) => t.id !== 'compose').map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className="chq-comms-phone-recent-head-link"
+                onClick={() => choosePhoneTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
         {recentBatches.slice(0, COMPOSE_RECENT_SENDS_LIMIT).map((batch) => {
           const templateLabel =
