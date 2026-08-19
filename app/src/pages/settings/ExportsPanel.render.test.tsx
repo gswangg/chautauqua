@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ExportsPanel } from './ExportsPanel';
 import { mockApi } from '../../test-utils/mockApi';
+import { phoneBlockRulesMentioning, phoneBlockText } from '../../test-utils/phoneBlock';
 
 const EVENT_ID = 'evt-exports-render';
 
