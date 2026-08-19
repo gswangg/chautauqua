@@ -113,6 +113,33 @@ geometry"; flagging rather than guessing at scope)
   the frame doesn't draw them so no phone-specific geometry was owed for
   them.
 
+### w1-e frame-citation repair note (DEC-976 amendment wave 98)
+
+- **`.chq-settings-summary-row` padding vs. People and roles frame rows**
+  (`app/src/pages/settings/settings.css:1863-1867`): the pre-existing
+  comment cited both the Your data drill (`:393-441`) and the People and
+  roles drill (`:552-575`) for one shared "`padding:15px 0; border-bottom:
+  1px solid #E1DDCE`" quote, backing a rule that declares `padding: 14px
+  0`. Checked each half against the frame bytes: Your data's own rows
+  (`:404`, `:417`) read `padding:14px 0` — matching the CODE, not the
+  comment's `15px` quote — while People and roles' rows (`:559`) read
+  `padding:15px 0` — matching the comment's quote, not the code. Neither
+  half of the citation was internally consistent, and on top of that
+  `.chq-settings-summary-row` (the class this comment describes) is only
+  ever applied inside the Your data drill (`ResourcesPanel.tsx`,
+  `ApiTokensPanel.tsx`) — the People and roles panel renders a wholly
+  different class, `chq-settings-people-row` (`PeopleRolesPanel.tsx`,
+  desktop `padding:12px 0` at `settings.css:708`, no phone-scoped
+  override at `:1535`). Repaired the comment to cite only `:404` (Your
+  data, the drill this rule actually governs) with the quote corrected to
+  `padding:14px 0`, matching both the code and that frame line, and
+  dropped the People-and-roles half rather than inventing a citation for
+  a rule that never applied to that drill. Filed here rather than fixed
+  in code: whether People and roles' 15px phone-row rhythm (`:559`)
+  deserves its own phone-scoped padding bump on `.chq-settings-people-row`
+  (currently 12px, from the desktop rule) is a real, separate gap for a
+  future wave — not something this comments-only task may touch.
+
 ### Deferred-by-ruling, cited not re-flagged
 
 - Public-pages Publish/Unpublish toggle (:495, `{{ p.toggle }}`) —

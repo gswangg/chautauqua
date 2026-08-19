@@ -1116,7 +1116,8 @@
     gap: 12px;
   }
 
-  /* docs/design/Chautauqua Agenda.dc.html:129 -- wordmark + the
+  /* docs/design/Chautauqua Agenda.dc.html:129
+     `display:flex; align-items:center; gap:10px` -- wordmark + the
      "N unplaced · M clash" counter, right-flushed via margin-left:auto on
      the counter itself (:131). */
   .chq-phone-agenda-head-top {
@@ -1150,7 +1151,7 @@
   }
 
   /* docs/design/Chautauqua Agenda.dc.html:133
-     `margin:0; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1`
+     `font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1`
      DEC-991 wave-27 amendment bans line-height:1 on the display face; the
      declaration is omitted so `normal` (the font's own line box) applies. */
   .chq-phone-agenda-h1 {
@@ -1170,7 +1171,7 @@
     gap: 7px;
   }
 
-  /* docs/design/Chautauqua Agenda.dc.html:135
+  /* docs/design/Chautauqua Agenda.dc.html:136
      `border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:500`
      -- the active day is an INK fill (:135), not the shared `.chq-pill.active`
      olive (DEC-730's vocabulary is reserved for confirmed/on toggle
@@ -1191,7 +1192,7 @@
   }
 
   /* docs/design/Chautauqua Agenda.dc.html:135
-     `background:#1B1D17; color:#F4F1E8; ... font-weight:600` (the active
+     `background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600` (the active
      Tue-12 pill) */
   .chq-phone-day-chip.active {
     border-color: var(--chq-ink);

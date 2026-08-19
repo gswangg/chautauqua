@@ -1231,7 +1231,9 @@
 /* ---------------------------------------------------------------------- */
 /* w4-e/DEC-375 wave-86: the index/drill SWITCH at <=700px, and the       */
 /* three list drills' body anatomy (Tracks and rooms, Your data, People   */
-/* and roles) -- docs/design/Chautauqua Settings.dc.html:275/347/393/552. */
+/* and roles) -- docs/design/Chautauqua Settings.dc.html:275/347/393/552
+   `width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)`
+   (each cited line is that drill's own 390/844 frame container). */
 /* Appended LAST (DEC-385 wave-85 cascade note: settings.css's mid-file   */
 /* phone block at :158 is shadowed by any later unconditional rule for    */
 /* the same selector) so nothing declared above can outrank these.        */
@@ -1737,7 +1739,7 @@
   }
 
   .chq-settings-back {
-    /* docs/design/Chautauqua Settings.dc.html:347
+    /* docs/design/Chautauqua Settings.dc.html:349
        `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center` --
        .chq-btn-tertiary already carries the 44px floor + centred flex
        from styles.css's shared phone rule; this just left-aligns the
@@ -1749,9 +1751,9 @@
   }
 
   /* -- The index rows -------------------------------------------------- */
-  /* docs/design/Chautauqua Settings.dc.html:275-296: `{{ g.label }}` +
+  /* docs/design/Chautauqua Settings.dc.html:288: `{{ g.label }}` +
      an olive "Open" on one baseline, an 18px-rhythm hairline-divided
-     list, a 13px detail line beneath each row. */
+     list (:275-296), a 13px detail line beneath each row. */
   .chq-settings-rail-link {
     display: flex;
     flex-direction: column;
@@ -1798,9 +1800,11 @@
   }
 
   /* -- Tracks and rooms drill body anatomy ------------------------------ */
-  /* docs/design/Chautauqua Settings.dc.html:347-390: a 2px-ruled 11px/700/
-     0.1em uppercase 'TRACKS'/'ROOMS' caption (matching the shared
-     `.chq-settings-panel h2` register above) heads each list. */
+  /* docs/design/Chautauqua Settings.dc.html:347-390
+     `width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)`
+     -- a 2px-ruled 11px/700/0.1em uppercase 'TRACKS'/'ROOMS' caption
+     (matching the shared .chq-settings-panel h2 register above) heads
+     each list. */
   .chq-settings-tracks-rooms-phone-caption {
     display: flex;
     align-items: baseline;
@@ -1824,10 +1828,12 @@
   }
 
   /* -- Your data / People and roles: the 44px bordered inline action ---- */
-  /* docs/design/Chautauqua Settings.dc.html:393-441 (Download/Revoke) and
-     :552-575 (Change) all draw the same bordered, sunk-fill, 44px inline
-     row action -- the SAME visual role `.chq-link-button` already carries
-     inside `.chq-settings-panel` (mid-file block, settings.css:~215);
+  /* docs/design/Chautauqua Settings.dc.html:393-441
+     `width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)`
+     (Download/Revoke) and :552-575 (Change) all draw the same bordered,
+     sunk-fill, 44px inline row action -- the SAME visual role
+     .chq-link-button already carries inside .chq-settings-panel
+     (mid-file block, settings.css:~215);
      this reaffirms it here, last, so it can never lose that cascade
      fight against a later unconditional rule for the same selector. */
   .chq-settings-panel .chq-link-button {
@@ -1854,9 +1860,12 @@
     padding: 0 14px;
   }
 
-  /* People and roles / Your data read-list rows: 14px, hairline-divided,
-     18px rhythm (docs/design/Chautauqua Settings.dc.html:393-441/552-575
-     `padding:15px 0; border-bottom:1px solid #E1DDCE`). */
+  /* Your data read-list rows: 14px, hairline-divided, 18px rhythm
+     (docs/design/Chautauqua Settings.dc.html:404
+     `padding:14px 0; border-bottom:1px solid #E1DDCE`). People and
+     roles' own rows are a different class (chq-settings-people-row,
+     above) and read 15px in the frame (:559) -- see docs/design/audit/
+     settings-v12.md, w1-e note; not this rule's scope. */
   .chq-settings-summary-row {
     padding: 14px 0;
   }
