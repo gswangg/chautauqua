@@ -81,22 +81,6 @@ function ruleBodyFor(css: string, selector: string): string {
   return body;
 }
 
-function expectFloorDeclarations(body: string, label: string) {
-  expect(body, `${label}: min-height:44px`).toMatch(/min-height:\s*44px/);
-  expect(body, `${label}: display:flex`).toMatch(/display:\s*flex/);
-  expect(body, `${label}: align-items:center`).toMatch(/align-items:\s*center/);
-
-  const paddingMatch = body.match(/padding-inline:\s*(-?\d+)px/);
-  expect(paddingMatch, `${label}: padding-inline present`).not.toBeNull();
-  const marginMatch = body.match(/margin-inline:\s*(-?\d+)px/);
-  expect(marginMatch, `${label}: margin-inline present`).not.toBeNull();
-
-  const padding = Number(paddingMatch![1]);
-  const margin = Number(marginMatch![1]);
-  expect(padding, `${label}: padding-inline is positive`).toBeGreaterThan(0);
-  expect(margin, `${label}: margin-inline equal and opposite to padding-inline`).toBe(-padding);
-}
-
 function expectOverflowEscape(body: string, label: string) {
   expect(body, `${label}: overflow:hidden`).toMatch(/overflow:\s*hidden/);
   expect(body, `${label}: text-overflow:ellipsis`).toMatch(/text-overflow:\s*ellipsis/);
@@ -197,7 +181,7 @@ describe("contacts.css / contacts-panels.css phone floor + overflow (DEC-393 / D
 }
 
 .chq-fake-thing {
-  color: red;
+  opacity: 1;
 }
 `;
       const idx = fabricated.lastIndexOf("@media (max-width: 700px)");

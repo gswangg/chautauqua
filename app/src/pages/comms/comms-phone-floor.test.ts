@@ -152,7 +152,7 @@ describe('Comms phone tap-floor + overflow fixes (DEC-393 wave-90 amendment, tas
 }
 
 .chq-x-fake-trailing-rule {
-  color: red;
+  opacity: 1;
 }
 `;
     expect(isTerminalPhoneBlock(fake)).toBe(false);

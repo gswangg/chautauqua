@@ -48,6 +48,10 @@ export default defineConfig({
       "app/src/pages/comms/comms-drill-phone-frames.test.ts",
       "app/src/pages/comms/comms-drill-phone-frames.w7d.test.ts",
       "app/src/pages/submissions/submissions-landing-phone-frame.test.ts",
+      // v12m-w5-f (DEC-621 wave-87 amendment): composeDraft.test.ts reads
+      // window.localStorage, so vitest.config.ts pins it to jsdom despite
+      // its plain-.test.ts name -- same shape as the entries above.
+      "app/src/pages/comms/composeDraft.test.ts",
       "test/itinerary-script-persistence.test.ts",
       "test/embed-element.test.ts",
       "test/gate4-residue-closure.test.ts",

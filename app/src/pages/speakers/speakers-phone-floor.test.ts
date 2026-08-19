@@ -136,7 +136,7 @@ describe("speakers cluster: 44px floor already closed (DEC-393 wave-7 amendment,
   it("negative control: the extraction helpers actually fail on a selector missing the floor (proves the scan can fail, not just pass)", () => {
     const fabricatedBlock = `
   .chq-fabricated-offender {
-    color: red;
+    opacity: 1;
   }
 `;
     expect(() => {

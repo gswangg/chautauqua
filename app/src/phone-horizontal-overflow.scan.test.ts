@@ -359,9 +359,18 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
     expect(OFFENDERS.length).toBeGreaterThan(0);
   });
 
-  it('the flagged-shape population includes a known offender (.chq-speakers-grid min-width)', () => {
+  // v12m wave 8: the previous canary (.chq-speakers-grid min-width in
+  // speakers.css) stopped being a *flagged* rule when w8-a gave it a
+  // documented inline `overflow-exempt:` comment -- exempted rules land in
+  // neither OFFENDERS nor STALE_EXEMPTIONS, so a still-real overflow no
+  // longer served as a vacuity canary. Repointed at the scorecard grid,
+  // whose fixed 1120px tracks overflow the 358px budget structurally (not a
+  // nowrap escape one wave can quietly add) and which no frame exempts.
+  it('the flagged-shape population includes a known offender (.chq-review-scorecard-grid fixed tracks)', () => {
     expect(
-      OFFENDERS.some((o) => o.file === 'app/src/pages/speakers/speakers.css' && o.selector === '.chq-speakers-grid'),
+      OFFENDERS.some(
+        (o) => o.file === 'app/src/pages/review/scorecard.css' && o.selector === '.chq-review-scorecard-grid',
+      ),
     ).toBe(true);
   });
 
