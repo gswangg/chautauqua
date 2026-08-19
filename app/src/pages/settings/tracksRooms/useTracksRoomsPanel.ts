@@ -16,6 +16,9 @@ import { useCurrentEvent } from '../../../lib/useCurrentEvent';
 import { validateRoomForm, validateTrackForm, type RoomForm, type RoomFormErrors, type TrackForm, type TrackFormErrors } from '../formState';
 import { nextSwatch } from './trackSwatches';
 import { EMPTY_ROOM, EMPTY_TRACK, roomBaseline, trackBaseline, type Room, type Track } from './types';
+import { DEC_941 } from '../../../../../src/decisions';
+
+void DEC_941; // closing the drill-in retires the add forms; an unsaved add draft arms the discard confirm
 
 export function useTracksRoomsPanel(sectionKey: string) {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
@@ -106,7 +109,23 @@ export function useTracksRoomsPanel(sectionKey: string) {
     });
   }, [rooms]);
 
+  // DEC-941 wave-107 amendment: closing the drill-in retires the add-a-
+  // track/add-a-room pass entirely, whichever exit closeEdit is reached
+  // through -- Done-with-nothing-dirty and Done-with-discard both funnel
+  // through closeEdit, so both get this for free. Reuses toggleAddTrack/
+  // toggleAddRoom's own per-form reset expressions rather than writing a
+  // third copy of that vocabulary (DEC-613).
+  function retireAddForms() {
+    setTrackFieldErrors({});
+    setNewTrack(EMPTY_TRACK);
+    setShowAddTrack(false);
+    setRoomFieldErrors({});
+    setNewRoom(EMPTY_ROOM);
+    setShowAddRoom(false);
+  }
+
   function closeEdit() {
+    retireAddForms();
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.delete('section');
@@ -124,8 +143,29 @@ export function useTracksRoomsPanel(sectionKey: string) {
     ];
   }
 
+  // DEC-941 wave-107 amendment: a typed-but-not-yet-added new track/room
+  // contributes nothing to dirtyRowNames (it has no saved name to compare
+  // against), so an unsaved add draft is its own arming condition -- the
+  // mirror of "a confirm with no arming is the mirror of a delete with no
+  // confirm". Named (where a name was typed) so the confirm body can name
+  // the same scope the handler is about to drop.
+  function unsavedAddDraftNames(): string[] {
+    const names: string[] = [];
+    if (newTrack.name !== EMPTY_TRACK.name || newTrack.color !== EMPTY_TRACK.color) {
+      names.push(newTrack.name.trim().length > 0 ? newTrack.name : 'the new track');
+    }
+    if (newRoom.name !== EMPTY_ROOM.name || newRoom.capacity !== EMPTY_ROOM.capacity) {
+      names.push(newRoom.name.trim().length > 0 ? newRoom.name : 'the new room');
+    }
+    return names;
+  }
+
+  function hasUnsavedAddDraft(): boolean {
+    return unsavedAddDraftNames().length > 0;
+  }
+
   function handleDone() {
-    if (dirtyRowNames().length > 0) {
+    if (dirtyRowNames().length > 0 || hasUnsavedAddDraft()) {
       setConfirmingDiscard(true);
       return;
     }
@@ -406,6 +446,8 @@ export function useTracksRoomsPanel(sectionKey: string) {
     showAddRoom,
     toggleAddRoom,
     dirtyRowNames,
+    unsavedAddDraftNames,
+    hasUnsavedAddDraft,
     handleDone,
     discardDirtyAndClose,
     isTrackDirty,
