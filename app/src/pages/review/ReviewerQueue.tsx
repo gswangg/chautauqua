@@ -398,7 +398,13 @@ function PlanSection({
                 for that sentence; the shell chrome no longer mints it
                 (DEC-369's amendment). */}
             {totalRows > 0 && (
-              <div className="chq-review-queue-footer">
+              // docs/design/Chautauqua Review.dc.html:441-443 (frame extent
+              // 413-451, queue subscreen): the queue's own footer band docks
+              // at 390 -- .chq-phone-dock (app/src/styles.css) is the SAME
+              // sticky/full-bleed scaffold every other phone frame's footer
+              // dock already uses, added here as a plain className (no
+              // top-level rule exists for it, so desktop is unaffected).
+              <div className="chq-review-queue-footer chq-phone-dock">
                 {!showAll && totalRows > 5 && (
                   <span className="chq-review-queue-footer-count-group">
                     <span className="chq-review-queue-footer-count">{`Showing 5 of ${totalRows}`}</span>
@@ -764,19 +770,24 @@ export function ReviewerQueue() {
 
     return (
       <div className="chq-page chq-review-page chq-measure">
+        {/* docs/design/Chautauqua Review.dc.html:793-800 (frame extent
+            793-830, "Your plans · /review"): the hub head band -- H1 (:799,
+            25px, the same drill register the scoped queue's head uses) + a
+            13px sub-line (:800) -- is .chq-phone-head/-head-drill (the
+            SAME scaffold the scoped route's head consumes above). */}
         {!allEnvelopesResolved ? (
-          <>
+          <div className="chq-phone-head chq-phone-head-drill">
             <h1 className="chq-page-title">Your plans</h1>
             <PageSkeleton variant="list" />
-          </>
+          </div>
         ) : (
-          <>
+          <div className="chq-phone-head chq-phone-head-drill">
             <h1 className="chq-page-title">{`${leftTotal} left to score`}</h1>
             <p className="chq-reviewer-plans-subline">{`Across ${spellCount(openCount)} open ${plural(
               openCount,
               'plan',
             )}`}</p>
-          </>
+          </div>
         )}
         {error && (
           <div className="chq-error" role="alert">
@@ -810,6 +821,15 @@ export function ReviewerQueue() {
               With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other
               reviewers.
             </p>
+            {/* docs/design/Chautauqua Review.dc.html:820-821 (frame extent
+                793-830): the hub's own docked footer band -- hidden at
+                desktop (no top-level rule for the phone-note class) and
+                shown as .chq-phone-dock only at 390, carrying the SAME
+                hidden-scores sentence the paragraph above already states in
+                its own reading-measure sentence. DEC-874 wave-86: no Sign
+                out control renders here -- that stays the shell's single
+                control. */}
+            <p className="chq-reviewer-plans-phone-note chq-phone-dock">Scores stay hidden from other reviewers</p>
           </>
         )}
       </div>
