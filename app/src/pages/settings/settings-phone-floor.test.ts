@@ -144,8 +144,24 @@ describe('Settings cluster phone floor / overflow backlog (task w8-f)', () => {
   it("the appended block is the LAST top-level construct in settings.css (never edit-into an earlier block)", () => {
     const trailing = CSS.slice(lastPhoneBlock.end).trim();
     expect(trailing).toBe('');
-    // and it is a genuine, distinct block, not the pre-existing :1863 one
-    expect(phoneBlockList.length).toBeGreaterThanOrEqual(5);
+    // The former companion assertion here -- `phoneBlockList.length >= 5`,
+    // i.e. "the appended block is a genuine, distinct block, not the
+    // pre-existing :1863 one" -- is retired, not weakened. It was one of the
+    // two contradictory hand-written pins named in the header of
+    // test/phone-terminal-block.scan.test.ts (DEC-385 amendment wave 98):
+    // this file demanded settings.css carry at LEAST five phone blocks while
+    // test/portal-phone-frames.test.ts:220 demanded portal.css.ts carry
+    // exactly ONE, two guesses at one shared rule pointing in opposite
+    // directions. That derived scan now owns the rule for every sheet, and
+    // it resolves the contradiction the other way: exactly one phone block
+    // per sheet, textually terminal. settings.css has since been
+    // consolidated to that shape, so a floor of five is now an assertion
+    // that the sheet must VIOLATE the live contract. The retired pin's real
+    // intent -- "the phone rules this file checks are not stranded behind a
+    // later desktop rule" -- is exactly what the surviving `trailing === ''`
+    // line above tests, and it is tested there for whatever number of
+    // blocks the sheet actually has. Task w1-d retired the portal.css.ts
+    // side of the contradiction and left this side open; this closes it.
   });
 
   describe('44px tap floor (DEC-393 wave-90 amendment)', () => {
