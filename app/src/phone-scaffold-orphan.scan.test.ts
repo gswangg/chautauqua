@@ -17,7 +17,8 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
+import { ssrCssSources } from '../../test/helpers/ssr-css-sources';
 
 const appSrcDir = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -67,18 +68,19 @@ function walkSourceFiles(dir: string): string[] {
   return out;
 }
 
-// Which declared classes have at least one renderer: a source file (outside
-// styles.css, which is CSS not markup) whose text contains the bare class
-// name. A substring match is deliberately generous -- it catches className
-// string literals, template literals and conditional expressions alike, the
-// same idiom css-contract.scan.test.ts's own invariant C/D already use.
-function classesWithRenderers(declared: string[]): Set<string> {
-  const files = [...walkSourceFiles(appSrcDir), ...walkSourceFiles(srcDir)];
+// The core matching predicate, factored out so a test can pin it against
+// synthetic source text (below) without touching disk: a declared class has
+// a renderer when some source text contains the BARE class token (no
+// leading dot -- markup spells `className="chq-phone-foo"`, never
+// `className=".chq-phone-foo"`). A substring match is deliberately generous
+// -- it catches className string literals, template literals and
+// conditional expressions alike, the same idiom css-contract.scan.test.ts's
+// own invariant C/D already use.
+function withRenderers(declared: string[], sourceTexts: string[]): Set<string> {
   const withRenderer = new Set<string>();
   const remaining = new Set(declared);
-  for (const file of files) {
+  for (const contents of sourceTexts) {
     if (remaining.size === 0) break;
-    const contents = readFileSync(file, 'utf8');
     for (const cls of [...remaining]) {
       if (contents.includes(cls)) {
         withRenderer.add(cls);
@@ -87,6 +89,14 @@ function classesWithRenderers(declared: string[]): Set<string> {
     }
   }
   return withRenderer;
+}
+
+// Which declared classes have at least one renderer: a source file (outside
+// styles.css, which is CSS not markup) whose text contains the bare class
+// name.
+function classesWithRenderers(declared: string[]): Set<string> {
+  const files = [...walkSourceFiles(appSrcDir), ...walkSourceFiles(srcDir)];
+  return withRenderers(declared, files.map((f) => readFileSync(f, 'utf8')));
 }
 
 // Re-measured wave-106 (task v12m-w2-b) against this branch's tree: every
@@ -140,5 +150,114 @@ describe('phone page-scaffold orphan ratchet (DEC-576 wave-85 amendment a)', () 
       );
     }
     expect(orphans.length).toBeGreaterThanOrEqual(ORPHAN_CEILING);
+  });
+
+  // Regression control (wave-107 amendment, DEC-941/DEC-989): a sibling copy
+  // of this same population (app/src/phone-page-scaffold.test.ts's now-
+  // deleted orphan describe) declared classes DOTTED (`.chq-phone-foo`) and
+  // then asked `src.includes(cls)` of .tsx MARKUP, which never spells the
+  // leading dot -- a literal match against the wrong alphabet, silently
+  // reporting false orphans (or, worse, false non-orphans whenever the dotted
+  // string happened to appear in a comment). This file's own
+  // `classesWithRenderers` strips the dot (`token.slice(1)`, line 42) before
+  // matching; pin that behaviour directly against synthetic fixtures so a
+  // future edit can't reintroduce the dotted-selector bug silently.
+  it('withRenderers matches the BARE class token in synthetic markup, and fabricates an orphan when the fixture spells the DOTTED selector instead', () => {
+    const declared = ['chq-phone-fixture-a', 'chq-phone-fixture-b'];
+
+    // Synthetic source text carrying the BARE token, as real TSX markup
+    // does (className="chq-phone-fixture-a ...") -- both classes must be
+    // found, zero orphans.
+    const bareMarkup = ['<div className="chq-phone-fixture-a" />', 'const x = "chq-phone-fixture-b";'];
+    const bareResult = withRenderers(declared, bareMarkup);
+    const bareOrphans = declared.filter((cls) => !bareResult.has(cls));
+    expect(bareOrphans).toEqual([]);
+
+    // The regression this test guards against: fixture text spelling the
+    // DOTTED CSS selector (as the deleted app/src/phone-page-scaffold.test.ts
+    // orphan describe did via `css.match(/\.chq-phone-.../)`, matched
+    // against `.tsx` source that never contains the leading dot). Matching
+    // the dotted string against text that only contains the bare token must
+    // fabricate exactly one orphan.
+    const dottedNeedle = `.${declared[1]}`; // '.chq-phone-fixture-b'
+    const dottedResult = withRenderers([declared[0]!, dottedNeedle], bareMarkup);
+    const dottedOrphans = [declared[0]!, dottedNeedle].filter((cls) => !dottedResult.has(cls));
+    expect(dottedOrphans).toEqual([dottedNeedle]);
+  });
+});
+
+// DEC-385/DEC-613 (wave-107 amendment): "no min-width media query" was
+// pinned over ONE file (app/src/styles.css, in
+// app/src/phone-page-scaffold.test.ts). Widened here to the DERIVED
+// population every other freeze/density/cascade scan already shares
+// (DEC-808/DEC-367): every app/src/**/*.css file PLUS every SSR `*_CSS`
+// module found by ssrCssSources() -- never a `src/**/*.css.ts` filename
+// glob, which silently drops src/views/theme.ts (it exports THEME_CSS from
+// a .ts file, not a .css.ts file). "Desktop is FROZEN" is a mandate rule;
+// one file was never a population.
+interface CssSource {
+  rel: string;
+  text: string;
+}
+
+function allAppCssFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.css')) continue;
+    out.push(join(entry.parentPath, entry.name));
+  }
+  return out.sort();
+}
+
+function desktopFreezePopulation(): CssSource[] {
+  const appSources: CssSource[] = allAppCssFiles(appSrcDir).map((file) => ({
+    rel: relative(repoRoot, file),
+    text: readFileSync(file, 'utf8'),
+  }));
+  const ssrSources: CssSource[] = ssrCssSources().map((s) => ({ rel: s.path, text: s.text }));
+  return [...appSources, ...ssrSources].sort((a, b) => a.rel.localeCompare(b.rel));
+}
+
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
+// Matches an @media rule's CONDITION LIST ONLY (up to its opening `{`), the
+// same scoping test/breakpoint-conformance.test.ts uses -- `min-width` is
+// also a legitimate ordinary CSS declaration property (e.g. on a <select>
+// or a flex item, `min-width: 0` appears dozens of times in this tree) and
+// must never trip this check; only a min-width WITHIN an @media condition
+// list is a violation.
+function hasMinWidthMediaQuery(text: string): boolean {
+  const clean = stripComments(text);
+  const mediaRe = /@media\s*([^{]+)\{/g;
+  let m: RegExpExecArray | null;
+  while ((m = mediaRe.exec(clean))) {
+    if (/min-width\s*:/.test(m[1]!)) return true;
+  }
+  return false;
+}
+
+describe('DEC-385: no min-width media query in ANY app/src/**/*.css file or SSR *_CSS module (wave-107 widened population)', () => {
+  const population = desktopFreezePopulation();
+
+  it('the population is real, not vacuous: more than 20 sheets, including styles.css and at least one SSR module', () => {
+    expect(population.length).toBeGreaterThan(20);
+    expect(population.some((s) => s.rel.endsWith('app/src/styles.css') || s.rel === 'app/src/styles.css')).toBe(true);
+    expect(population.some((s) => s.rel.startsWith('src/'))).toBe(true);
+  });
+
+  it('declares no min-width media query anywhere in the population', () => {
+    const violations = population.filter((s) => hasMinWidthMediaQuery(s.text)).map((s) => s.rel);
+    expect(violations).toEqual([]);
+  });
+
+  it('positive control: a fixture sheet with a min-width query IS flagged by the same predicate', () => {
+    const fixture: CssSource = {
+      rel: 'fixture.css',
+      text: '@media (min-width: 900px) { .chq-x { display: none; } }',
+    };
+    const violations = [...population, fixture].filter((s) => hasMinWidthMediaQuery(s.text)).map((s) => s.rel);
+    expect(violations).toEqual(['fixture.css']);
   });
 });
