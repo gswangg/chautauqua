@@ -95,3 +95,15 @@ pinned; sweep the remaining stylesheets for the same exposure.
   treatment (styles.css:225) must reach every interactive element there.
 - Task view answered tab offered "Open" universally; the response viewer is
   form-only. Per-kind actions: form=Open, file_request=file link, general=none.
+
+## Eval root-cause round (2026-08-19 evening) — swarm follow-ups
+- INTEGRITY: src/decisions-data/DEC-986.md (scribe wave 10/11) documents phone-CFP
+  fixes that DO NOT EXIST in the tree — cfp-steps-script.tsx:33 still calls
+  setStep('2') with no reportValidity(), form-render.tsx:278 still uses singular
+  querySelector. (a) Actually implement the phone-CFP step-1 validation dead-end
+  fix; (b) correct the false doc; (c) lens: audit other scribe-authored DEC docs
+  from waves 10-11 for claims not backed by the diff.
+- Pre-existing UX bug (portal edit): "Add co-presenter" is a full-page POST that
+  silently discards unsaved title/abstract/track edits (a55cce81, by the page's
+  own inviting copy order). Schedule a fix (preserve the draft across the POST or
+  make the add row-scoped).
