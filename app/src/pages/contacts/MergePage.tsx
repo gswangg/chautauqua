@@ -208,9 +208,15 @@ export function MergePage() {
     }
   }
 
+  // v12m-w1-c (DEC-919 amendment wave 98): frame "Merge · 390"
+  // (docs/design/Chautauqua Contacts.dc.html:524) draws the back link as
+  // `‹ Duplicates` only -- no "Contacts · " prefix. ONE anchor, never a
+  // second phone-only Link: the prefix lives in its own span that the
+  // terminal phone block hides at <=700px, so desktop stays byte-unchanged
+  // ("‹ Contacts · Duplicates").
   const backLink = (
     <Link to="/contacts" state={{ panel: 'duplicates' }} className="chq-contacts-merge-back">
-      &lsaquo; Contacts &middot; Duplicates
+      &lsaquo; <span className="chq-contacts-merge-back-prefix">Contacts &middot; </span>Duplicates
     </Link>
   );
 
@@ -238,6 +244,17 @@ export function MergePage() {
         {pairPosition && (
           <p className="chq-contacts-merge-pair-count">
             {pairPosition.index} of {countOf(pairPosition.total, 'pair')}
+            {/* v12m-w1-c (DEC-919 amendment wave 98): frame :526 draws ONE
+                13px subtitle line under the H1 carrying BOTH the pair
+                position and the kept record's name -- desktop keeps the
+                right-flushed count-only row, this name suffix is phone-only
+                (hidden by default, shown by the terminal <=700px block). */}
+            {keepContact && (
+              <span className="chq-contacts-merge-pair-count-name">
+                {' '}
+                &middot; {keepContact.firstName} {keepContact.lastName}
+              </span>
+            )}
           </p>
         )}
       </div>
@@ -348,8 +365,21 @@ export function MergePage() {
               className="chq-btn chq-btn-primary"
               disabled={!!blocked}
               onClick={() => setConfirmOpen(true)}
+              // v12m-w1-c: the visible label swaps by width (two spans
+              // below), but the button's ONE accessible name always names
+              // the target -- an accessible name that changed underneath a
+              // fixed control by viewport width would be its own defect.
+              aria-label={keepContact ? `Merge into ${keepContact.firstName} ${keepContact.lastName}` : 'Merge'}
             >
-              {keepContact ? `Merge into ${keepContact.firstName} ${keepContact.lastName}` : 'Merge'}
+              {/* v12m-w1-c (DEC-919 amendment wave 98): frame :537 labels
+                  the primary "Merge them" -- the name is redundant on phone
+                  because the head subtitle above just carries it (change
+                  2). ONE button, ONE trigger (doMerge stays single-fired);
+                  two spans swap by width, never a second button. */}
+              <span className="chq-contacts-merge-primary-desktop-label">
+                {keepContact ? `Merge into ${keepContact.firstName} ${keepContact.lastName}` : 'Merge'}
+              </span>
+              <span className="chq-contacts-merge-primary-phone-label">Merge them</span>
             </button>
             {/* DEC-992: 'Swap which is kept' sits beside the primary as a
                 control, rather than being buried back in the pick list
