@@ -128,13 +128,19 @@ describe('v12 phone page-scaffold: DEC-576 amendment', () => {
     expect(head).toMatch(/gap:\s*8px/);
   });
 
-  it('.chq-phone-body is the sole scroll region', () => {
+  it('.chq-phone-body flexes to fill and carries no scroller of its own', () => {
     // docs/design/Chautauqua Speakers.dc.html:266
-    // `flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px`
+    // `flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px` -- the
+    // frame's `overflow-y:auto` is the device box's own mechanism (how a
+    // 390 mock draws a scrolling phone viewport inside a browser tab), not
+    // an instruction to this app's layout. `.chq-main` is the app's ONE
+    // scrolling region (DEC-576 wave-85 amendment b); a nested scroller
+    // here would contest that ownership and break the sticky positioning
+    // of the head/dock this band sits between.
     const body = ruleIn(STYLES_PHONE, '.chq-phone-body');
     expect(body).toMatch(/flex:\s*1/);
     expect(body).toMatch(/min-height:\s*0/);
-    expect(body).toMatch(/overflow-y:\s*auto/);
+    expect(body).not.toMatch(/overflow-y/);
   });
 
   it('.chq-phone-dock is a sticky, full-bleed-cancelling footer band', () => {
