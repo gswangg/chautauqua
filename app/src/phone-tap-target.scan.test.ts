@@ -431,7 +431,13 @@ function findAnchorFloorOffenders(): string[] {
 // `docs/design/audit/tap-floor-v12.md` for its owning cluster/wave. This
 // number may only be LOWERED by a future wave closing more of the audit
 // file's rows -- never raised to accommodate a new offender.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 92;
+//
+// Re-measured wave 108 (v12m-w4-o, DEC-808 amendment) by forcing this const
+// to -1 and reading the printed offender list: truth is 64, not the stale
+// 92 this constant carried. Set to the measured truth; see the companion
+// "never below the ceiling without lowering it" test below for the other
+// half of the ratchet this file's own test name always claimed to have.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 64;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {
@@ -498,12 +504,26 @@ describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', 
     expect(selectorReachesAnchor(rule.selector, new Set())).toBe(true);
   });
 
-  it('stays at or under the offender ceiling, and never raises it silently', () => {
+  it('stays at or under the offender ceiling (one-sided ratchet: may only fall)', () => {
     const offenders = findAnchorFloorOffenders();
     expect(
       offenders.length,
       `row-action-anchor tap-target floor offenders (${offenders.length}, ceiling ${ANCHOR_FLOOR_OFFENDERS_CEILING}):\n${offenders.join('\n')}`,
     ).toBeLessThanOrEqual(ANCHOR_FLOOR_OFFENDERS_CEILING);
+  });
+
+  it(`never falls below the offender ceiling (${ANCHOR_FLOOR_OFFENDERS_CEILING}) without the ceiling being lowered to match (a stale ceiling licenses stagnation)`, () => {
+    const offenders = findAnchorFloorOffenders();
+    if (offenders.length < ANCHOR_FLOOR_OFFENDERS_CEILING) {
+      throw new Error(
+        `row-action-anchor tap-target floor offenders (${offenders.length}) fell below the ` +
+          `ANCHOR_FLOOR_OFFENDERS_CEILING of ${ANCHOR_FLOOR_OFFENDERS_CEILING}. This is the ratchet ` +
+          `working: offenders got fixed. Lower the ceiling in the same commit (a merge-train act, ` +
+          `never a worker's edit mid-lane) by replacing the line:\n` +
+          `  export const ANCHOR_FLOOR_OFFENDERS_CEILING = ${offenders.length};`,
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(ANCHOR_FLOOR_OFFENDERS_CEILING);
   });
 });
 

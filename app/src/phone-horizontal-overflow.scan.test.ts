@@ -399,7 +399,13 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // this branch's tree at authoring time -- see docs/design/audit/
 // overflow-390-v12.md for the full, per-file breakdown). Raising it back up
 // to accommodate a new offender is not a valid fix.
-export const OVERFLOW_OFFENDERS_CEILING = 65;
+//
+// Re-measured wave 108 (v12m-w4-o, DEC-808 amendment) by forcing this const
+// to -1 and reading the printed offender list: truth is 24, not the stale
+// 65 this constant carried. Set to the measured truth; see the companion
+// "never below the ceiling without lowering it" test below for the other
+// half of the ratchet this file's own test name always claimed to have.
+export const OVERFLOW_OFFENDERS_CEILING = 24;
 
 describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('found more than one CSS file to scan (vacuous-population tripwire, file side)', () => {
@@ -446,12 +452,24 @@ describe('phone horizontal overflow at 390 (DEC-989)', () => {
     ).toBe(true);
   });
 
-  it('offender count never exceeds the ceiling (two-sided ratchet: may only fall)', () => {
+  it('offender count never exceeds the ceiling (one-sided ratchet: may only fall)', () => {
     const detail = OFFENDERS.map((o) => `${o.file} :: ${o.selector} -- ${o.reasons.join('; ')}`).join('\n');
     expect(
       OFFENDERS.length,
       `offenders (${OFFENDERS.length}) exceed OVERFLOW_OFFENDERS_CEILING (${OVERFLOW_OFFENDERS_CEILING}):\n${detail}`,
     ).toBeLessThanOrEqual(OVERFLOW_OFFENDERS_CEILING);
+  });
+
+  it(`never falls below OVERFLOW_OFFENDERS_CEILING (${OVERFLOW_OFFENDERS_CEILING}) without the ceiling being lowered to match (a stale ceiling licenses stagnation)`, () => {
+    if (OFFENDERS.length < OVERFLOW_OFFENDERS_CEILING) {
+      throw new Error(
+        `offenders (${OFFENDERS.length}) fell below the OVERFLOW_OFFENDERS_CEILING of ` +
+          `${OVERFLOW_OFFENDERS_CEILING}. This is the ratchet working: offenders got fixed. Lower ` +
+          `the ceiling in the same commit (a merge-train act, never a worker's edit mid-lane) by ` +
+          `replacing the line:\n  export const OVERFLOW_OFFENDERS_CEILING = ${OFFENDERS.length};`,
+      );
+    }
+    expect(OFFENDERS.length).toBeGreaterThanOrEqual(OVERFLOW_OFFENDERS_CEILING);
   });
 
   it('no inline overflow-exempt comment is stale (its rule must actually be flagged, else: delete this line)', () => {
