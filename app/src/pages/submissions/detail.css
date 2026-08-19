@@ -266,11 +266,19 @@
 
 /* Per-row participant actions: quiet tertiary links, never a
    bordered/filled control competing with the Visible checkbox. */
+/* tap-floor-exempt: SubmissionDetailPage.tsx renders only <button
+   className="chq-link-button"> children here (Make co-presenter / Remove)
+   -- never an <a>/<Link> -- so there is no bare anchor for the 44px
+   row-action floor to apply to (DEC-393 wave-87 amendment). */
 .chq-detail-participant-row-actions {
   display: flex;
   gap: 12px;
 }
 
+/* tap-floor-exempt: scoped to .chq-detail-participant-row-actions, which
+   (see the tap-floor-exempt comment above it) only ever renders <button>
+   children -- this compound selector never reaches a bare anchor
+   (DEC-393 wave-87 amendment). */
 .chq-detail-participant-row-actions .chq-link-button {
   font-size: 12px;
   font-weight: 700;
@@ -366,6 +374,10 @@
   width: 100%;
 }
 
+/* tap-floor-exempt: SubmissionDetailPage.tsx renders only Save/Cancel
+   <button className="chq-btn ..."> here in both the title/abstract and
+   tracks editors -- never an <a>/<Link> -- so there is no bare anchor for
+   the 44px row-action floor to apply to (DEC-393 wave-87 amendment). */
 .chq-detail-edit-form-actions {
   display: flex;
   flex-wrap: wrap;
@@ -706,6 +718,10 @@
   padding: 2px 8px;
 }
 
+/* tap-floor-exempt: this cell holds the Visible checkbox, the invite-status
+   chip and the (button-only, see .chq-detail-participant-row-actions above)
+   actions -- never an <a>/<Link> directly -- so there is no bare anchor for
+   the 44px row-action floor to apply to (DEC-393 wave-87 amendment). */
 .chq-detail-participant-actions-cell {
   display: flex;
   align-items: center;
@@ -842,9 +858,19 @@
   .chq-detail-back,
   .chq-detail-position-prev,
   .chq-detail-position-next {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     min-height: 44px;
+    padding: 0 4px;
+  }
+
+  /* DEC-393 wave-87 amendment: 'Delete this submission' is a bare <Link>
+     (no .chq-btn) -- the row-action-anchor floor evasion. */
+  .chq-detail-delete-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
   }
 
   /* Frame header: 10px eyebrow over a 22px title (the desktop pair is
