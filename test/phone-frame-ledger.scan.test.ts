@@ -36,6 +36,20 @@
 //      message names every unclaimed frame as `<file> :<line> -- <title>`
 //      so the planner can schedule it.
 //
+//      DEC-808 amendment (wave 85): a floor is a two-sided ratchet, the
+//      mirror of test/vocabulary-duplication-ratchet.scan.test.ts's ceiling
+//      (which must never sit ABOVE the truth). This floor must never sit
+//      BELOW the truth either -- a stale floor licenses stagnation exactly
+//      as a high ceiling licenses debt. A companion test below FAILS when
+//      the measured claim count rises above CLAIMED_FLOOR, printing the
+//      exact replacement line, so a stale floor cannot survive a wave that
+//      actually lands coverage. Re-measured on this branch (v12m-w2-i):
+//      still 6 of 53 -- CLAIMED_FLOOR is not stale today. Expect and intend
+//      this companion to go RED in the merge-train batch as this wave's
+//      other lanes land phone-parity citations (that is the ratchet
+//      working); raising CLAIMED_FLOOR to match is a merge-train act
+//      performed once per batch, never a worker's edit mid-lane.
+//
 //   4. A citation is not an assertion (DEC-976's frame-truth half, applied
 //      here to the ledger's own inputs): a separate `it` asserts every
 //      citation that claimed a frame actually resolves to a real line
@@ -269,6 +283,18 @@ describe('phone-frame claim ledger (DEC-808 amendment wave 83, v12 mobile campai
     }
     expect(CLAIMS.length).toBeGreaterThanOrEqual(CLAIMED_FLOOR);
     // goalComplete for the v12 mobile campaign is this reaching 53 of 53.
+  });
+
+  it(`never claims MORE than CLAIMED_FLOOR (${CLAIMED_FLOOR}) without the floor being raised to match (a stale floor licenses stagnation)`, () => {
+    if (CLAIMS.length > CLAIMED_FLOOR) {
+      throw new Error(
+        `claimed ${CLAIMS.length} of ${ALL_FRAMES.length} phone frames, above the ratchet ` +
+          `floor of ${CLAIMED_FLOOR}. This is the ratchet working: coverage landed. Raise the ` +
+          `floor in the same commit (a merge-train act, never a worker's edit mid-lane) by ` +
+          `replacing the line:\n  export const CLAIMED_FLOOR = ${CLAIMS.length};`
+      );
+    }
+    expect(CLAIMS.length).toBeLessThanOrEqual(CLAIMED_FLOOR);
   });
 
   it('every citation that claimed a frame resolves to a real line in the named frame file', () => {
