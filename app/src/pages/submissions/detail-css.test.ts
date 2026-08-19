@@ -179,18 +179,18 @@ describe('detail.css phone frame (390) fidelity', () => {
 
 // DEC-610 (v12 mobile campaign w2 ruling, task w2-a): the decision rail
 // renders inside .chq-phone-dock at 390 instead of .chq-detail-aside
-// (SubmissionDetailPage.tsx). These rules live in a SECOND
-// `@media (max-width: 700px)` block appended at the true end of the file
-// (not inside the block the tests above read), so this suite locates that
-// block by hand rather than reusing mediaBlockBody's first-match search.
+// (SubmissionDetailPage.tsx). These rules used to live in a second,
+// separately-appended `@media (max-width: 700px)` block; DEC-385
+// (wave-100/102, retired by task w3-l per wave-103's forward-merge
+// ruling) forbids a stylesheet carrying more than one top-level phone
+// block, so this content was forward-merged into the file's single
+// terminal `@media (max-width: 700px)` block. The "a second phone block
+// exists" assertion that used to live here asserted the very shape DEC-385
+// now forbids, so it is retired rather than fixed -- there is exactly one
+// block to find, and mediaBlockBody's first-match search finds it.
 describe('detail.css phone dock geometry (DEC-610)', () => {
   const css = readFileSync(CSS_PATH, 'utf-8');
-  const firstBlockEnd = css.indexOf('@media (max-width: 700px) {', css.indexOf('@media (max-width: 700px) {') + 1);
-  const dockBlock = firstBlockEnd === -1 ? '' : css.slice(firstBlockEnd);
-
-  it('a second phone block exists, appended after the first (ordering wins ties at equal specificity)', () => {
-    expect(dockBlock.length).toBeGreaterThan(0);
-  });
+  const dockBlock = mediaBlockBody(css, '(max-width: 700px)');
 
   it('inside .chq-phone-dock, the rail fills the dock at the frame gap (8px, not the in-aside 9px)', () => {
     const rail = ruleBodyIn(dockBlock, '.chq-phone-dock .chq-detail-decision-rail');

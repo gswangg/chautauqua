@@ -21,10 +21,12 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, 'submissions.css');
 const CSS = readFileSync(CSS_PATH, 'utf-8');
 
-/** Brace-matches every `@media (max-width: 700px) { ... }` block (the file
- * carries two, an earlier one and this task's own appended at the true
- * end) and concatenates their bodies -- mirrors phone-page-scaffold.test.ts's
- * own phoneLayer helper rather than assuming there is only one block. */
+/** Brace-matches every `@media (max-width: 700px) { ... }` block and
+ * concatenates their bodies -- mirrors phone-page-scaffold.test.ts's own
+ * phoneLayer helper rather than assuming a fixed count. DEC-385 (wave-100/
+ * 102/103) forbids more than one top-level phone block per sheet; task
+ * w3-l forward-merged submissions.css's four blocks into its single
+ * terminal block, so this now matches exactly one, unchanged behaviour. */
 function phoneLayer(css: string): string {
   const out: string[] = [];
   const opener = /@media\s*\(max-width:\s*700px\)\s*\{/g;

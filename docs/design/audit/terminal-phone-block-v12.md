@@ -25,6 +25,8 @@ follow-up rather than trusting this table.
 
 20 sheets are non-conformant on this branch (more than three — flagged per
 task w1-d's own instruction to say so plainly if that threshold is crossed).
+Task w3-l fixed the two `submissions/*.css` rows below (forward-merge, no
+selector/property/value changed) — 18 remain.
 
 | Sheet | Cluster | Measured |
 |---|---|---|
@@ -39,8 +41,8 @@ task w1-d's own instruction to say so plainly if that threshold is crossed).
 | `app/src/pages/review/review.css` | review-admin | 11 blocks (lines 333, 1062, 1208, 1379, 1549, 1653, 1734, 2092, 2222, 2573, 2589) |
 | `app/src/pages/speakers/speakers.css` | speakers | 5 blocks (lines 100, 880, 1294, 1474, 1572) |
 | `app/src/pages/speakers/task-view.css` | speakers (TaskView) | 2 blocks (lines 253, 280) |
-| `app/src/pages/submissions/detail.css` | submissions | 3 blocks (lines 844, 1097, 1171) |
-| `app/src/pages/submissions/submissions.css` | submissions | 4 blocks (lines 477, 739, 834, 889) |
+| ~~`app/src/pages/submissions/detail.css`~~ | submissions | **FIXED (task w3-l)**: was 3 blocks (lines 844, 1097, 1171), forward-merged into the single terminal block at 844. Cascade-shadow sweep read 0 shadowed pairs for this file both before and after (no frame contradiction to delete). `detail-css.test.ts:188`'s "a second phone block exists" pin (the same shape as the retired `settings-phone-floor` `>=5` pin) was retired and `dockBlock` re-anchored on the single terminal block via the file's existing `mediaBlockBody` helper. |
+| ~~`app/src/pages/submissions/submissions.css`~~ | submissions | **FIXED (task w3-l)**: was 4 blocks (lines 489, 751, 846, 911), forward-merged into the single terminal block. The `.chq-submissions-columnpicker` phone `display:none` (DEC-919 wave-102, DEVIATIONS.md:89 "stands") was carried verbatim into the merged block. Cascade-shadow sweep read 0 shadowed pairs for this file both before and after. |
 | `app/src/styles.css` | shell / global | 5 blocks (lines 381, 1127, 2048, 2214, 2360) |
 | `src/routes/auth.css.ts` | auth (SSR) | 2 blocks (lines 281, 456) |
 | `src/routes/public/css/agenda.css.ts` | public agenda (SSR) | 2 blocks (lines 373, 443) |
