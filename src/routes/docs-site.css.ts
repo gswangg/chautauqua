@@ -233,14 +233,62 @@ export const DOCS_SITE_CSS = `
 
     /* The one sanctioned measure break itself breaks further on phone:
        edge to edge (no side gutter) with the caption inset back to the
-       page's own 16px padding. */
+       page's own 16px padding -- DESIGN-RULINGS.md:317 ("Prose at 680,
+       screenshots at 900 ... on phone, figures go edge to edge with the
+       caption inset") rules this the one place in the bundle where
+       content deliberately breaks its own measure, so the full-bleed
+       below is REQUIRED, not optional. docs/design/Chautauqua
+       Docs.dc.html:183 \`margin:18px 0 0\` draws the 390 figure with no
+       side margin of its own. */
     .chq-docs-figure {
       width: 100vw;
       max-width: 100vw;
       margin-inline: -16px;
     }
+    /* docs/design/Chautauqua Docs.dc.html:184 \`border-top:1px solid
+       #D3CFC0; border-bottom:1px solid #D3CFC0;\` -- top/bottom hairlines
+       survive edge-to-edge, left/right are dropped (the frame draws none). */
     .chq-docs-figure-frame { border-left: none; border-right: none; border-radius: 0; }
     .chq-docs-figure-caption { padding-inline: 16px; }
+
+    /* Docs · an article · 390 (docs/design/Chautauqua Docs.dc.html:166
+       \`width:390px; height:844px;\`) -- the H1 already lands at the
+       frame's number (:175 \`font-size:28px;\`), pinned here rather than
+       restated. */
+
+    /* Prev/next pager (:200 \`border-top:1px solid #1B1D17;
+       background:#EFEBDF; padding:12px 16px 16px; display:flex;
+       gap:8px\`) -- a filled, edge-to-edge footer bar on phone, not the
+       desktop's bare --chq-rule top divider. */
+    .chq-docs-pager {
+      max-width: none;
+      margin-inline: -16px;
+      border-top: 1px solid var(--chq-ink);
+      background: var(--chq-surface-sunk);
+      padding: 12px 16px 16px;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+    .chq-docs-pager-prev,
+    .chq-docs-pager-next {
+      /* :201 \`border:1px solid #CFC7B7; border-radius:6px;
+         background:#F4F1E8; color:#2E2A24; min-height:46px; display:flex;
+         align-items:center; justify-content:center; font-size:13px;
+         font-weight:600\` -- Previous and Next share one button shape,
+         drawn twice at :201/:202. */
+      flex: 1;
+      margin-left: 0;
+      border: 1px solid var(--chq-border-strong);
+      border-radius: 6px;
+      background: var(--chq-paper);
+      color: var(--chq-ink-strong);
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
   }
 `;
 
