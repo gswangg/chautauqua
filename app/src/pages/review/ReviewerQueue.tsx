@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { apiDelete, apiGet, apiList, ApiError } from '../../lib/api';
+import { apiDelete, apiGet, apiList, ApiError, signOut } from '../../lib/api';
 import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
 import { formatScore } from '../../../../src/domain/score-copy';
@@ -57,30 +57,14 @@ function closesInDaysLabel(closeDate: number | null, timezone: string): string |
 }
 
 // docs/design/Chautauqua Review.dc.html:413's phone dock draws a standing
-// Sign out control. App.tsx's `signOut()` (DEC-154) is the app's one
-// sign-out contract -- POST /logout with the CSRF header, redirect to
-// /login only on a 2xx, and never swallow a rejection -- but it is a
-// page-private function there, not exported from a shared lib, and this
-// task's file ownership is scoped to app/src/pages/review/**. This mirrors
-// that same contract rather than reaching into App.tsx; flagged as a
-// design gap for a later wave to extract into a shared helper instead.
-async function handlePhoneSignOut(): Promise<void> {
-  const res = await fetch('/logout', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'x-chq-csrf': '1' },
-  });
-  if (!res.ok) {
-    throw new Error(`Sign-out failed: /logout responded ${res.status}`);
-  }
-  window.location.assign('/login');
-}
-
-// Calls handlePhoneSignOut() without swallowing a rejection into `void` --
-// a failed sign-out must surface (fail loudly) rather than be silently
-// discarded, mirroring App.tsx's handleSignOutClick.
+// Sign out control, wired to lib/api.ts's ONE sign-out contract (DEC-154):
+// POST to the session endpoint with the CSRF header, redirect to /login
+// only on a 2xx, never swallow a rejection.
+//
+// Calls signOut() without swallowing a rejection into `void` -- a failed
+// sign-out must surface (fail loudly) rather than be silently discarded.
 function handlePhoneSignOutClick(): void {
-  handlePhoneSignOut().catch((err) => {
+  signOut().catch((err) => {
     throw err;
   });
 }
@@ -399,12 +383,12 @@ function PlanSection({
                 (DEC-369's amendment). */}
             {totalRows > 0 && (
               // docs/design/Chautauqua Review.dc.html:441-443 (frame extent
-              // 413-451, queue subscreen): the queue's own footer band docks
-              // at 390 -- .chq-phone-dock (app/src/styles.css) is the SAME
-              // sticky/full-bleed scaffold every other phone frame's footer
-              // dock already uses, added here as a plain className (no
-              // top-level rule exists for it, so desktop is unaffected).
-              <div className="chq-review-queue-footer chq-phone-dock">
+              // 413-451, queue subscreen): this is the DESKTOP queue footer
+              // band -- the phone dock lives at :719 (`.chq-phone-dock
+              // chq-review-phone-dock`), the ONE dock per surface (DEC-385
+              // wave-91 amendment); this row keeps its own 'Your scores…'
+              // copy per frame :401 and no longer mints `.chq-phone-dock`.
+              <div className="chq-review-queue-footer">
                 {!showAll && totalRows > 5 && (
                   <span className="chq-review-queue-footer-count-group">
                     <span className="chq-review-queue-footer-count">{`Showing 5 of ${totalRows}`}</span>
@@ -718,12 +702,6 @@ export function ReviewerQueue() {
             max-width:700px block, so this is a no-op at desktop. */}
         <div className="chq-phone-dock chq-review-phone-dock">
           <span className="chq-review-phone-dock-note">Scores stay hidden from other reviewers</span>
-          {/* Design gap flagged for a later wave: App.tsx's sign-out POST
-              (/logout, DEC-154) is a page-private function, not exported
-              from a shared lib, and this task's file ownership is scoped to
-              app/src/pages/review/** -- extracting it to a shared helper is
-              out of scope here, so this mirrors the same request/response
-              contract locally rather than reaching into App.tsx. */}
           <button type="button" className="chq-review-phone-signout" onClick={handlePhoneSignOutClick}>
             Sign out
           </button>
