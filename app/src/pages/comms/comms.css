@@ -2074,8 +2074,16 @@
     margin-inline: -10px;
   }
 
-  /* DEC-383 wave-109 amendment: .chq-pill is a filled/bordered control --
-     cancelled padding is not layout-neutral on it. */
+  /* tap-floor-exempt: DEC-383 wave-109 amendment -- .chq-pill is a
+     filled/bordered control, so the cancelled-padding idiom is not
+     layout-neutral on it (the negative margin would overlap each visible
+     box with its neighbour) and is dropped here. The horizontal room the
+     tap-floor scan looks for is already real on this subject rather than
+     borrowed: .chq-pill carries `padding: 5px 12px` plus a 1px border at
+     top level (styles.css:868-880), which the ruling names as the reason a
+     bordered control needs no cancelled pair -- "its own border already
+     gives the ring and the hit box their room". min-height:44px below
+     carries the vertical floor. */
   .chq-comms-head-actions > .chq-pill {
     min-height: 44px;
     display: flex;

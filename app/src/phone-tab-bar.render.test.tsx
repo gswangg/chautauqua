@@ -9,6 +9,26 @@
 // shape -- individual citations, each beside the expect( it backs, sit
 // with the test that exercises that frame's claim.
 //
+// CITATION FORM, deliberate: the `tabs: [` receipts below name a frame
+// file and a LINE NUMBER IN WORDS ("line 835"), not the strict
+// `docs/design/<Name>.dc.html:<line>` form used for the Submissions row
+// citation further down. Those five lines live in each .dc.html's TRAILING
+// SCRIPT REGION -- the phone-frame template data arrays -- not inside any
+// frame's body. The desktop-frame ledger (test/desktop-frame-ledger.scan
+// .test.ts) derives a frame's extent as "this label line up to the next
+// one", so the LAST desktop label in a file absorbs that whole trailing
+// script region; a strict citation into it would register as a desktop
+// PARITY CLAIM on whatever frame happened to be last ("Import from
+// Sessionboard", "Upload rejected", "Loading · the first paint") -- frames
+// this phone-tab-bar test does not exercise at all. Two ledger invariants
+// would then read the false claim as real coverage, one of them deleting a
+// standing user ruling in DEVIATIONS.md §6 as "overtaken". The phone
+// ledger, which shares the same citation regex, gains nothing from these
+// lines either: they are template data, inside no frame on either side. So
+// the receipt stays fully legible to a reader and stays out of the
+// ledgers' claim grammar. A citation that really does name a frame BODY
+// (Submissions line 175, below) keeps the strict form and claims normally.
+//
 // Routes below navigate to a NONEXISTENT sub-path under each section
 // (e.g. "/admin/contacts/x") so the router falls through to NotFoundPage
 // rather than mounting the real section page -- the tab bar renders
@@ -60,28 +80,28 @@ function leadingDot(item: HTMLElement): HTMLElement {
 
 describe('phone tab bar slot 4 is contextual (DEC-381 wave-109 amendment)', () => {
   it('shows Content in slot 4 at /overview (a non-Contacts, non-Comms section)', async () => {
-    // docs/design/Chautauqua Overview.dc.html:835 `tabs: [`
+    // Chautauqua Overview.dc.html line 835 `tabs: [` (frame template data)
     const bar = await renderTabBar('/admin/overview/x');
     const links = within(bar).getAllByRole('link');
     expect(links.map((l) => l.textContent)).toEqual(['Overview', 'Submissions', 'Speakers', 'Content']);
   });
 
   it('shows Contacts in slot 4 while on the Contacts section', async () => {
-    // docs/design/Chautauqua Contacts.dc.html:1015 `tabs: [`
+    // Chautauqua Contacts.dc.html line 1015 `tabs: [` (frame template data)
     const bar = await renderTabBar('/admin/contacts/x');
     const links = within(bar).getAllByRole('link');
     expect(links.map((l) => l.textContent)).toEqual(['Overview', 'Submissions', 'Speakers', 'Contacts']);
   });
 
   it('shows Comms in slot 4 while on the Comms section', async () => {
-    // docs/design/Chautauqua Comms.dc.html:970 `tabs: [`
+    // Chautauqua Comms.dc.html line 970 `tabs: [` (frame template data)
     const bar = await renderTabBar('/admin/comms/x');
     const links = within(bar).getAllByRole('link');
     expect(links.map((l) => l.textContent)).toEqual(['Overview', 'Submissions', 'Speakers', 'Comms']);
   });
 
   it('shows Content in slot 4 while on the Settings section (Settings is not slot 4)', async () => {
-    // docs/design/Chautauqua Content.dc.html:501 `tabs: [`
+    // Chautauqua Content.dc.html line 501 `tabs: [` (frame template data)
     const bar = await renderTabBar('/admin/settings/x');
     const links = within(bar).getAllByRole('link');
     expect(links.map((l) => l.textContent)).toEqual(['Overview', 'Submissions', 'Speakers', 'Content']);
@@ -90,8 +110,9 @@ describe('phone tab bar slot 4 is contextual (DEC-381 wave-109 amendment)', () =
 
 describe('More is DOT_ON exactly when the current section is off the rendered tabs (Settings frame)', () => {
   it('marks More active on /settings, where none of the four rendered tabs match', async () => {
-    // docs/design/Chautauqua Settings.dc.html:1702 `tabs: [` -- the
-    // Settings frame's own tabs array is the one with More at DOT_ON.
+    // Chautauqua Settings.dc.html line 1702 `tabs: [` (frame template
+    // data) -- the Settings frame's own tabs array is the one with More
+    // at DOT_ON.
     const bar = await renderTabBar('/admin/settings/x');
     const more = within(bar).getByRole('button', { name: /^More/ });
     expect(more.classList.contains('is-active')).toBe(true);
