@@ -27,8 +27,17 @@ const API_TS_PATH = join(__dirname, 'api.ts');
 
 // DEC-160: apiPostBlob's POST body is a filter (which rows to zip), not a
 // write -- the endpoint it calls performs no mutation, so there is nothing
-// for a badge to go stale over. The one deliberate exemption from the rule.
-const EXEMPT_HELPERS = new Set(['apiPostBlob']);
+// for a badge to go stale over.
+//
+// DEC-154/DEC-874: signOut()'s POST /logout destroys the session and then
+// hard-navigates via window.location.assign('/login'). Every subscriber to
+// mutationSignal is torn down by that navigation, so there is no consumer
+// left to refetch; bumping would only fire refetches that race the teardown
+// and 401 against the just-destroyed session. It also deliberately bypasses
+// request() because /logout carries no /api/v1 prefix.
+//
+// These two are the only deliberate exemptions from the rule.
+const EXEMPT_HELPERS = new Set(['apiPostBlob', 'signOut']);
 
 interface ParsedFunction {
   name: string;
@@ -106,8 +115,10 @@ describe('DEC-700: every mutating helper in api.ts reaches bumpMutationVersion (
     expect(offenders).toEqual([]);
   });
 
-  it('EXEMPT_HELPERS names exactly the DEC-160 bulk-download exception', () => {
-    expect([...EXEMPT_HELPERS]).toEqual(['apiPostBlob']);
+  it('EXEMPT_HELPERS names exactly the two written exceptions and no more', () => {
+    // Kept as an explicit list so a third exemption cannot be added without
+    // this pin (and the reason block above it) being edited on purpose.
+    expect([...EXEMPT_HELPERS]).toEqual(['apiPostBlob', 'signOut']);
   });
 });
 

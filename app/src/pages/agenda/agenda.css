@@ -1443,10 +1443,18 @@
     min-width: 0;
   }
 
-  /* overflow-exempt: a clash note names both sides or it names nothing --
+  /* A clash note names both sides or it names nothing --
      .chq-agenda-clash-note states which two sessions clash, and an
      ellipsis would hide the second session's identity, so it wraps
-     instead of truncating. */
+     instead of truncating.
+
+     This is a REAL fix, not an exemption: `white-space: normal` removes
+     the top-level rule's nowrap (:103) outright, so the note has no
+     horizontal overflow left to escape or excuse. It previously carried
+     an `overflow-exempt:` marker alongside this override, which
+     phone-horizontal-overflow.scan.test.ts correctly reported as stale --
+     an exemption must sit above a rule that is actually flagged, and a
+     wrapping rule never is. */
   .chq-agenda-clash-note {
     white-space: normal;
   }

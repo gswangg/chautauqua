@@ -57,11 +57,21 @@ export const TAP_FLOOR_EXEMPT: Array<[selector: string, reason: string]> = [
 ];
 const TAP_FLOOR_EXEMPT_SET = new Set(TAP_FLOOR_EXEMPT.map(([selector]) => selector));
 
+/** CSS comments are stripped before any structural scan. Since the DEC-385
+ * wave-100/102 forward-merges (v12m-w3-k for this sheet), the single terminal
+ * phone block carries cascade-shadow receipts that quote CSS inline -- e.g.
+ * `/* beats the desktop .chq-main{padding} at :487-491 *\/` at styles.css
+ * :2538. Those literal braces sit INSIDE a rule body, so the brace-pair
+ * grammar below could not match the block at all and phoneMediaBodies
+ * returned zero bodies, failing every vocabulary member at once. Comments
+ * carry no declarations, so dropping them first is both safe and necessary. */
+const stripComments = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, "");
+
 /** Strips top-level @media {...} blocks (one level of nested braces), then
  * returns only the CONTENTS of every @media (max-width: 700px) block found
  * in the original source. Mirrors phone-block-visibility.test.ts's
  * stripMedia helper, but keeps the phone-query bodies instead of discarding
- * them. */
+ * them. Callers must pass comment-stripped CSS (see stripComments). */
 function phoneMediaBodies(css: string): string[] {
   const bodies: string[] = [];
   const re = /@media\s*\(max-width:\s*700px\)\s*\{((?:[^{}]*\{[^{}]*\})*[^{}]*)\}/g;
@@ -138,8 +148,15 @@ describe("44px tap-target floor is a POSITIVE invariant (DEC-394 amendment, wave
     expect(TAP_FLOOR_VOCAB.length).toBeGreaterThanOrEqual(5);
   });
 
-  const stylesCss = readFileSync(STYLES_CSS_PATH, "utf8");
+  const stylesCss = stripComments(readFileSync(STYLES_CSS_PATH, "utf8"));
   const phoneBodies = phoneMediaBodies(stylesCss).join("\n");
+
+  it("found at least one phone block to scan", () => {
+    // Fail loudly rather than vacuously: if the grammar above ever stops
+    // matching styles.css (as it did before comments were stripped), every
+    // per-token assertion below fails for the wrong reason.
+    expect(phoneMediaBodies(stylesCss).length).toBeGreaterThanOrEqual(1);
+  });
 
   for (const classToken of TAP_FLOOR_VOCAB) {
     it(`.${classToken} reaches min-height: 44px on phone (or is exempt)`, () => {

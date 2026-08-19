@@ -84,24 +84,23 @@ describe('ExportsPanel exports table CSS (w23-c, DEC-902 amendment)', () => {
   });
 
   it('declares no table-layout for the exports table inside the phone reflow media block', () => {
-    const mediaStart = css.indexOf('@media (max-width: 700px) {');
-    expect(mediaStart).toBeGreaterThanOrEqual(0);
-    let depth = 0;
-    let i = mediaStart;
-    let mediaEnd = -1;
-    for (; i < css.length; i++) {
-      if (css[i] === '{') depth++;
-      else if (css[i] === '}') {
-        depth--;
-        if (depth === 0) {
-          mediaEnd = i;
-          break;
-        }
-      }
+    // The phone reflow stacks the table into cards, where a fixed column
+    // grid means nothing -- so no rule under the breakpoint may declare
+    // table-layout for this table.
+    //
+    // This used to be checked as "the string chq-settings-exports never
+    // appears in the phone block". That proxy stopped meaning what it said
+    // once DEC-385 wave-98 forward-merged settings.css's several phone
+    // blocks into one terminal block: the single block now legitimately
+    // names the exports table (an overflow escape on the CSV/JSON columns)
+    // without declaring table-layout. Assert the property, not the proxy.
+    expect(phoneBlockRulesMentioning(css, 'chq-settings-exports').length).toBeGreaterThan(0);
+    for (const rule of phoneBlockRulesMentioning(css, 'chq-settings-exports')) {
+      expect(rule.body, `${rule.selector} declares table-layout under the phone breakpoint`).not.toMatch(
+        /table-layout\s*:/,
+      );
     }
-    expect(mediaEnd).toBeGreaterThan(mediaStart);
-    const mediaBlock = css.slice(mediaStart, mediaEnd + 1);
-    expect(mediaBlock).not.toContain('chq-settings-exports');
+    expect(phoneBlockText(css)).not.toMatch(/table-layout\s*:/);
   });
 
   it('gives the Data and CSV/JSON headers the expected class hooks in the DOM', async () => {

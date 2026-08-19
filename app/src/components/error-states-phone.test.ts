@@ -45,14 +45,22 @@ function declares(body: string, prop: string, value: string): boolean {
  * block) whose selector list contains the given selector -- used to find
  * a token's phone-only floor rule regardless of which appended block it
  * lives in. */
-function allRuleBodiesFor(css: string, selector: string): string[] {
+interface RuleBody {
+  body: string;
+  /** Byte offset of the first character INSIDE the rule's braces. */
+  index: number;
+}
+
+function allRuleBodiesFor(css: string, selector: string): RuleBody[] {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
-  const bodies: string[] = [];
+  const bodies: RuleBody[] = [];
   let m: RegExpExecArray | null;
   while ((m = ruleRe.exec(css))) {
     const selectors = (m[1] ?? '').split(',').map((s) => s.trim());
-    if (selectors.some((s) => s === selector)) bodies.push(m[2] ?? '');
+    if (selectors.some((s) => s === selector)) {
+      bodies.push({ body: m[2] ?? '', index: m.index + m[0].indexOf('{') + 1 });
+    }
   }
   if (bodies.length === 0) {
     throw new Error(`no rule found anywhere for ${escaped}`);
@@ -60,25 +68,30 @@ function allRuleBodiesFor(css: string, selector: string): string[] {
   return bodies;
 }
 
-/** The token's floor rule: the one body (of possibly several across the
- * file) that actually declares min-height. Fails loudly if none does --
- * a token with no floored body at all is exactly the defect this test
- * exists to catch. */
-function floorBody(css: string, selector: string): string {
+/** The token's floor rule: the LAST body (of possibly several across the
+ * file) that declares min-height -- the one that actually wins the cascade.
+ * Since the DEC-385 wave-100/102/103 forward-merge, a token can carry two
+ * phone rules in the same terminal block (e.g. .chq-detail-delete-link at
+ * detail.css:870 and :1177); the later one is the effective rule, so the
+ * first match would assert against a shadowed body. Fails loudly if none
+ * declares a floor -- a token with no floored body at all is exactly the
+ * defect this test exists to catch. */
+function floorBody(css: string, selector: string): RuleBody {
   const bodies = allRuleBodiesFor(css, selector);
-  const floored = bodies.find((b) => /min-height\s*:/.test(b));
+  const floored = [...bodies].reverse().find((b) => /min-height\s*:/.test(b.body));
   if (!floored) {
     throw new Error(`no min-height declared for ${selector} in any of its ${bodies.length} rule body(ies)`);
   }
   return floored;
 }
 
-/** True if the body sits inside a `@media (max-width: ...)` block (never a
- * top-level, always-applied rule) -- DEC-385 requires this to be a narrow
- * override, not a desktop-wide change. */
-function isInsideMaxWidthBlock(css: string, body: string): boolean {
-  const idx = css.indexOf(body);
-  if (idx === -1) return false;
+/** True if the body at `idx` sits inside a `@media (max-width: ...)` block
+ * (never a top-level, always-applied rule) -- DEC-385 requires this to be a
+ * narrow override, not a desktop-wide change. Takes an explicit offset
+ * rather than re-finding the body by text: two rules can share a body
+ * verbatim, and indexOf would answer for the wrong one. */
+function isInsideMaxWidthBlock(css: string, idx: number): boolean {
+  if (idx < 0 || idx > css.length) return false;
   const before = css.slice(0, idx);
   const openMedia = before.lastIndexOf('@media');
   if (openMedia === -1) return false;
@@ -98,8 +111,16 @@ function isInsideMaxWidthBlock(css: string, body: string): boolean {
 }
 
 describe('the 44px floor for the three ROOMY link tokens this wave fixed', () => {
-  const detailCss = readFileSync(DETAIL_CSS_PATH, 'utf-8');
-  const errorStatesCss = readFileSync(ERROR_STATES_CSS_PATH, 'utf-8');
+  // CSS comments are stripped before any structural scan. Since the DEC-385
+  // wave-100/102/103 forward-merges, a provenance comment can sit between a
+  // `}` and the next selector -- where the rule grammar above would swallow
+  // it into that rule's selector list -- and can itself contain the literal
+  // `@media` (detail.css:1094 reads "so this `@media` block always wins
+  // ties"), which the block-header scan would mistake for a real block
+  // opener. Comments carry no declarations, so dropping them first is safe.
+  const stripComments = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const detailCss = stripComments(readFileSync(DETAIL_CSS_PATH, 'utf-8'));
+  const errorStatesCss = stripComments(readFileSync(ERROR_STATES_CSS_PATH, 'utf-8'));
 
   const cases: Array<{ name: string; css: string; selector: string }> = [
     { name: 'chq-detail-content-link', css: detailCss, selector: '.chq-detail-content-link' },
@@ -109,7 +130,7 @@ describe('the 44px floor for the three ROOMY link tokens this wave fixed', () =>
 
   for (const { name, css, selector } of cases) {
     it(`${name} declares min-height:44px, centred flex, and horizontal padding inside a max-width block`, () => {
-      const body = floorBody(css, selector);
+      const { body, index } = floorBody(css, selector);
       expect(declares(body, 'min-height', '44px')).toBe(true);
       expect(declares(body, 'display', 'inline-flex')).toBe(true);
       expect(declares(body, 'align-items', 'center')).toBe(true);
@@ -119,7 +140,7 @@ describe('the 44px floor for the three ROOMY link tokens this wave fixed', () =>
       const hasLonghandPadding =
         /padding-left\s*:\s*[1-9][0-9]*px\s*;/.test(body) && /padding-right\s*:\s*[1-9][0-9]*px\s*;/.test(body);
       expect(hasShorthandPadding || hasLonghandPadding).toBe(true);
-      expect(isInsideMaxWidthBlock(css, body)).toBe(true);
+      expect(isInsideMaxWidthBlock(css, index)).toBe(true);
     });
   }
 

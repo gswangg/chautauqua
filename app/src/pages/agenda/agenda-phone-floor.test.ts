@@ -197,13 +197,31 @@ describe('agenda phone tap-floor + overflow fixes (task w8-g, DEC-393/DEC-989)',
     expect(hasOverflowEscapeOrExemption(CSS, 'chq-toolbar-link')).toBe(true);
   });
 
-  it('exempts .chq-agenda-clash-note by name instead of ellipsizing it (judgement call: a clash note names both sides or it names nothing)', () => {
-    expect(hasOverflowEscapeOrExemption(CSS, 'chq-agenda-clash-note')).toBe(true);
-    expect(/overflow-exempt:/.test(CSS)).toBe(true);
-    // Falsifiability: a fabricated sheet with NEITHER the escape properties
-    // NOR the named exemption comment must be rejected.
-    const badCss = `.chq-agenda-clash-note { white-space: nowrap; }`;
-    expect(hasOverflowEscapeOrExemption(badCss, 'chq-agenda-clash-note')).toBe(false);
+  // Previously this asserted a NAMED overflow-exemption for the clash note.
+  // The phone override actually declares `white-space: normal`, which is a
+  // real fix rather than an excuse: it removes the top-level rule's nowrap
+  // (agenda.css:103) outright, so the note wraps and names both sides with
+  // nothing truncated. An `overflow-exempt:` marker sat alongside it from
+  // the same commit, and phone-horizontal-overflow.scan.test.ts rightly
+  // flagged that marker as stale -- an exemption must sit above a rule the
+  // scan actually flags, and a wrapping rule is never flagged. The marker
+  // is retired; what matters is pinned directly here instead.
+  it('unwraps .chq-agenda-clash-note at phone width instead of ellipsizing it (a clash note names both sides or it names nothing)', () => {
+    const bodies = narrowMediaRules(CSS, 700)
+      .filter((r) => selectorMentions(r.selector, 'chq-agenda-clash-note'))
+      .map((r) => r.body)
+      .join(' ');
+    expect(bodies).toMatch(/white-space\s*:\s*normal/);
+    // ...and it is NOT ellipsized: truncation is the outcome this rule exists
+    // to prevent, so the escape trio must be absent.
+    expect(bodies).not.toMatch(/text-overflow\s*:\s*ellipsis/);
+    // Falsifiability: a sheet that leaves the note on nowrap must not pass.
+    const badCss = `@media (max-width: 700px) { .chq-agenda-clash-note { white-space: nowrap; } }`;
+    const badBodies = narrowMediaRules(badCss, 700)
+      .filter((r) => selectorMentions(r.selector, 'chq-agenda-clash-note'))
+      .map((r) => r.body)
+      .join(' ');
+    expect(badBodies).not.toMatch(/white-space\s*:\s*normal/);
   });
 
   it('does not flag a synthetic offender with only three of the four floor properties (falsifiability control)', () => {

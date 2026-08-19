@@ -587,17 +587,25 @@ describe('DeliverableDetail render smoke', () => {
     expect(body).toMatch(/border-bottom:\s*1px solid var\(--chq-rule\)/);
     expect(body).not.toMatch(/border-bottom:\s*1px solid var\(--chq-hairline\)/);
 
+    // Comments are stripped before scanning: styles.css:381 opens a receipt
+    // with the literal text "@media max-width:700px block", which an
+    // unstripped `@media[^{]*\{` scan takes for a real block opener and then
+    // matches the DESKTOP .chq-main rule that follows it.
     const stylesCss = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'styles.css'),
       'utf-8',
-    );
+    ).replace(/\/\*[\s\S]*?\*\//g, '');
     // .chq-main's own horizontal padding is the SAME token, and the token
     // is re-declared (not hand-copied) under the phone breakpoint so the
     // two consumers can never drift.
     const mainMatch = stylesCss.match(/\n\.chq-main\s*\{([^}]*)\}/);
     expect(mainMatch).not.toBeNull();
     expect(mainMatch![1]).toMatch(/padding:[^;]*var\(--chq-pub-main-pad-x\)/);
-    const phoneMainMatch = stylesCss.match(/@media[^{]*\{[\s\S]*?\.chq-main\s*\{([^}]*)\}/);
+    // Scoped to the phone breakpoint by name rather than "the first @media
+    // in the file" -- styles.css carries several non-phone queries.
+    const phoneMainMatch = stylesCss.match(
+      /@media\s*\(max-width:\s*700px\)\s*\{[\s\S]*?\.chq-main\s*\{([^}]*)\}/,
+    );
     expect(phoneMainMatch).not.toBeNull();
     expect(phoneMainMatch![1]).toMatch(/--chq-pub-main-pad-x:\s*16px/);
   });

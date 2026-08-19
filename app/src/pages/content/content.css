@@ -1735,6 +1735,7 @@
   /* overflow-exempt: the frame pins this control to white-space:nowrap
      directly (Chautauqua Content.dc.html:207) */
   .chq-content-phone-select-toggle {
+    white-space: nowrap;
   }
 
   /* docs/design/Chautauqua Content.dc.html:256 -- selecting-state header:
@@ -1746,5 +1747,6 @@
      exact (Chautauqua Content.dc.html:256 pins white-space:nowrap on the
      frame's "All 5" link) */
   .chq-content-phone-selecting-all {
+    white-space: nowrap;
   }
 }

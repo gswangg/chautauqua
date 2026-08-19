@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { ApiTokensPanel } from './ApiTokensPanel';
 import { formatDateTime } from '../../lib/dates';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { phoneBlockRulesMentioning, phoneBlockText } from '../../test-utils/phoneBlock';
 
 const CREATED_AT = 1_700_000_500_000;
 const LAST_USED_AT = 1_700_050_000_000;
@@ -168,27 +169,25 @@ describe('ApiTokensPanel tokens table CSS (w22-b, DEC-902 amendment)', () => {
   });
 
   it('declares no table-layout for the tokens table inside the phone reflow media block', () => {
-    const mediaStart = css.indexOf('@media (max-width: 700px) {');
-    expect(mediaStart).toBeGreaterThanOrEqual(0);
-    // Brace-count from the media query's opening `{` to find its matching
-    // close, since the block contains many nested rules of its own.
-    let depth = 0;
-    let i = mediaStart;
-    let mediaEnd = -1;
-    for (; i < css.length; i++) {
-      if (css[i] === '{') depth++;
-      else if (css[i] === '}') {
-        depth--;
-        if (depth === 0) {
-          mediaEnd = i;
-          break;
-        }
-      }
+    // The phone reflow turns the table into display:block cards, where a
+    // fixed column grid means nothing -- so no rule under the breakpoint may
+    // declare table-layout for this table.
+    //
+    // This used to be checked as "the string chq-settings-tokens never
+    // appears in the phone block". That proxy stopped meaning what it said
+    // once DEC-385 wave-98 forward-merged settings.css's several phone
+    // blocks into one terminal block: the single block now legitimately
+    // names the tokens table for unrelated reasons (a 44px tap floor on the
+    // Revoke button, an overflow escape on the actions column), none of
+    // which declare table-layout. Assert the property, not the proxy.
+    expect(phoneBlockRulesMentioning(css, 'chq-settings-tokens').length).toBeGreaterThan(0);
+    for (const rule of phoneBlockRulesMentioning(css, 'chq-settings-tokens')) {
+      expect(rule.body, `${rule.selector} declares table-layout under the phone breakpoint`).not.toMatch(
+        /table-layout\s*:/,
+      );
     }
-    expect(mediaEnd).toBeGreaterThan(mediaStart);
-    const mediaBlock = css.slice(mediaStart, mediaEnd + 1);
-    expect(mediaBlock).not.toContain('chq-settings-tokens');
-    expect(mediaBlock).not.toContain('table-layout');
+    // And no rule in the block declares it for anything else either.
+    expect(phoneBlockText(css)).not.toMatch(/table-layout\s*:/);
   });
 });
 

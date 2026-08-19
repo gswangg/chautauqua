@@ -141,7 +141,9 @@
      TracksRoomsPanel.tsx and open the identical form, so nothing the user
      could do at desktop is unreachable at 390 -- only the affordance's
      position moves, from the section head to below the list, which is
-     what docs/design/Chautauqua Settings.dc.html:367,382 draws. */
+     what docs/design/Chautauqua Settings.dc.html:367,382 draws:
+     `border:1px dashed #BAB6A6; border-radius:6px; min-height:44px;
+     font-size:13px; font-weight:700; color:#4E5C31`. */
   .chq-settings-drillrow-head-hide {
     display: none;
   }

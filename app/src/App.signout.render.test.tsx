@@ -3,7 +3,8 @@
 // non-ok response, so an unconditional navigate would assert a sign-out
 // that did not happen. Covers both the success path (assign called) and
 // the failure path (assign NOT called, rejection surfaces instead of being
-// swallowed by `void`).
+// rendered as a visible chq-error alert rather than a rejection into the
+// void -- see v12m-w14-c's handleSignOutClick in App.tsx).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -70,30 +71,23 @@ function stubFetch(logoutResponse: { ok: boolean; status: number }) {
 }
 
 describe('signOut() (DEC-154 wave 14 amendment)', () => {
-  it('does NOT navigate to /login when the /logout response is not ok, and surfaces the failure', async () => {
+  it('does NOT navigate to /login when the /logout response is not ok, and surfaces the failure as a visible alert', async () => {
     stubFetch({ ok: false, status: 400 });
     const assignSpy = stubLocationAssign();
-    // The event handler lets the rejection surface rather than swallowing
-    // it -- Node's process-level 'unhandledRejection' is where that
-    // surfaces in this jsdom+vitest environment (vitest's own error
-    // reporter intercepts it before a window 'unhandledrejection' listener
-    // would see it), so assert against that rather than window's event.
-    const rejections: unknown[] = [];
-    const onRejection = (reason: unknown) => rejections.push(reason);
-    process.on('unhandledRejection', onRejection);
 
     render(<App />);
 
     const signOutButton = await screen.findByRole('button', { name: 'Sign out' });
     signOutButton.click();
 
-    await vi.waitFor(() => {
-      expect(rejections.length).toBeGreaterThan(0);
-    });
-    expect((rejections[0] as Error).message).toBe('Sign-out failed: /logout responded 400');
+    // v12m-w14-c: a failed sign-out no longer rejects into the void -- the
+    // click handler catches it into the Header's signOutError state, which
+    // renders as a chq-error alert the operator can actually see. Matched by
+    // text, not by role: the mounted /admin route carries its own alerts.
+    expect(await screen.findByText('Sign-out failed: /logout responded 400')).toHaveClass(
+      'chq-error',
+    );
     expect(assignSpy).not.toHaveBeenCalled();
-
-    process.off('unhandledRejection', onRejection);
   });
 
   it('navigates to /login when the /logout response is ok', async () => {
