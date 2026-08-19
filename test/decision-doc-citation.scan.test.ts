@@ -53,7 +53,7 @@
 // landed on main) is corrected in the document itself, not encoded as a
 // new scan rule -- a scan cannot tell a completed act from a promised one
 // in prose with no citation to check it against.
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -419,8 +419,9 @@ describe("negative controls", () => {
     expect(violations[0]!.message).toMatch(/does not match line 3/);
   });
 
-  it("cleanup: removes the temp fixture directory", () => {
+  // Cleanup is a hook, not a test: it must run even when a control above
+  // throws, and a test asserting nothing is a tautology (DEC-967 wave-57).
+  afterAll(() => {
     rmSync(tmpRoot, { recursive: true, force: true });
-    expect(true).toBe(true);
   });
 });

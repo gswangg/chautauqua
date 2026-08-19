@@ -121,9 +121,10 @@
      unconverted "Add a track"/"Add a room" head links, out of this
      task's scope) via each panel's own extra class. */
   /* phone-hidden: desktop twin of .chq-settings-phone-action, the phone-only
-     46px primary drawn at docs/design/Chautauqua Settings.dc.html:426 and
-     :568 -- the capability renders twice in the DOM, exactly once on screen
-     (DEC-919). */
+     46px primary whose rule sits at the top of this same media block --
+     that rule's comment carries the two frame citations and their quoted
+     receipts, so they are not repeated here. The capability renders twice
+     in the DOM, exactly once on screen (DEC-919). */
   .chq-settings-token-create .chq-btn-primary,
   .chq-settings-people-invite-action {
     display: none;
