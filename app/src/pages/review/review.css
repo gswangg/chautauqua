@@ -2331,17 +2331,14 @@
     font-weight: 600;
   }
 
-  /* The phone-only inert type select (see PlanEditor.tsx) -- hidden at
-     every wider width, shown here at the frame's 46px with the shared
-     .chq-select right-edge caret (DESIGN-RULINGS B8). */
-  .chq-review-criterion-type-display-phone {
-    display: flex;
-    flex: 1 1 100%;
-    min-height: 46px;
-    align-items: center;
-    padding: 0 13px;
-    font-size: 14px;
-  }
+  /* DEC-937 w9-d: the phone-only inert type select this rule was styling
+     for (frame :594/:608 draws a per-row type control) was never built --
+     PlanEditor.tsx's own comment (v12m-w5-b/DEC-018) explains why: an
+     always-rendered element here would grow the editable criterion row's
+     child count past the desktop grid-track parity PlanEditor.render.test
+     pins, a file outside this lane's scope. Filed in
+     docs/design/audit/review-admin-v12.md for a lane that owns that test;
+     the orphaned rule is deleted rather than left dead. */
 
   .chq-review-criterion-options {
     flex: 1 1 100%;
