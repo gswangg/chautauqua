@@ -15,12 +15,25 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, 'comms.css');
 const TSX_PATH = join(HERE, 'ComposeWizard.tsx');
 
-/** Extracts the body text of the (single) 700px media block. */
+/** Extracts the body text of the FIRST 700px media block -- the card-reflow
+ * block this file's assertions are about. Brace-matched (not a greedy
+ * `[\s\S]*` span to the file's last closing brace) so a later, unrelated
+ * `@media (max-width: 700px)` block appended further down the file (e.g.
+ * DEC-393 wave-90's terminal tap-floor/overflow block, task w8-c) is never
+ * folded into "the card-reflow block". */
 function phoneBlockBody(css: string): string {
-  const match = css.match(/@media \(max-width: 700px\) \{([\s\S]*)\n\}\n/);
-  const body = match?.[1];
-  if (body === undefined) throw new Error('no 700px media block found');
-  return body;
+  const openRe = /@media \(max-width: 700px\) \{/;
+  const openMatch = openRe.exec(css);
+  if (openMatch === null) throw new Error('no 700px media block found');
+  let i = openMatch.index + openMatch[0].length;
+  const bodyStart = i;
+  let depth = 1;
+  while (i < css.length && depth > 0) {
+    if (css[i] === '{') depth++;
+    else if (css[i] === '}') depth--;
+    i++;
+  }
+  return css.slice(bodyStart, i - 1);
 }
 
 describe('comms.css compose step-1 table column allocation (DEC-902, task w21-a)', () => {
