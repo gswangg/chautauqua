@@ -72,7 +72,8 @@ export const THEME_CSS = `
     --chq-type-page-title-size: 36px;
     --chq-type-page-title-weight: 700;
     --chq-type-page-title-tracking: -0.04em;
-    --chq-type-page-title-phone-size: 25px;
+    --chq-type-page-title-phone-size: 27px;
+    --chq-type-page-title-phone-drill: 25px;
     --chq-type-overview-headline-size: 44px;
     --chq-type-overview-headline-weight: 700;
     --chq-type-overview-headline-tracking: -0.042em;
