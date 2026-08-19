@@ -64,6 +64,9 @@ export default defineConfig({
       // plain .test.ts name, same idiom as planEditor-refusal-shapes.test.ts
       // above) but still needs a real DOM/window for its render assertions.
       ["app/src/pages/comms/comms-drill-phone-frames.test.ts", "jsdom"],
+      // Same suite, w7-d's independently-written half (split at integration
+      // time -- see that file's header); same jsdom treatment.
+      ["app/src/pages/comms/comms-drill-phone-frames.w7d.test.ts", "jsdom"],
       ["app/src/pages/submissions/submissions-landing-phone-frame.test.ts", "jsdom"],
     ],
     include: [

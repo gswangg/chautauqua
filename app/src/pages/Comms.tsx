@@ -264,8 +264,8 @@ export function CommsPage() {
             />
           </>
         )}
-        {tab === 'templates' && <TemplatesTab eventId={eventId} />}
-        {tab === 'history' && <HistoryTab eventId={eventId} templatesById={templatesById} rhythm={rhythm} />}
+        {tab === 'templates' && <TemplatesTab eventId={eventId} onBack={() => setPhoneEntered(false)} />}
+        {tab === 'history' && <HistoryTab eventId={eventId} templatesById={templatesById} rhythm={rhythm} onBack={() => setPhoneEntered(false)} />}
       </div>
 
       {/* v12 mobile campaign w1 (DEC-621 amendment; planner's ruling):

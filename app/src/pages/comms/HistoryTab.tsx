@@ -34,10 +34,12 @@ export function HistoryTab({
   eventId,
   templatesById,
   rhythm,
+  onBack,
 }: {
   eventId: string;
   templatesById: Record<string, string>;
   rhythm?: SendRhythm | null;
+  onBack?: () => void;
 }) {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
@@ -139,7 +141,12 @@ export function HistoryTab({
           <button
             type="button"
             className="chq-link-button chq-comms-history-breadcrumb chq-phone-back"
-            onClick={goToCompose}
+            onClick={() => {
+              // w7-d: the phone drill also has to leave the drilled
+              // state Comms.tsx owns, not just change the tab.
+              onBack?.();
+              goToCompose();
+            }}
           >
             &lsaquo; Comms
           </button>

@@ -42,7 +42,7 @@ function derivePurpose(t: EmailTemplate): string {
   return 'Custom template';
 }
 
-export function TemplatesTab({ eventId }: { eventId: string }) {
+export function TemplatesTab({ eventId, onBack }: { eventId: string; onBack?: () => void }) {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -204,7 +204,12 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
           <button
             type="button"
             className="chq-link-button chq-comms-templates-breadcrumb chq-phone-back"
-            onClick={() => navigate('/comms?tab=compose')}
+            onClick={() => {
+              // w7-d: the phone drill also has to leave the drilled
+              // state Comms.tsx owns, not just change the tab.
+              onBack?.();
+              navigate('/comms?tab=compose');
+            }}
           >
             &lsaquo; Comms
           </button>
