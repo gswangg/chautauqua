@@ -14,6 +14,17 @@ states, and would dissolve if the frames adopted them.
   reference may appear in implementation or docs. The control implies an
   undesigned subsystem (archived-state visibility, un-archive path, public
   lifecycle). Mandate commit 90dcbf73.
+- **`docs/design/Chautauqua Speakers.dc.html:549` ("Speakers · a write
+  failed")** — its status pills are hand-styled in the frame's PRE-inversion
+  vocabulary (the old fill-for-overdue/outline-for-complete reading v12
+  replaced). DEC-650 (planner ruling, v12m-w2-c): this frame is STALE and the
+  implementation does NOT match it. The landed inverted
+  `.chq-speakers-status-*` family (v12: complete recedes bare-text, overdue
+  is the filled exception) wins everywhere, including this row-rollback
+  state — otherwise a cell's meaning would depend on whether an unrelated
+  write on the page had just failed, which is not a real distinction any
+  reader should have to track. No code change; the frame should be redrawn
+  with the current pill vocabulary in a future design pass.
 
 ## 2. State-layer additions (frames draw no row/selection states)
 

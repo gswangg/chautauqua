@@ -1034,6 +1034,19 @@ a.chq-speakers-task-title:hover {
   text-decoration: underline;
 }
 
+/* DEC-368 amendment (w2-c): docs/design/Chautauqua Speakers.dc.html:92
+   `<a href="#" style="font-family:'Familjen Grotesk', sans-serif;
+   font-size:16px; font-weight:600; letter-spacing:-0.015em;
+   color:#1B1D17">{{ row.name }}</a>` draws the DESKTOP matrix's
+   speaker-name link at 16px, one size below the shared .chq-row-title's
+   18px. Page-local override scoped to the grid table only (not the phone
+   card, which shares the class but is its own frame at :151, 17px, and
+   is not this ruling's subject) -- .chq-row-title itself stays untouched
+   for every other consumer. */
+.chq-speakers-grid .chq-speakers-name-link.chq-row-title {
+  font-size: 16px;
+}
+
 .chq-speaker-detail-page {
   display: flex;
   flex-direction: column;
@@ -1438,4 +1451,105 @@ a.chq-speakers-task-title:hover {
 .chq-speakers-remind-draft-note {
   font-size: 12px;
   color: var(--chq-muted);
+}
+
+/* v12 mobile campaign w2-c. DEC-385 single-direction: every rule below is
+   either a top-level "hidden on wide" default or lives inside this one
+   max-width block, appended last so it beats any earlier desktop rule at
+   equal specificity (content.css/comms.css lost that fight before the
+   append-at-end convention -- see field guide). */
+.chq-speakers-phone-head-actions,
+.chq-speakers-phone-roster-link,
+.chq-speakers-roster-drillin {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  /* docs/design/Chautauqua Speakers.dc.html:133 `Matrix becomes one card
+     per speaker` -- the desktop's three-button row has no room at 390, so
+     it hides and the phone action row (declared hidden above) takes over.
+     The H1/summary above it (.chq-speakers-head-titles) is untouched --
+     one heading, shared by both densities. */
+  .chq-speakers-head-actions {
+    display: none;
+  }
+
+  /* docs/design/Chautauqua Speakers.dc.html:138
+     `display:flex; gap:8px` -- Remind outstanding / Filter. */
+  .chq-speakers-phone-head-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .chq-speakers-phone-head-actions .chq-btn {
+    flex: 1;
+  }
+
+  .chq-speakers-phone-roster-link {
+    display: inline-flex;
+    align-self: flex-start;
+    font-size: 13px;
+  }
+
+  /* The filter toolbar (GridFilters) is a disclosure at this width,
+     opened by the phone head's Filter toggle -- collapsed by default so
+     the card list is the first thing the body shows. */
+  .chq-speakers-toolbar {
+    display: none;
+  }
+
+  .chq-speakers-toolbar.is-phone-open {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  /* docs/design/Chautauqua Speakers.dc.html:165
+     `display:flex; gap:8px; padding-top:2px` -- the card's Remind / Open
+     profile action pair. */
+  .chq-speakers-card-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 2px;
+  }
+
+  .chq-speakers-card-actions .chq-btn {
+    flex: 1;
+  }
+
+  /* docs/design/Chautauqua Speakers.dc.html:260 `Roster · 390` -- the
+     drill-in screen (RosterPanel.tsx's RosterDrillIn). Stacks head/body/
+     dock as a column; the shared .chq-phone-head/-body/-dock classes
+     supply their own sticky/scroll geometry. */
+  .chq-speakers-roster-drillin {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .chq-speakers-roster-row {
+    padding: 15px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .chq-speakers-roster-row-identity {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .chq-speakers-roster-row-meta {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chq-speakers-roster-open {
+    flex-shrink: 0;
+  }
 }

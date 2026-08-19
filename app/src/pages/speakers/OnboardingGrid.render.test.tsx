@@ -753,7 +753,9 @@ describe('OnboardingGrid: DEC-678 amendment -- a search miss renders the filtere
     // filter gets undone) -- unlike the fresh zero-state, which hides it.
     expect(screen.getByText(/^Showing /, { selector: '.chq-summary' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    // DEC-678 amendment (w2-c): exactly one facet (q) is active, so the
+    // escape names it instead of the generic multi-facet label.
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search filter ›' }));
 
     // The escape clears the search box itself (bound straight to filters.q).
     await waitFor(() => {
@@ -1154,7 +1156,11 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     // usefully, so the page line keeps only the two numbers that are
     // genuinely a summary. The counts payload is unchanged; what the header
     // chooses to print from it is what moved.
-    const summary = screen.getByText(/accepted/).closest('span');
+    // Scoped to the desktop head -- v2-c's phone head (chq-speakers-phone-head-actions
+    // lives inside the SAME .chq-speakers-head, so the "N accepted · N
+    // overdue" summary itself is NOT duplicated, but scope explicitly for
+    // clarity/future-proofing anyway.
+    const summary = within(document.querySelector('.chq-speakers-head')!).getByText(/accepted/).closest('span');
     expect(summary).toHaveTextContent('4 accepted');
     expect(summary).toHaveTextContent('0 overdue');
     expect(summary).not.toHaveTextContent('tasks open');
@@ -1849,7 +1855,9 @@ describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
     expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
 
-    const escape = screen.getByRole('button', { name: 'Clear filters' });
+    // DEC-678 amendment (w2-c): exactly one facet (overdueOnly) is active,
+    // so the escape names it (frame :442) instead of the generic label.
+    const escape = screen.getByRole('button', { name: 'Clear the overdue filter ›' });
     expect(escape).toBeInTheDocument();
     fireEvent.click(escape);
 
@@ -1858,6 +1866,36 @@ describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
     // quiet again.
     await waitFor(() => {
       expect(screen.queryByText(/^Showing \d+ of \d+ speakers/)).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('No speakers on the roster yet.')).toBeInTheDocument();
+  });
+
+  it('DEC-678 amendment (w2-c): TWO active facets keep the multi-facet sentence and the generic clear-all escape', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: EMPTY_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Overdue only' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
+    fireEvent.change(screen.getByLabelText('Search speakers'), { target: { value: 'okafor' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('No speakers match the current filters.')).toBeInTheDocument();
+    });
+    // Both facets are named, joined -- never a single-facet sentence when
+    // two are active.
+    expect(screen.getByText('matching "okafor" and overdue')).toBeInTheDocument();
+    // Two-or-more keeps the ORIGINAL generic label, not a facet-specific one.
+    const escape = screen.getByRole('button', { name: 'Clear filters' });
+    expect(escape).toBeInTheDocument();
+    fireEvent.click(escape);
+    await waitFor(() => {
+      expect((screen.getByLabelText('Search speakers') as HTMLInputElement).value).toBe('');
     });
     expect(screen.getByText('No speakers on the roster yet.')).toBeInTheDocument();
   });
@@ -2030,5 +2068,85 @@ describe('OnboardingGrid: P3 #21 taskId narrowing collapses the rendered columns
       expect(table().getByText('Submit bio')).toBeInTheDocument();
       expect(table().getByText('Upload headshot')).toBeInTheDocument();
     });
+  });
+});
+
+// v12 mobile campaign w2-c: docs/design/Chautauqua Speakers.dc.html:133
+// `Matrix becomes one card per speaker` -- the phone card's bottom action
+// pair (frame :165 `Remind` / `Open profile`) and the phone head's own
+// Remind-outstanding/Filter row + Roster entry link (frame :135-142,
+// :260).
+describe('v12m-w2-c: Speakers phone frames', () => {
+  it('each phone card carries a Remind / Open profile action pair, and the profile link targets the contact', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(
+      <MemoryRouter>
+        <OnboardingGrid onAddSpeaker={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const cards = within(document.querySelector('.chq-speakers-cards') as HTMLElement);
+    const adaCard = cards.getByText('Ada Lovelace').closest('.chq-speakers-card') as HTMLElement;
+    const actions = within(adaCard).getByText('Open profile').closest('.chq-speakers-card-actions') as HTMLElement;
+    expect(within(actions).getByText('Open profile').closest('a')).toHaveAttribute('href', '/speakers/ct1');
+    // Ada has no outstanding work in this fixture's cells, but the pair
+    // structure itself (a dedicated bottom actions row) is what frame
+    // :165 draws -- checked against Grace, who does have outstanding work.
+    const graceCard = cards.getByText('Grace Hopper').closest('.chq-speakers-card') as HTMLElement;
+    const graceActions = within(graceCard).getByText('Open profile').closest('.chq-speakers-card-actions') as HTMLElement;
+    expect(within(graceActions).getByRole('button', { name: /^Remind Grace/ })).toBeInTheDocument();
+  });
+
+  it('the phone head renders Remind outstanding / Filter, and Filter toggles the toolbar open', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(
+      <MemoryRouter>
+        <OnboardingGrid onAddSpeaker={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const phoneActions = document.querySelector('.chq-speakers-phone-head-actions') as HTMLElement;
+    expect(within(phoneActions).getByRole('button', { name: 'Remind outstanding' })).toBeInTheDocument();
+    const filterToggle = within(phoneActions).getByRole('button', { name: 'Filter' });
+    const toolbar = document.querySelector('.chq-speakers-toolbar') as HTMLElement;
+    expect(toolbar).not.toHaveClass('is-phone-open');
+    fireEvent.click(filterToggle);
+    expect(toolbar).toHaveClass('is-phone-open');
+  });
+
+  it('the Roster link opens the drill-in (frame :260), and its back link returns to the card list', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(
+      <MemoryRouter>
+        <OnboardingGrid onAddSpeaker={vi.fn()} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Roster/ }));
+
+    expect(screen.getByRole('heading', { name: 'Roster' })).toBeInTheDocument();
+    expect(document.querySelector('.chq-speakers-roster-drillin .chq-summary')).toHaveTextContent(
+      '2 accepted · 1 not claimed',
+    );
+    expect(screen.getAllByRole('link', { name: 'Open' }).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /^.*Speakers$/ }));
+    expect(screen.queryByRole('heading', { name: 'Roster' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Speakers' })).toBeInTheDocument();
   });
 });

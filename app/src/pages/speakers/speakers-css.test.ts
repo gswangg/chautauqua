@@ -318,3 +318,67 @@ describe('every user of the shared status family imports speakers.css', () => {
     expect(users).toEqual([...PAGE_ENTRY_POINTS].sort());
   });
 });
+
+// v12 mobile campaign w2-c: the two 390 frames + DEC-368's desktop name-link
+// fix. jsdom applies no stylesheet (see the file header), so this is a
+// source-scan on speakers.css's own text, mirroring
+// app/src/phone-page-scaffold.test.ts's brace-matching helpers.
+describe('v12m-w2-c: Speakers phone frames + DEC-368', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  it('declares no min-width query (DEC-385 single-direction)', () => {
+    expect(css).not.toMatch(/@media[^{]*min-width/);
+  });
+
+  it('DEC-368 amendment: the grid-scoped name-link override is 16px and lives OUTSIDE any @media block', () => {
+    // docs/design/Chautauqua Speakers.dc.html:92
+    // `font-size:16px; font-weight:600; letter-spacing:-0.015em`
+    const body = topLevelRuleBody(css, '.chq-speakers-grid .chq-speakers-name-link.chq-row-title');
+    expect(body).toMatch(/font-size:\s*16px/);
+  });
+
+  it('.chq-row-title itself is untouched (still 18px is app/src/styles.css\'s job, not this file\'s) -- only compound selectors ending in .chq-row-title may appear', () => {
+    // Negative lookbehind excludes a preceding class-name character, so a
+    // compound selector like `.chq-speakers-grid .chq-speakers-name-link
+    // .chq-row-title` (the DEC-368 override two tests up) doesn't false-
+    // positive: only a BARE, standalone `.chq-row-title {` would match.
+    expect(css).not.toMatch(/(?<![\w-])\.chq-row-title\s*\{/);
+  });
+
+  function phoneLayer(source: string): string {
+    const out: string[] = [];
+    const opener = /@media\s*\(max-width:\s*\d+px\)\s*\{/g;
+    let m: RegExpExecArray | null;
+    while ((m = opener.exec(source)) !== null) {
+      let depth = 1;
+      let i = m.index + m[0].length;
+      const start = i;
+      while (i < source.length && depth > 0) {
+        if (source[i] === '{') depth += 1;
+        else if (source[i] === '}') depth -= 1;
+        i += 1;
+      }
+      out.push(source.slice(start, i - 1));
+    }
+    if (out.length === 0) throw new Error('no max-width media block found in speakers.css');
+    return out.join('\n');
+  }
+
+  const phone = phoneLayer(css);
+
+  it('frame :133 (Matrix becomes one card per speaker): the desktop grid hides and the card list shows', () => {
+    expect(phone).toMatch(/\.chq-speakers-grid-wrap\s*\{[^}]*display:\s*none/);
+    expect(phone).toMatch(/\.chq-speakers-cards\s*\{[^}]*display:\s*flex/);
+    expect(phone).toMatch(/\.chq-speakers-head-actions\s*\{[^}]*display:\s*none/);
+    expect(phone).toMatch(/\.chq-speakers-phone-head-actions\s*\{[^}]*display:\s*flex/);
+  });
+
+  it('frame :165 (`display:flex; gap:8px; padding-top:2px`): the card action pair is a flex row, each button flex:1', () => {
+    expect(phone).toMatch(/\.chq-speakers-card-actions\s*\{[^}]*display:\s*flex;\s*gap:\s*8px;\s*padding-top:\s*2px/);
+    expect(phone).toMatch(/\.chq-speakers-card-actions \.chq-btn\s*\{[^}]*flex:\s*1/);
+  });
+
+  it('frame :260 (Roster · 390): the drill-in wrapper is a flex column', () => {
+    expect(phone).toMatch(/\.chq-speakers-roster-drillin\s*\{[^}]*display:\s*flex;\s*flex-direction:\s*column/);
+  });
+});
