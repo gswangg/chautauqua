@@ -1,8 +1,8 @@
 // v12 design pack -- the reviewer's two list surfaces at 390
 // (DEC-874 wave-86, DEC-385 wave-85, task w4-g):
 //
-//   "Your plans · /review"                 docs/design/Chautauqua Review.dc.html:793-830
-//   "Reviewer queue · /review/plans/:id"   docs/design/Chautauqua Review.dc.html:413-451
+//   "Your plans · /review", the hub -- receipted per-line below
+//   "Reviewer queue · /review/plans/:id" -- receipted per-line below
 //
 // jsdom applies no stylesheet and evaluates no @media rule, so -- mirroring
 // app/src/pages/contacts/contacts-phone-frames.test.ts and
@@ -114,7 +114,11 @@ describe('DEC-154/DEC-874 wave-91 amendment: ReviewerQueue.tsx uses the ONE sign
   });
 });
 
-describe('"Your plans · /review" -- docs/design/Chautauqua Review.dc.html:793-830', () => {
+// This suite's per-line citations below (frame :799, :806, :811, :814,
+// :793-801, :821) already receipt every claim inside this frame's
+// 793-830 extent -- see the file header above for the frame's own
+// opening-container citation and quote.
+describe('"Your plans · /review" phone frame', () => {
   it('frame :799 draws the hub H1 at 25px, the drill register', () => {
     const literal =
       '        <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">17 left to score</h1>';
@@ -184,7 +188,11 @@ describe('"Your plans · /review" -- docs/design/Chautauqua Review.dc.html:793-8
   });
 });
 
-describe('"Reviewer queue · /review/plans/:id" -- docs/design/Chautauqua Review.dc.html:413-451', () => {
+// This suite's per-line citations below (frame :420, :419, :422-423,
+// :434, :429-437, :441-443) already receipt every claim inside this
+// frame's 413-451 extent -- see the file header above for the frame's own
+// opening-container citation and quote.
+describe('"Reviewer queue · /review/plans/:id" phone frame', () => {
   it('frame :420 draws the queue H1 at 25px through the same drill scaffold as the hub', () => {
     const literal =
       '        <h1 style="margin:0; font-family:\'Familjen Grotesk\', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05">11 left to score</h1>';

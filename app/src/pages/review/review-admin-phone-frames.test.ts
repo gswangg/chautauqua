@@ -1,7 +1,8 @@
 // v12 design pack — v12m-w5-b (wave 87, DEC-018/DEC-393):
 //
-//   "Plan editor · 390"  (docs/design/Chautauqua Review.dc.html:594) — the
+//   "Plan editor · 390" (Chautauqua Review.dc.html:594) — the
 //   criteria list, the reviewers list, and the docked Save/Cancel footer.
+//   Receipted per-line in the "v12 phone frame" describe block below.
 //
 // Plus the confirmed-failing interaction fix (DEC-393 w87): PlanList.tsx's
 // per-plan row actions (Progress/Results/Edit), measured at 21px on a
@@ -139,6 +140,8 @@ describe('DEC-393 w87: the plan-row actions floor (PlanList.tsx, review.css)', (
   });
 });
 
+// docs/design/Chautauqua Review.dc.html:594
+// `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
 describe('v12 phone frame "Plan editor · 390" (Chautauqua Review.dc.html:594)', () => {
   it('Criteria head (:601 `Criteria`, :602 count) reads a bare count, not the desktop eyebrow sentence', () => {
     expect(phoneRule(REVIEW_CSS, '.chq-review-criteria-eyebrow')).toMatch(/display:\s*none/);

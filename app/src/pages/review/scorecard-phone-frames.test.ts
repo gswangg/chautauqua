@@ -133,6 +133,12 @@ describe('v12 phone frame "Reviewer scorecard" (390) — docs/design/Chautauqua 
   });
 });
 
+const UNSCORED_BANNER_CRITERIA: EvaluationCriterion[] = [
+  { id: 'c1', label: 'Relevance to the track', kind: 'rating', weight: 3 },
+  { id: 'c2', label: 'Depth and originality', kind: 'rating', weight: 2 },
+  { id: 'c3', label: 'Fit for this track', kind: 'dropdown', options: ['Strong fit', 'Weak fit', 'No fit'] },
+];
+
 describe('v12 phone frame "Scorecard · a criterion unscored" (390) — docs/design/Chautauqua Review.dc.html:934-1138', () => {
   it('docs/design/Chautauqua Review.dc.html:936 `<div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">` — the head band is sticky, bordered and full-bleed', () => {
     const rule = phoneRule(SCORECARD_CSS, '.chq-review-scorecard-head-band');
@@ -150,17 +156,12 @@ describe('v12 phone frame "Scorecard · a criterion unscored" (390) — docs/des
   });
 
   it('docs/design/Chautauqua Review.dc.html:943 `<span style="font-size:13px; line-height:1.55; color:#3F4237">The weighted total cannot be worked out until all three are scored.</span>` — the banner states the denominator, live off the same completeness predicate every other completeness surface reads', () => {
-    const criteria: EvaluationCriterion[] = [
-      { id: 'c1', label: 'Relevance to the track', kind: 'rating', weight: 3 },
-      { id: 'c2', label: 'Depth and originality', kind: 'rating', weight: 2 },
-      { id: 'c3', label: 'Fit for this track', kind: 'dropdown', options: ['Strong fit', 'Weak fit', 'No fit'] },
-    ];
-    const copy = unscoredBannerCopy(criteria, { c1: 5, c2: 4 });
+    const copy = unscoredBannerCopy(UNSCORED_BANNER_CRITERIA, { c1: 5, c2: 4 });
     expect(copy).not.toBeNull();
     expect(copy?.heading).toBe('One criterion still needs a score');
     expect(copy?.body).toBe('The weighted total cannot be worked out until all three are scored.');
     // every criterion scored -> the banner has nothing left to say
-    expect(unscoredBannerCopy(criteria, { c1: 5, c2: 4, c3: 'Strong fit' })).toBeNull();
+    expect(unscoredBannerCopy(UNSCORED_BANNER_CRITERIA, { c1: 5, c2: 4, c3: 'Strong fit' })).toBeNull();
   });
 
   it('docs/design/Chautauqua Review.dc.html:951 `<span style="flex:1; min-height:44px; display:flex; align-items:center; justify-content:center; border:1px solid #BAB6A6; border-radius:6px; font-family:\'Familjen Grotesk\', sans-serif; font-size:16px; font-weight:600; color:#3F4237">3</span>` — the rating chip row reads the frame\'s radius/type deltas, a PAIRED variant of the same control, not a second one', () => {

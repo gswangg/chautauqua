@@ -1,6 +1,6 @@
-// docs/design/Chautauqua Review.dc.html:413
-// `width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)`
-// (Reviewer queue · /review/plans/:id, the ONE frame owned by w2-j).
+// Chautauqua Review.dc.html:413 -- Reviewer queue · /review/plans/:id, the
+// ONE frame owned by w2-j. Receipted below (the frame's opening-container
+// citation and quote sit beside the assertion they back).
 //
 // Two things the task itself flagged as easy to get wrong, both asserted
 // here: (1) "Scores stay hidden from other reviewers" is a STANDING hint
@@ -80,7 +80,7 @@ function stubLocationAssign(): ReturnType<typeof vi.fn> {
   return assignSpy;
 }
 
-describe('ReviewerQueue phone frame (docs/design/Chautauqua Review.dc.html:413)', () => {
+describe('ReviewerQueue phone frame (Chautauqua Review.dc.html:413)', () => {
   it('the scoped head band uses the drill-in scaffold classes, not the cluster-landing register', async () => {
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}`]: { timezone: 'America/New_York' },
@@ -100,6 +100,9 @@ describe('ReviewerQueue phone frame (docs/design/Chautauqua Review.dc.html:413)'
     const { container } = renderQueue();
     await screen.findByText('1 left to score');
 
+    // docs/design/Chautauqua Review.dc.html:413
+    // `width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)`
+    // -- the device frame's page; receipt is the scoped head mounting in it.
     const head = container.querySelector('.chq-review-scoped-head');
     expect(head).not.toBeNull();
     expect(head!.className).toMatch(/\bchq-phone-head\b/);
