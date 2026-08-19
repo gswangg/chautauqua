@@ -151,22 +151,34 @@ describe("docs-site.css.ts phone block (DEC-385, source-scan)", () => {
     expect(DOCS_SITE_CSS).not.toMatch(/\.chq-phone-/);
   });
 
-  it("the pager is a real 44px target pair — flex:1, centred, with horizontal padding — for BOTH prev and next", () => {
+  it("the pager is a real 44px-floor target pair — flex:1, centred — for BOTH prev and next", () => {
     const block = extract700Blocks(DOCS_SITE_CSS)[0]!;
     const rule = block.match(/\.chq-docs-pager-prev,\s*\.chq-docs-pager-next\s*\{([^}]*)\}/);
     expect(rule).not.toBeNull();
     const body = rule![1]!;
-    expect(body).toMatch(/min-height:\s*44px/);
+    // docs/design/Chautauqua Docs.dc.html:201
+    // `min-height:46px;` — the frame draws 46px, above the 44px floor
+    // (DEC-393 amendment, wave 92: B8's 44px is a floor, not an equality —
+    // do NOT lower this CSS to 44px to satisfy an equality pin).
+    const minHeightMatch = body.match(/min-height:\s*(\d+)px/);
+    expect(minHeightMatch).not.toBeNull();
+    expect(Number(minHeightMatch![1])).toBeGreaterThanOrEqual(44);
     expect(body).toMatch(/display:\s*flex/);
     expect(body).toMatch(/align-items:\s*center/);
     expect(body).toMatch(/justify-content:\s*center/);
-    expect(body).toMatch(/padding-inline:\s*16px/);
+    // No padding-inline on the button itself: :201's own literal above has
+    // none -- horizontal inset comes from the .chq-docs-pager container's
+    // `padding: 12px 16px 16px` (cited a few lines up in the sheet), and
+    // flex:1 + justify-content:center do the rest. A prior draft of this
+    // assertion pinned a padding-inline that never existed in the frame or
+    // the CSS; it was masked because the min-height:44px assertion above
+    // used to fail first and abort the test before reaching it.
     expect(body).toMatch(/flex:\s*1/);
   });
 
-  it("the article H1 uses the tokenised 25px back-linked drill-in register, never a hand-authored size", () => {
+  it("the article H1 is a literal 28px (DEC-990 amendment, wave 92) — docs/design/Chautauqua Docs.dc.html:175 `font-size:28px;` — not the back-linked-drill token", () => {
     const block = extract700Blocks(DOCS_SITE_CSS)[0]!;
-    expect(block).toMatch(/\.chq-docs-article-head h1\s*\{\s*font-size:\s*var\(--chq-type-page-title-phone-drill\)/);
+    expect(block).toMatch(/\.chq-docs-article-head h1\s*\{\s*font-size:\s*28px/);
   });
 });
 

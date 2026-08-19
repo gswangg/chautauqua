@@ -208,14 +208,15 @@ export const DOCS_SITE_CSS = `
     .chq-docs-intro h1 { font-size: 30px; }
     .chq-docs-article-grid { grid-template-columns: 1fr; }
     .chq-docs-article-frame { grid-template-columns: 1fr; padding: 24px 16px 40px; gap: 0; }
-    /* docs/design/Chautauqua Docs.dc.html:166
-       \`<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">\`
-       An article is a back-linked drill-in (reached via the '‹ Docs' back
-       link, never a cluster landing) -- theme.ts's 25px
-       --chq-type-page-title-phone-drill register applies, not the 27px
-       cluster-landing --chq-type-page-title-phone-size used by
-       .chq-docs-intro h1 on the index page. */
-    .chq-docs-article-head h1 { font-size: var(--chq-type-page-title-phone-drill); }
+    /* docs/design/Chautauqua Docs.dc.html:175
+       \`<h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1.08">Triaging submissions</h1>\`
+       DEC-990 amendment (wave 92): the article H1 is a literal 28px, not
+       theme.ts's 25px --chq-type-page-title-phone-drill register -- the
+       token was a mismeasurement of this frame; the frame's own bytes win.
+       Still distinct from the 30px used one rule up by .chq-docs-intro h1
+       on the index page, and from the 27px cluster-landing register that
+       neither index nor article page uses. */
+    .chq-docs-article-head h1 { font-size: 28px; }
 
     /* The search submit is a real tap target, so it takes the phone tap
        floor here (DEC-367) rather than in the base rule. */
@@ -257,11 +258,6 @@ export const DOCS_SITE_CSS = `
        survive edge-to-edge, left/right are dropped (the frame draws none). */
     .chq-docs-figure-frame { border-left: none; border-right: none; border-radius: 0; }
     .chq-docs-figure-caption { padding-inline: 16px; }
-
-    /* Docs · an article · 390 (docs/design/Chautauqua Docs.dc.html:166
-       \`width:390px; height:844px;\`) -- the H1 already lands at the
-       frame's number (:175 \`font-size:28px;\`), pinned here rather than
-       restated. */
 
     /* Prev/next pager (:200 \`border-top:1px solid #1B1D17;
        background:#EFEBDF; padding:12px 16px 16px; display:flex;
