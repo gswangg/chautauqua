@@ -100,14 +100,8 @@ describe('v12 phone frame "Submissions" (390) — docs/design/Chautauqua Submiss
 
   it('gives the search box the frame\'s 44px bordered field with 13px side padding (:147)', () => {
     // docs/design/Chautauqua Submissions.dc.html:147
-    // `border:1px solid #BAB6A6; border-radius:6px; min-height:44px;
-    //  display:flex; align-items:center; padding:0 13px; font-size:14px;
-    //  color:#565A4B; background:#FAF8F2`
-    // Two rule banks touch this selector in this file (a shared min-height
-    // grouped with .chq-submissions-filterbar-select, and a standalone
-    // padding/radius/background/font-size bank) -- merge both, since a
-    // single-match lookup would silently see only whichever bank the regex
-    // walks past first.
+    // `border:1px solid #BAB6A6; border-radius:6px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:14px; color:#565A4B; background:#FAF8F2`
+    // Two rule banks touch this selector -- merge both.
     const search = allPhoneRules(CSS, '.chq-submissions-filterbar-search').join('\n');
     expect(search).toMatch(/min-height:\s*44px/);
     expect(search).toMatch(/padding:\s*0 13px/);
@@ -167,12 +161,12 @@ describe('v12 phone frame "Submissions" (390) — docs/design/Chautauqua Submiss
       );
     });
 
-    it('v12m-w9-h correction: keeps the column picker reachable, riding the same horizontally scrolling strip as the status pills and track select -- docs/design/Chautauqua Submissions.dc.html:148 `display:flex; gap:7px; overflow-x:auto` never singles it out for removal, it is data still on screen, not chrome', () => {
+    // docs/design/Chautauqua Submissions.dc.html:148-151
+    // `display:flex; gap:7px; overflow-x:auto` -- DEC-919 wave-92/102 STANDS.
+    it('hides the column picker at phone width -- nothing left to govern once the table stacks into cards', () => {
       const layer = phoneLayer(CSS);
-      // Scoped to the columnpicker ROOT selector only (bare, comma- or
-      // brace-terminated) -- never its `> summary::-webkit-details-marker`
-      // child, whose native-marker `display:none` is unrelated chrome.
-      expect(layer).not.toMatch(/\.chq-submissions-columnpicker(?![\w-])(?!\s*>)[,\s{][\s\S]{0,200}display:\s*none/);
+      // Root selector only, never `> summary::-webkit-details-marker` chrome.
+      expect(layer).toMatch(/\.chq-submissions-columnpicker(?![\w-])(?!\s*>)[,\s{][\s\S]{0,200}display:\s*none/);
     });
   });
 });

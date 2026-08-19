@@ -862,22 +862,32 @@
   }
 
   /* (b) the frame draws neither the 'Status' caption nor the hairline
-     divider -- chrome and a label, not capabilities. v12m-w9-h correction:
-     the ColumnPicker does NOT belong in this hide group -- docs/design/
-     Chautauqua Submissions.dc.html:148 `display:flex; gap:7px; overflow-x:auto` keeps
-     the status pills, track select and ColumnPicker together in one
-     horizontally scrolling strip; it is data still on screen, same as the
-     TRACK select below, and rides the scroll strip instead of vanishing. */
+     divider -- chrome and a label, not capabilities. DEC-919 wave-92 and
+     wave-102 (v9-h's reversal was ruled void): docs/design/Chautauqua
+     Submissions.dc.html:148-151 `display:flex; gap:7px; overflow-x:auto`
+     draws the scrolling strip as exactly THREE status pills (`Needs
+     triage` / `Accepted` / `All 47`) and nothing else -- no ColumnPicker
+     element appears anywhere between :148 and :151. The ColumnPicker is
+     the ONE control DEC-919 wave-7 names as legally hidden at phone width:
+     once the table stacks into cards (the earlier phone block, line
+     579-591 region) there are no columns left for it to govern, so it has
+     nothing left to control -- not a lost capability, a control with no
+     remaining referent. The surviving affordance -- choosing which fields
+     a card shows -- doesn't exist at 390 because the card layout itself
+     is fixed, not user-configurable. */
+  /* phone-hidden: DEC-919 wave-7/92/102 blessed shape -- no columns left. */
   .chq-submissions-status-label,
-  .chq-submissions-filterbar-divider {
+  .chq-submissions-filterbar-divider,
+  .chq-submissions-columnpicker {
     display: none;
   }
 
-  /* (c) every status pill, the track select and the ColumnPicker summary
-     all remain reachable -- the earlier phone block (line 579-591) already
-     turns .chq-submissions-filterbar into a nowrap horizontally scrolling
-     strip with 44px floors on the select and the picker summary; nothing
-     here narrows that population back down. */
+  /* (c) every status pill and the track select remain reachable -- the
+     earlier phone block (line 579-591) already turns
+     .chq-submissions-filterbar into a nowrap horizontally scrolling strip
+     with a 44px floor on the select; nothing here narrows that population
+     back down. The ColumnPicker's `> summary` retains its own 44px floor
+     rule for desktop; only the top-level control is hidden at phone width. */
 }
 
 /* v12m-w7-e (DEC-919 amendment, wave 7). docs/design/Chautauqua

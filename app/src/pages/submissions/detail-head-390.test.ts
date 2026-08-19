@@ -45,9 +45,8 @@ const PHONE = phoneLayer(CSS);
 describe('Submission detail 390 head band (DEC-919 wave-98 amendment)', () => {
   // docs/design/Chautauqua Submissions.dc.html:358
   // `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center`
-  // (‹ Triage) -- ONE anchor carries both labels; only the short one shows
-  // at phone width, and desktop's existing '‹ All submissions' text is
-  // untouched (DEC-919: one control, two spans, never a second link).
+  // (‹ Triage) -- ONE anchor carries both labels; only the short one shows at
+  // phone width, desktop's '‹ All submissions' untouched (DEC-919: one control).
   it('the back link stays a single <Link>, with a phone-only short label swapped in by CSS', () => {
     expect(TSX).toMatch(/<Link to="\/submissions" className="chq-detail-back">/);
     expect(TSX).toMatch(/<span className="chq-detail-back-full">All submissions<\/span>/);
@@ -71,8 +70,7 @@ describe('Submission detail 390 head band (DEC-919 wave-98 amendment)', () => {
   // docs/design/Chautauqua Submissions.dc.html:361
   // `font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B`
   // -- the ref leads the eyebrow at 390 via generated content (data-ref +
-  // ::before), never a real text node, so DEC-908's ref-free desktop
-  // eyebrow textContent stays untouched.
+  // ::before), never a real text node, so DEC-908's ref-free desktop eyebrow stays untouched.
   it('the eyebrow carries data-ref and gets a phone-only generated-content ref prefix', () => {
     expect(TSX).toMatch(/<p className="chq-detail-eyebrow" data-ref=\{detail\.ref\}>/);
     expect(PHONE).toMatch(/\.chq-detail-eyebrow\[data-ref\]::before\s*\{[^}]*content:\s*attr\(data-ref\)/);
@@ -90,9 +88,8 @@ describe('Submission detail 390 head band (DEC-919 wave-98 amendment)', () => {
 
   // docs/design/Chautauqua Submissions.dc.html:363
   // `font-size:13px; color:#565A4B`
-  // -- a phone-only byline under the H1, sourced from the same participant
-  // already resolved for the speaker rail (named 'speaker' role, else the
-  // first participant) -- no new request, no guessed multi-speaker line.
+  // -- a phone-only byline under the H1, sourced from the already-resolved
+  // speaker (named 'speaker' role, else first participant) -- no guessed multi-speaker line.
   it('a phone-only byline renders under the H1 from the page\'s already-resolved speaker', () => {
     expect(TSX).toMatch(/<p className="chq-detail-byline"[^>]*>\s*\{speaker\.name\}/);
     expect(PHONE).toMatch(/\.chq-detail-byline\s*\{[^}]*display:\s*block/);
