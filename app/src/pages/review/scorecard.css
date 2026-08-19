@@ -151,3 +151,194 @@
   margin: 0;
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------------
+   v12 phone scorecard (DEC-889 wave-86 amendment; DEC-385 wave-85: this
+   is the LAST top-level construct in this file). Both frame states in
+   docs/design/Chautauqua Review.dc.html: 'Reviewer scorecard · 390'
+   (:280-351, scored) and 'Scorecard · a criterion unscored' (:934-end).
+   DEC-385 single-direction: max-width only, no min-width query.
+   ----------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  /* :283-284 -- the back link and the 'N of N done' counter share one
+     row in the drill head, the counter pushed right. Desktop still
+     portals the counter into the app header (Scorecard.tsx gates that
+     portal on !isPhone so the two never double-render). */
+  .chq-review-scorecard-phone-head-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chq-review-back {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .chq-review-scorecard-phone-progress {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--chq-muted);
+    white-space: nowrap;
+  }
+
+  /* :295 -- the ref/format/level line reads one size down from desktop's
+     13px. */
+  .chq-review-scorecard-meta {
+    font-size: 12px;
+  }
+
+  /* :295 -- the clamped abstract and its one 44px disclosure. Desktop
+     prints the full abstract at rest (DEC-889 wave-72 amendment); phone
+     alone clamps it, purely visually -- the full text stays in the DOM
+     either way (Scorecard.tsx never truncates the string itself), and
+     the clamp class is only ever applied while isPhone is true. */
+  .chq-review-scorecard-abstract-clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .chq-review-scorecard-abstract-disclosure {
+    margin-top: 6px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-ink);
+    cursor: pointer;
+  }
+
+  /* the rating scale becomes ONE flex row of equal chips, each its own
+     44px touch target -- never a shrunk desktop control (review.css's
+     `repeat(N, 1fr)` grid) and never a horizontal scroller. Overrides
+     review.css at equal selector specificity: this file is imported
+     after it (Scorecard.tsx), so the later rule wins the cascade. */
+  .chq-review-rating-group {
+    display: flex;
+    gap: 7px;
+  }
+
+  .chq-review-rating-btn {
+    flex: 1;
+    height: auto;
+    min-height: 44px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chq-review-choice-group {
+    gap: 7px;
+  }
+
+  /* :961-964 -- the unscored criterion's chips read ink-bordered, and its
+     instruction line reads 13px/600 ink rather than the muted 13px
+     guidance every other criterion's hint uses. */
+  .chq-review-criterion-unscored .chq-review-rating-btn {
+    border-color: var(--chq-ink);
+  }
+
+  .chq-review-criterion-unscored-instruction {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-ink);
+  }
+
+  /* :941-943 -- a neutral, 4px-left-bordered callout naming the missing
+     criterion; never the product's red/error styling (this product has
+     no red/green pair, DEC-367). */
+  .chq-review-scorecard-unscored-callout {
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--chq-ink);
+    border-left: 4px solid var(--chq-ink);
+    border-radius: 5px;
+    background: var(--chq-surface-sunk);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .chq-review-scorecard-unscored-callout-title,
+  .chq-review-scorecard-unscored-callout-body {
+    margin: 0;
+  }
+
+  .chq-review-scorecard-unscored-callout-title {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .chq-review-scorecard-unscored-callout-body {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--chq-ink-2);
+  }
+
+  /* :328 -- Overall's numeral grows to the frame's 34px. */
+  .chq-review-overall-value {
+    font-size: 34px;
+  }
+
+  /* :969 -- while incomplete, Overall reads a muted 'Not yet' in the
+     rail's own body size, not the 34px numeral it replaces. */
+  .chq-review-overall-value-not-yet {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--chq-muted);
+  }
+
+  /* :341-343 -- Submit + Save sit side by side in a sticky dock at the
+     foot of .chq-main's own scroll region (never a second scroll
+     container, DEC-576/DEC-385) -- replaces the desktop stacked-full-
+     width pair the DEC-889 wave-72 amendment above draws. The -16px
+     inline margin cancels .chq-main's own 16px phone gutter so the dock
+     runs full-bleed, the same cancellation the shared .chq-phone-dock
+     scaffold (styles.css) uses. */
+  .chq-review-scorecard-rail .chq-review-editor-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    flex-direction: row;
+    align-items: stretch;
+    margin-inline: -16px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--chq-ink);
+    background: var(--chq-surface-sunk);
+    gap: 8px;
+  }
+
+  .chq-review-scorecard-rail .chq-review-editor-actions .chq-btn {
+    width: auto;
+    min-height: 46px;
+  }
+
+  .chq-review-scorecard-rail .chq-review-editor-actions .chq-btn-primary {
+    flex: 1;
+  }
+
+  .chq-review-scorecard-rail .chq-review-editor-actions .chq-btn-secondary {
+    flex: none;
+  }
+
+  /* the frame's dock draws only the two buttons -- the draft-skips-
+     checks caption and the 'Saved as a draft' confirmation stay in the
+     DOM (screen readers, and they still print once the sticky dock is
+     scrolled past) but are visually dropped from the dock itself. */
+  .chq-review-scorecard-rail .chq-review-editor-actions .chq-review-draft-caption,
+  .chq-review-scorecard-rail .chq-review-editor-actions .chq-review-saved-confirmation {
+    display: none;
+  }
+}

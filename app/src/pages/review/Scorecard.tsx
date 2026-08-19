@@ -9,6 +9,14 @@ import { answerDisplayText } from '../../../../src/domain/answer-text';
 import { incompleteCriteria, isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { planTrackScope } from './PlanList';
+// DEC-889 (wave-86 amendment): the phone scorecard (390) is a distinct
+// presentation of this SAME page -- an in-body back link + counter row
+// instead of the header portal, a clamped abstract behind one disclosure,
+// and an inline "unscored" callout -- gated on the shared phone breakpoint
+// hook (Agenda.tsx, SubmissionDetailPage.tsx use the same one) rather than
+// a second matchMedia call. isPhone is false in every jsdom render test
+// per useIsPhone's own contract, so the desktop tree/tests are untouched.
+import { useIsPhone } from '../../lib/useIsPhone';
 // DEC-908 (wave-9 amendment): the scorecard head's meta line reuses the ONE
 // session-shape display vocabulary (Talk (30 min) -> 'Talk, 30 min',
 // Advanced -> 'advanced') -- never a second label grammar defined in this
@@ -111,6 +119,7 @@ function isFormFieldTarget(target: EventTarget | null): boolean {
 export function Scorecard() {
   const { planId, submissionId } = useParams<{ planId: string; submissionId: string }>();
   const navigate = useNavigate();
+  const isPhone = useIsPhone();
 
   const [plan, setPlan] = useState<EvaluationPlan | null>(null);
   const [submission, setSubmission] = useState<ReviewerSubmissionDetail | null>(null);
@@ -145,6 +154,12 @@ export function Scorecard() {
   const [recusalConfirmed, setRecusalConfirmed] = useState(false);
   const [recusing, setRecusing] = useState(false);
   const [undoingRecusal, setUndoingRecusal] = useState(false);
+
+  // DEC-889 (wave-86 amendment, frame :295): phone alone clamps the
+  // abstract behind a disclosure -- desktop (DEC-889 wave-72 amendment)
+  // prints it in full at rest with no clamp state at all. The full text
+  // stays in the DOM either way; this only ever gates a CSS class.
+  const [phoneAbstractExpanded, setPhoneAbstractExpanded] = useState(false);
 
   // DEC-939: the header's 'N of N done' counter -- fed by queueDoneCounts
   // (progress.ts) over this reviewer's own queue envelope, fetched
@@ -469,11 +484,21 @@ export function Scorecard() {
           scorecard.css's one additive media query). */}
       <div className="chq-review-scorecard-grid">
         <div className="chq-review-scorecard-reading">
-          <p>
-            <Link to={`/review/plans/${planId}`} className="chq-review-back">
-              &lsaquo; {plan.name} queue
-            </Link>
-          </p>
+          {/* :283-284 (DEC-889 wave-86 amendment): on phone the back link
+              and the 'N of N done' counter share one row in the drill
+              head, the counter pushed right -- desktop keeps portaling
+              the counter into the header (below), so the two never
+              double-render (the portal is skipped once isPhone is true). */}
+          <div className="chq-review-scorecard-phone-head-row">
+            <p>
+              <Link to={`/review/plans/${planId}`} className="chq-review-back">
+                &lsaquo; {plan.name} queue
+              </Link>
+            </p>
+            {isPhone && queueProgress && queueProgress.total > 0 && (
+              <span className="chq-review-scorecard-phone-progress">{`${queueProgress.completed} of ${queueProgress.total} done`}</span>
+            )}
+          </div>
 
           <div className="chq-review-scorecard-head">
             <span className="chq-section-label">{scorecardEyebrow}</span>
@@ -483,8 +508,11 @@ export function Scorecard() {
                 group) rather than printing here. Renders nothing when
                 that node isn't mounted (a Scorecard mounted alone in a
                 render test), same as it always rendered nothing before
-                queueProgress resolved. */}
-            {queueProgress &&
+                queueProgress resolved. Skipped on phone (:283-284 above
+                already renders the counter in-body, next to the back
+                link). */}
+            {!isPhone &&
+              queueProgress &&
               queueProgress.total > 0 &&
               typeof document !== 'undefined' &&
               document.getElementById('chq-header-slot') &&
@@ -492,7 +520,10 @@ export function Scorecard() {
                 <p className="chq-review-scoped-progress-caption">{`${queueProgress.completed} of ${queueProgress.total} done`}</p>,
                 document.getElementById('chq-header-slot') as HTMLElement,
               )}
-            <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
+            {/* :286 the phone drill title reads 21px, one step down from
+                the 27px cluster-landing register (DEC-643); desktop is
+                unchanged. */}
+            <h1 className="chq-page-title" style={{ fontSize: isPhone ? '21px' : '27px' }}>
               {submission.title}
             </h1>
             {/* frame 03--01: the meta line reads ref · format(, duration) ·
@@ -534,7 +565,26 @@ export function Scorecard() {
             <section className="chq-review-scorecard-abstract-section">
               <h2 className="chq-section-label">Abstract</h2>
               <hr className="chq-review-scorecard-abstract-rule" />
-              <p className="chq-review-scorecard-abstract">{submission.description}</p>
+              <p
+                className={`chq-review-scorecard-abstract${
+                  isPhone && !phoneAbstractExpanded ? ' chq-review-scorecard-abstract-clamped' : ''
+                }`}
+              >
+                {submission.description}
+              </p>
+              {/* :295 (DEC-889 wave-86 amendment): phone alone offers this
+                  disclosure -- desktop already prints the abstract in
+                  full (DEC-889 wave-72 amendment) and this control never
+                  renders there. */}
+              {isPhone && !phoneAbstractExpanded && (
+                <button
+                  type="button"
+                  className="chq-review-scorecard-abstract-disclosure"
+                  onClick={() => setPhoneAbstractExpanded(true)}
+                >
+                  Read the full submission
+                </button>
+              )}
             </section>
           )}
 
@@ -575,6 +625,23 @@ export function Scorecard() {
               problems={evaluationRefusalProblems(serverFieldErrors, criteria)}
             />
           )}
+          {/* :941-943 (DEC-889 wave-86 amendment): phone alone names the
+              still-unscored criteria up front, unconditionally (never
+              gated on `attempted` the way the desktop chq-error notice
+              below is) -- a neutral, ink-bordered callout, not the
+              product's error styling. */}
+          {isPhone && incomplete.length > 0 && (
+            <div className="chq-review-scorecard-unscored-callout">
+              <p className="chq-review-scorecard-unscored-callout-title">
+                {incomplete.length === 1
+                  ? 'One criterion still needs a score'
+                  : `${incomplete.length} criteria still need a score`}
+              </p>
+              <p className="chq-review-scorecard-unscored-callout-body">
+                {`The weighted total cannot be worked out until all ${criteria.length} are scored.`}
+              </p>
+            </div>
+          )}
           {criteria.map((criterion: EvaluationCriterion) => (
             <fieldset
               key={criterion.id}
@@ -585,6 +652,12 @@ export function Scorecard() {
                 // attempted -- the SAME incompleteCriteria list the notice
                 // above names its blockers from.
                 attempted && incomplete.some((c) => c.id === criterion.id) ? ' chq-review-criterion-missing' : ''
+              }${
+                // :961-964 (DEC-889 wave-86 amendment): phone alone marks
+                // the unscored criterion's chips ink-bordered -- gated on
+                // the SAME `incomplete` list, unconditionally (no
+                // `attempted` gate) since this is guidance, not an error.
+                isPhone && incomplete.some((c) => c.id === criterion.id) ? ' chq-review-criterion-unscored' : ''
               }`}
               onFocus={() => setFocusedId(criterion.id)}
             >
@@ -737,6 +810,14 @@ export function Scorecard() {
                   onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
                 />
               )}
+              {/* :961-964 (DEC-889 wave-86 amendment): phone alone prints
+                  this instruction on the unscored criterion -- the SAME
+                  `incomplete` list, unconditionally. */}
+              {isPhone && incomplete.some((c) => c.id === criterion.id) && (
+                <p className="chq-review-criterion-unscored-instruction">
+                  Pick a score, or recuse yourself if you cannot judge this one.
+                </p>
+              )}
               {/* DEC-958 (wave-66 amendment): the server's own message for
                   THIS criterion, beside the existing client-side
                   chq-review-criterion-missing treatment above -- the
@@ -760,7 +841,18 @@ export function Scorecard() {
           <section className="chq-review-overall">
             <p className="chq-review-overall-line">
               <span className="chq-section-label">Overall</span>
-              <span className="chq-review-overall-value">{formatScore(overallScore)}</span>
+              {/* :969 (DEC-889 wave-86 amendment): phone reads a muted
+                  'Not yet' rather than formatScore's em dash while
+                  incomplete -- never a partial computation either way,
+                  overallScore stays null until every rating criterion has
+                  a numeric entry (see overallReady above). */}
+              <span
+                className={`chq-review-overall-value${
+                  isPhone && overallScore === null ? ' chq-review-overall-value-not-yet' : ''
+                }`}
+              >
+                {isPhone && overallScore === null ? 'Not yet' : formatScore(overallScore)}
+              </span>
             </p>
             <p className="chq-review-overall-caption">
               {(overallScore !== null && ratingCriteria.length > 0
