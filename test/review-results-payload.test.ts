@@ -61,6 +61,14 @@ function fakeDb(rows: {
               touched.push({ table: joinTable, cols });
               return chain;
             },
+            // DEC-271 (wave-110 amendment): listEvaluationScoresForPlan now
+            // left-joins review_recusal before its where() -- this fixture
+            // has no recused rows, so a structural no-op preserves every
+            // pinned assertion below unchanged.
+            leftJoin(joinTable: unknown) {
+              touched.push({ table: joinTable, cols });
+              return chain;
+            },
             where() {
               const result: Promise<unknown[]> & {
                 limit?: (n: number) => Promise<unknown[]>;

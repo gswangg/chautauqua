@@ -64,6 +64,13 @@ function makeScopedFeedbackDb(rows: EvalRow[]): AppEnv["Variables"]["db"] {
     select: () => {
       const chain: any = {
         from: () => chain,
+        // DEC-271 (wave-110 amendment): the real query now left-joins
+        // review_recusal before its where() — this fake has no recusal
+        // rows to join against, so it's a structural no-op; the isNull(...)
+        // leaf in the where condition carries no literal for collectLiterals
+        // to match on, so recusal-scoping is exercised separately in
+        // comms-recusal-exclusion.test.ts against a join-aware fake.
+        leftJoin: () => chain,
         where: (cond: unknown) => {
           const { strings, numbers } = collectLiterals(cond);
           const filtered = rows.filter(

@@ -85,6 +85,16 @@ function fakePinDb(rows: {
             innerJoin(_joinTable: unknown) {
               return chain;
             },
+            // DEC-271 (wave-110 amendment): listEvaluationScoresForPlan now
+            // left-joins review_recusal before its where(). This fixture's
+            // recused submission (sub-3) only ever has a DRAFT evaluation
+            // (already excluded above by evaluationRowsSubmittedOnly), so a
+            // structural no-op here still pins the same byte-identical rows
+            // -- exercising the recusal-retracts-a-SUBMITTED-score path is
+            // test/review-results-recusal-exclusion.test.ts's job.
+            leftJoin(_joinTable: unknown, _cond?: unknown) {
+              return chain;
+            },
             where() {
               const result: Promise<unknown[]> & {
                 limit?: (n: number) => Promise<unknown[]>;
@@ -230,12 +240,14 @@ function makeConcurrencyDb(rowsByTable: Map<unknown, unknown[]>, delayMs: number
     }
     const chain: {
       innerJoin: (t?: unknown, c?: unknown) => typeof chain;
+      leftJoin: (t?: unknown, c?: unknown) => typeof chain;
       where: (c?: unknown) => typeof chain;
       orderBy: (...args: unknown[]) => typeof chain;
       limit: (n: number) => Promise<unknown[]>;
       then: Promise<unknown[]>["then"];
     } = {
       innerJoin: () => chain,
+      leftJoin: () => chain,
       where: () => chain,
       orderBy: () => chain,
       limit: (n: number) => ensurePromise().then((rows) => rows.slice(0, n)),
