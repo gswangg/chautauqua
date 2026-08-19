@@ -26,6 +26,11 @@ interface ModalFrameBaseProps {
    * action goes first and Cancel/secondary second -- callers supply
    * actions already in that order. Omit entirely for a body-only dialog. */
   actions?: ReactNode;
+  /** Phone drill-in back link (`.chq-phone-back`), rendered as the FIRST
+   * child of the header -- a ModalFrame affordance, never a page-local
+   * re-implementation and never a second close control on desktop (w6-d).
+   * Hidden above the 700px breakpoint by modal-frame.css. */
+  backLink?: { label: string; onClick: () => void } | null;
 }
 
 type ModalFrameProps =
@@ -99,7 +104,7 @@ export function FormRowPair({ children }: { children: ReactNode }) {
 // and a .chq-modal-actions slot. Every dialog in the app should be built on
 // this frame so the header/action-order contract can't drift per-modal.
 export function ModalFrame(props: ModalFrameProps) {
-  const { title, subtitle, ariaLabel, onClose, closeDisabled = false, modalClassName, size = 'default', children, actions } = props;
+  const { title, subtitle, ariaLabel, onClose, closeDisabled = false, modalClassName, size = 'default', children, actions, backLink } = props;
 
   useEscapeKey(!closeDisabled, onClose);
 
@@ -109,6 +114,11 @@ export function ModalFrame(props: ModalFrameProps) {
 
   const head = (
     <div className="chq-modal-head">
+      {backLink ? (
+        <button type="button" className="chq-link-button chq-phone-back" onClick={backLink.onClick}>
+          {backLink.label}
+        </button>
+      ) : null}
       <div className="chq-modal-head-titles">
         <h2 className="chq-modal-title">{title}</h2>
         {subtitle !== undefined && <span className="chq-modal-sub">{subtitle}</span>}

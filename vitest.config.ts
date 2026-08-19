@@ -22,6 +22,10 @@ import react from "@vitejs/plugin-react";
 // w53-e (DEC-700 amendment): api-mutation-bump.scan.test.ts's behavioural
 // half uses renderHook(useMutationVersion) to prove apiUpload's bump reaches
 // a subscriber, which needs a real `document`, same treatment.
+// w6-d: modal-frame-phone.test.ts renders ModalFrame via React.createElement
+// (no JSX, plain .test.ts name to mirror planEditor-refusal-shapes.test.ts)
+// but still needs a real DOM/window for its render assertions, same
+// treatment.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -49,6 +53,7 @@ export default defineConfig({
       ["app/src/lib/api.unauthorized.render.test.ts", "jsdom"],
       ["app/src/pages/review/planEditor-refusal-shapes.test.ts", "jsdom"],
       ["app/src/lib/api-mutation-bump.scan.test.ts", "jsdom"],
+      ["app/src/components/modal-frame-phone.test.ts", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",
