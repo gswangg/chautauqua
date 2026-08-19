@@ -85,6 +85,13 @@ interface SessionListProps {
   // target status rather than being hardwired to 'approved'.
   onBulkContentStatus: (status: ContentStatus) => void | Promise<void>;
   bulkPending: boolean;
+  // w1-e (DEC-825 amendment, TIER 0 phone Select mode): the same UI-only
+  // mode ContentApp's header Select/Done toggle owns — phone width only,
+  // switches the worklist card between row verbs (Approve/Open) and the
+  // docked bulk bar. See content.css's `.chq-content-worklist-selecting`.
+  // Optional/defaulted false so every pre-existing render-test call site
+  // (desktop-only, never exercises this mode) keeps compiling unchanged.
+  phoneSelectMode?: boolean;
 }
 
 export function SessionList({
@@ -105,6 +112,7 @@ export function SessionList({
   onSelectionChange,
   onBulkContentStatus,
   bulkPending,
+  phoneSelectMode = false,
 }: SessionListProps) {
   const visible = items;
   const pageIds = visible.map((item) => item.id);
@@ -138,7 +146,11 @@ export function SessionList({
   }
 
   return (
-    <div className="chq-content-worklist">
+    <div
+      className={
+        phoneSelectMode ? 'chq-content-worklist chq-content-worklist-selecting' : 'chq-content-worklist'
+      }
+    >
       {/* G13 lane-D fix (05-content--00): the frame draws NO section label
           and NO 2px ink rule here — the header stack is title, 1px hairline,
           chips, 1px hairline, bulk bar. The hairlines are carried by

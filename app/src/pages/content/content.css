@@ -1344,3 +1344,187 @@
     line-height: 1.4;
   }
 }
+
+/* ---------------------------------------------------------------------- */
+/* Phone Select mode (DEC-825 amendment, TIER 0, v12 mobile campaign w1)   */
+/*                                                                         */
+/* Frames: docs/design/Chautauqua Content.dc.html's "Content" (rest,      */
+/* :198) and "Content · selecting" (:247) 390 frames. Appended at the      */
+/* END of the file, deliberately: content.css's phone cascade already      */
+/* lost one fight to source order (see the block above), so a later rule   */
+/* of EQUAL specificity is how these overrides are guaranteed to win       */
+/* rather than trusted to. DEC-385 single-direction: every rule below is a */
+/* max-width override; nothing above this comment is touched.              */
+/*                                                                         */
+/* The ruling this task implements: row verbs (Approve/Open) and the      */
+/* docked bulk bar are EXCLUSIVE, never both. `.chq-content-worklist-      */
+/* selecting` (SessionList.tsx, driven by ContentApp.tsx's phoneSelectMode */
+/* state) is the single switch between the two states below.               */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-phone-select-toggle,
+.chq-content-phone-selecting-meta {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  /* Rest: `5 need a decision · 2 re-uploaded` (existing .chq-summary,
+     untouched) plus a right-flushed `Select` link on the SAME line — frame
+     :198 `width:390px; height:844px; background:#F4F1E8`, meta row :206-207
+     `min-height:44px; display:inline-flex; align-items:center;
+     white-space:nowrap">Select`. */
+  .chq-content-summary-row {
+    position: relative;
+  }
+
+  .chq-content-summary-row > .chq-summary {
+    display: flex;
+    align-items: center;
+  }
+
+  .chq-content-phone-select-toggle {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    min-height: 44px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-ink);
+    white-space: nowrap;
+  }
+
+  /* Selecting: frame :247 `width:390px; height:844px; background:#F4F1E8`,
+     meta row :255-257 -- `2 selected` (15px display) · right-flushed
+     `All 5` · `Done` (both 44px bold links). Replaces the rest-state row
+     above; the two are mutually exclusive via React (ContentApp.tsx),
+     never both mounted at once. */
+  .chq-content-phone-selecting-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .chq-content-phone-selecting-count {
+    font-family: var(--chq-font-display);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .chq-content-phone-selecting-all {
+    margin-left: auto;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-ink);
+    white-space: nowrap;
+  }
+
+  .chq-content-phone-selecting-done {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-ink);
+  }
+
+  /* Rest: row verbs show, the leading selection cell (td:nth-child(1))
+     hides -- the frame draws no tick until Select is tapped. Equal
+     specificity to the earlier phone block's own placement rule for this
+     cell (line ~974), later in source order, so `display:none` wins here
+     without disturbing that rule's grid-row/grid-column assignment. */
+  .chq-content-worklist .chq-content-table tr.chq-content-row > td:nth-child(1) {
+    display: none;
+  }
+
+  /* Selecting: the tick shows (frame :269 `{{ row.check }}`, reusing the
+     SAME .chq-check checkbox the desktop column already renders -- no
+     phone-only DOM, DEC-386), row verbs (td:nth-child(6), Approve/Open)
+     hide. Exclusive with the rest-state rule above -- never both, the
+     ruling this task implements. */
+  .chq-content-worklist-selecting .chq-content-table tr.chq-content-row > td:nth-child(1) {
+    display: flex;
+    align-items: center;
+  }
+
+  .chq-content-worklist-selecting .chq-content-table tr.chq-content-row > td:nth-child(6) {
+    display: none;
+  }
+
+  /* Rest: no bulk bar at all -- frame :198's footer is the tab bar, full
+     stop (no idle hint band either; entering Select is the only way to
+     arm bulk approval on phone, since the row verbs already own
+     "approve this one"). */
+  .chq-content-worklist .chq-bulkbar {
+    display: none;
+  }
+
+  /* Selecting: the frame's docked band -- :278 `border-top:1px solid
+     #1B1D17; background:#EFEBDF; padding:12px 16px 16px`, stacking ONE
+     filled 48px `Approve N` (:279 `Approve 2`) over the centred 12px muted
+     hint (:280 `Approving sends nothing · the speaker sees it in their
+     portal`). Sticky against .chq-main's own bottom edge (the ONLY
+     scrolling region -- .chq-tabbar sits outside it as an in-flow
+     flex-shrink:0 region per DEC-989), so the dock docks ABOVE the tab bar
+     with no shell change. True tab-bar SUPPRESSION while the dock is up is
+     shell geometry, out of this task's file scope -- filed in
+     docs/design/audit/content-v12.md for the shell lane. Full-bleed via
+     the SAME margin-inline/padding-inline token trick this file already
+     uses (line ~203) rather than a new hardcoded inset. */
+  .chq-content-worklist-selecting .chq-bulkbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding-inline: var(--chq-pub-main-pad-x);
+    margin-inline: calc(var(--chq-pub-main-pad-x) * -1);
+    padding-block: 12px 16px;
+    border-radius: 0;
+    border-top: 1px solid var(--chq-ink);
+    background: var(--chq-surface-sunk);
+  }
+
+  /* The frame's dock never carries the shared bar's idle transparent wash
+     (styles.css .chq-bulkbar-idle) -- once Select is on, the band is
+     always the sunk-surface dock, ticked rows or not. */
+  .chq-content-worklist-selecting .chq-bulkbar.chq-bulkbar-idle {
+    background: var(--chq-surface-sunk);
+  }
+
+  .chq-content-worklist-selecting .chq-bulkbar-hint {
+    text-align: center;
+  }
+
+  .chq-content-worklist-selecting .chq-bulkbar-note {
+    order: 1;
+    text-align: center;
+  }
+
+  .chq-content-worklist-selecting .chq-bulkbar-count {
+    display: none;
+  }
+
+  /* Frame :278-280 draws ONE primary ("Approve N") plus the hint line --
+     no Clear button competing with it in the dock (DESIGN-RULINGS A1:
+     "one verb, one scope: the bar owns Approve"). The tick set is still
+     clearable by re-tapping rows, or by Done -> Select again. */
+  .chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-tertiary {
+    display: none;
+  }
+
+  .chq-content-worklist-selecting .chq-bulkbar-actions {
+    width: 100%;
+  }
+
+  .chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-primary {
+    flex: 1 1 auto;
+    min-height: 48px;
+    font-size: 15px;
+  }
+}

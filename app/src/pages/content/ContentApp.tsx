@@ -93,6 +93,12 @@ export function ContentApp() {
   // one they were pressing.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkPending, setBulkPending] = useState(false);
+  // w1-e (DEC-825 amendment, TIER 0 phone Select mode): a UI-only mode
+  // switch, phone width only — it toggles which of the row verbs
+  // (Approve/Open) or the docked bulk bar is visible, but reads/writes the
+  // SAME selectedIds Set above. No second selection model, no new
+  // endpoint.
+  const [phoneSelectMode, setPhoneSelectMode] = useState(false);
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
   // eventId, not on time), which forces a fresh fetch — used on view
   // switch, the explicit Refresh button, and after a deliverable upload so
@@ -166,9 +172,12 @@ export function ContentApp() {
   }, [submissionId, worklistMatch, fetchedSubmissionId]);
 
   // A page/tab change means the visible row set changed under the
-  // selection — clear it rather than carrying stale ids across views.
+  // selection — clear it rather than carrying stale ids across views, and
+  // drop phone Select mode along with it (a fresh page never opens
+  // already-selecting).
   useEffect(() => {
     setSelectedIds(new Set());
+    setPhoneSelectMode(false);
   }, [tab, page]);
 
   function selectSubmission(id: string) {
@@ -274,6 +283,9 @@ export function ContentApp() {
         contentStatus: status,
       });
       setSelectedIds(new Set());
+      // w1-e: an approved dock empties itself back to the rest state —
+      // there is nothing left to act on once the round trip lands.
+      setPhoneSelectMode(false);
       loadWorklist();
     } catch (err) {
       setError(err instanceof ApiError ? `Bulk content status update failed: ${err.message}` : 'Bulk content status update failed');
@@ -340,6 +352,59 @@ export function ContentApp() {
             <span className="chq-summary">
               {counts.needs_decision} need a decision &middot; {reUploadedCount} re-uploaded
             </span>
+          )}
+          {/* w1-e (DEC-825 amendment, TIER 0 phone Select mode): phone-only
+              "Select" toggle beside the summary line above — frame
+              docs/design/Chautauqua Content.dc.html:207
+              `min-height:44px; display:inline-flex; align-items:center;
+              white-space:nowrap">Select`. Hidden at desktop width and
+              hidden once phoneSelectMode is on (the "selecting" meta row
+              below takes over at that point — the two never coexist). */}
+          {!submissionId && view === 'worklist' && !phoneSelectMode && (
+            <button
+              type="button"
+              className="chq-link-button chq-content-phone-select-toggle"
+              onClick={() => setPhoneSelectMode(true)}
+            >
+              Select
+            </button>
+          )}
+          {/* w1-e: phone-only "selecting" meta row — frame :255-257
+              `2 selected` / `All 5` / `Done`. Replaces the summary line +
+              Select toggle above (never both — exclusivity is the ruling
+              this task implements) and is itself invisible until
+              phoneSelectMode is on. "All N" selects/deselects every row on
+              the current page, reusing the SAME selectedIds Set the
+              desktop select-all-on-page checkbox (SessionList's togglePage)
+              already writes to — no second selection model. */}
+          {!submissionId && view === 'worklist' && phoneSelectMode && (
+            <div className="chq-content-phone-selecting-meta">
+              <span className="chq-content-phone-selecting-count">{selectedIds.size} selected</span>
+              <button
+                type="button"
+                className="chq-link-button chq-content-phone-selecting-all"
+                onClick={() => {
+                  const pageIds = items.map((item) => item.id);
+                  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+                  const next = new Set(selectedIds);
+                  if (allOnPageSelected) {
+                    for (const id of pageIds) next.delete(id);
+                  } else {
+                    for (const id of pageIds) next.add(id);
+                  }
+                  setSelectedIds(next);
+                }}
+              >
+                All {items.length}
+              </button>
+              <button
+                type="button"
+                className="chq-link-button chq-content-phone-selecting-done"
+                onClick={() => setPhoneSelectMode(false)}
+              >
+                Done
+              </button>
+            </div>
           )}
           {/* w41-b (DEC-902 amendment): Worklist/Files are destinations, not
               tabs of one surface — the toolbar's role=tablist pills are gone;
@@ -412,6 +477,7 @@ export function ContentApp() {
           // content-status writes, scoped to the ticked rows.
           onBulkContentStatus={bulkContentStatus}
           bulkPending={bulkPending}
+          phoneSelectMode={phoneSelectMode}
         />
       )}
     </div>
