@@ -5,6 +5,11 @@ Authority: docs/design/*.dc.html (v12 geometry), DESIGN-RULINGS.md (rulings),
 DEVIATIONS.md (user overrides). This file is the campaign mandate the planner
 works from, tiered.
 
+## TIER 0 (2026-08-19 meta-probe, VERIFIED reds — work these before all else)
+docs/probes/metafid-phoneA-2026-08-19.md: phone clusters A audit. Start with
+its two disproportionate root fixes (bordered-control negative-margin misuse;
+settings section-action floor), then the S1 breaks, then S2 structure.
+
 ## Tier 0 — fidelity on landed work (verify first, then fix)
 
 The v12 speakers redesign and the wave-1 phone clusters (Contacts, Comms,
