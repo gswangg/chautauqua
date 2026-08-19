@@ -124,6 +124,7 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicAgendaByIds: vi.fn(async () => []),
     getPublicScheduleDayCounts: vi.fn(async () => []),
     getPublicCfpWindow: vi.fn(async () => null),
+    getPriorPublicEvent: vi.fn(async () => null),
     getPublicBreaksByDay: vi.fn(async () => new Map()),
   };
 });

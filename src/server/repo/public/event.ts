@@ -1,10 +1,11 @@
 // Public/embed repo layer (J10, DEC-022, DEC-274): event / tracks lookups
 // shared across every public surface.
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, lt } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { getFieldOptionsByRole } from "../form-roles";
+import { getPublicSurfaceCounts } from "./counts";
 
 export interface PublicEvent {
   id: string;
@@ -59,6 +60,49 @@ export async function getPublicEventById(db: Db, id: string): Promise<PublicEven
     recordPrefix: row.recordPrefix,
     brandingJson: row.brandingJson,
   };
+}
+
+// DEC-745 (wave-107 amendment): docs/design/Chautauqua Public and
+// Portal.dc.html:1167 `Public sessions · nothing published`'s fresh-empty
+// sessions frame draws a "Last year"
+// aside naming the org's most recent PRIOR event and its session count.
+// "Prior" is same-org, endDate strictly before this event's startDate,
+// most recent first -- event_org_id_idx already exists (DEC-558), so
+// .orderBy(desc(endDate)).limit(1) is a single indexed scan, not a table
+// scan. The session count is NEVER a second visibility vocabulary
+// (DEC-613): it is the exact getPublicSurfaceCounts(db, prior.id).sessions
+// read the settings public-pages panel and every other public surface
+// share. Returns null both when there is no prior event AND when the prior
+// event's publicly-visible session count is 0 -- an aside pointing at an
+// unpublished programme is B7 rule 6's "empty table with headers" wearing
+// a sidebar, not a useful escape hatch.
+export async function getPriorPublicEvent(
+  db: Db,
+  event: PublicEvent,
+): Promise<{ event: PublicEvent; sessionCount: number } | null> {
+  const rows = await db
+    .select()
+    .from(schema.event)
+    .where(and(eq(schema.event.orgId, event.orgId), lt(schema.event.endDate, event.startDate)))
+    .orderBy(desc(schema.event.endDate))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const prior: PublicEvent = {
+    id: row.id,
+    orgId: row.orgId,
+    name: row.name,
+    slug: row.slug,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    location: row.location,
+    timezone: row.timezone,
+    recordPrefix: row.recordPrefix,
+    brandingJson: row.brandingJson,
+  };
+  const sessionCount = (await getPublicSurfaceCounts(db, prior.id)).sessions;
+  if (sessionCount === 0) return null;
+  return { event: prior, sessionCount };
 }
 
 export interface PublicTrack {

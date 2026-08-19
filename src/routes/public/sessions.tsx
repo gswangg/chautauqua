@@ -151,6 +151,12 @@ export function SessionsContent(props: {
   // skips the queries entirely for /embed rather than fetching-then-hiding.
   dayCounts?: { day: string; count: number }[];
   cfpWindow?: { openDate: number | null; closeDate: number | null } | null;
+  // DEC-745 (wave-107 amendment): docs/design/Chautauqua Public and
+  // Portal.dc.html:1167 `Public sessions · nothing published`'s fresh-empty
+  // "Last year" aside. Only ever supplied (non-null) on the fresh-empty
+  // branch, and never for /embed (DEC-672) -- dispatch.tsx resolves it
+  // there, not here.
+  lastYear?: { event: PublicEvent; sessionCount: number } | null;
 }) {
   const {
     event,
@@ -173,6 +179,7 @@ export function SessionsContent(props: {
     accent,
     dayCounts,
     cfpWindow,
+    lastYear,
   } = props;
   const activeDay = activeDayProp ?? null;
   const grandTotal = grandTotalProp ?? total;
@@ -364,13 +371,45 @@ export function SessionsContent(props: {
               cases -- replaces the wave-44 single-sentence-no-split row. */}
           {items.length === 0 ? (
             isFresh ? (
-              // G13 (frame 10--20): headline carries no trailing period at
-              // the page-title scale (empty.css.ts).
-              <PublicEmptyState
-                variant="fresh"
-                what="The programme is not out yet"
-                reason="Sessions appear here once the schedule is published."
-              />
+              // docs/design/Chautauqua Public and Portal.dc.html:1167
+              // `Public sessions · nothing published`: the
+              // fresh-empty frame is a two-column grid (empty state, then a
+              // "Last year" aside) rather than the single empty block alone
+              // -- .chq-pub-sessions-fresh-layout below, only when !embed
+              // AND a prior event with visible sessions exists (DEC-672/
+              // DEC-745). The frame's own reason sentence names a CFP close
+              // DATE ("The call for papers closed on 16 August."); this app
+              // has no per-event CFP-close-date-as-headline copy path (a
+              // day label derived from a stored instant is a timezone bomb,
+              // DEC-522) and B7 rule 2 only earns a reason when it is
+              // actionable, which a bare close date is not -- the existing
+              // "once the schedule is published" sentence stays, named here
+              // as a deliberate divergence rather than force-fit.
+              <div class="chq-pub-sessions-fresh-layout">
+                {/* G13 (frame 10--20): headline carries no trailing period
+                    at the page-title scale (empty.css.ts). */}
+                <PublicEmptyState
+                  variant="fresh"
+                  what="The programme is not out yet"
+                  reason="Sessions appear here once the schedule is published."
+                />
+                {!embed && lastYear ? (
+                  <aside class="chq-pub-lastyear-rail">
+                    <div class="chq-pub-lastyear-heading">
+                      <span>Last year</span>
+                    </div>
+                    <div class="chq-pub-lastyear-row">
+                      <div class="chq-pub-lastyear-info">
+                        <span class="chq-pub-lastyear-name">{lastYear.event.name}</span>
+                        <span class="chq-pub-lastyear-count">{countOf(lastYear.sessionCount, "session")}</span>
+                      </div>
+                      <a class="chq-pub-lastyear-link" href={surfacePath(lastYear.event, "sessions", "/e")}>
+                        Sessions ›
+                      </a>
+                    </div>
+                  </aside>
+                ) : null}
+              </div>
             ) : (
               <PublicEmptyState
                 variant="filtered"

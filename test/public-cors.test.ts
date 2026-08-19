@@ -45,6 +45,7 @@ vi.mock("../src/server/repo/public", async () => {
     // an unmocked real query never runs against the {} test db.
     getPublicScheduleDayCounts: vi.fn(async () => []),
     getPublicCfpWindow: vi.fn(async () => null),
+    getPriorPublicEvent: vi.fn(async () => null),
   };
 });
 

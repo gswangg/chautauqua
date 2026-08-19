@@ -51,6 +51,7 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicAgenda: vi.fn(async () => ({ items: [], total: 0 })),
     getPublicScheduleDayCounts: vi.fn(async () => []),
     getPublicCfpWindow: vi.fn(async () => null),
+    getPriorPublicEvent: vi.fn(async () => null),
   };
 });
 

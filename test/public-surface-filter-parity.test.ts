@@ -145,6 +145,7 @@ vi.mock("../src/server/repo/public", async () => {
     ]),
     getPublicBreaksByDay: vi.fn(async () => new Map()),
     getPublicCfpWindow: vi.fn(async () => null),
+    getPriorPublicEvent: vi.fn(async () => null),
   };
 });
 

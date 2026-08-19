@@ -352,6 +352,65 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     opacity: 0;
     margin: 0;
   }
+  /* ===== task-w3-y (DEC-745, wave-107 amendment): sessions "Last year"
+     aside =====
+     docs/design/Chautauqua Public and Portal.dc.html:1167
+     \`Public sessions · nothing published\` -- the
+     fresh-empty sessions frame's two-column grid: minmax(0, 820px) content
+     column + a 300px aside, same 60px gap the sessions-list/-rail pair
+     above already uses (DEC-683's "PUBLIC PAIR" contract), centered inside
+     the 1268px measure. Frame anatomy for the aside: a rule-heading
+     ("Last year", 11px/700/0.12em uppercase, 2px border-bottom -- IDENTICAL
+     register to .chq-pub-rail-heading above, not re-declared as a second
+     copy of that vocabulary, DEC-613), then one row -- prior event name at
+     15px/600, "N sessions" at 12px muted, and a right-flushed
+     "Sessions ›" link at 13px/700 that never wraps. */
+  .chq-pub-sessions-fresh-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 820px) 300px;
+    gap: 60px;
+    align-items: start;
+    justify-content: center;
+  }
+  .chq-pub-lastyear-rail { display: flex; flex-direction: column; gap: 10px; }
+  .chq-pub-lastyear-heading {
+    border-bottom: 2px solid var(--chq-ink);
+    padding-bottom: 8px;
+  }
+  .chq-pub-lastyear-heading span {
+    font-family: var(--chq-font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .chq-pub-lastyear-row {
+    padding: 13px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .chq-pub-lastyear-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .chq-pub-lastyear-name {
+    font-family: var(--chq-font-display);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .chq-pub-lastyear-count { font-size: 12px; color: var(--chq-muted); }
+  .chq-pub-lastyear-link {
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--chq-ink);
+    text-decoration: none;
+  }
+
   /* DEC-385 (w85 amendment, superseded in shape by wave-102 below): this
      fragment's phone declarations are consolidated into ONE block at the
      true end of the file -- previously .chq-pub-surface-title's 26px
@@ -406,6 +465,23 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
       align-items: center;
       justify-content: center;
       padding: 0 16px;
+    }
+    /* task-w3-y (DEC-745, wave-107 amendment): DEC-385 single-direction --
+       the fresh-empty "Last year" two-column grid collapses to a single
+       stacked column at the phone breakpoint, same treatment
+       .chq-pub-sessions-layout already gets a few lines above. The row's
+       "Sessions ›" link keeps its own text size but grows a 44px tap
+       floor (the 44px floor applies to every interactive element on
+       phone) via centered-flex + horizontal padding rather than a bare
+       min-height, matching .chq-pub-schedule-remove's phone treatment
+       above. */
+    .chq-pub-sessions-fresh-layout { grid-template-columns: 1fr; gap: 20px; }
+    .chq-pub-lastyear-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
     }
   }
 `;

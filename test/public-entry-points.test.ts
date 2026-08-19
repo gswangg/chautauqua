@@ -52,6 +52,10 @@ vi.mock("../src/server/repo/public", async () => {
     // an unmocked real query never runs against the {} test db.
     getPublicScheduleDayCounts: vi.fn(async () => []),
     getPublicCfpWindow: vi.fn(async () => null),
+    // DEC-745 (wave-107 amendment): the sessions fresh-empty branch's
+    // "Last year" probe -- mocked here like every other repo call in this
+    // file so an unmocked real query never runs against the {} test db.
+    getPriorPublicEvent: vi.fn(async () => null),
   };
 });
 
