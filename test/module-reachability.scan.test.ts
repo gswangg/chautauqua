@@ -284,6 +284,10 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
   "app/src/test-utils/mockApi.ts":
     "Shared test helper imported only by *.render.test.tsx files -- test-file imports don't confer reachability " +
     "(DEC-518), and this module exists purely to serve those tests.",
+  "app/src/test-utils/phoneBlock.ts":
+    "Shared phone-block CSS scanning vocabulary (comment-stripping, brace-depth block extraction, rule lookup) " +
+    "imported only by *.render.test.tsx CSS pins -- test-file imports don't confer reachability (DEC-518), " +
+    "same shape as mockApi.ts above (field guide DEC-613).",
   "src/routes/docs-content/technical-names.ts":
     "ASD-STE100 rule-1.5/1.6 technical-name declaration for the docs articles -- consumed only by " +
     "test/docs-ste.scan.test.ts (the docs dictionary scan), and test-file imports don't confer reachability " +
