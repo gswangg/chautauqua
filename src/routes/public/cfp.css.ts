@@ -185,24 +185,66 @@ export const CFP_CSS = `
   .chq-cfp-steps-bar-fill { display: none; }
   .chq-cfp-step-next { display: none; }
   .chq-cfp-step-back { display: none; }
-
+${ERROR_STATES_CSS}${BARE_PAGE_CSS}
+  /* DEC-385 (v12 mobile campaign wave 85 amendment): the phone override
+     block moved to the END of the template literal -- ERROR_STATES_CSS and
+     BARE_PAGE_CSS are composed ABOVE this point, so their own (non-media)
+     rules can never win a same-specificity fight against the phone rules
+     below by sheer source order. Single-direction responsive: every rule
+     in this block is a max-width override of a desktop rule declared
+     earlier in this same file; nothing here is read outside <=700px.
+     Geometry cited against docs/design/Chautauqua Public and Portal.dc.html
+     frames :1017-1070 (Submit a talk) / :1074-1100 (Submitted) /
+     :1124-1143 (Submitted, email already known) / :1147-1166 (Submitted,
+     has an account) -- the three Submitted frames differ only in the
+     .chq-cfp-confirm-actions branch already rendered by submit-views.tsx's
+     ConfirmationState switch (DEC-098), so this stylesheet needs no
+     per-state selector of its own. */
   @media (max-width: 700px) {
     .chq-cfp-header, .chq-cfp-body { padding-left: 16px; padding-right: 16px; }
+    /* :1018 -- head padding compacts from the desktop 26px 44px 20px band
+       to the phone frame's own 14px 16px, gap 6px. */
+    .chq-cfp-header { padding-top: 14px; padding-bottom: 14px; gap: 6px; }
+    /* :1019 -- the date/venue eyebrow drops from 11px to the frame's 10px;
+       weight/letter-spacing/case/colour are unchanged (.chq-cfp-meta,
+       above) so only size moves. */
+    .chq-cfp-meta { font-size: 10px; }
+    /* :1020 -- "Submit a talk" is the drill-in register (25px), distinct
+       from :1077's confirmation-page landing register (27px, below) --
+       DEC-643 amendment's two phone h1 registers, both inside the shared
+       25-27px band docs/design/README.md's typography table names. */
+    .chq-cfp-intro h1 { font-size: 25px; line-height: 1.05; }
+    /* :1084's Submitted h1 shares the SAME 27px/700/-0.04em/1.08 register
+       across all three Submitted frames (:1077/:1127/:1150 are byte-
+       identical) -- one rule, not three. */
+    .chq-cfp-confirm h1 { font-size: 27px; line-height: 1.08; }
     .chq-cfp-track-format-row,
     .chq-cfp-you-grid.chq-cfp-fields { grid-template-columns: 1fr; }
     /* DEC-367 (wave 50 amendment): the phone tap floor -- the Audience-level
        pill sizes to padding on desktop, per docs/design/README.md
        §Controls. */
     .chq-cfp-option.chq-cfp-pill { min-height: 44px; }
+    /* :1092/:1135 -- the confirmation page's plain-anchor forward paths
+       ("Submit another talk"/"Browse the sessions", "Log in") carry no
+       .chq-btn class, so they miss theme.ts's shared button/.chq-nav-a
+       floor (src/views/theme.ts:625-630) -- own floor here: min-height +
+       centred flex + horizontal padding, never a bare min-height. */
+    .chq-cfp-links a,
+    .chq-cfp-confirm-actions a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 2px; }
 
     /* CfpStepsScript is the only thing that ever changes
        data-chq-cfp-step away from its markup default of "all" (server-
        rendered forms carrying a validation error never get a script-set
        step, so they stay "all" and every rule below simply never matches).
        DEC-383: no colour literal, tokens only. */
-    .chq-cfp-steps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
-    .chq-cfp-steps-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); }
-    .chq-cfp-steps-bar { display: block; height: 4px; border-radius: 2px; background: var(--chq-rule); overflow: hidden; }
+    /* :1020-1024 -- the step label and progress bar sit in a ROW (not the
+       stacked column this used to draw), baseline-centred, 8px gap. */
+    .chq-cfp-steps { display: flex; flex-direction: row; align-items: center; gap: 8px; margin-bottom: 6px; }
+    /* :1021 -- weight 800 / letter-spacing 0.09em, not the body copy's
+       700/0.1em. */
+    .chq-cfp-steps-label { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--chq-muted); }
+    /* :1022 -- 5px pill-radius track, not a 4px/2px one. */
+    .chq-cfp-steps-bar { display: block; flex: 1; height: 5px; border-radius: 99px; background: var(--chq-rule); overflow: hidden; }
     .chq-cfp-steps-bar-fill { display: block; height: 100%; width: 50%; background: var(--chq-brandable-accent); }
     .chq-cfp-step-next,
     .chq-cfp-step-back { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
@@ -210,6 +252,10 @@ export const CFP_CSS = `
     [data-chq-cfp-step="1"] .chq-cfp-step-you { display: none; }
     [data-chq-cfp-step="2"] .chq-cfp-step-talk { display: none; }
     [data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"] { display: none; }
+    /* Back has nothing to return to on step 1 -- the frame's step-1 dock
+       never draws it. test/cfp-phone-steps.test.ts pins the two selectors
+       above byte-for-byte; this one is additive, not a replacement. */
+    [data-chq-cfp-step="1"] .chq-cfp-step-back { display: none; }
     [data-chq-cfp-step="2"] .chq-cfp-step-next { display: none; }
   }
-${ERROR_STATES_CSS}${BARE_PAGE_CSS}`;
+`;
