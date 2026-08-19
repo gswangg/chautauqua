@@ -273,11 +273,23 @@ export function CallForPapersPanel() {
 
   const publicLinkValue = (
     <>
-      <span>{publicLink}</span>
+      {/* docs/design/Chautauqua Settings.dc.html:452 -- on phone the
+          public link renders as a boxed readout (chq-settings-readout,
+          settings.css), the SAME box register as an edit-form input;
+          unstyled outside the phone media query so desktop (a plain
+          inline span) is unaffected (DEC-385). */}
+      <span className="chq-settings-readout">{publicLink}</span>
       <a href={publicLink} className="chq-settings-inline-action">
         Open
       </a>
-      <button type="button" className="chq-link-button" onClick={() => void handleCopyLink(publicLink)}>
+      {/* :453 -- 'Copy link' is a full-width 44px pill under the readout
+          box on phone (chq-settings-cfp-copy-btn adds the width/margin on
+          top of the existing generic .chq-link-button phone box). */}
+      <button
+        type="button"
+        className="chq-link-button chq-settings-cfp-copy-btn"
+        onClick={() => void handleCopyLink(publicLink)}
+      >
         {copyResult?.ok ? 'Copied!' : 'Copy'}
       </button>
       <div role="status" aria-live="polite" className="chq-copy-status">
@@ -299,10 +311,15 @@ export function CallForPapersPanel() {
   const closesValue =
     event && form ? (
       <>
-        <span>
+        {/* docs/design/Chautauqua Settings.dc.html:457 -- same boxed
+            readout register as the Public link row above. */}
+        <span className="chq-settings-readout">
           {formatDateTimeInZone(dayLabelEndInstant(form.closeDate ?? 0, event.timezone), event.timezone)} ·{' '}
           {event.timezone}
         </span>
+        {/* :458 -- the relative note sits on its own line under the box on
+            phone (settings.css stacks .chq-settings-row-value when it
+            has a readout, DEC-385 max-width override only). */}
         <span className="chq-settings-row-note">
           {closesRelativeNote(form.openDate ?? null, form.closeDate ?? null, event.timezone)}
         </span>

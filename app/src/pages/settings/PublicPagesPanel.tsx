@@ -161,24 +161,41 @@ export function PublicPagesPanel() {
               <li key={row.key} className="chq-settings-public-pages-row">
                 <span className="chq-settings-public-pages-name">{row.name}</span>
                 <span className="chq-settings-public-pages-path">{row.path}</span>
-                {row.state === null ? (
-                  <DelayedLoading />
-                ) : (
-                  <span
-                    className={`chq-settings-public-pages-state ${PUBLIC_PAGES_STATE_TONE_CLASS[stateTone(row.state)]}`}
-                  >
-                    {row.state}
-                  </span>
-                )}
-                <a className="chq-settings-inline-action" href={row.path}>
+                {/* docs/design/Chautauqua Settings.dc.html:490-93 --
+                    wrapping element carries no rule of its own outside the
+                    phone media query (default inline, invisible to
+                    desktop's grid), only settings.css's max-width block
+                    gives it a grid-area so the state pill sits beside the
+                    name on phone instead of on its own stacked line. */}
+                <span className="chq-settings-public-pages-state-cell">
+                  {row.state === null ? (
+                    <DelayedLoading />
+                  ) : (
+                    <span
+                      className={`chq-settings-public-pages-state ${PUBLIC_PAGES_STATE_TONE_CLASS[stateTone(row.state)]}`}
+                    >
+                      {row.state}
+                    </span>
+                  )}
+                </span>
+                {/* :496 -- 'View' becomes a flex:1 44px boxed pill beside
+                    'Embed code' on phone (chq-settings-public-pages-view-
+                    action is phone-media-scoped only, so the desktop
+                    12px/700 inline-action link is untouched, DEC-385). */}
+                <a className="chq-settings-inline-action chq-settings-public-pages-view-action" href={row.path}>
                   View
                 </a>
                 {/* User-filed (gate-12 era): View and Embed code sit in ONE
                     row — one action typography (the 12px/700 inline-action),
-                    never two link styles side by side. */}
+                    never two link styles side by side. :497 gives Embed
+                    code the matching flex:1 44px pill via the existing
+                    generic .chq-link-button phone box. The 09--07 switch
+                    (:495, `{{ p.toggle }}`) is one of DEVIATIONS.md §6's
+                    named deferrals -- no backing data, so it is not
+                    rendered at all here, never as a disabled control. */}
                 <button
                   type="button"
-                  className="chq-link-button chq-settings-inline-action"
+                  className="chq-link-button chq-settings-inline-action chq-settings-public-pages-embed-action"
                   onClick={() => setEmbedOpenState(true)}
                 >
                   Embed code

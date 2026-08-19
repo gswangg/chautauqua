@@ -1437,3 +1437,145 @@
   text-transform: uppercase;
   color: var(--chq-muted);
 }
+
+/* task-w3-f/DEC-032 (wave-85 amendment): phone geometry for the Call for
+   papers, Public pages and Speaker portal read-view drills
+   (docs/design/Chautauqua Settings.dc.html:444-477 / :481-506 /
+   :510-548). Max-width only (DEC-385) -- every selector below is
+   invisible above 700px, so desktop stays exactly as drawn by the 1600
+   frames. Appended at the true end of the file per task instructions
+   (w3-e is consolidating this file's phone blocks to its end in the same
+   batch). */
+@media (max-width: 700px) {
+  /* :451 `font-size:11px; font-weight:800; letter-spacing:0.1em;
+     text-transform:uppercase; color:#565A4B">Public link` -- every
+     SummarySection read row's label becomes this eyebrow register on
+     phone (was the desktop-only 13px/600 .chq-settings-row-label), the
+     SAME register the edit-form's own SettingsField label already uses
+     (SettingsEditForm.tsx) -- one label register per drill, not two. */
+  .chq-settings-row-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+
+  /* :452/:457 `border:1px solid #BAB6A6; border-radius:6px;
+     background:#FAF8F2; min-height:46px; display:flex; align-items:center;
+     padding:0 13px; font-size:14px` -- the CFP Public-link/Closes read
+     rows box their primary value the same way an edit-form input does.
+     Unclassed/undefined outside this media query, so the bare <span> it
+     decorates renders exactly as before on desktop. */
+  .chq-settings-readout {
+    display: flex;
+    align-items: center;
+    min-height: 46px;
+    padding: 0 13px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface);
+    font-size: 14px;
+    width: 100%;
+  }
+
+  /* A row whose value is a boxed readout stacks its trailing
+     action/note under the box (frame draws Copy link / the relative note
+     on their own line beneath), rather than the desktop's inline-wrap
+     row. */
+  .chq-settings-row-value:has(.chq-settings-readout) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+
+  /* :453 `border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF;
+     min-height:44px; ...; margin-top:4px">Copy link` -- full-width under
+     the readout box; the 44px/border/radius/background box itself already
+     comes from the generic `.chq-settings-panel .chq-link-button` phone
+     rule above, this only adds the width and top gap the frame draws. */
+  .chq-settings-cfp-copy-btn {
+    width: 100%;
+    margin-top: 4px;
+    justify-content: center;
+  }
+
+  /* :458 `font-size:11px; font-weight:800; letter-spacing:0.09em;
+     text-transform:uppercase">In 6 days` -- left-aligned under the box,
+     not the desktop's right-flushed same-line note. */
+  .chq-settings-row-value:has(.chq-settings-row-note) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .chq-settings-row-value:has(.chq-settings-row-note) .chq-settings-row-note {
+    align-self: flex-start;
+  }
+
+  /* :490-497 -- Public pages row: name+state share a baseline line, path
+     runs full width beneath, then View/Embed code sit side by side as two
+     flex:1 44px pills. The row becomes a 2-column grid only on phone; at
+     desktop it stays the existing 5-column `170px 1fr 140px auto auto`
+     row (this whole block is invisible there). */
+  .chq-settings-public-pages-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'name state'
+      'path path'
+      'view embed';
+    column-gap: 10px;
+    row-gap: 8px;
+    align-items: center;
+    padding: 15px 0;
+  }
+
+  .chq-settings-public-pages-name {
+    grid-area: name;
+  }
+
+  .chq-settings-public-pages-state-cell {
+    grid-area: state;
+    justify-self: end;
+  }
+
+  .chq-settings-public-pages-path {
+    grid-area: path;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* :496 `flex:1; border:1px solid #BAB6A6; border-radius:6px;
+     background:#EFEBDF; min-height:44px; display:flex; align-items:center;
+     justify-content:center; font-size:13px; font-weight:600">View` -- the
+     desktop anchor (a bare 12px/700 .chq-settings-inline-action link)
+     becomes a boxed flex:1 44px pill only inside this media query. */
+  .chq-settings-public-pages-view-action {
+    grid-area: view;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--chq-ink);
+    text-decoration: none;
+  }
+
+  /* :497 `flex:1; ...">Embed code` -- the generic `.chq-settings-panel
+     .chq-link-button` phone rule above already boxes this button at 44px;
+     this only places it in the grid and stretches it to fill the cell
+     (that generic rule's `align-self:flex-start` would otherwise hug its
+     content instead of filling the flex:1 slot the frame draws). */
+  .chq-settings-public-pages-embed-action {
+    grid-area: embed;
+    align-self: stretch;
+    width: 100%;
+  }
+}
