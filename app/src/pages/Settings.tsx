@@ -45,12 +45,11 @@ export interface SettingsSection {
   // detail line under its label -- not the desktop rail's label alone.
   // Prose, not live data (DEC-650): describes what the section holds, no
   // counts that could drift from the record.
-  detail: string;
-  Panel: ComponentType;
   // w4-e/DEC-375: the phone index row's detail line (docs/design/
   // Chautauqua Settings.dc.html:275 `{{ g.detail }}`). Desktop never reads
   // this -- the rail there is the plain link it always was.
   detail: string;
+  Panel: ComponentType;
 }
 
 // DEC-747: 'Speaker portal' is now ONE read-view section rendered entirely

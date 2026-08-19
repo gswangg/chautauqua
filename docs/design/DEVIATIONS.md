@@ -223,6 +223,16 @@ instead of re-flagging.
   needs a README palette ruling before any change.
 - Settings 760 measure (09--00) rejected: collides with the app-wide 820
   measure token (DEC-744/DEC-808).
+- Speakers status vocabulary under write-failure (DEC-730, wave-90
+  amendment): `Chautauqua Speakers.dc.html:549` ("Speakers · a write
+  failed") draws a hand-styled filled-olive Complete pill / ink-outlined
+  Overdue / outlined Pending, contradicting the inverted `DONE`/`PEND`/`LATE`
+  vocabulary every other cut of the grid in the same file draws (:28/:129,
+  :598, :665). Ruled stale — a status field cannot change its
+  meaning-to-appearance mapping depending on an unrelated write outcome; the
+  v12 inversion is one vocabulary in every state, including under a
+  write-failure banner. No code changed; the app already implements the
+  inverted vocabulary everywhere.
 
 ## v12 frame errata
 
