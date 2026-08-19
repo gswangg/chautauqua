@@ -232,6 +232,11 @@ function allShadowedPairs(): string[] {
 // the ceiling DOWN as part of that same merge-train step, printing the
 // exact new count the assertion below reports — never edit this number
 // from inside a worker lane that isn't the one doing the fix.
+//
+// v12m-w10-a proposed 22 -> 20 off an older main; main had already reached 19.
+// Per DEC-385 (wave-93 amendment) "the merge train re-measures once for the
+// batch", so this constant is set by the megabatch merge train after all lanes
+// land, not by any single lane.
 export const SHADOWED_CEILING = 19;
 
 describe('phone cascade order (DEC-385 single-direction, DEC-808 enumerating scan)', () => {
