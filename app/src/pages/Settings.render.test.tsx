@@ -267,9 +267,13 @@ describe('SettingsPage render smoke', () => {
     });
 
     const rail = screen.getByRole('navigation', { name: 'Settings sections' });
+    // DEC-032 w85 amendment: each rail-link button now also carries a
+    // phone-only "Open" span and a detail line (see Settings.tsx), so the
+    // ORDER assertion below reads the label span specifically rather than
+    // the whole button's textContent.
     const labels = within(rail)
       .getAllByRole('button')
-      .map((el) => el.textContent);
+      .map((el) => el.querySelector('.chq-settings-rail-link-label')?.textContent);
 
     expect(labels).toEqual([
       'Event',

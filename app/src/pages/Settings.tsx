@@ -40,6 +40,12 @@ import './settings/settings.css';
 export interface SettingsSection {
   key: string;
   label: string;
+  // DEC-032 w85 amendment: the phone landing (Chautauqua Settings.dc.html
+  // :275-312) is a one-column list of panel groups, each with a 13px muted
+  // detail line under its label -- not the desktop rail's label alone.
+  // Prose, not live data (DEC-650): describes what the section holds, no
+  // counts that could drift from the record.
+  detail: string;
   Panel: ComponentType;
 }
 
@@ -53,15 +59,45 @@ export interface SettingsSection {
 // it's a row inside 'Your data' (YourDataPanel) that drills into the same
 // SessionboardImportPanel, unchanged.
 export const SECTIONS: SettingsSection[] = [
-  { key: 'event', label: 'Event', Panel: EventSettingsPanel },
-  { key: 'cfp', label: 'Call for papers', Panel: CallForPapersPanel },
-  { key: 'tracks-rooms', label: 'Tracks and rooms', Panel: TracksRoomsPanel },
-  { key: 'public-pages', label: 'Public pages', Panel: PublicPagesPanel },
-  { key: 'portal', label: 'Speaker portal', Panel: PortalSettingsPanel },
+  { key: 'event', label: 'Event', detail: 'Dates, location, timezone, and capacity', Panel: EventSettingsPanel },
+  {
+    key: 'cfp',
+    label: 'Call for papers',
+    detail: 'Submission window, formats, and custom questions',
+    Panel: CallForPapersPanel,
+  },
+  {
+    key: 'tracks-rooms',
+    label: 'Tracks and rooms',
+    detail: 'The tracks and rooms sessions can be assigned to',
+    Panel: TracksRoomsPanel,
+  },
+  {
+    key: 'public-pages',
+    label: 'Public pages',
+    detail: 'Which public pages are live, and their embed codes',
+    Panel: PublicPagesPanel,
+  },
+  {
+    key: 'portal',
+    label: 'Speaker portal',
+    detail: 'What speakers see once they sign in',
+    Panel: PortalSettingsPanel,
+  },
   // G13 fidelity: frames 09--10..16 draw the rail as ... Speaker portal,
   // Your data, People and roles -- Your data comes BEFORE People and roles.
-  { key: 'your-data', label: 'Your data', Panel: YourDataPanel },
-  { key: 'people', label: 'People and roles', Panel: PeopleRolesPanel },
+  {
+    key: 'your-data',
+    label: 'Your data',
+    detail: 'Exports, API tokens, and API docs',
+    Panel: YourDataPanel,
+  },
+  {
+    key: 'people',
+    label: 'People and roles',
+    detail: 'Organizers and reviewers on this event',
+    Panel: PeopleRolesPanel,
+  },
 ];
 
 export function SettingsPage() {
@@ -180,7 +216,12 @@ export function SettingsPage() {
   }, [editingSection]);
 
   return (
-    <div className="chq-page chq-settings-page">
+    // data-drilled repeated on this wrapper (not just .chq-settings-layout
+    // below) because the page's own <h1> sits BEFORE .chq-settings-layout
+    // in the DOM -- a descendant selector rooted on .chq-settings-layout
+    // can never reach it. Phone-only 26px drill H1 register (DEC-643
+    // wave-83 amendment) reads this attribute in settings.css.
+    <div className="chq-page chq-settings-page" data-drilled={active !== null}>
       <h1 className="chq-page-title">{pageTitle}</h1>
       <div className="chq-settings-layout" data-drilled={active !== null} data-editing={editing}>
         <nav className="chq-rail chq-settings-rail" aria-label="Settings sections">
@@ -194,11 +235,31 @@ export function SettingsPage() {
                   : 'chq-rail-link chq-settings-rail-link'
               }
               aria-current={active === section.key ? 'true' : undefined}
+              // Accessible name stays the bare label: the phone-only
+              // "Open"/detail text below is presentational furniture, not
+              // part of what a screen reader announces for this control,
+              // and existing rail-link queries key on the label alone.
+              aria-label={section.label}
               onClick={() => selectSection(section.key)}
             >
-              {section.label}
+              {/* DEC-032 w85 amendment: the phone landing (Chautauqua
+                  Settings.dc.html :275-312) is a one-column list of panel
+                  groups -- label + Open on one line, a muted detail line
+                  below. The `-row`/`-open`/`-detail` children render only
+                  at phone widths (display:none by default, DEC-385 narrow
+                  override); the desktop rail keeps rendering the label
+                  alone, unchanged. */}
+              <span className="chq-settings-rail-link-row">
+                <span className="chq-settings-rail-link-label">{section.label}</span>
+                <span className="chq-settings-rail-link-open">Open</span>
+              </span>
+              <span className="chq-settings-rail-link-detail">{section.detail}</span>
             </button>
           ))}
+          {/* Frame's closing sentence (:307-309): plain text, never the
+              disabled token -- Embed codes aren't a control here, they're
+              a fact about the device. Phone-only, same override shape. */}
+          <p className="chq-settings-rail-note">Embed codes are easier to copy on a laptop</p>
         </nav>
         <div className="chq-settings-content">
           <button
