@@ -7,6 +7,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ContentApp } from './ContentApp';
 import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -762,5 +764,27 @@ describe('ContentApp worklist tab (DEC-825): ?tab= round-trips through the new v
     await waitFor(() => {
       expect(screen.getByTestId('location-search').textContent).toContain('tab=approved');
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v12 phone pass (390 frame "Content"): the page header stacks into H1 →
+// summary line → destination actions. css-text pin — jsdom evaluates neither
+// @media nor an external stylesheet, and the desktop baseline row above is
+// untouched.
+// ---------------------------------------------------------------------------
+describe('ContentApp: the 390 header stacks its title, summary and actions', () => {
+  it('declares the stack inside the phone block only', () => {
+    const source = readFileSync(join(process.cwd(), 'app/src/pages/content/content.css'), 'utf-8');
+    const open = source.indexOf('@media (max-width: 700px) {');
+    expect(open).toBeGreaterThan(-1);
+
+    const desktop = source.slice(0, open);
+    expect(desktop).toMatch(/\.chq-content-summary-row\s*\{[^}]*align-items:\s*baseline/);
+    expect(desktop).toMatch(/\.chq-content-summary-actions\s*\{[^}]*margin-left:\s*auto/);
+
+    const phone = source.slice(open);
+    expect(phone).toMatch(/\.chq-content-summary-row\s*\{[^}]*flex-direction:\s*column/);
+    expect(phone).toMatch(/\.chq-content-summary-actions\s*\{[^}]*margin-left:\s*0/);
   });
 });

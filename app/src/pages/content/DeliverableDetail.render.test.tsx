@@ -918,3 +918,115 @@ describe('DeliverableDetail render smoke', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// v12 phone pass (390 frame "Session · deliverable").
+//
+// css-text pins: jsdom evaluates neither @media nor an external stylesheet,
+// so the phone contract is read out of content.css as source. Every desktop
+// pin above (the status band's bleed, the 1180 reading measure) is untouched
+// — these rules live only inside the max-width block.
+// ---------------------------------------------------------------------------
+
+function detailPhoneBlock(): string {
+  const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
+  const open = source.indexOf('@media (max-width: 700px) {');
+  expect(open).toBeGreaterThan(-1);
+  const bodyStart = source.indexOf('{', open) + 1;
+  let depth = 1;
+  let i = bodyStart;
+  for (; i < source.length && depth > 0; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') depth--;
+  }
+  return source.slice(bodyStart, i - 1);
+}
+
+function phoneRule(css: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = css.match(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`));
+  expect(match, `no phone rule for \`${selector}\``).not.toBeNull();
+  return match![1]!;
+}
+
+describe('DeliverableDetail: the 390 frame header, status band and composer', () => {
+  it('stacks the header and drops the H1 to the frame’s 21px', () => {
+    const phone = detailPhoneBlock();
+
+    const head = phoneRule(phone, '.chq-content-detail-head');
+    expect(head).toMatch(/flex-direction:\s*column/);
+    expect(head).toMatch(/align-items:\s*stretch/);
+
+    const title = phoneRule(phone, '.chq-content-detail-title');
+    expect(title).toMatch(/font-size:\s*21px/);
+
+    // The desktop 28px is untouched — the phone value is an override, never
+    // a replacement (DEC-385 single direction).
+    const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
+    const desktopTitle = source.slice(0, source.indexOf('@media (max-width: 700px) {'));
+    expect(desktopTitle).toMatch(/\.chq-content-detail-title\s*\{[^}]*font-size:\s*28px/);
+  });
+
+  it('gives every header link the 44px floor — min-height plus a real hit box, never padding alone', () => {
+    const phone = detailPhoneBlock();
+
+    for (const selector of ['.chq-content-detail-back', '.chq-content-detail-action-link']) {
+      const rule = phoneRule(phone, selector);
+      expect(rule, selector).toMatch(/min-height:\s*44px/);
+      expect(rule, selector).toMatch(/display:\s*inline-flex/);
+      expect(rule, selector).toMatch(/align-items:\s*center/);
+    }
+  });
+
+  it('lets the status band’s copy and its actions each take the full measure', () => {
+    const phone = detailPhoneBlock();
+
+    expect(phoneRule(phone, '.chq-content-status-band')).toMatch(/min-height:\s*0/);
+    expect(phoneRule(phone, '.chq-content-status-band-info')).toMatch(/flex:\s*1 1 100%/);
+
+    const actions = phoneRule(phone, '.chq-content-status-band-actions');
+    expect(actions).toMatch(/flex:\s*1 1 100%/);
+    expect(actions).toMatch(/flex-wrap:\s*wrap/);
+    expect(phoneRule(phone, '.chq-content-status-band-actions .chq-btn')).toMatch(/flex:\s*1 1 auto/);
+  });
+
+  it('keeps the version row’s vN | name | NEWEST line and drops Download to its own full-measure row', () => {
+    const phone = detailPhoneBlock();
+
+    const item = phoneRule(phone, '.chq-content-version-item');
+    expect(item).toMatch(/grid-template-columns:\s*30px minmax\(0, 1fr\) auto/);
+
+    expect(phoneRule(phone, '.chq-content-version-tag')).toMatch(/grid-row:\s*1/);
+    expect(phoneRule(phone, '.chq-content-version-info')).toMatch(/grid-row:\s*1/);
+    expect(phoneRule(phone, '.chq-content-version-newest')).toMatch(/grid-row:\s*1/);
+
+    const download = phoneRule(phone, '.chq-content-version-download');
+    expect(download).toMatch(/grid-row:\s*2/);
+    expect(download).toMatch(/grid-column:\s*1 \/ span 2/);
+    // A text link on desktop, a bordered control on the card: the 44px floor
+    // is min-height PLUS horizontal padding (DESIGN-RULINGS), never padding
+    // alone.
+    expect(download).toMatch(/min-height:\s*44px/);
+    expect(download).toMatch(/padding:\s*0 14px/);
+
+    expect(phoneRule(phone, '.chq-content-version-delete')).toMatch(/grid-row:\s*2/);
+  });
+
+  it('stretches "Ask for changes" across the composer row the way the frame docks it', () => {
+    const phone = detailPhoneBlock();
+
+    expect(phoneRule(phone, '.chq-content-comment-actions')).toMatch(/gap:\s*8px/);
+    expect(phoneRule(phone, '.chq-content-comment-actions .chq-btn-primary')).toMatch(/flex:\s*1 1 auto/);
+  });
+
+  it('centres the upload strip and lets its accepted-types line wrap rather than clip', () => {
+    const phone = detailPhoneBlock();
+
+    expect(phoneRule(phone, '.chq-content-upload-label')).toMatch(/justify-content:\s*center/);
+
+    const caps = phoneRule(phone, '.chq-content-upload-caps');
+    expect(caps).toMatch(/flex-basis:\s*100%/);
+    expect(caps).toMatch(/white-space:\s*normal/);
+    expect(caps).toMatch(/text-overflow:\s*unset/);
+  });
+});

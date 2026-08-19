@@ -718,3 +718,90 @@ describe('FilesLibrary render smoke', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// v12 phone pass (390 frame "Files · 390"). css-text pins — jsdom evaluates
+// neither @media nor an external stylesheet. The desktop fixed-layout column
+// pins above are untouched; the card rules live only inside the max-width
+// block and only RELEASE those widths there.
+// ---------------------------------------------------------------------------
+
+function filesPhoneBlock(): string {
+  const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
+  const open = source.indexOf('@media (max-width: 700px) {');
+  expect(open).toBeGreaterThan(-1);
+  const bodyStart = source.indexOf('{', open) + 1;
+  let depth = 1;
+  let i = bodyStart;
+  for (; i < source.length && depth > 0; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') depth--;
+  }
+  return source.slice(bodyStart, i - 1);
+}
+
+function filesPhoneRule(css: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = css.match(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`));
+  expect(match, `no phone rule for \`${selector}\``).not.toBeNull();
+  return match![1]!;
+}
+
+describe('FilesLibrary: the 390 frame header stack and file card', () => {
+  const ROW = '.chq-content-files-library .chq-content-table tr.chq-content-row';
+
+  it('stacks the header — back link, title, summary, then a full-measure Download all', () => {
+    const phone = filesPhoneBlock();
+
+    const headerRow = filesPhoneRule(phone, '.chq-content-files-header-row');
+    expect(headerRow).toMatch(/flex-direction:\s*column/);
+    expect(headerRow).toMatch(/align-items:\s*stretch/);
+
+    const headerActions = filesPhoneRule(phone, '.chq-content-files-header-actions');
+    expect(headerActions).toMatch(/flex-direction:\s*column/);
+    expect(headerActions).toMatch(/align-items:\s*stretch/);
+
+    expect(filesPhoneRule(phone, '.chq-content-files-download-all-wrap')).toMatch(/align-items:\s*stretch/);
+
+    // The breadcrumb is a real tap target on a phone (DESIGN-RULINGS 44px).
+    const crumb = filesPhoneRule(phone, '.chq-content-files-breadcrumb');
+    expect(crumb).toMatch(/min-height:\s*44px/);
+
+    // The search field owns its own line above the chips it narrows.
+    expect(filesPhoneRule(phone, '.chq-content-files-toolbar .chq-input')).toMatch(/flex:\s*1 1 100%/);
+  });
+
+  it('reflows the file row into name + version, session, size, then a full-measure Download', () => {
+    const phone = filesPhoneBlock();
+
+    const row = filesPhoneRule(phone, ROW);
+    expect(row).toMatch(/display:\s*grid/);
+    expect(row).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) auto/);
+    expect(row).toMatch(/padding:\s*15px 0/);
+
+    expect(filesPhoneRule(phone, `${ROW} > td:nth-child(1)`)).toMatch(/grid-row:\s*1/);
+    expect(filesPhoneRule(phone, `${ROW} > td:nth-child(3)`)).toMatch(/grid-row:\s*1/);
+    expect(filesPhoneRule(phone, `${ROW} > td:nth-child(3)`)).toMatch(/grid-column:\s*2/);
+    expect(filesPhoneRule(phone, `${ROW} > td:nth-child(5)`)).toMatch(/grid-column:\s*1 \/ span 2/);
+  });
+
+  it('releases the desktop fixed-layout cell widths on the card, so Download is not clamped to 150px', () => {
+    const phone = filesPhoneBlock();
+    expect(filesPhoneRule(phone, `${ROW} > td`)).toMatch(/width:\s*auto/);
+
+    // …and the desktop widths themselves are still declared, above the block.
+    const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
+    const desktop = source.slice(0, source.indexOf('@media (max-width: 700px) {'));
+    expect(desktop).toMatch(/\.chq-content-files-col-actions\s*\{[^}]*width:\s*150px/);
+    expect(desktop).toMatch(/\.chq-content-files-col-size\s*\{[^}]*width:\s*92px/);
+  });
+
+  it('gives the row Download a bordered 44px face — min-height plus horizontal padding', () => {
+    const phone = filesPhoneBlock();
+    const link = filesPhoneRule(phone, '.chq-content-files-library .chq-content-files-col-actions .chq-link-button');
+    expect(link).toMatch(/min-height:\s*44px/);
+    expect(link).toMatch(/padding:\s*0 14px/);
+    expect(link).toMatch(/border:\s*1px solid var\(--chq-border\)/);
+    expect(link).toMatch(/border-radius:\s*var\(--chq-r-ctl-phone\)/);
+  });
+});

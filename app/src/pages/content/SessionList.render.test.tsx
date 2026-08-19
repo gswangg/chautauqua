@@ -1260,3 +1260,113 @@ describe('SessionList: worklist table takes the frame six tracks under fixed lay
     expect(phoneBlock).not.toMatch(/table-layout/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// v12 phone pass (390 frames "Content" / "Content · selecting").
+//
+// These are css-text pins, not render assertions: jsdom evaluates neither
+// @media nor an external stylesheet (the shell-geometry.test.ts precedent),
+// so the phone contract is read out of content.css as source. Every desktop
+// pin above stays exactly as it was — nothing here narrows a desktop rule.
+// ---------------------------------------------------------------------------
+
+/** The body of content.css's `@media (max-width: 700px)` block, brace-matched
+ * so nested rules never truncate it, plus its start offset in the file. */
+function contentPhoneBlock(): { body: string; start: number; source: string } {
+  const source = readFileSync(join(process.cwd(), 'app/src/pages/content/content.css'), 'utf-8');
+  const open = source.indexOf('@media (max-width: 700px) {');
+  expect(open).toBeGreaterThan(-1);
+  const bodyStart = source.indexOf('{', open) + 1;
+  let depth = 1;
+  let i = bodyStart;
+  for (; i < source.length && depth > 0; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') depth--;
+  }
+  return { body: source.slice(bodyStart, i - 1), start: open, source };
+}
+
+/** The declaration body of `selector { ... }` inside `css`. */
+function ruleBody(css: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = css.match(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`));
+  expect(match, `no rule for \`${selector}\``).not.toBeNull();
+  return match![1]!;
+}
+
+describe('Content phone block: DEC-385 single-direction cascade', () => {
+  // The bug this pin exists for: the block used to sit in the MIDDLE of
+  // content.css, so every phone rule whose desktop twin was declared further
+  // down (.chq-content-version-item's tracks, .chq-content-upload-caps'
+  // flex-basis, .chq-content-status-band's min-height, the whole files
+  // header row) lost the equal-specificity tie to its own desktop rule and
+  // did nothing at 390. Single-direction means narrow overrides wide, which
+  // in a flat stylesheet means LAST.
+  it('is the last block in content.css, so a phone rule always outranks its desktop twin', () => {
+    const { start, source } = contentPhoneBlock();
+    expect(source.slice(start).trimEnd().endsWith('}')).toBe(true);
+    // Nothing but the block itself may follow its opening.
+    const after = source.slice(start);
+    const nextTopLevelRule = after.slice(after.indexOf('\n}\n') + 3).trim();
+    expect(nextTopLevelRule).toBe('');
+  });
+
+  it('never reintroduces the desktop table geometry inside the phone card block', () => {
+    const { body } = contentPhoneBlock();
+    expect(body).not.toMatch(/chq-content-worklist-table/);
+    expect(body).not.toMatch(/table-layout/);
+  });
+});
+
+describe('SessionList: the 390 queue card follows the v12 frame anatomy', () => {
+  const ROW = '.chq-content-worklist .chq-content-table tr.chq-content-row';
+
+  it('reflows the six desktop columns into the frame stack — tick + status, title, meta, actions', () => {
+    const { body } = contentPhoneBlock();
+
+    // The card itself: a two-track grid, not the old display:block stack.
+    const row = ruleBody(body, ROW);
+    expect(row).toMatch(/display:\s*grid/);
+    expect(row).toMatch(/grid-template-columns:\s*auto minmax\(0, 1fr\)/);
+    expect(row).toMatch(/row-gap:\s*9px/);
+
+    // Frame order: tick and the status flag share row 1; the session title
+    // spans the measure; the Approve/Open pair closes the card.
+    expect(ruleBody(body, `${ROW} > td:nth-child(1)`)).toMatch(/grid-row:\s*1/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(5)`)).toMatch(/grid-row:\s*1/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(5)`)).toMatch(/grid-column:\s*2/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(2)`)).toMatch(/grid-row:\s*2/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(6)`)).toMatch(/grid-row:\s*5/);
+    expect(ruleBody(body, `${ROW} > td:nth-child(6)`)).toMatch(/grid-column:\s*1 \/ span 2/);
+  });
+
+  it('grows the row title to the frame 17px and keeps the action pair full-measure at the 44px floor', () => {
+    const { body } = contentPhoneBlock();
+
+    expect(ruleBody(body, '.chq-content-worklist .chq-content-row-title')).toMatch(/font-size:\s*17px/);
+
+    const actions = ruleBody(body, '.chq-content-actions');
+    expect(actions).toMatch(/gap:\s*8px/);
+    expect(ruleBody(body, '.chq-content-actions .chq-btn')).toMatch(/flex:\s*1 1 0/);
+    // The 44px floor itself is the shared .chq-btn phone rule in styles.css
+    // (never redefined here, DEC-368) — this lane only supplies the phone
+    // control radius on top of it.
+    expect(ruleBody(body, '.chq-content-page .chq-btn')).toMatch(/border-radius:\s*var\(--chq-r-ctl-phone\)/);
+  });
+
+  it('stacks the bulk bar into the frame’s one full-measure Approve with the consequence line beneath', () => {
+    const { body } = contentPhoneBlock();
+
+    expect(ruleBody(body, '.chq-content-worklist .chq-bulkbar')).toMatch(/flex-direction:\s*column/);
+    expect(ruleBody(body, '.chq-content-worklist .chq-bulkbar-actions')).toMatch(/margin-left:\s*0/);
+
+    const primary = ruleBody(body, '.chq-content-worklist .chq-bulkbar-actions .chq-btn-primary');
+    expect(primary).toMatch(/flex:\s*1 1 auto/);
+    expect(primary).toMatch(/min-height:\s*48px/);
+
+    // The note reads under the bar it explains, centred, as the frame draws it.
+    const note = ruleBody(body, '.chq-content-worklist .chq-bulkbar-note');
+    expect(note).toMatch(/text-align:\s*center/);
+    expect(note).toMatch(/order:\s*1/);
+  });
+});
