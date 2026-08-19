@@ -19,6 +19,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
+// DEC-730: status tokens pair by density (dense matrix cell / roomy real
+// target, identical colour+weight) -- the waiting tab's status chips below
+// select the 'roomy' density on that ruling's authority.
+import { DEC_730 } from '../../../../src/decisions';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -43,6 +47,8 @@ import { toCsv } from '../../../../src/domain/csv';
 // (Speakers.tsx, SpeakerDetailPage.tsx) each import it for the same reason.
 import './speakers.css';
 import './task-view.css';
+
+void DEC_730;
 
 type Tab = 'answered' | 'waiting';
 
@@ -529,9 +535,20 @@ export function TaskView() {
                   />
                 </span>
                 <span className="chq-taskview-speaker" role="cell">
-                  <Link className="chq-taskview-name" to={`/speakers/${row.contactId}`}>
-                    {row.name}
-                  </Link>
+                  {/* docs/design/Chautauqua Speakers.dc.html:648 (answered)
+                      `<span style="font-size:15px; font-weight:600">{{ a.name }}</span>`
+                      -- plain text, no link -- versus :713 (waiting)
+                      `<a href="#" style="font-size:15px; font-weight:600; color:#1B1D17">{{ w.name }}</a>`.
+                      An answered row's primary target is "Open" (the
+                      response); a waiting row has no such action, so the
+                      name itself is the only way off the row. */}
+                  {tab === 'answered' ? (
+                    <span className="chq-taskview-name">{row.name}</span>
+                  ) : (
+                    <Link className="chq-taskview-name" to={`/speakers/${row.contactId}`}>
+                      {row.name}
+                    </Link>
+                  )}
                   <span className="chq-taskview-company">{row.company ?? '—'}</span>
                 </span>
                 {tab === 'answered' ? (
