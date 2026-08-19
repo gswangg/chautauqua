@@ -258,4 +258,17 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
     [data-chq-cfp-step="1"] .chq-cfp-step-back { display: none; }
     [data-chq-cfp-step="2"] .chq-cfp-step-next { display: none; }
   }
+
+  /* w8-h (DEC-989 wave-90 amendment): 390-overflow sweep judgement call for
+     .chq-field-counter (declared above, white-space:nowrap, no escape).
+     overflow-exempt: a counter truncated states a wrong count -- ellipsis-
+     ing "412 / 1,200" mid-digit would silently lie about how much room is
+     left, which is worse than the rare wrap this class never actually hits
+     at the 44-char label + short-number content it renders. The counter's
+     printed total is sample data in the frames and does not bind (DEC-650
+     wave-82 amendment), so no width budget is asserted against it either.
+     See decisions/DEC-367.md's wave-90 amendment for the general rule.
+     Appended at the true end of this module, after every top-level rule
+     and after the existing phone block above (never edited/reordered),
+     per DEC-385 single-direction responsive. */
 `;

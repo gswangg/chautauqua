@@ -244,4 +244,24 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
      width both the <img> and the fallback <div> share, replacing the old
      inline style="width:160px" that only applied to the fallback branch. */
   .chq-pub-detail-headshot { width: 160px; }
+
+  /* w8-h (DEC-989 wave-90 amendment): 390-overflow sweep, budget 358px
+     (390 minus .chq-main's 16px phone gutter on each side, src/views/
+     theme.ts). .chq-pub-speaker-list-row's three fixed tracks (76px photo +
+     280px sessions column = 356px) plus its two 20px gaps (40px) total
+     396px -- over budget with no fluid track to absorb it. DEC-919: a 390
+     frame re-lines, it never removes -- the sessions list keeps its content
+     and moves to its own full-width row below the photo/info pair instead
+     of claiming a fixed 280px column that can't fit. Appended at the true
+     end of this module, after every top-level rule, per DEC-385
+     single-direction responsive. */
+  @media (max-width: 700px) {
+    .chq-pub-speaker-list-row {
+      grid-template-columns: 76px 1fr;
+      row-gap: 8px;
+    }
+    .chq-pub-speaker-list-row .chq-pub-speaker-sessions {
+      grid-column: 1 / -1;
+    }
+  }
 `;

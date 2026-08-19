@@ -315,5 +315,24 @@ export const HOME_CSS = `
        per-state branch (DEC-582 wave-84 amendment: "a footer that changes
        with content is a second footer"). */
     .chq-home-footer-tagline { display: none; }
+
+    /* w8-h (DEC-989 wave-90 amendment): 390-overflow sweep, appended as the
+       LAST rule inside this SAME phone block rather than a second
+       @media (max-width: 700px) wrapper -- test/public-home-phone.test.ts
+       pins HOME_CSS to exactly one such block, and appending here (after
+       every existing declaration, nothing reordered) still wins the
+       cascade the same way a new terminal block would. .chq-home-footer-
+       link (base rule, above) is white-space:nowrap with no escape --
+       inside the footer's flex row, next to the always-present "Running
+       on"/API-docs siblings, a long org name can push past the 358px
+       phone budget (390 minus .chq-main's 16px gutter each side).
+       Ellipsis rather than a re-line: the link's own text (the product
+       credit) is fixed copy, not user content that needs every character
+       kept on screen the way a counter or a name would. */
+    .chq-home-footer-link {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
   }
 `;
