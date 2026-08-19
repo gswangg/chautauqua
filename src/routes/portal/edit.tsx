@@ -37,7 +37,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { DEC_041, DEC_074, DEC_109, DEC_121, DEC_604 } from "../../decisions";
+import { DEC_029, DEC_041, DEC_074, DEC_109, DEC_121, DEC_604 } from "../../decisions";
 import { validateTrackChoice, readSingleFormValue, REPEATED_ANSWER_MESSAGE } from "../../lib/submit-core";
 import { CO_PRESENTER_ROLE_VALUES, PARTICIPANT_ROLE_OPTIONS } from "../../domain/participant-roles";
 // DEC-598 (wave-10 amendment): trackIds dedupe has ONE owner (public
@@ -48,6 +48,7 @@ import { extractTrackIds } from "../public/submit-body";
 export const portalEditRoutes = new Hono<AppEnv>();
 
 // touch DEC constant so the dependency is compile-checked (field guide convention)
+void DEC_029;
 void DEC_041;
 void DEC_074;
 void DEC_109;
@@ -249,7 +250,6 @@ export function EditPage(props: {
       <FieldRulesScript fields={data.fields} />
       <ParticipantsSection
         submissionId={props.submissionId}
-        csrfToken={csrfToken}
         participants={participants}
         errors={participantErrors}
         values={participantValues}
@@ -279,12 +279,11 @@ export function EditPage(props: {
 // component is presentation only.
 function ParticipantsSection(props: {
   submissionId: string;
-  csrfToken: string;
   participants: PortalParticipant[];
   errors?: Record<string, string>;
   values?: { firstName: string; lastName: string; email: string; role: string };
 }) {
-  const { submissionId, csrfToken, participants, errors, values } = props;
+  const { submissionId, participants, errors, values } = props;
   // DEC-604 (wave-56 amendment): the unique index on the join table is the
   // duplicate arbiter (migrations/0019) — the client cannot pre-empt it, so
   // only THIS specific server-only rejection gets the "standard error
@@ -348,12 +347,16 @@ function ParticipantsSection(props: {
         Adding them puts a row in the list above straight away. No email goes to them — tell them yourself, and
         your organiser decides when co-presenters appear on the public site.
       </p>
-      <form
-        method="post"
-        action={`/portal/submissions/${submissionId}/participants`}
-        enctype="multipart/form-data"
-      >
-        <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+      {/* DEC-029 (wave-108 amendment): this is a SECOND SUBMIT of
+          #chq-portal-edit-form, not a second form -- every control below
+          joins the edit form via the `form` attribute (the same idiom
+          Save changes already uses at :269) so the speaker's in-progress
+          title/abstract/track edits ride along on this submit too, instead
+          of being lost to a bare re-render of the stored answers. This
+          wrapper is now a plain container: it holds no form of its own,
+          submits nothing itself, and carries no hidden CSRF input --
+          #chq-portal-edit-form already carries one. */}
+      <div class="chq-portal-copresenter-fields">
         {/* DEC-604 (wave-56 amendment, B10 form spec): first/last name are
             read as one thing, so the wide 1600 frame pairs them two-up.
             portal.css.ts reaches that without a min-width media query
@@ -366,7 +369,7 @@ function ParticipantsSection(props: {
             <label class="chq-portal-field-label" for="cp-first-name">
               First name
             </label>
-            <input id="cp-first-name" class="chq-input" type="text" name="firstName" value={values?.firstName ?? ""} maxLength={MAX_NAME_LENGTH} />
+            <input id="cp-first-name" form="chq-portal-edit-form" class="chq-input" type="text" name="firstName" value={values?.firstName ?? ""} maxLength={MAX_NAME_LENGTH} />
             {errors?.firstName ? (
               <p role="alert" class="chq-field-error">
                 {errors.firstName}
@@ -377,7 +380,7 @@ function ParticipantsSection(props: {
             <label class="chq-portal-field-label" for="cp-last-name">
               Last name
             </label>
-            <input id="cp-last-name" class="chq-input" type="text" name="lastName" value={values?.lastName ?? ""} maxLength={MAX_NAME_LENGTH} />
+            <input id="cp-last-name" form="chq-portal-edit-form" class="chq-input" type="text" name="lastName" value={values?.lastName ?? ""} maxLength={MAX_NAME_LENGTH} />
             {errors?.lastName ? (
               <p role="alert" class="chq-field-error">
                 {errors.lastName}
@@ -395,6 +398,7 @@ function ParticipantsSection(props: {
             </label>
             <input
               id="cp-email"
+              form="chq-portal-edit-form"
               class={isDuplicate ? "chq-input chq-portal-copresenter-email-flagged" : "chq-input"}
               type="email"
               name="email"
@@ -419,7 +423,7 @@ function ParticipantsSection(props: {
             <label class="chq-portal-field-label" for="cp-role">
               Role
             </label>
-            <select id="cp-role" name="role">
+            <select id="cp-role" form="chq-portal-edit-form" name="role">
               {PARTICIPANT_ROLE_OPTIONS.filter((o) => CO_PRESENTER_ROLE_VALUES.includes(o.value)).map((o) => (
                 <option value={o.value} selected={(values?.role ?? CO_PRESENTER_ROLE_VALUES[0]) === o.value}>
                   {o.label}
@@ -438,9 +442,22 @@ function ParticipantsSection(props: {
             co-presenter is an aside within the edit screen, whose primary
             action stays Save changes above. */}
         <div class="chq-portal-copresenter-submit">
-          <button type="submit" class="chq-btn chq-btn-secondary">Add co-presenter</button>
+          {/* DEC-029 (wave-108 amendment): a second submit of
+              #chq-portal-edit-form, routed to the participants endpoint via
+              formaction/formenctype -- never a `required` attribute on any
+              of the four controls above, so this addition can never block
+              the page's primary Save (the DEC-986 class). */}
+          <button
+            type="submit"
+            form="chq-portal-edit-form"
+            formaction={`/portal/submissions/${submissionId}/participants`}
+            formenctype="multipart/form-data"
+            class="chq-btn chq-btn-secondary"
+          >
+            Add co-presenter
+          </button>
         </div>
-      </form>
+      </div>
     </section>
   );
 }
@@ -577,11 +594,19 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
   }
   const tracksEditable = canEditTracks(data.form.closeDate, Date.now(), data.form.timezone);
 
-  const body = (await c.req.parseBody()) as AddCoPresenterBody;
+  const body = (await c.req.parseBody({ all: true })) as Record<string, unknown> & AddCoPresenterBody;
   const firstName = typeof body.firstName === "string" ? body.firstName : "";
   const lastName = typeof body.lastName === "string" ? body.lastName : "";
   const email = typeof body.email === "string" ? body.email : "";
   const role = typeof body.role === "string" ? body.role : "";
+
+  // DEC-029 (wave-108 amendment): this is a second submit of the ONE edit
+  // form, so the request body also carries the speaker's in-progress
+  // title/abstract/track answers -- extracted with the SAME reader the edit
+  // POST uses (extractAnswers above), never a second parser, so both the
+  // refusal and success renders below echo what was actually typed instead
+  // of falling back to data.answers from the database.
+  const { answers } = extractAnswers(data.fields, body, data.answers);
 
   const result = await addCoPresenter(c.var.db, {
     submissionId,
@@ -602,7 +627,7 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
         branding={portalData.branding}
         submissionId={submissionId}
         data={data}
-        answers={data.answers}
+        answers={answers}
         selectedTrackIds={data.selectedTrackIds}
         csrfToken={csrfToken}
         editable={true}
@@ -616,5 +641,28 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
     );
   }
 
-  return c.redirect(`/portal/submissions/${submissionId}/edit`, 302);
+  // DEC-029 (wave-108 amendment): success renders the edit page directly at
+  // 200, carrying the same posted answers and the freshly-added participant
+  // -- a redirect here is what discarded the draft on the common path, and
+  // Save changes (not this route) stays the only thing that persists an
+  // answer edit.
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+  const portalData = await getPortalData(c.var.db, contactId, auth.orgId);
+  const participants = await getPortalParticipants(c.var.db, submissionId);
+  return c.html(
+    <EditPage
+      branding={portalData.branding}
+      submissionId={submissionId}
+      data={data}
+      answers={answers}
+      selectedTrackIds={data.selectedTrackIds}
+      csrfToken={csrfToken}
+      editable={true}
+      tracksEditable={tracksEditable}
+      participants={participants}
+      speakerName={portalData.contactName}
+    />,
+    200,
+  );
 });
