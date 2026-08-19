@@ -18,9 +18,13 @@ import { formatDayLong } from "../../lib/event-time";
 import { publicRoomLabel } from "../../domain/schedule";
 import { AgendaDayGrid } from "./agenda-grid";
 import { AgendaItemList } from "./agenda-list";
-import { DEC_768, DEC_919 } from "../../decisions";
+import { DEC_768, DEC_919, DEC_576 } from "../../decisions";
 
 void DEC_768;
+// DEC-576 (wave 110 amendment): the SSR phone dock band -- AgendaContent's
+// and ScheduleContent's `.chq-pub-agenda-dock`/`.chq-pub-schedule-dock`
+// footer, mounted below, depend on this ruling.
+void DEC_576;
 // DEC-919 (wave 51 amendment): the agenda/schedule fresh-vs-filtered empty
 // states below are rendered through the shared PublicEmptyState component,
 // same as every other public list surface.
@@ -317,6 +321,39 @@ export function AgendaContent(props: {
           />
         ) : null}
       </div>
+      {/* DEC-576 (wave 110 amendment): the SSR phone dock -- the frame's
+          filled Download .ics + bordered Speakers band at the foot of the
+          390 agenda (docs/design/Chautauqua Public and Portal.dc.html:
+          399-402). Model: src/routes/auth.css.ts:449-478 -- an in-flow
+          footer band at the true end of the page's content, not a fixed/
+          sticky overlay; agenda.css.ts hides it above 700px with a
+          top-level .chq-pub-agenda-dock rule and reveals it in that
+          sheet's terminal phone block (DEC-385 single-direction). Gated
+          the same as AgendaRail/ItineraryScript (DEC-672/683: chromeless-
+          closed) -- /embed renders neither the rail's #chq-ics-link nor
+          this one. Both controls re-site EXISTING capability, never a new
+          one: the same /e/<slug>/schedule.ics route the rail's
+          #chq-ics-link already targets (a second DOM instance, id
+          chq-ics-link-dock, updated by the SAME agenda-itinerary-
+          script.tsx updateLink() -- the .chq-itinerary-toggle desktop/
+          phone duplicate-instance idiom this file already documents for
+          AgendaDay above), and the SAME Speakers route PublicShell's
+          <nav> already links (surfacePath(event,"speakers",base)). */}
+      {!props.embed ? (
+        <div class="chq-pub-agenda-dock">
+          <a
+            id="chq-ics-link-dock"
+            class="chq-pub-itinerary-cta chq-pub-agenda-dock-ics"
+            href={`/e/${props.event.slug}/schedule.ics`}
+            aria-disabled="true"
+          >
+            Download .ics
+          </a>
+          <a class="chq-pub-agenda-dock-cross" href={surfacePath(props.event, "speakers", base)}>
+            Speakers
+          </a>
+        </div>
+      ) : null}
       {!props.embed ? <ItineraryScript eventSlug={props.event.slug} /> : null}
     </>
   );
@@ -461,6 +498,34 @@ export function ScheduleContent(props: {
           )}
         </div>
         <ScheduleRail event={props.event} embed={props.embed} />
+      </div>
+      {/* DEC-576 (wave 110 amendment): the SSR phone dock -- filled
+          Download .ics + bordered All sessions band at the foot of the
+          390 my-schedule frame (docs/design/Chautauqua Public and
+          Portal.dc.html:885-888). Same in-flow-band model as
+          AgendaContent's dock above (src/routes/auth.css.ts:449-478).
+          Renders regardless of embed, matching ScheduleRail's own
+          un-gated render just above (unlike /agenda, /schedule's rail is
+          not chromeless-closed) and reuses its exact .ics target/rel
+          same-origin iframe-safety handling (DEC-672). The cross-link
+          reuses the SAME sessionsPath/sessionsQs the header's "Browse
+          all sessions" link above already computes -- same route, the
+          frame's own shorter "All sessions" label for this render
+          location. */}
+      <div class="chq-pub-schedule-dock">
+        <a
+          id="chq-ics-link-dock"
+          class="chq-pub-itinerary-cta chq-pub-schedule-dock-ics"
+          href={`/e/${props.event.slug}/schedule.ics`}
+          aria-disabled="true"
+          target={props.embed ? "_blank" : undefined}
+          rel={props.embed ? "noopener" : undefined}
+        >
+          Download .ics
+        </a>
+        <a class="chq-pub-schedule-dock-cross" href={sessionsQs ? `${sessionsPath}?${sessionsQs}` : sessionsPath}>
+          All sessions
+        </a>
       </div>
       <ItineraryScript eventSlug={props.event.slug} />
     </>

@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterfall > pins the agenda surface title and rendered HTML byte-identical 1`] = `
-"<div class="chq-pub-title-row chq-pub-agenda-heading-row"><h1 class="chq-pub-surface-title">Agenda</h1><nav aria-label="Jump to day" class="chq-pub-day-switcher"><a class="chq-pub-day-pill chq-pub-day-pill-active" href="/e/ev/agenda?day=2026-08-10" aria-current="page">Mon 10</a><a class="chq-pub-day-pill" href="/e/ev/agenda?day=2026-08-11">Tue 11</a></nav></div><div class="chq-pub-agenda-layout"><div class="chq-pub-agenda-col"><div class="chq-pub-filter-row"><form class="chq-pub-searchform" method="get" action="/e/ev/agenda" role="search"><label class="chq-visually-hidden" for="chq-pub-search-q">Search</label><input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value="" placeholder="Search sessions or speakers…" maxlength="200"/><button class="chq-pub-search-submit" type="submit" aria-label="Search"><svg aria-hidden="true" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.5"></circle><line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line></svg></button></form><form class="chq-pub-track-highlight" method="get" action="/e/ev/agenda"><label class="chq-visually-hidden" for="chq-pub-highlight-track">Highlight a track</label><select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId" onchange="this.form.submit()"><option value="">Highlight a track</option></select><button class="chq-visually-hidden" type="submit">Highlight</button></form></div><div class="chq-pub-empty-block chq-pub-empty-block-fresh"><p class="chq-pub-empty-what">No sessions scheduled yet.</p></div></div><aside class="chq-pub-agenda-rail"><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Your schedule</h2><div class="chq-pub-rail-body"><span class="chq-pub-rail-caption"><span id="chq-ics-count">0</span> saved in this browser · no account needed</span><a id="chq-ics-link" class="chq-pub-itinerary-cta" href="/e/ev/schedule.ics" aria-disabled="true">Download .ics</a></div></section><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Print</h2><div class="chq-pub-rail-body"><span class="chq-pub-rail-caption">A one-page version of all three days.</span><a class="chq-pub-rail-programme-link" href="/e/ev/programme">Printable programme ›</a></div></section></aside></div><script>(function(){
+"<div class="chq-pub-title-row chq-pub-agenda-heading-row"><h1 class="chq-pub-surface-title">Agenda</h1><nav aria-label="Jump to day" class="chq-pub-day-switcher"><a class="chq-pub-day-pill chq-pub-day-pill-active" href="/e/ev/agenda?day=2026-08-10" aria-current="page">Mon 10</a><a class="chq-pub-day-pill" href="/e/ev/agenda?day=2026-08-11">Tue 11</a></nav></div><div class="chq-pub-agenda-layout"><div class="chq-pub-agenda-col"><div class="chq-pub-filter-row"><form class="chq-pub-searchform" method="get" action="/e/ev/agenda" role="search"><label class="chq-visually-hidden" for="chq-pub-search-q">Search</label><input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value="" placeholder="Search sessions or speakers…" maxlength="200"/><button class="chq-pub-search-submit" type="submit" aria-label="Search"><svg aria-hidden="true" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.5"></circle><line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line></svg></button></form><form class="chq-pub-track-highlight" method="get" action="/e/ev/agenda"><label class="chq-visually-hidden" for="chq-pub-highlight-track">Highlight a track</label><select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId" onchange="this.form.submit()"><option value="">Highlight a track</option></select><button class="chq-visually-hidden" type="submit">Highlight</button></form></div><div class="chq-pub-empty-block chq-pub-empty-block-fresh"><p class="chq-pub-empty-what">No sessions scheduled yet.</p></div></div><aside class="chq-pub-agenda-rail"><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Your schedule</h2><div class="chq-pub-rail-body"><span class="chq-pub-rail-caption"><span id="chq-ics-count">0</span> saved in this browser · no account needed</span><a id="chq-ics-link" class="chq-pub-itinerary-cta" href="/e/ev/schedule.ics" aria-disabled="true">Download .ics</a></div></section><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Print</h2><div class="chq-pub-rail-body"><span class="chq-pub-rail-caption">A one-page version of all three days.</span><a class="chq-pub-rail-programme-link" href="/e/ev/programme">Printable programme ›</a></div></section></aside></div><div class="chq-pub-agenda-dock"><a id="chq-ics-link-dock" class="chq-pub-itinerary-cta chq-pub-agenda-dock-ics" href="/e/ev/schedule.ics" aria-disabled="true">Download .ics</a><a class="chq-pub-agenda-dock-cross" href="/e/ev/speakers">Speakers</a></div><script>(function(){
   var MAX_ITINERARY_IDS = 300;
   var __chqMerge = (function mergeItinerarySelection(stored, renderedIds, checkedIds) {
   const rendered = new Set(renderedIds);
@@ -59,13 +59,22 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
     return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
   }
   function updateLink(ids){
-    var link = document.getElementById('chq-ics-link');
     var count = document.getElementById('chq-ics-count');
     if (count) { count.textContent = String(ids.length); }
-    if (!link) return;
-    if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
-    link.removeAttribute('aria-disabled');
-    link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
+    // DEC-576 (wave 110 amendment): the SSR phone dock mounts a SECOND
+    // .ics anchor (id chq-ics-link-dock, agenda.tsx's AgendaContent/
+    // ScheduleContent) beside the rail's own #chq-ics-link -- exactly one
+    // of the two is in the a11y tree at a time per page (agenda.css.ts's
+    // >700px/<=700px swap), same idiom as this file's own
+    // .chq-itinerary-toggle desktop/phone duplicate above. Both ids are
+    // driven from the same ids[] here so neither can go stale.
+    var links = [document.getElementById('chq-ics-link'), document.getElementById('chq-ics-link-dock')];
+    Array.prototype.forEach.call(links, function(link){
+      if (!link) return;
+      if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
+      link.removeAttribute('aria-disabled');
+      link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
+    });
   }
   // DEC-555 amendment (wave 1, task w1-d): /schedule's main column lists
   // ONLY the saved rows (no server round-trip, no second store -- DEC-555's
@@ -232,13 +241,22 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
     return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
   }
   function updateLink(ids){
-    var link = document.getElementById('chq-ics-link');
     var count = document.getElementById('chq-ics-count');
     if (count) { count.textContent = String(ids.length); }
-    if (!link) return;
-    if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
-    link.removeAttribute('aria-disabled');
-    link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
+    // DEC-576 (wave 110 amendment): the SSR phone dock mounts a SECOND
+    // .ics anchor (id chq-ics-link-dock, agenda.tsx's AgendaContent/
+    // ScheduleContent) beside the rail's own #chq-ics-link -- exactly one
+    // of the two is in the a11y tree at a time per page (agenda.css.ts's
+    // >700px/<=700px swap), same idiom as this file's own
+    // .chq-itinerary-toggle desktop/phone duplicate above. Both ids are
+    // driven from the same ids[] here so neither can go stale.
+    var links = [document.getElementById('chq-ics-link'), document.getElementById('chq-ics-link-dock')];
+    Array.prototype.forEach.call(links, function(link){
+      if (!link) return;
+      if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
+      link.removeAttribute('aria-disabled');
+      link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
+    });
   }
   // DEC-555 amendment (wave 1, task w1-d): /schedule's main column lists
   // ONLY the saved rows (no server round-trip, no second store -- DEC-555's

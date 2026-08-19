@@ -42,13 +42,22 @@ export function ItineraryScript(props: { eventSlug: string }) {
     return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
   }
   function updateLink(ids){
-    var link = document.getElementById('chq-ics-link');
     var count = document.getElementById('chq-ics-count');
     if (count) { count.textContent = String(ids.length); }
-    if (!link) return;
-    if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
-    link.removeAttribute('aria-disabled');
-    link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
+    // DEC-576 (wave 110 amendment): the SSR phone dock mounts a SECOND
+    // .ics anchor (id chq-ics-link-dock, agenda.tsx's AgendaContent/
+    // ScheduleContent) beside the rail's own #chq-ics-link -- exactly one
+    // of the two is in the a11y tree at a time per page (agenda.css.ts's
+    // >700px/<=700px swap), same idiom as this file's own
+    // .chq-itinerary-toggle desktop/phone duplicate above. Both ids are
+    // driven from the same ids[] here so neither can go stale.
+    var links = [document.getElementById('chq-ics-link'), document.getElementById('chq-ics-link-dock')];
+    Array.prototype.forEach.call(links, function(link){
+      if (!link) return;
+      if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
+      link.removeAttribute('aria-disabled');
+      link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
+    });
   }
   // DEC-555 amendment (wave 1, task w1-d): /schedule's main column lists
   // ONLY the saved rows (no server round-trip, no second store -- DEC-555's
