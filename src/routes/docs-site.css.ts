@@ -38,7 +38,9 @@ export const DOCS_SITE_CSS = `
 
   .chq-docs-header { border-bottom: 1px solid var(--chq-ink); padding-block: 15px; padding-inline: 34px; display: flex; align-items: center; gap: 14px; }
   /* Design pack v12 ("nudge the OUTERMOST element that carries the
-     wordmark's ink") -- docs/design/Chautauqua Docs.dc.html:34 is the frame
+     wordmark's ink") -- docs/design/Chautauqua Docs.dc.html:34
+     \`display:flex; align-items:baseline; gap:10px; line-height:1;
+     position:relative; top:-3px\` is the frame
      for exactly this pairing. The brandrow is align-items:baseline, so the
      nudge rides the RUN, not .chq-docs-wordmark inside it: baseline
      alignment reconciles wordmark and "Docs" with each other, never the

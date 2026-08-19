@@ -444,7 +444,8 @@
 }
 
 /* v12 phone frame "Pipeline · 390" — "One column at a time"
-   (docs/design/Chautauqua Contacts.dc.html:440-478). The frame is a back
+   (docs/design/Chautauqua Contacts.dc.html:447 `width:390px;
+   height:844px; background:#F4F1E8`, frame body :440-478). The frame is a back
    link + H1 + "20 people" header, then a FIXED stage scroller closed by a
    hairline, then the scrolling card list, then a pinned pair of footer
    actions. DEC-385: every rule here is a max-width override; the desktop
@@ -815,7 +816,8 @@
 }
 
 /* v12 phone frame "Merge · 390" — "Pick a side, field by field"
-   (docs/design/Chautauqua Contacts.dc.html:515-545). Phone: merge compare
+   (docs/design/Chautauqua Contacts.dc.html:522 `width:390px;
+   height:844px; background:#F4F1E8`, frame body :515-545). Phone: merge compare
    grid stacks to one column (label, then kept value, then discarded value)
    inside .chq-contacts-merge-page too; the page's 28px desktop inset drops
    to the frame's 16px; and the footer's actions become full-width 48px
@@ -1304,7 +1306,8 @@
   }
 
   /* v12 phone frame "Import CSV · 390" — "One column per screen"
-     (docs/design/Chautauqua Contacts.dc.html:480-513). The frame gives one
+     (docs/design/Chautauqua Contacts.dc.html:487 `width:390px;
+     height:844px; background:#F4F1E8`, frame body :480-513). The frame gives one
      CSV column the whole screen: the column name large in the display
      face, its sample values beneath, then the target choice, then a
      full-width footer pair. We keep the desktop step's single scrolling
