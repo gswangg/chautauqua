@@ -2058,8 +2058,109 @@
 /* DEC-385: narrow overrides wide via max-width only -- below the reading
    measure this list reverts to the earlier stacked card shape (frame
    :712-726, the 390 phone hub) instead of the four-column grid above. */
+
+/* task w4-g / DEC-874 wave-86 amendment: phone parity for the reviewer's
+   two list surfaces --
+     docs/design/Chautauqua Review.dc.html:793-830 ("Your plans · /review")
+     docs/design/Chautauqua Review.dc.html:413-451 ("Reviewer queue ·
+       /review/plans/:id")
+   -- landing here, appended AFTER the block above so it wins (DEC-385
+   wave-85: review.css's first phone block at :333 is cascade-shadowed by
+   anything declared later at equal specificity; this is the file's
+   trailing max-width block). */
+
+/* docs/design/Chautauqua Review.dc.html:820-821: the hub's docked
+   hidden-scores note. No top-level rule exists above for this selector, so
+   it stays display:none (invisible) until the media query below flips it
+   to a docked band -- same "hidden above the breakpoint" contract
+   phone-block-visibility.test.ts already pins for every .chq-phone-*
+   class. */
+.chq-reviewer-plans-phone-note {
+  display: none;
+}
+
 @media (max-width: 700px) {
+  /* --- "Your plans" hub cards (docs/design/Chautauqua Review.dc.html:804-816) ---
+     .chq-reviewer-plan-row-name-line is unwrapped via display:contents so
+     its two children (name, meta) become direct grid items of the row
+     alongside the pill/bar/action siblings -- the only way to put the
+     title and the state pill on one baseline row (frame :806) while the
+     meta line (:810) sits on its own row beneath, without touching the
+     desktop-frozen DOM order the 1fr/150px/190px/180px grid above depends
+     on. */
   .chq-reviewer-plan-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'name pill'
+      'meta meta'
+      'bar bar'
+      'action action';
+    align-items: baseline;
+    gap: 8px;
+    padding: 16px 0;
+  }
+
+  .chq-reviewer-plan-row-name-line {
+    display: contents;
+  }
+
+  .chq-reviewer-plan-row-name {
+    grid-area: name;
+  }
+
+  .chq-reviewer-plan-row-name-line .chq-review-plan-meta {
+    grid-area: meta;
+    font-size: 13px;
+  }
+
+  .chq-reviewer-plan-row-pill {
+    grid-area: pill;
+    justify-self: end;
+  }
+
+  .chq-reviewer-plan-row-bar {
+    grid-area: bar;
+    margin-top: 0;
+  }
+
+  /* frame :814: the row's action is its LAST element, spanning the row's
+     full width -- the 44px floor (min-height + centred flex + horizontal
+     padding, never padding alone) applies since this stays a real link. */
+  .chq-reviewer-plan-row-action {
+    grid-area: action;
+    justify-self: stretch;
+    align-self: auto;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    margin-top: 2px;
+    border: 1px solid var(--chq-border-strong);
+    border-radius: 6px;
+    text-align: center;
+  }
+
+  /* frame :793-801 has no Plan/State/Your progress column head -- that row
+     is a desktop reading-measure device only. */
+  .chq-reviewer-plan-head-row {
+    display: none;
+  }
+
+  .chq-reviewer-plans-phone-note {
+    display: flex;
+    align-items: center;
+  }
+
+  /* --- Reviewer queue rows (docs/design/Chautauqua Review.dc.html:429-437) ---
+     the desktop two-column grid (1fr/176px) collapses to a single stacked
+     column -- ref+state stay the existing baseline pair
+     (.chq-review-queue-row-top, untouched), the 20px desktop title drops
+     to the frame's 17px (:434), and the action (a real button OR the
+     recused reason box, both sharing this class) becomes the row's LAST
+     element at full width. */
+  .chq-review-queue-row {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -2067,20 +2168,32 @@
     padding: 15px 0;
   }
 
-  .chq-reviewer-plan-row-name-line {
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
+  .chq-review-queue-title {
+    font-size: 17px;
   }
 
-  .chq-reviewer-plan-row-bar {
-    margin-top: 8px;
+  .chq-review-queue-row-main .chq-review-plan-meta {
+    font-size: 13px;
   }
 
-  .chq-reviewer-plan-row-action {
-    margin-top: 10px;
-    align-self: flex-start;
-    justify-self: auto;
+  .chq-review-queue-row-action {
+    max-width: none;
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  /* --- Scoped queue head band (docs/design/Chautauqua Review.dc.html:414-425) ---
+     the H1 itself already reads 25px through .chq-phone-head-drill
+     .chq-page-title (app/src/styles.css, DEC-643); this scopes only the
+     eyebrow's weight/tracking/colour (:419) and the progress hairline's
+     height (:422), neither of which the shared scaffold declares. */
+  .chq-review-scoped-head .chq-section-label {
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: var(--chq-muted);
+  }
+
+  .chq-review-scoped-progress {
+    height: 6px;
   }
 }
