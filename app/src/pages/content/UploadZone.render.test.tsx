@@ -142,4 +142,46 @@ describe('UploadZone', () => {
     const caps = screen.getByText(/Allowed types/);
     expect(caps).toHaveTextContent('.mp4');
   });
+
+  // v12m-w2-g (DEC-976 wave-99 amendment, DEC-383): a pointer-independent
+  // phone copy for the drop label. Both the desktop drag copy and the
+  // frame's phone copy render at once (the swap is CSS-only, upload-zone
+  // .css's @media block, never a JS width read); the phone span carries the
+  // class upload-zone.css toggles, and the label still points at the same
+  // visually-hidden file input.
+  it('renders both the desktop drag copy and the frame phone copy, both inside the label pointing at the file input', () => {
+    render(<UploadZone kind="handout" sessionTitle={SESSION_TITLE} onUpload={vi.fn()} />);
+    expect(screen.getByText('Drop a file to upload for the speaker')).toBeInTheDocument();
+    // docs/design/Chautauqua Content.dc.html:417 draws `<a href="#" style="margin-top:14px; border:1px dashed #BAB6A6; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#4E5C31">Upload a file for the speaker</a>`.
+    const phoneCopy = screen.getByText('Upload a file for the speaker');
+    expect(phoneCopy).toHaveClass('chq-content-upload-prompt-phone');
+    const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
+    const label = document.querySelector(`label[for="${input.id}"]`);
+    expect(label).not.toBeNull();
+    expect(label).toContainElement(phoneCopy);
+    expect(label).toHaveTextContent('Drop a file to upload for the speaker');
+    expect(label).toHaveTextContent('Upload a file for the speaker');
+  });
+
+  // The pending/uploading branch keeps its single unmoving line (DEC-733) --
+  // no desktop/phone span pair mounts while an upload is in flight.
+  it('the pending/uploading branch stays a single unmoving line, with no phone/desktop span pair mounted', async () => {
+    let resolveUpload: () => void = () => {};
+    const onUpload = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    render(<UploadZone kind="handout" sessionTitle={SESSION_TITLE} onUpload={onUpload} />);
+    const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [makeFile('notes.md', 1024)] } });
+
+    await screen.findByText('Uploading…');
+    expect(screen.queryByText('Upload a file for the speaker')).not.toBeInTheDocument();
+    expect(screen.queryByText('Drop a file to upload for the speaker')).not.toBeInTheDocument();
+
+    resolveUpload();
+    await vi.waitFor(() => expect(onUpload).toHaveBeenCalled());
+  });
 });
