@@ -1995,3 +1995,118 @@
     white-space: normal;
   }
 }
+
+/* task w8-f/DEC-393 wave-90 amendment, DEC-989 wave-90 amendment: Settings
+   cluster's measured 44px-floor + 390-overflow backlog
+   (docs/design/audit/tap-floor-v12.md, docs/design/audit/
+   overflow-390-v12.md). Appended as a NEW terminal @media block -- the four
+   existing blocks above (:1170, :1517, :1677, :1863) are untouched, never
+   reordered or edited into. .chq-pill is deliberately absent: its base rule
+   lives in app/src/styles.css (shell lane's to fix once, DEC-393 ruling). */
+@media (max-width: 700px) {
+  /* --- tap floor: the ANCHOR inside each container gets the floor, never
+     the container itself. --- */
+
+  /* .chq-settings-inline-action IS the anchor on every plain usage
+     (CallForPapersPanel's Public link/Closes/edit-event/Questions link,
+     ResourcesPanel's file links) -- the more specific existing rules
+     (.chq-settings-questions-row .chq-settings-inline-action,
+     .chq-settings-public-pages-row > .chq-settings-inline-action, both
+     above) already win by specificity and are untouched here. */
+  .chq-settings-inline-action {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* .chq-settings-edit-row-actions (TrackEditRow/RoomEditRow) wraps plain
+     .chq-link-button Save/Cancel/Remove controls -- the container stays a
+     flex row, the floor lands on each anchor inside it. */
+  .chq-settings-edit-row-actions .chq-link-button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* .chq-settings-people-actions (PeopleRolesPanel) wraps the Change
+     password / Reset password / Remove .chq-link-button controls -- the
+     confirm-state Confirm/Cancel pair is already .chq-btn and out of this
+     token's population. */
+  .chq-settings-people-actions .chq-link-button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* .chq-settings-tokens-col-actions is a <th>-only class (table-layout:
+     fixed column width, ApiTokensPanel.tsx:228) -- the desktop markup
+     never repeats it on the matching <td>/<button>, and the phone reflow
+     above (:1329-1362) turns each row into a card with the Revoke button
+     in the last <td>. Reached positionally, the only way to address the
+     real anchor without editing ApiTokensPanel.tsx (out of this CSS-only
+     lane's scope). */
+  .chq-settings-tokens-table tbody td:last-child .chq-link-button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* .chq-settings-saved-embed-actions already conforms via the existing
+     terminal block above (.chq-settings-saved-embed-actions
+     .chq-link-button) -- no second rule declared here. */
+
+  /* --- 390 overflow: nowrap columns get the three-property escape. --- */
+  .chq-settings-edit-row-meta,
+  .chq-settings-edit-row-seats,
+  .chq-settings-exports-table .chq-settings-exports-col-csv,
+  .chq-settings-exports-table .chq-settings-exports-col-json,
+  .chq-settings-tokens-table .chq-settings-tokens-col-actions {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  /* .chq-settings-saved-embed-caption already conforms via the existing
+     terminal block above (white-space: normal removes the nowrap
+     outright) -- no second rule declared here. */
+
+  /* Sessionboard column-mapping (:521-534): Column shows the imported
+     source header, Sample shows an actual data VALUE read from that
+     column -- an import mapping is verified by reading them exactly, so
+     truncating either could make a wrong mapping look plausible and go
+     uncaught. The arrow is a bare glyph separator between them; there is
+     nothing in it to read, truncated or not. Re-declared (not silently
+     inherited) so the exemption sits directly above the rule it exempts,
+     per this scan's own idiom. */
+  /* overflow-exempt: an import mapping is verified by reading the exact column name and sample */
+  .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-column {
+    white-space: nowrap;
+  }
+
+  /* overflow-exempt: an import mapping is verified by reading the exact column name and sample */
+  .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-sample {
+    white-space: nowrap;
+  }
+
+  /* overflow-exempt: a bare glyph separator has nothing to read, truncated or not */
+  .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-arrow {
+    white-space: nowrap;
+  }
+
+  /* .chq-settings-room-edit-row's desktop grid (minmax(0,1fr) 110px 150px
+     200px, :1070) totals 460px of fixed tracks against the 358px phone
+     budget. Re-lined to a single column -- DEC-919: a 390 frame re-lines,
+     it never removes a control, so the name input, capacity input, and
+     Save/Cancel/Remove actions simply stack instead of sharing one row. */
+  .chq-settings-room-edit-row {
+    grid-template-columns: 1fr;
+  }
+}
