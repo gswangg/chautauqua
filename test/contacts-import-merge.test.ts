@@ -10,7 +10,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
-import { registerErrorHandler } from "../src/server/http";
+import { registerErrorHandler, ApiError } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import * as schema from "../src/db/schema";
 
@@ -571,5 +571,103 @@ describe("POST /api/v1/contacts/import dryRun=true mergeLines preview (w10-ii)",
     expect(plan.created).toBe(1); // brand.new@example.com
     expect(plan.updated).toBe(2); // ct_merge_target (merge), ct_plain_update (email match)
     expect(plan.skipped).toBe(1); // line 5, skipped by organizer
+  });
+});
+
+// w11-dd: a merge line minted a SECOND contact carrying an org-scoped email
+// an earlier line in the SAME file just created. resolveMergeTargets' email
+// collision guard only ever sees the DB pre-pass byEmail, taken once before
+// the apply/plan loop runs -- it cannot catch a collision minted mid-file.
+// The fill branch now re-checks byEmail as it stands at fill time.
+describe("mergeLines vs. a same-file create of the same email (w11-dd)", () => {
+  const rowsFor = () => [
+    { line: 2, parsed: { email: "ada@newmail.example.com", firstName: "Ada", lastName: "Lovelace" } },
+    { line: 3, parsed: { email: "ada@newmail.example.com", firstName: "Ada", lastName: "Lovelace" } },
+  ];
+
+  it("applyImportRows refuses a merge fill when an earlier line in the file already created that email, and mints no second contact", async () => {
+    const { db, rows } = makeFakeContactDb();
+    await seedContact(db, {
+      id: "ct_blank",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "",
+    });
+
+    const rowsIn = rowsFor();
+    const opts = { mergeLines: [{ line: 3, contactId: "ct_blank" }] };
+
+    let caught: unknown;
+    try {
+      await repo.applyImportRows(db, "org-1", rowsIn, opts);
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ApiError);
+    const err = caught as InstanceType<typeof ApiError>;
+    expect(err.code).toBe("invalid");
+    expect(err.message).toBe(
+      "Line 3 already matches an existing contact by email; it resolves to an update, not a merge",
+    );
+    expect(err.fields).toEqual({ mergeLines: "line 3: resolves to an update" });
+
+    // No write happened at all -- the throw fires before any commit flush,
+    // so the earlier line's would-be create never lands either.
+    expect(rows()).toHaveLength(1);
+  });
+
+  it("planImportRows refuses the same dry-run mid-file collision (dry run refuses what the real run refuses)", async () => {
+    const { db } = makeFakeContactDb();
+    await seedContact(db, {
+      id: "ct_blank",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "",
+    });
+
+    const rowsIn = rowsFor();
+    const opts = { mergeLines: [{ line: 3, contactId: "ct_blank" }] };
+
+    let caught: unknown;
+    try {
+      await repo.planImportRows(db, "org-1", rowsIn, opts);
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(ApiError);
+    const err = caught as InstanceType<typeof ApiError>;
+    expect(err.code).toBe("invalid");
+    expect(err.fields).toEqual({ mergeLines: "line 3: resolves to an update" });
+  });
+
+  it("reverse order: a merge fill first, then a same-email create line, still resolves to a single update (already worked, locked here)", async () => {
+    const { db, rows } = makeFakeContactDb();
+    await seedContact(db, {
+      id: "ct_blank",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "",
+    });
+
+    const rowsIn = [
+      { line: 2, parsed: { email: "ada@newmail.example.com", firstName: "Ada", lastName: "Lovelace" } },
+      { line: 3, parsed: { email: "ada@newmail.example.com", firstName: "Ada", lastName: "Lovelace" } },
+    ];
+    const opts = { mergeLines: [{ line: 2, contactId: "ct_blank" }] };
+
+    // NOTE: this reverse-order parity check is applyImportRows-only.
+    // planImportRows' merge branch (line ~811-834) never re-sets its byEmail
+    // map after resolving a merge line -- only the plain create/update branch
+    // does (~789/~810/~867/~888) -- so a plan-only run of these same rows
+    // would plan line 3 as a SECOND create instead of an update, unlike the
+    // real run below. That parity gap predates this task (it is not the
+    // mid-file collision this task's fix addresses) and is out of scope
+    // here; flagged for the merge train rather than silently patched.
+    const result = await repo.applyImportRows(db, "org-1", rowsIn, opts);
+    expect(result.created).toBe(0);
+    expect(result.updated).toBe(2);
+    expect(rows()).toHaveLength(1);
+    expect((rows()[0] as { id: string; email: string }).id).toBe("ct_blank");
+    expect((rows()[0] as { email: string }).email).toBe("ada@newmail.example.com");
   });
 });
