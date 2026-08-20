@@ -586,6 +586,20 @@
      every width), and "Read the abstract" sits at its natural width beside
      Accept/Decline rather than stretching to a full-width roomy row,
      mirroring the frame's bordered, natural-width third control. */
+  /* phone-hidden: RE-LINED, not removed -- the exact accept_queue
+     transition this button fires is reachable at 390 via the Submissions
+     worklist page's bulk-action bar (BulkActionBar.tsx's movesFor()
+     default-branch primary button, "Move to accept queue" ->
+     onApply('accept_queue'), same as SubmissionsTable.tsx:290's own
+     "Waitlist -> accept_queue" mapping for its phone row-triage card,
+     DEC-610 wave-83 amendment). The row's checkbox column
+     (chq-submissions-col-select, td:nth-child(1)) and
+     .chq-submissions-bulkbar-actions carry no phone display:none in
+     submissions.css, so ticking a row at 390 surfaces this control. The
+     submission detail dock's own "Waitlist" button
+     (SubmissionDetailPage.tsx:998) is a related but DISTINCT terminal
+     'waitlisted' decision, not this queue move -- not cited as the
+     equivalent here. */
   .chq-overview-btn-waitlist {
     display: none;
   }

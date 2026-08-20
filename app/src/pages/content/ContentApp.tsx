@@ -411,7 +411,19 @@ export function ContentApp() {
               <button
                 type="button"
                 className="chq-link-button chq-content-phone-selecting-done"
-                onClick={() => setPhoneSelectMode(false)}
+                onClick={() => {
+                  // w5-ae (DEC-919/DEC-825): Done is the phone home for the
+                  // desktop dock's Clear verb (chq-btn-tertiary, hidden at
+                  // 390 -- content.css's `.chq-content-worklist-selecting
+                  // .chq-bulkbar-actions .chq-btn-tertiary`). Frame :247's
+                  // 390 "selecting" mock draws no Clear control anywhere,
+                  // so Done clearing the tick set before it exits Select
+                  // mode is the smallest affordance the frame supports --
+                  // re-entering via "Select" always starts from zero, same
+                  // outcome as desktop's Clear, one extra tap.
+                  setSelectedIds(new Set());
+                  setPhoneSelectMode(false);
+                }}
               >
                 Done
               </button>
