@@ -568,6 +568,12 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // frame's muted-prose caption/consequence text (test/frame-caption-ledger
   // .scan.test.ts).
   "FRAME_CAPTION_UNMATCHED_CEILING",
+  // wave-136 (task w11-aa, DEC-967 doc-integrity lens widened to CODE
+  // comments): grades whether every `path:line` citation inside a src/**
+  // or app/src/** code comment resolves to a real file/line and, where a
+  // backtick quote immediately follows, matches it verbatim near the cited
+  // line (test/code-comment-citation.scan.test.ts).
+  "CODE_COMMENT_CITATION_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -615,6 +621,10 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
   // above -- never a declared-but-unread knob (DEC-851/DEC-988).
   "FRAME_CAPTION_UNMATCHED_CEILING",
+  // wave-136 (task w11-aa): code-comment citation scan, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "CODE_COMMENT_CITATION_CEILING",
 ];
 
 /**
