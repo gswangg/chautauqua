@@ -229,8 +229,18 @@ export function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** True when `selector` mentions `.token` as a real class boundary --
+ * compounded (`.chq-btn.is-on`) or pseudo-suffixed (`.chq-btn:hover`)
+ * matches, but a hyphen-extended class that merely shares the token as a
+ * prefix (`.chq-btn-primary` against token `chq-btn`) does not. `\b` alone
+ * is insufficient here: `-` is a non-word character, so `\b` matches INSIDE
+ * a hyphenated class name and every class that is a hyphen-prefix of
+ * another wrongly resolves against the shorter token's rule (DEC-937 wave
+ * v12m-w15-g finding). The negative lookahead excludes any following word
+ * character OR hyphen, so only a true boundary (nothing, `.`, `:`, `[`,
+ * whitespace, `,`, `>`, `+`, `~`) counts as a match. */
 export function selectorMentionsToken(selector: string, token: string): boolean {
-  return new RegExp(`\\.${escapeRe(token)}\\b`).test(selector);
+  return new RegExp(`\\.${escapeRe(token)}(?![\\w-])`).test(selector);
 }
 
 export function hasMinHeightFloor(body: string): boolean {
