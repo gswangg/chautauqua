@@ -186,6 +186,103 @@ describe('speakers.css dense/roomy status pairing (design pack v12)', () => {
   });
 });
 
+// User-filed (Cut-2 review, screenshot of /admin/speakers/<id>): the left
+// edge zigzagged down a column of chips -- a filled OVERDUE box and a bare
+// COMPLETE word did not start at the same x.
+//
+// The rule is read off the frame, not chosen. Rendering
+// docs/design/Chautauqua Speakers.dc.html in a browser and measuring its one
+// genuinely mixed column (the dense matrix -- the roomy artboards never draw
+// a boxed chip above a bare one) gives, in four independent columns:
+//   bare  `box=412    text=412`     (docs/.../Speakers.dc.html:729
+//                                    `DONE = '... padding:3px 0'`)
+//   boxed `box=412    text=420`     (:732 `LATE = '... background:#1B1D17;
+//                                    border-radius:3px; padding:3px 8px'`)
+// Ink spread 0px, text spread 8px, and NO negative margin anywhere in the
+// frame. So the frame aligns the PAINTED edge, not the text: a chip's ink
+// starts at its cell's content edge, and a boxed state's own text is pushed
+// in by its padding. Both halves below serve that one sentence.
+describe('user-filed: a chip\'s ink starts at its cell edge, at both densities', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  /** Like topLevelRuleBody, but matches a selector as a WHOLE MEMBER of a
+   * comma-separated selector list rather than as the text immediately before
+   * the `{`. Both rules below are authored as one list over four (resp. two)
+   * modifiers -- the shared idiom in this sheet -- so a last-member-only
+   * scanner would silently pin one modifier and vacuously skip the rest. */
+  function listRuleBody(selector: string): string {
+    // Comments first: a rule's selector list is scanned as "everything since
+    // the last `}`", so an explanatory comment sitting directly above the
+    // rule would otherwise be glued onto its FIRST member and hide it.
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const withoutMedia = withoutComments.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, '');
+    const rule = /([^{}]+)\{([^{}]*)\}/g;
+    const bodies: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = rule.exec(withoutMedia)) !== null) {
+      const members = m[1]!
+        .split(',')
+        .map((s) => s.trim().replace(/\s+/g, ' '))
+        .filter(Boolean);
+      if (members.includes(selector)) bodies.push(m[2]!);
+    }
+    if (bodies.length === 0) throw new Error(`no top-level rule lists ${selector}`);
+    return bodies.join('\n');
+  }
+
+  // Half one. These states PAINT, and they were inheriting the bare states'
+  // ring cancellation from .chq-speakers-status-dense -- an idiom whose whole
+  // premise ("no glyph moves, only the invisible ring box grows") holds only
+  // for a borderless state. On a painted one a negative margin moves paint:
+  // the fill escaped 6px out of its own grid cell. Measured on the matrix at
+  // 1600: ink spread 6.00px -> 0.00px, text spread 2.00px -> 8.00px (the
+  // frame's own two numbers), in all four mixed columns.
+  it.each(BOXED_MODIFIERS)('%s does not inherit the bare ring cancellation at dense', (mod) => {
+    const body = listRuleBody(`.chq-speakers-status-dense.${mod}`);
+    expect(body).toMatch(/margin-inline:\s*0/);
+    // its padding is real, since its box is painted
+    expect(body).toMatch(/padding-left:\s*8px/);
+  });
+
+  // Half two, the roomy end of the same pair. There it is the BARE states
+  // that are off the line: the roomy half gives EVERY state a real
+  // `padding: 0 10px` (it carries a 44px tap target, not just a ring), so a
+  // boxed fill started at the cell edge while a bare glyph started 10px in --
+  // the 10px zigzag in the user's screenshot of the detail task column.
+  // Measured over all three surfaces that draw this column (detail task rows,
+  // matrix cells, task view rows): ink spread 10.00px -> 0.00px, at 1600 and
+  // at 390.
+  it.each(BARE_MODIFIERS)('%s cancels the roomy padding back to the cell edge', (mod) => {
+    const body = listRuleBody(`.chq-speakers-status-roomy.${mod}`);
+    // -10px against the roomy half's `padding: 0 10px`: equal and opposite,
+    // so the glyph lands on the line while the ring keeps its breathing room
+    // and stays symmetric about the word.
+    expect(body).toMatch(/margin-inline-start:\s*-10px/);
+    expect(topLevelRuleBody(css, '.chq-speakers-status-roomy')).toMatch(/padding:\s*0 10px/);
+  });
+
+  // NOT the `margin-inline` shorthand. At 390 the phone card's
+  // .chq-speakers-cell shrink-wraps its chip and is flushed RIGHT (measured:
+  // every card chip ends at x=374, the 16px page gutter). A negative END
+  // margin would push those chips 10px past the gutter; cancelling only the
+  // start edge leaves right-flushed chips exactly where they were (measured:
+  // maxRight 374 -> 374) and moves only the ones laid out from the left.
+  it.each(BARE_MODIFIERS)('%s cancels the START edge only, so right-flushed chips do not overhang', (mod) => {
+    const body = listRuleBody(`.chq-speakers-status-roomy.${mod}`);
+    expect(body).not.toMatch(/margin-inline:\s*-/);
+    expect(body).not.toMatch(/margin-inline-end:\s*-/);
+    expect(body).not.toMatch(/margin-right:\s*-/);
+  });
+
+  // The bare states stay bare -- this is a position fix, never a paint one.
+  it.each(BARE_MODIFIERS)('%s gains no fill, border or radius from the alignment fix', (mod) => {
+    const body = listRuleBody(`.chq-speakers-status-roomy.${mod}`);
+    expect(body).not.toMatch(/\bbackground:/);
+    expect(body).not.toMatch(/\bborder:/);
+    expect(body).not.toMatch(/border-radius:/);
+  });
+});
+
 // DEC-730 amendment (wave 39, revised wave 19): matrix header inverts the
 // frame's emphasis -- task TITLE gets sentence-case ink, the DUE/REQUIRED
 // second line keeps the shared 11px uppercase-muted register, and the header

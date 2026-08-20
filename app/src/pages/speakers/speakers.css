@@ -673,12 +673,64 @@ button.chq-speakers-status-overdue:hover {
   border-radius: 3px;
 }
 
+/* User-filed (Cut-2 review, screenshot of /admin/speakers/<id>): down a
+   column of chips the left edge zigzagged -- a filled OVERDUE box and a bare
+   COMPLETE word did not start at the same x.
+
+   THE RULE, read off the frame rather than guessed. Rendering
+   docs/design/Chautauqua Speakers.dc.html in a browser and measuring its one
+   genuinely mixed column (the dense matrix) gives, in four separate columns:
+   bare `box=412 text=412`, boxed `box=412 text=420` -- i.e. every chip's
+   PAINTED edge sits on the column line and the boxed state's own text is
+   pushed 8px in by its padding. Ink spread 0px, text spread 8px. The frame
+   reaches that by using no negative margins anywhere and giving the bare
+   states zero inline padding (:729 `DONE = '... padding:3px 0'` against :732
+   `LATE = '... background:#1B1D17; border-radius:3px; padding:3px 8px'`).
+
+   So: A CHIP'S VISIBLE INK STARTS AT ITS CELL'S CONTENT EDGE. A boxed
+   state's box is that ink; a bare state's glyph is. Both halves of the fix
+   below serve that one sentence, at both densities.
+
+   Half one. These boxed states were INHERITING the bare states' ring
+   cancellation (`margin-inline: -6px`, above) -- an idiom that is borderless
+   by construction, since its whole premise is "no glyph moves, only the
+   invisible ring box grows". On a state that paints, a negative margin moves
+   paint: the fill escaped 6px out of its own grid cell, landing 6px left of
+   the bare glyph beside it. Zeroing it restores the frame exactly -- measured
+   on the matrix at 1600, ink spread 6.00px -> 0.00px and text spread
+   2.00px -> 8.00px, the frame's own two numbers, in all four mixed columns. */
 .chq-speakers-status-dense.chq-speakers-status-overdue,
 .chq-speakers-status-dense.chq-speakers-status-invited,
 .chq-speakers-status-dense.chq-speakers-status-none,
 .chq-speakers-status-dense.chq-speakers-status-neutral {
   padding-left: 8px;
   padding-right: 8px;
+  margin-inline: 0;
+}
+
+/* Half two, the roomy end of the same pair. Here it is the BARE states that
+   are off the line: the roomy half gives every state a real `padding: 0 10px`
+   (it is carrying a 44px tap target, not just a ring), so a boxed chip's fill
+   starts at the cell edge while a bare chip's glyph starts 10px in -- the
+   10px zigzag in the user's screenshot of the detail task column. The bare
+   states take the cancellation the dense half already uses, returning the
+   glyph to the cell edge while the 10px padding stays real on both sides, so
+   the focus ring and hover tint keep their breathing room and stay symmetric
+   about the word.
+
+   `margin-inline-start`, NOT the `margin-inline` shorthand: at 390 the phone
+   card's .chq-speakers-cell shrink-wraps its chip and is flushed RIGHT
+   (measured: every card chip ends at x=374, the 16px page gutter). A negative
+   end margin there would push the chip 10px PAST that gutter; cancelling only
+   the start edge leaves right-flushed chips untouched (measured: maxRight
+   374 -> 374) and moves only the ones that are laid out from the left.
+
+   Measured, both widths, over the three surfaces that draw this column --
+   detail task rows, matrix cells, task view rows -- ink spread per mixed
+   column 10.00px -> 0.00px at 1600 and at 390. */
+.chq-speakers-status-roomy.chq-speakers-status-complete,
+.chq-speakers-status-roomy.chq-speakers-status-pending {
+  margin-inline-start: -10px;
 }
 
 /* The "—" a speaker with no assignment of this task carries. v12's Disabled
