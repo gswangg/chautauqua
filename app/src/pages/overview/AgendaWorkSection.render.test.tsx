@@ -308,13 +308,35 @@ describe('AgendaWorkSection (DEC-652)', () => {
     expect(overflow).toHaveClass('chq-overview-overflow');
     const unplacedRow = screen.getByText('Docs That Answer Back').closest('.chq-overview-row-agenda')!;
     expect(unplacedRow.compareDocumentPosition(overflow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // DEC-919 wave-128 (task w3-k): the SAME fact also renders as a phone
-    // link, sibling to the desktop div, carrying the frame's ' ›' mark and
-    // pointing at the same /agenda route the row-level "Place it" link uses.
-    // CSS (not markup) decides which is visible at a given width.
-    const overflowLink = screen.getByRole('link', { name: '3 more unplaced · 2 more conflicts ›' });
+    // DEC-919 wave-129 amendment (task w4-s, REVERSES wave-128's label
+    // clause): the phone link, sibling to the desktop div, carries the
+    // frame's imperative -- "Place the other <spelled count> ›" -- because
+    // the unplaced remainder (3) is > 0. CSS (not markup) decides which
+    // node is visible at a given width.
+    const overflowLink = screen.getByRole('link', { name: 'Place the other three ›' });
     expect(overflowLink).toHaveClass('chq-overview-overflow-link');
     expect(overflowLink).toHaveAttribute('href', '/agenda');
+  });
+
+  // DEC-919 wave-129 amendment (task w4-s): when the remainder is
+  // conflicts-only (the unplaced rows already cover the unplaced total),
+  // there is nothing to "place" -- the link keeps the existing joined
+  // overflow sentence plus the frame's ' ›' mark rather than naming an act
+  // the /agenda destination cannot perform.
+  it('keeps the joined overflow sentence (no imperative) on the 390 link when the remainder is conflicts-only', () => {
+    mockApi({});
+    const payload = basePayload();
+    // unplacedTotal already equals unplaced.length (1 == 1) -- the only
+    // overflow is conflicts.
+    payload.agendaWork.conflictTotal = 3;
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    const overflow = screen.getByText('2 more conflicts');
+    expect(overflow).toHaveClass('chq-overview-overflow');
+    const overflowLink = screen.getByRole('link', { name: '2 more conflicts ›' });
+    expect(overflowLink).toHaveClass('chq-overview-overflow-link');
+    expect(overflowLink).toHaveAttribute('href', '/agenda');
+    expect(screen.queryByRole('link', { name: /Place the other/ })).not.toBeInTheDocument();
   });
 
   it('renders no overflow line (either shape) when the rendered rows already cover the totals', () => {

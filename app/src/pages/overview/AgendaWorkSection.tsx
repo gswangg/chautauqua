@@ -11,7 +11,7 @@ import { apiPut, ApiError } from '../../lib/api';
 import { formatDayLabel } from '../../lib/dates';
 import { conflictKindLabel } from '../../lib/schedule-vocabulary';
 import { joinSegments } from './rows';
-import { plural } from '../../lib/plural';
+import { plural, spellCount } from '../../lib/plural';
 import { publicRoomLabel } from '../../lib/room-label';
 import type { OverviewPayload } from './types';
 // DEC-908 (wave-9 amendment): the ONE session-shape display vocabulary --
@@ -25,7 +25,11 @@ import { sessionFormatLabel } from '../../../../src/lib/session-vocabulary';
 import { clockHHMM } from '../../lib/clock';
 import { DEC_919 } from '../../../../src/decisions';
 
-void DEC_919; // wave-128 task w3-k: §04's overflow remainder is a link at 390, plain text at 1600 -- two-node idiom, never remove
+void DEC_919; // wave-129 amendment (task w4-s): REVERSES the wave-128 label clause -- the
+// 390 link carries the frame's imperative ("Place the other <n> ›") because
+// the spelled-out count in an imperative is already this page's own §01
+// grammar (spellCount), not invented copy. Still a link at 390, plain text
+// at 1600 -- two-node idiom, never remove.
 
 // DEC-877: §04's overflow — unplaced rows and conflict rows the payload
 // truncated (server total exceeds the rows actually sent) — collapsed into
@@ -190,19 +194,32 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
           shape §01 uses for its own overflow. Only the counts the server
           actually sent are named, never an invented duration clause. */}
       {agendaOverflowLine(payload) && <div className="chq-overview-overflow">{agendaOverflowLine(payload)}</div>}
-      {/* DEC-919 wave-128 (task w3-k): the SAME fact ("Place the other six ›")
-          is a link at 390 (Chautauqua Overview.dc.html:277, `min-height:44px;
-          display:flex; align-items:center`) and plain text at 1600
+      {/* DEC-919 wave-129 amendment (task w4-s, REVERSES wave-128's label
+          clause): the 390 sibling link is a link at 390 (Chautauqua
+          Overview.dc.html:277, `min-height:44px; display:flex;
+          align-items:center>Place the other six ›`) and plain text at 1600
           (Chautauqua Overview.dc.html:164). Desktop is frozen and a `<div>`
           cannot become a link inside a media query, so this is a sibling
           node — visible only inside overview.css's terminal
-          `@media (max-width:700px)` block, hidden at top level — carrying
-          the SAME copy the div above renders plus the frame's ` ›` mark.
-          Destination is the existing row-level `Place it` Link's route
-          (:180-182 above); no new route, no new capability. */}
+          `@media (max-width:700px)` block, hidden at top level.
+
+          The frame's imperative is NOT invented copy here: §01 of this SAME
+          page already renders `Remind all {spellCount(...)}` (Overview.tsx),
+          so a spelled-out count inside an imperative is this page's own
+          established grammar — reusing it is the opposite of invention.
+          When the UNPLACED remainder is > 0 the link reads "Place the other
+          <spelled count> ›". When the remainder is zero and the overflow
+          line exists only because of conflicts, there is nothing to place —
+          an imperative naming an act the destination cannot perform would be
+          worse than the caption it replaced, so the link keeps the existing
+          joined overflow sentence plus the frame's ` ›` mark. Destination is
+          the existing row-level `Place it` Link's route (:180-182 above); no
+          new route, no new capability. */}
       {agendaOverflowLine(payload) && (
         <Link to="/agenda" className="chq-overview-overflow-link">
-          {agendaOverflowLine(payload)} ›
+          {payload.agendaWork.unplacedTotal - payload.agendaWork.unplaced.length > 0
+            ? `Place the other ${spellCount(payload.agendaWork.unplacedTotal - payload.agendaWork.unplaced.length)} ›`
+            : `${agendaOverflowLine(payload)} ›`}
         </Link>
       )}
     </section>
