@@ -199,7 +199,11 @@ function findOffenders(): string[] {
 // independent drains of disjoint offender sets, merged in one pass; the constant
 // below is the re-measured combined truth of the merged tree, not any single
 // branch's figure. This ratchet may only fall.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 47;
+// 2026-08-20 (v12m-w12-m, DEC-989 lane-owned lowering): CONTENT cluster
+// tier-2 sweep cleared its 9 owned rows (content.css) -- 47 -> 38, re-
+// measured on this branch alone. Concurrent lanes touch the same integer;
+// the merge train re-measures the integrated tree.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 38;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {
