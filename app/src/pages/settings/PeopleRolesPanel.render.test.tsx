@@ -511,6 +511,35 @@ describe('PeopleRolesPanel', () => {
     expect(otherRow).toHaveFocus();
   });
 
+  // DEC-650 amendment (wave 134), :1360: the rejected-duplicate dialog
+  // states its own subtitle line, alongside the field-level refusal above.
+  it('swaps the invite dialog subtitle to name the duplicate-email refusal, without dropping the field message', async () => {
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 409,
+        body: errorEnvelope('conflict', 'A user with this email already exists', { email: 'already in use' }),
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
+    expect(screen.getByText('They can sign in as soon as you do this')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Otherton' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Person' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: OTHER.email } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    await screen.findByRole('button', { name: `Open ${OTHER.email}'s row` });
+    expect(screen.getByText('The address is already in use')).toBeInTheDocument();
+    expect(screen.queryByText('They can sign in as soon as you do this')).not.toBeInTheDocument();
+    expect(screen.getByText('A user with this email already exists')).toBeInTheDocument();
+  });
+
   // DEC-747 amendment (wave 58), item 6: reset uses the same reveal-once
   // shape and states the two facts unique to it.
   it('reveals a reset password with the session-revocation and no-email facts', async () => {
@@ -546,6 +575,13 @@ describe('PeopleRolesPanel', () => {
     // DEC-919 wave-130 amendment (:1497): the reset reveal draws Done alone
     // -- no "Invite someone else" tertiary.
     expect(screen.queryByRole('button', { name: 'Invite someone else' })).not.toBeInTheDocument();
+    // DEC-650 amendment (wave 134), :1495: the reset reveal's own, shorter
+    // closing note beside Copy the password -- never the invite reveal's
+    // longer "dialog ... reset can replace it" sentence.
+    expect(screen.getByText('Closing this is the last time you see it')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Closing this dialog is the last time you see it — after that only a reset can replace it.'),
+    ).not.toBeInTheDocument();
   });
 
   // DEC-238 (wave 65 amendment): the 201 body's welcomeEmail vocabulary

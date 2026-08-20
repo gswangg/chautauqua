@@ -156,8 +156,15 @@ function PasswordRevealBlock({
           aria-label="One-time password to copy manually"
         />
       ) : null}
+      {/* DEC-650 amendment (wave 134), :1495: the reset reveal's own
+          closing note beside Copy the password reads shorter than the
+          invite reveal's -- no "dialog", no reset-can-replace-it coda,
+          since a reset IS that coda. Kept as its own branch rather than
+          widening the invite sentence, so neither drifts. */}
       <p className="chq-settings-people-closing-note">
-        Closing this dialog is the last time you see it — after that only a reset can replace it.
+        {revealed.context === 'invite'
+          ? 'Closing this dialog is the last time you see it — after that only a reset can replace it.'
+          : 'Closing this is the last time you see it'}
       </p>
       {/* DEC-650 amendment (wave 133), :1498: the reset RESULT dialog's
           second line, verbatim -- appended as its own sentence rather than
@@ -495,7 +502,10 @@ export function PeopleRolesPanel() {
         <ModalFrame
           as="form"
           title="Invite someone"
-          subtitle="They can sign in as soon as you do this"
+          // DEC-650 amendment (wave 134), :1360: the rejected-duplicate
+          // subtitle, alongside (never replacing) the field-level refusal
+          // FormRow already renders on the email input below.
+          subtitle={duplicateUser ? 'The address is already in use' : 'They can sign in as soon as you do this'}
           onClose={closeInviteDialog}
           closeDisabled={creating}
           modalClassName="chq-people-invite-modal"
