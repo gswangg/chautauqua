@@ -43,6 +43,11 @@ export const ERROR_STATES_CSS = `
      which outranks theme.ts's group on every surface, order-independent
      -- no !important (DEC-409: these stylesheets argue by specificity,
      not by !important). */
+  /* tap-floor-exempt: modifier that composes onto a real form control
+     (input/select/textarea/fieldset), which already carries its own
+     height/floor -- a per-token text scan can't follow that composition
+     (phone-tap-target.scan.test.ts SSR_UNFLOORED_TOKENS_CEILING, task
+     w7-e). */
   .chq-field-invalid.chq-field-invalid { border: 1px solid var(--chq-ink); border-left: 3px solid var(--chq-ink); padding-left: calc(0.6rem - 3px); }
   fieldset.chq-field-invalid { padding-left: 0; }
 

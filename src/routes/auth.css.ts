@@ -636,4 +636,14 @@ ${BARE_PAGE_CSS}
       font-size: 13px;
       font-weight: 600;
     }
+    /* task w7-e (SSR_UNFLOORED_TOKENS_CEILING): live-probed at 269.8x17 --
+       the "all: unset" link-vocabulary demo-prefill button above declares
+       no height at all, so it collapses to its 14px text's line box.
+       Additive phone-only floor, no desktop value touched. */
+    .chq-auth-demo-buttons .chq-auth-demo-btn {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
+    }
   }`;

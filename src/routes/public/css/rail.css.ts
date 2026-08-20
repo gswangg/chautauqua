@@ -483,5 +483,40 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
       justify-content: center;
       padding: 0 4px;
     }
+    /* task w7-e (SSR_UNFLOORED_TOKENS_CEILING): .chq-itinerary-toggle is
+       the visually-hidden (1x1, opacity:0, position:absolute) checkbox
+       inside the .chq-pub-save pill above (already floored to 44px min-
+       height on this same phone block) -- native <label> click delegation
+       activates it regardless of the checkbox's own box, so the real tap
+       surface is, and stays, the label. min-width/min-height here satisfy
+       the floor on the token itself; pointer-events:none keeps the
+       enlarged (but still invisible) box from ever intercepting a pointer
+       event of its own -- DEC-919's "a hidden element with no offset can
+       still land on top of a visible control" hazard, closed the same way
+       .chq-visually-hidden already avoids it (off-screen), but this token
+       cannot go off-screen without breaking the label's layout, so it is
+       neutralised instead. */
+    .chq-pub-save input.chq-itinerary-toggle,
+    .chq-pub-itinerary-row input.chq-itinerary-toggle {
+      min-width: 44px;
+      min-height: 44px;
+      pointer-events: none;
+    }
+    /* task w7-e (SSR_UNFLOORED_TOKENS_CEILING): .chq-pub-select-active is
+       declared in agenda.css.ts (v12m-w6-j, out of this task's scope) as
+       an ink-fill modifier composing AFTER chrome.css.ts's plain
+       .chq-pub-select rule -- floored here instead of there (RAIL_CSS
+       composes after AGENDA_CSS in PUBLIC_CSS's concatenation order, see
+       public.css.ts, so this additive rule never shadows agenda.css.ts's
+       own background-image/background-color declarations for the same
+       selector; it only adds the three properties agenda.css.ts's rule
+       doesn't already carry). Mirrors the base .chq-pub-select floor in
+       chrome.css.ts's own terminal block so the two states never diverge
+       in size. */
+    .chq-pub-select-active {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+    }
   }
 `;
