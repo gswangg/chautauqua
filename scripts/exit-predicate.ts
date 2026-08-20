@@ -508,6 +508,17 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   "CROSS_BUNDLE_CITATION_CEILING",
   "PHONE_HIDDEN_UNRECEIPTED_CEILING",
   "DESKTOP_UNRECEIPTED_CLAIM_CEILING",
+  // wave-118 (task w7-b): population made total instead of hand-listed --
+  // these nine were declared in the real corpus and ungraded before this
+  // change (see the DEC-069 amendment on this file's history).
+  "MARKUP_PHONE_UNHIDDEN_CEILING",
+  "DIVERGENCE_CEILING",
+  "ORPHAN_CEILING",
+  "SHADOWED_CEILING",
+  "UNRECEIPTED_CLAIM_CEILING",
+  "FRAME_RECEIPT_OFFENDER_CEILING",
+  "UNRESOLVED_CITATION_CEILING",
+  "WIDENED_UNRESOLVED_CITATION_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -520,7 +531,80 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   "CROSS_BUNDLE_CITATION_CEILING",
   "PHONE_HIDDEN_UNRECEIPTED_CEILING",
   "DESKTOP_UNRECEIPTED_CLAIM_CEILING",
+  "MARKUP_PHONE_UNHIDDEN_CEILING",
+  "DIVERGENCE_CEILING",
+  "ORPHAN_CEILING",
+  "SHADOWED_CEILING",
+  "UNRECEIPTED_CLAIM_CEILING",
+  "FRAME_RECEIPT_OFFENDER_CEILING",
+  "UNRESOLVED_CITATION_CEILING",
+  "WIDENED_UNRESOLVED_CITATION_CEILING",
 ];
+
+/**
+ * Names that match the `<NAME>_CEILING` / `<NAME>_FLOOR` (or bare `CEILING`)
+ * shape in the real corpus but are deliberately NOT part of the v12 mobile
+ * campaign's own exit predicate. Each value is a PRINCIPLE -- a fact about
+ * what the constant measures that stays true with every branch name and
+ * wave number deleted (DEC-099's shape) -- never a schedule note ("later
+ * wave", "in flight", a branch token). `assertCampaignPopulationTotal`
+ * treats any candidate name here, or in `CAMPAIGN_CONSTANT_NAMES`, as
+ * accounted for; anything else is an ungraded ratchet and throws.
+ */
+export const OUT_OF_CAMPAIGN_SCOPE: Record<string, string> = {
+  UNCLAIMED_CEILING:
+    "measures tsconfig project-include coverage (every .ts/.tsx file typechecked by " +
+    "some tsconfig project or a named exclusion) -- a build/typecheck-tooling health " +
+    "check, not a v12 frame or DEC-069 conformance ratchet.",
+};
+
+/**
+ * Every `<NAME>_CEILING` / `<NAME>_FLOOR` (or bare `CEILING`) constant
+ * declared as `[export ]const <NAME> = <integer>;` at top level of a
+ * `*.test.ts` / `*.test.tsx` file among `files`. Derived from file CONTENT
+ * only -- no fs, no assumption about which files exist beyond what is
+ * passed in. Deduped and sorted; a name declared in more than one file
+ * (e.g. CLAIMED_FLOOR) appears once.
+ */
+export function findCampaignCeilingCandidates(
+  files: readonly CampaignFile[],
+): readonly string[] {
+  const names = new Set<string>();
+  for (const file of files) {
+    if (!/\.test\.tsx?$/.test(file.path)) continue;
+    CONST_DECL_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = CONST_DECL_RE.exec(file.content)) !== null) {
+      const name = m[1] as string;
+      if (name === "CEILING" || /_(CEILING|FLOOR)$/.test(name)) {
+        names.add(name);
+      }
+    }
+  }
+  return Array.from(names).sort();
+}
+
+/**
+ * Throws, naming every offender, if any `candidates` name is neither a
+ * graded campaign constant (`CAMPAIGN_CONSTANT_NAMES`) nor an excused one
+ * (`OUT_OF_CAMPAIGN_SCOPE`). Called from `buildCampaignReport` so a newly
+ * declared ratchet that nobody wired into the report fails the predicate
+ * loudly instead of silently never being counted (DEC-180/DEC-808).
+ */
+export function assertCampaignPopulationTotal(candidates: readonly string[]): void {
+  const graded = new Set(CAMPAIGN_CONSTANT_NAMES);
+  const excused = new Set(Object.keys(OUT_OF_CAMPAIGN_SCOPE));
+  const offenders = candidates.filter((name) => !graded.has(name) && !excused.has(name));
+  if (offenders.length > 0) {
+    throw new Error(
+      `exit-predicate campaign: ${offenders.length} ratchet constant(s) declared in the ` +
+        `corpus are neither graded (CAMPAIGN_CONSTANT_NAMES) nor excused ` +
+        `(OUT_OF_CAMPAIGN_SCOPE): ${offenders.join(", ")}. A gate whose population can ` +
+        `silently shrink is a hand-listed population wearing a disguise -- add each name to ` +
+        `one list or the other, never skip it.`,
+    );
+  }
+}
 
 function ceilingRow(matches: readonly ConstantMatch[], name: string): RatchetRow {
   const m = resolveSingle(
@@ -553,6 +637,8 @@ function ceilingRow(matches: readonly ConstantMatch[], name: string): RatchetRow
  * constant, throws rather than guessing which ledger it belongs to.
  */
 export function buildCampaignReport(files: readonly CampaignFile[]): CampaignReport {
+  assertCampaignPopulationTotal(findCampaignCeilingCandidates(files));
+
   const names = new Set(CAMPAIGN_CONSTANT_NAMES);
   const matches = findConstantDeclarations(files, names);
 

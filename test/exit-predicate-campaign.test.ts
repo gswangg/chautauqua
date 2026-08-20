@@ -11,10 +11,13 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  assertCampaignPopulationTotal,
   buildCampaignReport,
   CAMPAIGN_CONSTANT_NAMES,
   type CampaignFile,
+  findCampaignCeilingCandidates,
   findConstantDeclarations,
+  OUT_OF_CAMPAIGN_SCOPE,
 } from "../scripts/exit-predicate";
 
 /**
@@ -70,7 +73,39 @@ function baseFixture(): CampaignFile[] {
     },
     {
       path: "app/src/frame-citation.scan.test.ts",
-      content: "const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 6;",
+      content: [
+        "const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 6;",
+        "const UNRECEIPTED_CLAIM_CEILING = 0;",
+      ].join("\n"),
+    },
+    // wave-118 (task w7-b): the nine formerly-ungraded constants, added so
+    // this fixture stays a faithful shape of the real corpus.
+    {
+      path: "app/src/phone-block-visibility.test.ts",
+      content: "export const MARKUP_PHONE_UNHIDDEN_CEILING = 0;",
+    },
+    {
+      path: "app/src/status-density-pairing.scan.test.ts",
+      content: "const DIVERGENCE_CEILING = 0;",
+    },
+    {
+      path: "app/src/phone-scaffold-orphan.scan.test.ts",
+      content: "export const ORPHAN_CEILING = 0;",
+    },
+    {
+      path: "test/phone-cascade-order.scan.test.ts",
+      content: "export const SHADOWED_CEILING = 0;",
+    },
+    {
+      path: "app/src/tautological-assertion.scan.test.ts",
+      content: "const FRAME_RECEIPT_OFFENDER_CEILING = 0;",
+    },
+    {
+      path: "test/decision-doc-citation.scan.test.ts",
+      content: [
+        "export const UNRESOLVED_CITATION_CEILING = 0;",
+        "export const WIDENED_UNRESOLVED_CITATION_CEILING = 0;",
+      ].join("\n"),
     },
   ];
 }
@@ -114,7 +149,7 @@ describe("findConstantDeclarations", () => {
 describe("buildCampaignReport", () => {
   it("builds all 10 rows and a correct verdict from the fixture corpus", () => {
     const report = buildCampaignReport(baseFixture());
-    expect(report.rows).toHaveLength(10);
+    expect(report.rows).toHaveLength(18);
 
     const desktop = report.rows.find((r) => r.label === "desktop CLAIMED_FLOOR");
     expect(desktop).toMatchObject({ current: 30, target: 38, remaining: 8 });
@@ -166,7 +201,13 @@ describe("buildCampaignReport", () => {
         return { ...f, content: "export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 0;" };
       }
       if (f.path === "app/src/frame-citation.scan.test.ts") {
-        return { ...f, content: "const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;" };
+        return {
+          ...f,
+          content: [
+            "const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;",
+            "const UNRECEIPTED_CLAIM_CEILING = 0;",
+          ].join("\n"),
+        };
       }
       return f;
     });
@@ -206,5 +247,83 @@ describe("buildCampaignReport", () => {
         : f,
     );
     expect(() => buildCampaignReport(files)).toThrow(/no declaration of EXPECTED_TOTAL/);
+  });
+
+  it("throws when the corpus declares a ratchet constant nobody graded (population made total, DEC-069 wave-118)", () => {
+    const files = [
+      ...baseFixture(),
+      {
+        path: "app/src/some-new-lane.scan.test.ts",
+        content: "export const NEW_LANE_OFFENDERS_CEILING = 3;",
+      },
+    ];
+    expect(() => buildCampaignReport(files)).toThrow(/NEW_LANE_OFFENDERS_CEILING/);
+  });
+});
+
+describe("findCampaignCeilingCandidates", () => {
+  it("finds every _CEILING/_FLOOR (and bare CEILING) declaration in a *.test.ts corpus, deduped and sorted", () => {
+    const files: CampaignFile[] = [
+      { path: "app/src/a.scan.test.ts", content: "export const B_CEILING = 1;\nconst A_FLOOR = 2;" },
+      { path: "app/src/b.scan.test.ts", content: "export const B_CEILING = 5;" }, // re-declared, deduped
+      { path: "app/src/c.scan.test.ts", content: "export const CEILING = 9;" },
+    ];
+    expect(findCampaignCeilingCandidates(files)).toEqual(["A_FLOOR", "B_CEILING", "CEILING"]);
+  });
+
+  it("ignores names that don't end in _CEILING/_FLOOR and files that aren't *.test.ts(x)", () => {
+    const files: CampaignFile[] = [
+      { path: "app/src/a.scan.test.ts", content: "export const EXPECTED_TOTAL = 40;" },
+      { path: "app/src/not-a-test.ts", content: "export const REAL_CEILING = 1;" },
+    ];
+    expect(findCampaignCeilingCandidates(files)).toEqual([]);
+  });
+
+  it("matches *.test.tsx paths too", () => {
+    const files: CampaignFile[] = [
+      { path: "app/src/widget.test.tsx", content: "export const WIDGET_CEILING = 0;" },
+    ];
+    expect(findCampaignCeilingCandidates(files)).toEqual(["WIDGET_CEILING"]);
+  });
+});
+
+describe("assertCampaignPopulationTotal", () => {
+  it("passes when every candidate is graded", () => {
+    expect(() =>
+      assertCampaignPopulationTotal([...CAMPAIGN_CONSTANT_NAMES].filter((n) => n !== "EXPECTED_TOTAL")),
+    ).not.toThrow();
+  });
+
+  it("passes when every candidate is graded or excused", () => {
+    expect(() =>
+      assertCampaignPopulationTotal(["CEILING", ...Object.keys(OUT_OF_CAMPAIGN_SCOPE)]),
+    ).not.toThrow();
+  });
+
+  it("throws and names the offender when a candidate is neither graded nor excused", () => {
+    expect(() => assertCampaignPopulationTotal(["TOTALLY_NEW_CEILING"])).toThrow(
+      /TOTALLY_NEW_CEILING/,
+    );
+  });
+
+  it("names every offender, not just the first", () => {
+    expect(() => assertCampaignPopulationTotal(["FIRST_CEILING", "SECOND_FLOOR"])).toThrow(
+      /FIRST_CEILING.*SECOND_FLOOR|SECOND_FLOOR.*FIRST_CEILING/s,
+    );
+  });
+});
+
+describe("OUT_OF_CAMPAIGN_SCOPE", () => {
+  it("every reason is a principle: no branch token, no schedule/'in flight'/'later wave' prose", () => {
+    const bannedPattern = /\bv12m-w\d+|\bwave\s*\d+\b|\bin flight\b|\blater wave\b|\bbeing (converted|drained|worked)\b/i;
+    for (const [name, reason] of Object.entries(OUT_OF_CAMPAIGN_SCOPE)) {
+      expect(reason, `${name}'s OUT_OF_CAMPAIGN_SCOPE reason reads like a schedule note, not a principle: "${reason}"`).not.toMatch(
+        bannedPattern,
+      );
+    }
+  });
+
+  it("UNCLAIMED_CEILING is excused (tsconfig coverage, not a v12 frame/DEC-069 ratchet)", () => {
+    expect(OUT_OF_CAMPAIGN_SCOPE).toHaveProperty("UNCLAIMED_CEILING");
   });
 });
