@@ -429,8 +429,10 @@
   line-height: 1.4;
 }
 
-/* Visually hidden, never display:none -- stays in the tab order and
-   reachable by keyboard via the <label for> above (w41-a). */
+/* tap-floor-exempt: a visually-hidden input whose operable target is its
+   label -- never display:none, stays in the tab order and reachable by
+   keyboard via the <label for> above (w41-a), so the label supplies the
+   whole tap floor. */
 .chq-content-upload-input {
   position: absolute;
   width: 1px;

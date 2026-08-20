@@ -54,40 +54,65 @@ const REPO_ROOT = join(HERE, '..', '..');
 const CSS_FILES = allCssFiles(HERE);
 const TSX_FILES = allTsxFiles(HERE);
 
-// Measured on this branch by forcing the ceiling to -1 and reading the
-// printed offender list (DEC-989 clause a): 23, across 13 sheets, including
-// `.chq-review-queue-footer-showall`. This is the campaign's first
-// measurement of this population -- there is no prior value to compare
-// against, only the base scan's zero, which this file's own header explains
-// is blind by construction. Composition credit (clause b) already removes
-// tokens like `.chq-btn-primary`/`.chq-btn-secondary` (which only ever
-// appear beside the floored `.chq-btn`) from a larger pre-composition
-// count -- this 23 is post-composition, the true residue.
+// PREDICATE REPAIR (wave v12m-w13-p, DEC-367/DEC-989 clause c): this ceiling
+// is being re-seeded because the INSTRUMENT it depends on was lying, not
+// because the population moved. `core.ts`'s `topLevelRulesWithExemption`
+// used to set `exempt` with:
 //
-// PREDICATE REPAIR (DEC-989 clause c): the base scan's `findOffenders()`
-// treats `height === undefined` (no height/min-height declared at all) the
-// same as `height >= TAP_FLOOR_PX` (already conforming) -- both `continue`
-// past the same line, so a control that never declared a height was
-// invisible to the ratchet that is supposed to catch sub-floor controls.
-// The old ceiling was blind, not zero: `.chq-review-queue-footer-showall`
-// (review.css:650, 52x30 live-probed) proves a real offender sat under a
-// scan reporting a clean population.
-// Thunderdome megabatch (wave 124): re-measured on the INTEGRATED tree
-// after 15 lanes landed in one pass -- concurrent lanes drained the same
-// population, so the combined truth is lower than any single branch saw.
-// 23 -> 15. Lowering is a merge-train act (DEC-989).
-export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 15;
+//   const exempt = m[0].trimStart().startsWith('/*');
+//
+// -- the exemption comment group in the parsing regex is OPTIONAL, so when
+// it fails to match a real `tap-floor-exempt:` comment, the selector-capture
+// group `([^{}]+)` can itself swallow any ORDINARY block comment sitting
+// immediately above a rule, leaving `m[0]` starting with `/*` even though no
+// exemption was ever granted. Every rule preceded by a plain explanatory
+// comment (the codebase's dominant idiom) was silently marked exempt and
+// dropped from every lens built on this predicate -- the base scan, this
+// undeclared-height lens, and both SSR ratchets. Repaired to test the
+// literal grammar: `/^\s*\/\*\s*tap-floor-exempt:/.test(m[0])`.
+//
+// Re-measured on THIS branch, under the repaired predicate, by forcing this
+// constant to -1 and reading the printed offender list (DEC-989 clause a):
+// 27, across 12 sheets. `.chq-review-queue-footer-showall` -- the token this
+// lens was built to catch, and the prior ceiling's whole justification -- is
+// no longer among them: this same commit floors it in review.css's terminal
+// `@media (max-width: 700px)` block (DESIGN-RULINGS:189 triple). The
+// unblinding also surfaced two accidentally-exempt visually-hidden inputs
+// (comms.css `.chq-comms-status-pill-input`, content.css
+// `.chq-content-upload-input`), now given real `tap-floor-exempt` comments
+// stating why they're legitimately exempt (their operable target is the
+// `<label>` beside them) rather than riding the parsing bug.
+//
+// A new non-zero row that pushes the desktop/phone exit further away is the
+// correct outcome when the instrument itself was blind (DEC-367 wave-120
+// precedent) -- this is not a regression, it is the population becoming
+// visible for the first time under a predicate that can actually see it.
+export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 27;
 
 describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)', () => {
-  it('derives a non-empty population and includes a known-live offender (vacuous-population tripwire)', () => {
+  it('derives a non-empty population over the real tree (vacuous-population tripwire)', () => {
+    // Wave v12m-w13-p: `.chq-review-queue-footer-showall` (the token this
+    // lens was built to catch, review.css:655) was FIXED and floored in
+    // this same commit -- pinning the tripwire to that exact token would
+    // make fixing it illegal (DEC-967 sentinel anti-pattern, third sighting
+    // per wave-124 field notes). The tripwire only needs to prove the
+    // population isn't empty by construction; a SYNTHETIC fixture proves
+    // that without naming any real offender that a future lane must keep
+    // broken to stay green.
     expect(CSS_FILES.length).toBeGreaterThan(5);
     expect(TSX_FILES.length).toBeGreaterThan(5);
     const offenders = findUndeclaredHeightOffenders(CSS_FILES, TSX_FILES, REPO_ROOT);
     expect(offenders.length).toBeGreaterThan(0);
-    expect(
-      offenders.some((o) => o.includes('chq-review-queue-footer-showall')),
-      `expected .chq-review-queue-footer-showall among the offenders:\n${offenders.join('\n')}`,
-    ).toBe(true);
+
+    const syntheticTsx = `export const X = () => <button className="chq-x-fake-tripwire">Show all</button>;`;
+    const syntheticCss = `.chq-x-fake-tripwire { border: none; background: none; padding: 0; font-size: 13px; }`;
+    const tokens = new Set(tapTargetTagTokens(stripTsxComments(syntheticTsx)));
+    expect(tokens.has('chq-x-fake-tripwire')).toBe(true);
+    const rule = topLevelRulesWithExemption(syntheticCss).find((r) =>
+      selectorDeclaresBareClass(r.selector, 'chq-x-fake-tripwire'),
+    )!;
+    expect(declaredHeightPx(rule.body)).toBeUndefined();
+    expect(rule.exempt).toBe(false);
   }, 20000);
 
   it('flags a synthetic control rule declaring neither height nor min-height, with no phone floor (positive control)', () => {
@@ -171,8 +196,9 @@ describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)'
       throw new Error(
         `undeclared-height tap-target offenders (${offenders.length}) fell below the ` +
           `UNDECLARED_HEIGHT_OFFENDERS_CEILING of ${UNDECLARED_HEIGHT_OFFENDERS_CEILING}. This is the ` +
-          `ratchet working: offenders got fixed. Lower the ceiling in the same commit (a merge-train ` +
-          `act, never a worker's edit mid-lane) by replacing the line:\n` +
+          `ratchet working: offenders got fixed. Lower the ceiling in the same commit -- a worker's ` +
+          `edit mid-lane is licensed to lower its own measured ceiling too (DEC-989 wave-123 overturned ` +
+          `the earlier merge-train-only rule) -- by replacing the line:\n` +
           `  export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = ${offenders.length};`,
       );
     }
