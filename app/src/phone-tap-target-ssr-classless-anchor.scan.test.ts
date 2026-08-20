@@ -15,6 +15,7 @@
 // This file only WIDENS the population into visibility -- draining the
 // offenders it finds is a separate, later lane's job (see the ceiling
 // comment in phone-tap-target-scan/ceilings.ts).
+import { readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';

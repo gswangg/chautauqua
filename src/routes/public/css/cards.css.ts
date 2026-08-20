@@ -275,8 +275,7 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
    contiguous trailing phone region in ascending source order. CARDS_CSS
    keeps every non-phone rule, so desktop output is byte-identical. This
    is the same split w16-bb already applied to ERROR_STATES_CSS. */
-export const CARDS_PHONE_CSS = `
-  /* DEC-385 wave-102 amendment: this sheet's earlier ≤700px block (DEC-367
+/* DEC-385 wave-102 amendment: this sheet's earlier ≤700px block (DEC-367
      wave-50, the List | Grid toggle's phone tap floor) is consolidated
      HERE, in ascending source order, ahead of the w8-h overflow-sweep
      rules that already lived in this terminal block -- a non-terminal
@@ -285,7 +284,6 @@ export const CARDS_PHONE_CSS = `
      reordered, reworded or deduped; .chq-pub-view-toggle-option does not
      recur below, so no collapse is needed. */
 
-`;
 
 // DEC-385 wave-143 amendment (task w18-f): the phone media block
 // block that used to live inside CARDS_CSS above (and made this fragment's

@@ -290,8 +290,7 @@ export const CHROME_CSS = `
    contiguous trailing phone region in ascending source order. CHROME_CSS
    keeps every non-phone rule, so desktop output is byte-identical. This
    is the same split w16-bb already applied to ERROR_STATES_CSS. */
-export const CHROME_PHONE_CSS = `
-  /* DEC-385/DEC-393 (task w7-e): the ONE terminal phone block for this
+/* DEC-385/DEC-393 (task w7-e): the ONE terminal phone block for this
      sheet -- relocated verbatim from its old, non-terminal position right
      after .chq-pub-filter-row's desktop rule (docs/design/audit/
      terminal-phone-block-v12.md), plus additive >=44px tap floors for the
@@ -300,7 +299,6 @@ export const CHROME_PHONE_CSS = `
      here is additive on top of the desktop rule above, never a value
      change to it. */
 
-`;
 
 // DEC-385 wave-143 amendment (task w18-f): the phone media block
 // block that used to live inside CHROME_CSS above (and made this fragment's

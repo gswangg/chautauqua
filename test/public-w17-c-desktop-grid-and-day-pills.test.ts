@@ -11,13 +11,6 @@ import { SpeakersContent, GalleryContent } from "../src/routes/public/speakers";
 import { AgendaContent } from "../src/routes/public/agenda";
 import type { PublicAgendaItem, PublicEvent, PublicSpeakerWithSessions } from "../src/server/repo/public";
 
-// DEC-385 wave-143: each of these modules now exports its CSS as a
-// desktop/phone PAIR so hosts can concatenate the phone halves into one
-// contiguous trailing region. This file's assertions are about the
-// module's FULL contribution to the sheet, which is the pair joined in
-// that same order -- exactly the bytes the single export used to hold.
-const AGENDA_CSS = `${AGENDA_DESKTOP_CSS}${AGENDA_PHONE_CSS}`;
-const CARDS_CSS = `${CARDS_DESKTOP_CSS}${CARDS_PHONE_CSS}`;
 
 const EVENT: PublicEvent = {
   id: "e1",

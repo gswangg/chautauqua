@@ -423,8 +423,7 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
    contiguous trailing phone region in ascending source order. RAIL_CSS
    keeps every non-phone rule, so desktop output is byte-identical. This
    is the same split w16-bb already applied to ERROR_STATES_CSS. */
-export const RAIL_PHONE_CSS = `
-  /* DEC-385 (w85 amendment, superseded in shape by wave-102 below): this
+/* DEC-385 (w85 amendment, superseded in shape by wave-102 below): this
      fragment's phone declarations are consolidated into ONE block at the
      true end of the file -- previously .chq-pub-surface-title's 26px
      phone override sat mid-file (after .chq-pub-sessions-layout) and was
@@ -446,7 +445,6 @@ export const RAIL_PHONE_CSS = `
      terminal phone block, per phone-terminal-block.scan.test.ts. No other
      selector/declaration/value is reordered, reworded or deduped. */
 
-`;
 
 // DEC-385 wave-143 amendment (task w18-f): the phone media block
 // block that used to live inside RAIL_CSS above (and made this fragment's

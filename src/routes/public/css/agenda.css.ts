@@ -501,8 +501,7 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
    contiguous trailing phone region in ascending source order. AGENDA_CSS
    keeps every non-phone rule, so desktop output is byte-identical. This
    is the same split w16-bb already applied to ERROR_STATES_CSS. */
-export const AGENDA_PHONE_CSS = `
-  /* DEC-385 wave-102 amendment: this sheet's two ≤700px blocks
+/* DEC-385 wave-102 amendment: this sheet's two ≤700px blocks
      (single phone switch shared by every stylesheet -- header/main
      gutters, session-row stacking, itinerary controls, the phone-list
      swap -- and the gallery/speaker-list overflow-sweep block) are
@@ -515,7 +514,6 @@ export const AGENDA_PHONE_CSS = `
      .chq-pub-select-active, .chq-pub-agenda-block-meta/-list-item
      .chq-pub-track-chip::before, .chq-pub-agenda-block-save). */
 
-`;
 
 // DEC-385 wave-143 amendment (task w18-f): the phone media block
 // block that used to live inside AGENDA_CSS above (and made this fragment's
