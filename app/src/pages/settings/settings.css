@@ -2294,4 +2294,22 @@
   .chq-settings-tokens-table .chq-settings-tokens-col-actions {
     width: 88px;
   }
+
+  /* task-w10-o/DEC-393 amendment (DEVIATIONS.md:346-351 companion-gap
+     rider): both containers below hold >=2 cancelled-padding
+     `.chq-link-button` siblings on phone (PeopleRolesPanel's Change
+     password / Reset password / Remove; TrackEditRow/RoomEditRow's Save /
+     Cancel / Remove) -- the desktop gap alone leaves each anchor's
+     expanded 44px hit box overlapping its neighbour's by (20 - gap)px.
+     Declaring the drawn desktop gap plus 20px restores real separation
+     without moving any glyph. .chq-settings-people-actions is the
+     WORST-CASE row in the tree: without this, a DESTRUCTIVE Remove's tap
+     box sat 10px under its neighbour's. */
+  .chq-settings-people-actions {
+    gap: 30px;
+  }
+
+  .chq-settings-edit-row-actions {
+    gap: 34px;
+  }
 }

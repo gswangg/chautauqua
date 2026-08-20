@@ -284,3 +284,20 @@ describe('v12 phone frame "Plan editor · 390" (Chautauqua Review.dc.html:594)',
     expect(phoneRule(REVIEW_CSS, '.chq-review-editor')).toMatch(/padding-bottom:\s*84px/);
   });
 });
+
+// task-w10-o/DEC-393 amendment: DEVIATIONS.md:346-351's companion-gap
+// rider -- a container holding >=2 cancelled-padding siblings must add
+// its own drawn desktop gap plus 20px on phone, or the siblings' expanded
+// 44px hit boxes overlap. .chq-review-plan-actions (PlanList.tsx's
+// Progress/Results/Edit row, three .chq-review-plan-action-link
+// siblings) draws a 14px desktop gap.
+describe('companion gap (DEC-393 amendment, DEVIATIONS.md:346-351)', () => {
+  it('.chq-review-plan-actions declares gap:34px on phone (desktop 14px + 20px)', () => {
+    const desktopMatch = /\.chq-review-plan-actions\s*\{([^}]*)\}/.exec(REVIEW_CSS);
+    expect(desktopMatch, 'no top-level desktop rule found for .chq-review-plan-actions').toBeDefined();
+    expect(desktopMatch![1]).toMatch(/gap:\s*14px/);
+
+    const phone = phoneRule(REVIEW_CSS, '.chq-review-plan-actions');
+    expect(phone).toMatch(/gap:\s*34px/);
+  });
+});

@@ -315,6 +315,51 @@ describe('Settings cluster phone floor / overflow backlog (task w8-f)', () => {
       expect(hasEscapeShape('overflow: hidden; text-overflow: ellipsis; min-width: 0;')).toBe(true);
     });
   });
+
+  // task-w10-o/DEC-393 amendment: DEVIATIONS.md:346-351's companion-gap
+  // rider -- a container holding >=2 cancelled-padding siblings must add
+  // its own drawn desktop gap (10px / 14px here) plus 20px on phone, or
+  // the siblings' expanded 44px hit boxes overlap. Byte-level `gap:`
+  // assertions, mirroring the tap-floor cases above.
+  describe('companion gap (DEC-393 amendment, DEVIATIONS.md:346-351)', () => {
+    const gapCases: Array<{ label: string; selector: string; desktopGapPx: number }> = [
+      { label: '.chq-settings-people-actions (Change/Reset password, Remove)', selector: '.chq-settings-people-actions', desktopGapPx: 10 },
+      { label: '.chq-settings-edit-row-actions (Save/Cancel/Remove)', selector: '.chq-settings-edit-row-actions', desktopGapPx: 14 },
+    ];
+
+    for (const { label, selector, desktopGapPx } of gapCases) {
+      it(`${label} declares gap:${desktopGapPx + 20}px on phone (desktop ${desktopGapPx}px + 20px)`, () => {
+        // settings.css declares this selector top-level MORE THAN ONCE
+        // (e.g. .chq-settings-people-actions at :735 for justify-self/
+        // text-align, then again at :768 for the flex/gap shape) -- the
+        // cascade takes the LAST one for any property both declare, so
+        // this reads every top-level match and asserts at least one
+        // carries the drawn desktop gap, mirroring the cascade rather
+        // than assuming a single declaration.
+        const desktopMatches = topLevelRules(CSS).filter(
+          (r) => r.selector.split(',').map((s) => s.trim()).includes(selector),
+        );
+        expect(desktopMatches.length, `no top-level desktop rule found for "${selector}"`).toBeGreaterThan(0);
+        expect(
+          desktopMatches.some((r) => new RegExp(`gap\\s*:\\s*${desktopGapPx}px`).test(r.body)),
+          `no top-level rule for "${selector}" declared gap:${desktopGapPx}px`,
+        ).toBe(true);
+
+        // Same caveat on the phone side: an earlier rule in this file's
+        // one terminal @media block already targets this bare selector
+        // for an unrelated property (e.g. .chq-settings-people-actions
+        // at :1564, justify-self/justify-content, no gap) -- the LAST
+        // matching phone rule is the one the cascade actually resolves
+        // gap from, per DEC-385 append-only.
+        const phoneMatches = allPhoneRules.filter(
+          (r) => r.selector.split(',').map((s) => s.trim()).includes(selector),
+        );
+        expect(phoneMatches.length, `no phone-scoped rule found for "${selector}"`).toBeGreaterThan(0);
+        const lastPhoneMatch = phoneMatches[phoneMatches.length - 1]!;
+        expect(lastPhoneMatch.body).toMatch(new RegExp(`gap\\s*:\\s*${desktopGapPx + 20}px`));
+      });
+    }
+  });
 });
 
 // DEC-393 wave-120 three-receipt ruling (v12m-w9-j): the two settings-cluster
