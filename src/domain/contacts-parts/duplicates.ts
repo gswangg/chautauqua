@@ -9,11 +9,13 @@
 
 // DEC-467: exactly one normalizeEmail survives in the product (src/domain/email.ts).
 import { normalizeEmail } from "../email";
-import { DEC_800 } from "../../decisions";
+import { DEC_800, DEC_936 } from "../../decisions";
 import type { ContactRecord } from "./types";
 import { normalizedContactName, normalizedCompany } from "./types";
+import { STANDARD_IMPORT_FIELDS } from "./import";
 
 void DEC_800;
+void DEC_936;
 
 /** DEC-800: why a pair/group was surfaced as a possible duplicate — an
  * exact email match, a same-name-same-company match (DEC-143), or a
@@ -200,14 +202,34 @@ export function findImportDuplicateCandidates(
  * resolveImportUpsert's existing setIfNonBlank semantics, which this
  * function does not change — it only describes, never decides, what a patch
  * would do).
+ *
+ * DEC-936 (wave 128): the standard-field population is derived from
+ * STANDARD_IMPORT_FIELDS (minus "email", which an update patch never
+ * carries — resolveImportUpsert's update branch never sets patch.email; see
+ * DEC-663's wave-115 amendment for why) rather than a second hand-typed
+ * list beside it — a field added to STANDARD_IMPORT_FIELDS is disclosed
+ * here automatically, closing the "hand-listed population" trap (DEC-808).
+ *
+ * customFields is a keyed map, not a flat field, so it needs its own walk:
+ * resolveImportUpsert's update branch merges every non-blank incoming
+ * custom key onto the stored map (`merged[key] = value`), which silently
+ * replaces a stored non-blank value the exact same way a flat field would —
+ * that write was previously undisclosed. Because `patch.customFields` (when
+ * present) is already the FULLY MERGED map, a key's merged value differs
+ * from `existing.customFields[key]` if and only if it was written by a
+ * non-blank incoming cell (an unwritten key's merged value is a verbatim
+ * copy of the stored one), so comparing merged-vs-stored per key below is
+ * sufficient — no separate "raw incoming" argument is needed. Reported as
+ * `custom.<key>` (the SAME field-name grammar importFieldLabel already
+ * parses for the match-columns UI).
  */
 export function describeImportOverwrites(
   existing: ContactRecord,
   patch: Partial<ContactRecord>,
-): Array<{ field: "firstName" | "lastName" | "company" | "title" | "phone" | "bio"; from: string; to: string }> {
-  const fields = ["firstName", "lastName", "company", "title", "phone", "bio"] as const;
-  const out: Array<{ field: (typeof fields)[number]; from: string; to: string }> = [];
-  for (const field of fields) {
+): Array<{ field: string; from: string; to: string }> {
+  const standardFields = STANDARD_IMPORT_FIELDS.filter((f) => f !== "email");
+  const out: Array<{ field: string; from: string; to: string }> = [];
+  for (const field of standardFields) {
     const incoming = patch[field];
     if (incoming === undefined) continue;
     const incomingTrimmed = incoming.trim();
@@ -216,6 +238,16 @@ export function describeImportOverwrites(
     if (stored === "") continue;
     if (stored === incomingTrimmed) continue;
     out.push({ field, from: stored, to: incomingTrimmed });
+  }
+  if (patch.customFields !== undefined) {
+    for (const [key, incoming] of Object.entries(patch.customFields)) {
+      const incomingTrimmed = incoming.trim();
+      if (incomingTrimmed === "") continue;
+      const stored = (existing.customFields?.[key] ?? "").trim();
+      if (stored === "") continue;
+      if (stored === incomingTrimmed) continue;
+      out.push({ field: `custom.${key}`, from: stored, to: incomingTrimmed });
+    }
   }
   return out;
 }

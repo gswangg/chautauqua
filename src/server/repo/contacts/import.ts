@@ -577,8 +577,12 @@ export async function lookupContactIdsByEmail(db: Db, orgId: string, emails: str
   return byEmail;
 }
 
+/** DEC-936 (wave 128): `field` is a standard ContactRecord key OR a
+ * `custom.<key>` handle (describeImportOverwrites derives BOTH populations
+ * from what resolveImportUpsert's update branch actually writes — never a
+ * hand-listed union that could drift from it). */
 export interface ImportPlanOverwrite {
-  field: "firstName" | "lastName" | "company" | "title" | "phone" | "bio";
+  field: string;
   from: string;
   to: string;
 }

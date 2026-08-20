@@ -414,6 +414,37 @@ describe('ImportWizard: B5 review step (DEC-663 amendment)', () => {
     expect(newValues.map((el) => el.textContent)).toEqual(['Acme', 'Staff Engineer']);
   });
 
+  // DEC-936 (wave 128): describeImportOverwrites now discloses a
+  // custom-field overwrite as `custom.<key>` -- the review row must render
+  // it through the same struck-old/plain-new idiom as a standard field,
+  // with the bare key (no "custom." prefix) as its human label.
+  it('a custom-field overwrite renders with the bare key as its label and the struck-old/plain-new diff', async () => {
+    const CUSTOM_PLAN: ImportPlan = {
+      rows: [
+        {
+          line: 3,
+          email: 'john@example.com',
+          action: 'update',
+          contactId: 'ct-john',
+          overwrites: [{ field: 'custom.department', from: 'Flight Dynamics', to: 'Trajectory Analysis' }],
+        },
+      ],
+      created: 0,
+      updated: 1,
+      skipped: 0,
+    };
+    mockApi({ 'POST /api/v1/contacts/import': CUSTOM_PLAN });
+    await pasteCsvAndPreview();
+    await screen.findByText('0 new · 1 updated');
+
+    const johnRow = screen.getAllByRole('row').find((r) => within(r).queryByText('john@example.com'));
+    expect(johnRow).toBeDefined();
+    expect(within(johnRow!).getByText('department')).toBeInTheDocument();
+    const oldValue = within(johnRow!).getByText('Flight Dynamics', { selector: '.chq-contacts-import-overwrite-old' });
+    expect(oldValue.tagName).toBe('S');
+    expect(within(johnRow!).getByText('Trajectory Analysis', { selector: '.chq-contacts-import-overwrite-new' })).toBeInTheDocument();
+  });
+
   it('update rows precede create rows in document order', async () => {
     mockApi({ 'POST /api/v1/contacts/import': MIXED_PLAN });
     await pasteCsvAndPreview();
