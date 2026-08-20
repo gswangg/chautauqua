@@ -152,6 +152,15 @@ survives contact with state:
   `.chq-agenda-head-actions .chq-link-button` rule appended at the end of
   the same phone block floors Breaks, which the shared `.chq-btn` rule
   does not reach.
+- **Contact drawer's phone EDIT stack is not the frame's read dock (DEC-959;
+  DEC-380 wave-120 struck)** — `docs/design/Chautauqua Contacts.dc.html:433-436`
+  draws only the 390 READ screen's footer (Email / Edit, both min-height:48px,
+  `padding:12px 16px 16px`), which the app implements via the shell's shared
+  `.chq-phone-dock`. The phone EDIT state's five-control bar (Delete this
+  contact / Email / Add to event / Cancel / Save) is a state the frame does
+  not draw at all, so its shape is our interpretation: it takes the frame
+  footer's own floor — min-height:48px, padding:0 16px — one control per line,
+  and its capability is reached through the dock's own `Edit` control.
 
 ## 4. Voice
 
