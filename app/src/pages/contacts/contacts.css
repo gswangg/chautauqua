@@ -1070,4 +1070,35 @@
     text-transform: uppercase;
     color: var(--chq-muted);
   }
+
+  /* DEC-937 DRAIN (task w10-n): `.chq-contacts-title-actions a` resolves
+     to exactly one control -- the Export CSV `<a className="chq-btn
+     chq-btn-secondary">` (ContactsApp.tsx:386-391), PAINTED via .chq-btn
+     (styles.css:527, padding: 10px 16px) + .chq-btn-secondary
+     (styles.css:565, border: 1px solid var(--chq-border-strong);
+     background: var(--chq-surface-sunk)). The combined selector's
+     cancelled-padding rule above (:986-993) narrows that face by 12px and
+     bleeds the bordered box 10px past its layout edge each side, same
+     defect as overview's .chq-overview-btn. `.chq-contacts-rail-duplicate-
+     actions a` is `.chq-link-button` (DuplicateRow.tsx) -- borderless --
+     and is intentionally left off this selector list, keeping the rule
+     above as its sole cancelled-padding declarer. This later
+     same-specificity rule restores Export CSV's horizontal padding to its
+     desktop value and drops the bleed, keeping only the tap-floor grow. */
+  .chq-contacts-title-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+    margin-inline: 0;
+  }
+
+  /* DEC-393 amendment companion gap: `.chq-contacts-title-actions`
+     (desktop gap 9px, contacts.css:31) held one cancelled-padding `a`
+     (Export CSV, de-cancelled above) alongside two `<button>` siblings
+     that the cancelled-padding rule never matched (Import CSV / New
+     contact -- contacts.css:986 selects `a` only) -- 0 cancelled-padding
+     siblings remain, so no widening. `.chq-contacts-rail-duplicate-
+     actions` already carries the widened 24px gap (contacts.css:229-232,
+     the sole conforming container in the tree) and is left unchanged. */
 }

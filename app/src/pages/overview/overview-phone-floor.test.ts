@@ -312,3 +312,99 @@ describe('overview row-action-anchor tap-floor drain (task w9-i, DEC-393 wave-12
     expect(topLevel![1]).not.toMatch(/min-height\s*:/);
   });
 });
+
+// DEC-937 DRAIN (task w10-n): .chq-overview-btn is PAINTED
+// (border/background/padding: 9px 16px, overview.css:358), unlike the
+// borderless .chq-overview-link-btn/.chq-overview-section-action tiers the
+// wave-90 cancelled-padding rule above was written for -- that rule's
+// padding-inline:10px/margin-inline:-10px narrows the drawn face and bleeds
+// the bordered box past its layout edge. A later same-specificity rule
+// (appended, DEC-385 -- the wave-90 rule is never edited) restores the
+// painted tier's horizontal padding and drops the bleed. These assertions
+// resolve the CASCADE (last-declared-value-wins for a given property, same
+// specificity, same selector) across every rule for each selector in the
+// terminal phone block, rather than trusting a single rule's body in
+// isolation -- a stale/duplicate declaration earlier in the block must not
+// hide a still-live regression.
+describe('DEC-937 DRAIN (task w10-n): painted .chq-overview-btn de-cancelled, borderless tiers untouched', () => {
+  const PAINTED_COMPOUND_SELECTORS = [
+    'chq-overview-row-actions .chq-overview-btn',
+    'chq-overview-row-actions-inline .chq-overview-btn',
+    'chq-overview-row-actions-column .chq-overview-btn',
+  ];
+
+  /** The value of the LAST declaration of `prop` across every rule (in
+   * source order) inside the phone block(s) whose selector list contains
+   * `compoundSelector` verbatim -- i.e. the cascade-resolved value. */
+  function cascadeValue(css: string, compoundSelector: string, prop: string): string | undefined {
+    const rules = narrowMediaRules(css, 700).filter((r) =>
+      r.selector
+        .split(',')
+        .map((s) => s.trim())
+        .includes(`.${compoundSelector}`),
+    );
+    let value: string | undefined;
+    const re = new RegExp(`${prop}\\s*:\\s*([^;]+);`);
+    for (const rule of rules) {
+      const m = rule.body.match(re);
+      if (m?.[1] !== undefined) value = m[1].trim();
+    }
+    return value;
+  }
+
+  it.each(PAINTED_COMPOUND_SELECTORS)('%s: at least two rules declare it (the wave-90 cancelled-padding rule plus this drain\'s override)', (compound) => {
+    const rules = narrowMediaRules(CSS, 700).filter((r) =>
+      r.selector
+        .split(',')
+        .map((s) => s.trim())
+        .includes(`.${compound}`),
+    );
+    expect(rules.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it.each(PAINTED_COMPOUND_SELECTORS)('%s: cascade-resolved min-height is 44px', (compound) => {
+    expect(cascadeValue(CSS, compound, 'min-height')).toBe('44px');
+  });
+
+  it.each(PAINTED_COMPOUND_SELECTORS)('%s: cascade-resolved margin-inline is not negative', (compound) => {
+    const value = cascadeValue(CSS, compound, 'margin-inline');
+    expect(value).toBeDefined();
+    expect(value!.startsWith('-')).toBe(false);
+  });
+
+  it.each(['chq-overview-link-btn', 'chq-overview-section-action'])(
+    '%s (borderless) keeps its cascade-resolved margin-inline at -10px, untouched by the drain',
+    (token) => {
+      const value = cascadeValue(CSS, token, 'margin-inline');
+      expect(value).toBe('-10px');
+    },
+  );
+
+  it('.chq-overview-row-actions: gap widened to 34px (companion gap, two surviving cancelled-padding .chq-overview-link-btn siblings)', () => {
+    const value = cascadeValue(CSS, 'chq-overview-row-actions', 'gap');
+    expect(value).toBe('34px');
+  });
+
+  it('.chq-overview-row-actions-inline: no phone gap override (only one surviving cancelled-padding sibling after the drain)', () => {
+    expect(cascadeValue(CSS, 'chq-overview-row-actions-inline', 'gap')).toBeUndefined();
+  });
+
+  it('.chq-overview-row-actions-column: no phone gap override (only one cancelled-padding sibling)', () => {
+    expect(cascadeValue(CSS, 'chq-overview-row-actions-column', 'gap')).toBeUndefined();
+  });
+
+  it('falsifiability control: a synthetic single-rule selector with only the wave-90 shape is correctly read as still negative (the drain rule must exist to flip this)', () => {
+    const badCss = `
+      @media (max-width: 700px) {
+        .chq-x-fake .chq-overview-btn {
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          padding-inline: 10px;
+          margin-inline: -10px;
+        }
+      }
+    `;
+    expect(cascadeValue(badCss, 'chq-x-fake .chq-overview-btn', 'margin-inline')).toBe('-10px');
+  });
+});

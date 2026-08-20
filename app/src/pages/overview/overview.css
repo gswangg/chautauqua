@@ -700,4 +700,46 @@
     text-overflow: ellipsis;
     min-width: 0;
   }
+
+  /* DEC-937 DRAIN (task w10-n): .chq-overview-btn is PAINTED
+     (border: 1px solid var(--chq-border-strong); background:
+     var(--chq-surface-sunk); padding: 9px 16px -- overview.css:358) unlike
+     the borderless .chq-overview-link-btn/.chq-overview-section-action
+     tiers the cancelled-padding rule above was written for. That rule's
+     padding-inline:10px/margin-inline:-10px narrows this tier's drawn face
+     by 12px (16px->10px each side) AND drags the whole bordered box 10px
+     past its layout edge on each side, overlapping neighbours. This later
+     same-specificity rule (append-only, DEC-385 -- the rule above is not
+     edited) restores the horizontal padding to the desktop value and
+     removes the bleed for the three .chq-overview-btn selectors only,
+     keeping just the tap-floor grow (min-height/display/align-items,
+     unchanged from the rule above). .chq-overview-link-btn and
+     .chq-overview-section-action are untouched here and keep the
+     cancelled-padding idiom from the rule above -- both are borderless. */
+  .chq-overview-row-actions .chq-overview-btn,
+  .chq-overview-row-actions-inline .chq-overview-btn,
+  .chq-overview-row-actions-column .chq-overview-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+    margin-inline: 0;
+  }
+
+  /* DEC-393 amendment companion gap: .chq-overview-row-actions (desktop
+     gap 14px, overview.css:346) still holds two cancelled-padding siblings
+     -- both .chq-overview-link-btn (Remind / Mark complete,
+     app/src/pages/Overview.tsx:350-359) -- after the de-cancelling rule
+     above, since neither is a .chq-overview-btn. Widen by 20px so the two
+     bleeding hit boxes stay apart. .chq-overview-row-actions-inline's only
+     surviving cancelled-padding child is .chq-overview-link-btn-read
+     (Overview.tsx:422-427; the three .chq-overview-btn siblings were just
+     de-cancelled above and .chq-overview-btn-waitlist is phone-hidden,
+     overview.css:605) and .chq-overview-row-actions-column
+     (AgendaWorkSection.tsx:108-131) has exactly one .chq-overview-link-btn
+     plus a non-control caption span -- neither container reaches the
+     >=2-sibling threshold, so neither gap is widened. */
+  .chq-overview-row-actions {
+    gap: 34px;
+  }
 }
