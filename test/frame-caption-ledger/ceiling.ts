@@ -188,4 +188,26 @@
 // re-seeds where it widens in the repairing commit -- that is a repair, not
 // a raise (DEC-976 wave-138's own clause, restated wave-142).
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=131
-export const FRAME_CAPTION_UNMATCHED_CEILING = 130;
+// v12m-w18-b (wave-143, DEC-976): Contacts + Comms caption residue, owning
+// exactly the rows whose fileName is 'Chautauqua Contacts.dc.html' (16 at
+// main 76fdc56a) or 'Chautauqua Comms.dc.html' (14). Forced to -1 against
+// this branch's base (main 08d617d8, ceiling already re-seeded to 130 by a
+// sibling lane) and measured 130 unmatched before this task's changes; of
+// the 30 owned rows, 4 were already-built COMPOSED matches this ledger's own
+// plain-substring pass had missed (Contacts.dc.html:57/526/535/681/286,
+// Comms.dc.html:93/184/191/339/416/440/576/617 -- 12 COMPOSED total, one
+// PARTIAL), 5 were FIXTURE (invented sample identities/venue: Comms.dc.html
+// :713, Contacts.dc.html:374/597), and 11 were SUPERSEDED (a live slot the
+// app fills with a different, deliberate and pinned/documented sentence
+// instead of the frame's own words: Comms.dc.html:57/376/469,
+// Contacts.dc.html:116/303/388/491/507/703/747/778/797 -- see each entry's
+// reason). Two rows stay UNMATCHED, per this file's own established
+// precedent for the identical row at Comms.dc.html:769 (v12m-w15-ee's note
+// above: no `session_time` merge field or matching warning sentence exists
+// anywhere in app/src or src, a genuine gap needing a design ruling this
+// worker has no authority to invent) -- Comms.dc.html:757 ("Comms · Compose
+// · step 3") is the SAME unbuilt 'Compose · send blocked' 1600px exhibit's
+// own header breadcrumb, sharing the identical gap. 130 - 28 disposed = 102,
+// forced -1 and read directly off this branch's own offender list.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=102
+export const FRAME_CAPTION_UNMATCHED_CEILING = 102;

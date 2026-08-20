@@ -345,6 +345,28 @@ export const FIXTURE_EXCLUSIONS: Exclusion[] = [
     reason:
       "'notion.so' is the same fixture host name as Settings.dc.html:1049's saved-embed row cell, here drawn as the turn-off confirm modal's subtitle -- the identical host-tracking gap DEC-785 amendment (wave 63) and DEVIATIONS.md's '09--09' entry already record as unbuilt (no endpoint stores where an embed is pasted). app/src/pages/settings/SavedEmbedsPanel.tsx builds the modal's title and body verbatim but carries no subtitle, for the same reason: `body=\"The embed will render nothing wherever it is pasted, until you turn it back on. Nothing is deleted.\"`. (fixture token: 'notion.so')",
   },
+  // v12m-w18-b (wave-143): Contacts + Comms caption residue (DEC-976).
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 713,
+    text: '12–14 May 2027 · Moscone West, San Francisco',
+    reason:
+      "the mail-preview exhibit's sample event dates/venue -- the same invented 'DevFlow Conf 2027' fixture organisation the pack reuses throughout (already the fixture identity behind the FIXTURE rows above at Settings.dc.html:518/905, Public and Portal.dc.html:1495 and Contacts.dc.html:597 below). app/src/pages/comms/PreviewPane.tsx renders only subject/greeting/body from the live template -- no event name/dates/venue header card -- and the event schema has no venue-formatting call site anywhere in app/src/pages/comms/**, so this exact card is not drawn at all, not drawn with different data. (fixture token: 'Moscone West')",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 374,
+    text: 'Marcus O. · added 2 Aug',
+    reason:
+      "invented sample discard-side identity for the merge comparison's 'Discarding' column, abbreviating the last name to an initial purely for the mock illustration (paired with the 'Keeping' column's full 'Marcus Okafor · added 14 Mar' two lines above) -- app/src/pages/contacts/MergePage.tsx's own 'added <date>' composing expression, `Discarding · ${soleDiscard.firstName} ${soleDiscard.lastName}${discardDisambiguator ? ...`, always prints the FULL last name (DEC-992), never abbreviates it to an initial, so the app can never honestly produce this exact abbreviated string. (fixture token: 'Marcus O.')",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 597,
+    text: 'DevFlow Conf 2028 · planning',
+    reason:
+      "invented sample second-event identity/status in the Add-to-event picker, used as mock card content (the frame's other option beside the selected 'DevFlow Conf 2027'), not a real UI caption. (fixture token: 'DevFlow Conf 2028')",
+  },
 ];
 
 /** (c) EXEMPLAR ARTICLE -- the Docs frame's own sample article, 'Triaging
@@ -601,6 +623,98 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       'PARTIAL (shape ii): app/src/pages/review/ProgressPanel.tsx draws the reader-facing clause verbatim (`Laggards is everyone with anything outstanding · not-started is the subset who have scored nothing.`); the trailing sentence is the pack\'s own implementer note for DEC-760\'s hidden-when-zero rule, already honoured at ProgressPanel.tsx (`{notStarted.length > 0 && (<button>...</button>)}` -- the second link is conditionally NOT RENDERED, i.e. hidden, never `disabled`), and ProgressPanel.tsx\'s own comment names this exact citation.',
   },
+  // v12m-w18-b (wave-143): Contacts + Comms caption residue (DEC-976).
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 93,
+    text: '18 more · 23 is under the 100-recipient cap',
+    reason:
+      "app/src/pages/comms/ComposeWizard.tsx composes `{overflowCount} more &middot; ` immediately before `{preview.length} is {preview.length >= MAX_COMPOSE_RECIPIENTS ? 'at' : 'under'} the {MAX_COMPOSE_RECIPIENTS}-recipient` from the preview step's own live overflow/recipient/cap figures.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 184,
+    text: '4 sent in 7 days · last Tue 4:12pm',
+    reason:
+      "app/src/pages/comms/sendRhythm.ts's formatPhoneSendRhythm composes `${sentLast7Days} sent in 7 days${lastSuffix}` from the phone landing's own live rhythm figures (the same sentLast7Days/lastSentAt Comms.tsx's head fetches once); its own header comment names this exact frame citation.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 191,
+    text: '23 recipients · reviewer feedback merged',
+    reason:
+      "PARTIAL (shape ii): app/src/pages/comms/PhoneDraftCard.tsx draws the reader-facing clause verbatim -- `{draft.recipientCount} recipients` -- as its own comment states: `the provenance clause is dropped, not fabricated (see doc comment above)`. That doc comment records why: nothing in the app records WHY a draft includes reviewer feedback, and docs/design/audit/comms-v12.md finding 1 names this gap and its own rule forbids fabricating that provenance clause.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 339,
+    text: '57 sends · 4 in the last 7 days',
+    reason:
+      "app/src/pages/comms/HistoryTab.tsx composes `${countOf(total, 'send')} · ${rhythm.sentLast7Days} in the last 7 days` (countLine) from the drill head's own live total/sentLast7Days figures; its own DEC-621 wave-98 amendment comment names this exact frame citation.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 416,
+    text: 'Kept as you change filters · 23 is under the 100-recipient cap',
+    reason:
+      "app/src/pages/comms/ComposeWizard.tsx composes `Kept as you change filters &middot; {selection.selectedIds.size} is` followed by `{selection.selectedIds.size > MAX_COMPOSE_RECIPIENTS ? 'over' : 'under'} the {MAX_COMPOSE_RECIPIENTS}-recipient cap` from the step-1 selection bar's own live selection size and the compose recipient cap.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 440,
+    text: '3 have no slot yet — they can still be emailed, but not sent a calendar invite',
+    reason:
+      "app/src/pages/comms/ComposeWizard.tsx composes `${selectedNoSlotCount} ${plural(selectedNoSlotCount, 'has', 'have')} no slot yet — they can still be emailed, but not sent a calendar invite` (the step-1 footer note) from the current selection's own live no-slot count.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 576,
+    text: '23 submissions have a decision and nobody has been told. Every send is logged here afterwards.',
+    reason:
+      "app/src/pages/comms/RecentSends.tsx composes `${countOf(decidedUntoldCount, 'submission')} ${plural(decidedUntoldCount, 'has', 'have')} a decision and nobody has been told. Every send is logged here afterwards.` from the event's own live decided-but-untold submission count.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 617,
+    text: '57 sends · 4 in the last 7 days',
+    reason:
+      "the same HistoryTab.tsx countLine composing expression as Chautauqua Comms.dc.html:339 above -- the same drill head rendered a second time in the pack.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 57,
+    text: '318 people · 41 speakers · 6 possible duplicates',
+    reason:
+      "app/src/pages/contacts/ContactsApp.tsx's title-row summary composes `countOf(stats.total, 'person', 'people')` and `countOf(stats.speakerCount, 'speaker')` and `countOf(duplicateTotal, 'possible duplicate')`, joined with ' · ', from the directory's own live stats (DEC-432/DEC-809); its own comment states the shape as N people · M speakers · [R returning] · [across E events] · K possible duplicates.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 526,
+    text: '1 of 6 pairs · Marcus Okafor',
+    reason:
+      "app/src/pages/contacts/MergePage.tsx composes `{pairPosition.index} of {countOf(pairPosition.total, 'pair')}` followed by ` &middot; {keepContact.firstName} {keepContact.lastName}` (the phone-only chq-contacts-merge-pair-count-name suffix, DEC-919 amendment wave-98) from the merge screen's own live pair position and kept-record name.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 535,
+    text: 'Labels combine, notes are appended · 3 submissions and 1 task move to the record you keep',
+    reason:
+      "app/src/pages/contacts/MergePage.tsx composes `Labels combine, notes are appended` followed by `{countOf(impact.submissions, 'submission')} and {countOf(impact.tasks, 'task')} move to` and the phone-visible generic span `the record you keep` from the merge screen's own live submission/task impact counts (w2-c, DEC-919, contacts-v12.md finding 3).",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 681,
+    text: 'speakers.csv · 214 rows · matched on email',
+    reason:
+      "app/src/pages/contacts/ImportWizard.tsx composes `{fileName ?? 'Pasted CSV'} · {countOf(plan.rows.length, 'row')} · matched on email` (the Review step's own summary line) from the import's own live file name and row count.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 286,
+    text: 'speakers.csv · 214 rows',
+    reason:
+      "app/src/pages/contacts/ImportWizard.tsx's match-step header composes `{fileName ?? 'Pasted CSV'}` beside `{countOf(dataRows.length, 'row')}` from the import's own live file name and parsed row count.",
+  },
   // v12m-w12-gg (wave-136): two further COMPOSED captions whose divergence is
   // an interpolated half, carried in by the thunderdome megabatch.
   {
@@ -679,6 +793,97 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
     text: 'A new co-presenter is emailed a portal link · the lead presenter is not changed',
     reason:
       "DEC-380 wave-139 (correcting that decision's own wave-137 amendment): app/src/pages/submissions/SubmissionDetailPage.tsx:1854 deliberately renders the opposite claim -- 'Adding a co-presenter here sends no email — sending a portal invite is a separate, explicit action. The lead presenter is not changed.' -- under DEC-604 wave-70, because src/routes/api/submissions.ts:6 states, and a source-scan test enforces, that the submissions routes never import a mailer. SubmissionDetailPage.render.test.tsx:1421-1427 pins the app's sentence verbatim and its own comment calls the frame's version 'the stale DEC-900 \"emails them\" claim' -- building the frame's sentence would ship a lie about the mailer and break that pin. Recorded in DEVIATIONS.md §3 under the pre-existing DEC-909 wave-134 bullet.",
+  },
+  // v12m-w18-b (wave-143): Contacts + Comms caption residue (DEC-976). Every
+  // row below is a caption whose SLOT the app genuinely fills, but with a
+  // different, deliberate and tested/documented sentence instead of the
+  // frame's own words -- not a substring match with residue (COMPOSED
+  // shape ii) and not sample data (FIXTURE), so graded here the same way
+  // the co-presenter row above is: against the app's observed, pinned
+  // behaviour.
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 57,
+    text: '4 sent in 7 days · last Tue 4:12pm',
+    reason:
+      "the desktop head's chq-comms-head-subtitle slot renders app/src/pages/Comms.tsx:354's `<p className=\"chq-comms-head-subtitle\">{formatSendRhythm(rhythm)}</p>`, which composes the LONGER 'N sent in the last 7 days · M failed · last <date>' grammar (DEC-905), not the frame's shorter phone grammar quoted here. app/src/pages/comms/sendRhythm.ts's own comment states the divergence is deliberate: formatPhoneSendRhythm 'follows the frame's own shorter grammar... dropping desktop's \"the last\" wording and its failed-count clause' -- i.e. the SHORT sentence is reserved for the phone landing (Comms.dc.html:184, a real COMPOSED match above) and desktop keeps the long one on purpose. Comms.render.test.tsx pins the long-form desktop wording ('4 sent in the last 7 days', '2 sent in the last 7 days · 3 failed') at this exact DOM slot; building the frame's short sentence here would contradict those pins.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 376,
+    text: '23 accepted speakers',
+    reason:
+      "the compose step-strip's 'Recipients' micro-label always renders app/src/pages/comms/ComposeWizard.tsx's stepMeta 'select' detail -- `selection.selectedIds.size === 0 ? 'None selected yet' : \\`${countOf(selection.selectedIds.size, 'submission')} selected\\`` -- a live SELECTION-PROGRESS sentence, never the frame's static accepted-speaker population label. ComposeWizard.idsParam.render.test.tsx and ComposeWizard.selection.render.test.tsx both pin the 'N submissions selected'/'None selected yet' wording at this slot; building the frame's population label would contradict those pins and would also have to choose between two different live counts (selection size vs. the accepted-status total) with no ruling on which one the frame's single line means.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 469,
+    text: '23 accepted speakers',
+    reason:
+      "the same ComposeWizard.tsx stepMeta 'select' detail composing expression and the same pinned-test conflict as Chautauqua Comms.dc.html:376 above -- the identical step-strip micro-label rendered a second time in the pack.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 116,
+    text: 'Showing 2 of 2 matching',
+    reason:
+      "app/src/pages/contacts/ContactsTable.tsx's own header comment (B7 rule 6, DEC-678) states the architecture this caption would break: 'ContactsTable is presentational, so ContactsApp computes which of the two voices applies... the table itself never inspects filter state.' The table's pager renders only `paginationSummary(page, perPage, total, items.length)` -- 'Showing {start}–{end} of {total}', never a trailing 'matching' word -- and has no rules/filter prop to condition one on without violating that stated boundary. app/src/lib/pagination-summary.ts is the product's ONE pagination-summary shape (DEC-906), shared by every paged table, so a one-off 'matching' suffix here would also fork that shared grammar for this table alone.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 303,
+    text: '9 rows match existing contacts by email · they will be updated',
+    reason:
+      "RESOLVED (DEC-663 wave-108, ruling A, docs/design/audit/contacts-v12.md finding 2): this frame slot's literal wording 'can only come from the dry run's plan.updated, which does not exist at this step' (app/src/pages/contacts/ImportWizard.tsx's own comment on the dedupeCount block), so the wizard ships a TRUE, differently-worded statement it can actually compute at the match step instead -- `Same-file email repeat: {countOf(dedupeCount, 'row')} · the later row wins` -- an in-file collision count, not a query against existing contacts. The frame-accurate plan.updated sentence lands separately once the dry run has actually run (see the two SUPERSEDED rows below for :507, and the COMPOSED row above for :1127's near-neighbour wording).",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 388,
+    text: '3 submissions and 1 task move to the kept record. The discarded record is deleted.',
+    reason:
+      "app/src/pages/contacts/MergePage.tsx's own w2-c/DEC-919 comment (contacts-v12.md finding 3) records that the frame's referent here is generic ('the kept record') 'because the head band at :526 already names the kept record', but the app's own desktop rendering makes the OPPOSITE choice at this exact consequence line: the sibling `chq-contacts-merge-impact-name` span -- `{keepContact.firstName} {keepContact.lastName}` -- is the one CSS shows on desktop, naming the record directly ('...move to Marcus Okafor.') instead of the frame's generic 'the kept record' phrase; only the phone-visible sibling span renders the frame's generic wording (the COMPOSED row above for Contacts.dc.html:535).",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 491,
+    text: 'speakers.csv · 214 rows · 2 of 5',
+    reason:
+      "app/src/pages/contacts/ImportWizard.tsx's own w15-c comment records the deliberate choice this caption would reverse: '\"Import contacts from CSV\" moves down to the ModalFrame subtitle so it stays visible across every step instead of being the one static title' -- i.e. the modal's subtitle is now ONE static sentence across all four steps, not a per-step dynamic 'filename · row count · column N of M' eyebrow the way the frame's phone header draws it. The column-position fragment alone survives, at a different slot: `Column {phoneColumnIndex + 1} of {header.length}` inside the column body (a real COMPOSED match, not this head-band line).",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 507,
+    text: '9 rows match an existing contact by email · those get updated',
+    reason:
+      "the same RESOLVED DEC-663 wave-108 ruling A as Chautauqua Contacts.dc.html:303 above (docs/design/audit/contacts-v12.md finding 2), for the phone rendering of the identical match-step slot: the wizard ships `Same-file email repeat: {countOf(dedupeCount, 'row')} · the later row wins` because plan.updated does not exist yet at this step, never the frame's plan-sourced 'match an existing contact... those get updated' wording.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 703,
+    text: '5 more updates · all of them company or title only',
+    reason:
+      "app/src/pages/contacts/ImportWizard.tsx's own w49-f comment states the rule this caption would need a second layer to satisfy: 'update rows -- the only rows where something is lost -- come first' and the review table's `isLosingRow` predicate (`row.action === 'update' || (row.overwrites?.length ?? 0) > 0 || (row.possibleDuplicates?.length ?? 0) > 0`) shows every update row by default, with no further split between a 'significant' update and a trivial company/title-only one -- only the CREATE rows (plan.created) are the hidden-by-default population, via the 'Show all N rows' disclosure. The app's default view therefore already shows the frame's 'more updates' as ordinary visible rows rather than collapsing a subset of them behind this count.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 747,
+    text: '18 people across five stages',
+    reason:
+      "app/src/pages/contacts/PipelineBoard.tsx's own w11-e/DEC-665 and w4-c/DEC-898 amendment comments record the deliberate substitute wording at this exact head-band slot: `{total} people · drag between columns` -- 'names the board's own affordance now that the card face carries no stage control of its own' -- never the frame's static 'N people across five stages' population count.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 778,
+    text: 'speakers-final.csv · 214 rows read',
+    reason:
+      "this is the frame's standalone 'Nothing was imported' 560px MODAL exhibit for the file-level bad-rows refusal (docs/design/Chautauqua Contacts.dc.html: 'Modal' badge, 'File-level failure, before any mapping') -- the SAME feature app/src/pages/contacts/ImportWizard.tsx builds (DEC-575 wave-28 amendment, the showFileWarning block), but rendered inline above the wizard's own step content rather than as a second, standalone dialog with its own title/subtitle chrome naming the file and row count; the wizard has no 'Nothing was imported' modal-head slot for this exact sentence to fill.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 797,
+    text: 'Fix them in the file and upload again, or import the 205 rows that are complete and leave these out.',
+    reason:
+      "the same standalone modal exhibit as Chautauqua Contacts.dc.html:778 above -- the app's real showFileWarning block offers the identical way out (Import the N good rows / Upload a different file / Download the N rows, DEC-745 wave-108 amendment) through its own DIFFERENT sentences (`{badRows.length} of {allDataRows.length} rows have no email address`, `Nothing was lost — the file is still loaded.`), inline rather than in a standalone modal, never this exact frame sentence.",
   },
 ];
 
