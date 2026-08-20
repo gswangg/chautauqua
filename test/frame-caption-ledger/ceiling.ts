@@ -187,5 +187,16 @@
 // for a future lane. Forced to -1 and read back: 131 unmatched. A widening
 // re-seeds where it widens in the repairing commit -- that is a repair, not
 // a raise (DEC-976 wave-138's own clause, restated wave-142).
-// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=131
-export const FRAME_CAPTION_UNMATCHED_CEILING = 130;
+//
+// v12m-w18-d (wave-143): disposed the 37 rows owned by this lane's seven
+// clusters (Speakers/Settings/Overview/Account/Docs/Home/Agenda) -- 29 into
+// EXPLAINER/EXEMPLAR_ARTICLE/COMPOSED, 8 left in the graded population for
+// lack of a citable ruling/backing (Agenda:194 no format field on the
+// agenda payload; Overview:164 "all need 120 minutes" tail with no
+// composing site; Settings:1422/1427 resource download-count/404 tracking
+// that does not exist; Settings:1515 the Sessionboard wizard's own
+// differently-worded step indicator; Speakers:235/499/521 word-divergent
+// or data-model-absent residues -- each flagged, none excluded). Forced to
+// -1 and read back: 101 unmatched.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=101
+export const FRAME_CAPTION_UNMATCHED_CEILING = 101;

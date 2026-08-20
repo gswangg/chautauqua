@@ -174,6 +174,49 @@ export const EXPLAINER_EXCLUSIONS: Exclusion[] = [
     reason:
       "the Overview frame's own interaction-states annotation panel, the same panel as the already-listed :568/:626 rows, not product copy.",
   },
+  // v12m-w18-d (wave-143): the Docs '02 · Headings'/'05 · Figure' element-
+  // library panel rows and the Overview 'widths' annotation panel rows this
+  // lane's own residue population turned up.
+  {
+    fileName: 'Chautauqua Docs.dc.html',
+    line: 262,
+    text: 'Three levels. An article needing H4 is two articles.',
+    reason: "the same 'element library' panel's heading-vocabulary rule ('02 · Headings'), not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Docs.dc.html',
+    line: 300,
+    text: 'screenshot · /admin/route · 1600×900',
+    reason: "the same 'element library' panel's figure-block screenshot placeholder ('05 · Figure'), not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Home.dc.html',
+    line: 388,
+    text: 'Each state is drawn at 900 and at 390, so there is no guessing which layout is being specified. Desktop lays an event out as a three-column row — dates, name and state, action. Phone stacks the same fields into a card with a full-width button.',
+    reason:
+      "the Home frame's own 'Three states, both widths' annotation panel, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Home.dc.html',
+    line: 408,
+    text: 'The seed holds one event. The autumn-workshops and 2026 rows exist to show what the shape does with several — they are not seeded data.',
+    reason:
+      "the Home frame's own 'Two things this mock fudges' annotation panel, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 367,
+    text: 'Overview, session detail, forms, settings panels, every public page. Prose and single decisions. The gutters are the design, not waste — a 60-character measure does not improve at 1800px.',
+    reason:
+      "the Overview frame's own widths annotation panel ('Reading measure · 820px'), the same panel as the already-listed :407/:423 rows, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 380,
+    text: 'Submissions, Contacts directory, Content worklist, Review results, Comms, Settings. Tables want width — but past about 1440 the eye loses the row between the title and the action at the far end, and the fix is a wider gap, not a wider table.',
+    reason:
+      "the Overview frame's own widths annotation panel ('Table measure · capped at 1440px'), the same panel as the already-listed :407/:423 rows, not product copy.",
+  },
 ];
 
 /** (b) FIXTURE -- invented sample identities and sample body text used as
@@ -389,6 +432,22 @@ export const EXEMPLAR_ARTICLE_EXCLUSIONS: Exclusion[] = [
     text: 'Deciding which talks make the programme. Accepting never emails anyone — that is a separate act in Comms.',
     reason:
       "the pack's sample article 'Triaging submissions', a demonstration of the nine-block vocabulary the Docs frame defines -- src/routes/docs-content's DOCS_ARTICLES ships nine real articles, none with this slug or IA, so no screen owes these words.",
+  },
+  // v12m-w18-d (wave-143): the same sample article's desktop lead screenshot
+  // placeholder and its 390-phone twin's own screenshot placeholder.
+  {
+    fileName: 'Chautauqua Docs.dc.html',
+    line: 75,
+    text: 'screenshot · /admin/submissions · 1600×900 · light',
+    reason:
+      "the pack's sample article 'Triaging submissions', the same desktop screenshot placeholder as the already-listed :92 row -- src/routes/docs-content's DOCS_ARTICLES ships nine real articles, none with this slug or IA, so no screen owes these words.",
+  },
+  {
+    fileName: 'Chautauqua Docs.dc.html',
+    line: 185,
+    text: 'screenshot · 390 · tap to zoom',
+    reason:
+      "the pack's sample article 'Triaging submissions', the 390-phone twin of the same article (the already-listed :176 row draws its lede at this width) -- src/routes/docs-content's DOCS_ARTICLES ships nine real articles, none with this slug or IA, so no screen owes these words.",
   },
 ];
 
@@ -658,6 +717,148 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     text: 'One call for papers is open. Two programmes are published.',
     reason:
       "the same root.tsx heroSummary(sections) composing expression and the same `<p>{heroSummary(sections)}</p>` render site as line 41's entry above -- this is the 390-phone frame drawing the identical full-state hero, not a second sentence.",
+  },
+  // v12m-w18-d (wave-143): seven further clusters' COMPOSED residue --
+  // Account, Overview, Settings, Speakers.
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 37,
+    text: 'Sign in to DevFlow Conf 2027',
+    reason:
+      "src/routes/auth-views.tsx's LoginPage composes `Sign in to ${singleEvent.name}` (the ternary's true branch backing `subtitle`) from the single seeded event's own live name; the same subtitle renders at :125 and :299, three frame states of the one LoginPage component.",
+  },
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 125,
+    text: 'Sign in to DevFlow Conf 2027',
+    reason: "the same auth-views.tsx LoginPage subtitle expression as the already-listed :37 row.",
+  },
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 299,
+    text: 'Sign in to DevFlow Conf 2027',
+    reason: "the same auth-views.tsx LoginPage subtitle expression as the already-listed :37 row.",
+  },
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 84,
+    text: 'At least 12 characters',
+    reason:
+      "src/routes/auth-views.tsx (and src/routes/account.tsx) composes `At least ${MIN_PASSWORD_LENGTH} characters` as the password field's placeholder, from the live MIN_PASSWORD_LENGTH constant (src/domain/auth-copy.ts, value 12); the same placeholder renders at :165 and :248.",
+  },
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 165,
+    text: 'At least 12 characters',
+    reason: "the same MIN_PASSWORD_LENGTH-composed placeholder expression as the already-listed :84 row.",
+  },
+  {
+    fileName: 'Chautauqua Account.dc.html',
+    line: 248,
+    text: 'At least 12 characters',
+    reason: "the same MIN_PASSWORD_LENGTH-composed placeholder expression as the already-listed :84 row.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 146,
+    text: '— Priya Raman · DFC-014',
+    reason:
+      "app/src/pages/overview/AgendaWorkSection.tsx composes `— {joinSegments([entry.speakerName, entry.ref])}` for each conflict-row entry -- the leading '— ' is the JSX text node, joinSegments (app/src/pages/overview/rows.ts) joins the entry's own live speakerName/ref with ' · '.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 147,
+    text: '— Ruth Adeyemi · DFC-047',
+    reason: "the same AgendaWorkSection.tsx composing expression as the already-listed :146 row, a second conflict entry.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 151,
+    text: 'Next free slot in Room 2A',
+    reason:
+      "app/src/pages/overview/AgendaWorkSection.tsx composes `<span className=\"chq-overview-caption\">Next free slot in {conflict.resolution.roomName}</span>` from the conflict's own live suggested room name.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 459,
+    text: 'DevFlow Conf 2028 · nothing scheduled',
+    reason:
+      "app/src/pages/Overview.tsx composes `{eventName ?? 'This event'} · nothing scheduled` from the current event's own live name, in the no-work-yet empty state beside the H1.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 635,
+    text: '47 submissions received · changes do not affect them',
+    reason:
+      "app/src/pages/settings/CallForPapersPanel.tsx composes `${countOf(receivedTotal, 'submission')} received · changes do not affect them` as the CFP edit view's head consequence line, from the event's own live submissions count.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 816,
+    text: '47 submissions reference these tracks',
+    reason:
+      "DEC-781 (wave-132 amendment, src/decisions-data/DEC-781.md): \"The three that are data-backed -- Tracks and rooms ('47 submissions reference these tracks'), Speaker portal ('23 speakers can sign in today') and the saved-embed drill ('On · in use on devflowconf.com') -- are NOT built in the same breath: each needs a live referent that must be shown to exist first, and DEC-380's rule governs (a frame's drawing does not create a data model; record it, never mint it). They are named here so the next wave schedules them from a record.\" TracksRoomsPanel.tsx passes no consequence prop to SettingsEditForm, matching this deferral -- the panel already draws a different, section-scoped closing note (DEC-896 wave-133 amendment) in its place, not this head line.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 897,
+    text: '23 speakers can sign in today',
+    reason:
+      "the same DEC-781 (wave-132 amendment, src/decisions-data/DEC-781.md) deferral quoted in full at the already-listed :816 row -- the Speaker portal head consequence is one of the same three named data-backed, not-yet-built lines.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1430,
+    text: 'Speaker handbook 2027.pdf',
+    reason:
+      "app/src/components/ConfirmDialog.tsx composes `placeholder={confirmPhrase}` for the irreversible-weight type-to-confirm field; app/src/pages/settings/ResourcesPanel.tsx passes `confirmPhrase={pendingDelete.title}` -- the resource's own live title, verbatim, when the deleted resource is titled 'Speaker handbook 2027.pdf'.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 194,
+    text: 'Created for all 12 accepted speakers',
+    reason:
+      "app/src/pages/speakers/TaskModal.tsx composes `Created for all ${acceptedCount} accepted speakers` as the New-task modal's subtitle, from the event's own live accepted-speaker count.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 264,
+    text: '12 accepted · 2 not claimed',
+    reason:
+      "app/src/pages/speakers/RosterPanel.tsx composes `<strong>{acceptedCount}</strong> accepted &middot; <strong>{notClaimedCount}</strong> not claimed` from the roster's own live counts, in the 390-phone drill-in head.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 354,
+    text: 'Reminded 3× · last 4 Aug',
+    reason:
+      "app/src/pages/speakers/SpeakerDetailPage.tsx composes `Reminded {detail.counts.remindCount}&times; &middot; last {formatDateOnly(lastRemindedAcross(detail.tasks))}` from the speaker's own live remind count and most-recent-reminded date.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 469,
+    text: '12 accepted · 3 overdue',
+    reason:
+      "app/src/pages/speakers/OnboardingGrid.tsx composes `<strong>{counts?.speakers ?? 0}</strong> accepted &middot; <strong>{counts?.overdue ?? 0}</strong> overdue` from the event's own live speaker/overdue counts, beside the Speakers H1.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 563,
+    text: '12 accepted · 3 overdue',
+    reason: "the same OnboardingGrid.tsx composing expression as the already-listed :469 row, a different frame state (search-found-nothing) of the same page.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 614,
+    text: 'Due 15 Aug · required · 6 answered of 9 who need it',
+    reason:
+      "app/src/pages/speakers/TaskView.tsx composes a subLine array (Due clause, conditional 'required', then `${counts.answered} answered of ${counts.assigned} who need it`, joined with ' · ') from the task's own live due date/required flag/answered-assigned counts -- the file's own comment cites this exact frame line, docs/design/Chautauqua Speakers.dc.html.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 681,
+    text: 'Due 15 Aug · required · 6 answered of 9 who need it',
+    reason: "the same TaskView.tsx composing expression as the already-listed :614 row, the desktop rendering of the same subLine.",
   },
 ];
 
