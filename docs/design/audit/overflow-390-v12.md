@@ -142,3 +142,34 @@ decision.
 | `src/routes/public/home.css.ts` | `.chq-home-action-secondary` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
 | `src/routes/public/home.css.ts` | `.chq-home-action-quiet` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
 | `src/routes/public/home.css.ts` | `.chq-home-action-tertiary` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+
+## Task w8-c (DEC-989/DEC-385): review + content, blind-predicate offenders
+
+The scan's `isCandidate` gate skips any top-level (desktop) rule once a
+phone override for the same selector exists ANYWHERE in the sheet's
+`@media (max-width: 700px)` block — even when that phone rule leaves the
+desktop `white-space: nowrap` in effect by never re-declaring
+`white-space` at all (the cascade keeps the earlier declaration for any
+property the later, same-specificity rule doesn't touch). That gap hid
+real nowrap exposure on three review.css selectors and let five
+content.css selectors sit unfixed; every one of those eight got a real
+declaration appended to its existing phone rule (never a desktop edit,
+DEC-385) — see review.css's `.chq-review-criterion-share` (DEC-989(b):
+data, `white-space: normal`), `.chq-reviewer-plan-row-action` (DEC-989(b):
+fixed words, `overflow:hidden;text-overflow:ellipsis`), and content.css's
+`.chq-content-actions`, `.chq-content-version-newest`,
+`.chq-content-version-download`, `.chq-content-version-delete` (all
+DEC-989(b) fixed words) and `.chq-content-phone-selecting-meta` (DEC-989(b)
+data — the `${selectedIds.size} selected` count — `flex-wrap: wrap`, since
+this pair carries no `white-space: nowrap` for the checker to key on at
+all; the risk here is an un-shrinkable flex item, not the checker's nowrap
+shape).
+
+The remaining two named offenders, on inspection, are already correct as
+drawn and were left untouched:
+
+| File | Selector | Why it's correct as drawn |
+|---|---|---|
+| `app/src/pages/review/review.css` | `.chq-review-criteria-eyebrow` | Its phone rule (review.css, `@media (max-width: 700px)`) is `display: none` — the phone frame draws a bare "Criteria" count (`.chq-review-criteria-count-phone`) in this slot instead of the eyebrow sentence (`docs/design/Chautauqua Review.dc.html:601`), so the nowrap text never renders at 390 and cannot overflow. |
+| `app/src/pages/review/review.css` | `.chq-reviewer-plan-head-row` | Its phone rule is `display: none` — the frame has no Plan/State/Your progress column head at 390 (`docs/design/Chautauqua Review.dc.html:793-801`); the desktop grid tracks this rule carries never paint on a phone viewport, and `.chq-reviewer-plan-row` (the body) already reflows to its own phone grid a few rules below, so head and body cannot diverge — there is no head to diverge. |
+

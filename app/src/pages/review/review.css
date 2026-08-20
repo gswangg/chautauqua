@@ -2202,6 +2202,13 @@
   /* frame :814: the row's action is its LAST element, spanning the row's
      full width -- the 44px floor (min-height + centred flex + horizontal
      padding, never padding alone) applies since this stays a real link. */
+  /* DEC-989(b): the label is the row's own fixed vocabulary (one of
+     "Read your scores" / "Score the next one" / "Start scoring" --
+     ReviewerQueue.tsx's actionLabel, never plan-supplied text), so the
+     escape is a truncation pair, not a wrap -- correct behaviour that
+     never actually fires given how short each string is. The desktop
+     rule's white-space:nowrap (review.css:1989) carries through
+     unchanged (DEC-385); this override only adds the escape. */
   .chq-reviewer-plan-row-action {
     grid-area: action;
     justify-self: stretch;
@@ -2215,6 +2222,8 @@
     border: 1px solid var(--chq-border-strong);
     border-radius: 6px;
     text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* frame :793-801 has no Plan/State/Your progress column head -- that row
@@ -2469,8 +2478,15 @@
     min-height: 44px;
   }
 
+  /* DEC-989(b): the share value is data (a computed weight percentage,
+     e.g. "100%"), never the criterion's own fixed words -- truncating it
+     with an ellipsis would hide the exact number the row exists to show,
+     so it gets the wrap escape instead of overflow:hidden. The desktop
+     rule's white-space:nowrap (review.css:1083) is left untouched
+     (DEC-385); this override wins the cascade at <=700px. */
   .chq-review-criterion-share {
     font-size: 13px;
+    white-space: normal;
   }
 
   .chq-review-criterion-no-weight-phone {
