@@ -548,6 +548,7 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
        scan can see; this rule only ever adds a fill colour on top. */
     .chq-pub-day-pill-active {
       background: var(--chq-ink);
+      border-color: var(--chq-ink);
     }
     /* docs/design/Chautauqua Public and Portal.dc.html:395
        \`<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; margin-top:2px">{{ s.action }}</span>\`
