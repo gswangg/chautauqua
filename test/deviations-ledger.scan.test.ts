@@ -345,6 +345,30 @@ const LEDGER: LedgerEntry[] = [
       "DEC-380 wave-116 amendment, closing the mandate's open design question: the frame's 390 dock draws exactly Unscheduled + Auto-schedule, unchanged. Publish schedule and Breaks stay in the head's own full-width action row -- a frame is the geometry authority, not a capability manifest, and neither control has any other home on the phone surface. Both reach the 44px floor: the shared .chq-btn rule floors Publish schedule, and a dedicated .chq-link-button rule (appended, not edited in place) floors Breaks.",
     honored: { kind: "present", file: "app/src/pages/agenda/agenda.css", literal: ".chq-agenda-head-actions .chq-link-button {", testFile: "app/src/pages/agenda/PhoneAgenda.dock-membership.render.test.tsx" },
   },
+  {
+    key: "co-presenter-add-row-keeps-its-no-email-truth-over-the-frames-caption-dec-909-wave-134-task-w9-dd",
+    status: "honored",
+    reason:
+      "DEC-909 wave-134: the frame's caption claims a new co-presenter 'is emailed a portal link', but the submissions routes never import a mailer (DEC-604 wave-70), so adding a participant cannot send anything. The landed caption states the truth and the portal invite stays a separate explicit act.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/submissions/SubmissionDetailPage.tsx",
+      literal: "Adding a co-presenter here sends no email",
+      testFile: "app/src/pages/submissions/SubmissionDetailPage.render.test.tsx",
+    },
+  },
+  {
+    key: "reminder-skip-window-wording-stays-reminded-not-emailed-dec-909-wave-134-task-w9-dd",
+    status: "honored",
+    reason:
+      "DEC-909 wave-134: the frame draws 'skips anyone emailed in the last hour', but the dedupe gate is task_assignment.last_reminded_at, not any generic email send. The shared vocabulary module owns the one true phrase for all its consumers, so the app's 'reminded' stands over the frame's 'emailed'.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/speakers/remindSkipVocabulary.ts",
+      literal: "skips anyone reminded in the last hour",
+      testFile: "app/src/pages/speakers/remind-skip-vocabulary.scan.test.ts",
+    },
+  },
   // ---- ## 6. Deferred post-deadline -------------------------------------
   {
     key: "your-data-edit-view",
@@ -655,9 +679,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(12);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(14);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(19);
-    expect(derived.length).toBe(39);
+    expect(derived.length).toBe(41);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

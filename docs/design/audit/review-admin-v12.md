@@ -64,7 +64,7 @@ Re-derived against main: this finding's own text names the exact blocker —
 the render test's `findByRole('button', { name: 'Assign a reviewer' })`
 query would become ambiguous with two same-named controls. That is now
 resolved per option (a) the finding itself proposed: the below-roster
-control (`PlanEditor.tsx:2247` — `className="chq-review-assign-below"`, CSS
+control (`PlanEditor.tsx:2282` — `className="chq-review-assign-below"`, CSS
 at app/src/pages/review/review.css`.chq-review-assign-below {` (drift-proof
 citation, DEC-967 wave-115 shape -- this declaration has drifted from the
 line number originally cited here), DEC-745 wave-98 adjudication) carries

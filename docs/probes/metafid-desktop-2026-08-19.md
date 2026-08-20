@@ -43,7 +43,7 @@
 ## Pre-campaign admin MAJORs
 - Plan criteria column heads off by one track ("Type" missing; WEIGHT over
   Type column) — 1d2d9bdb.
-  CLOSED (wave 115): app/src/pages/review/PlanEditor.tsx:1701 `reviewers · optional</span><span>Type</span><span>Weight</span>`
+  CLOSED (wave 115): app/src/pages/review/PlanEditor.tsx:1724 `reviewers · optional</span><span>Type</span><span>Weight</span>`
 - .chq-detail-footer shrink-wraps; "Delete this session" centres at x=739
   in a left-ragged layout.
   NOT-A-FRAME-DIVERGENCE (wave 120): the string "Delete this session" does

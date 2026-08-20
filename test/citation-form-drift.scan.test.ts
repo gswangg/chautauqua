@@ -316,7 +316,7 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // it`) in the same change, taking the measured count to 93 -- lowered 91 ->
 // 93 to match, per the two-sided ratchet (never lowered below what was
 // actually measured).
-export const LINE_KEYED_CITATION_CEILING = 93;
+export const LINE_KEYED_CITATION_CEILING = 92;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

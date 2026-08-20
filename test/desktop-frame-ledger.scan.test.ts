@@ -427,7 +427,7 @@ const EXPECTED_DEVIATION_CITATIONS = [
 // overview-home, portal, review, settings, settings-dialogs). 100 of 102
 // desktop frames now carry a real claim. Raised to the measured truth; this
 // floor may only rise.
-export const CLAIMED_FLOOR = 100;
+export const CLAIMED_FLOOR = 102;
 
 describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile campaign)', () => {
   it('enumerates exactly 161 font-size:19px label spans across 13 files (vacuous-grammar guard)', () => {

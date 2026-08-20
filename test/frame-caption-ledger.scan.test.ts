@@ -455,7 +455,7 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // a fresh instrument -- may only be RAISED as a merge-train act if a future
 // predicate widening surfaces more real divergences, and should be LOWERED
 // as sibling lanes close real caption/consequence gaps.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 89;
+export const FRAME_CAPTION_UNMATCHED_CEILING = 70;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {

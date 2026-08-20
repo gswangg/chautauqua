@@ -188,7 +188,7 @@ describe('SubmissionDetailPage route-param reset (DEC-678 wave-118)', () => {
     await screen.findByRole('heading', { name: 'Submission A' });
 
     // Type into the co-presenter search box on A.
-    const searchInput = screen.getByPlaceholderText(/search/i);
+    const searchInput = screen.getByPlaceholderText(/add a co-presenter/i);
     fireEvent.change(searchInput, { target: { value: 'Ada Lovelace' } });
     expect(searchInput).toHaveValue('Ada Lovelace');
 
@@ -206,7 +206,7 @@ describe('SubmissionDetailPage route-param reset (DEC-678 wave-118)', () => {
     expect(screen.queryByRole('button', { name: 'Remove participant' })).not.toBeInTheDocument();
 
     // coPresenterQuery reset: B's search box starts empty, not A's draft text.
-    const bSearchInput = screen.getByPlaceholderText(/search/i);
+    const bSearchInput = screen.getByPlaceholderText(/add a co-presenter/i);
     expect(bSearchInput).toHaveValue('');
   });
 

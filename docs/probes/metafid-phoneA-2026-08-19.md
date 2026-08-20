@@ -81,7 +81,7 @@
   mode inverts title/back-link order.
   CLOSED (wave 118, "Your data drops masked tokens/Revoke/New token in read
   mode" clause only — the frame-count and title/back-link clauses are
-  unverified and remain open): app/src/pages/settings/ApiTokensPanel.tsx:204 `{creating ? 'Creating…' : 'New token'}`
+  unverified and remain open): app/src/pages/settings/ApiTokensPanel.tsx:205 `{creating ? 'Creating…' : 'New token'}`
 - Submissions head: three filter strips (VIEW 753px + status 759px both
   clipped) where frame :137 draws search + three chips.
 - Saved embeds: frame's Turn off + Get code pair became four flush buttons;
