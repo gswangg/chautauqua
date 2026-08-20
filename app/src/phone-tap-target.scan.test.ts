@@ -424,7 +424,34 @@ function findAnchorFloorOffenders(): string[] {
       }
     }
     if (!ownedSomewhere) {
-      offenders.push(`(no CSS rule) — .${token}`);
+      // Narrow-media fallback: a phone-only token's rule correctly lives
+      // only inside the <=700px block and nowhere at top level -- top-level
+      // absence does not mean no stylesheet mentions the token (DEC-393
+      // wave-8 amendment). Apply the SAME predicate, SAME container-reach
+      // requirement, SAME exemption honouring. A container narrow rule that
+      // never reaches an anchor establishes no floor at all -- that is
+      // indistinguishable from having no rule, so ownership there is judged
+      // by `reaching` (mention + reach), not by bare mention.
+      let narrowOwnedSomewhere = false;
+      for (const { label, raw, narrow } of perFile) {
+        const reaching = isContainer
+          ? narrow.filter(
+              (r) => selectorMentionsToken(r.selector, token) && selectorReachesAnchor(r.selector, anchorTokens),
+            )
+          : narrow.filter((r) => selectorMentionsToken(r.selector, token));
+        if (reaching.length === 0) continue;
+        narrowOwnedSomewhere = true;
+        if (hasExemptionForToken(raw, token)) continue;
+        const body = reaching.map((r) => r.body).join(' ');
+        const ok = hasMinHeightFloor(body) && hasFlexCenter(body) && horizontalPaddingNonZero(body);
+        if (!ok) {
+          const sel = reaching.map((r) => r.selector).join(', ');
+          offenders.push(`${label} — ${sel}`);
+        }
+      }
+      if (!narrowOwnedSomewhere) {
+        offenders.push(`(no CSS rule) — .${token}`);
+      }
     }
   };
 
@@ -446,7 +473,34 @@ function findAnchorFloorOffenders(): string[] {
 // 92 this constant carried. Set to the measured truth; see the companion
 // "never below the ceiling without lowering it" test below for the other
 // half of the ratchet this file's own test name always claimed to have.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 64;
+//
+// Re-measured wave 8 task w8-h: `checkToken`'s `(no CSS rule)` branch only
+// ever checked TOP-LEVEL rules, so a phone-only token whose rule correctly
+// lives inside the <=700px block and nowhere else was misreported as
+// undeclared -- verified false for `.chq-review-plan-action-link`
+// (review.css), `.chq-settings-public-pages-view-action` (settings.css)
+// and `.chq-overview-link-btn-read` (overview.css), all of which have real
+// narrow-media rules. Added a narrow-media fallback with the SAME
+// predicate/reach/exemption logic; forcing the const to -1 afterwards reads
+// 65 -> 64 (one of the three drops out fully floored, the other two become
+// real per-file rows). Three container tokens
+// (`.chq-comms-phone-recent-head-actions`, `.chq-overview-row-actions-stacked`,
+// `.chq-speakers-card-actions`) genuinely stay `(no CSS rule)`: each has a
+// narrow rule, but it never reaches an anchor (DEC-393: "the floor is
+// reached by the anchor, not its container") -- a real finding, left
+// standing, not a scan bug. Then fixed the five real offenders this lane
+// owns in `app/src/pages/forms/forms.css` (`.chq-forms-back`,
+// `.chq-forms-field-actions`, `.chq-forms-field-modal-actions-right`,
+// `.chq-forms-header-actions`, `.chq-modal-actions`) inside the file's
+// single terminal `@media (max-width: 700px)` block: `.chq-forms-back` and
+// the two anchor-bearing containers (`.chq-forms-field-actions`,
+// `.chq-forms-header-actions`) got a conforming min-height/flex-centre/
+// padding rule on the anchor itself; `.chq-forms-field-modal-actions-right`
+// and forms.css's own `.chq-modal-actions` scope wrap Cancel/Save/Delete
+// -- all `<button>`, never an `<a>`/`<Link>` -- so they carry a
+// `tap-floor-exempt` comment instead of a rule that could never reach an
+// anchor. Re-measured truth after both fixes: 59.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 59;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {
