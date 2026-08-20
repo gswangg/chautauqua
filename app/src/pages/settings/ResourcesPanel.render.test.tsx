@@ -386,3 +386,37 @@ describe('ResourcesPanel file-row Rename (DEC-029 amendment)', () => {
     });
   });
 });
+
+describe('ResourcesPanel Add-a-resource modal carries its two muted lines (DEC-650 wave-133 amendment)', () => {
+  it('states the consequence line under the modal title (:1448)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Shown to every speaker in their portal')).toBeInTheDocument();
+  });
+
+  it('labels the file dropzone with the frame\'s own line, wired to the file input (:1466)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+    fireEvent.click(screen.getByRole('button', { name: 'File' }));
+
+    const dropzoneLabel = screen.getByText('Drop a file here, or choose one');
+    expect(dropzoneLabel.tagName).toBe('LABEL');
+    expect(dropzoneLabel).toHaveAttribute('for', 'resource-file');
+
+    // The line sits above the existing extension/size hint, never replaces it.
+    expect(screen.getByText(uploadHintText('handout'))).toBeInTheDocument();
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput.id).toBe('resource-file');
+  });
+});

@@ -321,6 +321,10 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
           as="form"
           onSubmit={handleAddSubmit}
           title="Add a resource"
+          // Chautauqua Settings.dc.html:1448 -- the modal's own subtitle line
+          // names the consequence of pressing its primary; nothing else in
+          // this dialog states it (DEC-650 wave-133 amendment).
+          subtitle="Shown to every speaker in their portal"
           onClose={() => setAdding(false)}
           actions={
             <>
@@ -407,13 +411,27 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
               error={fileError}
               help={<span className="chq-upload-caps">{uploadHintText('handout')}</span>}
             >
-              <input
-                id="resource-file"
-                className="chq-file"
-                type="file"
-                accept={allowedUploadExtensions('handout').map((e) => `.${e}`).join(',')}
-                onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
-              />
+              {/* Chautauqua Settings.dc.html:1466 -- the file-kind body is a
+                  dropzone naming its own affordance ("Drop a file here, or
+                  choose one"), sitting ABOVE the extension/size hint (:1467,
+                  already carried by uploadHintText below). The app has no
+                  drag-and-drop behaviour for this control -- only the frame's
+                  words, wired to the existing file picker via `htmlFor`, are
+                  built here (DEC-650 wave-133 amendment); a real dropzone is
+                  a data/behaviour question, not something to invent -- see
+                  the commit body. */}
+              <div className="chq-settings-resource-dropzone">
+                <label htmlFor="resource-file" className="chq-settings-resource-dropzone-label">
+                  Drop a file here, or choose one
+                </label>
+                <input
+                  id="resource-file"
+                  className="chq-file"
+                  type="file"
+                  accept={allowedUploadExtensions('handout').map((e) => `.${e}`).join(',')}
+                  onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
+                />
+              </div>
             </FormRow>
           )}
         </ModalFrame>
