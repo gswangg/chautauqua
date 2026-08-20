@@ -26,17 +26,34 @@
 // writes the prior id back to storage and re-lands the caller on the same
 // page with the `eventId` param stripped (so storage, not the URL, decides
 // on the next read).
+//
+// DEC-728 wave-117 amendment (USER RULING D19, part 2): an unresolvable URL
+// eventId must never silently evict the stored context. Three clauses,
+// folded into the one `switchInfo` channel above rather than a second
+// banner mechanism (DEC-613, one vocabulary):
+//  (a) fromUrl absent from /events, a DIFFERENT priorStoredId resolves --
+//      restore the prior id (storage + state) and announce it as `kept`.
+//      No restore() link: there is nothing to go back to.
+//  (b) items[0] is the fallback ONLY when there was no prior stored
+//      context, or the prior stored id is itself unresolvable --
+//      reconcileStoredEventId must never heal a URL-sourced id over a
+//      resolving prior stored id (that heal is done explicitly by (a)).
+//  (c) fromUrl resolves but priorStoredId no longer does -- still
+//      announce the switch (target name only, no Back link) instead of
+//      passing silently.
 import { useEffect, useState } from 'react';
 import { apiList, ApiError } from './api';
 import { reconcileStoredEventId } from '../components/eventSwitcherState';
+import { DEC_728 } from '../../../src/decisions';
+
+void DEC_728; // wave-117 amendment: unresolvable URL eventId never evicts stored context
 
 const STORAGE_KEY = 'chq.currentEventId';
 
-export interface EventSwitchInfo {
-  fromEvent: EventListItem;
-  toEvent: EventListItem;
-  restore: () => void;
-}
+export type EventSwitchInfo =
+  | { kind: 'switched'; fromEvent: EventListItem; toEvent: EventListItem; restore: () => void }
+  | { kind: 'switched-no-restore'; toEvent: EventListItem }
+  | { kind: 'kept'; keptEvent: EventListItem };
 
 export interface UseCurrentEventResult {
   eventId: string | null;
@@ -130,10 +147,11 @@ export function useCurrentEvent(): UseCurrentEventResult {
         if (priorStoredId) {
           const fromEvent = items.find((item) => item.id === priorStoredId);
           const toEvent = items.find((item) => item.id === fromUrl);
-          // Render nothing until BOTH names are known -- never show an id
-          // in place of a name.
+          // Render nothing until the names in play are known -- never show
+          // an id in place of a name.
           if (fromEvent && toEvent) {
             setSwitchInfo({
+              kind: 'switched',
               fromEvent,
               toEvent,
               restore: () => {
@@ -143,6 +161,21 @@ export function useCurrentEvent(): UseCurrentEventResult {
                 window.location.assign(`${url.pathname}${url.search}${url.hash}`);
               },
             });
+          } else if (toEvent && !fromEvent) {
+            // DEC-728 wave-117 (c): the URL id resolves but the prior
+            // stored id no longer does -- still announce, nothing to
+            // offer a restore to.
+            setSwitchInfo({ kind: 'switched-no-restore', toEvent });
+          } else if (!toEvent && fromEvent) {
+            // DEC-728 wave-117 (a)+(b): the URL id does NOT resolve and a
+            // DIFFERENT prior stored id does -- restore it rather than
+            // silently evicting it for items[0], and say so. Return before
+            // the reconcile call below, which would otherwise heal the
+            // unresolvable fromUrl to items[0].
+            window.localStorage.setItem(STORAGE_KEY, fromEvent.id);
+            setEventId(fromEvent.id);
+            setSwitchInfo({ kind: 'kept', keptEvent: fromEvent });
+            return;
           }
         }
         if (items.length === 0) return;
