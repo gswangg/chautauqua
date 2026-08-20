@@ -608,6 +608,13 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
   // of falling back to data.answers from the database.
   const { answers } = extractAnswers(data.fields, body, data.answers);
 
+  // DEC-029 (wave-114 amendment): the same second-submit body also carries
+  // the trackIds checkboxes when tracksEditable, so echo the typed
+  // selection with the SAME one owner the edit POST uses at :524
+  // (extractTrackIds from ../public/submit-body) instead of the DB value --
+  // otherwise a re-pick of tracks silently reverts on this route.
+  const selectedTrackIds = tracksEditable ? extractTrackIds(body) : data.selectedTrackIds;
+
   const result = await addCoPresenter(c.var.db, {
     submissionId,
     orgId: auth.orgId,
@@ -628,7 +635,7 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
         submissionId={submissionId}
         data={data}
         answers={answers}
-        selectedTrackIds={data.selectedTrackIds}
+        selectedTrackIds={selectedTrackIds}
         csrfToken={csrfToken}
         editable={true}
         tracksEditable={tracksEditable}
@@ -656,7 +663,7 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
       submissionId={submissionId}
       data={data}
       answers={answers}
-      selectedTrackIds={data.selectedTrackIds}
+      selectedTrackIds={selectedTrackIds}
       csrfToken={csrfToken}
       editable={true}
       tracksEditable={tracksEditable}
