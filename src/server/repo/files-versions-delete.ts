@@ -225,12 +225,26 @@ export async function deleteFileVersion(db: Db, input: DeleteFileVersionInput): 
   let survivingId: string | null = null;
   if (successor) {
     survivingId = successor.id;
+  } else if (row.previousFileId) {
+    survivingId = row.previousFileId;
+  }
+
+  // The deleted row itself is removed BEFORE the successor repoint below:
+  // while the row is still live, its own previousFileId (= row.previousFileId)
+  // occupies the partial unique slot on file_previous_file_id_unique
+  // (WHERE previousFileId IS NOT NULL) — repointing the successor onto that
+  // same value first would transiently create two live rows sharing it and
+  // the UPDATE would fail the constraint (this was the bug: for a 3+ version
+  // chain v1 -> v2 -> v3, deleting v2 used to set v3.previousFileId = v1
+  // while v2.previousFileId was still v1). Deleting v2 first vacates the
+  // slot so the repoint below is always constraint-clean.
+  await db.delete(schema.file).where(eq(schema.file.id, fileId));
+
+  if (successor) {
     // DEC-244/573: set-based repoint — every row chained off the deleted
     // link (in a linear chain, at most one) moves in ONE statement, so a
     // middle deletion can't fork the chain.
     await db.update(schema.file).set({ previousFileId: row.previousFileId }).where(eq(schema.file.previousFileId, fileId));
-  } else if (row.previousFileId) {
-    survivingId = row.previousFileId;
   }
 
   if (survivingId) {
@@ -262,6 +276,4 @@ export async function deleteFileVersion(db: Db, input: DeleteFileVersionInput): 
       .set({ status: "pending", completedAt: null, completedBy: null, fileId: null, updatedAt: now })
       .where(eq(schema.taskAssignment.fileId, fileId));
   }
-
-  await db.delete(schema.file).where(eq(schema.file.id, fileId));
 }
