@@ -49,6 +49,15 @@
 // selector's assertion below (>= 44px) is satisfied by the surviving 48px
 // rule, not by a rule declared in this batch's own section.
 //
+// UPDATE (DEC-576 wave-125 / DEC-919): the fifth of those five containers,
+// `.chq-content-files-header-actions`, no longer takes its floor from this
+// stylesheet. Its one `.chq-btn` child (FilesLibrary.tsx's Download all) is
+// hidden at 390 -- the live control moved into the frame's pinned
+// `.chq-phone-dock`, which the SHELL floors at 48px. The pin below follows
+// the floor to that real delivery instead of asserting a rule content.css
+// deliberately no longer declares; a hidden control carries no tap-floor
+// obligation, but the visible one it delegates to still does.
+//
 // `.chq-content-detail-actions` (the container wrapping the two
 // `.chq-content-detail-action-link` anchors) is closed by growing its
 // anchor children, never itself -- no separate rule for the container, so
@@ -228,7 +237,6 @@ describe('content.css phone 44px floor + 390 overflow fixes (task w8-e)', () => 
       '.chq-content-comment-actions .chq-btn',
       '.chq-content-status-band-actions .chq-btn',
       '.chq-content-summary-actions .chq-btn',
-      '.chq-content-files-header-actions .chq-btn',
     ];
 
     for (const selector of containerButtonSelectors) {
@@ -238,6 +246,52 @@ describe('content.css phone 44px floor + 390 overflow fixes (task w8-e)', () => 
         expect(hasMinHeightFloor(body!)).toBe(true);
       });
     }
+
+    // REPOINTED (DEC-576 wave-125 / DEC-919): the fifth container of this
+    // batch, `.chq-content-files-header-actions .chq-btn`, no longer takes
+    // its floor from content.css. Its single `.chq-btn` child is the
+    // Download-all control (FilesLibrary.tsx, `.chq-content-files-download-
+    // all-wrap > .chq-btn`), which content.css now HIDES at 390 because the
+    // live control moved into the frame's pinned `.chq-phone-dock` with the
+    // same handler and disabled state. The floor did not disappear -- it is
+    // delivered by the shell's own `.chq-phone-dock .chq-btn` rule at 48px,
+    // which exceeds this batch's 44px. This test pins that real delivery
+    // and the hiding that makes it the only visible copy, so a wave that
+    // un-hides the header button (or drops the shell floor) turns red here
+    // rather than silently shipping an unfloored 390 control (DEC-919: the
+    // tap floor protects what is ON the screen).
+    it('.chq-content-files-header-actions .chq-btn: header copy is hidden at 390 and the live dock copy carries the floor (shell rule, >= 44px)', () => {
+      const headerButton = ruleBody(secondBlockText, '.chq-content-files-download-all-wrap > .chq-btn');
+      expect(
+        headerButton,
+        'expected content.css to declare the header Download-all button at phone width',
+      ).not.toBeNull();
+      expect(headerButton!).toMatch(/display\s*:\s*none/);
+
+      // No competing floor is minted here for the hidden header copy.
+      expect(ruleBody(secondBlockText, '.chq-content-files-header-actions .chq-btn')).toBeNull();
+
+      // The visible copy: the shell's phone dock rule, read from the sheet
+      // that actually owns `.chq-phone-dock` (never redeclared in this page's
+      // stylesheet -- DEC-613, one copy of a shared vocabulary).
+      expect(ruleBody(secondBlockText, '.chq-phone-dock .chq-btn')).toBeNull();
+      const shellCss = readFileSync(resolve(__dirname, '..', '..', 'styles.css'), 'utf-8');
+      const shellPhoneText = findMaxWidth700Blocks(shellCss)
+        .map((b) => shellCss.slice(b.bodyStart, b.bodyEnd))
+        .join('\n');
+      const dockButton = ruleBody(shellPhoneText, '.chq-phone-dock .chq-btn');
+      expect(
+        dockButton,
+        'expected the shell phone block to declare .chq-phone-dock .chq-btn',
+      ).not.toBeNull();
+      expect(hasMinHeightFloor(dockButton!)).toBe(true);
+
+      // And the page really mounts a `.chq-btn` inside that dock, so the
+      // floor above is reached by a control this surface ships.
+      const filesLibrary = readFileSync(resolve(__dirname, 'FilesLibrary.tsx'), 'utf-8');
+      expect(filesLibrary).toMatch(/className="chq-phone-dock"/);
+      expect(filesLibrary).toMatch(/className="chq-btn chq-btn-primary"/);
+    });
   });
 
   describe('overflow: 358px-budget offenders get the three-property escape', () => {

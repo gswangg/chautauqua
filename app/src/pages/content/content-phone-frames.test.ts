@@ -298,16 +298,26 @@ describe('v12 phone frame "Files · 390"', () => {
     expect(download).toMatch(/padding:\s*0 14px/);
   });
 
+  // v12m-w14-g (DEC-576 wave-125 amendment): the dock is the SHELL's own
+  // `.chq-phone-dock` (styles.css, desktop display:none + phone band
+  // geometry) -- this page never redeclares it (DEC-576: "REUSE it,
+  // never re-declare it"). Its two 48px targets ride the shared
+  // `.chq-phone-dock .chq-btn` / `.chq-btn-primary` faces (styles.css),
+  // which content.css never forks. What THIS page owns: hiding the
+  // header's now-redundant live Download-all control at 390, and
+  // collapsing the search field behind the dock's "Search" disclosure
+  // toggle. (Comment kept ABOVE the citation-carrying title so the frame
+  // claim's receipt -- the expect() that reads the cited 48px -- sits
+  // directly beneath it, per the frame-citation receipt contract.)
   it('docks "Download all" + "Search" at 48px each, matching docs/design/Chautauqua Content.dc.html:360-361 `min-height:48px`', () => {
-    // v12m-w14-g (DEC-576 wave-125 amendment): the dock is the SHELL's own
-    // `.chq-phone-dock` (styles.css, desktop display:none + phone band
-    // geometry) -- this page never redeclares it (DEC-576: "REUSE it,
-    // never re-declare it"). Its two 48px targets ride the shared
-    // `.chq-phone-dock .chq-btn` / `.chq-btn-primary` faces (styles.css),
-    // which content.css never forks. What THIS page owns: hiding the
-    // header's now-redundant live Download-all control at 390, and
-    // collapsing the search field behind the dock's "Search" disclosure
-    // toggle.
+    const dockBtn = phoneRule(STYLES_CSS, '.chq-phone-dock .chq-btn');
+    expect(dockBtn).toMatch(/min-height:\s*48px/);
+    const dock = phoneRule(STYLES_CSS, '.chq-phone-dock');
+    expect(dock).toMatch(/display:\s*flex/);
+    expect(dock).toMatch(/gap:\s*8px/);
+    const dockPrimary = phoneRule(STYLES_CSS, '.chq-phone-dock .chq-btn-primary');
+    expect(dockPrimary).toMatch(/flex:\s*1/);
+
     const headerBtn = phoneRule(CONTENT_CSS, '.chq-content-files-download-all-wrap > .chq-btn');
     expect(headerBtn).toMatch(/display:\s*none/);
 
@@ -315,14 +325,6 @@ describe('v12 phone frame "Files · 390"', () => {
     expect(search).toMatch(/display:\s*none/);
     const searchOpen = phoneRule(CONTENT_CSS, '.chq-content-files-search-input.is-phone-open');
     expect(searchOpen).toMatch(/display:\s*block/);
-
-    const dock = phoneRule(STYLES_CSS, '.chq-phone-dock');
-    expect(dock).toMatch(/display:\s*flex/);
-    expect(dock).toMatch(/gap:\s*8px/);
-    const dockBtn = phoneRule(STYLES_CSS, '.chq-phone-dock .chq-btn');
-    expect(dockBtn).toMatch(/min-height:\s*48px/);
-    const dockPrimary = phoneRule(STYLES_CSS, '.chq-phone-dock .chq-btn-primary');
-    expect(dockPrimary).toMatch(/flex:\s*1/);
   });
 });
 
