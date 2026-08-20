@@ -178,3 +178,20 @@ Three recurring/new minors keep the area in the high-80s:
    say "2 sessions".
 Also: sweep other short SSR pages for the mid-page-footer defect just fixed
 on the home hub (home.css.ts sticky-footer pattern).
+
+## Cut-2 eval round — new judge-filed items (2026-08-20, root-cause then fix)
+1. MAJOR follow-on to the wave-115 merge fix: the import-merge plan's copy
+   now promises the stored email is preserved, but OTHER profile fields
+   still overwrite silently — either disclose every overwrite in the plan
+   (the struck-through old→new idiom exists) or extend preservation; the
+   copy and the behavior must agree.
+2. CRM pipeline card detail modal opens EMPTY (heading + buttons, no
+   content) until data arrives — needs a loading state or deferred open.
+3. Speakers/gallery search placeholder says "Search sessions" but filters
+   speakers.
+4. Add-speaker form REQUIRES a session title, so a roster add must invent a
+   session; related: "Add <name> to this event" creates a brand-new session
+   from the typed title even when an identical one exists. Decide the
+   roster-add-without-session story per the frames/DECs.
+5. Bulk-send wizard counts disagree across steps ("17 submissions selected"
+   vs "19 recipients") — reconcile the counting vocabulary.
