@@ -36,6 +36,15 @@
 // one of its children's rows, which the exactness check below already
 // requires those children to carry -- so it is recorded "gap" rather than
 // force-fit to a child's citation.
+//
+// NOTE (DEC-582 wave 141): a file split is a cascade edit over this table --
+// when app/src/pages/settings/PeopleRolesPanel.render.test.tsx was split into
+// .directory./.invite./.resetPassword./.roleChange./.summary.render.test.tsx
+// (plus a .test-helpers.tsx), two honored rows still cited the deleted path
+// and went unnoticed until this scan turned red. Whoever splits a test file
+// must grep every `testFile:` value in this ledger for the old path and
+// re-point each hit to the split member that actually carries the cited
+// literal -- verified by reading, never guessed.
 
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -331,7 +340,7 @@ const LEDGER: LedgerEntry[] = [
     honored: {
       file: "app/src/pages/settings/PeopleRolesPanel.tsx",
       literal: "is ended — they are signed out everywhere.",
-      testFile: "app/src/pages/settings/PeopleRolesPanel.render.test.tsx",
+      testFile: "app/src/pages/settings/PeopleRolesPanel.resetPassword.render.test.tsx",
     },
   },
   {
@@ -341,7 +350,7 @@ const LEDGER: LedgerEntry[] = [
     honored: {
       file: "app/src/pages/settings/PeopleRolesPanel.tsx",
       literal: "Create the account",
-      testFile: "app/src/pages/settings/PeopleRolesPanel.render.test.tsx",
+      testFile: "app/src/pages/settings/PeopleRolesPanel.invite.render.test.tsx",
     },
   },
   {
