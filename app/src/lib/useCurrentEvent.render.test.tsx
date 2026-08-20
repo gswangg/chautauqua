@@ -3,6 +3,7 @@
 // /events list and self-heals a stale id (previous persona, other org, a
 // deleted event), sharing the fetch with EventSwitcher via the module-level
 // loadEventsOnce() cache so mounting both costs one round trip.
+import { useEffect, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -99,6 +100,164 @@ describe('useCurrentEvent reconcile', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(result.current.eventId).toBe('ev-9');
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe('ev-9');
+  });
+});
+
+// DEC-728 wave-138: the banner's own useCurrentEvent instance was
+// unreachable by mount order -- the FIRST instance to render (mirroring
+// PhoneTabBar's useNavExceptions, which commits before useMe() resolves)
+// writes localStorage over the pre-overwrite value before the banner's own
+// instance ever gets to compute priorStoredId. documentInitialContext()
+// must freeze (fromUrl, fromStorage) once per document so a SECOND,
+// later-mounting instance still sees the true prior pair.
+describe('DEC-728 (D19) capture is once-per-document, not once-per-instance', () => {
+  it('a second instance mounted after the first has already overwritten storage still sees switched', async () => {
+    window.history.pushState({}, '', '/admin?eventId=ev-2');
+    window.localStorage.setItem(STORAGE_KEY, 'ev-1');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+
+    function FirstInstance() {
+      // Mirrors PhoneTabBar -> useNavExceptions -> useCurrentEvent: mounts
+      // immediately, its effect fires on the first commit and overwrites
+      // localStorage with fromUrl before anything else runs.
+      useCurrentEvent();
+      return null;
+    }
+
+    function SecondInstance({ ready }: { ready: boolean }) {
+      // Mirrors EventSwitchBanner, whose mount is gated behind useMe()'s
+      // async /me round trip -- it only calls useCurrentEvent() once
+      // something else (an async flip) says it's ready.
+      const result = useCurrentEvent();
+      if (!ready) return null;
+      if (!result.switchInfo) return <div data-testid="second-pending" />;
+      return <div data-testid="second-switch-kind">{result.switchInfo.kind}</div>;
+    }
+
+    function Harness() {
+      const [ready, setReady] = useState(false);
+      useEffect(() => {
+        // Resolve asynchronously, after FirstInstance's effect has already
+        // run and overwritten localStorage -- the real gating condition.
+        Promise.resolve().then(() => setReady(true));
+      }, []);
+      return (
+        <>
+          <FirstInstance />
+          <SecondInstance ready={ready} />
+        </>
+      );
+    }
+
+    render(<Harness />);
+
+    // By the time SecondInstance's own instance first rendered, a naive
+    // per-instance read of window would see fromStorage === fromUrl
+    // ('ev-2' === 'ev-2') and never compute a switch. The frozen
+    // documentInitialContext() must still show it as switched.
+    await waitFor(() => {
+      expect(screen.getByTestId('second-switch-kind')).toHaveTextContent('switched');
+    });
+  });
+
+  it('restore() from a second-mounted instance writes the true prior id back', async () => {
+    window.history.pushState({}, '', '/admin?eventId=ev-2');
+    window.localStorage.setItem(STORAGE_KEY, 'ev-1');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+
+    let capturedRestore: (() => void) | null = null;
+
+    function FirstInstance() {
+      useCurrentEvent();
+      return null;
+    }
+
+    function SecondInstance({ ready }: { ready: boolean }) {
+      const result = useCurrentEvent();
+      if (ready && result.switchInfo?.kind === 'switched') {
+        capturedRestore = result.switchInfo.restore;
+      }
+      return null;
+    }
+
+    function Harness() {
+      const [ready, setReady] = useState(false);
+      useEffect(() => {
+        Promise.resolve().then(() => setReady(true));
+      }, []);
+      return (
+        <>
+          <FirstInstance />
+          <SecondInstance ready={ready} />
+        </>
+      );
+    }
+
+    render(<Harness />);
+
+    await waitFor(() => {
+      expect(capturedRestore).not.toBeNull();
+    });
+
+    const assignSpy = stubLocationAssign();
+    capturedRestore!();
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe('ev-1');
+    expect(assignSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('a URL eventId equal to the stored context yields no switchInfo from either instance', async () => {
+    window.history.pushState({}, '', '/admin?eventId=ev-1');
+    window.localStorage.setItem(STORAGE_KEY, 'ev-1');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+
+    function FirstInstance() {
+      const result = useCurrentEvent();
+      return <div data-testid="first-switch">{String(result.switchInfo)}</div>;
+    }
+
+    function SecondInstance({ ready }: { ready: boolean }) {
+      const result = useCurrentEvent();
+      if (!ready) return null;
+      return <div data-testid="second-switch">{String(result.switchInfo)}</div>;
+    }
+
+    function Harness() {
+      const [ready, setReady] = useState(false);
+      useEffect(() => {
+        Promise.resolve().then(() => setReady(true));
+      }, []);
+      return (
+        <>
+          <FirstInstance />
+          <SecondInstance ready={ready} />
+        </>
+      );
+    }
+
+    render(<Harness />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('second-switch')).toBeInTheDocument();
+    });
+    // Give the background reconcile a chance to (not) fire.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.getByTestId('first-switch')).toHaveTextContent('null');
+    expect(screen.getByTestId('second-switch')).toHaveTextContent('null');
   });
 });
 
