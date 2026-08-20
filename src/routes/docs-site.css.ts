@@ -94,6 +94,9 @@ export const DOCS_SITE_CSS = `
   .chq-docs-nav-group { display: flex; flex-direction: column; gap: 2px; }
   .chq-docs-nav-group-label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--chq-muted); padding: 0 0 6px; }
   .chq-docs-nav-link { padding: 7px 0 7px 11px; font-size: 14px; font-weight: 500; color: var(--chq-ink-2); text-decoration: none; }
+  /* tap-floor-exempt: modifier — always composes .chq-docs-nav-link on the
+     SAME anchor (docs-site.tsx:277-280 never renders this class alone); the
+     phone floor lives on the base class in the media block below. */
   .chq-docs-nav-link-active { font-weight: 700; color: var(--chq-ink); box-shadow: inset 2px 0 0 var(--chq-brand); }
 
   .chq-docs-phone-back { display: none; }
@@ -208,6 +211,10 @@ export const DOCS_SITE_CSS = `
   /* API-reference leaving row: last row of the operator-tools group
      (Chautauqua Docs.dc.html:436) -- same row anatomy as an article row,
      styled muted like the header's leaving link rather than an ink title. */
+  /* tap-floor-exempt: composition — .chq-docs-leaving-row-link never
+     appears without .chq-docs-article-title on the same anchor (the only
+     markup sighting, docs-site.tsx:352); the phone floor lives on that
+     sibling class in the media block below. */
   .chq-docs-article-row-leaving .chq-docs-leaving-row-link { display: inline-flex; align-items: center; gap: 4px; color: var(--chq-muted); }
 
   @media (max-width: 700px) {
@@ -420,6 +427,34 @@ export const DOCS_SITE_CSS = `
       display: flex;
       align-items: center;
       padding: 0 4px;
+    }
+
+    /* w14-ee (DEC-393 taxonomy, DEC-367 wave-138 mirror): the phone-only
+       44px floor for the six SSR anchor tokens this task owns, appended
+       here as the LAST rules of the sheet's one terminal phone block
+       (DEC-385 -- desktop untouched, nothing above reordered).
+
+       .chq-docs-wordmark is the live-probed offender (meta-fidelity probe
+       C measured it 112.6x28, crushed to two letters per line on an
+       article header, header comment above at :215) -- real floor.
+       .chq-docs-article-title composes onto three standalone anchors
+       (docs-site.tsx:379/447, and the leaving row at :352) -- real floor.
+       .chq-docs-where-next-where (docs-site.tsx:313) is its own standalone
+       anchor -- real floor. .chq-docs-nav-link (docs-site.tsx:276-284) is
+       always present on the nav anchor; -active only ever composes on TOP
+       of it (docs-site.tsx:277-280 never renders -active alone) -- the
+       base class takes the real floor and -active is modifier-exempt.
+       .chq-docs-leaving-row-link never appears without
+       .chq-docs-article-title on the same anchor (only sighting,
+       docs-site.tsx:352) -- composition-exempt on that sibling class. */
+    .chq-docs-wordmark,
+    .chq-docs-nav-link,
+    .chq-docs-article-title,
+    .chq-docs-where-next-where {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding-inline: 8px;
     }
   }
 `;

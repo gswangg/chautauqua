@@ -99,6 +99,13 @@ export const PORTAL_CSS = `
     position: relative;
     top: -3px;
   }
+  /* tap-floor-exempt: not a control in this frame -- shared.tsx:191 renders
+     .chq-wordmark as a plain <span> here (no href, no interactive
+     semantics), unlike its <a> use on docs/dev-mailbox. DEC-937 (a
+     universal idiom is still scoped by its frame): the portal's own
+     composition establishes no tap target for this token to need a floor
+     on, so this rule only resets the shared token's position, never adds
+     a min-height. */
   .chq-portal-shell .chq-wordmark {
     position: static;
   }
@@ -1087,5 +1094,35 @@ ${ERROR_STATES_CSS}
     flex: 1;
   }
   .chq-portal-taskform-submit { display: none; }
+
+  /* w14-ee (DEC-393 taxonomy): .chq-portal-row / .chq-portal-submission-row
+     are whole-row links (a.chq-portal-submission-row composes both classes
+     on the "Your submissions" row, index.tsx:282) -- their existing padding
+     (:200-206) and content already exceed 44px in the common case, but a
+     scan can't infer a height from padding/content, so the DECLARED floor
+     is needed on the token itself even though it is rarely the constraint
+     in practice. Appended as the LAST rules of this sheet's one terminal
+     phone block (DEC-385 -- desktop untouched, nothing above reordered). */
+  .chq-portal-row,
+  .chq-portal-submission-row {
+    min-height: 44px;
+  }
+
+  /* DEC-367 wave-138 amendment (mirror case, task w14-ee): a bare
+     \`min-height: 44px\` with no horizontal padding on a shrink-wrapped
+     inline-flex anchor leaves the hit box only as wide as its text --
+     \`.chq-portal-footer-profile\` measured 39px wide this way. The padding
+     clause of the ruling is a requirement, not a suggestion. Appended as a
+     SECOND rule for these three selectors (rather than editing their
+     original \`min-height: 44px;\` declarations above in place) so
+     DEC-367.md's verbatim citation of that exact substring keeps
+     resolving -- DEC-967 waves 121/126 forbid re-pointing a citation, and
+     rewriting the quoted text in place would have the same effect. */
+  .chq-portal-back,
+  .chq-portal-footer-resources,
+  .chq-portal-footer-profile {
+    padding-inline: 8px;
+    min-width: 44px;
+  }
 }
 `;
