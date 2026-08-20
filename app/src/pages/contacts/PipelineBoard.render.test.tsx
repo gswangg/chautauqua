@@ -1304,3 +1304,134 @@ describe('PipelineBoard phone card matches the v12 "Pipeline · 390" frame', () 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
+
+// v12 phone frame "Pipeline · 390" dock (task w19-a,
+// docs/design/Chautauqua Contacts.dc.html:473-476): "Add someone" runs the
+// SAME setEnrollStage(PIPELINE_STAGES[0])/setShowEnroll(true) pair the
+// head's own trigger runs; "Filter" opens a five-stage sheet with the SAME
+// PIPELINE_STAGES/live-count pair the .chq-contacts-pipeline-phone-stages
+// chip strip already renders. Mirrors the FakeMediaQueryList pattern
+// SubmissionDetailPage.phone-dock.render.test.tsx already uses to force
+// useIsPhone's split in jsdom (which implements no matchMedia at all, so
+// every OTHER test in this file keeps exercising the desktop tree).
+class FakeMediaQueryList {
+  matches = true;
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+function stubPhoneMatchMedia() {
+  vi.stubGlobal('matchMedia', () => new FakeMediaQueryList());
+}
+
+describe('PipelineBoard phone dock (v12 frame "Pipeline · 390", task w19-a)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('desktop (jsdom default, no matchMedia): renders no phone dock', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    expect(document.querySelector('[data-chq-phone-dock]')).toBeNull();
+    // The desktop head's own action is still present and unique.
+    expect(screen.getAllByRole('button', { name: 'Add to the pipeline' })).toHaveLength(1);
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('phone (matchMedia stubbed true): renders exactly one dock with exactly one "Add someone" and one "Filter"', async () => {
+    stubPhoneMatchMedia();
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const dock = document.querySelector('[data-chq-phone-dock]') as HTMLElement;
+    expect(dock).not.toBeNull();
+    expect(dock).toHaveClass('chq-phone-dock');
+
+    const addSomeone = screen.getAllByRole('button', { name: 'Add someone' });
+    expect(addSomeone).toHaveLength(1);
+    expect(dock).toContainElement(addSomeone[0]!);
+
+    const filter = screen.getAllByRole('button', { name: 'Filter' });
+    expect(filter).toHaveLength(1);
+    expect(dock).toContainElement(filter[0]!);
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('"Add someone" opens the SAME Add-to-the-pipeline dialog, preset to the first stage', async () => {
+    stubPhoneMatchMedia();
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add someone' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+    const stageGroup = within(dialog).getByRole('group', { name: 'Starting stage' });
+    expect(within(stageGroup).getByRole('button', { name: 'Identified' })).toHaveAttribute('aria-pressed', 'true');
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('"Filter" opens a sheet listing the five stages with their live counts; choosing one sets the phone stage and closes the sheet', async () => {
+    stubPhoneMatchMedia();
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Filter by stage' });
+
+    // Five stage rows, each with the same live count the chip strip shows.
+    expect(within(dialog).getByRole('button', { name: /Identified/ }).textContent).toContain('1');
+    expect(within(dialog).getByRole('button', { name: /Contacted/ }).textContent).toContain('1');
+    expect(within(dialog).getByRole('button', { name: /Interested/ }).textContent).toContain('0');
+    expect(within(dialog).getByRole('button', { name: /Confirmed/ }).textContent).toContain('0');
+    expect(within(dialog).getByRole('button', { name: /Declined/ }).textContent).toContain('0');
+
+    // Phone list starts on Identified (Ada) -- choosing Contacted switches it
+    // to Grace and closes the sheet.
+    const phoneList = document.querySelector('.chq-contacts-pipeline-phone-list') as HTMLElement;
+    expect(within(phoneList).getByText('Ada Lovelace')).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /Contacted/ }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Filter by stage' })).not.toBeInTheDocument();
+    });
+    expect(within(phoneList).getByText('Grace Hopper')).toBeInTheDocument();
+    expect(within(phoneList).queryByText('Ada Lovelace')).not.toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('the phone head caption drops the desktop-only "drag between columns" clause', async () => {
+    stubPhoneMatchMedia();
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
+    });
+
+    renderBoard();
+    await waitFor(() => {
+      expect(screen.getByText('2 people')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/drag between columns/)).not.toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});

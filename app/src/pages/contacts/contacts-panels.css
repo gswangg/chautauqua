@@ -1896,4 +1896,40 @@
     display: flex;
     align-items: center;
   }
+
+  /* v12 phone frame "Pipeline · 390" dock (task w19-a): the "Filter"
+     control opens a ModalFrame sheet listing the five PIPELINE_STAGES --
+     each row is a real <button> and needs its own 44px floor + centred
+     flex + horizontal padding, the same three-part contract every other
+     phone tap target here carries. */
+  .chq-contacts-pipeline-filter-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chq-contacts-pipeline-filter-row {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+  }
+
+  /* v12 phone frame "Pipeline · 390" dock (task w19-a): the frame's phone
+     head (docs/design/Chautauqua Contacts.dc.html:447-451) draws
+     back-link / "Pipeline" / "20 people" and NO action -- the head's own
+     "Add to the pipeline" button is superseded, not merely hidden, by the
+     dock's "Add someone" control below (same
+     setEnrollStage(PIPELINE_STAGES[0])/setShowEnroll(true) pair), so a
+     capability-removal receipt is required and supplied here. This
+     selector was already declared above (full-width/48px, for the
+     desktop-frozen head styling); this later declaration wins the
+     cascade and is the one that actually applies at this width, per
+     DEC-385. */
+  /* phone-hidden: re-lined as the chq-phone-dock Add someone button, same setEnrollStage/setShowEnroll pair, PipelineBoard.tsx */
+  .chq-contacts-pipeline-head > .chq-btn {
+    display: none;
+  }
 }

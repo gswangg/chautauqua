@@ -18,6 +18,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
+import { useIsPhone } from '../../lib/useIsPhone';
 import { formatDateTime } from '../../lib/dates';
 import { plural, capitalizeFirst, spellCount } from '../../lib/plural';
 import { pipelineCardAge } from './pipeline-age';
@@ -104,6 +105,7 @@ function useBackToDirectory(): () => void {
 }
 
 export function PipelineBoard() {
+  const isPhone = useIsPhone();
   const [entries, setEntries] = useState<PipelineEntry[]>([]);
   // DEC-468: the server caps a page at 200 rows -- `total` is the envelope's
   // true count, never `entries.length`, so the caption and the "Load more"
@@ -121,6 +123,12 @@ export function PipelineBoard() {
   const [enrollStage, setEnrollStage] = useState<PipelineStage>(PIPELINE_STAGES[0]);
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
   const [phoneStage, setPhoneStage] = useState<PipelineStage>(PIPELINE_STAGES[0]);
+  // v12 phone frame "Pipeline · 390" dock: the "Filter" control opens this
+  // sheet -- a five-row stage picker, the SAME PIPELINE_STAGES/live-count
+  // pair the .chq-contacts-pipeline-phone-stages chip strip already
+  // renders. Per DEC-380 wave-144: no new fetch, no new state beyond this
+  // one open/closed flag -- choosing a row writes the existing phoneStage.
+  const [showPhoneFilter, setShowPhoneFilter] = useState(false);
   // DEC-803: moving a card into 'declined' asks for a reason first -- the
   // card holding this state is the one awaiting that prompt; nothing moves
   // until it's submitted.
@@ -277,7 +285,16 @@ export function PipelineBoard() {
               page never pairs a "0 people" claim with the loading state.
               w4-c/DEC-898 amendment: names the board's own affordance now
               that the card face carries no stage control of its own. */}
-          {!loading && <span className="chq-contacts-pipeline-caption">{total} people · drag between columns</span>}
+          {/* v12 phone frame "Pipeline · 390" (docs/design/Chautauqua
+              Contacts.dc.html:451 `<span ...>20 people</span>`): the phone
+              head draws only the count -- the phone list is a single-stage
+              list with a per-row "Move ›" control, not a drag surface, so
+              the '· drag between columns' clause is a desktop-only claim. */}
+          {!loading && (
+            <span className="chq-contacts-pipeline-caption">
+              {total} people{!isPhone && ' · drag between columns'}
+            </span>
+          )}
         </div>
         <button
           type="button"
@@ -465,7 +482,60 @@ export function PipelineBoard() {
                 );
               })}
           </ul>
+
+          {/* v12 phone frame "Pipeline · 390" (docs/design/Chautauqua
+              Contacts.dc.html:473-476): the dock band replaces the head's
+              own "Add to the pipeline" action at phone width (hidden by
+              contacts-panels.css's terminal phone block) -- "Add someone"
+              runs the SAME setEnrollStage/setShowEnroll pair the head
+              button runs; "Filter" opens the five-stage sheet below. */}
+          {isPhone && (
+            <div className="chq-phone-dock" data-chq-phone-dock>
+              <button
+                type="button"
+                className="chq-btn chq-btn-primary"
+                onClick={() => {
+                  setEnrollStage(PIPELINE_STAGES[0]);
+                  setShowEnroll(true);
+                }}
+              >
+                Add someone
+              </button>
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowPhoneFilter(true)}>
+                Filter
+              </button>
+            </div>
+          )}
         </>
+      )}
+
+      {showPhoneFilter && (
+        <ModalFrame
+          title="Filter by stage"
+          onClose={() => setShowPhoneFilter(false)}
+          ariaLabel="Filter by stage"
+        >
+          <ul className="chq-contacts-pipeline-filter-list">
+            {PIPELINE_STAGES.map((stage) => (
+              <li key={stage}>
+                <button
+                  type="button"
+                  className={`chq-contacts-pipeline-filter-row${stage === phoneStage ? ' is-selected' : ''}`}
+                  aria-pressed={stage === phoneStage}
+                  onClick={() => {
+                    setPhoneStage(stage);
+                    setShowPhoneFilter(false);
+                  }}
+                >
+                  <span>{PIPELINE_STAGE_LABELS[stage]}</span>
+                  <span className="chq-contacts-pipeline-filter-count">
+                    {entries.filter((e) => e.stage === stage).length}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </ModalFrame>
       )}
 
       {showEnroll && (

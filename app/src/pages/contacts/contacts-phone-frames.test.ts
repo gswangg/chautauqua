@@ -325,6 +325,27 @@ describe('v12 phone frame "Pipeline · 390"', () => {
       /flex-wrap:\s*wrap/,
     );
   });
+
+  // docs/design/Chautauqua Contacts.dc.html:473 `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
+  // Two `.chq-contacts-pipeline-head > .chq-btn` rules land in this phone
+  // layer (the pre-existing full-width/48px styling, then this task's
+  // later display:none) -- `phoneRuleGroup` joins every rule mentioning
+  // the selector, mirroring what the cascade actually applies (the LATER
+  // declaration, same specificity, wins), rather than `phoneRule`'s
+  // first-match-only read.
+  it('hides the head\'s own action at phone width, superseded by the shared .chq-phone-dock band (task w19-a)', () => {
+    expect(phoneRuleGroup(PANELS_CSS, '.chq-contacts-pipeline-head > .chq-btn')).toMatch(/display:\s*none/);
+  });
+
+  // docs/design/Chautauqua Contacts.dc.html:474 `flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700`
+  // docs/design/Chautauqua Contacts.dc.html:475 `border:1px solid #BAB6A6; border-radius:6px; min-height:48px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600`
+  it('floors the Filter sheet\'s stage rows at 44px with centred flex and horizontal padding (task w19-a)', () => {
+    const row = phoneRule(PANELS_CSS, '.chq-contacts-pipeline-filter-row');
+    expect(row).toMatch(/min-height:\s*44px/);
+    expect(row).toMatch(/display:\s*flex/);
+    expect(row).toMatch(/align-items:\s*center/);
+    expect(row).toMatch(/padding:\s*0 4px/);
+  });
 });
 
 describe('v12 phone frame "Import CSV · 390"', () => {
