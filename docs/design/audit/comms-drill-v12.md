@@ -34,8 +34,10 @@
   (`.chq-comms-editor-actions`, line 369) now also carries
   `.chq-phone-dock`, per DEC-621's wave-98 amendment comment nearby
   ("mount, never re-declare"). The dock/tab-bar exclusivity
-  concern is resolved by the same attribute contract `styles.css:2302`
-  (`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`) uses elsewhere.
+  concern is resolved by the same attribute contract at
+  app/src/styles.css`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`
+  (drift-proof citation, DEC-967 wave-115 shape -- this declaration has
+  drifted from the line number originally cited here) uses elsewhere.
   Closed.
 - **RESOLVED (wave 106, app/src/pages/comms/TemplatesTab.tsx:203,227)** —
   Templates' phone-frame count line. Re-derived against main: the head

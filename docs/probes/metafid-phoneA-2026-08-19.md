@@ -63,7 +63,9 @@
   CLOSED (wave 115): app/src/App.tsx:358 `isActive ? ' is-on' : ''`
 - Comms Templates/History unreachable on phone without a localStorage draft:
   phoneEntered ignores ?tab=; landing has zero nav without a draft.
-  CLOSED (wave 115): app/src/pages/Comms.tsx:71 `const [phoneEntered, setPhoneEntered] = useState(() => isTab(rawTab));`
+  CLOSED (wave 115, drift-proof citation DEC-967 wave-115 shape -- this
+  declaration has drifted from the line number originally cited here):
+  app/src/pages/Comms.tsx`const [phoneEntered, setPhoneEntered] = useState(() => isTab(rawTab));`
 - Drill-ins keep the parent page head (Contacts pipeline/dupes/merge, Comms
   drills) — frames are one-screen-at-a-time.
 - Pinned docks missing on 12 of 14 framed screens (Contact detail, Pipeline,

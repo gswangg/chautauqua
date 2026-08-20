@@ -36,7 +36,7 @@ review-cluster-local override class the way `.chq-review-plan-actions > a`
 got this wave — either way it is a shell/DEC-368 boundary this task's scope
 note ("do NOT widen this task") puts out of bounds.
 
-## `.chq-review-editor-title-actions` (`review.css:1605` — `.chq-review-editor-title-actions {`)
+## `.chq-review-editor-title-actions` (drift-proof citation, DEC-967 wave-115 shape -- this declaration has drifted from the line number originally cited here: app/src/pages/review/review.css`.chq-review-editor-title-actions {`)
 
 Houses `.chq-btn` children, which already carry the shared button padding —
 not flagged; recorded only to note it was checked and is not a floor
@@ -46,6 +46,9 @@ failure.
 
 No interactive anchor/button in `scorecard.css` measures short of 44px
 outside the rating-segment/criterion controls DEC-393's earlier wave-7
-amendment (`review.css:2154`) already raised to `height: 44px`. Per this
+amendment (drift-proof citation, DEC-967 wave-115 shape -- this declaration
+has drifted from the line number originally cited here) already raised at
+app/src/pages/review/review.css`.chq-review-rating-btn {` to
+`height: 44px;`. Per this
 task's explicit exclusion, dense scorecard cells are not touched here even
 where short.

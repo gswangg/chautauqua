@@ -41,10 +41,12 @@
 - Reviewer scorecard +31px overflow (chq-user-identity nowrap in a header
   the frame deletes on this screen — Review.dc.html:276 draws no shell
   header; fix per frame).
-  CLOSED (wave 120): app/src/styles.css:2251 `.chq-header-identity .chq-user-identity {`
-  CLOSED (wave 120): app/src/styles.css:2273 `.chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout])) .chq-header-identity .chq-user-identity {`
-  (a reviewer's shell has no tab bar so styles.css:2251 hides the header
-  identity's user block outright, avoiding the nowrap overflow; :2273's
+  CLOSED (wave 120): app/src/styles.css`.chq-header-identity .chq-user-identity {`
+  CLOSED (wave 120): app/src/styles.css`.chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout])) .chq-header-identity .chq-user-identity {`
+  (drift-proof citations, DEC-967 wave-115 shape -- both declarations have
+  drifted from the line numbers originally cited here) (a reviewer's shell
+  has no tab bar so the first rule hides the header identity's user block
+  outright, avoiding the nowrap overflow; the second, `:not()`-qualified
   drill-in exception re-shows exactly one Sign out, per
   app/src/pages/review/Scorecard.tsx:525 and the pin at
   app/src/pages/review/scorecard-phone-frames.test.ts:182.)
@@ -96,19 +98,18 @@
   scope (frame :597 scopes to title/abstract, live ships full CFP);
   scorecard copy drift (Read-full absent, recuse wording, "—" vs "Not yet").
 
-## Still live at wave 120
+## RESOLVED since wave 120 (re-derived wave v12m-w15-i)
 - 44px floor misses across public/portal: `.chq-review-queue-footer-showall`
-  (app/src/pages/review/review.css:650
-  `.chq-review-queue-footer-showall {`, through review.css:654 `padding: 0;`)
-  declares no `min-height`/`height` at any width and has no phone-scoped
-  override anywhere in the file — the sweep's `findOffenders` helper skips
-  any control with `height === undefined`, which is why this real
-  `<button>` (14x-wave-120 field guide: "36 such tokens across 14 sheets")
-  reads 0 in every ratchet. Violates the mandate's own 44px-floor rule
-  (DEC-393), applied to a directly analogous link-button elsewhere in the
-  same campaign at app/src/pages/settings/settings.css
-  `.chq-settings-edit-row-actions .chq-link-button {` -- the sibling
-  pattern this control never received.
+  (app/src/pages/review/review.css`.chq-review-queue-footer-showall {`, the
+  base rule, still declares no `min-height`/`height`) is now floored inside
+  the file's terminal phone block: app/src/pages/review/review.css`min-height: 44px;`
+  sits directly under a re-declared showall rule there, alongside a
+  `display: flex; align-items: center; justify-content: center;` centring
+  triple and `padding: 0 14px;` -- the full 44px-floor triple this row
+  originally found missing. Fixed per
+  the analogous link-button pattern this row cited at
+  app/src/pages/settings/settings.css
+  `.chq-settings-edit-row-actions .chq-link-button {`.
 - Zero/negative control gaps, the two clauses not reproducible from a
   static read: /login's focus ring on the PASSWORD field on load (no
   `focus-visible` rule targets `.chq-auth-card input[type=password]` in
