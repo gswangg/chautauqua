@@ -341,7 +341,22 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // marked with the shared EXHIBIT_SIGIL -- an exhibit is the subject of its
 // sentence, not a reference, so it leaves this population entirely (see
 // findLineKeyedOffenders and test/citation-exhibit.ts).
-export const LINE_KEYED_CITATION_CEILING = 80;
+// Wave v12m-w14-jj: this branch measured 122 (main had drifted the
+// population up between wave-115's 80 and this task's dispatch -- expected,
+// main moves mid-plan almost every wave). Converted the nine line-keyed
+// citations living in docs/probes/metafid-phoneB-ssr-2026-08-19.md to the
+// drift-proof bare-path shape, quoting a stable identifier
+// (`applyRequiredState`'s sibling `setStep(`, `reportValidity()`,
+// `data-field-id`, `resolvedTextCap`) rather than a whole statement for the
+// two citations into src/routes/public/cfp-steps-script.tsx and
+// src/views/form-render.tsx, since v12m-w14-ff and v12m-w14-gg are editing
+// those files this same wave -- a bare-path citation only needs its quote
+// to still resolve verbatim ANYWHERE in the file, so an identifier survives
+// a statement-level edit a whole-line quote would not. Re-measured after:
+// 113. Two sibling lanes (v12m-w14-aa, v12m-w14-ee) are each converting one
+// more citation in their own DEC docs this wave; the merge train will
+// re-measure lower again.
+export const LINE_KEYED_CITATION_CEILING = 113;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
