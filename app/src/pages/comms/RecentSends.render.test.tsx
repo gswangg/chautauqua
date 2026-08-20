@@ -221,6 +221,45 @@ describe('RecentSends', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toHaveAttribute('aria-expanded', 'true');
   });
 
+  // DEC-878 width-conditioned-copy twin (w6-d): the toggle carries two
+  // sibling spans -- `Open` (desktop) and `See the recipients` (phone) --
+  // exactly one visible per width via comms.css's max-width:700px block,
+  // never a useIsPhone markup fork. jsdom applies no stylesheet, so both
+  // spans are always present in the DOM; what matters is that the
+  // accessible name stays pinned to the desktop/full form (`Open`) even
+  // though the phone visual label is the longer string -- a shortened
+  // visual label that also shortened the accessible name would be a
+  // capability change, not a re-lining (mirrors MergePage's primary,
+  // which pins its accessible name to the desktop label too).
+  it('renders both width-conditioned spans for the per-row toggle and pins the accessible name to the desktop label', () => {
+    const batches = [batch({ batchKey: 'b1', subject: 'Send #1' })];
+    render(
+      <RecentSends eventId={EVENT_ID} batchesLoaded batches={batches} templatesById={{}} columnHeads />,
+    );
+
+    const toggle = screen.getByRole('button', { name: 'Open' });
+    expect(within(toggle).getByText('Open')).toHaveClass('chq-comms-batch-toggle-label-desktop');
+    expect(within(toggle).getByText('See the recipients')).toHaveClass(
+      'chq-comms-batch-toggle-label-phone',
+    );
+    // The accessible name is the desktop/full form, not a concatenation
+    // of both spans' text and not the phone visual label.
+    expect(screen.queryByRole('button', { name: 'See the recipients' })).not.toBeInTheDocument();
+
+    // comms.css: the phone span starts hidden by an unconditional default
+    // (DEC-833) and only the terminal max-width:700px block flips it
+    // visible while hiding the desktop span -- the DEC-919 phone-hidden
+    // receipt lives on that desktop rule.
+    expect(ruleBodyFor(commsCss, '.chq-comms-batch-toggle-label-phone {')).toContain(
+      'display: none;',
+    );
+    const phoneBlockStart = commsCss.indexOf('.chq-comms-batch-toggle-label-desktop {\n    display: none;');
+    expect(phoneBlockStart).toBeGreaterThanOrEqual(0);
+    expect(commsCss.slice(phoneBlockStart, phoneBlockStart + 400)).toContain(
+      '.chq-comms-batch-toggle-label-phone {\n    display: inline;',
+    );
+  });
+
   it('never fabricates a count it did not receive -- omits a limit when none is given', () => {
     const batches = [1, 2, 3, 4, 5].map((n) => batch({ batchKey: `b${n}`, subject: `Send #${n}` }));
     render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={batches} templatesById={{}} />);

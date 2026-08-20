@@ -2458,6 +2458,13 @@
      unreached by this block. `.chq-comms-batch-toggle` already carries
      the 44px floor + centred flex from its shared `.chq-btn` base, so
      this rule only swaps the two label spans. */
+  /* phone-hidden: DEC-878 width-conditioned-copy twin, not a capability
+     removal -- the sibling .chq-comms-batch-toggle-label-phone span
+     (below) becomes visible in this same block and carries the row's
+     "See the recipients" copy at 390, and RecentSends.tsx pins the
+     button's accessible name to the desktop form ("Open") at every
+     width via an explicit aria-label, so the control's name never
+     shortens underneath it. */
   .chq-comms-batch-toggle-label-desktop {
     display: none;
   }
