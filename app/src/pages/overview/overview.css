@@ -743,4 +743,24 @@
   .chq-overview-row-actions {
     gap: 34px;
   }
+
+  /* task w13-o (undeclared-height lens): the descendant-scoped rules above
+     (:672-682, :720-728) already floor `.chq-overview-btn` wherever it
+     appears inside `.chq-overview-row-actions(-inline/-column)`, which is
+     every markup site today (Overview.tsx:395/400/417/459) -- but the
+     lens's population is the BARE class token, and no top-level or narrow
+     rule anywhere declares `.chq-overview-btn`/`.chq-overview-btn-primary`
+     alone with a height, so the bare selector itself is the offender. Same
+     painted shape as :720-728 (border + `--chq-surface-sunk`/`--chq-brand`
+     fill, overview.css:367-405) -- horizontal padding restated at the
+     desktop value, not the cancelled-padding idiom, so a painted box never
+     bleeds past its own edge. */
+  .chq-overview-btn,
+  .chq-overview-btn-primary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+    margin-inline: 0;
+  }
 }
