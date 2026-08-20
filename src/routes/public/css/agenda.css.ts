@@ -751,5 +751,18 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
       align-items: center;
       padding: 0 4px;
     }
+    /* tap-floor-exempt: v12m-w17-d (DEC-393 wave-142 fourth evasion mode --
+       classless SSR anchor). The next-day link (agenda.tsx's day-footer,
+       ".chq-pub-agenda-day-footer a") is a phrase inside the footer's one
+       running sentence ("Last session ends HH:MM · <next day> ›") -- a
+       44px box around it would break the line box it lives in, same
+       reasoning as .chq-overview-link-inline's wave-106 precedent.
+       Restates verbatim the font-weight this token's own top-level rule
+       already declares above (the DEC-768 day-footer block) so the
+       exemption sits above a rule that actually declares something
+       (DEC-989(b)), rather than an empty body. */
+    .chq-pub-agenda-day-footer a {
+      font-weight: 700;
+    }
   }
 `;
