@@ -1,6 +1,6 @@
-// DEC-959: the "Contact · 390" frame cut of docs/design/Chautauqua
-// Contacts.dc.html (its head band and docked footer are receipted line by
-// line at the expects below, not claimed here)
+// DEC-959: the "Contact · 390" frame cut of the Chautauqua Contacts phone
+// frame (its head band and docked footer are receipted line by line at the
+// expects below, not claimed here)
 // becomes a READ screen -- values render as inert text, and the sticky
 // action bar is replaced by the frame's two-control dock (Email / Edit).
 // Follows the matchMedia-stub idiom PlanEditor.render.test.tsx:2496-2504
