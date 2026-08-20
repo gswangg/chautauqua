@@ -32,9 +32,12 @@ afterEach(() => {
 });
 
 describe('TracksRoomsPanel captions, consequence line, and field-level refusals', () => {
-  // DEC-888 (wave 64 amendment): one caption for the tracks edit section
-  // naming what the colour is for, not one per row.
-  it('renders one caption naming what the track colour is for', async () => {
+  // DEC-896 (wave-133 amendment): the head consequence folding both
+  // sections' rules into one line is gone -- each section closes with its
+  // OWN note instead (docs/design/Chautauqua Settings.dc.html:835/:852), so
+  // the track-colour phrase now occurs exactly once, inside the TRACKS
+  // section's own closing note, and never in a shared head line.
+  it('renders one caption naming what the track swatch is for, inside the Tracks section', async () => {
     mockTracksRooms();
     render(
       <MemoryRouter>
@@ -47,7 +50,7 @@ describe('TracksRoomsPanel captions, consequence line, and field-level refusals'
     expect(captions).toHaveLength(1);
   });
 
-  it('renders the consequence line naming what Remove and Seats mean (DEC-896/B10)', async () => {
+  it('renders the Tracks and Rooms sections closing with their own consequence notes (DEC-896/B10)', async () => {
     mockTracksRooms();
     render(
       <MemoryRouter>
@@ -58,8 +61,11 @@ describe('TracksRoomsPanel captions, consequence line, and field-level refusals'
     await openEdit();
     expect(
       screen.getByText(
-        'A track in use cannot be removed — retire it. Seats are advisory: the agenda flags over-capacity but never blocks.',
+        'The swatch is how a track reads on the agenda and the public pages · a track in use cannot be removed — retire it instead and it stops appearing on the form',
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Seats are advisory — the agenda flags an over-capacity room but never blocks it'),
     ).toBeInTheDocument();
   });
 

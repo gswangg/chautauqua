@@ -296,7 +296,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       await screen.findByLabelText('Welcome note');
       expect(
         screen.getByText(
-          'Title and abstract stay organiser-only — a speaker editing them after acceptance would change what was accepted.',
+          'Title and abstract stay organiser-only — a speaker editing them after acceptance would change what the committee accepted.',
         ),
       ).toBeInTheDocument();
 
