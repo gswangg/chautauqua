@@ -1947,10 +1947,16 @@ select,
    the palette scan reads). */
 /* tap-floor-exempt: the 18px box is the control's VISUAL, unchanged from
    the browser-drawn size it replaces -- enlarging it to 44px is a
-   system-wide redesign of every table and form checkbox in the product
-   (header select-all cells, row selection, field-modal option lists). The
-   phone tap floor is met by padding on the label around it, not by
-   inflating the box. */
+   system-wide redesign of every checkbox/radio in the product (field-modal
+   option lists, settings toggles, review criteria). The phone tap floor is
+   met by the LABEL wrapping the box, not by inflating the box: every
+   option-list/toggle site already renders its .chq-check inside its own
+   `<label>`, and the population that had no such label -- a bare table-
+   cell checkbox sitting directly in a `<td>`/`<th>` (ContactsTable.tsx,
+   SubmissionsTable.tsx, ComposeWizard.tsx, SessionList.tsx) -- is now
+   wrapped in a `.chq-check-hit` label that carries the floor instead. This
+   is true, and checked: check-hit-receipt.scan.test.ts (DEC-393 wave-124
+   amendment). */
 input[type='checkbox'],
 input[type='radio'],
 .chq-check {
@@ -1966,6 +1972,17 @@ input[type='radio'],
   border: 1px solid var(--chq-border);
   border-radius: var(--chq-r-ctl);
   cursor: pointer;
+}
+
+/* .chq-check-hit wraps a table-cell .chq-check with no floor-reaching
+   label around it. Layout-neutral at top level -- no padding, no size --
+   so desktop is byte-identical to the bare input it replaces; the floor
+   itself lives only in the one terminal @media (max-width: 700px) block
+   below (DEC-385). */
+.chq-check-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 input[type='radio'] {
@@ -2768,5 +2785,22 @@ select:focus-visible,
     display: flex;
     align-items: center;
     padding-inline: 11px 0;
+  }
+
+  /* .chq-check-hit is the label wrapper added around every table-cell
+     .chq-check (ContactsTable.tsx, SubmissionsTable.tsx, ComposeWizard.tsx,
+     SessionList.tsx select-all/row-select controls -- DEC-393 wave-124
+     amendment, receipt check-hit-receipt.scan.test.ts). Physical padding/
+     margin shorthand, not padding-inline/margin-inline (styles.css:2706-
+     2719 records why): this control has no sibling gap to widen, so an
+     inline-axis pair here would mint a bare cancelled-padding-GAP
+     population member with nothing to cancel against. Padding is absorbed
+     by an equal, opposite-sign margin so the 18px painted box (Chautauqua
+     Speakers.dc.html:642) never shifts. */
+  .chq-check-hit {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 13px;
+    margin: -13px;
   }
 }

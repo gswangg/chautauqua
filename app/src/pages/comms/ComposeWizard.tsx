@@ -1018,16 +1018,18 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               <thead>
                 <tr>
                   <th className="chq-comms-compose-col-select">
-                    <input
-                      type="checkbox"
-                      className="chq-check"
-                      checked={isPageFullySelected(selection, pageIds)}
-                      ref={(el) => {
-                        if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
-                      }}
-                      onChange={() => dispatchSelection({ type: 'TOGGLE_PAGE', pageIds })}
-                      aria-label="Select every submission on this page"
-                    />
+                    <label className="chq-check-hit">
+                      <input
+                        type="checkbox"
+                        className="chq-check"
+                        checked={isPageFullySelected(selection, pageIds)}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
+                        }}
+                        onChange={() => dispatchSelection({ type: 'TOGGLE_PAGE', pageIds })}
+                        aria-label="Select every submission on this page"
+                      />
+                    </label>
                   </th>
                   <th className="chq-comms-compose-col-title">Submission</th>
                   <th className="chq-comms-compose-col-speaker">Speakers</th>
@@ -1039,13 +1041,15 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 {submissions.map((s) => (
                   <tr key={s.id}>
                     <td data-label="Select">
-                      <input
-                        type="checkbox"
-                        className="chq-check"
-                        checked={selection.selectedIds.has(s.id)}
-                        onChange={() => dispatchSelection({ type: 'TOGGLE_ROW', id: s.id })}
-                        aria-label={`Select ${s.title}`}
-                      />
+                      <label className="chq-check-hit">
+                        <input
+                          type="checkbox"
+                          className="chq-check"
+                          checked={selection.selectedIds.has(s.id)}
+                          onChange={() => dispatchSelection({ type: 'TOGGLE_ROW', id: s.id })}
+                          aria-label={`Select ${s.title}`}
+                        />
+                      </label>
                     </td>
                     <td data-label="Title">{s.title}</td>
                     <td data-label="Speakers">{s.speakers.map((sp) => sp.name).join(', ')}</td>
