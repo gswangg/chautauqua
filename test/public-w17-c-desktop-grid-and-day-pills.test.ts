@@ -5,8 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import { PUBLIC_CSS } from "../src/routes/public/public.css";
-import { AGENDA_CSS as AGENDA_DESKTOP_CSS, AGENDA_PHONE_CSS } from "../src/routes/public/css/agenda.css";
-import { CARDS_CSS as CARDS_DESKTOP_CSS, CARDS_PHONE_CSS } from "../src/routes/public/css/cards.css";
+import { AGENDA_CSS, AGENDA_PHONE_CSS } from "../src/routes/public/css/agenda.css";
+import { CARDS_CSS, CARDS_PHONE_CSS } from "../src/routes/public/css/cards.css";
 import { SpeakersContent, GalleryContent } from "../src/routes/public/speakers";
 import { AgendaContent } from "../src/routes/public/agenda";
 import type { PublicAgendaItem, PublicEvent, PublicSpeakerWithSessions } from "../src/server/repo/public";
@@ -77,8 +77,14 @@ describe("DEC-885/DEC-385: desktop speaker grid is three-up (single-direction, m
     // (wave 50 amendment) since added CARDS_CSS's own phone-scoped 700px
     // block AFTER it (for .chq-pub-view-toggle-option's tap floor only),
     // so the grid rule stays unprefixed/desktop.
-    const speakerGridIdx = CARDS_CSS.indexOf(".chq-pub-speaker-grid {");
-    const cardsMediaIdx = CARDS_CSS.indexOf("@media");
+    // DEC-385 wave-143 amendment (task w18-f): CARDS_CSS's own phone media
+    // block moved out into CARDS_PHONE_CSS (composed at PUBLIC_CSS's tail
+    // rather than staying inline -- see cards.css.ts / public.css.ts), so
+    // this check now needs both to find an @media occurrence to compare
+    // the grid rule's position against.
+    const cardsComposed = CARDS_CSS + CARDS_PHONE_CSS;
+    const speakerGridIdx = cardsComposed.indexOf(".chq-pub-speaker-grid {");
+    const cardsMediaIdx = cardsComposed.indexOf("@media");
     expect(speakerGridIdx).toBeGreaterThan(-1);
     expect(cardsMediaIdx).toBeGreaterThan(-1);
     expect(speakerGridIdx).toBeLessThan(cardsMediaIdx);
@@ -100,15 +106,24 @@ describe("DEC-885/DEC-385: desktop speaker grid is three-up (single-direction, m
   });
 
   it("the existing narrow-viewport (700px) speaker-grid rule is untouched and sits after the 900px block, still winning below 700px", () => {
-    expect(AGENDA_CSS).toMatch(
+    // DEC-385 wave-143 amendment (task w18-f): this rule lives inside the
+    // sheet's own phone block, now AGENDA_PHONE_CSS rather than inline in
+    // AGENDA_CSS -- see the composed-text note below.
+    expect(AGENDA_CSS + AGENDA_PHONE_CSS).toMatch(
       /\.chq-pub-speaker-grid\s*\{\s*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(120px,\s*1fr\)\);\s*\}/,
     );
     // task-w5-a: compared within AGENDA_CSS, not PUBLIC_CSS -- chrome.css.ts
     // now has its own earlier, unrelated @media (max-width: 700px) block
     // (see the "gallery's own DEC-593 override" test below for the same
     // caveat on the concatenated string).
-    const idx900 = AGENDA_CSS.indexOf("@media (max-width: 900px)");
-    const idx700 = AGENDA_CSS.indexOf("@media (max-width: 700px)");
+    // DEC-385 wave-143 amendment (task w18-f): AGENDA_CSS's own phone media
+    // block moved out into AGENDA_PHONE_CSS (composed at PUBLIC_CSS's tail
+    // rather than staying inline -- see agenda.css.ts / public.css.ts), so
+    // this ordering check now needs both, concatenated in the same
+    // ascending source order they compose in.
+    const agendaComposed = AGENDA_CSS + AGENDA_PHONE_CSS;
+    const idx900 = agendaComposed.indexOf("@media (max-width: 900px)");
+    const idx700 = agendaComposed.indexOf("@media (max-width: 700px)");
     expect(idx900).toBeGreaterThan(-1);
     expect(idx700).toBeGreaterThan(idx900);
   });

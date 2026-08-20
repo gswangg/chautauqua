@@ -776,14 +776,20 @@ ${ERROR_STATES_CSS}
    at the true end of this module, after every top-level rule and after
    both existing phone blocks above (never edited/reordered), per DEC-385
    single-direction responsive. */
-/* DEC-385 wave-143: EMPTY_CSS's phone half, composed here rather than left
-   inside EMPTY_CSS's own body. It used to land mid-sheet with the rest of
-   that module, AHEAD of ERROR_STATES_CSS's desktop rules and this sheet's
-   own .chq-portal-not-shown-* rules, and lost every equal-specificity tie
-   to them. It sits FIRST in this sheet's trailing phone region because it
-   is first in ascending composed source order -- before this module's own
-   block below, before ERROR_STATES_PHONE_CSS at the end of the file.
-   Verbatim; nothing reordered or reworded. */
+
+/* DEC-385 wave-143 amendment (task w18-f): EMPTY_CSS (composed above, line
+   703) used to carry its own trailing phone media block inline, which landed a phone block ahead of ERROR_STATES_CSS and this
+   sheet's own desktop growth (.chq-portal-not-shown-*, the G13 empty-state
+   re-pins) -- non-terminal in composed output per
+   docs/design/audit/terminal-phone-block-v12.md and
+   test/phone-terminal-block.scan.test.ts. EMPTY_CSS's phone rule is now its
+   own export, EMPTY_PHONE_CSS (src/routes/public/css/empty.css.ts),
+   composed here -- immediately ahead of this sheet's own terminal block,
+   matching EMPTY_CSS's original relative (ascending) source position
+   below every desktop rule and above this module's own phone block -- so
+   this module's tail is one contiguous phone region: EMPTY_PHONE_CSS, then
+   this sheet's own block, then ERROR_STATES_PHONE_CSS. No selector,
+   declaration or value changed -- pure relocation. */
 ${EMPTY_PHONE_CSS}
 @media (max-width: 700px) {
 

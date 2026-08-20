@@ -41,13 +41,16 @@ void DEC_851;
 
 export { ACCENT_BOUND_CLASSES };
 
-// DEC-385 wave-143: the five composed modules contribute their DESKTOP
-// halves first, in the same order they always had, and their phone halves
-// after -- also in that same ascending order. Before this split each
-// module's own max-width:700px block sat mid-sheet, so (for example)
-// CHROME's phone rules were followed by CARDS/AGENDA/RAIL desktop rules and
-// lost every equal-specificity tie to them. Nothing here is reordered
-// relative to its peers and no declaration is reworded: desktop output is
-// byte-identical, and the phone blocks now form the ONE contiguous trailing
-// region test/phone-terminal-block.scan.test.ts grades.
+// DEC-385 wave-143 amendment (task w18-f): each of the five fragments above
+// used to carry its OWN terminal @media (max-width: 700px) block, which
+// made every fragment but the last (EMPTY_CSS) non-terminal in the
+// composed PUBLIC_CSS output -- see docs/design/audit/
+// terminal-phone-block-v12.md and test/phone-terminal-block.scan.test.ts
+// (which grades composed output, not each fragment's own on-disk text).
+// Every fragment's phone block is now its own *_PHONE_CSS export
+// (mirroring src/views/error-states.css.ts's ERROR_STATES_CSS/
+// ERROR_STATES_PHONE_CSS split, task w16-bb) and all five are concatenated
+// here, in the SAME ascending order the fragments themselves compose in
+// above, so the trailing region is contiguous and nothing is reordered or
+// reworded.
 export const PUBLIC_CSS = `${CHROME_CSS}${CARDS_CSS}${AGENDA_CSS}${RAIL_CSS}${EMPTY_CSS}${CHROME_PHONE_CSS}${CARDS_PHONE_CSS}${AGENDA_PHONE_CSS}${RAIL_PHONE_CSS}${EMPTY_PHONE_CSS}`;

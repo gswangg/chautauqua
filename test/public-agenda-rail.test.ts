@@ -267,6 +267,9 @@ describe("DEC-576 (wave 110 amendment): the SSR phone dock band", () => {
     // rather than jsdom (no stylesheet is applied here).
     // DEC-385 wave-143: agenda.css.ts exports a desktop/phone PAIR now, so
     // the dock's phone floors live in AGENDA_PHONE_CSS, not in AGENDA_CSS.
+    // DEC-385 wave-143 amendment (task w18-f): AGENDA_CSS's own phone media
+    // block moved out into AGENDA_PHONE_CSS (composed at PUBLIC_CSS's tail
+    // rather than staying inline -- see agenda.css.ts / public.css.ts).
     const { AGENDA_PHONE_CSS } = await import("../src/routes/public/css/agenda.css");
     const phoneBlock = AGENDA_PHONE_CSS.slice(AGENDA_PHONE_CSS.lastIndexOf("@media (max-width: 700px)"));
     const icsHeight = Number(phoneBlock.match(/\.chq-pub-agenda-dock-ics\s*\{[^}]*min-height:\s*(\d+)px/)?.[1]);

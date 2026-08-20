@@ -540,24 +540,15 @@ describe("one derived terminal-phone-block contract (DEC-385 amendment wave 98)"
     }
   });
 
-  // DEC-385 wave-143: this pin used to assert the sheet was still in breach
-  // -- trailingText NOT null, matching /\.chq-field-error/ -- because
-  // EMPTY_CSS carried its own mid-file phone block and w16-bb had scoped
-  // only the ERROR_STATES_CSS split. Splitting EMPTY_PHONE_CSS out the same
-  // way closed that gap, so the pin now asserts the conformant shape rather
-  // than the defect: a sentinel that asserts a live defect makes fixing that
-  // defect illegal (field guide w103, DEC-967 wave-143).
-  it("portal.css.ts is conformant on its COMPOSED output: all three phone blocks (EMPTY_PHONE_CSS's, its own terminal block, then ERROR_STATES_PHONE_CSS's) form one contiguous trailing region with nothing after them", () => {
+  it("portal.css.ts (task w18-f, DEC-385 wave-143 amendment): fully conformant on composed output -- EMPTY_CSS's phone rule (formerly mid-file at ~line 703, the pre-existing gap task w16-bb's own pin used to document) is now its own export, EMPTY_PHONE_CSS, composed immediately ahead of this sheet's own terminal block, so all THREE phone blocks (EMPTY_PHONE_CSS, portal's own terminal block, ERROR_STATES_PHONE_CSS) are contiguous with nothing trailing", () => {
     const portal = RESULTS.find((r) => r.relPath === "src/routes/portal/portal.css.ts");
     expect(portal).toBeDefined();
-    // EMPTY_PHONE_CSS's (composed first, ascending source order) + portal's
-    // own terminal block + ERROR_STATES_PHONE_CSS's, all three contiguous.
-    expect(portal!.phoneBlocks.length).toBe(3);
+    expect(portal!.phoneBlocks.length).toBe(3); // EMPTY_PHONE_CSS's + portal's own terminal + ERROR_STATES_PHONE_CSS's, now contiguous
     const [emptyPhone, own, phoneCss] = portal!.phoneBlocks;
     expect(emptyPhone).toBeDefined();
     expect(own).toBeDefined();
     expect(phoneCss).toBeDefined();
-    expect(portal!.trailingText).toBeNull();
+    expect(portal!.trailingText).toBeNull(); // no non-phone construct sits between/after the three blocks any more
   });
 
   it("composed-blindness regression proof: a fabricated host that composes a fabricated module carrying a phone block, with a non-phone rule sitting AFTER the composed import, is invisible to a raw-file-text scan but caught once composition is resolved", () => {

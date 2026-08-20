@@ -445,6 +445,18 @@ export const RAIL_PHONE_CSS = `
      a redundant duplicate, named here) so the sheet carries exactly one
      terminal phone block, per phone-terminal-block.scan.test.ts. No other
      selector/declaration/value is reordered, reworded or deduped. */
+
+`;
+
+// DEC-385 wave-143 amendment (task w18-f): the phone media block
+// block that used to live inside RAIL_CSS above (and made this fragment's
+// composed position inside PUBLIC_CSS/PORTAL_CSS non-terminal, per
+// docs/design/audit/terminal-phone-block-v12.md) is split into its own
+// export, mirroring src/views/error-states.css.ts's ERROR_STATES_CSS/
+// ERROR_STATES_PHONE_CSS split (task w16-bb). RAIL_PHONE_CSS carries ONLY the
+// rule below, verbatim, unreordered, unreworded -- each composing sheet
+// concatenates it into its own trailing phone region instead.
+export const RAIL_PHONE_CSS = `
   @media (max-width: 700px) {
     .chq-pub-sessions-layout { grid-template-columns: 1fr; gap: 20px; }
     /* task-w49-h (DEC-990 amendment): README's page-title phone register

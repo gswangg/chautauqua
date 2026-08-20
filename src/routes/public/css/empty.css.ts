@@ -89,6 +89,18 @@ export const EMPTY_PHONE_CSS = `
      rule, rail.css.ts), but that sibling was not already floored before
      this task, so this token is floored on its own selector too rather
      than claimed composition-exempt. */
+
+`;
+
+// DEC-385 wave-143 amendment (task w18-f): the phone media block that used
+// to live inside EMPTY_CSS above (and made this fragment's composed
+// position inside PUBLIC_CSS/PORTAL_CSS non-terminal, per
+// docs/design/audit/terminal-phone-block-v12.md) is split into its own
+// export, mirroring src/views/error-states.css.ts's ERROR_STATES_CSS/
+// ERROR_STATES_PHONE_CSS split (task w16-bb). EMPTY_PHONE_CSS carries ONLY the
+// rule below, verbatim, unreordered, unreworded -- each composing sheet
+// concatenates it into its own trailing phone region instead.
+export const EMPTY_PHONE_CSS = `
   @media (max-width: 700px) {
     .chq-pub-empty-escape {
       min-height: 44px;
