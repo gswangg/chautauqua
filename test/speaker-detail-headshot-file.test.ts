@@ -74,6 +74,11 @@ create table file (
   uploaded_by_contact_id text, task_assignment_id text,
   created_at integer, updated_at integer
 );
+create table email_log (
+  id text primary key, event_id text, template_id text, contact_id text, batch_id text, to_email text,
+  subject text, body_text text, body_html text, ics_text text, ics_filename text, provider text,
+  status text, sent_at integer, created_at integer
+);
 `;
 
 const T0 = 1_700_000_000_000;
