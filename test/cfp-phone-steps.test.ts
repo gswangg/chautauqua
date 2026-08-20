@@ -84,6 +84,24 @@ function fakeKv() {
   };
 }
 
+// wave-138 (DEC-385 + DEC-986): the wizard now guards every mutation behind
+// window.matchMedia('(max-width: 700px)'). jsdom's own matchMedia stub does
+// no layout and always reports matches:false, so every test that exercises
+// the wizard's *engaged* behaviour must install a stub that reports the
+// width band it wants to simulate.
+function stubMatchMedia(win: Window, matches: boolean) {
+  (win as unknown as { matchMedia: (q: string) => MediaQueryList }).matchMedia = ((query: string) => ({
+    matches,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as (q: string) => MediaQueryList;
+}
+
 function appWithDb(db: AppEnv["Variables"]["db"]) {
   const app = new Hono<AppEnv>();
   registerErrorHandler(app);
@@ -322,6 +340,7 @@ describe("cfp-steps-script — Next validates step 1 before advancing (DEC-986)"
     // jsdom implements constraint validation but not scrollIntoView; stub it
     // so setStep's final line does not throw inside the click handler.
     dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+    stubMatchMedia(dom.window as unknown as Window, true);
     const document = dom.window.document;
     // The script arms itself on DOMContentLoaded, which jsdom dispatches
     // asynchronously once it finishes parsing -- wait for it before asserting.
@@ -401,6 +420,7 @@ describe("cfp-steps-script — a step transition un-requires what it hides (DEC-
       { url: "https://example.test/submit/test-conf", runScripts: "dangerously" },
     );
     dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+    stubMatchMedia(dom.window as unknown as Window, true);
     const document = dom.window.document;
     if (document.readyState === "loading") {
       await new Promise<void>((resolve) => document.addEventListener("DOMContentLoaded", () => resolve()));
@@ -452,5 +472,132 @@ describe("cfp-steps-script — a step transition un-requires what it hides (DEC-
     const mod = await import("../src/routes/public/cfp-steps-script");
     const el = mod.CfpStepsScript() as unknown as { props: { dangerouslySetInnerHTML: { __html: string } } };
     expect(el.props.dangerouslySetInnerHTML.__html).not.toContain("new Map(");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// wave-138 (DEC-385 + DEC-986): the wizard is a PHONE-ONLY affordance. It was
+// running unconditionally -- no matchMedia guard anywhere in the file --
+// which stripped `required` off the visible desktop "about you" controls and
+// jump-scrolled the page on every load, a live DEC-385 desktop-freeze breach.
+// ---------------------------------------------------------------------------
+describe("cfp-steps-script — guarded by matchMedia('(max-width: 700px)') (DEC-385 + DEC-986, wave-138)", () => {
+  async function stepScriptJs(): Promise<string> {
+    const mod = await import("../src/routes/public/cfp-steps-script");
+    const el = mod.CfpStepsScript() as unknown as { props: { dangerouslySetInnerHTML: { __html: string } } };
+    return el.props.dangerouslySetInnerHTML.__html;
+  }
+
+  it("guards on window.matchMedia('(max-width: 700px)')", async () => {
+    const js = await stepScriptJs();
+    expect(js).toContain("window.matchMedia('(max-width: 700px)')");
+  });
+
+  function wizardMarkup(): string {
+    return `<!doctype html><html><body>
+      <form id="chq-cfp-submit-form" data-chq-cfp-step="all">
+        <div class="chq-cfp-steps">
+          <span class="chq-cfp-steps-label">Step 1 of 2</span>
+          <div class="chq-cfp-steps-bar"><div class="chq-cfp-steps-bar-fill"></div></div>
+        </div>
+        <section class="chq-cfp-step chq-cfp-step-talk">
+          <input class="chq-input" name="f_title" required value="A talk">
+        </section>
+        <section class="chq-cfp-step chq-cfp-step-you">
+          <input class="chq-input" name="f_email" required value="a@example.test">
+        </section>
+        <div class="chq-cfp-actions">
+          <button type="submit" class="chq-btn">Submit this talk</button>
+          <button type="button" class="chq-btn chq-cfp-step-next">Next: about you</button>
+          <button type="button" class="chq-btn chq-cfp-step-back">Back</button>
+        </div>
+      </form>
+    </body></html>`;
+  }
+
+  async function mountAtWidth(matches: boolean) {
+    const js = await stepScriptJs();
+    const dom = new JSDOM(wizardMarkup().replace("</body>", `<script>${js}</script></body>`), {
+      url: "https://example.test/submit/test-conf",
+      runScripts: "dangerously",
+    });
+    let scrollIntoViewCalls = 0;
+    dom.window.HTMLElement.prototype.scrollIntoView = function () {
+      scrollIntoViewCalls += 1;
+    };
+    stubMatchMedia(dom.window as unknown as Window, matches);
+    const document = dom.window.document;
+    if (document.readyState === "loading") {
+      await new Promise<void>((resolve) => document.addEventListener("DOMContentLoaded", () => resolve()));
+    }
+    return {
+      document,
+      form: document.getElementById("chq-cfp-submit-form")!,
+      getScrollCalls: () => scrollIntoViewCalls,
+    };
+  }
+
+  it("DESKTOP width: never mutates data-chq-cfp-step, never scrolls, and both sections' `required` controls stay required", async () => {
+    const { document, form, getScrollCalls } = await mountAtWidth(false);
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("all");
+    expect(getScrollCalls()).toBe(0);
+    const title = document.querySelector('[name="f_title"]') as HTMLInputElement;
+    const email = document.querySelector('[name="f_email"]') as HTMLInputElement;
+    expect(title.required).toBe(true);
+    expect(email.required).toBe(true);
+    // Never stashed/rewired at all -- the wizard did not touch these fields.
+    expect(title.hasAttribute("data-chq-cfp-required-orig")).toBe(false);
+    expect(email.hasAttribute("data-chq-cfp-required-orig")).toBe(false);
+  });
+
+  it("PHONE width: today's two-step engagement is unchanged", async () => {
+    const { document, form } = await mountAtWidth(true);
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("1");
+    const title = document.querySelector('[name="f_title"]') as HTMLInputElement;
+    const email = document.querySelector('[name="f_email"]') as HTMLInputElement;
+    expect(title.required).toBe(true);
+    expect(email.required).toBe(false);
+  });
+
+  it("leaving phone width restores data-chq-cfp-step=\"all\" and every stashed required value", async () => {
+    const js = await stepScriptJs();
+    const dom = new JSDOM(wizardMarkup().replace("</body>", `<script>${js}</script></body>`), {
+      url: "https://example.test/submit/test-conf",
+      runScripts: "dangerously",
+    });
+    dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+    const win = dom.window as unknown as Window;
+    let listener: ((e: { matches: boolean }) => void) | null = null;
+    let currentMatches = true;
+    (win as unknown as { matchMedia: (q: string) => MediaQueryList }).matchMedia = ((query: string) => ({
+      get matches() {
+        return currentMatches;
+      },
+      media: query,
+      onchange: null,
+      addEventListener: (_type: string, cb: (e: { matches: boolean }) => void) => {
+        listener = cb;
+      },
+      removeEventListener: () => {},
+      addListener: (cb: (e: { matches: boolean }) => void) => {
+        listener = cb;
+      },
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as (q: string) => MediaQueryList;
+    const document = dom.window.document;
+    if (document.readyState === "loading") {
+      await new Promise<void>((resolve) => document.addEventListener("DOMContentLoaded", () => resolve()));
+    }
+    const form = document.getElementById("chq-cfp-submit-form")!;
+    const email = document.querySelector('[name="f_email"]') as HTMLInputElement;
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("1");
+    expect(email.required).toBe(false);
+    // Cross the breakpoint back to desktop.
+    currentMatches = false;
+    expect(listener).not.toBeNull();
+    listener!({ matches: false });
+    expect(form.getAttribute("data-chq-cfp-step")).toBe("all");
+    expect(email.required).toBe(true);
   });
 });
