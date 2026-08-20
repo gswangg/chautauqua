@@ -160,7 +160,7 @@ export const DEC_572 = "A reviewer track assignment is previewed and confirmed, 
 export const DEC_573 = "A file comment thread belongs to the version CHAIN, not to one file row; the comment list carries an envelope";
 export const DEC_574 = "An upload control never discards the unsaved fields around it";
 export const DEC_575 = "On CSV import UPDATE, a blank cell means \"no value supplied\" and never clears an existing value; custom fields merge key-by-key";
-export const DEC_576 = "Amendment (wave 124): a probe row that contradicts a landed ruling is a probe row, not a defect — and DEVIATIONS.md gets the promised entry; the wave-123 and wave-114 amendments stand unchanged beside it -- a shared quiet-action token takes its phone floor on the ANCHOR-qualified selector, never on the bare class, and a 390 dock's MEMBERSHIP is the frame's, verbatim: Publish schedule stays in the agenda head and never enters the two-control dock";
+export const DEC_576 = "Amendment (wave 125): a sticky-bottom dock pins from its LAYOUT position, so Content's select-mode band is re-ordered last with flex `order` inside the phone block — never by moving the DOM; and Files · 390 adopts the frame's band with the two controls it already owns";
 export const DEC_577 = "Amendment (wave 116): every control-class rule that sets a type register declares its family — CEILING goes 28 to 0";
 export const DEC_578 = "The seed's wipe list is derived from the schema, with a source-scanning tripwire that fails when a table is missing";
 export const DEC_579 = "CFP track selection stays multi-select; the defect is the label, not the control";
@@ -205,7 +205,7 @@ export const DEC_617 = "The hardened embed element is one file its own test exec
 export const DEC_618 = "AUDIT.md's claims are enumerated by a test, not maintained by hand";
 export const DEC_619 = "Scale is a named profile threaded through the seeder, not a second seeder";
 export const DEC_620 = "Vertical clipping is a measured gate: content taller than its own box, with nothing able to scroll, is a failure";
-export const DEC_621 = "Amendment (wave 109): The comms phone landing is an entrance, never a dead end";
+export const DEC_621 = "Amendment (wave 125): a Comms `?tab=` drill stands the landing head and tab strip down at 390 through the Contacts MARKUP gate, not a second CSS suppression";
 export const DEC_622 = "Reviewer identity resolves in ONE place, and every surface that can name a reviewer ends in it";
 export const DEC_623 = "A ref the product prints is a ref the API accepts";
 export const DEC_624 = "Anonymity is a ratchet: it can be granted, never revoked once evaluations exist under it";
