@@ -406,7 +406,17 @@ export function SpeakerDetailPage() {
   const files = detail
     ? detail.tasks.filter((t): t is typeof t & { file: NonNullable<typeof t.file> } => t.file !== null)
     : [];
-  const otherEvents = detail ? detail.otherEvents.slice(0, OTHER_EVENTS_LIMIT) : [];
+  // DEC-829 amendment (wave 112): the label drops its `· {otherEventsCount}`
+  // suffix (frame :414 draws "Across your events" with no count), but
+  // otherEventsCount keeps a real reader here as the list's own cap -- never
+  // a declared value nobody reads (DEC-851/988).
+  const otherEvents = detail ? detail.otherEvents.slice(0, Math.min(OTHER_EVENTS_LIMIT, detail.otherEventsCount)) : [];
+  // docs/design/Chautauqua Speakers.dc.html:362 draws `Sessions · 1 accepted`
+  // -- the accepted aggregate, not the raw session count -- derived from the
+  // same detail.sessions[].status already on the DEC-930 payload.
+  const acceptedSessionCount = detail
+    ? detail.sessions.filter((session) => session.status === 'accepted').length
+    : 0;
 
   return (
     <div className="chq-page chq-speaker-detail-page chq-measure-table">
@@ -516,7 +526,7 @@ export function SpeakerDetailPage() {
             <div className="chq-speaker-detail-main">
               <section className="chq-section chq-speaker-detail-sessions">
                 <div className="chq-section-head">
-                  <span className="chq-section-label">Sessions &middot; {detail.sessions.length}</span>
+                  <span className="chq-section-label">Sessions &middot; {acceptedSessionCount} accepted</span>
                 </div>
                 {detail.sessions.length === 0 ? (
                   // DEC-678: this list has no filter axis of its own (it's
@@ -574,12 +584,18 @@ export function SpeakerDetailPage() {
 
               <section className="chq-section chq-speaker-detail-tasks">
                 <div className="chq-section-head">
-                  <span className="chq-section-label">
-                    Tasks &middot; {detail.tasks.length}
-                    {' · '}
-                    {detail.counts.outstandingRequired} outstanding
-                    {' · '}
-                    {detail.counts.overdue} overdue
+                  {/* docs/design/Chautauqua Speakers.dc.html:373 draws
+                      `Tasks · 2 outstanding` -- the single outstanding
+                      aggregate. The overdue figure belongs on the rows
+                      (task.overdue, styled per-row below), not restated on
+                      this line; detail.counts.overdue keeps a real reader
+                      via this aria-label so a screen reader still hears the
+                      count the rows only convey visually. */}
+                  <span
+                    className="chq-section-label"
+                    aria-label={`Tasks, ${detail.counts.outstandingRequired} outstanding, ${detail.counts.overdue} overdue`}
+                  >
+                    Tasks &middot; {detail.counts.outstandingRequired} outstanding
                   </span>
                   {detail.tasks.length > 0 && (
                     <span className="chq-speaker-detail-tasks-caption">Click a status to change it</span>
@@ -683,7 +699,11 @@ export function SpeakerDetailPage() {
 
               <section className="chq-section chq-speaker-detail-other-events">
                 <div className="chq-section-head">
-                  <span className="chq-section-label">Across your events &middot; {detail.otherEventsCount}</span>
+                  {/* docs/design/Chautauqua Speakers.dc.html:414 draws
+                      `Across your events` with no count -- otherEventsCount
+                      no longer appears here (see the otherEvents cap above
+                      for its remaining reader). */}
+                  <span className="chq-section-label">Across your events</span>
                 </div>
                 {otherEvents.length === 0 ? (
                   // DEC-678: no filter axis -- fresh only.
