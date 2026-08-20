@@ -27,6 +27,7 @@
   CLOSED (wave 118): app/src/pages/speakers/OnboardingGrid.tsx:1365 `{!gridRead.loading && grid && visibleRows.length > 0 && (`
 - Speaker-detail rail uses full-page empty block (24px headline in a 320px
   rail; frame :414-424 draws a 14px/13px two-line list).
+  CLOSED (wave 119): app/src/pages/speakers/speakers.css:1491 `.chq-speaker-detail-rail .chq-empty-what {`
 - "Review these reminders" modal body lacks the drawn anatomy (frame
   :505-541: per-recipient outstanding task names + overdue/due-soon flags,
   rendered email card, "Logged in Comms history" line).
