@@ -303,14 +303,15 @@ const UNRECEIPTED = INTERACTIVE_PHONE_DISPLAY_NONE_RULES.filter((r) => r.receipt
 
 // [data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"] --
 // cfp.css.ts:254 -- is a real, still-live capability-removal defect (a
-// phone user on step 1 has no visible submit control). It is OWNED by
-// task v12m-w14-b, not this one: this scan counts it (it belongs in the
-// population and the ceiling) but must never receipt it -- a receipt here
-// would be the DEC-976 shape one wave over (a citation naming a fix that
-// isn't there).
-// w14-b landed the Save-draft restore, so the work item's selector now
-// carves that control out -- the submit hide itself is still unreceipted.
-const CFP_SUBMIT_BUTTON_WORK_ITEM = '[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]:not(.chq-cfp-save-draft)';
+// phone user on step 1 has no visible submit control): this scan counts it
+// (it belongs in the population and the ceiling) but must never receipt it
+// -- a receipt here would be the DEC-976 shape one wave over (a citation
+// naming a fix that isn't there). The Save-draft restore carved that
+// control out of the selector below, so the submit hide itself is still
+// unreceipted. A receipt becomes legal here only once a verified re-lined
+// submit control exists on the phone surface (cited by file:line) or a
+// verified navigation dead-end rules the control out entirely -- never on
+// assumption.
 
 // This count may only be LOWERED, either by a receipt landing on a rule
 // that legitimately qualifies (a navigation control with nothing to reach,
@@ -333,8 +334,10 @@ const CFP_SUBMIT_BUTTON_WORK_ITEM = '[data-chq-cfp-step="1"] .chq-cfp-actions bu
 // have phone renderers); a new offender, `.chq-detail-back-full`, has
 // appeared in its place:
 //   * `[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]`
-//     (cfp.css.ts:254) -- step 1 renders no submit control of any kind;
-//     explicitly out of THIS task's scope (owned by task v12m-w14-b).
+//     (cfp.css.ts:254) -- step 1 renders no submit control of any kind at
+//     390; a receipt becomes legal only once a verified re-lined submit
+//     control exists on the phone surface (cited by file:line) or a
+//     verified navigation dead-end rules it out entirely.
 //   * `.chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-tertiary`
 //     (content.css) -- the bulk-selection secondary action disappears at
 //     390 with no phone equivalent found.
@@ -349,8 +352,12 @@ const CFP_SUBMIT_BUTTON_WORK_ITEM = '[data-chq-cfp-step="1"] .chq-cfp-actions bu
 //     (not receipted on assumption -- a genuine dead-end must be verified
 //     before it earns a `phone-hidden:` reason).
 //   * `.chq-auth-stack .chq-auth-tertiary` (auth.css) -- the tertiary auth
-//     action drops out at 390 with no phone equivalent found; a ruling is
-//     owned by task v12m-w13-d.
+//     action drops out at 390 with no phone equivalent found. The ruling
+//     has since landed: a geometry frame that omits a control removes
+//     geometry, not navigation, so the legal repair is to RE-LINE the
+//     tertiary action at the 44px floor on the phone surface -- a receipt
+//     claiming a navigation dead-end here would be false. This row stays
+//     unreceipted until that re-lining lands and is cited by file:line.
 // A future wave closes each by giving its cluster a phone-width
 // affordance, or by writing a receipt once a genuine re-lined replacement
 // or navigation dead-end is verified -- never by receipting on assumption.
@@ -444,12 +451,46 @@ describe('DEC-919 phone capability-removal probe', () => {
     expect(next?.receipt).toBeTruthy();
   });
 
-  it('the cfp submit-button work item (owned by task v12m-w14-b) is counted, never receipted, here', () => {
-    const rule = INTERACTIVE_PHONE_DISPLAY_NONE_RULES.find(
-      (r) => r.sheet === 'src/routes/public/cfp.css.ts' && r.selector === CFP_SUBMIT_BUTTON_WORK_ITEM,
+  // DEC-989 wave-114 amendment: a branch-named `it(...)` title or receipt
+  // reason locks a real fix out (a lane that closes the work item turns the
+  // sentinel red) and decays the moment the named branch merges or is
+  // abandoned (DEC-099 waves 76/77 already banned branch names as reasons).
+  // Scans this file's own `it(...)` titles plus every runtime `phone-hidden:`
+  // receipt reason actually parsed off the tree -- never a hand-picked
+  // subset -- for a branch-name-shaped token.
+  it('no it(...) title or phone-hidden receipt reason in this file names a branch (DEC-989 wave-114)', () => {
+    const BRANCH_TOKEN_RE = /\bv12m-w\d+-[a-z]\b|\btask-w\d+-[a-z]\b/i;
+
+    const ownSource = readFileSync(fileURLToPath(import.meta.url), 'utf8');
+    const itTitles = [...ownSource.matchAll(/\bit\(\s*(['"`])((?:(?!\1)[\s\S])*?)\1/g)].map(
+      (m) => m[2] ?? '',
     );
-    expect(rule).toBeDefined();
-    expect(rule!.receipt).toBeUndefined();
+    expect(itTitles.length).toBeGreaterThan(5); // vacuous-population tripwire
+
+    const receiptReasons = PHONE_DISPLAY_NONE_RULES.map((r) => r.receipt).filter(
+      (r): r is string => r !== undefined,
+    );
+
+    const offenders = [
+      ...itTitles.filter((t) => BRANCH_TOKEN_RE.test(t)).map((t) => `it title: ${t}`),
+      ...receiptReasons
+        .filter((r) => BRANCH_TOKEN_RE.test(r))
+        .map((r) => `receipt reason: ${r}`),
+    ];
+    expect(offenders, offenders.join('\n')).toEqual([]);
+
+    // Positive control: the regex itself must actually detect the shape it
+    // claims to forbid, on synthetic strings shaped like the ones this file
+    // used to carry (never checked against the real file content above).
+    expect(BRANCH_TOKEN_RE.test('owned by task v12m-w14-b')).toBe(true);
+    expect(BRANCH_TOKEN_RE.test('a ruling is owned by task v12m-w13-d')).toBe(true);
+
+    // Negative control: a wave/DEC citation with no branch-shaped substring
+    // must not trip the same regex (the regex is a pure shape match -- any
+    // string carrying a `v12m-wN-x` or `task-wN-x` substring, in any
+    // context, is exactly what it exists to catch).
+    expect(BRANCH_TOKEN_RE.test('re-measured wave 106, DEC-989 wave-114 amendment')).toBe(false);
+    expect(BRANCH_TOKEN_RE.test('a navigation control with nothing to reach')).toBe(false);
   });
 
   it('unreceipted interactive phone display:none rules never exceed the ceiling (one-sided ratchet: may only fall)', () => {
