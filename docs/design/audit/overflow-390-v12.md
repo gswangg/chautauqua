@@ -31,12 +31,13 @@ whether or not that override ever touched the flagged declaration.
 declares nowrap at `app/src/pages/settings/settings.css:1147`
 (`white-space: nowrap;`) with no overflow escape in the same rule, yet was
 never checked: a wholly unrelated terminal phone rule for the same selector
-token, at `app/src/pages/settings/settings.css:1594`, declared only
-`align-self: flex-end;`.
+token declared only `align-self: flex-end` -- that phone rule has since been
+repaired (DEC-728 wave-125/N6) and its own comment records the swap:
+app/src/pages/settings/settings.css`was align-self:flex-end, which put the`.
 
 (Merge-train note: task w8-b landed in the same batch as this predicate
-repair and gave that phone rule a real escape at
-`app/src/pages/settings/settings.css:1598` -- `white-space: normal;` -- so
+repair and gave that phone rule a real escape --
+app/src/pages/settings/settings.css`white-space: normal;` -- so
 `.chq-settings-row-hint` is no longer among the offenders counted below. The
 example stands as the demonstration of the defect this repair fixed, not as
 a live row.)

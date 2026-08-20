@@ -294,7 +294,15 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // Thunderdome megabatch (wave 125): lowered 151 -> 144, the merge-train
 // re-measurement this two-sided ratchet's own failure text asks for, taken
 // on the fully integrated tree.
-export const LINE_KEYED_CITATION_CEILING = 130;
+// Wave 127 (doc-citation repair lane): lowered 130 -> 93. The citation-repair
+// pass that drove test/decision-doc-citation.scan.test.ts's two ratchets back
+// to 0 fixed each stale coordinate the way THIS file prescribes wherever the
+// quoted receipt still existed in the cited file -- by CONVERTING the citation
+// to the drift-proof bare-path shape rather than re-pointing the line -- so 37
+// line-keyed citations left the population in the same change that made them
+// true. Re-measured by running this scan on the integrated tree (DEC-989
+// clause a); the two-sided companion below is what forced the constant down.
+export const LINE_KEYED_CITATION_CEILING = 93;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

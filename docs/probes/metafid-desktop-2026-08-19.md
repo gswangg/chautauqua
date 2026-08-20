@@ -65,8 +65,8 @@
   `.chq-settings-row-hint {`, through settings.css:1146 `text-align: right;`)
   is unchanged by the merged `v12m-w8-b` fix at settings.css:1593-1599 — that
   commit (diffed against its merge-base 885bceb8, tip 98fefd31) only added a
-  phone-width (`max-width: 700px`) override at settings.css:1599
-  `text-align: left;` and moved ONE consumer (CallForPapersPanel's
+  phone-width (`max-width: 700px`) override,
+  settings.css`text-align: left;`, and moved ONE consumer (CallForPapersPanel's
   tracks-empty hint) to a new class, `.chq-settings-note`
   (app/src/pages/settings/CallForPapersPanel.tsx:565
   `<p className="chq-settings-note">`). The desktop rule
