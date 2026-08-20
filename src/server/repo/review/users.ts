@@ -6,6 +6,10 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { ApiError } from "../../http";
 import { chunkIds, ID_CHUNK_SIZE } from "../../../lib/chunk";
+import { ORG_USER_ROLES } from "../users";
+import { DEC_865 } from "../../../decisions";
+
+void DEC_865; // requireOrgUser must resolve through the same ORG_USER_ROLES vocabulary as repo/users.ts, never a second copy
 
 export interface ReviewerUserInfo {
   userId: string;
@@ -112,16 +116,20 @@ export async function batchUserDisplayNames(db: Db, userIds: string[]): Promise<
   return result;
 }
 
-/** Confirms the user is a reviewer or organizer in this org, and (for
- * reviewers) resolves their contactId for merge-field rendering; throws
- * not_found rather than leaking existence across orgs. */
+/** DEC-865: confirms the user is an ORG_USER_ROLES member (reviewer or
+ * organizer) in this org -- the same vocabulary repo/users.ts's
+ * getOrgUserById/orgUserWhere resolve through, imported rather than
+ * re-typed so the two can never drift. A same-org row whose role is a
+ * speaker-portal role reads as not found here too, exactly like a missing
+ * or cross-org id, so role membership is never leaked across orgs by the
+ * shape of the error. */
 export async function requireOrgUser(db: Db, userId: string, orgId: string): Promise<{ role: string; email: string }> {
   const rows = await db
     .select({ role: schema.user.role, email: schema.user.email, orgId: schema.user.orgId })
     .from(schema.user)
-    .where(eq(schema.user.id, userId))
+    .where(and(eq(schema.user.id, userId), eq(schema.user.orgId, orgId), inArray(schema.user.role, ORG_USER_ROLES)))
     .limit(1);
   const row = rows[0];
-  if (!row || row.orgId !== orgId) throw new ApiError("not_found", "User not found");
+  if (!row) throw new ApiError("not_found", "User not found");
   return { role: row.role, email: row.email };
 }
