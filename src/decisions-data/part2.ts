@@ -173,7 +173,7 @@ export const DEC_376 = "Contacts splits across two lanes by view with a fixed fi
 export const DEC_377 = "Mock figures are illustration: every number and caption on a redesigned screen must trace to an existing endpoint field";
 export const DEC_378 = "One backdrop and one dismissal contract for every SPA dialog: .chq-scrim wraps .chq-modal, Escape closes, the two legacy backdrop classes are deleted";
 export const DEC_379 = "app/src/styles.css closes the SPA's class vocabulary, and a test proves closure; the residual chrome names are adopted, not renamed";
-export const DEC_380 = "Amendment (wave 134): the submitted-confirmation's password offer is a named block, not a bare button";
+export const DEC_380 = "Amendment (wave 135): A caption absent only by a full stop, or by a reason line the screen never renders, is a BUILD -- an exclusion table is for captions the app cannot say";
 export const DEC_381 = "Amendment (wave 109): The phone tab bar's fourth slot is contextual and every slot carries its dot above the label";
 export const DEC_382 = "The three operator surfaces (/, /docs/api, /dev/mailbox) share one TOOLS_CSS module and the shell pattern; they are chrome, not designed screens";
 export const DEC_383 = "Amendment (wave 115): a layout idiom fixed on one surface is swept to its siblings in the same pass";
@@ -186,7 +186,7 @@ export const DEC_389 = "A gate script reports; it never throws";
 export const DEC_390 = "The phone card transform adds no markup by default; ambiguous cells get a data-label mirrored from their own th";
 export const DEC_391 = "The two mock affordances DEC-380 and DEC-386 dropped are settled, not deferred";
 export const DEC_392 = "The admin phone chrome is the tab bar alone: at <=700px the desktop nav strip and the identity text are hidden, and the More control is unconditional so Sign out is always reachable";
-export const DEC_393 = "Amendment (wave 124): an exemption reason asserting a markup fact takes a receipt, and .chq-check is made honest rather than deleted";
+export const DEC_393 = "Amendment (wave 135): The phone tap floor is ELEMENT-qualified: a rule naming `a` does not floor a `<button>`, and a control that cannot wrap declares nowrap plus a width floor";
 export const DEC_394 = "For this wave only, the shared-CSS lane splits by surface: styles.css + event-switcher.css to the SPA shell lane, theme.ts to the SSR floor lane";
 export const DEC_395 = "A reviewer session never requests organizer-only aggregates: the nav-badge hook gates on role, not on catch()";
 export const DEC_396 = "compose/preview and compose/send take a bounded id array: the one bulk endpoint DEC-182 missed";
