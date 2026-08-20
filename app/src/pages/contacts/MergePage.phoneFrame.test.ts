@@ -208,11 +208,11 @@ describe('user-filed: the merge action row centres all three controls on one lin
     expect(topLevelRule(CSS, '.chq-contacts-merge-footer')).toMatch(/align-items:\s*center/);
   });
 
-  // docs/design/Chautauqua Contacts.dc.html:394
-  // `<a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Not a duplicate</a>`
-  // -- the frame's link carries NO self-alignment; the row centres it like
+  // The frame's link carries NO self-alignment; the row centres it like
   // any other child. `align-self: flex-start` was opting it out, which is
   // what dropped its 15px text box to the top of the 46px row.
+  // docs/design/Chautauqua Contacts.dc.html:394
+  // `<a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Not a duplicate</a>`
   it('the quiet link does not opt out of that centring at desktop', () => {
     const desktop = topLevelRule(CSS, '.chq-contacts-merge-not-duplicate');
     expect(desktop).toMatch(/align-self:\s*center/);
@@ -228,11 +228,12 @@ describe('user-filed: the merge action row centres all three controls on one lin
     expect(phoneRule(CSS, '.chq-contacts-merge-not-duplicate')).toMatch(/align-self:\s*stretch/);
   });
 
+  // .chq-btn declares padding but no min-height, so the primary rendered
+  // 35px and the bordered secondary 37px: the two siblings did not match
+  // each other either. Floored on this row only, never on the global
+  // .chq-btn.
   // docs/design/Chautauqua Contacts.dc.html:392/:393 -- both boxed controls
-  // `min-height:46px`. .chq-btn declares padding but no min-height, so the
-  // primary rendered 35px and the bordered secondary 37px: the two siblings
-  // did not match each other either. Floored on this row only, never on the
-  // global .chq-btn.
+  // `min-height:46px`.
   it('floors both boxed controls at the frame 46px, on this row only', () => {
     expect(topLevelRule(CSS, '.chq-contacts-merge-footer .chq-btn')).toMatch(/min-height:\s*46px/);
   });
