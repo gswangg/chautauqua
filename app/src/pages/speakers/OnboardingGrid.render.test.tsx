@@ -1688,10 +1688,17 @@ describe('OnboardingGrid: DEC-265 rolled-back cell write announces itself', () =
     await waitFor(() => {
       expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent('Pending · not saved');
     });
-    // DEC-856 (wave-13 amendment): the bound ApiError's own message ('boom')
-    // now reaches the banner inside the naming frame -- never collapsed to
-    // the generic "didn't save" sentence.
-    expect(screen.getByText('Grace Hopper · Sign speaker agreement: boom')).toBeInTheDocument();
+    // DEC-265 wave-134 amendment (Speakers.dc.html:568-569): the banner now
+    // draws two registers -- a bold title naming the speaker + task, and a
+    // muted body giving the server-fault cause plus the restored status
+    // word (task-1 has no dueDate, so the pre-flip 'pending' cell was never
+    // overdue and restores to 'Pending').
+    expect(screen.getByText("Grace Hopper's Sign speaker agreement task did not change")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The server rejected it — someone else may have edited this speaker while you were here. The cell has been put back to Pending.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload the grid' })).toBeInTheDocument();
   });
@@ -1728,7 +1735,7 @@ describe('OnboardingGrid: DEC-265 rolled-back cell write announces itself', () =
     });
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/didn't save/),
+      screen.queryByText("Grace Hopper's Sign speaker agreement task did not change"),
     ).not.toBeInTheDocument();
 
     const patchCalls = fetchMock.mock.calls.filter(([input, init]) => {
@@ -1774,7 +1781,7 @@ describe('OnboardingGrid: DEC-265 rolled-back cell write announces itself', () =
       expect(screen.queryByRole('button', { name: 'Reload the grid' })).not.toBeInTheDocument();
     });
     expect(
-      screen.queryByText(/didn't save/),
+      screen.queryByText("Grace Hopper's Sign speaker agreement task did not change"),
     ).not.toBeInTheDocument();
   });
 
@@ -1795,7 +1802,7 @@ describe('OnboardingGrid: DEC-265 rolled-back cell write announces itself', () =
       expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent('Complete');
     });
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
-    expect(screen.queryByText(/didn't save/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
 

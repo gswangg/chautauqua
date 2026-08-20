@@ -8,6 +8,7 @@ import { useMenu } from '../../lib/useMenu';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { GridFilters } from './GridFilters';
 import { TaskCell, formatDueDate, isRowNotChased } from './TaskCell';
+import { isCellOverdue } from './overdue';
 import { TaskModal } from './TaskModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -29,6 +30,7 @@ import {
   type GridFilterState,
   type InviteStatus,
   type NewTaskInput,
+  type OnboardingCell,
   type OnboardingGridResponse,
   type OnboardingTask,
   type ReminderDraft,
@@ -179,7 +181,16 @@ interface PendingWriteFailure {
   // exactly the failure it belongs to rather than an unrelated one still
   // showing assignmentId: null.
   participantId?: string | null;
+  // The bold title line (Speakers.dc.html:568). For a cell write this is
+  // the composed "<speaker>'s <task> task did not change" naming sentence;
+  // for a participation write (no per-cell naming to compose) it stays the
+  // existing single sentence built by participationFailureMessage.
   message: string;
+  // The muted body line (Speakers.dc.html:569) -- only drawn for a cell
+  // write, which is the only case with a restored status word to report.
+  // null for a participation write, matching the frame (no second register
+  // there).
+  body: string | null;
   retry: () => void;
 }
 
@@ -196,10 +207,42 @@ function serverRefusalDetail(err: unknown): string | null {
   return fieldDetail && fieldDetail !== err.message ? `${err.message} (${fieldDetail})` : err.message;
 }
 
-function cellFailureMessage(speakerName: string, taskTitle: string, err: unknown): string {
-  const detail = serverRefusalDetail(err);
-  if (detail) return `${speakerName} · ${taskTitle}: ${detail}`;
-  return `${speakerName} · ${taskTitle} didn't save. ${WRITE_FAILURE_CAUSE}`;
+// DEC-265 wave-134 amendment (Speakers.dc.html:568): the bold title line
+// for a rolled-back CELL write. Fixed naming, independent of what the
+// server said -- the server-fault detail lives in the muted body register
+// below, not the title.
+function cellFailureTitle(speakerName: string, taskTitle: string): string {
+  return `${speakerName}'s ${taskTitle} task did not change`;
+}
+
+// DEC-265 wave-134 amendment (Speakers.dc.html:569): the muted body line,
+// with the restored status word substituted for the frame's 'Overdue'.
+// `restoredStatus` is the exact word TaskCell would render for the
+// pre-flip cell right now (Complete / Overdue / Pending) -- read from the
+// snapshot taken just before the optimistic flip, never re-derived from a
+// second fetch.
+function cellFailureBody(restoredStatus: string): string {
+  return (
+    `The server rejected it — someone else may have edited this speaker while you were here. ` +
+    `The cell has been put back to ${restoredStatus}.`
+  );
+}
+
+// DEC-265 wave-134 amendment: the same (status, overdue) -> word mapping
+// TaskCell.tsx:189 uses for the cell's own label, applied to the pre-flip
+// snapshot cell (its .status IS the pre-flip status here -- the caller
+// reads it before the optimistic write, per findCellNaming's snapshot
+// comment above) so the banner's word can never disagree with what the
+// reverted cell shows.
+function restoredStatusWord(
+  previousCell: OnboardingCell,
+  task: OnboardingTask | undefined,
+  now: number,
+  timezone: string,
+): string {
+  if (previousCell.status === 'complete') return 'Complete';
+  const overdue = isCellOverdue(previousCell, task, now, timezone);
+  return overdue ? 'Overdue' : 'Pending';
 }
 
 function participationFailureMessage(speakerName: string, err: unknown): string {
@@ -596,7 +639,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
       setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
-    } catch (err) {
+    } catch {
       // DEC-265 wave-110 amendment: rewrite only the failed assignment's
       // cell back to its pre-flip status -- a whole-grid snapshot would
       // clobber every concurrent success that landed while this request
@@ -625,9 +668,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
             }
           : current,
       );
+      const task = grid.tasks.find((t) => t.id === previousCell.taskId);
       setPendingFailure({
         assignmentId,
-        message: cellFailureMessage(speakerName, taskTitle, err),
+        message: cellFailureTitle(speakerName, taskTitle),
+        body: cellFailureBody(restoredStatusWord(previousCell, task, now, grid.timezone)),
         retry: () => {
           void applyCellStatus(assignmentId, desired, speakerName, taskTitle);
         },
@@ -726,6 +771,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         assignmentId: null,
         participantId,
         message: participationFailureMessage(speakerName, err),
+        body: null,
         retry: () => {
           void applyInviteStatus(contactId, submissionId, participantId, desired, speakerName);
         },
@@ -1009,6 +1055,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       {pendingFailure && (
         <div className="chq-error chq-speakers-write-failure" role="alert">
           <p className="chq-speakers-write-failure-title">{pendingFailure.message}</p>
+          {pendingFailure.body && <p className="chq-speakers-write-failure-body">{pendingFailure.body}</p>}
           <div className="chq-speakers-write-failure-actions">
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void reloadGridAfterFailure()}>
               Reload the grid

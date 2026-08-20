@@ -42,6 +42,16 @@
   font-weight: 700;
 }
 
+/* DEC-265 wave-134 amendment (Speakers.dc.html:569): the muted body
+   register below the bold title -- 14px/1.55/var(--chq-ink-2), matching
+   the frame's reading exactly. */
+.chq-speakers-write-failure-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--chq-ink-2);
+}
+
 .chq-speakers-write-failure-actions {
   display: flex;
   gap: 9px;
