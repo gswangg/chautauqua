@@ -1037,7 +1037,9 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     // DEC-976 wave-115: this is the claim receipt for the desktop frame
     // "New plan · /review/plans/new" -- docs/design/Chautauqua
-    // Review.dc.html:727 `Nothing is sent to reviewers until you open it`.
+    // Review.dc.html:727 `Nothing is sent to reviewers until you open it`,
+    // the New-plan header's subhead, read off the rendered DOM below (never
+    // the design file itself).
     expect(screen.getByText('Nothing is sent to reviewers until you open it.')).toBeInTheDocument();
     expect(screen.queryByText('Name is required.')).not.toBeInTheDocument();
 
