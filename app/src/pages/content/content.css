@@ -1905,4 +1905,21 @@
   .chq-content-comment-actions {
     display: none;
   }
+
+  /* round-2 N1 (measured, content-sticky-chain.json): .chq-bulkbar is
+     `position:sticky; bottom:0` but is flex child 2 of 3 inside
+     .chq-content-worklist's `display:flex; flex-direction:column` (source
+     order chipstrip < bulkbar < table -- SessionList.render.test.tsx keeps
+     that DOM order fixed per DEC-385, so this fix is layout-only, never a
+     markup reorder). A bottom-sticky box only ever shifts UP from its own
+     normal-flow position; sitting above the ~3139px table it scrolls away
+     long before the table's bottom is reached. Declaring `order` moves its
+     USED position to last (table's default `order:0` needs no change), so
+     it pins the same way the round-2 probe proved at 788 when the element
+     was literally last. No ancestor between .chq-bulkbar and .chq-main
+     (the shell's one scrolling region, DEC-989) carries overflow:hidden,
+     so `order` alone is the fix -- nothing else in the chain blocks it. */
+  .chq-content-worklist > .chq-bulkbar {
+    order: 1;
+  }
 }

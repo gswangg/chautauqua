@@ -241,6 +241,26 @@ describe('v12 phone frame "Content · selecting"', () => {
     const note = phoneRule(CONTENT_CSS, '.chq-content-worklist-selecting .chq-bulkbar-note');
     expect(note).toMatch(/text-align:\s*center/);
   });
+
+  // round-2 N1 (measured, content-sticky-chain.json): .chq-bulkbar is
+  // `position:sticky; bottom:0` but is flex child 2 of 3 inside
+  // .chq-content-worklist (`display:flex; flex-direction:column`), above a
+  // ~3139px table -- a bottom-sticky box only ever shifts UP from its own
+  // normal-flow position, so a band that early in a tall column scrolls
+  // away before the table's bottom is reached. DEC-576 wave-125(a): the
+  // fix is `order`, not a DOM reorder (SessionList.render.test.tsx:946-955
+  // pins chipstrip < bulkbar < table as the frame's source order).
+  it('re-orders the sticky bulk bar last via flex `order`, inside the terminal phone block, without touching DOM order (DEC-576 wave-125(a), DEC-385, DEC-989)', () => {
+    const bar = phoneRule(CONTENT_CSS, '.chq-content-worklist > .chq-bulkbar');
+    expect(bar).toMatch(/order:\s*1/);
+
+    // The declaration lives inside the file's terminal (last) 700px block,
+    // never above it -- DEC-385 single-direction, append-only.
+    const openers = [...CONTENT_CSS.matchAll(/@media\s*\(max-width:\s*700px\)\s*\{/g)];
+    const lastOpener = openers[openers.length - 1]!;
+    const ruleIndex = CONTENT_CSS.indexOf('.chq-content-worklist > .chq-bulkbar');
+    expect(ruleIndex).toBeGreaterThan(lastOpener.index!);
+  });
 });
 
 describe('v12 phone frame "Files · 390"', () => {
