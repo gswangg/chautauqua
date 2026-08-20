@@ -264,8 +264,7 @@ instead of re-flagging.
   Portal.dc.html:492` draws the "Portal · Your tasks" dock as `Mark the
   release signed` (flex:1, olive, min-height:48px) + `Later` (bordered
   secondary, min-height:48px). The dock's GEOMETRY is legitimate and may
-  be built for whatever primary the page already renders — v12m-w15-b is
-  doing exactly that for the profile page's Save/Cancel pair — but the
+  be built for whatever primary the page already renders — but the
   portal task model exposes only complete-or-not: `src/routes/portal/**/
   *.tsx` and `src/server/repo/portal*` carry no snooze, defer, dismiss, or
   later capability anywhere in the tree. "Later" persists nothing, returns
