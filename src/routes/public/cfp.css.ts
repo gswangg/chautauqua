@@ -212,10 +212,26 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
      ConfirmationState switch (DEC-098), so this stylesheet needs no
      per-state selector of its own. */
   @media (max-width: 700px) {
-    .chq-cfp-header, .chq-cfp-body { padding-left: 16px; padding-right: 16px; }
     /* :1018 -- head padding compacts from the desktop 26px 44px 20px band
-       to the phone frame's own 14px 16px, gap 6px. */
-    .chq-cfp-header { padding-top: 14px; padding-bottom: 14px; gap: 6px; }
+       to the phone frame's own 14px 16px, gap 6px. .chq-cfp-header is
+       rendered as PageShell's "header" prop -- a SIBLING of
+       main.chq-measure (src/routes/public/submit-views.tsx:78), genuinely
+       full-bleed -- so its own 16px left/right here is the ONLY gutter it
+       ever gets. */
+    .chq-cfp-header { padding-left: 16px; padding-right: 16px; padding-top: 14px; padding-bottom: 14px; gap: 6px; }
+    /* task-w13-k (round-2 probe, DEC-385): .chq-cfp-body is the OTHER
+       PageShell caller -- it is "children", rendered INSIDE
+       main.chq-measure, which already carries src/views/theme.ts:642's
+       main padding (26px 34px 34px) at EVERY width (that rule has no
+       phone override). Adding another 16px here on top of main's 34px
+       double-gutters the content column to 390-68-32=290px against the
+       358px budget app/src/phone-horizontal-overflow.scan.test.ts derives
+       from .chq-main's own phone gutter. Fixed by cancelling the INNER
+       (this file's own) gutter, never the outer one in theme.ts -- that
+       SSR main rule is shared by every page under the shell and shrinking
+       it there would move every other page's measure, not just this
+       one's. */
+    .chq-cfp-body { padding-left: 0; padding-right: 0; }
     /* :1019 -- the date/venue eyebrow drops from 11px to the frame's 10px;
        weight/letter-spacing/case/colour are unchanged (.chq-cfp-meta,
        above) so only size moves. */
@@ -316,6 +332,35 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
     [data-chq-cfp-step="all"] .chq-cfp-steps,
     [data-chq-cfp-step="all"] .chq-cfp-step-next,
     [data-chq-cfp-step="all"] .chq-cfp-step-back { display: none; }
+
+    /* task-w13-k (DEC-576 wave-110 amendment, "the SSR phone dock is ONE
+       band"): :1063 draws .chq-cfp-actions as the filled, edge-to-edge
+       footer band every SSR phone dock shares (src/routes/auth.css.ts's
+       .chq-auth-actions is the model implementation) -- flex-shrink 0,
+       ink-coloured border-top, a filled surface-sunk background, padding
+       12px 16px 16px, display flex, gap 8px -- not the desktop card's bare
+       --chq-rule divider this rule inherited unchanged until now. There is
+       no .chq-tabbar on SSR routes (that's an app/src SPA shell class), so
+       there is nothing to suppress underneath it; the dock IS the sticky
+       band, no data-chq-phone-dock declaration needed. Every control
+       inside (.chq-cfp-step-next/.chq-cfp-step-back/.chq-cfp-save-draft,
+       all above) is one this flow already owns -- DEC-576 wave-120's "adopt
+       the band when the frame's membership is satisfiable from controls
+       the surface already owns" -- so this rule only re-skins the existing
+       container, it adds no new control. */
+    .chq-cfp-actions {
+      border-top: 1px solid var(--chq-ink);
+      background: var(--chq-surface-sunk);
+      padding: 12px 16px 16px;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+    /* :1063 leading flex:1 on the Next control -- the existing
+       comment above .chq-cfp-save-draft already claimed this geometry;
+       it was never actually declared. Draft/Back stay sized to their own
+       content, matching the frame's bordered secondary beside the filled
+       flex:1 primary. */
+    .chq-cfp-step-next { flex: 1; }
   }
 
   /* w7-f (DEC-989 wave-111 amendment): the wave-90 note above this line
