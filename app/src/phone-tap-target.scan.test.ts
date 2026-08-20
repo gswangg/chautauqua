@@ -323,16 +323,14 @@ const SSR_TSX_FILES = ssrTsxFiles(SSR_ROOT);
 
 /**
  * Seeded at the count measured when this population was first scanned
- * (mandate item 5). ONE-SIDED: may only be LOWERED, never raised.
- *
- * This is a TO-DO LIST, not a licence, and deliberately NOT the two-sided
- * ratchet the rest of this repo prefers. Giving the SSR route sheets a
- * shared control-face primitive that carries the 44px floor is engine work
- * with its own frame-fidelity consequences; forcing it to be finished in
- * the same change that first makes the surface visible is exactly the
- * trade that keeps a surface invisible. Seeing first, then fixing.
+ * (mandate item 5). Was ONE-SIDED (may only be LOWERED, never raised) --
+ * see the history below the constant for why, and task w4-ae (DEC-393
+ * wave-115) for why that no longer holds: the last 3 offenders got a real
+ * floor, measured truth is 0, and this ceiling now has the same two-sided
+ * companion every other ratchet in this file carries (the
+ * "never falls below" test just below the history comment).
  */
-export const SSR_UNFLOORED_TOKENS_CEILING = 3;
+export const SSR_UNFLOORED_TOKENS_CEILING = 0;
 
 // task w7-e (DEC-367/DEC-385) lowered this from 14 to 3, measured after
 // repair by forcing the ceiling to -1 and reading the printed offender
@@ -361,6 +359,18 @@ export const SSR_UNFLOORED_TOKENS_CEILING = 3;
 // (v12m-custodian-w8-1) predates w7-e's lowering and carried the stale 14.
 // Restored to 3 here -- the decomposition is explicitly NO behavior
 // change, and this ceiling may only ever be LOWERED.
+//
+// Task w4-ae (DEC-393 wave-115) drained the remaining 3: all get a real
+// `min-height: 44px` + centred flex + non-zero horizontal padding inside
+// portal.css.ts's terminal `@media (max-width: 700px)` block (append-only,
+// after every existing rule -- DEC-385), none using the cancelled-padding
+// idiom since `.chq-portal-copresenter-email-flagged` paints a
+// `border-left` and that idiom is borderless-only (DEC-383 wave-109).
+// Re-measured by forcing the const to -1 and reading the printed offender
+// list: truth is 0, confirmed empty by eye (DEC-989 clause a) before
+// writing the 0 above. This was the tree's last one-sided ratchet
+// (DEC-518) -- given its two-sided companion below to match every other
+// ceiling in this file.
 
 /** Seeded at the count measured when this population was first scanned
  * (mandate item 5). ONE-SIDED: may only be LOWERED, never raised. There is
@@ -445,5 +455,20 @@ describe('phone tap-target floor scan — SSR routes (public/portal/docs/auth)',
       `SSR tap targets whose CSS never declares a >=44px floor at any width ` +
         `(${offenders.length}, ceiling ${SSR_UNFLOORED_TOKENS_CEILING} -- may only be LOWERED):\n${offenders.join('\n')}`,
     ).toBeLessThanOrEqual(SSR_UNFLOORED_TOKENS_CEILING);
+  });
+
+  it(`never falls below the SSR unfloored-token ceiling (${SSR_UNFLOORED_TOKENS_CEILING}) without the ceiling being lowered to match (a stale ceiling licenses stagnation)`, () => {
+    const tokens = allSsrTapTargetTokens(SSR_TSX_FILES);
+    const offenders = findSsrUnflooredTokens(SSR_CSS_MODULES, tokens, REPO_ROOT);
+    if (offenders.length < SSR_UNFLOORED_TOKENS_CEILING) {
+      throw new Error(
+        `SSR tap targets whose CSS never declares a >=44px floor at any width (${offenders.length}) fell ` +
+          `below the SSR_UNFLOORED_TOKENS_CEILING of ${SSR_UNFLOORED_TOKENS_CEILING}. This is the ratchet ` +
+          `working: offenders got fixed. Lower the ceiling in the same commit (a merge-train act, never a ` +
+          `worker's edit mid-lane) by replacing the line:\n` +
+          `  export const SSR_UNFLOORED_TOKENS_CEILING = ${offenders.length};`,
+      );
+    }
+    expect(offenders.length).toBeGreaterThanOrEqual(SSR_UNFLOORED_TOKENS_CEILING);
   });
 });
