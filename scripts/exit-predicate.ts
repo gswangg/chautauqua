@@ -533,6 +533,11 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // v12 phone frame's footer/anchor controls draw (test/frame-control-label
   // .scan.test.ts).
   "FOOTER_LABEL_CEILING",
+  // wave-131 (task w6-b, DEC-919 amendment): the FIRST control-label ledger
+  // over the pack's non-390 (desktop/modal) card frames -- 101 frames the
+  // phone-only FOOTER_LABEL_CEILING population never covered
+  // (test/desktop-control-label.scan.test.ts).
+  "DESKTOP_CONTROL_LABEL_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -571,6 +576,11 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
   // never a declared-but-unread knob (DEC-851/DEC-988).
   "FOOTER_LABEL_CEILING",
+  // wave-131 (task w6-b): desktop (non-390) control-label ledger, wired
+  // into TIER2 in the same commit that declared it in
+  // CAMPAIGN_CONSTANT_NAMES above -- never a declared-but-unread knob
+  // (DEC-851/DEC-988).
+  "DESKTOP_CONTROL_LABEL_CEILING",
 ];
 
 /**
