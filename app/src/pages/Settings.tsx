@@ -50,6 +50,13 @@ export interface SettingsSection {
   // reads it -- the rail there is the plain link it always was.
   detail: string;
   Panel: ComponentType;
+  // DEC-896 wave-130 amendment: the pack's B10 edit views draw an H1 naming
+  // the EDIT ("Edit the form", "Edit the event", ...) while the back link
+  // above it names the SECTION -- the opposite split from the section-label
+  // pageTitle this file used for both. Present for exactly the six sections
+  // with an edit view; 'public-pages' has none (the pack drops its edit
+  // view -- DEVIATIONS §6 defers the :1046 saved-embed drill).
+  editTitle?: string;
 }
 
 // DEC-747: 'Speaker portal' is now ONE read-view section rendered entirely
@@ -62,30 +69,45 @@ export interface SettingsSection {
 // it's a row inside 'Your data' (YourDataPanel) that drills into the same
 // SessionboardImportPanel, unchanged.
 export const SECTIONS: SettingsSection[] = [
-  { key: 'event', label: 'Event', detail: 'Dates, location, timezone, and capacity', Panel: EventSettingsPanel },
+  {
+    key: 'event',
+    label: 'Event',
+    detail: 'Dates, location, timezone, and capacity',
+    Panel: EventSettingsPanel,
+    // Chautauqua Settings.dc.html:724 `Edit the event`.
+    editTitle: 'Edit the event',
+  },
   {
     key: 'cfp',
     label: 'Call for papers',
     detail: 'Submission window, formats, and custom questions',
     Panel: CallForPapersPanel,
+    // Chautauqua Settings.dc.html:633 `Edit the form`.
+    editTitle: 'Edit the form',
   },
   {
     key: 'tracks-rooms',
     label: 'Tracks and rooms',
     detail: 'The tracks and rooms sessions can be assigned to',
     Panel: TracksRoomsPanel,
+    // Chautauqua Settings.dc.html:814 `Edit tracks and rooms`.
+    editTitle: 'Edit tracks and rooms',
   },
   {
     key: 'public-pages',
     label: 'Public pages',
     detail: 'Which public pages are live, and their embed codes',
     Panel: PublicPagesPanel,
+    // No editTitle: the pack drops an edit view for this section
+    // (DEVIATIONS §6 defers the :1046 saved-embed drill).
   },
   {
     key: 'portal',
     label: 'Speaker portal',
     detail: 'What speakers see once they sign in',
     Panel: PortalSettingsPanel,
+    // Chautauqua Settings.dc.html:895 `Edit the speaker portal`.
+    editTitle: 'Edit the speaker portal',
   },
   // G13 fidelity: frames 09--10..16 draw the rail as ... Speaker portal,
   // Your data, People and roles -- Your data comes BEFORE People and roles.
@@ -94,12 +116,16 @@ export const SECTIONS: SettingsSection[] = [
     label: 'Your data',
     detail: 'Exports, API tokens, and API docs',
     Panel: YourDataPanel,
+    // Chautauqua Settings.dc.html:1137 `Edit your data settings`.
+    editTitle: 'Edit your data settings',
   },
   {
     key: 'people',
     label: 'People and roles',
     detail: 'Organizers and reviewers on this event',
     Panel: PeopleRolesPanel,
+    // Chautauqua Settings.dc.html:976 `Edit people and roles`.
+    editTitle: 'Edit people and roles',
   },
 ];
 
@@ -128,8 +154,6 @@ export function SettingsPage() {
   const editing = urlSection !== null && searchParams.get('edit') === '1';
   const editingSection = editing ? SECTIONS.find((section) => section.key === urlSection) : undefined;
   const sectionsToRender = editingSection ? [editingSection] : SECTIONS;
-  const pageTitle = editingSection ? editingSection.label : 'Settings';
-
   // w4-e/DEC-375 wave-86: phone renders the index OR one drilled section,
   // never both -- the desktop rail-click highlight already tracks `active`
   // (DEC-896), so a drilled phone screen's title is the SAME state, just a
@@ -142,6 +166,11 @@ export function SettingsPage() {
   // comment states. `editingSection` already covers the edit-drill case;
   // `active` covers the plain read-drill case the phone index taps into.
   const activeSection = active !== null ? SECTIONS.find((section) => section.key === active) : undefined;
+  // DEC-896 wave-130 amendment: an edit view's H1 names the EDIT
+  // (editTitle), not the section -- the section name moves to the back
+  // control below. A plain read-drill (active, not editing) still titles
+  // the page with the section label; the index keeps 'Settings'.
+  const pageTitle = editingSection ? editingSection.editTitle : (activeSection?.label ?? 'Settings');
   // DEC-393/DESIGN-RULINGS:247 amendment (w13-i): the edit-drill case needs
   // this same phone-only twin too -- the ORIGINAL top-level h1 (pageTitle,
   // above) sits BEFORE .chq-settings-layout in the DOM, so it always paints
@@ -151,7 +180,7 @@ export function SettingsPage() {
   // state is active, in settings.css) puts back first in DOM/paint order
   // for both the plain read-drill and the edit-drill screens, while
   // desktop -- which never hides the top h1 -- is untouched.
-  const phoneDrillTitle = editingSection ? editingSection.label : activeSection?.label;
+  const phoneDrillTitle = active !== null ? pageTitle : undefined;
 
   // Keep `active` in sync whenever the URL's `section` param CHANGES (e.g.
   // navigating directly to /settings?section=cfp, or Back/Forward) without
@@ -288,12 +317,31 @@ export function SettingsPage() {
           <p className="chq-settings-rail-note">Embed codes are easier to copy on a laptop</p>
         </nav>
         <div className="chq-settings-content">
+          {/* DEC-896 wave-130 amendment: an edit view's back control names
+              the SECTION, not 'Settings' -- Chautauqua Settings.dc.html
+              :632 `‹ Call for papers`, :723 `‹ Event`, :813 `‹ Tracks and
+              rooms`, :894 `‹ Speaker portal`, :975 `‹ People and roles`,
+              :1136 `‹ Your data` -- and it returns to the section's
+              read-drill (`?section=<key>`, editing is pure URL state,
+              dropping `edit=1`), not all the way to the section index. The
+              plain read-drill keeps its existing `‹ Settings` + clearSection
+              back-to-index control. */}
           <button
             type="button"
             className="chq-btn chq-btn-tertiary chq-settings-back"
-            onClick={clearSection}
+            onClick={
+              editingSection
+                ? () =>
+                    setSearchParams((prev) => {
+                      const params = new URLSearchParams(prev);
+                      params.set('section', editingSection.key);
+                      params.delete('edit');
+                      return params;
+                    })
+                : clearSection
+            }
           >
-            &lsaquo; Settings
+            &lsaquo; {editingSection ? editingSection.label : 'Settings'}
           </button>
           {phoneDrillTitle ? (
             // w4-e/DEC-375: phone-only twin of the page h1 (settings.css

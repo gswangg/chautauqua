@@ -446,10 +446,12 @@ describe('SettingsPage render smoke', () => {
     expect(layout).toHaveAttribute('data-drilled', 'false');
   });
 
-  // w49-g/DEC-728 amendment: a settings section opened via ?section=&edit=1
-  // is a SCREEN -- only that one panel mounts, and the page's own h1 takes
-  // the section's label instead of the fixed 'Settings' string.
-  it('renders only the drilled panel and the section label as the page title at ?section=cfp&edit=1', async () => {
+  // w49-g/DEC-728 amendment, DEC-896 wave-130 amendment: a settings section
+  // opened via ?section=&edit=1 is a SCREEN -- only that one panel mounts,
+  // and the page's own h1 now names the EDIT (Chautauqua Settings.dc.html
+  // :633 `Edit the form`), not the section label -- the section name moved
+  // to the back control instead (:632 `‹ Call for papers`).
+  it('renders only the drilled panel and the edit title as the page title at ?section=cfp&edit=1', async () => {
     mockAllSections();
 
     render(
@@ -460,15 +462,16 @@ describe('SettingsPage render smoke', () => {
 
     await waitFor(() => {
       // DEC-393/DESIGN-RULINGS:247 amendment (w13-i): the edit-drill view
-      // now carries TWO 'Call for papers' h1 nodes -- the desktop-visible
+      // now carries TWO 'Edit the form' h1 nodes -- the desktop-visible
       // one (before .chq-settings-layout) and the phone-only twin
       // (.chq-settings-drill-title, after the '‹ back' control) that lets
       // back paint above the H1 at phone. CSS keeps exactly one visible
       // per viewport; jsdom's default (unnarrowed) viewport surfaces both,
       // so this asserts the pair rather than a single match.
-      expect(screen.getAllByRole('heading', { level: 1, name: 'Call for papers' })).toHaveLength(2);
+      expect(screen.getAllByRole('heading', { level: 1, name: 'Edit the form' })).toHaveLength(2);
     });
     expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Call for papers' })).not.toBeInTheDocument();
 
     expect(screen.queryByRole('region', { name: 'Event' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Tracks and rooms' })).not.toBeInTheDocument();
@@ -480,6 +483,10 @@ describe('SettingsPage render smoke', () => {
 
     const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
     expect(layout).toHaveAttribute('data-editing', 'true');
+
+    // The back control names the SECTION being edited (Chautauqua
+    // Settings.dc.html :632 `‹ Call for papers`), not 'Settings'.
+    expect(screen.getByRole('button', { name: '‹ Call for papers' })).toBeInTheDocument();
 
     // Back must precede the phone-only H1 twin in DOM/paint order
     // (DESIGN-RULINGS:247 "‹ back above the H1").
@@ -505,9 +512,15 @@ describe('SettingsPage render smoke', () => {
 
     await waitFor(() => {
       // DEC-393 (w13-i): same phone-twin duplicate as the CFP case above.
-      expect(screen.getAllByRole('heading', { level: 1, name: 'Tracks and rooms' })).toHaveLength(2);
+      // DEC-896 wave-130 amendment: the H1 is the edit title
+      // (Chautauqua Settings.dc.html :814 `Edit tracks and rooms`).
+      expect(screen.getAllByRole('heading', { level: 1, name: 'Edit tracks and rooms' })).toHaveLength(2);
     });
     expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Tracks and rooms' })).not.toBeInTheDocument();
+
+    // Back names the section (:813 `‹ Tracks and rooms`).
+    expect(screen.getByRole('button', { name: '‹ Tracks and rooms' })).toBeInTheDocument();
 
     expect(document.querySelectorAll('.chq-settings-section').length).toBe(1);
 
@@ -515,9 +528,11 @@ describe('SettingsPage render smoke', () => {
     expect(layout).toHaveAttribute('data-editing', 'true');
   });
 
-  // Clicking the '‹ Settings' tertiary control clears both `section` and
-  // `edit`, restoring the full read document and the fixed page title.
-  it('clears both params and restores all seven sections when the top-level back control is clicked', async () => {
+  // DEC-896 wave-130 amendment: the edit view's back control ('‹ Call for
+  // papers') drops only `edit`, returning to that section's read-drill --
+  // editing is pure URL state, Settings.tsx:128-129 -- not all the way back
+  // to the section index.
+  it('drops only edit=1 and returns to the section read-drill when the edit-view back control is clicked', async () => {
     mockAllSections();
 
     render(
@@ -529,15 +544,15 @@ describe('SettingsPage render smoke', () => {
 
     await waitFor(() => {
       // DEC-393 (w13-i): same phone-twin duplicate as above.
-      expect(screen.getAllByRole('heading', { level: 1, name: 'Call for papers' })).toHaveLength(2);
+      expect(screen.getAllByRole('heading', { level: 1, name: 'Edit the form' })).toHaveLength(2);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '‹ Settings' }));
+    fireEvent.click(screen.getByRole('button', { name: '‹ Call for papers' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { level: 1, name: 'Call for papers' })).toHaveLength(2);
     });
-    expect(screen.getByTestId('location-search').textContent).not.toContain('section=');
+    expect(screen.getByTestId('location-search').textContent).toContain('section=cfp');
     expect(screen.getByTestId('location-search').textContent).not.toContain('edit=');
 
     expect(screen.getByRole('region', { name: 'Event' })).toBeInTheDocument();
@@ -550,6 +565,36 @@ describe('SettingsPage render smoke', () => {
 
     const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
     expect(layout).toHaveAttribute('data-editing', 'false');
+    expect(layout).toHaveAttribute('data-drilled', 'true');
+  });
+
+  // The plain read-drill (no `edit` param) keeps its original '‹ Settings'
+  // back control, clearing both `section` and `edit` and restoring the
+  // fixed 'Settings' page title.
+  it('clears both params and restores the fixed page title when the plain-drill back control is clicked', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=cfp']}>
+        <LocationProbe />
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('heading', { level: 1, name: 'Call for papers' })).toHaveLength(2);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '‹ Settings' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('location-search').textContent).not.toContain('section=');
+    expect(screen.getByTestId('location-search').textContent).not.toContain('edit=');
+
+    const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
+    expect(layout).toHaveAttribute('data-drilled', 'false');
   });
 
   // With no `edit` param the page stays the static one-document read view --
@@ -567,7 +612,12 @@ describe('SettingsPage render smoke', () => {
       expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+    // DEC-896 wave-130 amendment: a plain (non-editing) drill titles the
+    // page with the section label, not the fixed 'Settings' string -- the
+    // phone-only twin duplicates it, same pair pattern as the edit-drill
+    // case above.
+    expect(screen.getAllByRole('heading', { level: 1, name: 'Call for papers' })).toHaveLength(2);
+    expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Event' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Call for papers' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Tracks and rooms' })).toBeInTheDocument();
