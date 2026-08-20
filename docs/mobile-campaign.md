@@ -161,7 +161,7 @@ Unscheduled + Auto-schedule.
   owner to apply or drop it. Workers: never stash on shared main — commit or
   leave the tree alone.
 
-## Speaker-management score floor (priority — filed 2026-08-20)
+## Speaker-management score floor (META-OWNED as of 2026-08-20 — engine must NOT duplicate; a meta lane is fixing all three)
 Three recurring/new minors keep the area in the high-80s:
 1. HEADSHOT METADATA (filed in ALL FIVE eval runs — highest-yield fix in
    the rubric): a portal-uploaded headshot must appear in the record's
