@@ -34,7 +34,7 @@ void DEC_382;
 void DEC_650;
 
 export const DOCS_SITE_CSS = `
-  .chq-docs-shell { display: flex; flex-direction: column; }
+  .chq-docs-shell { display: flex; flex-direction: column; min-height: 100vh; } /* DEC-383 amendment: sticky-footer idiom, home.css.ts's .chq-home-shell */
 
   .chq-docs-header { border-bottom: 1px solid var(--chq-ink); padding-block: 15px; padding-inline: 34px; display: flex; align-items: center; gap: 14px; }
   /* Design pack v12 ("nudge the OUTERMOST element that carries the
@@ -61,7 +61,7 @@ export const DOCS_SITE_CSS = `
   }
   .chq-docs-leaving-mark { color: var(--chq-muted); }
 
-  .chq-docs-body { max-width: 1000px; margin-inline: auto; padding: 40px 34px 56px; display: flex; flex-direction: column; gap: 32px; }
+  .chq-docs-body { max-width: 1000px; margin-inline: auto; padding: 40px 34px 56px; display: flex; flex-direction: column; gap: 32px; flex: 1 0 auto; }
 
   .chq-docs-intro { max-width: 640px; display: flex; flex-direction: column; gap: 11px; }
   .chq-docs-intro h1 { margin: 0; font-family: var(--chq-font-display); font-size: 40px; font-weight: 700; letter-spacing: -0.042em; line-height: 1.05; }
@@ -78,7 +78,7 @@ export const DOCS_SITE_CSS = `
 
   /* Article page: 216px nav column + fluid article column (frame's
      grid-template-columns:216px minmax(0, 1fr), :44). */
-  .chq-docs-article-frame { max-width: 1240px; margin-inline: auto; width: 100%; padding: 34px 34px 48px; display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 44px; align-items: start; }
+  .chq-docs-article-frame { max-width: 1240px; margin-inline: auto; width: 100%; padding: 34px 34px 48px; display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 44px; align-items: start; flex: 1 0 auto; }
   /* G13 lane-D fix (13-docs--00): this <main> inherits the shell's generic
      main padding (theme.ts: 26px 34px 34px) on top of the article frame's
      own 34px inset, doubling the gutter and pushing the 900 figure 34px
