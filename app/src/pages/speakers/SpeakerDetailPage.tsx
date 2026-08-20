@@ -588,10 +588,14 @@ export function SpeakerDetailPage() {
                       );
                       return (
                         <div className="chq-speaker-detail-sessions-row" role="row" key={session.submissionId}>
+                          {/* DEC-829 (w20-d): frame :365 draws cell 1 as the
+                              session TITLE alone -- the code (session.ref)
+                              stays on the ParticipationMenu's `label` prop
+                              below, which needs it to name the participation
+                              it writes. Printing it here too duplicated it
+                              in one row. */}
                           <span role="cell">
-                            <Link to={`/submissions/${session.submissionId}`}>
-                              {session.ref} &middot; {session.title}
-                            </Link>
+                            <Link to={`/submissions/${session.submissionId}`}>{session.title}</Link>
                           </span>
                           <span role="cell">{scheduledLabel(session.scheduled)}</span>
                           <span role="cell" className={neutralStatusClass()}>

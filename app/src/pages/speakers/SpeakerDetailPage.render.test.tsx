@@ -172,6 +172,30 @@ describe('SpeakerDetailPage render smoke', () => {
     // Exact slot string for a placed session: day formatted via
     // formatDayLabel + zero-padded clock times, never the raw ISO day.
     expect(screen.getByText('Wed 13 May 10:00–10:45, Hall A')).toBeInTheDocument();
+
+    // DEC-829 (w20-d): docs/design/Chautauqua Speakers.dc.html:365 draws
+    // cell 1 as the session TITLE alone, no code prefix -- the code
+    // (session.ref) stays on the ParticipationMenu's `label` prop, which
+    // needs it to name the participation it writes (chq-participation-
+    // menu-ref, below). Counting matches rather than asserting presence, so
+    // a regression that reprints the code in cell 1 fails even though the
+    // participation control keeps printing it too.
+    const sessionRow = document.querySelector('.chq-speaker-detail-sessions-row');
+    expect(sessionRow).not.toBeNull();
+    expect(sessionLink).toHaveTextContent('Analytical Engines');
+    expect(sessionLink?.textContent).not.toMatch(/S-001/);
+    expect(sessionRow?.textContent?.match(/S-001/g) ?? []).toHaveLength(1);
+    expect(sessionRow?.querySelector('.chq-participation-menu-ref')).toHaveTextContent('S-001');
+
+    // Cell 3's declared register: frame :368 draws bare olive caps -- no
+    // border, no fill -- via the scoped .chq-speaker-detail-sessions-row
+    // override (speakers-css.test.ts pins the declaration; jsdom applies no
+    // external stylesheet, so this asserts the markup carries the modifier
+    // class the override targets, not a computed style).
+    const statusCell = sessionRow?.querySelector('.chq-speakers-status-neutral');
+    expect(statusCell).not.toBeNull();
+    expect(statusCell).toHaveClass('chq-speakers-status', 'chq-speakers-status-neutral', 'chq-speakers-status-dense');
+    expect(statusCell?.tagName).toBe('SPAN');
   });
 
   // DEC-930 wave-19 amendment: Sessions/Tasks/Files drop <table>/<thead>

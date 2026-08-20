@@ -1412,6 +1412,35 @@ button.chq-speakers-status-overdue:hover {
   border-bottom: 1px solid var(--chq-hairline);
 }
 
+/* DEC-829 (w20-d): docs/design/Chautauqua Speakers.dc.html:368 draws the
+   Sessions row's status cell as BARE olive caps -- `font-size:11px;
+   font-weight:800; letter-spacing:0.09em; text-transform:uppercase;
+   color:#4E5C31` -- with no border and no fill. The shared
+   .chq-speakers-status-neutral modifier is registered BOXED elsewhere in the
+   family (a 1px outline, muted 600 -- see the MEANING block above), so this
+   overrides only on this one surface rather than moving every -neutral
+   reader; SpeakerDetailPage.tsx's neutralStatusClass() is this class's only
+   consumer today. font-size/text-transform/family already come from the
+   shared .chq-speakers-status base and need no restatement here.
+   Specificity (0,2,1) via the trailing element selector beats the family's
+   boxed compound rules (0,2,0) regardless of source order, so every boxed
+   declaration below is explicitly undone rather than relying on cascade
+   order. Padding/margin/radius fall back to the same bare dense geometry
+   -complete/-pending already get at this density (padding:3px 6px;
+   margin-inline:-6px cancels to a flush glyph; the radius only shapes the
+   focus ring, which never paints at rest since there is no border or fill
+   left to round). */
+.chq-speaker-detail-sessions-row span.chq-speakers-status-neutral {
+  color: var(--chq-brand);
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  background: none;
+  border: none;
+  border-radius: var(--chq-r-ctl);
+  padding: 3px 6px;
+  margin-inline: -6px;
+}
+
 /* Frame :376/:378: the due date never wraps, and the action cell is flushed
    to the row's right edge inside its own fixed track. Addressed on the row's
    CHILDREN, not on the link -- the grid items here are the role="cell"
