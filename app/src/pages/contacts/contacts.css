@@ -1108,4 +1108,35 @@
      companion-gap population; its 9px desktop gap is left unwidened.
      `.chq-contacts-rail-duplicate-actions` already carries the widened
      24px gap (contacts.css:229-232) and is left unchanged. */
+
+  /* 44px floor (task w13-n, round-2 WAVE B row "contacts name links
+     25.6px", contacts.css:449): `.chq-contacts-record-value` renders as
+     TWO different elements depending on DEC-380 wave-120's `readMode`
+     split (ContactDrawer.tsx:117-125/479-487/545-551) -- a real
+     click-to-edit `<button>` whenever `readMode` is false (every desktop
+     width, and phone once the dock's Edit control flips `phoneEditing`
+     true), or an inert `<span class="chq-contacts-record-value
+     chq-contacts-record-readonly">` in phone READ mode. The button form
+     is a genuine phone-reachable tap target and gets the floor here;
+     the second, more specific rule resets it back for the readonly span,
+     which DEC-380 wave-120 (b) rules is inert text, not a control -- the
+     row's own phone override (:889-894 above, `padding:13px 0`) already
+     draws the frame's :418 static pair without this class inflating the
+     span into a fake button (DEC-991). Horizontal padding is cancelled
+     (borderless, background:none/border:none at :449-459) so the button's
+     text does not shift against the row's other rendering. */
+  .chq-contacts-record-value {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 4px;
+    margin-inline: -4px;
+  }
+
+  .chq-contacts-record-value.chq-contacts-record-readonly {
+    min-height: 0;
+    display: block;
+    padding-inline: 0;
+    margin-inline: 0;
+  }
 }
