@@ -1,9 +1,10 @@
 // DEC-380 wave-140 (re-adjudication of the wave-130 amendment's clause (d)):
-// docs/design/Chautauqua Comms.dc.html:574-578 draws the never-sent Comms
-// landing's fresh empty state with a decided-submission count ("23
-// submissions have a decision and nobody has been told." / "Tell the 23
-// accepted speakers"). This file pins that Comms.tsx loads the accepted-
-// submission count on the SAME fresh branch its "No sends on this event"
+// the Comms frame draws the never-sent Comms landing's fresh empty state
+// with a decided-submission count (cited and quoted at its receipt, beside
+// the expect() that proves it, below -- a top-of-file coordinate can never
+// satisfy the 6-line receipt-proximity rule). This file pins that Comms.tsx
+// loads the accepted-submission count on the SAME fresh branch its
+// "No sends on this event"
 // head subtitle already detects (all-time batch list empty AND both
 // seven-day totals zero), hands it down to RecentSends, and never fabricates
 // a number when the count fails to load.
@@ -53,6 +54,9 @@ describe('CommsPage fresh empty state decided-untold count', () => {
 
     expect(await screen.findByText('No sends on this event')).toBeInTheDocument();
 
+    // Receipt: docs/design/Chautauqua Comms.dc.html:574-578 draws
+    // `23 submissions have a decision and nobody has been told. Every send
+    // is logged here afterwards.` / `Tell the 23 accepted speakers`.
     await waitFor(() => {
       expect(
         screen.getByText('23 submissions have a decision and nobody has been told. Every send is logged here afterwards.'),

@@ -15,7 +15,6 @@
 // This file only WIDENS the population into visibility -- draining the
 // offenders it finds is a separate, later lane's job (see the ceiling
 // comment in phone-tap-target-scan/ceilings.ts).
-import { readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -113,17 +112,14 @@ describe('phone tap-target floor scan — SSR classless-anchor population', () =
     }
   });
 
-  it('reports a live measured offender the field guide names (chq-pub-rail-day-row, sessions.tsx)', () => {
-    const src = stripTsxComments(readFileSync(join(ROUTES_ROOT, 'public', 'sessions.tsx'), 'utf-8'));
-    const sites = classlessAnchorSites(src);
-    expect(sites.some((s) => s.tokens.includes('chq-pub-rail-day-row'))).toBe(true);
-  });
-
-  it('reports a live measured offender the field guide names (chq-section, portal/index.tsx)', () => {
-    const src = stripTsxComments(readFileSync(join(ROUTES_ROOT, 'portal', 'index.tsx'), 'utf-8'));
-    const sites = classlessAnchorSites(src);
-    expect(sites.filter((s) => s.tokens.includes('chq-section')).length).toBeGreaterThanOrEqual(2);
-  });
+  // DEC-967 wave-143: the two "live measured offender" sentinels that used to
+  // sit here (chq-pub-rail-day-row/sessions.tsx, chq-section/portal/index.tsx)
+  // are DELETED, not re-pointed (field guide w103). w17-e floored the
+  // portal/index.tsx pair in the same batch that introduced them, so the scan
+  // made fixing its own finding illegal. Non-vacuity is proved above over
+  // inline synthetic fixtures this file owns; the live product population is
+  // graded only by the two-sided SSR_CLASSLESS_ANCHOR_CEILING ratchet below
+  // and by the shape tripwire at the top of the file.
 
   it('stays at or under the SSR classless-anchor ceiling, and never raises it silently', () => {
     const offenders = findSsrClasslessAnchorOffenders(ROUTE_FILES, SSR_CSS_MODULES, REPO_ROOT);

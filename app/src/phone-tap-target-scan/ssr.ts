@@ -260,7 +260,7 @@ export interface ClasslessAnchorSite {
 
 /** Every `<a …>` opening tag in `src` (already comment-stripped) declaring
  * neither `class=` nor `className=`, keyed on its nearest enclosing
- * element's chq- token(s) via a depth-only tag-stack walk (DEC-808: walked,
+ * element's chq- tokens via a depth-only tag-stack walk (DEC-808: walked,
  * never a hand-listed file/line set). */
 export function classlessAnchorSites(src: string): ClasslessAnchorSite[] {
   const out: ClasslessAnchorSite[] = [];

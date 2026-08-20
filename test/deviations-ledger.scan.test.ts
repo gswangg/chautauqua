@@ -250,6 +250,18 @@ const LEDGER: LedgerEntry[] = [
     honored: { kind: "absent", term: "archive this event" },
   },
   {
+    key: "settings-keeping-and-deleting-retention-block-docs-design-chautauqua-settings-dc-html-1161-1180",
+    status: "honored",
+    reason:
+      "DEC-032 (task w17-g): the frame's retention select and two checkboxes are a deliberate non-build -- no retention column, no endpoint and no deletion job backs any of the three controls, so building them would declare a setting nothing reads. The panel that would have carried them records the same non-build in its own header comment.",
+    honored: {
+      kind: "present",
+      file: "app/src/pages/settings/ExportsPanel.tsx",
+      literal: "deliberate non-build on DEC-032.",
+      testFile: "app/src/pages/settings/ExportsPanel.render.test.tsx",
+    },
+  },
+  {
     key: "docs-design-chautauqua-speakers-dc-html-549-speakers-a-write-failed",
     status: "superseded",
     reason:
@@ -670,11 +682,11 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
   it("vacuous-population tripwire: exact entry count per included section", () => {
     const bySection = new Map<string, number>();
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
-    expect(bySection.get("## 1. Ruled omissions")).toBe(2);
+    expect(bySection.get("## 1. Ruled omissions")).toBe(3);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
     expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(13);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(19);
-    expect(derived.length).toBe(40);
+    expect(derived.length).toBe(41);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
