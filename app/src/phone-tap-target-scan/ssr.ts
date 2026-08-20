@@ -46,6 +46,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
   declaredHeightPx,
+  escapeRe,
+  hasFlexCenter,
+  hasMinHeightFloor,
+  horizontalPaddingNonZero,
   narrowMediaRules,
   selectorDeclaresBareClass,
   SSR_CLASS_ATTR_RE,
@@ -201,6 +205,169 @@ export function findSsrUnflooredTokens(
     }
     if (floored || exempted) continue;
     offenders.push(`${owner ?? '(no CSS rule)'} — .${token}`);
+  }
+  return offenders.sort();
+}
+
+// --- CLASSLESS-ANCHOR population (wave v12m-w17, task w17-c) --------------
+//
+// `allSsrTapTargetTokens` above is keyed on class TOKENS taken from markup
+// (`tapTargetTagTokens`'s `class(?:Name)?=` extraction): an `<a>` with
+// neither `class=` nor `className=` contributes NO token, so it is
+// ungradeable by construction -- not a zero-offender population, an
+// EMPTY one (DEC-808: "a directory is not a population" -- here, a
+// token-keyed scan is not a population either, once the shape it scans
+// for is absent from the markup). Confirmed live at wave-142's
+// `0e3ece58`: ~27 bare `<a>` under src/routes/** with no class attribute
+// at all, three measured sub-floor with no reaching CSS rule anywhere in
+// the tree (`.chq-pub-rail-day-row a` in sessions.tsx/agenda-rail.tsx --
+// ~17px tall, base rule only font-size/weight/colour -- and the portal
+// home's `<a href="/portal/tasks">`/`<a href="/portal/submissions">` at
+// ~19px, no `.chq-section a` rule anywhere).
+//
+// This widening does NOT key on the anchor's own class (it has none) --
+// it keys on the nearest ENCLOSING element's `chq-` class token, found by
+// a depth-only tag-stack walk forward through the file (the same "adequate
+// for this codebase's plain JSX" idiom cancelled-padding-face.scan.test.ts's
+// `extractEnclosingDivBlock` already uses, generalised from one hand-named
+// marker to every classless `<a>` in the file). A classless anchor whose
+// nearest enclosing element ALSO carries no `chq-` token at all is reported
+// against the literal label `(no enclosing chq- token)` -- there is
+// nothing a CSS rule could key on, so it can never pass.
+
+/** Every opening JSX tag in `src` (self-closing or not), matched in source
+ * order. `closing` is true for a `</tag>` closer; `selfClosing` is true for
+ * a non-closing tag whose attribute text ends `/` (the JSX void/self-close
+ * shape). Comments must already be stripped by the caller (`stripTsxComments`
+ * -- a `<a href>` inside a `//` comment in
+ * src/routes/public/empty-state.tsx is a known false positive otherwise). */
+const ANY_TAG_RE = /<(\/)?([A-Za-z][\w.]*)([^>]*)>/g;
+
+function chqTokensFromAttrs(attrs: string): string[] {
+  const classMatch = attrs.match(SSR_CLASS_ATTR_RE);
+  if (!classMatch) return [];
+  const classText = classMatch[1] ?? '';
+  return [...classText.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]);
+}
+
+export interface ClasslessAnchorSite {
+  readonly line: number;
+  /** The nearest enclosing element's chq- tokens, walking outward through
+   * the tag stack until one carries at least one. Empty when no ancestor
+   * (all the way to the file's top level) carries any chq- token. */
+  readonly tokens: readonly string[];
+}
+
+/** Every `<a …>` opening tag in `src` (already comment-stripped) declaring
+ * neither `class=` nor `className=`, keyed on its nearest enclosing
+ * element's chq- token(s) via a depth-only tag-stack walk (DEC-808: walked,
+ * never a hand-listed file/line set). */
+export function classlessAnchorSites(src: string): ClasslessAnchorSite[] {
+  const out: ClasslessAnchorSite[] = [];
+  const stack: string[][] = [];
+  ANY_TAG_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = ANY_TAG_RE.exec(src)) !== null) {
+    const closing = m[1] === '/';
+    const tagName = m[2] as string;
+    const attrs = m[3] ?? '';
+    if (closing) {
+      stack.pop();
+      continue;
+    }
+    const selfClosing = /\/\s*$/.test(attrs);
+    if (tagName === 'a' && !/\bclass(?:Name)?\s*=/.test(attrs)) {
+      let tokens: string[] = [];
+      for (let i = stack.length - 1; i >= 0; i--) {
+        const frame = stack[i];
+        if (frame && frame.length > 0) {
+          tokens = frame;
+          break;
+        }
+      }
+      const line = src.slice(0, m.index).split('\n').length;
+      out.push({ line, tokens });
+    }
+    if (!selfClosing) stack.push(chqTokensFromAttrs(attrs));
+  }
+  return out;
+}
+
+/** Every `*.tsx` file under `routesRoot` (typically `src/routes`), excluding
+ * `*.test.*` and `<routesRoot>/dev/**` (the internal dev-only mailbox
+ * surface -- never a real, publicly-reachable v12 frame). Enumerated, never
+ * a hand-listed file set (DEC-808). */
+export function ssrRouteTsxFiles(routesRoot: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(routesRoot, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.tsx')) continue;
+    if (entry.name.includes('.test.')) continue;
+    const absPath = join(entry.parentPath, entry.name);
+    const rel = relative(routesRoot, absPath).split(/[\\/]/);
+    if (rel[0] === 'dev') continue;
+    out.push(absPath);
+  }
+  return out.sort();
+}
+
+/** True when `selector` (a single, already-comma-split, trimmed clause)
+ * reaches a classless anchor keyed on `token`: the bare element `a`, or a
+ * descendant combinator off a class matching `token` (`.<token> a`,
+ * `nav.<token> a`, or any other element-qualified `<tag>.<token> a` shape --
+ * DEC-937: a boundary match, not a hyphen-prefix substring match). */
+function selectorReachesClasslessAnchor(selector: string, token: string): boolean {
+  if (selector === 'a') return true;
+  const re = new RegExp(`(?:^|[\\s>+~])(?:[A-Za-z][\\w-]*)?\\.${escapeRe(token)}(?![\\w-])\\s+a\\b`);
+  return re.test(selector);
+}
+
+/**
+ * Every classless-anchor site with no conforming phone-width floor and no
+ * named exemption on its enclosing token, reported as
+ * `<file>:<line> — .<token>` (or `<file>:<line> — (no enclosing chq-
+ * token)` when no ancestor carries one at all -- always an offender, since
+ * nothing could ever key a CSS rule to it).
+ *
+ * Same three-clause predicate as `anchor-floor.ts`'s row-action-anchor lens
+ * -- min-height >=44px, `display:flex` + `align-items:center`, non-zero
+ * horizontal padding -- all inside some `@media (max-width: <=700px)`
+ * block, on a selector reaching the anchor through its enclosing token.
+ */
+export function findSsrClasslessAnchorOffenders(
+  ssrRouteFiles: string[],
+  ssrCssModules: string[],
+  repoRoot: string,
+): string[] {
+  const perFile = ssrCssModules.map((path) => {
+    const raw = extractCssTsLiteral(readFileSync(path, 'utf-8'));
+    return { raw, narrow: narrowMediaRules(raw, 700) };
+  });
+
+  const offenders: string[] = [];
+  for (const path of ssrRouteFiles) {
+    const src = stripTsxComments(readFileSync(path, 'utf-8'));
+    const label = relative(repoRoot, path);
+    for (const site of classlessAnchorSites(src)) {
+      if (site.tokens.length === 0) {
+        offenders.push(`${label}:${site.line} — (no enclosing chq- token)`);
+        continue;
+      }
+      let ok = false;
+      let exempted = false;
+      for (const token of site.tokens) {
+        const reaching = perFile.flatMap(({ narrow }) =>
+          narrow.filter((r) => selectorReachesClasslessAnchor(r.selector, token)),
+        );
+        const body = reaching.map((r) => r.body).join(' ');
+        if (reaching.length > 0 && hasMinHeightFloor(body) && hasFlexCenter(body) && horizontalPaddingNonZero(body)) {
+          ok = true;
+          break;
+        }
+        if (perFile.some(({ raw }) => hasExemptionForToken(raw, token))) exempted = true;
+      }
+      if (ok || exempted) continue;
+      offenders.push(`${label}:${site.line} — .${site.tokens.join('.')}`);
+    }
   }
   return offenders.sort();
 }
