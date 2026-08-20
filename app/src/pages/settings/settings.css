@@ -1058,6 +1058,22 @@
   margin: 0 0 8px;
 }
 
+/* DEC-896 (wave-133 amendment): the section-SCOPED half of B10's
+   consequence text -- the frame draws these as the LAST child of their own
+   <section>, in muted ink at the caption size, full-measure and
+   left-aligned (never right-flushed like `.chq-settings-edit-consequence`,
+   which is reserved for the head line the frame draws on the H1 baseline).
+   Distinct class from `.chq-settings-section-caption` above (that one sits
+   BEFORE a list, describing what's about to be edited; this one closes a
+   section, describing a consequence of the edit) even though the type
+   treatment is identical. */
+.chq-settings-edit-section-note {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin: 12px 0 0;
+  text-align: left;
+}
+
 .chq-settings-edit-row {
   display: grid;
   gap: 16px;

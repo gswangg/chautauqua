@@ -38,6 +38,12 @@ import {
   type PortalSettingsFormErrors,
 } from './formState';
 import { MAX_LONG_TEXT_LENGTH, MAX_TEXT_LENGTH } from '../../../../src/forms/validate';
+import { DEC_896 } from '../../../../src/decisions';
+
+// DEC-896 (wave-133 amendment): the Welcome note field's persistent hint
+// and the 'What speakers may edit' closing line below are the
+// section/field-scoped half of B10's consequence text.
+void DEC_896;
 
 const SECTION_KEY = 'portal';
 
@@ -272,7 +278,16 @@ export function PortalSettingsPanel() {
             label="Welcome note"
             htmlFor="chq-portal-welcome"
             width="full"
-            hint={formErrors.welcomeMessage ? <span role="alert">{formErrors.welcomeMessage}</span> : undefined}
+            // DEC-896 (wave-133 amendment): the frame's persistent hint (:906)
+            // -- shown except when a save refusal on this field takes
+            // precedence, same rule as EventSettingsPanel's Venue hint.
+            hint={
+              formErrors.welcomeMessage ? (
+                <span role="alert">{formErrors.welcomeMessage}</span>
+              ) : (
+                'Takes the full measure · appears above the task list'
+              )
+            }
           >
             {/* G13 fix (frames 09--07/09--13): the welcome note draws ~96px
                 tall -- the shared textarea class, never the 44px single-line
@@ -332,8 +347,8 @@ export function PortalSettingsPanel() {
           </div>
           <SpeakerEditPills />
           <p className="chq-settings-edit-consequence">
-            Title and abstract stay organiser-only — a speaker editing them after acceptance would change what was
-            accepted.
+            Title and abstract stay organiser-only — a speaker editing them after acceptance would change what the
+            committee accepted.
           </p>
 
           <div className="chq-settings-section-head">

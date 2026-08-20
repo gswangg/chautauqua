@@ -24,12 +24,15 @@ import { TrackEditRow } from './tracksRooms/TrackEditRow';
 import { TRACK_SWATCHES, nextSwatch, swatchLabel } from './tracksRooms/trackSwatches';
 import { roomBaseline, trackBaseline, unownedFieldEntries, ROOM_FIELD_KEYS, TRACK_FIELD_KEYS } from './tracksRooms/types';
 import { useTracksRoomsPanel } from './tracksRooms/useTracksRoomsPanel';
-import { DEC_385, DEC_728, DEC_919 } from '../../../../src/decisions';
+import { DEC_385, DEC_728, DEC_896, DEC_919 } from '../../../../src/decisions';
 import './settings-drill-rows.css';
 
 void DEC_385; // new page-local sheet, settings-drill-rows.css
 void DEC_728; // the 390 drill frame's own controls, not a second tap
 void DEC_919; // phone-only sibling, desktop head link hidden at phone
+// DEC-896 (wave-133 amendment): the two section-scoped closing notes below
+// replace this view's single folded head consequence.
+void DEC_896;
 
 export { TRACK_SWATCHES };
 
@@ -149,7 +152,6 @@ export function TracksRoomsPanel() {
       >
         <SettingsEditForm
           onSubmit={(e) => e.preventDefault()}
-          consequence="A track in use cannot be removed — retire it. Seats are advisory: the agenda flags over-capacity but never blocks."
           footer={{
             primary: (
               <button type="button" className="chq-btn chq-btn-primary" onClick={handleDone}>
@@ -168,11 +170,6 @@ export function TracksRoomsPanel() {
               Add a track
             </button>
           </div>
-          {/* DEC-888 (wave 64 amendment): one caption for the section, not
-              one per row -- names what the colour is for. */}
-          <p className="chq-settings-section-caption">
-            The colour is how a track reads on the agenda and the public pages.
-          </p>
           <ul className="chq-settings-edit-list">
             {tracks.map((track) => (
               <TrackEditRow
@@ -253,6 +250,13 @@ export function TracksRoomsPanel() {
               </div>
             </>
           ) : null}
+          {/* DEC-896 (wave-133): the TRACKS section's own closing note
+              (docs/design/Chautauqua Settings.dc.html:835) -- replaces the
+              folded-up single head consequence this view used to draw. */}
+          <p className="chq-settings-edit-section-note">
+            The swatch is how a track reads on the agenda and the public pages · a track in use cannot be removed —
+            retire it instead and it stops appearing on the form
+          </p>
 
           <div className="chq-settings-section-head">
             <h3 className="chq-section-label">Rooms &middot; {rooms.length}</h3>
@@ -348,6 +352,11 @@ export function TracksRoomsPanel() {
               </div>
             </>
           ) : null}
+          {/* DEC-896 (wave-133): the ROOMS section's own closing note
+              (docs/design/Chautauqua Settings.dc.html:852). */}
+          <p className="chq-settings-edit-section-note">
+            Seats are advisory — the agenda flags an over-capacity room but never blocks it
+          </p>
         </SettingsEditForm>
       </SummarySection>
 

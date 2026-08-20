@@ -20,6 +20,11 @@ import { dateInputToMs, daysUntil } from '../../lib/dates';
 import { formatEventDayRange } from '../../../../src/lib/event-time';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../../../../src/forms/validate';
+import { DEC_896 } from '../../../../src/decisions';
+
+// DEC-896 (wave-133 amendment): the Venue field's persistent hint below is
+// the field-scoped half of B10's consequence text.
+void DEC_896;
 
 const SECTION_KEY = 'event';
 
@@ -260,6 +265,14 @@ export function EventSettingsPanel() {
     );
   }
 
+  // DEC-896 (wave-133 amendment): the frame's persistent Venue hint (:768)
+  // -- always visible, EXCEPT that a save refusal on the same field takes
+  // precedence over it (never shown alongside the error, never suppressed
+  // for good once the error clears).
+  function venueHint() {
+    return fieldErrorHint('location') ?? 'Shown on the public pages and in calendar invites';
+  }
+
   // The chq-input/chq-field-invalid ternary is written inline on each
   // control (the PlanEditor.tsx spelling) rather than hoisted into a
   // helper: DEC-406's guard is a source regex, so it only sees class
@@ -437,7 +450,7 @@ export function EventSettingsPanel() {
               ))}
             </select>
           </SettingsField>
-          <SettingsField label="Venue" htmlFor={FIELD_IDS.location} width="venue" hint={fieldErrorHint('location')}>
+          <SettingsField label="Venue" htmlFor={FIELD_IDS.location} width="venue" hint={venueHint()}>
             <input
               id={FIELD_IDS.location}
               className={fieldErrors.location ? 'chq-input chq-field-invalid' : 'chq-input'}
