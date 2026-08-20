@@ -213,12 +213,16 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     // identity.
     void DEC_238;
     const seenAddresses = new Set<string>();
-    let intraBatchSkipped = 0;
+    // DEC-238 (this amendment): skipped recipients are collected as the
+    // SAME rendered records the sent path uses, not as two bare counters —
+    // the returned `skipped` count below is `.length` of this one array, so
+    // the response and the email_log rows it drives can never disagree.
+    const skippedRendered: typeof preflightResult.rendered = [];
     const afterIntraBatch: typeof preflightResult.rendered = [];
     for (const rendered of preflightResult.rendered) {
       const addressKey = rendered.email.trim().toLowerCase();
       if (seenAddresses.has(addressKey)) {
-        intraBatchSkipped += 1;
+        skippedRendered.push(rendered);
         continue;
       }
       seenAddresses.add(addressKey);
@@ -230,11 +234,10 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject })),
       dedupeCutoff(Date.now()),
     );
-    let crossCallSkipped = 0;
     const toSendKeys: typeof preflightResult.rendered = [];
     for (const rendered of afterIntraBatch) {
       if (recentlySent.has(dedupeKey(rendered.email, rendered.subject))) {
-        crossCallSkipped += 1;
+        skippedRendered.push(rendered);
         continue;
       }
       toSendKeys.push(rendered);
@@ -265,7 +268,7 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     }
     const toSend = finalResult.rendered;
 
-    const { makeMailer } = await import("../../../server/context");
+    const { makeMailer, d1EmailLogWriter } = await import("../../../server/context");
     // DEC-603: one id per fan-out call, shared by every recipient in this
     // loop, so the comms history tab can group the batch into one row.
     const batchId = newId();
@@ -309,13 +312,45 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       }
     });
 
+    // DEC-238 (this amendment): the comms history must agree with the send
+    // report about skipped recipients — write one email_log row per
+    // skippedRendered entry through the SAME single insert owner
+    // (d1EmailLogWriter) the fan-out's mailer uses, sharing this call's
+    // batchId so the history groups the whole send into one row. Mirrors
+    // src/routes/comms/send.ts's wave-8 amendment; unlike that path,
+    // bulk-email already has each skipped recipient's own rendered record
+    // in hand (renderBulkEmailTargets runs before the dedupe split above),
+    // so no lookup-by-key is needed.
+    if (skippedRendered.length > 0) {
+      const emailLogWriter = d1EmailLogWriter(c.var.db);
+      const sentAtMs = Date.now();
+      for (const skip of skippedRendered) {
+        await emailLogWriter.write({
+          eventId: event.id,
+          contactId: skip.contactId,
+          batchId,
+          toEmail: skip.email,
+          toName: skip.name,
+          subject: skip.subject,
+          bodyText: skip.text,
+          // No html render exists for a skipped recipient -- their message
+          // never reached the shell-rendering step (renderEmailHtml above
+          // runs only inside the fan-out loop, over `toSend`).
+          bodyHtml: "",
+          provider: "none",
+          status: "skipped",
+          sentAt: sentAtMs,
+        });
+      }
+    }
+
     // DEC-949 amendment: the send response must never carry rendered bodies
     // (they contain live claim tokens minted above) -- only the SPA-consumed
     // counts. The preview handler below legitimately returns `items`.
-    // DEC-238 wave-14 amendment: `skipped` is a COUNT (both dedupe stages
-    // combined), matching app/src/lib/sendResult.ts's SendResult contract —
-    // not the per-recipient array compose/send returns.
-    return c.json({ sent: toSend.length - failed.length, skipped: intraBatchSkipped + crossCallSkipped, failed });
+    // DEC-238 (this amendment): `skipped` is skippedRendered.length — the
+    // SAME collection the email_log rows above were just written from, so
+    // the response and the history can never disagree.
+    return c.json({ sent: toSend.length - failed.length, skipped: skippedRendered.length, failed });
   });
 
   /** CRM-11 (DEC-150): preview uses the exact same merge-field rendering
