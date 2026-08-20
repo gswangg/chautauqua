@@ -35,6 +35,18 @@ const FORM_ROW_NO_CLOSE = { ...FORM_ROW_WITH_CLOSE, closeDate: null } as any;
 
 const FORM_ROW_WITH_OPEN = { ...FORM_ROW_WITH_CLOSE, openDate: Date.UTC(2026, 0, 1) } as any;
 
+const EVENT_ROW_WITH_DATES = {
+  ...EVENT_ROW,
+  startDate: "2027-05-12",
+  endDate: "2027-05-14",
+} as any;
+
+const EVENT_ROW_MISSING_END_DATE = {
+  ...EVENT_ROW,
+  startDate: "2027-05-12",
+  endDate: null,
+} as any;
+
 function render(state: "fresh" | "pending-existing-contact" | "has-account", form = FORM_ROW_WITH_CLOSE) {
   const el = ConfirmationPage({
     event: EVENT_ROW,
@@ -121,6 +133,28 @@ describe("DEC-961 (amended G13): ClosedPage / NotYetOpenPage way-forward link", 
     expect(html).toContain("The call for papers opens on");
     expect(html).toMatch(/href="\/e\/test-conf\/sessions"/);
     expect(html).not.toMatch(/href="\/">/);
+  });
+
+  // DEC-613/DEC-986 (wave-130 amendments): the meta eyebrow renders
+  // "{event} · {date range}" from EventRow.startDate/endDate, falling back
+  // to the bare event name when either date is missing.
+  it("NotYetOpenPage's meta line renders the event name and its date range", () => {
+    const html = NotYetOpenPage({ event: EVENT_ROW_WITH_DATES, form: FORM_ROW_WITH_OPEN }).toString();
+    expect(html).toContain('<span class="chq-cfp-meta">Test Conf · Wed 12 May 2027–Fri 14 May 2027</span>');
+  });
+
+  it("NotYetOpenPage's meta line falls back to the bare event name when a date is missing", () => {
+    const html = NotYetOpenPage({ event: EVENT_ROW_MISSING_END_DATE, form: FORM_ROW_WITH_OPEN }).toString();
+    expect(html).toContain('<span class="chq-cfp-meta">Test Conf</span>');
+  });
+
+  // DEC-986 (wave-130 amendment): adopts the frame's "You will not need an
+  // account." clause alongside the existing body, never the frame's "Three
+  // tracks, five formats." (this window state never fetches tracks).
+  it("NotYetOpenPage's body adopts 'You will not need an account.' and not the track-count clause", () => {
+    const html = NotYetOpenPage({ event: EVENT_ROW, form: FORM_ROW_WITH_OPEN }).toString();
+    expect(html).toContain("You will not need an account.");
+    expect(html).not.toContain("Three tracks");
   });
 });
 

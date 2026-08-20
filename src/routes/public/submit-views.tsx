@@ -11,7 +11,7 @@ import type { AnswerMap, FormFieldDef } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import { formatEventDate, formatEventDateTime } from "../../lib/event-time";
-import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
+import { dayLabelEndInstant, dayLabelStartInstant, zonedMinutesToUtc } from "../../lib/timezone";
 import { FormFieldsSection, FieldRulesScript, fieldInputName, FormField } from "../../views/form-render";
 import { countOf, thingsNeedFixingHeading } from "../../domain/count-copy";
 import { ThemeStyles } from "../../views/theme";
@@ -109,11 +109,30 @@ export function ClosedPage(props: { event: EventRow; form: FormRow }) {
   );
 }
 
+// DEC-613/DEC-986 (wave-130 amendments): the meta eyebrow above the
+// not-yet-open heading names the event AND its date range -- "{event} ·
+// {date range}" (Public and Portal.dc.html:1546, "DevFlow Conf 2027 ·
+// 12–14 May 2027") -- not the bare event name ClosedPage/preview.tsx's
+// "Preview" band use elsewhere. Built from EventRow.startDate/endDate
+// (src/server/repo/submit.ts:74-75, 'YYYY-MM-DD' day strings, DEC-010)
+// through zonedMinutesToUtc + this file's already-imported formatEventDate
+// -- both from src/lib/timezone.ts / src/lib/event-time.ts, the modules
+// this file already depends on for form.openDate below -- no new date
+// dependency, no hand-rolled Date() math. Falls back to the bare event
+// name when either date is missing (organizer-entered data, not guaranteed
+// present).
+function notYetOpenMetaLine(event: EventRow): string {
+  if (!event.startDate || !event.endDate) return event.name;
+  const start = formatEventDate(zonedMinutesToUtc(event.startDate, 0, event.timezone).getTime(), event.timezone);
+  const end = formatEventDate(zonedMinutesToUtc(event.endDate, 0, event.timezone).getTime(), event.timezone);
+  return `${event.name} · ${start}–${end}`;
+}
+
 export function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
   return (
     <PageShell title={`Submissions not yet open - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
       <div class="chq-cfp-closed chq-bare-page">
-        <span class="chq-cfp-meta">{props.event.name}</span>
+        <span class="chq-cfp-meta">{notYetOpenMetaLine(props.event)}</span>
         {/* G13 (frame 10--25, MAJOR) + DESIGN-RULINGS 'CFP -- the third
             window state': the heading LEADS with the date the form opens,
             never an apology -- the dateless wording is reserved for a form
@@ -125,8 +144,14 @@ export function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
               The call for papers opens on{" "}
               {formatEventDate(dayLabelStartInstant(props.form.openDate, props.event.timezone), props.event.timezone)}
             </h1>
+            {/* DEC-986 (wave-130 amendment): adopts the frame's "You will
+                not need an account." clause (:1547) -- true of this
+                product's public submit path. Deliberately NOT adopting
+                "Three tracks, five formats.": submit-get.tsx returns before
+                fetching tracks for this window state, so a track count
+                here would be fabricated (DEC-986 forbids this). */}
             <p role="alert" class="chq-cfp-closed-body">
-              Nothing to do until then — come back once the form is open.
+              Nothing to do until then — come back once the form is open. You will not need an account.
             </p>
           </>
         ) : (
