@@ -273,10 +273,13 @@ describe('v12 phone frame "Settings · People and roles" (390)', () => {
 });
 
 describe('DEC-375: the index/drill switch never stacks the rail above its content', () => {
-  it('hides the page-level h1 at phone whenever a section is drilled, and swaps in the section-local title', () => {
+  it('hides the page-level h1 at phone whenever a section is drilled (read OR edit), and swaps in the section-local title', () => {
+    // DEC-393/DESIGN-RULINGS:247 amendment (w13-i): the edit-drill case
+    // swaps too now -- back must paint above the H1 there as well, so the
+    // selector no longer carries [data-editing='false'].
     const hideRule = ruleIn(
       SETTINGS_PHONE,
-      ".chq-settings-page:has(.chq-settings-layout[data-drilled='true'][data-editing='false']) > .chq-page-title",
+      ".chq-settings-page:has(.chq-settings-layout[data-drilled='true']) > .chq-page-title",
     );
     expect(hideRule).toMatch(/display:\s*none/);
   });

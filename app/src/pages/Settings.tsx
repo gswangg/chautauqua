@@ -142,12 +142,16 @@ export function SettingsPage() {
   // comment states. `editingSection` already covers the edit-drill case;
   // `active` covers the plain read-drill case the phone index taps into.
   const activeSection = active !== null ? SECTIONS.find((section) => section.key === active) : undefined;
-  // Only the plain read-drill gap needs a twin title -- when editingSection
-  // is set, the ORIGINAL top-level h1 (pageTitle, above) already carries
-  // the section label for both desktop and phone; rendering a second h1
-  // with the same text here would give jsdom's role-based queries (and any
-  // screen reader) two identically-named headings for one screen.
-  const phoneDrillTitle = !editingSection ? activeSection?.label : undefined;
+  // DEC-393/DESIGN-RULINGS:247 amendment (w13-i): the edit-drill case needs
+  // this same phone-only twin too -- the ORIGINAL top-level h1 (pageTitle,
+  // above) sits BEFORE .chq-settings-layout in the DOM, so it always paints
+  // above the `‹ back` control that lives inside .chq-settings-content; the
+  // frame draws back ABOVE the H1. Rendering the twin for editingSection as
+  // well (and hiding the original top h1 at phone whenever either drill
+  // state is active, in settings.css) puts back first in DOM/paint order
+  // for both the plain read-drill and the edit-drill screens, while
+  // desktop -- which never hides the top h1 -- is untouched.
+  const phoneDrillTitle = editingSection ? editingSection.label : activeSection?.label;
 
   // Keep `active` in sync whenever the URL's `section` param CHANGES (e.g.
   // navigating directly to /settings?section=cfp, or Back/Forward) without
