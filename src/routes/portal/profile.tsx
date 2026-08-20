@@ -204,7 +204,10 @@ function ProfilePage(props: {
             <div class="chq-portal-avatar" />
           )}
           <div class="chq-portal-facts" style="flex:1; min-width:200px">
-            <h3 style="margin:0 0 4px">Headshot</h3>
+            {/* w8-g (DEC-380 wave-133): frame :540 draws the visible label
+                with its consequence clause attached -- headshotHintText
+                (size/format hint) stays a separate line below. */}
+            <h3 style="margin:0 0 4px">Headshot &middot; shown on the public speakers page</h3>
             {props.headshotSavedMessage ? <p role="status">{props.headshotSavedMessage}</p> : null}
             {!profile.headshotUrl ? <p>No headshot uploaded yet.</p> : null}
             <label>

@@ -95,16 +95,20 @@ function PreviewPage(props: {
           every portal page carries it) and mutates only the ORGANIZER'S
           OWN session, never portal content or a speaker's data — it is not
           part of "the preview" this task scopes. */}
+      {/* w8-g (DEC-380 wave-133): frame :1488/:1523 draws two lines. The
+          'Preview · read-only.' eyebrow stays first -- Ruling A22 requires
+          this surface to state the read-only impersonation explicitly, and
+          the frame's own first line doesn't say the word -- then the
+          frame's sentence follows verbatim. */}
       <p class="chq-portal-preview-banner" role="note">
-        Preview · read-only. This is the portal your speakers see — no speaker's own submissions, tasks or files
-        appear here.
+        Preview · read-only. This is the portal your speakers see. It has no speaker attached, so there are no
+        submissions, tasks or files here — only what you have written for everyone.
       </p>
       {/* Frame 10--24, clause 2: the honest sentence that this page is the
           configuration, not a person's data — there is no way for an
           organizer to actually stand inside a real speaker's portal. */}
       <p class="chq-meta">
-        To see a real speaker's portal, you would have to be them — this preview shows the configuration, not a
-        person's data.
+        To see a real speaker's portal you would have to be them — this preview deliberately cannot.
       </p>
       {/* G13 (frame 10--24, MAJOR): the previewed portal opens the way the
           speaker's own portal opens -- an H1 'Welcome' with the configured

@@ -177,7 +177,7 @@ describe("GET /submit/:eventSlug — frame 10--14 copy batch (w5-c)", () => {
   it("relabels Bio as 'BIO' with its own helper, dropping the old helpText", async () => {
     const body = await getSubmitPage();
     expect(body).toContain(">Bio<");
-    expect(body).toContain("Shown on the public speakers page if your talk is accepted");
+    expect(body).toContain("Shown on the public speakers page · you can edit it later in your portal");
     expect(body).not.toContain("Old bio help");
     expect(body).not.toContain(">Speaker bio<");
   });

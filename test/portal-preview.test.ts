@@ -112,7 +112,7 @@ describe("GET /portal/preview (DEC-747 findings wave 7 amendment)", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain(
-      "Preview · read-only. This is the portal your speakers see — no speaker&#39;s own submissions, tasks or files appear here.",
+      "Preview · read-only. This is the portal your speakers see. It has no speaker attached, so there are no submissions, tasks or files here — only what you have written for everyone.",
     );
     expect(body).toContain("Welcome, speakers!");
     expect(body).toContain("Travel info");
