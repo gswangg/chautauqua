@@ -219,4 +219,29 @@
 // future lane per this file's own "could not be verified" precedent
 // (wave-135/w15-ee). Re-measured after all other dispositions: 101.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=101
+// v12m-w18-a (wave-143, task w18-a): Public and Portal cluster's own 33-row
+// docket (DEC-976). Two rows BUILT (Chautauqua Public and Portal.dc.html:119
+// "Closes Sun 16 Aug · no account needed" -- sessions.tsx's CFP rail
+// caption gained the trailing clause; :511 "5 questions · used to book your
+// room" -- TaskFormPage gained a field-count/description subtitle;
+// :699/:749 "23 across three tracks" -- speakers.tsx gained a live
+// roster-count subline), 23 rows disposed into COMPOSED/FIXTURE (17
+// COMPOSED, 6 FIXTURE -- see exclusions.ts's own w18-a-tagged entries), and
+// 8 rows left UNMATCHED as genuine, out-of-scope gaps: :444/:445 (the
+// portal home's SessionCard omits the format/duration clause and the
+// deliverable/slides row that the "Your session" DETAIL page's own
+// SubmissionDetailPage does render -- a second, poorer composing site, not
+// this task's to unify); :620/:1405 ("Talk, 30 min · set by the
+// organisers" -- no Session length read-only row exists anywhere in
+// src/routes/portal/edit.tsx, a genuine unbuilt field); :847 (the /schedule
+// overlaps detail panel draws a richer two-line sentence than
+// agenda-itinerary-script.tsx's simpler per-pair "X overlaps Y." line);
+// :1080/:1130/:1153 (the CFP confirmation card's `meta` composes
+// track-then-format, order-pinned by
+// test/cfp-confirmation-email-honesty.test.ts's own assertion
+// '<span class="chq-cfp-confirm-card-meta">Main Track · Talk (45 min)</span>',
+// while the frame draws format-then-track plus a third audience-level
+// clause -- reordering or extending risks breaking that pin, out of this
+// task's scope). Forced to -1 and read back on this branch: 105.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=105
 export const FRAME_CAPTION_UNMATCHED_CEILING = 101;

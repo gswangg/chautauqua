@@ -451,6 +451,54 @@ export const FIXTURE_EXCLUSIONS: Exclusion[] = [
     reason:
       "invented sample file version name ('Slides v3') used as mock body text for the upload-rejected modal's 'What was kept' band (real `survives` text: 'The current file is unchanged. Nothing was replaced.', app/src/pages/content/UploadZone.tsx), not a real UI caption. (fixture token: 'Slides v3')",
   },
+  // v12m-w18-a (wave-143, DEC-976): Public and Portal cluster's own sample
+  // submission abstract text, rendered verbatim wherever a real submission's
+  // stored description is displayed -- fixture DATA (this pack's own
+  // invented sample talk), never absent product copy. Two distinct wordings
+  // exist in the pack: the longer one (with the "-- including the two
+  // migrations that failed first" tail) and a shorter one without it.
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 576,
+    text: 'Our monorepo CI took 40 minutes on a good day. This talk walks through how we cut it to 6 minutes with content-addressed caching, remote execution, and a test-selection model — including the two migrations that failed first.',
+    reason:
+      "invented sample submission abstract, rendered by src/routes/portal/index.tsx's SubmissionDetailPage as `{detail.description}` on the portal's own \"Your session\" read view -- real stored content, but this exact sentence is the pack's own fixture talk, not a literal the app carries. (fixture token: 'monorepo CI')",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 927,
+    text: 'Our monorepo CI took 40 minutes on a good day. This talk walks through how we cut it to 6 minutes with content-addressed caching, remote execution, and a test-selection model — including the two migrations that failed first.',
+    reason:
+      "the same invented sample submission abstract as line 576's entry above, here drawn as the CFP submit form's own abstract textarea value (src/views/form-render.tsx, `value={answers[field.id]}`). (fixture token: 'monorepo CI')",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 616,
+    text: 'Our monorepo CI took 40 minutes on a good day. This talk walks through how we cut it to 6 minutes with content-addressed caching, remote execution, and a test-selection model.',
+    reason:
+      "the same invented sample submission abstract as Chautauqua Public and Portal.dc.html:576, without its trailing '-- including the two migrations that failed first' clause -- drawn as the portal Edit your session form's own abstract textarea value (src/views/form-render.tsx, `value={answers[field.id]}`, mounted by src/routes/portal/edit.tsx). (fixture token: 'monorepo CI')",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1039,
+    text: 'Our monorepo CI took 40 minutes on a good day. This talk walks through how we cut it to 6 minutes with content-addressed caching, remote execution, and a test-selection model.',
+    reason:
+      "the same shorter fixture abstract as line 616's entry above, here drawn as the CFP submit form's own abstract textarea value (src/views/form-render.tsx, `value={answers[field.id]}`). (fixture token: 'monorepo CI')",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1401,
+    text: 'Our monorepo CI took 40 minutes on a good day. This talk walks through how we cut it to 6 minutes with content-addressed caching, remote execution, and a test-selection model.',
+    reason:
+      "the same shorter fixture abstract as line 616's entry above, here the desktop rendering of the identical portal Edit your session textarea (src/views/form-render.tsx, `value={answers[field.id]}`). (fixture token: 'monorepo CI')",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1248,
+    text: "A 10-minute tour of turning a static docs site into one that answers questions with citations, stays honest when it doesn't know, and costs under $50 a month to run. Live demo, real failure cases, and a checklist you can apply to your own docs this week. …",
+    reason:
+      "a second invented sample submission abstract (a different fixture talk from the monorepo-CI one above), drawn as the CFP submit form's own abstract textarea value (src/views/form-render.tsx, `value={answers[field.id]}`). (fixture token: 'docs site')",
+  },
 ];
 
 /** (c) EXEMPLAR ARTICLE -- the Docs frame's own sample article, 'Triaging
@@ -1085,6 +1133,144 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     text: 'Taming 40-Minute CI · slides',
     reason:
       "app/src/pages/content/UploadRejectedModal.tsx composes `${sessionTitle} · ${DELIVERABLE_LABELS[kind].toLowerCase()}` (the modal's subtitle prop) from the caller's own live sessionTitle and DELIVERABLE_LABELS['presentation'] = 'Slides' (app/src/pages/content/types.ts).",
+  },
+  // v12m-w18-a (wave-143, DEC-976): Public and Portal cluster, task w18-a's
+  // own 33-row docket. The itinerary rail's saved-count caption renders at
+  // three call sites, all identical JSX text -- one caption, four frame
+  // lines (agenda's rail, sessions' rail, and the schedule page's own rail
+  // render twice across its two states).
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 96,
+    text: '4 saved in this browser · no account needed',
+    reason:
+      'src/routes/public/agenda-rail.tsx and src/routes/public/sessions.tsx both compose `saved in this browser · no account needed` beside the live `<span id="chq-ics-count">0</span>` node that agenda-itinerary-script.tsx writes the real count into -- the count and the caption are two DOM nodes, so a plain-substring match can never bridge the tag between them.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 212,
+    text: '4 saved in this browser · no account needed',
+    reason:
+      "the same agenda-rail.tsx/sessions.tsx `saved in this browser · no account needed` composing text as line 96's entry above -- the sessions surface's own render of the identical rail widget.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 330,
+    text: '4 saved in this browser · no account needed',
+    reason:
+      "the same agenda-rail.tsx/sessions.tsx `saved in this browser · no account needed` composing text as line 96's entry above -- a third render site for the identical rail widget.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 836,
+    text: '4 saved in this browser · no account needed',
+    reason:
+      "the same agenda-rail.tsx/sessions.tsx `saved in this browser · no account needed` composing text as line 96's entry above -- the schedule page's own 'Take it with you' rendering of the identical widget.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 119,
+    text: 'Closes Sun 16 Aug · no account needed',
+    reason:
+      'src/routes/public/sessions.tsx composes `Closes ${formatEventDateTime(dayLabelEndInstant(cfpWindow.closeDate, event.timezone), event.timezone)} · no account needed` for the CFP rail caption (task w18-a added the trailing " · no account needed" clause this wave); the date expression collapses to one placeholder token so a plain-substring match cannot see through it to the frame\'s literal "Sun 16 Aug".',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 421,
+    text: 'DevFlow Conf 2027 · you speak Tue 12 May, 10:00, Room 2A',
+    reason:
+      'src/routes/portal/index.tsx\'s scheduledSubline composes `${first.eventName} · you speak ${formatPlacement(first.day!, first.startMin!, first.roomName)}` from the speaker\'s own single placed session, rendered into the portal home\'s "Two things to do" header subtitle.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 511,
+    text: '5 questions · used to book your room',
+    reason:
+      'src/routes/portal/tasks/views.tsx (TaskFormPage, task w18-a) composes `countOf(fields.length, "question")` joined with the task\'s own organiser-authored `assignment.description` for the Hotel stay form subtitle -- the field count is real and live, the trailing purpose clause is whatever description the organiser stored for this specific form-kind task, matching the frame\'s own sample value only when an organiser happens to type that exact sentence.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 571,
+    text: 'DFC-014 · talk, 30 min · Platform &amp; Infra',
+    reason:
+      'src/routes/portal/index.tsx\'s SubmissionDetailPage composes `[detail.ref, detail.format, detail.trackName].filter(` into metaParts, joined " · ", for the "Your session" read view\'s ref/format/track subline -- detail.ref is the submission\'s own REF, detail.format and detail.trackName are the form\'s own live answer/track fields.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 572,
+    text: 'Tue 12 May, 10:00 · Room 2A',
+    reason:
+      'the same SubmissionDetailPage composes `formatPlacement(detail.day!, detail.startMin!, detail.roomName)` immediately below the ref/format/track subline, rendered only when the session is placed -- the live schedule slot, not sample data.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 583,
+    text: 'v3 · 14 MB · with the organisers',
+    reason:
+      'the same SubmissionDetailPage composes `v{deliverableVersion ?? 1} · {formatBytes(deliverable.sizeBytes)} · Shared with the organisers` for the Slides row\'s version/size caption -- the version and byte size are the live deliverable\'s own fields; the app\'s word "Shared" is additional to the frame\'s wording, not a divergent claim.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 604,
+    text: 'You can change this until the form closes on 16 Aug',
+    reason:
+      'src/routes/portal/edit.tsx composes `You can change this until the form closes on` immediately followed by `formatEventDate(dayLabelEndInstant(data.form.closeDate, data.form.timezone), data.form.timezone)` for the Edit your session subtitle -- the close date is the form\'s own live closeDate field.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1308,
+    text: 'You can change this until the form closes on 16 Aug',
+    reason:
+      "the same edit.tsx `You can change this until the form closes on` composing expression as line 604's entry above -- the co-presenter-rejected state's own render of the identical Edit your session header.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1388,
+    text: 'You can change this until the form closes on 16 Aug',
+    reason:
+      "the same edit.tsx `You can change this until the form closes on` composing expression as line 604's entry above -- the desktop rendering of the identical Edit your session header.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 699,
+    text: '23 across three tracks',
+    reason:
+      'src/routes/public/speakers.tsx (task w18-a) composes `{total} across {spellCount(tracks!.length)} {plural(tracks!.length, "track")}` beside the Speakers H1 -- the live speaker total and the live offered-track count, spelled out via the shared count-copy vocabulary (spellCount/plural, domain/count-copy.ts) rather than a bare digit.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 749,
+    text: '23 across three tracks',
+    reason:
+      "the same speakers.tsx `{total} across {spellCount(tracks!.length)} {plural(tracks!.length, \"track\")}` composing expression as line 699's entry above -- the Gallery view's own twin render of the identical Speakers header (DEC-433/477).",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 868,
+    text: '4 saved · 2 overlaps · no account needed',
+    reason:
+      'src/routes/public/agenda-itinerary-script.tsx composes `saved.length + \' saved · \' + overlap.pairCount + \' \' + overlapWord + \' · no account needed\'` (task w18-a added the trailing " · no account needed" clause this wave) for the /schedule page\'s client-revealed subtitle -- a string concatenation of live counts, never a template literal, so no placeholder-collapse pass can bridge it to the frame\'s literal digits.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 902,
+    text: 'Call for papers · closes Sun 16 Aug, 23:59 Pacific',
+    reason:
+      'src/routes/public/submit-views.tsx composes `Call for papers · closes {formatEventDateTime(dayLabelEndInstant(form.closeDate, event.timezone), event.timezone)}` for the CFP page\'s own header subline -- the close date is the form\'s own live closeDate field.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1109,
+    text: 'Submissions closed on 16 August 2026. Thanks for your interest in DevFlow Conf.',
+    reason:
+      'src/routes/public/submit-views.tsx\'s ClosedPage composes `Submissions closed on{" "}` followed by the live close-date expression and `. Thanks for your interest in ` followed by `{props.event.name}` -- the date and event name are the form\'s and event\'s own live fields, "DevFlow Conf" is this pack\'s own fixture event name.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1188,
+    text: 'Sessions appear here once the committee has finished reviewing. The call for papers closed on 16 August.',
+    reason:
+      'PARTIAL (shape ii), a deliberate divergence recorded in src/routes/public/sessions.tsx\'s own comment: the frame\'s reason sentence names a CFP close DATE, but this app has no per-event CFP-close-date-as-headline copy path (a day label derived from a stored instant is a timezone bomb, DEC-522) and B7 rule 2 only earns a reason when it is actionable, which a bare close date is not -- so sessions.tsx renders `Sessions appear here once the schedule is published.` verbatim instead, "named here as a deliberate divergence rather than force-fit" per the file\'s own header comment above the PublicEmptyState call.',
   },
 ];
 

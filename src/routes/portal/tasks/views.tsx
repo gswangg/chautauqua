@@ -21,6 +21,7 @@ import { effectiveAssignmentDueDayLabel, isAssignmentOverdue } from "../../../do
 import { renderMarkdown } from "../../../lib/markdown";
 import type { FileCommentRow } from "../../../server/repo/files";
 import { PROFILE_TASK_TITLE } from "../../../domain/acceptance";
+import { countOf } from "../../../domain/count-copy";
 import { DEC_576, DEC_967 } from "../../../decisions";
 
 void DEC_576; // wave-110 amendment: TasksPage's dock carries the first incomplete task's own primary control
@@ -398,7 +399,14 @@ export function TaskFormPage(props: {
           `margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:25px; font-weight:700; letter-spacing:-0.04em; line-height:1.05`
           ("Portal · Hotel stay form" -- a form-kind task assignment). */}
       <h1 class="chq-portal-hero chq-portal-hero-drill">{assignment.title}</h1>
-      {assignment.description ? <p class="chq-portal-sub">{assignment.description}</p> : null}
+      {/* w18-a (DEC-976): the frame's field-count clause
+          (Chautauqua Public and Portal.dc.html:511, "5 questions · used to
+          book your room") composes the live field count with the task's own
+          organiser-authored description, never a second hard-coded string. */}
+      <p class="chq-portal-sub">
+        {countOf(fields.length, "question")}
+        {assignment.description ? ` · ${assignment.description}` : ""}
+      </p>
       <form id={taskFormId} method="post" action={`/portal/tasks/${assignment.id}/form`} enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <FormFieldsSection fields={fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
