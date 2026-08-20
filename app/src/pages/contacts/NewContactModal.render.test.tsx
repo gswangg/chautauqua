@@ -134,13 +134,34 @@ describe('NewContactModal frame 08--16 anatomy (DEC-597 wave 8 amendment)', () =
     expect(screen.getByLabelText(/^Title/)).toHaveAttribute('placeholder', 'Job title');
   });
 
-  it('does not adopt the frame\'s "Must be unique" email caption (DEC-597)', () => {
+  // DEC-976 (wave-136 amendment, supersedes the DEC-597 wave 8 reading
+  // above): the frame's "Must be unique" sentence LEADS, verbatim, docs/design/
+  // Chautauqua Contacts.dc.html:834 -- "Must be unique — it is how contacts
+  // are matched and merged" -- with the app's extra clause following as a
+  // second sentence.
+  it('leads with the frame\'s verbatim "Must be unique" email caption (DEC-976)', () => {
     mockApi({});
     renderModal();
     const emailInput = screen.getByLabelText('Email');
     const helpText = emailInput.closest('.chq-form-row')?.querySelector('.chq-form-row-help');
-    expect(helpText?.textContent).not.toMatch(/Must be unique/);
+    expect(helpText?.textContent).toContain(
+      'Must be unique — it is how contacts are matched and merged',
+    );
     expect(helpText?.textContent).toMatch(/matched and merged/);
+  });
+
+  // Receipt: docs/design/Chautauqua Contacts.dc.html:834 draws
+  // `<span ...>Must be unique — it is how contacts are matched and
+  // merged</span>` as the email field's caption. The app's help text must
+  // contain that frame string verbatim, including the em dash.
+  it('email help contains the frame caption verbatim (docs/design/Chautauqua Contacts.dc.html:834)', () => {
+    mockApi({});
+    renderModal();
+    const emailInput = screen.getByLabelText('Email');
+    const helpText = emailInput.closest('.chq-form-row')?.querySelector('.chq-form-row-help');
+    expect(helpText?.textContent).toContain(
+      'Must be unique — it is how contacts are matched and merged',
+    );
   });
 
   it('groups First/Last name in one row container, and Company/Title in another, while Email stands alone', () => {

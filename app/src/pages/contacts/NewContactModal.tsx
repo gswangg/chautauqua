@@ -162,7 +162,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
         label="Email"
         htmlFor="new-contact-email"
         error={fields.email}
-        help="It's how contacts are matched and merged — the same key the CSV importer's dedupe and the merge tool use."
+        help="Must be unique — it is how contacts are matched and merged. It's the same key the CSV importer's dedupe and the merge tool use."
       >
         <input
           id="new-contact-email"

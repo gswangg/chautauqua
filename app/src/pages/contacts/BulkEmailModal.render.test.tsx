@@ -372,4 +372,28 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
 
     expect(await screen.findByText('eventId: required')).toBeInTheDocument();
   });
+
+  // Receipt: docs/design/Chautauqua Contacts.dc.html:570 draws
+  // `<span ...>Sent one at a time · logged in Comms history · {first_name}
+  // and {company} resolve per contact</span>` as the compose step's
+  // standing note, in the same muted caption band as the unsendable-note
+  // sibling composed near :384-399. Built verbatim, literal text.
+  it('shows the compose-step standing note verbatim (docs/design/Chautauqua Contacts.dc.html:570)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} recipientNames={['Ada Lovelace']} onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByLabelText('Subject');
+    expect(
+      screen.getByText(
+        'Sent one at a time · logged in Comms history · {first_name} and {company} resolve per contact',
+      ),
+    ).toBeInTheDocument();
+  });
 });
