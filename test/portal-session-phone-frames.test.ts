@@ -206,17 +206,60 @@ describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and P
     expect(withoutMedia).toMatch(/\.chq-portal-copresenter-role\s*\{[^}]*flex:\s*0 1 190px;/);
   });
 
-  // docs/design/Chautauqua Public and Portal.dc.html:669
-  // `<span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Save changes</span>`
-  it("Save changes (primary) leads the footer dock row and grows to fill it, at 390 -- Cancel takes its own padded width, never the full-width stacked column DEC-989 ruling B6 gives every other portal action row", () => {
-    expect(phoneBlock).toMatch(/\.chq-portal-actions-footer\s+\.chq-portal-actions\s*\{[^}]*flex-direction:\s*row;[^}]*order:\s*-1;/);
-    expect(phoneBlock).toMatch(/\.chq-portal-actions-footer\s+\.chq-btn-primary\s*\{[^}]*flex:\s*1;[^}]*order:\s*-1;/);
-    expect(phoneBlock).toMatch(/\.chq-portal-actions-footer\s+\.chq-portal-actions\s+\.chq-btn\s*\{[^}]*width:\s*auto;/);
+  // DEC-576 (w8-g): the frame's pinned band (dc.html:666-672) draws in
+  // PortalLayout's real dock/footer element, not the in-flow
+  // .chq-portal-actions-footer (which lives inside .chq-measure's scroll
+  // region and would otherwise scroll away). The in-flow copy is stood
+  // down at 390; the dock copy (.chq-portal-edit-dock) is revealed there
+  // instead -- exactly one of the two ever draws at a given width.
+  it("the in-flow .chq-portal-actions-footer copy is stood down at 390 -- its dead phone reorder rules are gone, not just unreachable", () => {
+    expect(phoneBlock).toMatch(/\.chq-portal-actions-footer\s*\{[^}]*display:\s*none;/);
+    expect(phoneBlock).not.toMatch(/\.chq-portal-actions-footer\s+\.chq-portal-actions/);
+  });
+
+  // docs/design/Chautauqua Public and Portal.dc.html:666-672
+  // `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
+  // padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px`
+  it("Save changes (primary) leads the dock's button row and grows to fill it, at 390 -- Cancel takes its own padded width, never the full-width stacked column DEC-989 ruling B6 gives every other portal action row", () => {
+    // hidden at top level (a real hide, ahead of the terminal media block)
+    const withoutMedia = PORTAL_CSS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
+    expect(withoutMedia).toMatch(/\.chq-portal-edit-dock\s*\{[^}]*display:\s*none;/);
+    // revealed with the frame's column geometry only inside the phone block
+    expect(phoneBlock).toMatch(/\.chq-portal-edit-dock\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/);
+    // the shared .chq-portal-dock descendant rules already give any nested
+    // primary flex:1/48px and secondary 48px -- ambient at 390 (test above
+    // pins the .chq-portal-dock band exists; this only pins the row wrapper).
+    expect(phoneBlock).toMatch(/\.chq-portal-edit-dock-buttons\s*\{[^}]*display:\s*flex;/);
+  });
+
+  // docs/design/Chautauqua Public and Portal.dc.html:669/672: Save changes
+  // leads the row, Cancel follows, the consequence note sits below the pair.
+  it("the dock copy orders Save, then Cancel, then the consequence note below the pair", () => {
+    const dockIdx = html.indexOf('class="chq-portal-edit-dock"');
+    const buttonsIdx = html.indexOf('class="chq-portal-edit-dock-buttons"');
+    const saveIdx = html.indexOf("Save changes", buttonsIdx);
+    const cancelIdx = html.indexOf(">Cancel<", saveIdx);
+    const noteIdx = html.lastIndexOf("Title and abstract show on the public pages");
+    expect(dockIdx).toBeGreaterThan(-1);
+    expect(buttonsIdx).toBeGreaterThan(dockIdx);
+    expect(saveIdx).toBeGreaterThan(buttonsIdx);
+    expect(cancelIdx).toBeGreaterThan(saveIdx);
+    expect(noteIdx).toBeGreaterThan(cancelIdx);
+  });
+
+  // exactly one copy of Save changes/Cancel/the note ever draws -- the
+  // in-flow footer copy is the desktop original, the dock copy is the
+  // phone-only DEC-576 addition; never a third.
+  it("PortalLayout receives the dock copy via the `dock` prop, not a third inline render", () => {
+    const dockOccurrences = html.split('class="chq-portal-edit-dock"').length - 1;
+    expect(dockOccurrences).toBe(1);
+    const noteOccurrences = html.split("Title and abstract show on the public pages").length - 1;
+    expect(noteOccurrences).toBe(2); // in-flow desktop copy + dock copy
   });
 
   // docs/design/Chautauqua Public and Portal.dc.html:672
   // `<span style="font-size:12px; color:#565A4B; line-height:1.5">Title and abstract show on the public pages · co-presenters do not</span>`
-  it("the consequence note stays AFTER the button row in DOM order -- the phone-only reorder above is a visual flex `order`, never a JSX change, so desktop stays frozen", () => {
+  it("the desktop in-flow copy's consequence note stays AFTER the button row in DOM order -- unchanged, byte-identical desktop markup", () => {
     const noteIdx = html.indexOf("Title and abstract show on the public pages");
     const actionsIdx = html.indexOf('class="chq-portal-actions"');
     expect(noteIdx).toBeGreaterThan(-1);
