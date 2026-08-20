@@ -922,12 +922,19 @@ export function formatCampaignReport(report: CampaignReport): string {
   const table = lines
     .map((line) => line.map((cell, col) => cell.padEnd(widths[col] as number)).join("  "))
     .join("\n");
+  // w16-ff (wave-141, DEC-069 instrument repair): this legend used to spell
+  // out the literal word DONE in its own prose ("none of them can print
+  // DONE without..."), so it printed that token unconditionally on every
+  // report regardless of suiteVerified -- defeating the very degrade this
+  // function performs on the verdict lines below. Reworded to describe the
+  // same invariant without ever emitting the bare token.
   const legend =
     "DECLARED is what the constant SAYS, never what the tree measures -- " +
     "re-measure by running the owning test. Every row verdict below (desktop, " +
-    "phone, tier-2) is only as true as the last fast-tier suite run: none of " +
-    "them can print DONE without a --suite-verified-sha that is an ancestor of " +
-    "the graded product sha.";
+    "phone, tier-2) is only as trustworthy as the last fast-tier suite run: " +
+    "each one stays undecided, printing DECLARED ONLY -- NOT MEASURED, unless " +
+    "a --suite-verified-sha that is an ancestor of the graded product sha was " +
+    "supplied.";
 
   const v = report.verdict;
   const suiteVerified = v.suiteVerified;
