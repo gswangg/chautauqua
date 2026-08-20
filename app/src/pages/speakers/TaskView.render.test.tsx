@@ -217,7 +217,7 @@ describe('design pack v12 task view: "One task, every speaker" / "One task · st
     expect(screen.getByText('2 selected')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'A reminder names only this task · skips anyone emailed in the last hour · the due date moves for everyone, from the header',
+        'A reminder names only this task · skips anyone reminded in the last hour · the due date moves for everyone, from the header',
       ),
     ).toBeInTheDocument();
     for (const label of ['Remind', 'Not needed', 'Clear']) {

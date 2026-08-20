@@ -36,6 +36,7 @@ import { dateInputToMs, formatDate, formatRelativeDays, msToDateInput } from '..
 import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
 import type { AssignmentResponseDetail, AssignmentStatus, ReminderDraft } from './types';
 import { isAnswered, rowAction, type TaskViewResponse, type TaskViewRow } from './taskRoster';
+import { REMIND_SKIP_RULE } from './remindSkipVocabulary';
 // The ONE CSV writer in the codebase (src/domain/csv.ts, pure core) --
 // crossed the app/ -> src/ boundary with a direct relative import, the same
 // idiom TaskCell.tsx uses for src/domain/task-due.ts.
@@ -243,7 +244,7 @@ export function TaskView() {
   }
 
   // docs/design/Chautauqua Speakers.dc.html:697 `A reminder names only this
-  // task · skips anyone emailed in the last hour · the due date moves for
+  // task · skips anyone reminded in the last hour · the due date moves for
   // everyone, from the header` -- all three clauses are load-bearing, not
   // decoration: taskIds scopes the email body to this one task
   // (formatTaskLines), and planManualReminders' MANUAL_DEDUPE_WINDOW_MS is
@@ -448,7 +449,7 @@ export function TaskView() {
             <span className="chq-bulkbar-note chq-taskview-bulk-note">
               {tab === 'answered'
                 ? 'Marking complete sends nothing'
-                : 'A reminder names only this task · skips anyone emailed in the last hour · the due date moves for everyone, from the header'}
+                : `A reminder names only this task · ${REMIND_SKIP_RULE} · the due date moves for everyone, from the header`}
             </span>
             <div className="chq-bulkbar-actions">
               {tab === 'answered' ? (
