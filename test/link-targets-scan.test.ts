@@ -439,7 +439,8 @@ const NON_ADMIN_HREF_ALLOWLIST: { prefix: string; reason: string }[] = [
     prefix: "/headshots/",
     reason:
       "gated headshot serving route (DEC-067), served directly by the Worker like /files/ -- SpeakerDetailPage's " +
-      "headshot <img> and its Download link both point at it, and neither is an /admin SPA route",
+      "headshot <img> and the Download link on its Files row (DEC-930 wave-115 amendment) both point at it, and " +
+      "neither is an /admin SPA route",
   },
   { prefix: "/e/", reason: "public event page (agenda view / .ics feed), a separate audience-facing surface" },
   { prefix: "/submit/", reason: "public submission form, a separate audience-facing surface" },

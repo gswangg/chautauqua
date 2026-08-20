@@ -106,6 +106,11 @@ export interface SpeakerDetailFile {
   filename: string;
   sizeBytes: number;
   versionNo: number;
+  // DEC-930 (amendment, wave 115): every Files row states who put the file
+  // there and when. uploaderName is null when the file row records no
+  // uploader -- rendered as a dash, never guessed at.
+  uploadedAt: number;
+  uploaderName: string | null;
 }
 
 export interface SpeakerDetailTask {
@@ -139,6 +144,12 @@ export interface SpeakerDetailCounts {
 
 export interface SpeakerDetailResponse {
   contact: SpeakerDetailContact;
+  // DEC-930 (amendment, wave 115): the contact's CURRENT headshot as a file
+  // object, so the Files section can list it like any other row instead of
+  // reducing it to an avatar and a bare Download. Null when there is none.
+  // Headshots have no version chain (setContactHeadshot never sets
+  // previousFileId), so this is one row and never a history.
+  headshotFile: SpeakerDetailFile | null;
   participation: SpeakerDetailParticipation;
   participationRollup: SpeakerDetailParticipationRollup;
   sessions: SpeakerDetailSession[];

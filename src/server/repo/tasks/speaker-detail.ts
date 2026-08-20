@@ -15,6 +15,8 @@ import { overdueAssignmentConditions, rosterParticipantConditions } from "./crud
 import { safeExternalUrl } from "../../../domain/contacts";
 import { parseSocialLinks } from "../profile";
 import { parseContactCustomFields } from "../contacts/crud";
+import { chunkIds } from "../../../lib/chunk"; // DEC-078
+import { HEADSHOT_KIND } from "../files-library-scope";
 import { DEC_930, DEC_738, DEC_829 } from "../../../decisions";
 
 void DEC_930; // this file is the ONE bounded GET DEC-930 mandates.
@@ -116,6 +118,16 @@ export interface SpeakerDetailFile {
   filename: string;
   sizeBytes: number;
   versionNo: number | null;
+  // DEC-930 (amendment, wave 115): a Files row states WHO put the file there
+  // and WHEN, for every file the section lists. Both come off the file row
+  // itself (schema.file.createdAt / uploadedByContactId); uploaderName
+  // resolves through the same one chunked contact lookup the headshot row
+  // uses, and is null when the column is null rather than guessing at the
+  // speaker (files-library-list.ts falls back to the owning speaker's name
+  // for a HEADSHOT, where ownership makes that true; a task file has no such
+  // guarantee).
+  uploadedAt: number;
+  uploaderName: string | null;
 }
 
 export interface SpeakerDetailTask {
@@ -144,8 +156,19 @@ export interface SpeakerDetailCounts {
   overdue: number;
 }
 
+// DEC-930 (amendment, wave 115): the portal-uploaded headshot IS a file
+// object -- schema.file carries its filename, sizeBytes, uploader and
+// createdAt exactly as it does for a task upload (repo/profile.ts's
+// setContactHeadshot writes all four) -- and the organizer's record listed
+// none of it, rendering only an avatar and a bare "Download". Projected here
+// so the Files section can list it like any other row. There is NO version
+// chain: setContactHeadshot never sets previousFileId, so a new upload is an
+// unlinked row and the old one simply stops being referenced -- versionNo is
+// whatever the row stores and no history is invented for it (DEC-669 keeps
+// headshots out of the deliverable chain query for the same reason).
 export interface SpeakerDetail {
   contact: SpeakerDetailContact;
+  headshotFile: SpeakerDetailFile | null;
   participation: SpeakerDetailParticipation;
   participationRollup: SpeakerDetailParticipationRollup;
   sessions: SpeakerDetailSession[];
@@ -166,7 +189,12 @@ export interface SpeakerDetail {
  * query per task); (v) the overdue set, composing the existing DEC-801
  * overdueAssignmentConditions predicate rather than re-typing its grace
  * window — read once and spent twice, as the header count AND each task's
- * own `overdue` flag. Returns null when the contact is not on this event's roster. */
+ * own `overdue` flag; (vi) DEC-930 (amendment, wave 115) the headshot's own
+ * file row, ONE single-row read scoped to kind='headshot', skipped entirely
+ * when the contact has no headshot; (vii) the uploader names for every file
+ * this payload lists, one chunked read (DEC-078) over the DISTINCT uploader
+ * ids other than the speaker themselves — skipped when there are none, which
+ * is the common case. Returns null when the contact is not on this event's roster. */
 export async function getSpeakerDetail(db: Db, eventId: string, contactId: string): Promise<SpeakerDetail | null> {
   const contactRows = await db
     .select({
@@ -296,6 +324,10 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       fileName: schema.file.filename,
       fileSizeBytes: schema.file.sizeBytes,
       fileVersionNo: schema.file.versionNo,
+      // DEC-930 (amendment, wave 115): a Files row names its uploader and its
+      // timestamp -- read off the SAME join, never a query per file.
+      fileUploadedAt: schema.file.createdAt,
+      fileUploadedByContactId: schema.file.uploadedByContactId,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
@@ -312,6 +344,79 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
     .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
     .where(and(eq(schema.taskAssignment.contactId, contactId), overdueAssignmentConditions(eventId, Date.now(), timeZone)));
   const overdueAssignmentIds = new Set(overdueRows.map((r) => r.id));
+
+  // DEC-773 amendment (w32-e): headshotFileId is the single home for the file
+  // id, always written together with headshotUrl (profile.ts's
+  // setContactHeadshot, contacts/merge.ts, scripts/seed.ts) -- a non-null url
+  // with a null fk is a violated invariant, not a "no headshot" state.
+  const headshotFileId = ((): string | null => {
+    if (contactRow.headshotUrl === null) return null;
+    if (contactRow.headshotFileId === null) {
+      throw new Error(`speaker detail: contact ${contactRow.id} has headshotUrl but no headshotFileId`);
+    }
+    return contactRow.headshotFileId;
+  })();
+
+  // DEC-930 (amendment, wave 115): ONE single-row read for the headshot's own
+  // file row, so the Files section can list it with the filename/uploader/
+  // timestamp every other file row now carries. Scoped to kind='headshot'
+  // (HEADSHOT_KIND, the same predicate getHeadshotServeScope applies) so this
+  // can never widen into a general file-by-id read.
+  const headshotFileRows = headshotFileId
+    ? await db
+        .select({
+          id: schema.file.id,
+          filename: schema.file.filename,
+          sizeBytes: schema.file.sizeBytes,
+          versionNo: schema.file.versionNo,
+          createdAt: schema.file.createdAt,
+          uploadedByContactId: schema.file.uploadedByContactId,
+        })
+        .from(schema.file)
+        .where(and(eq(schema.file.id, headshotFileId), eq(schema.file.kind, HEADSHOT_KIND)))
+    : [];
+
+  // DEC-078: the uploader names for every file this payload lists, in one
+  // chunked read over the DISTINCT uploader ids -- bounded by the contact's
+  // own task count, never a per-file query and never a whole-org scan. The
+  // speaker themselves is the overwhelmingly common uploader and is resolved
+  // from the row already in hand.
+  const speakerName = `${contactRow.firstName} ${contactRow.lastName}`.trim();
+  const uploaderIds = new Set<string>();
+  for (const r of assignmentRows) {
+    if (r.fileUploadedByContactId != null && r.fileUploadedByContactId !== contactId) uploaderIds.add(r.fileUploadedByContactId);
+  }
+  for (const h of headshotFileRows) {
+    if (h.uploadedByContactId != null && h.uploadedByContactId !== contactId) uploaderIds.add(h.uploadedByContactId);
+  }
+  const uploaderNameById = new Map<string, string>([[contactId, speakerName]]);
+  for (const batch of chunkIds([...uploaderIds])) {
+    const rows = await db
+      .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+      .from(schema.contact)
+      .where(inArray(schema.contact.id, batch));
+    for (const r of rows) uploaderNameById.set(r.id, `${r.firstName} ${r.lastName}`.trim());
+  }
+  /** Null (rendered as an honest dash) rather than a guess when the file row
+   * records no uploader -- see SpeakerDetailFile's doc comment. */
+  const uploaderNameOf = (uploadedByContactId: string | null): string | null =>
+    uploadedByContactId === null ? null : (uploaderNameById.get(uploadedByContactId) ?? null);
+
+  const headshotFile: SpeakerDetailFile | null = ((): SpeakerDetailFile | null => {
+    const row = headshotFileRows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      filename: row.filename,
+      sizeBytes: row.sizeBytes,
+      versionNo: row.versionNo,
+      uploadedAt: row.createdAt.getTime(),
+      // A headshot's owner IS the speaker whose record this is, so an
+      // unattributed row still truthfully reads as theirs -- the same
+      // fallback files-library-list.ts applies to the admin Files library.
+      uploaderName: uploaderNameOf(row.uploadedByContactId) ?? speakerName,
+    };
+  })();
 
   let outstandingRequired = 0;
   const tasks: SpeakerDetailTask[] = assignmentRows.map((r) => {
@@ -334,8 +439,15 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       completedAt: r.completedAt ? r.completedAt.getTime() : null,
       lastRemindedAt: r.lastRemindedAt ? r.lastRemindedAt.getTime() : null,
       file:
-        r.fileId != null && r.fileName != null && r.fileSizeBytes != null
-          ? { id: r.fileId, filename: r.fileName, sizeBytes: r.fileSizeBytes, versionNo: r.fileVersionNo }
+        r.fileId != null && r.fileName != null && r.fileSizeBytes != null && r.fileUploadedAt != null
+          ? {
+              id: r.fileId,
+              filename: r.fileName,
+              sizeBytes: r.fileSizeBytes,
+              versionNo: r.fileVersionNo,
+              uploadedAt: r.fileUploadedAt.getTime(),
+              uploaderName: uploaderNameOf(r.fileUploadedByContactId ?? null),
+            }
           : null,
       overdue: overdueAssignmentIds.has(r.assignmentId),
     };
@@ -404,7 +516,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
   return {
     contact: {
       id: contactRow.id,
-      name: `${contactRow.firstName} ${contactRow.lastName}`.trim(),
+      name: speakerName,
       email: contactRow.email,
       company: contactRow.company,
       title: contactRow.title,
@@ -412,17 +524,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       phone: contactRow.phone,
       notes: contactRow.notes,
       customFields: parseContactCustomFields(contactRow.customFieldsJson),
-      // DEC-773 amendment (w32-e): headshotFileId is the single home for the
-      // file id, always written together with headshotUrl (profile.ts's
-      // setContactHeadshot, contacts/merge.ts, scripts/seed.ts) -- a non-null
-      // url with a null fk is a violated invariant, not a "no headshot" state.
-      headshotFileId: ((): string | null => {
-        if (contactRow.headshotUrl === null) return null;
-        if (contactRow.headshotFileId === null) {
-          throw new Error(`speaker detail: contact ${contactRow.id} has headshotUrl but no headshotFileId`);
-        }
-        return contactRow.headshotFileId;
-      })(),
+      headshotFileId,
       bio: contactRow.bio,
       socialLinks,
     },
@@ -431,6 +533,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       submissionId: primary.submissionId,
       inviteStatus: primary.inviteStatus,
     },
+    headshotFile,
     participationRollup,
     sessions,
     tasks,

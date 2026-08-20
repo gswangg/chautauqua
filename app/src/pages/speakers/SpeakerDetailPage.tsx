@@ -15,7 +15,7 @@ import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { PageSkeleton } from '../../components/PageSkeleton';
-import { formatDateOnly, formatDayLabel } from '../../lib/dates';
+import { formatDateOnly, formatDateTime, formatDayLabel } from '../../lib/dates';
 import { type AssignmentStatus, type InviteStatus, type ReminderDraft } from './types';
 import { ParticipationMenu } from './ParticipationMenu';
 import { RemindPreviewModal } from './RemindPreviewModal';
@@ -28,7 +28,7 @@ import { publicRoomLabel } from '../../lib/room-label';
 import { clockHHMM } from '../../lib/clock';
 import { firstNameOf } from '../../lib/identity';
 import { DEC_930 } from '../../../../src/decisions';
-import type { SpeakerDetailResponse, SpeakerDetailTask, SpeakerDetailTaskStatus } from './speakerDetail';
+import type { SpeakerDetailFile, SpeakerDetailResponse, SpeakerDetailTask, SpeakerDetailTaskStatus } from './speakerDetail';
 import { OVERDUE_LABEL, statusCellClass } from './TaskCell';
 import { toRows, fromRows, reservedValue, RESERVED_CUSTOM_FIELD_KEYS, RESERVED_CUSTOM_FIELD_LABELS } from '../contacts/customFields';
 // DEC-417/DEC-660: the same cap the Contacts drawer declares on these three
@@ -403,8 +403,26 @@ export function SpeakerDetailPage() {
     );
   }
 
-  const files = detail
-    ? detail.tasks.filter((t): t is typeof t & { file: NonNullable<typeof t.file> } => t.file !== null)
+  // DEC-930 (amendment, wave 115): the Files section lists EVERY file object
+  // this record owns -- the task uploads AND the speaker's current headshot,
+  // which used to render only as an avatar plus a bare Download and appeared
+  // nowhere in this table. Each row carries the same four cells the frame
+  // draws (docs/design/Chautauqua Speakers.dc.html:391-396: tag, name, when,
+  // Download), with the uploader folded into the name cell's subline the way
+  // the admin Files library already does it (FilesLibrary.tsx's whoLine).
+  // A headshot downloads through /headshots/:id -- the gated headshot route
+  // -- while a task upload downloads through /files/:id; that split is the
+  // same one FilesLibrary's downloadHref makes. Task files first, headshot
+  // last: the same tiering files-library-list.ts applies (DEC-669).
+  const files: { key: string; file: SpeakerDetailFile; isHeadshot: boolean }[] = detail
+    ? [
+        ...detail.tasks
+          .filter((t): t is typeof t & { file: NonNullable<typeof t.file> } => t.file !== null)
+          .map((t) => ({ key: `task-${t.assignmentId}`, file: t.file, isHeadshot: false })),
+        ...(detail.headshotFile
+          ? [{ key: `headshot-${detail.headshotFile.id}`, file: detail.headshotFile, isHeadshot: true }]
+          : []),
+      ]
     : [];
   // DEC-829 amendment (wave 112): the label drops its `· {otherEventsCount}`
   // suffix (frame :414 draws "Across your events" with no count), but
@@ -433,6 +451,10 @@ export function SpeakerDetailPage() {
         <>
           <div className="chq-speaker-detail-head">
             <div className="chq-speaker-detail-identity">
+              {/* DEC-930 (amendment, wave 115): the bare Download beside the
+                  avatar is gone -- the headshot is now a full row in the Files
+                  section below, with its filename, uploader and timestamp
+                  beside the same link. The portrait stays a portrait. */}
               {detail.contact.headshotFileId ? (
                 <div className="chq-speaker-detail-headshot-wrap">
                   <img
@@ -440,13 +462,6 @@ export function SpeakerDetailPage() {
                     src={`/headshots/${detail.contact.headshotFileId}`}
                     alt={`${detail.contact.name} headshot`}
                   />
-                  <a
-                    className="chq-btn chq-btn-tertiary chq-speaker-detail-headshot-download"
-                    href={`/headshots/${detail.contact.headshotFileId}`}
-                    download
-                  >
-                    Download
-                  </a>
                 </div>
               ) : (
                 <div className="chq-speaker-detail-headshot-placeholder" aria-hidden="true" />
@@ -658,23 +673,46 @@ export function SpeakerDetailPage() {
                   <EmptyState variant="fresh" what="No files." />
                 ) : (
                   <div role="table" aria-label="Files">
-                    {files.map((task) => (
-                      <div className="chq-speaker-detail-files-row" role="row" key={task.assignmentId}>
+                    {files.map((row) => (
+                      <div className="chq-speaker-detail-files-row" role="row" key={row.key}>
                         <span className="chq-speaker-detail-file-tag" role="cell" aria-hidden="true">
-                          {fileKindTag(task.file.filename)}
+                          {fileKindTag(row.file.filename)}
                         </span>
-                        <span role="cell">{task.file.filename}</span>
-                        <span role="cell">{formatBytes(task.file.sizeBytes)}</span>
+                        <span className="chq-speaker-detail-file-name" role="cell">
+                          <span>{row.file.filename}</span>
+                          <span className="chq-speaker-detail-file-who">
+                            {row.file.uploaderName ?? '—'} &middot; {formatDateTime(row.file.uploadedAt)}
+                          </span>
+                        </span>
+                        <span role="cell">{formatBytes(row.file.sizeBytes)}</span>
+                        {/* Two literal hrefs rather than one computed one: a
+                            headshot serves from the gated /headshots/:id route
+                            and a task upload from /files/:id (the same split
+                            FilesLibrary's downloadHref makes), and
+                            test/link-targets-scan.test.ts's allowlist only
+                            sees an href it can read literally. */}
                         <span role="cell">
-                          <a
-                            href={`/files/${task.file.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="chq-speakers-file-link"
-                            title={task.file.filename}
-                          >
-                            Download
-                          </a>
+                          {row.isHeadshot ? (
+                            <a
+                              href={`/headshots/${row.file.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="chq-speakers-file-link"
+                              title={row.file.filename}
+                            >
+                              Download
+                            </a>
+                          ) : (
+                            <a
+                              href={`/files/${row.file.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="chq-speakers-file-link"
+                              title={row.file.filename}
+                            >
+                              Download
+                            </a>
+                          )}
                         </span>
                       </div>
                     ))}
