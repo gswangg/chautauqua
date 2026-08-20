@@ -1313,11 +1313,12 @@
     align-items: stretch;
   }
 
-  /* v12m-w14-g (DEC-576 wave-125 amendment): the actionable control moves
-     into the frame's own pinned dock below (`.chq-phone-dock`, the SAME
-     handler/disabled state) -- the header keeps only its explanatory cap/
-     scope text, never a second live control competing for the one tap
-     that downloads. */
+  /* phone-hidden: DEC-576 wave-125 amendment -- the actionable control
+     moves into the frame's own pinned dock below (.chq-phone-dock), which
+     reuses the SAME handler and disabled state, so the header keeps only
+     its explanatory cap/scope text and never a second live control
+     competing for the one tap that downloads. Capability relocated, not
+     removed (DEC-919). */
   .chq-content-files-download-all-wrap > .chq-btn {
     display: none;
   }
@@ -1328,11 +1329,13 @@
     text-align: left;
   }
 
-  /* v12m-w14-g: the search field is collapsed by default at 390 -- the
-     frame's phone header/chip band (:338-357) draws no search field at
-     all, only the dock's bordered "Search" secondary (:360-361), which
-     this class's `.is-phone-open` modifier reveals (mirrors Speakers'
-     `.chq-speakers-toolbar.is-phone-open`, OnboardingGrid.tsx). */
+  /* phone-hidden: the search field is COLLAPSED by default at 390, not
+     withdrawn -- the frame's phone header/chip band (:338-357) draws no
+     search field at all, only the dock's bordered "Search" secondary
+     (:360-361), whose toggle adds the .is-phone-open modifier below to
+     reveal this very field (mirrors Speakers'
+     .chq-speakers-toolbar.is-phone-open, OnboardingGrid.tsx). Disclosure,
+     not capability removal (DEC-919). */
   .chq-content-files-search-input {
     flex: 1 1 100%;
     display: none;
