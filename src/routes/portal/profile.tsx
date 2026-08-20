@@ -172,7 +172,9 @@ function ProfilePage(props: {
       <h1 class="chq-portal-hero">My Profile</h1>
       {props.error ? <p role="alert">{props.error}</p> : null}
       {props.saved ? <p role="status">Profile saved.</p> : null}
-      <p><a href="/account/password">Change password</a></p>
+      {/* DEC-393 wave-142 (task w17-e): standalone row link (sole content of
+          its own <p>, not a sentence phrase) -- real floor. */}
+      <p><a class="chq-portal-standalone-link" href="/account/password">Change password</a></p>
 
       {/* DEC-574: ONE form for details + headshot — a speaker who edits the
           bio and then picks a new photo must not lose either. The headshot

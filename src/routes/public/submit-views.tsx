@@ -590,6 +590,10 @@ export function SubmitPage(props: {
               to the real mechanism (the form below, whose Name/Email
               fields are what actually mints the account on submit) rather
               than a dead control pointing at a route that doesn't exist. */}
+          {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
+              w17-e): "Create an account" is a phrase inside a sentence, not
+              a standalone control -- a 44px box would break the line box it
+              lives in. No declaration. */}
           <p class="chq-cfp-intro-cta">
             New speaker? <a href="#chq-cfp-submit-form">Create an account</a> by submitting your talk below — we'll
             email you a link to set a password when you're done.
@@ -726,6 +730,9 @@ export function SubmitPage(props: {
         {/* w5-c: the "already have an account?" identity note renders
             ONCE, here at the bottom of the page -- the intro above no
             longer duplicates it (see introLede/chq-cfp-intro-cta). */}
+        {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
+            w17-e): a phrase inside a sentence, not a standalone control. No
+            declaration. */}
         <p class="chq-cfp-identity-note">
           Already have an account? <a href="/login">Sign in to the speaker portal</a> &rsaquo;
         </p>
@@ -828,6 +835,9 @@ export function ConfirmationPage(props: {
                   organiser to resend your portal invite.
                 </p>
               )}
+              {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
+                  w17-e): a phrase inside a sentence, not a standalone
+                  control. No declaration. */}
               <p>
                 Already have a password? <a href="/login">Log in &rsaquo;</a>
               </p>
@@ -851,6 +861,9 @@ export function ConfirmationPage(props: {
                   </a>
                 </p>
               </div>
+              {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
+                  w17-e): a phrase inside a sentence, not a standalone
+                  control. No declaration. */}
               <p>
                 Already have a password? <a href="/login">Log in &rsaquo;</a>
               </p>

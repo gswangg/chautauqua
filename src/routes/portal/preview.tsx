@@ -150,8 +150,10 @@ function PreviewPage(props: {
       </section>
       {/* Frame 10--24, clause 4: a plain link, never a form or button — the
           route's no-mutation invariant (comment block above) stands. */}
+      {/* DEC-393 wave-142 (task w17-e): standalone row link (sole content of
+          its own <p>, not a sentence phrase) -- real floor. */}
       <p class="chq-meta">
-        <a href={`/admin/settings?section=portal`}>&lsaquo; Back to settings</a>
+        <a class="chq-portal-standalone-link" href={`/admin/settings?section=portal`}>&lsaquo; Back to settings</a>
       </p>
     </PortalLayout>
   );

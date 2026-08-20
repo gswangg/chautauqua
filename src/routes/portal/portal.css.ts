@@ -1165,5 +1165,35 @@ ${ERROR_STATES_CSS}
     padding-inline: 8px;
     min-width: 44px;
   }
+
+  /* DEC-393 wave-142 (task w17-e): classless standalone anchors -- "View all
+     tasks"/"View all submissions" (index.tsx), "Change password"
+     (profile.tsx), "‹ Back to settings" (preview.tsx) -- each the sole
+     content of its own <p>, not a phrase inside a sentence, so DEC-393's
+     standalone disposition applies: a real floor (min-height, centred flex,
+     non-zero horizontal padding), not the inline-in-prose exemption.
+     Appended as the LAST rules of this sheet's one terminal
+     @media (max-width: 700px) block, per DEC-385 append-only. */
+  .chq-portal-standalone-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 8px;
+  }
+
+  /* DEC-393 wave-142 (task w17-e): the version-history file link
+     (tasks/views.tsx VersionHistory) sits in a ruled list row alongside a
+     version number and a date -- a distinct row item, not a sentence
+     phrase -- so it takes the same real floor. The sibling file-download
+     link in the completed-task detail view IS a phrase inside a sentence
+     ("<filename> (version N, uploaded …)") and is marked
+     tap-floor-exempt: inline-in-prose at its call site instead, with no
+     declaration here. */
+  .chq-portal-version-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 8px;
+  }
 }
 ${ERROR_STATES_PHONE_CSS}`;

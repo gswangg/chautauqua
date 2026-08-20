@@ -69,7 +69,10 @@ export function VersionHistory(props: { assignmentId: string; versions: FileVers
         {versions.map((v) => (
           <li class="chq-portal-version-row">
             <span class="chq-portal-version-num">v{v.version}</span>
-            <a href={`/portal/tasks/${assignmentId}/file/${v.id}`}>{v.filename}</a>
+            {/* DEC-393 wave-142 (task w17-e): a distinct row item inside a
+                ruled list row (version num / filename / date), not a
+                sentence phrase -- real floor. */}
+            <a class="chq-portal-version-link" href={`/portal/tasks/${assignmentId}/file/${v.id}`}>{v.filename}</a>
             <span class="chq-portal-detail">{formatEventDateTimeWithSeconds(v.uploadedAt, timezone)}</span>
             {v.isCurrent ? <span class="chq-flag chq-portal-flag-done">Current</span> : null}
           </li>
@@ -307,6 +310,10 @@ export function TaskRow(props: {
           flipping status. */}
       {t.status === "complete" && t.kind === "file_request" && fileExtras ? (
         <section aria-label="Uploaded file" class="chq-card">
+          {/* tap-floor-exempt: inline-in-prose -- DEC-393 wave-142 (task
+              w17-e): this anchor is a phrase inside a sentence ("<filename>
+              (version N, uploaded …)"), so a 44px box around it would break
+              the line box it lives in. No declaration. */}
           <p>
             <a href={`/portal/tasks/${t.id}/file`}>{fileExtras.filename}</a> (version {fileExtras.version}, uploaded{" "}
             {formatEventDateTime(fileExtras.uploadedAt, fileExtras.timezone)})

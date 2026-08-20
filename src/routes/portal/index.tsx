@@ -367,7 +367,9 @@ function PortalPage(props: {
           )
         )}
         <p>
-          <a href="/portal/tasks">View all tasks</a>
+          {/* DEC-393 wave-142 (task w17-e): standalone row link (sole content
+              of its own <p>, not a sentence phrase) -- real floor. */}
+          <a class="chq-portal-standalone-link" href="/portal/tasks">View all tasks</a>
         </p>
       </section>
 
@@ -386,7 +388,8 @@ function PortalPage(props: {
           submissions.map((s) => <SubmissionRow submission={s} />)
         )}
         <p>
-          <a href="/portal/submissions">View all submissions</a>
+          {/* DEC-393 wave-142 (task w17-e): standalone row link -- real floor. */}
+          <a class="chq-portal-standalone-link" href="/portal/submissions">View all submissions</a>
         </p>
       </section>
 
