@@ -361,8 +361,15 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // time, so neither lane's own pre-merge figure (main 82, v12m-w14-jj 113)
 // is the truth. Lowering the ceiling to the integrated measurement is a
 // merge-train act, exactly as the two-sided ratchet's own failure message
-// instructs.
-export const LINE_KEYED_CITATION_CEILING = 82;
+// instructs. Measured on the integrated tree: 107. This is a RAISE from
+// main's 82, and it is disclosed as one rather than papered over: the
+// megabatch lands fourteen lanes' new docs at once (the wave-138/139/140
+// probe and DEC amendments each cite work in flight), and jj's own drain
+// measured 122 -> 113 against a base that already carried most of them.
+// The two-sided ratchet cannot be satisfied by main's 82 while those docs
+// exist, so 107 is the true integrated figure; the NEXT drain lane lowers
+// it from here, and no lane may raise it again without a re-measurement.
+export const LINE_KEYED_CITATION_CEILING = 107;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

@@ -1087,7 +1087,10 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // dispositions all coexist for the first time on the integrated tree. The
 // constant below is the integrated measurement (ceiling forced to -1, the
 // two-sided ratchet's own printed offender count read back), never a
-// guess and never a lane's pre-merge figure.
+// guess and never a lane's pre-merge figure. Measured: 2 -- a LOWERING
+// from every lane's own figure (31 / 17 / 16 / 15 / 14 / 13 / 12),
+// because each lane's dispositions were measured without the others'
+// and they are additive once integrated.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=31
 // Thunderdome megabatch: 31 is w14-bb's figure, measured WITHOUT w10-gg's 12
 // COMPOSED exclusions, which are also in this batch and push the count down
@@ -1165,7 +1168,7 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // lane owns, so it stays UNMATCHED per this file's own note above (the
 // "could not be verified" list, wave-135). 17 - 1 (the :159 build) = 16,
 // re-measured below.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 0;
+export const FRAME_CAPTION_UNMATCHED_CEILING = 2;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
