@@ -155,9 +155,19 @@ describe('v12 phone frame "Plan editor · 390" (Chautauqua Review.dc.html:594)',
     expect(row).toMatch(/display:\s*flex/);
     expect(row).toMatch(/flex-wrap:\s*wrap/);
 
-    // No drag handle at 390 (the frame draws none on the criterion card
-    // itself -- only the Options sub-rows carry one, :616).
-    expect(phoneRule(REVIEW_CSS, '.chq-review-criterion-row > .chq-forms-field-drag')).toMatch(/display:\s*none/);
+    // DEC-745 wave-116 amendment: the handle stays VISIBLE at 390 -- it is
+    // a real keyboard-operable <button> (ArrowUp/ArrowDown drive the same
+    // moveCriterion path pointer-drag does), so a phone hide would give
+    // the one .chq-forms-field-drag class two different phone verdicts
+    // (the form builder floors it visibly). Same 44px-floor shape as
+    // forms.css's phone rule for the identical class.
+    const drag = phoneRule(REVIEW_CSS, '.chq-review-criterion-row > .chq-forms-field-drag');
+    expect(drag).toMatch(/min-height:\s*44px/);
+    expect(drag).toMatch(/width:\s*44px/);
+    expect(drag).toMatch(/display:\s*flex/);
+    expect(drag).toMatch(/align-items:\s*center/);
+    expect(drag).toMatch(/justify-content:\s*center/);
+    expect(drag).toMatch(/padding:\s*0 4px/);
 
     const anyInput = phoneRule(REVIEW_CSS, '.chq-review-criterion-row > input.chq-input');
     expect(anyInput).toMatch(/flex:\s*1 1 100%/);
@@ -171,8 +181,9 @@ describe('v12 phone frame "Plan editor · 390" (Chautauqua Review.dc.html:594)',
   it('Options sub-block (:612-622): handle + 46px option field + Remove, "Add an option" at 44px', () => {
     expect(phoneRule(REVIEW_CSS, '.chq-review-criterion-options')).toMatch(/flex:\s*1 1 100%/);
 
-    // :616 the option row's own drag handle stays -- only the OUTER
-    // criterion row's handle (:601-658 has none) is hidden.
+    // :616 the option row's own drag handle stays; the OUTER criterion
+    // row's handle is now also visible (DEC-745 wave-116 amendment above),
+    // so both drag handles in this section carry the same 44px floor.
     const optionRow = phoneRule(REVIEW_CSS, '.chq-review-criterion-option-row');
     expect(optionRow).toMatch(/min-height:\s*44px/);
     expect(phoneRule(REVIEW_CSS, '.chq-review-criterion-option-row .chq-input')).toMatch(/min-height:\s*46px/);
