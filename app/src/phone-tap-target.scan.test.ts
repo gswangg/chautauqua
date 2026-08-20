@@ -34,7 +34,8 @@
 // into a repeated merge-conflict hotspot at 882 lines). This file keeps
 // every population wiring, ceiling constant, and `describe`/`it` block --
 // NO behavior change, only where the code that does it lives.
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -138,13 +139,20 @@ function findOffenders(): string[] {
 // narrow-media rules. Added a narrow-media fallback with the SAME
 // predicate/reach/exemption logic; forcing the const to -1 afterwards reads
 // 65 -> 64 (one of the three drops out fully floored, the other two become
-// real per-file rows). Three container tokens
-// (`.chq-comms-phone-recent-head-actions`, `.chq-overview-row-actions-stacked`,
-// `.chq-speakers-card-actions`) genuinely stay `(no CSS rule)`: each has a
-// narrow rule, but it never reaches an anchor (DEC-393: "the floor is
-// reached by the anchor, not its container") -- a real finding, left
-// standing, not a scan bug. Then fixed the five real offenders this lane
-// owns in `app/src/pages/forms/forms.css` (`.chq-forms-back`,
+// real per-file rows). Two container tokens
+// (`.chq-comms-phone-recent-head-actions`, `.chq-speakers-card-actions`)
+// genuinely stay `(no CSS rule)`: each has a real rule body and a narrow
+// rule, but it never reaches an anchor (DEC-393: "the floor is reached by
+// the anchor, not its container") -- a real finding, dispositioned by
+// v12m-w9-e and v12m-w9-j respectively. `.chq-overview-row-actions-stacked`
+// was NOT a real finding: `rowActionContainerTokens` read raw CSS text
+// without stripping comments, so overview.css:306's comment recording that
+// DEC-735 RETIRED the class (never a live rule, never live markup --
+// `overview-phone-floor.test.ts` pins both) was misread as a declaration.
+// Fixed wave-120 task w9-k (DEC-989): comments are stripped before deriving
+// the container population, and the offender count is measured, not carried
+// forward with the fabrication baked in. Then fixed the five real offenders
+// this lane owns in `app/src/pages/forms/forms.css` (`.chq-forms-back`,
 // `.chq-forms-field-actions`, `.chq-forms-field-modal-actions-right`,
 // `.chq-forms-header-actions`, `.chq-modal-actions`) inside the file's
 // single terminal `@media (max-width: 700px)` block: `.chq-forms-back` and
@@ -160,7 +168,14 @@ function findOffenders(): string[] {
 // running this file's own scan: one more anchor-bearing row action picked up
 // a conforming phone rule in the wave-111 tap-floor/overflow batch. Lowered
 // to the measured truth; this ratchet may only fall.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 58;
+//
+// Re-measured 58 -> 57 wave-120 task w9-k (DEC-989): `rowActionContainerTokens`
+// no longer misreads a CSS comment (overview.css:306, a DEC-735 retirement
+// note for `.chq-overview-row-actions-stacked`) as a class declaration --
+// forced the const to -1 and read the printed offender list, the fabricated
+// `(no CSS rule) — .chq-overview-row-actions-stacked` row is gone and no
+// other row moved. Lowered to the measured truth.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 57;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {
@@ -225,6 +240,31 @@ describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', 
     const narrow = narrowMediaRules(css, 700);
     const rule = narrow.find((r) => selectorMentionsToken(r.selector, 'chq-x-fake-row-actions'))!;
     expect(selectorReachesAnchor(rule.selector, new Set())).toBe(true);
+  });
+
+  it('does not admit a row-action container token whose only mention is inside a CSS comment (positive control: DEC-989 wave-120)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'anchor-floor-comment-'));
+    const path = join(dir, 'fixture.css');
+    writeFileSync(
+      path,
+      '/* DEC-735: split from the old shared `.chq-x-fake-row-actions` -- retired, no rule, no markup left. */\n',
+    );
+    try {
+      expect(rowActionContainerTokens([path]).has('chq-x-fake-row-actions')).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('admits a row-action container token declared in a real rule body (negative control: DEC-989 wave-120)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'anchor-floor-rule-'));
+    const path = join(dir, 'fixture.css');
+    writeFileSync(path, '.chq-x-fake-row-actions { display: flex; }\n');
+    try {
+      expect(rowActionContainerTokens([path]).has('chq-x-fake-row-actions')).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('stays at or under the offender ceiling (one-sided ratchet: may only fall)', () => {
