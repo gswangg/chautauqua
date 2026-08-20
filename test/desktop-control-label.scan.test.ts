@@ -511,7 +511,7 @@ const COMPOSED_EXCLUSIONS = [
     line: 1195,
     label: 'Everything as JSON',
     reason:
-      'BLESSED (DEVIATIONS.md §6 "Unbuilt features (no data model or endpoint behind the drawing)": "\'Your data\' edit view: retention select, keeping-and-deleting checkboxes, revoke-every-token footer (09--16)", drawn at `docs/design/Chautauqua Settings.dc.html:1111` -- the entire "Settings · editing your data" screen is recorded as unbuilt, so nothing in this extent is expected to resolve in source.',
+      'BLESSED (DEVIATIONS.md §6 "Unbuilt features (no data model or endpoint behind the drawing)": "\'Your data\' edit view: retention select, keeping-and-deleting checkboxes, revoke-every-token footer (09--16)"), drawn on the "Settings · editing your data" frame -- the entire frame is recorded as unbuilt, so nothing in this extent is expected to resolve in source.',
   },
   {
     fileName: 'Chautauqua Settings.dc.html',
@@ -532,7 +532,7 @@ const COMPOSED_EXCLUSIONS = [
     line: 1542,
     label: 'Import all of it',
     reason:
-      'BLESSED (DEVIATIONS.md §6 "Reworks larger than the freeze window": "Embed editor drill-page anatomy (09--15), Sessionboard importer modal + per-entity dispositions (09--25) ... The Sessionboard importer modal is drawn at `docs/design/Chautauqua Settings.dc.html:1507` (\'Import from Sessionboard\')" -- the entire modal, including this button, is recorded as a deferred rework.',
+      'BLESSED (DEVIATIONS.md §6 "Reworks larger than the freeze window": "Embed editor drill-page anatomy (09--15), Sessionboard importer modal + per-entity dispositions (09--25) ... The Sessionboard importer modal is drawn on the \'Import from Sessionboard\' frame") -- the entire modal, including this button, is recorded as a deferred rework.',
   },
   {
     fileName: 'Chautauqua Speakers.dc.html',
