@@ -390,6 +390,74 @@ describe("evaluateMobileRoute (DEC-253)", () => {
     expect(result.failureReason).toMatch(/control height 24px < 44px \(button\.chq-nav-tab\)/);
   });
 
+  it("fails on a sub-44px control width and names the width dimension (DEC-367)", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      minControlWidth: 24,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/control width 24px < 44px/);
+    expect(result.failureReason).not.toMatch(/control height/);
+  });
+
+  it("fails on a sub-44px control height and names the height dimension, not width (DEC-367)", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 24,
+      minControlWidth: 44,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/control height 24px < 44px/);
+    expect(result.failureReason).not.toMatch(/control width/);
+  });
+
+  it("reports both dimensions when both fail (DEC-367)", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 24,
+      minControlWidth: 20,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/control height 24px < 44px/);
+    expect(result.failureReason).toMatch(/control width 20px < 44px/);
+  });
+
+  it("passes when height and width are both exactly 44px (DEC-367)", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      minControlWidth: 44,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("stays inert when minControlWidth is null (no controls found on the route, DEC-367)", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: null,
+      minControlWidth: null,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.failureReason).toBeUndefined();
+  });
+
   it("a passing route (no offenders, no clipped elements) is unchanged", () => {
     const result = evaluateMobileRoute(ENTRY, {
       ...EMPTY_MOBILE_OBSERVATION,

@@ -17,9 +17,11 @@
 // asserts zero page-level horizontal overflow
 // (document.scrollingElement.scrollWidth <= window.innerWidth + 1px slack)
 // and that every primary nav/filter/submit control on the page measures
-// >= 40px tall (tap-target size) — see scripts/render-sweep-lib.ts's
-// evaluateMobileRoute for the pass criteria and test/render-sweep-lib.test.ts
-// for its unit tests.
+// >= 44px tall AND >= 44px wide (DEC-393/DEC-367 tap-target size — the
+// DESIGN-RULINGS.md floor is min-height:44px plus centred flex plus
+// horizontal padding, so height alone is not sufficient) — see
+// scripts/render-sweep-lib.ts's evaluateMobileRoute for the pass criteria
+// and test/render-sweep-lib.test.ts for its unit tests.
 //
 // Prints a per-route PASS/FAIL table and exits non-zero on any failure.
 // Not run as part of `npm test` (needs a booted server) — run explicitly
@@ -1170,17 +1172,26 @@ async function visitMobileRoute(
 
     const controls = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
     let minControlHeight: number | null = null;
+    let minControlWidth: number | null = null;
     let minControlSelector: string | null = null;
     for (const el of controls) {
       if (el.offsetParent === null) continue; // visible only (not display:none)
-      const height = el.getBoundingClientRect().height;
-      if (minControlHeight === null || height < minControlHeight) {
-        minControlHeight = height;
+      const rect = el.getBoundingClientRect();
+      // DEC-367: the 44px floor's second dimension. Tracked over the exact
+      // same visible primary nav/filter/submit control population as
+      // minControlHeight — no new selector, no new population — so a
+      // control that clears the height floor on padding alone but is only
+      // as wide as its own text still gets caught.
+      if (minControlWidth === null || rect.width < minControlWidth) {
+        minControlWidth = rect.width;
+      }
+      if (minControlHeight === null || rect.height < minControlHeight) {
+        minControlHeight = rect.height;
         minControlSelector = describe(el);
       }
     }
 
-    return { scrollWidth, viewportWidth, minControlHeight, maxElementRight, overflowOffenders, minControlSelector };
+    return { scrollWidth, viewportWidth, minControlHeight, minControlWidth, maxElementRight, overflowOffenders, minControlSelector };
   }, controlSelector);
 
   // DEC-421: advisory type-floor measurement at this route's viewport.

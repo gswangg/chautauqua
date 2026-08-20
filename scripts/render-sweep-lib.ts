@@ -200,6 +200,15 @@ export interface MobileObservation {
    * filter/submit controls on the page, or null if the page has none
    * (e.g. a route with no such controls at all). */
   minControlHeight: number | null;
+  /** DEC-367 w19-f: minimum getBoundingClientRect().width over the SAME
+   * population of visible primary nav/filter/submit controls that produces
+   * minControlHeight — the 44px floor's ruling is "min-height:44px plus
+   * centred flex plus horizontal padding" (DESIGN-RULINGS.md), so a control
+   * that is tall enough but narrower than its own text (padding alone,
+   * DEC-393's evasion) must fail too. null under the exact same condition as
+   * minControlHeight (no such controls found on the route) so a
+   * control-free route stays inert rather than turning red. */
+  minControlWidth: number | null;
   /** DEC-401: maximum getBoundingClientRect().right over every visible
    * element on the page — catches elements clipped by an ancestor's
    * overflow:hidden that scrollWidth alone would miss. DEC-424: elements
@@ -244,6 +253,9 @@ export interface MobileRouteResult {
   viewportWidth: number;
   overflowPx: number;
   minControlHeight: number | null;
+  /** DEC-367 w19-f: mirrors minControlHeight, same population, same null
+   * convention. */
+  minControlWidth: number | null;
   /** DEC-253 wave-30 amendment: console errors that survived
    * filterExpectedStatusConsoleNoise, printed in the failure reason and
    * available to the report the same way RouteResult.consoleErrors is. */
@@ -277,8 +289,13 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
     }
     reasons.push(reason);
   }
-  if (observed.minControlHeight !== null && observed.minControlHeight < MIN_TAP_TARGET_PX) {
-    let reason = `control height ${observed.minControlHeight}px < ${MIN_TAP_TARGET_PX}px`;
+  const heightFails = observed.minControlHeight !== null && observed.minControlHeight < MIN_TAP_TARGET_PX;
+  const widthFails = observed.minControlWidth !== null && observed.minControlWidth < MIN_TAP_TARGET_PX;
+  if (heightFails || widthFails) {
+    const dims: string[] = [];
+    if (heightFails) dims.push(`control height ${observed.minControlHeight}px < ${MIN_TAP_TARGET_PX}px`);
+    if (widthFails) dims.push(`control width ${observed.minControlWidth}px < ${MIN_TAP_TARGET_PX}px`);
+    let reason = dims.join(", ");
     if (observed.minControlSelector) {
       reason += ` (${observed.minControlSelector})`;
     }
@@ -305,6 +322,7 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
     viewportWidth: observed.viewportWidth,
     overflowPx,
     minControlHeight: observed.minControlHeight,
+    minControlWidth: observed.minControlWidth,
     consoleErrors,
     pageErrors: observed.pageErrors,
     ok: reasons.length === 0,
@@ -322,6 +340,7 @@ export function mobileErrorResult(entry: MobileRouteEntry, message: string): Mob
     viewportWidth: 0,
     overflowPx: 0,
     minControlHeight: null,
+    minControlWidth: null,
     consoleErrors: [],
     pageErrors: [],
     ok: false,
@@ -336,6 +355,7 @@ export const EMPTY_MOBILE_OBSERVATION: MobileObservation = {
   scrollWidth: 0,
   viewportWidth: 0,
   minControlHeight: null,
+  minControlWidth: null,
   maxElementRight: 0,
   overflowOffenders: [],
   minControlSelector: null,
@@ -353,14 +373,14 @@ export function allMobilePassed(results: readonly MobileRouteResult[]): boolean 
 export function formatMobileResultsTable(results: readonly MobileRouteResult[]): string {
   const pathWidth = Math.max(...results.map((r) => r.entry.path.length), "path".length);
   const lines: string[] = [];
-  lines.push(`${"path".padEnd(pathWidth)}  overflowPx  minControlPx  status`);
+  lines.push(`${"path".padEnd(pathWidth)}  overflowPx  minControlHPx  minControlWPx  status`);
   for (const r of results) {
     const mark = r.ok ? "PASS" : "FAIL";
     const detail = r.ok ? "" : `  (${r.failureReason})`;
     lines.push(
       `${r.entry.path.padEnd(pathWidth)}  ${String(r.overflowPx).padStart(10)}  ${String(
         r.minControlHeight ?? "-",
-      ).padStart(13)}  ${mark}${detail}`,
+      ).padStart(13)}  ${String(r.minControlWidth ?? "-").padStart(13)}  ${mark}${detail}`,
     );
   }
   return lines.join("\n");
