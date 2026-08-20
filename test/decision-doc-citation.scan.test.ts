@@ -381,6 +381,29 @@ const MOBILE_CAMPAIGN_ENTRY: [string, string] = [
   readFileSync(join(ROOT, "docs", "mobile-campaign.md"), "utf-8"),
 ];
 
+// PROBES CLASS (DEC-976 wave-114 amendment, task w3-ah): docs/probes/*.md is
+// the Tier-0 authority nothing else checks -- the mandate's own opening
+// section names these three files as the VERIFIED RED SET that Tier 0 works
+// before all else, so a stale coordinate here outranks a stale audit
+// coordinate. Enumerated by readdirSync, never hand-listed (DEC-180: "a
+// hand-listed population is not a population"), exactly like AUDIT_ENTRIES
+// above. It inherits the existing checkCitations grammar unchanged -- no new
+// vocabulary (DEC-613).
+const PROBES_DIR = join(ROOT, "docs", "probes");
+
+function probeDocFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith(".md"))
+    .map((e) => e.name)
+    .sort();
+}
+
+const PROBE_DOC_NAMES = probeDocFiles(PROBES_DIR);
+const PROBE_ENTRIES: [string, string][] = PROBE_DOC_NAMES.map((name) => [
+  `docs/probes/${name}`,
+  readFileSync(join(PROBES_DIR, name), "utf-8"),
+]);
+
 /** One source class = one label plus the (doc, content) pairs it
  * contributes to the walk. Each class gets its own vacuous-population
  * tripwire below (the task's explicit requirement: a widened population
@@ -392,6 +415,7 @@ const WIDENED_SOURCE_CLASSES: { label: string; entries: [string, string][] }[] =
   { label: "docs/design/DEVIATIONS.md", entries: [DEVIATIONS_ENTRY] },
   { label: "docs/design/DESIGN-RULINGS.md", entries: [DESIGN_RULINGS_ENTRY] },
   { label: "docs/mobile-campaign.md", entries: [MOBILE_CAMPAIGN_ENTRY] },
+  { label: "docs/probes/*.md", entries: PROBE_ENTRIES },
 ];
 
 /** Citations that DIRECTION 1 resolved (real file, in-range line) -- the

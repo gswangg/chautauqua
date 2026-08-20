@@ -10,9 +10,27 @@
    same idiom in settings.css (left-bleeding rows on Public pages; four
    flush-joined Saved-embeds buttons). Idiom is for borderless quiet controls
    ONLY — bordered boxes need real gaps. Fix at every bordered application.
+   RESOLVED (DEC-383 wave-109 amendment): every bordered subject named above
+   dropped the cancelled-padding idiom. comms.css:2168 now reads
+   `.chq-comms-head-actions > .chq-pill {` with a comment above it
+   ("tap-floor-exempt: DEC-383 wave-109 amendment -- .chq-pill is a
+   filled/bordered control... dropped here") and no padding-inline/
+   margin-inline pair; the .chq-btn siblings (.chq-comms-history-head-actions,
+   .chq-comms-preview-actions, .chq-comms-refusal-actions,
+   .chq-comms-select-actions) carry the same "bordered, cancelled padding
+   dropped" note at comms.css:2178/:2189/:2198/:2208. settings.css's Saved
+   embeds/Public-pages rows carry the equivalent fix (settings.css:2151-2160
+   comment block, same amendment).
 2. .chq-settings-section-action (settings.css:210) is 15px tall with no
    phone floor — it is the ONLY route into edit mode on all nine Settings
    panels. ROOMY per DESIGN-RULINGS:189.
+   RESOLVED (DEC-393 wave-109 amendment): settings.css:2161 now declares
+   `.chq-settings-section-action {` with `min-height: 44px;` and the
+   cancelled-padding idiom (legal here — it is borderless), per the comment
+   at settings.css:2151 ("Fix 1 (DEC-393 wave-109 amendment):
+   .chq-settings-section-action (settings.css:210 -- ...) is the ONLY
+   control that opens edit mode... DESIGN-RULINGS' density standard puts a
+   real target in the ROOMY register").
 
 ## S1 breaks (reach/read)
 - Settings People-edit: main overflows 390 by 240px; Person column 0px wide;
@@ -30,6 +48,12 @@
   Comms, More-active on Settings) — App.tsx:135 is fixed; dot belongs ABOVE
   the label on ALL items (inactive #BAB6A6), App.tsx:317 renders active-only
   and below.
+  RESOLVED (DEC-381 wave-109 amendment): App.tsx:358 now renders a
+  `chq-dot` span with `aria-hidden="true"` immediately before
+  `{section.label}` at App.tsx:359, for every tab, not just the active one
+  (comment at App.tsx:350-357, "the frame's row draws the dot BEFORE the
+  label, every tab (not just the active one)"); the More button carries
+  the matching before-label dot at App.tsx:375.
 - Comms Templates/History unreachable on phone without a localStorage draft:
   phoneEntered ignores ?tab=; landing has zero nav without a draft.
 - Drill-ins keep the parent page head (Contacts pipeline/dupes/merge, Comms
