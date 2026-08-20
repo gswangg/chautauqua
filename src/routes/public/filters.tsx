@@ -17,16 +17,25 @@
 import { MAX_PUBLIC_QUERY_VALUE_LENGTH } from "../../server/repo/public/bounds";
 
 /** The one keyword-search markup (DEC-919 amendment, wave 40; amended again
- * wave 69): one compact input at the head of the surface's single
- * .chq-pub-filter-row, with no visible label (announced to assistive tech
- * via .chq-visually-hidden) but a real, visible, clickable submit button —
- * a pointer must be able to hit it directly, not just Enter from the
- * input. `hidden` carries whatever the caller's other active params are
- * (trackId/format/roomId/day/limit, ...) as already-built
- * `<input type="hidden">` elements — PublicSearchBox does not know each
- * surface's knob table, it only renders what it's handed. */
-export function PublicSearchBox(props: { action: string; q: string | null; hidden?: unknown }) {
-  const { action, q, hidden } = props;
+ * wave 69; amended again wave 128/DEC-808): one compact input at the head
+ * of the surface's single .chq-pub-filter-row, with no visible label
+ * (announced to assistive tech via .chq-visually-hidden) but a real,
+ * visible, clickable submit button — a pointer must be able to hit it
+ * directly, not just Enter from the input. `hidden` carries whatever the
+ * caller's other active params are (trackId/format/roomId/day/limit, ...)
+ * as already-built `<input type="hidden">` elements — PublicSearchBox does
+ * not know each surface's knob table, it only renders what it's handed.
+ *
+ * DEC-808 (wave 128, judge-filed Cut-2 item 3): `placeholder` is a
+ * REQUIRED prop, not a shared default. The box used to hard-code "Search
+ * sessions or speakers…" for every caller, but the speakers gallery only
+ * ever searches speakers (getPublicSpeakers filters on contact
+ * first/last/full name, never a session title) — the shared copy
+ * advertised a population that surface would never return. Each caller
+ * supplies copy that names what its OWN repo query actually searches; a
+ * missing prop is a compile error, not a silently wrong promise. */
+export function PublicSearchBox(props: { action: string; q: string | null; placeholder: string; hidden?: unknown }) {
+  const { action, q, placeholder, hidden } = props;
   return (
     <form class="chq-pub-searchform" method="get" action={action} role="search">
       <label class="chq-visually-hidden" for="chq-pub-search-q">
@@ -38,7 +47,7 @@ export function PublicSearchBox(props: { action: string; q: string | null; hidde
         type="search"
         name="q"
         value={q ?? ""}
-        placeholder="Search sessions or speakers…"
+        placeholder={placeholder}
         maxlength={MAX_PUBLIC_QUERY_VALUE_LENGTH}
       />
       {hidden as any}

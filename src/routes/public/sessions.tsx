@@ -305,6 +305,7 @@ export function SessionsContent(props: {
                 <PublicSearchBox
                   action={basePath}
                   q={q}
+                  placeholder="Search sessions or speakers…"
                   hidden={
                     <>
                       {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}

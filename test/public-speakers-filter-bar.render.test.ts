@@ -2,8 +2,10 @@
 // OPEN ITEM, which was mis-attributed. `docs/design/README.md:350` (heading
 // at :343-345, "Public filter bar -- one idiom, four surfaces") names the
 // PUBLIC Speakers surface's `[Search speakers…] [All tracks ▾] [List | Grid]`
-// bar (the design doc's mock copy reads "Search speakers…"; the shipped
-// PublicSearchBox's actual placeholder is the shorter "Search") -- not the admin onboarding-grid toolbar
+// bar (the design doc's mock copy reads "Search speakers…"; DEC-808 wave 128
+// made the shipped PublicSearchBox's placeholder a required per-caller prop,
+// and speakers.tsx now passes that same "Search speakers…" copy, since
+// getPublicSpeakers only ever searches speaker name) -- not the admin onboarding-grid toolbar
 // (app/src/pages/speakers/GridFilters.tsx) the wave-28 gate went and grepped
 // instead. The controls already exist on the surface the heading names:
 // SpeakerViewToggle (List/Grid, src/routes/public/speakers.tsx) and
@@ -58,7 +60,7 @@ describe("DEC-976 (wave 29): public Speakers filter bar -- List surface (Speaker
       SpeakersContent({ event: EVENT, speakers: [SPEAKER], total: 1, page: 1, q: null, tracks: TRACKS, activeTrackId: null }),
     );
     expect(html).toContain("chq-pub-searchform");
-    expect(html).toContain('placeholder="Search sessions or speakers…"'); // G13 (frame 10--00): frame's fuller placeholder
+    expect(html).toContain('placeholder="Search speakers…"'); // DEC-808 wave 128: speakers-only surface names its own population
     expect(html).toContain("All tracks");
     expect(html).toContain("chq-pub-view-toggle");
     expect(html).toContain(">List<");
@@ -96,7 +98,7 @@ describe("DEC-976 (wave 29): public Speakers filter bar -- Grid surface (Gallery
       GalleryContent({ event: EVENT, speakers: [SPEAKER], total: 1, page: 1, q: null, tracks: TRACKS, activeTrackId: null }),
     );
     expect(html).toContain("chq-pub-searchform");
-    expect(html).toContain('placeholder="Search sessions or speakers…"'); // G13 (frame 10--00): frame's fuller placeholder
+    expect(html).toContain('placeholder="Search speakers…"'); // DEC-808 wave 128: speakers-only surface names its own population
     expect(html).toContain("All tracks");
     expect(html).toContain("chq-pub-view-toggle");
     const gridMatch = html.match(/<a[^>]*>Grid<\/a>/);

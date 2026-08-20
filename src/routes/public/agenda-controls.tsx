@@ -161,6 +161,7 @@ export function ItinerarySearchForm(props: {
       <PublicSearchBox
         action={basePath}
         q={q}
+        placeholder="Search sessions or speakers…"
         hidden={
           <>
             {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}

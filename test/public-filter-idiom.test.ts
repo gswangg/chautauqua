@@ -93,7 +93,7 @@ function searchForm(html: string): string {
 }
 
 describe("DEC-919: one filter idiom on every public surface", () => {
-  it("sessions and speakers both emit the same compact-input search-box markup (DEC-919 wave 40 amendment: visually-hidden label/button, one placeholder)", async () => {
+  it("sessions and speakers both emit the same compact-input search-box markup, with placeholders that name what each surface actually searches (DEC-919 wave 40 amendment: visually-hidden label/button; DEC-808 wave 128 amendment: per-surface placeholder)", async () => {
     installFakeCaches();
     // DEC-774 wave-34 amendment: dayCounts/cfpWindow (single-select reads)
     // land ahead of the sessions count query in the new concurrent wave —
@@ -137,13 +137,21 @@ describe("DEC-919: one filter idiom on every public surface", () => {
     for (const form of [sessionsForm, speakersForm]) {
       expect(form).toContain('<label class="chq-visually-hidden" for="chq-pub-search-q">Search</label>');
       expect(form).toContain('<input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q"');
-      expect(form).toContain('placeholder="Search sessions or speakers…"'); // G13 (frame 10--00)
       // DEC-919 amendment (wave 69): the submit is a real, visible button now.
       expect(form).toContain('<button class="chq-pub-search-submit" type="submit" aria-label="Search">');
       expect(form).not.toContain('<button class="chq-visually-hidden" type="submit">Search</button>');
       // DEC-919: the old speakers-only "Search by name" label is gone.
       expect(form).not.toContain("Search by name");
     }
+
+    // DEC-808 (wave 128, judge-filed Cut-2 item 3): the placeholder names
+    // the population the surface actually queries -- sessions searches
+    // title OR speaker name (getPublicSessions/searchCondition), speakers
+    // searches speaker name only (getPublicSpeakers), so the two surfaces'
+    // placeholders now genuinely diverge.
+    expect(sessionsForm).toContain('placeholder="Search sessions or speakers…"'); // G13 (frame 10--00)
+    expect(speakersForm).toContain('placeholder="Search speakers…"');
+    expect(speakersForm).not.toContain('placeholder="Search sessions or speakers…"');
   });
 });
 
