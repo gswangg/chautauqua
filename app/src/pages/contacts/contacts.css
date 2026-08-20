@@ -914,13 +914,16 @@
     text-align: left;
   }
 
-  /* The frame's action bar: `padding:12px 16px 16px; display:flex; gap:8px`
-     with a filled primary at flex:1 and a bordered secondary beside it,
-     BOTH at min-height:48px — the frame's own floor for a footer button,
-     four above the 44px minimum. Our bar carries more than the frame's two
-     buttons (Delete, Email, Add to event, Cancel, Save), so the row wraps
-     into pairs rather than scrolling: `flex:1 1 45%` gives two per line at
-     390 and each still clears 48px with real horizontal padding. */
+  /* docs/design/Chautauqua Contacts.dc.html:433-436 draws the READ
+     screen's dock (`padding:12px 16px 16px; display:flex; gap:8px`, two
+     controls at min-height:48px) — that band is the shell's
+     `.chq-phone-dock` (app/src/styles.css:2506), not this bar. This bar
+     is the phone EDIT state's action stack, a state the frame does not
+     draw (DEC-959; DEC-380 wave-116 refused, DEC-380 wave-120 struck,
+     the "our bar carries more" grid-shape justification). It takes the
+     frame footer's own floor — min-height:48px, padding:0 16px — one
+     control per line: Delete this contact / Email / Add to event /
+     Cancel / Save. */
   .chq-contacts-drawer-actions {
     flex-direction: column;
     align-items: stretch;
@@ -928,12 +931,13 @@
   }
 
   .chq-contacts-drawer-actions-right {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
   }
 
   .chq-contacts-drawer-actions-right .chq-btn {
-    flex: 1 1 45%;
+    width: 100%;
     min-height: 48px;
     padding: 0 16px;
     border-radius: var(--chq-r-ctl-phone);

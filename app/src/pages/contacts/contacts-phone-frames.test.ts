@@ -239,18 +239,35 @@ describe('v12 phone frame "Contact · 390"', () => {
     expect(phoneRule(CONTACTS_CSS, '.chq-contacts-history-event')).toMatch(/font-size:\s*14px/);
   });
 
-  it('turns the drawer action bar into the frame\'s footer: stacked, 48px targets with horizontal padding', () => {
+  it('stacks the phone EDIT state\'s action bar one control per line at 48px, full width (DEC-959)', () => {
     const bar = phoneRule(CONTACTS_CSS, '.chq-contacts-drawer-actions');
     expect(bar).toMatch(/flex-direction:\s*column/);
     expect(bar).toMatch(/align-items:\s*stretch/);
 
     const buttons = phoneRule(CONTACTS_CSS, '.chq-contacts-drawer-actions-right .chq-btn');
+    expect(buttons).toMatch(/width:\s*100%/);
     expect(buttons).toMatch(/min-height:\s*48px/);
     expect(buttons).toMatch(/padding:\s*0 16px/);
+    expect(buttons).not.toMatch(/45%/);
 
     const del = phoneRule(CONTACTS_CSS, '.chq-contacts-delete-trigger');
     expect(del).toMatch(/min-height:\s*48px/);
     expect(del).toMatch(/padding:\s*0 16px/);
+  });
+
+  // The READ screen's own dock -- docs/design/Chautauqua Contacts.dc.html:433
+  // `padding:12px 16px 16px; display:flex; gap:8px` with both controls at
+  // min-height:48px -- is implemented by the shell's shared .chq-phone-dock
+  // (app/src/styles.css), reused rather than re-declared per cluster (DEC-613
+  // wave-93). This receipts that shared rule directly, not this stylesheet.
+  it('receipts the frame\'s read-dock band against the shell\'s shared .chq-phone-dock', () => {
+    const shellPath = join(HERE, '..', '..', 'styles.css');
+    const shellCss = readFileSync(shellPath, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const dock = phoneRule(shellCss, '.chq-phone-dock');
+    expect(dock).toMatch(/padding:\s*12px 16px 16px/);
+    expect(dock).toMatch(/border-top:/);
+    expect(dock).toMatch(/gap:\s*8px/);
+    expect(phoneRule(shellCss, '.chq-phone-dock .chq-btn')).toMatch(/min-height:\s*48px/);
   });
 
   it('left-aligns the save-scope sentence once the bar\'s buttons are full width', () => {
