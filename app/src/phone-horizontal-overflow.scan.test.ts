@@ -599,7 +599,12 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // of them (`.chq-review-criteria-eyebrow`, `.chq-reviewer-plan-head-row`)
 // are `display: none` at 390 and were examined and deliberately left by
 // w8-c, which is why this ceiling is 7 rather than 5.
-export const OVERFLOW_OFFENDERS_CEILING = 7;
+// 2026-08-20 (v12m-w12-m, DEC-989 lane-owned lowering): CONTENT cluster's
+// one owned overflow offender (content.css's chq-content-phone-select-
+// toggle/-selecting-meta cascade-merge artifact) cleared -- 7 -> 6, re-
+// measured on this branch alone. Concurrent lanes touch the same integer;
+// the merge train re-measures the integrated tree.
+export const OVERFLOW_OFFENDERS_CEILING = 6;
 
 describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('found more than one CSS file to scan (vacuous-population tripwire, file side)', () => {

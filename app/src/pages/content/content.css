@@ -20,6 +20,12 @@
 /* w41-b (DEC-902 amendment): the view-switch + Refresh buttons that used to
    live in a standalone .chq-toolbar band now ride the title row, pushed to
    its trailing edge. */
+/* tap-floor-exempt: ContentApp.tsx's chq-content-summary-actions wraps two
+   button.chq-btn.chq-btn-secondary elements only (All files, Refresh), no
+   anchor -- the anchor-floor scan's container-reach check can never see
+   the .chq-btn descendants floor (min-height:44px in the phone block
+   below, on .chq-content-summary-actions .chq-btn) because it only
+   credits a container selector that reaches a known anchor token. */
 .chq-content-summary-actions {
   display: flex;
   align-items: center;
@@ -51,6 +57,13 @@
 
 /* G13 lane-D fix (05-content--00): the bar's actions are right-flushed at
    the measure edge — count and note lead, actions land at the far end. */
+/* tap-floor-exempt: composition -- chq-bulkbar-actions' own base rule and
+   phone floor belong to the shell lane in app/src/styles.css (DEC-393
+   wave-90 amendment); content.css only adds this margin-left override
+   under the worklist scope, never a second base declaration. SessionList
+   .tsx's bulk bar wraps button.chq-btn.chq-btn-primary and button.chq-btn
+   .chq-btn-tertiary, no anchor -- consistent with the shell rule's own
+   button-only floor. */
 .chq-content-worklist .chq-bulkbar-actions {
   margin-left: auto;
 }
@@ -60,6 +73,11 @@
    NO fill — the page colour shows through. The shared .chq-pill olive
    on-state (frame 09--07's on/confirmed vocabulary) does not apply to
    these filter facets. */
+/* tap-floor-exempt: composition -- the anchor form is floored by the
+   shell's element-qualified a.chq-pill rule in app/src/styles.css; content
+   renders .chq-pill only as button (filter chips in SessionList.tsx,
+   FilesLibrary.tsx, DeliverableDetail.tsx), never as an anchor or a
+   read-only span (DEC-576). */
 .chq-content-worklist .chq-pill {
   background: transparent;
 }
@@ -122,6 +140,12 @@
   font-weight: 600;
 }
 
+/* tap-floor-exempt: SessionList.tsx's chq-content-actions row (worklist
+   Approve/Open pair) wraps button.chq-btn elements only, no anchor -- the
+   anchor-floor scan's container-reach check can never see the .chq-btn
+   descendants floor (min-height:44px in the phone block below, on
+   .chq-content-actions .chq-btn) because it only credits a container
+   selector that reaches a known anchor token. */
 .chq-content-actions {
   display: flex;
   gap: 9px;
@@ -475,6 +499,12 @@
    note and moves content_status to changes_requested) + "Send note only"
    (secondary — posts the note, leaves status alone) sit on one row,
    matching .chq-content-actions' spacing. */
+/* tap-floor-exempt: CommentThread.tsx's chq-content-comment-actions row
+   (Ask for changes / Send note only) wraps button.chq-btn elements only, no
+   anchor -- the anchor-floor scan's container-reach check can never see the
+   .chq-btn descendants' existing min-height:48px floor (frame :422-424,
+   this file's own comment above the phone rule) because it only credits a
+   container selector that reaches a known anchor token. */
 .chq-content-comment-actions {
   display: flex;
   gap: 9px;
@@ -636,6 +666,12 @@
   gap: 2px;
 }
 
+/* tap-floor-exempt: DeliverableDetail.tsx's chq-content-status-band-actions
+   row (Approve / Ask for changes) wraps button.chq-btn elements only, no
+   anchor -- the anchor-floor scan's container-reach check can never see
+   the .chq-btn descendants floor (min-height:44px in the phone block
+   below, on .chq-content-status-band-actions .chq-btn) because it only
+   credits a container selector that reaches a known anchor token. */
 .chq-content-status-band-actions {
   display: flex;
   align-items: center;
@@ -720,6 +756,13 @@
   align-self: flex-start;
 }
 
+/* tap-floor-exempt: FilesLibrary.tsx's chq-content-files-header-actions row
+   wraps a span.chq-summary and, conditionally, button.chq-btn.chq-btn-
+   secondary (Download all) -- no anchor -- the anchor-floor scan's
+   container-reach check can never see the .chq-btn descendants floor
+   (min-height:44px in the phone block below, on .chq-content-files-header-
+   actions .chq-btn) because it only credits a container selector that
+   reaches a known anchor token. */
 .chq-content-files-header-actions {
   display: flex;
   align-items: center;
@@ -831,6 +874,14 @@
    1px — the shrink-to-content reading only holds for AUTO layout, so the
    Approve/Open pair overflowed the table by ~145px. Real width of the
    widest variant; Session (no width class) stays the remainder column. */
+/* tap-floor-exempt: SessionList.tsx's chq-content-worklist-col-actions is
+   an empty th (header spacer above the row-actions column, no children at
+   all) inside a thead this file's phone block sets to display:none -- no
+   anchor, no button, nothing tappable. Already carries the literal-
+   conformance min-height:44px/flex/padding rule in the phone block below
+   even though it never paints; the anchor-floor scan's container-reach
+   check cannot see that rule because it only credits a container selector
+   that reaches a known anchor token. */
 .chq-content-worklist-table .chq-content-worklist-col-actions {
   width: 182px;
   white-space: nowrap;
@@ -852,6 +903,18 @@
 /* conditional-and-quiet).                                                */
 /* ---------------------------------------------------------------------- */
 
+/* tap-floor-exempt: DeliverableDetail.tsx's chq-content-detail-actions row
+   wraps two Link elements with class chq-content-detail-action-link, no
+   chq-btn -- so it IS the row-action-anchor shape and IS floored: each
+   link is a bare-anchor-token population member with its own min-
+   height:44px/display:flex/align-items:center/padding-inline recipe in the
+   phone block below. The anchor-floor scan's container-reach check still
+   flags the container because it only credits a compound selector that
+   spells the container class together with the anchor class in one rule
+   (this codebase declares the anchor floor on the bare
+   chq-content-detail-action-link selector, not compounded under this
+   container, to avoid a second competing declaration for the same
+   selector/property pair). */
 .chq-content-detail-actions {
   display: flex;
   gap: 14px;
@@ -918,6 +981,13 @@
 /* in that one block (w7-c, DEC-385 wave-111 forward-merge).               */
 /* ---------------------------------------------------------------------- */
 
+/* overflow-exempt: cascade-merge artifact of the joined desktop-hidden
+   selector -- each of chq-content-phone-select-toggle and
+   chq-content-phone-selecting-meta carries its own individually-exempted
+   phone-width rule below, citing docs/design/Chautauqua Content.dc.html's
+   rest (line 207, Select link) and selecting (line 256, All 5 link)
+   nowrap-pinning frames; this shared desktop display:none rule sets no
+   white-space itself */
 .chq-content-phone-select-toggle,
 .chq-content-phone-selecting-meta {
   display: none;
