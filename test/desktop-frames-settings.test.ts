@@ -125,7 +125,12 @@ describe('desktop frame claims: Settings cluster, editing/summary half (v12m-w5-
     expect(src).toContain('Invite someone');
     expect(src).toContain('People &middot; {users.length}');
     expect(src).toContain('Reset password');
-    expect(src).toContain("You cannot remove or demote yourself. A reviewer's scope limits which tracks they are assigned.");
+    // DEC-781: moved to the frame's own home for this sentence
+    // (Chautauqua Settings.dc.html:1003, below the people list) --
+    // "Only organisers can change roles" (:978) now sits beside the H1.
+    expect(src).toContain(
+      "You cannot remove or demote yourself &middot; a reviewer&apos;s scope limits which tracks they are assigned",
+    );
   });
 
   // docs/design/Chautauqua Settings.dc.html:1021

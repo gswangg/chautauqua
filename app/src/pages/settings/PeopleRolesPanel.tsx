@@ -55,10 +55,11 @@ import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
 import { capitalizeFirst } from '../../lib/plural';
 import { MAX_EMAIL_LENGTH } from '../../lib/domain-caps';
-import { DEC_747 } from '../../../../src/decisions';
+import { DEC_747, DEC_781 } from '../../../../src/decisions';
 import './settings-lists.css';
 
 void DEC_747; // the invite/reset flows below implement wave-58's amendment (verb-matches-act, reveal-once shape, honest email gap) and wave-67's amendment (invite dialog form factor)
+void DEC_781; // the frame's two consequence sentences for this edit view have two different homes
 
 const SECTION_KEY = 'people';
 
@@ -401,7 +402,11 @@ export function PeopleRolesPanel() {
     <SummarySection sectionKey={SECTION_KEY} label="People and roles" rows={rows} actionLabel="Change" editing={editing}>
       <SettingsEditForm
         onSubmit={(e) => e.preventDefault()}
-        consequence="You cannot remove or demote yourself. A reviewer's scope limits which tracks they are assigned."
+        // DEC-781: the frame draws this sentence beside the H1
+        // (Chautauqua Settings.dc.html:978); the displaced self/scope
+        // sentence has its own frame home below the people list (:1003),
+        // rendered there now instead of duplicated here.
+        consequence="Only organisers can change roles"
         footer={{
           primary: (
             <button type="button" className="chq-btn chq-btn-primary" onClick={closeEdit}>
@@ -707,6 +712,13 @@ export function PeopleRolesPanel() {
           </div>
           <p className="chq-settings-people-total">
             Showing {users.length} of {total}
+          </p>
+          {/* DEC-781: matches Chautauqua Settings.dc.html:1003 verbatim --
+              the frame draws this directly below the people list, not
+              beside the H1 (where "Only organisers can change roles" now
+              lives instead, per that same frame line 978). */}
+          <p className="chq-settings-people-closing-note">
+            You cannot remove or demote yourself &middot; a reviewer&apos;s scope limits which tracks they are assigned
           </p>
         </>
       )}

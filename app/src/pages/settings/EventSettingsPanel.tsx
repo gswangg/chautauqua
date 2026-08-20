@@ -20,6 +20,9 @@ import { dateInputToMs, daysUntil } from '../../lib/dates';
 import { formatEventDayRange } from '../../../../src/lib/event-time';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../../../../src/forms/validate';
+import { DEC_781 } from '../../../../src/decisions';
+
+void DEC_781; // the frame's Public URL field hint, not the head consequence slot, carries the slug-breaks-links sentence
 
 const SECTION_KEY = 'event';
 
@@ -338,7 +341,11 @@ export function EventSettingsPanel() {
             e.preventDefault();
             void handleSave();
           }}
-          consequence="Changing the slug breaks every link already shared, including saved embeds"
+          // DEC-781: the frame draws this sentence beside the H1
+          // (Chautauqua Settings.dc.html:726), not the slug-breaks-links
+          // sentence -- that one lives on the Public URL field's own hint
+          // below, where the frame actually draws it (:739).
+          consequence="Renaming does not change the public URL"
           footer={{
             primary: <SettingsSaveButton pending={saving} />,
             secondary: (
@@ -377,7 +384,10 @@ export function EventSettingsPanel() {
             label="Slug"
             htmlFor={FIELD_IDS.slug}
             width="full"
-            hint={fieldErrorHint('slug') ?? 'Used in every public URL'}
+            // DEC-781: matches Chautauqua Settings.dc.html:739's Public URL
+            // field hint verbatim (moved here from the SettingsEditForm
+            // consequence slot, where the frame does not draw it).
+            hint={fieldErrorHint('slug') ?? 'Changing the slug breaks every link already shared, including saved embeds'}
           >
             <input
               id={FIELD_IDS.slug}

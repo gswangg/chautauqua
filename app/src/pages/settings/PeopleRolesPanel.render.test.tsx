@@ -199,6 +199,10 @@ describe('PeopleRolesPanel', () => {
     );
   });
 
+  // DEC-781 amendment (v12m-w7-h): the frame draws two distinct
+  // consequence sentences for this edit view, not one -- see the dedicated
+  // 'DEC-781' describe block below for the split (:978 beside the H1,
+  // :1003 below the people list).
   it('renders the B10 consequence line', async () => {
     mockPeople();
     renderPanel(['/settings?section=people&edit=1']);
@@ -208,7 +212,7 @@ describe('PeopleRolesPanel', () => {
     });
 
     expect(
-      screen.getByText("You cannot remove or demote yourself. A reviewer's scope limits which tracks they are assigned."),
+      screen.getByText("You cannot remove or demote yourself · a reviewer's scope limits which tracks they are assigned"),
     ).toBeInTheDocument();
   });
 
@@ -794,5 +798,22 @@ describe('PeopleRolesPanel', () => {
       'href',
       '/account/password',
     );
+  });
+
+  // DEC-781: the frame's two consequence sentences for this edit view have
+  // two different homes (Chautauqua Settings.dc.html:978 beside the H1,
+  // :1003 below the people list) -- distinct text, distinct places.
+  it('renders the frame consequence beside the H1, and the self/scope note below the people list', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Only organisers can change roles')).toHaveClass('chq-settings-edit-consequence');
+    expect(
+      screen.getByText("You cannot remove or demote yourself · a reviewer's scope limits which tracks they are assigned"),
+    ).toBeInTheDocument();
   });
 });
