@@ -893,14 +893,21 @@ export function formatCampaignReport(report: CampaignReport): string {
     v.suiteVerifiedAtSha === null
       ? "tier-2:  DECLARED ONLY -- NOT MEASURED"
       : `tier-2:  ${v.tier2Done ? "all ceilings at 0 -- DONE" : "one or more ceilings above 0 -- NOT DONE"}`;
-  const verdictLines = [
-    `desktop: ${v.desktopClaimed} claimed + ${v.desktopDeferred} deviation-deferred ` +
-      `= ${v.desktopClaimed + v.desktopDeferred} / ${v.desktopPopulation} -- ` +
-      `${v.desktopDone ? "DONE" : "NOT DONE"}`,
-    `phone:   ${v.phoneClaimed} / ${v.phonePopulation} -- ${v.phoneDone ? "DONE" : "NOT DONE"}`,
-    tier2Line,
-    `CAMPAIGN: ${v.campaignDone ? "DONE" : "NOT DONE"}`,
-  ];
+  const desktopLine =
+    v.suiteVerifiedAtSha === null
+      ? "desktop: DECLARED ONLY -- NOT MEASURED"
+      : `desktop: ${v.desktopClaimed} claimed + ${v.desktopDeferred} deviation-deferred ` +
+        `= ${v.desktopClaimed + v.desktopDeferred} / ${v.desktopPopulation} -- ` +
+        `${v.desktopDone ? "DONE" : "NOT DONE"}`;
+  const phoneLine =
+    v.suiteVerifiedAtSha === null
+      ? "phone:   DECLARED ONLY -- NOT MEASURED"
+      : `phone:   ${v.phoneClaimed} / ${v.phonePopulation} -- ${v.phoneDone ? "DONE" : "NOT DONE"}`;
+  const campaignLine =
+    v.suiteVerifiedAtSha === null
+      ? "CAMPAIGN: DECLARED ONLY -- NOT MEASURED"
+      : `CAMPAIGN: ${v.campaignDone ? "DONE" : "NOT DONE"}`;
+  const verdictLines = [desktopLine, phoneLine, tier2Line, campaignLine];
 
   return `${table}\n${legend}\n\n${verdictLines.join("\n")}`;
 }
