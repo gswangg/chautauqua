@@ -144,7 +144,12 @@ describe("DEC-672: /embed session/speaker detail routes", () => {
     const timeLine = body.match(/<p>[^<]*Room A<\/p>/)?.[0];
     expect(timeLine).toBeDefined();
     expect(timeLine).not.toMatch(/AM|PM/);
-    const speakerLine = body.match(/<p><a href="\/embed\/conf\/speakers\/[^"]*"[^>]*>[^<]*<\/a><\/p>/)?.[0];
+    // DEC-393 wave-142 (1f2f496d) floored this anchor by giving it
+    // class="chq-pub-detail-speaker-link", so `href` is no longer the first
+    // attribute. The pin is attribute-order tolerant rather than re-pinned on
+    // the classless shape -- a pin anchored on an unfloored anchor makes
+    // flooring it illegal (field guide w103).
+    const speakerLine = body.match(/<p><a [^>]*href="\/embed\/conf\/speakers\/[^"]*"[^>]*>[^<]*<\/a><\/p>/)?.[0];
     expect(speakerLine).toBeDefined();
     expect(speakerLine).toContain(SESSION.speakers[0]!.firstName);
     expect(speakerLine).not.toContain("(");

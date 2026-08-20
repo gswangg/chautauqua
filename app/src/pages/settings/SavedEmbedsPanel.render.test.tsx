@@ -11,6 +11,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { SavedEmbedsPanel } from './SavedEmbedsPanel';
 import { formatEmbedRecipe } from './embedRecipe';
+import { resetEventsCacheForTests, resetInitialStoredIdForTests } from '../../lib/useCurrentEvent';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 // w31-d/DEC-982: the row's class must own a grid whose column COUNT equals
@@ -45,6 +46,14 @@ let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   window.localStorage.setItem('chq.currentEventId', EVENT_ID);
+  // useCurrentEvent's /events promise cache and its pre-overwrite stored-id
+  // snapshot are both scoped to ONE real page load (DEC-024 wave-51, DEC-728
+  // wave-138), which a render suite never gets between it() blocks. Without
+  // these seams the PublicPagesPanel mirror below -- the only case that
+  // switches to its own event id inside the it() body -- keeps resolving the
+  // id frozen by the first test in this file and reads an unmocked event.
+  resetEventsCacheForTests();
+  resetInitialStoredIdForTests();
   consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 

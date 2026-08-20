@@ -305,7 +305,11 @@ describe("buildCampaignReport", () => {
     // landed in scripts/exit-predicate.ts's CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES
     // without its fixture entry ever being added here -- fixture now carries it
     // (see baseFixture/allGreenFixture above): 24 -> 25.
-    expect(report.rows).toHaveLength(25);
+    // wave-142 (task w17-c, DEC-808): SSR_CLASSLESS_ANCHOR_CEILING landed in
+    // scripts/exit-predicate.ts's CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES
+    // and in this file's baseFixture/allGreenFixture in the same commit, but
+    // the row-count pin here was not bumped with them: 25 -> 26.
+    expect(report.rows).toHaveLength(26);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
     expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });

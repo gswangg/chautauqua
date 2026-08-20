@@ -10,10 +10,19 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { NotFoundPage } from './NotFound';
+import { resetEventsCacheForTests, resetInitialStoredIdForTests } from '../lib/useCurrentEvent';
 import { mockApi } from '../test-utils/mockApi';
 
 beforeEach(() => {
   window.localStorage.clear();
+  // useCurrentEvent's /events promise cache and its pre-overwrite stored-id
+  // snapshot are both scoped to ONE real page load (DEC-024 wave-51, DEC-728
+  // wave-138); a render suite gets no full navigation between it() blocks, so
+  // without these seams the first case's empty /events answer and its frozen
+  // "no stored context" snapshot leak into the second and the eyebrow can
+  // never resolve. Same idiom as useCurrentEvent.render.test.tsx.
+  resetEventsCacheForTests();
+  resetInitialStoredIdForTests();
 });
 
 afterEach(() => {

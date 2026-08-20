@@ -48,10 +48,17 @@ describe('Ruling A19: BulkEmailModal template picker copy', () => {
 
     expect(screen.queryByRole('link', { name: 'Use in Comms compose' })).toBeNull();
 
-    // Footnote names which merge fields DO resolve in this context.
-    expect(screen.getByText(/merge fields:/)).toBeInTheDocument();
-    expect(screen.getByText(/\{speaker_name\}/)).toBeInTheDocument();
-    expect(screen.getByText(/\{event_name\}/)).toBeInTheDocument();
-    expect(screen.getByText(/\{portal_link\}/)).toBeInTheDocument();
+    // Footnote names which merge fields DO resolve in this context. DEC-582:
+    // this pin used to assert /merge fields:/, a phrase that appears nowhere
+    // in the product -- where a pin and a frame disagree about copy and the
+    // app matches the frame, the PIN moves, never the product.
+    // Receipt: docs/design/Chautauqua Contacts.dc.html:570 draws
+    // `Sent one at a time · logged in Comms history · {first_name} and
+    // {company} resolve per contact` as the compose step's standing note.
+    expect(
+      screen.getByText(
+        'Sent one at a time · logged in Comms history · {first_name} and {company} resolve per contact',
+      ),
+    ).toBeInTheDocument();
   });
 });
