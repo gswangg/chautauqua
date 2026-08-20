@@ -202,6 +202,69 @@ survives contact with state:
     task: `src/routes/portal/index.tsx:496-510` already docks the Upload
     task action + Edit submission through the same `dock` slot as of the
     wave-110 ruling above — no further work was outstanding there.
+  - **Shared-vocabulary control labels beat the frame's per-instance copy
+    (DEC-613 wave-128 amendment, task w3-m)** — four more rows where a
+    frame prints one instance's words and the app composes the same
+    control's label from a single shared source; the source governs and
+    the frame's literal is not built:
+    - Portal task action labels: `docs/design/Chautauqua Public and
+      Portal.dc.html:588` docks 'Upload slides' as the session dock's
+      primary; `:493` docks 'Mark the release signed' as the tasks dock's
+      primary. The app never types either literal. The session dock and
+      the row action beside the slides deliverable both render
+      src/routes/portal/index.tsx`taskActionLabel(t)`, one function with
+      three outcomes — 'Fill out form' for a form task, 'Upload file' for
+      a file-request task, 'Open task' otherwise — used at three call
+      sites in that file. 'Upload slides' is right only for the one
+      file-request task that happens to be slides; every other
+      file-request task (a bio photo, a signed release scan, a W-9) would
+      carry the wrong verb if the frame's instance copy were built
+      literally. The tasks-list dock is the same family with a different
+      shared source: src/routes/portal/tasks/views.tsx`tasksPageDockPrimary(`
+      resolves the next incomplete task's own control rather than a
+      task-specific verb, rendering
+      src/routes/portal/tasks/views.tsx`Mark complete` for a general task
+      (a signature task is a `general`-kind task in this schema) — never
+      'Mark the release signed', which names one instance's subject
+      matter, not the action.
+    - Portal back-link labels: `docs/design/Chautauqua Public and
+      Portal.dc.html:565` draws the session screen's back link as '‹ Your
+      portal'. The app renders `<PortalBackLink to="/portal/submissions"
+      />` at src/routes/portal/index.tsx`to="/portal/submissions"`,
+      resolved through the DEC-914 table
+      src/routes/portal/shared.tsx`Your submissions` (`PORTAL_BACK_LINKS`)
+      rather than the literal '‹ Your portal'. That table exists precisely
+      so a link's label can never disagree with the route it lands on —
+      the session card the speaker opened came from the submissions list,
+      not the portal home, and the app's back link drills up to the
+      screen the card actually came from. A frame drawn once cannot see
+      which list a given detail screen was reached from; the routing
+      table can, and governs.
+    - Docs article pager: `docs/design/Chautauqua Docs.dc.html:201-202`
+      draw the phone pager as '‹ Previous' and 'Next ›'. `DocsPager` in
+      src/routes/docs-site.tsx`function DocsPager(` renders
+      src/routes/docs-site.tsx`{prev.title}` and
+      src/routes/docs-site.tsx`{next.title}` instead — the same
+      component's desktop rendering already names the neighbour article,
+      and the named form is strictly more informative to a reader
+      deciding whether to follow the link. Only the frame's GEOMETRY binds
+      here: `docs-site.css.ts`'s phone terminal block cites `:201`'s
+      `min-height:46px` bordered-button triple for the pager's own shape;
+      the copy is the one piece the shared component supplies instead.
+    - Portal form primary (cross-reference task w3-l, which docks this
+      control): `docs/design/Chautauqua Public and Portal.dc.html:519`
+      docks 'Send this in' as the hotel-form primary. `TaskFormPage`
+      (src/routes/portal/tasks/views.tsx`>Submit</button>`) adopts the
+      frame's docked BAND — geometry, placement, the second-submit idiom
+      — while keeping the app's own word for the action, matching the
+      submit control's label everywhere else a portal form is submitted.
+      Docking a control is a layout decision; renaming it is a vocabulary
+      decision, and this wave settles only the former.
+    - Cross-reference: `docs/design/Chautauqua Review.dc.html:666` ('Save
+      the plan') is the fifth member of this same family, already blessed
+      above under "Plan editor phone dock copy is the new-plan captioning,
+      not a third button pair" (DEC-745 wave-98) — recorded here so a
+      future control-label audit finds all five entries in one place.
 
 ## 4. Voice
 
