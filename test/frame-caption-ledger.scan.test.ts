@@ -734,6 +734,16 @@ const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/speakers/TaskView.tsx:493 composes `A reminder names only this task · ${REMIND_SKIP_RULE} · the due date moves for everyone, from the header`, interpolating REMIND_SKIP_RULE. The frame's word 'emailed' is superseded by the shared vocabulary's word 'reminded' (REMIND_SKIP_RULE = 'skips anyone reminded in the last hour', app/src/pages/speakers/remindSkipVocabulary.ts:8), per the DEVIATIONS.md §3 ruling 'Reminder skip-window wording stays \"reminded\", not \"emailed\"' (docs/design/DEVIATIONS.md:309-316) — the app's word stands, the frame's word is superseded.",
   },
+  // v12m-w15-aa (wave-140): shape (iii) BLESSED/DEFERRED -- DEC-986's own
+  // wave-130 amendment already settled this exact half-sentence as scope,
+  // not a defect.
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1541,
+    text: 'Three tracks, five formats. You will not need an account.',
+    reason:
+      "DEC-986 (wave-130 amendment, src/decisions-data/DEC-986.md): \"The tracks/formats clause is NOT free — submit-get.tsx returns before fetching tracks for this window state — so only the account clause is adopted, because it is the half that is true of this product without a new query.\" src/routes/public/submit-views.tsx:149-154 (NotYetOpenPage) renders 'You will not need an account.' verbatim and its own comment names the omission by the same reasoning; the account clause alone is a real substring match (shape (ii) territory), but the residue ('Three tracks, five formats.') is genuine visitor-facing copy the ruling deliberately declined to fabricate, not a pack annotation — so this is (iii), not (ii).",
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,
@@ -1011,7 +1021,23 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // constant below is the integrated measurement (ceiling forced to -1, the
 // two-sided ratchet's own printed offender count read back), never a
 // guess and never a lane's pre-merge figure.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=31
+// Thunderdome megabatch: 31 is w14-bb's figure, measured WITHOUT w10-gg's 12
+// COMPOSED exclusions, which are also in this batch and push the count down
+// again. The integrated figure is whatever the two-sided ratchet below prints
+// on breach; it is re-seeded to that measurement, never guessed.
+// v12m-w15-aa (wave-140, task w15-aa): on base main da3f1441, the decision
+// registry exclusion (isDecisionRegistryFile) was ALREADY LIVE and imported
+// (DEC-989 wave-140 disclosure). Forced to -1 and measured 17 unmatched
+// before this task's changes; three were Chautauqua Public and Portal.dc.html
+// rows owned by this task -- :963/:968 (built as placeholder= on the
+// notes-for-reviewers/accessibility-needs controls, src/routes/public/
+// submit-views.tsx, pinned by test/submit-cfp-frame-copy.test.ts) and :1541
+// (COMPOSED shape (iii) BLESSED/DEFERRED exclusion citing DEC-986's own
+// wave-130 amendment, which already declined to fabricate the tracks/formats
+// half). Re-measured after: 14, zero of them from Chautauqua Public and
+// Portal.dc.html. RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
+export const FRAME_CAPTION_UNMATCHED_CEILING = 0;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
