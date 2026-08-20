@@ -964,6 +964,14 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
   // place either side of the comparison is built, so the ledger and the
   // scan's own output can never diverge in shape.
   const UNRESOLVABLE_PATHS: string[] = [
+    // 2026-08-20 (merge train, w15-hh): the fresh Comms empty state's
+    // decided-but-untold accepted-submission count -- exactly the same
+    // shape as the ComposeWizard row below (same `buildSubmissionsQuery`
+    // helper, same `?status=…&perPage=1` client-built query string), a
+    // bounded count-by-request read, never a route segment. The literal
+    // `/events/:id/submissions` prefix is still resolved and route-checked
+    // by this scan; only the trailing `${qs}` is interpolation-erased.
+    "app/src/pages/Comms.tsx interpolation-erased: /events/${eventId}/submissions${qs}",
     "app/src/pages/comms/ComposeWizard.tsx interpolation-erased: /events/${eventId}/submissions${qs}",
     // Frame 07-comms--05's per-status pill counts: same class as the row
     // above (this file's own list read) -- one bounded read per status whose

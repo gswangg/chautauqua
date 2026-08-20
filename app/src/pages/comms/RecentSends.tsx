@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiList, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
+import { countOf, plural } from '../../lib/plural';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { EmptyState } from '../../components/EmptyState';
 import { formatSendRhythm, type SendRhythm } from './sendRhythm';
@@ -373,7 +374,7 @@ export function RecentSends({
           what="You have not emailed anyone yet"
           reason={
             decidedUntoldCount !== null
-              ? `${decidedUntoldCount} submission${decidedUntoldCount === 1 ? '' : 's'} ${decidedUntoldCount === 1 ? 'has' : 'have'} a decision and nobody has been told. Every send is logged here afterwards.`
+              ? `${countOf(decidedUntoldCount, 'submission')} ${plural(decidedUntoldCount, 'has', 'have')} a decision and nobody has been told. Every send is logged here afterwards.`
               : 'Every send is logged here afterwards.'
           }
           action={{

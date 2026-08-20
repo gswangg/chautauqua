@@ -185,9 +185,33 @@ describe("task w14-ee: docs/home/portal/error-state SSR anchor floor disposition
 
   describe("DEC-367.md citation is drift-proof bare-path (no re-pointed :line)", () => {
     it("cites src/routes/portal/portal.css.ts by bare path with a verbatim-resolving quote, never portal.css.ts:<line>", () => {
+      // Merge-train repair (wave-16 batch): this assertion used to pin the
+      // literal quote `.chq-portal-footer-profile { min-height: 44px; }`.
+      // That quote stopped resolving once the w13-ff width repair landed
+      // (`min-width: 44px; padding: 0 8px;` joined the rule), so w16-cc
+      // re-anchored DEC-367's citation onto a quote that DOES resolve --
+      // and this assertion, keyed on the stale text, was the last thing
+      // still demanding the broken one. It is now RESOLVED BY SEARCH rather
+      // than hardcoded, which is DEC-967's own convention: whatever quote
+      // the ruling carries must resolve verbatim in the cited file, so the
+      // check survives the next edit to the rule instead of pinning one
+      // wave's wording forever.
       const dec367 = readFileSync(join(REPO_ROOT, "src/decisions-data/DEC-367.md"), "utf-8");
       expect(dec367).not.toMatch(/portal\.css\.ts:\d+/);
-      expect(dec367).toContain("portal.css.ts`.chq-portal-footer-profile { min-height: 44px; }`");
+
+      const quotes = [...dec367.matchAll(/portal\.css\.ts`([^`]+)`/g)].map((m) => m[1] ?? "");
+      expect(quotes.length, "DEC-367.md carries no bare-path portal.css.ts citation at all").toBeGreaterThan(0);
+      const resolving = quotes.filter((q) => PORTAL_CSS.includes(q));
+      expect(
+        resolving.length,
+        `no bare-path portal.css.ts citation in DEC-367.md resolves verbatim in the sheet. Quotes found:\n${quotes.join("\n")}`,
+      ).toBeGreaterThan(0);
+
+      // The rule the ruling is ABOUT still declares its floor, whatever
+      // wording the citation above happens to quote. (The floor+padding
+      // grading this ruling actually requires is asserted by the "DEC-367
+      // wave-138 mirror case" describe above, which is where that predicate
+      // lives -- not repeated here under a stricter one.)
       expect(PORTAL_CSS).toContain(".chq-portal-footer-profile { min-height: 44px;");
     });
   });

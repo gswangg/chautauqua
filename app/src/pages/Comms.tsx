@@ -211,6 +211,19 @@ export function CommsPage() {
   // submission is untold by construction -- no separate "told" tracking
   // needed). A count that fails to load stays null and the caller below
   // renders the static (pre-count) copy rather than fabricating a number.
+  //
+  // Merge-train repair (DEC-518 wave-43 amendment): the failure ALSO names
+  // itself in this page's existing loadError channel, the same one the
+  // recent-batches and seven-day-totals reads above already feed. The
+  // original handler swallowed silently, which app/src/spa-fetch-swallow-
+  // honesty.scan.test.ts flags -- and its KNOWN_SWALLOWS ledger is at its
+  // 25-entry tripwire, whose own instruction is to fix the swallow rather
+  // than ledger a 26th. Surfacing costs nothing here: the banner renders
+  // INLINE above the head (it does not replace the page), so the fresh
+  // empty state below still draws its correct count-free copy underneath
+  // it -- the reader gets the honest empty state AND is told the count
+  // could not be read, instead of a silently count-free sentence that is
+  // indistinguishable from an event with no accepted submissions.
   const [decidedUntoldCount, setDecidedUntoldCount] = useState<number | null>(null);
   useEffect(() => {
     if (!eventId || !isFreshEmpty) {
@@ -223,11 +236,12 @@ export function CommsPage() {
       .then((res) => {
         if (!cancelled) setDecidedUntoldCount(res.total);
       })
-      .catch(() => {
+      .catch((err) => {
         // A failed count read leaves the fresh empty state on its static
-        // (pre-count) copy -- never a permanent error banner over what is,
-        // underneath, still a correctly-rendered empty state.
-        if (!cancelled) setDecidedUntoldCount(null);
+        // (pre-count) copy -- never a fabricated number -- and says so.
+        if (cancelled) return;
+        setDecidedUntoldCount(null);
+        setLoadError(err instanceof ApiError ? err.message : 'Failed to load the decided-but-untold count');
       });
     return () => {
       cancelled = true;
