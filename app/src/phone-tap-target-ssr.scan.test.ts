@@ -80,10 +80,10 @@ describe('phone tap-target floor scan — SSR routes (public/portal/docs/auth)',
     // Default (SPA) population: a bare anchor without `chq-btn` is dropped --
     // it is graded separately, by anchor-floor.ts, over there.
     expect(tapTargetTagTokens(ssr, SSR_CLASS_ATTR_RE)).toEqual([]);
-    // SSR population (includeBareAnchors = true, what ssr.ts now passes):
+    // SSR population (anchorNeedsBtnToken: false, what ssr.ts now passes):
     // the same bare anchor IS admitted, because these routes have no
     // `.chq-btn` primitive at all.
-    expect(tapTargetTagTokens(ssr, SSR_CLASS_ATTR_RE, true)).toContain('chq-x-bare-link');
+    expect(tapTargetTagTokens(ssr, SSR_CLASS_ATTR_RE, { anchorNeedsBtnToken: false })).toContain('chq-x-bare-link');
   });
 
   it('reports an unfloored bare SSR anchor as an offender (positive control, tmpdir fixture), and the identical fixture through the SPA population is NOT reported (negative control, DEC-967 wave-127: non-vacuity over a fixture, never a product count)', () => {
@@ -93,15 +93,15 @@ describe('phone tap-target floor scan — SSR routes (public/portal/docs/auth)',
     // No height/min-height declared anywhere -- an honest unfloored fixture.
     writeFileSync(cssPath, 'export const FAKE_CSS = `.chq-x-bare-link { color: blue; }`;');
     try {
-      // Positive control: widened (includeBareAnchors = true) SSR population
+      // Positive control: widened (anchorNeedsBtnToken: false) SSR population
       // sees the bare-anchor token and reports it unfloored.
-      const ssrTokens = new Set(tapTargetTagTokens(ssr, SSR_CLASS_ATTR_RE, true));
+      const ssrTokens = new Set(tapTargetTagTokens(ssr, SSR_CLASS_ATTR_RE, { anchorNeedsBtnToken: false }));
       expect(ssrTokens.has('chq-x-bare-link')).toBe(true);
       const ssrOffenders = findSsrUnflooredTokens([cssPath], ssrTokens, tmpDir);
       expect(ssrOffenders.some((o) => o.includes('chq-x-bare-link'))).toBe(true);
 
       // Negative control: the SAME markup fixture read through the SPA
-      // (default, includeBareAnchors = false) population never picks up the
+      // (default, anchorNeedsBtnToken: true) population never picks up the
       // bare anchor token at all -- there is nothing for a downstream
       // offender check to even see, let alone report.
       const spaTokens = new Set(tapTargetTagTokens(ssr));
@@ -158,6 +158,13 @@ describe('phone tap-target floor scan — SSR routes (public/portal/docs/auth)',
     const tokens = allSsrTapTargetTokens(SSR_TSX_FILES);
     expect(tokens.size).toBeGreaterThan(20);
     expect(tokens.has('chq-auth-demo-btn')).toBe(true);
+    // Widened wave-139 (DEC-393 + DEC-976 wave-138; DEC-613 + DEC-989
+    // wave-139): a bare `<a>` is now admitted as a control on the SSR
+    // surfaces, so the population jumps considerably once anchors without
+    // a `chq-btn` token count. `chq-pub-session-title` is a token three
+    // independent reviewers measured sub-floor at 390.
+    expect(tokens.size).toBeGreaterThan(60);
+    expect(tokens.has('chq-pub-session-title')).toBe(true);
   });
 
   it('stays at or under the SSR unfloored-token ceiling, and never raises it silently', () => {

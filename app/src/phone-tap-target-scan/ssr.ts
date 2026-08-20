@@ -17,6 +17,16 @@
 // controls on public routes, every one of them outside this file's
 // population until now.
 //
+// TOKEN POPULATION, wave-139 correction (DEC-393 + DEC-976 wave-138;
+// DEC-613 + DEC-989 wave-139): `tapTargetTagTokens`'s shared `<a>` skip
+// (`tag === 'a' && !tokens.includes('chq-btn')`) is honest on the SPA,
+// where `.chq-btn` is the control primitive that carries the floor, and
+// BLIND here -- the SSR sheets have no such primitive, so a bare `<a>` IS
+// the control. `allSsrTapTargetTokens` below is the one caller in the repo
+// passing `{ anchorNeedsBtnToken: false }` to admit it; every SPA call site
+// is unchanged. This is a repair to the SAME `a.chq-docs-wordmark` blind
+// spot this file's own header names two paragraphs up.
+//
 // SCOPE, stated plainly: this widening's job is to SEE the surface, not to
 // fix it. The offender count is recorded as a ratchet seeded at the
 // measured truth and may only be LOWERED -- one-sided by deliberate choice,
@@ -32,23 +42,6 @@
 // src/views/theme.ts exports THEME_CSS without that suffix and a filename
 // glob silently drops the one sheet every SSR surface loads (DEC-808,
 // wave-96 finding).
-//
-// BARE ANCHORS ARE ADMITTED HERE (wave-138 finding, repaired v12m-w13-dd).
-// core.ts's `tapTargetTagTokens` drops a bare `<a>` unless it also composes
-// `chq-btn` -- correct for the SPA population, where a bare anchor is
-// graded separately by anchor-floor.ts, but WRONG for this SSR population:
-// these routes have no `.chq-btn` primitive at all, so that carve-out
-// silently dropped the single most common interactive element on them.
-// Measured at 5d6c9afe: the `.chq-btn`-only population was 25 tokens;
-// admitting every anchor (this file passes `includeBareAnchors = true`)
-// widens it to 75, and `findSsrUnflooredTokens` over the widened set goes
-// from a vacuous 0 to 28 real offenders -- including
-// `.chq-pub-session-title`, `.chq-docs-wordmark` (this very header, three
-// paragraphs up, already cited it as a 112.6x28 live probe measurement --
-// the file named the offender it could not see), `.chq-docs-nav-link`,
-// `.chq-home-footer-link`, `.chq-pub-headshot-link`. The SPA population
-// (core.ts's default `includeBareAnchors = false`) is unaffected: this
-// widening is a parameter this file alone opts into.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
@@ -101,7 +94,13 @@ export function allSsrTapTargetTokens(ssrTsxFiles: string[]): Set<string> {
   const out = new Set<string>();
   for (const path of ssrTsxFiles) {
     const src = stripTsxComments(readFileSync(path, 'utf-8'));
-    for (const t of tapTargetTagTokens(src, SSR_CLASS_ATTR_RE, true)) out.add(t);
+    // The SSR surfaces have no `.chq-btn` control-face primitive the way
+    // app/src does -- a bare `<a>` IS the control (DEC-393 + DEC-976
+    // wave-138; DEC-613 + DEC-989 wave-139). `tapTargetTagTokens`'s
+    // `tag === 'a' && !tokens.includes('chq-btn')` skip is honest on the SPA
+    // and blind here, so this is the ONLY caller in the repo passing
+    // `anchorNeedsBtnToken: false` -- every SPA call site keeps the default.
+    for (const t of tapTargetTagTokens(src, SSR_CLASS_ATTR_RE, { anchorNeedsBtnToken: false })) out.add(t);
   }
   return out;
 }

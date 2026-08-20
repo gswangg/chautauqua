@@ -63,20 +63,20 @@ export const SPA_CLASS_ATTR_RE = /className\s*=\s*(\{[^}]*\}|"[^"]*")/;
  * views are shared with the SPA. */
 export const SSR_CLASS_ATTR_RE = /\bclass(?:Name)?\s*=\s*(\{[^}]*\}|"[^"]*")/;
 
-/** `includeBareAnchors` widens the `<a>` admission rule: by default (SPA
- * population) a bare anchor is dropped unless it also composes `chq-btn`
- * (the SPA's shared button-face primitive), because a plain SPA anchor is
- * graded separately by anchor-floor.ts. The SSR population has no
- * `.chq-btn` primitive at all, so that carve-out silently dropped the most
- * common interactive element on those surfaces -- pass `true` there to
- * admit every anchor tag regardless of its class list (DEC-393/DEC-976
- * wave-138 finding, repaired wave v12m-w13-dd). The two populations differ
- * on purpose: this parameter does not change SPA behaviour at its default. */
+/** `anchorNeedsBtnToken` (default `true`) is a PARAMETER, not a fork and not
+ * a widened shared default (DEC-613 wave-139): on the SPA, `.chq-btn` is the
+ * control primitive that carries the floor, so a bare `<a>` with no
+ * `chq-btn` token is decoration, correctly dropped. On the SSR surfaces
+ * there is no such primitive -- a bare `<a>` IS the control (DEC-393 +
+ * DEC-976 wave-138) -- so `ssr.ts`'s `allSsrTapTargetTokens` is the ONLY
+ * caller that passes `{ anchorNeedsBtnToken: false }`. Every SPA call site
+ * keeps today's behaviour byte-for-byte by relying on the default. */
 export function tapTargetTagTokens(
   src: string,
   classAttrRe: RegExp = SPA_CLASS_ATTR_RE,
-  includeBareAnchors = false,
+  opts: { anchorNeedsBtnToken?: boolean } = {},
 ): string[] {
+  const anchorNeedsBtnToken = opts.anchorNeedsBtnToken ?? true;
   const out = new Set<string>();
   const tagRe = /<(input|select|button|a)\b([^>]*)>/g;
   let m: RegExpExecArray | null;
@@ -87,7 +87,7 @@ export function tapTargetTagTokens(
     if (!classMatch) continue;
     const classText = classMatch[1] ?? '';
     const tokens = [...classText.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]);
-    if (tag === 'a' && !includeBareAnchors && !tokens.includes('chq-btn')) continue;
+    if (tag === 'a' && anchorNeedsBtnToken && !tokens.includes('chq-btn')) continue;
     for (const t of tokens) out.add(t);
   }
   return [...out];

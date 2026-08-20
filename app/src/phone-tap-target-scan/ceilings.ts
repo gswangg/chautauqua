@@ -193,28 +193,33 @@ export const ANCHOR_FLOOR_OFFENDERS_CEILING = 0;
 /** Seeded at the count measured when this population was first scanned
  * (mandate item 5). Was ONE-SIDED (may only be LOWERED, never raised) --
  * see the history below the constant for why, and task w4-ae (DEC-393
- * wave-115) for why that stopped holding for a while: the last 3
- * `.chq-btn`-composing offenders got a real floor, measured truth went to
- * 0, and this ceiling was given the same two-sided companion every other
- * ratchet in this file carries (the "never falls below" test just below
- * the history comment). Task w13-dd (below) then widened the POPULATION
- * itself (bare anchors admitted), which is a legitimate re-seed, not a
- * regression of the ratchet discipline: the two-sided companion test
- * still holds against the new, honestly wider count.
+ * wave-115) for why that no longer holds: the last 3 offenders got a real
+ * floor, measured truth is 0, and this ceiling now has the same two-sided
+ * companion every other ratchet in this file carries (the
+ * "never falls below" test just below the history comment).
  */
-// 2026-08-20 (task w13-dd, DEC-393/DEC-976 wave-138 predicate repair):
-// `tapTargetTagTokens` dropped every bare `<a>` on the SSR surfaces
-// (they carry no `.chq-btn` primitive, so the SPA-only carve-out that
-// exists to defer bare anchors to anchor-floor.ts was silently deleting
-// the population's most common element). ssr.ts now passes the new
-// `includeBareAnchors = true` parameter. Population widened 25 -> 75
-// tokens; re-measured this ceiling by forcing it to -1 and reading the
-// printed offender list on the widened population: 28 real offenders
-// (previously invisible), including `.chq-pub-session-title` and
-// `.chq-docs-wordmark` -- the latter this very file's own header already
-// cited by hand as a 112.6x28 live-probed sub-floor control. Seeded
-// honestly at the measured truth, not fixed in this lane (sibling lanes
-// drain it); remains one-sided per the file's existing protocol.
+// Re-measured wave-139 (task w14-cc, DEC-393 + DEC-976 wave-138; DEC-613 +
+// DEC-989 wave-139): `tapTargetTagTokens`'s shared `if (tag === 'a' &&
+// !tokens.includes('chq-btn')) continue;` was honest on the SPA (`.chq-btn`
+// is the control primitive that carries the floor) and BLIND on SSR (no
+// such primitive -- a bare `<a>` IS the control; `ssr.ts`'s own header
+// already cited `a.chq-docs-wordmark` at 112.6x28 as a live probe
+// measurement it could not see). Repaired as a PARAMETER on the one shared
+// extractor (`anchorNeedsBtnToken`, default `true`, unchanged for every SPA
+// call site) rather than a fork or a widened shared default -- widening the
+// default would drag four SPA ratchets (base tap-target, undeclared-height,
+// anchor-floor, this file's SSR sub-floor sibling above) into a population
+// where the SPA carve-out is correct. `allSsrTapTargetTokens` is the ONLY
+// caller passing `{ anchorNeedsBtnToken: false }`.
+//
+// Forced this constant to -1 and read the printed offender list on this
+// branch: population 25 -> 75, unfloored 0 -> 28 (docs-site.css.ts 6,
+// portal.css.ts 3, agenda.css.ts 3, chrome.css.ts 3, home.css.ts 3, rail.css.ts
+// 4, cards.css.ts 2, empty.css.ts 1, error-states.css.ts 1, plus 2 tokens
+// with `(no CSS rule)` at all). Set to the measured truth, 28 -- this is the
+// WIDENING lane; two sibling lanes this wave (v12m-w14-dd, v12m-w14-ee)
+// drain the 28 with CSS receipts and touch no constant. RATCHET:
+// SSR_UNFLOORED_TOKENS_CEILING=28.
 export const SSR_UNFLOORED_TOKENS_CEILING = 28;
 
 // task w7-e (DEC-367/DEC-385) lowered this from 14 to 3, measured after
