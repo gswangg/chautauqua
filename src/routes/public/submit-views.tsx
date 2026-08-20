@@ -765,9 +765,10 @@ export function ConfirmationPage(props: {
           </span>
           {props.meta ? <span class="chq-cfp-confirm-card-meta">{props.meta}</span> : null}
         </div>
-        {/* DEC-377: no delivery-window or "check spam" timing promise here —
-            the earlier copy asserted arrival timing the confirmation email
-            send (a best-effort side effect) can't actually guarantee. */}
+        {/* DEC-377 (narrowed by DEC-380 wave-137 amendment): the refusal is
+            of an arrival-window/delivery-timing promise the confirmation
+            email send (a best-effort side effect) can't actually guarantee
+            — not of conditional troubleshooting copy. */}
         <p class="chq-cfp-confirm-body">
           {props.emailDelivered ? (
             <>
@@ -779,6 +780,7 @@ export function ConfirmationPage(props: {
             </>
           )}
         </p>
+        {props.emailDelivered ? <p class="chq-cfp-confirm-spam-hint">If it hasn't arrived, check spam.</p> : null}
         <div class="chq-cfp-confirm-actions">
           {props.state === "has-account" ? (
             <p>
