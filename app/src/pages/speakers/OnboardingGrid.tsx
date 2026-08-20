@@ -639,6 +639,17 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
       setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
+      // DEC-265 wave-138 amendment: a successful write must retire the
+      // optimistic override -- left set, it permanently masks the refetched
+      // server payload (the v12 column-head aggregate, taskDoneLabel above,
+      // and the counts panel) behind a snapshot with only this one cell
+      // flipped. apiPatch already bumped the mutation version (api.ts), so
+      // the cache is already cleared; the explicit refetch matches every
+      // other successful write on this page (handleCreateTask,
+      // sendPortalInvite, confirmRemoveTask, handleEditTask) rather than
+      // relying on the mutation-version effect to re-fire on its own.
+      setOptimisticOverride(null);
+      await gridRead.refetch();
     } catch {
       // DEC-265 wave-110 amendment: rewrite only the failed assignment's
       // cell back to its pre-flip status -- a whole-grid snapshot would
@@ -739,6 +750,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/submissions/${submissionId}/participants/${participantId}`, { inviteStatus: desired });
       setPendingFailure((prev) => (prev && prev.participantId === participantId ? null : prev));
+      // DEC-265 wave-138 amendment: same retirement as applyCellStatus's
+      // success path above -- otherwise the participation flip freezes the
+      // grid behind this one snapshot too.
+      setOptimisticOverride(null);
+      await gridRead.refetch();
     } catch (err) {
       // DEC-265 wave-110 amendment: rewrite only the failed participant's
       // inviteStatus back to its pre-flip value -- a whole-grid snapshot
