@@ -117,7 +117,7 @@
   tree confirms or denies the frame divergence) and portal's session
   edit↔label 0px gap (no rule pairing a session-edit label directly to its
   control gap was found -- the nearest candidate,
-  src/routes/portal/portal.css.ts:582 `.chq-portal-session-label {`, styles
+  src/routes/portal/portal.css.ts:594 `.chq-portal-session-label {`, styles
   a section label's own internal layout, not a label-to-control pairing).
   Left live rather than guessed closed — DEC-967 forbids receipting a fix
   that was not read.
