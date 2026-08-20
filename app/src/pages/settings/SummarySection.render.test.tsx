@@ -45,7 +45,15 @@ describe('SummarySection', () => {
     expect(screen.queryByText('the form')).not.toBeInTheDocument();
   });
 
-  it('renders children instead of rows, and swaps the action to Back, when editing', () => {
+  // w7-c/DEC-728: docs/design/Chautauqua Settings.dc.html draws NO panel
+  // head in an edit view (e.g. :632-633 `‹ Call for papers` then
+  // `<h2>` — there is none, only the H1 -- same shape at :723-724,
+  // :813-814, :894-895, :975-976, :1136-1137). The panel's own <h2> and
+  // second 'Back' button (this test used to assert 'swaps the action to
+  // Back') were the redundant control DESIGN-RULINGS:247 flagged; the sole
+  // back control while editing is the shell's `‹ <Section>` link
+  // (Settings.tsx), outside this component.
+  it('renders children instead of rows, and hides the panel head (no h2, no Back button), when editing', () => {
     render(
       <MemoryRouter initialEntries={['/settings']}>
         <SummarySection
@@ -62,11 +70,16 @@ describe('SummarySection', () => {
 
     expect(screen.getByText('the form')).toBeInTheDocument();
     expect(screen.queryByText('DevCon 2026')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 
-  it('clicking Back while editing clears section and edit from the URL, preserving other params', () => {
+  // w7-c/DEC-728: the <h2> that used to supply the panel's accessible name
+  // is gone in edit mode (frame draws none -- see above); `aria-label`
+  // keeps the <section role="region"> reachable by the same name either
+  // way, per this file's own instruction to keep it (SummarySection.tsx).
+  it('keeps the section reachable by its label as a region while editing, with no panel head', () => {
     render(
       <MemoryRouter initialEntries={['/settings?section=event&edit=1&foo=bar']}>
         <LocationProbe />
@@ -82,12 +95,9 @@ describe('SummarySection', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-
-    const probe = new URLSearchParams(screen.getByTestId('probe').textContent ?? '');
-    expect(probe.get('section')).toBeNull();
-    expect(probe.get('edit')).toBeNull();
-    expect(probe.get('foo')).toBe('bar');
+    const section = screen.getByRole('region', { name: 'Event settings' });
+    expect(within(section).getByText('the form')).toBeInTheDocument();
+    expect(within(section).queryByRole('heading')).not.toBeInTheDocument();
   });
 
   it('clicking the action writes ?section=<sectionKey>&edit=1 to the URL, preserving other params', () => {

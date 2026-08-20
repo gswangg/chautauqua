@@ -109,6 +109,28 @@
   display: inline-flex;
 }
 
+/* w7-c/DEC-728: docs/design/Chautauqua Settings.dc.html:723-724 (same shape
+   at :632-633, :813-814, :894-895, :975-976, :1136-1137) draws `‹ Event`
+   THEN `<h1>Edit the event</h1>` inside the content column -- back above
+   the H1, at DESKTOP too, not just phone. The page-level h1 (chq-page-title)
+   sits BEFORE .chq-settings-layout in the DOM, so it always paints above
+   the in-content back control; swap which title paints by hiding the
+   page-level h1 and revealing its in-content twin (phoneDrillTitle /
+   .chq-settings-drill-title, Settings.tsx) whenever a section is being
+   edited. Top-level (not media-scoped) -- this is a desktop rule; the
+   phone equivalent already exists at the trailing max-width block below
+   (:1765/:1769 at time of writing) and is unaffected. The plain read-drill
+   (data-drilled without data-editing) and the index are untouched: neither
+   selector below matches them, so the page-level h1 keeps painting there
+   exactly as before. */
+.chq-settings-layout[data-editing='true'] .chq-settings-drill-title {
+  display: block;
+}
+
+.chq-settings-page:has(.chq-settings-layout[data-editing='true']) > .chq-page-title {
+  display: none;
+}
+
 /* DEC-844: persistent notice naming placed sessions a window-narrowing save
    unscheduled. Not a toast/alert — stays until the next save overwrites or
    clears it. */

@@ -178,8 +178,15 @@ export function SettingsPage() {
   // frame draws back ABOVE the H1. Rendering the twin for editingSection as
   // well (and hiding the original top h1 at phone whenever either drill
   // state is active, in settings.css) puts back first in DOM/paint order
-  // for both the plain read-drill and the edit-drill screens, while
-  // desktop -- which never hides the top h1 -- is untouched.
+  // for both the plain read-drill and the edit-drill screens.
+  // w7-c/DEC-728 amendment: Chautauqua Settings.dc.html:723-724 draws this
+  // same back-above-H1 order inside the content COLUMN at desktop too
+  // (:632-633, :813-814, :894-895, :975-976, :1136-1137) -- so this twin is
+  // no longer phone-only. settings.css now also hides the original top h1
+  // and reveals this twin at desktop, but ONLY while editing
+  // ([data-editing='true']); the plain read-drill's desktop rendering is
+  // unchanged (top h1 stays visible there, this twin stays display:none) --
+  // that case was never named by the frame as needing the swap.
   const phoneDrillTitle = active !== null ? pageTitle : undefined;
 
   // Keep `active` in sync whenever the URL's `section` param CHANGES (e.g.
