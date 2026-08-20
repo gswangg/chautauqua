@@ -502,7 +502,21 @@ export async function applyImportRows(
       const storedEmail = base.email.trim();
       if (storedEmail === "") {
         // Fill: the target has no address of its own, so the file's is not
-        // replacing anything.
+        // replacing anything -- UNLESS this run has already routed that same
+        // org-scoped address to a DIFFERENT contact (an earlier line in this
+        // same file created it, or a DB row already owns it). resolveMergeTargets
+        // only ever saw the DB pre-pass `byEmail`, taken before this loop ran,
+        // so it cannot catch a collision minted mid-file; this is the same
+        // refusal, re-checked against the map as it stands right now (fail
+        // loudly rather than mint a second contact for one address).
+        const routedId = byEmail.get(key);
+        if (routedId !== undefined && routedId !== mergeTargetId) {
+          throw new ApiError(
+            "invalid",
+            `Line ${line} already matches an existing contact by email; it resolves to an update, not a merge`,
+            { mergeLines: `line ${line}: resolves to an update` },
+          );
+        }
         pendingById.set(mergeTargetId, { ...patched, email: key });
       } else {
         pendingById.set(mergeTargetId, patched);
@@ -821,6 +835,21 @@ export async function planImportRows(
       const decision = resolveImportUpsert(mergeTarget.id, normalizedParsed, targetRecord.customFields);
       if (decision.action !== "update") {
         throw new Error("planImportRows: merge line resolved to create — unreachable (existingId always defined)");
+      }
+      // Same fill-collision refusal as applyImportRows above: a dry run must
+      // refuse what the real run refuses. Only a fill (the target's own
+      // stored email is blank) can mint a second contact for this address --
+      // re-check byEmail as it stands now, since resolveMergeTargets only
+      // ever saw the DB pre-pass, taken before this loop started.
+      if ((targetRecord.email ?? "").trim() === "") {
+        const routed = byEmail.get(key);
+        if (routed !== undefined && routed.id !== mergeTarget.id) {
+          throw new ApiError(
+            "invalid",
+            `Line ${line} already matches an existing contact by email; it resolves to an update, not a merge`,
+            { mergeLines: `line ${line}: resolves to an update` },
+          );
+        }
       }
       updated++;
       const overwrites = describeImportOverwrites(targetRecord, decision.patch);
