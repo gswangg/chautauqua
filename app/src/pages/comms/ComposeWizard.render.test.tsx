@@ -1884,3 +1884,98 @@ describe('ComposeWizard reads the server dedupe plan, not the raw expansion (wav
     expect(await screen.findByText('1 of 3 speakers were emailed')).toBeInTheDocument();
   });
 });
+
+// DEC-829 wave-128 (Cut-2 item 5): the preview step -- the first step to
+// show a recipient count -- states the submissions -> recipients
+// relationship in ONE line, built from countOf, without renaming or
+// recomputing either count.
+describe('ComposeWizard states the submissions -> recipients relationship once (DEC-829 wave-128)', () => {
+  function recipient(contactId: string, submissionId: string, name: string, ref: string) {
+    return {
+      contactId,
+      submissionId,
+      email: `${contactId}@example.com`,
+      name,
+      ref,
+      scheduled: true,
+      subject: 'You are in!',
+      text: 'See you there',
+    };
+  }
+
+  async function selectAndPreview(selectLabels: string[], previewItems: ReturnType<typeof recipient>[]) {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: previewItems },
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    for (const label of selectLabels) {
+      fireEvent.click(screen.getByLabelText(label));
+    }
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose a template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+    await screen.findByText('Attachments');
+  }
+
+  it('one-speaker case: 1 submission resolved to 1 recipient (counts equal, still honest)', async () => {
+    await selectAndPreview(
+      ['Select Talk number 1'],
+      [recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014')],
+    );
+
+    // Exactly one relationship line on the page.
+    const lines = screen.getAllByText(/resolved to/);
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toBe('1 submission resolved to 1 recipient');
+  });
+
+  it('multi-speaker case: 1 submission (lead + co-presenter) resolved to 2 recipients', async () => {
+    await selectAndPreview(
+      ['Select Talk number 1'],
+      [
+        recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014'),
+        recipient('c2', 'sub-1', 'Nadia Ferrone', 'DFC-014'),
+      ],
+    );
+
+    const lines = screen.getAllByText(/resolved to/);
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toBe('1 submission resolved to 2 recipients');
+  });
+
+  it('multi-submission equal-count case: 2 submissions resolved to 2 recipients', async () => {
+    await selectAndPreview(
+      ['Select Talk number 1', 'Select Talk number 2'],
+      [
+        recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014'),
+        recipient('c2', 'sub-2', 'Nadia Ferrone', 'DFC-041'),
+      ],
+    );
+
+    const lines = screen.getAllByText(/resolved to/);
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toBe('2 submissions resolved to 2 recipients');
+  });
+
+  it('never restates the recipient-cap sentence -- the relationship line and the cap line are distinct and both present', async () => {
+    const under = Array.from({ length: 3 }, (_, i) =>
+      recipient(`c${i}`, `sub-${i}`, `Speaker ${i}`, `DFC-0${i}`),
+    );
+    await selectAndPreview(['Select Talk number 1'], under);
+
+    expect(screen.getByText('1 submission resolved to 3 recipients')).toBeInTheDocument();
+    expect(screen.getByText(/3 is under the 100-recipient cap/)).toBeInTheDocument();
+  });
+});

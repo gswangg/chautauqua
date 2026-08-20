@@ -1289,6 +1289,19 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 Change selection
               </button>
             </div>
+            {/* DEC-829 wave-128 (Cut-2 item 5): the ONE line that states the
+                submissions -> recipients relationship, at the step where the
+                population first changes (preview is the first step to show
+                a recipient count). Neither count is renamed or recomputed
+                here -- selectedIds.size is the same submission count step 1
+                shows, preview.length is the same recipient count this
+                step's own section head already shows above -- this line
+                only names how the first became the second (a submission can
+                carry a lead and co-presenters, so they legitimately
+                differ). */}
+            <p className="chq-comms-overflow">
+              {countOf(selection.selectedIds.size, 'submission')} resolved to {countOf(preview.length, 'recipient')}
+            </p>
             {preview.slice(0, RECIPIENT_PREVIEW_ROWS).map((r) => (
               <div key={r.contactId + r.submissionId} className="chq-comms-recipient-row">
                 <div>
