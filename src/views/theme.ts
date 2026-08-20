@@ -456,6 +456,10 @@ export const THEME_CSS = `
     background: var(--chq-brand-active);
     color: var(--chq-on-brand);
   }
+  /* tap-floor-exempt: modifier that composes onto .chq-btn, which already
+     carries the 44px floor -- a per-token text scan can't follow that
+     composition (phone-tap-target.scan.test.ts SSR_UNFLOORED_TOKENS_CEILING,
+     task w7-e). */
   .chq-btn-secondary {
     background: var(--chq-surface-sunk);
     color: var(--chq-ink-strong);
@@ -477,6 +481,10 @@ export const THEME_CSS = `
      equal-and-opposite negative margin gives the ring (and the hit box)
      breathing room while no glyph moves. Where two of these can sit side by
      side, the rule that owns their separation must widen it by 2x6px. */
+  /* tap-floor-exempt: modifier that composes onto .chq-btn, which already
+     carries the 44px floor -- a per-token text scan can't follow that
+     composition (phone-tap-target.scan.test.ts SSR_UNFLOORED_TOKENS_CEILING,
+     task w7-e). */
   .chq-btn-tertiary {
     background: transparent;
     color: var(--chq-brand);

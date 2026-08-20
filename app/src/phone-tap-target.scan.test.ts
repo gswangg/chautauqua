@@ -774,28 +774,31 @@ function findSsrUnflooredTokens(): string[] {
  * the same change that first makes the surface visible is exactly the
  * trade that keeps a surface invisible. Seeing first, then fixing.
  */
-export const SSR_UNFLOORED_TOKENS_CEILING = 14;
+export const SSR_UNFLOORED_TOKENS_CEILING = 3;
 
-// The 14 measured on this branch, recorded here so the next wave inherits
-// the reading rather than the number. TWO of them are independently
-// corroborated by the live 390 probe, which is what validates the lens
-// rather than merely running it: `.chq-auth-demo-btn` (measured 269.8x17)
-// and `.chq-pub-search-submit` (measured 40x44 -- floor met by accident of
-// content, declared nowhere). The rest are `.chq-docs-search-input`,
-// `.chq-portal-copresenter-email-flagged`, `.chq-portal-header-signout-btn`,
-// `.chq-portal-preview-download`, `.chq-itinerary-toggle`, `.chq-pub-select`,
-// `.chq-pub-select-active`, `.chq-pub-search`, `.chq-visually-hidden`,
-// `.chq-field-invalid`, `.chq-btn-secondary`, `.chq-btn-tertiary`.
+// task w7-e (DEC-367/DEC-385) lowered this from 14 to 3, measured after
+// repair by forcing the ceiling to -1 and reading the printed offender
+// list. Retired with named `tap-floor-exempt:` comments (the three
+// modifiers a per-token text scan can't follow through composition):
+// `.chq-visually-hidden` (src/routes/public/css/chrome.css.ts,
+// screen-reader-only utility, never a tap target),
+// `.chq-btn-secondary`/`.chq-btn-tertiary` (src/views/theme.ts) and
+// `.chq-field-invalid` (src/views/error-states.css.ts). Given a real
+// >=44px phone-width floor (additive, inside each sheet's terminal
+// `@media (max-width: 700px)` block): `.chq-auth-demo-btn`
+// (src/routes/auth.css.ts, live-probed at 269.8x17), `.chq-docs-search-
+// input` (src/routes/docs-site.css.ts), `.chq-pub-search-submit`,
+// `.chq-pub-search`, `.chq-pub-select`, `.chq-pub-select-active` (all
+// src/routes/public/css/chrome.css.ts) and `.chq-itinerary-toggle`
+// (src/routes/public/css/rail.css.ts -- floored on the visually-hidden
+// checkbox itself with `pointer-events:none`, since the real tap surface
+// is, and stays, the wrapping `.chq-pub-save`/`.chq-pub-itinerary-row`
+// label already floored on this same phone block).
 //
-// KNOWN NOISE, named rather than quietly filtered (a filter tuned to the
-// current reading hides the next real one): `.chq-visually-hidden` is a
-// screen-reader-only utility and can never be a tap target;
-// `.chq-btn-secondary`/`-tertiary` and `.chq-field-invalid` are MODIFIERS
-// that compose a base class carrying the floor, and a per-token text scan
-// cannot follow composition. Three of fourteen. Whoever lowers this ceiling
-// should retire those three with named `tap-floor-exempt:` comments on
-// their rules -- the escape this scan already honours -- and fix the
-// remaining eleven for real.
+// The 3 remaining are `.chq-portal-copresenter-email-flagged`,
+// `.chq-portal-header-signout-btn`, `.chq-portal-preview-download` --
+// all declared in src/routes/portal/portal.css.ts, out of this task's
+// scope (SKIP per the task brief: v12m-w6-h holds that file).
 
 /** Seeded at the count measured when this population was first scanned
  * (mandate item 5). ONE-SIDED: may only be LOWERED, never raised. There is

@@ -33,6 +33,10 @@ export const CHROME_CSS = `
      viewport entirely (never over or under a visible control) while
      leaving it in the a11y tree and focusable (unlike display:none/
      visibility:hidden, which drop it from both). */
+  /* tap-floor-exempt: screen-reader-only utility, off-screen by construction
+     (DEC-919), never a tap target -- phone-tap-target.scan.test.ts's
+     SSR_UNFLOORED_TOKENS_CEILING (task w7-e) retires this token by name
+     rather than flooring it. */
   .chq-visually-hidden {
     position: absolute;
     left: -9999px;
@@ -63,11 +67,6 @@ export const CHROME_CSS = `
     border-bottom: 1px solid var(--chq-rule);
     padding-bottom: 14px;
     margin-bottom: 14px;
-  }
-  @media (max-width: 700px) {
-    .chq-pub-filter-row {
-      flex-wrap: wrap;
-    }
   }
   .chq-pub-searchform {
     display: flex;
@@ -276,6 +275,37 @@ export const CHROME_CSS = `
   @media (prefers-reduced-motion: reduce) {
     button.chq-pub-search-submit[type=submit] {
       transition-duration: 0ms;
+    }
+  }
+
+  /* DEC-385/DEC-393 (task w7-e): the ONE terminal phone block for this
+     sheet -- relocated verbatim from its old, non-terminal position right
+     after .chq-pub-filter-row's desktop rule (docs/design/audit/
+     terminal-phone-block-v12.md), plus additive >=44px tap floors for the
+     filter-row's fixed-width controls, whose desktop sizing (40px tall)
+     sits under the floor. Single-direction (DEC-385): every declaration
+     here is additive on top of the desktop rule above, never a value
+     change to it. */
+  @media (max-width: 700px) {
+    .chq-pub-filter-row {
+      flex-wrap: wrap;
+    }
+    .chq-pub-search {
+      min-height: 44px;
+      padding: 0 14px;
+    }
+    button.chq-pub-search-submit[type=submit] {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+    }
+    .chq-pub-select {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 34px 0 10px;
     }
   }
 `;

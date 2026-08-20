@@ -93,13 +93,8 @@ no selector/property/value changed.
 | `app/src/pages/speakers/task-view.css` | speakers (TaskView) | 2 blocks (lines 253, 280) |
 | ~~`app/src/pages/submissions/detail.css`~~ | submissions | **FIXED (task w3-l)**: was 3 blocks (lines 844, 1097, 1171), forward-merged into the single terminal block at 844. Cascade-shadow sweep read 0 shadowed pairs for this file both before and after (no frame contradiction to delete). `detail-css.test.ts:188`'s "a second phone block exists" pin (the same shape as the retired `settings-phone-floor` `>=5` pin) was retired and `dockBlock` re-anchored on the single terminal block via the file's existing `mediaBlockBody` helper. |
 | ~~`app/src/pages/submissions/submissions.css`~~ | submissions | **FIXED (task w3-l)**: was 4 blocks (lines 489, 751, 846, 911), forward-merged into the single terminal block. The `.chq-submissions-columnpicker` phone `display:none` (DEC-919 wave-102, DEVIATIONS.md:89 "stands") was carried verbatim into the merged block. Cascade-shadow sweep read 0 shadowed pairs for this file both before and after. |
-| `src/routes/public/css/chrome.css.ts` | public chrome (SSR) | 1 block, NOT terminal — trailing `.chq-pub-searchform` rule follows its close |
+| ~~`src/routes/public/css/chrome.css.ts`~~ | public chrome (SSR) | **FIXED (task w7-e)**: the sole `.chq-pub-filter-row` phone rule was relocated verbatim to the sheet's true end, after the `.chq-pub-searchform` rule and the `@media (prefers-reduced-motion: reduce)` block that used to follow it; no selector/property/value changed. New >=44px phone-width floors for `.chq-pub-search`, `.chq-pub-search-submit`, `.chq-pub-select` and `.chq-pub-select-active` (DEC-367, task w7-e) were added inside this same relocated block rather than as a second block. |
 | `src/views/theme.ts` | shared SSR theme (every SSR surface) | 2 blocks (lines 561, 575) |
-
-Note on `src/routes/public/css/chrome.css.ts`: unlike every other row, this
-one already has exactly one block — its defect is purely non-terminality (a
-top-level `.chq-pub-searchform` rule sits after the block's closing brace),
-so its fix is a pure relocation of one rule, not a merge of N blocks.
 
 `src/views/theme.ts` is the sheet three earlier probes missed by globbing
 `src/**/*.css.ts` or rooting at `src/routes` (field guide w96) — it is

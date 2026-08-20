@@ -353,6 +353,16 @@ export const DOCS_SITE_CSS = `
       font-size: 13px;
       font-weight: 600;
     }
+    /* task w7-e (SSR_UNFLOORED_TOKENS_CEILING): the search field's text
+       input declares no height at all above (flex:1, sized by its
+       .chq-docs-search wrapper's padding) -- additive phone-only floor,
+       no desktop value touched. */
+    .chq-docs-search-input {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
   }
 `;
 
