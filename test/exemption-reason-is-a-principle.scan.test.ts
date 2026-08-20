@@ -26,6 +26,18 @@
 // strips line comments before matching and only looks at `reason:` (or
 // `reason =`) assignments' string-literal values.
 //
+// The predicate measures the AUTHOR'S OWN JUSTIFICATION PROSE for a
+// disabled check, not any text that happens to sit inside the reason
+// string. A reason may legitimately quote a fragment of source code as
+// evidence (e.g. a verbatim function body or literal it is describing);
+// that quotation is not the author's claim, and reading it as one would
+// make an honest classification illegal. So the schedule-vocabulary check
+// strips backtick-delimited code spans out of the reason string before
+// testing it, leaving only the surrounding prose to be judged. A lane
+// token is exempt from this carve-out: a branch name standing in for a
+// principle is still that defect even when written inside backticks, so
+// the branch-name check always reads the reason's raw, unstripped text.
+//
 // Two ancestors this rule closes: app/src/confirm-primary-object.scan.
 // test.ts's EXEMPT_DIRS comment cited "unmerged branch task-w66-i at wave
 // 68", and app/src/refusal-rendering-ledger.scan.test.ts's FormsPage.tsx row
@@ -99,8 +111,46 @@ const SCHEDULE_PATTERNS: { label: string; re: RegExp }[] = [
   { label: 'future work commitment (will build/land/fix)', re: /\bwill\s+(?:build|land|fix)\b/i },
 ];
 
+// DEC-967 (eleventh instrument-predicate lie this campaign): the schedule-
+// vocabulary half of this predicate reads the reason string's PROSE, and
+// prose can legitimately quote a verbatim fragment of the product's own
+// source as evidence for a COMPOSED ledger row (e.g. a fallback literal
+// like `'TBD'` inside a function body). A quotation is not a claim by the
+// author of the reason -- it is evidence about the code, and reading it as
+// the author's own deferral makes an honest classification illegal. This
+// strips backtick-delimited spans (both fenced ```…``` blocks and inline
+// `…` spans) before the SCHEDULE_PATTERNS check only; an unterminated
+// backtick strips to end-of-string rather than leaving the rest of the
+// value unguarded.
+//
+// The branch-token check is NOT stripped: a lane token hidden inside a
+// backtick span is still a lane pin standing in for a principle (DEC-099,
+// DEC-967 wave-103) -- quoting it in code-span dress does not make it
+// evidence about the code, so BRANCH_NAME_RE always reads the raw string.
+function stripCodeSpans(value: string): string {
+  let out = '';
+  let i = 0;
+  while (i < value.length) {
+    if (value.startsWith('```', i)) {
+      const end = value.indexOf('```', i + 3);
+      if (end === -1) return out;
+      i = end + 3;
+      continue;
+    }
+    if (value[i] === '`') {
+      const end = value.indexOf('`', i + 1);
+      if (end === -1) return out;
+      i = end + 1;
+      continue;
+    }
+    out += value[i];
+    i++;
+  }
+  return out;
+}
+
 function isScheduleShaped(value: string): boolean {
-  return BRANCH_NAME_RE.test(value) || SCHEDULE_PATTERNS.some((p) => p.re.test(value));
+  return BRANCH_NAME_RE.test(value) || SCHEDULE_PATTERNS.some((p) => p.re.test(stripCodeSpans(value)));
 }
 
 // DEC-099 (wave-5 amendment): the rule governs a reason attached to a
@@ -533,6 +583,37 @@ describe('DEC-099 (waves 76/4, widened wave 5): an exemption reason may never be
   it('[positive control] does not flag a principled reason with the word "wave" in a historical clause', () => {
     const reason = 'wave-55 ledger established; refusal-shapes test not yet written';
     expect(isScheduleShaped(reason)).toBe(false);
+  });
+
+  // DEC-967 (eleventh instrument-predicate lie): stripCodeSpans controls.
+  // (a) positive control -- bare prose TBD still trips.
+  it('[stripCodeSpans, positive] a reason whose bare prose says TBD still trips', () => {
+    expect(isScheduleShaped('ownership TBD, ledger row filed for the room pill')).toBe(true);
+  });
+
+  // (b) negative control -- the only TBD is inside a backtick span quoting
+  // source, so the reason itself makes no deferral claim.
+  it('[stripCodeSpans, negative] a reason whose only TBD sits inside a backtick code span does not trip', () => {
+    expect(
+      isScheduleShaped(
+        "COMPOSED: verbatim source quotation `function roomLabel(room) { return room ? room.name : 'TBD'; }`",
+      ),
+    ).toBe(false);
+  });
+
+  // (c) mixed control -- a backticked code quote plus bare schedule-shaped
+  // prose outside it still trips, on the prose alone.
+  it('[stripCodeSpans, mixed] a backticked code quote plus bare schedule-shaped prose still trips', () => {
+    expect(
+      isScheduleShaped("quoting `const x = 'TBD'` for evidence; the real fix is not yet reviewed"),
+    ).toBe(true);
+  });
+
+  // (d) a branch token hidden inside backticks still trips -- the raw-string
+  // half of the predicate is pinned against being 'simplified' to also read
+  // the stripped value.
+  it('[stripCodeSpans, branch pin] a branch token inside backticks still trips', () => {
+    expect(isScheduleShaped('owned by `v12m-w5-k`; ledger row filed')).toBe(true);
   });
 
   // Verdict-owed rows are ledger bookkeeping, not exemptions, and are
