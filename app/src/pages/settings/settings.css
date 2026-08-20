@@ -398,6 +398,27 @@
   margin: 8px 0;
 }
 
+/* w6-c/DEC-919 wave-130 amendment: the invite/reset reveal's eyebrow above
+   the one-time password (`Their password · shown once` / `New password ·
+   shown once`) draws `font-size:11px; font-weight:800; letter-spacing:0.1em;
+   text-transform:uppercase; color:#565A4B` on both desktop reveal modals.
+   Not a compose of an existing eyebrow: .chq-settings-row-label matches
+   this register exactly but only exists inside the phone terminal
+   max-width block below (DEC-385, invisible above 700px); the two
+   desktop-visible candidates are near misses, not identical --
+   .chq-settings-field-label-text is 700 weight, not 800, and
+   .chq-settings-people-header-row is 10px and coupled to the grid header.
+   Base rule (desktop-and-phone, both reveal-modal frames draw it), so it
+   lives here with the sheet's other top-level people-* rules, not in the
+   terminal phone block. */
+.chq-settings-people-password-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
 /* DEC-402: page-prefixed second classes so each table is addressable by
    this stylesheet without redefining the shared .chq-table rules above,
    which already cover both tables' desktop and phone-card treatment via
