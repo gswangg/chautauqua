@@ -294,7 +294,7 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // Thunderdome megabatch (wave 125): lowered 151 -> 144, the merge-train
 // re-measurement this two-sided ratchet's own failure text asks for, taken
 // on the fully integrated tree.
-export const LINE_KEYED_CITATION_CEILING = 144;
+export const LINE_KEYED_CITATION_CEILING = 130;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

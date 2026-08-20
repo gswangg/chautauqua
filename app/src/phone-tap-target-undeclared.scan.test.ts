@@ -105,7 +105,11 @@ const TSX_FILES = allTsxFiles(HERE);
 // `tap-floor-exempt:` comment regardless. That branch measured 15 -> 14
 // against the OLD blind predicate; the figure that governs is this file's
 // repaired-predicate measurement on the integrated tree.
-export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 3;
+// Thunderdome megabatch (wave 126, DEC-989 clause a): re-measured 3 -> 0 on
+// the integrated tree after w14-l/w14-m/w14-n landed together. This lens is
+// now drained; it may only ever be raised by a fresh offender appearing,
+// which the two-sided ratchet below turns red.
+export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 0;
 
 describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)', () => {
   it('derives a non-empty population over the real tree (vacuous-population tripwire)', () => {
@@ -117,10 +121,18 @@ describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)'
     // population isn't empty by construction; a SYNTHETIC fixture proves
     // that without naming any real offender that a future lane must keep
     // broken to stay green.
+    // Thunderdome megabatch (wave 125/126): the live-offender half of this
+    // tripwire (`expect(offenders.length).toBeGreaterThan(0)`) is REMOVED, not
+    // re-pointed. Waves 13/14 drained this lens to 0 across every sheet, and
+    // an assertion that the product must still contain at least one offender
+    // is precisely the DEC-967 sentinel anti-pattern this test's own comment
+    // above names -- it would make the lens's success illegal. Non-vacuity is
+    // proved by the file-population asserts plus the synthetic fixture below,
+    // which exercises the whole tokens -> rule -> declaredHeightPx pipeline
+    // without taking a product token hostage.
     expect(CSS_FILES.length).toBeGreaterThan(5);
     expect(TSX_FILES.length).toBeGreaterThan(5);
-    const offenders = findUndeclaredHeightOffenders(CSS_FILES, TSX_FILES, REPO_ROOT);
-    expect(offenders.length).toBeGreaterThan(0);
+    expect(findUndeclaredHeightOffenders(CSS_FILES, TSX_FILES, REPO_ROOT)).toBeInstanceOf(Array);
 
     const syntheticTsx = `export const X = () => <button className="chq-x-fake-tripwire">Show all</button>;`;
     const syntheticCss = `.chq-x-fake-tripwire { border: none; background: none; padding: 0; font-size: 13px; }`;
