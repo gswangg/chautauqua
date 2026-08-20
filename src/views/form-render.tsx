@@ -340,7 +340,7 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
       // required inside a display:none wrap, where the browser aborts
       // submission on a control it cannot focus or annotate.
       wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(function(input){
-        // DEC-986 (wave 138/139) "one owner for `required`": a control the
+        // DEC-986 (wave 138/139), "one owner for 'required'": a control the
         // wizard (CfpStepsScript) has hidden inside a display:none section
         // must not be re-armed here -- two scripts arming one 'required'
         // flag must agree on a single owner. While the control is hidden
@@ -357,7 +357,7 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
           input.required = want;
         } else {
           input.required = false;
-          if (input.hasAttribute('data-chq-cfp-required-orig')) {
+          if (typeof input.hasAttribute === 'function' && input.hasAttribute('data-chq-cfp-required-orig')) {
             input.setAttribute('data-chq-cfp-required-orig', want ? '1' : '0');
           }
         }

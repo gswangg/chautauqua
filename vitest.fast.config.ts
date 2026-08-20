@@ -63,6 +63,15 @@ export default defineConfig({
       // the derived predicate -- same shape as gate4-residue-closure above.
       "test/cfp-phone-steps.test.ts",
       "test/form-render-rules.test.ts",
+      // Thunderdome megabatch (wave-138/139 backlog): two more DEC-986
+      // files that grew a REAL-jsdom half in this batch -- w14-ff's
+      // desktop-guard receipt and w14-gg's single-owner receipt both mount
+      // the wizard/rule-engine in a live DOM (getComputedStyle across a
+      // hidden ancestor, constraint validation), which the hand-rolled
+      // fake `document` cannot express. Importing jsdom makes them SLOW by
+      // the derived predicate -- same shape as the two entries above.
+      "test/cfp-steps-script-desktop-guard.test.ts",
+      "test/form-render-required-single-owner.test.ts",
     ],
   },
 });
