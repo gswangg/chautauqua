@@ -115,7 +115,7 @@ export function ItineraryScript(props: { eventSlug: string }) {
     });
     if (subtitleEl) {
       var overlapWord = overlap.pairCount === 1 ? 'overlap' : 'overlaps';
-      subtitleEl.textContent = saved.length + ' saved · ' + overlap.pairCount + ' ' + overlapWord;
+      subtitleEl.textContent = saved.length + ' saved · ' + overlap.pairCount + ' ' + overlapWord + ' · no account needed';
     }
     if (scheduleEmptyEl) { scheduleEmptyEl.hidden = saved.length !== 0; }
     if (overlapsSectionEl) { overlapsSectionEl.hidden = overlap.pairCount === 0; }

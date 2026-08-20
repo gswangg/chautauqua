@@ -104,7 +104,7 @@ function CfpRailSection(props: { event: PublicEvent; cfpWindow: { openDate: numb
       <div class="chq-pub-rail-body">
         <span class="chq-pub-rail-caption">
           {cfpWindow.closeDate
-            ? `Closes ${formatEventDateTime(dayLabelEndInstant(cfpWindow.closeDate, event.timezone), event.timezone)}`
+            ? `Closes ${formatEventDateTime(dayLabelEndInstant(cfpWindow.closeDate, event.timezone), event.timezone)} · no account needed`
             : "Open now · no close date set"}
         </span>
         <a class="chq-pub-rail-cfp-link" href={`/submit/${event.slug}`}>

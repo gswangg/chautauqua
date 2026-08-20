@@ -132,7 +132,7 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
     });
     if (subtitleEl) {
       var overlapWord = overlap.pairCount === 1 ? 'overlap' : 'overlaps';
-      subtitleEl.textContent = saved.length + ' saved · ' + overlap.pairCount + ' ' + overlapWord;
+      subtitleEl.textContent = saved.length + ' saved · ' + overlap.pairCount + ' ' + overlapWord + ' · no account needed';
     }
     if (scheduleEmptyEl) { scheduleEmptyEl.hidden = saved.length !== 0; }
     if (overlapsSectionEl) { overlapsSectionEl.hidden = overlap.pairCount === 0; }
@@ -314,7 +314,7 @@ exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterf
     });
     if (subtitleEl) {
       var overlapWord = overlap.pairCount === 1 ? 'overlap' : 'overlaps';
-      subtitleEl.textContent = saved.length + ' saved · ' + overlap.pairCount + ' ' + overlapWord;
+      subtitleEl.textContent = saved.length + ' saved · ' + overlap.pairCount + ' ' + overlapWord + ' · no account needed';
     }
     if (scheduleEmptyEl) { scheduleEmptyEl.hidden = saved.length !== 0; }
     if (overlapsSectionEl) { overlapsSectionEl.hidden = overlap.pairCount === 0; }

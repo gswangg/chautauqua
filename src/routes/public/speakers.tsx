@@ -8,7 +8,7 @@ import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 import { speakerInitials } from "./cards";
 import { PublicFilterSelectForm, PublicSearchBox } from "./filters";
 import { PublicEmptyState } from "./empty-state";
-import { countOf } from "../../domain/count-copy";
+import { countOf, plural, spellCount } from "../../domain/count-copy";
 import { embedKnobQuery } from "../../lib/embed-knobs";
 import { DEC_489 } from "../../decisions";
 
@@ -231,6 +231,15 @@ export function SpeakersContent(props: {
     <>
       <div class="chq-pub-title-row">
         <h1 class="chq-pub-surface-title">Speakers</h1>
+        {/* w18-a (DEC-976): the frame's roster-count clause
+            (Chautauqua Public and Portal.dc.html:699/:749, "23 across
+            three tracks") composes the live speaker total with the live
+            track count, never a hard-coded sample. */}
+        {total > 0 && (tracks?.length ?? 0) > 0 ? (
+          <span class="chq-pub-rail-caption">
+            {total} across {spellCount(tracks!.length)} {plural(tracks!.length, "track")}
+          </span>
+        ) : null}
         {!isFresh ? (
           <>
             <PublicSearchBox
@@ -315,6 +324,15 @@ export function GalleryContent(props: {
     <>
       <div class="chq-pub-title-row">
         <h1 class="chq-pub-surface-title">Speakers</h1>
+        {/* w18-a (DEC-976): the frame's roster-count clause
+            (Chautauqua Public and Portal.dc.html:699/:749, "23 across
+            three tracks") composes the live speaker total with the live
+            track count, never a hard-coded sample. */}
+        {total > 0 && (tracks?.length ?? 0) > 0 ? (
+          <span class="chq-pub-rail-caption">
+            {total} across {spellCount(tracks!.length)} {plural(tracks!.length, "track")}
+          </span>
+        ) : null}
         {!isFresh ? (
           <>
             <PublicSearchBox
