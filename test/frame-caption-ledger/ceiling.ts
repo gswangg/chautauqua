@@ -198,5 +198,25 @@
 // differently-worded step indicator; Speakers:235/499/521 word-divergent
 // or data-model-absent residues -- each flagged, none excluded). Forced to
 // -1 and read back: 101 unmatched.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=131
+// v12m-w18-c (wave-143, DEC-976): Review + Submissions + Content caption
+// residue, the sibling lane's own three fileNames only. Forced to -1 on
+// this branch's base (130) and read back: 130. Disposed 28 of this lane's
+// 30 owned rows (16 Review, 9 Submissions, 5 Content) -- 21 COMPOSED
+// (composing-expression citations resolving verbatim in the non-test
+// source corpus, several loose/PARTIAL where the frame's own words are a
+// narrative gloss over a real live-count vocabulary, e.g. ProgressPanel.tsx's
+// sent/skipped reminder result and PlanEditor.tsx's criteria-cap notice) and
+// 7 FIXTURE (invented sample abstract/file-version/rationale text over a
+// real, differently-worded render site). Chautauqua Review.dc.html:598
+// ("AI Engineering · closes 30 Aug · 2 reviews per talk", the phone Plan
+// editor header subtitle) stays UNMATCHED, not excluded: no composing site
+// anywhere in app/src/pages/review/PlanEditor.tsx joins a track name, an
+// absolute close date and the reviews-per-talk count into one subtitle --
+// Opens/Closes/Reviews-per-talk are three separate editable form fields,
+// not a summary line -- and building one is a real feature addition out of
+// a caption-residue task's narrow scope, so it is left in the residue for a
+// future lane per this file's own "could not be verified" precedent
+// (wave-135/w15-ee). Re-measured after all other dispositions: 101.
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=101
 export const FRAME_CAPTION_UNMATCHED_CEILING = 101;
