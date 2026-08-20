@@ -326,7 +326,15 @@ export function findOffenders(containers: ContainerRecord[], sources: Map<string
 // left stale above the measured truth. Seeded at THIS branch's own
 // measurement -- 23 containers derived, 22 offenders, exactly one
 // (`.chq-contacts-rail-duplicate-actions`, gap 24 >= 2*10) conforms.
-export const CANCELLED_PADDING_GAP_CEILING = 17;
+// DEC-989 (wave-123 amendment): the lane that drains this ratchet lowers
+// it to its own measured value -- lowered 17 -> 13 by task v12m-w12-n,
+// COMMS cluster tier-2 sweep. All 4 comms.css members resolved: 3 gap
+// values raised inside the phone media block (chq-comms-editor-actions
+// 9->29, chq-comms-blocked-list li 8->28, chq-comms-recent-sends
+// .chq-section-head NONE->40, all frame-own-gap + 2N per DEC-937), and
+// chq-comms-send-detail's cancelled padding removed (display:contents,
+// single-target, no adjacency to protect). Re-measured 2026-08-20.
+export const CANCELLED_PADDING_GAP_CEILING = 13;
 
 describe('cancelled-padding companion-gap lens (DEC-393 wave-121 amendment, task w10-l)', () => {
   const sourceList = loadSources();
