@@ -73,6 +73,16 @@ function expectFloorDeclarations(body: string, label: string) {
   expect(margin, `${label}: margin-inline equal and opposite to padding-inline`).toBe(-padding);
 }
 
+// w12-p correction: ".chq-speaker-detail-actions a" was removed from this
+// list. It used to live in the shared cancelled-padding comma-group this
+// loop checks (equal-and-opposite positive padding-inline / negative
+// margin-inline), but DEC-937's painted-face treatment (task w10-m,
+// completed by w12-p removing the now-stale group-membership) gives it its
+// OWN rule instead, with NO cancelled margin -- checking it against
+// `expectFloorDeclarations`'s equal-and-opposite assertion here would
+// assert the wrong shape. It is already covered correctly by the
+// "v12m-w10-m: painted anchors get the floor without cancelled padding"
+// describe block below.
 const SPEAKERS_CSS_SELECTORS = [
   ".chq-speakers-name-link",
   ".chq-speaker-detail-back",
@@ -81,7 +91,6 @@ const SPEAKERS_CSS_SELECTORS = [
   ".chq-speakers-import-link",
   ".chq-speakers-head-actions a",
   ".chq-speakers-pager-actions a",
-  ".chq-speaker-detail-actions a",
   ".chq-speaker-detail-logistics-actions a",
   ".chq-speakers-write-failure-actions a",
 ];

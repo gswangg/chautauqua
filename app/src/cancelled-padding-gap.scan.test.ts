@@ -295,7 +295,14 @@ export function effectivePhoneGap(css: string, container: string): number | unde
  * its `componentPath` (checked below) and its `containerClass` must still be a member of the
  * derived population (checked below) -- a stale entry is deleted, never left standing. Empty
  * today: the tree's one conforming container passes on the numbers alone. */
-export const SINGLE_TARGET_OK: Array<[containerClass: string, componentPath: string, markupLiteral: string, reason: string]> = [];
+export const SINGLE_TARGET_OK: Array<[containerClass: string, componentPath: string, markupLiteral: string, reason: string]> = [
+  [
+    '.chq-settings-tokens-table tbody td:last-child',
+    'app/src/pages/settings/ApiTokensPanel.tsx',
+    '<button type="button" className="chq-link-button" onClick={() => setPendingDelete(t)}>',
+    'the last <td> in each row renders exactly one .chq-link-button (Revoke) -- no sibling cancelled-padding target can ever share the cell, so a `gap` on it (which would do nothing on a non-flex <td> anyway) is not the fix this container needs',
+  ],
+];
 
 export interface Offender {
   file: string;
@@ -334,7 +341,30 @@ export function findOffenders(containers: ContainerRecord[], sources: Map<string
 // .chq-section-head NONE->40, all frame-own-gap + 2N per DEC-937), and
 // chq-comms-send-detail's cancelled padding removed (display:contents,
 // single-target, no adjacency to protect). Re-measured 2026-08-20.
-export const CANCELLED_PADDING_GAP_CEILING = 13;
+//
+//
+// w12-p (2026-08-20): re-measured at 10, down from 17. speakers.css's
+// `.chq-speakers-write-failure-actions`/`.chq-speakers-head-actions`/
+// `.chq-speakers-pager-actions`/`.chq-speaker-detail-logistics-actions` and
+// task-view.css's `.chq-taskview-actions` were widened to the frame's drawn
+// gap plus 2*10 (9->29, 8->28) -- each holds an unpainted dead-`a`-selector
+// cancelled-padding sibling (cancelled-padding-face.scan.test.ts's
+// DEAD_ELEMENT_SELECTORS), so the idiom stays legal and only the
+// separation needed restoring. settings.css's
+// `.chq-settings-tokens-table tbody td:last-child` is cleared via the
+// SINGLE_TARGET_OK escape hatch above (its `<td>` renders exactly one
+// .chq-link-button, so no sibling can ever overlap and a `gap` on a
+// non-flex cell would do nothing anyway). DEC-989: the lane that drains an
+// offender set lowers the ceiling to its own measured value in the same
+// commit; a merge-train re-measures the integrated tree afterward (the
+// "merge-train act" framing above is superseded this wave, field guide
+// wave-123).
+//
+// Thunderdome megabatch (wave 123): the lane lowerings above are independent
+// drains of disjoint offender sets merged in one pass; the constant below is
+// the re-measured truth of the integrated tree, not any single branch's
+// figure. This ratchet may only fall.
+export const CANCELLED_PADDING_GAP_CEILING = 6;
 
 describe('cancelled-padding companion-gap lens (DEC-393 wave-121 amendment, task w10-l)', () => {
   const sourceList = loadSources();

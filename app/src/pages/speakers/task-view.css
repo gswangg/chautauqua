@@ -317,12 +317,27 @@
      anchor (.chq-btn), no cancelled padding: .chq-btn is a painted face
      (chq-btn-secondary, background:var(--chq-surface-sunk); border:1px
      solid var(--chq-border-strong)) and its own 16px inline padding is
-     already correct, nothing to restore or cancel. .chq-taskview-actions'
-     9px desktop gap (:56) needs no companion widening -- it holds no
-     cancelled-padding sibling before or after this fix. */
+     already correct, nothing to restore or cancel.
+
+     w12-p correction: the claim below this comment ("needs no companion
+     widening -- it holds no cancelled-padding sibling") was stale --
+     .chq-taskview-actions a (:298 above, in the .chq-taskview-back/-name
+     group) is still a live population member of
+     cancelled-padding-gap.scan.test.ts (selector-text-derived, not
+     markup-liveness-derived: a dead `a` branch still names this container
+     as the rule owning its separation). Resolved face is UNPAINTED
+     (cancelled-padding-face.scan.test.ts's DEAD_ELEMENT_SELECTORS entry:
+     TaskView.tsx renders only `<button>` here), so the idiom stays legal
+     and the companion gap is widened instead: desktop gap 9px (:56) plus
+     2*10=20 restores the drawn separation once a real anchor's expanded
+     hit box is ever added. */
   .chq-taskview-actions .chq-btn {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
+  }
+
+  .chq-taskview-actions {
+    gap: 29px;
   }
 }

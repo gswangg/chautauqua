@@ -447,7 +447,20 @@ const OFFENDERS = FACE_ROWS.filter((r) => r.painted);
 // expanded to per-selector granularity (agenda's .chq-btn and overview's
 // .chq-overview-btn are each shared across 3 container selectors in the
 // SAME rule).
-export const PAINTED_CANCELLED_PADDING_CEILING = 8;
+//
+// w12-p (2026-08-20): re-measured at 7. speakers.css's
+// `.chq-speaker-detail-actions a` offender is fixed -- the wave-121 split
+// had added a dedicated painted-face override rule (min-height:44px,
+// padding-inline:16px, margin-inline:0) but left the selector ALSO listed
+// in the older cancelled-padding selector group, so this population scan
+// (which walks every rule, not the cascade winner) still counted that
+// group rule's N=10 pairing as a live offender. Removed the selector from
+// that group; only the override rule targets it now. DEC-989: this
+// ceiling is lowered in the same commit as the fix (the lane that drains
+// an offender lowers to its own measured value; a merge-train re-measures
+// the integrated tree -- wave-123 field-guide note supersedes this file's
+// earlier "merge-train act" framing for the lane that did the draining).
+export const PAINTED_CANCELLED_PADDING_CEILING = 7;
 
 describe('cancelled-padding face lens (DEC-937 wave-121 amendment)', () => {
   it('found more than one CSS source to scan (vacuous-population tripwire, file side)', () => {

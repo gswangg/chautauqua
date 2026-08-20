@@ -106,7 +106,7 @@
   `<button>` (14x-wave-120 field guide: "36 such tokens across 14 sheets")
   reads 0 in every ratchet. Violates the mandate's own 44px-floor rule
   (DEC-393), applied to a directly analogous link-button elsewhere in the
-  same campaign at app/src/pages/settings/settings.css:2073
+  same campaign at app/src/pages/settings/settings.css
   `.chq-settings-edit-row-actions .chq-link-button {` -- the sibling
   pattern this control never received.
 - Zero/negative control gaps, the two clauses not reproducible from a

@@ -1887,6 +1887,28 @@
     padding: 0 14px;
   }
 
+  /* task w12-p (DEC-576 this wave): YourDataPanel.tsx renders one of the
+     four export pills as `<a className="chq-pill" href={item.href}>` --
+     the row-action-anchor tap-floor lens
+     (phone-tap-target-scan/anchor-floor.ts) treats every bare-anchor
+     `chq-pill` mention across this file as ONE population member and
+     unions their bodies, so styles.css's shared phone rule (min-height,
+     flex+center, no padding of its own) plus the two rules above (border/
+     background/padding, no flex+center of their own) still leave the
+     union without min-height+flex-center+padding all coming from rules
+     THIS file itself declares reaching the token. DESIGN-RULINGS.md's "The
+     44px floor, and how it gets evaded" requires all three together, not
+     assembled by inheritance across files -- so this file gets its own
+     element-qualified rule declaring all three at once, matching the
+     `.chq-pill` family's own 0 14px horizontal padding (:1887/:1982
+     above). */
+  a.chq-pill {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 14px;
+  }
+
   /* Your data read-list rows: 14px, hairline-divided, 18px rhythm
      (docs/design/Chautauqua Settings.dc.html:404
      `padding:14px 0; border-bottom:1px solid #E1DDCE`). People and
