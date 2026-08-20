@@ -221,7 +221,7 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
         </FormRow>
         </div>
 
-        <FormRow label="Label" htmlFor="field-label">
+        <FormRow label="Label" htmlFor="field-label" help="What the submitter reads">
           <input
             id="field-label"
             className="chq-input"
@@ -241,7 +241,7 @@ export function FieldModal({ field, allFields, answeredCount, onCancel, onSubmit
             maxLength={MAX_TEXT_LENGTH}
             value={helpText}
             onChange={(e) => setHelpText(e.target.value)}
-            placeholder="Shown beneath the field, e.g. 300 words max"
+            placeholder="Beginner, intermediate or advanced"
           />
         </FormRow>
 

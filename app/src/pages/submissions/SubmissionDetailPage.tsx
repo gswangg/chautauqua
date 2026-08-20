@@ -1769,7 +1769,7 @@ export function SubmissionDetailPage() {
                     type="search"
                     className="chq-input"
                     aria-label="Search contacts"
-                    placeholder="Search contacts by name or email..."
+                    placeholder="Add a co-presenter by name or email…"
                     value={coPresenterQuery}
                     onChange={(e) => setCoPresenterQuery(e.target.value)}
                     onKeyDown={(e) => {
