@@ -1214,6 +1214,7 @@
      docs/design/Chautauqua Submissions.dc.html:358
      `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center`
      (‹ Triage) -- one anchor, the short label swaps in for the long one. */
+  /* phone-hidden: desktop twin of a phone-only sibling (DEC-919 wave-101 shape 1) -- the SAME back link's phone label is .chq-detail-back-short, rendered by app/src/pages/submissions/SubmissionDetailPage.tsx:1054 and shown by app/src/pages/submissions/detail.css:1222, pinned at app/src/pages/submissions/detail-head-390.test.ts:52-55. */
   .chq-detail-back-full {
     display: none;
   }

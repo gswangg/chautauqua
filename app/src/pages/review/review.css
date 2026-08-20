@@ -2383,10 +2383,26 @@
     padding: 14px 0;
   }
 
-  /* No drag handle on a criterion row at 390 (frame :601-658 draws none;
-     an option row's own handle, further down, is untouched). */
+  /* DEC-745 wave-116 amendment: the frame draws no handle here (:601-658),
+     but PlanEditor.tsx's handle is a real keyboard-operable <button>
+     (ArrowUp/ArrowDown call the same moveCriterion path the pointer-drag
+     branch does, app/src/pages/review/PlanEditor.tsx:1808-1822) -- reorder
+     is a capability that genuinely works at 390, so hiding it created a
+     second, DIFFERENT phone verdict for the one .chq-forms-field-drag
+     class the form builder already floors visibly (DEC-745: one control,
+     one verdict). Given the same 44px-floor treatment as
+     app/src/pages/forms/forms.css's phone rule for the identical class
+     (centred flex, non-zero padding, not bare min-height) rather than a
+     bespoke shape, per DEC-393. An option row's own handle, further down,
+     was already visible and unaffected by this change. */
   .chq-review-criterion-row > .chq-forms-field-drag {
-    display: none;
+    flex: 0 0 44px;
+    min-height: 44px;
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
   }
 
   .chq-review-criterion-row > input.chq-input {
