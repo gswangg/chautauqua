@@ -1050,5 +1050,36 @@
     flex-shrink: 0;
     padding: 0 13px;
   }
+
+  /* task-w14-n (DEC-393/DEC-989 nine-token sweep, undeclared-height lens):
+     .chq-submissions-clone (:357) and .chq-submissions-viewtab (:429) --
+     no declared height at any width, appended here inside this file's one
+     terminal @media (max-width: 700px) block, never above a cited line. */
+
+  /* .chq-submissions-clone (:357): a real <button> in
+     SubmissionsTable.tsx:561-568's per-row clone cell, live-measured
+     32x14 (font-size:12px, padding:0, no declared height) -- grep
+     confirms no phone override anywhere else in this file. */
+  .chq-submissions-clone {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* .chq-submissions-viewtab (:429): the saved-view tab button
+     (ViewTabs.tsx:288/299/320) -- padding:7px 13px alone (~30px tall at
+     13px/1.2 line-height) never reaches the floor. .chq-submissions-
+     viewtabs-save (:458) shares the SAME element every time it appears
+     (ViewTabs.tsx:320 className="chq-submissions-viewtab
+     chq-submissions-viewtabs-save"), so flooring this base class also
+     composes the save tab -- no separate rule needed for it. */
+  .chq-submissions-viewtab {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 13px;
+  }
 }
 

@@ -76,18 +76,36 @@ const TSX_FILES = allTsxFiles(HERE);
 // after 15 lanes landed in one pass -- concurrent lanes drained the same
 // population, so the combined truth is lower than any single branch saw.
 // 23 -> 15. Lowering is a merge-train act (DEC-989).
-export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 15;
+// task-w14-n (DEC-989 clause a): re-measured after flooring/exempting the
+// review + submissions cluster's nine sub-floor tokens (.chq-forms-field-
+// drag, .chq-review-choice-input, .chq-review-editor-title-input,
+// .chq-review-queue-footer-showall, .chq-review-queue-row-undo,
+// .chq-review-sort-button, .chq-submissions-clone, .chq-submissions-
+// viewtab, .chq-submissions-viewtabs-save). 15 -> 10; the five that left
+// this population were review.css's/submissions.css's own
+// (.chq-review-choice-input, .chq-review-queue-footer-showall,
+// .chq-review-sort-button, .chq-submissions-clone, .chq-submissions-
+// viewtabs-save). Lowering is a merge-train act (DEC-989 wave-123/125);
+// this lane is that act for its own drained population, recorded as
+// `RATCHET: UNDECLARED_HEIGHT_OFFENDERS_CEILING=10` in the commit message.
+export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 10;
 
 describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)', () => {
-  it('derives a non-empty population and includes a known-live offender (vacuous-population tripwire)', () => {
+  // task-w14-n (DEC-967 wave-124): this tripwire used to pin
+  // .chq-review-queue-footer-showall as a PERMANENT offender, which made
+  // flooring that exact token (done in this same commit, see review.css)
+  // turn the lens red -- a lens whose non-vacuity proof is the one thing
+  // it exists to catch can never qualify as fixed. Re-anchored on
+  // population size (still non-vacuous: the scan has 10 other live
+  // offenders across other pages) plus the synthetic positive control
+  // below, which exercises the exact same code path
+  // (findUndeclaredHeightOffenders) without pinning a real offender to
+  // permanent-offender status.
+  it('derives a non-empty population (vacuous-population tripwire)', () => {
     expect(CSS_FILES.length).toBeGreaterThan(5);
     expect(TSX_FILES.length).toBeGreaterThan(5);
     const offenders = findUndeclaredHeightOffenders(CSS_FILES, TSX_FILES, REPO_ROOT);
     expect(offenders.length).toBeGreaterThan(0);
-    expect(
-      offenders.some((o) => o.includes('chq-review-queue-footer-showall')),
-      `expected .chq-review-queue-footer-showall among the offenders:\n${offenders.join('\n')}`,
-    ).toBe(true);
   }, 20000);
 
   it('flags a synthetic control rule declaring neither height nor min-height, with no phone floor (positive control)', () => {

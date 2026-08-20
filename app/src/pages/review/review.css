@@ -318,6 +318,11 @@
   color: var(--chq-muted);
 }
 
+/* tap-floor-exempt: a real <button> (ResultsTable.tsx:68) but its <thead>
+   parent is display:none at 390 (review.css's terminal @media (max-width:
+   700px) block, .chq-review-results-table thead { display: none }) -- the
+   entire header row, sort control included, is off-screen at phone width,
+   not merely de-emphasised (DEC-919). */
 .chq-review-sort-button {
   background: none;
   border: none;
@@ -1722,6 +1727,12 @@
   cursor: pointer;
 }
 
+/* tap-floor-exempt: the native <input type="radio"> sits inside
+   Scorecard.tsx:826's <label htmlFor=...> className="chq-review-choice-
+   option">, which already carries the full 44px triple (:1714-1723,
+   min-height:44px, display:flex, align-items:center, padding:0 4px) at
+   every width -- the label IS the tap target the radio rides inside, so
+   the bare input needs no floor of its own. */
 .chq-review-choice-input {
   cursor: pointer;
   flex: none;
@@ -2849,5 +2860,82 @@
     align-items: center;
     min-height: 44px;
     padding: 0 14px;
+  }
+
+  /* task-w14-n (DEC-393/DEC-989 nine-token sweep, undeclared-height lens):
+     nine review/submissions tokens with no declared height at any width.
+     Each gets EITHER the full min-height:44px + centred flex + non-zero
+     horizontal padding triple, OR a named tap-floor-exempt comment whose
+     reason is a principle with a re-derivable receipt (DEC-991). Appended
+     here, inside this file's one terminal @media (max-width: 700px)
+     block, never above a cited line. */
+
+  /* .chq-review-editor-title-input (:1589): the plan-name rename <input>
+     on /admin/review/plans/* (PlanEditor.tsx:1325-1333) -- live-measured
+     ~36px (font-size 27px, line-height 1.1, padding 2px 6px, no declared
+     height). No wrapping label supplies a floor the way the radio rows
+     below do, so it takes the floor directly. width:100% is already
+     desktop-declared; padding is widened here (the desktop 2px/6px value
+     stays too small to satisfy DEC-393's non-zero-horizontal-padding
+     clause on its own, even though it happens to already clear the
+     min-height once this rule's own min-height lands) so the box, not
+     the caret, meets the floor. */
+  .chq-review-editor-title-input {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+  }
+
+  /* .chq-review-queue-footer-showall (:655): a real <button> in
+     ReviewerQueue.tsx:402-404 and PlanEditor.tsx:2317-2319, live-measured
+     52x30 with border:none/background:none/padding:0 and no height
+     declared at any width (the undeclared-height lens's own proof case,
+     DEC-989). Floored directly; it sits alone in its footer row so
+     widening it costs no neighbour any space. */
+  .chq-review-queue-footer-showall {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+  }
+
+  /* .chq-review-queue-row-undo (:1853): a real <button> beneath the row
+     title (ReviewerQueue.tsx:361-372), standalone tertiary text control
+     with no wrapping label to inherit a floor from. */
+  .chq-review-queue-row-undo {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
+  /* .chq-review-choice-input (:1725) and .chq-review-sort-button (:321)
+     take named tap-floor-exempt comments directly above their own
+     top-level rules (not here) -- the scan's exemption grammar reads the
+     comment immediately above the SELECTOR it exempts, not a comment
+     sitting inside an unrelated block. See those two rules' own comments
+     above their declarations. */
+
+  /* .chq-forms-field-drag (:984): DEC-745's wave-116 amendment already
+     rules this class is a real keyboard-operable reorder button in this
+     file (PlanEditor.tsx:1808-1822 ArrowUp/ArrowDown), not decorative
+     chrome, and floors the .chq-review-criterion-row compound context
+     (:2457-2465) rather than exempting it -- "one control, one verdict".
+     PlanEditor.tsx:1946-1949 renders the SAME class as an option row's
+     drag/keyboard-reorder button inside .chq-review-criterion-option-row
+     (no compound override reaches it), which would otherwise be a second,
+     contradictory verdict for the identical class. Restating the base
+     selector's floor here (identical shape to forms.css's phone rule for
+     the same class) makes every context consistent instead of carving
+     out an exemption DEC-745 already rejected for this class. */
+  .chq-forms-field-drag {
+    min-height: 44px;
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
   }
 }
