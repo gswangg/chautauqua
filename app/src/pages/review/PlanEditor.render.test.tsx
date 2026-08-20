@@ -1035,6 +1035,10 @@ describe('PlanEditor render smoke', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Create the plan' })).toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    // Frame: docs/design/Chautauqua Review.dc.html:726 --
+    // `Nothing is sent to reviewers until you open it` -- the New-plan
+    // header's subhead, read off the rendered DOM below (never the design
+    // file itself).
     expect(screen.getByText('Nothing is sent to reviewers until you open it.')).toBeInTheDocument();
     expect(screen.queryByText('Name is required.')).not.toBeInTheDocument();
 
