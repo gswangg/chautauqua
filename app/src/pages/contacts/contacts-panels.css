@@ -1816,7 +1816,8 @@
      rows" / "Cancel" on the match-columns step, per ImportWizard.tsx's
      `actions` expression), stacking a second dock beneath the first. Use
      the existing `[data-chq-phone-dock]` attribute contract (already used
-     by styles.css:2262's `.chq-main:has([data-chq-phone-dock])`) to hide
+     by app/src/styles.css's `.chq-main:has([data-chq-phone-dock]) ~
+     .chq-tabbar` rule) to hide
      the shared footer whenever the page-owned dock is present, rather than
      add a TSX prop or a new class.
 
@@ -1845,8 +1846,8 @@
      does NOT compose the shell's `.chq-phone-dock` class (styles.css:393
      sets it `display:none` at top level) -- MergePage.tsx instead sets
      `data-chq-phone-dock` directly on its .chq-page root for the
-     styles.css:2302 `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`
-     contract. */
+     app/src/styles.css `.chq-main:has([data-chq-phone-dock]) ~
+     .chq-tabbar` contract. */
   .chq-contacts-merge-footer {
     position: sticky;
     bottom: 0;

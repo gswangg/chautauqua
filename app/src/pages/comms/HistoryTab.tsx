@@ -170,8 +170,8 @@ export function HistoryTab({
           <h1 className="chq-page-title">History</h1>
           <p className="chq-comms-head-subtitle">{countLine}</p>
         </div>
-        {/* Plain cookie-authed anchor, same idiom as
-            app/src/pages/settings/ExportsPanel.tsx:87 -- no fetch, no blob. */}
+        {/* Plain cookie-authed anchor, same idiom as ExportsPanel's
+            "Download CSV" links (app/src/pages/settings/ExportsPanel.tsx) -- no fetch, no blob. */}
         {/* Frame 07-comms--08: Export CSV + a filled Compose button,
             right-flushed in the page header. The frame draws ONE page
             title here; Comms.tsx (app/src/pages/Comms.tsx, out of this

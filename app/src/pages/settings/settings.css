@@ -2510,8 +2510,9 @@
   }
 
   /* Tracks & rooms colour-cycle swatch (probe: 22px, base rule
-     app/src/styles.css:1776 `width:22px; height:22px` is the deliberate
-     desktop density -- its own tap-floor-exempt note there is stale for
+     `.chq-color-swatch { width: 22px; height: 22px; ... }` in
+     app/src/styles.css is the deliberate desktop density -- its own
+     tap-floor-exempt note there is stale for
      THIS usage: both call sites (TracksRoomsPanel.tsx:230,
      TrackEditRow.tsx:62) are a single cycling button per row, never a
      picker grid of adjacent swatches, so growing it here reflows nothing.

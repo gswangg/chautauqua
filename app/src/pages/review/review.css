@@ -2466,8 +2466,9 @@
   }
 
   /* --- (1) Criteria rows: stacked cards, not the desktop grid ---------- */
-  /* Overrides review.css:1062's `grid-template-columns: 1fr` collapse
-     (same selector, later in the cascade wins) -- flex-wrap lets the
+  /* Overrides this file's earlier phone-narrow `.chq-review-criterion-row
+     { grid-template-columns: 1fr; }` collapse (same selector, later in
+     the cascade wins) -- flex-wrap lets the
      label/guidance/type/options inputs each force their own line
      (flex-basis 100%) while the weight-or-choice-caption cell and the
      Remove button, left un-forced, fall onto ONE shared line and the
@@ -2638,7 +2639,8 @@
   }
 
   /* --- (1) Reviewer rows: name/track-load stack, Swap-sized action ----- */
-  /* Overrides review.css:1208's `grid-template-columns: 1fr` collapse. */
+  /* Overrides this file's earlier phone-narrow `.chq-review-reviewer-row
+     { grid-template-columns: 1fr; }` collapse. */
   .chq-review-reviewer-row {
     display: flex;
     align-items: center;

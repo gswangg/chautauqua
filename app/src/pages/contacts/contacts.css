@@ -1126,7 +1126,8 @@
      24px gap (contacts.css:229-232) and is left unchanged. */
 
   /* 44px floor (task w13-n, round-2 WAVE B row "contacts name links
-     25.6px", contacts.css:449): `.chq-contacts-record-value` renders as
+     25.6px", the base `.chq-contacts-record-value {` rule above in this
+     file): `.chq-contacts-record-value` renders as
      TWO different elements depending on DEC-380 wave-120's `readMode`
      split (ContactDrawer.tsx:117-125/479-487/545-551) -- a real
      click-to-edit `<button>` whenever `readMode` is false (every desktop

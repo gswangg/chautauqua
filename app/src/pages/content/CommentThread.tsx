@@ -135,7 +135,7 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
       )}
       {/* w13-g (DEC-576, metafid-round2 WAVE A): the frame's own footer
           dock (docs/design/Chautauqua Content.dc.html, "Session ·
-          deliverable · 390": `flex-shrink:0; border-top:1px solid
+          deliverable" frame: `flex-shrink:0; border-top:1px solid
           #1B1D17; background:#EFEBDF; padding:12px 16px 16px;
           display:flex; flex-direction:column; gap:8px` -> filled "Ask for
           changes" + bordered "Send note only", plus the same caption

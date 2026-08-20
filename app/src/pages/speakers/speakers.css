@@ -1225,8 +1225,9 @@ button.chq-speakers-status-overdue:hover {
    DEC-393 wave-120 shape 3); this page-local compound selector only
    overrides font-size and never restates height/flex/padding, so a
    duplicate floor here would hide the composition per the wave-120
-   ruling. The link itself: OnboardingGrid.tsx:1151/1262,
-   RosterPanel.tsx:484 `<Link className="chq-row-title chq-speakers-name-link">`. */
+   ruling. The link itself: every
+   `<Link className="chq-row-title chq-speakers-name-link">` in
+   OnboardingGrid.tsx (two rows) and RosterPanel.tsx (one row). */
 .chq-speakers-grid .chq-speakers-name-link.chq-row-title {
   font-size: 16px;
 }

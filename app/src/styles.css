@@ -2623,10 +2623,11 @@ select:focus-visible,
      desktop 26px to 16px at 390 (the frame's own gutter, matched above by
      .chq-phone-head/-dock's -16px cancellation). The action bar's
      negative margin must equal that same 16px or a see-through gutter
-     appears beside the pinned band (the gate-6 defect recorded at
-     styles.css:1037-1041, `margin: 0 -26px 0; padding: 16px 26px 20px;`
-     -- both numbers below must stay equal to each other, not just to that
-     comment's memory of the desktop value). */
+     appears beside the pinned band (the gate-6 defect recorded on the
+     desktop rule earlier in this file, `margin: 0 -26px 0;
+     padding: 16px 26px 20px;` -- both numbers below must stay equal to
+     each other, not just to that comment's memory of the desktop
+     value). */
   .chq-drawer {
     padding: 16px;
   }
