@@ -34,7 +34,10 @@ void DEC_322;
 // "x / y" counter here reflects the real, server-enforced `maximum`.
 const CFP_ABSTRACT_HELP_TEXT = "Shown on the public sessions page if your talk is accepted";
 const CFP_BIO_LABEL = "Bio";
-const CFP_BIO_HELP_TEXT = "Shown on the public speakers page if your talk is accepted";
+// w8-g (DEC-380 wave-133): frame is copy authority (DEC-582) -- the pack's
+// wording promises later editability in the portal, which is true (the
+// portal profile view lets a speaker edit their own bio).
+const CFP_BIO_HELP_TEXT = "Shown on the public speakers page · you can edit it later in your portal";
 // DEC-124: the email field's helper states the invisible cost of a typo --
 // the portal link is emailed there and nowhere else is shown on screen.
 const CFP_EMAIL_HELP_TEXT = "We send your portal link here, so a typo means you never get it";
