@@ -273,3 +273,30 @@ export const SSR_UNFLOORED_TOKENS_CEILING = 0;
  * that would drive this to zero is not this change's job, and a two-sided
  * ratchet would force it to be. */
 export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;
+
+// Wave v12m-w17 task w17-c (DEC-808): SSR_UNFLOORED_TOKENS_CEILING above
+// reads 0 while ~27 `<a>` under src/routes/** declare neither `class=` nor
+// `className=` -- a token-keyed population is ungradeable by construction
+// once its subject carries no token. Widening lens, deliberately NOT a
+// fix -- draining is w17-d/w17-e's job. Forced this constant to -1 and
+// read the printed offender list on branch v12m-w17-c (main at
+// `0e3ece58`): population enumerated by
+// ssrRouteTsxFiles()/classlessAnchorSites() over every src/routes/**/*.tsx
+// (excluding *.test.* and src/routes/dev/**), each classless `<a>` keyed on
+// its nearest enclosing element's chq- token READ FROM THE SAME FILE (a
+// depth-only tag-stack walk, scoped per-file per the task's own grammar --
+// SpeakerDetailContent's Sessions list in detail.tsx sits directly in a
+// fragment with no in-file wrapper, so it correctly reports "(no enclosing
+// chq- token)" even though a parent template elsewhere may wrap it), graded
+// against every SSR CSS module (including src/views/theme.ts) via the same
+// three-clause floor predicate anchor-floor.ts's row-action lens uses.
+// Measured truth: 26 (25 keyed offenders across auth-views.tsx,
+// docs.tsx, portal/index.tsx, portal/preview.tsx, portal/tasks/views.tsx,
+// public/agenda-grid.tsx, public/agenda-rail.tsx, public/agenda.tsx,
+// public/detail.tsx, public/sessions.tsx, public/shell.tsx,
+// public/submit-views.tsx, plus 1 "(no enclosing chq- token)" row). Set to
+// the measured truth; a two-sided ratchet like every ceiling in this file
+// -- this constant's own draining lanes must lower it in the same commit
+// that fixes an offender, same DEC-989 protocol. RATCHET:
+// SSR_CLASSLESS_ANCHOR_CEILING=26
+export const SSR_CLASSLESS_ANCHOR_CEILING = 26;

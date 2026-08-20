@@ -539,6 +539,13 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   "ANCHOR_FLOOR_OFFENDERS_CEILING",
   "SSR_TAP_FLOOR_OFFENDERS_CEILING",
   "SSR_UNFLOORED_TOKENS_CEILING",
+  // wave-142 (task w17-c, DEC-808): SSR_UNFLOORED_TOKENS_CEILING is keyed
+  // on class TOKENS taken from markup -- a classless `<a>` under
+  // src/routes/** contributes no token and was ungradeable by
+  // construction. This ceiling grades that population instead, keyed on
+  // the anchor's nearest enclosing element's chq- token
+  // (app/src/phone-tap-target-ssr-classless-anchor.scan.test.ts).
+  "SSR_CLASSLESS_ANCHOR_CEILING",
   "OVERFLOW_OFFENDERS_CEILING",
   "CROSS_BUNDLE_CITATION_CEILING",
   "PHONE_HIDDEN_UNRECEIPTED_CEILING",
@@ -592,6 +599,7 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   "ANCHOR_FLOOR_OFFENDERS_CEILING",
   "SSR_TAP_FLOOR_OFFENDERS_CEILING",
   "SSR_UNFLOORED_TOKENS_CEILING",
+  "SSR_CLASSLESS_ANCHOR_CEILING",
   "OVERFLOW_OFFENDERS_CEILING",
   "CROSS_BUNDLE_CITATION_CEILING",
   "PHONE_HIDDEN_UNRECEIPTED_CEILING",

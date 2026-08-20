@@ -72,6 +72,7 @@ function baseFixture(): CampaignFile[] {
         "export const ANCHOR_FLOOR_OFFENDERS_CEILING = 4;",
         "export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;",
         "export const SSR_UNFLOORED_TOKENS_CEILING = 1;",
+        "export const SSR_CLASSLESS_ANCHOR_CEILING = 3;",
       ].join("\n"),
     },
     {
@@ -198,6 +199,7 @@ function allGreenFixture(): CampaignFile[] {
           "export const ANCHOR_FLOOR_OFFENDERS_CEILING = 0;",
           "export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;",
           "export const SSR_UNFLOORED_TOKENS_CEILING = 0;",
+          "export const SSR_CLASSLESS_ANCHOR_CEILING = 0;",
         ].join("\n"),
       };
     }
