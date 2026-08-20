@@ -12,7 +12,7 @@
    querySelectorAll — implement it for real.
    RESOLVED (DEC-986): cfp-steps-script.tsx's Next handler now walks the
    outgoing step's controls and calls `reportValidity()` on the first
-   invalid one before it will call setStep('2') (cfp-steps-script.tsx`setStep('2');`, guarded by the invalid-control check starting a few lines
+   invalid one before it will call setStep('2') (cfp-steps-script.tsx`setStep('2', true);`, guarded by the invalid-control check starting a few lines
    earlier in the same function's walk). form-render.tsx`wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]')` now uses
    querySelectorAll, not a
    singular querySelector, so every radio in the group gets its required

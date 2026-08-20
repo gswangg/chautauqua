@@ -1,14 +1,19 @@
-// w14-f (DEC-986): phone-only two-step CFP wizard inline vanilla JS.
-// Additive only -- desktop's chq-cfp-step-* chrome stays display:none
-// outside the 700px media query (cfp.css.ts), and the script is inert on
-// desktop BECAUSE of the matchMedia('(max-width: 700px)') guard below, which
-// wraps every DOM mutation the wizard makes (data-chq-cfp-step writes,
-// required-toggling, scrollIntoView). Wave-138 found the two claims had
-// drifted apart: the guard did not exist, so setStep('1') ran unconditionally
-// on desktop too, stripping `required` off the visible "about you" controls
-// and jump-scrolling the page. Mirrors agenda-itinerary-script.tsx's shape:
-// one exported component returning a single <script
+// w14-f (DEC-986, DEC-385): phone-only two-step CFP wizard inline vanilla
+// JS. The wizard is gated on window.matchMedia('(max-width: 700px)') -- the
+// SAME query cfp.css.ts declares for its .chq-cfp-step-* chrome -- so it
+// never touches a desktop visitor's form: no data-chq-cfp-step write, no
+// required-toggling, no scrollIntoView. Mirrors agenda-itinerary-script.tsx's
+// shape: one exported component returning a single <script
 // dangerouslySetInnerHTML>, no fetch, no change to the POST target.
+// DEC-986 wave-138 first shipped this file believing display:none alone made
+// it inert on desktop; it did not -- setStep('1') ran unconditionally at
+// DOMContentLoaded, un-requiring the visible "about you" controls and
+// jump-scrolling the page, a live DEC-385 desktop-freeze breach. The fix has
+// two halves: (a) engage and disengage symmetrically across the breakpoint,
+// restoring every stashed control's required-ness on disengage so a widened
+// visitor is never left with an un-required visible control; (b) an automatic
+// (non-user-initiated) state application never scrolls -- only the Next and
+// Back click handlers pass scroll:true.
 // DEC-986: a step transition un-requires every control it hides and
 // restores it when the step is shown again (clause 1), and Next validates
 // the outgoing step before it advances (clause 2), so a required control
@@ -24,6 +29,12 @@ export function CfpStepsScript() {
     // so the wizard never engages (data-chq-cfp-step stays "all").
     var hasError = form.querySelector('.chq-field-error') || form.querySelector('[role="alert"]');
     if (hasError) return;
+    // DEC-385: gate on the SAME query the stylesheet declares. Absent
+    // matchMedia, the wizard is disengaged entirely (house convention from
+    // app/src/lib/useIsPhone.ts: missing matchMedia -> not phone) -- no
+    // attribute is set, applyRequiredState never runs, scrollIntoView never
+    // fires.
+    if (typeof window.matchMedia !== 'function') return;
     var label = form.querySelector('.chq-cfp-steps-label');
     var fill = form.querySelector('.chq-cfp-steps-bar-fill');
     var talkSection = form.querySelector('.chq-cfp-step-talk');
@@ -71,7 +82,10 @@ export function CfpStepsScript() {
         el.required = el.getAttribute('data-chq-cfp-required-orig') === '1';
       }
     }
-    function setStep(step){
+    // DEC-385 clause (b): setStep takes an explicit scroll flag. Only a
+    // user-initiated transition (Next/Back) scrolls; an automatic engage
+    // from the media-query listener never does.
+    function setStep(step, scroll){
       form.setAttribute('data-chq-cfp-step', step);
       applyRequiredState(talkSection, step === '1');
       applyRequiredState(youSection, step === '2');
@@ -81,7 +95,7 @@ export function CfpStepsScript() {
       if (fill) {
         fill.style.width = step === '2' ? '100%' : '50%';
       }
-      form.scrollIntoView();
+      if (scroll) form.scrollIntoView();
     }
     // DEC-986 clause (2): "Next" is type="button", so the browser runs no
     // constraint validation of its own when it is pressed. Advancing
@@ -114,19 +128,20 @@ export function CfpStepsScript() {
           else if (typeof invalid.focus === 'function') invalid.focus();
           return;
         }
-        setStep('2');
+        setStep('2', true);
       });
     }
-    if (back) { back.addEventListener('click', function(){ if (!active) return; setStep('1'); }); }
+    if (back) { back.addEventListener('click', function(){ if (!active) return; setStep('1', true); }); }
     // wave-138: enter/leave the wizard only across the breakpoint. Entering
     // re-runs setStep('1') so a device that starts wide and narrows mid-visit
-    // still gets the two-step chrome; leaving restores every control's
+    // still gets the two-step chrome -- without scrolling, since that
+    // transition is not user-initiated; leaving restores every control's
     // original required-ness and puts data-chq-cfp-step back to the inert
     // "all" the server rendered, undoing exactly what setStep did.
     function engage(){
       if (active) return;
       active = true;
-      setStep('1');
+      setStep('1', false);
     }
     function disengage(){
       if (!active) return;
