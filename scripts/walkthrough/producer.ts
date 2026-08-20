@@ -20,7 +20,11 @@ const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
 const FIXTURE_PATH = join(REPO_ROOT, "docs", "fixtures", "sample-data.json");
 
 const urlFlagIdx = process.argv.indexOf("--url");
-const BASE_URL = urlFlagIdx !== -1 ? process.argv[urlFlagIdx + 1] : (process.env.WALKTHROUGH_URL ?? "http://localhost:8787");
+const urlFlagValue = urlFlagIdx !== -1 ? process.argv[urlFlagIdx + 1] : undefined;
+if (urlFlagIdx !== -1 && urlFlagValue === undefined) {
+  throw new Error("--url flag given with no value");
+}
+const BASE_URL = urlFlagValue ?? process.env.WALKTHROUGH_URL ?? "http://localhost:8787";
 
 const SEEDED_EVENT_SLUG = "devflow-conf-2027";
 

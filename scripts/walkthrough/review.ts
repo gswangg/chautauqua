@@ -233,14 +233,6 @@ interface PlanRecord {
   eventId: string;
 }
 
-interface ReviewerRow {
-  id: string;
-  userId: string;
-  email: string;
-  trackId: string | null;
-  submissionId: string | null;
-}
-
 interface QueueItem {
   submissionId: string;
   ref: string;
