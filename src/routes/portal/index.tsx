@@ -43,13 +43,16 @@ import {
 } from "../../server/repo/portal";
 import { getFileVersionNumber } from "../../server/repo/files";
 import { formatBytes } from "../../domain/files";
-import { DEC_729, DEC_777, DEC_884, DEC_576 } from "../../decisions";
+import { DEC_729, DEC_777, DEC_884, DEC_576, DEC_936 } from "../../decisions";
 import { isDefaultParticipantRole } from "../../domain/participant-roles";
 import { DEFAULT_PORTAL_SETTINGS } from "../../domain/portal-settings";
 
 void DEC_729;
 void DEC_777;
 void DEC_884;
+// wave 115: the home subline enumerates EVERY placed session — see
+// scheduledSubline below.
+void DEC_936;
 void DEC_576; // wave-110 amendment: SubmissionDetailPage's primary+secondary move into PortalLayout's dock
 import {
   parseCookies,
@@ -184,18 +187,39 @@ function WorklistInvitationRow(props: { invitation: PortalInvitation; csrfToken:
 
 /** DEC-590/w15-b subline: "<Event name> · you speak <formatPlacement>" when
  * the speaker has an accepted session that's actually been placed on the
- * schedule (day + startMin both set); else the event name alone. The first
- * such placed session is used — the portal home states one line, not a
- * per-session list. Composes formatPlacement below — the ONE portal
- * placement grammar (w13-d) — rather than hand-assembling day/time/room. */
+ * schedule (day + startMin both set); else the event name alone. Composes
+ * formatPlacement below — the ONE portal placement grammar (w13-d) — rather
+ * than hand-assembling day/time/room.
+ *
+ * DEC-936 (amendment, wave 115): EVERY placed session is named, never the
+ * first one. The old `.find()` stated one slot as though it were the whole
+ * answer, so a speaker with two accepted, scheduled sessions read "you speak
+ * Thu 13 May, 09:30 · Main Stage" and had no way to learn about the second —
+ * the same lowest-row pick DEC-936 already refused on the roster, on the one
+ * surface the speaker themselves reads. Slots are separated by "; " because
+ * "·" is already inside formatPlacement's own room clause and a second
+ * meaning for it would make the list unparseable. Count phrase via countOf
+ * (DEC-925/DEC-987, the one pluralization vocabulary).
+ *
+ * DEC-988 (wave-74 amendment, sibling fix): name the PLACED session's own
+ * event, never the portal's single "most recent submission" branding event —
+ * a speaker across events must not have Event A's placement captioned with
+ * Event B's name. When the placed sessions span two events no single name can
+ * lead the line, so each slot carries its own. */
 function scheduledSubline(fallbackEventName: string, sessions: PortalSession[]): string {
-  const placed = sessions.find((s) => s.day !== null && s.startMin !== null);
-  if (!placed) return fallbackEventName;
-  // DEC-988 (wave-74 amendment, sibling fix): name the PLACED session's own
-  // event, never the portal's single "most recent submission" branding
-  // event — a speaker across events must not have Event A's placement
-  // captioned with Event B's name.
-  return `${placed.eventName} · you speak ${formatPlacement(placed.day!, placed.startMin!, placed.roomName)}`;
+  const placed = sessions.filter((s) => s.day !== null && s.startMin !== null);
+  const first = placed[0];
+  if (first === undefined) return fallbackEventName;
+  if (placed.length === 1) {
+    return `${first.eventName} · you speak ${formatPlacement(first.day!, first.startMin!, first.roomName)}`;
+  }
+  const oneEvent = placed.every((s) => s.eventName === first.eventName);
+  const slots = placed.map((s) => {
+    const at = formatPlacement(s.day!, s.startMin!, s.roomName);
+    return oneEvent ? at : `${s.eventName}: ${at}`;
+  });
+  const lead = oneEvent ? `${first.eventName} · ` : "";
+  return `${lead}you speak ${countOf(placed.length, "time")} — ${slots.join("; ")}`;
 }
 
 function SessionCard(props: {

@@ -166,6 +166,63 @@ describe("w13-d: portal home + submission detail share ONE placement grammar", (
     expect(detailHtml).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 
+  // DEC-936 (amendment, wave 115): a two-session speaker's home subline names
+  // BOTH slots. The judge-filed defect was a `.find()` that stated the first
+  // placed session as though it were the whole answer.
+  it("a speaker with two placed sessions gets BOTH slots and a count, not just the first", async () => {
+    mockTasks = [];
+    mockSessions = [
+      placedSession,
+      {
+        ...placedSession,
+        submissionId: "sub-2",
+        ref: "SES-002",
+        title: "A second great talk",
+        day: "2026-05-13",
+        startMin: 690, // 11:30
+        endMin: 750,
+        roomName: "Main Stage",
+      },
+    ];
+    mockDetail = null;
+    const app = await buildPortalApp();
+    const res = await app.request("/portal");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("you speak 2 times");
+    expect(html).toContain("Tue 12 May, 10:00 · Room 2A");
+    expect(html).toContain("Wed 13 May, 11:30 · Main Stage");
+    // The single shared event still leads the line exactly once (DEC-988).
+    expect(html).toContain("Arbitrary Con · you speak 2 times");
+    expect(html).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+
+  // DEC-988 (wave 74) survives the enumeration: two events cannot share one
+  // leading name, so each slot carries its own.
+  it("placed sessions spanning two events name each event on its own slot", async () => {
+    mockTasks = [];
+    mockSessions = [
+      placedSession,
+      {
+        ...placedSession,
+        submissionId: "sub-2",
+        ref: "SES-002",
+        day: "2026-05-13",
+        startMin: 690,
+        roomName: "Main Stage",
+        eventId: "evt-2",
+        eventName: "Other Con",
+      },
+    ];
+    mockDetail = null;
+    const app = await buildPortalApp();
+    const res = await app.request("/portal");
+    const html = await res.text();
+    expect(html).toContain("Arbitrary Con: Tue 12 May, 10:00 · Room 2A");
+    expect(html).toContain("Other Con: Wed 13 May, 11:30 · Main Stage");
+    expect(html).not.toContain("Arbitrary Con · you speak");
+  });
+
   it("a task assignment's description renders on the portal home worklist row", async () => {
     mockTasks = [
       taskFixture({
