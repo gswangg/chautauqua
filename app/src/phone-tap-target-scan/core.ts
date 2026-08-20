@@ -127,17 +127,50 @@ export function topLevelRulesWithExemption(
 ): Array<{ selector: string; body: string; exempt: boolean }> {
   const withoutMedia = stripMedia(css);
   const rules: Array<{ selector: string; body: string; exempt: boolean }> = [];
-  // Optional leading exemption comment, then selector, then { body }.
-  const re = /(?:\/\*\s*tap-floor-exempt:[^*]*\*\/\s*)?([^{}]+)\{([^{}]*)\}/g;
+  // The text ahead of a selector can carry ZERO OR MORE leading block
+  // comments (the house idiom stacks an explanatory paragraph, sometimes a
+  // horizontal-rule banner, above the actual exemption comment -- see
+  // styles.css's `.chq-check` and chrome.css.ts's `.chq-visually-hidden`),
+  // so the raw pre-selector text is captured whole here rather than trying
+  // to special-case a single optional exemption comment inline. Whether the
+  // rule is exempt is then a property of THAT text, decided below.
+  const re = /([^{}]+)\{([^{}]*)\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(withoutMedia)) !== null) {
-    const exempt = m[0].trimStart().startsWith('/*');
-    const selector = stripComments(m[1] ?? '').trim();
+    const rawSelectorText = m[1] ?? '';
+    const exempt = lastLeadingCommentIsExempt(rawSelectorText);
+    const selector = stripComments(rawSelectorText).trim();
     const body = stripComments(m[2] ?? '');
     if (!selector) continue;
     rules.push({ selector, body, exempt });
   }
   return rules;
+}
+
+/** True only when the LAST block comment inside `rawSelectorText` is a
+ * literal `/* tap-floor-exempt: … *\/` comment sitting immediately above the
+ * selector -- no code between the comment's closer and the selector's
+ * opener, only whitespace. Earlier, unrelated comments in the same stack
+ * (a section banner, an explanatory paragraph) do not count on their own,
+ * and do not prevent a REAL exemption comment that follows them from being
+ * recognised: only the comment directly adjacent to the selector decides.
+ *
+ * This replaces the earlier `m[0].trimStart().startsWith('/*')` predicate,
+ * which called ANY leading block comment exempt (the optional exemption
+ * group in the old combined regex was allowed not to match, after which the
+ * selector-capture group swallowed whatever comment preceded it) -- and
+ * which a naive `m[0]`-prefix fix would still get wrong on a STACK of
+ * comments, since the real exemption comment is not necessarily the first
+ * one (wave v12m-w13-p finding, DEC-367). */
+function lastLeadingCommentIsExempt(rawSelectorText: string): boolean {
+  const commentRe = /\/\*[\s\S]*?\*\//g;
+  let last: RegExpExecArray | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = commentRe.exec(rawSelectorText)) !== null) last = m;
+  if (!last) return false;
+  const afterLastComment = rawSelectorText.slice(last.index + last[0].length);
+  if (afterLastComment.trim() === '') return false; // nothing (no selector) follows this comment
+  return /^\/\*\s*tap-floor-exempt:/.test(last[0]);
 }
 
 /** Every `selector { body }` rule inside an `@media (max-width: Npx)` block

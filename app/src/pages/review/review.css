@@ -2894,4 +2894,19 @@
     padding: 0 6px;
   }
 
+  /* task-w13-p/DEC-393/DESIGN-RULINGS:189: .chq-review-queue-footer-showall
+     (:655, ReviewerQueue.tsx:404 and PlanEditor.tsx:2319's "Show all"
+     `<button type="button">`) declared no height/min-height at all --
+     invisible to the base tap-target scan until the wave-124 exemption-
+     predicate repair unblinded the undeclared-height lens, which live-probed
+     it at 52x30 (docs/probes/metafid-round2-2026-08-20.md WAVE B). The full
+     44px-floor triple: min-height, centred flex, and horizontal padding --
+     padding alone would not reach the floor. */
+  .chq-review-queue-footer-showall {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+  }
 }

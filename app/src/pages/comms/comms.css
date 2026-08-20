@@ -155,9 +155,11 @@
   cursor: pointer;
 }
 
-/* The real checkbox stays in the a11y tree (keyboard-operable, announced as
-   a checkbox, its name unaffected by the aria-hidden count span below) --
-   only visually hidden, so the label supplies the pill's whole appearance. */
+/* tap-floor-exempt: a visually-hidden input whose operable target is its
+   label -- the real checkbox stays in the a11y tree (keyboard-operable,
+   announced as a checkbox, its name unaffected by the aria-hidden count span
+   below), only visually hidden, so the label supplies the pill's whole
+   appearance and tap floor. */
 .chq-comms-status-pill-input {
   position: absolute;
   opacity: 0;
