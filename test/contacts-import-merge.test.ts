@@ -39,6 +39,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
 });
 
 const { contactsRoutes } = await import("../src/routes/api/contacts");
+const repo = await import("../src/server/repo/contacts");
 
 function colKey(col: unknown): string {
   for (const [key, value] of Object.entries(schema.contact)) {
@@ -406,5 +407,169 @@ describe("POST /api/v1/contacts/import mergeLines (DEC-663 wave-64 amendment)", 
       body: JSON.stringify({ csvText: ADA_CSV, mapping: MAPPING, mergeLines: [{ line: 2, contactId: "ct_stranger" }] }),
     });
     expect(res.status).toBe(400);
+  });
+});
+
+// w10-ii: the still-open root of cut-2 item 1 -- "the copy and the behavior
+// must agree." A merge line MUST preview as the update applyImportRows will
+// actually commit, naming the same target and the same overwritten columns,
+// not the "action: create" phantom the old planImportRows (which had no
+// mergeLines parameter at all) reported.
+describe("POST /api/v1/contacts/import dryRun=true mergeLines preview (w10-ii)", () => {
+  // Company matches the seeded target on both rows below: findImportDuplicateCandidates
+  // (the SAME function resolveMergeTargets validates the merge against) sub-groups a
+  // name match by company, so a differing company would make the target a
+  // non-candidate before the merge is even attempted. Title/bio -- not part
+  // of duplicate matching -- carry the changed columns this test asserts on.
+  const MERGE_CSV =
+    "Email,First,Last,Company,Title,Bio\nada.lovelace@newmail.example.com,Ada,Lovelace,Old Engines Inc,Chief Engineer,New bio text.\n";
+  const MERGE_MAPPING = {
+    Email: "email",
+    First: "firstName",
+    Last: "lastName",
+    Company: "company",
+    Title: "title",
+    Bio: "bio",
+  };
+
+  it("previews a merge onto a blank-email target as an update naming the real target and every changed column", async () => {
+    const { db, rows } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+    await seedContact(db, {
+      id: "ct_blank_email",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "",
+      company: "Old Engines Inc",
+      title: "Junior Engineer",
+      bio: "Old bio text.",
+    });
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({
+        csvText: MERGE_CSV,
+        mapping: MERGE_MAPPING,
+        dryRun: true,
+        mergeLines: [{ line: 2, contactId: "ct_blank_email" }],
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      rows: { line: number; action: string; contactId?: string; overwrites?: { field: string; from: string; to: string }[] }[];
+      created: number;
+      updated: number;
+      skipped: number;
+    };
+    expect(body.rows).toHaveLength(1);
+    expect(body.rows[0]?.action).toBe("update");
+    expect(body.rows[0]?.contactId).toBe("ct_blank_email");
+    expect(body.rows[0]?.overwrites).toEqual(
+      expect.arrayContaining([
+        { field: "title", from: "Junior Engineer", to: "Chief Engineer" },
+        { field: "bio", from: "Old bio text.", to: "New bio text." },
+      ]),
+    );
+    // email is never listed among overwrites -- a merge fills a blank, it
+    // never replaces one (DEC-663 amendment, wave 115).
+    expect(body.rows[0]?.overwrites?.some((o) => o.field === "email")).toBe(false);
+    expect(body.created).toBe(0);
+    expect(body.updated).toBe(1);
+    expect(body.skipped).toBe(0);
+    // No write happened.
+    expect(rows()).toHaveLength(1);
+    expect((rows()[0] as { company: string }).company).toBe("Old Engines Inc");
+  });
+
+  it("previews a merge onto a target with a differing stored email as an update naming the real target and every changed column", async () => {
+    const { db, rows } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+    await seedContact(db, {
+      id: "ct_diff_email",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "ada@work.example.com",
+      company: "Old Engines Inc",
+      title: "Junior Engineer",
+      bio: "Old bio text.",
+    });
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({
+        csvText: MERGE_CSV,
+        mapping: MERGE_MAPPING,
+        dryRun: true,
+        mergeLines: [{ line: 2, contactId: "ct_diff_email" }],
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      rows: { line: number; action: string; contactId?: string; overwrites?: { field: string; from: string; to: string }[] }[];
+      created: number;
+      updated: number;
+      skipped: number;
+    };
+    expect(body.rows).toHaveLength(1);
+    expect(body.rows[0]?.action).toBe("update");
+    expect(body.rows[0]?.contactId).toBe("ct_diff_email");
+    expect(body.rows[0]?.overwrites).toEqual(
+      expect.arrayContaining([
+        { field: "title", from: "Junior Engineer", to: "Chief Engineer" },
+        { field: "bio", from: "Old bio text.", to: "New bio text." },
+      ]),
+    );
+    // The stored non-blank email is kept -- never listed as an overwrite,
+    // matching applyImportRows' merge branch (the offered address is only
+    // ever reported via emailConflicts on the real commit response).
+    expect(body.rows[0]?.overwrites?.some((o) => o.field === "email")).toBe(false);
+    expect(body.created).toBe(0);
+    expect(body.updated).toBe(1);
+    expect(body.skipped).toBe(0);
+    expect(rows()).toHaveLength(1);
+    expect((rows()[0] as { email: string }).email).toBe("ada@work.example.com");
+  });
+
+  // DEC-663's whole point: the plan the organizer approves and the run that
+  // actually executes must agree. Drives repo.planImportRows and
+  // repo.applyImportRows directly over the SAME rows+dispositions and
+  // compares the created/updated/skipped counts, rather than trusting two
+  // separately-asserted HTTP responses to have stayed in sync.
+  it("planImportRows and applyImportRows agree on created/updated/skipped counts for the same rows+dispositions", async () => {
+    const { db } = makeFakeContactDb();
+    await seedContact(db, {
+      id: "ct_merge_target",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "",
+      company: "Old Engines Inc",
+    });
+    await seedContact(db, {
+      id: "ct_plain_update",
+      firstName: "Grace",
+      lastName: "Hopper",
+      email: "grace@example.com",
+    });
+
+    const rows = [
+      { line: 2, parsed: { email: "ada.lovelace@newmail.example.com", firstName: "Ada", lastName: "Lovelace", company: "Old Engines Inc", title: "Chief Engineer" } },
+      { line: 3, parsed: { email: "grace@example.com", firstName: "Grace", lastName: "Hopper Jr" } },
+      { line: 4, parsed: { email: "brand.new@example.com", firstName: "Brand", lastName: "New" } },
+      { line: 5, parsed: { email: "", firstName: "No", lastName: "Email" } },
+    ];
+    const opts = { skipLines: [5], mergeLines: [{ line: 2, contactId: "ct_merge_target" }] };
+
+    const plan = await repo.planImportRows(db, "org-1", rows, opts);
+    const result = await repo.applyImportRows(db, "org-1", rows, opts);
+
+    expect(plan.created).toBe(result.created);
+    expect(plan.updated).toBe(result.updated);
+    expect(plan.skipped).toBe(result.skipped.length);
+    // And the specific rows agree, not just the totals.
+    expect(plan.created).toBe(1); // brand.new@example.com
+    expect(plan.updated).toBe(2); // ct_merge_target (merge), ct_plain_update (email match)
+    expect(plan.skipped).toBe(1); // line 5, skipped by organizer
   });
 });

@@ -222,6 +222,110 @@ async function flushContactUpdates(db: Db, rows: ContactCommitRow[]): Promise<vo
   }
 }
 
+/** DEC-663 (wave 116, w10-ii): validates and resolves the client's proposed
+ * merge lines to their target contact -- the SAME possible-duplicate
+ * candidate set and refusal conditions applyImportRows has always enforced
+ * before any write, now shared with planImportRows so the dry-run preview
+ * and the real commit can never resolve (or refuse) a merge line
+ * differently. Read-only: issues only SELECTs, no writes. Returns the
+ * validated line -> target-contact map; empty when mergeLines is empty.
+ *
+ * `emailAlreadyMatched` is the caller's own by-email pre-pass (built BEFORE
+ * any merge/same-file collapse bookkeeping runs), asked only whether a key
+ * is present -- so this function stays agnostic to whether the caller's
+ * pre-pass values are ContactRow ids (applyImportRows) or ContactRecords
+ * (planImportRows). */
+async function resolveMergeTargets(
+  db: Db,
+  orgId: string,
+  rows: { line: number; parsed: Record<string, unknown> }[],
+  skipLineSet: Set<number>,
+  mergeLines: { line: number; contactId: string }[],
+  emailAlreadyMatched: { has(key: string): boolean },
+): Promise<Map<number, ContactRow>> {
+  const targetsByLine = new Map<number, ContactRow>();
+  if (mergeLines.length === 0) return targetsByLine;
+
+  const rowsByLine = new Map<number, { parsed: Record<string, unknown> }>();
+  for (const r of rows) rowsByLine.set(r.line, r);
+
+  const mergeTargetIds = [...new Set(mergeLines.map((m) => m.contactId))];
+  const mergeTargetById = new Map<string, ContactRow>();
+  for (const batch of chunkIds(mergeTargetIds)) {
+    const existing = await db
+      .select()
+      .from(schema.contact)
+      .where(and(eq(schema.contact.orgId, orgId), inArray(schema.contact.id, batch)));
+    for (const raw of existing as (typeof schema.contact.$inferSelect)[]) {
+      const row = toRow(raw);
+      mergeTargetById.set(row.id, row);
+    }
+  }
+
+  // Same candidate idiom as the create-path possibleDuplicates computation:
+  // every org contact whose last name (lowercased) appears among the merged
+  // lines' rows, chunked over those distinct last names (DEC-356 — cost
+  // proportional to the merge set, never a whole-org scan).
+  const mergeLastNames = new Set<string>();
+  for (const { line } of mergeLines) {
+    const parsed = rowsByLine.get(line)?.parsed;
+    const lastName = typeof parsed?.lastName === "string" ? parsed.lastName.trim().toLowerCase() : "";
+    if (lastName !== "") mergeLastNames.add(lastName);
+  }
+  const mergeNameCandidates: ContactRecord[] = [];
+  for (const batch of chunkIds([...mergeLastNames])) {
+    const found = await selectContactsWhere(db, orgId, inArray(sql`lower(${schema.contact.lastName})`, batch));
+    mergeNameCandidates.push(...found);
+  }
+
+  for (const { line, contactId } of mergeLines) {
+    const row = rowsByLine.get(line);
+    if (!row) {
+      throw new ApiError("invalid", `Line ${line} is not part of this import batch`, {
+        mergeLines: `line ${line}: unknown row`,
+      });
+    }
+    if (skipLineSet.has(line)) {
+      throw new ApiError("invalid", `Line ${line} cannot be both skipped and merged`, {
+        mergeLines: `line ${line}: also present in skipLines`,
+      });
+    }
+    const target = mergeTargetById.get(contactId);
+    if (!target) {
+      throw new ApiError("invalid", `Line ${line}: merge target contact ${contactId} was not found`, {
+        mergeLines: `line ${line}: unknown contact`,
+      });
+    }
+    const email = typeof row.parsed.email === "string" ? row.parsed.email : undefined;
+    if (email && email.trim() !== "" && isValidEmail(email) && emailAlreadyMatched.has(normalizeEmail(email))) {
+      throw new ApiError(
+        "invalid",
+        `Line ${line} already matches an existing contact by email; it resolves to an update, not a merge`,
+        { mergeLines: `line ${line}: resolves to an update` },
+      );
+    }
+    const candidates = findImportDuplicateCandidates(
+      {
+        firstName: typeof row.parsed.firstName === "string" ? row.parsed.firstName : undefined,
+        lastName: typeof row.parsed.lastName === "string" ? row.parsed.lastName : undefined,
+        company: typeof row.parsed.company === "string" ? row.parsed.company : undefined,
+        email: email ?? "",
+      },
+      mergeNameCandidates,
+    );
+    if (!candidates.some((c) => c.id === contactId)) {
+      throw new ApiError(
+        "invalid",
+        `Line ${line}: contact ${contactId} is not a possible duplicate for this row`,
+        { mergeLines: `line ${line}: not a candidate` },
+      );
+    }
+    targetsByLine.set(line, target);
+  }
+
+  return targetsByLine;
+}
+
 /** Applies parsed+mapped rows to the org's contacts, one row already resolved
  * per resolveImportUpsert. Rows are applied in order so within-file
  * duplicate emails collapse onto the same created contact.
@@ -307,87 +411,17 @@ export async function applyImportRows(
   for (const { line, contactId } of mergeLines) {
     mergeLineMap.set(line, contactId);
   }
-  if (mergeLines.length > 0) {
-    const rowsByLine = new Map<number, { parsed: Record<string, unknown> }>();
-    for (const r of rows) rowsByLine.set(r.line, r);
-
-    const mergeTargetIds = [...new Set(mergeLines.map((m) => m.contactId))];
-    const mergeTargetById = new Map<string, ContactRow>();
-    for (const batch of chunkIds(mergeTargetIds)) {
-      const existing = await db
-        .select()
-        .from(schema.contact)
-        .where(and(eq(schema.contact.orgId, orgId), inArray(schema.contact.id, batch)));
-      for (const raw of existing as (typeof schema.contact.$inferSelect)[]) {
-        const row = toRow(raw);
-        mergeTargetById.set(row.id, row);
-      }
-    }
-
-    // Same candidate idiom as planImportRows: every org contact whose last
-    // name (lowercased) appears among the merged lines' rows, chunked over
-    // those distinct last names (DEC-356 — cost proportional to the merge
-    // set, never a whole-org scan).
-    const mergeLastNames = new Set<string>();
-    for (const { line } of mergeLines) {
-      const parsed = rowsByLine.get(line)?.parsed;
-      const lastName = typeof parsed?.lastName === "string" ? parsed.lastName.trim().toLowerCase() : "";
-      if (lastName !== "") mergeLastNames.add(lastName);
-    }
-    const mergeNameCandidates: ContactRecord[] = [];
-    for (const batch of chunkIds([...mergeLastNames])) {
-      const found = await selectContactsWhere(db, orgId, inArray(sql`lower(${schema.contact.lastName})`, batch));
-      mergeNameCandidates.push(...found);
-    }
-
-    for (const { line, contactId } of mergeLines) {
-      const row = rowsByLine.get(line);
-      if (!row) {
-        throw new ApiError("invalid", `Line ${line} is not part of this import batch`, {
-          mergeLines: `line ${line}: unknown row`,
-        });
-      }
-      if (skipLineSet.has(line)) {
-        throw new ApiError("invalid", `Line ${line} cannot be both skipped and merged`, {
-          mergeLines: `line ${line}: also present in skipLines`,
-        });
-      }
-      const target = mergeTargetById.get(contactId);
-      if (!target) {
-        throw new ApiError("invalid", `Line ${line}: merge target contact ${contactId} was not found`, {
-          mergeLines: `line ${line}: unknown contact`,
-        });
-      }
-      const email = typeof row.parsed.email === "string" ? row.parsed.email : undefined;
-      if (email && email.trim() !== "" && isValidEmail(email) && byEmail.has(normalizeEmail(email))) {
-        throw new ApiError(
-          "invalid",
-          `Line ${line} already matches an existing contact by email; it resolves to an update, not a merge`,
-          { mergeLines: `line ${line}: resolves to an update` },
-        );
-      }
-      const candidates = findImportDuplicateCandidates(
-        {
-          firstName: typeof row.parsed.firstName === "string" ? row.parsed.firstName : undefined,
-          lastName: typeof row.parsed.lastName === "string" ? row.parsed.lastName : undefined,
-          company: typeof row.parsed.company === "string" ? row.parsed.company : undefined,
-          email: email ?? "",
-        },
-        mergeNameCandidates,
-      );
-      if (!candidates.some((c) => c.id === contactId)) {
-        throw new ApiError(
-          "invalid",
-          `Line ${line}: contact ${contactId} is not a possible duplicate for this row`,
-          { mergeLines: `line ${line}: not a candidate` },
-        );
-      }
-      // Validated: fold this merge target into the same pre-pass maps the
-      // main commit loop below already reads, so the merge branch there
-      // needs no extra query.
-      existingById.set(target.id, target);
-      existingCustomFieldsById.set(target.id, parseContactCustomFields(target.customFieldsJson));
-    }
+  // DEC-663 (wave 116, w10-ii): resolved through the SAME resolveMergeTargets
+  // planImportRows below uses for its preview -- the two can never disagree
+  // about which contact a merge line targets, or refuse a merge line
+  // differently.
+  const mergeTargetsByLine = await resolveMergeTargets(db, orgId, rows, skipLineSet, mergeLines, byEmail);
+  for (const [, target] of mergeTargetsByLine) {
+    // Validated: fold this merge target into the same pre-pass maps the
+    // main commit loop below already reads, so the merge branch there
+    // needs no extra query.
+    existingById.set(target.id, target);
+    existingCustomFieldsById.set(target.id, parseContactCustomFields(target.customFieldsJson));
   }
 
   const addContactId = (id: string) => {
@@ -677,6 +711,7 @@ export async function planImportRows(
   db: Db,
   orgId: string,
   rows: { line: number; parsed: Record<string, unknown>; capViolations?: Record<string, string> }[],
+  opts?: { skipLines?: number[]; mergeLines?: { line: number; contactId: string }[] },
 ): Promise<ImportPlan> {
   if (rows.length > MAX_IMPORT_ROWS) {
     throw new ApiError(
@@ -722,6 +757,14 @@ export async function planImportRows(
     nameCandidates.push(...found);
   }
 
+  // DEC-663 (wave 116, w10-ii): the SAME disposition inputs applyImportRows
+  // takes -- resolved through the SAME resolveMergeTargets helper (never a
+  // second resolver) so the plan and the real run cannot resolve, target, or
+  // refuse a merge line differently.
+  const skipLineSet = new Set(opts?.skipLines ?? []);
+  const mergeLines = opts?.mergeLines ?? [];
+  const mergeTargetsByLine = await resolveMergeTargets(db, orgId, rows, skipLineSet, mergeLines, byEmail);
+
   const planRows: ImportPlanRow[] = [];
   let created = 0;
   let updated = 0;
@@ -729,6 +772,14 @@ export async function planImportRows(
 
   for (const { line, parsed, capViolations } of rows) {
     const email = typeof parsed.email === "string" ? parsed.email : undefined;
+    // DEC-663: mirrors applyImportRows' commit-loop ordering exactly -- a
+    // skipped line never reaches the cap/email/merge checks below it, same
+    // as the real run.
+    if (skipLineSet.has(line)) {
+      planRows.push({ line, email: email ?? "", action: "skip", reason: "skipped by organizer" });
+      skippedCount++;
+      continue;
+    }
     // DEC-417 (amendment): a row over a per-column cap is planned as a skip
     // (never a create/update) so it surfaces on the dry-run Review step --
     // applyImportRows refuses this exact same line for the exact same
@@ -755,8 +806,35 @@ export async function planImportRows(
       continue;
     }
     const key = normalizeEmail(email);
-    const existing = byEmail.get(key);
     const normalizedParsed = { ...parsed, email: key } as Partial<ContactRecord>;
+
+    const mergeTarget = mergeTargetsByLine.get(line);
+    if (mergeTarget !== undefined) {
+      // DEC-663 (wave 116, w10-ii): a merge line previews EXACTLY as
+      // applyImportRows' merge branch will resolve it -- an update against
+      // the organizer-named target, through the SAME resolveImportUpsert
+      // path, with overwrites computed through the SAME
+      // describeImportOverwrites call the email-matched update branch below
+      // uses (never a second disclosure shape). The dry run's action, its
+      // target identity, and its counts now agree with the real run's.
+      const targetRecord = toContactRecord(mergeTarget);
+      const decision = resolveImportUpsert(mergeTarget.id, normalizedParsed, targetRecord.customFields);
+      if (decision.action !== "update") {
+        throw new Error("planImportRows: merge line resolved to create — unreachable (existingId always defined)");
+      }
+      updated++;
+      const overwrites = describeImportOverwrites(targetRecord, decision.patch);
+      planRows.push({
+        line,
+        email: key,
+        action: "update",
+        contactId: mergeTarget.id,
+        ...(overwrites.length > 0 ? { overwrites } : {}),
+      });
+      continue;
+    }
+
+    const existing = byEmail.get(key);
     const decision = resolveImportUpsert(existing?.id, normalizedParsed, existing?.customFields);
 
     if (decision.action === "create") {
