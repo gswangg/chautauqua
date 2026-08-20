@@ -29,8 +29,12 @@ import { sessionFormatLabel, audienceLevelLabel } from '../../../../src/lib/sess
 // DEC-678 (wave-118 amendment): a route-param change is a NEW PAGE --
 // param-scoped state never survives it, and an in-flight read for the old
 // param never paints.
-import { DEC_678 } from '../../../../src/decisions';
+// DEC-889 (wave-129 amendment): REVERSES the wave-72 clause's retirement of
+// the "Read the full submission" disclosure at <=700px only -- desktop's
+// at-rest Form answers section stands untouched.
+import { DEC_678, DEC_889 } from '../../../../src/decisions';
 void DEC_678;
+void DEC_889;
 // DEC-939/DEC-845 (wave 40 amendment): the scorecard header's 'N of N done'
 // counter reads the SAME reader the reviewer queue's own progress caption is
 // built from -- never a second count derived in this component.
@@ -113,11 +117,15 @@ function evaluationRefusalProblems(
   });
 }
 
-// DEC-889 (wave-72 amendment): the reading column IS the frame's body --
-// the abstract prints in full under an ABSTRACT eyebrow, and the session
-// and speaker answers print as label|value rows below it, at rest. The
-// 60-word clamp and the "Read the full submission ›" disclosure are
-// retired entirely (no clamp helper, no expand/collapse state survives).
+// DEC-889 (wave-72 amendment, REVERSED at <=700px only by the wave-129
+// amendment below): the reading column IS the frame's body -- the abstract
+// prints in full under an ABSTRACT eyebrow, and the session and speaker
+// answers print as label|value rows below it, at rest, on DESKTOP. The
+// 60-word clamp stays retired everywhere (no clamp helper, no
+// expand/collapse state survives) -- but the wave-129 amendment restores a
+// disclosure for .chq-review-answers specifically at phone widths, per
+// Chautauqua Review.dc.html's 390 panel (:293-295), which prints no answers
+// section at all and instead a "Read the full submission" control.
 
 function isFormFieldTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -640,8 +648,39 @@ export function Scorecard() {
             </section>
           )}
 
+          {/* DEC-889 (wave-129 amendment): the wave-72 retirement of the
+              clamp/disclosure REVERSES at <=700px only -- Chautauqua
+              Review.dc.html:293-295 (the 390 panel) prints the abstract and
+              a `<a min-height:44px>Read the full submission</a>` and NO
+              answers section; the 1600 panel prints `Form answers` at rest.
+              Same pure-CSS checkbox+label idiom the docs 'Contents' control
+              landed (wave 128, src/routes/docs-site.tsx's
+              chq-docs-phone-toolbar block / docs-site.css.ts's
+              .chq-docs-contents-checkbox rules): no JS, no React state --
+              the checkbox itself is the only interactive surface a screen
+              reader or keyboard needs (native Space/Enter toggle), and
+              `aria-controls` names the section it reveals. The checkbox+
+              label pair is mounted ONLY at phone (isPhone, the same
+              mount-gate this file already uses for the phone progress span
+              above -- "a mount, never a CSS-only hide" -- so every rule this
+              feature needs lives in scorecard.css's one terminal
+              max-width:700px block, and desktop's DOM carries no toggle
+              node at all, matching the 1600 frame exactly). */}
+          {formAnswers.length > 0 && isPhone && (
+            <input
+              type="checkbox"
+              id="chq-review-answers-toggle"
+              className="chq-review-answers-checkbox"
+              aria-controls="chq-review-answers"
+            />
+          )}
+          {formAnswers.length > 0 && isPhone && (
+            <label className="chq-review-answers-toggle" htmlFor="chq-review-answers-toggle">
+              Read the full submission
+            </label>
+          )}
           {formAnswers.length > 0 && (
-            <section className="chq-review-answers">
+            <section className="chq-review-answers" id="chq-review-answers">
               <h2 className="chq-section-label">Form answers</h2>
               <dl className="chq-review-answer-list">
                 {formAnswers.map((a) => (
