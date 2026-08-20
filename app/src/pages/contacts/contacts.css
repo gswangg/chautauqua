@@ -379,13 +379,246 @@
   gap: 16px;
 }
 
+
+/* ---------------------------------------------------------------------- */
+/* DEC-616: drawer-as-record (task-w5-e) — label/value rows on a 130px/1fr */
+/* grid, uppercase tracked labels, an editing surface that swaps in on the */
+/* SAME row (no second edit form), the "Across your events" history list, */
+/* and one bottom action bar (Save / Email / Add to event).                */
+/* ---------------------------------------------------------------------- */
+
+.chq-contacts-record {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* A20 (w26-c): the record's four titled groups (Contact/Profile/This
+   event/Notes) -- each a column of rows headed by the shared
+   .chq-section-head/.chq-section-label treatment (2px ink rule) every other
+   section head in the app already uses. Groups stack with a clear gap so
+   the rule reads as a group boundary, not just another row divider. */
+.chq-contacts-record-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.chq-contacts-record-group + .chq-contacts-record-group {
+  margin-top: 24px;
+}
+
+.chq-contacts-record-group-head {
+  margin-bottom: 2px;
+}
+
+/* DEC-616 amendment (wave 15): the one-line caption that names the drawer's
+   save mechanism, sitting above the record rows. Colour/size come from
+   .chq-meta (styles.css); this rule only owns its placement. The UA's
+   default <p> margin has to go explicitly -- the sheet has no global
+   paragraph reset, and .chq-contacts-record is a gap:0 column, so an
+   unreset 1em top margin would open a gap the row rhythm never asked for.
+   The bottom margin is deliberate: it separates the caption from the first
+   label/value row, which carries its own 12px padding and hairline. */
+.chq-contacts-record-save-caption {
+  margin: 0 0 12px;
+}
+
+.chq-contacts-record-row {
+  display: grid;
+  /* minmax(0,1fr), not bare 1fr: a bare 1fr's auto min-content floor is the
+     native file input's intrinsic ~284px, which cannot shrink inside the
+     418px drawer -- the value column then overflows the drawer and the
+     viewport (three gates of BROKEN). minmax(0,...) lets the column shrink;
+     .chq-file's width:100% below makes the input fill whatever it gets. */
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 16px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-contacts-record-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-contacts-record-value {
+  font-size: 15px;
+  line-height: 1.55;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: text;
+  color: var(--chq-ink);
+  font-family: inherit;
+}
+
+.chq-contacts-record-empty {
+  color: var(--chq-muted);
+}
+
+/* DEC-738/DEC-726: the drawer's Labels row is a plain read view, never a
+   click-to-edit field like the other .chq-contacts-record-value rows. */
+.chq-contacts-record-readonly {
+  cursor: default;
+}
+
+.chq-contacts-record-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-contacts-add-field {
+  align-self: flex-start;
+  margin-top: 10px;
+}
+
+/* A20 (w26-c): the four social links collapse into ONE 'Links' row -- the
+   editor opens all four inputs stacked in one column, each with its own
+   small muted sub-label, rather than four separate label/value rows. */
+.chq-contacts-links-editor {
+  gap: 12px;
+}
+
+.chq-contacts-links-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-contacts-links-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-contacts-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.chq-contacts-history-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  align-items: baseline;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-contacts-history-event {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chq-contacts-history-what {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* DEC-616 amendment (wave 4): action-bar buttons stay on one line each at
+   520px -- per-button nowrap+no-shrink keeps a button's label from wrapping
+   to a second line. A20 (w26-c): 'Delete this contact' sits far left,
+   Cancel/Save right-flushed in their own inner group -- space-between keeps
+   the two ends pinned. DEC-616 wave-70 amendment: the row itself now wraps
+   (with a row-gap) instead of scrolling horizontally, and overflow-x is
+   gone -- a hidden overlay scrollbar was clipping the Save button and the
+   scope sentence past the drawer's right edge at 520px/1440px/1600px. The
+   scope sentence lives on its own line above this bar now (see
+   .chq-contacts-save-scope-note), so it never competes with these buttons
+   for room. */
+/* DEC-292 amendment (findings wave 5): the caption under the per-event
+   group title, separating this event's facts from the org-wide record
+   above. Rides .chq-meta's 12px muted; this rule spaces it off the
+   fields beneath. */
+.chq-contacts-record-group-caption {
+  margin: 0 0 12px;
+}
+
+/* DEC-616 wave-70 amendment: the save-scope sentence sits on its own line
+   above the action bar, right-aligned so it reads with the right-flushed
+   Save beneath it and can never be clipped behind the drawer's right edge
+   at 520px. */
+.chq-contacts-save-scope-note {
+  margin: 14px 0 8px;
+  text-align: right;
+}
+
+/* tap-floor-exempt: ContactDrawer.tsx renders only <button
+   className="chq-btn ..."> children here (Delete this contact / Email /
+   Add to event / Cancel / Save) -- never a bare <a>/<Link> -- so there is
+   no anchor for the row-action floor to reach; .chq-btn already carries
+   the shared 44px phone floor (app/src/styles.css:1137-1139, DEC-393
+   wave-90 amendment). */
+.chq-contacts-drawer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 9px;
+  row-gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* tap-floor-exempt: scoped to .chq-contacts-drawer-actions, which (see the
+   tap-floor-exempt comment above it) only ever renders <button> children
+   -- this container never reaches a bare anchor (DEC-393 wave-90
+   amendment). */
+.chq-contacts-drawer-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: nowrap;
+}
+
+.chq-contacts-drawer-actions .chq-btn,
+.chq-contacts-drawer-actions .chq-btn-tertiary {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* DEC-758's 'Delete this contact' trigger. Layout only (same treatment as
+   content.css's .chq-content-version-delete): the tertiary button's colour
+   and weight stay with .chq-btn-tertiary in styles.css. */
+.chq-contacts-delete-trigger {
+  white-space: nowrap;
+}
+
+
+/* DEC-385 wave-8b consolidation: this file's four former
+   `@media (max-width: 700px)` blocks (former lines 388-633, 862-934,
+   944-953, 963-1038) are concatenated into ONE terminal block
+   (test/phone-terminal-block.scan.test.ts). Bodies are appended in
+   ASCENDING source order -- the directory-grid/table block, the
+   record/drawer "Contact 390" block, the DEC-393 tap-target anchor-floor
+   block, then the DEC-989 overflow-ellipsis closeout block, which already
+   lived last. Two selectors recur across former blocks --
+   `.chq-contacts-table tbody td[data-label]::before` (former lines
+   595-604 and 996-998) and `.chq-contacts-company-cell` (former lines
+   588-590 and 1006-1014) -- both are kept as separate rules in their
+   original relative order rather than merged, so the later (former-block-4)
+   declaration continues to win the cascade exactly as it already did
+   before this move. Desktop rules and the content between the former
+   blocks are NOT moved -- they stay exactly where they were,
+   byte-unchanged (DEC-385 single-direction). */
+@media (max-width: 700px) {
+  /* -- from the former directory-grid/table block (former lines 388-633) -- */
+
 /* Phone frame (DEC-385/386, docs/design/Chautauqua Contacts.dc.html "390"
    frame): the desktop directory table becomes a stack of cards via a
    pure-CSS transform on the SAME markup (thead hidden, tr/td turned into
    flex blocks, no cell dropped); the stats strip becomes a horizontal
    overflow-x:auto tile row; search/segment controls and the bulk bar
    collapse to full-width, 44px, centred-flex, phone-radius controls. */
-@media (max-width: 700px) {
+
   .chq-contacts-page {
     gap: 16px;
   }
@@ -630,219 +863,8 @@
     text-align: center;
     gap: 10px;
   }
-}
 
-/* ---------------------------------------------------------------------- */
-/* DEC-616: drawer-as-record (task-w5-e) — label/value rows on a 130px/1fr */
-/* grid, uppercase tracked labels, an editing surface that swaps in on the */
-/* SAME row (no second edit form), the "Across your events" history list, */
-/* and one bottom action bar (Save / Email / Add to event).                */
-/* ---------------------------------------------------------------------- */
-
-.chq-contacts-record {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/* A20 (w26-c): the record's four titled groups (Contact/Profile/This
-   event/Notes) -- each a column of rows headed by the shared
-   .chq-section-head/.chq-section-label treatment (2px ink rule) every other
-   section head in the app already uses. Groups stack with a clear gap so
-   the rule reads as a group boundary, not just another row divider. */
-.chq-contacts-record-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.chq-contacts-record-group + .chq-contacts-record-group {
-  margin-top: 24px;
-}
-
-.chq-contacts-record-group-head {
-  margin-bottom: 2px;
-}
-
-/* DEC-616 amendment (wave 15): the one-line caption that names the drawer's
-   save mechanism, sitting above the record rows. Colour/size come from
-   .chq-meta (styles.css); this rule only owns its placement. The UA's
-   default <p> margin has to go explicitly -- the sheet has no global
-   paragraph reset, and .chq-contacts-record is a gap:0 column, so an
-   unreset 1em top margin would open a gap the row rhythm never asked for.
-   The bottom margin is deliberate: it separates the caption from the first
-   label/value row, which carries its own 12px padding and hairline. */
-.chq-contacts-record-save-caption {
-  margin: 0 0 12px;
-}
-
-.chq-contacts-record-row {
-  display: grid;
-  /* minmax(0,1fr), not bare 1fr: a bare 1fr's auto min-content floor is the
-     native file input's intrinsic ~284px, which cannot shrink inside the
-     418px drawer -- the value column then overflows the drawer and the
-     viewport (three gates of BROKEN). minmax(0,...) lets the column shrink;
-     .chq-file's width:100% below makes the input fill whatever it gets. */
-  grid-template-columns: 130px minmax(0, 1fr);
-  gap: 16px;
-  align-items: baseline;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--chq-hairline);
-}
-
-.chq-contacts-record-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--chq-muted);
-}
-
-.chq-contacts-record-value {
-  font-size: 15px;
-  line-height: 1.55;
-  text-align: left;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: text;
-  color: var(--chq-ink);
-  font-family: inherit;
-}
-
-.chq-contacts-record-empty {
-  color: var(--chq-muted);
-}
-
-/* DEC-738/DEC-726: the drawer's Labels row is a plain read view, never a
-   click-to-edit field like the other .chq-contacts-record-value rows. */
-.chq-contacts-record-readonly {
-  cursor: default;
-}
-
-.chq-contacts-record-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.chq-contacts-add-field {
-  align-self: flex-start;
-  margin-top: 10px;
-}
-
-/* A20 (w26-c): the four social links collapse into ONE 'Links' row -- the
-   editor opens all four inputs stacked in one column, each with its own
-   small muted sub-label, rather than four separate label/value rows. */
-.chq-contacts-links-editor {
-  gap: 12px;
-}
-
-.chq-contacts-links-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.chq-contacts-links-field-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--chq-muted);
-}
-
-.chq-contacts-history {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.chq-contacts-history-row {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 14px;
-  align-items: baseline;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--chq-hairline);
-}
-
-.chq-contacts-history-event {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.chq-contacts-history-what {
-  font-size: 13px;
-  color: var(--chq-muted);
-}
-
-/* DEC-616 amendment (wave 4): action-bar buttons stay on one line each at
-   520px -- per-button nowrap+no-shrink keeps a button's label from wrapping
-   to a second line. A20 (w26-c): 'Delete this contact' sits far left,
-   Cancel/Save right-flushed in their own inner group -- space-between keeps
-   the two ends pinned. DEC-616 wave-70 amendment: the row itself now wraps
-   (with a row-gap) instead of scrolling horizontally, and overflow-x is
-   gone -- a hidden overlay scrollbar was clipping the Save button and the
-   scope sentence past the drawer's right edge at 520px/1440px/1600px. The
-   scope sentence lives on its own line above this bar now (see
-   .chq-contacts-save-scope-note), so it never competes with these buttons
-   for room. */
-/* DEC-292 amendment (findings wave 5): the caption under the per-event
-   group title, separating this event's facts from the org-wide record
-   above. Rides .chq-meta's 12px muted; this rule spaces it off the
-   fields beneath. */
-.chq-contacts-record-group-caption {
-  margin: 0 0 12px;
-}
-
-/* DEC-616 wave-70 amendment: the save-scope sentence sits on its own line
-   above the action bar, right-aligned so it reads with the right-flushed
-   Save beneath it and can never be clipped behind the drawer's right edge
-   at 520px. */
-.chq-contacts-save-scope-note {
-  margin: 14px 0 8px;
-  text-align: right;
-}
-
-/* tap-floor-exempt: ContactDrawer.tsx renders only <button
-   className="chq-btn ..."> children here (Delete this contact / Email /
-   Add to event / Cancel / Save) -- never a bare <a>/<Link> -- so there is
-   no anchor for the row-action floor to reach; .chq-btn already carries
-   the shared 44px phone floor (app/src/styles.css:1137-1139, DEC-393
-   wave-90 amendment). */
-.chq-contacts-drawer-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 9px;
-  row-gap: 9px;
-  flex-wrap: wrap;
-}
-
-/* tap-floor-exempt: scoped to .chq-contacts-drawer-actions, which (see the
-   tap-floor-exempt comment above it) only ever renders <button> children
-   -- this container never reaches a bare anchor (DEC-393 wave-90
-   amendment). */
-.chq-contacts-drawer-actions-right {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: nowrap;
-}
-
-.chq-contacts-drawer-actions .chq-btn,
-.chq-contacts-drawer-actions .chq-btn-tertiary {
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* DEC-758's 'Delete this contact' trigger. Layout only (same treatment as
-   content.css's .chq-content-version-delete): the tertiary button's colour
-   and weight stay with .chq-btn-tertiary in styles.css. */
-.chq-contacts-delete-trigger {
-  white-space: nowrap;
-}
+  /* -- from the former record/drawer "Contact 390" block (former lines 862-934) -- */
 
 /* ---------------------------------------------------------------------- */
 /* v12 phone frame "Contact · 390" — "The errand you actually run on a     */
@@ -859,7 +881,7 @@
 /* max-width override of an unconditional desktop rule that keeps its      */
 /* exact current rendering above 700px.                                    */
 /* ---------------------------------------------------------------------- */
-@media (max-width: 700px) {
+
   /* Frame: each fact is a stacked pair — the uppercase micro-label on its
      own line, the value beneath at 15/1.55 — not the desktop record's
      130px label gutter, which at 390 leaves the value a ~180px column and
@@ -931,7 +953,8 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
-}
+
+  /* -- from the former DEC-393 tap-target anchor-floor block (former lines 944-953) -- */
 
 /* DEC-393 wave-7 amendment: the tap-target scan's population is
    `<input|select|button>` plus `.chq-btn`-classed `<a>` only -- a bare
@@ -941,16 +964,8 @@
    `.chq-contacts-rail-duplicate-actions`'s Merge link are both that shape.
    Grow the anchor, absorb the padding with an equal negative inline
    margin so the row's layout does not shift. */
-@media (max-width: 700px) {
-  .chq-contacts-title-actions a,
-  .chq-contacts-rail-duplicate-actions a {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    padding-inline: 10px;
-    margin-inline: -10px;
-  }
-}
+
+  /* -- from the former DEC-989 overflow-ellipsis closeout block (former lines 963-1038) -- */
 
 /* DEC-989 wave-90 amendment: 390-overflow closeout, 358px budget (390 -
    .chq-main's 16px phone gutter on each side). Each of these carries an
@@ -960,7 +975,16 @@
    together: without `min-width:0` a flex child's `min-width:auto` refuses
    to shrink below its own content and the ellipsis never fires. The base
    (desktop) `white-space: nowrap` rules are untouched. */
-@media (max-width: 700px) {
+
+  .chq-contacts-title-actions a,
+  .chq-contacts-rail-duplicate-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
+
   .chq-contacts-drawer-actions .chq-btn,
   .chq-contacts-drawer-actions .chq-btn-tertiary {
     overflow: hidden;
@@ -1036,4 +1060,3 @@
     color: var(--chq-muted);
   }
 }
-
