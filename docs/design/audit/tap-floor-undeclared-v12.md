@@ -15,11 +15,17 @@ if (height === undefined || height >= TAP_FLOOR_PX) continue;
 named a height was invisible to the ratchet meant to catch sub-floor
 controls. That is the inverse of the truth: a control with no declared
 height cannot reach 44px except by accident of line-height.
-The rule opened at `app/src/pages/review/review.css:650`
-(`.chq-review-queue-footer-showall {`) declares border, background,
+The rule opened at app/src/pages/review/review.css`.chq-review-queue-footer-showall {`
+(drift-proof citation, DEC-967 wave-115 -- as of this wave the rule body
+opens with `font-family: inherit;` before `border: none;` and
+`background: none;`, so the selector line alone is what still resolves
+verbatim; the older three-clause single-line quote no longer exists in
+the file) declares font-family, border, background,
 padding and font-size — and no height of any kind. It styles a real
-button element at `app/src/pages/review/ReviewerQueue.tsx:402`
-(`<button`), the same shape used again at `PlanEditor.tsx:2319`. That is
+button element at app/src/pages/review/ReviewerQueue.tsx`className="chq-review-queue-footer-showall"`
+(drift-proof citation, DEC-967 wave-115), the same shape used again at
+app/src/pages/review/PlanEditor.tsx`className="chq-review-queue-footer-showall"`
+(drift-proof citation, DEC-967 wave-115). That is
 the proof —
 the live 390 probe (`docs/probes/metafid-phoneB-ssr-2026-08-19.md`)
 measured it at 52×30, sub-floor, while `findOffenders()` and both SSR tap

@@ -144,8 +144,8 @@ modal-title class, outside this document's file scope (DEC-959,
 DEC-613).** `docs/design/Chautauqua Contacts.dc.html:410` sets the
 "Contact · 390" head H1 at `font-size:25px; font-weight:700;
 letter-spacing:-0.04em`. `ContactDrawer`'s title renders through the
-shared `.chq-modal-title` class (`app/src/components/modal-frame.css:57`),
-which is `font-size: 23px` — 2px short of the frame's figure, and the
+shared `.chq-modal-title` class (app/src/components/modal-frame.css`font-size: 23px`
+(drift-proof citation, DEC-967 wave-115)), which is 2px short of the frame's figure, and the
 class carries no `letter-spacing` declaration at all (the frame calls for
 `-0.04em`). This is the SAME shared modal-title class every other v12m
 drawer/modal renders through, so widening it is a REGISTER change, not a
