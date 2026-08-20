@@ -51,6 +51,20 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// v12m-w14-g (DEC-576 wave-125 amendment): "Download all" now renders TWICE
+// -- the header's scoped control (explanatory cap/scope text stays beside
+// it) and the phone dock's copy at the page's LAST child, both wired to the
+// SAME handler/disabled state, exactly one visible at any given width
+// (DEC-576 wave-119's "two copies, one visible" shape). Tests that assert
+// the header's own copy scope through this helper so an unscoped
+// getByRole/findByRole keeps resolving to exactly one element.
+function getHeaderRow(): HTMLElement {
+  const heading = screen.getByRole('heading', { name: 'Files', level: 1 });
+  const headerRow = heading.closest<HTMLElement>('.chq-content-files-header-row');
+  if (!headerRow) throw new Error('header row not found');
+  return headerRow;
+}
+
 describe('FilesLibrary render smoke', () => {
   it('renders the version-chain table with zero console.error', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
@@ -397,7 +411,7 @@ describe('FilesLibrary render smoke', () => {
 
     render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
-    const button = await screen.findByRole('button', { name: 'Download all 3 (.zip)' });
+    const button = await within(getHeaderRow()).findByRole('button', { name: 'Download all 3 (.zip)' });
     expect(button).not.toBeDisabled();
 
     vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() });
@@ -439,7 +453,7 @@ describe('FilesLibrary render smoke', () => {
 
     render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
-    expect(await screen.findByRole('button', { name: 'Download all 3 (.zip)' })).toBeInTheDocument();
+    expect(await within(getHeaderRow()).findByRole('button', { name: 'Download all 3 (.zip)' })).toBeInTheDocument();
     expect(screen.queryByText(/won't be included/)).not.toBeInTheDocument();
   });
 
@@ -456,7 +470,7 @@ describe('FilesLibrary render smoke', () => {
 
     render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
-    const button = await screen.findByRole('button', { name: 'Download 50 files (.zip)' });
+    const button = await within(getHeaderRow()).findByRole('button', { name: 'Download 50 files (.zip)' });
     expect(button).not.toBeDisabled();
     expect(button.textContent).not.toContain('all');
     expect(screen.getByText(/70 files more in this filtered set won't be included/)).toBeInTheDocument();
@@ -518,7 +532,7 @@ describe('FilesLibrary render smoke', () => {
 
     render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
 
-    const button = await screen.findByRole('button', { name: 'Download all 51 (.zip)' });
+    const button = await within(getHeaderRow()).findByRole('button', { name: 'Download all 51 (.zip)' });
     expect(button).toBeDisabled();
     expect(screen.getByText('50 files or 20.0 MB at a time — narrow the filter')).toBeInTheDocument();
   });
@@ -750,7 +764,7 @@ function filesPhoneRule(css: string, selector: string): string {
 describe('FilesLibrary: the 390 frame header stack and file card', () => {
   const ROW = '.chq-content-files-library .chq-content-table tr.chq-content-row';
 
-  it('stacks the header — back link, title, summary, then a full-measure Download all', () => {
+  it('stacks the header — back link, title, summary — with its Download-all control moved to the pinned dock (v12m-w14-g, DEC-576 wave-125)', () => {
     const phone = filesPhoneBlock();
 
     const headerRow = filesPhoneRule(phone, '.chq-content-files-header-row');
@@ -762,13 +776,19 @@ describe('FilesLibrary: the 390 frame header stack and file card', () => {
     expect(headerActions).toMatch(/align-items:\s*stretch/);
 
     expect(filesPhoneRule(phone, '.chq-content-files-download-all-wrap')).toMatch(/align-items:\s*stretch/);
+    // The header's live control is hidden -- the same action now lives in
+    // `.chq-phone-dock` (the shell's own class, reused verbatim) as the
+    // page's last child; the explanatory cap/scope text above stays put.
+    expect(filesPhoneRule(phone, '.chq-content-files-download-all-wrap > .chq-btn')).toMatch(/display:\s*none/);
 
     // The breadcrumb is a real tap target on a phone (DESIGN-RULINGS 44px).
     const crumb = filesPhoneRule(phone, '.chq-content-files-breadcrumb');
     expect(crumb).toMatch(/min-height:\s*44px/);
 
-    // The search field owns its own line above the chips it narrows.
-    expect(filesPhoneRule(phone, '.chq-content-files-toolbar .chq-input')).toMatch(/flex:\s*1 1 100%/);
+    // The search field is collapsed by default and disclosed by the dock's
+    // "Search" secondary (mirrors Speakers' `.is-phone-open`).
+    expect(filesPhoneRule(phone, '.chq-content-files-search-input')).toMatch(/display:\s*none/);
+    expect(filesPhoneRule(phone, '.chq-content-files-search-input.is-phone-open')).toMatch(/display:\s*block/);
   });
 
   it('reflows the file row into name + version, session, size, then a full-measure Download', () => {

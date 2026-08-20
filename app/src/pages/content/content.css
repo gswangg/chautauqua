@@ -1311,15 +1311,33 @@
     align-items: stretch;
   }
 
+  /* v12m-w14-g (DEC-576 wave-125 amendment): the actionable control moves
+     into the frame's own pinned dock below (`.chq-phone-dock`, the SAME
+     handler/disabled state) -- the header keeps only its explanatory cap/
+     scope text, never a second live control competing for the one tap
+     that downloads. */
+  .chq-content-files-download-all-wrap > .chq-btn {
+    display: none;
+  }
+
   .chq-content-files-download-all-cap,
   .chq-content-files-download-all-scope {
     max-width: none;
     text-align: left;
   }
 
-  /* The search field owns its own line above the type chips it narrows. */
-  .chq-content-files-toolbar .chq-input {
+  /* v12m-w14-g: the search field is collapsed by default at 390 -- the
+     frame's phone header/chip band (:338-357) draws no search field at
+     all, only the dock's bordered "Search" secondary (:360-361), which
+     this class's `.is-phone-open` modifier reveals (mirrors Speakers'
+     `.chq-speakers-toolbar.is-phone-open`, OnboardingGrid.tsx). */
+  .chq-content-files-search-input {
     flex: 1 1 100%;
+    display: none;
+  }
+
+  .chq-content-files-search-input.is-phone-open {
+    display: block;
   }
 
   /* File card: name + version tag on the first line, then session, size and
@@ -1835,9 +1853,13 @@
     min-height: 44px;
   }
 
-  .chq-content-files-header-actions .chq-btn {
-    min-height: 44px;
-  }
+  /* .chq-content-files-header-actions .chq-btn no longer takes a floor
+     here -- v12m-w14-g hides that button at 390
+     (.chq-content-files-download-all-wrap > .chq-btn, above); the live
+     control is `.chq-phone-dock .chq-btn`, floored by the shell's own
+     phone rule (styles.css) at 48px, which already exceeds this 44px
+     floor. A hidden control carries no tap-floor obligation (DEC-919: the
+     rule protects what's ON the screen). */
 
   /* -- Tap floor: empty header spacer (inert, see note above) ------------ */
 
