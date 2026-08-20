@@ -151,7 +151,9 @@ function ProfilePage(props: {
 }) {
   const { profile } = props;
   // DEC-576 (wave-110/wave-119) + DEC-154 wave-125: the 390 frame's pinned
-  // action band (docs/design/Chautauqua Public and Portal.dc.html:544-547)
+  // action band (docs/design/Chautauqua Public and Portal.dc.html:550-552
+  // `<div style="flex-shrink:0; border-top:1px solid #1B1D17;
+  // background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">`)
   // draws a Save primary through PortalLayout's dock slot, same call shape
   // as edit.tsx's editDock (:178-188) and index.tsx's session-detail dock
   // (:496-503) -- a single control referencing the form by id since the

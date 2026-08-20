@@ -551,7 +551,8 @@ ${BARE_PAGE_CSS}
        with the email/password stack pulled flush, let the email input's
        :focus-visible ring (2px width + 2px offset = 4px) overlap the
        Password label 4px below it on load -- both measured live at 390
-       (docs/design/Chautauqua Account.dc.html:121 "Sign in . 390" draws the
+       (docs/design/Chautauqua Account.dc.html:121
+       \`width:390px; height:844px;\` "Sign in . 390" draws the
        email/password/button stack inside the same 14px-gap fieldstack
        (:127) the desktop card's own .chq-auth-fields rule already states;
        nothing about the 390 frame calls for a 0px stack there). Scoping to

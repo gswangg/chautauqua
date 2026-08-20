@@ -238,8 +238,6 @@ describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and P
   it("the dock copy orders Save, then Cancel, then the consequence note below the pair", () => {
     const dockIdx = html.indexOf('class="chq-portal-edit-dock"');
     const buttonsIdx = html.indexOf('class="chq-portal-edit-dock-buttons"');
-    // docs/design/Chautauqua Public and Portal.dc.html:669 `Save changes`
-    // leads the row, Cancel follows, the consequence note sits below the pair.
     const saveIdx = html.indexOf("Save changes", buttonsIdx);
     const cancelIdx = html.indexOf(">Cancel<", saveIdx);
     const noteIdx = html.lastIndexOf("Title and abstract show on the public pages");

@@ -1,10 +1,11 @@
 // DEC-936 amendment (task w11-p): the Submissions 390 frame's third status
-// chip (docs/design/Chautauqua Submissions.dc.html:150 -- `Accepted</span>` is
-// immediately followed on the next frame line by
+// chip -- `Accepted</span>` is immediately followed on the next frame line by
 // `<span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px;
 // min-height:44px; display:flex; align-items:center; padding:0 13px;
-// font-size:13px; font-weight:500">All 47</span>` -- has no counterpart in
-// FilterBar today (the rule's own comment in submissions.css names the gap).
+// font-size:13px; font-weight:500">All 47</span>` (the frame citation for
+// this literal sits below, beside the assertion it receipts) -- has no
+// counterpart in FilterBar today (the rule's own comment in submissions.css
+// names the gap).
 // This pins the chip clears the status facet, carries the unfiltered total
 // SubmissionsTable already fetches at perPage=1, and never fabricates a
 // number when that fetch fails (DEC-180).
