@@ -76,7 +76,14 @@ const TSX_FILES = allTsxFiles(HERE);
 // after 15 lanes landed in one pass -- concurrent lanes drained the same
 // population, so the combined truth is lower than any single branch saw.
 // 23 -> 15. Lowering is a merge-train act (DEC-989).
-export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 15;
+// w14-m/DEC-728 wave-125: this lane floors the Settings cluster's two
+// live-measured sub-floor tokens (.chq-settings-portal-add-resource,
+// .chq-swatch-cycle via the .chq-color-swatch.chq-swatch-cycle compound
+// selector), draining the population 15 -> 14 on THIS branch (DEC-989
+// wave-123/125 -- the lane records its own measured value; a merge train
+// reconciles the combined ceiling later).
+// RATCHET: UNDECLARED_HEIGHT_OFFENDERS_CEILING=14
+export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 14;
 
 describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)', () => {
   it('derives a non-empty population and includes a known-live offender (vacuous-population tripwire)', () => {
