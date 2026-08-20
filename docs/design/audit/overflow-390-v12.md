@@ -1,10 +1,11 @@
-# Phone horizontal overflow at 390 (DEC-989, TIER 2 sweep, task w5-d)
+# Phone horizontal overflow at 390 (DEC-989, TIER 2 sweep, task w5-d; predicate-repaired wave 119, task w8-a)
 
 Measured by `app/src/phone-horizontal-overflow.scan.test.ts`, which enumerates
 every `app/src/**/*.css` and `src/**/*.css.ts` file (DEC-808, no hand-listed
 manifest) and flags four declaration shapes inside any
-`@media (max-width: <=700px)` block, and in any top-level rule with no phone
-override for the same selector:
+`@media (max-width: <=700px)` block, and in any top-level rule that has no
+phone override for the same selector on the SAME PROPERTY (cascade-aware
+candidacy, DEC-989 wave-119 amendment -- see below):
 
 - a px `width` / `min-width` / `flex-basis` above the content budget
 - `grid-template-columns` whose fixed px tracks, plus the gaps between them,
@@ -19,84 +20,116 @@ override for the same selector:
 — `.chq-main`'s `padding: 16px` inside `styles.css`'s
 `@media (max-width: 700px)` block. `CONTENT_BUDGET_PX = 390 - 2*16 = 358`.
 
-This document records every offender in a file this task (w5-d) does not
-own the right to edit. The four offenders that landed inside
-`app/src/pages/contacts/contacts-panels.css` (a file this task DOES own)
-were fixed directly (added `overflow: hidden; text-overflow: ellipsis;`
-alongside their existing `white-space: nowrap`) and do not appear below.
+## PREDICATE REPAIR (wave 119, task w8-a, DEC-989/DEC-991)
 
-**Refreshed wave 108 (v12m-w4-o, DEC-808 amendment).** Measurement method:
-copy `app/src/phone-horizontal-overflow.scan.test.ts`, force
-`OVERFLOW_OFFENDERS_CEILING` to `-1` so the ceiling `it()` fails
-unconditionally, run `npx vitest run
-app/src/phone-horizontal-overflow.scan.test.ts`, and read the offender list
-the failure message prints — never trust a previously recorded number or an
-audit doc's own count. Do this in a throwaway copy of the test file (or
-revert the edit after reading the output); do not commit the forced `-1`.
+The candidacy test that produced every prior count in this document's history
+(most recently 0, drained by task w6-h at wave 117) was BLIND, not clean: a
+top-level rule was excluded from the population the instant ANY phone-scoped
+rule in the same file named the same selector token, on ANY property --
+whether or not that override ever touched the flagged declaration.
+`app/src/pages/settings/settings.css:1142`'s `.chq-settings-row-hint {
+white-space: nowrap; text-align: right; }` was never checked, because a
+wholly unrelated terminal phone rule at `settings.css:1586` declares only
+`align-self: flex-end` for the same selector.
 
-Total offenders recorded here: **24** (the scan's own
-`OVERFLOW_OFFENDERS_CEILING`, re-measured this wave — down from the
-previously recorded 65, which had gone stale as other lanes fixed offenders
-without lowering the ratchet). Most are `white-space: nowrap` action
-links/labels/captions with no escape declared — cheap for each owning
-cluster to close with the same `overflow: hidden; text-overflow: ellipsis;`
-pair used in this task's own fix, or an `/* overflow-exempt: <reason> */`
-comment where truncation is wrong (e.g. a value that must stay exact). A
+The repair: every top-level rule is now ALWAYS a candidate, but is checked
+against its EFFECTIVE declaration map -- its own declarations, overridden
+property-by-property (last-wins, source order) by every phone-scoped rule in
+the file whose comma-split selector tokens intersect its own -- rather than
+its raw body. A phone override that genuinely clears the flagged property
+still clears the rule; one that touches something else no longer hides it.
+
+This also repairs a second, unrelated defect surfaced by the same audit:
+`src/routes/public/css/agenda.css.ts`'s CSS-in-TS `.${ACCENT_BOUND_CLASSES[1]}`
+selector-position interpolation was being stripped to a bare `.` by the
+literal-extraction step, so the offender printed as a meaningless `.`
+selector. The extraction now resolves a `.${NAME[N]}` interpolation against
+its imported array constant (here, `./accent-classes`'s `ACCENT_BOUND_CLASSES`)
+and reports the rule under its real class name, `.chq-pub-day-pill`. No
+stylesheet was edited and no `overflow-exempt:` comment was authored to reach
+this count (DEC-991) -- every row below is a real, previously-undercounted or
+previously-mislabeled offender, not a new regression.
+
+Total offenders recorded here: **31** (`OVERFLOW_OFFENDERS_CEILING`, measured
+by running the scan against this branch's tree at authoring time -- see the
+companion comment above that constant in
+`app/src/phone-horizontal-overflow.scan.test.ts` for the full derivation).
+Most are `white-space: nowrap` action links/labels/captions with no escape
+declared — cheap for each owning cluster to close with an
+`overflow: hidden; text-overflow: ellipsis;` pair, or a documented
+`/* overflow-exempt: <reason> */` comment where truncation is wrong. A
 smaller set are real fixed-width geometry (`grid-template-columns` tracks,
 literal `width`/`min-width`) that need either a phone override or a
-deliberate horizontal-scroll wrapper (`overflow-x: auto`) plus an exemption
-comment recording that decision.
+deliberate horizontal-scroll wrapper plus an exemption comment recording that
+decision.
 
-### content (2)
-
-| File | Selector | Measured excess |
-|---|---|---|
-| `app/src/pages/content/content.css` | `.chq-content-phone-select-toggle` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/content/content.css` | `.chq-content-phone-selecting-all` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-
-### review (9)
+### comms (1)
 
 | File | Selector | Measured excess |
 |---|---|---|
-| `app/src/pages/review/review.css` | `.chq-review-plan-row` | grid-template-columns fixed tracks 550px + gaps 40px = 590px exceeds budget 358px |
-| `app/src/pages/review/review.css` | `.chq-review-plan-actions` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/review/review.css` | `.chq-review-results-col-decision` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/review/review.css` | `.chq-review-reviews-toggle` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/review/review.css` | `.chq-review-scoped-progress-caption` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/review/review.css` | `.chq-review-criterion-row.chq-review-criterion-row-readonly` | grid-template-columns fixed tracks 564px + gaps 0px = 564px exceeds budget 358px |
-| `app/src/pages/review/review.css` | `.chq-review-criterion-options-count` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/review/scorecard.css` | `.chq-review-scorecard-grid` | grid-template-columns fixed tracks 1120px + gaps 60px = 1180px exceeds budget 358px |
-| `app/src/pages/review/scorecard.css` | `.chq-review-criterion-name-row .chq-review-criterion-weight-caption` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/comms/comms.css` | `.chq-comms-templates-table .chq-comms-templates-col-last-used` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
 
-### submissions (7)
+### contacts (2)
 
 | File | Selector | Measured excess |
 |---|---|---|
-| `app/src/pages/submissions/detail.css` | `.chq-detail-section-action` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/submissions/detail.css` | `.chq-detail-session-details-caption` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/submissions/detail.css` | `.chq-submission-history-current` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/submissions/detail.css` | `.chq-answer-file-size` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/submissions/submissions.css` | `.chq-submissions-table thead th` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/submissions/submissions.css` | `.chq-submissions-table .chq-flag` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/pages/submissions/submissions.css` | `.chq-submissions-save-view-modal` | width: 440px exceeds budget 358px |
+| `app/src/pages/contacts/contacts-panels.css` | `.chq-contacts-pipeline-columns` | min-width: 1000px exceeds budget 358px |
+| `app/src/pages/contacts/contacts.css` | `.chq-contacts-delete-trigger` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
 
-### shell (3)
+### content (5)
 
 | File | Selector | Measured excess |
 |---|---|---|
-| `app/src/styles.css` | `.chq-user-identity` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/styles.css` | `.chq-section-action` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `app/src/styles.css` | `.chq-contacts-table .chq-contacts-col-actions` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/content/content.css` | `.chq-content-actions` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/content/content.css` | `.chq-content-version-newest` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/content/content.css` | `.chq-content-version-download` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/content/content.css` | `.chq-content-version-delete` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/content/content.css` | `.chq-content-phone-select-toggle, .chq-content-phone-selecting-meta` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
 
-### portal (SSR) (1)
-
-| File | Selector | Measured excess |
-|---|---|---|
-| `src/routes/portal/portal.css.ts` | `.chq-field-counter` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-
-### public (SSR) (2)
+### overview (2)
 
 | File | Selector | Measured excess |
 |---|---|---|
-| `src/routes/public/cfp.css.ts` | `.chq-field-counter` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
-| `src/routes/public/css/rail.css.ts` | `.chq-pub-schedule-browse-link` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/overview/overview.css` | `.chq-overview-toolbar-btn` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/overview/overview.css` | `.chq-overview-link-btn` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+
+### review (4)
+
+| File | Selector | Measured excess |
+|---|---|---|
+| `app/src/pages/review/review.css` | `.chq-review-criteria-eyebrow` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/review/review.css` | `.chq-review-criterion-share` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/review/review.css` | `.chq-reviewer-plan-head-row` | grid-template-columns fixed tracks 520px + gaps 40px = 560px exceeds budget 358px |
+| `app/src/pages/review/review.css` | `.chq-reviewer-plan-row-action` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+
+### settings (5)
+
+| File | Selector | Measured excess |
+|---|---|---|
+| `app/src/pages/settings/settings.css` | `.chq-settings-layout` | grid-template-columns fixed tracks 1016px + gaps 34px = 1050px exceeds budget 358px |
+| `app/src/pages/settings/settings.css` | `.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-column` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/settings/settings.css` | `.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-sample` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/settings/settings.css` | `.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-arrow` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/settings/settings.css` | `.chq-settings-row-hint` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+
+### submissions (4)
+
+| File | Selector | Measured excess |
+|---|---|---|
+| `app/src/pages/submissions/detail.css` | `.chq-detail-position-prev, .chq-detail-position-next` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `app/src/pages/submissions/detail.css` | `.chq-detail-layout` | grid-template-columns fixed tracks 1020px + gaps 20px = 1040px exceeds budget 358px |
+| `app/src/pages/submissions/detail.css` | `.chq-detail-page .chq-participants-table thead tr, .chq-detail-page .chq-participants-table tbody tr` | grid-template-columns fixed tracks 360px + gaps 18px = 378px exceeds budget 358px |
+| `app/src/pages/submissions/detail.css` | `.chq-detail-delete-link` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+
+### public (SSR) (8)
+
+| File | Selector | Measured excess |
+|---|---|---|
+| `src/routes/public/css/agenda.css.ts` | `.chq-pub-day-pill` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `src/routes/public/css/rail.css.ts` | `.chq-pub-save` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `src/routes/public/css/rail.css.ts` | `.chq-pub-schedule-remove` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `src/routes/public/css/rail.css.ts` | `.chq-pub-lastyear-link` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `src/routes/public/home.css.ts` | `.chq-home-action-primary` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `src/routes/public/home.css.ts` | `.chq-home-action-secondary` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `src/routes/public/home.css.ts` | `.chq-home-action-quiet` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
+| `src/routes/public/home.css.ts` | `.chq-home-action-tertiary` | white-space: nowrap with no overflow/text-overflow escape in the same rule |
