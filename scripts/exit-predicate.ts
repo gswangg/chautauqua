@@ -551,6 +551,17 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   "PAINTED_CANCELLED_PADDING_CEILING",
   // wave-121 (task w10-l): cancelled-padding companion-gap lens.
   "CANCELLED_PADDING_GAP_CEILING",
+  // wave-122 (task w11-s, DEC-851 amendment): docs/mobile-campaign.md's
+  // Tier 2 requires the 44px sweep to cover BOTH evasion modes
+  // DESIGN-RULINGS names -- a floored-but-too-short control, and a
+  // control with no declared height/min-height at all, which the base
+  // tap-target scan's `findOffenders()` drops before it is ever tested
+  // against the floor. UNDECLARED_HEIGHT_OFFENDERS_CEILING grades the
+  // second mode; it was already in CAMPAIGN_CONSTANT_NAMES (wave-120,
+  // task w9-l) but never wired into TIER2_CEILING_NAMES, so it was
+  // graded but never printed and never gated DONE -- a declared knob
+  // with no reader (DEC-851).
+  "UNDECLARED_HEIGHT_OFFENDERS_CEILING",
 ];
 
 /**
@@ -618,6 +629,48 @@ export function assertCampaignPopulationTotal(candidates: readonly string[]): vo
   }
 }
 
+/**
+ * Closes the exit predicate's third state (DEC-851 amendment): a ceiling
+ * can be a member of `CAMPAIGN_CONSTANT_NAMES` (so `assertCampaignPopulationTotal`
+ * accounts for it and does not throw it as an unlisted ratchet) yet never
+ * appear in `TIER2_CEILING_NAMES` (what `buildCampaignReport` turns into a
+ * row, and what `verdict.tier2Done` requires to read 0) -- graded, but
+ * never printed and never gating DONE.
+ *
+ * Every `CAMPAIGN_CONSTANT_NAMES` entry whose name is the bare `CEILING`
+ * or ends `_CEILING` (a ceiling by shape) must appear in either
+ * `TIER2_CEILING_NAMES` or `OUT_OF_CAMPAIGN_SCOPE` -- there is no third
+ * bucket. The four ledger names (`CLAIMED_FLOOR`,
+ * `EXPECTED_TOTAL_PRE_DEVIATION`, `EXPECTED_DEVIATION_DEFERRED`,
+ * `EXPECTED_TOTAL`) are excluded by this same shape test, not by a
+ * hand-list -- none of them is the bare word `CEILING` or ends `_CEILING`.
+ *
+ * Throws, naming every offender, if any graded ceiling is unrepresented in
+ * both lists -- same voice as `assertCampaignPopulationTotal`.
+ */
+export function assertEveryGradedCeilingIsGated(
+  gradedNames: readonly string[],
+  tier2Names: readonly string[],
+  outOfScope: Readonly<Record<string, string>>,
+): void {
+  const isCeilingByShape = (name: string): boolean =>
+    name === "CEILING" || name.endsWith("_CEILING");
+  const gated = new Set(tier2Names);
+  const excused = new Set(Object.keys(outOfScope));
+  const offenders = gradedNames.filter(
+    (name) => isCeilingByShape(name) && !gated.has(name) && !excused.has(name),
+  );
+  if (offenders.length > 0) {
+    throw new Error(
+      `exit-predicate campaign: ${offenders.length} ceiling constant(s) are graded ` +
+        `(CAMPAIGN_CONSTANT_NAMES) but neither reported (TIER2_CEILING_NAMES) nor excused ` +
+        `(OUT_OF_CAMPAIGN_SCOPE): ${offenders.join(", ")}. A ceiling that is graded but never ` +
+        `printed and never gates DONE is a declared knob with no reader -- add each name to ` +
+        `TIER2_CEILING_NAMES or OUT_OF_CAMPAIGN_SCOPE, never leave it in the third state.`,
+    );
+  }
+}
+
 function ceilingRow(matches: readonly ConstantMatch[], name: string): RatchetRow {
   const m = resolveSingle(
     matches.filter((c) => c.name === name),
@@ -650,6 +703,7 @@ function ceilingRow(matches: readonly ConstantMatch[], name: string): RatchetRow
  */
 export function buildCampaignReport(files: readonly CampaignFile[]): CampaignReport {
   assertCampaignPopulationTotal(findCampaignCeilingCandidates(files));
+  assertEveryGradedCeilingIsGated(CAMPAIGN_CONSTANT_NAMES, TIER2_CEILING_NAMES, OUT_OF_CAMPAIGN_SCOPE);
 
   const names = new Set(CAMPAIGN_CONSTANT_NAMES);
   const matches = findConstantDeclarations(files, names);

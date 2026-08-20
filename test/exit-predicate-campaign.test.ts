@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertCampaignPopulationTotal,
+  assertEveryGradedCeilingIsGated,
   buildCampaignReport,
   CAMPAIGN_CONSTANT_NAMES,
   type CampaignFile,
@@ -168,12 +169,16 @@ describe("buildCampaignReport", () => {
   it("builds all 10 rows and a correct verdict from the fixture corpus", () => {
     const report = buildCampaignReport(baseFixture());
     // Megabatch wave-120/121: three instruments landed together.
-    // UNDECLARED_HEIGHT_OFFENDERS_CEILING (task w9-l, DEC-367 PREDICATE
-    // REPAIR) is GRADED but is not a Tier-2 row, so it adds no row.
     // PAINTED_CANCELLED_PADDING_CEILING (DEC-937) and
     // CANCELLED_PADDING_GAP_CEILING (DEC-393 amendment) are both in
     // TIER2_CEILING_NAMES, so each adds one: 18 -> 20.
-    expect(report.rows).toHaveLength(20);
+    // wave-122 (task w11-s, DEC-851 amendment): UNDECLARED_HEIGHT_OFFENDERS_CEILING
+    // (task w9-l, DEC-367 PREDICATE REPAIR) was GRADED but not a Tier-2 row --
+    // a declared knob with no reader. Now wired into TIER2_CEILING_NAMES: 20 -> 21.
+    expect(report.rows).toHaveLength(21);
+
+    const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
+    expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });
 
     const desktop = report.rows.find((r) => r.label === "desktop CLAIMED_FLOOR");
     expect(desktop).toMatchObject({ current: 30, target: 38, remaining: 8 });
@@ -238,6 +243,9 @@ describe("buildCampaignReport", () => {
       }
       if (f.path === "app/src/cancelled-padding-gap.scan.test.ts") {
         return { ...f, content: "export const CANCELLED_PADDING_GAP_CEILING = 0;" };
+      }
+      if (f.path === "app/src/phone-tap-target-undeclared.scan.test.ts") {
+        return { ...f, content: "export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 0;" };
       }
       return f;
     });
@@ -356,4 +364,54 @@ describe("OUT_OF_CAMPAIGN_SCOPE", () => {
   it("UNCLAIMED_CEILING is excused (tsconfig coverage, not a v12 frame/DEC-069 ratchet)", () => {
     expect(OUT_OF_CAMPAIGN_SCOPE).toHaveProperty("UNCLAIMED_CEILING");
   });
+});
+
+describe("assertEveryGradedCeilingIsGated", () => {
+  // Synthetic inputs throughout -- these must not read CAMPAIGN_CONSTANT_NAMES,
+  // TIER2_CEILING_NAMES or OUT_OF_CAMPAIGN_SCOPE as their own evidence (DEC-967:
+  // an assertion whose only check reads the same array it is grading is a
+  // tautology). The two lists below are constructed by hand per-test, distinct
+  // from the module's real exports.
+
+  it("throws and names a graded ceiling that is neither reported nor excused (positive control)", () => {
+    const graded = ["A_CEILING", "B_CEILING", "SOME_FLOOR"];
+    const reported = ["A_CEILING"]; // B_CEILING is missing
+    expect(() => assertEveryGradedCeilingIsGated(graded, reported, {})).toThrow(
+      /B_CEILING/,
+    );
+  });
+
+  it("ignores a bare CEILING name too: throws if it is graded but neither reported nor excused", () => {
+    const graded = ["CEILING", "REPORTED_CEILING"];
+    expect(() => assertEveryGradedCeilingIsGated(graded, ["REPORTED_CEILING"], {})).toThrow(
+      /\bCEILING\b/,
+    );
+  });
+
+  it("names every offender, not just the first", () => {
+    const graded = ["FIRST_CEILING", "SECOND_CEILING"];
+    expect(() => assertEveryGradedCeilingIsGated(graded, [], {})).toThrow(
+      /FIRST_CEILING.*SECOND_CEILING|SECOND_CEILING.*FIRST_CEILING/s,
+    );
+  });
+
+  it("does not throw when a graded ceiling is excused via OUT_OF_CAMPAIGN_SCOPE instead of reported (negative control)", () => {
+    const graded = ["EXCUSED_CEILING"];
+    expect(() =>
+      assertEveryGradedCeilingIsGated(graded, [], { EXCUSED_CEILING: "measures something out of scope" }),
+    ).not.toThrow();
+  });
+
+  it("does not throw when every graded ceiling is reported", () => {
+    const graded = ["A_CEILING", "B_CEILING"];
+    expect(() => assertEveryGradedCeilingIsGated(graded, graded, {})).not.toThrow();
+  });
+
+  it("excludes a floor/non-ceiling-shaped name by shape, not by a hand-list", () => {
+    // A ledger-style name that is neither `CEILING` nor ends `_CEILING` must
+    // never need to appear in either list.
+    const graded = ["EXPECTED_TOTAL_PRE_DEVIATION", "CLAIMED_FLOOR", "SOME_FLOOR"];
+    expect(() => assertEveryGradedCeilingIsGated(graded, [], {})).not.toThrow();
+  });
+
 });
