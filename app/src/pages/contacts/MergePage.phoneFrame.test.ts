@@ -194,3 +194,46 @@ describe('v12 phone frame "Merge · 390" (docs/design/Chautauqua Contacts.dc.htm
     expect(CSS).not.toMatch(/@media\s*\(min-width/);
   });
 });
+
+// User-filed (Cut-2 review, screenshot of the merge action row at desktop):
+// "Not a duplicate" sat high against the two boxed controls. Measured with
+// playwright at 1600 on /admin/contacts/merge: the two buttons' text centres
+// both fell at y=862.83 and the link's at y=851.83 -- 11.0px high. Two
+// independent causes, pinned separately below; after the fix all three read
+// 867.33 (delta 0.00px), and the 390 layout is byte-identical.
+describe('user-filed: the merge action row centres all three controls on one line', () => {
+  // docs/design/Chautauqua Contacts.dc.html:391
+  // `<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">`
+  it('the row itself centres its children', () => {
+    expect(topLevelRule(CSS, '.chq-contacts-merge-footer')).toMatch(/align-items:\s*center/);
+  });
+
+  // docs/design/Chautauqua Contacts.dc.html:394
+  // `<a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Not a duplicate</a>`
+  // -- the frame's link carries NO self-alignment; the row centres it like
+  // any other child. `align-self: flex-start` was opting it out, which is
+  // what dropped its 15px text box to the top of the 46px row.
+  it('the quiet link does not opt out of that centring at desktop', () => {
+    const desktop = topLevelRule(CSS, '.chq-contacts-merge-not-duplicate');
+    expect(desktop).toMatch(/align-self:\s*center/);
+    expect(desktop).not.toMatch(/align-self:\s*flex-start/);
+    // DEC-992's borderless text link is untouched by the centring fix
+    expect(desktop).toMatch(/border:\s*none/);
+  });
+
+  // The phone floor is the deliberate override of that centring -- a bare
+  // <button> the shared .chq-btn phone rule cannot reach still needs its
+  // 48px tap target, so it stretches rather than centres.
+  it('the phone block still stretches it to the tap floor', () => {
+    expect(phoneRule(CSS, '.chq-contacts-merge-not-duplicate')).toMatch(/align-self:\s*stretch/);
+  });
+
+  // docs/design/Chautauqua Contacts.dc.html:392/:393 -- both boxed controls
+  // `min-height:46px`. .chq-btn declares padding but no min-height, so the
+  // primary rendered 35px and the bordered secondary 37px: the two siblings
+  // did not match each other either. Floored on this row only, never on the
+  // global .chq-btn.
+  it('floors both boxed controls at the frame 46px, on this row only', () => {
+    expect(topLevelRule(CSS, '.chq-contacts-merge-footer .chq-btn')).toMatch(/min-height:\s*46px/);
+  });
+});

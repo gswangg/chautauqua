@@ -654,7 +654,20 @@
    palette's one green, --chq-brand), not a fourth boxed button in the
    footer row. */
 .chq-contacts-merge-not-duplicate {
-  align-self: flex-start;
+  /* User-filed (Cut-2 review, screenshot of the merge action row): the link
+     sat high against its boxed siblings. `align-self: flex-start` was
+     opting this one child OUT of .chq-contacts-merge-footer's own
+     `align-items: center` (:735), so a 15px text box hung from the top of a
+     46px row -- its text centre measured 11.0px above both buttons' at
+     1600. The frame gives the link no self-alignment at all (docs/design/
+     Chautauqua Contacts.dc.html:394 `<a href="#" style="font-size:13px;
+     font-weight:700; padding:0 6px">Not a duplicate</a>` inside :391
+     `<div style="display:flex; align-items:center; gap:10px; ...">`) -- the
+     row centres it, exactly as it centres the other two. Stated positively
+     here rather than deleted so the phone block's `align-self: stretch`
+     (which floors this bare <button> to the 48px tap target) reads as the
+     deliberate override it is. */
+  align-self: center;
   background: none;
   border: none;
   padding: 0;
@@ -735,6 +748,19 @@
   align-items: center;
   gap: 14px;
   padding-top: 6px;
+}
+
+/* User-filed (Cut-2 review), second half of the same row: the two boxed
+   controls did not even match EACH OTHER -- .chq-btn declares padding but no
+   min-height, so the primary measured 35px and the bordered secondary 37px
+   (its 1px border on each edge). The frame pins both at 46px (docs/design/
+   Chautauqua Contacts.dc.html:392 `<span style="... min-height:46px; ...">
+   Merge into Marcus Okafor</span>`, :393 the same floor on `Swap which is
+   kept`). Floored on this row only, not on the global .chq-btn -- the same
+   ruling the speaker-detail action row made for the same reason
+   (app/src/pages/speakers/speakers.css:1271). */
+.chq-contacts-merge-footer .chq-btn {
+  min-height: 46px;
 }
 
 /* ---------------------------------------------------------------------- */
