@@ -225,7 +225,9 @@ export function PortalLayout(props: {
           <footer class="chq-portal-footer">
             {props.footerExtra as any}
             {/* DEC-576: the frame's dock (docs/design/Chautauqua Public and
-                Portal.dc.html:492-495, :586-589) is this same footer element,
+                Portal.dc.html:492-495 `<div style="flex-shrink:0; border-top:1px
+                solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px;
+                display:flex; gap:8px">`, :586-589) is this same footer element,
                 phone-restyled by the media block at the tail of
                 portal.css.ts -- not a second, separate band. */}
             {props.dock ? <div class="chq-portal-dock">{props.dock as any}</div> : null}
