@@ -172,6 +172,15 @@ export function useTracksRoomsPanel(sectionKey: string) {
     closeEdit();
   }
 
+  // DEC-941 wave-125 ruling ("does Done-with-discard also drop an unsaved
+  // add draft and its refusal? YES, the whole attempt"): closeEdit() below
+  // already retires both add forms' field-error maps, drafts, and open/
+  // closed state via retireAddForms() (DEC-856 wave-72's helper, reused
+  // rather than a second copy of that vocabulary per DEC-613) -- so the
+  // one thing "the whole attempt" left standing was the panel-level
+  // `error` a failed add (a non-fields ApiError) can leave set. Cleared
+  // here so a discarded attempt never survives to caption the reopened
+  // section.
   function discardDirtyAndClose() {
     setTrackDrafts((prev) => {
       const next = { ...prev };
@@ -185,6 +194,7 @@ export function useTracksRoomsPanel(sectionKey: string) {
     });
     setTrackRowErrors({});
     setRoomRowErrors({});
+    setError(undefined);
     setConfirmingDiscard(false);
     closeEdit();
   }

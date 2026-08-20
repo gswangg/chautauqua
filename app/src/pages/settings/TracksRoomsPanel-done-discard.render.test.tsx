@@ -16,6 +16,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { TracksRoomsPanel } from './TracksRoomsPanel';
 import { EVENT_ID, mockTracksRooms, openEdit } from './TracksRoomsPanel.render-helpers';
+import { errorEnvelope } from '../../test-utils/mockApi';
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -191,5 +192,155 @@ describe('TracksRoomsPanel Done-with-discard retires an unsaved add draft and it
     // left open above is closed on the way out, not just left as-is.
     const reopened = await openEdit();
     expect(within(reopened).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
+  });
+
+  // wave-125 ruling: "does Done-with-discard also drop an unsaved add
+  // draft and its refusal? YES, the whole attempt" -- extended to cover
+  // the PANEL-level `error` an add's non-fields ApiError leaves standing
+  // (the field-error/draft/open-closed half was already retired via
+  // closeEdit()->retireAddForms(), DEC-856 wave-72).
+  it('discarding an unsaved add-a-track draft drops its field refusal AND a page-level refusal from a failed retry', async () => {
+    mockTracksRooms({
+      [`POST /api/v1/events/${EVENT_ID}/tracks`]: {
+        status: 500,
+        body: errorEnvelope('internal', 'Server exploded'),
+      },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+
+    // Open the add-a-track form and submit it empty so a real field
+    // refusal renders.
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a track' })[0]!);
+    fireEvent.click(within(section).getByRole('button', { name: 'Add track' }));
+    await waitFor(() => {
+      expect(within(section).getAllByText('Required').length).toBeGreaterThan(0);
+    });
+
+    // Type a name (a genuine draft) and retry -- the mocked server refuses
+    // with a non-fields error, so the refusal moves from the field to the
+    // page-level banner.
+    fireEvent.change(within(section).getByPlaceholderText('New track name'), {
+      target: { value: 'Bioethics' },
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Add track' }));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Server exploded');
+    });
+    expect(within(section).queryByText('Required')).not.toBeInTheDocument();
+
+    // Done opens the confirm and its body names the draft.
+    fireEvent.click(within(section).getByRole('button', { name: 'Done' }));
+    const dialogTitle = await screen.findByText('Discard unsaved edits?');
+    const dialog = dialogTitle.closest('.chq-modal') as HTMLElement;
+    expect(within(dialog).getByText(/Bioethics/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Discard the edits' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Discard unsaved edits?')).not.toBeInTheDocument();
+    });
+
+    // The page-level banner from the failed retry is gone -- discarding
+    // dropped the whole attempt, not just the field-error half of it.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    const reopened = await openEdit();
+    expect(within(reopened).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
+    expect(within(reopened).queryByText('Required')).not.toBeInTheDocument();
+    expect(within(reopened).queryByText(/Bioethics/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  // The room half of the above, same rule.
+  it('discarding an unsaved add-a-room draft drops its field refusal AND a page-level refusal from a failed retry', async () => {
+    mockTracksRooms({
+      [`POST /api/v1/events/${EVENT_ID}/rooms`]: {
+        status: 500,
+        body: errorEnvelope('internal', 'Server exploded'),
+      },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Add a room' })[0]!);
+    fireEvent.click(within(section).getByRole('button', { name: 'Add room' }));
+    await waitFor(() => {
+      expect(within(section).getAllByText('Required').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.change(within(section).getByPlaceholderText('New room name'), {
+      target: { value: 'Annex B' },
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Add room' }));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Server exploded');
+    });
+    expect(within(section).queryByText('Required')).not.toBeInTheDocument();
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Done' }));
+    const dialogTitle = await screen.findByText('Discard unsaved edits?');
+    const dialog = dialogTitle.closest('.chq-modal') as HTMLElement;
+    expect(within(dialog).getByText(/Annex B/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Discard the edits' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Discard unsaved edits?')).not.toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    const reopened = await openEdit();
+    expect(within(reopened).queryByPlaceholderText('New room name')).not.toBeInTheDocument();
+    expect(within(reopened).queryByText('Required')).not.toBeInTheDocument();
+    expect(within(reopened).queryByText(/Annex B/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  // Negative control: a dirty ROW with no add draft at all still discards
+  // cleanly -- the add-form retirement path added above never fires (or
+  // needs to) when there was never an add attempt to retire.
+  it('discarding a dirty row with no add draft leaves the section closed and clean on reopen', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+
+    const platformInput = within(section).getByLabelText('Track name for Platform');
+    fireEvent.change(platformInput, { target: { value: 'Renamed' } });
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Done' }));
+    const dialogTitle = await screen.findByText('Discard unsaved edits?');
+    const dialog = dialogTitle.closest('.chq-modal') as HTMLElement;
+    expect(within(dialog).getByText(/Platform/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Discard the edits' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Discard unsaved edits?')).not.toBeInTheDocument();
+    });
+
+    // The drill-in closed straight back to the summary.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    const reopened = await openEdit();
+    expect(within(reopened).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
+    expect(within(reopened).queryByPlaceholderText('New room name')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
