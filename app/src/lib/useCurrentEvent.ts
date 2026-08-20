@@ -52,11 +52,29 @@
 // the banner never renders. A hook that both reads a prior value and writes
 // over it must capture the prior ONCE per document, not once per instance:
 // the first instance to render freezes the true pre-overwrite (fromUrl,
-// fromStorage) pair in the module-level documentInitialContext() below, and
-// every later instance on the same page reads that frozen pair instead of
-// window directly -- "once per document", mirroring loadEventsOnce()'s same
-// per-page-load cache discipline and its reset-for-tests seam.
+// fromStorage) pair, and every later instance sharing the SAME navigation
+// reads that frozen pair instead of window directly.
+//
+// DEC-728 wave-143 amendment (USER RULING D19, part 4): "once per document"
+// was too coarse. A react-router CLIENT-SIDE navigation (a <Link>/navigate()
+// call that changes route without a full page reload -- e.g. RosterPanel's
+// `/contacts?import=1&eventId=...` and AddToEventModal's
+// `/speakers?eventId=...`) carries a NEW eventId across the same document,
+// but the module-level snapshot above was captured once, forever, on the
+// FIRST navigation of the page load -- every later navigation's fromUrl was
+// silently ignored, and the D19 banner could never fire on a client-side
+// switch. The snapshot is now keyed by the navigation's location.search in
+// the module-level `navigationContexts` map below, reference-counted by the
+// hook instances currently mounted for that search: while at least one
+// instance for a given search is alive, every instance -- regardless of
+// mount order, preserving the wave-138 guarantee verbatim -- reads the same
+// frozen pair; once the last one unmounts (a real navigation away, or a
+// render test's cleanup() between `it()` blocks reusing this module) the
+// entry is dropped, so the next mount for that same search string (a fresh
+// navigation, or a fresh test) captures anew instead of replaying stale
+// state.
 import { useEffect, useState } from 'react';
+import { useInRouterContext, useLocation } from 'react-router-dom';
 import { apiList, ApiError } from './api';
 import { reconcileStoredEventId } from '../components/eventSwitcherState';
 import { DEC_728 } from '../../../src/decisions';
@@ -84,22 +102,56 @@ export interface EventListItem {
 
 let eventsPromise: Promise<EventListItem[]> | null = null;
 
-// DEC-728 wave-138: captured once per document (one real page load / one
-// browser full-navigation), not once per hook instance -- so whichever
-// component mounts first (PhoneTabBar's useNavExceptions, typically) freezes
-// the true pre-overwrite (fromUrl, fromStorage) pair before its own write
-// effect below can erase the distinction that every later instance
-// (EventSwitchBanner, gated behind useMe()) needs to compute priorStoredId.
-let initialContext: { fromUrl: string | null; fromStorage: string | null } | null = null;
+interface NavigationContext {
+  fromUrl: string | null;
+  fromStorage: string | null;
+}
 
-function documentInitialContext(): { fromUrl: string | null; fromStorage: string | null } {
-  if (!initialContext) {
-    initialContext = {
-      fromUrl: new URLSearchParams(window.location.search).get('eventId'),
-      fromStorage: window.localStorage.getItem(STORAGE_KEY),
+interface NavigationContextEntry {
+  context: NavigationContext;
+  refCount: number;
+}
+
+// DEC-728 wave-143: keyed by location.search (one entry per navigation),
+// reference-counted by the hook instances currently mounted for that
+// search. See the file-header amendment above for why this replaced the
+// wave-138 "once per document" singleton.
+const navigationContexts = new Map<string, NavigationContextEntry>();
+
+function captureNavigationContext(search: string): NavigationContext {
+  let entry = navigationContexts.get(search);
+  if (!entry) {
+    entry = {
+      context: {
+        fromUrl: new URLSearchParams(search).get('eventId'),
+        fromStorage: window.localStorage.getItem(STORAGE_KEY),
+      },
+      refCount: 0,
     };
+    navigationContexts.set(search, entry);
   }
-  return initialContext;
+  return entry.context;
+}
+
+function acquireNavigationContext(search: string): void {
+  const entry = navigationContexts.get(search);
+  if (!entry) throw new Error('acquireNavigationContext: no captured context for this search');
+  entry.refCount += 1;
+}
+
+function releaseNavigationContext(search: string): void {
+  const entry = navigationContexts.get(search);
+  if (!entry) return;
+  entry.refCount -= 1;
+  if (entry.refCount <= 0) navigationContexts.delete(search);
+}
+
+/** The stored event id as it stood before ANY useCurrentEvent() instance
+ * sharing this navigation overwrote it -- an alias onto the same captured
+ * pair above (kept as its own named accessor, mirroring the pre-wave-143
+ * shape) so the D19 restore/kept logic reads self-documenting call sites. */
+function getInitialStoredId(search: string): string | null {
+  return captureNavigationContext(search).fromStorage;
 }
 
 /** Fetches GET /api/v1/events at most once per page load, sharing the
@@ -118,37 +170,39 @@ export function loadEventsOnce(): Promise<EventListItem[]> {
  * `afterEach` to keep tests isolated. Never called from production code. */
 export function resetEventsCacheForTests(): void {
   eventsPromise = null;
-  initialContext = null;
-}
-
-const UNREAD = Symbol('unread');
-
-/** The stored event id as it stood before ANY useCurrentEvent() instance on
- * this page overwrote it. Captured lazily on the first read (by whichever
- * instance's effect commits first) and cached for the rest of the page
- * load, so every instance -- regardless of mount order -- computes
- * priorStoredId from the same pre-overwrite snapshot instead of racing each
- * other's writes. */
-let initialStoredId: string | null | typeof UNREAD = UNREAD;
-
-function getInitialStoredId(): string | null {
-  if (initialStoredId === UNREAD) {
-    initialStoredId = window.localStorage.getItem(STORAGE_KEY);
-  }
-  return initialStoredId;
+  navigationContexts.clear();
 }
 
 /** Test-only seam, mirroring resetEventsCacheForTests() above: a render
  * test suite reuses the module across `it()` blocks in the same file, but
- * each real page load only ever captures this once. Never called from
- * production code. */
+ * each real navigation only ever captures a given search once while
+ * instances for it are mounted. Never called from production code. */
 export function resetInitialStoredIdForTests(): void {
-  initialStoredId = UNREAD;
+  navigationContexts.clear();
+}
+
+/** Resolves the current location.search, reactively when a react-router
+ * `<Router>` ancestor exists (so a client-side navigation -- pushState via
+ * <Link>/navigate(), no full document reload -- re-runs the resolve effect
+ * below with the new search) and falling back to a plain, non-reactive
+ * `window.location.search` read otherwise (the render tests that call this
+ * hook, or render EventSwitchBanner, with no MemoryRouter ancestor).
+ * `useInRouterContext()` is fixed for the lifetime of a given component
+ * instance -- a tree either has a Router ancestor or it doesn't, for as
+ * long as that instance stays mounted -- so conditioning the useLocation()
+ * call on it does not violate React's same-hooks-every-render invariant for
+ * that instance. */
+function useLocationSearch(): string {
+  const inRouterContext = useInRouterContext();
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- see comment above.
+  const location = inRouterContext ? useLocation() : null;
+  return inRouterContext ? location!.search : window.location.search;
 }
 
 export function useCurrentEvent(): UseCurrentEventResult {
-  const { fromUrl, fromStorage } = documentInitialContext();
-  const idInPlay = fromUrl ?? fromStorage ?? null;
+  const search = useLocationSearch();
+  const { fromUrl: initialFromUrl, fromStorage: initialFromStorage } = captureNavigationContext(search);
+  const idInPlay = initialFromUrl ?? initialFromStorage ?? null;
 
   const [eventId, setEventId] = useState<string | null>(idInPlay);
   const [loading, setLoading] = useState(idInPlay === null);
@@ -156,13 +210,23 @@ export function useCurrentEvent(): UseCurrentEventResult {
   const [switchInfo, setSwitchInfo] = useState<EventSwitchInfo | null>(null);
 
   useEffect(() => {
+    // DEC-728 wave-143: this instance is now sharing the navigation keyed
+    // by `search` -- hold a reference for as long as it's mounted for that
+    // search, releasing (and possibly dropping the frozen snapshot) on
+    // unmount or on a search change, so the NEXT navigation captures fresh
+    // rather than replaying this one's pre-overwrite pair.
+    acquireNavigationContext(search);
+    let cancelled = false;
+
     // DEC-856: clear at the start of the read that can replace it, matching
     // the discipline applied to the other page-level error banners.
     setError(undefined);
+    const { fromUrl, fromStorage } = captureNavigationContext(search);
     if (!fromUrl && !fromStorage) {
       setLoading(true);
       loadEventsOnce()
         .then((items) => {
+          if (cancelled) return;
           const first = items[0];
           if (!first) {
             setError('No events exist yet.');
@@ -172,20 +236,26 @@ export function useCurrentEvent(): UseCurrentEventResult {
           setEventId(first.id);
         })
         .catch((err) => {
+          if (cancelled) return;
           setError(err instanceof ApiError ? err.message : 'Failed to resolve current event');
         })
-        .finally(() => setLoading(false));
-      return;
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+      return () => {
+        cancelled = true;
+        releaseNavigationContext(search);
+      };
     }
 
     // DEC-728 amendment (D19): a URL id that differs from what was already
     // stored is a silent cross-event switch -- capture the pre-overwrite
     // id *before* the write below replaces it, so it survives to name
-    // resolution. Read from the module-level snapshot (wave-138 amendment
-    // above), not the per-instance `fromStorage` closed over at render
-    // time: a sibling instance's effect may have already overwritten
-    // storage by the time THIS instance's effect runs.
-    const priorStored = getInitialStoredId();
+    // resolution. Read from the navigation-scoped snapshot (wave-143
+    // amendment above), not the per-instance `fromStorage` closed over at
+    // render time: a sibling instance sharing this navigation may have
+    // already overwritten storage by the time THIS instance's effect runs.
+    const priorStored = getInitialStoredId(search);
     const priorStoredId = fromUrl && priorStored && fromUrl !== priorStored ? priorStored : null;
 
     // An id is already in play (URL wins over storage) -- return it
@@ -202,7 +272,6 @@ export function useCurrentEvent(): UseCurrentEventResult {
     // fetch problem. The same fetch resolves the switch banner's two
     // names, since both need the caller's own /events list.
     const idToReconcile = (fromUrl ?? fromStorage) as string;
-    let cancelled = false;
     loadEventsOnce()
       .then((items) => {
         if (cancelled) return;
@@ -253,10 +322,14 @@ export function useCurrentEvent(): UseCurrentEventResult {
       });
     return () => {
       cancelled = true;
+      releaseNavigationContext(search);
     };
-    // Deliberately runs once: URL/localStorage are read synchronously above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Re-runs whenever the navigation's search changes -- a client-side
+    // react-router switch (RosterPanel's CSV-import link, AddToEventModal's
+    // "View in Speakers" link) carries a new eventId without a full page
+    // reload, and this instance must resolve it fresh rather than replaying
+    // whatever search it first mounted with.
+  }, [search]);
 
   return { eventId, loading, error, switchInfo };
 }
