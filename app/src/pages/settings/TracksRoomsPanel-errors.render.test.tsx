@@ -34,9 +34,10 @@ afterEach(() => {
 describe('TracksRoomsPanel captions, consequence line, and field-level refusals', () => {
   // DEC-896 (wave-133 amendment): the head consequence folding both
   // sections' rules into one line is gone -- each section closes with its
-  // OWN note instead (docs/design/Chautauqua Settings.dc.html:835/:852), so
-  // the track-colour phrase now occurs exactly once, inside the TRACKS
-  // section's own closing note, and never in a shared head line.
+  // OWN note instead, so the track-colour phrase now occurs exactly once,
+  // inside the TRACKS section's own closing note, and never in a shared
+  // head line. See the frame citation on the sibling `it` below for the
+  // two closing notes' verbatim source.
   it('renders one caption naming what the track swatch is for, inside the Tracks section', async () => {
     mockTracksRooms();
     render(
@@ -59,6 +60,11 @@ describe('TracksRoomsPanel captions, consequence line, and field-level refusals'
     );
 
     await openEdit();
+    // docs/design/Chautauqua Settings.dc.html:835/:852 -- the Tracks
+    // section's closing note is drawn verbatim as `The swatch is how a
+    // track reads on the agenda and the public pages · a track in use
+    // cannot be removed — retire it instead and it stops appearing on the
+    // form`; the Rooms section's is asserted immediately below.
     expect(
       screen.getByText(
         'The swatch is how a track reads on the agenda and the public pages · a track in use cannot be removed — retire it instead and it stops appearing on the form',
