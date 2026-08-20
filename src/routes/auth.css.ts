@@ -541,7 +541,28 @@ ${BARE_PAGE_CSS}
       padding: 0;
       gap: 0;
     }
-    .chq-auth-fields { gap: 0; }
+    /* G13 fix (SSR AUTH at 390, round-2 probe N2 MED refutation): this rule
+       used to be a bare '.chq-auth-fields { gap: 0; }' -- unscoped, so it
+       zeroed the gap on EVERY .chq-auth-fields form on the sheet, not just
+       /account/password's edge-to-edge fieldstack/actions bands this
+       comment block is about. /login's .chq-auth-fields (the base rule
+       above, line 144: 'gap: 14px') shares the same class name, so the
+       bleed collapsed the password field <-> Sign in button gap to 0px and,
+       with the email/password stack pulled flush, let the email input's
+       :focus-visible ring (2px width + 2px offset = 4px) overlap the
+       Password label 4px below it on load -- both measured live at 390
+       (docs/design/Chautauqua Account.dc.html:121 "Sign in . 390" draws the
+       email/password/button stack inside the same 14px-gap fieldstack
+       (:127) the desktop card's own .chq-auth-fields rule already states;
+       nothing about the 390 frame calls for a 0px stack there). Scoping to
+       .chq-bare-page:has(.chq-auth-fields) .chq-auth-fields -- the same
+       pattern every other /account/password-only rule in this block already
+       uses -- keeps the intentional 0px collapse on the change-password
+       page's own form (matching frame :158/:172's edge-to-edge bands) while
+       restoring /login's card to its base 14px gap, which both re-opens the
+       companion-gap air the 44px hit boxes need and pushes the Password
+       label safely below the email ring's 4px reach. */
+    .chq-bare-page:has(.chq-auth-fields) .chq-auth-fields { gap: 0; }
     .chq-auth-titlerow:has(.chq-auth-back) {
       /* docs/design/Chautauqua Account.dc.html:154 \`border-bottom:1px
          solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex;
