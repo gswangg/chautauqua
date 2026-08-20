@@ -42,6 +42,14 @@ const CFP_BIO_HELP_TEXT = "Shown on the public speakers page · you can edit it 
 // DEC-124: the email field's helper states the invisible cost of a typo --
 // the portal link is emailed there and nowhere else is shown on screen.
 const CFP_EMAIL_HELP_TEXT = "We send your portal link here, so a typo means you never get it";
+// DEC-380 wave-133 / DEC-976 wave-140 (w15-aa): Public and Portal.dc.html
+// draws these two optional session fields' empty state as muted placeholder
+// content inside the control itself (:963/:968), not a below-field helper
+// -- matched by label because neither field is a locked built-in (they are
+// producer-added session fields, script/seed.ts:505-506), the narrowest
+// reasonable interpretation available for a caption keyed only by wording.
+const CFP_NOTES_FOR_REVIEWERS_PLACEHOLDER = "Never shown publicly";
+const CFP_ACCESSIBILITY_NEEDS_PLACEHOLDER = "Goes to the venue team only";
 // DEC-124: id anchored by the top-of-form error summary for the track
 // radio group, which has no FormFieldDef/field id of its own to key off.
 export const TRACK_CHOICES_ID = "chq-cfp-track-choices";
@@ -435,6 +443,12 @@ export function SubmitPage(props: {
     }
     if (lockedFieldName(f.id) === "email") {
       return { ...f, helpText: CFP_EMAIL_HELP_TEXT };
+    }
+    if (f.label === "Notes for reviewers") {
+      return { ...f, placeholder: CFP_NOTES_FOR_REVIEWERS_PLACEHOLDER };
+    }
+    if (f.label === "Accessibility needs") {
+      return { ...f, placeholder: CFP_ACCESSIBILITY_NEEDS_PLACEHOLDER };
     }
     return f;
   });

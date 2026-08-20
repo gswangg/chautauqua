@@ -40,6 +40,13 @@ export interface FormFieldDef {
   kind: FormFieldKind;
   label: string;
   helpText?: string;
+  // DEC-380 wave-133 / DEC-976 wave-140 (w15-aa): a display-only override
+  // for the empty-state placeholder text drawn INSIDE a text/long_text
+  // control (Public and Portal.dc.html:963/:968 -- "Never shown publicly",
+  // "Goes to the venue team only"). Never stamped by the server; the public
+  // CFP surface applies it in submit-views.tsx's displayFields override,
+  // the same pattern as helpText/label above.
+  placeholder?: string;
   required: boolean;
   position: number;
   options?: string[];

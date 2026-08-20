@@ -45,6 +45,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
           data-required={field.required ? "true" : "false"}
           aria-invalid={ariaInvalid}
           maxlength={resolvedTextCap(field)}
+          placeholder={field.placeholder}
         />
       );
     case "long_text":
@@ -63,6 +64,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
           rows={lockedFieldName(field.id) === "description" ? 5 : undefined}
           aria-invalid={ariaInvalid}
           maxlength={resolvedTextCap(field)}
+          placeholder={field.placeholder}
         >
           {typeof value === "string" ? value : ""}
         </textarea>

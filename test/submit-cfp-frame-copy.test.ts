@@ -60,6 +60,8 @@ const FIELD_ROWS = [
   { id: "last_name", section: "speaker", kind: "text", label: "Last name", helpText: null, required: true, position: 4, optionsJson: null, ruleJson: null },
   { id: "email", section: "speaker", kind: "text", label: "Email", helpText: null, required: true, position: 5, optionsJson: null, ruleJson: null },
   { id: "bio", section: "speaker", kind: "long_text", label: "Speaker bio", helpText: "Old bio help", required: false, position: 6, optionsJson: null, ruleJson: null },
+  { id: "field_notes_for_reviewers", section: "session", kind: "long_text", label: "Notes for reviewers", helpText: null, required: false, position: 7, optionsJson: null, ruleJson: null },
+  { id: "field_accessibility_needs", section: "session", kind: "text", label: "Accessibility needs", helpText: null, required: false, position: 8, optionsJson: null, ruleJson: null },
 ];
 
 function makeChain(rows: unknown[]) {
@@ -187,6 +189,16 @@ describe("GET /submit/:eventSlug — frame 10--14 copy batch (w5-c)", () => {
     const emailInputs = [...body.matchAll(/<input[^>]*name="field__email"[^>]*>/g)];
     expect(emailInputs).toHaveLength(1);
     expect(emailInputs[0]![0]).toContain('type="email"');
+  });
+
+  it("draws the notes-for-reviewers and accessibility-needs empty state as placeholder text, not a below-field caption (Public and Portal.dc.html:963/:968, DEC-380 wave-133)", async () => {
+    const body = await getSubmitPage();
+    const notesTextarea = body.match(/<textarea[^>]*name="field__field_notes_for_reviewers"[^>]*>/);
+    expect(notesTextarea).not.toBeNull();
+    expect(notesTextarea![0]).toContain('placeholder="Never shown publicly"');
+    const accessibilityInput = body.match(/<input[^>]*name="field__field_accessibility_needs"[^>]*>/);
+    expect(accessibilityInput).not.toBeNull();
+    expect(accessibilityInput![0]).toContain('placeholder="Goes to the venue team only"');
   });
 
   it("carries the required marker on the track radios", async () => {
