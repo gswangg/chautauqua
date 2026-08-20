@@ -138,14 +138,26 @@ describe('desktop frame claims: Settings cluster, dialog half (v12m-w5-b)', () =
     expect(callerSrc).toContain('confirmPhrase={pendingDelete.title}');
   });
 
+  // JUDGEMENT: DEC-650's wave-130 amendment (landed by v12m-w5-m) collapsed
+  // the frame's kind-specific verbs to ONE primary label, 'Add it' (:1469),
+  // for both resource kinds -- what a two-verb claim ("Add wiki page" /
+  // "Upload file") used to assert is the divergence that lane removed. This
+  // it() claims the frame as it now reads: :1469's single primary, :1454's
+  // `Name` field label, and :1456's help copy, all against ResourcesPanel.tsx.
   // docs/design/Chautauqua Settings.dc.html:1440
   // `Portal resource · add`
-  it('renders the "Add a resource" dialog (Kind toggle, Title, file/content field) in ResourcesPanel.tsx', () => {
+  it('renders the "Add a resource" dialog (Kind toggle, Name field, single "Add it" primary) in ResourcesPanel.tsx', () => {
     expect(frameLine(1440)).toContain('Portal resource · add');
+    expect(frameLine(1454)).toContain('Name');
+    expect(frameLine(1456)).toContain('What speakers see in the list');
+    expect(frameLine(1469)).toContain('Add it');
     const src = read('pages/settings/ResourcesPanel.tsx');
     expect(src).toContain('title="Add a resource"');
     expect(src).toContain('aria-label="Kind"');
-    expect(src).toContain("{addingKind === 'wiki' ? 'Add wiki page' : 'Upload file'}");
+    expect(src).toContain('label="Name"');
+    expect(src).toContain('help="What speakers see in the list"');
+    expect(src).toContain('Add it');
+    expect(src).not.toContain("'Add wiki page' : 'Upload file'");
   });
 
   // docs/design/Chautauqua Settings.dc.html:1477
