@@ -2129,38 +2129,39 @@
      column -- an import mapping is verified by reading them exactly, so
      truncating either could make a wrong mapping look plausible and go
      uncaught. The arrow is a bare glyph separator between them; there is
-     nothing in it to read, truncated or not. Re-declared (not silently
-     inherited) so the exemption sits directly above the rule it exempts,
-     per this scan's own idiom.
+     nothing in it to read, truncated or not.
 
      DEC-989/DEC-385 (w8-b) amendment: nowrap alone does not shrink these
-     columns' CONTENT WIDTH, and the "exempt" framing above was about
-     readability, not layout -- under table-layout:fixed the declared
+     columns' CONTENT WIDTH -- under table-layout:fixed the declared
      180px/240px column widths (:530/:535) still overflow the 358px
-     phone budget once the cell text is longer than the track. The
-     exemption for TRUNCATION READABILITY stands (below, hence the
-     surviving overflow-exempt comment: an import mapping is still
-     verified against the visible, non-truncated portion first), but the
-     three columns now also get the standard overflow: hidden;
-     text-overflow: ellipsis escape so the row itself never breaks the
-     390 frame -- the full untruncated value remains available via the
-     cell's title attribute and on desktop, where 358px is not the
-     constraint. */
-  /* overflow-exempt: an import mapping is verified by reading the exact column name and sample */
+     phone budget once the cell text is longer than the track. So the
+     three columns take the standard overflow: hidden; text-overflow:
+     ellipsis escape and the row never breaks the 390 frame -- the full
+     untruncated value remains available via the cell's title attribute
+     and on desktop, where 358px is not the constraint.
+
+     Merge-train note (w8-b + w8-a): each rule above carried an
+     `overflow-exempt:` receipt excusing TRUNCATION READABILITY. Those
+     receipts were written against the pre-repair predicate, which
+     flagged a selector whenever a phone layer merely re-mentioned it.
+     w8-a made the predicate cascade-aware, so it now reads the escape
+     these rules actually declare and stops flagging them -- an exemption
+     over an unflagged rule is stale, and DEC-989 is explicit that such a
+     comment is DELETED, never re-pointed and never kept by re-shaping
+     the CSS around it. The readability argument survives here as prose;
+     it is no longer a licence, because the escape made it unnecessary. */
   .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-column {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  /* overflow-exempt: an import mapping is verified by reading the exact column name and sample */
   .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-sample {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  /* overflow-exempt: a bare glyph separator has nothing to read, truncated or not */
   .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-arrow {
     white-space: nowrap;
     overflow: hidden;

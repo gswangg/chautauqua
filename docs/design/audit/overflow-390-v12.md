@@ -27,10 +27,19 @@ The candidacy test that produced every prior count in this document's history
 top-level rule was excluded from the population the instant ANY phone-scoped
 rule in the same file named the same selector token, on ANY property --
 whether or not that override ever touched the flagged declaration.
-`app/src/pages/settings/settings.css:1142`'s `.chq-settings-row-hint {
-white-space: nowrap; text-align: right; }` was never checked, because a
-wholly unrelated terminal phone rule at `settings.css:1586` declares only
-`align-self: flex-end` for the same selector.
+`app/src/pages/settings/settings.css:1142`'s `.chq-settings-row-hint {` rule
+declares nowrap at `app/src/pages/settings/settings.css:1147`
+(`white-space: nowrap;`) with no overflow escape in the same rule, yet was
+never checked: a wholly unrelated terminal phone rule for the same selector
+token, at `app/src/pages/settings/settings.css:1594`, declared only
+`align-self: flex-end;`.
+
+(Merge-train note: task w8-b landed in the same batch as this predicate
+repair and gave that phone rule a real escape at
+`app/src/pages/settings/settings.css:1598` -- `white-space: normal;` -- so
+`.chq-settings-row-hint` is no longer among the offenders counted below. The
+example stands as the demonstration of the defect this repair fixed, not as
+a live row.)
 
 The repair: every top-level rule is now ALWAYS a candidate, but is checked
 against its EFFECTIVE declaration map -- its own declarations, overridden

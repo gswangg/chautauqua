@@ -575,7 +575,17 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // the ratchet doing its job -- a ceiling may also rise here, once, to match
 // a corrected predicate's true count; it may never rise again afterward to
 // accommodate a genuinely new offender.
-export const OVERFLOW_OFFENDERS_CEILING = 31;
+//
+// 31 -> 26, set by the merge train integrating w8-a + w8-b as one batch,
+// per DEC-989 wave-9: "the merge train re-measures every touched constant
+// once per batch and sets it to the post-batch truth". 26 was MEASURED by
+// forcing this constant to -1 and running the scan against the merged tree
+// (`npx vitest run --config vitest.fast.config.ts
+// app/src/phone-horizontal-overflow.scan.test.ts`), not read from an audit
+// doc and not arrived at by taking either branch's side. Neither branch
+// could have written this number: w8-a repaired the candidacy predicate and
+// w8-b fixed settings.css offenders, and only the two together produce 26.
+export const OVERFLOW_OFFENDERS_CEILING = 26;
 
 describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('found more than one CSS file to scan (vacuous-population tripwire, file side)', () => {
