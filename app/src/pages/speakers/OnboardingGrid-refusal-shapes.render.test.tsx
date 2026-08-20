@@ -136,13 +136,32 @@ describe('OnboardingGrid task-cell refusal shapes (DEC-505/DEC-856)', () => {
   it('DEC-265 wave-110 amendment: a slow failing flip rolls back only its own cell, not a concurrent flip that already succeeded', async () => {
     const d1 = deferred<Response>();
     const d2 = deferred<Response>();
+    // DEC-265 wave-138: as2's successful PATCH now drives a post-success
+    // refetch (see OnboardingGrid.tsx applyCellStatus) -- the GET mock must
+    // reflect that write, exactly as a real server would, or this test
+    // would be asserting against a mock that can never happen in production.
+    let as2Succeeded = false;
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const rawUrl = typeof input === 'string' ? input : input.toString();
       const path = rawUrl.startsWith('http') ? new URL(rawUrl).pathname : rawUrl.split('?')[0];
       const method = (init?.method ?? 'GET').toUpperCase();
       if (method === 'GET' && path === `/api/v1/events/${EVENT_ID}/onboarding`) {
+        const body: OnboardingGridResponse = as2Succeeded
+          ? {
+              ...GRID_TWO_TASKS,
+              rows: [
+                {
+                  ...GRID_TWO_TASKS.rows[0]!,
+                  cells: [
+                    GRID_TWO_TASKS.rows[0]!.cells[0]!,
+                    { ...GRID_TWO_TASKS.rows[0]!.cells[1]!, status: 'complete', completedAt: 1 },
+                  ],
+                },
+              ],
+            }
+          : GRID_TWO_TASKS;
         return Promise.resolve(
-          new Response(JSON.stringify(GRID_TWO_TASKS), { status: 200, headers: { 'content-type': 'application/json' } }),
+          new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }),
         );
       }
       if (method === 'GET' && path === `/api/v1/events/${EVENT_ID}/forms`) {
@@ -172,6 +191,7 @@ describe('OnboardingGrid task-cell refusal shapes (DEC-505/DEC-856)', () => {
     const as2Button = table.getByRole('button', { name: 'Toggle Submit bio for Ada Lovelace' });
 
     // as2 resolves first, landing its optimistic flip for real.
+    as2Succeeded = true;
     d2.resolve(
       new Response(JSON.stringify({ status: 'complete' }), { status: 200, headers: { 'content-type': 'application/json' } }),
     );

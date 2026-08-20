@@ -647,6 +647,15 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
       setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
+      // DEC-265 wave-138 amendment: the override is cleared by the write
+      // that SUCCEEDS, not only by the write that fails -- refetch first,
+      // then clear, so the column-head "N of M done" and the counts panel
+      // pick up the server's post-mutation totals instead of staying
+      // permanently masked by the optimistic snapshot. React 18 batches
+      // both state writes in the same await continuation, so this renders
+      // once, on fresh data.
+      await gridRead.refetch();
+      setOptimisticOverride(null);
     } catch (err) {
       // DEC-265 wave-110 amendment: rewrite only the failed assignment's
       // cell back to its pre-flip status -- a whole-grid snapshot would
@@ -747,6 +756,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/submissions/${submissionId}/participants/${participantId}`, { inviteStatus: desired });
       setPendingFailure((prev) => (prev && prev.participantId === participantId ? null : prev));
+      // DEC-265 wave-138 amendment: see applyCellStatus above -- refetch
+      // first, then clear the override, so a successful write is not
+      // permanently masked by its own optimistic snapshot.
+      await gridRead.refetch();
+      setOptimisticOverride(null);
     } catch (err) {
       // DEC-265 wave-110 amendment: rewrite only the failed participant's
       // inviteStatus back to its pre-flip value -- a whole-grid snapshot
