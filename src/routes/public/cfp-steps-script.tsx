@@ -1,8 +1,12 @@
 // w14-f (DEC-986): phone-only two-step CFP wizard inline vanilla JS.
 // Additive only -- desktop's chq-cfp-step-* chrome stays display:none
-// outside the 700px media query (cfp.css.ts), so this script is inert
-// there too (it only ever flips an attribute + text/width the desktop
-// stylesheet never reads). Mirrors agenda-itinerary-script.tsx's shape:
+// outside the 700px media query (cfp.css.ts), and the script is inert on
+// desktop BECAUSE of the matchMedia('(max-width: 700px)') guard below, which
+// wraps every DOM mutation the wizard makes (data-chq-cfp-step writes,
+// required-toggling, scrollIntoView). Wave-138 found the two claims had
+// drifted apart: the guard did not exist, so setStep('1') ran unconditionally
+// on desktop too, stripping `required` off the visible "about you" controls
+// and jump-scrolling the page. Mirrors agenda-itinerary-script.tsx's shape:
 // one exported component returning a single <script
 // dangerouslySetInnerHTML>, no fetch, no change to the POST target.
 // DEC-986: a step transition un-requires every control it hides and
@@ -24,6 +28,14 @@ export function CfpStepsScript() {
     var fill = form.querySelector('.chq-cfp-steps-bar-fill');
     var talkSection = form.querySelector('.chq-cfp-step-talk');
     var youSection = form.querySelector('.chq-cfp-step-you');
+    // wave-138 (DEC-385 + DEC-986): the wizard is a PHONE affordance. It must
+    // mutate nothing -- no data-chq-cfp-step write, no required-toggling, no
+    // scrollIntoView -- outside the same 700px breakpoint the stylesheet
+    // uses. active tracks whether the wizard is currently engaged so a
+    // resize/orientation change that crosses the breakpoint can arm or
+    // disarm cleanly instead of doing both halves' work every time.
+    var mql = window.matchMedia('(max-width: 700px)');
+    var active = false;
     // DEC-986 clause (1): the required-toggle is part of HIDING, not a
     // separate concern. A step transition un-requires every control in the
     // section it is about to hide and restores the original required-ness
@@ -44,6 +56,19 @@ export function CfpStepsScript() {
           el.setAttribute('data-chq-cfp-required-orig', el.required ? '1' : '0');
         }
         el.required = visible && el.getAttribute('data-chq-cfp-required-orig') === '1';
+      }
+    }
+    // wave-138: leaving phone width must put every control back exactly as
+    // it was found, not merely stop touching it -- a control the wizard
+    // un-required while it was hidden must regain its original required-ness
+    // once the wizard steps aside and desktop's own layout makes it visible
+    // again.
+    function restoreOriginalRequired(section){
+      if (!section) return;
+      var controls = section.querySelectorAll('[data-chq-cfp-required-orig]');
+      for (var i = 0; i < controls.length; i++) {
+        var el = controls[i];
+        el.required = el.getAttribute('data-chq-cfp-required-orig') === '1';
       }
     }
     function setStep(step){
@@ -82,6 +107,7 @@ export function CfpStepsScript() {
     var back = form.querySelector('.chq-cfp-step-back');
     if (next) {
       next.addEventListener('click', function(){
+        if (!active) return;
         var invalid = firstInvalidIn(talkSection);
         if (invalid) {
           if (typeof invalid.reportValidity === 'function') invalid.reportValidity();
@@ -91,8 +117,30 @@ export function CfpStepsScript() {
         setStep('2');
       });
     }
-    if (back) { back.addEventListener('click', function(){ setStep('1'); }); }
-    setStep('1');
+    if (back) { back.addEventListener('click', function(){ if (!active) return; setStep('1'); }); }
+    // wave-138: enter/leave the wizard only across the breakpoint. Entering
+    // re-runs setStep('1') so a device that starts wide and narrows mid-visit
+    // still gets the two-step chrome; leaving restores every control's
+    // original required-ness and puts data-chq-cfp-step back to the inert
+    // "all" the server rendered, undoing exactly what setStep did.
+    function engage(){
+      if (active) return;
+      active = true;
+      setStep('1');
+    }
+    function disengage(){
+      if (!active) return;
+      active = false;
+      form.setAttribute('data-chq-cfp-step', 'all');
+      restoreOriginalRequired(talkSection);
+      restoreOriginalRequired(youSection);
+    }
+    function onBreakpointChange(e){
+      if (e.matches) engage(); else disengage();
+    }
+    if (typeof mql.addEventListener === 'function') mql.addEventListener('change', onBreakpointChange);
+    else if (typeof mql.addListener === 'function') mql.addListener(onBreakpointChange);
+    if (mql.matches) engage();
   });
 })();`;
   return <script dangerouslySetInnerHTML={{ __html: js }} />;

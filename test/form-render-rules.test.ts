@@ -652,3 +652,90 @@ describe("FieldRulesScript un-requires EVERY control sharing a hidden field's id
     expect(radios.map((r) => r.required)).toEqual(radios.map(() => true));
   });
 });
+
+// ---------------------------------------------------------------------------
+// wave-138 (DEC-385 + DEC-986, re-entered through the other door): apply()'s
+// own `visible` only reflects OTHER rule-bearing fields' hidden state. A
+// field this engine calls "visible" can still sit inside a HOST section some
+// other script (e.g. the phone CFP wizard) has put display:none on for an
+// unrelated reason. Re-arming `required` there re-creates the exact
+// non-focusable-invalid-control dead end DEC-986 closed. apply() must test
+// the DOM itself -- a closest-hidden-ancestor check -- not just its own rule
+// engine's opinion.
+// ---------------------------------------------------------------------------
+describe("FieldRulesScript.apply() refuses to arm `required` under a hidden ANCESTOR the rule engine didn't put there (wave-138)", () => {
+  const gateField: FormFieldDef = {
+    id: "gate",
+    section: "session",
+    kind: "dropdown",
+    label: "Gate",
+    required: true,
+    position: 0,
+    options: ["Yes", "No"],
+  };
+  const dependentField: FormFieldDef = {
+    id: "dependent",
+    section: "speaker",
+    kind: "text",
+    label: "Dependent",
+    required: true,
+    position: 1,
+    rule: { fieldId: "gate", op: "eq", value: "Yes" },
+  };
+
+  function renderWithOuterHiddenSection(gateAnswer: string) {
+    const gateHtml = FormFieldsSection({
+      fields: [gateField],
+      section: "session",
+      answers: { gate: gateAnswer },
+      isVisible: () => true,
+    }).toString();
+    // The rule engine's OWN accounting calls `dependent` visible whenever
+    // gate === "Yes" -- there is no rule chain that would hide it. The only
+    // thing hiding it here is the ancestor <section>'s inline
+    // display:none, standing in for the phone wizard's step-2 section.
+    const dependentField_ = FormField({
+      field: dependentField,
+      value: "",
+      visible: true,
+    }).toString();
+    const rulesHtml = FieldRulesScript({ fields: [gateField, dependentField] }).toString();
+    const dom = new JSDOM(
+      `<!doctype html><html><body><form>${gateHtml}<section id="outer-hidden" style="display:none">${dependentField_}</section></form>${rulesHtml}</body></html>`,
+      { url: "https://example.test/submit/test-conf", runScripts: "dangerously" },
+    );
+    return dom.window.document;
+  }
+
+  it("the rule engine's own wrap stays un-hidden (visible=true) even though the field is effectively invisible", () => {
+    const document = renderWithOuterHiddenSection("Yes");
+    const wrap = document.getElementById("chq-field-wrap-dependent");
+    expect(wrap).not.toBeNull();
+    // apply() only ever writes 'none' or '' to a wrap it owns -- the rule
+    // engine correctly believes this field is visible by its own accounting.
+    expect(wrap!.style.display).toBe("");
+  });
+
+  it("required is NOT armed on a rule-visible field sitting inside a display:none ancestor", () => {
+    const document = renderWithOuterHiddenSection("Yes");
+    const input = document.querySelector('[data-field-id="dependent"]') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    expect(input.required).toBe(false);
+  });
+
+  it("a later 'change' re-run keeps required un-armed while the ancestor stays hidden", () => {
+    const document = renderWithOuterHiddenSection("Yes");
+    document.dispatchEvent(new document.defaultView!.Event("change", { bubbles: true }));
+    const input = document.querySelector('[data-field-id="dependent"]') as HTMLInputElement;
+    expect(input.required).toBe(false);
+  });
+
+  it("removing the ancestor's display:none lets required arm again on the next apply()", () => {
+    const document = renderWithOuterHiddenSection("Yes");
+    const outer = document.getElementById("outer-hidden")!;
+    outer.style.display = "";
+    document.dispatchEvent(new document.defaultView!.Event("change", { bubbles: true }));
+    const input = document.querySelector('[data-field-id="dependent"]') as HTMLInputElement;
+    expect(input.required).toBe(true);
+  });
+});

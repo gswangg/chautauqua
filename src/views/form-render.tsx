@@ -299,6 +299,31 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
     }
     return hidden;
   }
+  // wave-138 (DEC-986 clause (1) re-entered through the other door): this
+  // rule engine's own "visible" only reflects OTHER rule-bearing fields'
+  // hidden state (the transitive closure in computeHidden above). It knows
+  // nothing about a host section hiding the field for an unrelated reason --
+  // e.g. the phone CFP wizard's own display:none step -- so a field that is
+  // "visible" by the rule engine's accounting can still sit inside a
+  // display:none ancestor, and re-arming "required" on it there is exactly
+  // the non-focusable-invalid-control dead end DEC-986 was written to close.
+  // Test the DOM itself: walk from the wrap upward and refuse to arm
+  // "required" under any hidden ancestor, regardless of which script (or
+  // neither) put it there. This script stays the owner of its own
+  // visibility computation; it does not negotiate state with the wizard.
+  function hasHiddenAncestor(el){
+    var node = el;
+    while (node && node.nodeType === 1) {
+      if (node.hidden) return true;
+      if (node.style && node.style.display === 'none') return true;
+      if (typeof window.getComputedStyle === 'function') {
+        var computed = window.getComputedStyle(node);
+        if (computed && computed.display === 'none') return true;
+      }
+      node = node.parentElement;
+    }
+    return false;
+  }
   function apply(){
     var hidden = computeHidden();
     rules.forEach(function(r){
@@ -306,13 +331,14 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
       if (!wrap) return;
       var visible = !hidden[r.fieldId];
       wrap.style.display = visible ? '' : 'none';
+      var effectivelyVisible = visible && !hasHiddenAncestor(wrap);
       // DEC-986: querySelectorAll, NOT querySelector -- a choice field
       // renders N controls sharing one data-field-id (Format and Audience
       // are radio groups), so the singular lookup left radios 2..N
       // required inside a display:none wrap, where the browser aborts
       // submission on a control it cannot focus or annotate.
       wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(function(input){
-        input.required = visible && input.dataset.required === 'true';
+        input.required = effectivelyVisible && input.dataset.required === 'true';
       });
     });
   }
