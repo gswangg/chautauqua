@@ -45,7 +45,7 @@
 - Header-label leakage into cards: Contacts rows print COMPANY:/LABELS:
   prefixes + stray checkbox; Templates rows print NAME:.
   CLOSED (wave 118): app/src/pages/contacts/contacts.css`.chq-contacts-table tbody td[data-label]::before {`
-  CLOSED (wave 118): app/src/pages/comms/comms.css:1583 `.chq-comms-templates-table td[data-label='Name']::before {`
+  CLOSED (wave 118): app/src/pages/comms/comms.css`.chq-comms-templates-table td[data-label='Name']::before {`
 - Portal/Tracks rows stranded in half-width columns (left ~62%).
 
 ## S2 structure vs frames
