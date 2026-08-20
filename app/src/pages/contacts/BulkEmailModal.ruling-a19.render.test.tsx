@@ -55,6 +55,13 @@ describe('Ruling A19: BulkEmailModal template picker copy', () => {
     // Receipt: docs/design/Chautauqua Contacts.dc.html:570 draws
     // `Sent one at a time · logged in Comms history · {first_name} and
     // {company} resolve per contact` as the compose step's standing note.
+    // Footnote names which merge fields DO resolve in this context -- the
+    // frame is the authority here, not the ruling's paraphrase. Receipt:
+    // docs/design/Chautauqua Contacts.dc.html:570 draws
+    // `<span ...>Sent one at a time · logged in Comms history · {first_name}
+    // and {company} resolve per contact</span>` verbatim as the compose
+    // step's standing note; that sentence names which merge fields resolve
+    // here (ruling A19's substance), in the pack's own words.
     expect(
       screen.getByText(
         'Sent one at a time · logged in Comms history · {first_name} and {company} resolve per contact',
