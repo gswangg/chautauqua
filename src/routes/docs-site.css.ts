@@ -94,6 +94,9 @@ export const DOCS_SITE_CSS = `
   .chq-docs-nav-group { display: flex; flex-direction: column; gap: 2px; }
   .chq-docs-nav-group-label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--chq-muted); padding: 0 0 6px; }
   .chq-docs-nav-link { padding: 7px 0 7px 11px; font-size: 14px; font-weight: 500; color: var(--chq-ink-2); text-decoration: none; }
+  /* tap-floor-exempt: modifier — always composes .chq-docs-nav-link on the
+     SAME anchor (docs-site.tsx:277-280 never renders this class alone); the
+     phone floor lives on the base class in the media block below. */
   .chq-docs-nav-link-active { font-weight: 700; color: var(--chq-ink); box-shadow: inset 2px 0 0 var(--chq-brand); }
 
   .chq-docs-phone-back { display: none; }
@@ -208,6 +211,10 @@ export const DOCS_SITE_CSS = `
   /* API-reference leaving row: last row of the operator-tools group
      (Chautauqua Docs.dc.html:436) -- same row anatomy as an article row,
      styled muted like the header's leaving link rather than an ink title. */
+  /* tap-floor-exempt: composition — .chq-docs-leaving-row-link never
+     appears without .chq-docs-article-title on the same anchor (the only
+     markup sighting, docs-site.tsx:352); the phone floor lives on that
+     sibling class in the media block below. */
   .chq-docs-article-row-leaving .chq-docs-leaving-row-link { display: inline-flex; align-items: center; gap: 4px; color: var(--chq-muted); }
 
   @media (max-width: 700px) {
@@ -474,6 +481,11 @@ export const DOCS_SITE_CSS = `
       align-items: center;
       padding: 8px 11px;
     }
+    /* tap-floor-exempt: modifier — .chq-docs-nav-link-active is the state
+       face of .chq-docs-nav-link and never renders without it
+       (docs-site.tsx:277-280 always composes both on the same anchor), so
+       the base class above carries the real floor. The min-height is
+       restated here only so the token itself is not scanned as bare. */
     .chq-docs-nav-link-active { min-height: 44px; }
 
     /* Where-next row -- the left "where" column of a 150px/1fr grid

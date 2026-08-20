@@ -362,5 +362,25 @@ export const HOME_CSS = `
       text-overflow: ellipsis;
       min-width: 0;
     }
+
+    /* w14-ee (DEC-393 taxonomy): the phone-only 44px floor for three
+       real-anchor tokens this task owns, appended as the LAST rules of
+       this sheet's one terminal phone block (DEC-385 -- desktop untouched,
+       nothing above reordered). .chq-home-name (root.tsx:190/216) and
+       .chq-home-archive-name (root.tsx:238) are full-anchor row titles
+       with no other floor in the tree. .chq-home-footer-link
+       (reviewer-filed) composes onto TWO anchors -- the GitHub credit
+       (root.tsx:284, this class alone) and the "API docs" link
+       (root.tsx:297, paired with .chq-home-footer-link-end, which already
+       carries its own :322 floor above) -- the GitHub credit has no other
+       floor anywhere, so the base class needs its own real floor here. */
+    .chq-home-name,
+    .chq-home-archive-name,
+    .chq-home-footer-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding-inline: 4px;
+    }
   }
 `;

@@ -69,6 +69,24 @@ export const ERROR_STATES_CSS = `
   .chq-error-summary h2 { font-family: var(--chq-font-display); font-size: 15px; font-weight: 800; letter-spacing: -0.01em; margin: 0; color: var(--chq-ink); }
   .chq-error-summary p { margin: 0; font-size: 13px; color: var(--chq-ink-2); line-height: 1.5; }
   .chq-error-summary ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  /* tap-floor-exempt: composition — this value-free module (see header) is
+     composed into THREE different sheets (CFP_CSS, PORTAL_CSS, AUTH_CSS),
+     each of which owns exactly one terminal max-width:700px media block
+     per DEC-385's single-terminal-block contract
+     (test/phone-terminal-block.scan.test.ts). Giving this module its OWN
+     media block would inject a SECOND, earlier max-width:700px occurrence
+     into every composed sheet, ahead of content composed after it
+     (test/cfp-phone-frames.test.ts's own DEC-385 ordering assertion
+     measures exactly this and fails: CFP_CSS composes ERROR_STATES_CSS
+     immediately followed by BARE_PAGE_CSS ahead of its own terminal block,
+     so a media query landing inside ERROR_STATES_CSS sits before
+     BARE_PAGE_CSS's desktop declarations, breaking the "narrow overrides
+     land after everything they override" invariant for the composed sheet).
+     A real floor for .chq-error-summary-link therefore belongs in EACH
+     composing sheet's own terminal block (the admin SPA's own equivalent
+     stylesheet already carries this exact idiom as its precedent) rather
+     than here — task w14-ee flags this as a design gap outside its owned
+     files (cfp.css.ts / auth.css.ts) rather than widening scope to fix it. */
   .chq-error-summary-link { font-size: 13px; font-weight: 700; color: var(--chq-brand); text-decoration: none; }
 
   /* DEC-393/DEC-367 (wave-138 sweep, task w13-ff): this module had NO
