@@ -234,6 +234,17 @@ describe("cfp.css.ts — phone wizard chrome (w14-f)", () => {
       expect(decl).toMatch(/var\(--chq-/);
     }
   });
+
+  it("hides the step label, bar and both step buttons when data-chq-cfp-step is the inert \"all\" default, and leaves \"1\"/\"2\" behaviour unchanged", () => {
+    const mediaBody = CFP_CSS.slice(CFP_CSS.indexOf("@media (max-width: 700px)"));
+    expect(mediaBody).toMatch(/\[data-chq-cfp-step="all"\] \.chq-cfp-steps,\s*\n\s*\[data-chq-cfp-step="all"\] \.chq-cfp-step-next,\s*\n\s*\[data-chq-cfp-step="all"\] \.chq-cfp-step-back \{\s*display:\s*none;\s*\}/);
+    // The "all" hide carries its own DEC-919 receipt.
+    expect(mediaBody).toMatch(/\/\*\s*phone-hidden:[^*]*\*\/\s*\n\s*\[data-chq-cfp-step="all"\] \.chq-cfp-steps,/);
+    // The pre-existing step-1/step-2 rules are untouched: still present,
+    // still scoped to their own data-chq-cfp-step value, not "all".
+    expect(CFP_CSS).toMatch(/\[data-chq-cfp-step="1"\] \.chq-cfp-step-back \{\s*display:\s*none;\s*\}/);
+    expect(CFP_CSS).toMatch(/\[data-chq-cfp-step="2"\] \.chq-cfp-step-next \{\s*display:\s*none;\s*\}/);
+  });
 });
 
 describe("cfp-steps-script — refuses to engage when the form already carries an error", () => {
