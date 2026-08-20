@@ -40,15 +40,26 @@
 //      skips src/decisions-data/** and src/decisions.ts so a ruling's own
 //      prose can never satisfy the ledger it rules on, DEC-967 wave-129)
 //      BOTH:
-//        (a) declares a docked band -- contains `chq-phone-dock` or
-//            `data-chq-phone-dock` anywhere in the file, OR (for a .css
-//            file) declares a rule inside a `max-width: 700px` block whose
-//            body carries `position: sticky|fixed`, `bottom: 0`, and a
-//            `border-top` (the same geometry
-//            app/src/phone-dock-declares.scan.test.ts's extractDockedClasses
-//            derives a docked band from -- reimplemented locally here for
-//            the same reason the frame walk above is copied rather than
-//            imported: that file is itself a suite), AND
+//        (a) declares a docked band, one of THREE ways (DEC-976 wave-146,
+//            repairing the wave-145 finding that requiring all three in
+//            ONE file is a claim about FILE ORGANISATION, not membership):
+//            (i) contains `chq-phone-dock` or `data-chq-phone-dock`
+//            anywhere in the file; (ii) for a .css file, declares a rule
+//            inside a `max-width: 700px` block whose body carries
+//            `position: sticky|fixed`, `bottom: 0`, and a `border-top`
+//            (the same geometry app/src/phone-dock-declares.scan.test.ts's
+//            extractDockedClasses derives a docked band from --
+//            reimplemented locally here for the same reason the frame walk
+//            above is copied rather than imported: that file is itself a
+//            suite); (iii) renders an element carrying a class the
+//            DOCK_CLASS_VOCAB below derives -- from BOTH stylesheet roots,
+//            via the border-top signature every docked footer in this
+//            codebase shares regardless of technique -- either directly,
+//            or through ONE level of indirection (a `dock=`/`footerExtra=`
+//            slot prop, itself derived from real markup, never hand-listed,
+//            passed to a component that declares the band under (iii)
+//            directly: PortalLayout's `.chq-portal-footer`, reached by
+//            edit.tsx/tasks/views.tsx's `dock`/`footerExtra` props). AND
 //        (b) renders EVERY one of that band's drawn labels, normalized
 //            (comments stripped, entities decoded, whitespace collapsed)
 //            and matched BOUNDARY-ANCHORED, exactly as
@@ -95,16 +106,24 @@
 //
 //      RATCHET: see PHONE_DOCK_UNCLAIMED_CEILING below and
 //      docs/design/audit/phone-dock-membership-v12.md for the full,
-//      per-offender breakdown by owning cluster. Two sibling lanes this
-//      wave (v12m-w19-a Contacts Pipeline, v12m-w19-b Settings edit view)
-//      drain two of these offenders in parallel; the merge train
-//      re-measures the integrated tree and lowers this ceiling (never
-//      raises it for a drain) once, as a merge-train act.
-import { readdirSync, readFileSync } from 'node:fs';
+//      per-offender breakdown by owning cluster.
+//
+//      DEC-976 wave-146 (task w20-c): repaired the DECLARATION predicate
+//      per the wave-145 ruling above (indirection + a derived class
+//      vocabulary) and moved two labels a standing ruling already declares
+//      non-build into COMPOSED_EXCLUSIONS ('Approve 2', a digit fixture
+//      composed from `Approve {selectedIds.size}`; 'Save draft' on the
+//      hotel-stay-form dock, DEC-576 wave-128's explicit non-build). All
+//      12 offenders measured at PHONE_DOCK_UNCLAIMED_CEILING=13 (main
+//      f79ddeb5) resolve to a claim under the repaired predicate --
+//      RATCHET: PHONE_DOCK_UNCLAIMED_CEILING=0 (was 13; predicate widened
+//      per DEC-976 wave-138's re-seed rule: this is a repair, not a raise).
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
+import { ssrCssSources } from './helpers/ssr-css-sources';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -339,9 +358,162 @@ function hasDockGeometryRule(cssText: string): boolean {
   return false;
 }
 
+// -- DEC-976 wave-145 widening: the declaration predicate above requires
+// ONE file to both name the literal `chq-phone-dock`/`data-chq-phone-dock`
+// contract AND render every label -- a claim about FILE ORGANISATION. The
+// SSR half deliberately splits the two: a shared layout or sheet declares
+// the band's geometry (a page-local class carrying `border-top`, the one
+// property every docked footer in this codebase declares regardless of
+// technique -- position:sticky+bottom:0, flex-shrink:0 as a full-height
+// column's last child, or a plain in-flow footer with no positioning at
+// all) while the PAGE renders the words, reaching the band through ONE
+// level of indirection: a `dock=`/slot prop passed to the component that
+// declares it. Two widenings below, both DERIVED from the sheets/source,
+// never hand-listed (DEC-808).
+
+/** Strips block comments and `${...}` template-literal interpolations (the
+ * latter matters for src/'s CSS-in-JS modules: `${HOME_CHROME_GUTTER}`
+ * inside a rule body otherwise unbalances this file's brace-depth walks,
+ * the same class of defect test/frame-caption-ledger.scan.test.ts already
+ * strips before matching). */
+function stripCssNoise(cssText: string): string {
+  return cssText.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\$\{[^}]*\}/g, ' ');
+}
+
+/** Every class named in a selector list (bare or compound -- a docked band
+ * is as often reached via `.chq-portal-shell > .chq-portal-footer` or
+ * `.chq-content-worklist-selecting .chq-bulkbar` as via a bare class) of a
+ * rule whose declaration body carries `border-top`. Deliberately broader
+ * than app/src/phone-dock-declares.scan.test.ts's own extractDockedClasses
+ * (which additionally requires `position: sticky|fixed` + `bottom: 0`, a
+ * stricter test built for a narrower purpose: whether the shell's tab bar
+ * gets suppressed). This ledger's claim side needs the geometry the SOURCE
+ * actually uses to dock a footer, not just that one idiom. */
+function extractBorderTopClasses(cssText: string): Set<string> {
+  const stripped = stripCssNoise(cssText);
+  const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+  const out = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = ruleRe.exec(stripped))) {
+    const selectorList = m[1];
+    const body = m[2];
+    if (selectorList === undefined || body === undefined) continue;
+    if (!/border-top\s*:/.test(body)) continue;
+    const classMatches = selectorList.match(/\.[A-Za-z0-9_-]+/g);
+    if (classMatches) {
+      for (const c of classMatches) out.add(c.slice(1));
+    }
+  }
+  return out;
+}
+
+function walkFiles(dir: string, suffix: string, skipTestFiles: boolean): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const st = statSync(full);
+    if (st.isDirectory()) {
+      out.push(...walkFiles(full, suffix, skipTestFiles));
+      continue;
+    }
+    if (!entry.endsWith(suffix)) continue;
+    if (skipTestFiles && entry.includes('.test.')) continue;
+    out.push(full);
+  }
+  return out;
+}
+
+/** The docked-band class vocabulary, derived from BOTH stylesheet roots:
+ * src/'s CSS-in-JS `*_CSS` modules (via the existing ssrCssSources helper,
+ * DEC-367/DEC-808 wave-57) and app/src/'s plain `.css` files (walked
+ * locally the same way app/src/phone-dock-declares.scan.test.ts's own
+ * loadCssSources does -- that file is itself a suite, so its walk is
+ * reimplemented rather than imported). Never hand-listed. */
+const DOCK_CLASS_VOCAB: Set<string> = (() => {
+  const vocab = new Set<string>();
+  for (const src of ssrCssSources()) {
+    for (const c of extractBorderTopClasses(src.text)) vocab.add(c);
+  }
+  for (const f of walkFiles(APP_SRC_ROOT, '.css', false)) {
+    for (const c of extractBorderTopClasses(readFileSync(f, 'utf-8'))) vocab.add(c);
+  }
+  return vocab;
+})();
+
+function classNameToken(cls: string): RegExp {
+  return new RegExp(`\\b${cls.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+}
+
+/** True when `raw` renders an element carrying one of the docked-band
+ * classes derived above, directly (not through indirection). */
+function declaresDockClassDirectly(raw: string): boolean {
+  for (const cls of DOCK_CLASS_VOCAB) {
+    if (classNameToken(cls).test(raw)) return true;
+  }
+  return false;
+}
+
+/** Raw (un-normalized) text alongside each candidate, needed for the
+ * offset-based indirection derivation below -- computed once, ahead of
+ * SLOT_PROP_NAMES, to avoid re-reading every file per vocabulary class. */
+const RAW_SOURCE_FILES: { file: string; raw: string }[] = SOURCE_FILES.map((f) => ({
+  file: f,
+  raw: readFileSync(f, 'utf-8'),
+}));
+
+/** A class attribute assignment (`class="..."` / `className={...}`) must
+ * sit within 120 characters before the class token for an occurrence to
+ * count as real markup rather than a comment mentioning the class name. */
+const CLASS_ATTR_PRECEDE_RE = /class(?:Name)?\s*=\s*[^<>]{0,120}$/;
+/** How far past a docked-band class's own markup occurrence to look for
+ * the `props.<name>` reference(s) it renders alongside -- wide enough to
+ * reach PortalLayout's `{props.footerExtra}` then `{props.dock}` inside
+ * its `<footer class="chq-portal-footer">`, narrow enough to stay short of
+ * unrelated props (`csrfToken`) rendered later in the same element. */
+const SLOT_PROP_WINDOW = 700;
+
+/** The slot prop names a docked-band-declaring component exposes for its
+ * children to fill (PortalLayout's `dock` and `footerExtra`), DERIVED by
+ * scanning every real markup occurrence of a vocabulary class for the
+ * `props.<name>` references drawn near it -- never hand-listed. */
+const SLOT_PROP_NAMES: Set<string> = (() => {
+  const names = new Set<string>();
+  for (const { file, raw } of RAW_SOURCE_FILES) {
+    if (file.endsWith('.css')) continue;
+    for (const cls of DOCK_CLASS_VOCAB) {
+      let searchFrom = 0;
+      for (;;) {
+        const idx = raw.indexOf(cls, searchFrom);
+        if (idx === -1) break;
+        searchFrom = idx + cls.length;
+        const precede = raw.slice(Math.max(0, idx - 120), idx);
+        if (!CLASS_ATTR_PRECEDE_RE.test(precede)) continue;
+        const window = raw.slice(idx, idx + SLOT_PROP_WINDOW);
+        for (const pm of window.matchAll(/props\.(\w+)/g)) {
+          const propName = pm[1];
+          if (propName !== undefined) names.add(propName);
+        }
+      }
+    }
+  }
+  return names;
+})();
+
+/** True when `raw` assigns a derived slot prop (`dock={...}`,
+ * `footerExtra={...}`) -- the ONE level of indirection through which a
+ * page reaches a docked band a shared layout component declares. */
+function declaresDockViaSlotIndirection(raw: string): boolean {
+  for (const name of SLOT_PROP_NAMES) {
+    if (new RegExp(`\\b${name}\\s*=\\s*\\{`).test(raw)) return true;
+  }
+  return false;
+}
+
 function declaresDockBand(file: string, raw: string): boolean {
   if (/data-chq-phone-dock/.test(raw) || /\bchq-phone-dock\b/.test(raw)) return true;
-  if (file.endsWith('.css')) return hasDockGeometryRule(raw);
+  if (file.endsWith('.css') && hasDockGeometryRule(raw)) return true;
+  if (declaresDockClassDirectly(raw)) return true;
+  if (declaresDockViaSlotIndirection(raw)) return true;
   return false;
 }
 
@@ -351,10 +523,11 @@ interface CandidateFile {
   declares: boolean;
 }
 
-const CANDIDATE_FILES: CandidateFile[] = SOURCE_FILES.map((f) => {
-  const raw = readFileSync(f, 'utf-8');
-  return { file: f, normalized: normalizeSource(raw), declares: declaresDockBand(f, raw) };
-});
+const CANDIDATE_FILES: CandidateFile[] = RAW_SOURCE_FILES.map(({ file, raw }) => ({
+  file,
+  normalized: normalizeSource(raw),
+  declares: declaresDockBand(file, raw),
+}));
 
 // -- Exclusions -------------------------------------------------------------
 // (a) FIXTURE -- ported from test/frame-control-label.scan.test.ts's own
@@ -419,6 +592,20 @@ const COMPOSED_EXCLUSIONS = [
     reason:
       'BLESSED (DEVIATIONS.md §3, DEC-745 wave-98): an existing plan\'s title row renders "Duplicate"/"Save"; the phone dock is a CSS-only repositioning of whichever pair the title row already renders, never a second copy of the buttons, and the frame\'s "Save the plan"/"Cancel" copy is read as the new-plan state\'s captioning.',
   },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 279,
+    label: 'Approve 2',
+    reason:
+      "COMPOSED, digit-fixture: app/src/pages/content/SessionList.tsx renders the bulk-approve primary as `Approve {selectedIds.size}` -- the frame's fixture count '2' is not a literal the app types anywhere.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 520,
+    label: 'Save draft',
+    reason:
+      'BLESSED NON-BUILD (DEC-576 wave-128 amendment): "The frame\'s secondary \'Save draft\' is NOT built -- DEVIATIONS.md §6 already defers hotel-form save-draft, and a bordered control that persists nothing is the thing wave-110 forbids." TaskFormPage adopts the frame\'s dock band for its primary (`TASK_FORM_SUBMIT_LABEL`) only.',
+  },
 ];
 
 function isExcluded(l: DockLabel): boolean {
@@ -449,7 +636,7 @@ const UNCLAIMED: DockOffender[] = ACTION_DOCKS.filter((b) => !isBandClaimed(b)).
 // Measured on this branch by forcing this const to -1 and reading the
 // printed offender list -- never `= UNCLAIMED.length` or any expression
 // naming the measured set (the saturated-ratchet-lie pattern).
-export const PHONE_DOCK_UNCLAIMED_CEILING = 13;
+export const PHONE_DOCK_UNCLAIMED_CEILING = 0;
 
 describe('phone dock membership ledger (DEC-976, v12 mobile campaign)', () => {
   it('non-vacuity: 41 frames carry a dock-shaped footer band, 7 are shell tab bars, 34 are action docks', () => {

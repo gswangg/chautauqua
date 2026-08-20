@@ -99,3 +99,33 @@ Two sibling lanes this wave (v12m-w19-a Contacts Pipeline, v12m-w19-b
 Settings edit view) drain some of the offenders above in parallel; the
 merge train re-measures the integrated tree and lowers
 `PHONE_DOCK_UNCLAIMED_CEILING` accordingly, once, as a merge-train act.
+
+## Disposition (DEC-976 wave-146, task w20-c)
+
+Re-measured on main `f79ddeb5` with Contacts Pipeline and Settings already
+drained (12 offenders, not 13 -- matching DEC-976's own wave-145 amendment).
+The DECLARATION predicate widened per that amendment's ruling: a file
+declares a docked band directly when it renders an element carrying a class
+the `DOCK_CLASS_VOCAB` derives from BOTH stylesheet roots (any selector,
+bare or compound, whose rule body carries `border-top` -- the one property
+every docked footer in this codebase shares regardless of technique), or
+indirectly, through ONE level of indirection (a `dock=`/`footerExtra=` slot
+prop -- itself DERIVED from real markup near a directly-declaring class,
+never hand-listed -- passed to a component that declares the band
+directly). All 12 resolve; `PHONE_DOCK_UNCLAIMED_CEILING` moves 13 -> 0.
+
+| cluster | frame | band | mechanism that claims it now |
+|---|---|---|---|
+| Account | Change password · 390 | Account.dc.html:172 | DIRECT: `src/routes/account.tsx` renders `class="chq-auth-actions"`, and `.chq-auth-actions` carries `border-top` inside `src/routes/auth.css.ts`'s phone block -- same file also renders `Change it`/`Cancel` verbatim. |
+| Agenda | Agenda (placing dock) | Agenda.dc.html:189 | DIRECT: `app/src/pages/agenda/PhoneAgenda.tsx` renders `className="chq-phone-footer"`, and `.chq-phone-footer` carries `border-top` inside `app/src/pages/agenda/agenda.css`'s phone block -- same file renders `Cancel`/`Unscheduled`/`Auto-schedule`; `Placing · tap a free slot` composes from the armed-session state string already in that file. |
+| Content | Content · selecting | Content.dc.html:278 | DIRECT: `app/src/pages/content/SessionList.tsx` renders `className={... 'chq-bulkbar' ...}`, and `.chq-content-worklist-selecting .chq-bulkbar` carries `border-top` inside `app/src/pages/content/content.css`'s phone block -- same file renders `Approving sends nothing · the speaker sees it in their portal` verbatim; `Approve 2` is now a COMPOSED exclusion (`Approve {selectedIds.size}`, digit fixture). |
+| Home | Event hub / Between cycles / Fresh deploy · phone (3 frames, 1 band) | Home.dc.html:171 / :259 / :317 | DIRECT: `src/routes/root.tsx` renders `class="chq-home-footer"`, and `.chq-home-footer` carries `border-top` in `src/routes/public/home.css.ts`'s BASE (non-media) rule -- the widened vocabulary is not media-scoped, so a footer styled identically at every width still counts. Same file renders `Running on`, `Chautauqua`, `API docs` verbatim. |
+| Public/Portal | Public agenda | Public and Portal.dc.html:400 | DIRECT: `src/routes/public/agenda.tsx` renders `class="chq-pub-agenda-dock"`, and that class carries `border-top` inside `src/routes/public/css/agenda.css.ts`'s phone block -- same file renders `Download .ics`/`Speakers` verbatim. |
+| Public/Portal | Portal · Hotel stay form | Public and Portal.dc.html:518 | INDIRECT: `src/routes/portal/tasks/views.tsx` assigns `dock={taskFormDock}` to `PortalLayout`, which renders `class="chq-portal-footer"` (carries `border-top` in `src/routes/portal/portal.css.ts` at both base and phone-block rules) around `{props.dock}`. Same file renders `TASK_FORM_SUBMIT_LABEL = "Send this in"` verbatim. `Save draft` is now a BLESSED-NON-BUILD exclusion (DEC-576 wave-128: not built, DEVIATIONS.md §6 defers it). |
+| Public/Portal | Portal · Edit your session | Public and Portal.dc.html:667 | INDIRECT: `src/routes/portal/edit.tsx` assigns `dock={editDock}` to `PortalLayout` (same `.chq-portal-footer` mechanism as above). Same file renders `Save changes`/`Cancel`/`Title and abstract show on the public pages · co-presenters do not` verbatim. |
+| Public/Portal | My schedule · /schedule | Public and Portal.dc.html:884 | DIRECT: `src/routes/public/agenda.tsx` renders `class="chq-pub-schedule-dock"`, and that class carries `border-top` inside `src/routes/public/css/agenda.css.ts`'s phone block (same rule as the public-agenda dock above, paired selector). Same file renders `Download .ics`/`All sessions` verbatim. |
+| Public/Portal | Portal · co-presenter rejected | Public and Portal.dc.html:1360 | INDIRECT: same mechanism and same file as "Portal · Edit your session" above -- `edit.tsx`'s `editDock` also serves this banner state of the same route. |
+| Public/Portal | Portal · Resources | Public and Portal.dc.html:1580 | INDIRECT: `src/routes/portal/tasks/views.tsx` assigns `footerExtra={footerExtra}` to `PortalLayout` (same `.chq-portal-footer` mechanism, reached through the `footerExtra` slot rather than `dock`). Same file renders `Questions? Reply to any of our emails.` verbatim. |
+
+No dock survives the widening unclaimed; there is no residue for a
+following wave in this population.
