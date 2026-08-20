@@ -38,7 +38,11 @@
   Change-password/Remove overlap. Event-edit +86px, CFP-edit +46px
   (.chq-settings-field fixed 420px/200px at 390). Submission detail +91px
   (.chq-participant-email-cell 210px).
+  CLOSED (wave 120): app/src/pages/settings/settings.css:2248 `.chq-settings-people-table {`
+  CLOSED (wave 120, the Event/CFP-edit `.chq-settings-field` clause): app/src/pages/settings/settings.css:2228 `/* Lane v12m-w5-o appends its own separately-commented sub-section    */`
+  CLOSED (wave 120, the submission-detail `.chq-participant-email-cell` clause): app/src/pages/submissions/detail.css:108 `@media (max-width: 900px) {`
 - CFP form stat strip clips values mid-string ("5 Aug 202").
+  CLOSED (wave 120, verified against the tree): app/src/pages/forms/FormsPage.tsx:278 `// close date and received total the desktop Opens/Closes/Received strip`
 - Submission detail back link renders a bare ‹ with no label (frame: ‹ Triage).
   CLOSED (wave 115): app/src/pages/submissions/SubmissionDetailPage.tsx`'‹ Triage' label; desktop keeps '‹ All submissions' byte-`
 - Header-label leakage into cards: Contacts rows print COMPANY:/LABELS:
@@ -65,11 +69,18 @@
   CLOSED (wave 115): app/src/pages/Comms.tsx:71 `const [phoneEntered, setPhoneEntered] = useState(() => isTab(rawTab));`
 - Drill-ins keep the parent page head (Contacts pipeline/dupes/merge, Comms
   drills) — frames are one-screen-at-a-time.
+  OWNED (wave 120, DEC-380 wave-120 ruling): taken by v12m-w9-o this wave —
+  not duplicated here.
 - Pinned docks missing on 12 of 14 framed screens (Contact detail, Pipeline,
   Merge, Templates, Files, Session deliverable, Settings Event...); Content
   select-mode dock renders at TOP not bottom (frame :247).
+  CLOSED (wave 120, the Content select-mode dock TOP/bottom clause only —
+  the "12 of 14" count is unverified in full and moves to Still Live below):
+  app/src/pages/content/content.css:1625 `position: sticky;`
 - Contact detail inverts hierarchy: frame's wide-primary "Email Priya" +
   Edit vs live 2x2 secondaries with Save primary; save-scope line misplaced.
+  OWNED (wave 120, DEC-380 wave-120 ruling): taken by v12m-w9-o this wave —
+  not duplicated here.
 - Import CSV phone wizard (frame :487 one-column-per-screen + Next/Skip
   dock) not built; desktop modal overflows at 390.
   CLOSED (wave 115): app/src/pages/contacts/ImportWizard.phoneColumns.render.test.tsx:1 `v12m-w2-b: the phone-only "one column per screen" pager added for the`
@@ -81,8 +92,19 @@
   unverified and remain open): app/src/pages/settings/ApiTokensPanel.tsx:204 `{creating ? 'Creating…' : 'New token'}`
 - Submissions head: three filter strips (VIEW 753px + status 759px both
   clipped) where frame :137 draws search + three chips.
+  CLOSED (wave 120, the "clipped" clause — content no longer truncates,
+  scrolling replaces clipping, same idiom the frame itself uses for its
+  own status-pill row): app/src/pages/submissions/submissions.css:714 `.chq-submissions-filterbar,`
 - Saved embeds: frame's Turn off + Get code pair became four flush buttons;
   ON/OFF misplaced; host line + footnote gone.
+  CLOSED (wave 120): app/src/pages/settings/settings.css:2019 `.chq-settings-saved-embed-actions .chq-link-button {`
+  (44px-floored, bordered, 8px-gapped buttons — no longer flush; ON/OFF
+  renders as its own state-pill span, SavedEmbedsPanel.tsx:245
+  `<span`, ahead of the action cluster per docs/design/Chautauqua
+  Settings.dc.html:150-161; footnote renders at SavedEmbedsPanel.tsx:202
+  `Turning one off breaks it wherever it is pasted`; the frame's `{{
+  e.used }}` "host" column is a documented, reasoned omission — no
+  endpoint stores that data — per the comment at SavedEmbedsPanel.tsx:20-31.)
 
 ## S3 44px floor (all buttons/links below; see probe for counts)
 .chq-settings-section-action 15px · .chq-submissions-clone 14px · .chq-check
@@ -92,3 +114,31 @@ file links 22-24px · .chq-submissions-viewtab 29px · strip datefield 28.4px
 
 Positive: zero horizontal document overflow on all 24; CFP form dock is the
 model implementation; dock-suppression mechanism works; Merge is strongest.
+
+## Still live at wave 120
+- Portal/Tracks rows stranded in half-width columns: `.chq-settings-track-edit-row`
+  (app/src/pages/settings/settings.css:1081 `.chq-settings-track-edit-row {`,
+  :1082 `grid-template-columns: minmax(0, 1fr) 150px 200px;`) has no phone
+  override anywhere in the file — its sibling `.chq-settings-room-edit-row`
+  DOES get one (settings.css:2176 `.chq-settings-room-edit-row {`, :2177
+  `grid-template-columns: 1fr;`, per a DEC-919 wave-109 comment at
+  settings.css:2171-2175), but the track row's own 150px+200px fixed tracks
+  plus two 16px gaps (382px) still exceed the ~358px phone content box, so
+  TrackEditRow.tsx's name input / submission-count / actions keep sharing
+  one too-narrow row instead of stacking. Read-view rows for both Tracks
+  and Portal (`.chq-settings-tracks-rooms-grid`,
+  `.chq-settings-portal-resource-row`) DO get phone overrides
+  (settings.css:1568, :1573) — only the Tracks EDIT row is unfixed.
+- Pinned docks: of the seven screens the original finding named, six
+  remain undocked at wave 120 — grepped for `chq-phone-dock` across each
+  page component and found no match in
+  app/src/pages/contacts/PipelineBoard.tsx,
+  app/src/pages/contacts/MergePage.tsx,
+  app/src/pages/content/DeliverableDetail.tsx (Session deliverable),
+  app/src/pages/content/FilesLibrary.tsx,
+  app/src/pages/contacts/ContactDrawer.tsx (Contact detail), and
+  app/src/pages/settings/EventSettingsPanel.tsx (Settings Event) — only
+  Templates and Content select-mode are now docked (see the CLOSED
+  receipt above). The mobile-campaign mandate's dock membership ruling
+  (docs/mobile-campaign.md:147 `## RULED (DEC-380 wave-116): agenda 390
+  dock membership`) establishes the pattern these six screens still lack.
