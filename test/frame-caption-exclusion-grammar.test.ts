@@ -24,7 +24,17 @@
 //       that occurrence, so a caption merely MENTIONED in passing prose
 //       (DEC-976.md itself lists `Priya Raman \xb7 Latticework Systems` as
 //       an illustrative FIXTURE example, never ruling it buildable) is not
-//       a false offender.
+//       a false offender. EXEMPTION (DEC-976 wave-142): a COMPOSED row is
+//       excused from this clause when it is ALSO clause-4-proven -- its
+//       reason quotes a backtick composing expression that resolves
+//       verbatim (comments stripped) in the non-test source corpus, reusing
+//       clause 4's own exported predicate (backtickSpans +
+//       anyComposingSpanMatches over STRIPPED_COLLAPSED_SOURCE_BLOBS). Such
+//       a row is not a stray caption awaiting a build the registry already
+//       ruled on -- it IS the build, and the registry amendment is
+//       describing the same live composing expression, not flagging an
+//       omission (Chautauqua Contacts.dc.html:159 is the motivating case).
+//       The exemption is computed, never a hand-listed row-keyed allowlist.
 //   (2) every `reason` is CONTENT-anchored: no `path:NNN` coordinate into a
 //       mutable code/doc file (`.ts`/`.tsx`/`.js`/`.jsx`/`.css`/`.md`).
 //       `.dc.html` frame citations are the one structural carve-out
@@ -238,9 +248,64 @@ describe('caption exclusion grammar (DEC-976 wave-140, self-grading over the tab
       expect(isRuledBuildableIn(mentionedOnlyText, [fabricatedRegistryBlob])).toBe(false);
     });
 
+    it('non-vacuity (synthetic): a registry-ruled-buildable row that is ALSO clause-4-proven is exempt (passes); one with no resolving expression is still caught', () => {
+      const provenText = 'Zzy Synthetic Composed Row The Registry Ruled Buildable And Source Proves';
+      const provenReason = 'app/src/pages/Zzy.tsx composes `zzySyntheticComposedExpression()` from the record.';
+      const unresolvedText = 'Zzy Synthetic Composed Row The Registry Ruled Buildable With No Resolving Expression';
+      const unresolvedReason = 'app/src/pages/Zzy.tsx composes the caption from the record; no expression quoted here.';
+
+      const fabricatedRegistryBlob2 = normalizeCaption(
+        [
+          `RULED: build "${provenText}" verbatim, because it has a live referent on screen.`,
+          `RULED: build "${unresolvedText}" verbatim, because it has a live referent on screen.`,
+        ].join('\n\n')
+      );
+      // Fabricated, never the real STRIPPED_COLLAPSED_SOURCE_BLOBS -- this
+      // fixture proves the EXEMPTION predicate in isolation, not over a live
+      // product count.
+      const fabricatedSourceBlobs = [
+        collapseWhitespace(stripComments('const x = 1; zzySyntheticComposedExpression(); const y = 2;')),
+      ];
+
+      const provenRow: Exclusion = { fileName: 'Chautauqua Zzy.dc.html', line: 1, text: provenText, reason: provenReason };
+      const unresolvedRow: Exclusion = {
+        fileName: 'Chautauqua Zzy.dc.html',
+        line: 2,
+        text: unresolvedText,
+        reason: unresolvedReason,
+      };
+      const exemptionApplies = (row: Exclusion) => anyComposingSpanMatches(backtickSpans(row.reason), fabricatedSourceBlobs);
+
+      // Both are registry-ruled-buildable...
+      expect(isRuledBuildableIn(provenRow.text, [fabricatedRegistryBlob2])).toBe(true);
+      expect(isRuledBuildableIn(unresolvedRow.text, [fabricatedRegistryBlob2])).toBe(true);
+      // ...but only the clause-4-proven one is exempt from clause 1.
+      expect(exemptionApplies(provenRow)).toBe(true);
+      expect(exemptionApplies(unresolvedRow)).toBe(false);
+    });
+
     for (const { name, rows } of ALL_TABLES) {
       it(`${name}: no row is a caption ruled buildable by any src/decisions-data/DEC-*.md amendment`, () => {
-        const offenders = rows.filter((r) => isRuledBuildableIn(r.text, NORMALIZED_REGISTRY_BLOBS));
+        const offenders = rows
+          .filter((r) => isRuledBuildableIn(r.text, NORMALIZED_REGISTRY_BLOBS))
+          // DEC-976 wave-142: a COMPOSED row is EXEMPT from clause 1 when it
+          // is ALSO clause-4-proven -- i.e. its reason quotes a backtick
+          // composing expression that resolves verbatim (comments stripped)
+          // in the non-test source corpus. Such a row is not a stray caption
+          // parked in the wrong table awaiting a build; it IS the build,
+          // already composed from live product code, and the registry
+          // amendment that also happens to rule it buildable is describing
+          // the same fact, not flagging an omission. The predicate is
+          // reused verbatim from clause 4 (backtickSpans +
+          // anyComposingSpanMatches over STRIPPED_COLLAPSED_SOURCE_BLOBS) --
+          // never a hand-listed row-keyed carve-out.
+          .filter(
+            (r) =>
+              !(
+                name === 'COMPOSED' &&
+                anyComposingSpanMatches(backtickSpans(r.reason), STRIPPED_COLLAPSED_SOURCE_BLOBS)
+              )
+          );
         expect(
           offenders,
           `${offenders.length} ${name} row(s) are captions a decision-registry amendment already ruled BUILDABLE ` +
