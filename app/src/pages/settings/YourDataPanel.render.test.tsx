@@ -98,12 +98,15 @@ describe('YourDataPanel', () => {
     });
     expect(within(section).getByRole('link', { name: 'Contacts CSV' })).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Everything, JSON' })).toBeInTheDocument();
-    // DEC-728 amendment (wave 15): the section's OWN drill action relabels
-    // to 'Back' rather than disappearing. DEC-785 amendment (wave 66): the
-    // local summary/edit split ApiTokensPanel used to own is REMOVED --
+    // w7-c/DEC-728 amendment: docs/design/Chautauqua Settings.dc.html
+    // :1136-1137 draws no panel head at all in the edit view -- the
+    // section's own 'Change'/'Back' action and <h2> are hidden while
+    // editing (SummarySection.tsx); the sole back control is the shell's
+    // `‹ Your data` link. DEC-785 amendment (wave 66): the local
+    // summary/edit split ApiTokensPanel used to own is REMOVED --
     // ApiTokensPanel now mounts straight into its full create/revoke
     // surface, with no second 'Change' of its own.
-    expect(within(section).getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
 
     fireEvent.click(within(section).getByRole('button', { name: 'Import from Sessionboard' }));
     expect(within(section).getByRole('heading', { name: 'Import from Sessionboard' })).toBeInTheDocument();

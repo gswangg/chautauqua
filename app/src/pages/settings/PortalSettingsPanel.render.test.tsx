@@ -126,12 +126,15 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
     await waitFor(() => {
       expect(screen.getByText('Travel info')).toBeInTheDocument();
     });
-    // DEC-728 amendment (wave 15): the section's OWN drill action relabels
-    // to 'Back' rather than disappearing. DEC-785 amendment (wave 66): the
-    // local summary/edit split ResourcesPanel used to own is REMOVED --
+    // w7-c/DEC-728 amendment: docs/design/Chautauqua Settings.dc.html
+    // :894-895 draws no panel head at all in the edit view -- the section's
+    // own 'Change'/'Back' action and <h2> are hidden while editing
+    // (SummarySection.tsx); the sole back control is the shell's
+    // `‹ Speaker portal` link. DEC-785 amendment (wave 66): the local
+    // summary/edit split ResourcesPanel used to own is REMOVED --
     // ResourcesPanel now mounts straight into its full CRUD surface, with
     // no second 'Change' of its own.
-    expect(within(section).getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
 
     expect(screen.getByText('6 words')).toBeInTheDocument();
     expect(screen.queryByText(/Fly into AUS/)).not.toBeInTheDocument();

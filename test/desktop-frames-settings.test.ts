@@ -78,7 +78,12 @@ describe('desktop frame claims: Settings cluster, editing/summary half (v12m-w5-
     }
     const summarySection = read('pages/settings/SummarySection.tsx');
     expect(summarySection).toContain("className=\"chq-settings-panel chq-settings-numbered\"");
-    expect(summarySection).toContain('{editing ? \'Back\' : actionLabel}');
+    // w7-c/DEC-728 amendment: the frame's edit views (e.g. :723-724 `‹ Event`
+    // then `<h1>Edit the event</h1>`) draw no panel head at all -- the
+    // section's own action button reads actionLabel only, at rest; it no
+    // longer relabels to 'Back' because it no longer renders while editing.
+    expect(summarySection).toContain('{editing ? null : (');
+    expect(summarySection).toContain('{actionLabel}');
   });
 
   // docs/design/Chautauqua Settings.dc.html:698
