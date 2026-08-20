@@ -87,17 +87,24 @@
 //      printing the exact replacement line, so a stale ceiling cannot survive
 //      a wave that lands more label coverage.
 //
-//      RATCHET: FOOTER_LABEL_CEILING=7 (raised from wave-128's 6). This is
-//      NOT a regression -- the PREDICATE tightened (boundary-anchored
-//      matching, the painted-span population, and the decision-registry
-//      corpus exclusion together widen what the ledger can see) so the
-//      population of real divergences the ledger reports grew from 6 to 7;
-//      the tree itself did not get worse. Sibling lanes v12m-w4-m/n/o/p/q/r/s
-//      close all seven surviving rows this wave (`See the recipients`,
-//      `+ Rule`, `Place the other six ›`, `Send this in`, `Read the full
-//      submission`, `Copy link`, `Wait`); the merge-train re-measures the
-//      INTEGRATED tree once every lane lands and lowers the ceiling then,
-//      not mid-lane (DEC-989 wave-123).
+//      RATCHET: FOOTER_LABEL_CEILING=0 (drained from wave-131's 9, which had
+//      been left RED against the wave-129 ceiling of 7 -- main was broken
+//      when this lane started). This is a DRAIN, not a raise or a re-measure
+//      of noise: v12m-w5-k landed the DEC-896 wave-130 two-level Settings
+//      head (`&lsaquo; {editingSection ? editingSection.label : 'Settings'}`
+//      in app/src/pages/Settings.tsx), and v12m-w4-s landed DEC-919
+//      wave-129's reversal in app/src/pages/overview/AgendaWorkSection.tsx
+//      (`` `Place the other ${spellCount(...)} ›` ``) -- both lanes composed
+//      the frame's own label from live data, so the literal string no longer
+//      occurs verbatim in source even though the rendered DOM is correct.
+//      All nine offenders (eight `‹ Settings` read-drill rows, one
+//      `Place the other six ›` row) are recorded as COMPOSED_EXCLUSIONS
+//      rows below, hand-measured on this branch by forcing the ceiling to
+//      -1 and reading the printed offender list -- never
+//      `= UNMATCHED.length` or any expression naming the measured set (the
+//      ninth-plus saturated-ratchet-lie pattern named in the wave-128 field
+//      guide: the bound must never equal the measurement for every possible
+//      tree).
 //
 // This file names the app's uninstrumented control-label gap; it does not
 // close it -- that is scheduled work for the lanes above, not this ledger.
