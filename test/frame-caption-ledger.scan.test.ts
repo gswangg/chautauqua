@@ -287,6 +287,106 @@ const FIXTURE_EXCLUSIONS: Exclusion[] = [
     text: 'Strong practical content and a clear narrative arc; abstract could name the specific tooling used. Recommend accept for the AI track.',
     reason: 'invented sample reviewer comment used as mock body text, not a real UI caption.',
   },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 236,
+    text: 'Latticework Systems · Principal Engineer',
+    reason: 'invented sample contact affiliation/title used as mock card content, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 411,
+    text: 'Latticework Systems · Principal Engineer',
+    reason: 'invented sample contact affiliation/title used as mock card content, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 553,
+    text: 'Priya Raman, Marcus Okafor',
+    reason: 'invented sample recipient-name list used as mock card content, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 560,
+    text: 'A quick question about your session',
+    reason: 'invented sample message subject line used as mock body text, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 625,
+    text: 'Aisha Karim · Vector Foundry',
+    reason: 'invented sample contact identity used as mock card content, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 657,
+    text: 'Suggested by Priya — runs the build team at Vector',
+    reason: 'invented sample suggestion/rationale used as mock body text, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 295,
+    text: 'Northwind Data · no portal account',
+    reason: 'invented sample speaker affiliation/account-status used as mock card content, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 337,
+    text: 'Latticework Systems · Principal Engineer · has an account',
+    reason: 'invented sample speaker affiliation/title/account-status used as mock card content, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 431,
+    text: 'Prefers a morning slot. Happy to share a hotel with other speakers.',
+    reason: 'invented sample speaker logistics note used as mock body text, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 584,
+    text: 'Cloudreach Labs · has account',
+    reason: 'invented sample speaker affiliation/account-status used as mock card content, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 326,
+    text: 'Fieldnote Docs · Documentation Lead',
+    reason: 'invented sample submitter affiliation/title used as mock card content, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 363,
+    text: 'Dana Whitmore · Fieldnote Docs',
+    reason: 'invented sample submitter identity used as mock card content, not a real UI caption.',
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 316,
+    text: "Hi {speaker_name}, congratulations. Your session '{talk_title}' has been accepted. Please confirm your participation by {task_due_date}.",
+    reason:
+      "a template author's sample body rendered as mock content for the accepted-template preview -- it uses SINGLE braces, so the population's `{{` filter never reached it, but it is still fixture data (a sample instantiation of a template), never product copy.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 518,
+    text: 'Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.',
+    reason:
+      "a sample value of the portal settings' welcomeMessage field (app/src/pages/settings/PortalSettingsPanel.tsx), rendered as mock preview content -- fixture DATA, not absent product copy.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 905,
+    text: 'Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.',
+    reason:
+      "a sample value of the portal settings' welcomeMessage field (app/src/pages/settings/PortalSettingsPanel.tsx), rendered as mock preview content -- fixture DATA, not absent product copy.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1495,
+    text: 'Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.',
+    reason:
+      "a sample value of the portal settings' welcomeMessage field (app/src/pages/settings/PortalSettingsPanel.tsx), rendered as mock preview content -- fixture DATA, not absent product copy.",
+  },
 ];
 
 function isExcluded(c: Caption, table: Exclusion[]): boolean {
@@ -447,15 +547,15 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 );
 
 // -- Ratchet -------------------------------------------------------------
-// Measured on this branch (v12m-w8-a) by forcing this const to -1 and
+// Measured on this branch (v12m-w10-dd) by forcing this const to -1 and
 // reading the printed offender list: population 233 muted-prose captions
 // across 13 frame files (>= 20 chars, no digit, no `@`, not
-// text-transform:uppercase), 18 excluded (12 EXPLAINER, 6 FIXTURE), 215
-// graded, 89 unmatched by any normalized app/src or src source file. This is
+// text-transform:uppercase), 35 excluded (12 EXPLAINER, 23 FIXTURE), 198
+// graded, 54 unmatched by any normalized app/src or src source file. This is
 // a fresh instrument -- may only be RAISED as a merge-train act if a future
 // predicate widening surfaces more real divergences, and should be LOWERED
 // as sibling lanes close real caption/consequence gaps.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 89;
+export const FRAME_CAPTION_UNMATCHED_CEILING = 54;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
