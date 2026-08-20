@@ -131,8 +131,8 @@
   display: none;
 }
 
-/* w11-p (DEC-936 amendment): the frame's third 390 status chip ('All 47',
-   docs/design/Chautauqua Submissions.dc.html:150). Desktop is frozen and
+/* w11-p (DEC-936 amendment): the frame's third 390 status chip at
+   docs/design/Chautauqua Submissions.dc.html:151 `All 47`. Desktop is frozen and
    its own frame (:75-83) draws no such chip, so this is display:none by
    default -- the sole top-level declaration -- and only switched on inside
    the terminal phone media query below (DEC-576 wave-101 phone-scaffold

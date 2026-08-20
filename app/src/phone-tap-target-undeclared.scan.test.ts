@@ -72,7 +72,11 @@ const TSX_FILES = allTsxFiles(HERE);
 // The old ceiling was blind, not zero: `.chq-review-queue-footer-showall`
 // (review.css:650, 52x30 live-probed) proves a real offender sat under a
 // scan reporting a clean population.
-export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 23;
+// Thunderdome megabatch (wave 124): re-measured on the INTEGRATED tree
+// after 15 lanes landed in one pass -- concurrent lanes drained the same
+// population, so the combined truth is lower than any single branch saw.
+// 23 -> 15. Lowering is a merge-train act (DEC-989).
+export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 15;
 
 describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)', () => {
   it('derives a non-empty population and includes a known-live offender (vacuous-population tripwire)', () => {

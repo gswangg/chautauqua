@@ -614,7 +614,11 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // 1fr;` clearing its fixed-track sum (also harmless: display:none). Neither
 // changes anything a user can see; both were re-measured by forcing this
 // constant to -1 and reading the offender list. 7 -> 5.
-export const OVERFLOW_OFFENDERS_CEILING = 4;
+// Thunderdome megabatch (wave 124): re-measured on the INTEGRATED tree
+// after 15 lanes landed in one pass -- concurrent lanes drained the same
+// population, so the combined truth is lower than any single branch saw.
+// 4 -> 1. Lowering is a merge-train act (DEC-989).
+export const OVERFLOW_OFFENDERS_CEILING = 1;
 
 describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('found more than one CSS file to scan (vacuous-population tripwire, file side)', () => {
