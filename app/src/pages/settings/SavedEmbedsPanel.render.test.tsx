@@ -236,7 +236,11 @@ describe('SavedEmbedsPanel', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Turn off Homepage widget?')).toBeInTheDocument();
-    expect(within(dialog).getByText(/\/embed\/e\/emb1 permalink stops serving this surface/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        'The embed will render nothing wherever it is pasted, until you turn it back on. Nothing is deleted.',
+      ),
+    ).toBeInTheDocument();
 
     expect(
       fetchMock.mock.calls.find(([input]) => String(input).includes('/api/v1/embeds/emb1')),

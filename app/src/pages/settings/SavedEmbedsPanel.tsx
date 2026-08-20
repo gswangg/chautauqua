@@ -314,6 +314,17 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
         </ul>
       )}
 
+      {embeds && embeds.length > 0 ? (
+        // Chautauqua Settings.dc.html:599 -- the 390 Saved embeds frame's
+        // list-closing hint. Width-conditioned copy (DEC-576/DEC-613): the
+        // sentence is false at 1600 (the desktop surface IS the laptop), so
+        // it renders unconditionally in the DOM and settings-lists.css hides
+        // it at rest, un-hiding it only inside its phone media block.
+        <p className="chq-settings-saved-embed-laptop-hint">
+          Editing an embed's filters is easier on a laptop
+        </p>
+      ) : null}
+
       {onBuild && editing ? (
         // w41-h/DEC-785: the "New embed" affordance (this panel's build
         // disclosure) carries its own caption beside it -- what a saved
@@ -343,7 +354,7 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
       {pendingToggleOff ? (
         <ConfirmDialog
           title={`Turn off ${pendingToggleOff.name}?`}
-          body={`The /embed/e/${pendingToggleOff.id} permalink stops serving this surface. The saved recipe, its name and its code survive -- Turn on puts it back.`}
+          body="The embed will render nothing wherever it is pasted, until you turn it back on. Nothing is deleted."
           confirmLabel="Turn it off"
           pending={togglingOff}
           onConfirm={() => void handleConfirmToggleOff(pendingToggleOff)}

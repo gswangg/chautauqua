@@ -116,6 +116,16 @@
   display: none;
 }
 
+/* DEC-613 wave-134 amendment: Chautauqua Settings.dc.html:599 draws
+   "Editing an embed's filters is easier on a laptop" closing the 390 Saved
+   embeds list -- a sentence that is FALSE at 1600 (the desktop surface IS
+   the laptop), so it is width-conditioned copy (DEC-576), not a control:
+   no second DOM copy (DEC-919 doesn't apply to prose), just one element
+   hidden at rest and un-hidden inside the media block below. */
+.chq-settings-saved-embed-laptop-hint {
+  display: none;
+}
+
 @media (max-width: 700px) {
   /* docs/design/Chautauqua Settings.dc.html:426
      `        <span style="display:flex; align-items:center; justify-content:center; margin-top:12px; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; font-size:14px; font-weight:700">New token</span>`
@@ -151,5 +161,15 @@
   .chq-settings-token-create .chq-btn-primary,
   .chq-settings-people-invite-action {
     display: none;
+  }
+
+  /* Chautauqua Settings.dc.html:599, the 390 Saved embeds frame's
+     list-closing hint (desktop rule above hides it at rest). */
+  .chq-settings-saved-embed-laptop-hint {
+    display: block;
+    padding: 16px 0 0;
+    font-size: 13px;
+    color: var(--chq-ink-2);
+    line-height: 1.5;
   }
 }
