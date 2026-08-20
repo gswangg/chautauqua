@@ -638,6 +638,16 @@ export const PORTAL_CSS = `
      width. */
   .chq-portal-edit-dock { display: none; }
 
+  /* DEC-576 (wave-128, w3-l): the hotel-stay-form frame's pinned action
+     band (dc.html:518-521) is a second copy of the inline Submit, reached
+     through PortalLayout's dock slot -- same idiom as .chq-portal-edit-dock
+     immediately above. Hidden at TOP LEVEL so desktop's inline
+     .chq-portal-taskform-submit copy stays byte-identical; revealed only
+     inside the phone media block below, which also hides
+     .chq-portal-taskform-submit there -- exactly one copy draws at any
+     width. */
+  .chq-portal-taskform-dock { display: none; }
+
   /* Frame 10--23 (MINOR) + frame 14: desktop control heights -- the frames
      draw 46px inputs/selects and 46px footer buttons; the app rendered
      33.8/32.8/37. min-height (not padding) so multiline textareas are
@@ -1063,5 +1073,19 @@ ${ERROR_STATES_CSS}
     display: flex;
     gap: 8px;
   }
+
+  /* DEC-576 (wave-128, w3-l): reveals the hotel-stay-form dock copy hidden
+     at top level -- .chq-portal-dock's own display:flex/gap/48px-primary
+     rules above already apply to this copy's descendants by the same
+     selectors (.chq-portal-dock .chq-btn-primary). flex:1 so this single
+     dock child fills the row .chq-portal-dock lays out, matching the
+     frame's flex:1 on its docked Submit (dc.html:519). The in-flow
+     .chq-portal-taskform-submit copy is stood down here so exactly one
+     copy is ever visible. */
+  .chq-portal-taskform-dock {
+    display: flex;
+    flex: 1;
+  }
+  .chq-portal-taskform-submit { display: none; }
 }
 `;

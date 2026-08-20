@@ -354,8 +354,24 @@ export function TaskFormPage(props: {
   // DEC-532: one predicate built from the FULL field list (a session field
   // can gate a speaker field), shared by both sections below.
   const isVisible = makeVisibilityPredicate(fields, answers);
+  // DEC-576 (wave-128, w3-l): the 390 frame's pinned action band at
+  // docs/design/Chautauqua Public and Portal.dc.html:518-521 ("Portal ·
+  // Hotel stay form · 390") docks the primary submit -- the last portal
+  // drill page whose primary still rendered only inline. Copies edit.tsx's
+  // idiom exactly: the form gets an id, the docked control is a SECOND
+  // SUBMIT of that same form via the `form` attribute (never a second
+  // `<form>`, never a duplicated action), and portal.css.ts hides exactly
+  // one of the two copies per width so a submit from either is the same
+  // POST. The frame's bordered "Save draft" secondary is NOT built here --
+  // DEVIATIONS.md §6 defers hotel-form save-draft as an unbuilt feature.
+  const taskFormId = "chq-portal-task-form";
+  const taskFormDock = (
+    <div class="chq-portal-taskform-dock">
+      <button type="submit" form={taskFormId} class="chq-btn chq-btn-primary">Submit</button>
+    </div>
+  );
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
+    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName} dock={taskFormDock}>
       <PortalBackLink to="/portal/tasks" />
       {/* w3-b (DEC-643 amendment): back-linked drill-in -> 25px phone
           register, docs/design/Chautauqua Public and Portal.dc.html:508
@@ -363,11 +379,13 @@ export function TaskFormPage(props: {
           ("Portal · Hotel stay form" -- a form-kind task assignment). */}
       <h1 class="chq-portal-hero chq-portal-hero-drill">{assignment.title}</h1>
       {assignment.description ? <p class="chq-portal-sub">{assignment.description}</p> : null}
-      <form method="post" action={`/portal/tasks/${assignment.id}/form`} enctype="multipart/form-data">
+      <form id={taskFormId} method="post" action={`/portal/tasks/${assignment.id}/form`} enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <FormFieldsSection fields={fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
         <FormFieldsSection fields={fields} section="speaker" answers={answers} errors={errors} isVisible={isVisible} />
-        <button type="submit" class="chq-btn chq-btn-primary">Submit</button>
+        <div class="chq-portal-taskform-submit">
+          <button type="submit" class="chq-btn chq-btn-primary">Submit</button>
+        </div>
       </form>
       <FieldRulesScript fields={fields} />
     </PortalLayout>
