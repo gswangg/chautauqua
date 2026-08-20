@@ -12,14 +12,13 @@
    querySelectorAll — implement it for real.
    RESOLVED (DEC-986): cfp-steps-script.tsx's Next handler now walks the
    outgoing step's controls and calls `reportValidity()` on the first
-   invalid one before it will call `setStep('2')` (cfp-steps-script.tsx:91
-   `setStep('2');`, guarded by the invalid-control check starting at
-   cfp-steps-script.tsx:67); form-render.tsx:314 now uses
-   `wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]')`, not a
+   invalid one before it will call setStep('2') (cfp-steps-script.tsx`setStep('2');`, guarded by the invalid-control check starting a few lines
+   earlier in the same function's walk). form-render.tsx`wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]')` now uses
+   querySelectorAll, not a
    singular querySelector, so every radio in the group gets its required
    state applied, not just the first.
-   CLOSED (wave 115): src/routes/public/cfp-steps-script.tsx:87 `if (typeof invalid.reportValidity === 'function') invalid.reportValidity();`
-   CLOSED (wave 115): src/views/form-render.tsx:314 `wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(function(input){`
+   CLOSED (wave 115): src/routes/public/cfp-steps-script.tsx`if (typeof invalid.reportValidity === 'function') invalid.reportValidity();`
+   CLOSED (wave 115): src/views/form-render.tsx`wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(function(input){`
 2. Admin agenda 390 renders nothing (Agenda.dc.html:123): agenda.css
    :1074-1104 display:none leak-guard for 24 .chq-phone-* classes; the 700px
    block restores only 14 — missing: -slot-time, -slot-card-title,
@@ -58,14 +57,14 @@
   /account/password is the model implementation — reuse its pattern.
   CLOSED (wave 118, "portal tasks/hotel-form/session/edit" clause only —
   the public agenda/my-schedule and CFP wizard docks are unverified and
-  remain open): src/routes/portal/shared.tsx:233 `{props.dock ? <div class="chq-portal-dock">{props.dock as any}</div> : null}`
+  remain open): src/routes/portal/shared.tsx`{props.dock ? <div class="chq-portal-dock">{props.dock as any}</div> : null}`
 - SCAN POPULATION: widen phone-tap-target.scan + the 390-overflow scan roots
   from app/src to include src/routes/** (public/portal/docs/auth were never
   scanned; most §5 floor misses would have been caught).
   CLOSED (wave 115): app/src/phone-tap-target-ssr.scan.test.ts`for (const family of ['src/routes/public/', 'src/routes/portal/', 'src/routes/docs-site.css.ts', 'src/routes/auth.css.ts']) {`
   (drift-proof citation, DEC-967 wave-115 -- moved to its own file in the
   wave-v12m-w12 custodian decomposition of phone-tap-target.scan.test.ts).
-  CLOSED (wave 115): test/ssr-phone-overflow.test.ts:19 `const HOME_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "home.css.ts"), "utf8");`
+  CLOSED (wave 115): test/ssr-phone-overflow.test.ts`const HOME_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "home.css.ts"), "utf8");`
 
 ## MEDIUM (see probe evidence for full list)
 - 44px floor misses across public/portal (+ app/src stragglers incl.
@@ -76,7 +75,7 @@
   through the PASSWORD label on load; overview + speakers row pairs overlap
   (-6px); portal session edit↔label 0px.
   Partially re-derived: the /login card's fields-to-submit gap is 22px
-  (src/routes/auth.css.ts:79 `gap: 22px;`, on `.chq-auth-card`, its direct
+  (src/routes/auth.css.ts`gap: 22px;`, on `.chq-auth-card`, its direct
   parent) and overview's wrapped section-header keeps its base 20px flex
   gap (app/src/pages/overview/overview.css`gap: 20px;`
   (drift-proof citation, DEC-967 wave-115 -- this declaration now sits at
@@ -89,7 +88,7 @@
 - CFP content column 290px vs 358 budget; counters on every field incl.
   dates/emails (frames: ABSTRACT only);
   CLOSED (wave 118, "counters on every field incl. dates/emails" clause
-  only): src/views/form-render.tsx:169 `const counterMax = field.kind === "long_text" ? resolvedTextCap(field) : undefined;`
+  only): src/views/form-render.tsx`const counterMax = field.kind === "long_text" ? resolvedTextCap(field) : undefined;`
   portal footer 93px ink stub +
   duplicate Sign out; overview remind-all breaks gutters; tab-bar dot
   flow/baseline defects (dot above label, all five items, per frames);
@@ -117,7 +116,7 @@
   tree confirms or denies the frame divergence) and portal's session
   edit↔label 0px gap (no rule pairing a session-edit label directly to its
   control gap was found -- the nearest candidate,
-  src/routes/portal/portal.css.ts:594 `.chq-portal-session-label {`, styles
+  src/routes/portal/portal.css.ts`.chq-portal-session-label {`, styles
   a section label's own internal layout, not a label-to-control pairing).
   Left live rather than guessed closed — DEC-967 forbids receipting a fix
   that was not read.
