@@ -1469,18 +1469,35 @@ button.chq-speakers-status-overdue:hover {
   color: var(--chq-muted);
 }
 
-/* DEC-829 wave-110 amendment: the rail is a 320px column, not the page --
-   an empty state at page scale (24px headline, 44px top room) reads as a
-   whole extra section. Scoped under the rail rather than a second empty-
-   state component, so B7's fresh/filtered contract stays enforced by
-   EmptyState construction. */
+/* DEC-829 wave-110 amendment, corrected wave 119 (DEC-678 (b), task w8-h,
+   docs/probes/metafid-desktop-2026-08-19.md:28-29): the rail is a 320px
+   column, not the page -- an empty state at page scale (24px headline, 44px
+   top room, 400-weight muted text) read as a whole extra section, and its
+   own SIBLINGS in this aside (.chq-empty "No notes."/"Not set.") already
+   render at rail scale, so the block contradicted both the frame and its
+   own column. Scoped under the rail rather than a second empty-state
+   component, so B7's fresh/filtered contract stays enforced by EmptyState
+   construction. The register now matches the frame's own two-line list
+   (docs/design/Chautauqua Speakers.dc.html:414-424): the top room drops
+   entirely, `what` reads the frame's `font-size:14px; font-weight:600`
+   (:418) and `reason` -- unused today (EmptyState's `reason` is
+   'filtered'-only and this call site is 'fresh', DEC-678(b)) -- is pre-set
+   to the frame's 13px muted second line (:419) so a future filtered/reason
+   use of this rail lands in register without a second repair. */
 .chq-speaker-detail-rail .chq-empty-block-fresh {
   padding-top: 0;
 }
 
 .chq-speaker-detail-rail .chq-empty-what {
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.4;
+  color: var(--chq-ink);
+}
+
+.chq-speaker-detail-rail .chq-empty-reason {
+  font-size: 13px;
   font-family: inherit;
   line-height: 1.4;
   color: var(--chq-muted);

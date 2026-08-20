@@ -289,6 +289,35 @@ describe('speakers toolbar selects keep caret clearance', () => {
   });
 });
 
+// DEC-678 (b), task w8-h (docs/probes/metafid-desktop-2026-08-19.md:28-29):
+// the rail's EmptyState register must match its own column, not the page.
+// Frame docs/design/Chautauqua Speakers.dc.html:414-424 draws a 14px/600
+// event name over a 13px muted participation line, in a 320px rail with no
+// extra top room -- and the rail's OWN siblings (`.chq-empty` "No notes."/
+// "Not set.") already read at that scale, so the block must match them too.
+describe('speaker-detail rail empty-state register matches its column (DEC-678 (b), frame :414-424)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  it('loses the page-scale 44px top room', () => {
+    const body = topLevelRuleBody(css, '.chq-speaker-detail-rail .chq-empty-block-fresh');
+    expect(body).toMatch(/padding-top:\s*0/);
+  });
+
+  it('the headline reads at the rail\'s own 14px/600, ink -- not the 24px display headline', () => {
+    const body = topLevelRuleBody(css, '.chq-speaker-detail-rail .chq-empty-what');
+    expect(body).toMatch(/font-size:\s*14px/);
+    expect(body).toMatch(/font-weight:\s*600/);
+    expect(body).toMatch(/color:\s*var\(--chq-ink\)/);
+    expect(body).not.toMatch(/24px/);
+  });
+
+  it('the reason line pre-registers at the frame\'s 13px muted second line', () => {
+    const body = topLevelRuleBody(css, '.chq-speaker-detail-rail .chq-empty-reason');
+    expect(body).toMatch(/font-size:\s*13px/);
+    expect(body).toMatch(/color:\s*var\(--chq-muted\)/);
+  });
+});
+
 // Caught in the sandbox, not by a test: TaskView.tsx rendered every OVERDUE
 // as plain text because it imported only its own task-view.css. jsdom applies
 // no external stylesheet, so no render test can see this -- the classes were
