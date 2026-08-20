@@ -20,6 +20,8 @@ import type { KVStore } from "../src/auth/claim";
 import { findAccountUserId, findAccountUserIds } from "../src/server/repo/comms";
 import { buildRenderTargets } from "../src/routes/comms";
 import type { ComposeSubmission } from "../src/domain/compose";
+import { formatDayMedium } from "../src/lib/event-time";
+import { clockHHMM } from "../src/domain/clock";
 
 // ---------------------------------------------------------------------------
 // Shared fake db: distinguishes queries by their selected-column shape
@@ -193,7 +195,9 @@ class InMemoryKV implements KVStore {
   }
 }
 
-function makeComposeDb() {
+function makeComposeDb(
+  icsRows: { submissionId: string; day: string; startMin: number; endMin: number; roomId: string | null; icsSequence: number }[] = [],
+) {
   let feedbackCalls = 0;
   let accountCalls = 0;
   let outstandingCalls = 0;
@@ -224,11 +228,12 @@ function makeComposeDb() {
       // DEC-912: buildRenderTargets's now-unconditional schedule-data lookup
       // (src/server/repo/comms.ts loadIcsScheduleData) selects a
       // "day"-shaped projection — distinguish it too, so this fixture's
-      // per-query counters stay meaningful. No schedule_slot rows means
-      // every recipient's `scheduled` resolves false here.
+      // per-query counters stay meaningful. `icsRows` (empty by default)
+      // means every recipient's `scheduled` resolves false unless the
+      // caller passes fixture rows in (DEC-660 wave-142 session_time tests).
       if ("day" in proj) {
         icsScheduleCalls += 1;
-        return makeSelectChain([]); // no submissions are scheduled in this fixture
+        return makeSelectChain(icsRows);
       }
       accountCalls += 1;
       return makeSelectChain([]); // no accounts exist — every recipient gets a claim link path
@@ -277,6 +282,31 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     const ada = targets.find((t) => t.contactId === "ct-1");
     expect(ada?.ref).toBe("DEV-001");
     expect(ada?.scheduled).toBe(false); // no schedule_slot rows in this fixture
+    // DEC-660 (wave 142): an unscheduled recipient's {session_time} key is
+    // omitted entirely — never a blank string.
+    expect(ada && "session_time" in ada.vars).toBe(false);
+  });
+
+  it("DEC-660 (wave 142): threads session_time from the SAME schedule read that resolves `scheduled`, no second query", async () => {
+    const { db, getIcsScheduleCalls } = makeComposeDb([
+      { submissionId: "sub-1", day: "2026-09-01", startMin: 540, endMin: 570, roomId: null, icsSequence: 0 },
+    ]);
+    const c = fakeContext(db, new InMemoryKV());
+
+    const { targets } = await buildRenderTargets(c as never, event, submissions, null);
+
+    expect(getIcsScheduleCalls()).toBe(1);
+
+    const ada = targets.find((t) => t.contactId === "ct-1");
+    expect(ada?.scheduled).toBe(true);
+    // Same event-local clock helper (formatDayMedium + clockHHMM) the
+    // compose recipient table's Slot column uses — never a second date
+    // formatter (DEC-613).
+    expect(ada?.vars.session_time).toBe(`${formatDayMedium("2026-09-01")} ${clockHHMM(540)}`);
+
+    const grace = targets.find((t) => t.contactId === "ct-2");
+    expect(grace?.scheduled).toBe(false);
+    expect(grace && "session_time" in grace.vars).toBe(false);
   });
 
   it("gives co-speakers on the same submission the identical feedback block", async () => {

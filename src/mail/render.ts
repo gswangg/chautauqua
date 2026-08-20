@@ -15,6 +15,7 @@ export const MERGE_FIELDS = [
   "task_due_date",
   "task_list",
   "feedback",
+  "session_time",
 ] as const;
 
 export type MergeField = (typeof MERGE_FIELDS)[number];
@@ -64,6 +65,7 @@ export const COMPOSE_MERGE_FIELDS: readonly MergeField[] = [
   "feedback",
   "task_due_date",
   "task_list",
+  "session_time",
 ] as const;
 
 // Matches src/routes/api/contacts/bulk-email.ts renderBulkEmailTargets's
@@ -92,6 +94,7 @@ export const MERGE_FIELD_SAMPLES: Record<MergeField, string> = {
   task_due_date: "14 Mar",
   task_list: "• Sign speaker agreement  • Upload your slides",
   feedback: "Great pacing — tighten the intro by about two minutes.",
+  session_time: "Wed 12 May 09:00",
 };
 
 export const SUBJECT_MERGE_FIELDS: readonly MergeField[] = COMPOSE_MERGE_FIELDS.filter(

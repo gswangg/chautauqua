@@ -123,14 +123,28 @@ export interface MergeVarsInput {
    * formatted via formatCalendarDate — pass NO_DUE_DATE_TEXT when the
    * recipient has no outstanding task carrying a due date. */
   dueDate: string;
+  /** DEC-660 (wave 142): the recipient's submission's scheduled slot,
+   * already formatted through the same event-local clock helper the
+   * compose recipient table's Slot column uses (formatDayMedium +
+   * clockHHMM) — `null` when the submission has no schedule_slot row
+   * (RenderTarget.scheduled is false). Unlike taskList/dueDate, `null`
+   * here means the field is OMITTED entirely (the `feedback`/DEC-682
+   * precedent), never a blank string: an unscheduled recipient must fail
+   * preflightRender loudly and be named by the existing missing-fields
+   * banner. */
+  sessionTime: string | null;
 }
 
 /** Builds the DEC-006 merge vars for one recipient (speaker_name, talk_title,
- * event_name, portal_link, feedback, task_due_date, task_list — DEC-792 grows
- * the compose vocabulary to match the DEC-023 reminders pipeline). DEC-682:
- * the `feedback` key is omitted entirely when feedbackComments is null;
- * task_list/task_due_date are ALWAYS set (never omitted) so a template
- * referencing them never fails preflight for a recipient with no tasks.
+ * event_name, portal_link, feedback, task_due_date, task_list, session_time —
+ * DEC-792 grows the compose vocabulary to match the DEC-023 reminders
+ * pipeline; DEC-660 wave-142 adds session_time). DEC-682: the `feedback` key
+ * is omitted entirely when feedbackComments is null; task_list/task_due_date
+ * are ALWAYS set (never omitted) so a template referencing them never fails
+ * preflight for a recipient with no tasks. `session_time` follows the same
+ * omit-not-blank rule as `feedback`: it is set only when sessionTime is
+ * non-null, so a template referencing {session_time} fails preflightRender
+ * loudly for an unscheduled recipient instead of mailing a blank slot.
  * Keyed `task_due_date` (the canonical token, wave-45 amendment) — a
  * template still using the {due_date} alias is resolved against this same
  * key by src/mail/render.ts's renderTemplate. */
@@ -145,6 +159,9 @@ export function buildMergeVars(input: MergeVarsInput): Record<string, string> {
   };
   if (input.feedbackComments !== null) {
     vars.feedback = formatFeedback(input.feedbackComments);
+  }
+  if (input.sessionTime !== null) {
+    vars.session_time = input.sessionTime;
   }
   return vars;
 }
