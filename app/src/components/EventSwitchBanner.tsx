@@ -3,7 +3,7 @@
 // announces itself -- "Switched to <B> · Back to <A>" -- with a one-click
 // restore. Mounted by EventSwitcher (../components/EventSwitcher.tsx), so
 // it shares that component's one nav mount point across every page.
-// Renders nothing until useCurrentEvent() has resolved the event name(s)
+// Renders nothing until useCurrentEvent() has resolved the event names
 // in play from loadEventsOnce() (never an id in place of a name), and
 // nothing at all when the URL eventId matched what was already stored --
 // see useCurrentEvent.ts's `switchInfo`.

@@ -14,12 +14,12 @@
    outgoing step's controls and calls `reportValidity()` on the first
    invalid one before it will call `setStep('2')` (cfp-steps-script.tsx:91
    `setStep('2');`, guarded by the invalid-control check starting at
-   cfp-steps-script.tsx:67); form-render.tsx:284 now uses
+   cfp-steps-script.tsx:67); form-render.tsx:314 now uses
    `wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]')`, not a
    singular querySelector, so every radio in the group gets its required
    state applied, not just the first.
    CLOSED (wave 115): src/routes/public/cfp-steps-script.tsx:87 `if (typeof invalid.reportValidity === 'function') invalid.reportValidity();`
-   CLOSED (wave 115): src/views/form-render.tsx:284 `wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(function(input){`
+   CLOSED (wave 115): src/views/form-render.tsx:314 `wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(function(input){`
 2. Admin agenda 390 renders nothing (Agenda.dc.html:123): agenda.css
    :1074-1104 display:none leak-guard for 24 .chq-phone-* classes; the 700px
    block restores only 14 — missing: -slot-time, -slot-card-title,

@@ -15,11 +15,11 @@
   review.css:2044/:2048, before the terminal 700px block, so both are
   hidden at desktop widths and only re-shown by the later phone rule
   (source-order win, DEC-385). The SCAN WIDENING also landed:
-  app/src/phone-block-visibility.test.ts:304 now tests
+  app/src/phone-block-visibility.test.ts:335 now tests
   `/phone/.test(token)` rather than a `chq-phone-*` prefix only.
   CLOSED (wave 115): app/src/pages/review/review.css:2044 `.chq-review-criteria-count-phone {`
   CLOSED (wave 115): app/src/pages/review/review.css:2048 `.chq-review-reviewers-count-phone {`
-  CLOSED (wave 115): app/src/phone-block-visibility.test.ts:304 `if (token && /phone/.test(token))`
+  CLOSED (wave 115): app/src/phone-block-visibility.test.ts:335 `if (token && /phone/.test(token))`
 
 ## Speakers-cluster edge MAJORs
 - Filtered-empty state keeps table footer chrome (legend + disabled pager)
