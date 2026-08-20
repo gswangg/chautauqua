@@ -17,6 +17,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { OnboardingGrid } from './OnboardingGrid';
 import { mockApi, errorEnvelope } from '../../test-utils/mockApi';
+import { resetApiCacheForTests } from '../../lib/api';
 import type { OnboardingGridResponse } from './types';
 
 const EVENT_ID = 'evt-onboarding-refusals';
@@ -46,6 +47,10 @@ const GRID: OnboardingGridResponse = {
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  // Design pack v12m adoption (v12m-w4-t-r1-c): the grid read now lives on
+  // the shared SWR cache (useCachedGet) -- reset it so one test's cached
+  // /onboarding payload never leaks into the next.
+  resetApiCacheForTests();
   window.localStorage.setItem('chq.currentEventId', EVENT_ID);
   consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 });

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { useCachedGet } from '../../lib/useCachedRead';
 import { DEC_678, DEC_827 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { useMenu } from '../../lib/useMenu';
@@ -353,11 +354,43 @@ interface OnboardingGridProps {
 export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
 
-  const [grid, setGrid] = useState<OnboardingGridResponse | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<GridFilterState>(DEFAULT_GRID_FILTERS);
   const [page, setPage] = useState(1);
+  // Design pack v12m adoption (v12m-w4-t-r1-c): the grid read moved onto the
+  // shared SWR cache (useCachedGet, DEC_013/DEC_851) so a post-write reload
+  // reconciles in place instead of re-painting the skeleton (DEC_678). The
+  // path is null while there is no event yet -- the hook then holds no data
+  // and issues no request.
+  const gridPath = useMemo(
+    () => (eventId ? `/events/${eventId}/onboarding?${buildGridQuery(filters, page)}` : null),
+    [eventId, filters, page],
+  );
+  const gridRead = useCachedGet<OnboardingGridResponse>(gridPath, 'Failed to load onboarding grid');
+  // Optimistic overlay for the two in-place cell writes below (toggleCell /
+  // setInviteStatus): the cache hook has no setter of its own (DEC_518 --
+  // a cached read either replaces wholesale on resolve or is left untouched
+  // on reject), so the instant flip + rollback those two writes still need
+  // lives here instead, layered on top of gridRead.data and cleared
+  // whenever the grid path itself changes (a fresh event/filter/page view
+  // must never inherit a stale flip).
+  const [optimisticOverride, setOptimisticOverride] = useState<OnboardingGridResponse | null>(null);
+  useEffect(() => {
+    setOptimisticOverride(null);
+  }, [gridPath]);
+  const grid = optimisticOverride ?? gridRead.data ?? null;
+  // The filter toolbar's task picker needs SOME task list to populate its
+  // options even in the gap between a filter/page click (a fresh cache key,
+  // so `grid` is briefly null while the hook loads it -- DEC_678) and the
+  // next response landing; holding the last-seen list here (rather than
+  // gating the whole toolbar behind `grid`, as the pre-hook version did
+  // while `grid` never went stale-to-null across a reload) keeps the
+  // filters themselves interactable through that gap instead of vanishing
+  // mid-click.
+  const [toolbarTasks, setToolbarTasks] = useState<OnboardingTask[]>([]);
+  useEffect(() => {
+    if (grid) setToolbarTasks(grid.tasks);
+  }, [grid]);
   const [showNewTask, setShowNewTask] = useState(false);
   // docs/design/Chautauqua Speakers.dc.html:133 `Matrix becomes one card
   // per speaker`: the phone head's "Filter" control reveals the SAME
@@ -417,22 +450,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   // 'not saved' marker. Null once the write succeeds (first try or Try
   // again) or the organiser reloads the grid.
   const [pendingFailure, setPendingFailure] = useState<PendingWriteFailure | null>(null);
-
-  function loadGrid(id: string, currentFilters: GridFilterState, currentPage: number) {
-    setLoading(true);
-    setError(null);
-    const qs = buildGridQuery(currentFilters, currentPage);
-    return apiGet<OnboardingGridResponse>(`/events/${id}/onboarding?${qs}`)
-      .then((res) => setGrid(res))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load onboarding grid'))
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(() => {
-    if (!eventId) return;
-    loadGrid(eventId, filters, page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId, filters, page]);
 
   // DEC-398: the form-task picker needs the event's forms {id, title,
   // isDefault} — fetched only when the New task modal opens (not on the
@@ -562,7 +579,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     const previousStatus = previousCell.status;
     const previousCompletedAt = previousCell.completedAt;
 
-    setGrid({
+    setOptimisticOverride({
       ...grid,
       rows: grid.rows.map((row) => ({
         ...row,
@@ -622,7 +639,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   async function reloadGridAfterFailure() {
     if (!eventId) return;
     setPendingFailure(null);
-    await loadGrid(eventId, filters, page);
+    setOptimisticOverride(null);
+    await gridRead.refetch();
   }
 
   // DEC-789/DEC-830: writes the roster row's invite status through
@@ -646,7 +664,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     if (!previousParticipation) return;
     const previousInviteStatus = previousParticipation.inviteStatus;
 
-    setGrid({
+    setOptimisticOverride({
       ...grid,
       rows: grid.rows.map((row) =>
         row.contact.id === contactId
@@ -756,7 +774,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       );
       setToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
       closeRemindReview();
-      await loadGrid(eventId, filters, page);
+      setOptimisticOverride(null);
+      await gridRead.refetch();
     } catch (err) {
       // Not optimistic: a bulk send failure must surface loudly in the
       // review dialog rather than closing silently.
@@ -784,7 +803,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       // caption promised, without waiting for a reload. Not optimistic — the
       // server decides which of this contact's participations were bumped
       // (an already-accepted or declined one is left alone).
-      await loadGrid(eventId, filters, page);
+      setOptimisticOverride(null);
+      await gridRead.refetch();
     } catch (err) {
       setError(err instanceof ApiError ? `Portal invite failed: ${err.message}` : 'Portal invite failed');
     } finally {
@@ -801,7 +821,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     await apiPost(`/events/${eventId}/tasks`, input);
     setShowNewTask(false);
     setToast('Task created.');
-    await loadGrid(eventId, filters, page);
+    setOptimisticOverride(null);
+    await gridRead.refetch();
   }
 
   // DEC-933: PATCHes ONLY title/description/dueDate/required/deliverableKind
@@ -819,7 +840,10 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     });
     setEditingTask(null);
     setToast('Task updated.');
-    if (eventId) await loadGrid(eventId, filters, page);
+    if (eventId) {
+      setOptimisticOverride(null);
+      await gridRead.refetch();
+    }
   }
 
   async function confirmRemoveTask() {
@@ -832,7 +856,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       setToast('Task removed.');
       // DEC-933: refetch rather than splice, so the column count and the
       // counts panel can't disagree.
-      await loadGrid(eventId, filters, page);
+      setOptimisticOverride(null);
+      await gridRead.refetch();
     } catch (err) {
       setError(err instanceof ApiError ? `Remove failed: ${err.message}` : 'Remove failed');
     } finally {
@@ -881,7 +906,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
   return (
     <div className="chq-page chq-speakers-page chq-measure-table">
-      {error && <div className="chq-error">{error}</div>}
+      {(error ?? gridRead.error) && <div className="chq-error">{error ?? gridRead.error}</div>}
       {toast && (
         <div className="chq-toast" role="status">
           {toast}
@@ -984,7 +1009,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       )}
 
       <div className={phoneFiltersOpen ? 'chq-speakers-toolbar is-phone-open' : 'chq-speakers-toolbar'}>
-        {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}
+        <GridFilters tasks={toolbarTasks} filters={filters} onChange={handleFiltersChange} />
         {/* w7-f: "Remind all outstanding" (this page's bulk send) runs
             planManualReminders, which drops any assignment whose
             lastRemindedAt falls within MANUAL_DEDUPE_WINDOW_MS of now --
@@ -1008,7 +1033,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       {/* Post-eval polish: the skeleton's accessible label names its own
          noun, like every other list in the product -- the generic default
          told a screen-reader user nothing about which region was busy. */}
-      {loading && <PageSkeleton variant="table" label="Loading speakers…" />}
+      {gridRead.loading && <PageSkeleton variant="table" label="Loading speakers…" />}
 
       {/* DEC-678 amendment (B7, wave 47): a settled, zero-row grid never
           parks a full <thead> (or the phone card list) over one
@@ -1017,7 +1042,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           above uses, so this message and that caption can never disagree.
           'fresh' (no facet at all -- the roster has never held a row) never
           claims a filter excluded anything. */}
-      {!loading && grid && visibleRows.length === 0 && (() => {
+      {gridRead.data !== undefined && visibleRows.length === 0 && (() => {
         // DEC-678 amendment (w2-c): one active facet gets its own name and
         // its own escape (frame :442), read from narrowing.ts's single
         // voice -- null with two-or-more (or zero) active facets, which
@@ -1032,7 +1057,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
               facet
                 ? facet.reason(filters.q.trim() || null)
                 : hasActiveNarrowing(filters)
-                  ? narrowingDescription(filters, grid.tasks)
+                  ? narrowingDescription(filters, grid?.tasks ?? [])
                   : 'Speakers appear here once a submission is accepted.'
             }
             action={null}
@@ -1050,7 +1075,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         );
       })()}
 
-      {!loading && grid && visibleRows.length > 0 && (
+      {!gridRead.loading && grid && visibleRows.length > 0 && (
         <>
           <div className="chq-speakers-grid-wrap">
             <table className="chq-table chq-speakers-grid">
