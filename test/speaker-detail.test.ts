@@ -98,8 +98,13 @@ function contactRow(opts: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function otherEventRow(eventId: string, name: string, startDate: string) {
-  return { eventId, eventName: name, eventStartDate: startDate };
+function otherEventRow(
+  eventId: string,
+  name: string,
+  startDate: string,
+  opts: { submissionTitle?: string; submissionStatus?: string } = {},
+) {
+  return { eventId, eventName: name, eventStartDate: startDate, ...opts };
 }
 
 function eventRow() {
@@ -323,6 +328,24 @@ describe("DEC-930 getSpeakerDetail", () => {
     // outcome" clause makes it null -- the dedup itself is what this it()
     // pins, and it still collapses two rows to one.
     expect(detail?.otherEvents).toEqual([{ eventId: "event-2020", name: "DevFlow 2020", participation: null }]);
+  });
+
+  it("pins the positive participation line: an accepted other-event submission yields 'Spoke · <title>'", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 1)],
+      submission: [
+        otherEventRow("event-2020", "DevFlow 2020", "2020-06-01", {
+          submissionTitle: "Scaling Postgres",
+          submissionStatus: "accepted",
+        }),
+      ],
+    });
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail?.otherEvents).toEqual([
+      { eventId: "event-2020", name: "DevFlow 2020", participation: "Spoke · Scaling Postgres" },
+    ]);
   });
 
   it("returns a null scheduled slot and null file for a session/task without one", async () => {
