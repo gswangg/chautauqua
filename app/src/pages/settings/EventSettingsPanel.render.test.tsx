@@ -427,3 +427,28 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     expect(screen.getByLabelText('Venue')).toHaveValue('Edited Venue');
   });
 });
+
+describe('EventSettingsPanel consequence line (DEC-781)', () => {
+  it('renders the frame consequence beside the H1, and the slug-breaks-links sentence on the Public URL field hint, not duplicated', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+    });
+    renderPanel();
+
+    await screen.findByLabelText('Slug');
+
+    // Chautauqua Settings.dc.html:726
+    expect(screen.getByText('Renaming does not change the public URL')).toHaveClass('chq-settings-edit-consequence');
+
+    // Chautauqua Settings.dc.html:739 -- the Public URL field's own hint.
+    expect(
+      screen.getByText('Changing the slug breaks every link already shared, including saved embeds'),
+    ).toBeInTheDocument();
+
+    // Not duplicated anywhere else in the edit view.
+    expect(
+      screen.queryAllByText('Changing the slug breaks every link already shared, including saved embeds'),
+    ).toHaveLength(1);
+  });
+});

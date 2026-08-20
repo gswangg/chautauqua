@@ -262,3 +262,23 @@ describe('YourDataPanel', () => {
     });
   });
 });
+
+describe('YourDataPanel consequence line (DEC-781)', () => {
+  // Chautauqua Settings.dc.html:1139 -- this panel composes SummarySection
+  // directly with no SettingsEditForm, so it has no consequence slot; the
+  // line is rendered as the first child of the editing branch, reusing
+  // SettingsEditForm's own class for identical right-flushed treatment.
+  it('renders the frame consequence line as the first child of the edit view', async () => {
+    mockYourData();
+    render(
+      <MemoryRouter initialEntries={['/settings?section=your-data&edit=1']}>
+        <YourDataPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Your data' });
+    const consequence = within(section).getByText('Retention applies to every event in this org');
+    expect(consequence).toHaveClass('chq-settings-edit-consequence');
+    expect(consequence.tagName).toBe('P');
+  });
+});
