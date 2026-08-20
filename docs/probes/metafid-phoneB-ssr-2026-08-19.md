@@ -10,6 +10,8 @@
    (form-render.tsx:278 singular querySelector leaves radios 2..N required
    inside display:none). DEC-986's ruling prescribes reportValidity() +
    querySelectorAll — implement it for real.
+   CLOSED (wave 115): src/routes/public/cfp-steps-script.tsx:87 `if (typeof invalid.reportValidity === 'function') invalid.reportValidity();`
+   CLOSED (wave 115): src/views/form-render.tsx:284 `wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(function(input){`
 2. Admin agenda 390 renders nothing (Agenda.dc.html:123): agenda.css
    :1074-1104 display:none leak-guard for 24 .chq-phone-* classes; the 700px
    block restores only 14 — missing: -slot-time, -slot-card-title,
@@ -22,12 +24,15 @@
   header; fix per frame).
 - Docs site 390 header collapses to vertical text (search takes 260px;
   overflow-wrap:anywhere lets wordmark shrink to 23px wide). Docs.dc.html:162.
+  CLOSED (wave 115): src/routes/docs-site.css.ts:229 `.chq-docs-header { padding: 14px 16px; gap: 12px; flex-wrap: wrap; }`
 - Docked action bars absent where frames draw them: public agenda,
   my-schedule, portal tasks/hotel-form/session/edit, CFP wizard.
   /account/password is the model implementation — reuse its pattern.
 - SCAN POPULATION: widen phone-tap-target.scan + the 390-overflow scan roots
   from app/src to include src/routes/** (public/portal/docs/auth were never
   scanned; most §5 floor misses would have been caught).
+  CLOSED (wave 115): app/src/phone-tap-target.scan.test.ts:380 `for (const family of ['src/routes/public/', 'src/routes/portal/', 'src/routes/docs-site.css.ts', 'src/routes/auth.css.ts']) {`
+  CLOSED (wave 115): test/ssr-phone-overflow.test.ts:19 `const HOME_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "home.css.ts"), "utf8");`
 
 ## MEDIUM (see probe evidence for full list)
 - 44px floor misses across public/portal (+ app/src stragglers incl.

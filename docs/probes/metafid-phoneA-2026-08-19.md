@@ -10,9 +10,11 @@
    same idiom in settings.css (left-bleeding rows on Public pages; four
    flush-joined Saved-embeds buttons). Idiom is for borderless quiet controls
    ONLY — bordered boxes need real gaps. Fix at every bordered application.
+   CLOSED (wave 115): app/src/pages/comms/comms.css:2168 `.chq-comms-head-actions > .chq-pill {`
 2. .chq-settings-section-action (settings.css:210) is 15px tall with no
    phone floor — it is the ONLY route into edit mode on all nine Settings
    panels. ROOMY per DESIGN-RULINGS:189.
+   CLOSED (wave 115): app/src/pages/settings/settings.css:2161 `.chq-settings-section-action {`
 
 ## S1 breaks (reach/read)
 - Settings People-edit: main overflows 390 by 240px; Person column 0px wide;
@@ -21,6 +23,7 @@
   (.chq-participant-email-cell 210px).
 - CFP form stat strip clips values mid-string ("5 Aug 202").
 - Submission detail back link renders a bare ‹ with no label (frame: ‹ Triage).
+  CLOSED (wave 115): app/src/pages/submissions/SubmissionDetailPage.tsx:1050 `'‹ Triage' label; desktop keeps '‹ All submissions' byte-`
 - Header-label leakage into cards: Contacts rows print COMPANY:/LABELS:
   prefixes + stray checkbox; Templates rows print NAME:.
 - Portal/Tracks rows stranded in half-width columns (left ~62%).
@@ -30,8 +33,11 @@
   Comms, More-active on Settings) — App.tsx:135 is fixed; dot belongs ABOVE
   the label on ALL items (inactive #BAB6A6), App.tsx:317 renders active-only
   and below.
+  CLOSED (wave 115): app/src/App.tsx:146 `const PHONE_TAB_FIXED_PATHS = ['/overview', '/submissions', '/speakers'] as const;`
+  CLOSED (wave 115): app/src/App.tsx:358 `isActive ? ' is-on' : ''`
 - Comms Templates/History unreachable on phone without a localStorage draft:
   phoneEntered ignores ?tab=; landing has zero nav without a draft.
+  CLOSED (wave 115): app/src/pages/Comms.tsx:71 `const [phoneEntered, setPhoneEntered] = useState(() => isTab(rawTab));`
 - Drill-ins keep the parent page head (Contacts pipeline/dupes/merge, Comms
   drills) — frames are one-screen-at-a-time.
 - Pinned docks missing on 12 of 14 framed screens (Contact detail, Pipeline,
@@ -41,6 +47,7 @@
   Edit vs live 2x2 secondaries with Save primary; save-scope line misplaced.
 - Import CSV phone wizard (frame :487 one-column-per-screen + Next/Skip
   dock) not built; desktop modal overflows at 390.
+  CLOSED (wave 115): app/src/pages/contacts/ImportWizard.phoneColumns.render.test.tsx:1 `v12m-w2-b: the phone-only "one column per screen" pager added for the`
 - Settings read/edit split leaves five of nine frames never rendering as
   drawn; Your data drops masked tokens/Revoke/New token in read mode; edit
   mode inverts title/back-link order.
