@@ -1075,6 +1075,14 @@
   color: var(--chq-muted);
 }
 
+/* DEC-663 (amendment, wave 115): "merging keeps the stored address" — same
+   muted detail tier as .chq-contacts-import-review-dupe-more above. */
+.chq-contacts-import-review-dupe-keeps {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-import-review-skip {
   display: flex;
   align-items: center;

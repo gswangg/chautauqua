@@ -58,6 +58,7 @@ export {
   lookupContactIdsByEmail,
   MAX_IMPORT_ROWS,
   type ImportSkip,
+  type ImportEmailConflict,
   type ImportResult,
   type ImportPlan,
   type ImportPlanRow,

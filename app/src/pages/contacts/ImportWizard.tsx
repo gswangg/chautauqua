@@ -1199,6 +1199,21 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
                               Merge into {dup.name} ({dup.email})
                             </label>
                           ))}
+                          {/* DEC-663 (amendment, wave 115): a merge FILLS a
+                              blank stored email and never replaces a
+                              non-blank one, so the review step says which
+                              address survives BEFORE the irreversible
+                              commit. Rendered only when this row's address
+                              actually disagrees with every candidate —
+                              conditional-and-quiet (DEC-663 wave-49). */}
+                          {(row.possibleDuplicates ?? []).every(
+                            (dup) => dup.email.trim().toLowerCase() !== row.email.trim().toLowerCase(),
+                          ) && (
+                            <p className="chq-contacts-import-review-dupe-keeps">
+                              Merging keeps the stored address — {row.email} is not written over it. Change an address in
+                              the directory's Duplicates view.
+                            </p>
+                          )}
                           {typeof row.possibleDuplicatesMore === 'number' && row.possibleDuplicatesMore > 0 && (
                             <p className="chq-contacts-import-review-dupe-more">
                               {countOf(row.possibleDuplicatesMore, 'more possible match', 'more possible matches')} not
@@ -1272,6 +1287,20 @@ export function ImportWizard({ onClose, onImported, eventId, eventName }: Props)
               {result.skipped.map((s) => (
                 <li key={s.line}>
                   Line {s.line}: {s.reason}
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* DEC-663 (amendment, wave 115): a merge never replaces a stored,
+              non-blank email. The address the file offered instead is named
+              here rather than written, so nothing is lost silently and the
+              organizer knows where to take it. */}
+          {(result.emailConflicts ?? []).length > 0 && (
+            <ul className="chq-contacts-import-skipped">
+              {(result.emailConflicts ?? []).map((conflict) => (
+                <li key={`email-conflict-${conflict.line}`}>
+                  Line {conflict.line}: kept {conflict.kept} — {conflict.offered} was not written. Pick a side in the
+                  directory's Duplicates view.
                 </li>
               ))}
             </ul>

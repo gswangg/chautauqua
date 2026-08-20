@@ -16,7 +16,7 @@ import {
   validateImportMapping,
   MAX_IMPORT_CSV_BYTES as DOMAIN_MAX_IMPORT_CSV_BYTES,
 } from "../../../domain/contacts"; // DEC-422 (amendment, wave 59)
-import { DEC_290, DEC_604, DEC_810 } from "../../../decisions";
+import { DEC_290, DEC_604, DEC_663, DEC_810 } from "../../../decisions";
 import { currentOrgId, asRecord, isPlainObject } from "./shared";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
 import { overCapFieldMessage, overCapCountMessage } from "../../../domain/cap-copy";
@@ -37,6 +37,18 @@ void DEC_810;
 // contacts would exceed MAX_PARTICIPANTS_PER_SUBMISSION on the batch's one
 // shared session (DEC-604 amendment, findings wave 15).
 void DEC_604;
+// Compile-checked dependency marker: a merge line never replaces a stored,
+// non-blank email — the offered address is REPORTED through
+// emailConflictsField below (DEC-663 amendment, wave 115).
+void DEC_663;
+
+/** DEC-663 (amendment, wave 115): the merge-line email conflicts, present on
+ * the commit response only when there ARE any — an import that merged nothing
+ * (the overwhelming majority) keeps the response shape it has always had,
+ * exactly as `addedToEvent` appears only for a roster-scoped import. */
+function emailConflictsField(result: repo.ImportResult): { emailConflicts?: repo.ImportEmailConflict[] } {
+  return result.emailConflicts.length > 0 ? { emailConflicts: result.emailConflicts } : {};
+}
 
 // DEC-417/DEC-422 (amendment, wave 59): the cap itself lives ONE place,
 // src/domain/contacts.ts, matching this route's own MAX_IMPORT_ROWS
@@ -257,7 +269,12 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
     const result = await repo.applyImportRows(c.var.db, orgId, rows, { skipLines, mergeLines });
 
     if (eventId === undefined) {
-      return c.json({ created: result.created, updated: result.updated, skipped: result.skipped });
+      return c.json({
+        created: result.created,
+        updated: result.updated,
+        skipped: result.skipped,
+        ...emailConflictsField(result),
+      });
     }
 
     const alreadyOnRoster = new Set(await listAcceptedContactIds(c.var.db, eventId));
@@ -280,6 +297,12 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
     }
     const addedToEvent = toAdd.length;
 
-    return c.json({ created: result.created, updated: result.updated, skipped: result.skipped, addedToEvent });
+    return c.json({
+      created: result.created,
+      updated: result.updated,
+      skipped: result.skipped,
+      ...emailConflictsField(result),
+      addedToEvent,
+    });
   });
 }

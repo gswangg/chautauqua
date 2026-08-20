@@ -195,7 +195,11 @@ const ADA_CSV = "Email,First,Last,Company\nada.lovelace@newmail.example.com,Ada,
 const MAPPING = { Email: "email", First: "firstName", Last: "lastName", Company: "company" };
 
 describe("POST /api/v1/contacts/import mergeLines (DEC-663 wave-64 amendment)", () => {
-  it("patches the named target, replaces its email, counts as updated, and creates no new row", async () => {
+  // DEC-663 (amendment, wave 115): wave 64's "the CSV row's email REPLACES
+  // the target's stored email" is reversed — judge-filed, the imported row
+  // silently overwrote a contact's org-wide address. A merge fills a blank
+  // and never replaces a non-blank one; the offered address is REPORTED.
+  it("patches the named target, KEEPS its stored email and reports the offered one, counts as updated, creates no new row", async () => {
     const { db, rows } = makeFakeContactDb();
     const app = appWithDbAndAuth(db, ORGANIZER);
     await seedContact(db, {
@@ -217,16 +221,56 @@ describe("POST /api/v1/contacts/import mergeLines (DEC-663 wave-64 amendment)", 
       }),
     });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { created: number; updated: number; skipped: unknown[] };
+    const body = (await res.json()) as {
+      created: number;
+      updated: number;
+      skipped: unknown[];
+      emailConflicts: { line: number; contactId: string; kept: string; offered: string }[];
+    };
     expect(body.created).toBe(0);
     expect(body.updated).toBe(1);
     expect(body.skipped).toEqual([]);
     expect(rows()).toHaveLength(1);
     const row = rows()[0] as Record<string, unknown>;
     expect(row.id).toBe("ct_1");
-    expect(row.email).toBe("ada.lovelace@newmail.example.com");
+    // The stored, org-wide address survives the merge.
+    expect(row.email).toBe("ada@work.example.com");
+    // …and the one the file offered is named rather than silently dropped.
+    expect(body.emailConflicts).toEqual([
+      { line: 2, contactId: "ct_1", kept: "ada@work.example.com", offered: "ada.lovelace@newmail.example.com" },
+    ]);
     // Untouched columns (bio wasn't in the CSV mapping) are preserved.
     expect(row.bio).toBe("Mathematician.");
+  });
+
+  it("FILLS a blank stored email from the merged row, and reports no conflict for it", async () => {
+    const { db, rows } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+    await seedContact(db, {
+      id: "ct_1",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      email: "",
+      company: "Analytical Engines Inc",
+    });
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({
+        csvText: ADA_CSV,
+        mapping: MAPPING,
+        mergeLines: [{ line: 2, contactId: "ct_1" }],
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { updated: number; emailConflicts?: unknown[] };
+    expect(body.updated).toBe(1);
+    // Nothing was overridden, so the response carries no conflicts field at
+    // all -- present only when there ARE conflicts, like `addedToEvent`.
+    expect(body.emailConflicts).toBeUndefined();
+    const row = rows()[0] as Record<string, unknown>;
+    expect(row.email).toBe("ada.lovelace@newmail.example.com");
   });
 
   it("a later same-email row in the file patches the same merged contact, not a fresh one", async () => {

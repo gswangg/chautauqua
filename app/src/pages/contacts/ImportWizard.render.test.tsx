@@ -296,8 +296,21 @@ describe('ImportWizard: DEC-663 wave-64 amendment -- possible-duplicate merge di
     expect(screen.getByRole('radio', { name: 'Import as new' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Merge into Jon Doe (jon.doe@old.example.com)' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Merge into Johnny Doe (johnny@other.example.com)' })).toBeInTheDocument();
-    expect(screen.getByText(/3 more possible matches not shown/)).toBeInTheDocument();
-    expect(screen.getByText(/Duplicates view/)).toBeInTheDocument();
+    // The overflow sentence and its own pointer at the Duplicates view — asked
+    // for as one node, because DEC-663 (wave-115 amendment) added a SECOND
+    // sentence in this same cell that also names that view.
+    expect(screen.getByText(/3 more possible matches not shown — check the directory's Duplicates view\./)).toBeInTheDocument();
+  });
+
+  // DEC-663 (amendment, wave 115): the review step states which address
+  // survives BEFORE the irreversible commit — the merge fills a blank stored
+  // email and never replaces a non-blank one.
+  it("names the address a merge would KEEP when the row's own address disagrees with every candidate", async () => {
+    mockApi({ 'POST /api/v1/contacts/import': MULTI_DUP_PLAN });
+    await pasteCsvAndPreview();
+    await screen.findByText('1 new · 0 updated');
+
+    expect(screen.getByText(/Merging keeps the stored address/)).toBeInTheDocument();
   });
 
   it('selecting a merge option clears the Skip checkbox, and checking Skip clears the merge selection', async () => {

@@ -133,10 +133,22 @@ export interface DuplicateGroup {
   }[];
 }
 
+// DEC-663 (amendment, wave 115): a merge line that offered an address the
+// target contact already disagrees with. The stored one was KEPT; this names
+// the one the file offered so the organizer can take it to the Duplicates
+// merge tool, which is where picking a side lives (DEC-167).
+export interface ImportEmailConflict {
+  line: number;
+  contactId: string;
+  kept: string;
+  offered: string;
+}
+
 export interface ImportResult {
   created: number;
   updated: number;
   skipped: { line: number; reason: string }[];
+  emailConflicts?: ImportEmailConflict[];
   // DEC-290: present when the import request carried an `eventId` (roster
   // import from the Speakers page) -- the imported/matched contact ids and
   // how many of them were newly pushed onto that event's roster.

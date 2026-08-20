@@ -28,10 +28,25 @@ export interface ImportSkip {
   reason: string;
 }
 
+/** DEC-663 (amendment, wave 115): a merge line whose CSV address differs from
+ * the target's stored, non-blank email. The stored address is KEPT and the
+ * offered one is reported here rather than written — see applyImportRows'
+ * merge branch. `kept`/`offered` are both normalized. */
+export interface ImportEmailConflict {
+  line: number;
+  contactId: string;
+  kept: string;
+  offered: string;
+}
+
 export interface ImportResult {
   created: number;
   updated: number;
   skipped: ImportSkip[];
+  /** DEC-663 (amendment, wave 115): merge lines that offered a different
+   * email than the target already stores. Empty on every import that merged
+   * nothing, or merged only onto contacts with a blank stored email. */
+  emailConflicts: ImportEmailConflict[];
   /** id of every created-or-updated contact, in row order, deduped (skipped rows excluded). */
   contactIds: string[];
 }
@@ -177,12 +192,14 @@ async function flushContactUpdates(db: Db, rows: ContactCommitRow[]): Promise<vo
       .onConflictDoUpdate({
         target: schema.contact.id,
         set: {
-          // DEC-663 (wave-64 amendment): email is now part of the SET list
-          // -- a plain (non-merge) update's commit row still carries the
-          // base row's UNCHANGED email through (applyCommitPatch never
-          // touches it), so this is a same-value no-op for every row except
-          // a merge line, where it's the whole point: the CSV row's email
-          // REPLACES the target's stored email.
+          // DEC-663 (wave-64 amendment, narrowed by the wave-115 amendment):
+          // email is part of the SET list, but the only row that can carry a
+          // CHANGED value here is a merge line onto a target whose stored
+          // email is blank (a fill). Every other row -- plain update or merge
+          // onto a contact that already has an address -- carries the base
+          // row's own email through unchanged (applyCommitPatch never touches
+          // it), so this stays a same-value no-op and never cascades onto
+          // schema.user's DEC-456 login identity.
           email: sql`excluded.email`,
           firstName: sql`excluded.first_name`,
           lastName: sql`excluded.last_name`,
@@ -268,6 +285,7 @@ export async function applyImportRows(
   let created = 0;
   let updated = 0;
   const skipped: ImportSkip[] = [];
+  const emailConflicts: ImportEmailConflict[] = [];
   const contactIds: string[] = [];
   const seenContactIds = new Set<string>();
   // DEC-663: lines an organizer chose to skip on the dry-run plan screen
@@ -421,9 +439,19 @@ export async function applyImportRows(
       // DEC-663 (wave-64 amendment): validated above against the same
       // possible-duplicate candidate set planImportRows uses -- patches the
       // named contact through the same resolveImportUpsert update path a
-      // real email match would take, then forces the CSV row's email onto
-      // the commit row (resolveImportUpsert's patch never carries email —
-      // see applyCommitPatch's doc comment).
+      // real email match would take.
+      //
+      // DEC-663 (amendment, wave 115): wave 64's "the CSV row's email
+      // REPLACES the target's stored email" is REVERSED. A merge FILLS a
+      // blank stored email and never replaces a non-blank one: the field is
+      // structurally absent from describeImportOverwrites, so the dry run
+      // cannot name the one value the merge destroys, and DEC-456/DEC-479's
+      // login cascade (which patchContact and mergeContacts both run) has no
+      // counterpart on this path — a write that cannot be previewed and
+      // cannot honour the cascade does not get to be the one that decides a
+      // person's address. The offered address is reported instead, and the
+      // pick-a-side act stays with the Duplicates/merge tool, whose planMerge
+      // already rules exactly this precedence (DEC-167).
       const decision = resolveImportUpsert(
         mergeTargetId,
         normalizedParsed as Partial<ContactRecord>,
@@ -437,9 +465,23 @@ export async function applyImportRows(
         throw new Error(`applyImportRows: merge target ${mergeTargetId} missing from pre-pass`);
       }
       const patched = applyCommitPatch(base, decision.patch, now);
-      pendingById.set(mergeTargetId, { ...patched, email: key });
+      const storedEmail = base.email.trim();
+      if (storedEmail === "") {
+        // Fill: the target has no address of its own, so the file's is not
+        // replacing anything.
+        pendingById.set(mergeTargetId, { ...patched, email: key });
+      } else {
+        pendingById.set(mergeTargetId, patched);
+        if (storedEmail !== key) {
+          emailConflicts.push({ line, contactId: mergeTargetId, kept: storedEmail, offered: key });
+        }
+      }
       updated++;
       addContactId(mergeTargetId);
+      // The file's address still ROUTES to this contact for the rest of the
+      // run (DEC-663 wave-64 point 5) — a later row carrying it patches the
+      // same person rather than minting a second one. Routing is not
+      // storage: byEmail is this run's lookup, not a column.
       byEmail.set(key, mergeTargetId);
       if (decision.patch.title !== undefined || decision.patch.company !== undefined) {
         attributionUpdates.push({
@@ -511,7 +553,7 @@ export async function applyImportRows(
   if (attributionUpdates.length > 0) await backfillNullAttributionMany(db, attributionUpdates);
   if (renamedContactIds.length > 0) await touchSubmissionsForContacts(db, renamedContactIds, now);
 
-  return { created, updated, skipped, contactIds };
+  return { created, updated, skipped, emailConflicts, contactIds };
 }
 
 /** Chunked lower(email) -> contactId lookup for the caller's org, reusing
