@@ -43,7 +43,7 @@ export const DEC_037 = "Email HTML built only via escapeHtml/textToHtml in src/m
 export const DEC_038 = "Scoped KV rate limiter in src/lib/rate-limit.ts; login/claim limits";
 export const DEC_039 = "Reviewer-surface org scoping: organizers resolve plans only via getPlanForOrg";
 export const DEC_040 = "Form-answer file uploads: file rows kind 'attachment', answer = file id";
-export const DEC_041 = "Speaker submission editing: portal edit sub-app with server-side edit lock";
+export const DEC_041 = "Amendment (wave 117): A read-only answer is rendered read-only: the portal edit form stops offering a file picker whose bytes it will drop";
 export const DEC_042 = "Root README.md is the evaluator entrypoint";
 export const DEC_043 = "Org user directory + reviewer provisioning API (/api/v1/users)";
 export const DEC_044 = "Plan-reviewer assignments addressed by plan_reviewer.id";
