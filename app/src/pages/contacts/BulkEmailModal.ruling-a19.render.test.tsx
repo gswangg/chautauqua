@@ -48,10 +48,17 @@ describe('Ruling A19: BulkEmailModal template picker copy', () => {
 
     expect(screen.queryByRole('link', { name: 'Use in Comms compose' })).toBeNull();
 
-    // Footnote names which merge fields DO resolve in this context.
-    expect(screen.getByText(/merge fields:/)).toBeInTheDocument();
-    expect(screen.getByText(/\{speaker_name\}/)).toBeInTheDocument();
-    expect(screen.getByText(/\{event_name\}/)).toBeInTheDocument();
-    expect(screen.getByText(/\{portal_link\}/)).toBeInTheDocument();
+    // Footnote names which merge fields DO resolve in this context -- the
+    // frame is the authority here, not the ruling's paraphrase. Receipt:
+    // docs/design/Chautauqua Contacts.dc.html:570 draws
+    // `<span ...>Sent one at a time · logged in Comms history · {first_name}
+    // and {company} resolve per contact</span>` verbatim as the compose
+    // step's standing note; that sentence names which merge fields resolve
+    // here (ruling A19's substance), in the pack's own words.
+    expect(
+      screen.getByText(
+        'Sent one at a time · logged in Comms history · {first_name} and {company} resolve per contact',
+      ),
+    ).toBeInTheDocument();
   });
 });

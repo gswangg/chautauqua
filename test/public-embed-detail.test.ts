@@ -144,9 +144,17 @@ describe("DEC-672: /embed session/speaker detail routes", () => {
     const timeLine = body.match(/<p>[^<]*Room A<\/p>/)?.[0];
     expect(timeLine).toBeDefined();
     expect(timeLine).not.toMatch(/AM|PM/);
-    const speakerLine = body.match(/<p><a href="\/embed\/conf\/speakers\/[^"]*"[^>]*>[^<]*<\/a><\/p>/)?.[0];
-    expect(speakerLine).toBeDefined();
-    expect(speakerLine).toContain(SESSION.speakers[0]!.firstName);
+    // Observable gate: the speaker line links to /embed/<slug>/speakers/<id>
+    // and carries the speaker's name, with no parenthesized title/company.
+    // Located by the speaker link's target + text, order-independently of
+    // whatever attributes (e.g. class) the anchor also carries.
+    const speakerAnchor = body.match(
+      /<a[^>]*href="(\/embed\/conf\/speakers\/[^"]*)"[^>]*>([^<]*)<\/a>/,
+    );
+    expect(speakerAnchor).not.toBeNull();
+    const speakerLine = speakerAnchor?.[0];
+    const speakerText = speakerAnchor?.[2];
+    expect(speakerText).toContain(SESSION.speakers[0]!.firstName);
     expect(speakerLine).not.toContain("(");
   });
 
@@ -154,9 +162,12 @@ describe("DEC-672: /embed session/speaker detail routes", () => {
     const app = buildApp();
     const res = await app.request(`/embed/${EVENT.slug}/sessions/${SESSION.id}`);
     const body = await res.text();
-    const match = body.match(/<a class="chq-pub-accent-link" href="([^"]+)">\s*← Back to/);
+    // Located by the anchor's text + class, order-independently of
+    // wherever `href` lands among the attributes (DEC-882).
+    const match = body.match(/<a[^>]*class="chq-pub-accent-link"[^>]*>\s*← Back to/);
     expect(match).not.toBeNull();
-    const href = match?.[1];
+    const hrefMatch = match?.[0]?.match(/href="([^"]+)"/);
+    const href = hrefMatch?.[1];
     expect(href).toBeDefined();
     expect(href!.startsWith("/embed/")).toBe(true);
   });
