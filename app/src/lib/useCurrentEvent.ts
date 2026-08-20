@@ -41,6 +41,18 @@
 //  (c) fromUrl resolves but priorStoredId no longer does -- still
 //      announce the switch (target name only, no Back link) instead of
 //      passing silently.
+//
+// DEC-728 wave-138 amendment (USER RULING D19, part 3): a per-instance read
+// of localStorage inside the effect is unreliable -- when a page mounts
+// more than one useCurrentEvent() consumer (e.g. PhoneTabBar alongside
+// EventSwitcher), whichever instance's effect commits first overwrites
+// storage with fromUrl before a later instance's effect ever reads the
+// pre-overwrite value, so priorStoredId comes back null and the banner
+// never renders. Every instance must agree on the ONE true pre-overwrite
+// value regardless of mount order, so it is captured lazily into a
+// module-level cache on first read (below) rather than re-read per
+// instance -- "once per document", mirroring loadEventsOnce()'s same
+// per-page-load cache discipline and its resetEventsCacheForTests() seam.
 import { useEffect, useState } from 'react';
 import { apiList, ApiError } from './api';
 import { reconcileStoredEventId } from '../components/eventSwitcherState';
@@ -87,6 +99,31 @@ export function resetEventsCacheForTests(): void {
   eventsPromise = null;
 }
 
+const UNREAD = Symbol('unread');
+
+/** The stored event id as it stood before ANY useCurrentEvent() instance on
+ * this page overwrote it. Captured lazily on the first read (by whichever
+ * instance's effect commits first) and cached for the rest of the page
+ * load, so every instance -- regardless of mount order -- computes
+ * priorStoredId from the same pre-overwrite snapshot instead of racing each
+ * other's writes. */
+let initialStoredId: string | null | typeof UNREAD = UNREAD;
+
+function getInitialStoredId(): string | null {
+  if (initialStoredId === UNREAD) {
+    initialStoredId = window.localStorage.getItem(STORAGE_KEY);
+  }
+  return initialStoredId;
+}
+
+/** Test-only seam, mirroring resetEventsCacheForTests() above: a render
+ * test suite reuses the module across `it()` blocks in the same file, but
+ * each real page load only ever captures this once. Never called from
+ * production code. */
+export function resetInitialStoredIdForTests(): void {
+  initialStoredId = UNREAD;
+}
+
 export function useCurrentEvent(): UseCurrentEventResult {
   const fromUrl = new URLSearchParams(window.location.search).get('eventId');
   const fromStorage = window.localStorage.getItem(STORAGE_KEY);
@@ -123,8 +160,12 @@ export function useCurrentEvent(): UseCurrentEventResult {
     // DEC-728 amendment (D19): a URL id that differs from what was already
     // stored is a silent cross-event switch -- capture the pre-overwrite
     // id *before* the write below replaces it, so it survives to name
-    // resolution.
-    const priorStoredId = fromUrl && fromStorage && fromUrl !== fromStorage ? fromStorage : null;
+    // resolution. Read from the module-level snapshot (wave-138 amendment
+    // above), not the per-instance `fromStorage` closed over at render
+    // time: a sibling instance's effect may have already overwritten
+    // storage by the time THIS instance's effect runs.
+    const priorStored = getInitialStoredId();
+    const priorStoredId = fromUrl && priorStored && fromUrl !== priorStored ? priorStored : null;
 
     // An id is already in play (URL wins over storage) -- return it
     // immediately, no blocking wait.
