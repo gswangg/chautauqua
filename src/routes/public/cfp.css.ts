@@ -141,6 +141,14 @@ export const CFP_CSS = `
   .chq-cfp-confirm-card { border: 1px solid var(--chq-rule); border-radius: 8px; background: var(--chq-surface); padding: 15px; display: flex; flex-direction: column; gap: 5px; }
   .chq-cfp-confirm-card-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--chq-muted); }
   .chq-cfp-confirm-body { font-size: 15px; line-height: 1.65; color: var(--chq-ink-2); }
+  /* DEC-380 (wave 137 amendment): the check-spam note sits directly under
+     the confirmation body at Public and Portal.dc.html:1084, smaller and
+     more muted than .chq-cfp-confirm-body -- a sibling class, not a reuse
+     of it. Comment deliberately avoids the caption's own verbatim text --
+     this stylesheet is inlined into the page's <style> block, so a quoted
+     copy here would leak into the couldn't-send branch's HTML too and trip
+     the SSR test's not.toContain assertion. */
+  .chq-cfp-confirm-note { font-size: 13px; line-height: 1.55; color: var(--chq-muted); }
   .chq-cfp-confirm-actions { border-top: 1px solid var(--chq-hairline); padding-top: 16px; display: flex; flex-direction: column; gap: 11px; }
 
   /* DEC-945 (wave 48 amendment): .chq-cfp-closed no longer draws its own

@@ -765,16 +765,18 @@ export function ConfirmationPage(props: {
           </span>
           {props.meta ? <span class="chq-cfp-confirm-card-meta">{props.meta}</span> : null}
         </div>
-        {/* DEC-377/DEC-380: DEC-377 refuses only a delivery-window/arrival-
-            timing PROMISE the confirmation email send (a best-effort side
-            effect) can't guarantee — the earlier copy asserted one and was
-            dropped. "If it hasn't arrived, check spam." (Chautauqua Public
-            and Portal.dc.html:1084) asserts no timing at all; it is
-            conditional troubleshooting with a live referent right here, so
-            DEC-380 (wave 137 amendment) rules it buildable and it renders
-            verbatim below, on the emailDelivered branch only — nothing was
-            sent on the other branch, so telling the reader to check spam
-            would be a falsehood the frame never asked for. */}
+        {/* DEC-377 (amended, DEC-380 wave-137): this refuses an
+            arrival-timing or delivery-window promise — the earlier copy
+            asserted arrival timing the confirmation email send (a
+            best-effort side effect) can't actually guarantee. It does NOT
+            refuse conditional troubleshooting: "If it hasn't arrived, check
+            spam." below asserts no timing and traces to no field, so DEC-380
+            builds it verbatim on the emailDelivered branch only — on the
+            couldn't-send branch nothing was sent, so telling the reader to
+            check spam would be a falsehood the frame never asked for.
+            The line is Chautauqua Public and Portal.dc.html:1084 and renders
+            in the sibling class .chq-cfp-confirm-note (cfp.css.ts), per
+            DEC-380.md's own "Both captions this amendment named are built". */}
         <p class="chq-cfp-confirm-body">
           {props.emailDelivered ? (
             <>
@@ -786,7 +788,7 @@ export function ConfirmationPage(props: {
             </>
           )}
         </p>
-        {props.emailDelivered ? <p class="chq-cfp-confirm-body">If it hasn't arrived, check spam.</p> : null}
+        {props.emailDelivered ? <p class="chq-cfp-confirm-note">If it hasn't arrived, check spam.</p> : null}
         <div class="chq-cfp-confirm-actions">
           {props.state === "has-account" ? (
             <p>

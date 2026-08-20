@@ -227,7 +227,10 @@ describe("CFP confirmation page never asserts a delivery that did not happen (DE
     // (Chautauqua Public and Portal.dc.html:1084) renders on the
     // emailDelivered branch ONLY -- nothing was sent here, so telling the
     // reader to check spam would be a falsehood the frame never asked for.
+    // The bare-substring form is deliberate and stronger than pinning the
+    // escaped sentence: no rewording of the line can smuggle it back in.
     expect(html).not.toContain("check spam");
+    expect(html).not.toContain("If it hasn&#39;t arrived, check spam.");
   });
 
   it("working mailer: existing delivery-claiming copy is unchanged", async () => {
@@ -245,8 +248,10 @@ describe("CFP confirmation page never asserts a delivery that did not happen (DE
     const html = await res.text();
     expect(html).toContain("Check your email.");
     expect(html).toContain("emailed a confirmation for");
-    // DEC-380 (wave 137 amendment): buildable, conditional troubleshooting
-    // with a live referent -- renders verbatim on the emailDelivered branch.
+    // DEC-380 (wave 137 amendment): Chautauqua Public and Portal.dc.html:1084
+    // draws this beside the confirmation body -- buildable, conditional
+    // troubleshooting with a live referent, so it is built verbatim on the
+    // emailDelivered branch.
     expect(html).toContain("If it hasn&#39;t arrived, check spam.");
   });
 });

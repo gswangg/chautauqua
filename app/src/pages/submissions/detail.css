@@ -296,6 +296,16 @@
   color: var(--chq-muted);
 }
 
+/* DEC-380 (wave 137 amendment): Chautauqua Submissions.dc.html:298's
+   consequence line beside the co-presenter add row -- 12px / #565A4B
+   (--chq-muted) / line-height 1.5, verbatim. */
+.chq-detail-copresenter-consequence {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
 .chq-detail-subsection {
   min-width: 0;
 }
