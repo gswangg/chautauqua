@@ -13,7 +13,7 @@ import { MAX_PUBLIC_QUERY_VALUE_LENGTH } from "../src/server/repo/public/bounds"
 
 describe("PublicSearchBox declares the cap parseNameQuery enforces (DEC-433)", () => {
   it("renders maxlength equal to MAX_PUBLIC_QUERY_VALUE_LENGTH", () => {
-    const html = String(PublicSearchBox({ action: "/e/conf/sessions", q: null }));
+    const html = String(PublicSearchBox({ action: "/e/conf/sessions", q: null, placeholder: "Search sessions or speakers…" }));
     expect(html).toContain(`maxlength="${MAX_PUBLIC_QUERY_VALUE_LENGTH}"`);
   });
 

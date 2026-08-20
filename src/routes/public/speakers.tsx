@@ -236,6 +236,7 @@ export function SpeakersContent(props: {
             <PublicSearchBox
               action={basePath}
               q={q}
+              placeholder="Search speakers…"
               hidden={
                 <>
                   {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
@@ -319,6 +320,7 @@ export function GalleryContent(props: {
             <PublicSearchBox
               action={basePath}
               q={q}
+              placeholder="Search speakers…"
               hidden={
                 <>
                   {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
