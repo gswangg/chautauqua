@@ -654,15 +654,16 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      // w5-e: the headline no longer repeats "Locked" -- the section rule's
-      // own eyebrow already says it.
-      expect(screen.getByText('3 reviews scored against these criteria')).toBeInTheDocument();
+      // DEC-882 (wave 134): the lock card carries the frame's two
+      // registers, verbatim -- a bold headline naming the consequence...
+      expect(screen.getByText('Changing these would rescore work already done')).toBeInTheDocument();
     });
-    // w5-e/DEC-215 amendment: the reason paragraph gains a second sentence
-    // naming the escape hatch (open a new wave).
+    // ...then a muted body carrying BOTH sentences (the freeze scope, then
+    // the forward move). The section rule's own eyebrow already states the
+    // locked count, so the card no longer repeats it.
     expect(
       screen.getByText(
-        'Changing these would rescore work already done. To score differently, open a new wave — the reviews already in stay attached to this one.',
+        'Wording, weights and the scale are fixed for the rest of this wave. To score differently, open a new wave — the reviews already in stay attached to this one.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start a new wave' })).toBeInTheDocument();
@@ -676,11 +677,9 @@ describe('PlanEditor render smoke', () => {
     expect(container.querySelectorAll('.chq-review-criterion-row input')).toHaveLength(0);
 
     // The lock card sits BELOW the read-only rows: the headline appears
-    // after the criterion's own name in document order. (The section rule's
-    // own eyebrow states the same count EARLIER, above the rows -- use the
-    // LAST occurrence, which is the lock-card headline.)
+    // after the criterion's own name in document order.
     const text = container.textContent ?? '';
-    expect(text.indexOf('Content')).toBeLessThan(text.lastIndexOf('3 reviews scored against these criteria'));
+    expect(text.indexOf('Content')).toBeLessThan(text.indexOf('Changing these would rescore work already done'));
   });
 
   // w41-f/DEC-882 amendment: the SCORING CRITERIA section rule itself
@@ -716,7 +715,7 @@ describe('PlanEditor render smoke', () => {
     // -- while locked, the caption states only the wording/weights/scale
     // sentence.
     expect(container.querySelector('.chq-review-section-caption')?.textContent).toBe(
-      'Wording, type and weights are fixed for the rest of this wave.',
+      'Wording, weights and the scale are fixed for the rest of this wave.',
     );
   });
 
