@@ -87,6 +87,9 @@
    small-radius chip hugging its text — uppercase 11px/700/0.09em,
    justify-self:start — not a full-track 150px fully-rounded pill in title
    case. Overrides the shared .chq-pill geometry for this row only. */
+/* tap-floor-exempt: composition -- the anchor form is floored by the
+   shell's element-qualified rule in app/src/styles.css; review renders
+   .chq-pill only as button/span */
 .chq-review-plan-row .chq-pill,
 .chq-review-plan-row .chq-flag {
   justify-self: start;
@@ -300,6 +303,8 @@
 /* DEC-587/DEC-906: inline Accept/Decline on a ranked results row -- always
    one line, side by side, never stacked (even in the phone-card layout
    where the cell's own column collapses to full width). */
+/* tap-floor-exempt: ResultsTable.tsx renders only <button
+   className="chq-btn ..."> children (Accept/Decline), never a bare anchor */
 .chq-review-decision-actions {
   display: flex;
   flex-direction: row;
@@ -1212,6 +1217,9 @@
   color: var(--chq-muted);
 }
 
+/* tap-floor-exempt: Scorecard.tsx (!isPhone gate) renders only <button
+   className="chq-btn ..."> children (Submit and next / Save draft); the
+   phone width shows the sticky bottom dock instead, never this row */
 .chq-review-editor-actions {
   display: flex;
   gap: 9px;
@@ -1244,6 +1252,9 @@
   color: var(--chq-ink-2);
 }
 
+/* tap-floor-exempt: PlanEditor.tsx renders only <button className="chq-btn
+   ..."> children (Assign these N / Cancel) across all three occurrences of
+   this class, never a bare anchor */
 .chq-review-scope-confirm-actions {
   display: flex;
   gap: 9px;
@@ -1471,6 +1482,9 @@
   margin: 0 0 12px;
 }
 
+/* tap-floor-exempt: PlanEditor.tsx renders only <button className="chq-btn
+   ..."> children (Add the three defaults / Add one of my own), never a
+   bare anchor */
 .chq-review-criteria-empty-actions {
   display: flex;
   align-items: center;
@@ -1509,6 +1523,10 @@
   flex-wrap: wrap;
 }
 
+/* tap-floor-exempt: PlanList.tsx renders "Export results CSV" (<a
+   className="chq-btn chq-btn-secondary">) and "New plan" (<Link
+   className="chq-btn chq-btn-primary">) -- both chq-btn-styled, never a
+   bare anchor */
 .chq-review-title-actions {
   margin-left: auto;
   display: flex;
@@ -1602,6 +1620,8 @@
   background: var(--chq-surface);
 }
 
+/* tap-floor-exempt: PlanEditor.tsx renders only <button className="chq-btn
+   ..."> children (Cancel/Create/Duplicate/Save), never a bare anchor */
 .chq-review-editor-title-actions {
   display: flex;
   gap: 9px;
@@ -2227,9 +2247,15 @@
   }
 
   /* frame :793-801 has no Plan/State/Your progress column head -- that row
-     is a desktop reading-measure device only. */
+     is a desktop reading-measure device only. DEC-989 wave-123: the row is
+     fully suppressed (display:none) at this width, but the overflow scan
+     reads declared property VALUES regardless of display, so the desktop
+     grid-template-columns' three fixed px tracks (520px + gaps 40px =
+     560px against the phone content budget) still count as a candidate --
+     cleared here to a single fluid track since the row never paints. */
   .chq-reviewer-plan-head-row {
     display: none;
+    grid-template-columns: 1fr;
   }
 
   .chq-reviewer-plans-phone-note {
@@ -2256,6 +2282,17 @@
 
   .chq-review-queue-title {
     font-size: 17px;
+  }
+
+  /* DEC-393: ReviewerQueue.tsx renders this class on a real react-router
+     <Link> (actionable rows) and a bare <span> (recused rows, no
+     navigation). The floor is element-qualified to the anchor only -- the
+     span is read-only and gets no hit box to inflate. */
+  a.chq-review-queue-title {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
   }
 
   .chq-review-queue-row-main .chq-review-plan-meta {
@@ -2361,7 +2398,7 @@
      min-height/centred-flex/padding: the shared .chq-btn recipe, restated
      here since these are bare react-router <Link>s, not .chq-btn. */
   .chq-review-plan-action-link {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     min-height: 44px;
@@ -2369,8 +2406,16 @@
   }
 
   /* --- (1) Criteria section head: bare count, not the eyebrow sentence - */
+  /* DEC-989: this element never paints at this width (display:none, the
+     phone-only .chq-review-criteria-count-phone below takes its slot), so
+     there is no geometry to collapse -- the overflow scan reads the
+     desktop rule's white-space:nowrap as a property value regardless of
+     display, so the escape is restated here rather than left to a
+     display:none the scan does not special-case. */
   .chq-review-criteria-eyebrow {
     display: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .chq-review-criteria-count-phone {
@@ -2464,9 +2509,10 @@
   }
 
   .chq-review-criterion-options-footer .chq-review-add-link {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     min-height: 44px;
+    padding: 0 4px;
   }
 
   .chq-review-criterion-weight {
@@ -2517,9 +2563,10 @@
   }
 
   .chq-review-add-criteria .chq-review-add-link {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     min-height: 44px;
+    padding: 0 4px;
   }
 
   .chq-review-criteria-cap-notice {
@@ -2537,7 +2584,7 @@
      to the 44px minimum, with the frame's count reading alongside it;
      the relocation gap is filed in docs/design/audit/review-admin-v12.md. */
   .chq-review-section-head-actions .chq-link-button {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     min-height: 44px;
     padding: 0 14px;
@@ -2789,5 +2836,18 @@
      without moving any glyph. */
   .chq-review-plan-actions {
     gap: 34px;
+  }
+
+  /* task-w12-l/DEC-393: ResultsTable.tsx's "Download CSV"/"See all N
+     results" links (.chq-section-action.chq-link-button, no chq-btn) sit
+     in this container with only a gap between the eyebrow caption and
+     itself -- neither font-size nor spacing declared a hit box. Floored
+     via the anchor class rather than the container so the sibling
+     .chq-review-results-note eyebrow span is untouched. */
+  .chq-review-results-head-actions .chq-link-button {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
   }
 }

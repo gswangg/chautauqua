@@ -122,7 +122,10 @@ describe('DEC-393 w87: the plan-row actions floor (PlanList.tsx, review.css)', (
     // each Link individually: min-height alone (or padding alone) is not
     // the rule DESIGN-RULINGS.md:189 names.
     const rule = phoneRule(REVIEW_CSS, '.chq-review-plan-action-link');
-    expect(rule).toMatch(/display:\s*inline-flex/);
+    // DEC-393 wave-123/task-w12-l: `display: flex` (not `inline-flex`) --
+    // the anchor-floor scan's `hasFlexCenter` predicate requires the exact
+    // literal `display: flex`.
+    expect(rule).toMatch(/display:\s*flex/);
     expect(rule).toMatch(/align-items:\s*center/);
     expect(rule).toMatch(/justify-content:\s*center/);
     expect(rule).toMatch(/min-height:\s*44px/);

@@ -95,6 +95,10 @@
 /* DEC-889 (wave-72 amendment): the rail's two actions become full-width
    stacked -- primary over secondary -- rather than review.css's default
    side-by-side row. */
+/* tap-floor-exempt: Scorecard.tsx (!isPhone gate) renders only <button
+   className="chq-btn ..."> children (Submit and next / Save draft) inside
+   .chq-review-editor-actions; the phone width shows the sticky bottom dock
+   instead, never this row */
 .chq-review-scorecard-rail .chq-review-editor-actions {
   flex-direction: column;
   align-items: stretch;
