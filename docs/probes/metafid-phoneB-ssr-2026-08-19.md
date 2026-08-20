@@ -60,7 +60,7 @@
 - SCAN POPULATION: widen phone-tap-target.scan + the 390-overflow scan roots
   from app/src to include src/routes/** (public/portal/docs/auth were never
   scanned; most §5 floor misses would have been caught).
-  CLOSED (wave 115): app/src/phone-tap-target.scan.test.ts:454 `for (const family of ['src/routes/public/', 'src/routes/portal/', 'src/routes/docs-site.css.ts', 'src/routes/auth.css.ts']) {`
+  CLOSED (wave 115): app/src/phone-tap-target.scan.test.ts`for (const family of ['src/routes/public/', 'src/routes/portal/', 'src/routes/docs-site.css.ts', 'src/routes/auth.css.ts']) {`
   CLOSED (wave 115): test/ssr-phone-overflow.test.ts:19 `const HOME_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "home.css.ts"), "utf8");`
 
 ## MEDIUM (see probe evidence for full list)
@@ -102,7 +102,7 @@
   `<button>` (14x-wave-120 field guide: "36 such tokens across 14 sheets")
   reads 0 in every ratchet. Violates the mandate's own 44px-floor rule
   (DEC-393), applied to a directly analogous link-button elsewhere in the
-  same campaign at app/src/pages/settings/settings.css:2073
+  same campaign at app/src/pages/settings/settings.css
   `.chq-settings-edit-row-actions .chq-link-button {` -- the sibling
   pattern this control never received.
 - Zero/negative control gaps, the two clauses not reproducible from a

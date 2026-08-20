@@ -199,7 +199,26 @@ function findOffenders(): string[] {
 // independent drains of disjoint offender sets, merged in one pass; the constant
 // below is the re-measured combined truth of the merged tree, not any single
 // branch's figure. This ratchet may only fall.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 47;
+//
+// w12-p (2026-08-20): re-measured at 45, down from 47 (this branch measured
+// 46 live before this wave's fix -- the ceiling was already one stale
+// beyond the tree; both are accounted for here). Per DEC-576 this wave,
+// the bare `.chq-pill` token is deliberately NOT floored -- PipelineBoard.tsx
+// renders it as a read-only `<span>` and PortalSettingsPanel.tsx as
+// `.chq-pill-static`, neither an interactive control the floor applies to.
+// speakers.css's `.chq-speakers-filters .chq-pill.is-active` row is cleared
+// via a `tap-floor-exempt: composition` comment (speakers.css renders
+// `.chq-pill` only as `<button>`, already floored by the base .chq-btn-less
+// button path, never as `<a>`). settings.css's
+// `.chq-settings-summary-pills .chq-pill, .chq-settings-portal-pills
+// .chq-pill` row is cleared by a new element-qualified `a.chq-pill` rule in
+// its terminal phone block (YourDataPanel.tsx:219 DOES render `<a
+// className="chq-pill">`) declaring min-height/flex-center/padding-inline
+// together, rather than relying on the union of styles.css's shared phone
+// rule (no padding of its own) plus settings.css's two decorative rules (no
+// flex-center of their own). DEC-989: the lane that drains an offender set
+// lowers the ceiling to its own measured value in the same commit.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 45;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {

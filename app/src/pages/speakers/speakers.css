@@ -1609,6 +1609,7 @@ button.chq-speakers-status-overdue:hover {
 /* G13 lane-D fix (04-speakers--00): the frame fills the ACTIVE filter chip
    with ink and knocks the label out in the page ground (drawn again on
    07-comms--05) — not the shared olive on-state. */
+/* tap-floor-exempt: composition -- the anchor form is floored by the element-qualified rule; speakers renders .chq-pill only as button/span */
 .chq-speakers-filters .chq-pill.is-active {
   border-color: var(--chq-ink);
   background: var(--chq-ink);
@@ -1849,7 +1850,6 @@ button.chq-speakers-status-overdue:hover {
   .chq-speakers-import-link,
   .chq-speakers-head-actions a,
   .chq-speakers-pager-actions a,
-  .chq-speaker-detail-actions a,
   .chq-speaker-detail-logistics-actions a,
   .chq-speakers-write-failure-actions a {
     min-height: 44px;
@@ -1897,6 +1897,15 @@ button.chq-speakers-status-overdue:hover {
      painted four did. Split out and restored to its own inline padding
      (.chq-btn's native 16px, styles.css:527) with no outward margin.
 
+     w12-p correction: the wave-121 split added this override rule but left
+     `.chq-speaker-detail-actions a` ALSO listed in the cancelled-padding
+     selector group above, so cancelled-padding-face.scan.test.ts still
+     enumerated it there as a painted N=10 population member (the group
+     rule, not this override, is what the population scan reads -- it
+     walks every rule, not the cascade winner). Removed from that group's
+     selector list; this override rule is now the only rule targeting
+     `.chq-speaker-detail-actions a`.
+
      Every OTHER "... a" selector in that rule was verified against its
      container's real markup and matches NOTHING -- these containers render
      only <button className="chq-btn ..."> (never <a>), so the "a" branch
@@ -1916,5 +1925,37 @@ button.chq-speakers-status-overdue:hover {
     align-items: center;
     padding-inline: 16px;
     margin-inline: 0;
+  }
+
+  /* task w12-p (DEC-393 wave-121 amendment, DEVIATIONS.md's cancelled-
+     inline-padding companion-gap rider): the four containers below each
+     hold a cancelled-padding `... a` sibling (:1845-1859 above) whose
+     resolved face is UNPAINTED -- verified against OnboardingGrid.tsx /
+     SpeakerDetailPage.tsx: every real control rendered inside is a
+     `<button className="chq-btn ...">`, so the `a` branch is a dead
+     selector (cancelled-padding-face.scan.test.ts's DEAD_ELEMENT_SELECTORS
+     entries for these four), never a bleeding one -- the idiom itself
+     stays legal here, only the drawn separation needs restoring. Each
+     anchor's expanded hit box would extend N=10px past its own edge on
+     both sides once a real `<a>` is ever added, so the rule owning the
+     row's separation must supply 2N=20px on top of the frame's drawn gap
+     to keep that drawn gap visually unchanged (DESIGN-RULINGS.md's "The
+     44px floor, and how it gets evaded"). Declared gaps below are each
+     the top-level desktop gap (:45-58/:1053-1056/:1574-1577) plus 20:
+     write-failure 9->29, head 9->29, pager 9->29, logistics 8->28. */
+  .chq-speakers-write-failure-actions {
+    gap: 29px;
+  }
+
+  .chq-speakers-head-actions {
+    gap: 29px;
+  }
+
+  .chq-speakers-pager-actions {
+    gap: 29px;
+  }
+
+  .chq-speaker-detail-logistics-actions {
+    gap: 28px;
   }
 }
