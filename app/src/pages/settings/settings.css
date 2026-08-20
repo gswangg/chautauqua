@@ -2540,4 +2540,57 @@
     justify-content: center;
     padding-inline: 10px;
   }
+
+  /* w19-b/DEC-576: the second missing dock in the pack -- the shared
+     settings edit-view footer (SettingsEditForm.tsx, all seven panels'
+     `footer` slots) undocked at 390. DESIGN-RULINGS.md:B10 rules the
+     desktop footer a right-flushed row (frozen above, untouched by this
+     block); the frame draws the phone footer as its OWN full-width olive
+     bar (docs/design/Chautauqua Settings.dc.html:334-336): the band
+     `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
+     padding:12px 16px 16px; display:flex; gap:8px`, holding "Save" (`flex:1;
+     background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px;
+     display:flex; align-items:center; justify-content:center; font-size:14px;
+     font-weight:700`) and "Cancel" (`border:1px solid #BAB6A6;
+     border-radius:6px; min-height:46px; display:flex; align-items:center;
+     padding:0 16px; font-size:13px; font-weight:600`). 46px, not the
+     Speakers scaffold's 48px -- that mismatch is exactly why this band is
+     page-local rather than reusing `.chq-phone-dock`. `margin-inline:-16px`
+     re-bleeds the footer to the viewport edge against `.chq-settings-panel`'s
+     own inline padding, matching the frame's full-bleed band. */
+  .chq-settings-edit-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    flex-shrink: 0;
+    margin-inline: -16px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--chq-ink);
+    background: var(--chq-surface-sunk);
+    display: flex;
+    gap: 8px;
+  }
+
+  .chq-settings-edit-footer-primary {
+    flex: 1;
+  }
+
+  /* The frame's two slot buttons -- Save (`.chq-btn-primary`) and Cancel
+     (`.chq-btn-secondary`) -- are the actual tappable elements the wrapper
+     divs above merely centre; sizing the wrapper alone would leave the
+     button itself under-floor since the wrapper's `align-items:center`
+     doesn't stretch its child. Matches the established `.chq-phone-dock
+     .chq-btn` idiom (app/src/styles.css:2561-2568) except 46px, not that
+     scaffold's 48px, per the frame cited above. */
+  .chq-settings-edit-footer .chq-btn {
+    min-height: 46px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chq-settings-edit-footer-primary .chq-btn {
+    flex: 1;
+  }
 }

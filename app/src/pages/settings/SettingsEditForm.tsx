@@ -53,7 +53,7 @@ export function SettingsEditForm({ onSubmit, consequence, footer, children }: Se
     <form className="chq-settings-edit-form" onSubmit={onSubmit}>
       {consequence != null ? <p className="chq-settings-edit-consequence">{consequence}</p> : null}
       <div className="chq-settings-edit-fields">{children}</div>
-      <div className="chq-settings-edit-footer">
+      <div className="chq-settings-edit-footer" data-chq-phone-dock>
         {footer.destructive != null ? (
           <div className="chq-settings-edit-footer-destructive">{footer.destructive}</div>
         ) : null}
