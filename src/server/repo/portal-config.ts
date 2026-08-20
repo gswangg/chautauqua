@@ -103,8 +103,8 @@ export function mergePortalSettingsInput(
 }
 
 /** Upserts the single portal_settings row for an event (DEC-552: one atomic
- * INSERT ... ON CONFLICT DO UPDATE against the uniqueIndex on event_id at
- * src/db/schema.ts:505 — never a read-then-write). The `set` clause is built
+ * INSERT ... ON CONFLICT DO UPDATE against `portal_settings_event_id_idx`
+ * in src/db/schema/content.ts — never a read-then-write). The `set` clause is built
  * from only the keys `input` actually defines, reproducing the prior
  * merge-with-existing semantics (undefined fields left unchanged on update)
  * without a probe read. */

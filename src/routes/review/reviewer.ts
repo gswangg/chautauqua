@@ -283,7 +283,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   const [formatBySubmission, audienceLevelBySubmission, identitiesBySubmission] = await Promise.all([
     // DEC-857: the queue row's own format meta -- batched over the emitted
     // ids only, chunked exactly like loadDurationMinBySubmission
-    // (src/server/repo/agenda.ts:316-330). Not stripped for an anonymized
+    // (src/server/repo/agenda/rows.ts). Not stripped for an anonymized
     // plan: format is a session-shape fact, not identity.
     repo.listFormatLabelsBySubmission(c.var.db, hydrateIds),
     // DEC-857/DEC-986: the queue row's audience-level meta -- same batching as

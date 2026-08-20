@@ -435,7 +435,7 @@ export interface ResultsRow {
 }
 
 /** Ranked-only shape (DEC-829 w32 amendment): everything `sortValueForColumn`
- * (src/domain/evaluation/results.ts:62-79) and `SortableResultsRow` (:35-44)
+ * and `SortableResultsRow` (both in src/domain/evaluation/results.ts)
  * can read -- ref/title/average/count/perCriterion/perDropdown -- plus
  * `status` (part of the CSV/JSON row but never a sort input) and
  * `submissionId` (the join key hydration slices on). Ranking and ?sort=
