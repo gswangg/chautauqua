@@ -461,7 +461,18 @@
   font-size: 13px;
 }
 
+/* DEC-385 wave-111 (task w7-a): consolidated to ONE terminal phone block.
+   This sheet measured 3 phone blocks on a clean archive of main
+   (`1bed0d2c`) at lines 464, 574 and 602 -- test/phone-terminal-block.
+   scan.test.ts. Forward-merged here in ascending source order (464 body,
+   then 574 body, then this block's own original body), verbatim: no
+   selector/declaration/value reordered or reworded, nothing dropped.
+   Where a selector recurs across the merged bodies with an overlapping
+   property, the two rules are collapsed explicitly and the discarded
+   declaration is named in a comment beside the survivor, per the
+   src/routes/auth.css.ts / app/src/pages/review/review.css pattern. */
 @media (max-width: 700px) {
+  /* -- begin former 464 block -- */
   .chq-overview-deadlines {
     display: flex;
     grid-template-columns: none;
@@ -513,23 +524,28 @@
     width: 100%;
   }
 
+  /* DEC-385 wave-111 (task w7-a) collapse: min-height:44px, display:flex
+     and align-items:center are discarded here -- the former-602 (terminal)
+     block below declares those same three properties, at the same values,
+     for this exact selector pair (as part of its five-selector tap-floor
+     rule), so that later rule survives as the sole declarer of them; this
+     rule keeps only the properties the terminal rule does not set. */
   .chq-overview-row-actions .chq-overview-btn,
   .chq-overview-row-actions-inline .chq-overview-btn {
     flex: 1;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
     justify-content: center;
     border-radius: var(--chq-r-ctl-phone);
     text-align: center;
   }
 
+  /* DEC-385 wave-111 (task w7-a) collapse: min-height:44px, display:flex
+     and align-items:center are discarded here for the same reason as
+     above -- the former-602 (terminal) block below declares them
+     identically for .chq-overview-link-btn, so that rule survives as the
+     sole declarer of them. */
   .chq-overview-link-btn {
     flex: 1;
     width: 100%;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
     justify-content: center;
     border: 1px solid var(--chq-border);
     background: var(--chq-surface-sunk);
@@ -557,21 +573,19 @@
   .chq-overview-caption {
     text-align: center;
   }
-}
+  /* -- end former 464 block -- */
 
-/* docs/design/Chautauqua Overview.dc.html:190
-   `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
-   Appended block (w2-g): the §02 triage card's third action reads as
-   "Read" at 390, matching DEC-610's (wave 83 amendment) Submissions phone
-   card ruling -- Waitlist is a holding state, not part of the accept/
-   decline decision, so it is hidden here (never removed: it stays reachable
-   from the submission detail rail and the bulk-action bar at every width),
-   and "Read the abstract" sits at its natural width beside Accept/Decline
-   rather than stretching to a full-width roomy row, mirroring the frame's
-   bordered, natural-width third control. DEC-385 single-direction: this is
-   a second max-width-only block, additive to the one above -- desktop is
-   untouched (no rule outside a max-width query touches either class). */
-@media (max-width: 700px) {
+  /* -- begin former 574 block --
+     docs/design/Chautauqua Overview.dc.html:190
+     `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`
+     Appended block (w2-g): the §02 triage card's third action reads as
+     "Read" at 390, matching DEC-610's (wave 83 amendment) Submissions phone
+     card ruling -- Waitlist is a holding state, not part of the accept/
+     decline decision, so it is hidden here (never removed: it stays
+     reachable from the submission detail rail and the bulk-action bar at
+     every width), and "Read the abstract" sits at its natural width beside
+     Accept/Decline rather than stretching to a full-width roomy row,
+     mirroring the frame's bordered, natural-width third control. */
   .chq-overview-btn-waitlist {
     display: none;
   }
@@ -581,25 +595,35 @@
     width: auto;
     padding: 0 13px;
   }
-}
+  /* -- end former 574 block -- */
 
-/* ---------------------------------------------------------------------- */
-/* Tier-2 tap-floor + overflow fixes (task w8-g; DEC-393/DEC-989 wave-90   */
-/* amendment). Appended at the TRUE END of the file -- never edit or      */
-/* reorder the blocks above, source order alone decides (DEC-385).        */
-/*                                                                        */
-/* Tap-floor (DEC-393): "the floor is reached by the anchor, not its      */
-/* container" -- .chq-overview-row-actions/-inline/-column are containers */
-/* whose .chq-overview-btn children get the floor here (the existing      */
-/* phone block above already sizes .chq-overview-row-actions/-inline's    */
-/* children but never declares a padding property inside that phone       */
-/* rule itself, and .chq-overview-row-actions-column has no phone         */
-/* override at all today). .chq-overview-link-btn and                    */
-/* .chq-overview-section-action are themselves the tappable control       */
-/* (a <button>/<a>/<Link>, app/src/pages/Overview.tsx) so they are grown  */
-/* directly.                                                              */
-/* ---------------------------------------------------------------------- */
-@media (max-width: 700px) {
+  /* -- begin former 602 (terminal) block --
+     Tier-2 tap-floor + overflow fixes (task w8-g; DEC-393/DEC-989 wave-90
+     amendment).
+
+     Tap-floor (DEC-393): "the floor is reached by the anchor, not its
+     container" -- .chq-overview-row-actions/-inline/-column are containers
+     whose .chq-overview-btn children get the floor here (the former 464
+     block above already sizes .chq-overview-row-actions/-inline's children
+     but never declares a padding property inside that phone rule itself,
+     and .chq-overview-row-actions-column has no phone override at all
+     today). .chq-overview-link-btn and .chq-overview-section-action are
+     themselves the tappable control (a <button>/<a>/<Link>,
+     app/src/pages/Overview.tsx) so they are grown directly. */
+  /* DEC-385 wave-111 (task w7-a): this rule's selector list overlaps two
+     of the former-464 rules above (.chq-overview-row-actions
+     .chq-overview-btn / .chq-overview-row-actions-inline .chq-overview-btn,
+     and .chq-overview-link-btn) on min-height:44px, display:flex and
+     align-items:center -- same properties, same values. Rather than
+     duplicate those three declarations in both places, they are collapsed:
+     THIS rule (below) is kept as their sole declarer (it also covers the
+     two selectors the former-464 block never touched --
+     .chq-overview-row-actions-column .chq-overview-btn and
+     .chq-overview-section-action, which need the full property set), and
+     the former-464 rules above have those same three declarations removed
+     with a comment pointing here. No property, selector or value is
+     dropped overall -- every declaration below is unchanged from this
+     block's original body. */
   .chq-overview-row-actions .chq-overview-btn,
   .chq-overview-row-actions-inline .chq-overview-btn,
   .chq-overview-row-actions-column .chq-overview-btn,
@@ -619,4 +643,5 @@
     text-overflow: ellipsis;
     min-width: 0;
   }
+  /* -- end former 602 (terminal) block -- */
 }
