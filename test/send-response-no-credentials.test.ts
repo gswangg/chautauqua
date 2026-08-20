@@ -112,7 +112,13 @@ describe("send responses never carry rendered bodies or claim tokens", () => {
     expect(keysOf(bulkHandler)).toEqual(["failed", "sent", "skipped"]);
 
     // The shapes are deliberately different: compose/send maps a per-recipient
-    // array; bulk-email sums two integer counters (intra-batch + cross-call).
-    expect(bulkHandler).toMatch(/skipped:\s*intraBatchSkipped\s*\+\s*crossCallSkipped/);
+    // array; bulk-email reports a COUNT. DEC-238's wave-131 amendment replaced
+    // bulk-email's two bare integer counters (intraBatchSkipped +
+    // crossCallSkipped) with ONE `skippedRendered` array of the same
+    // RenderedRecipientEmail records the sent path uses, so the reported count
+    // is that array's length and the `status: "skipped"` email_log rows are
+    // written from the SAME collection -- the response and the comms history
+    // are now structurally unable to disagree.
+    expect(bulkHandler).toMatch(/skipped:\s*skippedRendered\.length/);
   });
 });

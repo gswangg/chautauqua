@@ -147,6 +147,20 @@ function baseFixture(): CampaignFile[] {
       path: "test/frame-control-label.scan.test.ts",
       content: "export const FOOTER_LABEL_CEILING = 5;",
     },
+    // wave-131 (task w6-b, DEC-919 amendment): the desktop (non-390)
+    // control-label ledger, added so this fixture stays a faithful shape of
+    // the real corpus. Value is arbitrary and deliberately NOT the real
+    // ledger's current measurement, per this fixture's header contract.
+    {
+      path: "test/desktop-control-label.scan.test.ts",
+      content: "export const DESKTOP_CONTROL_LABEL_CEILING = 4;",
+    },
+    // wave-133 (task w8-a, DEC-976): the frame caption/consequence ledger,
+    // added on the same terms -- arbitrary value, faithful shape.
+    {
+      path: "test/frame-caption-ledger.scan.test.ts",
+      content: "export const FRAME_CAPTION_UNMATCHED_CEILING = 6;",
+    },
   ];
 }
 
@@ -211,6 +225,12 @@ function allGreenFixture(): CampaignFile[] {
     if (f.path === "test/frame-control-label.scan.test.ts") {
       return { ...f, content: "export const FOOTER_LABEL_CEILING = 0;" };
     }
+    if (f.path === "test/desktop-control-label.scan.test.ts") {
+      return { ...f, content: "export const DESKTOP_CONTROL_LABEL_CEILING = 0;" };
+    }
+    if (f.path === "test/frame-caption-ledger.scan.test.ts") {
+      return { ...f, content: "export const FRAME_CAPTION_UNMATCHED_CEILING = 0;" };
+    }
     return f;
   });
 }
@@ -263,7 +283,11 @@ describe("buildCampaignReport", () => {
     // a declared knob with no reader. Now wired into TIER2_CEILING_NAMES: 20 -> 21.
     // wave-128 (task w3-j): FOOTER_LABEL_CEILING, the frame control-label
     // ledger, declared and wired into TIER2 in one commit: 21 -> 22.
-    expect(report.rows).toHaveLength(22);
+    // Megabatch wave-131/133: two more ledgers landed together, each
+    // declared in CAMPAIGN_CONSTANT_NAMES and wired into TIER2 in the same
+    // commit -- DESKTOP_CONTROL_LABEL_CEILING (task w6-b, DEC-919) and
+    // FRAME_CAPTION_UNMATCHED_CEILING (task w8-a, DEC-976): 22 -> 24.
+    expect(report.rows).toHaveLength(24);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
     expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });
