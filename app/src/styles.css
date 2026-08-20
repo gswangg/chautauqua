@@ -388,8 +388,8 @@ a:hover {
    mount it as a bare direct child of desktop-visible markup, leaking the
    dock's note + Sign out band onto frozen desktop. Same "hidden above the
    breakpoint, flipped to flex/visible inside the media query" contract as
-   app/src/pages/review/review.css:2088's
-   `.chq-reviewer-plans-phone-note { display: none; }`. */
+   app/src/pages/review/review.css's
+   `.chq-reviewer-plans-phone-note`. */
 .chq-phone-dock {
   display: none;
 }
@@ -2523,8 +2523,9 @@ select:focus-visible,
   /* docs/design/Chautauqua Speakers.dc.html:266
      `flex:1; min-height:0; overflow-y:auto; padding:14px 16px 16px`
      -- the frame's own text carries overflow-y:auto here, but DEC-576's
-     wave-83 amendment (styles.css:235-238, `.chq-shell is a flex column
-     ... .chq-main is the ONLY scrolling region`) is the binding rule, not
+     wave-83 amendment (app/src/styles.css, the shell-layout comment near
+     the top of the file: .chq-shell is a flex column, .chq-main is the
+     ONLY scrolling region) is the binding rule, not
      the frame's rendering shortcut: a second scroll container nested
      between two position:sticky bands (.chq-phone-head/-dock) breaks
      their stickiness, because sticky positions against its OWN nearest

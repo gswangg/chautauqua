@@ -46,7 +46,7 @@ const CFP_EMAIL_HELP_TEXT = "We send your portal link here, so a typo means you 
 // draws these two optional session fields' empty state as muted placeholder
 // content inside the control itself (:963/:968), not a below-field helper
 // -- matched by label because neither field is a locked built-in (they are
-// producer-added session fields, script/seed.ts:505-506), the narrowest
+// producer-added session fields, scripts/seed.ts:505-506), the narrowest
 // reasonable interpretation available for a caption keyed only by wording.
 const CFP_NOTES_FOR_REVIEWERS_PLACEHOLDER = "Never shown publicly";
 const CFP_ACCESSIBILITY_NEEDS_PLACEHOLDER = "Goes to the venue team only";

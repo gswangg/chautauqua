@@ -11,8 +11,9 @@
 // Everything else (javascript:, data:, mailto:, a bare non-URL string like
 // 'notaurl', or a protocol-relative '//evil.example/x') -> null.
 //
-// This is a SIBLING of safeExternalUrl (src/domain/contacts-parts/
-// types.ts:18), not a reuse of it, because the two call sites have opposite
+// This is a SIBLING of safeExternalUrl (src/domain/contacts-parts/types.ts
+// `export function safeExternalUrl`), not a reuse of it, because the two
+// call sites have opposite
 // requirements for relative input: safeExternalUrl is an href allowlist for
 // third-party social links, where a bare relative path is meaningless (a
 // contact's "website" is never same-origin with the app) and MUST be

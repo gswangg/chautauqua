@@ -791,7 +791,7 @@
      tag-qualified selector floors only the `<label>` form; the `<span>`
      stays untouched rather than being inflated into a fake control
      (DEC-991). Cancelled padding is legal here -- the class paints no
-     border/background at any width (contacts.css:449's
+     border/background at any width (app/src/pages/contacts/contacts.css
      `.chq-contacts-record-value` is the same borderless shape). */
   label.chq-forms-strip-label {
     min-height: 44px;

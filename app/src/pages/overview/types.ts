@@ -51,7 +51,8 @@ export interface AgendaConflictEntry {
 
 // DEC-652: the concrete "move it" resolution for a conflict's later entry —
 // a real slot the server's nextFreeSlot found, never invented by the UI.
-// roomName is always non-null here: scheduling.ts:101 falls back to
+// roomName is always non-null here: src/server/repo/overview/scheduling.ts
+// `roomNameById.get(slot.roomId) ?? slot.roomId` falls back to
 // `slot.roomId` when a room-name lookup misses, so this field never carries
 // the server's `null` absence case. Do not re-widen without re-checking that.
 export interface ConflictResolution {
@@ -87,7 +88,8 @@ export interface AgendaConflict {
 
 // DEC-652: the concrete "place it" suggestion for an unplaced row — a real
 // slot the server's nextFreeSlot found, never invented by the UI.
-// roomName is always non-null here: scheduling.ts:167 falls back to
+// roomName is always non-null here: src/server/repo/overview/scheduling.ts
+// `roomNameById.get(slot.roomId) ?? slot.roomId` falls back to
 // `slot.roomId` when a room-name lookup misses, so this field never carries
 // the server's `null` absence case. Do not re-widen without re-checking that.
 export interface PlacementSuggestion {

@@ -176,7 +176,8 @@ async function loadContactsByRef(
 /** Existing (submission_id, contact_id) participant pairs among the given
  * submission ids, chunked. Keyed by the same `${submissionId}:${contactId}`
  * shape the (submission_id, contact_id) uniqueIndex already names
- * (schema.ts:289) -- no third namespace, no migration (DEC-639). */
+ * (src/db/schema/submissions.ts `participant_submission_id_contact_id_idx`)
+ * -- no third namespace, no migration (DEC-639). */
 async function loadExistingParticipantPairs(db: Db, submissionIds: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (submissionIds.length === 0) return out;

@@ -165,9 +165,9 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged, on
     setSaving(true);
     try {
       // No `location` key: DEC-021 (w8) deleted the write-side Location
-      // control, and the API reads key PRESENCE (breaks.ts:144) -- an
-      // absent key leaves the stored location untouched rather than
-      // clearing it on every unrelated edit.
+      // control, and the API reads key PRESENCE (src/routes/api/breaks.ts
+      // `body.location !== undefined`) -- an absent key leaves the stored
+      // location untouched rather than clearing it on every unrelated edit.
       await apiPatch(`/breaks/${id}`, {
         label: editForm.label,
         startMin: parseTimeToMinutes(editForm.startTime),

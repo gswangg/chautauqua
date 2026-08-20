@@ -801,8 +801,8 @@ button.chq-speakers-status-overdue:hover {
    (var(--chq-on-brand)) while the pending/overdue/none/neutral modifiers
    stay outline-only -- a hard-coded var(--chq-muted) caret followed the
    label into the fill and read 1.02:1 fg rgb(86,90,75) on bg
-   rgb(78,92,49) (docs/verification-log/task-w27-d-perf-rendersweep-
-   ceda66f2.md:127-133). `color: inherit` fixes the complete case (caret
+   rgb(78,92,49) (docs/verification-log/task-w27-d-perf-rendersweep-ceda66f2.md
+   `ratio=1.02, fg=rgb(86,90,75)`). `color: inherit` fixes the complete case (caret
    picks up var(--chq-on-brand)) and is a no-op on the four outline
    modifiers, none of which sets `color` on the trigger's .chq-speakers-
    status-* class independent of the shared .chq-speakers-status default
@@ -1817,8 +1817,9 @@ button.chq-speakers-status-overdue:hover {
   /* docs/design/Chautauqua Speakers.dc.html:141
      `display:flex; gap:8px` -- Remind outstanding / Filter. */
   /* tap-floor-exempt: composition -- both children are floored chq-btn
-     controls (OnboardingGrid.tsx:973-988: two
-     `<button className="chq-btn ...">`, no anchor), outside population (a)
+     controls (app/src/pages/speakers/OnboardingGrid.tsx
+     `chq-speakers-phone-head-actions`: two `<button className="chq-btn
+     chq-btn-primary|chq-btn-secondary">`, no anchor), outside population (a)
      by construction and already floored by the base .chq-btn rule
      (DEC-393 wave-120 shape 3: a container every one of whose children is
      a floored chq-btn control). */
