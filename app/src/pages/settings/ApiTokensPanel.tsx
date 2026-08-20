@@ -25,7 +25,10 @@ import { formatDateTime } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { MAX_NAME_LENGTH } from '../../../../src/forms/validate';
+import { DEC_896 } from '../../../../src/decisions';
 import './settings-lists.css';
+
+void DEC_896; // the section's own closing footer (Settings.dc.html:1164) is a SECTION register, distinct from YourDataPanel's head consequence
 
 interface ApiTokenItem {
   id: string;
@@ -148,8 +151,6 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
     <section className="chq-settings-panel" aria-label="API tokens">
       <h2>API Tokens</h2>
       <p>Bearer tokens authenticate scripts/integrations against the same /api/v1 the app uses.</p>
-      <p>The token is shown once, when you create it.</p>
-      <p>Revoking takes effect immediately and cannot be undone.</p>
 
       {error && <div className="chq-error" role="alert">{error}</div>}
 
@@ -255,6 +256,16 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
           </tbody>
         </table>
       )}
+
+      {/* DEC-896 (wave-134 amendment): the API-tokens section's own closing
+          footer (docs/design/Chautauqua Settings.dc.html:1164) -- a
+          SECTION-scoped register, distinct from YourDataPanel's head
+          consequence line (DEC-781/DEC-896 wave-133). Verbatim, real em
+          dash. */}
+      <p className="chq-settings-edit-section-note">
+        A token's secret is shown once, when it is created — after that only the prefix. Revoking takes effect
+        immediately and cannot be undone.
+      </p>
 
       {/* DEC-919 wave-99 amendment (task v12m-w2-a): the drill frame draws
           "New token" a second time as a filled 46px full-width primary

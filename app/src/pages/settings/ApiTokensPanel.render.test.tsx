@@ -82,7 +82,7 @@ describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
 });
 
 describe('ApiTokensPanel Created column + NEVER USED mark (DEC-027 wave-47 amendment)', () => {
-  it('renders a Created column, the NEVER USED mark for an unused token, the plain date for a used one, and both standing facts before any row', async () => {
+  it('renders a Created column, the NEVER USED mark for an unused token, and the plain date for a used one', async () => {
     mockApi({
       'GET /api/v1/tokens': listEnvelope([
         token({ id: 'tok-unused', name: 'Unused token', lastUsedAt: null }),
@@ -109,15 +109,23 @@ describe('ApiTokensPanel Created column + NEVER USED mark (DEC-027 wave-47 amend
     expect(within(usedRow).getByText(formatDateTime(LAST_USED_AT))).toBeInTheDocument();
     expect(within(usedRow).queryByText('NEVER USED')).not.toBeInTheDocument();
 
-    // Both standing facts render once, above the table (before any row).
-    const factOne = screen.getByText('The token is shown once, when you create it.');
-    const factTwo = screen.getByText('Revoking takes effect immediately and cannot be undone.');
-    expect(factOne).toBeInTheDocument();
-    expect(factTwo).toBeInTheDocument();
-    const position = factOne.compareDocumentPosition(table);
+  });
+
+  it('renders the section closing footer once, verbatim, after the table (DEC-896 wave-134 amendment)', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+    });
+
+    render(<ApiTokensPanel />);
+
+    const table = await screen.findByRole('table');
+    const footer = screen.getByText(
+      "A token's secret is shown once, when it is created — after that only the prefix. Revoking takes effect immediately and cannot be undone.",
+    );
+    expect(footer).toBeInTheDocument();
+    expect(footer.className).toContain('chq-settings-edit-section-note');
+    const position = table.compareDocumentPosition(footer);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const position2 = factTwo.compareDocumentPosition(table);
-    expect(position2 & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 
