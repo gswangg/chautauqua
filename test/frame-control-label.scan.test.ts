@@ -1,4 +1,5 @@
-// Frame control-label ledger (DEC-976/DEC-967 wave-128; task w3-j).
+// Frame control-label ledger (DEC-976/DEC-967 wave-128, wave-129 amendment;
+// task w3-j, closed by task w4-l).
 //
 // Every prior ledger asks "is this SCREEN cited by some test?"
 // (phone-frame-ledger.scan.test.ts, desktop-frame-ledger.scan.test.ts) or "is
@@ -14,7 +15,7 @@
 //      its title is the nearest preceding `font-size:19px ... >TITLE</span>`
 //      label; its extent runs to the next such label, or EOF.
 //
-//      Inside each frame's extent, two kinds of control label:
+//      Inside each frame's extent, three kinds of control label:
 //        a. FOOTER LABELS -- find the docked-footer signature
 //           `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF`,
 //           back up to that div's own opening `<div`, then walk `<div`/`</div>`
@@ -24,18 +25,38 @@
 //           inside the balanced region is a footer label.
 //        b. ANCHOR LABELS -- every `<a ...min-height:44px...>LABEL</a>`
 //           anywhere in the frame's extent.
-//      Both kinds drop labels shorter than 2 chars after trim, and any
+//        c. PAINTED-SPAN LABELS (DEC-976 wave-129 amendment (b)) -- every
+//           `<span ...>LABEL</span>` whose attribute string carries ALL of
+//           `min-height:4[468]px`, `border-radius`, and (`border:1px` OR
+//           `background:#4E5C31`) -- a real control FACE drawn as a span
+//           outside any footer. A bare `<span min-height:44px>` chip with no
+//           painted face stays OUT -- the 283-hit data-chip noise the
+//           wave-128 field guide already measured and rejected. Deduped by
+//           source offset against the footer walk's own offsets so a footer
+//           row wearing a painted face is never counted twice.
+//      Both of (a)/(b) drop labels shorter than 2 chars after trim, and any
 //      label containing `{{` (a template interpolation, not a literal
 //      word the app renders -- same exclusion the desktop ledger already
 //      applies to its own population, DEC-976 wave-99).
 //
 //   2. MATCH: every non-test .ts/.tsx/.css file under app/src/** and src/**
-//      (readdirSync recursive, skipping any path containing `.test.`) is
+//      (readdirSync recursive, skipping any path containing `.test.`, and
+//      skipping src/decisions-data/** and src/decisions.ts -- DEC-976
+//      wave-129 amendment (c): the decision registry's own `DEC_NNN`
+//      constants are English sentences that quote frame labels verbatim, so
+//      a ruling's own prose satisfying the ledger it rules on is DEC-967's
+//      "a ledger a comment can satisfy is not a ledger", one level out) is
 //      normalized -- comments stripped (so prose merely QUOTING a label
 //      cannot satisfy the ledger, DEC-967 wave-128 clause 4), HTML entities
 //      decoded (so the source's literal `&lsaquo;` matches the frame's
-//      literal `‹`), whitespace collapsed. A label matches when it occurs
-//      verbatim, after the same whitespace-collapse, in some normalized file.
+//      literal `‹`), whitespace collapsed. A label matches when it occurs,
+//      after the same whitespace-collapse, BOUNDARY-ANCHORED in some
+//      normalized file (DEC-976 wave-129 amendment (a)): preceded by
+//      start-of-blob, whitespace, or one of `> " ' \` { ( , :`, and followed
+//      by end-of-blob, whitespace, or one of `< " ' \` } ) ( ; , . ! ? {` --
+//      a bare substring test let a short label like `Wait` be "matched" by
+//      any longer word merely containing it (`Waitlist`), which is exactly
+//      the divergence the frame draws.
 //
 //   3. EXCLUSIONS -- two tables, each entry independently asserted against
 //      the pack by exact file:line:label so a re-cut of the pack rots the
@@ -45,10 +66,15 @@
 //           (a demo card styled like a footer/anchor but naming fictional
 //           pack data, not a real UI word).
 //        b. COMPOSED -- the app assembles the label from parts (a shared
-//           component + a prop, a template literal, a counter function), so
-//           the literal frame string never appears verbatim in source even
-//           though the rendered DOM is correct. Each reason quotes the
-//           composing expression verbatim.
+//           component + a prop, a template literal, a counter function,
+//           including a live count/name over a shared vocabulary --
+//           COMPOSED-from-data), so the literal frame string never appears
+//           verbatim in source even though the rendered DOM is correct; or
+//           the divergence is already BLESSED by a recorded user ruling
+//           (DEVIATIONS.md §3 or §6, cited by section heading only --
+//           DEVIATIONS.md itself is owned by an in-flight lane this wave and
+//           is never edited here). Each reason quotes the composing
+//           expression verbatim, or the blessing citation.
 //
 //   4. RATCHET, two-sided, mirroring every prior ledger in this campaign:
 //      FOOTER_LABEL_CEILING is a single exported const, hand-measured on
@@ -61,12 +87,17 @@
 //      printing the exact replacement line, so a stale ceiling cannot survive
 //      a wave that lands more label coverage.
 //
-//      RATCHET: FOOTER_LABEL_CEILING=4, re-measured on the integrated tree
-//      by the wave-128/129 merge train (was 6). Lanes draining this same
-//      control-label population (composing the remaining literal strings, or
-//      adding the missing renders) land mid-wave; the merge-train re-measures
-//      the INTEGRATED tree once every lane is in and moves the ceiling to the
-//      measured count then, not mid-lane (DEC-989 wave-123).
+//      RATCHET: FOOTER_LABEL_CEILING=7 (raised from wave-128's 6). This is
+//      NOT a regression -- the PREDICATE tightened (boundary-anchored
+//      matching, the painted-span population, and the decision-registry
+//      corpus exclusion together widen what the ledger can see) so the
+//      population of real divergences the ledger reports grew from 6 to 7;
+//      the tree itself did not get worse. Sibling lanes v12m-w4-m/n/o/p/q/r/s
+//      close all seven surviving rows this wave (`See the recipients`,
+//      `+ Rule`, `Place the other six ›`, `Send this in`, `Read the full
+//      submission`, `Copy link`, `Wait`); the merge-train re-measures the
+//      INTEGRATED tree once every lane lands and lowers the ceiling then,
+//      not mid-lane (DEC-989 wave-123).
 //
 // This file names the app's uninstrumented control-label gap; it does not
 // close it -- that is scheduled work for the lanes above, not this ledger.
@@ -159,7 +190,7 @@ export interface ControlLabel {
   /** 1-based line the label's own text node sits on (not the frame's line). */
   line: number;
   label: string;
-  kind: 'footer' | 'anchor';
+  kind: 'footer' | 'anchor' | 'span';
   frameTitle: string;
   frameLine: number;
 }
@@ -167,6 +198,25 @@ export interface ControlLabel {
 const FOOTER_SIGNATURE = 'flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF';
 const FOOTER_TEXT_NODE_RE = />([^<>]+)</g;
 const ANCHOR_RE = /<a\b[^>]*min-height:44px[^>]*>([^<]+)<\/a>/g;
+
+// Painted-span controls (DEC-976 wave-129 amendment (b)): the frames also
+// draw real controls as a <span> carrying a control FACE outside any
+// footer. A bare `<span min-height:44px>` chip with no painted face stays
+// OUT -- that is the 283-hit data-chip noise the wave-128 field guide
+// already measured and rejected (`Slides · 22`, `Tue 12`, `Identified · 7`).
+const SPAN_RE = /<span\b([^>]*)>([^<]+)<\/span>/g;
+const SPAN_MIN_HEIGHT_RE = /min-height:4[468]px/;
+const SPAN_BORDER_RADIUS_RE = /border-radius/;
+const SPAN_BORDER_RE = /border:1px/;
+const SPAN_BACKGROUND_RE = /background:#4E5C31/;
+
+function isPaintedSpanFace(attrs: string): boolean {
+  return (
+    SPAN_MIN_HEIGHT_RE.test(attrs) &&
+    SPAN_BORDER_RADIUS_RE.test(attrs) &&
+    (SPAN_BORDER_RE.test(attrs) || SPAN_BACKGROUND_RE.test(attrs))
+  );
+}
 
 function offsetToLine(lineStartIndex: number[], offset: number): number {
   let lo = 0;
@@ -222,8 +272,13 @@ export function labelsInFrameText(
   text: string,
   lineStartIndex: number[],
   baseOffset: number
-): { label: string; kind: 'footer' | 'anchor'; offset: number }[] {
-  const out: { label: string; kind: 'footer' | 'anchor'; offset: number }[] = [];
+): { label: string; kind: 'footer' | 'anchor' | 'span'; offset: number }[] {
+  const out: { label: string; kind: 'footer' | 'anchor' | 'span'; offset: number }[] = [];
+  // Offsets (of the text node's own leading `>`) already collected by the
+  // footer walk -- the span walk dedupes against this set so a footer row
+  // wearing a painted span face is never counted twice (the planner's
+  // prototype double-counted every footer row; that is the bug to avoid).
+  const footerOffsets = new Set<number>();
 
   let sigIdx = text.indexOf(FOOTER_SIGNATURE);
   while (sigIdx !== -1) {
@@ -237,8 +292,10 @@ export function labelsInFrameText(
     let tm: RegExpExecArray | null;
     while ((tm = FOOTER_TEXT_NODE_RE.exec(footerText))) {
       const label = tm[1]!.trim();
+      const offset = divStart + tm.index;
       if (isRealLabel(label)) {
-        out.push({ label, kind: 'footer', offset: divStart + tm.index });
+        out.push({ label, kind: 'footer', offset });
+        footerOffsets.add(offset);
       }
     }
     sigIdx = text.indexOf(FOOTER_SIGNATURE, endIdx);
@@ -251,6 +308,21 @@ export function labelsInFrameText(
     if (isRealLabel(label)) {
       out.push({ label, kind: 'anchor', offset: am.index });
     }
+  }
+
+  SPAN_RE.lastIndex = 0;
+  let sm: RegExpExecArray | null;
+  while ((sm = SPAN_RE.exec(text))) {
+    const attrs = sm[1]!;
+    if (!isPaintedSpanFace(attrs)) continue;
+    const label = sm[2]!.trim();
+    if (!isRealLabel(label)) continue;
+    const openTagEnd = text.indexOf('>', sm.index);
+    if (openTagEnd === -1) {
+      throw new Error(`span at offset ${sm.index} has no closing '>' on its opening tag`);
+    }
+    if (footerOffsets.has(openTagEnd)) continue;
+    out.push({ label, kind: 'span', offset: openTagEnd });
   }
 
   return out;
@@ -294,14 +366,29 @@ function isSourceFile(name: string): boolean {
   return name.endsWith('.ts') || name.endsWith('.tsx') || name.endsWith('.css');
 }
 
+const DECISIONS_DATA_DIR = join(SRC_ROOT, 'decisions-data') + '/';
+const DECISIONS_BARREL = join(SRC_ROOT, 'decisions.ts');
+
+/** True for the decision-registry's own prose (DEC-976 wave-129 amendment
+ * (c)): src/decisions-data/**'s `DEC_NNN` constants and src/decisions.ts's
+ * barrel are English sentences that quote frame labels verbatim, so a
+ * ruling's own prose satisfying the ledger it rules on is DEC-967's "a
+ * ledger a comment can satisfy is not a ledger", one level out. Skipped
+ * from the match corpus so the registry can never grade itself. */
+function isDecisionRegistryFile(full: string): boolean {
+  return full.startsWith(DECISIONS_DATA_DIR) || full === DECISIONS_BARREL;
+}
+
 /** Every .ts/.tsx/.css file under `root`, skipping any path containing
- * `.test.`, enumerated via readdirSync rather than named (DEC-808). */
+ * `.test.` and the decision registry itself, enumerated via readdirSync
+ * rather than named (DEC-808). */
 function enumerateSourceFiles(root: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile() || !isSourceFile(entry.name)) continue;
     const full = join(entry.parentPath, entry.name);
     if (full.includes('.test.')) continue;
+    if (isDecisionRegistryFile(full)) continue;
     out.push(full);
   }
   return out.sort();
@@ -331,12 +418,33 @@ export function normalizeSource(raw: string): string {
   return s.replace(/\s+/g, ' ');
 }
 
+// Boundary character classes for labelIsMatched (DEC-976 wave-129 amendment
+// (a)): a needle may be preceded/followed by markup/quote/punctuation
+// delimiters or whitespace, but not by an arbitrary word character -- that
+// is what let `Wait` be "matched" by `Waitlist`, the exact divergence the
+// frame draws (Chautauqua Submissions.dc.html:391).
+// RIGHT_BOUNDARY admits `{` too: source renders `Running on{" "}` (JSX
+// whitespace-preserving expression container immediately after the literal
+// text), so a label followed only by `{` must still count as matched.
+const LEFT_BOUNDARY = `>"'\`{(,:`;
+const RIGHT_BOUNDARY = `<"'\`})(;,.!?{`;
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** True when `label` (whitespace-collapsed) occurs verbatim in some already-
- * normalized source blob. Exported so the synthetic controls drive this
- * exact function over a fabricated population. */
+ * normalized source blob, anchored so a short label is not "matched" by
+ * merely being a substring of a longer word (DEC-976 wave-129 amendment
+ * (a) -- `Wait` inside the app's `Waitlist` must NOT count). Exported so
+ * the synthetic controls drive this exact function over a fabricated
+ * population. */
 export function labelIsMatched(label: string, normalizedBlobs: string[]): boolean {
   const needle = label.replace(/\s+/g, ' ').trim();
-  return normalizedBlobs.some((blob) => blob.includes(needle));
+  const pattern = new RegExp(
+    `(?:^|[${escapeRegExp(LEFT_BOUNDARY)}]|\\s)${escapeRegExp(needle)}(?:$|[${escapeRegExp(RIGHT_BOUNDARY)}]|\\s)`
+  );
+  return normalizedBlobs.some((blob) => pattern.test(blob));
 }
 
 const SOURCE_FILES = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSourceFiles(SRC_ROOT)];
@@ -377,8 +485,175 @@ const FIXTURE_EXCLUSIONS = [
 
 // (b) COMPOSED -- the app assembles the label from parts at render time, so
 // the literal frame string never appears verbatim in source even though the
-// rendered DOM is correct. Reason quotes the composing expression verbatim.
+// rendered DOM is correct (including the COMPOSED-from-data subclass -- a
+// day pill, room name, or stage/kind chip built from a shared label
+// vocabulary plus a live count/name, never the frame's fixed numeral), or
+// the divergence is already BLESSED by a recorded user ruling (DEVIATIONS.md
+// §3 or §6, cited by section heading only -- DEVIATIONS.md itself is owned
+// by an in-flight lane this wave and is never edited here). Reason quotes
+// the composing expression verbatim, or the blessing citation.
 const COMPOSED_EXCLUSIONS = [
+  {
+    fileName: 'Chautauqua Agenda.dc.html',
+    line: 136,
+    label: 'Wed 13',
+    reason:
+      "COMPOSED-from-data: formatDayLabel(day)/roomLabel-style day-pill helpers compose the weekday+day-of-month pill from the live schedule day, never the frame's fixed date (app/src/pages/agenda/PhoneAgenda.tsx `dayLabel`, app/src/lib/dates.ts `formatDayLabel`).",
+  },
+  {
+    fileName: 'Chautauqua Agenda.dc.html',
+    line: 137,
+    label: 'Thu 14',
+    reason:
+      "COMPOSED-from-data: formatDayLabel(day)/roomLabel-style day-pill helpers compose the weekday+day-of-month pill from the live schedule day, never the frame's fixed date (app/src/pages/agenda/PhoneAgenda.tsx `dayLabel`, app/src/lib/dates.ts `formatDayLabel`).",
+  },
+  {
+    fileName: 'Chautauqua Agenda.dc.html',
+    line: 142,
+    label: 'Room 2B',
+    reason:
+      "COMPOSED-from-data: `function roomLabel(room) { return room ? room.name : 'TBD'; }` composes the room pill from the live room record, never the frame's fixed room (app/src/pages/agenda/PhoneAgenda.tsx:62-63).",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 196,
+    label: 'Speakers · 41',
+    reason:
+      "COMPOSED-from-data: `countOf(stats.speakerCount, 'speaker')` composes the speaker count from live pipeline stats (app/src/pages/contacts/ContactsApp.tsx:366), rendered count-first (`41 speakers`) rather than the frame's label-first chip form.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 454,
+    label: 'Contacted · 5',
+    reason:
+      "COMPOSED-from-data: `{PIPELINE_STAGE_LABELS[stage]} · {entries.filter((e) => e.stage === stage).length}` composes every stage chip's label+count from the live pipeline (app/src/pages/contacts/PipelineBoard.tsx:383).",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 455,
+    label: 'Interested · 4',
+    reason:
+      "COMPOSED-from-data: `{PIPELINE_STAGE_LABELS[stage]} · {entries.filter((e) => e.stage === stage).length}` composes every stage chip's label+count from the live pipeline (app/src/pages/contacts/PipelineBoard.tsx:383).",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 456,
+    label: 'Confirmed · 2',
+    reason:
+      "COMPOSED-from-data: `{PIPELINE_STAGE_LABELS[stage]} · {entries.filter((e) => e.stage === stage).length}` composes every stage chip's label+count from the live pipeline (app/src/pages/contacts/PipelineBoard.tsx:383).",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 457,
+    label: 'Declined · 2',
+    reason:
+      "COMPOSED-from-data: `{PIPELINE_STAGE_LABELS[stage]} · {entries.filter((e) => e.stage === stage).length}` composes every stage chip's label+count from the live pipeline (app/src/pages/contacts/PipelineBoard.tsx:383).",
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 211,
+    label: 'Approved · 9',
+    reason:
+      "COMPOSED-from-data: `{TAB_LABELS[t]}{counts[t] !== null ? \` · ${counts[t]}\` : ''}` composes every worklist tab's label+count from the live counts (app/src/pages/content/SessionList.tsx:256-257).",
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 261,
+    label: 'Approved · 9',
+    reason:
+      "COMPOSED-from-data: `{TAB_LABELS[t]}{counts[t] !== null ? \` · ${counts[t]}\` : ''}` composes every worklist tab's label+count from the live counts (app/src/pages/content/SessionList.tsx:256-257).",
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 345,
+    label: 'Slides · 22',
+    reason:
+      'COMPOSED-from-data: `{LIBRARY_KIND_LABELS[k]} &middot; {kindCounts?.[k] ?? 0}` composes every files-library kind chip from the server-aggregated kindCounts (app/src/pages/content/FilesLibrary.tsx:266).',
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 346,
+    label: 'Video · 4',
+    reason:
+      'COMPOSED-from-data: `{LIBRARY_KIND_LABELS[k]} &middot; {kindCounts?.[k] ?? 0}` composes every files-library kind chip from the server-aggregated kindCounts (app/src/pages/content/FilesLibrary.tsx:266).',
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 387,
+    label: 'Recording · 1 version',
+    reason:
+      "COMPOSED-from-data: `{DELIVERABLE_LABELS[kind]} · {countOf(chain.length, 'version')}` composes every deliverable's kind+version-count chip from the live chain (app/src/pages/content/DeliverableDetail.tsx:543).",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 276,
+    label: 'Move DFC-047 to 11:30',
+    reason:
+      'COMPOSED-from-data: `` `Move ${laterInfo.ref} to ${clockHMM(slot.startMin)}` `` composes the conflict-resolution suggestion label from the live ref/slot (src/server/repo/overview/scheduling.ts:192).',
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 215,
+    label: 'Remind all three',
+    reason:
+      "COMPOSED: Overview.tsx renders `Remind all {spellCount(...)}` -- the number word is composed from the live laggard count, never the frame's fixed 'three' (app/src/pages/overview/Overview.tsx).",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 379,
+    label: 'Wed 13',
+    reason:
+      'COMPOSED-from-data: `{formatDayShort(day)}` composes the public agenda day-switcher pill from the live event day, never the frame\'s fixed date (src/routes/public/agenda-controls.tsx:120).',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 380,
+    label: 'Thu 14',
+    reason:
+      'COMPOSED-from-data: `{formatDayShort(day)}` composes the public agenda day-switcher pill from the live event day, never the frame\'s fixed date (src/routes/public/agenda-controls.tsx:120).',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 381,
+    label: 'My schedule · 4',
+    reason:
+      'COMPOSED-from-data: `<span id="chq-ics-count">0</span> saved in this browser` composes the itinerary count client-side from localStorage (src/routes/public/agenda-rail.tsx:42, populated by agenda-itinerary-script.tsx), never the frame\'s fixed 4.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 493,
+    label: 'Mark the release signed',
+    reason:
+      'COMPOSED, DEC-613 wave-128 shared-vocabulary family: the portal tasks dock primary is rendered by `tasksPageDockPrimary` (src/routes/portal/tasks/views.tsx:411), the same shared control the row itself renders -- never a per-frame retyped copy.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 588,
+    label: 'Upload slides',
+    reason:
+      "COMPOSED, DEC-613 wave-128 shared-vocabulary family: `taskActionLabel(t)` ('Fill out form' / 'Upload file' / 'Open task') is the ONE shared label for every file-request task (src/routes/portal/index.tsx:128-132) -- 'Upload slides' would be wrong for every file-request task that is not slides.",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 666,
+    label: 'Save the plan',
+    reason:
+      'BLESSED (DEVIATIONS.md §3, DEC-745 wave-98): an existing plan\'s title row renders "Duplicate"/"Save"; the phone dock is a CSS-only repositioning of whichever pair the title row already renders, never a second copy of the buttons, and the frame\'s "Save the plan"/"Cancel" copy is read as the new-plan state\'s captioning.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 494,
+    label: 'Later',
+    reason:
+      'BLESSED (DEVIATIONS.md §6, DEC-967 wave-106): the dock GEOMETRY is legitimate but the portal task model exposes only complete-or-not -- no snooze/defer/dismiss capability exists anywhere in the domain or route layer, so the second button\'s copy is not manufactured.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 151,
+    label: 'All 47',
+    reason:
+      'COMPOSED-from-data: `` `All ${allTotal}` `` composes the tab total from the live submissions count, never the frame\'s fixed 47 (app/src/pages/submissions/FilterBar.tsx:106).',
+  },
   {
     fileName: 'Chautauqua Public and Portal.dc.html',
     line: 478,
@@ -471,13 +746,26 @@ const UNMATCHED: ControlLabel[] = UNMATCHED_RAW.filter((l) => !excluded(l));
 
 // -- Ratchet -------------------------------------------------------------
 // Measured on this branch (v12m-w3-j) by forcing this const to -1 and
-// reading the printed offender list: 4 labels survive both normalization and
+// reading the printed offender list: 6 labels survive both normalization and
 // the two exclusion tables above -- real frame/app divergences, not fixture
-// noise or a composed-at-render label. Re-measured on the integrated tree by
-// the wave-128/129 merge train (DEC-989 wave-123): was 6; the TaskFormPage
-// submit-label lane (v12m-w4-m, TASK_FORM_SUBMIT_LABEL) drained two, so the
-// ceiling drops to the measured 4.
-export const FOOTER_LABEL_CEILING = 4;
+// noise or a composed-at-render label. Lanes w3-k/w3-l/w3-n drain this same
+// population in parallel; the merge train re-measures the integrated tree
+// and raises (never lowers) this ceiling once, as a merge-train act
+// (DEC-989 wave-123).
+// Measured on this branch (v12m-w4-l), forcing this const to -1 and reading
+// the printed offender list, after closing all three DEC-976 wave-129
+// holes (boundary-anchored matching, painted-span population, decision-
+// registry corpus exclusion): 7 labels survive. This is a RAISE from the
+// wave-128 ceiling of 6, not a regression -- the PREDICATE tightened (the
+// boundary-anchored matcher now catches `Wait` where the old substring test
+// let `Waitlist` satisfy it) and the POPULATION grew (the painted-span
+// extractor surfaces `Copy link`, `See the recipients`, `+ Rule` for the
+// first time), so more real divergences are visible, not more regressions.
+// The 7 survivors are real frame/app divergences already scheduled to
+// sibling lanes this wave (v12m-w4-m/n/o/p/q/r/s close all seven): `See the
+// recipients`, `+ Rule`, `Place the other six ›`, `Send this in`, `Read the
+// full submission`, `Copy link`, `Wait`.
+export const FOOTER_LABEL_CEILING = 7;
 
 describe('frame control-label ledger (DEC-976/DEC-967 wave-128, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files', () => {
@@ -526,6 +814,18 @@ describe('frame control-label ledger (DEC-976/DEC-967 wave-128, v12 mobile campa
     // NEGATIVE: absent from real code (only inside a stripped comment) is
     // correctly flagged as unmatched.
     expect(labelIsMatched('Zzy Synthetic Absent', normalized)).toBe(false);
+  });
+
+  it('boundary anchoring: a short label is not "matched" by being a substring of a longer word (DEC-976 wave-129 (a))', () => {
+    // Fabricated source blobs -- never a real product count -- proving the
+    // matcher is boundary-anchored, not a bare substring test. `Wait` must
+    // not be satisfied merely because `Waitlist` contains it, exactly the
+    // divergence the frame draws at Chautauqua Submissions.dc.html:391.
+    const wordBlob = [normalizeSource('const x = "Waitlist";')];
+    expect(labelIsMatched('Wait', wordBlob)).toBe(false);
+
+    const markupBlob = [normalizeSource('const el = ">Wait<";')];
+    expect(labelIsMatched('Wait', markupBlob)).toBe(true);
   });
 
   it('FIXTURE exclusions each resolve to their cited file:line:label in the current pack', () => {
