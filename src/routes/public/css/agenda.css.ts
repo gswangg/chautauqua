@@ -637,5 +637,55 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
       text-decoration: none;
       color: var(--chq-ink);
     }
+
+    /* DEC-989 (wave 122): the day switcher's desktop shape is a 210px
+       joined bordered group with hairline-divided flex:1 segments -- at
+       390 that squeezes the labels and clips them (white-space: nowrap,
+       no overflow/text-overflow escape). The frame draws the phone day
+       switcher as a scrolling strip of SEPARATE shrink-proof pills instead
+       (docs/design/Chautauqua Public and Portal.dc.html:377
+       \`<div style="display:flex; gap:7px; overflow-x:auto;
+       -webkit-overflow-scrolling:touch">\`), each pill :378-381
+       \`flex-shrink:0; border-radius:99px; min-height:44px; display:flex;
+       align-items:center; padding:0 15px; font-size:13px\`. Narrow
+       overrides wide only (DEC-385) -- the desktop 210px joined group
+       above is untouched at every width above 700px.
+       .chq-pub-day-switcher becomes the scrolling strip: no fixed 210px
+       width, no group border/radius (the pills carry their own now). */
+    .chq-pub-day-switcher {
+      width: auto;
+      max-width: 100%;
+      gap: 7px;
+      border: none;
+      border-radius: 0;
+    }
+    /* .${ACCENT_BOUND_CLASSES[1]} (DEC-838, accent-bound -- literal class
+       name not re-declared here) becomes one shrink-proof pill: no more
+       flex:1/min-width:0 squeeze, no shared hairline border-right -- each
+       pill draws its own full border and pill radius per :379-380
+       \`border:1px solid #BAB6A6; border-radius:99px\`. overflow-x: auto
+       (not overflow:hidden + text-overflow:ellipsis -- this task does not
+       clip the label) is a truthful no-op: flex:0 0 auto with no
+       min-width:0 means the pill always sizes to its own content, so
+       nowrap never actually has anything to clip; the property just
+       states, on this rule itself, the same "this segment scrolls rather
+       than squeezes" contract the scrolling-strip container above already
+       carries. */
+    .${ACCENT_BOUND_CLASSES[1]} {
+      flex: 0 0 auto;
+      border-right: none;
+      border: 1px solid var(--chq-border);
+      border-radius: 99px;
+      padding: 0 15px;
+      min-height: 44px;
+      overflow-x: auto;
+    }
+    /* the active pill keeps its ink fill (base rule above) but now also
+       needs its own border-colour so it reads as one filled pill instead
+       of an outlined-then-filled pill (:378 draws NO border on the filled
+       "Tue 12" segment -- the fill alone reads as the border colour). */
+    .chq-pub-day-pill-active {
+      border-color: var(--chq-ink);
+    }
   }
 `;

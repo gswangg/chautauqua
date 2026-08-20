@@ -115,6 +115,26 @@ function findRule(layer: string, selector: string): string {
   throw new Error(`no rule for ${selector}`);
 }
 
+/** Cascade-correct variant of findRule: a layer can carry MORE than one
+ * rule for the same selector (e.g. an older phone-scoped floor rule plus a
+ * later-appended DEC-989 phone rule for the same selector) — last source
+ * position wins at equal specificity, so this returns the LAST match
+ * instead of findRule's first. */
+function findLastRule(layer: string, selector: string): string {
+  const rule = /([^{}]+)\{([^{}]*)\}/g;
+  let m: RegExpExecArray | null;
+  let last: string | null = null;
+  while ((m = rule.exec(layer)) !== null) {
+    const selectors = m[1]!
+      .split(",")
+      .map((s) => s.trim().replace(/\s+/g, " "))
+      .filter(Boolean);
+    if (selectors.includes(selector)) last = m[2]!;
+  }
+  if (last === null) throw new Error(`no rule for ${selector}`);
+  return last;
+}
+
 const SHEETS = {
   agenda: { name: "agenda.css.ts", css: AGENDA_CSS },
   rail: { name: "rail.css.ts", css: RAIL_CSS },
@@ -224,6 +244,49 @@ describe("v12 phone frame 'Public agenda' (390) — day switcher + card action",
     const base = findRule(DESKTOP.agenda, DAY_PILL);
     expect(base).toMatch(/min-height:\s*38px/);
     expect(base).toMatch(/color:\s*var\(--chq-brandable-accent\)/);
+  });
+
+  // DEC-989 (wave 122): the desktop day switcher is a 210px joined bordered
+  // group with hairline-divided flex:1 segments; at 390 the frame draws it
+  // as a scrolling strip of separate shrink-proof pills instead.
+  // docs/design/Chautauqua Public and Portal.dc.html:377
+  // `<div style="display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">`
+  it("desktopLayer freeze pin: the 210px joined group (width, border, radius) is byte-identical above 700px", () => {
+    const base = findRule(DESKTOP.agenda, ".chq-pub-day-switcher");
+    expect(base).toMatch(/width:\s*210px/);
+    expect(base).toMatch(/border:\s*1px solid var\(--chq-border\)/);
+    expect(base).toMatch(/border-radius:\s*var\(--chq-r-card\)/);
+  });
+
+  it("phone: the day switcher drops the fixed 210px joined-group shape for an auto-width scrolling strip (gap, no group border/radius)", () => {
+    const phone = findRule(PHONE.agenda, ".chq-pub-day-switcher");
+    expect(phone).toMatch(/width:\s*auto/);
+    expect(phone).toMatch(/max-width:\s*100%/);
+    expect(phone).toMatch(/gap:\s*7px/);
+    expect(phone).toMatch(/border:\s*none/);
+    expect(phone).toMatch(/border-radius:\s*0/);
+  });
+
+  // docs/design/Chautauqua Public and Portal.dc.html:379
+  // `<span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">Wed 13</span>`
+  it("phone: each day pill becomes its own shrink-proof, bordered, pill-radius segment (no shared hairline border-right)", () => {
+    // findLastRule, not findRule: agenda.css.ts also carries an OLDER
+    // phone-scoped `.${DAY_PILL} { min-height: 44px; }` floor rule earlier
+    // in the same terminal block; last-source-position wins at equal
+    // specificity, so the DEC-989 rule appended below it is the one whose
+    // properties actually resolve at phone width.
+    const phone = findLastRule(PHONE.agenda, DAY_PILL);
+    expect(phone).toMatch(/flex:\s*0 0 auto/);
+    expect(phone).toMatch(/border-right:\s*none/);
+    expect(phone).toMatch(/border:\s*1px solid var\(--chq-border\)/);
+    expect(phone).toMatch(/border-radius:\s*99px/);
+    expect(phone).toMatch(/padding:\s*0 15px/);
+    expect(phone).toMatch(/min-height:\s*44px/);
+  });
+
+  it("phone: the active day pill's own border-colour reads filled, not outlined-plus-filled", () => {
+    const phone = findRule(PHONE.agenda, ".chq-pub-day-pill-active");
+    expect(phone).toMatch(/border-color:\s*var\(--chq-ink\)/);
   });
 });
 
