@@ -46,7 +46,7 @@ export const savedEmbedRoutes = new Hono<AppEnv>();
 // and only advances past a `.use()` when that middleware calls next() --
 // there is no re-matching pass afterward. `publicRoutes.route("/",
 // savedEmbedRoutes)` (./index.tsx:61) splices THIS sub-app's use()+handler in
-// ahead of ./index.tsx:106's own `.use("/embed/*", ...)`, so once this
+// ahead of ./index.tsx:106's own `.use("/embed/*"` registration, so once this
 // route matches, the parent's later `/embed/*` registration never runs for
 // it at all -- it's not "also" covered by the parent, it's covered ONLY
 // here. Deleting this line would not create a duplicate cache pass; it would

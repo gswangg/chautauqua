@@ -629,8 +629,8 @@ async function sendReminderEmails(
  * now returns the skipped roster (not just a count) -- this writes one
  * `email_log` row per dedupe-skipped contact through the same
  * `d1EmailLogWriter` every other send path uses, mirroring the field
- * discipline of src/routes/comms/send.ts:283-299 exactly: `status:
- * "skipped"`, `provider: "none"`, the same `sentAt` the real send uses, and
+ * discipline of src/routes/comms/send.ts exactly: `status: "skipped"`,
+ * `provider: "none"`, the same `sentAt` the real send uses, and
  * `bodyHtml: ""` because a skipped recipient never reaches the
  * shell-rendering step. The stored subject/bodyText are built through the
  * SAME buildReminderMessage every real send uses, with the portal link

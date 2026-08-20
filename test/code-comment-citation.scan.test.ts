@@ -484,7 +484,7 @@ const ALL_VIOLATIONS: Violation[] = POPULATION_FILES.flatMap((abs) =>
 // Thunderdome megabatch re-measurement: w11-bb and w11-cc each repaired 8
 // dead/drifted comment citations in this same batch, so the 37 this
 // instrument lane measured on its own base is stale. Integrated: 20.
-export const CODE_COMMENT_CITATION_CEILING = 20;
+export const CODE_COMMENT_CITATION_CEILING = 0;
 
 describe("code comment citation scan: src/** and app/src/** (DEC-967 doc-integrity lens widened to code comments)", () => {
   it("population sanity: walks a non-trivial number of source files", () => {

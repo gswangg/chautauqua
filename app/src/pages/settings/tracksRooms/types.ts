@@ -35,9 +35,10 @@ export function roomBaseline(room: Room): RoomForm {
 
 // DEC-856 (wave 65 amendment): a refusal's fields map is read by SHAPE --
 // name/color/capacity are the keys this panel's own controls own (the
-// server's "Invalid track"/"Invalid room" vocabulary, src/routes/api/
-// events.ts:416-536); any other key still renders, labelled "<key>:
-// <message>", rather than being dropped or collapsed into err.message.
+// server's "Invalid track"/"Invalid room" vocabulary, src/routes/api/events.ts,
+// ApiError "Invalid track"/"Invalid room" fields); any other key still
+// renders, labelled "<key>: <message>", rather than being dropped or
+// collapsed into err.message.
 export const TRACK_FIELD_KEYS: readonly string[] = ['name', 'color'];
 export const ROOM_FIELD_KEYS: readonly string[] = ['name', 'capacity'];
 

@@ -38,7 +38,7 @@ export type HubState = "full" | "between_cycles" | "fresh";
 
 /** Nulls-last ascending comparator over a nullable numeric field. Only
  * cfpCloseDate is ever nullable now (startDate/endDate are DB NOT NULL
- * columns, see schema.ts:116-117). */
+ * columns, see src/db/schema/event.ts `notNull()`). */
 function compareNullableAsc(a: number | null, b: number | null): number {
   if (a === null && b === null) return 0;
   if (a === null) return 1;

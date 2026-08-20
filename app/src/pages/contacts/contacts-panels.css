@@ -1277,8 +1277,9 @@
 @media (max-width: 700px) {
   /* -- from the former "Pipeline · 390" block ------------------------- */
   /* DEC-989 wave-w12-q: the Pipeline 390 frame draws ONE stage at a time,
-     picked from the `.chq-pill` strip below (PipelineBoard.tsx:374-380) --
-     `.chq-contacts-pipeline-phone-stages`/`.chq-contacts-pipeline-phone-
+     picked from the `.chq-pill` strip below
+     (app/src/pages/contacts/PipelineBoard.tsx`chq-contacts-pipeline-phone-stages`) --
+     `chq-contacts-pipeline-phone-stages`/`chq-contacts-pipeline-phone-
      list` are the frame's own phone markup, entirely separate from this
      five-column desktop board, which is hidden here. The desktop
      `min-width: 1000px` (contacts-panels.css:67) is still a phone-scoped

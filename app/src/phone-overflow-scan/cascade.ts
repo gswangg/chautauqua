@@ -5,8 +5,9 @@
 // THE HOLE this repairs: the old candidacy test dropped a top-level rule
 // from the population the instant ANY phone-scoped rule in the file named
 // the same selector token, whether or not that override touched the
-// flagged property (settings.css:1142 `.chq-settings-row-hint`'s top-level
-// `white-space: nowrap` was never checked because a wholly unrelated
+// flagged property (app/src/pages/settings/settings.css
+// `.chq-settings-row-hint`'s top-level `white-space: nowrap` was never
+// checked because a wholly unrelated
 // terminal phone rule at settings.css:1600 happened to declare only
 // `align-self: flex-end` for the same selector). The repair: every
 // top-level rule is ALWAYS a candidate, but it is checked against its

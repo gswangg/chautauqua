@@ -992,9 +992,9 @@
    Grow the anchor, absorb the padding with an equal negative inline
    margin so the row's layout does not shift.
 
-   DEC-937 wave-w12-q: Export CSV (ContactsApp.tsx:385) renders `<a
-   className="chq-btn chq-btn-secondary">` -- a PAINTED face (border +
-   background). The cancelled-padding idiom narrows a painted box's own
+   DEC-937 wave-w12-q: Export CSV (app/src/pages/contacts/ContactsApp.tsx)
+   renders an `<a>` with `className="chq-btn chq-btn-secondary"` -- a
+   PAINTED face (border + background). The cancelled-padding idiom narrows a painted box's own
    inline padding and bleeds it past its layout edge (DESIGN-RULINGS.md
    `The 44px floor, and how it gets evaded`), so `.chq-contacts-title-
    actions a` no longer carries the pair -- see its own rule below, which

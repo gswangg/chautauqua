@@ -141,9 +141,9 @@ export interface RoomForm {
 }
 
 // DEC-856 (wave 65 amendment): same rationale as TrackFormErrors -- the
-// server's "Invalid room" fields map (events.ts:416-536) is merged in
-// directly, so an index signature is needed for any key this panel doesn't
-// name below.
+// server's "Invalid room" fields map (src/routes/api/events.ts, ApiError
+// "Invalid room" fields) is merged in directly, so an index signature is
+// needed for any key this panel doesn't name below.
 export interface RoomFormErrors {
   name?: string;
   capacity?: string;
