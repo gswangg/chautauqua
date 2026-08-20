@@ -20,12 +20,13 @@ import { SummarySection } from './SummarySection';
 import { SettingsEditForm, SettingsField, SettingsFieldPair, SettingsSaveButton } from './SettingsEditForm';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
-import { DEC_888, DEC_731 } from '../../../../src/decisions';
+import { DEC_888, DEC_731, DEC_941 } from '../../../../src/decisions';
 import { MAX_LONG_TEXT_LENGTH, MAX_NAME_LENGTH } from '../../../../src/forms/validate';
 import { kindLabel, type FormFieldKind } from '../forms/types';
 
 void DEC_888;
 void DEC_731;
+void DEC_941;
 
 const SECTION_KEY = 'cfp';
 
@@ -334,7 +335,7 @@ export function CallForPapersPanel() {
         className="chq-link-button chq-settings-cfp-copy-btn"
         onClick={() => void handleCopyLink(publicLink)}
       >
-        {copyResult?.ok ? 'Copied!' : 'Copy'}
+        {copyResult?.ok ? 'Copied!' : 'Copy link'}
       </button>
       <div role="status" aria-live="polite" className="chq-copy-status">
         {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
