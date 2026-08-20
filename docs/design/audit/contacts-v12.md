@@ -131,3 +131,17 @@ component's core data-flow (the impact paragraph currently needs
 only when `impact` has loaded) and is a copy/structure decision, not a
 one-line fix -- left for a future wave rather than expanding v1-c's
 scope beyond its four assigned divergences.
+
+**Finding 4 — filed by v12m-w9-o-r1-a, not fixed (out of that task's file
+scope; DEC-959).** `docs/design/Chautauqua Contacts.dc.html:410` sets the
+"Contact · 390" head H1 at `font-size:25px; font-weight:700;
+letter-spacing:-0.04em`. `ContactDrawer`'s title renders through the
+shared `.chq-modal-title` class (`app/src/components/modal-frame.css:56`),
+which is `font-size: 23px` — 2px short of the frame's figure, and the
+class carries no `letter-spacing` declaration at all (the frame calls for
+`-0.04em`). This is the SAME shared modal-title class every other v12m
+drawer/modal renders through, so widening it is a register change, not a
+page-local one: DEC-613 wave-104's rule is that a page lane wires the
+shared class and files the register delta here for whichever task owns
+`modal-frame.css`, rather than forking a page-local heading style. Left
+OPEN; not scheduled by this task, which owns `ContactDrawer.tsx` only.

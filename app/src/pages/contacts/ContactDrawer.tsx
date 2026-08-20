@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import { loadEventsOnce, useCurrentEvent } from '../../lib/useCurrentEvent';
+import { useIsPhone } from '../../lib/useIsPhone';
 import type { ContactDetail, ContactListItem } from './types';
 import { fromRows, toRows, reservedValue, type CustomFieldRow } from './customFields';
 import { countOf } from '../../lib/plural';
@@ -92,6 +93,7 @@ function RecordRow({
   editor,
   rowId,
   error,
+  readOnly,
 }: {
   label: string;
   editing: boolean;
@@ -104,12 +106,18 @@ function RecordRow({
   // failed.
   rowId?: string;
   error?: string;
+  // DEC-959: Contact · 390's read mode (phone, not yet editing) renders the
+  // value as inert text -- reusing the existing readonly presentation the
+  // Labels row already carries -- instead of the click-to-edit button.
+  readOnly?: boolean;
 }) {
   return (
     <div className="chq-contacts-record-row" id={rowId} data-invalid={error ? 'true' : undefined}>
       <span className="chq-contacts-record-label">{label}</span>
       {editing ? (
         <div className="chq-contacts-record-editor">{editor}</div>
+      ) : readOnly ? (
+        <span className="chq-contacts-record-value chq-contacts-record-readonly">{display}</span>
       ) : (
         <button type="button" className="chq-contacts-record-value" onClick={onEdit}>
           {display}
@@ -152,6 +160,14 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   // label, not a control, and must never block the rest of the drawer.
   const { eventId: currentEventId } = useCurrentEvent();
   const [currentEventName, setCurrentEventName] = useState<string | undefined>(undefined);
+  // DEC-959: Contact · 390 is a READ screen with a two-control dock (Email /
+  // Edit) until the organiser explicitly asks to edit -- isPhone gates on
+  // useIsPhone (false whenever matchMedia is absent, i.e. every desktop
+  // width and jsdom by default), phoneEditing then flips the phone tree
+  // over to today's five-control edit bar unchanged.
+  const isPhone = useIsPhone();
+  const [phoneEditing, setPhoneEditing] = useState(false);
+  const readMode = isPhone && !phoneEditing;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -345,6 +361,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         display={value || NOTHING_RECORDED}
         rowId={controlIdFor(key)}
         error={fieldErrors[key]}
+        readOnly={readMode}
         editor={
           opts.multiline ? (
             <textarea
@@ -459,6 +476,10 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             />
           </label>
         </div>
+      ) : readMode ? (
+        <span className="chq-contacts-record-value chq-contacts-record-readonly">
+          {linksSummary.length > 0 ? linksSummary : NOTHING_RECORDED}
+        </span>
       ) : (
         <button type="button" className="chq-contacts-record-value" onClick={() => setEditingField('links')}>
           {linksSummary.length > 0 ? linksSummary : NOTHING_RECORDED}
@@ -494,7 +515,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     return (
       <div className="chq-contacts-record-row" key={key}>
         <span className="chq-contacts-record-label">
-          {editing ? (
+          {editing && !readMode ? (
             <input
               className="chq-input"
               aria-label={`Custom field ${index + 1} key`}
@@ -506,7 +527,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             row.key || NOTHING_RECORDED
           )}
         </span>
-        {editing ? (
+        {editing && !readMode ? (
           <div className="chq-contacts-record-editor">
             <input
               className="chq-input"
@@ -521,6 +542,8 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               Remove
             </button>
           </div>
+        ) : readMode ? (
+          <span className="chq-contacts-record-value chq-contacts-record-readonly">{row.value || NOTHING_RECORDED}</span>
         ) : (
           <button type="button" className="chq-contacts-record-value" onClick={() => setEditingField(key)}>
             {row.value || NOTHING_RECORDED}
@@ -563,9 +586,11 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                   display), and Save's promise covers the FIELD ROWS only
                   (a headshot upload, Delete, Email and Add to an event all
                   act on their own, without Save). */}
-              <p className="chq-meta chq-contacts-record-save-caption">
-                Click an editable row to change it — nothing in these rows is saved until you press Save.
-              </p>
+              {!readMode && (
+                <p className="chq-meta chq-contacts-record-save-caption">
+                  Click an editable row to change it — nothing in these rows is saved until you press Save.
+                </p>
+              )}
 
               {/* A20 (w26-c): four titled groups, in this order — Contact,
                   Profile, This event, Notes. Every field renders (no
@@ -612,9 +637,11 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                   maxLength: MAX_TEXT_LENGTH,
                 })}
                 {customFieldNodes}
-                <button type="button" className="chq-btn chq-btn-secondary chq-contacts-add-field" onClick={addRow}>
-                  Add field
-                </button>
+                {!readMode && (
+                  <button type="button" className="chq-btn chq-btn-secondary chq-contacts-add-field" onClick={addRow}>
+                    Add field
+                  </button>
+                )}
               </FieldGroup>
 
               <FieldGroup title="Notes">
@@ -654,35 +681,57 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                 DEC-616 wave-70 amendment: the scope sentence moved onto its
                 own line above the action bar so it (and Save) can never be
                 clipped behind the drawer's right edge at 520px. */}
-            <p className="chq-meta chq-contacts-save-scope-note">
-              {`Saves both the org-wide record and ${currentEventName ?? 'this event'}'s facts`}
-            </p>
-            <div className="chq-contacts-drawer-actions">
-              <button
-                type="button"
-                className="chq-btn chq-btn-destructive-tertiary chq-contacts-delete-trigger"
-                onClick={() => {
-                  setDeleteError(null);
-                  setShowDeleteConfirm(true);
-                }}
-              >
-                Delete this contact
-              </button>
-              <div className="chq-contacts-drawer-actions-right">
-                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEmail(true)}>
-                  Email
+            {!readMode && (
+              <>
+                <p className="chq-meta chq-contacts-save-scope-note">
+                  {`Saves both the org-wide record and ${currentEventName ?? 'this event'}'s facts`}
+                </p>
+                <div className="chq-contacts-drawer-actions">
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-destructive-tertiary chq-contacts-delete-trigger"
+                    onClick={() => {
+                      setDeleteError(null);
+                      setShowDeleteConfirm(true);
+                    }}
+                  >
+                    Delete this contact
+                  </button>
+                  <div className="chq-contacts-drawer-actions-right">
+                    <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEmail(true)}>
+                      Email
+                    </button>
+                    <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowAddToEvent(true)}>
+                      Add to event
+                    </button>
+                    <button type="button" className="chq-btn chq-btn-secondary" disabled={closeDisabled} onClick={onClose}>
+                      Cancel
+                    </button>
+                    <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* DEC-959: Contact · 390's read mode replaces the five-control
+                action bar with the frame's two-control dock (Chautauqua
+                Contacts.dc.html:434-435) -- Email opens the same
+                BulkEmailModal the desktop Email button opens, Edit flips
+                the drawer into today's edit tree. data-chq-phone-dock is
+                what styles.css:2553's tabbar-hiding rule and
+                phone-dock-declares.scan.test.ts both key off. */}
+            {readMode && (
+              <div className="chq-phone-dock" data-chq-phone-dock>
+                <button type="button" className="chq-btn chq-btn-primary" onClick={() => setShowEmail(true)}>
+                  {firstName.trim() ? `Email ${firstName.trim()}` : 'Email'}
                 </button>
-                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowAddToEvent(true)}>
-                  Add to event
-                </button>
-                <button type="button" className="chq-btn chq-btn-secondary" disabled={closeDisabled} onClick={onClose}>
-                  Cancel
-                </button>
-                <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
-                  Save
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setPhoneEditing(true)}>
+                  Edit
                 </button>
               </div>
-            </div>
+            )}
           </>
         )}
       </ModalFrame>
