@@ -324,8 +324,11 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
           onClose={() => setAdding(false)}
           actions={
             <>
+              {/* Chautauqua Settings.dc.html:1469 -- one primary label ('Add it')
+                  for both kinds; the Kind chips switch WHAT is added, not the
+                  verb on the submit control (DEC-650 wave-130 amendment). */}
               <button type="submit" className="chq-btn chq-btn-primary">
-                {addingKind === 'wiki' ? 'Add wiki page' : 'Upload file'}
+                Add it
               </button>
               <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setAdding(false)}>
                 Cancel
@@ -333,15 +336,18 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
             </>
           }
         >
+          {/* Chautauqua Settings.dc.html:1455 label 'Name', :1457 hint 'What
+              speakers see in the list' -- rendered through FormRow's own
+              help slot rather than a repeated placeholder. */}
           <FormRow
-            label="Title"
-            htmlFor="resource-title"
+            label="Name"
+            htmlFor="resource-name"
             error={addingKind === 'wiki' ? fieldErrors.title : undefined}
+            help="What speakers see in the list"
           >
             <input
-              id="resource-title"
+              id="resource-name"
               className="chq-input"
-              placeholder="Title"
               value={addingKind === 'wiki' ? newResource.title : fileTitle}
               onChange={(e) =>
                 addingKind === 'wiki'
