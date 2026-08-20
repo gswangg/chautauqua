@@ -199,7 +199,21 @@ function findOffenders(): string[] {
 // independent drains of disjoint offender sets, merged in one pass; the constant
 // below is the re-measured combined truth of the merged tree, not any single
 // branch's figure. This ratchet may only fall.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 47;
+//
+// 2026-08-20 (task w12-l, DEC-393/DEC-989/DEC-576): drained review.css's 12
+// offenders and scorecard.css's 1 -- 9 button-only `*-actions` containers
+// exempted (PlanEditor.tsx/ResultsTable.tsx/Scorecard.tsx render only
+// chq-btn children), .chq-pill exempted per DEC-576 composition (the
+// element-qualified `a.chq-pill` floor lives in app/src/styles.css, review
+// renders .chq-pill only as button/span), and 3 real bare-anchor rules
+// (.chq-review-add-link x2, .chq-review-plan-action-link,
+// .chq-review-section-head-actions .chq-link-button) strengthened from
+// `display: inline-flex` to `display: flex` (the predicate requires the
+// exact literal). One new floor added for .chq-review-queue-title's Link
+// form and .chq-review-results-head-actions' Download-CSV/See-all links,
+// which had no phone rule at all. 47 -> 34, re-measured on this branch;
+// lowered from the wave-120 megabatch value by exactly 13.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 34;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {

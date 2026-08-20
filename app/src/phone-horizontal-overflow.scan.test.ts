@@ -598,8 +598,18 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // The 7 survivors are listed in docs/design/audit/overflow-390-v12.md; two
 // of them (`.chq-review-criteria-eyebrow`, `.chq-reviewer-plan-head-row`)
 // are `display: none` at 390 and were examined and deliberately left by
-// w8-c, which is why this ceiling is 7 rather than 5.
-export const OVERFLOW_OFFENDERS_CEILING = 7;
+// w8-c, which is why this ceiling was 7 rather than 5.
+//
+// 2026-08-20 (task w12-l, DEC-989): drained both. The scan reads declared
+// property VALUES regardless of `display`, so display:none never clears a
+// candidate on its own -- `.chq-review-criteria-eyebrow` gained an explicit
+// `overflow: hidden; text-overflow: ellipsis;` escape in its phone rule
+// (harmless: the element never paints there) and
+// `.chq-reviewer-plan-head-row`'s phone rule gained `grid-template-columns:
+// 1fr;` clearing its fixed-track sum (also harmless: display:none). Neither
+// changes anything a user can see; both were re-measured by forcing this
+// constant to -1 and reading the offender list. 7 -> 5.
+export const OVERFLOW_OFFENDERS_CEILING = 5;
 
 describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('found more than one CSS file to scan (vacuous-population tripwire, file side)', () => {
