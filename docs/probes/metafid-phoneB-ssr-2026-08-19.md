@@ -63,6 +63,15 @@
   the public agenda/my-schedule and CFP wizard docks are unverified and
   remain open): src/routes/portal/shared.tsx `{props.dock ? <div class="chq-portal-dock">{props.dock as any}</div> : null}`
   (drift-proof citation, DEC-967 wave-115).
+  CLOSED (re-verified wave-140/w15-ff): the CFP wizard clause is now also
+  closed — `src/routes/public/cfp.css.ts`'s task-w13-k terminal phone
+  block comment states `.chq-cfp-actions` IS the frame's sticky dock band
+  ("the dock IS the sticky band, no `data-chq-phone-dock` declaration
+  needed. Every control..."), reusing the same SSR phone-dock footer band
+  every other SSR phone dock shares (DEC-576 wave-110 amendment cited in
+  the same comment). The public agenda/my-schedule docks clause was NOT
+  re-verified this wave (no `data-chq-phone-dock`/dock prop found under
+  `src/routes/public/agenda*` by grep) and stays open.
 - SCAN POPULATION: widen phone-tap-target.scan + the 390-overflow scan roots
   from app/src to include src/routes/** (public/portal/docs/auth were never
   scanned; most §5 floor misses would have been caught).
@@ -98,6 +107,14 @@
   (drift-proof citation, DEC-967 wave-115 -- quotes the imported identifier
   the counter-cap computation calls, not the whole statement, so the
   citation survives concurrent edits to this file).
+  CLOSED (re-verified wave-140/w15-ff, task-w13-k, same evidence as
+  round-2 WAVE B "CFP column 290px vs 358 budget"): the column-budget
+  clause is now also closed —
+  `src/routes/public/cfp.css.ts`'s terminal phone block declares
+  `main.chq-measure:has(.chq-cfp-body) { padding-inline: 0; }` so the
+  outer `<main class="chq-measure">`'s padding no longer stacks with
+  `.chq-cfp-body`'s own 16px left/right (single gutter owner, per the
+  rule's own comment).
   portal footer 93px ink stub +
   duplicate Sign out; overview remind-all breaks gutters; tab-bar dot
   flow/baseline defects (dot above label, all five items, per frames);

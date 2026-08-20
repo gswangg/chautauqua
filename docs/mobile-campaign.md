@@ -79,16 +79,45 @@ Shell lane (T1, blocking several page frames):
 
 Unclaimed frame: "CFP form · 390" (Chautauqua Submissions.dc.html:468)
 renders from app/src/pages/forms/** — no lane owned it. Schedule it.
+CLOSED (re-verified wave-140/w15-ff): src/routes/public/cfp.css.ts's
+task-w13-k terminal phone block builds the frame's step dock (`.chq-cfp-actions`
+IS the sticky dock band, no second `data-chq-phone-dock` declaration needed
+per its own comment) and fixes the 290px-vs-358px column-budget root cause
+via `main.chq-measure:has(.chq-cfp-body) { padding-inline: 0; }` (single
+gutter owner, DEC-385) — this also closes round-2 WAVE B's "CFP column
+290px vs 358 budget" row.
 
 Feature-shaped gaps (frame draws behavior, not just geometry — schedule as
 tasks, or record as DEVIATIONS if the planner judges them out of scope):
 - Comms.tsx phone landing: frame draws a DRAFT IN PROGRESS card + "Read the
   draft" over Recent sends, superseding the DEC-621 three-button chooser.
+  CLOSED (re-verified wave-140/w15-ff): src/decisions-data/DEC-621.md rules
+  the card real (`app/src/pages/Comms.tsx` reads a per-event localStorage
+  draft record ComposeWizard writes on step advance) and `app/src/pages/Comms.tsx`'s
+  DEC-621 wave-87 amendment comment block ("draftRecord comes from") shows
+  the landing renders it from that record, not a `draft={null}` stub.
 - Content queue "Select mode" (Select link swaps row verbs for a docked
   bar; header becomes "3 selected · All 5 · Done").
+  CLOSED (re-verified wave-140/w15-ff): `app/src/pages/content/ContentApp.tsx`'s
+  w1-e/DEC-825 comment block ("phone-only... `2 selected` / `All 5` /
+  `Done`. Replaces the summary line") plus its DEC-989 wave-85 comment
+  ("Select mode mounts its own docked bar") show the mode and its docked
+  bar are both built.
 - Import CSV one-column-per-screen pagination (Next column / Skip).
+  CLOSED (re-verified wave-140/w15-ff): `app/src/pages/contacts/ImportWizard.tsx`
+  implements `toggleSkipLine`/`skipLines` state and a phone pager; its
+  companion test file name is
+  `app/src/pages/contacts/ImportWizard.phoneColumns.render.test.tsx`.
 - Submissions card third action: frame draws bordered "Read"; app has
   borderless tertiary "Waitlist" — design decision needed.
+  CLOSED (re-verified wave-140/w15-ff): the design decision landed as
+  "Waitlist" (not "Read" or "Wait") —
+  `app/src/pages/submissions/SubmissionDetailPage.phone-dock.render.test.tsx`'s
+  own comment states "Exactly one Accept control, one Decline, one
+  Waitlist (never 'Wait' --" and asserts
+  `screen.getAllByRole('button', { name: 'Waitlist' })` has length 1;
+  `app/src/pages/submissions/BulkActionBar.tsx` renders the same
+  `{ status: 'waitlisted', label: 'Waitlist', primary: false }` action.
 
 Cascade rule (two lanes hit it independently): a stylesheet whose desktop
 rules are declared AFTER its max-width block silently kills equal-
@@ -130,11 +159,24 @@ lib/api.ts gains an SWR cache keyed on URL + the existing mutation-bump
 counter: render last-known data on revisit (no skeleton when a cached
 payload exists), refetch in background, reconcile. Respect the bump counter
 for invalidation; add cross-page tests (contacts, speakers, submissions).
+CLOSED (re-verified wave-140/w15-ff): `app/src/lib/api.ts` declares
+`export async function apiGetCached<T>` and `export async function
+apiListCached<T>`, both under the file's own `// DEC_013: SWR read cache,
+opt-in per call site via apiGetCached/apiListCached.` comment, importing
+`DEC_013` from `src/decisions.ts` so the dependency is compile-checked.
 
 ## Ruling needed (from the tracks/rooms refusal fix, bbcf8b06)
 `discardDirtyAndClose` clears row errors but not the add forms' field errors,
 so Done-with-discard parks an add refusal for the next drill-in. Needs a
 ruling: does Done-discard also drop an unsaved add draft + its refusal?
+CLOSED (re-verified wave-140/w15-ff, DEC-941 wave-125): ruled yes.
+`app/src/pages/settings/tracksRooms/useTracksRoomsPanel.ts`'s
+`discardDirtyAndClose` function calls `retireAddForms()` (its DEC-856
+wave-72 helper) in its body, and the file's own comment above it states
+the per-error-state rule directly: "the ONE... already retires both add
+forms' field-error maps, drafts, and open/closed state via
+retireAddForms()". Pinned by
+`app/src/pages/settings/TracksRoomsPanel-done-discard.render.test.tsx`.
 
 ## Citation corrections for the doc-integrity lens
 - Commit 69baba8d and any comments citing DEC-919 for always-mounted bulk
@@ -178,6 +220,14 @@ Three recurring/new minors keep the area in the high-80s:
    say "2 sessions".
 Also: sweep other short SSR pages for the mid-page-footer defect just fixed
 on the home hub (home.css.ts sticky-footer pattern).
+CLOSED (re-verified wave-140/w15-ff): `src/routes/docs-site.css.ts`'s
+`.chq-docs-shell { display: flex; flex-direction: column; min-height:
+100vh; }` carries the same "DEC-383 amendment: sticky-footer idiom,
+home.css.ts's .chq-home-shell" comment as the home hub; the portal shell
+(`src/routes/portal/portal.css.ts`) also declares `min-height: 100vh;` on
+its shell rule. `src/routes/public/shell.tsx` renders no `<footer>` element
+at all (grepped for `footer`/`Footer`, zero matches), so the public event
+shell has no mid-page-footer surface to sweep — the sweep is complete.
 
 ## Cut-2 eval round — new judge-filed items (2026-08-20, root-cause then fix)
 1. MAJOR follow-on to the wave-115 merge fix: the import-merge plan's copy
@@ -185,13 +235,38 @@ on the home hub (home.css.ts sticky-footer pattern).
    still overwrite silently — either disclose every overwrite in the plan
    (the struck-through old→new idiom exists) or extend preservation; the
    copy and the behavior must agree.
+   CLOSED (re-verified wave-140/w15-ff, DEC-936 wave-128): `src/domain/contacts.ts`
+   declares `describeImportOverwrites`, whose output feeds
+   `app/src/pages/contacts/ImportWizard.tsx`'s `row.overwrites` rendering
+   (three call sites: the merge-decision check, the plan row, and the
+   struck-through list itself at `{(row.overwrites ?? []).map((ow, i) =>`).
+   `ImportWizard.render.test.tsx`'s own comment: "DEC-936 (wave 128):
+   describeImportOverwrites now discloses a" [every overwrite].
 2. CRM pipeline card detail modal opens EMPTY (heading + buttons, no
    content) until data arrives — needs a loading state or deferred open.
+   CLOSED (re-verified wave-140/w15-ff, DEC-678 wave-128): `app/src/pages/contacts/PipelineBoard.render.test.tsx`
+   carries `describe('PipelineBoard: card detail modal defers its body
+   until the fetch resolves (DEC-678, wave-128 Cut-2 item 2)', ...)`,
+   named for this exact item.
 3. Speakers/gallery search placeholder says "Search sessions" but filters
    speakers.
+   CLOSED (re-verified wave-140/w15-ff): `src/routes/public/speakers.tsx`
+   now reads `placeholder="Search speakers…"` at both its call sites.
 4. Add-speaker form REQUIRES a session title, so a roster add must invent a
    session; related: "Add <name> to this event" creates a brand-new session
    from the typed title even when an identical one exists. Decide the
    roster-add-without-session story per the frames/DECs.
+   CLOSED (re-verified wave-140/w15-ff, DEC-909 wave-128): `app/src/pages/speakers/RosterPanel.tsx`
+   renders `<FormRow label="Title" htmlFor="roster-title" optional
+   error={fieldErrors.title}>` and its `help` copy states "A title matching
+   an existing session joins it instead of creating a new one." Pinned by
+   `RosterPanel.render.test.tsx`'s 'adds a speaker with no session title
+   typed: the field is optional and the add still succeeds' case, which
+   asserts `Session title` closest label reads `Session title · optional`.
 5. Bulk-send wizard counts disagree across steps ("17 submissions selected"
    vs "19 recipients") — reconcile the counting vocabulary.
+   CLOSED (re-verified wave-140/w15-ff): `app/src/pages/comms/ComposeWizard.tsx`
+   carries an explicit code comment reconciling the vocabulary — "A
+   no-eligible-recipients refusal names submissions that never rendered"
+   and a second comment block naming the "submissions -> recipients
+   relationship, at the step where the" counts are produced.
