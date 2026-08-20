@@ -158,6 +158,15 @@ function PasswordRevealBlock({
       <p className="chq-settings-people-closing-note">
         Closing this dialog is the last time you see it — after that only a reset can replace it.
       </p>
+      {/* DEC-650 amendment (wave 133), :1498: the reset RESULT dialog's
+          second line, verbatim -- appended as its own sentence rather than
+          replacing the app's longer, truer first line above. */}
+      {revealed.context === 'reset' ? (
+        <p className="chq-settings-people-closing-note">
+          Their existing sessions were ended, so they are signed out on every device. Pass this on yourself —
+          resetting sends no email.
+        </p>
+      ) : null}
       {revealed.context === 'invite' ? (
         <p className="chq-settings-people-closing-note">
           {revealed.welcomeEmail === 'sent'
@@ -481,6 +490,7 @@ export function PeopleRolesPanel() {
         <ModalFrame
           as="form"
           title="Invite someone"
+          subtitle="They can sign in as soon as you do this"
           onClose={closeInviteDialog}
           closeDisabled={creating}
           modalClassName="chq-people-invite-modal"
@@ -516,6 +526,13 @@ export function PeopleRolesPanel() {
             The account is created straight away — the password appears on the next screen, so nobody waits for an
             acceptance that will never come.
           </p>
+          {/* DEC-650 amendment (wave 133), :1309: the frame's own footer
+              note under the invite note box -- verbatim, not a paraphrase
+              of the paragraph above. */}
+          <p className="chq-people-invite-note">
+            We generate a password and show it to you once, on the next screen. There is no pending invitation to
+            chase.
+          </p>
           {error && (
             <div className="chq-error" role="alert">
               {error}
@@ -526,6 +543,16 @@ export function PeopleRolesPanel() {
               ) : null}
             </div>
           )}
+          {/* DEC-650 amendment (wave 133), :1367: the invite REJECTED
+              state's own rule-11 line ('name what survived') -- renders
+              only when the refusal is a duplicate email, alongside the
+              existing field message rather than replacing it. */}
+          {duplicateUser ? (
+            <p className="chq-settings-people-closing-note">
+              To change what they can see, change their role on the list instead. Everything you typed is still
+              below.
+            </p>
+          ) : null}
           <FormRowPair>
             <FormRow label="First name" htmlFor="people-invite-first-name" error={fieldErrors.firstName}>
               <input
