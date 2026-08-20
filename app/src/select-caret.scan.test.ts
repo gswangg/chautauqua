@@ -59,10 +59,17 @@ function walk(dir: string, suffix: string): string[] {
 // Paths are relative to the repo root (REPO_ROOT below), not app/src, so
 // entries from both the SPA (app/src/**) and SSR (src/**) trees share one
 // unambiguous key space.
-const DISCLOSURE_TOGGLE_OK: Array<[file: string, line: number, reason: string]> = [
+// DEC-967 amendment (wave-121): re-keyed on a source LITERAL rather than a
+// line number. A line number drifts every time another lane edits code
+// above the toggle (this entry alone was re-pointed 1303 -> 1378 by the
+// wave-119 train); a distinctive source substring on the ▾ line does not.
+// `anchorLiteral` is resolved against the file below (resolveAnchorLine),
+// which fails loudly if the literal is absent or ambiguous -- an anchor
+// that cannot uniquely locate its line is not an anchor.
+const DISCLOSURE_TOGGLE_OK_SOURCE: Array<[file: string, anchorLiteral: string, reason: string]> = [
   [
     'app/src/pages/review/ResultsTable.tsx',
-    485,
+    "{expanded ? '▾' : '▸'} {countOf(row.count, 'review')}",
     "expand/collapse disclosure toggle ({expanded ? '▾' : '▸'} count) -- the " +
       'glyph precedes its label and flips direction with `expanded`, unlike a ' +
       'select caret, which always points down and always trails the label in ' +
@@ -70,11 +77,42 @@ const DISCLOSURE_TOGGLE_OK: Array<[file: string, line: number, reason: string]> 
   ],
   [
     'app/src/pages/submissions/SubmissionDetailPage.tsx',
-    1378,
+    "criteriaOpen ? '▾' : '▸'",
     "expand/collapse criteria disclosure toggle ({criteriaOpen ? '▾' : '▸'} " +
       'count) -- same disclosure affordance as ResultsTable.tsx:485.',
   ],
 ];
+
+/** Resolves an anchor literal to its 1-based line number inside `file`
+ * (relative to REPO_ROOT). Fails loudly -- no fallback -- if the literal is
+ * missing or matches more than once, since an ambiguous anchor cannot
+ * uniquely identify a line. */
+function resolveAnchorLine(file: string, anchorLiteral: string): number {
+  const content = readFileSync(join(REPO_ROOT, file), 'utf-8');
+  const first = content.indexOf(anchorLiteral);
+  if (first === -1) {
+    throw new Error(
+      `DISCLOSURE_TOGGLE_OK anchor not found: ${JSON.stringify(anchorLiteral)} does not ` +
+        `occur in ${file}. Update the anchor literal to match the current source.`,
+    );
+  }
+  const second = content.indexOf(anchorLiteral, first + 1);
+  if (second !== -1) {
+    throw new Error(
+      `DISCLOSURE_TOGGLE_OK anchor is ambiguous: ${JSON.stringify(anchorLiteral)} occurs ` +
+        `more than once in ${file}. An ambiguous anchor is not an anchor -- make it more ` +
+        'distinctive.',
+    );
+  }
+  return content.slice(0, first).split('\n').length;
+}
+
+const DISCLOSURE_TOGGLE_OK: Array<[file: string, line: number, reason: string]> =
+  DISCLOSURE_TOGGLE_OK_SOURCE.map(([file, anchorLiteral, reason]) => [
+    file,
+    resolveAnchorLine(file, anchorLiteral),
+    reason,
+  ]);
 
 const DISCLOSURE_TOGGLE_OK_KEYS = new Set(
   DISCLOSURE_TOGGLE_OK.map(([file, line]) => `${file}:${line}`),
@@ -105,6 +143,32 @@ describe('select-caret scan (DEC-993 wave-19 amendment, DESIGN-RULINGS B8)', () 
       expect(lines[line - 1], `${file}:${line} is out of range`).toBeDefined();
       expect(lines[line - 1]).toContain('▾');
     }
+  });
+
+  // DEC-967 amendment (wave-121): resolveAnchorLine controls -- proves the
+  // re-key mechanism itself fails loudly rather than silently producing a
+  // wrong or vacuous line, since the whole point of the re-key is that a
+  // future rename/removal of the anchor must break loudly, not silently.
+  it('resolveAnchorLine throws when the anchor literal is missing from the file', () => {
+    expect(() =>
+      resolveAnchorLine(
+        'app/src/pages/review/ResultsTable.tsx',
+        'this literal does not occur anywhere in the file, guaranteed',
+      ),
+    ).toThrow(/anchor not found/);
+  });
+
+  it('resolveAnchorLine throws when the anchor literal is ambiguous (matches more than once)', () => {
+    expect(() =>
+      resolveAnchorLine('app/src/pages/review/ResultsTable.tsx', "type=\"button\""),
+    ).toThrow(/anchor is ambiguous/);
+  });
+
+  it('resolveAnchorLine resolves a present, unique anchor to its real line', () => {
+    const [file, anchorLiteral] = DISCLOSURE_TOGGLE_OK_SOURCE[1]!;
+    const line = resolveAnchorLine(file, anchorLiteral);
+    const content = readFileSync(join(REPO_ROOT, file), 'utf-8');
+    expect(content.split('\n')[line - 1]).toContain(anchorLiteral);
   });
 
   // DEC-808 wave-99 amendment: the population is every .tsx under
