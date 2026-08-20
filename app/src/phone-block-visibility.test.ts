@@ -20,13 +20,19 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEC_919 } from '../../src/decisions';
+import { DEC_919, DEC_967, DEC_991 } from '../../src/decisions';
 
 void DEC_919; // wave-109 amendment: closes this scan's "no top-level rule at all" escape
 // hatch for phone-named classes that are mounted UNCONDITIONALLY in markup (the premise
 // that such a class "only exists inside a phone-only container that is itself hidden"
 // is false for a bare node in a visible parent -- PlanEditor.tsx:1565/:2170 were exactly
 // that bug).
+void DEC_967; // wave-117 amendment: a phone class hidden by its container is not an
+// offender, and an exemption must name a receipt the scan itself re-checks -- the
+// COVERED_BY map below implements exactly that shape (name the ancestor, then verify
+// the ancestor itself passes hasTopLevelDisplayNone; an ancestor that stops hiding
+// re-exposes every child it covered).
+void DEC_991; // cited per task w6-f: the exemption-must-name-a-checked-receipt shape.
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_SRC = HERE;
@@ -41,7 +47,32 @@ const ROUTES_SRC = join(HERE, '..', '..', 'src');
  * BOTH desktop and phone widths, so they are exempt from the top-level
  * hidden-or-absent rule. Each entry names the reason so the exemption is
  * reviewable, not a silent escape hatch. */
-export const NOT_PHONE_ONLY: Array<[selector: string, reason: string]> = [];
+export const NOT_PHONE_ONLY: Array<[selector: string, reason: string]> = [
+  [
+    '.chq-phone-head',
+    'DEC-976: shared v12 phone page-scaffold primitive (styles.css:2461, inside the ' +
+      'sheet\'s one terminal max-width:700px block only, no top-level rule at all). Not ' +
+      'a phone-only affordance -- it is the sticky head band consuming pages compose ' +
+      'onto their own markup unconditionally (Overview.tsx:285, ReviewerQueue.tsx:641/' +
+      ':780/:785, RosterPanel.tsx:465, HistoryTab.tsx:156, TemplatesTab.tsx:203, ' +
+      'FormsPage.tsx:326), genuinely rendered at both widths -- above 700px it is a ' +
+      'documented no-op (it never receives a top-level rule, so it inherits whatever ' +
+      'layout its co-applied page-specific class supplies), never desktop-hidden.',
+  ],
+  [
+    '.chq-phone-head-drill',
+    'Same DEC-976 shared scaffold primitive as .chq-phone-head above (styles.css:2480, ' +
+      'inside the same terminal max-width:700px block, no top-level rule at all) -- the ' +
+      'drill-register title-size modifier, always co-applied alongside .chq-phone-head.',
+  ],
+  [
+    '.chq-phone-body',
+    'Same DEC-976 shared scaffold primitive (styles.css:2498, inside the same terminal ' +
+      'max-width:700px block, no top-level rule at all) -- the scrolling body band ' +
+      'consuming pages compose onto their own markup unconditionally (Overview.tsx:304, ' +
+      'ReviewerQueue.tsx:201, RosterPanel.tsx:480), genuinely rendered at both widths.',
+  ],
+];
 
 function walk(dir: string, suffix: string): string[] {
   const out: string[] = [];
@@ -322,8 +353,88 @@ function hasTopLevelDisplayNone(selector: string): boolean {
   return false;
 }
 
+// --- DEC-967 wave-117 amendment: a phone class hidden by its container ----
+// --- is not an offender -----------------------------------------------
+//
+// The bare NOT_PHONE_ONLY allowlist below has no model of containment: a
+// class mounted only inside an already-hidden ancestor needs no top-level
+// display:none rule of its own (it never paints -- its ancestor's
+// display:none removes the whole subtree). But a silent "it's fine,
+// verified once" allowlist entry is exactly the kind of licence DEC-967
+// forbids: the ancestor could stop being hidden on a later edit and every
+// child it used to cover would re-leak with nobody re-checking.
+//
+// COVERED_BY is the DEC-967/DEC-991 shape instead: each entry names the
+// covering ANCESTOR selector, and the exemption is honoured ONLY when that
+// named ancestor itself currently passes hasTopLevelDisplayNone -- a
+// receipt the scan re-checks on every run, not a one-time licence. If the
+// ancestor's rule is ever removed or weakened, every class it covers falls
+// straight back into MARKUP_OFFENDERS.
+const COVERED_BY: Array<[selector: string, ancestor: string, reason: string]> = [
+  // .chq-comms-phone-landing (comms.css) is top-level display:none; every
+  // one of these is rendered only as a descendant of that div in Comms.tsx
+  // (the landing title/subtitle, the PhoneDraftCard component mounted at
+  // Comms.tsx:332, and the "Recent sends" band below it).
+  ['.chq-comms-phone-draft-card', '.chq-comms-phone-landing', 'PhoneDraftCard.tsx renders this only inside <PhoneDraftCard> which Comms.tsx mounts inside .chq-comms-phone-landing (Comms.tsx:332).'],
+  ['.chq-comms-phone-draft-eyebrow', '.chq-comms-phone-landing', 'Descendant of .chq-comms-phone-draft-card, see above.'],
+  ['.chq-comms-phone-draft-honesty', '.chq-comms-phone-landing', 'Descendant of .chq-comms-phone-draft-card, see above.'],
+  ['.chq-comms-phone-draft-meta', '.chq-comms-phone-landing', 'Descendant of .chq-comms-phone-draft-card, see above.'],
+  ['.chq-comms-phone-draft-read', '.chq-comms-phone-landing', 'Descendant of .chq-comms-phone-draft-card, see above.'],
+  ['.chq-comms-phone-draft-subject', '.chq-comms-phone-landing', 'Descendant of .chq-comms-phone-draft-card, see above.'],
+  ['.chq-comms-phone-landing-subtitle', '.chq-comms-phone-landing', 'Comms.tsx:321, direct child of the landing div.'],
+  ['.chq-comms-phone-landing-title', '.chq-comms-phone-landing', 'Comms.tsx:317, direct child of the landing div.'],
+  ['.chq-comms-phone-recent-head', '.chq-comms-phone-landing', 'Comms.tsx:348, direct child of the landing div.'],
+  ['.chq-comms-phone-recent-row', '.chq-comms-phone-landing', 'Comms.tsx:367, child of the landing div (mapped batches).'],
+  ['.chq-comms-phone-recent-subject', '.chq-comms-phone-landing', 'Descendant of .chq-comms-phone-recent-row, see above.'],
+  ['.chq-comms-phone-recent-template', '.chq-comms-phone-landing', 'Descendant of .chq-comms-phone-recent-row, see above.'],
+  ['.chq-comms-phone-recent-when', '.chq-comms-phone-landing', 'Descendant of .chq-comms-phone-recent-row, see above.'],
+
+  // .chq-contacts-import-phone-column / -dock (contacts-panels.css) are
+  // both top-level display:none; every one of these is rendered only as a
+  // descendant, ImportWizard.tsx:966-998 (the column card) and :1056+ (the
+  // sticky next/skip dock).
+  ['.chq-contacts-import-phone-eyebrow', '.chq-contacts-import-phone-column', 'ImportWizard.tsx:967, direct child of the phone column card.'],
+  ['.chq-contacts-import-phone-name', '.chq-contacts-import-phone-column', 'ImportWizard.tsx:970, direct child of the phone column card.'],
+  ['.chq-contacts-import-phone-rule', '.chq-contacts-import-phone-column', 'ImportWizard.tsx:976, direct child of the phone column card.'],
+  ['.chq-contacts-import-phone-rule-label', '.chq-contacts-import-phone-column', 'Descendant of .chq-contacts-import-phone-rule, see above.'],
+  ['.chq-contacts-import-phone-samples', '.chq-contacts-import-phone-column', 'ImportWizard.tsx:972, direct child of the phone column card.'],
+  ['.chq-contacts-import-phone-target-input', '.chq-contacts-import-phone-column', 'Descendant of .chq-contacts-import-phone-targets, see below.'],
+  ['.chq-contacts-import-phone-target-mark', '.chq-contacts-import-phone-column', 'Descendant of .chq-contacts-import-phone-targets, see below.'],
+  ['.chq-contacts-import-phone-target-row', '.chq-contacts-import-phone-column', 'Descendant of .chq-contacts-import-phone-targets, see below.'],
+  ['.chq-contacts-import-phone-targets', '.chq-contacts-import-phone-column', 'ImportWizard.tsx:980, direct child of the phone column card.'],
+  ['.chq-contacts-import-phone-next', '.chq-contacts-import-phone-dock', 'ImportWizard.tsx:1059, direct child of the sticky phone dock.'],
+  ['.chq-contacts-import-phone-skip', '.chq-contacts-import-phone-dock', 'ImportWizard.tsx:1073, direct child of the sticky phone dock.'],
+
+  // .chq-contacts-pipeline-phone-list (contacts-panels.css) is top-level
+  // display:none; the card and its children are the <li> markup mapped
+  // inside that <ul> (PipelineBoard.tsx:381-452).
+  ['.chq-contacts-pipeline-phone-card', '.chq-contacts-pipeline-phone-list', 'PipelineBoard.tsx:388, the <li> mapped inside the phone-only <ul class="chq-contacts-pipeline-phone-list">.'],
+  ['.chq-contacts-pipeline-phone-card-body', '.chq-contacts-pipeline-phone-list', 'Descendant of the phone card <li>, see above.'],
+  ['.chq-contacts-pipeline-phone-card-move', '.chq-contacts-pipeline-phone-list', 'Descendant of the phone card <li>, see above.'],
+
+  // .chq-content-phone-selecting-meta (content.css) is top-level
+  // display:none; ContentApp.tsx:392-419 renders these only as its
+  // children while phoneSelectMode is on.
+  ['.chq-content-phone-selecting-all', '.chq-content-phone-selecting-meta', 'ContentApp.tsx:396, direct child of the phone selecting-meta row.'],
+  ['.chq-content-phone-selecting-count', '.chq-content-phone-selecting-meta', 'ContentApp.tsx:393, direct child of the phone selecting-meta row.'],
+  ['.chq-content-phone-selecting-done', '.chq-content-phone-selecting-meta', 'ContentApp.tsx:413, direct child of the phone selecting-meta row.'],
+
+  // .chq-forms-phone-footer (forms.css) is top-level display:none;
+  // FormsPage.tsx:476 renders the Save button only as its child.
+  ['.chq-forms-phone-save', '.chq-forms-phone-footer', 'FormsPage.tsx:476, direct child of the phone-only sticky footer.'],
+];
+const COVERED_BY_SELECTORS = new Map(COVERED_BY.map(([selector, ancestor]) => [selector, ancestor]));
+
+function isCoveredByHiddenAncestor(selector: string): boolean {
+  const ancestor = COVERED_BY_SELECTORS.get(selector);
+  if (ancestor === undefined) return false;
+  return hasTopLevelDisplayNone(ancestor);
+}
+
 const MARKUP_OFFENDERS = [...MARKUP_PHONE_CLASSES]
   .filter((selector) => !hasTopLevelDisplayNone(selector))
+  .filter((selector) => !NOT_PHONE_ONLY_SELECTORS.has(selector))
+  .filter((selector) => !isCoveredByHiddenAncestor(selector))
   .sort();
 
 // Measured on this branch's tree (v12m-w8-g) after (1) fixing
@@ -341,7 +452,26 @@ const MARKUP_OFFENDERS = [...MARKUP_PHONE_CLASSES]
 // Re-measured 36 -> 34 by the merge train on 2026-08-19 (megabatch gate) by
 // running this file's own scan: two more markup-mounted phone classes picked
 // up a top-level display:none. Tightened to the measured truth.
-export const MARKUP_PHONE_UNHIDDEN_CEILING = 34;
+//
+// DEC-967 wave-117 (task w6-f): re-measured 34 -> 0. The prior 34 were all
+// FALSE offenders of the same shape -- the scan had no model of
+// containment, so a class mounted only inside an already-hidden ancestor
+// (13 .chq-comms-phone-draft-*/-recent-*/-landing-* inside
+// .chq-comms-phone-landing, 11 .chq-contacts-import-phone-* inside
+// .chq-contacts-import-phone-column/-dock, 3 .chq-contacts-pipeline-phone-
+// card* inside .chq-contacts-pipeline-phone-list, 3
+// .chq-content-phone-selecting-* inside .chq-content-phone-selecting-meta,
+// 1 .chq-forms-phone-save inside .chq-forms-phone-footer) counted as an
+// unhidden leak even though its ancestor's own top-level display:none
+// already removes the whole subtree from the render. Each is now a
+// reviewable COVERED_BY entry, re-checked every run against its named
+// ancestor's live CSS rather than trusted once. The remaining 3
+// (.chq-phone-head/-head-drill/-body) are the shared v12 phone
+// page-scaffold primitives (styles.css:2461/:2480/:2498, DEC-976) --
+// genuinely rendered at both widths as shared layout, not phone-only
+// affordances -- and are now NOT_PHONE_ONLY entries with that reasoning.
+// Zero genuine desktop leaks were found in this population.
+export const MARKUP_PHONE_UNHIDDEN_CEILING = 0;
 
 describe('markup-mounted phone classes must be top-level display:none (DEC-919 wave-109 amendment)', () => {
   it('found a sane population of phone-named classes in TSX markup (vacuous-population tripwire)', () => {
@@ -379,6 +509,41 @@ describe('markup-mounted phone classes must be top-level display:none (DEC-919 w
       '.chq-synthetic-phone-control-group-a',
     );
     expect(/display:\s*none\s*(;|$)/.test(bodies.join('\n'))).toBe(true);
+  });
+
+  // DEC-967/DEC-991 receipt shape: COVERED_BY names an ancestor, and the
+  // exemption is honoured only when that ancestor CURRENTLY passes
+  // hasTopLevelDisplayNone -- it is re-checked every run, never a one-time
+  // licence. These controls exercise isCoveredByHiddenAncestor directly
+  // (real SOURCES cannot be injected into, mirroring the pattern above).
+  it('a class covered by a HIDDEN ancestor is recognised as covered (positive control)', () => {
+    expect(isCoveredByHiddenAncestor('.chq-comms-phone-draft-card')).toBe(true);
+  });
+
+  it('an entry naming an UNHIDDEN ancestor is NOT honoured -- the receipt is re-checked, not trusted once (DEC-967 negative control)', () => {
+    // A synthetic COVERED_BY-shaped map entry pointing at a real selector
+    // in SOURCES that is NOT top-level display:none (.chq-phone-dock's
+    // .chq-btn child rule, styles.css:2521, has no display:none of its
+    // own and its cited ancestor .chq-phone-head is deliberately a
+    // NOT_PHONE_ONLY exemption with no top-level rule at all -- neither
+    // passes hasTopLevelDisplayNone). If COVERED_BY ever named a class
+    // whose ancestor stopped being hidden, this is the failure shape that
+    // would catch it: the exemption fails loudly instead of silently
+    // continuing to cover a now-unhidden ancestor's children.
+    expect(hasTopLevelDisplayNone('.chq-phone-head')).toBe(false);
+  });
+
+  it('every COVERED_BY ancestor actually appears in the real CSS source population (no exemption naming a phantom ancestor)', () => {
+    for (const [selector, ancestor] of COVERED_BY) {
+      const found = SOURCES.some(({ css }) => hasRuleFor(stripMedia(css), ancestor));
+      expect(found, `COVERED_BY entry for ${selector} names ancestor ${ancestor}, which has no CSS rule anywhere in SOURCES`).toBe(true);
+    }
+  });
+
+  it('every COVERED_BY ancestor currently passes hasTopLevelDisplayNone (the receipt is live, not stale)', () => {
+    for (const [selector, ancestor] of COVERED_BY) {
+      expect(hasTopLevelDisplayNone(ancestor), `COVERED_BY entry for ${selector} names ancestor ${ancestor}, which is not currently top-level display:none`).toBe(true);
+    }
   });
 
   it('markup-mounted phone classes without a top-level display:none never exceed the ceiling (two-sided ratchet: may only fall)', () => {
