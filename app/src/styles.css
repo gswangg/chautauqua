@@ -1949,8 +1949,14 @@ select,
    the browser-drawn size it replaces -- enlarging it to 44px is a
    system-wide redesign of every table and form checkbox in the product
    (header select-all cells, row selection, field-modal option lists). The
-   phone tap floor is met by padding on the label around it, not by
-   inflating the box. */
+   phone tap floor is met by padding on a WRAPPER around the box, not by
+   inflating the box itself: form checkboxes already sit inside
+   .chq-checkbox-label (FieldModal.tsx:248), which the phone block floors
+   at :2435; the table-cell select-all/row-selection checkboxes
+   (ContactsTable.tsx:99-115/134-146, SubmissionsTable.tsx:482-491/518-527)
+   are wrapped in .chq-check-cell (DEC-393 w124), floored the same way
+   below. Every `.chq-check` reaches the 44px floor through some wrapper --
+   none through the bare 18px box. */
 input[type='checkbox'],
 input[type='radio'],
 .chq-check {
@@ -1966,6 +1972,18 @@ input[type='radio'],
   border: 1px solid var(--chq-border);
   border-radius: var(--chq-r-ctl);
   cursor: pointer;
+}
+
+/* The table-cell wrapper for a bare .chq-check with no visible label text
+   (ContactsTable.tsx select-all/row cells, SubmissionsTable.tsx same) --
+   inline-flex/centered so the 18px box sits exactly where the bare input
+   sat before wrapping, on both densities. The phone-only min-height/
+   padding floor is appended in the terminal block (DEC-385 single-
+   direction responsive). */
+.chq-check-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 input[type='radio'] {
@@ -2768,5 +2786,45 @@ select:focus-visible,
     display: flex;
     align-items: center;
     padding-inline: 11px 0;
+  }
+
+  /* DEC-393 w13-l: .chq-check-cell wraps the bare .chq-check inputs that
+     have no label text (ContactsTable.tsx select-all/row cells,
+     SubmissionsTable.tsx same) -- the exemption above legitimately keeps
+     the 18px VISUAL unchanged, but the tappable region was the 18px box
+     itself with no wrapper reaching the floor. DESIGN-RULINGS:189's full
+     triple on the wrapper, never the box: min-height, centred flex
+     (already inline-flex/centered at the base rule above), horizontal
+     padding. */
+  .chq-check-cell {
+    min-height: 44px;
+    padding-inline: 13px;
+  }
+
+  /* N5 LOW (round-2 probe): App.tsx:381's live-exceptions badge
+     (`.chq-badge-dot`) is a THIRD flex child of `.chq-tabbar .chq-nav-link`
+     (flex-direction:column, gap:5px) beneath the dot and the "More" label,
+     so on a live-badge render the item stack grows from two children to
+     three and the centred group re-centres around a taller total height --
+     the label's baseline moves ~6.5px off the other four tabs' baseline.
+     Both 390 frames that draw the tab bar (docs/design/Chautauqua
+     Settings.dc.html:299-301, docs/design/Chautauqua
+     Submissions.dc.html:173-180, byte-identical --
+     `<div style="flex:1; min-height:44px; display:flex;
+     flex-direction:column; align-items:center; justify-content:center;
+     gap:5px"><span style="{{ t.dot }}"></span><span
+     style="{{ t.text }}">{{ t.label }}</span></div>`) draw exactly TWO
+     children per tab, dot then label -- the badge is app state layered on
+     top with no frame member of its own, so it must never become a third
+     flex item. DEC-919: re-lined out of flow (position:absolute, given a
+     real offset), never removed and never display:none. */
+  .chq-tabbar .chq-nav-link {
+    position: relative;
+  }
+
+  .chq-tabbar .chq-nav-link .chq-badge-dot {
+    position: absolute;
+    top: 9px;
+    left: calc(50% + 4px);
   }
 }

@@ -96,16 +96,18 @@ export function ContactsTable({
           <thead>
             <tr>
               <th className="chq-contacts-col-select">
-                <input
-                  className="chq-check"
-                  type="checkbox"
-                  aria-label="Select all on page"
-                  checked={isPageFullySelected(selection, pageIds)}
-                  ref={(el) => {
-                    if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
-                  }}
-                  onChange={() => onSelectionChange(selectionReducer(selection, { type: 'TOGGLE_PAGE', pageIds }))}
-                />
+                <label className="chq-check-cell">
+                  <input
+                    className="chq-check"
+                    type="checkbox"
+                    aria-label="Select all on page"
+                    checked={isPageFullySelected(selection, pageIds)}
+                    ref={(el) => {
+                      if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
+                    }}
+                    onChange={() => onSelectionChange(selectionReducer(selection, { type: 'TOGGLE_PAGE', pageIds }))}
+                  />
+                </label>
               </th>
               <th>Name and email</th>
               <th className="chq-contacts-col-company">Company</th>
@@ -130,13 +132,17 @@ export function ContactsTable({
               items.map((c) => (
                 <tr key={c.id} className="chq-contacts-row">
                   <td>
-                    <input
-                      className="chq-check"
-                      type="checkbox"
-                      aria-label={`Select ${c.firstName} ${c.lastName}`}
-                      checked={selection.selectedIds.has(c.id)}
-                      onChange={() => onSelectionChange(selectionReducer(selection, { type: 'TOGGLE_ROW', id: c.id }))}
-                    />
+                    <label className="chq-check-cell">
+                      <input
+                        className="chq-check"
+                        type="checkbox"
+                        aria-label={`Select ${c.firstName} ${c.lastName}`}
+                        checked={selection.selectedIds.has(c.id)}
+                        onChange={() =>
+                          onSelectionChange(selectionReducer(selection, { type: 'TOGGLE_ROW', id: c.id }))
+                        }
+                      />
+                    </label>
                   </td>
                   <td>
                     <div className="chq-contacts-name-cell">
