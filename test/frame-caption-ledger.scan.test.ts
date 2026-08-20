@@ -89,11 +89,13 @@
 //
 // This file names the app's uninstrumented caption/consequence gap; it does
 // not close it -- that is scheduled work for a future lane, not this ledger.
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_380, DEC_976 } from '../src/decisions';
+import { isDecisionRegistryFile } from './frame-source-corpus';
 
 void DEC_976; // wave-135: the exclusion taxonomy grows a fourth named class, COMPOSED, with exactly three legal reason shapes (see COMPOSED_EXCLUSIONS below)
 void DEC_380; // wave-135: a caption absent only by a full stop (or an un-rendered reason line) is a BUILD, never an exclusion-table entry
@@ -753,13 +755,21 @@ function isSourceFile(name: string): boolean {
 }
 
 /** Every .ts/.tsx/.css/.md file under `root`, skipping any path containing
- * `.test.`, enumerated via readdirSync rather than named (DEC-808). */
+ * `.test.` and the decision registry itself (`src/decisions-data/**` and
+ * `src/decisions.ts`), enumerated via readdirSync rather than named
+ * (DEC-808). The registry exclusion is imported from
+ * test/frame-source-corpus.ts's `isDecisionRegistryFile` rather than
+ * re-implemented here: a private copy of that predicate is exactly how this
+ * ledger let DEC-380/DEC-976 ruling prose in `src/decisions-data/part2.ts`'s
+ * `DEC_380` constant launder two caption rows as "matched" for wave-138
+ * (DEC-967 sighting #16, DEC-613). */
 export function enumerateSourceFiles(root: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile() || !isSourceFile(entry.name)) continue;
     const full = join(entry.parentPath, entry.name);
     if (full.includes('.test.')) continue;
+    if (isDecisionRegistryFile(full)) continue;
     out.push(full);
   }
   return out.sort();
@@ -934,7 +944,18 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // w10-gg measured 10 against a tree without the medic's other lanes. The
 // integrated figure is re-measured below by this file's own two-sided
 // ratchet, which prints the exact count on either breach.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 10;
+//   - v12m-w13-gg (DEC-967 sighting #16): the corpus predicate itself was
+//     wrong -- enumerateSourceFiles admitted src/decisions-data/**, so a
+//     DEC_NNN ruling QUOTING a caption counted as the app rendering it. That
+//     repair (isDecisionRegistryFile, live above) un-launders ~11 rows and
+//     RAISES the count; w13-gg measured 32 from its own base. A raise here is
+//     legitimate under the ratchet's own terms: it is a predicate WIDENING
+//     surfacing real divergences that were previously hidden, not a
+//     regression in coverage.
+// The integrated figure is the composition of all three effects and is
+// re-measured by the two-sided ratchet below, which prints the exact
+// replacement line on either breach.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 32;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
@@ -1029,6 +1050,33 @@ describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaig
     for (const e of COMPOSED_EXCLUSIONS) {
       const hit = ALL_CAPTIONS.find((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
       expect(hit, `${e.fileName}:${e.line} no longer resolves to the cited text in the pack`).toBeDefined();
+    }
+  });
+
+  it('a decision-registry file quoting a caption does NOT satisfy the ledger (DEC-967 sighting #16, DEC-613)', () => {
+    // Regression for the exact laundering this wave found: this ledger's
+    // enumerateSourceFiles must exclude src/decisions-data/** via the SAME
+    // isDecisionRegistryFile predicate frame-source-corpus.ts exports (not
+    // a private re-implementation) or a DEC_NNN ruling constant quoting a
+    // caption verbatim would count as the app rendering it.
+    const root = mkdtempSync(join(tmpdir(), 'frame-caption-ledger-registry-test-'));
+    try {
+      const registryDir = join(root, 'src', 'decisions-data');
+      mkdirSync(registryDir, { recursive: true });
+      const quotedText = 'This synthetic caption text is quoted only by a decision-registry ruling.';
+      writeFileSync(join(registryDir, 'DEC-xxx.md'), `# DEC-xxx\n\nRULED: build "${quotedText}" verbatim.\n`);
+      writeFileSync(join(root, 'src', 'decisions.ts'), `export const DEC_xxx = "${quotedText}";\n`);
+
+      const realFile = join(root, 'src', 'real.ts');
+      writeFileSync(realFile, `const x = "not the quoted text";\n`);
+
+      const files = enumerateSourceFiles(join(root, 'src'));
+      expect(files).toEqual([realFile]);
+
+      const blobs = files.map((f) => normalizeCaption(readFileSync(f, 'utf-8')));
+      expect(captionIsMatched(quotedText, blobs)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 

@@ -256,6 +256,45 @@ describe("CFP confirmation page never asserts a delivery that did not happen (DE
   });
 });
 
+// DEC-380 (wave-137 amendment, task w13-gg): "If it hasn't arrived, check
+// spam." (Chautauqua Public and Portal.dc.html:1084) is conditional
+// troubleshooting, not the arrival-timing/delivery-window promise DEC-377
+// actually governs -- it renders ONLY on the branch where a mail was
+// actually sent.
+describe("CFP confirmation page renders the check-spam hint only when mail was actually sent (DEC-380 wave-137 amendment)", () => {
+  it("working mailer: renders 'If it hasn't arrived, check spam.'", async () => {
+    const { db } = fakeDb(selectQueueFor());
+    const app = appWithDb(db);
+
+    const res = await app.request(submitForm(), undefined, {
+      KV: fakeKv(),
+      FILES: fakeFilesBucket(),
+      EMAIL: { send: vi.fn(async () => {}) },
+      ...commonBindings,
+    } as unknown as AppEnv["Bindings"]);
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("If it hasn&#39;t arrived, check spam.");
+  });
+
+  it("mailer throws: the check-spam hint is absent (nothing was sent, so it would be a falsehood)", async () => {
+    const { db } = fakeDb(selectQueueFor());
+    const app = appWithDb(db);
+
+    const res = await app.request(submitForm(), undefined, {
+      KV: fakeKv(),
+      FILES: fakeFilesBucket(),
+      EMAIL: { send: vi.fn(async () => { throw new Error("simulated provider outage"); }) },
+      ...commonBindings,
+    } as unknown as AppEnv["Bindings"]);
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain("check spam");
+  });
+});
+
 // DEC-098 (wave 8 amendment): the confirmation card states the talk's track
 // and format, not just its title.
 describe("CFP confirmation card states track and format (DEC-098 wave 8 amendment)", () => {
