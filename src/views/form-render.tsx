@@ -139,11 +139,12 @@ function formatThousands(n: number): string {
 /** One labeled field, wrapped in the div the visibility script toggles. */
 export function FormField(props: { field: FormFieldDef; value: unknown; error?: string; visible: boolean }) {
   const { field, value, error, visible } = props;
-  // DEC-909: a long-text field with a budget carries a live counter, seeded
-  // here with the initial (prefilled) length; the inline script keeps it in
-  // sync with the DOM as the submitter types.
-  const counterMax =
-    field.kind === "text" || field.kind === "long_text" ? resolvedTextCap(field) : undefined;
+  // DEC-909 wave-111: the live character counter is a LONG-TEXT affordance
+  // only -- the pack draws it exclusively on the Abstract field (long_text),
+  // never on a short text field, date, or email. Seeded here with the
+  // initial (prefilled) length; the inline script keeps it in sync with the
+  // DOM as the submitter types.
+  const counterMax = field.kind === "long_text" ? resolvedTextCap(field) : undefined;
   const initialCount = typeof value === "string" ? value.length : 0;
   return (
     <div id={wrapId(field.id)} class="chq-field" style={visible ? undefined : "display:none"}>
