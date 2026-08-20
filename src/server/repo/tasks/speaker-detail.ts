@@ -17,6 +17,7 @@ import { parseSocialLinks } from "../profile";
 import { parseContactCustomFields } from "../contacts/crud";
 import { chunkIds } from "../../../lib/chunk"; // DEC-078
 import { HEADSHOT_KIND } from "../files-library-scope";
+import { fetchReminderSendInstants, remindSendsInWindow } from "./task-view";
 import { DEC_930, DEC_738, DEC_829 } from "../../../decisions";
 
 void DEC_930; // this file is the ONE bounded GET DEC-930 mandates.
@@ -149,11 +150,28 @@ export interface SpeakerDetailTask {
   // assignment's creation in the EVENT's timezone, neither of which crosses
   // this wire).
   overdue: boolean;
+  // Design pack v12 (wave 118 amendment): the row's Remind link carries an
+  // ordinal ("Remind · never sent" / "sent once" / "Nth time"), which needs
+  // a per-assignment SEND COUNT -- derived here via remindSendsInWindow
+  // (task-view.ts), the SAME >=created/<completed windowing rule
+  // countRemindSends applies for the roster-of-a-task shape. Not a fabricated
+  // tally: email_log genuinely carries no taskId, but a reminder email lists
+  // every outstanding task its recipient held at send time, so a send inside
+  // this assignment's active window necessarily named this task.
+  remindCount: number;
 }
 
 export interface SpeakerDetailCounts {
   outstandingRequired: number;
   overdue: number;
+  // Design pack v12 (wave 118 amendment): the header's "Reminded N× · last
+  // <date>" caption's N -- every reminder email this contact received on
+  // this event, across every task, per fetchReminderSendInstants
+  // (task-view.ts). Unlike the per-task remindCount above this is NOT
+  // windowed per assignment: one send can (and usually does) name several
+  // outstanding tasks at once, so summing the per-task counts would count
+  // that one email multiple times.
+  remindCount: number;
 }
 
 // DEC-930 (amendment, wave 115): the portal-uploaded headshot IS a file
@@ -194,7 +212,12 @@ export interface SpeakerDetail {
  * when the contact has no headshot; (vii) the uploader names for every file
  * this payload lists, one chunked read (DEC-078) over the DISTINCT uploader
  * ids other than the speaker themselves — skipped when there are none, which
- * is the common case. Returns null when the contact is not on this event's roster. */
+ * is the common case; (viii) design pack v12 (wave 118 amendment) every
+ * reminder-email instant this contact received on this event
+ * (fetchReminderSendInstants, task-view.ts), read once and spent twice as
+ * the per-task remindCount (windowed per assignment) and the header's
+ * person-level remindCount (unwindowed — see SpeakerDetailCounts). Returns
+ * null when the contact is not on this event's roster. */
 export async function getSpeakerDetail(db: Db, eventId: string, contactId: string): Promise<SpeakerDetail | null> {
   const contactRows = await db
     .select({
@@ -312,6 +335,11 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       dueDate: schema.task.dueDate,
       status: schema.taskAssignment.status,
       completedAt: schema.taskAssignment.completedAt,
+      // Design pack v12 (wave 118 amendment): the assignment's active-window
+      // start, so remindSendsInWindow can bound the per-task remindCount the
+      // same way countRemindSends bounds it in SQL for the roster-of-a-task
+      // shape.
+      createdAt: schema.taskAssignment.createdAt,
       fileId: schema.taskAssignment.fileId,
       // Design pack v12: the detail's task rows carry a reminder-history
       // qualifier ("Remind · never sent" / "Remind · last 4 Aug") in place of
@@ -344,6 +372,13 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
     .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
     .where(and(eq(schema.taskAssignment.contactId, contactId), overdueAssignmentConditions(eventId, Date.now(), timeZone)));
   const overdueAssignmentIds = new Set(overdueRows.map((r) => r.id));
+
+  // Design pack v12 (wave 118 amendment): every reminder-email instant this
+  // contact received on this event -- the raw material for both the
+  // per-task remindCount (windowed below) and the header's person-level
+  // total (counts.remindCount), from the ONE shared reader task-view.ts
+  // already derives this domain from.
+  const reminderSendInstants = await fetchReminderSendInstants(db, eventId, contactId);
 
   // DEC-773 amendment (w32-e): headshotFileId is the single home for the file
   // id, always written together with headshotUrl (profile.ts's
@@ -450,6 +485,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
             }
           : null,
       overdue: overdueAssignmentIds.has(r.assignmentId),
+      remindCount: remindSendsInWindow(reminderSendInstants, r.createdAt.getTime(), r.completedAt ? r.completedAt.getTime() : null),
     };
   });
 
@@ -540,6 +576,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
     counts: {
       outstandingRequired,
       overdue: overdueRows.length,
+      remindCount: reminderSendInstants.length,
     },
     otherEvents,
     otherEventsCount: otherEventsByEvent.size,

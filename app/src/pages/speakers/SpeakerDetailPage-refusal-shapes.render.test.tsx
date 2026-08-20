@@ -55,9 +55,10 @@ function baseDetail(): SpeakerDetailResponse {
         file: null,
         lastRemindedAt: null,
         overdue: false,
+        remindCount: 0,
       },
     ],
-    counts: { outstandingRequired: 1, overdue: 0 },
+    counts: { outstandingRequired: 1, overdue: 0, remindCount: 0 },
     otherEvents: [],
     otherEventsCount: 0,
   };
