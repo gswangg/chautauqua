@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
+import { useIsPhone } from '../lib/useIsPhone';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { apiList, ApiError } from '../lib/api';
 import { useMutationVersion } from '../lib/mutationSignal';
@@ -69,6 +70,17 @@ export function CommsPage() {
   // sitting in the URL -- an initializer only runs once, so the back path
   // never fights it.
   const [phoneEntered, setPhoneEntered] = useState(() => isTab(rawTab));
+
+  // w13-h (round-2 probe N4, DEC-964 precedent): Templates and History mint
+  // their OWN phone drill head (.chq-comms-templates-head / -history-head,
+  // both carrying .chq-phone-head-drill -- see comms-drill-phone-frames
+  // .test.ts) per docs/design/Chautauqua Comms.dc.html's "Templates · 390"
+  // (line 282) and "Send history · 390" (line 332) frames, each a screen of
+  // its own with no "Comms" band above it. Compose has no such band (its
+  // own step head is the wizard's, not a drill head), so it keeps this
+  // page-level head. Same markup-only shape as ContactsApp.tsx:384 (no CSS
+  // rule added): desktop (isPhone false) renders byte-identically.
+  const isPhone = useIsPhone();
 
   // DEC-700/DEC-905: every successful non-GET already bumps this counter in
   // api.ts -- subscribing here means both the Recent Sends mount and the
@@ -244,36 +256,42 @@ export function CommsPage() {
             {loadError}
           </div>
         )}
-        <div className="chq-comms-head">
-          <div className="chq-comms-head-titles">
-            <h1 className="chq-page-title">Comms</h1>
-            {/* DEC-905: states the send rhythm -- a count windowed on the
-                wall-clock (never a sum over a page of batches) plus the most
-                recent send's date, taken from the same all-time batch list
-                Recent Sends renders. */}
-            {rhythm && <p className="chq-comms-head-subtitle">{formatSendRhythm(rhythm)}</p>}
+        {/* w13-h: Templates and History are phone drills with their own
+            head band -- stand this page-level head down while either is
+            showing so its band doesn't double up above the drill's own
+            (same gate shape as ContactsApp.tsx:384, DEC-964 precedent). */}
+        {!(isPhone && (tab === 'templates' || tab === 'history')) && (
+          <div className="chq-comms-head">
+            <div className="chq-comms-head-titles">
+              <h1 className="chq-page-title">Comms</h1>
+              {/* DEC-905: states the send rhythm -- a count windowed on the
+                  wall-clock (never a sum over a page of batches) plus the most
+                  recent send's date, taken from the same all-time batch list
+                  Recent Sends renders. */}
+              {rhythm && <p className="chq-comms-head-subtitle">{formatSendRhythm(rhythm)}</p>}
+            </div>
+            <div className="chq-comms-head-actions" role="tablist">
+              {/* w4-g (DEC-890 amendment): Templates is its own page (a
+                  breadcrumb back to Comms, not a peer tab) -- the Compose
+                  pill is chrome left over from the shared tab strip and has
+                  no destination while already on Templates, so it's dropped
+                  here. Templates/History stay so the strip can still switch
+                  straight to History without detouring through Compose. */}
+              {TABS.filter((t) => tab !== 'templates' || t.id !== 'compose').map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === t.id}
+                  className={tab === t.id ? 'chq-pill is-active' : 'chq-pill'}
+                  onClick={() => choosePhoneTab(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="chq-comms-head-actions" role="tablist">
-            {/* w4-g (DEC-890 amendment): Templates is its own page (a
-                breadcrumb back to Comms, not a peer tab) -- the Compose
-                pill is chrome left over from the shared tab strip and has
-                no destination while already on Templates, so it's dropped
-                here. Templates/History stay so the strip can still switch
-                straight to History without detouring through Compose. */}
-            {TABS.filter((t) => tab !== 'templates' || t.id !== 'compose').map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={tab === t.id}
-                className={tab === t.id ? 'chq-pill is-active' : 'chq-pill'}
-                onClick={() => choosePhoneTab(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        )}
 
         {tab === 'compose' && (
           <>
