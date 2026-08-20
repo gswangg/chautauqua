@@ -2,11 +2,13 @@
 // repo/contacts.ts (contention decomposition, no behavior change). See
 // repo/contacts.ts for the module-level contract notes.
 
+import { and, eq } from "drizzle-orm";
 import type { Db } from "../../context";
+import * as schema from "../../../db/schema";
 import { createSubmission } from "../submissions/create";
 import { updateSubmissionStatuses } from "../submissions";
-import { insertActiveParticipants } from "../participants";
-import { DEC_156, DEC_542, DEC_765, DEC_810 } from "../../../decisions";
+import { insertActiveParticipants, getParticipantCount } from "../participants";
+import { DEC_156, DEC_542, DEC_765, DEC_810, DEC_909 } from "../../../decisions";
 import type { ContactRow } from "./rows";
 
 // Compile-checked dependency marker: pushContactToEvent below implements
@@ -19,14 +21,88 @@ void DEC_156;
 // participant.role (DEC-765).
 void DEC_765;
 // Compile-checked dependency marker: pushContactToEvent/pushContactsToEvent
-// below take `title` as a required non-empty string -- no
-// 'Invited: <First> <Last>' fallback. Callers (routes) reject a
-// missing/blank title before ever reaching this module (DEC-810).
+// below take `title` as a plain string -- no 'Invited: <First> <Last>'
+// fallback and no other invented text. DEC-909 wave-128 amendment made the
+// roster-add session title OPTIONAL, so callers may now pass "" through
+// here; this module still never substitutes anything for what the caller
+// gave it (DEC-810's other half -- never invents, and per DEC-909 now also
+// never duplicates, see findSubmissionByExactTitle below).
 void DEC_810;
+// Compile-checked dependency marker: findSubmissionByExactTitle below is
+// the ONE place (server-side) an exact-title match against an event's
+// existing sessions is made before minting a new one -- a roster add with a
+// typed title that matches references the existing submission instead of
+// creating a duplicate (DEC-909 wave-128 clause b).
+void DEC_909;
 // Compile-checked dependency marker: pushContactsToEvent's participant
 // attach below is one chunked insertActiveParticipants call
 // (chunkRowsForInsert), not a per-contact loop (DEC-542).
 void DEC_542;
+
+/**
+ * Looks up an existing submission in `eventId` whose title exactly matches
+ * `title` (case-sensitive, exact string equality -- DEC-909 wave-128 clause
+ * b: "an exact match... references that session; only an unmatched title
+ * mints a new one"). Never called with a blank title -- clause (b) only
+ * applies "when a title IS typed"; a blank/optional title always mints
+ * (see attachOrCreateRosterSession below). Returns the submission id, or
+ * undefined if no session in this event carries that exact title.
+ */
+export async function findSubmissionByExactTitle(
+  db: Db,
+  eventId: string,
+  title: string,
+): Promise<string | undefined> {
+  const rows = await db
+    .select({ id: schema.submission.id })
+    .from(schema.submission)
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.title, title)))
+    .limit(1);
+  return rows[0]?.id;
+}
+
+/**
+ * DEC-909 wave-128 clauses (a) and (b), landing together: a roster add's
+ * session title is optional (a), and a typed title that exactly matches an
+ * existing session in this event REFERENCES it instead of minting a
+ * duplicate (b). `title` is the caller's trimmed input -- "" when the
+ * organiser left the field blank. A blank title always mints a fresh
+ * (empty-titled) session via pushContactToEvent, since clause (b)'s
+ * matching is scoped to a typed title only; an empty title matching every
+ * other blank-titled roster add would silently merge unrelated people onto
+ * one session, which is exactly the "sessions nobody planned" problem
+ * clause (a) exists to avoid. A non-blank title that matches an existing
+ * session in this event attaches the contact as an ACTIVE participant
+ * (insertActiveParticipants -- visible, inviteStatus 'none', the same
+ * roster-membership shape pushContactsToEvent already gives a batch import)
+ * rather than creating a second session with the same name. Returns the
+ * submission id the contact ended up on.
+ */
+export async function attachOrCreateRosterSession(
+  db: Db,
+  eventId: string,
+  orgId: string,
+  contact: Pick<ContactRow, "id" | "email" | "firstName" | "lastName" | "title" | "company">,
+  title: string,
+  role?: string,
+): Promise<string> {
+  if (title !== "") {
+    const existingSubmissionId = await findSubmissionByExactTitle(db, eventId, title);
+    if (existingSubmissionId !== undefined) {
+      await insertActiveParticipants(db, existingSubmissionId, [
+        {
+          contactId: contact.id,
+          role: role && role.trim() ? role : "speaker",
+          order: await getParticipantCount(db, existingSubmissionId),
+          titleAtTime: contact.title,
+          orgAtTime: contact.company,
+        },
+      ]);
+      return existingSubmissionId;
+    }
+  }
+  return pushContactToEvent(db, eventId, orgId, contact, title, role);
+}
 
 /**
  * Pushes an already-org-owned contact into an event as an organizer-invited

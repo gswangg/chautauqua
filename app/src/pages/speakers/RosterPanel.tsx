@@ -172,8 +172,11 @@ function AddSpeakerModal({ eventId, onClose, onAdded }: AddSpeakerModalProps) {
         company: form.company || undefined,
         bio: form.bio || undefined,
         eventId,
-        // DEC-810: the server never invents a session title; adding to an
-        // event requires naming the session here.
+        // DEC-909 wave-128 clauses (a)+(b): the session title is optional --
+        // a roster add is a contact act, not a scheduling one -- and when
+        // one IS typed, the server references an exact-matching existing
+        // session rather than minting a duplicate. The server still never
+        // invents a title of its own (DEC-810's surviving half).
         sessionTitle: form.sessionTitle,
       });
       onAdded(`${form.firstName} ${form.lastName}`);
@@ -287,7 +290,8 @@ function AddSpeakerModal({ eventId, onClose, onAdded }: AddSpeakerModalProps) {
       <FormRow
         label="Session title"
         htmlFor="roster-session-title"
-        help="Added as an accepted session on this event. No email is sent."
+        help="Added as an accepted session on this event. No email is sent. A title matching an existing session joins it instead of creating a new one."
+        optional
         error={fieldErrors.sessionTitle}
       >
         <input
@@ -295,7 +299,6 @@ function AddSpeakerModal({ eventId, onClose, onAdded }: AddSpeakerModalProps) {
           className={fieldClassName('sessionTitle', 'chq-input')}
           type="text"
           maxLength={MAX_NAME_LENGTH}
-          required
           placeholder="e.g. Scaling Kubernetes at 2am"
           aria-invalid={fieldAriaInvalid('sessionTitle')}
           value={form.sessionTitle}
