@@ -1574,6 +1574,13 @@
      "LAST USED 12 AUG 2027" after the day. Released at card width. */
   .chq-comms-templates-table .chq-comms-templates-col-last-used {
     width: 100%;
+    /* w8-d (DEC-989/DEC-385): variable-length content (a template's
+       last-used date string) -- the top-level rule's white-space:nowrap
+       (:1129) carries no escape, and the scan's blind predicate never
+       sees it because this selector already has a phone rule (this one,
+       releasing the 96px fixed width). Let it wrap rather than overflow
+       the card at 358px. */
+    white-space: normal;
   }
 
   /* DEC-937 wave-111 amendment: the frame's per-row `Open` chip
