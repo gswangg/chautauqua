@@ -534,6 +534,67 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
        it wrap at 390 rather than push past the rail's content width. */
     .chq-pub-schedule-browse-link {
       white-space: normal;
+      /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): paired with
+         .chq-pub-accent-link on the same <a> (agenda.tsx), but that
+         sibling was not already floored before this task -- floored on
+         its own selector too. */
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the rail's CFP submission
+       out-link (sessions.tsx SessionsRail) -- sole class on the element.
+       GOTCHA (test/public.test.ts DEC-683): this sheet is inlined verbatim
+       into every page's <style>, including the chromeless CFP-closed/embed
+       renders that assert the CFP link's own DOM copy is ABSENT from the
+       page -- a comment quoting that copy verbatim would false-fail those
+       assertions, so it is paraphrased here instead. */
+    .chq-pub-rail-cfp-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the rail's printable-
+       programme out-link (agenda-rail.tsx) -- sole class on the element.
+       Paraphrased, not quoted (see the CFP link's own comment above --
+       this sheet is inlined into chromeless renders that assert this
+       link's own DOM copy is absent). */
+    .chq-pub-rail-programme-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the /schedule row's title
+       drill-in link (agenda.tsx) -- sole class on the element. */
+    .chq-pub-schedule-row-title {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    /* v12m-w14-dd (DEC-393 wave-139): this task's own docket named
+       .chq-pub-accent-link MODIFIER-EXEMPT ("applied alongside
+       .chq-pub-schedule-browse-link / .chq-pub-empty-escape"), but grepping
+       every markup site (mandatory per this task's own instructions, "never
+       inferred from the class name") shows it composes ALONE on four of
+       six sites -- detail.tsx's "Back to <surface>" link and speakers.tsx's
+       two "Show more" links (this file's own w9-b comment above documents
+       the same four/six split). Only agenda.tsx's schedule-browse-link and
+       empty-state.tsx's empty-escape pair it with a sibling, and neither
+       sibling was already floored before this task landed them above --
+       composition-exempt requires an ALREADY-floored sibling, which none of
+       these are. Graded REAL FLOOR instead; flagged in this task's notes as
+       a correction to the docket, DEC-380/DEC-604's wave-139 precedent for
+       "verify-before-planning catches a wrong ruling on the merits." */
+    .chq-pub-accent-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
     }
   }
 `;

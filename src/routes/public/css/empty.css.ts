@@ -67,4 +67,21 @@ export const EMPTY_CSS = `
     font-size: 13px;
     display: inline-block;
   }
+
+  /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR, DEC-385 single-direction):
+     this sheet had no ≤700px block at all before this task -- created here
+     as the LAST top-level construct in this module, per DEC-385. The
+     'filtered' zero-state's escape link (empty-state.tsx) is paired with
+     .chq-pub-accent-link on the same <a> (see accent-link's own REAL FLOOR
+     rule, rail.css.ts), but that sibling was not already floored before
+     this task, so this token is floored on its own selector too rather
+     than claimed composition-exempt. */
+  @media (max-width: 700px) {
+    .chq-pub-empty-escape {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+  }
 `;

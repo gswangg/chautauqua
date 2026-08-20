@@ -265,5 +265,36 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     .chq-pub-speaker-list-row .chq-pub-speaker-sessions {
       grid-column: 1 / -1;
     }
+
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the session card's title
+       drill-in link (cards.tsx) -- reviewer-measured 358x27, the only
+       route from a session card into session detail. No sibling class,
+       no exemption. Appended at the true end of this sheet's one terminal
+       phone block, per DEC-385. */
+    .chq-pub-session-title {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the headshot/fallback link
+       (speakers.tsx SpeakerHeadshotLink) -- no sibling class on the anchor
+       in either the list-row (64px fixed cell) or grid-tile (aspect-ratio
+       square) composition. The wrapped <img>/fallback already exceeds 44px
+       on both axes at every phone breakpoint, so a minimal 1px horizontal
+       padding (the smallest non-zero value) is used here rather than the
+       4px this sheet's other REAL FLOOR rules use, to avoid visibly
+       shrinking the headshot image against DEC-989's own 358px 390-width
+       budget for the list row. display:flex on this anchor only affects
+       its own child's layout (blockified, filling the fixed-width parent
+       cell exactly as before) -- it does not change the anchor's outer
+       size. */
+    .chq-pub-headshot-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 1px;
+    }
   }
 `;

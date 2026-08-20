@@ -678,14 +678,46 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
       border-radius: 99px;
       padding: 0 15px;
       min-height: 44px;
+      /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR, top-off): the base rule
+         above already declares display:flex/align-items:center/justify-
+         content:center and cascades through unshadowed at this width, but
+         restated here explicitly so this token's floor is declared on its
+         own phone rule, not only inherited. */
+      display: flex;
+      align-items: center;
       overflow-x: auto;
     }
     /* the active pill keeps its ink fill (base rule above) but now also
        needs its own border-colour so it reads as one filled pill instead
        of an outlined-then-filled pill (:378 draws NO border on the filled
        "Tue 12" segment -- the fill alone reads as the border colour). */
+    /* v12m-w14-dd (DEC-393 wave-139 MODIFIER-EXEMPT): a colour/state
+       modifier never applied alone -- agenda-controls.tsx's DaySwitcher
+       always composes this class alongside the base .chq-pub-day-pill,
+       which already carries the phone tap floor a few lines above. */
+    /* tap-floor-exempt: composition — chq-pub-day-pill at agenda-controls.tsx's DaySwitcher */
     .chq-pub-day-pill-active {
       border-color: var(--chq-ink);
+    }
+
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the phone list's row title
+       link (agenda-list.tsx) -- the sole class on the element, no sibling
+       floors it. Appended at the true end of this sheet's one terminal
+       phone block, per DEC-385. */
+    .chq-pub-agenda-list-title {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the speaker directory name
+       link (speakers.tsx SpeakerListRow/SpeakerGridTile) -- the sole class
+       on the element in both compositions, no sibling floors it. */
+    .chq-pub-speaker-name {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
     }
   }
 `;
