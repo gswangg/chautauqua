@@ -36,249 +36,29 @@
 // uses for its four extra classes (readdirSync, never an assumption about
 // a prior wave's count).
 //
-// STRUCTURAL CARVE-OUT: docs/design/*.dc.html citations keep `file:line`
-// and are NOT counted here. The frame is the coordinate system and never
-// moves -- CITATION_RE's extension alternation below does not include
-// `html` at all, so a `.dc.html` citation never matches the shape in the
-// first place (belt); the negative-lookbehind `(?<!\.dc\.html)` is kept
-// anyway, verbatim from test/decision-doc-citation.scan.test.ts's own
-// CITATION_RE, as a second, redundant guard against a future extension
-// widening silently reopening the carve-out (suspenders).
+// DECOMPOSITION (custodian task custodian-test_citation_form_drift_scan_test_ts,
+// contention hotspot -- 4 merge conflicts): population derivation lives in
+// ./citation-form-drift/population.ts, repo-file resolution in
+// ./citation-form-drift/repo-index.ts, the detector (regexes,
+// quoteAfter, findLineKeyedOffenders) in ./citation-form-drift/detector.ts.
+// This file re-exports findLineKeyedOffenders and LINE_KEYED_CITATION_CEILING
+// (its only externally-referenced symbols) and keeps the describe/it block
+// and the ratchet's own history/rationale comments -- pure extraction, no
+// behavior change.
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { isExhibitCitation } from "./citation-grammar";
+import { resolve } from "node:path";
+import { buildPopulationClasses, type SourceDoc } from "./citation-form-drift/population";
+import { BARE_PATH_RE, CITATION_RE, findLineKeyedOffenders, type Offender } from "./citation-form-drift/detector";
+
+export { findLineKeyedOffenders } from "./citation-form-drift/detector";
 
 const ROOT = resolve(__dirname, "..");
 
-// ---------------------------------------------------------------------------
-// Population (same four extra classes + the decision-registry class that
-// test/decision-doc-citation.scan.test.ts's widened population uses).
-// ---------------------------------------------------------------------------
-
-function mdFilesIn(dir: string, namePattern: RegExp = /\.md$/): string[] {
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isFile() && namePattern.test(e.name))
-    .map((e) => e.name)
-    .sort();
-}
-
-const DECISIONS_DATA_DIR = join(ROOT, "src", "decisions-data");
-const AUDIT_DIR = join(ROOT, "docs", "design", "audit");
-const PROBES_DIR = join(ROOT, "docs", "probes");
-
-const DECISION_DOC_NAMES = mdFilesIn(DECISIONS_DATA_DIR, /^DEC-\d+\.md$/);
-const AUDIT_DOC_NAMES = mdFilesIn(AUDIT_DIR);
-const PROBE_DOC_NAMES = mdFilesIn(PROBES_DIR);
-
-interface SourceDoc {
-  /** Label used in offender messages, e.g. "src/decisions-data/DEC-986.md". */
-  doc: string;
-  content: string;
-}
-
-const POPULATION_CLASSES: { label: string; docs: SourceDoc[] }[] = [
-  {
-    label: "src/decisions-data/DEC-*.md",
-    docs: DECISION_DOC_NAMES.map((name) => ({
-      doc: `src/decisions-data/${name}`,
-      content: readFileSync(join(DECISIONS_DATA_DIR, name), "utf-8"),
-    })),
-  },
-  {
-    label: "docs/design/audit/*.md",
-    docs: AUDIT_DOC_NAMES.map((name) => ({
-      doc: `docs/design/audit/${name}`,
-      content: readFileSync(join(AUDIT_DIR, name), "utf-8"),
-    })),
-  },
-  {
-    label: "docs/probes/*.md",
-    docs: PROBE_DOC_NAMES.map((name) => ({
-      doc: `docs/probes/${name}`,
-      content: readFileSync(join(PROBES_DIR, name), "utf-8"),
-    })),
-  },
-  {
-    label: "docs/design/DEVIATIONS.md",
-    docs: [
-      {
-        doc: "docs/design/DEVIATIONS.md",
-        content: readFileSync(join(ROOT, "docs", "design", "DEVIATIONS.md"), "utf-8"),
-      },
-    ],
-  },
-  {
-    label: "docs/design/DESIGN-RULINGS.md",
-    docs: [
-      {
-        doc: "docs/design/DESIGN-RULINGS.md",
-        content: readFileSync(join(ROOT, "docs", "design", "DESIGN-RULINGS.md"), "utf-8"),
-      },
-    ],
-  },
-  {
-    label: "docs/mobile-campaign.md",
-    docs: [
-      {
-        doc: "docs/mobile-campaign.md",
-        content: readFileSync(join(ROOT, "docs", "mobile-campaign.md"), "utf-8"),
-      },
-    ],
-  },
-];
-
+const POPULATION_CLASSES = buildPopulationClasses(ROOT);
 const ALL_DOCS: SourceDoc[] = POPULATION_CLASSES.flatMap((c) => c.docs);
 
-// ---------------------------------------------------------------------------
-// Repo file index, for resolving a citation's path and checking which
-// top-level directory it lives under. Same resolution contract as
-// test/decision-doc-citation.scan.test.ts's resolvePath: a slash-bearing
-// path is repo-relative as written; a bare basename resolves uniquely
-// against every file in the tree or is dropped (ambiguous/missing
-// citations are not this scan's job -- that is DIRECTION 1 resolution in
-// test/decision-doc-citation.scan.test.ts; a citation that cannot be
-// resolved at all cannot be classified as "resolves under" any directory,
-// so it is simply not counted here).
-// ---------------------------------------------------------------------------
-
-const EXCLUDED_DIRS = new Set(["node_modules", ".git", "dist", "build", ".wrangler"]);
-
-function enumerateAllRepoFiles(root: string): string[] {
-  const out: string[] = [];
-  function walk(dir: string) {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        if (EXCLUDED_DIRS.has(entry.name)) continue;
-        walk(join(dir, entry.name));
-      } else if (entry.isFile()) {
-        out.push(join(dir, entry.name));
-      }
-    }
-  }
-  walk(root);
-  return out;
-}
-
-const ALL_REPO_FILES = enumerateAllRepoFiles(ROOT);
-const ALL_REL_FILES = new Set(ALL_REPO_FILES.map((abs) => abs.slice(ROOT.length + 1)));
-
-const BASENAME_MAP = new Map<string, string[]>();
-for (const abs of ALL_REPO_FILES) {
-  const base = abs.slice(abs.lastIndexOf("/") + 1);
-  const rel = abs.slice(ROOT.length + 1);
-  const list = BASENAME_MAP.get(base);
-  if (list) list.push(rel);
-  else BASENAME_MAP.set(base, [rel]);
-}
-
-/** Resolves a citation's raw path text to a single repo-relative file, or
- * null if it does not resolve uniquely. Mirrors
- * test/decision-doc-citation.scan.test.ts's resolvePath exactly. */
-function resolvePath(rawPath: string): string | null {
-  if (rawPath.includes("/")) {
-    return ALL_REL_FILES.has(rawPath) ? rawPath : null;
-  }
-  const matches = BASENAME_MAP.get(rawPath) ?? [];
-  return matches.length === 1 ? matches[0]! : null;
-}
-
-const IN_SCOPE_DIR_PREFIXES = ["app/src/", "src/", "test/", "scripts/", "migrations/"];
-
-function resolvesUnderScope(relPath: string): boolean {
-  return IN_SCOPE_DIR_PREFIXES.some((prefix) => relPath.startsWith(prefix));
-}
-
-// ---------------------------------------------------------------------------
-// Line-keyed citation shape: `<path>:<line>[-<line>]`, extension alternation
-// tries the LONGER extension first (tsx before ts) for the same reason
-// test/decision-doc-citation.scan.test.ts's CITATION_RE does -- JS regex
-// alternation does not backtrack for a longer overall match, so `ts|tsx`
-// would truncate a `.tsx` citation to `.ts`. `.dc.html` is excluded twice
-// over (see header): it is not in the extension list at all, and the
-// negative lookbehind is kept as a second guard.
-// ---------------------------------------------------------------------------
-
-const CITATION_RE =
-  /\b((?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.(?:tsx|css|ts|md))(?<!\.dc\.html):(\d+)(?:-(\d+))?/g;
-
-/** Bare-path drift-proof shape (DEC-967 wave-115): a path with no ":line"
- * at all. Used only by the negative-control test below to prove the
- * detector does NOT fire on the converted form. */
-const BARE_PATH_RE = /(?<![\w./*`-])((?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.(?:tsx|css|ts|md))(?<!\.dc\.html)/g;
-
-/** First backtick-quoted literal within `gapWindow` characters after
- * `index`, or null. Mirrors
- * test/decision-doc-citation.scan.test.ts's quoteAfter, same gap
- * discipline (short gap so the citation pairs with ITS OWN receipt, not
- * the next unrelated backtick literal in a long paragraph). */
-function quoteAfter(content: string, index: number, skipOwnClosingBacktick: boolean, gapWindow = 25): string | null {
-  const searchFrom = skipOwnClosingBacktick && content[index] === "`" ? index + 1 : index;
-  const gapSlice = content.slice(searchFrom, searchFrom + gapWindow);
-  const openRel = gapSlice.indexOf("`");
-  if (openRel === -1) return null;
-  const openAbs = searchFrom + openRel + 1;
-  const closeAbs = content.indexOf("`", openAbs);
-  if (closeAbs === -1 || closeAbs - openAbs > 400) return null;
-  return content.slice(openAbs, closeAbs);
-}
-
-interface Offender {
-  doc: string;
-  relPath: string;
-  line: string;
-  quote: string;
-  matchText: string;
-}
-
-/** Every line-keyed, backtick-quoted citation in `content` whose path
- * resolves under one of IN_SCOPE_DIR_PREFIXES. A citation self-wrapped in
- * its own code span (`` `foo.ts:12` ``) has its own CLOSING backtick sit
- * immediately after the line number; that is not a separate receipt quote
- * following the citation (same distinction
- * test/decision-doc-citation.scan.test.ts's Citation.ownClosingBacktickFollows
- * makes), so it is skipped past before searching for a real quote.
- *
- * EXHIBIT!-sigilled citations (DEC-967 wave-137/138, ./citation-grammar)
- * are excluded from this population outright, never converted: an
- * exhibit is a DEAD anchor, catalogued by a ruling as evidence of a
- * defect it measured -- there is no live file/line to search a quote in,
- * so the drift-proof bare-path shape (which requires the quote to
- * eventually resolve SOMEWHERE in the cited file) is unavailable to it by
- * construction. Converting an exhibit to drift-proof form would either
- * make it resolve (destroying the evidence the ruling needs) or leave it
- * permanently unresolved in a shape whose entire contract is "this quote
- * exists in this file" -- neither is the exhibit grammar's job; that is
- * test/decision-doc-citation.scan.test.ts's INVERTED grading. */
-function findLineKeyedOffenders(doc: string, content: string): Offender[] {
-  const out: Offender[] = [];
-  CITATION_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = CITATION_RE.exec(content))) {
-    if (isExhibitCitation(content, m.index)) continue;
-    const rawPath = m[1]!;
-    const line = m[3] ? `${m[2]}-${m[3]}` : m[2]!;
-    const end = m.index + m[0].length;
-    const ownClosingBacktickFollows = content[m.index - 1] === "`" && content[end] === "`";
-    const quote = quoteAfter(content, end, ownClosingBacktickFollows);
-    if (!quote || quote.length === 0) continue; // no receipt quote -> not this scan's concern
-    // A "quote" of the bare shape `:<line>[-<line>]` is not a code receipt --
-    // it is a SECOND citation's own line-only shorthand in a slash-separated
-    // list against the same file (e.g. "`test/foo.ts:291`/`:296`/`:299`",
-    // src/decisions-data/DEC-808.md:44), sitting inside the gap window this
-    // detector shares with the receipt search. Counting it as a quoted
-    // receipt would misclassify a citation LIST as a single citation with a
-    // content assertion attached; skip it (false positive, not this scan's
-    // concern -- test/decision-doc-citation.scan.test.ts's own DIRECTION 2
-    // is never invoked for this shape either, since firstLineNumber only
-    // ever reads the FIRST citation in such a list).
-    if (/^:\d+(-\d+)?$/.test(quote)) continue;
-    const resolved = resolvePath(rawPath);
-    if (!resolved || !resolvesUnderScope(resolved)) continue;
-    out.push({ doc, relPath: resolved, line, quote, matchText: m[0] });
-  }
-  return out;
-}
+// vacuous-population tripwire needs these directly.
+const DECISION_DOC_NAMES = POPULATION_CLASSES[0]!.docs.map((d) => d.doc.replace("src/decisions-data/", ""));
 
 const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.doc, d.content));
 
@@ -286,20 +66,21 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // Ratchet. Seeded at this branch's own measurement: forced to -1 first,
 // the printed offender list (163 rows) was read and eyeballed for false
 // positives. One systematic class was found and fixed in
-// findLineKeyedOffenders (see the `:\d+(-\d+)?` quote-shape guard above):
-// three corpus rows write a SHORTHAND list of citations against the same
-// file ("`test/foo.ts:291`/`:296`/`:299`", src/decisions-data/DEC-808.md:44
-// and two similar rows) where the detector was pairing the first citation
-// with the SECOND citation's bare `:<line>` shorthand as if it were a
-// quoted code receipt -- not a citation-plus-quote pair at all. Filtering
-// that shape brought the count to 160; the remainder was read row by row
-// and each is a genuine `path:line` citation immediately followed by a
-// backtick-delimited literal, into app/src/, src/, test/ or scripts/ (no
-// migrations/ hits in the corpus today). May only be LOWERED as citations
-// are converted to the drift-proof bare-path shape, never raised to paper
-// over a regression. v12m-w11-k and v12m-w11-l are converting citations in
-// parallel with this task -- this ceiling will be stale by a handful the
-// moment they land; the merge train reconciles it (task's own note).
+// findLineKeyedOffenders (see the `:\d+(-\d+)?` quote-shape guard in
+// ./citation-form-drift/detector.ts): three corpus rows write a SHORTHAND
+// list of citations against the same file ("`test/foo.ts:291`/`:296`/`:299`",
+// src/decisions-data/DEC-808.md:44 and two similar rows) where the detector
+// was pairing the first citation with the SECOND citation's bare `:<line>`
+// shorthand as if it were a quoted code receipt -- not a citation-plus-quote
+// pair at all. Filtering that shape brought the count to 160; the remainder
+// was read row by row and each is a genuine `path:line` citation immediately
+// followed by a backtick-delimited literal, into app/src/, src/, test/ or
+// scripts/ (no migrations/ hits in the corpus today). May only be LOWERED as
+// citations are converted to the drift-proof bare-path shape, never raised
+// to paper over a regression. v12m-w11-k and v12m-w11-l are converting
+// citations in parallel with this task -- this ceiling will be stale by a
+// handful the moment they land; the merge train reconciles it (task's own
+// note).
 // ---------------------------------------------------------------------------
 // Thunderdome megabatch (wave 124): re-measured on the INTEGRATED tree
 // after 15 lanes landed in one pass -- concurrent lanes drained the same
