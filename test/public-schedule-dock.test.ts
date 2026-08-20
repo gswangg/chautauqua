@@ -115,10 +115,10 @@ describe("DEC-576 (wave 110 amendment): my-schedule's SSR phone dock band", () =
     expect(res.status).toBe(200);
     const html = await res.text();
 
-    // docs/design/Chautauqua Public and Portal.dc.html:885-888.
+    // docs/design/Chautauqua Public and Portal.dc.html:884-887.
     expect(html).toContain('class="chq-pub-schedule-dock"');
 
-    // :887 `flex:1; ... min-height:48px; ...">Download .ics` -- a SECOND
+    // :886 `flex:1; ... min-height:48px; ...">Download .ics` -- a SECOND
     // .ics anchor (id chq-ics-link-dock) beside ScheduleRail's
     // #chq-ics-link, targeting the exact same route.
     const dockIcsMatch = html.match(/<a id="chq-ics-link-dock"[^>]*>([^<]*)<\/a>/);
@@ -127,7 +127,7 @@ describe("DEC-576 (wave 110 amendment): my-schedule's SSR phone dock band", () =
     expect(dockIcsMatch![0]).toContain('aria-disabled="true"');
     expect(dockIcsMatch![1]!.trim()).toBe("Download .ics");
 
-    // :888 `border:1px solid #BAB6A6; ... min-height:48px; ...">All
+    // :887 `border:1px solid #BAB6A6; ... min-height:48px; ...">All
     // sessions` -- the SAME /sessions route the header's "Browse all
     // sessions ›" link (chq-pub-schedule-browse-link) already targets.
     expect(html).toContain('class="chq-pub-schedule-dock-cross" href="/e/conf/sessions"');

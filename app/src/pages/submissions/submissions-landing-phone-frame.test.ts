@@ -172,6 +172,8 @@ describe('v12 phone frame "Submissions" (390) — docs/design/Chautauqua Submiss
     // docs/design/Chautauqua Submissions.dc.html:148-151 `display:flex; gap:7px; overflow-x:auto` names exactly three chips ('Needs triage' filled / 'Accepted' / 'All 47').
     it('narrows the phone chip strip to the pending/accepted status literals', () => {
       const layer = phoneLayer(CSS);
+      // docs/design/Chautauqua Submissions.dc.html:148-151
+      // `display:flex; gap:7px; overflow-x:auto`
       expect(layer).toMatch(
         /\.chq-status-pills \[data-status\]:not\(\[data-status='pending'\]\):not\(\[data-status='accepted'\]\)[^{]*\{[^}]*display:\s*none/,
       );
