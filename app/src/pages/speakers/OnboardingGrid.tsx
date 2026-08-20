@@ -601,7 +601,15 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       // clobber every concurrent success that landed while this request
       // was in flight. If the row is gone (page/filter changed underneath),
       // there is nothing to roll back to; do not reinstate vanished rows.
-      setGrid((current) =>
+      //
+      // Merge note (thunderdome megabatch): this amendment was written
+      // against a `setGrid` state setter; task v12m-w4-t-r1-c moved the
+      // grid onto the cached-read hook plus `optimisticOverride` (see the
+      // declaration above), so the per-cell rewrite lands on the OVERRIDE
+      // -- which is exactly where the optimistic flip lives, so the
+      // "rewrite one cell, keep concurrent successes" guarantee is
+      // preserved verbatim.
+      setOptimisticOverride((current) =>
         current
           ? {
               ...current,
@@ -690,7 +698,10 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       // inviteStatus back to its pre-flip value -- a whole-grid snapshot
       // would clobber every concurrent success. If the row is gone (page/
       // filter changed underneath), there is nothing to roll back to.
-      setGrid((current) =>
+      // Merge note: same `setGrid` -> `setOptimisticOverride` re-siting as
+      // applyCellStatus above (v12m-w4-t-r1-c moved the grid onto the
+      // cached-read hook); the per-participant rewrite is unchanged.
+      setOptimisticOverride((current) =>
         current
           ? {
               ...current,
@@ -1346,7 +1357,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           'Clear filters') is how the visitor undoes the exclusion --
           the legend and pager are table furniture with nothing to legend
           or page once the table region itself is gone. */}
-      {!loading && grid && visibleRows.length > 0 && (
+      {/* Merge note (thunderdome megabatch): the bare `loading` this
+          amendment was written against became `gridRead.loading` when
+          v12m-w4-t-r1-c moved the grid onto the cached-read hook (same
+          reading as the sibling guard at the table region above). */}
+      {!gridRead.loading && grid && visibleRows.length > 0 && (
         <div className="chq-speakers-pager">
           <span className="chq-summary">{paginationSummary(page, PER_PAGE, total, visibleRows.length)}</span>
           <span className="chq-speakers-grid-legend">{GRID_STATUS_LEGEND}</span>
