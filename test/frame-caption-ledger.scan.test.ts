@@ -94,6 +94,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEC_380, DEC_976 } from '../src/decisions';
+import { isDecisionRegistryFile } from './frame-source-corpus';
 
 void DEC_976; // wave-135: the exclusion taxonomy grows a fourth named class, COMPOSED, with exactly three legal reason shapes (see COMPOSED_EXCLUSIONS below)
 void DEC_380; // wave-135: a caption absent only by a full stop (or an un-rendered reason line) is a BUILD, never an exclusion-table entry
@@ -634,6 +635,27 @@ const COMPOSED_EXCLUSIONS: Exclusion[] = [
   },
 ];
 
+/** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,
+ * because the pack's own words are stale about a side effect (DEC-380
+ * wave-139, correcting that same decision's wave-137 amendment, which had
+ * ruled this row a build without weighing the app's actual behaviour or the
+ * pin below). This is not EXPLAINER (it is product copy about a real
+ * control, not design-system commentary), not FIXTURE (it is not sample
+ * data), and not COMPOSED (the app's sentence is not assembled from this
+ * one, it CONTRADICTS it) -- a caption that asserts a side effect is graded
+ * against the app's observed behaviour, not the live-referent test the
+ * other four classes share. Each entry's `reason` names the superseding
+ * ruling and the pin that would break if the frame's words were built. */
+const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 298,
+    text: 'A new co-presenter is emailed a portal link · the lead presenter is not changed',
+    reason:
+      "DEC-380 wave-139 (correcting that decision's own wave-137 amendment): app/src/pages/submissions/SubmissionDetailPage.tsx:1854 deliberately renders the opposite claim -- 'Adding a co-presenter here sends no email — sending a portal invite is a separate, explicit action. The lead presenter is not changed.' -- under DEC-604 wave-70, because src/routes/api/submissions.ts:6 states, and a source-scan test enforces, that the submissions routes never import a mailer. SubmissionDetailPage.render.test.tsx:1421-1427 pins the app's sentence verbatim and its own comment calls the frame's version 'the stale DEC-900 \"emails them\" claim' -- building the frame's sentence would ship a lie about the mailer and break that pin. Recorded in DEVIATIONS.md §3 under the pre-existing DEC-909 wave-134 bullet.",
+  },
+];
+
 function isExcluded(c: Caption, table: Exclusion[]): boolean {
   return table.some((e) => e.fileName === c.fileName && e.line === c.line && e.text === c.text);
 }
@@ -643,7 +665,8 @@ const CAPTIONS_AFTER_EXCLUSION: Caption[] = ALL_CAPTIONS.filter(
     !isExcluded(c, EXPLAINER_EXCLUSIONS) &&
     !isExcluded(c, FIXTURE_EXCLUSIONS) &&
     !isExcluded(c, EXEMPLAR_ARTICLE_EXCLUSIONS) &&
-    !isExcluded(c, COMPOSED_EXCLUSIONS)
+    !isExcluded(c, COMPOSED_EXCLUSIONS) &&
+    !isExcluded(c, SUPERSEDED_EXCLUSIONS)
 );
 
 // -- Match side: every non-test .ts/.tsx/.css/.md under app/src/** and src/**
@@ -653,13 +676,23 @@ function isSourceFile(name: string): boolean {
 }
 
 /** Every .ts/.tsx/.css/.md file under `root`, skipping any path containing
- * `.test.`, enumerated via readdirSync rather than named (DEC-808). */
+ * `.test.` AND the decision registry (`src/decisions-data/**`,
+ * `src/decisions.ts`), enumerated via readdirSync rather than named
+ * (DEC-808). The registry predicate is IMPORTED from
+ * test/frame-source-corpus.ts (its sibling ledgers already share it) rather
+ * than re-implemented -- this ledger's own prior private enumerator dropped
+ * that clause, so eleven captions read BUILT only because a `DEC_NNN` string
+ * constant or a `DEC-NNN.md` amendment quotes them verbatim (DEC-967/DEC-613
+ * wave-138). The file-kind list stays LOCAL (unlike that module's, this
+ * ledger's own corpus deliberately reaches `.md`, which the shared
+ * `isSourceFile` does not) -- sharing the PREDICATE, not the enumerator. */
 export function enumerateSourceFiles(root: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile() || !isSourceFile(entry.name)) continue;
     const full = join(entry.parentPath, entry.name);
     if (full.includes('.test.')) continue;
+    if (isDecisionRegistryFile(full)) continue;
     out.push(full);
   }
   return out.sort();
@@ -821,7 +854,28 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // still 2 above what the integrated tree actually measures -- 22. The
 // two-sided ratchet caught the gap, as designed; lowered to the measured
 // figure so the ceiling cannot license stagnation.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 22;
+// v12m-w14-bb (task w14-bb): the 22 above was a CORPUS-BLIND figure -- this
+// ledger's private enumerateSourceFiles skipped `.test.` paths but never
+// excluded the decision registry (src/decisions-data/**, src/decisions.ts),
+// so eleven captions read BUILT only because a DEC_NNN string constant or a
+// DEC-NNN.md amendment quotes them verbatim (DEC-967/DEC-613 wave-138).
+// Repaired by importing test/frame-source-corpus.ts's isDecisionRegistryFile
+// predicate into this ledger's own enumerator (sharing the PREDICATE, not
+// the enumerator -- this ledger's corpus still reaches .md, which that
+// module's own isSourceFile does not). Forcing the ceiling to -1 against the
+// repaired corpus measured 33 unmatched; two rows were then disposed of by
+// this same task -- "If it hasn't arrived, check spam." (DEC-380 wave-137)
+// built verbatim in src/routes/public/submit-views.tsx on the
+// emailDelivered branch, and the co-presenter caption
+// (Chautauqua Submissions.dc.html:298) moved into the new SUPERSEDED
+// exclusion class (DEC-380 wave-139, correcting wave-137's own contrary
+// ruling on that one row). Re-measured against the repaired corpus with both
+// dispositions applied: 31. A RAISE from 22 -- corpus repairs move unmatched
+// in the fix-me direction ONLY, never hide a real offender (DEC-976
+// wave-138: a corpus repair re-seeds in the repairing commit and that is a
+// repair, not a raise).
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=31
+export const FRAME_CAPTION_UNMATCHED_CEILING = 31;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
@@ -914,6 +968,13 @@ describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaig
 
   it('COMPOSED exclusions each resolve to their cited file:line:text in the current pack', () => {
     for (const e of COMPOSED_EXCLUSIONS) {
+      const hit = ALL_CAPTIONS.find((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
+      expect(hit, `${e.fileName}:${e.line} no longer resolves to the cited text in the pack`).toBeDefined();
+    }
+  });
+
+  it('SUPERSEDED exclusions each resolve to their cited file:line:text in the current pack', () => {
+    for (const e of SUPERSEDED_EXCLUSIONS) {
       const hit = ALL_CAPTIONS.find((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
       expect(hit, `${e.fileName}:${e.line} no longer resolves to the cited text in the pack`).toBeDefined();
     }

@@ -765,13 +765,19 @@ export function ConfirmationPage(props: {
           </span>
           {props.meta ? <span class="chq-cfp-confirm-card-meta">{props.meta}</span> : null}
         </div>
-        {/* DEC-377: no delivery-window or "check spam" timing promise here —
-            the earlier copy asserted arrival timing the confirmation email
-            send (a best-effort side effect) can't actually guarantee. */}
+        {/* DEC-377: no arrival-timing or delivery-window promise here — the
+            earlier copy asserted a delivery timeframe the confirmation email
+            send (a best-effort side effect) can't actually guarantee. The
+            "check spam" sentence below is not that promise: it names no
+            timing, only makes plain that a delivered email can land in
+            spam, and is rendered only on the emailDelivered branch (DEC-380
+            wave-137) — never on the couldn't-send branch, where nothing was
+            sent and the sentence would be a falsehood the frame never
+            asked for. */}
         <p class="chq-cfp-confirm-body">
           {props.emailDelivered ? (
             <>
-              We've emailed a confirmation for "{props.title}" to {props.submittedEmail}.
+              We've emailed a confirmation for "{props.title}" to {props.submittedEmail}. If it hasn't arrived, check spam.
             </>
           ) : (
             <>

@@ -346,10 +346,10 @@ const LEDGER: LedgerEntry[] = [
     honored: { kind: "present", file: "app/src/pages/agenda/agenda.css", literal: ".chq-agenda-head-actions .chq-link-button {", testFile: "app/src/pages/agenda/PhoneAgenda.dock-membership.render.test.tsx" },
   },
   {
-    key: "co-presenter-add-row-keeps-its-no-email-truth-over-the-frames-caption-dec-909-wave-134-task-w9-dd",
+    key: "co-presenter-add-row-keeps-its-no-email-truth-over-the-frames-caption-dec-909-wave-134-task-w9-dd-corrected-and-confirmed-by-dec-380-wave-139",
     status: "honored",
     reason:
-      "DEC-909 wave-134: the frame's caption claims a new co-presenter 'is emailed a portal link', but the submissions routes never import a mailer (DEC-604 wave-70), so adding a participant cannot send anything. The landed caption states the truth and the portal invite stays a separate explicit act.",
+      "DEC-909 wave-134, corrected and confirmed by DEC-380 wave-139: the frame's caption claims a new co-presenter 'is emailed a portal link', but the submissions routes never import a mailer (DEC-604 wave-70), so adding a participant cannot send anything. The landed caption states the truth and the portal invite stays a separate explicit act. DEC-380's own wave-137 amendment briefly ruled the frame's caption a build without weighing this pin or the mailer-import scan; wave-139 corrects that on the merits.",
     honored: {
       kind: "present",
       file: "app/src/pages/submissions/SubmissionDetailPage.tsx",

@@ -293,7 +293,8 @@ survives contact with state:
   component cannot verify. The landed copy stays count-free: `Tell your
   accepted speakers` (`app/src/pages/comms/RecentSends.tsx:356-362`).
 - **Co-presenter add row keeps its no-email truth over the frame's caption
-  (DEC-909 wave-134, task w9-dd)** — `docs/design/Chautauqua
+  (DEC-909 wave-134, task w9-dd; corrected and confirmed by DEC-380
+  wave-139)** — `docs/design/Chautauqua
   Submissions.dc.html:298` draws the caption "A new co-presenter is emailed
   a portal link · the lead presenter is not changed". The app keeps
   `SubmissionDetailPage.tsx:1855`'s truthful line ("Adding a co-presenter
@@ -305,7 +306,16 @@ survives contact with state:
   explicit act (see the DEC-604 wave-70 amendment recorded in the
   component's own comment). The frame's second clause ("the lead presenter
   is not changed") already matches the app; only the first clause is
-  superseded.
+  superseded. `SubmissionDetailPage.render.test.tsx:1421-1427` pins the
+  app's sentence verbatim and calls the frame's version "the stale DEC-900
+  'emails them' claim" in its own comment — that pin is the check that a
+  literal build of the frame's caption would break. DEC-380's own wave-137
+  amendment briefly ruled the OPPOSITE — that the frame's caption is a
+  build, not a residue row — without weighing this pin or the mailer-import
+  scan; DEC-380 wave-139 corrects that on the merits: a caption that
+  asserts a SIDE EFFECT is graded against the app's actual behaviour, not
+  merely against whether it has a live referent on screen, and shipping the
+  frame's sentence here would ship a lie about the mailer.
 - **Reminder skip-window wording stays "reminded", not "emailed" (DEC-909
   wave-134, task w9-dd)** — `docs/design/Chautauqua Speakers.dc.html:697`
   draws the caption "skips anyone emailed in the last hour". The shared
