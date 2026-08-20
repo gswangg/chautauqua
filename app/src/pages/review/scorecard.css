@@ -328,4 +328,56 @@
   .chq-review-criterion-name-row .chq-review-criterion-weight-caption {
     white-space: normal;
   }
+
+  /* w4-n (DEC-889 wave-129 amendment, DEC-919 wave-128 clause (a)): Chautauqua
+     Review.dc.html:293-295 (the 390 'Reviewer scorecard' panel) prints the
+     abstract and then `<a min-height:44px>Read the full submission</a>` and
+     NO answers section -- the 1600 panel (:216) prints `Form answers` at
+     rest with no control. Same pure-CSS checkbox+label disclosure idiom this
+     repo landed in wave 128 for the Docs 'Contents' control
+     (src/routes/docs-site.css.ts's .chq-docs-contents-checkbox /
+     .chq-docs-contents-toggle / the :has(...:checked) rule): a visually-hidden
+     checkbox + a real 44px label toggle a :has() rule on the shared ancestor
+     .chq-review-scorecard-reading, no JS, no React state. Scorecard.tsx
+     mounts the checkbox+label pair only when isPhone (the file's existing
+     mount-gate idiom for phone-only nodes), so desktop's DOM carries no
+     toggle at all and this whole feature's geometry lives in this one
+     terminal media block. phone-hidden receipt below per DEC-919 wave-128
+     clause (a): a display:none that re-lines a capability behind a
+     frame-drawn disclosure is legal and names the control that now reveals
+     it. */
+  .chq-review-answers-checkbox {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    margin: 0;
+    min-width: 44px;
+    min-height: 44px;
+    pointer-events: none;
+  }
+
+  .chq-review-answers-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding-inline: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-ink);
+    cursor: pointer;
+  }
+
+  /* phone-hidden: revealed by .chq-review-answers-checkbox via the
+     .chq-review-answers-toggle "Read the full submission" label above --
+     DEC-889 wave-129 amendment, DEC-919 wave-128 clause (a). */
+  .chq-review-answers {
+    display: none;
+  }
+
+  .chq-review-scorecard-reading:has(.chq-review-answers-checkbox:checked) .chq-review-answers {
+    display: block;
+  }
 }
