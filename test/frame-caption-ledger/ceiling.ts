@@ -1,0 +1,174 @@
+// Frame caption/consequence ledger -- RATCHET module (DEC-976 wave-133;
+// split from test/frame-caption-ledger.scan.test.ts by the
+// contention-custodian decomposition, no behaviour change).
+//
+// FRAME_CAPTION_UNMATCHED_CEILING is scripts/exit-predicate.ts's own
+// campaign constant (CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES): that
+// script scans `git ls-files -- test app/src scripts` for a literal
+// `export const FRAME_CAPTION_UNMATCHED_CEILING = <int>;` line, so this
+// declaration must remain the ONLY file in that tree carrying that exact
+// literal form (a re-export elsewhere is a different syntax shape and does
+// not match its regex). Isolated into its own file because every worker
+// re-measuring the ratchet touches only this constant and its history
+// comment, not the population/exclusion/match machinery above it.
+
+// -- Ratchet -------------------------------------------------------------
+// Three lanes measured this ratchet independently against the same
+// 233-caption / 13-frame-file population (>= 20 chars, no digit, no `@`, not
+// text-transform:uppercase), each excluding a DIFFERENT slice:
+//   - v12m-w10-dd: +17 FIXTURE rows                          -> 54 unmatched
+//   - v12m-w10-cc: +&apos;/&rsquo;/&lsquo; in ENTITY_MAP (retiring the
+//     BreaksPanel/EmbedsPanel `day&apos;s`/`embed&apos;s` false offenders),
+//     +10 EXPLAINER, +5 EXEMPLAR ARTICLE                     -> 53 unmatched
+//   - v12m-w10-ee: +11 COMPOSED (a fourth named class)       -> 59 unmatched
+// All four exclusion tables and the widened ENTITY_MAP are live here and
+// CAPTIONS_AFTER_EXCLUSION subtracts every one of them, so the megabatch
+// figure is the UNION's -- at or below the lowest single-lane measurement.
+// Re-measured against this tree. May only be RAISED as a merge-train act if a
+// future predicate widening surfaces more real divergences, and should be
+// LOWERED as sibling lanes close real caption/consequence gaps.
+// Merge-train act (thunderdome megabatch): measured at 24 against the
+// integrated tree -- the union of all four exclusion tables plus the widened
+// ENTITY_MAP subtracts far more than any single lane could see from its own
+// base (54/53/59). A LOWERING from main's 70, as the ratchet requires.
+// Merge-train act (thunderdome medic, post-megabatch): the 24 above was
+// still 2 above what the integrated tree actually measures -- 22. The
+// two-sided ratchet caught the gap, as designed; lowered to the measured
+// figure so the ceiling cannot license stagnation.
+//   - v12m-w10-gg: +12 COMPOSED (reader-facing clusters: Contacts, Public
+//     and Portal, Review) and one BUILD (Contacts.dc.html:834's DEC-597
+//     exclusion instead of an unmatched row is folded into the same
+//     COMPOSED count; the frame's genuinely-absent per-pair reason at
+//     Contacts.dc.html:159 and the "check spam" line at Public and
+//     Portal.dc.html:1084 -- ruled buildable by DEC-380 rather than
+//     BLESSED/DEFERRED, see this commit's body -- both exit the residue by
+//     being built, not by an exclusion-table entry) -> 10 unmatched.
+// Thunderdome megabatch reconciliation: main's medic had measured 22 against
+// a tree WITHOUT v12m-w10-gg's 12 COMPOSED exclusions and 2 built captions;
+// w10-gg measured 10 against a tree without the medic's other lanes. The
+// integrated figure is re-measured below by this file's own two-sided
+// ratchet, which prints the exact count on either breach.
+//   - v12m-w13-gg (DEC-967 sighting #16): the corpus predicate itself was
+//     wrong -- enumerateSourceFiles admitted src/decisions-data/**, so a
+//     DEC_NNN ruling QUOTING a caption counted as the app rendering it. That
+//     repair (isDecisionRegistryFile, live above) un-launders ~11 rows and
+//     RAISES the count; w13-gg measured 32 from its own base. A raise here is
+//     legitimate under the ratchet's own terms: it is a predicate WIDENING
+//     surfacing real divergences that were previously hidden, not a
+//     regression in coverage.
+// v12m-w14-bb (task w14-bb): the 22 above was a CORPUS-BLIND figure -- this
+// ledger's private enumerateSourceFiles skipped `.test.` paths but never
+// excluded the decision registry (src/decisions-data/**, src/decisions.ts),
+// so eleven captions read BUILT only because a DEC_NNN string constant or a
+// DEC-NNN.md amendment quotes them verbatim (DEC-967/DEC-613 wave-138).
+// Repaired by importing test/frame-source-corpus.ts's isDecisionRegistryFile
+// predicate into this ledger's own enumerator (sharing the PREDICATE, not
+// the enumerator -- this ledger's corpus still reaches .md, which that
+// module's own isSourceFile does not). Forcing the ceiling to -1 against the
+// repaired corpus measured 33 unmatched; two rows were then disposed of by
+// this same task -- "If it hasn't arrived, check spam." (DEC-380 wave-137)
+// built verbatim in src/routes/public/submit-views.tsx on the
+// emailDelivered branch, and the co-presenter caption
+// (Chautauqua Submissions.dc.html:298) moved into the new SUPERSEDED
+// exclusion class (DEC-380 wave-139, correcting wave-137's own contrary
+// ruling on that one row). Re-measured against the repaired corpus with both
+// dispositions applied: 31. A RAISE from 22 -- corpus repairs move unmatched
+// in the fix-me direction ONLY, never hide a real offender (DEC-976
+// wave-138: a corpus repair re-seeds in the repairing commit and that is a
+// repair, not a raise).
+// v12m-w15-bb (wave-140): forcing the ceiling to -1 on that branch measured
+// 15, down from its base's 31. The drop is entirely
+// Chautauqua Review.dc.html:524/771 ("Two to six · results show how the
+// picks fell, never an average"), DEC-380's ineligible row now built as one
+// verbatim literal string in PlanEditor.tsx (see CRITERION_OPTIONS_CAPTION)
+// instead of a composed/interpolated form, so the ledger's plain-substring
+// match finds it.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING re-seeded by the merge train.
+// Thunderdome megabatch (wave-138/139/140 backlog of 14): no single lane's
+// figure is the truth here -- w10-gg's 12 COMPOSED exclusions, w12-ff's
+// builds, w14-bb's decision-registry corpus repair and w15-bb/cc/dd/ee/ff's
+// dispositions all coexist for the first time on the integrated tree. The
+// constant below is the integrated measurement (ceiling forced to -1, the
+// two-sided ratchet's own printed offender count read back), never a
+// guess and never a lane's pre-merge figure. Measured: 2 -- a LOWERING
+// from every lane's own figure (31 / 17 / 16 / 15 / 14 / 13 / 12),
+// because each lane's dispositions were measured without the others'
+// and they are additive once integrated.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=31
+// Thunderdome megabatch: 31 is w14-bb's figure, measured WITHOUT w10-gg's 12
+// COMPOSED exclusions, which are also in this batch and push the count down
+// again. The integrated figure is whatever the two-sided ratchet below prints
+// on breach; it is re-seeded to that measurement, never guessed.
+// v12m-w15-aa (wave-140, task w15-aa): on base main da3f1441, the decision
+// registry exclusion (isDecisionRegistryFile) was ALREADY LIVE and imported
+// (DEC-989 wave-140 disclosure). Forced to -1 and measured 17 unmatched
+// before this task's changes; three were Chautauqua Public and Portal.dc.html
+// rows owned by this task -- :963/:968 (built as placeholder= on the
+// notes-for-reviewers/accessibility-needs controls, src/routes/public/
+// submit-views.tsx, pinned by test/submit-cfp-frame-copy.test.ts) and :1541
+// (COMPOSED shape (iii) BLESSED/DEFERRED exclusion citing DEC-986's own
+// wave-130 amendment, which already declined to fabricate the tracks/formats
+// half). Re-measured after: 14, zero of them from Chautauqua Public and
+// Portal.dc.html. RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=14
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=13
+// v12m-w15-cc (wave-140): 31 (this branch's base, w14-bb's integrated
+// figure) forced to -1 and hand-measured: 17 offenders, four of them in
+// Chautauqua Speakers.dc.html (:419, :479, :524, :531) -- this lane's own
+// scope. Disposed :419 and :524 as COMPOSED (both already built --
+// speaker-detail.ts:538's `Spoke · ${r.submissionTitle}` and
+// reminders.ts:401-406's nudge-sentence composer) and :479 and :531 as
+// FIXTURE (both name an invented identity a real gap or a real,
+// differently-worded build already covers -- see each entry's reason).
+// 13 remain, none in the Speakers file. Lowered from 31 to 13.
+// v12m-w15-dd (task w15-dd, DEC-976/DEC-380/DEC-989 wave-140): base
+// (main da3f1441) already carried the isDecisionRegistryFile predicate and
+// several sibling lanes' exclusions -- forcing -1 against this branch's
+// unmodified tree measured 17, well below the stale 31 (DEC-989: a stale
+// ceiling above the live measurement licenses stagnation regardless of which
+// lane last touched it). Scoped to the Settings/Home rows only: :1305 (the
+// invite dialog's role-pill hint) was a sentence-case mismatch, not an
+// absence -- PeopleRolesPanel.tsx:633 read 'a reviewer...' where the frame
+// and DEC-650's own citation read 'A reviewer...', fixed to match verbatim
+// (BUILD, one word's case). :1049 and :1400 share one host-tracking gap
+// DEC-785's wave-63 amendment and DEVIATIONS.md's '09--09' entry already
+// name as unbuilt (no endpoint stores where an embed is pasted) -- filed
+// FIXTURE. Home :41/:125 are the hub's full-state hero sentence, already
+// composed live from real counts by root.tsx's heroSummary() -- filed
+// COMPOSED, one row per frame line per its own composing expression.
+// Settings :1175 (the retention block's 'After that the abstract and
+// reviews are deleted...' hint) stays UNMATCHED, not excluded: it is the
+// SAME 'Keeping and deleting' block DEVIATIONS.md's 'Unbuilt features' list
+// already names (Chautauqua Settings.dc.html:1111, 'Settings · editing your
+// data') and ExportsPanel.tsx:15-18 already declines to build for the same
+// reason DEC-032 gives ('no column, no endpoint, no rubric backs it') --
+// this task's own instructions assumed a live retention row exists to carry
+// the hint verbatim, but no such row is built anywhere in
+// app/src/pages/settings/**, and fabricating a non-functional dropdown to
+// carry static prose would misrepresent a real setting the app cannot
+// enforce. Left in the residue for a future lane with the backing data
+// model, per DEC-380 ("a frame's drawing does not create a data model").
+// 17 - 5 closed (1 build + 2 fixture + 2 composed) = 12, forced -1 and
+// read directly off this branch's own offender list, never guessed.
+// v12m-w15-ee (task w15-ee, DEC-976/DEC-380 wave-140): re-derived on a base
+// that already carries the wave-11 merge train's Contacts.dc.html:568/:570
+// COMPOSED exclusions (commit 2be29050) and this file's own pre-existing
+// :834 (DEC-597) and :758 COMPOSED rows -- forcing the ceiling to -1
+// measured 17 unmatched, of which exactly two are this lane's own
+// (Chautauqua Contacts.dc.html/Chautauqua Comms.dc.html). Contacts.dc.html:159
+// ("Same email domain, one has no company") is ALREADY BUILT and COMPOSED --
+// app/src/pages/contacts/duplicatePairReason.ts, mounted by DuplicateRow.tsx
+// -- entered above as a new COMPOSED row (DEC-380 wave-135's clause (a)
+// forbids excluding a ruled-buildable caption as absent; this is the
+// already-built-composed disposition, not an evasion). Chautauqua
+// Comms.dc.html:769 ("Your body uses {session_time} ... three of these
+// speakers have no slot yet") was grepped against
+// app/src/pages/comms/ComposeWizard.tsx and src/mail/render.ts's
+// MERGE_FIELDS whitelist: no `session_time` merge field and no matching
+// warning sentence exist anywhere in app/src or src today (confirmed by
+// `grep -rn session_time app/src src`, zero hits outside the .dc.html pack
+// itself) -- this is a genuine gap needing a new merge-field/session-data
+// wire-up, out of a caption-residue task's scope and out of the files this
+// lane owns, so it stays UNMATCHED per this file's own note above (the
+// "could not be verified" list, wave-135). 17 - 1 (the :159 build) = 16,
+// re-measured below.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 2;
