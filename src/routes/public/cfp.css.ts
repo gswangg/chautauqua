@@ -47,6 +47,11 @@ export const CFP_CSS = `
   .chq-cfp-intro { display: flex; flex-direction: column; gap: 11px; max-width: 62ch; }
   /* w5-c: the "Create an account" affordance line under the lede -- same
      small/muted note treatment as the identity note it complements. */
+  /* tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142
+     idiom): submit-views.tsx renders "New speaker? <a>Create an
+     account</a> by submitting your talk below -- we'll ..." as one running
+     sentence inside this note; the classless <a> is a phrase, not a
+     standalone control. */
   .chq-cfp-intro-cta { margin: 0; font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
   /* w5-c (frame 10--14): the YOU section sits ~54px below Your talk --
      document flow between the form's two top-level <section>s carried no
@@ -111,6 +116,10 @@ export const CFP_CSS = `
   /* DEC-970: the "already have an account?" note in the form intro was
      rendering with no declared style -- same small/muted note treatment
      as .chq-cfp-actions-note above. */
+  /* tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142
+     idiom): submit-views.tsx renders "Already have an account? <a>Sign in
+     to the speaker portal</a> ›" as one running sentence inside this note;
+     the classless <a> is a phrase, not a standalone control. */
   .chq-cfp-identity-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
 
   /* DEC-951: a one-column list at the form's measure -- the fieldset never
@@ -430,6 +439,38 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
     .chq-cfp-step-next { flex: 1; }
     .chq-cfp-actions-note { display: none; }
     .chq-cfp-actions .chq-btn-primary { flex: 1; min-height: 48px; }
+
+    /* task w18-e (SSR_CLASSLESS_ANCHOR_CEILING drain): "Browse the
+       sessions ›" / "Submit another talk ›" / "Browse the programme ›"
+       (.chq-cfp-links) are each the sole content of their own row inside
+       .chq-cfp-links -- a standalone forward path, same disposition as
+       portal.css.ts's .chq-portal-standalone-link (real floor, not
+       inline-in-prose). The shared rule above (cfp.css.ts:295-296) already
+       carries min-height:44px and non-zero horizontal padding, but
+       declares display:inline-flex --
+       phone-tap-target-ssr-classless-anchor.scan.test.ts's flex-centred
+       lens looks for the literal \`display: flex\` DESIGN-RULINGS.md:189
+       names, and inline-flex doesn't match it (a recurring literal-vs-
+       inline-flex miss this campaign has caught before, e.g.
+       .chq-auth-tertiary). Restated here, scoped to .chq-cfp-links a only
+       -- .chq-cfp-confirm-actions a:not(.chq-btn) is deliberately left off
+       this selector: its own classless anchor ("Already have a password?
+       Log in ›") is a phrase inside one running sentence, not a standalone
+       row, and takes the inline-in-prose exemption below instead (DEC-385
+       append-only -- the shared rule above is left unedited for both
+       selectors; this is an additive override of \`display\` alone). */
+    .chq-cfp-links a { display: flex; }
+
+    /* tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142
+       idiom, matches the JSX comment already sitting over both call sites
+       in submit-views.tsx's ConfirmationPage): "Already have a password?
+       Log in ›" is a phrase inside one running sentence, not a standalone
+       control. .chq-cfp-confirm-actions ALSO holds the confirmation page's
+       filled primary CTA (class="chq-btn chq-btn-primary"), which already
+       carries theme.ts's shared .chq-btn floor and is untouched by this
+       exemption -- it is scoped by TOKEN, the classless-anchor scan's own
+       grammar, and only ever reaches a classless (unclassed) anchor. */
+    .chq-cfp-confirm-actions a:not(.chq-btn) { color: var(--chq-brand); }
   }
 
   /* w7-f (DEC-989 wave-111 amendment): the wave-90 note above this line

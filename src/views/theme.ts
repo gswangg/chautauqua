@@ -587,6 +587,15 @@ export const THEME_CSS = `
     box-shadow: inset 0 -2px 0 var(--chq-brand);
   }
 
+  /* tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142
+     idiom): src/routes/docs.tsx's Authentication section renders "log in
+     via the browser at /login; the admin SPA…" with a classless anchor
+     around the "/login" text, inside one running sentence, its nearest
+     enclosing token being this shared .chq-section class -- a phrase
+     inside prose, not a standalone control. Scoped by TOKEN (the scan's
+     own grammar): a future classless anchor rendered as a real standalone
+     control inside some OTHER .chq-section must get its own class rather
+     than ride this exemption. */
   .chq-section {
     margin: 26px 0;
   }
@@ -628,6 +637,18 @@ export const THEME_CSS = `
     letter-spacing: 0.08em;
   }
 
+  /* tap-floor-exempt: inline-in-prose -- v12m-w18-e (DEC-393 wave-142
+     idiom): src/routes/portal/tasks/views.tsx's uploaded-file row renders
+     "<filename> (version N, uploaded …)" as an anchor with no class of its
+     own, its nearest enclosing token being this .chq-card class -- a
+     phrase inside one running sentence, not a standalone control, so
+     boxing it to 44px would break the line box it lives in (same reasoning
+     as the other inline-in-prose exemptions this wave and w17-e/w17-d
+     wrote). .chq-card itself is the shared generic card container reused
+     across the SSR surface; this exemption is scoped by TOKEN (the scan's
+     own grammar), not by file -- if a future classless anchor lands inside
+     some OTHER .chq-card as a real standalone control, it must get its own
+     class and leave this token's exemption alone. */
   .chq-card {
     background: var(--chq-surface);
     border: 1px solid var(--chq-rule);

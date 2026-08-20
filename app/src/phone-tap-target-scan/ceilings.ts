@@ -299,4 +299,21 @@ export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;
 // -- this constant's own draining lanes must lower it in the same commit
 // that fixes an offender, same DEC-989 protocol. RATCHET:
 // SSR_CLASSLESS_ANCHOR_CEILING=26
-export const SSR_CLASSLESS_ANCHOR_CEILING = 13;
+//
+// v12m-w18-e (task w18-e, DEC-967): a merge-train medic had already lowered
+// this to 13 by the time this branch measured main at `76fdc56a`. Forced
+// to -1 and read the printed offender list again on this branch: 13 live
+// (auth-views.tsx:136/:139/:225 .chq-auth-footer-links x3;
+// docs.tsx:59 .chq-section; portal/tasks/views.tsx:298 .chq-card;
+// public/submit-views.tsx:115/:165/:797/:798 .chq-cfp-links,
+// :562 .chq-cfp-intro-cta, :681 .chq-cfp-identity-note,
+// :771/:791 .chq-cfp-confirm-actions). All 13 drained this wave -- the
+// .chq-cfp-links/.chq-auth-footer-links/.chq-portal-standalone-link-shape
+// standalone anchors got a real phone floor (literal `display: flex`
+// restated in the terminal <=700px block beside the pre-existing
+// min-height/padding, since the base rule's `inline-flex` is invisible to
+// this scan's narrow-rules-only lens); the sentence-phrase anchors
+// (.chq-section, .chq-card, .chq-cfp-intro-cta, .chq-cfp-identity-note,
+// .chq-cfp-confirm-actions) took the inline-in-prose exemption instead.
+// Re-measured after the fix: 0. RATCHET: SSR_CLASSLESS_ANCHOR_CEILING=0
+export const SSR_CLASSLESS_ANCHOR_CEILING = 0;
