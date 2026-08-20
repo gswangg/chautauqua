@@ -8,7 +8,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError, readOptionalJsonBody } from "../../server/http";
-import { makeMailer } from "../../server/context";
+import { d1EmailLogWriter, makeMailer } from "../../server/context";
 import { newId } from "../../domain/ids";
 import { countOf } from "../../domain/count-copy";
 import { renderEmailHtml } from "../../mail/shell";
@@ -381,6 +381,14 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   const attempted = capped.filter((l) => !recentlySent.has(dedupeKey(l.email, reminderSubject)));
   const skipped = capped.filter((l) => recentlySent.has(dedupeKey(l.email, reminderSubject)));
 
+  // DEC-238 (wave-132 amendment): ONE local, shared by the fan-out send
+  // below AND the skipped-row write further down -- never two literals that
+  // could drift apart (the same discipline wave-66's reminderSubject
+  // already applies).
+  function reminderText(laggard: { assignedCount: number; completed: number }): string {
+    return `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}"${closeDateClause}. Review here: ${queueUrl}`;
+  }
+
   const reminded: string[] = [];
   const failed: { email: string; message: string }[] = [];
 
@@ -396,7 +404,7 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // below reconstruct exactly what the old sequential loop produced.
   const results = await mapWithConcurrency(attempted, MAIL_FANOUT_CONCURRENCY, async (laggard) => {
     const name = nameByUserId.get(laggard.userId) ?? laggard.email;
-    const text = `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}"${closeDateClause}. Review here: ${queueUrl}`;
+    const text = reminderText(laggard);
     // DEC-191: reviewers are users, not contacts; per-contact email history
     // intentionally excludes rows like this one.
     await mailer.send({
@@ -421,5 +429,38 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
     const err = result.reason;
     failed.push({ email: laggard.email, message: err instanceof Error ? err.message : String(err) });
   });
+
+  // DEC-238 (wave-132 amendment): the reviewer-reminder path writes the
+  // comms-history row its own `skipped` count promises, mirroring
+  // send.ts:279-299's per-skipped-recipient write through the SAME
+  // d1EmailLogWriter, carrying the SAME batchId the fan-out above used, so
+  // the comms history groups the whole send (sent + skipped) into one
+  // batch. contactId stays null (DEC-191: reviewers are users, not
+  // contacts). Nothing is minted for a skipped recipient (DEC-397).
+  if (skipped.length > 0) {
+    const emailLogWriter = d1EmailLogWriter(c.var.db);
+    const sentAtMs = Date.now();
+    for (const laggard of skipped) {
+      await emailLogWriter.write({
+        eventId: plan.eventId,
+        contactId: null,
+        templateId: undefined,
+        batchId,
+        toEmail: laggard.email,
+        toName: nameByUserId.get(laggard.userId) ?? laggard.email,
+        subject: reminderSubject,
+        bodyText: reminderText(laggard),
+        // No HTML render exists for a skipped recipient -- their message
+        // never reached the shell-rendering step (mailer.send/renderEmailHtml
+        // above runs only inside the fan-out loop, over `attempted`, not
+        // over `skipped`).
+        bodyHtml: "",
+        provider: "none",
+        status: "skipped",
+        sentAt: sentAtMs,
+      });
+    }
+  }
+
   return c.json({ reminded, sent: reminded.length, skipped: skipped.length, failed, remaining });
 });
