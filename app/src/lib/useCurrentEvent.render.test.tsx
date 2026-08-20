@@ -175,7 +175,29 @@ describe('DEC-728 (D19) cross-event switch banner', () => {
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe('ev-2');
   });
 
-  it('renders nothing (no id shown in place of a name) until both events are resolved from /events', async () => {
+  it('renders nothing (no id shown in place of a name) until the /events fetch settles', async () => {
+    window.history.pushState({}, '', '/admin?eventId=ev-2');
+    window.localStorage.setItem(STORAGE_KEY, 'ev-1');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+
+    render(<EventSwitchBanner />);
+
+    // Before the fetch settles there is no name to show yet.
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText(/ev-1/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ev-2/)).not.toBeInTheDocument();
+  });
+
+  // DEC-728 wave-117 (D19, clause c): the URL id resolves but the prior
+  // stored id no longer does -- this used to pass silently ("today's
+  // silent pass"); it must now still announce, just with no Back link
+  // (there is nothing to go back to).
+  it('a resolving URL eventId with an unresolvable prior stored id shows one banner, no Back link', async () => {
     window.history.pushState({}, '', '/admin?eventId=ev-2');
     window.localStorage.setItem(STORAGE_KEY, 'ev-1');
     // 'ev-1' (the prior stored id) is absent from the caller's own /events
@@ -186,9 +208,75 @@ describe('DEC-728 (D19) cross-event switch banner', () => {
 
     render(<EventSwitchBanner />);
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByRole('status')).toHaveLength(1);
+    });
+    expect(screen.getByText('Switched to Beta Summit')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Back to/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/ev-1/)).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe('ev-2');
+  });
+
+  // DEC-728 wave-117 (D19, clauses a+b): the URL id does NOT resolve (a
+  // stale/foreign/bookmarked link) while a DIFFERENT prior stored id
+  // does -- the prior context must be kept, never silently evicted for
+  // items[0].
+  it('an unresolvable URL eventId with a resolving prior stored id keeps the prior context and names it', async () => {
+    window.history.pushState({}, '', '/admin?eventId=ev-nonexistent');
+    window.localStorage.setItem(STORAGE_KEY, 'ev-1');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+
+    const { result } = renderHook(() => useCurrentEvent());
+
+    // Immediately, the URL id is optimistically in play (write-through)...
+    expect(result.current.eventId).toBe('ev-nonexistent');
+
+    // ...but once /events resolves, the prior context is restored -- to
+    // both state and storage -- and items[0] ('ev-1', coincidentally the
+    // same event here) is never written as a side effect of a blind
+    // fallback. Use a stored id that is NOT items[0] to prove it's the
+    // prior id being restored, not an accidental fallback match.
+    await waitFor(() => {
+      expect(result.current.switchInfo).not.toBeNull();
+    });
+    expect(result.current.eventId).toBe('ev-1');
+    expect(result.current.switchInfo).toEqual({
+      kind: 'kept',
+      keptEvent: { id: 'ev-1', name: 'Alpha Conf' },
+    });
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe('ev-1');
+
+    render(<EventSwitchBanner />);
+    await waitFor(() => {
+      expect(screen.getByText('Kept Alpha Conf')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  // Same clause, but the resolving prior id is NOT items[0] -- proves the
+  // restore is genuinely the prior id, not a coincidental items[0] match.
+  it('restores a resolving prior stored id that is not items[0], never falling back to items[0]', async () => {
+    window.history.pushState({}, '', '/admin?eventId=ev-nonexistent');
+    window.localStorage.setItem(STORAGE_KEY, 'ev-2');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+
+    const { result } = renderHook(() => useCurrentEvent());
+
+    await waitFor(() => {
+      expect(result.current.switchInfo).not.toBeNull();
+    });
+    expect(result.current.eventId).toBe('ev-2');
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe('ev-2');
   });
 
   it('the restore link writes the prior id back to storage and lands on the same page with eventId stripped', async () => {
