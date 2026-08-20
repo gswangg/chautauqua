@@ -299,6 +299,12 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
   "app/src/phone-tap-target-scan/ssr.ts":
     "SSR-route (public/portal/docs/auth) half of the same wave-v12m-w8 decomposition -- imported only by " +
     "app/src/phone-tap-target.scan.test.ts, and test-file imports don't confer reachability (DEC-518).",
+  "app/src/phone-tap-target-scan/undeclared.ts":
+    "Undeclared-height half of the same phone-tap-target scan decomposition (DEC-367 PREDICATE REPAIR: a " +
+    "control that declares NO height at all took the base scan's same `continue` as one already at 44px) -- " +
+    "imported only by app/src/phone-tap-target-undeclared.scan.test.ts, and test-file imports don't confer " +
+    "reachability (DEC-518); it is the scan's own code, never SPA bundle code, same shape as its core.ts / " +
+    "anchor-floor.ts / ssr.ts siblings above.",
   "src/routes/docs-content/technical-names.ts":
     "ASD-STE100 rule-1.5/1.6 technical-name declaration for the docs articles -- consumed only by " +
     "test/docs-ste.scan.test.ts (the docs dictionary scan), and test-file imports don't confer reachability " +

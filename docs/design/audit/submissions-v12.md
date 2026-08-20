@@ -15,7 +15,7 @@ below need a decision or land outside this task's scope
    305-317). `SubmissionDetailPage.tsx` now renders
    `.chq-detail-decision-rail` inside `.chq-phone-dock` at 390 (rather than
    inside `.chq-detail-aside`, in the scrolling body), with dock-specific
-   geometry at `detail.css:1125-1133` (`.chq-phone-dock
+   geometry at `detail.css:1136-1144` (`.chq-phone-dock
    .chq-detail-decision-rail` / `.chq-detail-decision-primary`), per DEC-610.
 
 2. **Submissions :137's phone head chipstrip is a simpler control set than

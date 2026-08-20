@@ -36,7 +36,7 @@ describe('v12 phone drill "Pipeline · 390" (docs/design/Chautauqua Contacts.dc.
   });
 });
 
-describe('v12 phone drill head for Duplicates, derived from "Pipeline · 390" (docs/design/Chautauqua Contacts.dc.html:448-451, DEC-964: no 390 frame of its own)', () => {
+describe('v12 phone drill head for Duplicates, derived from the "Pipeline · 390" frame band (DEC-964: Duplicates has no 390 frame of its own; the band\'s own lines are receipted at the expects below)', () => {
   it('imports and calls useIsPhone to gate the drill head', () => {
     expect(DUPLICATES_TSX).toMatch(/import \{ useIsPhone \} from '\.\.\/\.\.\/lib\/useIsPhone';/);
     expect(DUPLICATES_TSX).toMatch(/const isPhone = useIsPhone\(\);/);

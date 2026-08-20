@@ -48,7 +48,7 @@
   not appear anywhere in `docs/design/Chautauqua Submissions.dc.html`
   (grepped in full, zero matches). The control is a DEC-886 wave-2
   discoverability affordance the v12 frames never drew, per its own
-  comment: app/src/pages/submissions/SubmissionDetailPage.tsx:1891 `{/* DEC-886 (wave 2 amendment): the blast-radius delete page already`.
+  comment: app/src/pages/submissions/SubmissionDetailPage.tsx:1966 `{/* DEC-886 (wave 2 amendment): the blast-radius delete page already`.
   Under the mandate's desktop freeze a desktop change is legal only when a
   v12 desktop frame demands it -- there is no frame row here to conform
   the footer's layout to, so there is nothing to implement.

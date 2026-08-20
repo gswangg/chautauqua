@@ -500,11 +500,12 @@
      tappable control (Overview.tsx's `<Link ... className=
      "chq-overview-deadline-cell">`), so its hit box is the full cell, not
      just its text. `align-items:center` is NOT added: the Overview 390
-     frame's deadline chip (docs/design/Chautauqua Overview.dc.html:198-200,
-     CHIP_NEAR/CHIP_REST at :744-745) is `display:flex; flex-direction:
-     column` with no `align-items` -- label stacks over value, left-aligned
-     -- so centring the cell's content would be a visual change the frozen
-     frame forbids. */
+     frame draws the deadline chip from CHIP_NEAR/CHIP_REST at
+     docs/design/Chautauqua Overview.dc.html:744-745
+     (`display:flex; flex-direction:column`), with no align-items of any
+     kind, and the chip markup consuming them sits at :198-200 of the same
+     frame. Label stacks over value, left-aligned, so centring the cell's
+     content would be a visual change the frozen frame forbids. */
   .chq-overview-deadline-cell {
     flex-shrink: 0;
     min-height: 44px;

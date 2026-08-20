@@ -326,7 +326,7 @@ export function findOffenders(containers: ContainerRecord[], sources: Map<string
 // left stale above the measured truth. Seeded at THIS branch's own
 // measurement -- 23 containers derived, 22 offenders, exactly one
 // (`.chq-contacts-rail-duplicate-actions`, gap 24 >= 2*10) conforms.
-export const CANCELLED_PADDING_GAP_CEILING = 22;
+export const CANCELLED_PADDING_GAP_CEILING = 17;
 
 describe('cancelled-padding companion-gap lens (DEC-393 wave-121 amendment, task w10-l)', () => {
   const sourceList = loadSources();

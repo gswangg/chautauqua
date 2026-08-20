@@ -15,10 +15,12 @@ if (height === undefined || height >= TAP_FLOOR_PX) continue;
 named a height was invisible to the ratchet meant to catch sub-floor
 controls. That is the inverse of the truth: a control with no declared
 height cannot reach 44px except by accident of line-height.
-`app/src/pages/review/review.css:650-660`'s
-`.chq-review-queue-footer-showall { border: none; background: none;
-padding: 0; font-size: 13px; }`, styling a real `<button type="button">`
-(`ReviewerQueue.tsx:402-404`, also `PlanEditor.tsx:2319`), is the proof —
+The rule opened at `app/src/pages/review/review.css:650`
+(`.chq-review-queue-footer-showall {`) declares border, background,
+padding and font-size — and no height of any kind. It styles a real
+button element at `app/src/pages/review/ReviewerQueue.tsx:402`
+(`<button`), the same shape used again at `PlanEditor.tsx:2319`. That is
+the proof —
 the live 390 probe (`docs/probes/metafid-phoneB-ssr-2026-08-19.md`)
 measured it at 52×30, sub-floor, while `findOffenders()` and both SSR tap
 ratchets all read clean.

@@ -255,15 +255,15 @@ describe('v12 phone frame "Contact · 390"', () => {
     expect(del).toMatch(/padding:\s*0 16px/);
   });
 
-  // The READ screen's own dock -- docs/design/Chautauqua Contacts.dc.html:433
-  // `padding:12px 16px 16px; display:flex; gap:8px` with both controls at
-  // min-height:48px -- is implemented by the shell's shared .chq-phone-dock
-  // (app/src/styles.css), reused rather than re-declared per cluster (DEC-613
-  // wave-93). This receipts that shared rule directly, not this stylesheet.
+  // The READ screen's own dock is implemented by the shell's shared
+  // .chq-phone-dock (app/src/styles.css), reused rather than re-declared per
+  // cluster (DEC-613 wave-93). This receipts that shared rule directly, not
+  // this stylesheet.
   it('receipts the frame\'s read-dock band against the shell\'s shared .chq-phone-dock', () => {
     const shellPath = join(HERE, '..', '..', 'styles.css');
     const shellCss = readFileSync(shellPath, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
     const dock = phoneRule(shellCss, '.chq-phone-dock');
+    // docs/design/Chautauqua Contacts.dc.html:433 `padding:12px 16px 16px; display:flex; gap:8px`
     expect(dock).toMatch(/padding:\s*12px 16px 16px/);
     expect(dock).toMatch(/border-top:/);
     expect(dock).toMatch(/gap:\s*8px/);

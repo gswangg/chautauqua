@@ -1,4 +1,6 @@
-// DEC-959: "Contact · 390" (docs/design/Chautauqua Contacts.dc.html:407-436)
+// DEC-959: the "Contact · 390" frame cut of docs/design/Chautauqua
+// Contacts.dc.html (its head band and docked footer are receipted line by
+// line at the expects below, not claimed here)
 // becomes a READ screen -- values render as inert text, and the sticky
 // action bar is replaced by the frame's two-control dock (Email / Edit).
 // Follows the matchMedia-stub idiom PlanEditor.render.test.tsx:2496-2504
@@ -66,7 +68,9 @@ describe('ContactDrawer phone read mode (DEC-959)', () => {
       expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
     });
 
-    // frame :433-435 -- the docked footer band carries exactly two buttons.
+    // docs/design/Chautauqua Contacts.dc.html:408 `<div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px">`
+    // -- the READ cut's head band; its docked footer below carries exactly
+    // two controls.
     const dock = dialog.querySelector('[data-chq-phone-dock]');
     expect(dock).not.toBeNull();
     expect(dock).toHaveClass('chq-phone-dock');

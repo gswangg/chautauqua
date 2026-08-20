@@ -332,6 +332,13 @@ const LEDGER: LedgerEntry[] = [
     honored: { kind: "present", file: "src/routes/auth.css.ts", literal: "flex-direction: column-reverse;", testFile: "test/account-docs-phone-frames.test.ts" },
   },
   {
+    key: "contact-drawers-phone-edit-stack-is-not-the-frames-read-dock-dec-959-dec-380-wave-120-struck",
+    status: "honored",
+    reason:
+      "DEC-959/DEC-380 wave-120: the frame draws only the 390 READ footer (Email / Edit), so the phone EDIT state's five-control bar is our interpretation, not a frame deviation. It takes the frame footer's own floor (min-height:48px, padding:0 16px), one control per line, and its capability is reached through the dock's own Edit control -- the drawer flips between the two trees on `readMode`, never renders both.",
+    honored: { kind: "present", file: "app/src/pages/contacts/ContactDrawer.tsx", literal: "const readMode = isPhone && !phoneEditing;", testFile: "app/src/pages/contacts/ContactDrawer.phoneRead.render.test.tsx" },
+  },
+  {
     key: "agenda-390-phone-dock-stays-exactly-the-two-frame-controls-publish-schedule-and-breaks-live-in-the-heads-action-row-dec-380-wave-116-amendment",
     status: "honored",
     reason:
@@ -597,9 +604,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(7);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(8);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(17);
-    expect(derived.length).toBe(32);
+    expect(derived.length).toBe(33);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
