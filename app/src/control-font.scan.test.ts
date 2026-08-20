@@ -181,10 +181,15 @@ function isControlFontOffender(selector: string, body: string, controlClasses: S
 // (`CEILING` forced to -1 and the test re-run) -- never read from
 // docs/design/audit/control-font-population-v12.md, which is a wave-6
 // snapshot and the exact trap DEC-989 clause (a) names: the audit doc says
-// 34, this branch's own run of the scan says 28. Re-tightening this
-// constant downward is the act of the batch that lands a fix for one of the
-// 28 offenders currently licensed below -- see the companion test.
-export const CEILING = 28;
+// 34, this branch's own run of the scan says 28.
+//
+// Wave-116 (task w5-ac, DEC-577): all 28 offenders licensed below were
+// given `font-family: inherit;` as the first declaration in their rule
+// body (the idiom app/src/styles.css:599 already ships for
+// .chq-btn-tertiary). Re-measured with `CEILING` forced to -1: 0
+// offenders remain. Ceiling lowered to 0 in this same commit per the
+// companion "ceiling is not stale" test below.
+export const CEILING = 0;
 
 describe('control font vocabulary contract (DEC-577 amendment, DEC-808 wave-99 amendment)', () => {
   const TSX_FILES = allTsxFiles(HERE);

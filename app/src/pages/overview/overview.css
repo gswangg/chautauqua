@@ -190,6 +190,7 @@
 }
 
 .chq-overview-section-action {
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
   color: var(--chq-brand);
@@ -387,6 +388,7 @@
    .chq-overview-btn above (every primary row button also carries that
    base class); label stays var(--chq-on-brand) throughout. */
 .chq-overview-btn-primary {
+  font-family: inherit;
   border: none;
   background: var(--chq-brand);
   color: var(--chq-on-brand);

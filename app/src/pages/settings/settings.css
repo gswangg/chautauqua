@@ -208,6 +208,7 @@
 }
 
 .chq-settings-section-action {
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
   background: none;
@@ -275,6 +276,7 @@
 }
 
 .chq-settings-inline-action {
+  font-family: inherit;
   font-size: 12px;
   font-weight: 700;
 }
@@ -1025,6 +1027,7 @@
 }
 
 .chq-settings-portal-add-resource {
+  font-family: inherit;
   align-self: flex-start;
   border: 1px solid var(--chq-border);
   border-radius: 4px;

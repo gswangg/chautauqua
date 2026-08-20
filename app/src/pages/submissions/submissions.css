@@ -80,6 +80,7 @@
    .chq-input/.chq-select controls. The phone media block below still forces
    44px minimums there for tap targets -- left untouched. */
 .chq-submissions-filterbar-search {
+  font-family: inherit;
   min-width: 220px;
   min-height: 26px;
   padding: 5px 12px;
@@ -88,6 +89,7 @@
 }
 
 .chq-submissions-filterbar-select {
+  font-family: inherit;
   min-height: 26px;
   /* User-filed (gate-12 era): the shorthand clobbered .chq-select's 36px
      padding-right caret reserve, running the label under the caret
@@ -343,6 +345,7 @@
 }
 
 .chq-submissions-clone {
+  font-family: inherit;
   font-size: 12px;
   font-weight: 700;
   background: none;
@@ -414,6 +417,7 @@
    `chq-<area>-*`), so the tab shell is named for its page like every other
    class in this block. */
 .chq-submissions-viewtab {
+  font-family: inherit;
   background: none;
   border: none;
   padding: 7px 13px;
@@ -442,6 +446,7 @@
 }
 
 .chq-submissions-viewtabs-save {
+  font-family: inherit;
   font-weight: 700;
   color: var(--chq-ink);
 }
@@ -469,6 +474,7 @@
 /* DEC-941: per-view delete affordance inside the tab item, sized down to
    match the private-view micro-label it usually sits next to. */
 .chq-submissions-viewtabs-delete {
+  font-family: inherit;
   font-size: 11px;
 }
 

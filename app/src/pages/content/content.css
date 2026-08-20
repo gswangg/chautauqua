@@ -339,6 +339,7 @@
 }
 
 .chq-content-version-delete {
+  font-family: inherit;
   font-size: 12px;
   white-space: nowrap;
   padding: 4px 8px;
@@ -553,6 +554,7 @@
 }
 
 .chq-content-detail-back {
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
 }
@@ -711,6 +713,7 @@
 }
 
 .chq-content-files-breadcrumb {
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   color: var(--chq-muted);

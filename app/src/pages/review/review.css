@@ -93,6 +93,7 @@
 }
 
 .chq-review-plan-row .chq-pill {
+  font-family: inherit;
   border-radius: 3px;
   padding: 3px 9px;
   font-size: 11px;
@@ -647,6 +648,7 @@
 }
 
 .chq-review-queue-footer-showall {
+  font-family: inherit;
   border: none;
   background: none;
   padding: 0;
@@ -975,6 +977,7 @@
    second implementation -- same visual contract, restated here since a
    page stylesheet is only loaded for its own page. */
 .chq-forms-field-drag {
+  font-family: inherit;
   appearance: none;
   background: none;
   border: none;
@@ -1828,6 +1831,7 @@
    title in column 1 -- the reason itself is now the row's action (see
    .chq-review-queue-recusal-reason below). */
 .chq-review-queue-row-undo {
+  font-family: inherit;
   align-self: flex-start;
   border: none;
   background: none;
@@ -1896,6 +1900,7 @@
 }
 
 .chq-review-editor-footer-delete {
+  font-family: inherit;
   font-size: 13px;
 }
 

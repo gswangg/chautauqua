@@ -280,6 +280,7 @@
    children -- this compound selector never reaches a bare anchor
    (DEC-393 wave-87 amendment). */
 .chq-detail-participant-row-actions .chq-link-button {
+  font-family: inherit;
   font-size: 12px;
   font-weight: 700;
   color: var(--chq-muted);
@@ -561,6 +562,7 @@
    (chq-link-button), never a bordered/filled control competing with the
    comment above it. */
 .chq-review-criteria-toggle {
+  font-family: inherit;
   display: inline-block;
   margin: 8px 0 0;
   font-size: 12px;
