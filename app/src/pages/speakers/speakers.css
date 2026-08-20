@@ -1958,4 +1958,50 @@ button.chq-speakers-status-overdue:hover {
   .chq-speaker-detail-logistics-actions {
     gap: 28px;
   }
+
+  /* task w13-o (undeclared-height lens, DESIGN-RULINGS:189's triple):
+     `.chq-participation-menu-item`/`-action` are the two-line menu rows
+     (label + caption span, flex-direction:column from the base rule
+     above); a hardcoded phone `min-height` below 44px on this family is
+     the ruling's own named failure mode, so the floor lands here at
+     exactly 44px. "Centred flex" is applied on the block's own axis --
+     `justify-content:center` -- rather than `align-items:center`, which
+     would shrink the label/caption spans to content width and break
+     their left alignment against the rest of the panel; the row's
+     existing 20px/17px horizontal padding already supplies the ruling's
+     third leg. */
+  .chq-participation-menu-item,
+  .chq-participation-menu-action {
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  /* Same shape for the "Edit tasks" panel's own two-line rows. */
+  .chq-speakers-task-edit-item {
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  /* `.chq-speakers-task-edit`, `.chq-speaker-detail-task-remind` and
+     `.chq-speakers-phone-roster-link` are single-line `.chq-link-button`-
+     composed controls (borderless, no fill) -- the full triple applies
+     literally: `align-items:center` centres the one line, and the
+     cancelled-padding idiom (`padding-inline`/`margin-inline` equal and
+     opposite, same instrument as :1855-1860 above) supplies horizontal
+     padding without shifting the surrounding layout. The shared
+     `.chq-link-button` base (styles.css) restates this same shape at
+     phone width, but this file's own later-loaded rules for these three
+     selectors declare neither `min-height` nor `display` and so silently
+     win the cascade at equal specificity without an explicit floor here
+     -- the same collision DEC-880/DEC-940 already document above for the
+     participation trigger. */
+  .chq-speakers-task-edit,
+  .chq-speaker-detail-task-remind,
+  .chq-speakers-phone-roster-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
 }

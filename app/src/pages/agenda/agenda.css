@@ -277,6 +277,14 @@
    order regardless of `position`, and the cards are later in DOM order, so
    without this the card would intercept the click and place at the card's
    own startMin instead of the row the organiser aimed at. */
+/* tap-floor-exempt: render-gate -- DayGrid.tsx never mounts at phone
+   width. Agenda.tsx:71 computes const isPhone = useIsPhone(), and
+   Agenda.tsx:426's isPhone ? (<PhoneAgenda .../>) : (<div
+   className="chq-agenda-layout">...<DayGrid /></div>) swaps in
+   PhoneAgenda.tsx on phone instead, which imports neither DayGrid nor
+   SessionCard -- verified by
+   app/src/pages/agenda/agenda-render-gate.receipt.test.ts, not asserted
+   bare. */
 .chq-day-grid-cell-btn {
   border-left: 1px solid var(--chq-hairline);
   background: transparent;
@@ -429,6 +437,10 @@
    It renders inside .chq-agenda-main, directly below .chq-day-grid, as
    the full-width strip its copy claims to be — not a second grid item
    competing with the Unscheduled tray for .chq-agenda-layout's columns. */
+/* tap-floor-exempt: render-gate -- same DayGrid.tsx swap as
+   .chq-day-grid-cell-btn above (Agenda.tsx:71/:426), never mounted at
+   phone width; verified by
+   app/src/pages/agenda/agenda-render-gate.receipt.test.ts. */
 .chq-day-grid-noroom-btn {
   display: block;
   width: 100%;
@@ -463,6 +475,10 @@
    (DEC-367: no red/third accent) — visible in the sliver of the cell a
    placed card's lane doesn't cover, and via the focus outline when tabbed to
    directly. */
+/* tap-floor-exempt: render-gate -- same DayGrid.tsx swap as
+   .chq-day-grid-cell-btn above (Agenda.tsx:71/:426), never mounted at
+   phone width; verified by
+   app/src/pages/agenda/agenda-render-gate.receipt.test.ts. */
 .chq-day-grid-cell-btn-clash {
   border: 1px dashed var(--chq-ink);
   background: transparent;
@@ -515,6 +531,10 @@
   z-index: var(--chq-z-agenda-overlay);
 }
 
+/* tap-floor-exempt: render-gate -- same DayGrid.tsx swap as
+   .chq-day-grid-cell-btn above (Agenda.tsx:71/:426), never mounted at
+   phone width; verified by
+   app/src/pages/agenda/agenda-render-gate.receipt.test.ts. */
 .chq-day-grid-clash-item {
   background: none;
   border: none;
@@ -670,6 +690,13 @@
 /* Session card                                                           */
 /* ---------------------------------------------------------------------- */
 
+/* tap-floor-exempt: render-gate -- SessionCard.tsx mounts only from
+   DayGrid.tsx:546 and UnscheduledTray.tsx:86, both rendered solely inside
+   Agenda.tsx:426's desktop branch (isPhone ? (<PhoneAgenda .../>) : (...
+   DayGrid ...)), guarded by Agenda.tsx:71's const isPhone = useIsPhone().
+   PhoneAgenda.tsx imports neither DayGrid nor SessionCard, so this card
+   never mounts at phone width; verified by
+   app/src/pages/agenda/agenda-render-gate.receipt.test.ts. */
 .chq-session-card {
   background: var(--chq-surface);
   border: 1px solid var(--chq-rule);
@@ -747,6 +774,10 @@
 /* Conflicted card: inverts to ink/on-ink — no red chip, no track accent
    (DEC-367: no red, lateness/clash are type, never colour). The write is
    never blocked (DEC-010). */
+/* tap-floor-exempt: render-gate -- same SessionCard.tsx mount sites as
+   .chq-session-card above (DayGrid.tsx:546, UnscheduledTray.tsx:86),
+   gated by Agenda.tsx:71/:426, never mounted at phone width; verified by
+   app/src/pages/agenda/agenda-render-gate.receipt.test.ts. */
 .chq-session-card-conflict {
   background: var(--chq-ink);
   border-color: var(--chq-ink);

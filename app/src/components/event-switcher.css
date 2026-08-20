@@ -195,4 +195,17 @@
     min-height: 44px;
     padding: 0 8px;
   }
+
+  /* task w13-o (undeclared-height lens): the menu row is `display:block`
+     on the base rule (:109-122) -- a single-line text button, full-width
+     in its 6px-padded panel -- with no declared height anywhere, so it
+     took whatever the 13px/600 line box gave it. Full triple: `flex` +
+     `align-items:center` reaches the floor without changing the
+     full-width block layout the panel wants, and the existing 8px/10px
+     padding already supplies the ruling's horizontal-padding leg. */
+  .chq-eventswitcher-menu-item {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
