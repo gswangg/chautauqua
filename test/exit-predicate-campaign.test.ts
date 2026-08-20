@@ -126,6 +126,14 @@ function baseFixture(): CampaignFile[] {
       path: "app/src/cancelled-padding-gap.scan.test.ts",
       content: "export const CANCELLED_PADDING_GAP_CEILING = 7;",
     },
+    // wave-128 (task w3-j, DEC-976/DEC-967): the frame control-label
+    // ledger, added so this fixture stays a faithful shape of the real
+    // corpus. Value is arbitrary and deliberately NOT the real ledger's
+    // current measurement, per this fixture's header contract.
+    {
+      path: "test/frame-control-label.scan.test.ts",
+      content: "export const FOOTER_LABEL_CEILING = 5;",
+    },
   ];
 }
 
@@ -175,7 +183,9 @@ describe("buildCampaignReport", () => {
     // wave-122 (task w11-s, DEC-851 amendment): UNDECLARED_HEIGHT_OFFENDERS_CEILING
     // (task w9-l, DEC-367 PREDICATE REPAIR) was GRADED but not a Tier-2 row --
     // a declared knob with no reader. Now wired into TIER2_CEILING_NAMES: 20 -> 21.
-    expect(report.rows).toHaveLength(21);
+    // wave-128 (task w3-j): FOOTER_LABEL_CEILING, the frame control-label
+    // ledger, declared and wired into TIER2 in one commit: 21 -> 22.
+    expect(report.rows).toHaveLength(22);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
     expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });
@@ -246,6 +256,9 @@ describe("buildCampaignReport", () => {
       }
       if (f.path === "app/src/phone-tap-target-undeclared.scan.test.ts") {
         return { ...f, content: "export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 0;" };
+      }
+      if (f.path === "test/frame-control-label.scan.test.ts") {
+        return { ...f, content: "export const FOOTER_LABEL_CEILING = 0;" };
       }
       return f;
     });

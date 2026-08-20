@@ -1,7 +1,9 @@
 // DEC-576 (wave-128, task w3-l): TaskFormPage was the last portal drill page
-// whose primary rendered only inline -- docs/design/Chautauqua Public and
-// Portal.dc.html:518-521 ("Portal · Hotel stay form · 390") draws a docked
-// footer holding the primary submit. This test copies edit.tsx's own idiom
+// whose primary rendered only inline -- the "Portal · Hotel stay form · 390"
+// frame draws a docked footer holding the primary submit. That frame band is
+// cited, with its verbatim receipt, beside the dock assertion below (DEC-976
+// wave-87: a claim in a header comment with no nearby expect( asserts
+// nothing). This test copies edit.tsx's own idiom
 // (test/portal-w6-h-dock.test.ts's CSS-scan pattern for the geometry half,
 // the render-pure-component idiom test/portal-session-phone-frames.test.ts
 // already uses for TaskFormPage) and asserts:
@@ -94,6 +96,9 @@ describe("TaskFormPage adopts the portal dock band (DEC-576 wave-128)", () => {
     expect(formOpenTags[0]).toMatch(/\bid="chq-portal-task-form"/);
     expect(formOpenTags[0]).toMatch(/action="\/portal\/tasks\/assign-1\/form"/);
 
+    // docs/design/Chautauqua Public and Portal.dc.html:518-521 draws the band as
+    // `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
+    // -- one pinned action row carrying the primary submit.
     const dockIdx = html.indexOf('class="chq-portal-dock"');
     expect(dockIdx).toBeGreaterThan(-1);
     const dockBlock = html.slice(dockIdx, html.indexOf("</div>", dockIdx) + "</div>".length);

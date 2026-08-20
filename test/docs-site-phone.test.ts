@@ -213,11 +213,14 @@ describe("docs-site.css.ts phone block (DEC-385, source-scan)", () => {
     expect(THEME_TS).toMatch(/body\s*\{\s*overflow-wrap:\s*anywhere;\s*\}/);
   });
 
-  it("the 'Contents' disclosure clears the 44px floor, is right-flushed, phone-only, and re-lines the SAME nav rather than replacing it (docs/design/Chautauqua Docs.dc.html:167-169)", () => {
+  it("the 'Contents' disclosure clears the 44px floor, is right-flushed, phone-only, and re-lines the SAME nav rather than replacing it", () => {
     const block = extract700Blocks(DOCS_SITE_CSS)[0]!;
 
-    // Top-level: the toolbar and its two new controls are off-screen by
-    // default (DEC-385 — narrow overrides wide via max-width only).
+    // docs/design/Chautauqua Docs.dc.html:167-169 draws the 390 header band as
+    // `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; align-items:center; gap:12px`
+    // -- two min-height:44px controls, the back link and a right-flushed
+    // "Contents". Top-level, both new controls are off-screen by default
+    // (DEC-385 — narrow overrides wide via max-width only).
     expect(DOCS_SITE_CSS).toMatch(/\.chq-docs-phone-toolbar\s*\{\s*display:\s*none;\s*\}/);
     expect(DOCS_SITE_CSS).toMatch(/\.chq-docs-contents-checkbox\s*\{\s*display:\s*none;\s*\}/);
     expect(DOCS_SITE_CSS).toMatch(/\.chq-docs-contents-toggle\s*\{\s*display:\s*none;\s*\}/);

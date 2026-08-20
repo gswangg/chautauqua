@@ -45,6 +45,70 @@ function listFiles(): string[] {
   return files;
 }
 
+// DEC-967 wave-128 clause 4 ("prose about a control is not the control"),
+// applied here by the wave-128 merge train: a COMMENT that merely writes
+// the words `<form>` -- e.g. TaskFormPage's own idiom note explaining that
+// the docked control is a second submit "never a second `<form>`" -- used
+// to open a phantom FORM_BLOCK_RE match with no attributes, which then ran
+// non-greedily to the NEXT real </form>. That both false-positived (the
+// phantom block has no enctype but contains <FormFieldsSection>) and, worse,
+// CONSUMED the real form after it, so the genuine declaration was never
+// checked at all -- a scan blinded by prose. Stripping comments first fixes
+// both. Length-preserving (comments become spaces/newlines) so the reported
+// line numbers stay accurate; copied verbatim from
+// test/iso-date-one-home.scan.test.ts.
+function stripComments(src: string): string {
+  let out = "";
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    const c2 = i + 1 < n ? src[i + 1] : "";
+    if (c === "/" && c2 === "/") {
+      while (i < n && src[i] !== "\n") {
+        out += " ";
+        i++;
+      }
+      continue;
+    }
+    if (c === "/" && c2 === "*") {
+      out += "  ";
+      i += 2;
+      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
+        out += src[i] === "\n" ? "\n" : " ";
+        i++;
+      }
+      if (i < n) {
+        out += "  ";
+        i += 2;
+      }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      const quote = c;
+      out += c;
+      i++;
+      while (i < n && src[i] !== quote) {
+        if (src[i] === "\\" && i + 1 < n) {
+          out += (src[i] ?? "") + (src[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        out += src[i];
+        i++;
+      }
+      if (i < n) {
+        out += src[i];
+        i++;
+      }
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
 interface FormHit {
   line: number;
   hasEnctype: boolean;
@@ -55,7 +119,8 @@ interface FormHit {
 // nest (true here, matching the HTML content model).
 const FORM_BLOCK_RE = /<form\b([^>]*)>([\s\S]*?)<\/form>/g;
 
-function scanFile(src: string): FormHit[] {
+function scanFile(rawSrc: string): FormHit[] {
+  const src = stripComments(rawSrc);
   const hits: FormHit[] = [];
   FORM_BLOCK_RE.lastIndex = 0;
   let m: RegExpExecArray | null;

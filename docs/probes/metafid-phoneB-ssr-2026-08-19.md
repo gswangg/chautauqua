@@ -52,7 +52,7 @@
   app/src/pages/review/scorecard-phone-frames.test.ts:182.)
 - Docs site 390 header collapses to vertical text (search takes 260px;
   overflow-wrap:anywhere lets wordmark shrink to 23px wide). Docs.dc.html:162.
-  CLOSED (wave 115): src/routes/docs-site.css.ts:229 `.chq-docs-header { padding: 14px 16px; gap: 12px; flex-wrap: wrap; }`
+  CLOSED (wave 115): src/routes/docs-site.css.ts`.chq-docs-header { padding: 14px 16px; gap: 12px; flex-wrap: wrap; }`
 - Docked action bars absent where frames draw them: public agenda,
   my-schedule, portal tasks/hotel-form/session/edit, CFP wizard.
   /account/password is the model implementation — reuse its pattern.

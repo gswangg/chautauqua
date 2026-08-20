@@ -355,15 +355,16 @@ export function TaskFormPage(props: {
   // can gate a speaker field), shared by both sections below.
   const isVisible = makeVisibilityPredicate(fields, answers);
   // DEC-576 (wave-128, w3-l): the 390 frame's pinned action band at
-  // docs/design/Chautauqua Public and Portal.dc.html:518-521 ("Portal ·
-  // Hotel stay form · 390") docks the primary submit -- the last portal
-  // drill page whose primary still rendered only inline. Copies edit.tsx's
-  // idiom exactly: the form gets an id, the docked control is a SECOND
-  // SUBMIT of that same form via the `form` attribute (never a second
-  // `<form>`, never a duplicated action), and portal.css.ts hides exactly
-  // one of the two copies per width so a submit from either is the same
-  // POST. The frame's bordered "Save draft" secondary is NOT built here --
-  // DEVIATIONS.md §6 defers hotel-form save-draft as an unbuilt feature.
+  // docs/design/Chautauqua Public and Portal.dc.html:518-521
+  // `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
+  // ("Portal · Hotel stay form · 390") docks the primary submit -- the last
+  // portal drill page whose primary still rendered only inline. Copies
+  // edit.tsx's idiom exactly: the form gets an id, the docked control is a
+  // SECOND SUBMIT of that same form via the form= attribute (never a second
+  // form element, never a duplicated action), and portal.css.ts hides
+  // exactly one of the two copies per width so a submit from either is the
+  // same POST. The frame's bordered "Save draft" secondary is NOT built
+  // here -- DEVIATIONS.md §6 defers hotel-form save-draft as unbuilt.
   const taskFormId = "chq-portal-task-form";
   const taskFormDock = (
     <div class="chq-portal-taskform-dock">
