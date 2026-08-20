@@ -271,6 +271,27 @@ survives contact with state:
       above under "Plan editor phone dock copy is the new-plan captioning,
       not a third button pair" (DEC-745 wave-98) — recorded here so a
       future control-label audit finds all five entries in one place.
+- **Plan-editor new-plan footer `Save as draft` / `Open the plan` names an
+  unrepresentable state (DEC-380 wave-130 amendment)** — `docs/design/Chautauqua
+  Review.dc.html:919-921` draws a footer pair captioned "You can save this as
+  a draft plan and open it later". A plan's openness is derived from
+  `openDate` alone, and `isPlanOpen(openDate=null, closeDate=null, …)` reads
+  an UNSET open date as open NOW (`app/src/pages/review/PlanList.tsx:33-45`),
+  so "save without opening" is unrepresentable in the schema and the caption
+  would be false if built. The title row keeps its existing `Cancel` /
+  `Create the plan` pair (`app/src/pages/review/PlanEditor.tsx:1353-1382`).
+  This is the mirror of DEC-380 wave-116's "a frame's silence removes
+  geometry, not capability": a frame's DRAWING does not create a data model
+  either, and a control minted only to satisfy a shape is the same error
+  inverted (DEC-576 wave-110).
+- **Comms fresh empty state stays count-free (DEC-380 wave-130 amendment)**
+  — `docs/design/Chautauqua Comms.dc.html:577-578` draws `Tell the 23
+  accepted speakers` over the caption "23 submissions have a decision and
+  nobody has been told". `RecentSends` is fed only `batches` /
+  `templatesById` / `rhythm` and carries no decided-submission count to draw
+  the figure from, so building the literal would fabricate a number this
+  component cannot verify. The landed copy stays count-free: `Tell your
+  accepted speakers` (`app/src/pages/comms/RecentSends.tsx:356-362`).
 
 ## 4. Voice
 
@@ -469,3 +490,14 @@ instead of re-flagging.
   identity cell on the roster grid before it was measured and fixed). The
   ring is rounded with `var(--chq-r-ctl)`, the same corner `.chq-btn`
   already uses.
+- Portal-resource modal Kind pair `File` / `Link` (`docs/design/Chautauqua
+  Settings.dc.html:1463-1464`) — this product's second resource kind is a
+  wiki page with stored markdown, not a link; there is no link kind to
+  build. The chips stay `File` / `Wiki page`
+  (`app/src/pages/settings/ResourcesPanel.tsx`). DEC-380 wave-130 amendment.
+- CFP not-yet-open `Browse last year's sessions ›`
+  (`docs/design/Chautauqua Public and Portal.dc.html:1543`) — no
+  previous-edition model exists anywhere in the domain, so there is nothing
+  a "last year" link could point at. The link keeps its landed destination
+  and label, this event's published sessions at `/e/:slug/sessions`
+  (`src/routes/public/submit-views.tsx:139`). DEC-380 wave-130 amendment.

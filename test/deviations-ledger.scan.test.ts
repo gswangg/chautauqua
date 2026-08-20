@@ -453,6 +453,19 @@ const LEDGER: LedgerEntry[] = [
     },
   },
   {
+    key: "plan-editor-new-plan-footer-save-as-draft-open-the-plan-names-an-unrepresentable-state-dec-380-wave-130-amendment",
+    status: "gap",
+    reason:
+      "DEC-380 wave-130 amendment: the new-plan footer's caption names a save-without-opening state the schema has no column for -- a plan's openness is derived from openDate alone and isPlanOpen(openDate=null, closeDate=null, ...) reads an unset open date as open NOW, so the caption would be false if built. Recorded openly; the title row keeps its existing Cancel / Create the plan pair.",
+  },
+  {
+    key: "comms-fresh-empty-state-stays-count-free-dec-380-wave-130-amendment",
+    status: "honored",
+    reason:
+      "DEC-380 wave-130 amendment: RecentSends is fed only batches/templatesById/rhythm and has no decided-submission count to draw from, so the frame's count-bearing caption is not built -- the landed empty-state copy stays count-free.",
+    honored: { kind: "present", file: "app/src/pages/comms/RecentSends.tsx", literal: "Tell your accepted speakers", testFile: "app/src/pages/comms/RecentSends.render.test.tsx" },
+  },
+  {
     key: "contacts-pipeline-keeps-its-landed-head-action-no-phone-dock-is-minted-dec-576-wave-120-124",
     status: "honored",
     reason:
@@ -463,6 +476,20 @@ const LEDGER: LedgerEntry[] = [
       literal: ".chq-contacts-pipeline-head > .chq-btn {",
       testFile: "app/src/pages/contacts/contacts-phone-frames.test.ts",
     },
+  },
+  {
+    key: "portal-resource-modal-kind-pair-file-link-docs-design-chautauqua-settings-dc-html-1463-1464",
+    status: "honored",
+    reason:
+      "DEC-380 wave-130 amendment: this product's second resource kind is a wiki page with stored markdown, not a link, so there is no link-kind referent to build. The chips stay File / Wiki page.",
+    honored: { kind: "present", file: "app/src/pages/settings/ResourcesPanel.tsx", literal: "resource.kind === 'file' ? 'File' : 'Wiki page'", testFile: "app/src/pages/settings/ResourcesPanel.render.test.tsx" },
+  },
+  {
+    key: "cfp-not-yet-open-browse-last-years-sessions-docs-design-chautauqua-public-and-portal-dc-html-1543",
+    status: "honored",
+    reason:
+      "DEC-380 wave-130 amendment: no previous-edition model exists anywhere in the domain, so there is nothing a 'last year' link could point at. The link keeps its landed destination and label, this event's own published sessions.",
+    honored: { kind: "present", file: "src/routes/public/submit-views.tsx", literal: "/e/${props.event.slug}/sessions", testFile: "test/cfp-phone-frames.test.ts" },
   },
 ];
 
@@ -628,9 +655,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(10);
-    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(17);
-    expect(derived.length).toBe(35);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(12);
+    expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(19);
+    expect(derived.length).toBe(39);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
