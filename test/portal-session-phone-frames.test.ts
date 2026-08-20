@@ -217,13 +217,13 @@ describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and P
     expect(phoneBlock).not.toMatch(/\.chq-portal-actions-footer\s+\.chq-portal-actions/);
   });
 
-  // docs/design/Chautauqua Public and Portal.dc.html:666-672
-  // `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
-  // padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px`
   it("Save changes (primary) leads the dock's button row and grows to fill it, at 390 -- Cancel takes its own padded width, never the full-width stacked column DEC-989 ruling B6 gives every other portal action row", () => {
     // hidden at top level (a real hide, ahead of the terminal media block)
     const withoutMedia = PORTAL_CSS.replace(/@media[^{]*\{(?=((?:[^{}]*\{[^{}]*\}[^{}]*)*))\1\}/g, "");
     expect(withoutMedia).toMatch(/\.chq-portal-edit-dock\s*\{[^}]*display:\s*none;/);
+    // docs/design/Chautauqua Public and Portal.dc.html:667
+    // `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
+    // padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px`
     // revealed with the frame's column geometry only inside the phone block
     expect(phoneBlock).toMatch(/\.chq-portal-edit-dock\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/);
     // the shared .chq-portal-dock descendant rules already give any nested
@@ -232,14 +232,15 @@ describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and P
     expect(phoneBlock).toMatch(/\.chq-portal-edit-dock-buttons\s*\{[^}]*display:\s*flex;/);
   });
 
-  // docs/design/Chautauqua Public and Portal.dc.html:669/672: Save changes
-  // leads the row, Cancel follows, the consequence note sits below the pair.
   it("the dock copy orders Save, then Cancel, then the consequence note below the pair", () => {
     const dockIdx = html.indexOf('class="chq-portal-edit-dock"');
     const buttonsIdx = html.indexOf('class="chq-portal-edit-dock-buttons"');
     const saveIdx = html.indexOf("Save changes", buttonsIdx);
     const cancelIdx = html.indexOf(">Cancel<", saveIdx);
     const noteIdx = html.lastIndexOf("Title and abstract show on the public pages");
+    // docs/design/Chautauqua Public and Portal.dc.html:669 `Save changes`:
+    // Save leads the row, Cancel follows (:670), the consequence note sits
+    // below the pair (:672).
     expect(dockIdx).toBeGreaterThan(-1);
     expect(buttonsIdx).toBeGreaterThan(dockIdx);
     expect(saveIdx).toBeGreaterThan(buttonsIdx);

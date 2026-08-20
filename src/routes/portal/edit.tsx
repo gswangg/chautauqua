@@ -165,15 +165,15 @@ export function EditPage(props: {
   // below.
   const readOnlyFileIds = data.fields.filter((f) => f.kind === "file").map((f) => f.id);
   // DEC-576 (w8-g): the 390 frame's pinned action band
-  // (docs/design/Chautauqua Public and Portal.dc.html:666-672) is a SECOND
-  // copy of the same Save/Cancel/note trio, routed through PortalLayout's
-  // `dock` slot (the real .chq-portal-footer band the two sibling portal
-  // screens already reach) instead of letting the frame's band scroll away
-  // inside .chq-measure with the rest of the page. portal.css.ts hides this
-  // copy at top level and reveals it (while hiding the in-flow
-  // .chq-portal-actions-footer copy below) only inside the phone media
-  // block, so exactly one copy is ever visible -- never a second tap
-  // target for one act.
+  // (docs/design/Chautauqua Public and Portal.dc.html:669-672) `Save
+  // changes` is a SECOND copy of the same Save/Cancel/note trio, routed
+  // through PortalLayout's dock slot (the real .chq-portal-footer band the
+  // two sibling portal screens already reach) instead of letting the
+  // frame's band scroll away inside .chq-measure with the rest of the
+  // page. portal.css.ts hides this copy at top level and reveals it
+  // (while hiding the in-flow .chq-portal-actions-footer copy below) only
+  // inside the phone media block, so exactly one copy is ever visible --
+  // never a second tap target for one act.
   const editDock = (
     <div class="chq-portal-edit-dock">
       <div class="chq-portal-edit-dock-buttons">
