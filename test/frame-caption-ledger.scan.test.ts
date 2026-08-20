@@ -996,16 +996,22 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // in the fix-me direction ONLY, never hide a real offender (DEC-976
 // wave-138: a corpus repair re-seeds in the repairing commit and that is a
 // repair, not a raise).
-// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=31
-// Thunderdome megabatch: 31 is w14-bb's figure, measured WITHOUT w10-gg's 12
-// COMPOSED exclusions, which are also in this batch and push the count down
-// again. The integrated figure is whatever the two-sided ratchet below prints
-// on breach; it is re-seeded to that measurement, never guessed.
-// Thunderdome megabatch re-measurement on the integrated tree: 17. Lower
-// than w14-bb's 31 because w10-gg's 12 COMPOSED exclusions and w12-ff's
-// builds are also in this batch; higher than w10-gg's 10 because the
-// decision-registry corpus repair un-laundered rows both lanes had hidden.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 17;
+// v12m-w15-bb (wave-140): forcing the ceiling to -1 on that branch measured
+// 15, down from its base's 31. The drop is entirely
+// Chautauqua Review.dc.html:524/771 ("Two to six · results show how the
+// picks fell, never an average"), DEC-380's ineligible row now built as one
+// verbatim literal string in PlanEditor.tsx (see CRITERION_OPTIONS_CAPTION)
+// instead of a composed/interpolated form, so the ledger's plain-substring
+// match finds it.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING re-seeded by the merge train.
+// Thunderdome megabatch (wave-138/139/140 backlog of 14): no single lane's
+// figure is the truth here -- w10-gg's 12 COMPOSED exclusions, w12-ff's
+// builds, w14-bb's decision-registry corpus repair and w15-bb/cc/dd/ee/ff's
+// dispositions all coexist for the first time on the integrated tree. The
+// constant below is the integrated measurement (ceiling forced to -1, the
+// two-sided ratchet's own printed offender count read back), never a
+// guess and never a lane's pre-merge figure.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
