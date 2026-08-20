@@ -512,7 +512,7 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     line: 159,
     text: 'Same email domain, one has no company',
     reason:
-      "app/src/pages/contacts/duplicatePairReason.ts:50 composes `${base}, one has no company` (base is the per-rule clause, e.g. 'Same email domain') from the pair's own live company fields -- `const oneMissingCompany = hasCompany(a!) !== hasCompany(b!);` at :49. DuplicateRow.tsx:35/:53 mounts `duplicatePairReason(group.reason, group.contacts)`. duplicatePairReason.test.ts pins the exact sentence by name (\"appends the company clause when exactly one side has no company (the frame's own words, DC.html:159)\").",
+      "app/src/pages/contacts/duplicatePairReason.ts composes `${base}, one has no company` (base is the per-rule clause, e.g. 'Same email domain') from the pair's own live company fields -- `const oneMissingCompany = hasCompany(a!) !== hasCompany(b!);`. DuplicateRow.tsx mounts `duplicatePairReason(group.reason, group.contacts)`. duplicatePairReason.test.ts pins the exact sentence by name (\"appends the company clause when exactly one side has no company (the frame's own words, DC.html:159)\").",
   },
   {
     fileName: 'Chautauqua Contacts.dc.html',
@@ -622,7 +622,7 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     line: 1541,
     text: 'Three tracks, five formats. You will not need an account.',
     reason:
-      "DEC-986 (wave-130 amendment, src/decisions-data/DEC-986.md): \"The tracks/formats clause is NOT free — submit-get.tsx returns before fetching tracks for this window state — so only the account clause is adopted, because it is the half that is true of this product without a new query.\" src/routes/public/submit-views.tsx:149-154 (NotYetOpenPage) renders 'You will not need an account.' verbatim and its own comment names the omission by the same reasoning; the account clause alone is a real substring match (shape (ii) territory), but the residue ('Three tracks, five formats.') is genuine visitor-facing copy the ruling deliberately declined to fabricate, not a pack annotation — so this is (iii), not (ii).",
+      "DEC-986 (wave-130 amendment, src/decisions-data/DEC-986.md): \"The tracks/formats clause is NOT free — submit-get.tsx returns before fetching tracks for this window state — so only the account clause is adopted, because it is the half that is true of this product without a new query.\" src/routes/public/submit-views.tsx (NotYetOpenPage) renders 'You will not need an account.' verbatim and its own comment names the omission by the same reasoning; the account clause alone is a real substring match (shape (ii) territory), but the residue ('Three tracks, five formats.') is genuine visitor-facing copy the ruling deliberately declined to fabricate, not a pack annotation — so this is (iii), not (ii).",
   },
   // v12m-w15-cc (wave-140): two further COMPOSED captions, disposed per
   // DEC-976 wave-140's own instruction that real product prose around a
@@ -633,28 +633,28 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     line: 419,
     text: 'Spoke · Build Caches in Anger',
     reason:
-      "src/server/repo/tasks/speaker-detail.ts:538 composes `participation = \\`Spoke · ${r.submissionTitle}\\`` for an other-event row whose submission was accepted, rendered at app/src/pages/speakers/SpeakerDetailPage.tsx:778 (`<span className=\"chq-speaker-detail-other-event-participation\">{e.participation}</span>`); 'Build Caches in Anger' is the frame's own invented sample submission title, not a literal string the app carries anywhere.",
+      "src/server/repo/tasks/speaker-detail.ts composes `Spoke · ${r.submissionTitle}` for an other-event row whose submission was accepted, rendered at app/src/pages/speakers/SpeakerDetailPage.tsx (`<span className=\"chq-speaker-detail-other-event-participation\">{e.participation}</span>`); 'Build Caches in Anger' is the frame's own invented sample submission title, not a literal string the app carries anywhere.",
   },
   {
     fileName: 'Chautauqua Speakers.dc.html',
     line: 524,
     text: 'A quick nudge — two of your speaker tasks are still open, and one is past its due date.',
     reason:
-      'src/server/repo/tasks/reminders.ts:401-406 composes `const nudge = \\`A quick nudge — ${openClause}${overdueClause}\\`` from the live assignment counts (spellCount/plural, domain/count-copy.ts) -- the frame\'s exact words are this expression\'s output for a 2-open/1-overdue recipient (spellCount(2)="two", plural(2,"task")="tasks", plural(2,"is","are")="are", spellCount(1)="one"), rendered into the preview card at RemindPreviewModal.tsx:138 (`<pre className="chq-speakers-remind-draft-text">{first.text}</pre>`).',
+      'src/server/repo/tasks/reminders.ts composes `A quick nudge — ${openClause}${overdueClause}` from the live assignment counts (spellCount/plural, domain/count-copy.ts) -- the frame\'s exact words are this expression\'s output for a 2-open/1-overdue recipient (spellCount(2)="two", plural(2,"task")="tasks", plural(2,"is","are")="are", spellCount(1)="one"), rendered into the preview card at RemindPreviewModal.tsx (`<pre className="chq-speakers-remind-draft-text">{first.text}</pre>`).',
   },
   {
     fileName: 'Chautauqua Home.dc.html',
     line: 41,
     text: 'One call for papers is open. Two programmes are published.',
     reason:
-      "src/routes/root.tsx:262-269's heroSummary(sections) composes the full-state hero sentence from the hub's own live counts -- pluralClause(sections.openCfp.length, 'call for papers', 'calls for papers', 'is open', 'are open') and pluralClause(sections.published.length, 'programme', 'programmes', 'is published', 'are published'), each capitalized and joined with a space -- rendered at root.tsx:330 (`<p>{heroSummary(sections)}</p>`) inside the state===\"full\" hero, the 900-desktop frame's own state.",
+      "src/routes/root.tsx's heroSummary(sections) composes the full-state hero sentence from the hub's own live counts -- pluralClause(sections.openCfp.length, 'call for papers', 'calls for papers', 'is open', 'are open') and pluralClause(sections.published.length, 'programme', 'programmes', 'is published', 'are published'), each capitalized and joined with a space -- rendered at `<p>{heroSummary(sections)}</p>` inside the state===\"full\" hero, the 900-desktop frame's own state.",
   },
   {
     fileName: 'Chautauqua Home.dc.html',
     line: 125,
     text: 'One call for papers is open. Two programmes are published.',
     reason:
-      "the same root.tsx:262-269 heroSummary(sections) composing expression and the same root.tsx:330 render site as line 41's entry above -- this is the 390-phone frame drawing the identical full-state hero, not a second sentence.",
+      "the same root.tsx heroSummary(sections) composing expression and the same `<p>{heroSummary(sections)}</p>` render site as line 41's entry above -- this is the 390-phone frame drawing the identical full-state hero, not a second sentence.",
   },
 ];
 
