@@ -365,9 +365,21 @@ export function TaskFormPage(props: {
   // POST. The frame's bordered "Save draft" secondary is NOT built here --
   // DEVIATIONS.md §6 defers hotel-form save-draft as an unbuilt feature.
   const taskFormId = "chq-portal-task-form";
+  // DEC-576 (wave-129 amendment): the frame prints "Send this in" on the
+  // docked primary (Chautauqua Public and Portal.dc.html:519, "Portal ·
+  // Hotel stay form · 390"), and /portal/tasks/:id/form has NO 1600 panel
+  // anywhere in the pack -- the desktop freeze protects screens that HAVE a
+  // desktop frame, and has no frame to protect here. So the verb lands at
+  // EVERY width, not behind a max-width block, exactly as commits
+  // 6be0796d/b57a7563 repinned the portal dock band across both layers
+  // rather than phone-only. Declared once and spent in both copies (the
+  // dock's second submit and the inline original) so the two never drift --
+  // the lone-literal-at-two-sites shape DEC-613 calls the two-vocabularies
+  // trap.
+  const TASK_FORM_SUBMIT_LABEL = "Send this in";
   const taskFormDock = (
     <div class="chq-portal-taskform-dock">
-      <button type="submit" form={taskFormId} class="chq-btn chq-btn-primary">Submit</button>
+      <button type="submit" form={taskFormId} class="chq-btn chq-btn-primary">{TASK_FORM_SUBMIT_LABEL}</button>
     </div>
   );
   return (
@@ -384,7 +396,7 @@ export function TaskFormPage(props: {
         <FormFieldsSection fields={fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
         <FormFieldsSection fields={fields} section="speaker" answers={answers} errors={errors} isVisible={isVisible} />
         <div class="chq-portal-taskform-submit">
-          <button type="submit" class="chq-btn chq-btn-primary">Submit</button>
+          <button type="submit" class="chq-btn chq-btn-primary">{TASK_FORM_SUBMIT_LABEL}</button>
         </div>
       </form>
       <FieldRulesScript fields={fields} />

@@ -135,9 +135,10 @@ describe("TaskFormPage adopts the portal dock band (DEC-576 wave-128)", () => {
     expect(html).not.toMatch(/Save draft/);
   });
 
-  it("does not change the primary's copy or the back link (out of this task's scope)", () => {
+  it("the back link is unchanged, and the primary carries the frame's verb 'Send this in' (DEC-576 wave-129) in both copies", () => {
     expect(html).toContain('<a href="/portal/tasks" class="chq-portal-back">');
-    expect(html).toContain(">Submit<");
+    expect(html).not.toContain(">Submit<");
+    expect((html.match(/>Send this in</g) ?? []).length).toBe(2);
   });
 
   it("the docked copy is hidden at the TOP LEVEL -- desktop stays byte-identical to the inline-only original", () => {
