@@ -435,7 +435,9 @@ describe('PeopleRolesPanel', () => {
       ),
     ).toBeInTheDocument();
 
-    const copyButton = screen.getByRole('button', { name: 'Copy' });
+    expect(screen.getByText('Their password · shown once')).toBeInTheDocument();
+
+    const copyButton = screen.getByRole('button', { name: 'Copy the password' });
     fireEvent.click(copyButton);
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent('Copied');
@@ -467,7 +469,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText('ab12-cd34-ef56')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the password' }));
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent('Copy failed');
     });
@@ -528,6 +530,7 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText('zz99-yy88-xx77')).toBeInTheDocument();
     });
     expect(screen.getByText('zz99-yy88-xx77')).toHaveClass('chq-settings-people-password');
+    expect(screen.getByText('New password · shown once')).toBeInTheDocument();
     expect(
       screen.getByText(`Every session signed in as ${OTHER.email} is ended — they are signed out everywhere.`),
     ).toBeInTheDocument();
@@ -536,6 +539,9 @@ describe('PeopleRolesPanel', () => {
     expect(
       screen.queryByText(/This org has no events yet, so there is nowhere to log the notice/),
     ).not.toBeInTheDocument();
+    // DEC-919 wave-130 amendment (:1497): the reset reveal draws Done alone
+    // -- no "Invite someone else" tertiary.
+    expect(screen.queryByRole('button', { name: 'Invite someone else' })).not.toBeInTheDocument();
   });
 
   // DEC-238 (wave 65 amendment): the 201 body's welcomeEmail vocabulary
@@ -734,5 +740,59 @@ describe('PeopleRolesPanel', () => {
     fireEvent.click(phoneSibling!);
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByLabelText('Email')).toBeInTheDocument();
+  });
+
+  // DEC-919 wave-130 amendment (:1344): the invite reveal's tertiary
+  // "Invite someone else" closes the reveal and reopens the same dialog's
+  // form step, cleared, without a second copy of the invite-open handler.
+  it('reopens the cleared invite form from "Invite someone else" on the reveal step', async () => {
+    mockPeople({
+      'POST /api/v1/users': {
+        status: 201,
+        body: { id: 'u-new', email: 'new@example.com', role: 'reviewer', password: 'ab12-cd34-ef56', welcomeEmail: 'not_sent_no_event' },
+      },
+    });
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Invite someone' })[0]!);
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create the account' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('ab12-cd34-ef56')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone else' }));
+
+    // Still the same dialog, now back on the form step, fields cleared.
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('First name')).toHaveValue('');
+    expect(within(dialog).getByLabelText('Last name')).toHaveValue('');
+    expect(within(dialog).getByLabelText('Email')).toHaveValue('');
+    expect(screen.queryByText('ab12-cd34-ef56')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  });
+
+  // DEC-919 wave-130 amendment (:1007): the edit view's footer carries a
+  // left-flushed link to the self-service password change, reusing
+  // SettingsEditForm's existing destructive left slot.
+  it('links to self-service password change from the edit view footer', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('link', { name: 'Change your own password' })).toHaveAttribute(
+      'href',
+      '/account/password',
+    );
   });
 });
