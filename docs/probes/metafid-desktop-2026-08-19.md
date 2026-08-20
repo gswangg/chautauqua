@@ -17,8 +17,10 @@
   (source-order win, DEC-385). The SCAN WIDENING also landed:
   app/src/phone-block-visibility.test.ts:335 now tests
   `/phone/.test(token)` rather than a `chq-phone-*` prefix only.
-  CLOSED (wave 115): app/src/pages/review/review.css:2044 `.chq-review-criteria-count-phone {`
-  CLOSED (wave 115): app/src/pages/review/review.css:2048 `.chq-review-reviewers-count-phone {`
+  CLOSED (wave 115, drift-proof citations DEC-967 wave-115 shape -- both
+  declarations have drifted from the line numbers originally cited here):
+  app/src/pages/review/review.css`.chq-review-criteria-count-phone {`
+  app/src/pages/review/review.css`.chq-review-reviewers-count-phone {`
   CLOSED (wave 115): app/src/phone-block-visibility.test.ts:335 `if (token && /phone/.test(token))`
 
 ## Speakers-cluster edge MAJORs
