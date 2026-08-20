@@ -270,6 +270,14 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
 
     [data-chq-cfp-step="1"] .chq-cfp-step-you { display: none; }
     [data-chq-cfp-step="2"] .chq-cfp-step-talk { display: none; }
+    /* phone-hidden: RE-LINED, not removed -- the step-1 primary submit is
+       reachable one tap away on the same phone surface via
+       .chq-cfp-step-next (cfp.css.ts:268/:294-297), which advances to
+       data-chq-cfp-step="2" where this selector no longer matches; the
+       markup default data-chq-cfp-step="all" (server-rendered / JS-off /
+       error-re-render, cfp.css.ts:308-310) never carries this rule either,
+       so the submit control is never hidden without a same-surface path to
+       reach it (DEC-919). */
     [data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]:not(.chq-cfp-save-draft) { display: none; }
     /* :1063 -- the step-1 dock's secondary "Draft" control, next to the
        primary Next at flex:1 (.chq-cfp-step-next, above). Geometry only:
