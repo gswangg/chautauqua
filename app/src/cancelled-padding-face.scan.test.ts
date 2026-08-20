@@ -470,7 +470,14 @@ const OFFENDERS = FACE_ROWS.filter((r) => r.painted);
 // link only) into its own dedicated tap-floor rule with no padding-inline/
 // margin-inline cancellation. Ceiling lowered to the measured truth; this
 // ratchet may only fall.
-export const PAINTED_CANCELLED_PADDING_CEILING = 7;
+//
+// Thunderdome megabatch (wave 123): lanes w12-p and w12-q each drained one
+// painted-face offender from disjoint sheets (speakers.css's
+// `.chq-speaker-detail-actions a`, contacts.css's
+// `.chq-contacts-title-actions a`) and both branch-measured 7 alone; the
+// integrated tree has both fixes, so the combined truth is 6. Re-measured
+// here on the merged tree per DEC-989 clause a. This ratchet may only fall.
+export const PAINTED_CANCELLED_PADDING_CEILING = 6;
 
 describe('cancelled-padding face lens (DEC-937 wave-121 amendment)', () => {
   it('found more than one CSS source to scan (vacuous-population tripwire, file side)', () => {
