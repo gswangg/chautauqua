@@ -258,12 +258,6 @@ function findOffenders(): string[] {
 // wave-123 protocol: this is the draining lane's own branch-measured value;
 // the merge train re-measures the integrated tree.
 //
-// Thunderdome megabatch (wave 123): the lane lowerings above are independent
-// drains of disjoint offender sets merged in one pass; the constant below is
-// the re-measured truth of the integrated tree, not any single branch's
-// figure. This ratchet may only fall.
-//
-//
 // w12-p (2026-08-20): re-measured at 45, down from 47 (this branch measured
 // 46 live before this wave's fix -- the ceiling was already one stale
 // beyond the tree; both are accounted for here). Per DEC-576 this wave,
@@ -287,7 +281,27 @@ function findOffenders(): string[] {
 // drains of disjoint offender sets merged in one pass; the constant below is
 // the re-measured truth of the integrated tree, not any single branch's
 // figure. This ratchet may only fall.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 5;
+//
+//
+// Re-measured 47 -> 42 (task v12m-w12-q, DEC-393, wave 123 CONTACTS + MODAL +
+// SUBMISSION-DETAIL tier-2 sweep): drained five offenders --
+// contacts-panels.css `.chq-modal-actions` (tap-floor-exempt: every
+// ModalFrame `actions` slot this file renders is `<button>`-only),
+// modal-frame.css `.chq-modal-head .chq-phone-back` (real floor: min-height
+// + align-items:center + non-zero padding-inline added to its own phone
+// rule), and detail.css's combined `.chq-detail-back,
+// .chq-detail-position-prev, .chq-detail-position-next` (three reported
+// rows collapsing to one fix: `display: inline-flex` was invisible to this
+// scan's literal `hasFlexCenter` predicate -- changed to `display: flex`,
+// byte-identical rendering since a flex item is blockified regardless of
+// its own outer display keyword). Ceiling lowered to the measured truth;
+// this ratchet may only fall.
+//
+// Thunderdome megabatch (wave 123): the lane lowerings above are independent
+// drains of disjoint offender sets merged in one pass; the constant below is
+// the re-measured truth of the integrated tree, not any single branch's
+// figure. This ratchet may only fall.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 0;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {

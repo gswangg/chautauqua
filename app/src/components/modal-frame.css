@@ -200,7 +200,16 @@
     padding: 0 16px 16px;
   }
 
+  /* DEC-393 wave-w12-q: this file's own `.chq-modal-head .chq-phone-back`
+     rule (the un-hide above) declared only `display: flex`, leaving the
+     tap-floor scan's min-height/align-items/padding trio to whatever the
+     shared `.chq-phone-back` rule (styles.css) supplies elsewhere in the
+     cascade -- restated here explicitly so this selector's OWN rule in
+     this file clears the floor on its own terms (DEC-393). */
   .chq-modal-head .chq-phone-back {
     display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 12px;
   }
 }

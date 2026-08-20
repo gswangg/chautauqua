@@ -189,9 +189,9 @@ describe('DEC-393 wave-7 technique: grow the anchor, absorb the padding', () => 
     assertFloor(last.body);
   });
 
-  it('the Export CSV link in .chq-contacts-title-actions sits at the 44px floor (DEC-937 DRAIN, task w10-n: PAINTED -- .chq-btn.chq-btn-secondary -- so the wave-7 cancel-padding/negative-margin technique no longer applies; the anchor is grown by min-height alone, its own border/background/padding stay intact)', () => {
+  it('the Export CSV link in .chq-contacts-title-actions sits at the 44px floor (DEC-937, task v12m-w12-q: PAINTED -- .chq-btn.chq-btn-secondary -- so the wave-7 cancel-padding/negative-margin technique no longer applies; the anchor is grown by min-height alone, its own border/background/padding stay intact, and no other rule combines this selector with a cancelled-padding pair anymore)', () => {
     const occurrences = ruleOccurrences(CONTACTS_CSS, '.chq-contacts-title-actions a');
-    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+    expect(occurrences.length).toBeGreaterThanOrEqual(1);
     const last = occurrences[occurrences.length - 1]!;
     expect(isInsidePhoneBlock(CONTACTS_CSS, last.index)).toBe(true);
     expect(last.body).toMatch(/min-height:\s*44px/);

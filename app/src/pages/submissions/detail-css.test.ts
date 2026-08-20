@@ -92,7 +92,15 @@ describe('detail.css phone frame (390) fidelity', () => {
     // the box has to be a flex box for the height to be reachable.
     const body = ruleBodyIn(phone, '.chq-detail-back,\n  .chq-detail-position-prev,\n  .chq-detail-position-next');
     expect(body).toMatch(/min-height:\s*44px/);
-    expect(body).toMatch(/display:\s*inline-flex/);
+    // DEC-393 (task v12m-w12-q): `display: inline-flex` was invisible to
+    // the anchor-floor scan's literal `hasFlexCenter` predicate (it matches
+    // `display\s*:\s*flex` with nothing but whitespace before `flex`, and
+    // `inline-` sat in between). Changed to `flex` -- byte-identical
+    // rendering, since a flex item is blockified regardless of its own
+    // outer display keyword and this row is already a flex/flex-wrap child
+    // of `.chq-detail-ref-row`.
+    expect(body).toMatch(/display:\s*flex\b/);
+    expect(body).not.toMatch(/display:\s*inline-flex/);
     expect(body).toMatch(/align-items:\s*center/);
   });
 

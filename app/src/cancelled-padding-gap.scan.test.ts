@@ -342,7 +342,6 @@ export function findOffenders(containers: ContainerRecord[], sources: Map<string
 // chq-comms-send-detail's cancelled padding removed (display:contents,
 // single-target, no adjacency to protect). Re-measured 2026-08-20.
 //
-//
 // w12-p (2026-08-20): re-measured at 10, down from 17. speakers.css's
 // `.chq-speakers-write-failure-actions`/`.chq-speakers-head-actions`/
 // `.chq-speakers-pager-actions`/`.chq-speaker-detail-logistics-actions` and
@@ -364,7 +363,22 @@ export function findOffenders(containers: ContainerRecord[], sources: Map<string
 // drains of disjoint offender sets merged in one pass; the constant below is
 // the re-measured truth of the integrated tree, not any single branch's
 // figure. This ratchet may only fall.
-export const CANCELLED_PADDING_GAP_CEILING = 6;
+//
+// Re-measured 17 -> 16 (task v12m-w12-q, DEC-393, wave 123 CONTACTS + MODAL
+// + SUBMISSION-DETAIL tier-2 sweep): contacts.css's `.chq-contacts-title-
+// actions` container (desktop gap 9px) carried exactly one cancelled-
+// padding member (Export CSV, `.chq-contacts-title-actions a`) -- now that
+// that selector no longer declares the cancelled-padding pair at all
+// (DEC-937, PART 1 painted-face fix), this container has ZERO
+// cancelled-padding members and drops out of the derived population
+// entirely (its 9px gap is correct and left unwidened). Ceiling lowered to
+// the measured truth; this ratchet may only fall.
+//
+// Thunderdome megabatch (wave 123): the lane lowerings above are independent
+// drains of disjoint offender sets merged in one pass; the constant below is
+// the re-measured truth of the integrated tree, not any single branch's
+// figure. This ratchet may only fall.
+export const CANCELLED_PADDING_GAP_CEILING = 5;
 
 describe('cancelled-padding companion-gap lens (DEC-393 wave-121 amendment, task w10-l)', () => {
   const sourceList = loadSources();
