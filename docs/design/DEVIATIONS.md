@@ -161,6 +161,19 @@ survives contact with state:
   not draw at all, so its shape is our interpretation: it takes the frame
   footer's own floor — min-height:48px, padding:0 16px — one control per line,
   and its capability is reached through the dock's own `Edit` control.
+- **Contacts Pipeline does not adopt a phone dock (DEC-576 wave-120 and
+  wave-124 amendments)** — `Pipeline · 390` (`docs/design/Chautauqua
+  Contacts.dc.html:472-475`) draws a docked band with `Add someone` (flex:1)
+  and `Filter` beside it. Pipeline does not adopt a dock; its one action
+  keeps the landed full-width 48px head placement
+  (`.chq-contacts-pipeline-head > .chq-btn`); the frame's drawn `Filter` is
+  discharged by the five-stage phone scroller the same screen draws
+  directly above the list (`.chq-contacts-pipeline-phone-stages`), and
+  minting a dock control with no referent would invent capability. This
+  entry is the wave-124 amendment's own promised record — a round-2 probe
+  re-filed "Contacts Pipeline missing dock" as a fresh finding only because
+  this entry had not yet landed; it is now checked before any future probe
+  row re-opens the question.
 
 ## 4. Voice
 
