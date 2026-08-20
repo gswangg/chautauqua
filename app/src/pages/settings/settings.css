@@ -1591,7 +1591,15 @@
   }
 
   .chq-settings-row-hint {
-    align-self: flex-end;
+    /* w14-m/DEC-728 wave-125/N6: was align-self:flex-end, which put the
+       read view's hint on the right (still reading right-ish even with
+       text-align:left below) while the edit view's bare <p> usage
+       (CallForPapersPanel.tsx:588, no flex ancestor) fell through to
+       text-align:left alone -- two different sides for the same object.
+       The frame left-aligns the hint in both views; flex-start makes the
+       read view's flex-column box match the edit view's block flow
+       instead of fighting it. */
+    align-self: flex-start;
     /* DEC-989/DEC-385 (w8-b): the row is already flex-direction:column
        above, so a right-aligned nowrap sentence reads as a ragged
        off-frame block at 390 instead of wrapping in place. */
@@ -2357,6 +2365,28 @@
      without touching that mid-file rule's own citations. */
   .chq-settings-row-hint {
     align-self: flex-start;
+  }
+
+  /* w14-m/DEC-728 wave-125/N3: DESIGN-RULINGS:247 draws the settings edit
+     view with `‹ back` ABOVE the H1; SummarySection.tsx:75-84 (the single
+     primitive all seven panels compose, desktop frozen per DEC-706/728)
+     renders the h2 then the action button in that DOM order, which is
+     also the order CallForPapersPanel/EventSettingsPanel/PortalSettings
+     Panel/PublicPagesPanel/TracksRoomsPanel/PeopleRolesPanel's own nested
+     `.chq-settings-section-head`s use (all rendered as SummarySection's
+     `children`, so every one of them lives under a `.chq-settings-
+     numbered` ancestor and this ONE descendant selector already reaches
+     all of them -- confirmed by grep, not seven separate rules).
+     `.chq-settings-numbered .chq-settings-section-head` is confirmed a
+     flex ROW at this width (settings.css:182-191, no earlier phone
+     override in this file). column-reverse flips the visual order without
+     touching the JSX: the button (last in DOM) paints first: `Back`/
+     `actionLabel` above the h2. SessionboardImportPanel's head (:218) is
+     NOT `.chq-settings-numbered` and has no action button -- out of scope,
+     nothing to reverse. */
+  .chq-settings-numbered .chq-settings-section-head {
+    flex-direction: column-reverse;
+    align-items: flex-start;
   }
 
   /* task-w13-i/DEC-393 (44px floor, round-2 wave B): three offenders in
