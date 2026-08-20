@@ -1824,13 +1824,15 @@ export function SubmissionDetailPage() {
                 >
                   Search
                 </button>
-                {/* DEC-380 (wave 137 amendment): Chautauqua Submissions.dc.html:298
-                    draws this beside the add row -- a consequence of
-                    pressing Add that nothing else in this immediate extent
-                    states. Rendered verbatim, frame's own middot. */}
-                <p className="chq-detail-copresenter-consequence">
-                  A new co-presenter is emailed a portal link &middot; the lead presenter is not changed
-                </p>
+                {/* DEC-380 wave-139 SUPERSEDES the wave-137 amendment that had
+                    this render Chautauqua Submissions.dc.html:298's
+                    "A new co-presenter is emailed a portal link ...". That
+                    ruling weighed the live-referent test alone and never
+                    checked the mailer: src/routes/api/submissions.ts imports
+                    none (a source-scan test enforces it), so adding a
+                    participant cannot send anything and the frame's clause is
+                    the stale DEC-900 claim. The correct sentence is the
+                    DEC-604 wave-70 note a few lines below, which stays. */}
                 {coPresenterResults.length > 0 && (
                   <ul className="chq-co-presenter-results">
                     {coPresenterResults.map((contact) => (

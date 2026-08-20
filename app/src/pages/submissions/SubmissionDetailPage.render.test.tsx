@@ -1428,11 +1428,14 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
       ),
     ).toBeInTheDocument();
 
-    // DEC-380 (wave 137 amendment): Chautauqua Submissions.dc.html:298's
-    // consequence line, verbatim, beside the add row.
+    // DEC-380 wave-139 SUPERSEDED the wave-137 amendment that briefly built
+    // Chautauqua Submissions.dc.html:298 beside the add row: the submissions
+    // routes import no mailer, so that caption is false. Pin its ABSENCE, so
+    // a future lane re-reading the frame cannot silently reinstate a sentence
+    // that contradicts the DEC-604 note asserted immediately above.
     expect(
-      screen.getByText('A new co-presenter is emailed a portal link · the lead presenter is not changed'),
-    ).toBeInTheDocument();
+      screen.queryByText('A new co-presenter is emailed a portal link · the lead presenter is not changed'),
+    ).not.toBeInTheDocument();
   });
 
   // DEC-908 (findings wave 5 amendment): Session details reads as a
