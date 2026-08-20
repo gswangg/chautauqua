@@ -188,7 +188,7 @@ const sharedCache = new InMemoryCache();
 // keeping only the two mounts this claim's population is about.
 // ---------------------------------------------------------------------------
 
-async function buildApp() {
+async function buildAppUncached() {
   const mounts = await parseIndexMounts();
   const relevant = mounts.filter((m) => m.identifier === "publicRoutes" || m.identifier === "rootRoutes");
   // Never silently narrow: src/index.ts must still mount exactly these two
@@ -215,6 +215,27 @@ async function buildApp() {
     request: (path: string) => app.request(path, {}, env),
     app,
   };
+}
+
+// DEC-727 wave-115: parseIndexMounts() rebuilds the whole Hono app from
+// src/index.ts's mounts from scratch, and this file called buildApp() three
+// times (once per real-route test) with no `it` declaring a timeout -- the
+// combined cost measured over 5000ms on a slow run (test/public-cacheability-
+// enumeration.test.ts:297, "Test timed out in 5000ms" at 5316ms measured),
+// while the identical commit passed cleanly in the full suite: same tree,
+// two verdicts, a coin-flip red. Amortised here behind a module-level lazily-
+// memoised promise so the expensive build (and the narrow-population guard
+// above) runs exactly once and is shared across all three tests that drive
+// real routes. This is safe to share: the per-test behaviour difference (the
+// third test's thrown-error path) comes entirely from
+// `vi.mocked(repo.getPublicEventBySlug).mockImplementationOnce(...)`, which
+// patches the repo MODULE mock, not the app instance -- and that test also
+// clears the shared InMemoryCache itself before requesting, so a stale
+// cache-hit from an earlier test's app instance can't mask the throw either.
+let appPromise: ReturnType<typeof buildAppUncached> | undefined;
+function buildApp() {
+  if (!appPromise) appPromise = buildAppUncached();
+  return appPromise;
 }
 
 // ---------------------------------------------------------------------------
@@ -294,16 +315,30 @@ function cacheabilityViolations(res: Response, label: string): string[] {
 }
 
 describe("DEC-099 wave-35: public-surface cacheability is a closed Cache-Control/Vary rule", () => {
-  it("enumerates at least the routes this claim's population is expected to cover (floor, DEC-550 technique)", async () => {
-    const { app } = await buildApp();
-    const getPaths = enumerateGetPaths(app);
-    // 19 real GET routes under /e/*, /embed/* and "/" as of wave 35 (see this
-    // file's header comment for the enumerated list) -- a floor, not an
-    // allowlist, so this probe can never silently narrow to fewer routes.
-    expect(getPaths.length).toBeGreaterThanOrEqual(19);
-    expect(getPaths).toContain("/");
-    expect(getPaths).toContain("/embed/e/:embedId");
-  });
+  it(
+    "enumerates at least the routes this claim's population is expected to cover (floor, DEC-550 technique)",
+    async () => {
+      const { app } = await buildApp();
+      const getPaths = enumerateGetPaths(app);
+      // 19 real GET routes under /e/*, /embed/* and "/" as of wave 35 (see this
+      // file's header comment for the enumerated list) -- a floor, not an
+      // allowlist, so this probe can never silently narrow to fewer routes.
+      expect(getPaths.length).toBeGreaterThanOrEqual(19);
+      expect(getPaths).toContain("/");
+      expect(getPaths).toContain("/embed/e/:embedId");
+    },
+    // DEC-727 wave-115: this is the first test to touch buildApp(), so the
+    // whole one-time parseIndexMounts()+Hono-composition cost now lands here
+    // instead of being paid three times across the file. Measured across two
+    // separate five-run batches: 3178ms-6737ms under
+    // vitest.fast.config.ts (once timing out at the prior implicit 5000ms
+    // default under machine load) and 2251ms-4907ms under the full config
+    // (also timed out at 5000ms/5004ms twice in the pre-fix batch). An
+    // explicit generous timeout replaces the implicit 5000ms default so this
+    // stays a real red on a real regression, not a coin flip on machine
+    // load.
+    20000,
+  );
 
   it("every enumerated GET route, known-id and unknown-id, satisfies the closed rule", async () => {
     const { app, request } = await buildApp();
