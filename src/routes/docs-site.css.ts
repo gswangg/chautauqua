@@ -97,6 +97,14 @@ export const DOCS_SITE_CSS = `
   .chq-docs-nav-link-active { font-weight: 700; color: var(--chq-ink); box-shadow: inset 2px 0 0 var(--chq-brand); }
 
   .chq-docs-phone-back { display: none; }
+  /* Phone-only 'Contents' disclosure (DEC-990 wave-128): re-lines the SAME
+     <nav class="chq-docs-nav"> DocsNav already renders (DEC-919) instead of
+     exiting to the index. Hidden top-level by DEC-385 (narrow overrides
+     wide via max-width only); the @media block below gives the toolbar
+     row, the checkbox and the label their phone geometry. */
+  .chq-docs-phone-toolbar { display: none; }
+  .chq-docs-contents-checkbox { display: none; }
+  .chq-docs-contents-toggle { display: none; }
 
   /* Where next: closes every article, 150px/1fr grid (:328-337). */
   .chq-docs-where-next { max-width: 680px; display: flex; flex-direction: column; gap: 0; padding-top: 6px; }
@@ -280,9 +288,25 @@ export const DOCS_SITE_CSS = `
       min-width: 44px;
     }
 
-    /* Nav collapses to a single 44px-min '‹ Docs' back link above the H1
-       (:168, the phone panel's own header). */
+    /* Nav is off-screen by default on phone (DEC-919) -- re-lined below
+       the toolbar, in place, the moment the 'Contents' checkbox is
+       checked, rather than replaced outright by the '‹ Docs' link above
+       the H1 (:168, the phone panel's own header band). */
     .chq-docs-nav { display: none; }
+    .chq-docs-article-frame:has(.chq-docs-contents-checkbox:checked) .chq-docs-nav {
+      display: flex;
+    }
+    /* DEC-990 wave-128: the frame's header band (Chautauqua
+       Docs.dc.html:167, border-bottom:1px solid #1B1D17; padding:14px
+       16px; flex-shrink:0; display:flex; align-items:center; gap:12px)
+       draws exactly two controls -- ':168 the back link' and ':169 the
+       Contents span' -- both at min-height:44px; display:flex;
+       align-items:center, the second pushed right by margin-left:auto.
+       The toolbar row below is that band; the app's own version keeps
+       its existing border/padding context (the outer
+       .chq-docs-article-frame padding already supplies the 16px inset)
+       so only the row's internal flex geometry is new. */
+    .chq-docs-phone-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
     .chq-docs-phone-back {
       display: flex;
       align-items: center;
@@ -291,7 +315,41 @@ export const DOCS_SITE_CSS = `
       font-weight: 700;
       color: var(--chq-ink);
       text-decoration: none;
-      margin-bottom: 4px;
+    }
+    /* Visually-hidden checkbox driving the disclosure -- same sr-only
+       technique as .chq-itinerary-toggle (src/routes/public/css/rail.css.ts),
+       toggled via native keyboard/Space, no JS. */
+    .chq-docs-contents-checkbox {
+      display: block;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      margin: 0;
+    }
+    /* task w3-n (SSR_UNFLOORED_TOKENS_CEILING): native <label for> click
+       delegation activates the checkbox regardless of its own box, so the
+       real tap surface is, and stays, .chq-docs-contents-toggle (already
+       floored above). min-width/min-height here satisfy the floor on the
+       token itself; pointer-events:none keeps the enlarged (but still
+       invisible) box from ever intercepting a pointer event of its own --
+       the same closure .chq-itinerary-toggle uses (rail.css.ts) since this
+       token cannot go off-screen without breaking the label's layout. */
+    .chq-docs-contents-checkbox {
+      min-width: 44px;
+      min-height: 44px;
+      pointer-events: none;
+    }
+    .chq-docs-contents-toggle {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      margin-left: auto;
+      padding-inline: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--chq-ink);
+      cursor: pointer;
     }
 
     /* The one sanctioned measure break itself breaks further on phone:
