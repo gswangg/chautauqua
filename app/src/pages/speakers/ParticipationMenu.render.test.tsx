@@ -204,14 +204,14 @@ describe('ParticipationMenu (DEC-830)', () => {
     expect(patchCall).toBeUndefined();
   });
 
-  it('shows the footer explaining only "Send portal invite" sends anything', async () => {
+  it('shows the footer explaining only "Invited" sends anything (DEC-380 wave-133, pack :311)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
     const menu = await openMenu();
     expect(
-      menu.getByText('Only Send portal invite sends anything — the other two record what you already know'),
+      menu.getByText('Only "Invited" sends anything — the other two just record what you already know'),
     ).toBeInTheDocument();
   });
 

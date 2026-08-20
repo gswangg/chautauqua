@@ -885,6 +885,16 @@
   margin: 0;
 }
 
+/* DEC-380 (wave-133): the frame's own closing caption (pack :113), desktop
+   tray only -- see UnscheduledTray.tsx. Same muted caption register as
+   .chq-unscheduled-tray-hint. */
+.chq-unscheduled-tray-drag-hint {
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
 @media (max-width: 900px) {
   .chq-agenda-layout {
     grid-template-columns: 1fr;

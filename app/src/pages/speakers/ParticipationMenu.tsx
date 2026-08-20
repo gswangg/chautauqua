@@ -60,8 +60,14 @@ export const PARTICIPATION_STATE_CAPTIONS: Record<InviteStatus, string> = {
   declined: 'Hidden from the public pages, uploads paused.',
 };
 
+// DEC-380 (wave-133): the frame's own closing caption (pack :311), verbatim
+// -- straight quotes match the repo's prevailing convention for a quoted UI
+// label in rendered copy (ComposeWizard.tsx's "Attach calendar invite"
+// wording, authored as literal quote characters where the caption is a JS
+// string constant rather than a JSX text node -- an &quot; entity would
+// render literally here, not decode).
 export const PARTICIPATION_FOOTER_CAPTION =
-  'Only Send portal invite sends anything — the other two record what you already know';
+  'Only "Invited" sends anything — the other two just record what you already know';
 
 // DEC-869 (wave-50 amendment): the vendored handoff's menu names exactly
 // three SELECTABLE states -- Not invited / Confirmed / Declined -- with
