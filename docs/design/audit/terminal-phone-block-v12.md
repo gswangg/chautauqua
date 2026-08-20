@@ -126,14 +126,11 @@ old file-text-only check — both pre-existing, both unrelated to
 
 | Sheet | Cluster | Measured (composed) |
 |---|---|---|
-| `src/routes/portal/portal.css.ts` | speaker portal (SSR) | composes `EMPTY_CSS` mid-file (around line 703), well before its own terminal `@media (max-width: 700px)` block — `EMPTY_CSS`'s single phone block is therefore non-terminal in the composed output, even though `portal.css.ts`'s OWN file text has always shown exactly one (terminal) block. `EMPTY_CSS`'s phone rules can be shadowed by any of `portal.css.ts`'s own desktop rules declared between the composition point and its terminal block. |
-| `src/routes/public/public.css.ts` | public shell (SSR) | composes `CHROME_CSS`/`CARDS_CSS`/`AGENDA_CSS`/`RAIL_CSS`/`EMPTY_CSS`; several of those sub-modules carry their own phone blocks that land ahead of `public.css.ts`'s own terminal block once composition is resolved, the same shape as the portal row above. |
+| ~~`src/routes/portal/portal.css.ts`~~ | speaker portal (SSR) | **FIXED (task w18-f, DEC-385 wave-143)**: `EMPTY_CSS`'s phone rule (was composed mid-file around line 703, well before this sheet's own terminal block) is now its own export, `EMPTY_PHONE_CSS` (`src/routes/public/css/empty.css.ts`), mirroring the `ERROR_STATES_CSS`/`ERROR_STATES_PHONE_CSS` split above. `EMPTY_PHONE_CSS` is composed immediately ahead of this sheet's own terminal `@media (max-width: 700px)` block — its original relative (ascending) source position, below every desktop rule and above this sheet's own phone block — so the tail is now one contiguous region: `EMPTY_PHONE_CSS`, this sheet's own block, then `ERROR_STATES_PHONE_CSS`. No selector/property/value changed, pure relocation. `src/routes/public/programme.css.ts` (the other composer of `EMPTY_CSS`) was updated in the same task to compose `EMPTY_PHONE_CSS` immediately after `EMPTY_CSS`, so it keeps `EMPTY_CSS`'s phone rule rather than silently losing it. |
+| ~~`src/routes/public/public.css.ts`~~ | public shell (SSR) | **FIXED (task w18-f, DEC-385 wave-143)**: `CHROME_CSS`, `CARDS_CSS`, `AGENDA_CSS`, `RAIL_CSS` and `EMPTY_CSS` each used to carry its own terminal `@media (max-width: 700px)` block inline, which made every fragment but the last (`EMPTY_CSS`) non-terminal once composed into `PUBLIC_CSS`. Each fragment's phone block is now its own `*_PHONE_CSS` export (`CHROME_PHONE_CSS`/`CARDS_PHONE_CSS`/`AGENDA_PHONE_CSS`/`RAIL_PHONE_CSS`/`EMPTY_PHONE_CSS`), and `public.css.ts` composes all five desktop fragments followed by all five phone fragments, in the same relative (ascending) order the fragments themselves already composed in — `${CHROME_CSS}${CARDS_CSS}${AGENDA_CSS}${RAIL_CSS}${EMPTY_CSS}${CHROME_PHONE_CSS}${CARDS_PHONE_CSS}${AGENDA_PHONE_CSS}${RAIL_PHONE_CSS}${EMPTY_PHONE_CSS}`. No selector/property/value changed, pure relocation. |
 
-Neither row is fixed here. Fixing them means re-ordering where each host
-composes its phone-bearing sub-modules (the same `ERROR_STATES_PHONE_CSS`
-pattern this task used) — real work, sized for its own task, not folded into
-w16-bb's narrow ERROR_STATES_CSS scope. `test/phone-terminal-block.scan.test.ts`'s
-final aggregate assertion is expected to stay RED until these two rows (and
-whatever the same widened check finds elsewhere as this table is re-audited)
-are fixed — that redness is the honest replacement for a check that could not
-see this entire class of bug at all.
+Both rows are fixed as of task w18-f. `test/phone-terminal-block.scan.test.ts`'s
+final aggregate assertion now passes over the whole population; whatever the
+same widened check finds elsewhere as this table is re-audited in a future
+wave stays the honest replacement for a check that could not see this entire
+class of bug at all.

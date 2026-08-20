@@ -134,22 +134,44 @@ function resolveArrayLiteral(raw: string, filePath: string, ident: string): stri
  *     ${CARDS_CSS}${AGENDA_CSS}${RAIL_CSS}`) -- recursively resolved to
  *     that fragment's own (already-interpolated) CSS text, so the composed
  *     PUBLIC_CSS the scan sees matches its actual runtime value.
+ *
+ * DEC-385 wave-143 amendment (task w18-f): a module can now export MORE
+ * THAN ONE `..._CSS` template literal (e.g. `AGENDA_CSS`/`AGENDA_PHONE_CSS`,
+ * mirroring src/views/error-states.css.ts's pre-existing `ERROR_STATES_CSS`/
+ * `ERROR_STATES_PHONE_CSS` split, task w16-bb) -- an un-parameterised
+ * "first `*_CSS` match in the file" extraction would silently return the
+ * SAME (desktop-only) body for every named import from that file, dropping
+ * every phone-only selector from the scan's view without erroring. `ident`
+ * selects exactly the named export when resolving a bare `${IDENT}`
+ * interpolation (never just "the file's first one"); omitted (the
+ * top-level per-file call below), every `*_CSS` export in the file is
+ * concatenated, in source order, so the file's full text is covered.
  */
-function extractCssText(filePath: string): string {
+function extractCssText(filePath: string, ident?: string): string {
   const raw = readFileSync(filePath, "utf-8");
-  const cssMatch = raw.match(/export const \w+_CSS = `([\s\S]*?)`;/);
-  if (!cssMatch) throw new Error(`no exported *_CSS template literal found in ${filePath}`);
-  const css = cssMatch[1] ?? "";
-  return css.replace(/\$\{(\w+)(?:\[(\d+)\])?\}/g, (full, ident: string, idxStr?: string) => {
+  let css: string;
+  if (ident !== undefined) {
+    const cssMatch = raw.match(new RegExp(`export const ${ident} = \`([\\s\\S]*?)\`;`));
+    if (!cssMatch) throw new Error(`no exported ${ident} template literal found in ${filePath}`);
+    css = cssMatch[1] ?? "";
+  } else {
+    const re = /export const \w+_CSS = `([\s\S]*?)`;/g;
+    const parts: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(raw)) !== null) parts.push(m[1] ?? "");
+    if (parts.length === 0) throw new Error(`no exported *_CSS template literal found in ${filePath}`);
+    css = parts.join("\n");
+  }
+  return css.replace(/\$\{(\w+)(?:\[(\d+)\])?\}/g, (full, innerIdent: string, idxStr?: string) => {
     if (idxStr !== undefined) {
-      const items = resolveArrayLiteral(raw, filePath, ident);
+      const items = resolveArrayLiteral(raw, filePath, innerIdent);
       return items[Number(idxStr)] ?? full;
     }
-    if (!/_CSS$/.test(ident)) return full;
-    const importMatch = raw.match(new RegExp(`import\\s*\\{[^}]*\\b${ident}\\b[^}]*\\}\\s*from\\s*["']([^"']+)["']`));
+    if (!/_CSS$/.test(innerIdent)) return full;
+    const importMatch = raw.match(new RegExp(`import\\s*\\{[^}]*\\b${innerIdent}\\b[^}]*\\}\\s*from\\s*["']([^"']+)["']`));
     if (!importMatch) return full;
     const importedPath = resolveImportFile(filePath, importMatch[1] ?? "");
-    return extractCssText(importedPath);
+    return extractCssText(importedPath, innerIdent);
   });
 }
 

@@ -35,7 +35,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { RAIL_CSS } from '../../../../src/routes/public/css/rail.css';
+import { RAIL_CSS, RAIL_PHONE_CSS } from '../../../../src/routes/public/css/rail.css';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -52,7 +52,12 @@ function read(file: string): string {
 
 const CONTACTS_CSS = read('contacts.css');
 const PANELS_CSS = read('contacts-panels.css');
-const RAIL_CSS_STRIPPED = stripComments(RAIL_CSS);
+// DEC-385 wave-143 amendment (task w18-f): rail.css.ts's own phone media
+// block moved out into its own export, RAIL_PHONE_CSS, composed at
+// PUBLIC_CSS's tail rather than staying inline (see rail.css.ts /
+// public.css.ts) -- concatenated here so this shadow-detection case still
+// sees both the desktop rule and the phone-scoped rule that shadows it.
+const RAIL_CSS_STRIPPED = stripComments(RAIL_CSS + RAIL_PHONE_CSS);
 
 /** Every top-level-or-nested rule `{selector list, body}` in `css`, in
  * source order, whose selector list (split on `,`, exact-trimmed member

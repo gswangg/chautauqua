@@ -37,10 +37,10 @@
 // `noTopLevelRuleAfter` check below is a standing tripwire against the same
 // failure mode recurring in any of the four sheets this task owns.
 import { describe, expect, it } from "vitest";
-import { AGENDA_CSS } from "../src/routes/public/css/agenda.css";
-import { RAIL_CSS } from "../src/routes/public/css/rail.css";
-import { CARDS_CSS } from "../src/routes/public/css/cards.css";
-import { CHROME_CSS } from "../src/routes/public/css/chrome.css";
+import { AGENDA_CSS, AGENDA_PHONE_CSS } from "../src/routes/public/css/agenda.css";
+import { RAIL_CSS, RAIL_PHONE_CSS } from "../src/routes/public/css/rail.css";
+import { CARDS_CSS, CARDS_PHONE_CSS } from "../src/routes/public/css/cards.css";
+import { CHROME_CSS, CHROME_PHONE_CSS } from "../src/routes/public/css/chrome.css";
 import { ACCENT_BOUND_CLASSES } from "../src/routes/public/css/accent-classes";
 
 /** Comments are stripped before any brace scanning: a literal `{`/`}`
@@ -135,11 +135,19 @@ function findLastRule(layer: string, selector: string): string {
   return last;
 }
 
+// DEC-385 wave-143 amendment (task w18-f): each sheet's own
+// @media (max-width: 700px) block moved out into its own *_PHONE_CSS
+// export (mirroring src/views/error-states.css.ts's split, task w16-bb),
+// composed at the tail of PUBLIC_CSS rather than staying inline -- see
+// public.css.ts. This test still grades each sheet as a single
+// desktop+phone unit, so `css` here is the same composed text the module
+// actually emits (desktop body immediately followed by its own phone
+// block), unreordered/unreworded.
 const SHEETS = {
-  agenda: { name: "agenda.css.ts", css: AGENDA_CSS },
-  rail: { name: "rail.css.ts", css: RAIL_CSS },
-  cards: { name: "cards.css.ts", css: CARDS_CSS },
-  chrome: { name: "chrome.css.ts", css: CHROME_CSS },
+  agenda: { name: "agenda.css.ts", css: AGENDA_CSS + AGENDA_PHONE_CSS },
+  rail: { name: "rail.css.ts", css: RAIL_CSS + RAIL_PHONE_CSS },
+  cards: { name: "cards.css.ts", css: CARDS_CSS + CARDS_PHONE_CSS },
+  chrome: { name: "chrome.css.ts", css: CHROME_CSS + CHROME_PHONE_CSS },
 } as const;
 
 const CLEAN = Object.fromEntries(
@@ -185,9 +193,15 @@ describe("DEC-385 (w85 amendment): no owned sheet's phone rule is shadowed by it
     // a same-selector top-level rule loses the cascade at every width,
     // including <=700px, because a plain rule with no media condition
     // always applies and later source position wins at equal specificity.
-    const phoneIdx = RAIL_CSS.indexOf("@media (max-width: 700px)");
-    const surfaceTitlePhoneIdx = RAIL_CSS.indexOf(".chq-pub-surface-title { font-size: 26px; }");
-    const surfaceTitleTopLevelIdx = RAIL_CSS.indexOf(".chq-pub-surface-title {\n    font-family:");
+    // DEC-385 wave-143 amendment (task w18-f): rail.css.ts's own phone
+    // block moved out into RAIL_PHONE_CSS (composed at PUBLIC_CSS's tail,
+    // not inline in RAIL_CSS any more) -- checked here against the SAME
+    // composed desktop+phone text (SHEETS.rail.css) the rest of this file
+    // already grades, not the bare RAIL_CSS import.
+    const railComposed = SHEETS.rail.css;
+    const phoneIdx = railComposed.indexOf("@media (max-width: 700px)");
+    const surfaceTitlePhoneIdx = railComposed.indexOf(".chq-pub-surface-title { font-size: 26px; }");
+    const surfaceTitleTopLevelIdx = railComposed.indexOf(".chq-pub-surface-title {\n    font-family:");
     expect(phoneIdx).toBeGreaterThan(-1);
     expect(surfaceTitlePhoneIdx).toBeGreaterThan(-1);
     expect(surfaceTitleTopLevelIdx).toBeGreaterThan(-1);

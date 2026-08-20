@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEC_367, DEC_989 } from "../src/decisions";
+import { PORTAL_CSS as PORTAL_CSS_COMPOSED } from "../src/routes/portal/portal.css";
 
 void DEC_367;
 void DEC_989;
@@ -302,9 +303,24 @@ describe("portal.css.ts: .chq-portal-done-when escapes, .chq-field-counter is ex
     expect(rule).not.toMatch(/text-overflow/);
   });
 
-  it("appends the new phone block as the LAST top-level construct in the module", () => {
-    const last = at(blocks, -1);
-    const trailing = body.slice(last.end + 1).trim();
+  // DEC-385 wave-143 amendment (task w18-f): this pin used to slice the raw
+  // FILE text's trailing bytes, which broke the moment portal.css.ts
+  // started composing ERROR_STATES_PHONE_CSS at its tail (w16-bb) -- the
+  // raw text after this sheet's own last `{...}` block is the literal,
+  // unresolved "${ERROR_STATES_PHONE_CSS}" interpolation placeholder, not
+  // whitespace, even though the RUNTIME/composed PORTAL_CSS string is
+  // fully conformant (ERROR_STATES_PHONE_CSS is itself a phone block,
+  // composed immediately after this sheet's own terminal block -- see
+  // test/phone-terminal-block.scan.test.ts's composed-output grading).
+  // Re-pointed at the composed-export invariant instead of the file's
+  // trailing bytes, per this task: the emitted PORTAL_CSS runtime string
+  // has exactly one contiguous trailing phone region, i.e. nothing but
+  // whitespace/comments follows its LAST @media (max-width: 700px) block.
+  it("the composed PORTAL_CSS runtime export has exactly one contiguous trailing phone region (nothing but whitespace/comments after the last phone block)", () => {
+    const composedBlocks = extract700Blocks(PORTAL_CSS_COMPOSED);
+    expect(composedBlocks.length).toBeGreaterThan(0);
+    const last = at(composedBlocks, -1);
+    const trailing = PORTAL_CSS_COMPOSED.slice(last.end + 1).replace(/\/\*[\s\S]*?\*\//g, "").trim();
     expect(trailing).toBe("");
   });
 });

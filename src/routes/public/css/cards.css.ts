@@ -264,6 +264,18 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
      (phone-terminal-block.scan.test.ts). No selector/declaration/value is
      reordered, reworded or deduped; .chq-pub-view-toggle-option does not
      recur below, so no collapse is needed. */
+
+`;
+
+// DEC-385 wave-143 amendment (task w18-f): the phone media block
+// block that used to live inside CARDS_CSS above (and made this fragment's
+// composed position inside PUBLIC_CSS/PORTAL_CSS non-terminal, per
+// docs/design/audit/terminal-phone-block-v12.md) is split into its own
+// export, mirroring src/views/error-states.css.ts's ERROR_STATES_CSS/
+// ERROR_STATES_PHONE_CSS split (task w16-bb). CARDS_PHONE_CSS carries ONLY the
+// rule below, verbatim, unreordered, unreworded -- each composing sheet
+// concatenates it into its own trailing phone region instead.
+export const CARDS_PHONE_CSS = `
   @media (max-width: 700px) {
     .chq-pub-view-toggle-option { min-height: 44px; }
     .chq-pub-speaker-list-row {

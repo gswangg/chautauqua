@@ -15,7 +15,7 @@ import { Hono } from "hono";
 import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
-import { AGENDA_CSS } from "../src/routes/public/css/agenda.css";
+import { AGENDA_PHONE_CSS } from "../src/routes/public/css/agenda.css";
 
 const EVENT_ROW = {
   id: "ev1",
@@ -136,7 +136,10 @@ describe("DEC-576 (wave 110 amendment): my-schedule's SSR phone dock band", () =
 
     // The 44px floor (DESIGN-RULINGS), checked against the CSS source
     // (no stylesheet is applied by jsdom here).
-    const phoneBlock = AGENDA_CSS.slice(AGENDA_CSS.lastIndexOf("@media (max-width: 700px)"));
+    // DEC-385 wave-143 amendment (task w18-f): AGENDA_CSS's own phone media
+    // block moved out into AGENDA_PHONE_CSS (composed at PUBLIC_CSS's tail
+    // rather than staying inline -- see agenda.css.ts / public.css.ts).
+    const phoneBlock = AGENDA_PHONE_CSS.slice(AGENDA_PHONE_CSS.lastIndexOf("@media (max-width: 700px)"));
     const icsHeight = Number(phoneBlock.match(/\.chq-pub-schedule-dock-ics\s*\{[^}]*min-height:\s*(\d+)px/)?.[1]);
     const crossHeight = Number(phoneBlock.match(/\.chq-pub-schedule-dock-cross\s*\{[^}]*min-height:\s*(\d+)px/)?.[1]);
     expect(icsHeight).toBeGreaterThanOrEqual(44);

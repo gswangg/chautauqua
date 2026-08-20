@@ -5,7 +5,7 @@
 // in the <=700px media block (never unconditionally).
 
 import { describe, expect, it } from "vitest";
-import { CHROME_CSS } from "../src/routes/public/css/chrome.css";
+import { CHROME_CSS, CHROME_PHONE_CSS } from "../src/routes/public/css/chrome.css";
 
 function declaredWidth(css: string, className: string): number {
   const re = new RegExp(`\\.${className}\\s*\\{([^}]*)\\}`);
@@ -30,7 +30,10 @@ describe("task-w5-a: .chq-pub-filter-row fits ONE row at 820", () => {
     expect(baseRule).toBeTruthy();
     expect(baseRule![1]).not.toMatch(/flex-wrap:\s*wrap/);
 
-    const mediaBlock = CHROME_CSS.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\.chq-pub-filter-row\s*\{([^}]*)\}/);
+    // DEC-385 wave-143 amendment (task w18-f): CHROME_CSS's own phone media
+    // block moved out into CHROME_PHONE_CSS (composed at PUBLIC_CSS's tail
+    // rather than staying inline -- see chrome.css.ts / public.css.ts).
+    const mediaBlock = CHROME_PHONE_CSS.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\.chq-pub-filter-row\s*\{([^}]*)\}/);
     expect(mediaBlock).toBeTruthy();
     expect(mediaBlock![1]).toMatch(/flex-wrap:\s*wrap/);
   });

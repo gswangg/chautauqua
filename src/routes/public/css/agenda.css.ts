@@ -501,6 +501,18 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
      top-level rule this move now sits after (.chq-pub-format-chip,
      .chq-pub-select-active, .chq-pub-agenda-block-meta/-list-item
      .chq-pub-track-chip::before, .chq-pub-agenda-block-save). */
+
+`;
+
+// DEC-385 wave-143 amendment (task w18-f): the phone media block
+// block that used to live inside AGENDA_CSS above (and made this fragment's
+// composed position inside PUBLIC_CSS/PORTAL_CSS non-terminal, per
+// docs/design/audit/terminal-phone-block-v12.md) is split into its own
+// export, mirroring src/views/error-states.css.ts's ERROR_STATES_CSS/
+// ERROR_STATES_PHONE_CSS split (task w16-bb). AGENDA_PHONE_CSS carries ONLY the
+// rule below, verbatim, unreordered, unreworded -- each composing sheet
+// concatenates it into its own trailing phone region instead.
+export const AGENDA_PHONE_CSS = `
   @media (max-width: 700px) {
     .chq-pub-header { padding: 16px; }
     main.chq-pub-main { padding: 16px; }
