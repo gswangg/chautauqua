@@ -1129,6 +1129,19 @@
   white-space: nowrap;
 }
 
+/* w7-g (DEC-937 wave-111 amendment): a purely decorative echo of the
+   frame's per-row `Open` chip (Chautauqua Comms.dc.html:299) -- inert
+   (aria-hidden, no click handler or role of its own), NOT a second
+   control. The row's one verb stays the NAME button (DEC-890 wave-18
+   amendment, templates.css) which already claims the tap floor; this
+   span only restates that affordance visually at the frame's own
+   geometry, so it does not reopen the "two tap targets for one act"
+   problem that ruling fixed. Hidden at desktop by default, shown only
+   inside the 700px query below (DEC-385 single-direction). */
+.chq-comms-template-open {
+  display: none;
+}
+
 /* ------------------------------------------------------------------ */
 /* Phone landing (DEC-621 amendment, v12 mobile campaign w1, planner's  */
 /* ruling): the v12 frame's own dashboard -- the 'Comms' · 390 screen.  */
@@ -1508,8 +1521,14 @@
     width: 100%;
   }
 
+  /* DEC-937 wave-111 amendment: the row grows a relative anchor and a
+     right-hand gutter the size of the frame's `Open` chip (96px, echoing
+     the Last-used column's own pinned width for the same 358px card) so
+     the decorative chip below can sit at the frame's own vertical centre
+     without overlapping the three stacked text lines. */
   .chq-comms-templates-table tr {
-    padding: 14px 0;
+    position: relative;
+    padding: 14px 96px 14px 0;
     border-bottom: 1px solid var(--chq-hairline);
   }
 
@@ -1527,16 +1546,25 @@
     color: var(--chq-muted);
   }
 
-  /* v12 phone frame "Templates · 390": the Last-used cell is the one
-     exception to the rule above. Its VALUE already opens with the words
-     it would be labelled by -- "Last used 12 Aug 2027", or "Not used yet"
-     -- so the prefix printed "LAST USED: Last used 12 Aug 2027" on the
-     card, and the frame draws that line as a single uppercase micro-label
-     with no prefix at all. The Name cell keeps its prefix; this is a named
-     per-cell exception, not a retreat from DEC-937's attr(data-label)
-     pattern (the label is still sourced from the cell, never from a
-     column position -- it is simply already inside the value). */
+  /* v12 phone frame "Templates · 390": Last-used and Name are the two
+     exceptions to the rule above. Last-used's VALUE already opens with
+     the words it would be labelled by -- "Last used 12 Aug 2027", or
+     "Not used yet" -- so the prefix printed "LAST USED: Last used 12 Aug
+     2027" on the card. Name's value is the template's own name with
+     nothing label-shaped about it, and the frame (:299-303) draws all
+     three cells -- name, detail, used -- as unprefixed stacked lines with
+     no caption anywhere on the row. DEC-937 wave-111 amendment: extend
+     the existing per-cell exception from Last-used to Name; this is
+     still a NAMED per-cell exception, not a retreat from the generic
+     attr(data-label) pattern below every OTHER table keeps (the label
+     stays sourced from the cell, never from a column position -- Name's
+     `data-label="Name"` attribute is untouched in TemplatesTab.tsx, it is
+     simply not rendered here). */
   .chq-comms-templates-table td.chq-comms-templates-col-last-used[data-label]::before {
+    content: none;
+  }
+
+  .chq-comms-templates-table td[data-label='Name']::before {
     content: none;
   }
 
@@ -1546,6 +1574,32 @@
      "LAST USED 12 AUG 2027" after the day. Released at card width. */
   .chq-comms-templates-table .chq-comms-templates-col-last-used {
     width: 100%;
+  }
+
+  /* DEC-937 wave-111 amendment: the frame's per-row `Open` chip
+     (Chautauqua Comms.dc.html:299 -- `border:1px solid #BAB6A6;
+     border-radius:6px; background:#EFEBDF; min-height:44px;
+     display:flex; align-items:center; padding:0 14px; font-size:13px;
+     font-weight:600`), rendered as inert decoration (see the base
+     `display:none` rule above for why this is not a second control).
+     Anchored to the `tr`'s relative box set above, centred over the
+     row's full height regardless of which cell it renders inside. */
+  .chq-comms-template-open {
+    display: flex;
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl-phone);
+    background: var(--chq-surface-sunk);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-ink);
   }
 
   /* Compose step-1 submission picker: same CSS-only table-to-card treatment

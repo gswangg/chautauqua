@@ -427,7 +427,10 @@ describe('v12 phone frame "Templates · 390" (templates.css + comms.css)', () =>
     expect(
       phoneRuleBody(CSS, '.chq-comms-templates-table td.chq-comms-templates-col-last-used[data-label]::before'),
     ).toMatch(/content:\s*none/);
-    // The generic DEC-937 attr(data-label) rule is untouched (Name keeps it).
+    // The generic DEC-937 attr(data-label) rule itself is untouched --
+    // it stays the label source for every OTHER table (docs/design/
+    // "Chautauqua Comms.dc.html" only draws a caption-free row for
+    // Templates; e.g. the Compose picker table still wants its caption).
     expect(phoneBlocks(CSS)).toMatch(
       /\.chq-comms-templates-table td\[data-label\]::before\s*\{\s*content:\s*attr\(data-label\) ': ';/,
     );
@@ -435,6 +438,29 @@ describe('v12 phone frame "Templates · 390" (templates.css + comms.css)', () =>
     expect(
       phoneRuleBody(CSS, '.chq-comms-templates-table .chq-comms-templates-col-last-used'),
     ).toMatch(/width:\s*100%/);
+  });
+
+  it("the Name cell's caption is suppressed too, DEC-937 wave-111 amendment", () => {
+    // docs/design/Chautauqua Comms.dc.html:295 `<span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ t.name }}</span>` -- a bare unprefixed line, not a "NAME: " caption.
+    expect(phoneBlocks(CSS)).toMatch(
+      /\.chq-comms-templates-table td\[data-label='Name'\]::before\s*\{\s*content:\s*none;/,
+    );
+  });
+
+  it("the row grows a per-row Open chip at the frame's own geometry, DEC-937 wave-111 amendment", () => {
+    const tr = phoneRuleBody(CSS, '.chq-comms-templates-table tr');
+    expect(tr).toMatch(/position:\s*relative/);
+    // docs/design/Chautauqua Comms.dc.html:299 `border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600` -- the frame's Open chip, rendered as inert decoration (DEC-890 wave-18 amendment keeps this from being a second CONTROL).
+    const chip = phoneRuleBody(CSS, '.chq-comms-template-open');
+    expect(chip).toMatch(/display:\s*flex/);
+    expect(chip).toMatch(/position:\s*absolute/);
+    expect(chip).toMatch(/min-height:\s*44px/);
+    expect(chip).toMatch(/border:\s*1px solid var\(--chq-border\)/);
+    expect(chip).toMatch(/background:\s*var\(--chq-surface-sunk\)/);
+    // Hidden at desktop (top-level, outside the 700px block) -- DEC-385
+    // single-direction override, and NOT a focusable second control.
+    const topLevelChip = topLevelRuleBody(CSS, '.chq-comms-template-open');
+    expect(topLevelChip).toMatch(/display:\s*none/);
   });
 
   it("the editor takes the frame's 48px fields and 150px body box", () => {
@@ -514,5 +540,17 @@ describe('phone selectors match the markup they lay out', () => {
     expect(
       document.querySelector('td.chq-comms-templates-col-last-used[data-label="Last used"]'),
     ).not.toBeNull();
+    // The Name cell also keeps its data-label attribute (DEC-937's SOURCE
+    // rule -- the label stays sourced from the cell, never a column
+    // position -- untouched even though the RENDER is suppressed).
+    expect(document.querySelector('td[data-label="Name"]')).not.toBeNull();
+    // DEC-937 wave-111 amendment: the frame's per-row `Open` chip renders
+    // as inert decoration, not a second focusable control -- the row's
+    // one verb stays the name button (DEC-890 wave-18 amendment).
+    const openChip = document.querySelector('.chq-comms-template-open');
+    expect(openChip).not.toBeNull();
+    expect(openChip).toHaveTextContent('Open');
+    expect(openChip).toHaveAttribute('aria-hidden', 'true');
+    expect(openChip?.tagName).toBe('SPAN');
   });
 });
