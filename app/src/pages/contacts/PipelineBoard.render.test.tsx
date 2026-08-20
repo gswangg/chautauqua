@@ -1114,6 +1114,54 @@ function detailStubForActivityTest() {
   };
 }
 
+// DEC-678 wave-128 (judge-filed Cut-2 item 2): the detail dialog opens on
+// click, before GET /pipeline/:id has resolved -- the same "a loading
+// indicator is delayed, and an empty state never renders while a load is
+// in flight" rule the board itself already honours (the withholds-counts
+// describe block above) reaches one level in, into this dialog's body. The
+// dialog paints its ModalFrame header instantly (title falls back to
+// 'Pipeline entry', DEC-651's contract is unchanged), but the body must
+// show neither the "No activity yet." empty-state copy (the specific lie
+// DEC-678 forbids: an empty-state claim paired with a load still in
+// flight) nor any of its write controls -- a write armed on nothing.
+describe('PipelineBoard: card detail modal defers its body until the fetch resolves (DEC-678, wave-128 Cut-2 item 2)', () => {
+  it('shows no empty-state copy and no write controls while the GET is in flight, then renders content once it resolves', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': detailStubForActivityTest(),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
+
+    // Synchronously after the click, before the mocked GET /pipeline/entry-1
+    // promise has had a chance to resolve: the dialog is already open (its
+    // header/Close/Done paint from props the board already had), but the
+    // body must be empty of both the "fresh" empty-state message and every
+    // write control the resolved detail would otherwise arm.
+    const dialog = screen.getByRole('dialog', { name: 'Pipeline card detail' });
+    expect(within(dialog).queryByText('No activity yet.')).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText('Stage')).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText('Add a note')).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Save note' })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Rate' })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Edit fit' })).not.toBeInTheDocument();
+
+    // Once the fetch resolves, the real content -- and its write controls --
+    // appear.
+    await waitFor(() => {
+      expect(within(dialog).getByLabelText('Stage')).toBeInTheDocument();
+    });
+    expect(within(dialog).getByLabelText('Add a note')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Save note' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Rate' })).toBeInTheDocument();
+    expect(within(dialog).getByText('No activity yet.')).toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
 // Item 5 (frame 08-contacts--14, B7 exemplar): an empty stage column names
 // the stage via a real heading (never the generic "No one in X"), a body
 // naming the previous stage's REAL live count, and a tertiary "Add someone
