@@ -240,11 +240,19 @@ export const HOME_CSS = `
        line-height:1.25\`. */
     .chq-home-row-published .chq-home-name { font-size: 18px; letter-spacing: -0.022em; line-height: 1.25; }
     .chq-home-actions { align-items: stretch; width: 100%; }
+    /* w8-e (DEC-989(b)/DEC-385): .chq-home-action-primary/-secondary carry
+       white-space:nowrap at base scope with no escape -- fixed-word labels
+       ("Submit a talk", "Browse sessions"), so the neutralising fix is the
+       overflow/text-overflow pair added here, inside this ALREADY-PRESENT
+       phone rule (append-only within the rule, nothing reordered, desktop
+       untouched). */
     .chq-home-action-primary,
     .chq-home-action-secondary {
       width: 100%;
       justify-content: center;
       margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     /* :137 \`min-height:48px; display:flex; align-items:center;
        justify-content:center\` ("Submit a talk") -- 48px already matches
@@ -253,10 +261,10 @@ export const HOME_CSS = `
        background:#EFEBDF; min-height:44px\` ("Browse sessions") -- desktop
        is 46px; the phone frame's bordered action narrows to the 44px floor
        exactly. */
-    .chq-home-action-secondary { min-height: 44px; }
+    .chq-home-action-secondary { min-height: 44px; overflow: hidden; text-overflow: ellipsis; }
     /* DEC-367 (wave-57 amendment): the tertiary anchor's tap floor is
        phone-only -- centred flex, not padding. DEC-582's "API docs ›". */
-    .chq-home-action-tertiary { min-height: 44px; }
+    .chq-home-action-tertiary { min-height: 44px; overflow: hidden; text-overflow: ellipsis; }
     /* Fresh deploy (:308-314) stacks "Sign in" over "API docs ›" as two
        full-width siblings sharing the body's own 18px gap -- there is no
        row wrapper in the frame at all, unlike the base-scope
@@ -282,7 +290,7 @@ export const HOME_CSS = `
        pinned by test/public-home-full-bleed.test.ts's base-scope
        assertion); the phone-only floor plus horizontal padding is added
        here, scoped to this block by DEC-367's own convention. */
-    .chq-home-action-quiet { min-height: 44px; padding: 0 8px; flex-shrink: 0; }
+    .chq-home-action-quiet { min-height: 44px; padding: 0 8px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; }
 
     .chq-home-archive-row {
       grid-template-columns: 1fr auto;
