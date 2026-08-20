@@ -138,14 +138,15 @@ describe('desktop frame parity: Speakers cluster (v12m-w3-p)', () => {
     expect(src).toMatch(/`Send these \$\{count\}`/);
   });
 
-  // docs/design/Chautauqua Speakers.dc.html:586 (:549 extent) -- RULED STALE, see file header.
+  // docs/design/Chautauqua Speakers.dc.html:586 (:549 extent) -- RULED STALE.
   // `<span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#F7F9F0; background:#4E5C31; border-radius:3px; padding:3px 8px; justify-self:start">Complete</span>`
-  // DEVIATIONS.md ("Speakers status vocabulary under write-failure", DEC-730
-  // wave-90 amendment) rules the app's inverted DONE/PEND/LATE vocabulary
-  // wins here too -- do not assert this drawn (pre-inversion) pill.
   it('speakers.css defines the inverted status vocabulary, which wins even under a write-failure banner (:549, ruled stale)', () => {
     const css = read('speakers.css');
     expect(css).toMatch(/\.chq-speakers-status-complete/);
+    // DEVIATIONS.md ("Speakers status vocabulary under write-failure",
+    // DEC-730 wave-90 amendment) rules the app's inverted DONE/PEND/LATE
+    // vocabulary wins here too -- do not assert this drawn (pre-inversion)
+    // pill.
     expect(css).toMatch(/\.chq-speakers-status-overdue/);
     expect(css).toMatch(/\.chq-speakers-status-pending/);
   });

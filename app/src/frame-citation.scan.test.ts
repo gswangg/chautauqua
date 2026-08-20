@@ -527,8 +527,23 @@ for (const file of TEST_TARGET_FILES) {
  * template-literal backtick that moved out of range. The remaining 10
  * offenders are all under test/** (companion lane w12-s's half) and are
  * untouched by this task; the merge train re-measures the integrated
- * value per DEC-989 clause a. */
-const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 10;
+ * value per DEC-989 clause a.
+ *
+ * Lowered 15 -> 5 by task w12-s (2026-08-20, DEC-976 wave-123 amendment):
+ * fixed all 10 `test/**` offenders by moving each citation's proof
+ * (`expect(`) into EXPECT_PROXIMITY_LINES of its own citation line, never
+ * re-pointing or weakening an assertion. The 5 remaining offenders are all
+ * under `app/src/**` (App.render.test.tsx, Speakers.render.test.tsx,
+ * RecentSends.render.test.tsx, ContactsTable.render.test.tsx,
+ * select-caret.scan.test.ts) -- lane w12-t's half, re-measured on this
+ * branch per DEC-989 clause a, not copied from any audit doc.
+ *
+ * Thunderdome megabatch (wave 123): lanes w12-t and w12-s drained exactly
+ * complementary halves of this population (5 under app/src/**, 10 under
+ * test/**) and landed in one pass, so the integrated tree has none left.
+ * Re-measured here on the merged tree, not copied from either branch.
+ * This ratchet may only fall. */
+const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;
 
 describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
   it('the test-file desktop-frame citation population is non-empty (guards against a silently-empty scan)', () => {

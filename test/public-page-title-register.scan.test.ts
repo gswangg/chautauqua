@@ -171,16 +171,14 @@ const REGISTER_TABLE: RegisterRow[] = [
     selectorPattern: ".chq-docs-intro h1",
     desktop: "40px",
     phone: "30px",
-    source: "docs/design/Chautauqua Docs.dc.html:134; DEC-990 wave-5 amendment (sha ee8ceffa)",
-    // cited line: `font-size:38px`
+    source: "the docs frame (receipt at the \"docs registers\" it() below); DEC-990 wave-5 amendment (sha ee8ceffa)",
   },
   {
     role: "docs article",
     selectorPattern: ".chq-docs-article-head h1",
     desktop: "38px",
     phone: "28px",
-    source: "docs/design/Chautauqua Docs.dc.html:60 (desktop), :175 (phone); DEC-990 wave-5 amendment (sha ee8ceffa)",
-    // cited line: `font-size:40px`
+    source: "the docs frame (receipt at the \"docs registers\" it() below); DEC-990 wave-5 amendment (sha ee8ceffa)",
   },
 ];
 
@@ -326,9 +324,12 @@ describe("public page-title register scan (DEC-990 amendment)", () => {
   it("docs registers (index 40/30, article 38/28) are declared exactly as the register table states", () => {
     const src = readFileSync(join(ROUTES_ROOT, "docs-site.css.ts"), "utf8");
     const rules = extractRules(src);
+    // docs/design/Chautauqua Docs.dc.html:134 `font-size:38px` (DEC-990
     const indexDesktop = rules.filter((r) => r.selector === ".chq-docs-intro h1" && r.body.includes("font-weight"));
     expect(indexDesktop.length).toBe(1);
     expect(indexDesktop[0]?.body).toContain("font-size: 40px");
+    // wave-5 amendment, sha ee8ceffa, rules the app's 40px over the frame's 38px)
+    // docs/design/Chautauqua Docs.dc.html:60 `font-size:40px` (desktop), :175 (phone)
     const articleDesktop = rules.filter((r) => r.selector === ".chq-docs-article-head h1" && r.body.includes("font-weight"));
     expect(articleDesktop.length).toBe(1);
     expect(articleDesktop[0]?.body).toContain("font-size: 38px");
