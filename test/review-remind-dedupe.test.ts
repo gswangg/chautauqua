@@ -93,11 +93,19 @@ const sendMock = vi.fn(async (input: { to: { email: string }; subject: string })
   loggedRows.push({ eventId: "event-1", toEmail: input.to.email, subject: input.subject, sentAt: Date.now() });
 });
 
+// DEC-238 (wave-132 amendment): POST /remind now also writes a
+// status:"skipped" email_log row per skipped recipient through
+// d1EmailLogWriter -- mock its write so this test's `db: {}` stand-in never
+// hits a real d1 client (see test/reviewer-reminder-skipped-log.test.ts for
+// direct coverage of that write's shape).
+const skippedWriteMock = vi.fn(async () => {});
+
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
   return {
     ...actual,
     makeMailer: vi.fn(() => ({ send: sendMock })),
+    d1EmailLogWriter: vi.fn(() => ({ write: skippedWriteMock })),
   };
 });
 
