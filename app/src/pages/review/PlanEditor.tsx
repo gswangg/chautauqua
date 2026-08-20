@@ -64,17 +64,25 @@ import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
 import { MAX_PLAN_CRITERIA, MIN_CRITERION_OPTIONS, MAX_CRITERION_OPTIONS } from '../../lib/batch-caps';
 import { CRITERION_KIND_LABELS } from '../../lib/criterion-kind';
 
-// DEC-380 (w133): the option-list caption's leading clause ("Two to six")
-// mirrors MIN_CRITERION_OPTIONS/MAX_CRITERION_OPTIONS in words -- asserted
-// here (not just interpolated) so a future change to either constant fails
-// loudly at import time instead of silently drifting from the frame's
-// verbatim wording (Chautauqua Review.dc.html:524/771).
+// DEC-380 (w133/w15-bb): the option-list caption, verbatim from
+// Chautauqua Review.dc.html:524/771 ("Two to six · results show how the
+// picks fell, never an average"). Held as ONE literal string (not composed
+// from CRITERION_OPTIONS_RANGE_WORDS + a trailing clause) so the caption
+// text exists as a real substring in source -- a caption ruled BUILDABLE
+// by DEC-380 is ineligible for the frame-caption-ledger's COMPOSED
+// exclusion table, so a composed/interpolated form would never satisfy the
+// ledger's plain-substring match even though the rendered text is
+// identical. The leading "Two to six" is still asserted against
+// MIN_CRITERION_OPTIONS/MAX_CRITERION_OPTIONS at import time so a future
+// change to either bound fails loudly instead of silently drifting from
+// the frame's words.
 if (MIN_CRITERION_OPTIONS !== 2 || MAX_CRITERION_OPTIONS !== 6) {
   throw new Error(
-    'CRITERION_OPTIONS_RANGE_WORDS ("Two to six") no longer matches MIN_CRITERION_OPTIONS/MAX_CRITERION_OPTIONS -- update the caption text.',
+    'CRITERION_OPTIONS_CAPTION ("Two to six ...") no longer matches MIN_CRITERION_OPTIONS/MAX_CRITERION_OPTIONS -- update the caption text.',
   );
 }
-const CRITERION_OPTIONS_RANGE_WORDS = 'Two to six';
+const CRITERION_OPTIONS_CAPTION =
+  'Two to six · results show how the picks fell, never an average';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
@@ -2047,15 +2055,16 @@ export function PlanEditor() {
                               >
                                 Add an option
                               </a>
-                              {/* DEC-380 (w133): Chautauqua Review.dc.html:524/771's
+                              {/* DEC-380 (w133/w15-bb): Chautauqua Review.dc.html:524/771's
                                   option-list caption, sibling of the criteria
-                                  caption below (:2128) -- "Two to six" mirrors
-                                  CRITERION_OPTIONS_RANGE_WORDS, asserted against
-                                  MIN_CRITERION_OPTIONS/MAX_CRITERION_OPTIONS above
-                                  so a future change to either constant fails loudly
-                                  instead of silently drifting from the frame's words. */}
+                                  caption below (:2128) -- verbatim string,
+                                  asserted against MIN_CRITERION_OPTIONS/
+                                  MAX_CRITERION_OPTIONS above so a future
+                                  change to either constant fails loudly
+                                  instead of silently drifting from the
+                                  frame's words. */}
                               <span className="chq-review-criterion-options-caption">
-                                {CRITERION_OPTIONS_RANGE_WORDS} · results show how the picks fell, never an average
+                                {CRITERION_OPTIONS_CAPTION}
                               </span>
                             </>
                           )}

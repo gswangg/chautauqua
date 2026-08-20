@@ -996,12 +996,21 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // in the fix-me direction ONLY, never hide a real offender (DEC-976
 // wave-138: a corpus repair re-seeds in the repairing commit and that is a
 // repair, not a raise).
-// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=31
-// Thunderdome megabatch: 31 is w14-bb's figure, measured WITHOUT w10-gg's 12
-// COMPOSED exclusions, which are also in this batch and push the count down
-// again. The integrated figure is whatever the two-sided ratchet below prints
-// on breach; it is re-seeded to that measurement, never guessed.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 31;
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=15
+// v12m-w15-bb (wave-140): measured on this branch by forcing the ceiling to
+// -1 and reading the printed offender list -- 15, down from the base's 31.
+// The drop is entirely Chautauqua Review.dc.html:524/771 ("Two to six ·
+// results show how the picks fell, never an average"), DEC-380's ineligible
+// row now built as one verbatim literal string in PlanEditor.tsx (see
+// CRITERION_OPTIONS_CAPTION) instead of a composed/interpolated form, so
+// the ledger's plain-substring match finds it. The base branch this worktree
+// was cut from (main @ da3f1441) did NOT yet carry the registry-exclusion
+// change referenced by wave-140's field guide (DEC-989) -- this branch's 31
+// -> 15 move is this task's own work only, not inherited from a registry
+// widen. The remaining 15 offenders are all outside Chautauqua Review.dc.html
+// (Comms/Contacts/Home/Public and Portal/Settings/Speakers) -- none owned by
+// this task.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 15;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
