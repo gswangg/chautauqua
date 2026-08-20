@@ -994,6 +994,9 @@ select,
    it's pinned. Layout (display/gap/flex-wrap/overflow-x) stays owned by
    .chq-contacts-drawer-actions in app/src/pages/contacts/contacts.css --
    this rule only adds the sticky-footer mechanics. */
+/* tap-floor-exempt: ContactDrawer.tsx's Delete/Email/Add to event/Cancel/
+   Save row (line 689) is five chq-btn buttons, never an anchor -- nothing
+   here for a container-anchor floor to reach (DEC-393 w123). */
 .chq-contacts-drawer-actions {
   position: sticky;
   bottom: 0;
@@ -1359,6 +1362,14 @@ select,
   color: var(--chq-ink-2);
 }
 
+/* tap-floor-exempt: .chq-modal-actions is ModalFrame.tsx's generic action
+   slot; every caller in the tree (EventSwitcher, ConfirmDialog,
+   PeopleRolesPanel, ResourcesPanel, RosterPanel, FieldModal, ResponseModal,
+   TaskView, BulkEmailModal, AddToEventModal, TaskModal, ImportWizard,
+   NewContactModal, RemindPreviewModal, PipelineBoard, UploadRejectedModal,
+   ViewTabs, NewSubmissionModal) passes only chq-btn buttons into it, never
+   an anchor -- nothing here for a container-anchor floor to reach
+   (DEC-393 w123). */
 .chq-modal-actions {
   display: flex;
   align-items: center;
@@ -1374,6 +1385,10 @@ select,
   color: var(--chq-ink);
 }
 
+/* tap-floor-exempt: .chq-bulkbar-actions children across every mount --
+   ContactsTable.tsx, TaskView.tsx, SessionList.tsx, ComposeWizard.tsx,
+   ContentApp.tsx -- are exclusively chq-btn/button elements, never an
+   anchor; a container-anchor floor has nothing to reach (DEC-393 w123). */
 .chq-bulkbar-actions {
   display: flex;
   align-items: center;
@@ -1426,6 +1441,9 @@ select,
   width: 118px;
 }
 
+/* tap-floor-exempt: .chq-contacts-col-actions is an empty <th> spacer
+   (ContactsTable.tsx:113, no children at all) sizing the table's action
+   column -- there is no anchor or control here to floor (DEC-393 w123). */
 .chq-contacts-table .chq-contacts-col-actions {
   /* User-filed (gate-9): width:1px shrink-hack is literal under
      table-layout:fixed — content overflowed the table by ~19px. */
@@ -1683,6 +1701,10 @@ select,
   word-break: break-all;
 }
 
+/* tap-floor-exempt: .chq-embeds-output-actions holds only the two Copy
+   buttons in EmbedCodeReadout.tsx:50-60 (chq-btn chq-btn-secondary /
+   chq-btn chq-btn-tertiary <button> elements, no anchor) -- nothing here
+   for a container-anchor floor to reach (DEC-393 w123). */
 .chq-embeds-output-actions {
   display: flex;
   align-items: center;
@@ -2656,5 +2678,95 @@ select:focus-visible,
     /* v12m-w6-a: already center on both sides -- restated for the same
        zero-shadow-count reason as .chq-bulkbar-actions above. */
     align-items: center;
+  }
+
+  /* DEC-393/DEC-576/DEC-989 wave-123 (task w12-k): anchor-floor sweep for
+     this sheet's ten offender rows, measured by forcing
+     ANCHOR_FLOOR_OFFENDERS_CEILING to -1 against phone-tap-target.scan.test.ts
+     on main 0c27bf92 and reading the printed list. Five of the ten
+     (.chq-bulkbar-actions, .chq-contacts-col-actions,
+     .chq-contacts-drawer-actions, .chq-embeds-output-actions,
+     .chq-modal-actions) are cleared at their own top-level definitions
+     above with a `tap-floor-exempt` comment -- every child mounted through
+     them in the tree is a plain <button>/chq-btn element, never an
+     anchor, so a container-anchor floor has nothing to reach there. The
+     remaining five get a real phone floor below. */
+
+  /* .chq-empty-actions renders a Link only when its action/secondary prop
+     carries a `to` (components/EmptyState.tsx:83/93); both such Links
+     also carry chq-btn, so this reaches them without touching the
+     button-rendered branch. */
+  .chq-empty-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+  }
+
+  /* .chq-link-button is the house's bare-text Link register (population
+     (a): rendered on <Link> with no chq-btn, e.g.
+     pages/speakers/SpeakerDetailPage.tsx:494). Desktop's own `padding: 0
+     6px` plus `margin-inline: -6px` (styles.css:716-721, the cancelled-
+     padding idiom) is restated with a physical `padding` shorthand here
+     rather than `padding-inline`, so this narrow rule does not mint a
+     second cancelled-padding-gap population member alongside the existing
+     desktop declaration. */
+  .chq-link-button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+  }
+
+  /* .chq-section-action always co-occurs with .chq-link-button in markup
+     (Agenda.tsx:315, ResultsTable.tsx:381/391, PlanEditor.tsx:2154,
+     ProgressPanel.tsx:231/240) and is itself a population (a) bare-anchor
+     token in the same places, so it needs its own independent reaching
+     rule. Same N as .chq-link-button above so the two rules never
+     disagree regardless of source-order precedence on a combined
+     element. */
+  .chq-section-action {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    margin-inline: -6px;
+  }
+
+  /* .chq-row-title (population (a): RosterPanel.tsx:484,
+     OnboardingGrid.tsx:1151/1262 -- always a bare <Link>, never chq-btn)
+     is a row's name link; cancelled padding keeps the name glyphs from
+     shifting while widening the hit box, matching the house idiom above. */
+  .chq-row-title {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    margin-inline: -8px;
+  }
+
+  /* DEC-576 wave-123 ruling: this shared quiet-action group's floor lands
+     on the ANCHOR-qualified selector, never the bare class -- .chq-pill
+     also renders as a read-only <span> fit chip
+     (pages/contacts/PipelineBoard.tsx) and .chq-checkbox-label is a
+     <label>; flooring the bare token above would inflate both. Real
+     (non-cancelled) padding restating each family's own desktop
+     horizontal value -- .chq-pill is a bordered chip (border:1px solid,
+     desktop `padding: 5px 12px`, styles.css:874-873) and .chq-rail-link is
+     a real nav link with no margin-inline anywhere (desktop `padding: 8px
+     0 8px 11px`, styles.css:1209), so neither pairs a margin-inline
+     cancellation here. */
+  a.chq-pill {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 12px;
+  }
+
+  a.chq-rail-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 11px 0;
   }
 }

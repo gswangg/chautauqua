@@ -199,7 +199,21 @@ function findOffenders(): string[] {
 // independent drains of disjoint offender sets, merged in one pass; the constant
 // below is the re-measured combined truth of the merged tree, not any single
 // branch's figure. This ratchet may only fall.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 47;
+//
+// Re-measured 2026-08-20 (task w12-k): drained all ten offenders this wave's
+// task assigned in app/src/styles.css (the shell sheet) -- five containers
+// (.chq-bulkbar-actions, .chq-contacts-col-actions,
+// .chq-contacts-drawer-actions, .chq-embeds-output-actions,
+// .chq-modal-actions) cleared with a `tap-floor-exempt` comment (every
+// child is a plain button, never an anchor), and five given a real phone
+// floor (.chq-empty-actions a, .chq-link-button, .chq-section-action,
+// .chq-row-title, a.chq-pill/a.chq-rail-link per DEC-576's element-
+// qualified ruling). 47 -> 37 on this branch alone; other lanes' offenders
+// (comms.css, content.css, review.css, scorecard.css,
+// contacts-panels.css, settings.css, speakers.css, submissions/detail.css,
+// modal-frame.css) are untouched here -- DEC-989: this is the worker's own
+// drain, the merge train re-measures the combined truth.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 37;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {
