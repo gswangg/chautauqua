@@ -443,6 +443,21 @@ const EXPECTED_DEVIATION_CITATIONS = [
 // MEASURED. That is not a ratchet lowering: 102 was never achieved and
 // could not be, and at 100 the two tests now read as the campaign's real
 // desktop exit -- 100 claimed + 2 deferred = the whole 102-frame pack.
+//
+// (DEC-976 wave-137 amendment, v12m-w12-aa, reached the identical repair
+// independently and added the structural tripwire below.)
+// Merge train f684bcd2 raised 100 -> 102 on a transient mis-measurement
+// ("coverage landed") that never actually landed: the sibling `it` below
+// ("no deviation-deferred exclusion is claimed by any test file") forbids
+// claiming either of the 2 DEVIATIONS §6-deferred frames, so the reachable
+// maximum for CLAIMS is ALL_FRAMES.length - EXCLUDED.length = 102 - 2 = 100.
+// 102 was UNREACHABLE, not unmet -- the whole population (100 claimed + 2
+// deviation-deferred = 102 of 102) was already fully accounted for at the
+// time of the raise. DEC-976 wave-137 amendment: repaired 102 -> 100. This
+// is a correction of a corrupt raise, not the forbidden act of lowering a
+// ratchet to match a regression -- no regression occurred, no coverage was
+// lost, and the tripwire two `it`s below now makes the corrupt state
+// (CLAIMED_FLOOR above the derived maximum) structurally unenterable.
 export const CLAIMED_FLOOR = 100;
 
 describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile campaign)', () => {
@@ -524,6 +539,22 @@ describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile camp
     expect(CLAIMS.length).toBeLessThanOrEqual(CLAIMED_FLOOR);
   });
 
+  it('CLAIMED_FLOOR can never exceed the derived reachable maximum (ALL_FRAMES.length - EXCLUDED.length): a floor above that maximum is a corrupt measurement, not coverage', () => {
+    const reachableMax = ALL_FRAMES.length - EXCLUDED.length;
+    if (CLAIMED_FLOOR > reachableMax) {
+      throw new Error(
+        `CLAIMED_FLOOR (${CLAIMED_FLOOR}) exceeds the derived reachable maximum of ` +
+          `${reachableMax} (ALL_FRAMES.length ${ALL_FRAMES.length} - EXCLUDED.length ` +
+          `${EXCLUDED.length}). The sibling test "no deviation-deferred exclusion is claimed ` +
+          `by any test file" forbids CLAIMS from ever including an EXCLUDED frame, so no ` +
+          `floor above this maximum is reachable by real coverage -- it can only be a mis-` +
+          `measurement (see DEC-976 wave-137 amendment). Lower CLAIMED_FLOOR to at most ` +
+          `${reachableMax}.`
+      );
+    }
+    expect(CLAIMED_FLOOR).toBeLessThanOrEqual(reachableMax);
+  });
+
   it('every citation that claimed a frame resolves to a real line in the named frame file', () => {
     const frameLineCounts = new Map<string, number>();
     for (const fileName of designFiles()) {
@@ -567,18 +598,18 @@ describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile camp
     expect(overtaken, overtaken.join('\n')).toEqual([]);
   });
 
-  it(`desktop half of the v12 mobile campaign goal: claimed frames plus deviation-deferred frames reaches CLAIMED_FLOOR (${CLAIMED_FLOOR}) + EXPECTED_DEVIATION_DEFERRED (${EXPECTED_DEVIATION_DEFERRED})`, () => {
+  it('desktop half of the v12 mobile campaign goal: claimed frames plus deviation-deferred frames reaches the full desktop population (ALL_FRAMES.length), derived from the population, never from CLAIMED_FLOOR + EXPECTED_DEVIATION_DEFERRED (that pairing double-counts the exclusion)', () => {
     const claimedKeys = new Set(CLAIMS.map((c) => `${c.frame.file}:${c.frame.line}`));
     const excludedKeys = new Set(EXCLUDED.map((f) => `${f.file}:${f.line}`));
     const remaining = ALL_FRAMES.filter(
       (f) => !claimedKeys.has(`${f.file}:${f.line}`) && !excludedKeys.has(`${f.file}:${f.line}`)
     ).map((f) => `${f.file} :${f.line} -- ${f.title}`);
-    if (CLAIMS.length + EXCLUDED.length < CLAIMED_FLOOR + EXPECTED_DEVIATION_DEFERRED) {
+    if (CLAIMS.length + EXCLUDED.length < ALL_FRAMES.length) {
       throw new Error(
         `claimed ${CLAIMS.length} + excluded ${EXCLUDED.length} = ${CLAIMS.length + EXCLUDED.length}, below ` +
-          `the goal of ${CLAIMED_FLOOR + EXPECTED_DEVIATION_DEFERRED}. Remaining frames:\n${remaining.join('\n')}`
+          `the goal of ${ALL_FRAMES.length} (the full desktop population). Remaining frames:\n${remaining.join('\n')}`
       );
     }
-    expect(CLAIMS.length + EXCLUDED.length).toBeGreaterThanOrEqual(CLAIMED_FLOOR + EXPECTED_DEVIATION_DEFERRED);
+    expect(CLAIMS.length + EXCLUDED.length).toBeGreaterThanOrEqual(ALL_FRAMES.length);
   });
 });
