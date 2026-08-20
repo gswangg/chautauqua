@@ -76,7 +76,20 @@ const TSX_FILES = allTsxFiles(HERE);
 // after 15 lanes landed in one pass -- concurrent lanes drained the same
 // population, so the combined truth is lower than any single branch saw.
 // 23 -> 15. Lowering is a merge-train act (DEC-989).
-export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 15;
+// v12m-w14-l (wave 125, shell lane): styles.css's `.chq-nav-link` now
+// floors inside the terminal @media block (DEC-393), dropping it from the
+// population. `.chq-bulkbar-hint-action` (the task's other named offender)
+// was never counted here -- the ordinary explanatory comment already
+// sitting above its top-level rule tripped `topLevelRulesWithExemption`'s
+// exempt flag before this lane touched it (the DEC-967 wave-124 exemption-
+// grammar bug: any preceding block comment, not just a real
+// `tap-floor-exempt:` one, reads as exempt). It now also carries a genuine
+// named exemption (styles.css, terminal phone block), so the accidental
+// pass is a real one regardless of that scan defect, which is out of this
+// lane's scope (not styles.css). Measured 15 -> 14; lowering is a merge-
+// train act per DEC-989 wave-123/125, recorded here for the train.
+// RATCHET: UNDECLARED_HEIGHT_OFFENDERS_CEILING=14
+export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 14;
 
 describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)', () => {
   it('derives a non-empty population and includes a known-live offender (vacuous-population tripwire)', () => {
