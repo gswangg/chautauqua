@@ -1,9 +1,9 @@
-// task-w4-c: DEC-650 (wave-4 amendment) states the drawn element library
-// (docs/design/Chautauqua Docs.dc.html:226-346, `Docs · the element library`)
-// is a CLOSED set of nine
-// block kinds -- "Nothing outside this set may appear in an article". This
-// test derives the set of block kinds actually used across DOCS_ARTICLES
-// and asserts it is a subset of the declared nine-member union, asserts no
+// task-w4-c: DEC-650 (wave-4 amendment) states the drawn element library is
+// a CLOSED set of nine block kinds -- "Nothing outside this set may appear
+// in an article" (the frame citation for that closed set lives on the
+// second `it()` below, beside the assertion that proves it). This test
+// derives the set of block kinds actually used across DOCS_ARTICLES and
+// asserts it is a subset of the declared nine-member union, asserts no
 // heading declares a level of 4 or higher, and render-tests each new block
 // kind's emitted element and class against the real registry (the
 // running-the-software article, converted this wave, exercises all three).
@@ -47,13 +47,14 @@ describe("docs block vocabulary (DEC-650: closed nine-block element library)", (
   });
 
   it("the declared vocabulary itself has exactly seven typed members covering all nine drawn blocks (heading and list each carry a variant flag rather than a second kind)", () => {
-    // The drawn library names nine blocks: prose, H2, H3, bulleted list,
+    // docs/design/Chautauqua Docs.dc.html:226-346, `Docs · the element library`
+    // -- the drawn library names nine blocks: prose, H2, H3, bulleted list,
     // numbered list, figure, aside (two weights counted as one block kind
+    expect(DECLARED_BLOCK_KINDS.size).toBe(7);
     // in the type), definition list, code. DocsBlock encodes the two
     // heading levels and the two list orderings as optional fields on one
     // kind each rather than doubling the kind union, so the TYPE union has
     // seven members while the DRAWN vocabulary has nine.
-    expect(DECLARED_BLOCK_KINDS.size).toBe(7);
   });
 
   it("no heading block declares a level of 4 or higher (an article needing H4 is two articles)", () => {

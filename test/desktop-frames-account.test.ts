@@ -36,10 +36,10 @@ describe("desktop frame claims: Account cluster (docs/design/Chautauqua Account.
   it("Sign in card is a small centred card, not a stretched phone (docs/design/Chautauqua Account.dc.html:28)", () => {
     // Frame :34 `max-width:460px` -- the sign-in card's inner content wraps
     // at 460px inside a 1600px desktop stage; the app's shared auth card
-    // class carries the same measure (DEC-945 wave-25 amendment,
-    // src/routes/auth.css.ts:38-41: ".chq-auth-card is 460px max-width").
+    // class carries the same measure (DEC-945 wave-25 amendment).
     const css = readSrc("src/routes/auth.css.ts");
     expect(css).toMatch(/\.chq-auth-card\s*\{[^}]*max-width:\s*460px/);
+    // src/routes/auth.css.ts:38-41: ".chq-auth-card is 460px max-width".
     // The submit control is intrinsic-width inside a footer row, never a
     // full-column phone-anatomy button (same amendment comment, line 39-41).
     expect(css).toContain("Its submit control is intrinsic-width");
@@ -68,14 +68,14 @@ describe("desktop frame claims: Account cluster (docs/design/Chautauqua Account.
   });
 
   it("Check-your-email page renders the frame's title (docs/design/Chautauqua Account.dc.html:209)", () => {
-    // Frame :217 `Check your email` -- CheckEmailPage's own h1. (The
-    // frame's body line at :218 names a literal address; DEC-004's
+    // Frame :217 `Check your email` -- CheckEmailPage's own h1.
+    const src = readSrc("src/routes/auth-views.tsx");
+    expect(src).toContain("Check your email");
+    // (The frame's body line at :218 names a literal address; DEC-004's
     // wave-27 amendment deliberately drops the address from both the
     // known- and unknown-email cases so the page can never be used as an
     // account-enumeration oracle -- src/routes/auth-views.tsx:293-296 --
     // so that line is not asserted verbatim here, only the shared title.)
-    const src = readSrc("src/routes/auth-views.tsx");
-    expect(src).toContain("Check your email");
     expect(src).toContain("DEC-004");
   });
 

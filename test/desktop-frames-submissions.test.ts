@@ -130,11 +130,11 @@ describe("desktop frame claims: Submissions + CFP-forms cluster (docs/design/Cha
 
   it("New submission modal is Create-it-first with a Cancel companion (docs/design/Chautauqua Submissions.dc.html:495)", () => {
     // Frame :496 `New submission`, :497 `Organiser entering one by hand`
-    // (heading band), :502 `Invited talks and phone submissions`
-    // (subtitle) and :519/:520 `Create it`/`Cancel` (primary-first action
-    // order).
+    // (heading band).
     const modal = readSrc("app/src/pages/submissions/NewSubmissionModal.tsx");
     expect(modal).toContain('subtitle="Invited talks and phone submissions"');
+    // Frame :502 `Invited talks and phone submissions` (subtitle) and
+    // :519/:520 `Create it`/`Cancel` (primary-first action order).
     expect(modal).toContain("Create it");
   });
 
@@ -162,11 +162,12 @@ describe("desktop frame claims: Submissions + CFP-forms cluster (docs/design/Cha
 
   it("Triage-queue-clear empty state names the unfiltered total and offers Go to content (docs/design/Chautauqua Submissions.dc.html:605)", () => {
     // Frame :645 `Nothing left to triage`, :646 `All 47 submissions have a
-    // decision. Twelve are still waiting on content, if you want the next
-    // thing.` (the app computes N from the unfiltered total, not the
-    // frame's literal 47) and :648 `Go to content ›`.
+    // decision.` (the app computes N from the unfiltered total, not the
+    // frame's literal 47).
     const table = readSrc("app/src/pages/submissions/SubmissionsTable.tsx");
     expect(table).toContain('what="Nothing left to triage"');
+    // Frame :646 `Twelve are still waiting on content, if you want the
+    // next thing.` and :648 `Go to content ›`.
     expect(table).toContain("submissions have a decision.");
     expect(table).toContain("secondary={{ label: 'Go to content ›', to: '/content' }}");
   });

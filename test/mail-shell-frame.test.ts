@@ -1,15 +1,13 @@
 // DEC-037 amendment (wave 20, B9): src/mail/shell.ts is now vendored from
-// docs/design/Chautauqua Comms.dc.html:699-741 (`width:620px; background:#F4F1E8;
-// border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0
-// 18px 44px rgba(27,29,23,0.13)`) + DESIGN-RULINGS.md B9,
-// rather than an ad-hoc olive palette. This file (1) pins the frame's exact
-// values on the rendered HTML and (2) is the mail-side twin of
-// test/palette-conformance.test.ts: that scan deliberately excludes
-// src/mail/**/*.ts (email clients cannot resolve var(--chq-*), so literals
-// are licensed there), which means nothing else checks that the literals
-// used inside src/mail are the ones actually vendored from the frame --
-// this scan closes that gap by enumerating a named allowlist and failing on
-// any hex literal outside it.
+// the frame (see the citation on the first `it()` below) + DESIGN-
+// RULINGS.md B9, rather than an ad-hoc olive palette. This file (1) pins
+// the frame's exact values on the rendered HTML and (2) is the mail-side
+// twin of test/palette-conformance.test.ts: that scan deliberately
+// excludes src/mail/**/*.ts (email clients cannot resolve var(--chq-*), so
+// literals are licensed there), which means nothing else checks that the
+// literals used inside src/mail are the ones actually vendored from the
+// frame -- this scan closes that gap by enumerating a named allowlist and
+// failing on any hex literal outside it.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -51,13 +49,12 @@ function glob(dir: string, suffixes: string[]): string[] {
 
 describe("mail shell frame fidelity (DEC-037 amendment, wave 20)", () => {
   it("renders the card, masthead, and body values from the frame", () => {
-    const html = renderEmailHtml("Hello there.", {
-      eventName: "DevFlow Conf 2027",
-      reason: "you're a speaker at this event",
-    });
-
+    // docs/design/Chautauqua Comms.dc.html:699-741 (`width:620px;
+    // background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px;
+    const html = renderEmailHtml("Hello there.", { eventName: "DevFlow Conf 2027", reason: "you're a speaker at this event" });
     expect(html).toContain("background:#E9E7E2"); // page ground
     expect(html).toContain("background:#F4F1E8"); // card background
+    // overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)`)
     expect(html).toContain("border:1px solid #D3CFC0"); // card border
     expect(html).toContain("border-radius:4px");
     expect(html).toContain("padding:32px 34px 0 34px"); // card padding (top edge)
