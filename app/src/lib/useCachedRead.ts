@@ -80,6 +80,16 @@ function useCachedReadInternal<T>(
     prevEffectPathRef.current = path;
     if (pathChanged) {
       setData(peekCachedRead<T>(path));
+      // DEC_518: a failed read's error banner describes the OUTGOING key --
+      // it must not ride onto the new key's first frame (which would either
+      // show a stale failure about a different object, or, combined with
+      // the loading derivation below, suppress the skeleton entirely). A
+      // bump-only run (mutationVersion changed, path did not) must NOT
+      // clear here -- see the DEC_700 comment above: it would blank a still
+      // -live payload's error-free state for no reason, and more importantly
+      // it is unrelated to this key's own live failure, which the DEC_700
+      // comment above already protects from being blanked.
+      setError(null);
     }
     void runRead(path, generation);
     return () => {

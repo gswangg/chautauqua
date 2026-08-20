@@ -34,6 +34,18 @@
 // genuinely has no prior render that could have left a stale banner -- a
 // bare "unreviewed" reason is forbidden this wave (see DEC-518, task-w76-b,
 // which prosecutes exactly that shape of exemption).
+//
+// HALF THIS SCAN CANNOT SEE (task w15-l): the population above requires a
+// `role="alert"` rendered near the state -- a hook-owned `(key, error)`
+// pair with no JSX of its own (a `useCachedGet`/`useCurrentEvent`-shaped
+// hook whose CALLER renders the alert) never matches a loader block here
+// and is invisible to this scan. app/src/lib/** carries exactly two such
+// hooks today: useCurrentEvent.ts (clears its error at the start of its
+// load effect, DEC-856) and useCachedRead.ts (did not clear on a path
+// change until this wave's DEC_518 fix, which lands it in the same
+// pathChanged branch that already re-seeds `data` from the cache). Two
+// members is not a population (a universal needs a population) -- no
+// ratchet is added here, this is a header note only.
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
