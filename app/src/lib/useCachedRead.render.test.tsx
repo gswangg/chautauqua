@@ -185,6 +185,53 @@ describe('useCachedGet / useCachedList', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('DEC-856: a failed read followed by a real path change clears the stale error and renders a skeleton, not the previous key\'s banner', async () => {
+    // A1 fails; a2's response is held open so the assertion below observes
+    // the state strictly BETWEEN the path change and a2's read settling.
+    let resolveA2!: (value: Response) => void;
+    const a2ResponsePromise = new Promise<Response>((resolve) => {
+      resolveA2 = resolve;
+    });
+    const jsonResponse = (body: unknown) =>
+      new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const path = rawUrl.startsWith('http') ? new URL(rawUrl).pathname : rawUrl.split('?')[0];
+      if (path === '/api/v1/contacts/a1') return new Response('boom', { status: 500 });
+      if (path === '/api/v1/contacts/a2') return a2ResponsePromise;
+      throw new Error(`unhandled route ${path}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result, rerender } = renderHook(({ path }: { path: string }) => useCachedGet<Row>(path, 'Failed to load contact'), {
+      initialProps: { path: '/contacts/a1' },
+    });
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+    expect(result.current.data).toBeUndefined();
+
+    // Real path change: a1's error must not survive onto a2's view. Await
+    // the effect flush (React's own microtask/act settling), not a
+    // synchronous read of result.current -- the state only updates once the
+    // effect has actually run.
+    rerender({ path: '/contacts/a2' });
+    await waitFor(() => {
+      expect(result.current.error).toBeNull();
+    });
+    // Still nothing to render for a2 (its read is held open) -- this must
+    // read as loading (a skeleton), never as the stale a1 banner.
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.loading).toBe(true);
+
+    resolveA2(jsonResponse({ id: 'a2', name: 'Bea' }));
+    await waitFor(() => {
+      expect(result.current.data).toEqual({ id: 'a2', name: 'Bea' });
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
   it('path === null is fully inert -- no request, immediately settled empty', () => {
     const fetchMock = mockApi({});
 

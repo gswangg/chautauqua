@@ -5,9 +5,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiGetCached, apiListCached, ApiError, peekCachedRead, type ListEnvelope } from './api';
 import { useMutationVersion } from './mutationSignal';
-import { DEC_518, DEC_678 } from '../../../src/decisions';
+import { DEC_518, DEC_678, DEC_856 } from '../../../src/decisions';
 void DEC_518;
 void DEC_678;
+void DEC_856;
 
 export interface CachedRead<T> {
   data: T | undefined;
@@ -80,6 +81,13 @@ function useCachedReadInternal<T>(
     prevEffectPathRef.current = path;
     if (pathChanged) {
       setData(peekCachedRead<T>(path));
+      // DEC-856: a real path change clears a stale error from the OUTGOING
+      // key so the new key renders a skeleton (loading, per DEC_678) instead
+      // of the previous key's error banner while its own read is in flight.
+      // A bump-only run (mutationVersion changed, path did not) must NOT
+      // clear here -- an on-screen error for the CURRENT key stays put until
+      // its own refetch settles, mirroring DEC_700's data-untouched rule.
+      setError(null);
     }
     void runRead(path, generation);
     return () => {
