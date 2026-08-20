@@ -7,20 +7,16 @@ Findings surfaced auditing `docs/design/Chautauqua Submissions.dc.html`
 below need a decision or land outside this task's scope
 (`app/src/pages/submissions/**` only, no page header/footer band).
 
-1. **Submission detail's decision bar wants a sticky footer, not an
-   in-body rail.** Frame :355 lines 388-392 draw Accept/Decline/Wait as a
+1. **RESOLVED.** Frame :355 lines 388-392 draw Accept/Decline/Wait as a
    `flex-shrink:0` band pinned below the scrollable body
    (`border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px
    16px`), outside the `overflow-y:auto` content area — never in the
    aside/rail flow the desktop 1600px subscreen uses (frame lines
-   305-317). The current code keeps `.chq-detail-decision-rail` inside
-   `.chq-detail-aside`, in the scrolling body, at every width; task w1-c
-   fixed its in-body geometry (primary 46px / secondary pair 44px, matching
-   frame lines 311/314) but did not relocate it, per this task's explicit
-   scope note ("must NOT build a page header/footer band" — the sticky
-   footer needs the shell scaffold landing in v12m-w1-a). Once that
-   scaffold exists, this rail's phone variant should move into it instead
-   of reflowing in place.
+   305-317). `SubmissionDetailPage.tsx` now renders
+   `.chq-detail-decision-rail` inside `.chq-phone-dock` at 390 (rather than
+   inside `.chq-detail-aside`, in the scrolling body), with dock-specific
+   geometry at `detail.css:1125-1133` (`.chq-phone-dock
+   .chq-detail-decision-rail` / `.chq-detail-decision-primary`), per DEC-610.
 
 2. **Submissions :137's phone head chipstrip is a simpler control set than
    the app's status-filter row.** The frame's chip strip (lines 148-152)

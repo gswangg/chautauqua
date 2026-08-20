@@ -38,8 +38,9 @@ independently confirmed present in the live document (so a rename wouldn't
 silently defeat the exclusion by making it vacuously true).
 
 DEC-967 (wave-101 amendment): `## v12 frame errata` was previously excluded
-here too, pending an in-flight lane (v12m-w14-b) deleting it. That lane
-landed and the heading is genuinely gone from DEVIATIONS.md — an exclusion
+here too, on the basis that a lane's diff (verified by `git diff` against
+that branch's tip) deleted the heading. That deletion is now present on
+`main` and the heading is genuinely gone from DEVIATIONS.md — an exclusion
 that stops resolving is a work item that CLOSED, not a regression. The
 exclusion entry is dropped, never the heading re-added to make the scan
 green.

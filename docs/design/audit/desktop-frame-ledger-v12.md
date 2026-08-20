@@ -306,6 +306,9 @@ the 7 **public** desktop frames in `Chautauqua Public and Portal.dc.html`
 Six further desktop frames in this file (:1101 CFP closed, :1167 Public
 sessions · nothing published, :1211 Submit a talk · rejected on submit,
 :1373 Portal · Edit your session · desktop, :1473 Portal preview, :1532 CFP
-not open yet) are the **portal/refusal** half of this cluster and are
-explicitly OUT OF SCOPE for `v12m-w3-s` -- scheduled for a later wave, not
-dropped.
+not open yet) are the **portal/refusal** half of this cluster. They are
+outside `test/desktop-frames-public.test.ts`'s own claim set (which covers
+only the 7 non-portal frames above), but are claimed by
+`test/desktop-frames-portal.test.ts`, which asserts all six by line number
+(:1101, :1211, :1373, :1473, :1532, and :1167's 300px note) -- RESOLVED,
+not a gap in this ledger.

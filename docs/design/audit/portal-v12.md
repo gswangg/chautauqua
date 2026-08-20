@@ -61,10 +61,7 @@ the profile page's missing Cancel control. That is a markup change to
 this task's CSS-only "move the phone block, extend it" scope — recorded
 here rather than attempted piecemeal within the time budget.
 
-**Amendment (DEC-967 wave-106):** this finding is no longer open. The
-profile half (`:531-559`, "Portal · Your profile") is being built by
-`v12m-w15-b`, routing the page's Save/Cancel pair into the dock exactly as
-this finding describes. The tasks half's second control (`:492`, "Later")
+**Amendment (DEC-967 wave-106):** the tasks half's second control (`:492`, "Later")
 does not carry the same fix: the portal task model exposes only
 complete-or-not, with no snooze/defer/dismiss/later capability anywhere in
 the tree, so "Later" is not a markup gap the same way Cancel was — it is
