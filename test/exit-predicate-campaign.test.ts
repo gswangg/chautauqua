@@ -107,6 +107,11 @@ function baseFixture(): CampaignFile[] {
         "export const WIDENED_UNRESOLVED_CITATION_CEILING = 0;",
       ].join("\n"),
     },
+    // wave-121 (task w10-l): cancelled-padding companion-gap lens.
+    {
+      path: "app/src/cancelled-padding-gap.scan.test.ts",
+      content: "export const CANCELLED_PADDING_GAP_CEILING = 7;",
+    },
   ];
 }
 
@@ -149,7 +154,7 @@ describe("findConstantDeclarations", () => {
 describe("buildCampaignReport", () => {
   it("builds all 10 rows and a correct verdict from the fixture corpus", () => {
     const report = buildCampaignReport(baseFixture());
-    expect(report.rows).toHaveLength(18);
+    expect(report.rows).toHaveLength(19);
 
     const desktop = report.rows.find((r) => r.label === "desktop CLAIMED_FLOOR");
     expect(desktop).toMatchObject({ current: 30, target: 38, remaining: 8 });
@@ -208,6 +213,9 @@ describe("buildCampaignReport", () => {
             "const UNRECEIPTED_CLAIM_CEILING = 0;",
           ].join("\n"),
         };
+      }
+      if (f.path === "app/src/cancelled-padding-gap.scan.test.ts") {
+        return { ...f, content: "export const CANCELLED_PADDING_GAP_CEILING = 0;" };
       }
       return f;
     });
