@@ -139,12 +139,19 @@ function findOffenders(): string[] {
 // narrow-media rules. Added a narrow-media fallback with the SAME
 // predicate/reach/exemption logic; forcing the const to -1 afterwards reads
 // 65 -> 64 (one of the three drops out fully floored, the other two become
-// real per-file rows). Two container tokens
-// (`.chq-comms-phone-recent-head-actions`, `.chq-speakers-card-actions`)
-// genuinely stay `(no CSS rule)`: each has a real rule body and a narrow
-// rule, but it never reaches an anchor (DEC-393: "the floor is reached by
-// the anchor, not its container") -- a real finding, dispositioned by
-// v12m-w9-e and v12m-w9-j respectively. `.chq-overview-row-actions-stacked`
+// real per-file rows). One container token (`.chq-comms-phone-recent-head-actions`)
+// genuinely stayed `(no CSS rule)` at the time: it has a real rule body and a
+// narrow rule, but it never reaches an anchor (DEC-393: "the floor is reached
+// by the anchor, not its container") -- dispositioned by v12m-w9-e.
+// `.chq-speakers-card-actions` (dispositioned by v12m-w9-j with a correct
+// `tap-floor-exempt` comment, its children all `<button>`/`.chq-btn`) was
+// NOT a real finding but was misreported as one for three waves: the narrow-
+// media fallback's `if (reaching.length === 0) continue` fired before the
+// exemption check, so a container whose selector shape can never satisfy
+// `selectorReachesAnchor` was reported `(no CSS rule)` however well-formed
+// its exemption comment. Fixed wave-123 task w12-r (DEC-967): the fallback
+// now checks every file that mentions the token at all, reaching or not, for
+// an exemption before reporting the row. `.chq-overview-row-actions-stacked`
 // was NOT a real finding: `rowActionContainerTokens` read raw CSS text
 // without stripping comments, so overview.css:306's comment recording that
 // DEC-735 RETIRED the class (never a live rule, never live markup --
@@ -231,7 +238,18 @@ function findOffenders(): string[] {
 // form and .chq-review-results-head-actions' Download-CSV/See-all links,
 // which had no phone rule at all. 47 -> 34, re-measured on this branch;
 // lowered from the wave-120 megabatch value by exactly 13.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 15;
+//
+// Re-measured 15 -> 14 wave-123 task w12-r (DEC-967/DEC-989): fixed the
+// narrow-media fallback's `if (reaching.length === 0) continue` firing
+// before the exemption check, which fabricated the `(no CSS rule) —
+// .chq-speakers-card-actions` row every wave since v12m-w9-j wrote its
+// correct `tap-floor-exempt` comment (a container whose children are all
+// `.chq-btn` can never satisfy `selectorReachesAnchor`, so `reaching` was
+// always empty). Forced this constant to -1 and read the printed offender
+// list on this branch alone: 14, one row lower, no other row moved. DEC-989
+// wave-123 protocol: this is the draining lane's own branch-measured value;
+// the merge train re-measures the integrated tree.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 14;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {
@@ -323,6 +341,43 @@ describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', 
     }
   });
 
+  it('honours a well-formed exemption on a container whose children are all buttons, no rule can ever reach the anchor (positive control: DEC-967 wave-123)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'anchor-floor-button-only-exempt-'));
+    const path = join(dir, 'fixture.css');
+    writeFileSync(
+      path,
+      `@media (max-width: 700px) {\n` +
+        `  /* tap-floor-exempt: every child is a plain button, never an anchor */\n` +
+        `  .chq-x-fake-button-only-actions button { min-height: 44px; }\n` +
+        `}\n`,
+    );
+    try {
+      const offenders = findAnchorFloorOffenders([path], [], dir);
+      expect(offenders.some((o) => o.includes('chq-x-fake-button-only-actions'))).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('still reports a container whose children are all buttons and carries NO exemption comment (negative control: DEC-967 wave-123)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'anchor-floor-button-only-unexempt-'));
+    const path = join(dir, 'fixture.css');
+    writeFileSync(
+      path,
+      `@media (max-width: 700px) {\n` +
+        `  .chq-x-fake-button-only-actions-2 button { min-height: 44px; }\n` +
+        `}\n`,
+    );
+    try {
+      const offenders = findAnchorFloorOffenders([path], [], dir);
+      expect(
+        offenders.some((o) => o === '(no CSS rule) — .chq-x-fake-button-only-actions-2'),
+      ).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('stays at or under the offender ceiling (one-sided ratchet: may only fall)', () => {
     const offenders = findAnchorFloorOffenders(CSS_FILES, TSX_FILES, REPO_ROOT);
     expect(
@@ -337,8 +392,10 @@ describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', 
       throw new Error(
         `row-action-anchor tap-target floor offenders (${offenders.length}) fell below the ` +
           `ANCHOR_FLOOR_OFFENDERS_CEILING of ${ANCHOR_FLOOR_OFFENDERS_CEILING}. This is the ratchet ` +
-          `working: offenders got fixed. Lower the ceiling in the same commit (a merge-train act, ` +
-          `never a worker's edit mid-lane) by replacing the line:\n` +
+          `working: offenders got fixed. Lower the ceiling now (DEC-989 wave-123 protocol): the lane that ` +
+          `drains offenders re-measures on its own branch (force this constant to -1, read the printed ` +
+          `offender list) and writes its own branch's truth; the merge train re-measures the integrated ` +
+          `tree and writes the combined truth. Replace the line:\n` +
           `  export const ANCHOR_FLOOR_OFFENDERS_CEILING = ${offenders.length};`,
       );
     }
@@ -560,8 +617,10 @@ describe('phone tap-target floor scan — SSR routes (public/portal/docs/auth)',
       throw new Error(
         `SSR tap targets whose CSS never declares a >=44px floor at any width (${offenders.length}) fell ` +
           `below the SSR_UNFLOORED_TOKENS_CEILING of ${SSR_UNFLOORED_TOKENS_CEILING}. This is the ratchet ` +
-          `working: offenders got fixed. Lower the ceiling in the same commit (a merge-train act, never a ` +
-          `worker's edit mid-lane) by replacing the line:\n` +
+          `working: offenders got fixed. Lower the ceiling now (DEC-989 wave-123 protocol): the lane that ` +
+          `drains offenders re-measures on its own branch (force this constant to -1, read the printed ` +
+          `offender list) and writes its own branch's truth; the merge train re-measures the integrated ` +
+          `tree and writes the combined truth. Replace the line:\n` +
           `  export const SSR_UNFLOORED_TOKENS_CEILING = ${offenders.length};`,
       );
     }

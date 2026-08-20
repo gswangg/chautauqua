@@ -351,8 +351,12 @@ describe('cancelled-padding companion-gap lens (DEC-393 wave-121 amendment, task
     if (offenders.length < CANCELLED_PADDING_GAP_CEILING) {
       throw new Error(
         `cancelled-padding-gap.scan: CANCELLED_PADDING_GAP_CEILING (${CANCELLED_PADDING_GAP_CEILING}) exceeds the ` +
-          `measured offender count (${offenders.length}). Lowering the ceiling is a merge-train act, not a ` +
-          `worker's -- replace the line:\n  export const CANCELLED_PADDING_GAP_CEILING = ${offenders.length};\n` +
+          `measured offender count (${offenders.length}). Lower it now (DEC-989 wave-123 protocol): the lane ` +
+          `that drains offenders re-measures on its own branch (force this constant to -1, read the printed ` +
+          `offender list) and writes its own branch's truth; the merge train re-measures the integrated tree ` +
+          `and writes the combined truth. A stale ceiling left "for the merge train" is exactly the condition ` +
+          `this ratchet's companion exists to forbid -- replace the line:\n` +
+          `  export const CANCELLED_PADDING_GAP_CEILING = ${offenders.length};\n` +
           `Offenders:\n${offenders.map((o) => `  ${o.file} — ${o.container} (gap=${o.gap ?? 'NONE'}, required>=${o.required})`).join('\n')}`,
       );
     }

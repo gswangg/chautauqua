@@ -16,9 +16,13 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { allCssFiles, allTsxFiles } from '../../phone-tap-target-scan/core.js';
+import { findAnchorFloorOffenders } from '../../phone-tap-target-scan/anchor-floor.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS_PATH = join(HERE, 'speakers.css');
+const APP_SRC = join(HERE, '..', '..');
+const REPO_ROOT = join(APP_SRC, '..', '..');
 
 /** Extracts a top-level (not inside an @media block) rule's declaration body by selector. */
 function topLevelRuleBody(css: string, selector: string): string {
@@ -440,10 +444,24 @@ describe('v12m-w9-j: DEC-393 wave-120 tap-floor receipts (speakers.css)', () => 
     );
   });
 
-  it('.chq-speakers-card-actions takes shape 3: exempted, both children are floored chq-btn controls (stays (no CSS rule), a real finding left standing)', () => {
+  it('.chq-speakers-card-actions takes shape 3: exempted, both children are floored chq-btn controls', () => {
     expect(css).toMatch(
       /tap-floor-exempt:[^*]*chq-btn[^*]*\*\/\s*\.chq-speakers-card-actions\s*\{/,
     );
+  });
+
+  // DEC-967 wave-123 (task w12-r): the anchor-floor scan's narrow-media
+  // fallback used to report `.chq-speakers-card-actions` as `(no CSS rule)`
+  // regardless of this exemption comment -- a container whose children are
+  // all `.chq-btn` can never produce a rule `selectorReachesAnchor` accepts,
+  // so `reaching` was always empty and the `continue` fired before the
+  // exemption check ever ran. Fixed in
+  // app/src/phone-tap-target-scan/anchor-floor.ts: the fallback now honours
+  // an exemption found on ANY file mentioning the token, reaching or not.
+  // This asserts the fix reaches the scan, not just the comment's presence.
+  it('the exemption is honoured by the scan: .chq-speakers-card-actions is no longer counted as an anchor-floor offender', () => {
+    const offenders = findAnchorFloorOffenders(allCssFiles(APP_SRC), allTsxFiles(APP_SRC), REPO_ROOT);
+    expect(offenders.some((o) => o.includes('chq-speakers-card-actions'))).toBe(false);
   });
 });
 
