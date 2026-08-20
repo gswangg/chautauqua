@@ -43,20 +43,19 @@ silently widening the exclusion.
 
 ## Surviving unmatched rows (real gaps), by frame
 
-These are the rows the test's `FOOTER_LABEL_CEILING` (currently `7`) grades.
-Each is a literal frame label that is not present, boundary-anchored, in
-non-test app source, and is not covered by any exclusion table. All seven are
-scheduled to sibling lanes this wave (v12m-w4-m/n/o/p/q/r/s).
-
-| Frame | File:line | Label | Owning surface |
-|---|---|---|---|
-| Send history · 390 | `Chautauqua Comms.dc.html:350` | "See the recipients" | Comms send-history disclosure — no matching control found |
-| Contacts | `Chautauqua Contacts.dc.html:192` | "+ Rule" | Contacts filter-rule add control — no matching control found |
-| Overview | `Chautauqua Overview.dc.html:277` | "Place the other six ›" | Overview / home screen — no matching disclosure control found |
-| Portal · Hotel stay form | `Chautauqua Public and Portal.dc.html:519` | "Send this in" | Portal form-submit footer action — no matching control found |
-| Reviewer scorecard · `/review/plans/:id/submissions/:id` | `Chautauqua Review.dc.html:295` | "Read the full submission" | Reviewer scorecard disclosure — no matching control found |
-| Settings · Call for papers | `Chautauqua Settings.dc.html:453` | "Copy link" | Settings CFP-link action — no matching control found |
-| Submission detail | `Chautauqua Submissions.dc.html:391` | "Wait" | Submission detail waitlist action — the app renders `Waitlist`, which the boundary-anchored matcher (correctly) does not accept as `Wait` |
+These are the rows the test's `FOOTER_LABEL_CEILING` (currently `0`, drained
+from wave-131's `9` — see wave-131 note below) grades. Each would be a
+literal frame label that is not present, boundary-anchored, in non-test app
+source, and is not covered by any exclusion table. There are currently none:
+main went RED against the wave-129 ceiling of `7` when sibling lanes
+v12m-w5-k (DEC-896 wave-130 two-level Settings head) and v12m-w4-s (DEC-919
+wave-129 reversal) landed and composed eight `‹ Settings` read-drill rows
+plus the `Place the other six ›` row from live data instead of a literal
+string — the original seven rows this table used to list (`See the
+recipients`, `+ Rule`, `Place the other six ›`, `Send this in`, `Read the
+full submission`, `Copy link`, `Wait`) were closed by the sibling lanes named
+in the wave-129 snapshot; the nine new offenders that appeared in their place
+are recorded below as Composed rows, not as surviving gaps.
 
 ## Exclusions applied (not counted as gaps)
 
@@ -96,6 +95,8 @@ scheduled to sibling lanes this wave (v12m-w4-m/n/o/p/q/r/s).
 | `Chautauqua Review.dc.html:666` | "Save the plan" | BLESSED — DEVIATIONS.md §3, DEC-745 wave-98 |
 | `Chautauqua Public and Portal.dc.html:494` | "Later" | BLESSED — DEVIATIONS.md §6, DEC-967 wave-106 |
 | `Chautauqua Submissions.dc.html:151` | "All 47" | `` `All ${allTotal}` ``, in `app/src/pages/submissions/FilterBar.tsx` |
+| `Chautauqua Overview.dc.html:277` | "Place the other six ›" | wave-131 drain: `` `Place the other ${spellCount(...)} ›` ``, in `app/src/pages/overview/AgendaWorkSection.tsx` (v12m-w4-s landed DEC-919 wave-129's reversal) |
+| `Chautauqua Settings.dc.html:318/349/395/446/483/512/554/580` | "‹ Settings" | wave-131 drain: `` `&lsaquo; {editingSection ? editingSection.label : 'Settings'}` ``, in `app/src/pages/Settings.tsx` — the read drill still renders `‹ Settings`, but v12m-w5-k's DEC-896 wave-130 two-level head means the literal string no longer occurs verbatim in source (frames: Settings · Event / Tracks and rooms / Your data / Call for papers / Public pages / Speaker portal / People and roles / Saved embeds) |
 
 ## Not in scope for this ledger
 
