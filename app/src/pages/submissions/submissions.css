@@ -820,6 +820,28 @@
     min-height: 44px;
   }
 
+  /* v12m-w19-d (DEC-393/DEC-613 vocabulary widening): `<summary>` now
+     carries its own `.chq-submissions-columnpicker-summary` class token
+     (ColumnPicker.tsx) so the tap-target scans (which now include
+     `summary` in their tag vocabulary) can see this control directly. A
+     separate rule rather than joining the descendant selector above, so
+     that existing rule's own text stays untouched (submissions-phone-
+     frames.test.ts pins it verbatim). The desktop rule at line 118 already
+     supplies `display: inline-flex; align-items: center; padding: 5px
+     12px`; restated here in full so this phone rule carries the whole
+     floor grammar -- min-height + centred flex + non-zero horizontal
+     padding -- on its own. This control is itself hidden at phone width
+     (`.chq-submissions-columnpicker { display: none }` below, DEC-919
+     wave-7/92/102: no columns left for it to govern once the table stacks
+     into cards) -- the floor is still authored per DEC-393's mandate that
+     every interactive element gets one, moot or not at this width. */
+  .chq-submissions-columnpicker-summary {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+  }
+
   /* Per-row triage cell: full-width own line, buttons wrap to a shared
      min 44px tap target, ordered after the fixed 1-7 columns and the
      dynamic custom columns/Clone cell (both fall to the default order:10

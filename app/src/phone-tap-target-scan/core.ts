@@ -70,7 +70,13 @@ export const SSR_CLASS_ATTR_RE = /\bclass(?:Name)?\s*=\s*(\{[^}]*\}|"[^"]*")/;
  * there is no such primitive -- a bare `<a>` IS the control (DEC-393 +
  * DEC-976 wave-138) -- so `ssr.ts`'s `allSsrTapTargetTokens` is the ONLY
  * caller that passes `{ anchorNeedsBtnToken: false }`. Every SPA call site
- * keeps today's behaviour byte-for-byte by relying on the default. */
+ * keeps today's behaviour byte-for-byte by relying on the default.
+ *
+ * `summary` (v12m-w19-d, DEC-393): a `<details>/<summary>` disclosure's
+ * `<summary>` IS the control -- there is no button primitive for it the way
+ * `.chq-btn` is for anchors, so it needs no `anchorNeedsBtnToken`-shaped
+ * qualification; any `chq-…` class found directly on a `<summary>` tag is
+ * admitted unconditionally, same as `input`/`select`/`button`. */
 export function tapTargetTagTokens(
   src: string,
   classAttrRe: RegExp = SPA_CLASS_ATTR_RE,
@@ -78,7 +84,7 @@ export function tapTargetTagTokens(
 ): string[] {
   const anchorNeedsBtnToken = opts.anchorNeedsBtnToken ?? true;
   const out = new Set<string>();
-  const tagRe = /<(input|select|button|a)\b([^>]*)>/g;
+  const tagRe = /<(input|select|button|a|summary)\b([^>]*)>/g;
   let m: RegExpExecArray | null;
   while ((m = tagRe.exec(src)) !== null) {
     const tag = m[1];

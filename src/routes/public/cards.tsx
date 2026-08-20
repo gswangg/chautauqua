@@ -169,8 +169,8 @@ export function SessionDescription(props: { description: string | null }) {
   if (description.length <= DESCRIPTION_SNIPPET_LEN) return <p>{description}</p>;
   return (
     <p>
-      <details style="display:inline">
-        <summary>
+      <details class="chq-pub-desc-details">
+        <summary class="chq-pub-desc-summary">
           <span class="chq-pub-desc-snippet">{description.slice(0, DESCRIPTION_SNIPPET_LEN)}…</span>{" "}
           Show more
         </summary>

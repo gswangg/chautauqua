@@ -55,10 +55,13 @@ import {
 /** Every matching tag's own `chq-…` class token list, grouped per tag
  * (rather than flattened across the file) -- the shape composition credit
  * needs: "what else rides along with this token on the SAME element". Same
- * tag/attribute/token grammar as `tapTargetTagTokens` in ./core.js. */
+ * tag/attribute/token grammar as `tapTargetTagTokens` in ./core.js, INCLUDING
+ * `summary` (v12m-w19-d, DEC-393/DEC-613): a second copy of a vocabulary is
+ * a trap with a delay fuse, so this widening lands in the SAME commit as
+ * core.ts's. */
 export function tagClassSets(src: string, classAttrRe: RegExp = SPA_CLASS_ATTR_RE): string[][] {
   const out: string[][] = [];
-  const tagRe = /<(input|select|button|a)\b([^>]*)>/g;
+  const tagRe = /<(input|select|button|a|summary)\b([^>]*)>/g;
   let m: RegExpExecArray | null;
   while ((m = tagRe.exec(src)) !== null) {
     const tag = m[1];
