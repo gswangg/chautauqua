@@ -47,6 +47,9 @@
 - Docked action bars absent where frames draw them: public agenda,
   my-schedule, portal tasks/hotel-form/session/edit, CFP wizard.
   /account/password is the model implementation — reuse its pattern.
+  CLOSED (wave 118, "portal tasks/hotel-form/session/edit" clause only —
+  the public agenda/my-schedule and CFP wizard docks are unverified and
+  remain open): src/routes/portal/shared.tsx:233 `{props.dock ? <div class="chq-portal-dock">{props.dock as any}</div> : null}`
 - SCAN POPULATION: widen phone-tap-target.scan + the 390-overflow scan roots
   from app/src to include src/routes/** (public/portal/docs/auth were never
   scanned; most §5 floor misses would have been caught).
@@ -60,7 +63,10 @@
   through the PASSWORD label on load; overview + speakers row pairs overlap
   (-6px); portal session edit↔label 0px.
 - CFP content column 290px vs 358 budget; counters on every field incl.
-  dates/emails (frames: ABSTRACT only); portal footer 93px ink stub +
+  dates/emails (frames: ABSTRACT only);
+  CLOSED (wave 118, "counters on every field incl. dates/emails" clause
+  only): src/views/form-render.tsx:169 `const counterMax = field.kind === "long_text" ? resolvedTextCap(field) : undefined;`
+  portal footer 93px ink stub +
   duplicate Sign out; overview remind-all breaks gutters; tab-bar dot
   flow/baseline defects (dot above label, all five items, per frames);
   pub-empty-what 36px > page H1; speakers Remind-outstanding wraps in 107px
