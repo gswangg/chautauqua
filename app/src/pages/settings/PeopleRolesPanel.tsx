@@ -105,25 +105,43 @@ function PasswordRevealBlock({
   failedCopyRef,
   onCopy,
   onDone,
+  onInviteAnother,
 }: {
   revealed: RevealedPassword;
   copyResult: { ok: boolean } | null;
   failedCopyRef: { current: HTMLInputElement | null };
   onCopy: () => void;
   onDone: () => void;
+  // DEC-919 wave-130 amendment: the invite reveal's action row draws a
+  // second, tertiary control ("Invite someone else", :1344) that the reset
+  // reveal does not (:1497 draws Done alone) -- optional, and only ever
+  // passed by the invite call site.
+  onInviteAnother?: () => void;
 }) {
   return (
     <div className="chq-token-reveal" role="alert">
       <strong>
         One-time password for {revealed.email} — copy it now, it will not be shown again:
       </strong>
+      {/* DEC-919 wave-130 amendment: the eyebrow above the password differs
+          by context (:1333 "Their password · shown once" on invite, :1491
+          "New password · shown once" on reset) -- keyed off the reveal's
+          own `context`, never a second prop a caller could pass wrong. */}
+      <span className="chq-settings-people-password-eyebrow">
+        {revealed.context === 'invite' ? 'Their password · shown once' : 'New password · shown once'}
+      </span>
       <code className="chq-settings-people-password">{revealed.password}</code>
       <button type="button" className="chq-btn chq-btn-secondary" onClick={onCopy}>
-        {copyResult?.ok ? 'Copied!' : 'Copy'}
+        {copyResult?.ok ? 'Copied!' : 'Copy the password'}
       </button>
       <button type="button" className="chq-btn chq-btn-secondary" onClick={onDone}>
         Done
       </button>
+      {revealed.context === 'invite' && onInviteAnother ? (
+        <button type="button" className="chq-link-button" onClick={onInviteAnother}>
+          Invite someone else
+        </button>
+      ) : null}
       <div role="status" aria-live="polite" className="chq-copy-status">
         {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
       </div>
@@ -216,6 +234,16 @@ export function PeopleRolesPanel() {
     setError(null);
     setFieldErrors({});
     setDuplicateUser(null);
+  }
+
+  // DEC-919 wave-130 amendment: "Invite someone else" (:1344) reuses the
+  // section's existing invite-open affordance rather than a second copy --
+  // the dialog stays open (it already is), the reveal step clears so the
+  // form step shows again, and the fields are already blank from the
+  // successful submit that produced this reveal.
+  function handleInviteAnother() {
+    setRevealedPassword((prev) => (prev && prev.context === 'invite' ? null : prev));
+    setCopyResult(null);
   }
 
   function load() {
@@ -380,6 +408,16 @@ export function PeopleRolesPanel() {
               Close
             </button>
           ),
+          // DEC-919 wave-130 amendment (:1007): the edit view's footer
+          // carries a left-flushed tertiary linking to the self-service
+          // password change -- SettingsEditForm's existing destructive left
+          // slot, not a new one, and not a second copy of the route already
+          // used above (/account/password, src/routes/account.tsx).
+          destructive: (
+            <a className="chq-link-button" href="/account/password">
+              Change your own password
+            </a>
+          ),
         }}
       >
       <div className="chq-settings-section-head">
@@ -434,6 +472,7 @@ export function PeopleRolesPanel() {
             failedCopyRef={failedCopyRef}
             onCopy={() => void handleCopyPassword()}
             onDone={closeInviteDialog}
+            onInviteAnother={handleInviteAnother}
           />
         </ModalFrame>
       ) : null}
