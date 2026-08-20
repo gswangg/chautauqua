@@ -108,6 +108,15 @@ describe('SubmissionDetailPage decision rail placement (DEC-610)', () => {
     expect(screen.getAllByRole('button', { name: 'Waitlist' })).toHaveLength(1);
     expect(screen.queryByRole('button', { name: 'Wait' })).toBeNull();
 
+    // DEC-878 (wave 129 amendment): the dock's third control DOES render
+    // the frame's short 'Wait' span in the DOM (CSS shows it under 700px,
+    // via the SAME .chq-detail-back-short toggle the back link uses) --
+    // it just never becomes the ACCESSIBLE NAME, which the aria-label
+    // above pins to 'Waitlist' regardless of which span CSS shows.
+    const waitlistBtn = screen.getByRole('button', { name: 'Waitlist' });
+    expect(waitlistBtn.querySelector('.chq-detail-back-short')).toHaveTextContent('Wait');
+    expect(waitlistBtn.querySelector('.chq-detail-back-full')).toHaveTextContent('Waitlist');
+
     // The dock is the last child of .chq-page, so its sticky containing
     // block spans the whole scrollable page, not just the (much shorter)
     // aside box it used to be nested in.

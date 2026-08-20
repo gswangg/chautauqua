@@ -1,7 +1,7 @@
 // Admin submission detail page (DEC-045). SPA-only: consumes existing
 // GET /api/v1/submissions/:id, the DEC-016 forms + tracks endpoints, and
 // the existing bulk status endpoint (ids:[id]) — no new server code.
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTimeWithSeconds, epochDayIndex } from '../../lib/dates';
@@ -166,6 +166,28 @@ const DECISION_ACTION_LABELS: Record<DecidableStatus, string> = {
   declined: 'Decline',
   waitlisted: 'Waitlist',
 };
+
+// DEC-878 (wave 129 amendment): the 390 decision dock's third verb is the
+// frame's short form ('Wait', Chautauqua Submissions.dc.html:391) -- width-
+// conditioned TAP copy only, never a vocabulary fork. DECISION_ACTION_LABELS
+// stays the one vocabulary (untouched); this renders a sibling pair using
+// the SAME idiom already in this file for the back link
+// (.chq-detail-back-full/.chq-detail-back-short), with exactly one span
+// visible per width via detail.css's terminal phone block. Unlike the back
+// link, the button also carries an explicit aria-label: a shorter TAP label
+// must never become a shorter ANNOUNCED name, so the accessible name stays
+// 'Waitlist' at every width regardless of which span is visually shown.
+function decisionActionLabel(status: DecidableStatus): ReactNode {
+  if (status !== 'waitlisted') {
+    return DECISION_ACTION_LABELS[status];
+  }
+  return (
+    <>
+      <span className="chq-detail-back-full">{DECISION_ACTION_LABELS.waitlisted}</span>
+      <span className="chq-detail-back-short">Wait</span>
+    </>
+  );
+}
 
 function InviteStatusChip({ status }: { status: InviteStatus }) {
   // DEC-367: no per-status colour ("no red and no third accent") -- the
@@ -1071,8 +1093,9 @@ export function SubmissionDetailPage() {
               className="chq-btn chq-btn-secondary"
               disabled={statusPending}
               onClick={() => changeStatus('waitlisted')}
+              aria-label={DECISION_ACTION_LABELS.waitlisted}
             >
-              {DECISION_ACTION_LABELS.waitlisted}
+              {decisionActionLabel('waitlisted')}
             </button>
           </div>
         </>
@@ -1090,8 +1113,9 @@ export function SubmissionDetailPage() {
                 className="chq-btn chq-btn-secondary"
                 disabled={statusPending}
                 onClick={() => changeStatus(status)}
+                aria-label={DECISION_ACTION_LABELS[status]}
               >
-                {DECISION_ACTION_LABELS[status]}
+                {decisionActionLabel(status)}
               </button>
             ))}
           </div>
