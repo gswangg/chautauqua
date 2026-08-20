@@ -106,11 +106,12 @@ letter-spacing) to match the frame verbatim; weight was already correct
   pills carry 800 (frame's `PEND`/`LATE` constants,
   `font-weight:800`) — the status pill is the heavier face, matching the
   frame. No inversion bug found.
-- **(b) shared 22px pill line**: `speakers.css:280-283`
-  (`.chq-speakers-grid td:not(:first-child) {`, then `vertical-align: top;
-  padding-top: 46px;`) still
+- **(b) shared 22px pill line**: speakers.css`.chq-speakers-grid td:not(:first-child) {` (then `vertical-align: top; padding-top: 46px;`) still
   documents and holds the DEVIATIONS §2 top-align behavior; no divergence
-  found against the current row geometry.
+  found against the current row geometry. (Drift-proof bare-path citation,
+  DEC-967 wave-115: this rule's line number had already drifted once,
+  280-283 to 290-293, before this correction -- re-pointing again would
+  only drift again next wave.)
 - **(c) task-view.css track sets**: `:166`
   (`grid-template-columns: 26px 178px 1fr 132px 90px;`) matches frame :598's
   `<div style="display:grid; grid-template-columns:26px 178px 1fr 132px 90px; ...">`
