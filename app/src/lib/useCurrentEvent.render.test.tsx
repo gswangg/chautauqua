@@ -3,10 +3,11 @@
 // /events list and self-heals a stale id (previous persona, other org, a
 // deleted event), sharing the fetch with EventSwitcher via the module-level
 // loadEventsOnce() cache so mounting both costs one round trip.
+import { useEffect, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { useCurrentEvent, resetEventsCacheForTests } from './useCurrentEvent';
+import { useCurrentEvent, resetEventsCacheForTests, resetInitialStoredIdForTests } from './useCurrentEvent';
 import { EventSwitcher } from '../components/EventSwitcher';
 import { EventSwitchBanner } from '../components/EventSwitchBanner';
 import { mockApi, listEnvelope } from '../test-utils/mockApi';
@@ -23,6 +24,7 @@ afterEach(() => {
   // The cache is scoped to one real page load (a full navigation) -- a
   // render test suite doesn't get that between `it()` blocks in this file.
   resetEventsCacheForTests();
+  resetInitialStoredIdForTests();
 });
 
 // jsdom's window.location.assign is non-configurable on the Location
@@ -277,6 +279,58 @@ describe('DEC-728 (D19) cross-event switch banner', () => {
     });
     expect(result.current.eventId).toBe('ev-2');
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe('ev-2');
+  });
+
+  // DEC-728 wave-138 amendment (D19, part 3): on the real page, a
+  // non-banner useCurrentEvent() consumer (PhoneTabBar, via
+  // useNavExceptions) mounts and commits its effect -- overwriting
+  // storage with fromUrl -- BEFORE EventSwitchBanner ever mounts, because
+  // EventSwitcher gates the banner behind an async useMe() identity fetch
+  // that only resolves after the first commit. A per-instance read of
+  // localStorage inside the effect loses this race and the banner never
+  // renders. Mirrored here: NonBannerConsumer mounts synchronously and
+  // writes storage in its effect; DelayedBanner mounts EventSwitchBanner
+  // only after a microtask (standing in for the async loading gate).
+  it('a sibling useCurrentEvent() consumer that mounts and writes storage first does not suppress the banner', async () => {
+    window.history.pushState({}, '', '/admin?eventId=ev-2');
+    window.localStorage.setItem(STORAGE_KEY, 'ev-1');
+    mockApi({
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+
+    function NonBannerConsumer() {
+      useCurrentEvent();
+      return null;
+    }
+
+    function DelayedBanner() {
+      const [ready, setReady] = useState(false);
+      // Stands in for EventSwitcher's `!loading && me?.role === 'organizer'`
+      // gate: EventSwitchBanner only mounts after an async round trip
+      // resolves, one or more render passes after NonBannerConsumer's
+      // effect has already committed and written storage.
+      useEffect(() => {
+        Promise.resolve().then(() => setReady(true));
+      }, []);
+      if (!ready) return null;
+      return <EventSwitchBanner />;
+    }
+
+    render(
+      <>
+        <NonBannerConsumer />
+        <DelayedBanner />
+      </>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('status')).toHaveLength(1);
+    });
+    expect(screen.getByText('Switched to Beta Summit')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Back to Alpha Conf' })).toBeInTheDocument();
   });
 
   it('the restore link writes the prior id back to storage and lands on the same page with eventId stripped', async () => {
