@@ -193,12 +193,29 @@ export const ANCHOR_FLOOR_OFFENDERS_CEILING = 0;
 /** Seeded at the count measured when this population was first scanned
  * (mandate item 5). Was ONE-SIDED (may only be LOWERED, never raised) --
  * see the history below the constant for why, and task w4-ae (DEC-393
- * wave-115) for why that no longer holds: the last 3 offenders got a real
- * floor, measured truth is 0, and this ceiling now has the same two-sided
- * companion every other ratchet in this file carries (the
- * "never falls below" test just below the history comment).
+ * wave-115) for why that stopped holding for a while: the last 3
+ * `.chq-btn`-composing offenders got a real floor, measured truth went to
+ * 0, and this ceiling was given the same two-sided companion every other
+ * ratchet in this file carries (the "never falls below" test just below
+ * the history comment). Task w13-dd (below) then widened the POPULATION
+ * itself (bare anchors admitted), which is a legitimate re-seed, not a
+ * regression of the ratchet discipline: the two-sided companion test
+ * still holds against the new, honestly wider count.
  */
-export const SSR_UNFLOORED_TOKENS_CEILING = 0;
+// 2026-08-20 (task w13-dd, DEC-393/DEC-976 wave-138 predicate repair):
+// `tapTargetTagTokens` dropped every bare `<a>` on the SSR surfaces
+// (they carry no `.chq-btn` primitive, so the SPA-only carve-out that
+// exists to defer bare anchors to anchor-floor.ts was silently deleting
+// the population's most common element). ssr.ts now passes the new
+// `includeBareAnchors = true` parameter. Population widened 25 -> 75
+// tokens; re-measured this ceiling by forcing it to -1 and reading the
+// printed offender list on the widened population: 28 real offenders
+// (previously invisible), including `.chq-pub-session-title` and
+// `.chq-docs-wordmark` -- the latter this very file's own header already
+// cited by hand as a 112.6x28 live-probed sub-floor control. Seeded
+// honestly at the measured truth, not fixed in this lane (sibling lanes
+// drain it); remains one-sided per the file's existing protocol.
+export const SSR_UNFLOORED_TOKENS_CEILING = 28;
 
 // task w7-e (DEC-367/DEC-385) lowered this from 14 to 3, measured after
 // repair by forcing the ceiling to -1 and reading the printed offender

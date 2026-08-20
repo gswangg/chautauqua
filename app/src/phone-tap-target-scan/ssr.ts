@@ -32,6 +32,23 @@
 // src/views/theme.ts exports THEME_CSS without that suffix and a filename
 // glob silently drops the one sheet every SSR surface loads (DEC-808,
 // wave-96 finding).
+//
+// BARE ANCHORS ARE ADMITTED HERE (wave-138 finding, repaired v12m-w13-dd).
+// core.ts's `tapTargetTagTokens` drops a bare `<a>` unless it also composes
+// `chq-btn` -- correct for the SPA population, where a bare anchor is
+// graded separately by anchor-floor.ts, but WRONG for this SSR population:
+// these routes have no `.chq-btn` primitive at all, so that carve-out
+// silently dropped the single most common interactive element on them.
+// Measured at 5d6c9afe: the `.chq-btn`-only population was 25 tokens;
+// admitting every anchor (this file passes `includeBareAnchors = true`)
+// widens it to 75, and `findSsrUnflooredTokens` over the widened set goes
+// from a vacuous 0 to 28 real offenders -- including
+// `.chq-pub-session-title`, `.chq-docs-wordmark` (this very header, three
+// paragraphs up, already cited it as a 112.6x28 live probe measurement --
+// the file named the offender it could not see), `.chq-docs-nav-link`,
+// `.chq-home-footer-link`, `.chq-pub-headshot-link`. The SPA population
+// (core.ts's default `includeBareAnchors = false`) is unaffected: this
+// widening is a parameter this file alone opts into.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
@@ -84,7 +101,7 @@ export function allSsrTapTargetTokens(ssrTsxFiles: string[]): Set<string> {
   const out = new Set<string>();
   for (const path of ssrTsxFiles) {
     const src = stripTsxComments(readFileSync(path, 'utf-8'));
-    for (const t of tapTargetTagTokens(src, SSR_CLASS_ATTR_RE)) out.add(t);
+    for (const t of tapTargetTagTokens(src, SSR_CLASS_ATTR_RE, true)) out.add(t);
   }
   return out;
 }
