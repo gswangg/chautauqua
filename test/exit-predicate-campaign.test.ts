@@ -299,7 +299,11 @@ describe("buildCampaignReport", () => {
     // declared in CAMPAIGN_CONSTANT_NAMES and wired into TIER2 in the same
     // commit -- DESKTOP_CONTROL_LABEL_CEILING (task w6-b, DEC-919) and
     // FRAME_CAPTION_UNMATCHED_CEILING (task w8-a, DEC-976): 22 -> 24.
-    expect(report.rows).toHaveLength(24);
+    // wave-141 (task w16-ff, DEC-069 instrument repair): CODE_COMMENT_CITATION_CEILING
+    // landed in scripts/exit-predicate.ts's CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES
+    // without its fixture entry ever being added here -- fixture now carries it
+    // (see baseFixture/allGreenFixture above): 24 -> 25.
+    expect(report.rows).toHaveLength(25);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
     expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });
@@ -621,5 +625,28 @@ describe("formatCampaignReport", () => {
     expect(desktopLine).toContain("DECLARED ONLY -- NOT MEASURED");
     expect(phoneLine).toContain("DECLARED ONLY -- NOT MEASURED");
     expect(formatted).toMatch(/CAMPAIGN: NOT DONE/);
+  });
+
+  // w16-ff (wave-141, DEC-069 instrument repair): the legend paragraph
+  // above the verdict lines used to spell out the literal word DONE in its
+  // own explanatory prose ("...can print DONE without a --suite-verified-sha
+  // ..."), so the FULL formatted report -- table, legend, and verdict lines
+  // together -- printed that token unconditionally regardless of
+  // suiteVerified. This is the whole-string negative/positive control:
+  // for an unverified sha, no line ANYWHERE in the output (row labels,
+  // legend prose, verdict lines) may contain the token; for a verified
+  // one, the token must appear.
+  it("the FULL formatted report -- table, legend, and verdicts -- contains no DONE token anywhere when unverified, and does contain one when verified (DEC-069 w16-ff)", () => {
+    const unverified = formatCampaignReport(
+      buildCampaignReport(allGreenFixture(), {
+        productSha: "product-sha",
+        suiteVerifiedAtSha: null,
+        isAncestor: () => true,
+      }),
+    );
+    expect(unverified).not.toMatch(/\bDONE\b/);
+
+    const verified = formatCampaignReport(buildCampaignReport(allGreenFixture(), VERIFIED_EVIDENCE));
+    expect(verified).toMatch(/\bDONE\b/);
   });
 });
