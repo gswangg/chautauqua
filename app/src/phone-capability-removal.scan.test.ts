@@ -361,7 +361,15 @@ const UNRECEIPTED = INTERACTIVE_PHONE_DISPLAY_NONE_RULES.filter((r) => r.receipt
 // (re-measure the whole tree, not a worker's mid-lane snapshot) --
 // the ratchet remains one-sided from HERE: receipt or remove to lower it,
 // never raise it again to accommodate a new unreceipted rule.
-export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 1;
+//
+// Re-measured 1 -> 0 by the wave-118 megabatch merge train after landing
+// v12m-w7-a, which receipted the last unreceipted interactive phone
+// display:none rule (the CFP step-2 submit button, src/routes/public/
+// cfp.css.ts) against a verified re-lined replacement rather than an
+// assumption. The population is now fully receipted: every interactive
+// phone display:none in the tree carries a receipt. This ceiling is 0 and
+// may only stay 0 -- a new unreceipted rule is a failure, not a raise.
+export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 0;
 
 describe('DEC-919 phone capability-removal probe', () => {
   it('finds more than one sheet (vacuous-population tripwire, sheet side)', () => {

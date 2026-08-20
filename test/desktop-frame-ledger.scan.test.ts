@@ -420,7 +420,14 @@ const EXPECTED_DEVIATION_CITATIONS = [
 // running this file's own scan: six further desktop frames picked up real
 // claims in the batch. Raised to the measured truth; this floor may only
 // rise.
-export const CLAIMED_FLOOR = 71;
+//
+// Re-measured 71 -> 100 by the wave-118 megabatch merge train after landing
+// v12m-w6-g, which drove the desktop ledger exit by claiming 29 further
+// frames across six new/rewritten desktop-frame suites (agenda-content,
+// overview-home, portal, review, settings, settings-dialogs). 100 of 102
+// desktop frames now carry a real claim. Raised to the measured truth; this
+// floor may only rise.
+export const CLAIMED_FLOOR = 100;
 
 describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile campaign)', () => {
   it('enumerates exactly 161 font-size:19px label spans across 13 files (vacuous-grammar guard)', () => {
