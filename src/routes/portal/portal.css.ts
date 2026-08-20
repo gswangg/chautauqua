@@ -615,6 +615,17 @@ export const PORTAL_CSS = `
   }
   .chq-portal-actions-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
 
+  /* DEC-576 (w8-g): the 390 frame's pinned Save/Cancel band
+     (dc.html:666-672) is a second copy of this same trio, reached through
+     PortalLayout's dock slot -- .chq-portal-dock > .chq-portal-edit-dock.
+     Hidden at TOP LEVEL (a real hide, ahead of the terminal media block,
+     per DEC-919/DEC-385) so the desktop frame's inline
+     .chq-portal-actions-footer row above stays byte-identical; revealed
+     only inside the phone media block below, which also hides
+     .chq-portal-actions-footer there -- exactly one copy draws at any
+     width. */
+  .chq-portal-edit-dock { display: none; }
+
   /* Frame 10--23 (MINOR) + frame 14: desktop control heights -- the frames
      draw 46px inputs/selects and 46px footer buttons; the app rendered
      33.8/32.8/37. min-height (not padding) so multiline textareas are
@@ -881,26 +892,13 @@ ${ERROR_STATES_CSS}
       min-width: 0;
     }
 
-    /* v12 phone (w3-b): the edit-session footer's button row keeps a
-       side-by-side row at 390 with the primary first. Scoped to the
-       edit-session footer only (page-local combinator). DEC-385: this is a
-       max-width-only VISUAL reorder (flex order) -- the DOM keeps the
-       desktop-ruled Cancel-then-Save sequence, so desktop stays frozen.
-       The footer note's own default order (0) already follows the button
-       row's order:-1. */
-    .chq-portal-actions-footer .chq-portal-actions {
-      flex-direction: row;
-      justify-content: flex-start;
-      order: -1;
-    }
-    .chq-portal-actions-footer .chq-portal-actions .chq-btn {
-      width: auto;
-    }
-    .chq-portal-actions-footer .chq-btn-primary {
-      flex: 1;
-      order: -1;
-    }
-  
+    /* DEC-576 (w8-g): the frame's pinned action band draws in
+       PortalLayout's real dock/footer element, not in-flow inside
+       .chq-measure's scroll region -- the in-flow copy is stood down at
+       390 (a phone treatment of a hidden element would be a lie), leaving
+       the .chq-portal-edit-dock copy below as the only one revealed. */
+    .chq-portal-actions-footer { display: none; }
+
   /* Resources (dc.html:1564): a back-linked drill page (DEC-643 amendment
      -- 25px --chq-type-page-title-phone-drill, not the 27px cluster-
      landing token the shared .chq-portal-hero phone rule near :447
@@ -1032,6 +1030,24 @@ ${ERROR_STATES_CSS}
     display: flex;
     align-items: center;
     padding: 0 12px;
+  }
+
+  /* DEC-576 (w8-g): reveals the edit-session dock copy hidden at top level
+     -- dc.html:666-672's \`display:flex; flex-direction:column; gap:8px\`,
+     nested one level inside .chq-portal-dock (whose own border-top/
+     background/padding band + row .chq-btn-primary flex:1/48px and
+     .chq-btn-secondary 48px rules above already apply to this copy's
+     descendants by the same selectors). flex:1 so this single dock child
+     fills the row .chq-portal-dock lays out. */
+  .chq-portal-edit-dock {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+  .chq-portal-edit-dock-buttons {
+    display: flex;
+    gap: 8px;
   }
 }
 `;
