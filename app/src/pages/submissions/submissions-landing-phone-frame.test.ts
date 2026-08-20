@@ -144,15 +144,16 @@ describe('v12 phone frame "Submissions" (390) — docs/design/Chautauqua Submiss
     });
 
     // DEC-919 wave-110 amendment (task v12m-w6-d) reverses this reading for
-    // THIS screen: docs/design/Chautauqua Submissions.dc.html:147 draws
-    // exactly ONE 44px search box on row 1, "Nothing else" -- there is no
-    // line left for a sort control, so it is stood down (receipted) rather
-    // than re-lined.
+    // THIS screen: the frame draws exactly ONE 44px search box on row 1,
+    // "Nothing else" -- there is no line left for a sort control, so it
+    // is stood down (receipted) rather than re-lined.
     it('hides the sort select -- the frame\'s row 1 (:147) is the search box alone', () => {
       const layer = phoneLayer(CSS);
       const soleRule = new RegExp(
         `[^{}]*chq-submissions-filterbar-sort-select[^{}]*\\{[^{}]*display:\\s*none`,
       );
+      // docs/design/Chautauqua Submissions.dc.html:147
+      // `min-height:44px; display:flex; align-items:center; padding:0 13px`
       expect(layer).toMatch(soleRule);
     });
 
@@ -169,12 +170,13 @@ describe('v12 phone frame "Submissions" (390) — docs/design/Chautauqua Submiss
       expect(banks.some((body) => /display:\s*none/.test(body))).toBe(true);
     });
 
-    // docs/design/Chautauqua Submissions.dc.html:148-151 names exactly
-    // three chips ('Needs triage' filled / 'Accepted' / 'All 47'); the app's
-    // real status vocabulary is narrowed to its two closest literals
-    // (`pending` / `accepted`) via data-status, CSS-only.
+    // Names exactly three chips ('Needs triage' filled / 'Accepted' /
+    // 'All 47'); the app's real status vocabulary is narrowed to its two
+    // closest literals (`pending` / `accepted`) via data-status, CSS-only.
     it('narrows the phone chip strip to the pending/accepted status literals', () => {
       const layer = phoneLayer(CSS);
+      // docs/design/Chautauqua Submissions.dc.html:148-151
+      // `display:flex; gap:7px; overflow-x:auto`
       expect(layer).toMatch(
         /\.chq-status-pills \[data-status\]:not\(\[data-status='pending'\]\):not\(\[data-status='accepted'\]\)[^{]*\{[^}]*display:\s*none/,
       );

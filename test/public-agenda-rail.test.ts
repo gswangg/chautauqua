@@ -227,9 +227,10 @@ describe("DEC-683 amendment (wave 67-d): public agenda rail + Save persistence",
 });
 
 // DEC-576 (wave 110 amendment): the SSR phone dock -- public agenda and
-// my-schedule get the docked action band their 390 frames draw
-// (docs/design/Chautauqua Public and Portal.dc.html:399-402 / :885-888).
-// Both controls carry the SAME capability the page already renders (the
+// my-schedule get the docked action band their 390 frames draw (the
+// agenda/schedule dock bands -- receipted below, at the citation beside
+// the actual geometry assertion). Both controls carry the SAME
+// capability the page already renders (the
 // rail's #chq-ics-link route, PublicShell's Speakers nav link / the
 // header's "Browse all sessions" route) -- a second DOM instance switched
 // by agenda.css.ts's >700px/<=700px pair, never a new destination.
@@ -241,7 +242,7 @@ describe("DEC-576 (wave 110 amendment): the SSR phone dock band", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
 
-    // docs/design/Chautauqua Public and Portal.dc.html:399-402: the band
+    // docs/design/Chautauqua Public and Portal.dc.html:400-403: the band
     // itself, then its two children.
     expect(html).toContain('class="chq-pub-agenda-dock"');
 

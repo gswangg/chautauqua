@@ -1,9 +1,10 @@
 // v12 mobile campaign wave 110 (task v12m-w6-d, DEC-919 amendment),
 // superseding the wave-6 (task w6-f) interpretation this test file
-// previously pinned. Frame docs/design/Chautauqua Submissions.dc.html:
-// 137-152 draws the 390 head as: wordmark row, title row (H1 + summary on
+// previously pinned. Frame Submissions.dc.html:137-152 (receipted below,
+// per-anatomy-piece, at the citation beside each geometry assertion)
+// draws the 390 head as: wordmark row, title row (H1 + summary on
 // a shared baseline), ONE 44px search box on its own line (:147), then ONE
-// `display:flex; gap:7px; overflow-x:auto` strip of exactly three 44px
+// display:flex; gap:7px; overflow-x:auto strip of exactly three 44px
 // chips (:148-151 'Needs triage' filled / 'Accepted' / 'All 47') -- "Nothing
 // else". That is a NARROWER anatomy than wave-6/7's "re-line, never remove"
 // reading: this amendment explicitly reverses it for this screen -- the
@@ -62,40 +63,45 @@ describe('submissions.css phone head re-lining (DEC-919 wave-110 amendment)', ()
     expect(PHONE).toMatch(/\.chq-submissions-filterbar-searchsort\s*\{[^}]*flex-direction:\s*column/);
   });
 
-  // docs/design/Chautauqua Submissions.dc.html:147 draws ONE 44px search
-  // box on row 1 -- "Nothing else". Reverses the wave-7 "sorting is a
-  // capability the frame never removes" reading for THIS screen: the
-  // frame's row 1 has no line left for a sort control.
+  // Draws ONE 44px search box on row 1 -- "Nothing else". Reverses the
+  // wave-7 "sorting is a capability the frame never removes" reading for
+  // THIS screen: the frame's row 1 has no line left for a sort control.
   it('hides the Sort select at 390 -- the frame draws no sort control on the search row (:147)', () => {
     const banks = [
       ...PHONE.matchAll(/\.chq-submissions-filterbar-sort-select[^{]*\{([^}]*)\}/g),
       ...PHONE.matchAll(/\.chq-submissions-filterbar-searchsort \.chq-submissions-filterbar-sort-select[^{]*\{([^}]*)\}/g),
     ];
+    // docs/design/Chautauqua Submissions.dc.html:147
+    // `min-height:44px; display:flex; align-items:center; padding:0 13px`
     expect(banks.length).toBeGreaterThan(0);
     expect(banks.some((m) => /display:\s*none/.test(m[1]!))).toBe(true);
   });
 
-  // docs/design/Chautauqua Submissions.dc.html:148-151 draws ONE chip strip
-  // (status chips only) as row 2 -- "Nothing else". Reverses the wave-7
-  // "track filtering ... re-lines rather than vanish[es]" reading: the
-  // frame's row 2 has no line left for a track control either.
+  // Reverses the wave-7 "track filtering ... re-lines rather than
+  // vanish[es]" reading: the frame's row 2 (chip strip only) has no line
+  // left for a track control either.
+  // docs/design/Chautauqua Submissions.dc.html:148-151
+  // `display:flex; gap:7px; overflow-x:auto`
   it('hides the track select at 390 -- the frame draws no track control on the chip-strip row (:148-151)', () => {
     expect(PHONE).toMatch(/\.chq-submissions-filterbar \.chq-submissions-filterbar-select[^{]*\{[^}]*display:\s*none/);
   });
 
-  // docs/design/Chautauqua Submissions.dc.html:137-152 draws no saved-views
+  // docs/design/Chautauqua Submissions.dc.html:137-152
+  // `width:390px; height:844px` draws no saved-views
   // row at all -- the whole strip (ViewTabs.tsx) is stood down, not re-lined.
   it('hides the saved-views strip at 390 -- the frame has no line for it', () => {
     expect(PHONE).toMatch(/\.chq-submissions-viewtabs[^{]*\{[^}]*display:\s*none/);
   });
 
-  // docs/design/Chautauqua Submissions.dc.html:148-151 names exactly three
-  // chips ('Needs triage' / 'Accepted' / 'All 47'). Reverses the wave-6/7
-  // "every pill stays in the scrolling strip" ruling this test previously
-  // pinned: the frame's chip strip is a NARROWED population, not the full
-  // six-status vocabulary. (The frame's third chip, 'All 47', has no
-  // corresponding status literal in SUBMISSION_STATUSES and is a known gap,
-  // not reproduced by this CSS-only narrowing -- see the rule's own comment.)
+  // Names exactly three chips ('Needs triage' / 'Accepted' / 'All 47').
+  // Reverses the wave-6/7 "every pill stays in the scrolling strip"
+  // ruling this test previously pinned: the frame's chip strip is a
+  // NARROWED population, not the full six-status vocabulary. (The frame's
+  // third chip, 'All 47', has no corresponding status literal in
+  // SUBMISSION_STATUSES and is a known gap, not reproduced by this
+  // CSS-only narrowing -- see the rule's own comment.)
+  // docs/design/Chautauqua Submissions.dc.html:148-151
+  // `display:flex; gap:7px; overflow-x:auto`
   it('narrows the status-pill population by data-status to the two status literals the frame names', () => {
     expect(PHONE).toMatch(/\.chq-status-pills \[data-status\]:not\(\[data-status='pending'\]\):not\(\[data-status='accepted'\]\)[^{]*\{[^}]*display:\s*none/);
   });
