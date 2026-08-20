@@ -2092,7 +2092,17 @@ button.chq-speakers-status-overdue:hover {
      shrinking a DECLARED gap. white-space:nowrap protects "Previous"/
      "Next" from wrapping letter-by-letter inside the 44px-tall box before
      the row itself wraps (DESIGN-RULINGS.md`The 44px floor, and how it
-     gets evaded.`). */
+     gets evaded.`).
+
+     v12m-w12-dd (DEC-991/DEC-989 overflow drain): overflow:hidden and
+     text-overflow:ellipsis are added to this same rule to neutralise the
+     nowrap-with-no-escape offender. The escape can never actually fire:
+     `.chq-speakers-pager` above (:2095-2097) already carries flex-wrap so
+     the actions drop to their own line rather than being squeezed, and the
+     two buttons ("Previous"/"Next", ~84px of nowrap text each) plus the
+     declared 29px action gap (:2006-2008, untouched) sit far inside the
+     390px budget on that dedicated line -- this is a guarantee against a
+     future width change, not a clip that ever paints. */
   .chq-speakers-pager {
     flex-wrap: wrap;
   }
