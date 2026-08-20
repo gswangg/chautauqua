@@ -632,6 +632,90 @@ const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       'app/src/pages/comms/InsertFieldMenu.tsx:44 composes `{fields.length} available &middot; dropped in at the cursor` from the live merge-field count.',
   },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 568,
+    text: 'Acceptance, Decline and Schedule live need a submission, so they are not available here — send those from Comms',
+    reason:
+      "app/src/pages/contacts/BulkEmailModal.tsx:399 composes `{joined} {verb} a submission, so {pronoun} not available here — send those from Comms.` (the trailing period is the JSX text node's own, not the caption span's) from the event's own submission-scoped template names -- `const names = unavailable.map((t) => t.name)` above at :390.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 570,
+    text: 'Sent one at a time · logged in Comms history · {first_name} and {company} resolve per contact',
+    reason:
+      "app/src/pages/contacts/BulkEmailModal.tsx:404-405 composes 'Sent one at a time · logged in Comms history · merge fields: ' followed by BULK_EMAIL_MERGE_FIELDS.map((f) => `{${f}}`).join(', ') from the event's own BULK_EMAIL_MERGE_FIELDS list -- {first_name} and {company} are the two live merge-field names, not interpolated values.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 758,
+    text: 'Five people are in Contacted. Cards land here when you move them, or you can add someone straight to this stage.',
+    reason:
+      "app/src/pages/contacts/PipelineBoard.tsx:93 composes `${countPhrase} in ${PIPELINE_STAGE_LABELS[prevStage]}. Cards land here when you move them, or you can add someone straight to this stage.` from the previous stage's live entry count (countPhrase, :92) and its label.",
+  },
+  {
+    fileName: 'Chautauqua Contacts.dc.html',
+    line: 834,
+    text: 'Must be unique — it is how contacts are matched and merged',
+    reason:
+      'DEC-597 (wave 8 amendment, decisions/DEC-597.md) already rules this exact caption: "The one clause NOT to adopt is the frame\'s email caption \\"Must be unique\\": contact_email_idx is a PLAIN index ... and duplicate contacts sharing an email are a SUPPORTED state ... The app\'s existing help text at NewContactModal.tsx:162 already states the true reason (matching and merging) and stays. Geometry and verbs bind; a caption that would make the product lie does not." NewContactModal.render.test.tsx:137 pins the divergence by name.',
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 909,
+    text: 'Three tracks, five formats, no account needed. We email you a portal link, and you can edit until the form closes.',
+    reason:
+      "src/routes/public/submit-views.tsx:464-468 composes the lede's opening clause from the event's own live track/format counts -- `const trackCount = tracks.length;` (:464) / `const formatCount = (formatField?.options ?? []).length;` (:465) feeding `ledeParts` (:467-468) -- the same mechanism already excluded for Chautauqua Settings.dc.html:669.",
+  },
+  {
+    fileName: 'Chautauqua Public and Portal.dc.html',
+    line: 1314,
+    text: 'Priya is already on this session. Everything you typed is still below.',
+    reason:
+      'src/routes/portal/edit.tsx:336 composes `{duplicateMatch ? duplicateMatch.name : "This person"} is already on this session. Everything you typed is still below.` from the co-presenter\'s own live name (the chq-portal-copresenter-notice block, :334-336).',
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 162,
+    text: 'One reviewer recused · their scores are excluded from the mean',
+    reason:
+      "app/src/pages/review/ResultsTable.tsx:610 composes `{countOf(row.recusals, 'reviewer')} recused · their scores are excluded from the mean` from the row's own live recusal count.",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 943,
+    text: 'The weighted total cannot be worked out until all three are scored.',
+    reason:
+      'app/src/pages/review/scorecardLogic.ts:79 composes `The weighted total cannot be worked out until all ${spellCount(criteria.length)} are scored.` from the plan\'s own live criteria count.',
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 800,
+    text: 'Across two open plans',
+    reason:
+      "app/src/pages/review/ReviewerQueue.tsx:787-790 composes `Across ${spellCount(openCount)} open ${plural(openCount, 'plan')}` from the reviewer's own live open-plan count; this 390 frame and Chautauqua Review.dc.html:844's desktop frame render the same `chq-reviewer-plans-subline` element at different widths (DEC-385).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 844,
+    text: 'Across two open plans',
+    reason:
+      "the same ReviewerQueue.tsx:787-790 composing expression as Chautauqua Review.dc.html:800 -- the desktop rendering of the same `chq-reviewer-plans-subline` element (DEC-385).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 325,
+    text: 'Weighted mean of the two scored criteria · Fit is recorded, not averaged',
+    reason:
+      "app/src/pages/review/Scorecard.tsx:489-491 composes ` · Weighted mean of the ${ratingCriteria.length} scored criteria · ${choiceCriteria.map((c) => c.label).join(', ')} ${plural(choiceCriteria.length, 'is', 'are')} recorded, not averaged` from the plan's own live rating-criteria count and Choice-criterion labels (DEC-939, wave-82 amendment).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 103,
+    text: 'Laggards is everyone with anything outstanding · not-started is the subset who have scored nothing. Where nobody is unstarted the second link is hidden, not disabled.',
+    reason:
+      'PARTIAL (shape ii): app/src/pages/review/ProgressPanel.tsx:256 draws the reader-facing clause verbatim (`Laggards is everyone with anything outstanding · not-started is the subset who have scored nothing.`); the trailing sentence is the pack\'s own implementer note for DEC-760\'s hidden-when-zero rule, already honoured at ProgressPanel.tsx:237 (`{notStarted.length > 0 && (<button>...</button>)}` -- the second link is conditionally NOT RENDERED, i.e. hidden, never `disabled`), and ProgressPanel.tsx:246-251\'s own comment names this exact citation.',
+  },
 ];
 
 function isExcluded(c: Caption, table: Exclusion[]): boolean {
@@ -817,7 +901,16 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // integrated tree -- the union of all four exclusion tables plus the widened
 // ENTITY_MAP subtracts far more than any single lane could see from its own
 // base (54/53/59). A LOWERING from main's 70, as the ratchet requires.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 24;
+//   - v12m-w10-gg: +12 COMPOSED (reader-facing clusters: Contacts, Public
+//     and Portal, Review) and one BUILD (Contacts.dc.html:834's DEC-597
+//     exclusion instead of an unmatched row is folded into the same
+//     COMPOSED count; the frame's genuinely-absent per-pair reason at
+//     Contacts.dc.html:159 and the "check spam" line at Public and
+//     Portal.dc.html:1084 -- ruled buildable by DEC-380 rather than
+//     BLESSED/DEFERRED, see this commit's body -- both exit the residue by
+//     being built, not by an exclusion-table entry) -> 10 unmatched.
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=10
+export const FRAME_CAPTION_UNMATCHED_CEILING = 10;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {

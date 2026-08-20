@@ -223,6 +223,11 @@ describe("CFP confirmation page never asserts a delivery that did not happen (DE
     expect(html).not.toContain("Check your email");
     expect(html).not.toContain("We've emailed");
     expect(html).not.toContain("was emailed");
+    // DEC-380 (wave 137 amendment): "If it hasn't arrived, check spam."
+    // (Chautauqua Public and Portal.dc.html:1084) renders on the
+    // emailDelivered branch ONLY -- nothing was sent here, so telling the
+    // reader to check spam would be a falsehood the frame never asked for.
+    expect(html).not.toContain("check spam");
   });
 
   it("working mailer: existing delivery-claiming copy is unchanged", async () => {
@@ -240,6 +245,9 @@ describe("CFP confirmation page never asserts a delivery that did not happen (DE
     const html = await res.text();
     expect(html).toContain("Check your email.");
     expect(html).toContain("emailed a confirmation for");
+    // DEC-380 (wave 137 amendment): buildable, conditional troubleshooting
+    // with a live referent -- renders verbatim on the emailDelivered branch.
+    expect(html).toContain("If it hasn&#39;t arrived, check spam.");
   });
 });
 

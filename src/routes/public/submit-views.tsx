@@ -765,9 +765,16 @@ export function ConfirmationPage(props: {
           </span>
           {props.meta ? <span class="chq-cfp-confirm-card-meta">{props.meta}</span> : null}
         </div>
-        {/* DEC-377: no delivery-window or "check spam" timing promise here —
-            the earlier copy asserted arrival timing the confirmation email
-            send (a best-effort side effect) can't actually guarantee. */}
+        {/* DEC-377/DEC-380: DEC-377 refuses only a delivery-window/arrival-
+            timing PROMISE the confirmation email send (a best-effort side
+            effect) can't guarantee — the earlier copy asserted one and was
+            dropped. "If it hasn't arrived, check spam." (Chautauqua Public
+            and Portal.dc.html:1084) asserts no timing at all; it is
+            conditional troubleshooting with a live referent right here, so
+            DEC-380 (wave 137 amendment) rules it buildable and it renders
+            verbatim below, on the emailDelivered branch only — nothing was
+            sent on the other branch, so telling the reader to check spam
+            would be a falsehood the frame never asked for. */}
         <p class="chq-cfp-confirm-body">
           {props.emailDelivered ? (
             <>
@@ -779,6 +786,7 @@ export function ConfirmationPage(props: {
             </>
           )}
         </p>
+        {props.emailDelivered ? <p class="chq-cfp-confirm-body">If it hasn't arrived, check spam.</p> : null}
         <div class="chq-cfp-confirm-actions">
           {props.state === "has-account" ? (
             <p>
