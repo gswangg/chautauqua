@@ -74,6 +74,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
+
+export { labelIsMatched, normalizeSource };
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -289,55 +292,6 @@ function controlLabelsInFile(fileName: string): ControlLabel[] {
 const ALL_LABELS: ControlLabel[] = designFiles().flatMap(controlLabelsInFile);
 
 // -- Match side: every non-test .ts/.tsx/.css under app/src/** and src/** --
-
-function isSourceFile(name: string): boolean {
-  return name.endsWith('.ts') || name.endsWith('.tsx') || name.endsWith('.css');
-}
-
-/** Every .ts/.tsx/.css file under `root`, skipping any path containing
- * `.test.`, enumerated via readdirSync rather than named (DEC-808). */
-function enumerateSourceFiles(root: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
-    if (!entry.isFile() || !isSourceFile(entry.name)) continue;
-    const full = join(entry.parentPath, entry.name);
-    if (full.includes('.test.')) continue;
-    out.push(full);
-  }
-  return out.sort();
-}
-
-const ENTITY_MAP: Record<string, string> = {
-  '&lsaquo;': '‹',
-  '&rsaquo;': '›',
-  '&middot;': '·',
-  '&nbsp;': ' ',
-  '&amp;': '&',
-  '&mdash;': '—',
-  '&ndash;': '–',
-  '&rsquo;': '’',
-  '&hellip;': '…',
-};
-
-/** Strips comments (block and line), decodes the frame-pack's HTML entities,
- * and collapses whitespace runs to a single space -- DEC-967 wave-128
- * clause 4. Exported so the synthetic non-vacuity controls exercise the
- * exact normalization the real match side uses. */
-export function normalizeSource(raw: string): string {
-  let s = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
-  for (const [entity, char] of Object.entries(ENTITY_MAP)) {
-    s = s.split(entity).join(char);
-  }
-  return s.replace(/\s+/g, ' ');
-}
-
-/** True when `label` (whitespace-collapsed) occurs verbatim in some already-
- * normalized source blob. Exported so the synthetic controls drive this
- * exact function over a fabricated population. */
-export function labelIsMatched(label: string, normalizedBlobs: string[]): boolean {
-  const needle = label.replace(/\s+/g, ' ').trim();
-  return normalizedBlobs.some((blob) => blob.includes(needle));
-}
 
 const SOURCE_FILES = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSourceFiles(SRC_ROOT)];
 const NORMALIZED_SOURCE_BLOBS: string[] = SOURCE_FILES.map((f) => normalizeSource(readFileSync(f, 'utf-8')));
