@@ -229,6 +229,14 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   /* G13 (frames 10--10/11, MINOR): the headshot link must not propagate the
      UA underline onto a photo-less card's initials monogram -- the frame
      draws the placeholder with no underline. */
+  /* tap-floor-exempt: composition -- .chq-pub-headshot-link (speakers.tsx)
+     wraps only an <img> or .chq-pub-headshot-fallback child and carries no
+     size of its own; the sibling rules that size those children
+     (.chq-pub-speaker-list-photo img/-fallback: 76px, narrowed to 64px at
+     <=700px above; .chq-pub-speaker-grid img/-fallback: 100% of a >=~106px
+     tile at every width down to 390) already put the anchor's own
+     replaced-content box at or above 44px on both axes with no rule of
+     its own needed. */
   .chq-pub-headshot-link { text-decoration: none; }
 
   /* w9-b: SpeakerDetailContent's headshot/fallback box (detail.tsx) -- the
@@ -264,6 +272,25 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     }
     .chq-pub-speaker-list-row .chq-pub-speaker-sessions {
       grid-column: 1 / -1;
+    }
+
+    /* DEC-393/DEC-367 (w13-ee): .chq-pub-session-title (sessions.tsx
+       SessionCard) is the only control into session detail from a
+       programme card -- floored to the 44px tap target, min-height +
+       centred flex + non-zero horizontal padding. .chq-pub-speaker-name
+       (speakers.tsx, list AND grid views) gets the same treatment; both
+       appended additively, DEC-385 single-direction. */
+    .chq-pub-session-title {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    .chq-pub-speaker-name {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
     }
   }
 `;

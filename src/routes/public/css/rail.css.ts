@@ -534,6 +534,53 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
        it wrap at 390 rather than push past the rail's content width. */
     .chq-pub-schedule-browse-link {
       white-space: normal;
+      /* DEC-393/DEC-367 (w13-ee): the rail's one CTA into the printed
+         schedule -- floored to the 44px tap target additively, same
+         min-height + centred flex + non-zero horizontal padding shape as
+         the sheet's other floored rail links below. */
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    /* DEC-393/DEC-367 (w13-ee): the CFP rail link and the printable
+       programme link (both align-self:flex-start standalone CTAs, desktop
+       rules at :105 and :110) floored to the 44px tap target additively. */
+    .chq-pub-rail-cfp-link {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    .chq-pub-rail-programme-link {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    /* DEC-393/DEC-367 (w13-ee): the schedule row's title (:321) is the
+       row's one control into session detail -- same treatment as
+       .chq-pub-session-title (cards.css.ts) and .chq-pub-agenda-list-title
+       (agenda.css.ts). */
+    .chq-pub-schedule-row-title {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    /* DEC-393/DEC-367 (w13-ee): .chq-pub-accent-link (ACCENT_BOUND_CLASSES[2],
+       :191) is applied to the plain "Show more" (sessions/speakers/gallery)
+       and "Back to <surface>" (session/speaker detail) links that carry no
+       other class -- floored to the 44px tap target additively; only its
+       colour is accent-bound, this rule adds no colour of its own. */
+    .chq-pub-accent-link {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
     }
   }
 `;

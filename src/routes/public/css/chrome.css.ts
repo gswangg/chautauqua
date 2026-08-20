@@ -296,6 +296,16 @@ export const CHROME_CSS = `
     }
     button.chq-pub-search-submit[type=submit] {
       min-height: 44px;
+      /* DEC-367 (wave-138 amendment, w13-ee): the desktop rule above
+         declares width:40px/height:40px, which border-box keeps in force
+         at every width including here -- padding alone cannot widen a
+         fixed-width box, so the control still measured 40px wide despite
+         the 44px min-height and centred flex already present. width:auto
+         plus min-width:44px let the padding actually widen the box,
+         phone-only, single-direction (DEC-385); the desktop 40x40 square
+         is untouched. */
+      width: auto;
+      min-width: 44px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -306,6 +316,26 @@ export const CHROME_CSS = `
       display: flex;
       align-items: center;
       padding: 0 34px 0 10px;
+    }
+
+    /* DEC-393/DEC-367 (w13-ee): the active-filter chip's remove control
+       (filters.tsx) and the two "Clear"/"Clear all" links beside it --
+       already inline-flex/centred (chip) or plain text (clear links) on
+       desktop -- floored to the 44px tap target additively. */
+    .chq-pub-activefilters-chip {
+      min-height: 44px;
+    }
+    .chq-pub-activefilters-clear {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    .chq-pub-select-clear {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
     }
   }
 `;
