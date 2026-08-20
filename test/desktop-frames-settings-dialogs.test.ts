@@ -129,18 +129,28 @@ describe('desktop frame claims: Settings cluster, dialog half (v12m-w5-b)', () =
   it('irreversible confirms require typing confirmPhrase before the destructive primary unlocks, per ConfirmDialog.tsx + ResourcesPanel.tsx', () => {
     expect(frameLine(1414)).toContain('Confirm · irreversible');
     const dialogSrc = read('components/ConfirmDialog.tsx');
+    // DEC-882 (wave 137 amendment): the observable gate, not an inlined
+    // comparator expression -- a legal DEC-613 dedupe moved the comparator
+    // itself to lib/confirmPhrase.ts, so this receipt asserts the throw
+    // guard, the phraseMatches disabled gate on the primary, and the call
+    // into the shared comparator, plus the comparator's current home.
     expect(dialogSrc).toContain(
       "throw new Error(\"ConfirmDialog: weight='irreversible' requires a non-empty confirmPhrase\")",
     );
     expect(dialogSrc).toContain("import { confirmPhraseMatches } from '../lib/confirmPhrase'");
     expect(dialogSrc).toContain('confirmPhraseMatches(typed, confirmPhrase as string)');
+    // v12m-w12-bb: the observable arming gate on the destructive primary --
+    // without this the comparator could be called and its answer discarded.
+    expect(dialogSrc).toContain('disabled={pending || confirmDisabled || !phraseMatches}');
     // DEC-941 wave-134: the trim + case-insensitive compare is the ONE
     // shared comparator (ConfirmDialog's typed gate and
     // DeleteSubmissionsPage's footer arming both call it), so the claim
     // follows the helper rather than pinning an inlined copy.
-    expect(read('lib/confirmPhrase.ts')).toContain(
-      'typed.trim().toLowerCase() === phrase.trim().toLowerCase()',
+    const comparatorSrc = read('lib/confirmPhrase.ts');
+    expect(comparatorSrc).toContain(
+      'export function confirmPhraseMatches(typed: string, phrase: string): boolean {',
     );
+    expect(comparatorSrc).toContain('return typed.trim().toLowerCase() === phrase.trim().toLowerCase();');
     const callerSrc = read('pages/settings/ResourcesPanel.tsx');
     expect(callerSrc).toContain('weight="irreversible"');
     expect(callerSrc).toContain('confirmPhrase={pendingDelete.title}');

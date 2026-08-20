@@ -105,9 +105,12 @@ describe('desktop frame parity: Review plan-editor cluster (v12m-w7-i)', () => {
 
   // docs/design/Chautauqua Review.dc.html:705
   // `<span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:700">Changing these would rescore work already done</span>`
-  it('PlanEditor.tsx\'s locked-criteria reason opens with the frame\'s exact headline (:675 extent)', () => {
+  it('PlanEditor.tsx\'s locked-criteria reason opens with the frame\'s exact headline (:705)', () => {
     const src = read('PlanEditor.tsx');
     expect(src).toMatch(/chq-review-criteria-locked-headline[\s\S]{0,120}Changing these would rescore work already done/);
+    // The frame's headline span carries no terminal period; the reason span
+    // below it does. Pinning the absence keeps the two registers distinct.
+    expect(src).not.toMatch(/Changing these would rescore work already done\./);
   });
 
   // docs/design/Chautauqua Review.dc.html:708
