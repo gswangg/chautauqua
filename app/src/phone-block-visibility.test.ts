@@ -337,7 +337,11 @@ const MARKUP_OFFENDERS = [...MARKUP_PHONE_CLASSES]
 // phone class is not a valid fix -- fix the class instead, or (if it is
 // genuinely rendered at both widths) exempt it via NOT_PHONE_ONLY above with
 // a reason.
-export const MARKUP_PHONE_UNHIDDEN_CEILING = 36;
+//
+// Re-measured 36 -> 34 by the merge train on 2026-08-19 (megabatch gate) by
+// running this file's own scan: two more markup-mounted phone classes picked
+// up a top-level display:none. Tightened to the measured truth.
+export const MARKUP_PHONE_UNHIDDEN_CEILING = 34;
 
 describe('markup-mounted phone classes must be top-level display:none (DEC-919 wave-109 amendment)', () => {
   it('found a sane population of phone-named classes in TSX markup (vacuous-population tripwire)', () => {

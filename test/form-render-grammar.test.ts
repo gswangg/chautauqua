@@ -62,8 +62,9 @@ describe("form-render field grammar (DEC-909)", () => {
   });
 
   // DEC-909 wave-111: the pack draws the counter exactly three times in its
-  // whole extent, all `412 / 1,200` on the Abstract field --
-  // `docs/design/Chautauqua Public and Portal.dc.html:1037` (CFP · 390).
+  // whole extent, all on the Abstract field of the CFP · 390 frame. The
+  // citation itself sits on the assertion below, where the receipt scan
+  // (app/src/frame-citation.scan.test.ts) can see its quote and its expect(.
   it("prints the frame's exact counter literal ('412 / 1,200') for a 412-char abstract against a 1,200 cap (frame :1037)", () => {
     const field: FormFieldDef = {
       id: "abstract-frame-1037",
@@ -76,6 +77,7 @@ describe("form-render field grammar (DEC-909)", () => {
     };
     const value = "x".repeat(412);
     const html = FormField({ field, value, visible: true }).toString();
+    // docs/design/Chautauqua Public and Portal.dc.html:1037 `412 / 1,200`
     expect(html).toContain("412 / 1,200");
   });
 

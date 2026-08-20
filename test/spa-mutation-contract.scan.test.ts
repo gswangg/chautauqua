@@ -974,7 +974,11 @@ describe("SPA admin mutation <-> route contract (DEC-817 amendment, wave-53 wide
     "app/src/pages/contacts/MergePage.tsx interpolation-erased: /contacts/duplicates${query}",
     "app/src/pages/review/PlanEditor.tsx interpolation-erased: /plans/${planId}/assignments/distribute/preview${qs}",
     "app/src/pages/submissions/SubmissionDetailPage.tsx interpolation-erased: /events/${detail.eventId}/submissions${buildSubmissionsQuery(listFilters)}",
-    "app/src/pages/submissions/SubmissionsTable.tsx interpolation-erased: /events/${eventId}/submissions${qs}",
+    // 2026-08-19 (merge train): SubmissionsTable.tsx's own
+    // `/events/${eventId}/submissions${qs}` entry is DELETED, not carried --
+    // D21 (02167613) replaced that apiList call with useCachedList over a
+    // memoised path, so this scan no longer produces the key and the
+    // staleness half of the ledger check would fail on a carried line.
   ];
 
   it("every path this scan could not statically resolve is recorded, not silently dropped (no growth beyond UNRESOLVABLE_PATHS)", () => {

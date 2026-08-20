@@ -288,6 +288,17 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "Shared phone-block CSS scanning vocabulary (comment-stripping, brace-depth block extraction, rule lookup) " +
     "imported only by *.render.test.tsx CSS pins -- test-file imports don't confer reachability (DEC-518), " +
     "same shape as mockApi.ts above (field guide DEC-613).",
+  "app/src/phone-tap-target-scan/core.ts":
+    "Scanning primitives (CSS/TSX file population, declared-height parsing, flex-centre and exemption-comment " +
+    "readers) imported only by app/src/phone-tap-target.scan.test.ts -- test-file imports don't confer " +
+    "reachability (DEC-518). Split out of that suite in wave v12m-w8 (custodian decomposition of an 882-line " +
+    "merge-conflict hotspot), so it is the scan's own code, never SPA bundle code; same shape as mockApi.ts.",
+  "app/src/phone-tap-target-scan/anchor-floor.ts":
+    "Row-action-anchor half of the same wave-v12m-w8 decomposition -- imported only by " +
+    "app/src/phone-tap-target.scan.test.ts, and test-file imports don't confer reachability (DEC-518).",
+  "app/src/phone-tap-target-scan/ssr.ts":
+    "SSR-route (public/portal/docs/auth) half of the same wave-v12m-w8 decomposition -- imported only by " +
+    "app/src/phone-tap-target.scan.test.ts, and test-file imports don't confer reachability (DEC-518).",
   "src/routes/docs-content/technical-names.ts":
     "ASD-STE100 rule-1.5/1.6 technical-name declaration for the docs articles -- consumed only by " +
     "test/docs-ste.scan.test.ts (the docs dictionary scan), and test-file imports don't confer reachability " +

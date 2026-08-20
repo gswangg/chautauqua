@@ -155,7 +155,12 @@ function findOffenders(): string[] {
 // -- all `<button>`, never an `<a>`/`<Link>` -- so they carry a
 // `tap-floor-exempt` comment instead of a rule that could never reach an
 // anchor. Re-measured truth after both fixes: 59.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 59;
+//
+// Re-measured 59 -> 58 by the merge train on 2026-08-19 (megabatch gate) by
+// running this file's own scan: one more anchor-bearing row action picked up
+// a conforming phone rule in the wave-111 tap-floor/overflow batch. Lowered
+// to the measured truth; this ratchet may only fall.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 58;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {

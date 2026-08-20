@@ -117,7 +117,13 @@ describe('useCachedRead honesty (DEC_518)', () => {
         if (getCall === 1) return { id: 'a1', name: 'Ada' };
         return { id: 'a1', name: 'Ada Updated' };
       },
-      'POST /api/v1/contacts/a1/touch': { ok: true },
+      // A REAL registered mutation route (POST /api/v1/contacts), not a
+      // synthetic one: test/spa-mock-route-contract.scan.test.ts resolves
+      // every mockApi key in the suite against the live route table, and a
+      // made-up path would read there as the SPA believing in an unbuilt
+      // endpoint. The point of this key is only that the mutation lands on
+      // a DIFFERENT path than the cached read below, which /contacts is.
+      'POST /api/v1/contacts': { ok: true },
     });
 
     const { result } = renderHook(() => useCachedGet<Row>('/contacts/a1', 'Failed to load contact'));
@@ -128,7 +134,7 @@ describe('useCachedRead honesty (DEC_518)', () => {
 
     // A successful mutation bumps the shared mutation version (DEC-700),
     // which api.ts's subscription uses to clear the whole read cache.
-    await apiPost('/contacts/a1/touch');
+    await apiPost('/contacts');
 
     // The cache entry is gone immediately...
     expect(peekCachedRead<Row>('/contacts/a1')).toBeUndefined();

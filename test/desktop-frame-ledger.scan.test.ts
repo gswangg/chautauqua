@@ -415,7 +415,12 @@ const EXPECTED_DEVIATION_CITATIONS = [
 // v12m-w3-y (test/public-sessions-lastyear.test.ts), which claims the last
 // unowned/undeviated desktop frame in the pack: "Chautauqua Public and
 // Portal" line 1167, the fresh-empty public sessions frame.
-export const CLAIMED_FLOOR = 65;
+//
+// Re-measured 65 -> 71 by the merge train on 2026-08-19 (megabatch gate) by
+// running this file's own scan: six further desktop frames picked up real
+// claims in the batch. Raised to the measured truth; this floor may only
+// rise.
+export const CLAIMED_FLOOR = 71;
 
 describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile campaign)', () => {
   it('enumerates exactly 161 font-size:19px label spans across 13 files (vacuous-grammar guard)', () => {
