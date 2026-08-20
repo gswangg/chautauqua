@@ -290,15 +290,23 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "same shape as mockApi.ts above (field guide DEC-613).",
   "app/src/phone-tap-target-scan/core.ts":
     "Scanning primitives (CSS/TSX file population, declared-height parsing, flex-centre and exemption-comment " +
-    "readers) imported only by app/src/phone-tap-target.scan.test.ts -- test-file imports don't confer " +
-    "reachability (DEC-518). Split out of that suite in wave v12m-w8 (custodian decomposition of an 882-line " +
-    "merge-conflict hotspot), so it is the scan's own code, never SPA bundle code; same shape as mockApi.ts.",
+    "readers) imported only by app/src/phone-tap-target.scan.test.ts and its wave-v12m-w12 siblings " +
+    "(phone-tap-target-anchor-floor.scan.test.ts, phone-tap-target-ssr.scan.test.ts) -- test-file imports don't " +
+    "confer reachability (DEC-518). Split out of that suite in wave v12m-w8 (custodian decomposition of an " +
+    "882-line merge-conflict hotspot), so it is the scan's own code, never SPA bundle code; same shape as mockApi.ts.",
   "app/src/phone-tap-target-scan/anchor-floor.ts":
     "Row-action-anchor half of the same wave-v12m-w8 decomposition -- imported only by " +
-    "app/src/phone-tap-target.scan.test.ts, and test-file imports don't confer reachability (DEC-518).",
+    "app/src/phone-tap-target-anchor-floor.scan.test.ts (wave v12m-w12 split), and test-file imports don't " +
+    "confer reachability (DEC-518).",
   "app/src/phone-tap-target-scan/ssr.ts":
     "SSR-route (public/portal/docs/auth) half of the same wave-v12m-w8 decomposition -- imported only by " +
-    "app/src/phone-tap-target.scan.test.ts, and test-file imports don't confer reachability (DEC-518).",
+    "app/src/phone-tap-target-ssr.scan.test.ts (wave v12m-w12 split), and test-file imports don't confer " +
+    "reachability (DEC-518).",
+  "app/src/phone-tap-target-scan/ceilings.ts":
+    "Ratchet ceiling constants (with their full amendment-history comments) for the phone tap-target floor " +
+    "scans, extracted in wave v12m-w12 so lanes lowering different ceilings stop colliding on the same lines " +
+    "-- imported only by phone-tap-target.scan.test.ts and its two siblings, and test-file imports don't " +
+    "confer reachability (DEC-518).",
   "app/src/phone-tap-target-scan/undeclared.ts":
     "Undeclared-height half of the same phone-tap-target scan decomposition (DEC-367 PREDICATE REPAIR: a " +
     "control that declares NO height at all took the base scan's same `continue` as one already at 44px) -- " +
