@@ -385,6 +385,27 @@ export function RecentSends({
                   amendment (w15-d): both mounts drill in place -- "Open"
                   always toggles this row's own recipients disclosure; the
                   compose mount no longer hands off to History per row. */}
+              {/* DEC-833 (wave-129 amendment): Comms.dc.html prints `Open`
+                  on the desktop history row (:162, :644) and `See the
+                  recipients` on the 390 Send-history row (:350) -- width-
+                  conditioned copy of the same control, the same idiom the
+                  Contacts merge primary already uses (two sibling spans,
+                  exactly one visible per width via the terminal <=700px
+                  block, never a useIsPhone markup fork -- DEC-919's round-2
+                  N1 already ruled that a purely visual fact is CSS's job).
+                  This only applies to the History mount (columnHeads=true,
+                  the `columnHeads` mount Comms.dc.html:335-352 draws): the
+                  Compose mount's row has no 390 frame at all (no 390 Comms
+                  frame draws a recipients disclosure under Compose), so it
+                  keeps the app's byte-identical "Open"/"Close" at every
+                  width rather than manufacturing a phone label the pack
+                  never drew for that mount. The OPEN state keeps the app's
+                  existing "Close" at every width for BOTH mounts -- the
+                  pack draws no expanded state for this row, and pairing a
+                  frame-only closed label with an invented "Hide the
+                  recipients" would be manufacturing copy the frame never
+                  printed (DEC-576 wave-110's rule against controls that are
+                  only a shape applies to words too). */}
               <button
                 type="button"
                 className={
@@ -393,9 +414,28 @@ export function RecentSends({
                     : 'chq-btn chq-btn-secondary chq-comms-batch-toggle'
                 }
                 aria-expanded={isExpanded}
+                // v12m-w4-q (DEC-833, same idiom MergePage's primary uses
+                // for its own two-span width swap): the two sibling spans
+                // below are a VISUAL fact only -- jsdom (and any AT that
+                // does not honour the stylesheet's max-width query) reads
+                // both text nodes regardless of which is display:none, so
+                // the accessible name is pinned explicitly rather than left
+                // to concatenate "Open" + "See the recipients". Only needed
+                // on the columnHeads mount, the one that renders the span
+                // pair at all.
+                aria-label={columnHeads && !isExpanded ? 'Open' : undefined}
                 onClick={() => toggle(batch.batchKey)}
               >
-                {isExpanded ? 'Close' : 'Open'}
+                {isExpanded ? (
+                  'Close'
+                ) : columnHeads ? (
+                  <>
+                    <span className="chq-comms-batch-toggle-label-desktop">Open</span>
+                    <span className="chq-comms-batch-toggle-label-phone">See the recipients</span>
+                  </>
+                ) : (
+                  'Open'
+                )}
               </button>
             </div>
             {isExpanded && (

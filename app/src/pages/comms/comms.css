@@ -1354,6 +1354,21 @@
   max-width: none;
 }
 
+/* DEC-833 (wave-129 amendment): the History mount's row-toggle carries
+   TWO sibling spans for its closed-state label -- `Open` (desktop) and
+   `See the recipients` (390, Chautauqua Comms.dc.html:350) -- exactly one
+   visible per width, the same idiom app/src/pages/contacts/
+   contacts-panels.css already uses for `.chq-contacts-merge-primary-*-
+   label` (DEC-919's round-2 N1: a purely visual fact is CSS's job, not a
+   useIsPhone markup fork). This unconditional default sits BEFORE the
+   terminal <=700px block below (DEC-385 single-direction) so the phone
+   label starts hidden and only the override inside that block flips it
+   visible; the desktop label needs no matching default-show rule since a
+   bare <span> is inline by default. */
+.chq-comms-batch-toggle-label-phone {
+  display: none;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Trailing phone block (DEC-385: still one direction -- max-width only,   */
 /* so desktop is untouched).                                              */
@@ -2428,5 +2443,26 @@
      20px minimum: 20px + 2*10px = 40px. */
   .chq-comms-recent-sends .chq-section-head {
     gap: 40px;
+  }
+
+  /* DEC-833 (wave-129 amendment, Chautauqua Comms.dc.html:350): the
+     History mount's row-toggle swaps its closed-state label at <=700px --
+     `See the recipients` replaces `Open`, byte-identical to the frame's
+     390 Send-history row, a bordered 44px centred control closing each
+     row exactly like Wait/Waitlist's width-conditioned copy. The OPEN
+     state's `Close` is untouched (no span pair -- the pack draws no
+     expanded 390 state for this row, so there is no frame word to swap
+     it for; see the .render.tsx comment for why inventing one would be
+     manufacturing copy). Desktop's `Open`/`Close` on both mounts, and the
+     Compose mount's row entirely (no 390 frame ever draws it), are
+     unreached by this block. `.chq-comms-batch-toggle` already carries
+     the 44px floor + centred flex from its shared `.chq-btn` base, so
+     this rule only swaps the two label spans. */
+  .chq-comms-batch-toggle-label-desktop {
+    display: none;
+  }
+
+  .chq-comms-batch-toggle-label-phone {
+    display: inline;
   }
 }
