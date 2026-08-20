@@ -2458,6 +2458,13 @@
      unreached by this block. `.chq-comms-batch-toggle` already carries
      the 44px floor + centred flex from its shared `.chq-btn` base, so
      this rule only swaps the two label spans. */
+  /* phone-hidden: width-conditioned copy, not a removed capability -- the
+     desktop twin of the phone-only sibling span
+     .chq-comms-batch-toggle-label-phone revealed in the rule directly below
+     (the DEC-833 comment above carries the frame citation). Both spans live
+     in the DOM, exactly one is painted per width, and the button pins its
+     own accessible name, so the announced name never shortens and no
+     control leaves the phone (DEC-878, DEC-919). */
   .chq-comms-batch-toggle-label-desktop {
     display: none;
   }

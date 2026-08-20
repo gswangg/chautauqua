@@ -140,12 +140,22 @@ describe('desktop frame claims: Settings cluster, dialog half (v12m-w5-b)', () =
 
   // docs/design/Chautauqua Settings.dc.html:1440
   // `Portal resource · add`
-  it('renders the "Add a resource" dialog (Kind toggle, Title, file/content field) in ResourcesPanel.tsx', () => {
+  it('renders the "Add a resource" dialog (Kind toggle, Name + hint, one Add it primary) in ResourcesPanel.tsx', () => {
     expect(frameLine(1440)).toContain('Portal resource · add');
     const src = read('pages/settings/ResourcesPanel.tsx');
     expect(src).toContain('title="Add a resource"');
     expect(src).toContain('aria-label="Kind"');
-    expect(src).toContain("{addingKind === 'wiki' ? 'Add wiki page' : 'Upload file'}");
+    // DEC-650 wave-130/131: the pack draws ONE primary for a dialog whose
+    // Kind control switches what is being added, and names the field `Name`
+    // with the hint "What speakers see in the list" -- so the claim is
+    // anchored on the CONTENT the pack prints, never on a line number in
+    // either file (the two-verb `Add wiki page`/`Upload file` pair this
+    // claim used to pin WAS the divergence, and is gone). Typed literals on
+    // the app side, so no assertion here is pack-vs-pack.
+    expect(src).toContain('Add it');
+    expect(src).toContain('label="Name"');
+    expect(src).toContain('help="What speakers see in the list"');
+    expect(src).not.toContain("'Add wiki page'");
   });
 
   // docs/design/Chautauqua Settings.dc.html:1477

@@ -127,7 +127,7 @@ function PasswordRevealBlock({
           by context (:1333 "Their password · shown once" on invite, :1491
           "New password · shown once" on reset) -- keyed off the reveal's
           own `context`, never a second prop a caller could pass wrong. */}
-      <span className="chq-settings-people-password-eyebrow">
+      <span className="chq-settings-eyebrow chq-settings-people-password-eyebrow">
         {revealed.context === 'invite' ? 'Their password · shown once' : 'New password · shown once'}
       </span>
       <code className="chq-settings-people-password">{revealed.password}</code>

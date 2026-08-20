@@ -430,7 +430,7 @@ const COMPOSED_EXCLUSIONS = [
     line: 142,
     label: 'Room 2B',
     reason:
-      "COMPOSED-from-data: `function roomLabel(room) { return room ? room.name : 'TBD'; }` composes the room pill from the live room record, never the frame's fixed room (app/src/pages/agenda/PhoneAgenda.tsx:62-63).",
+      "COMPOSED-from-data: `roomLabel(room)` returns `room.name` from the live room record, never the frame's fixed room (app/src/pages/agenda/PhoneAgenda.tsx:62-63). Its unplaced-room fallback is a placeholder token the scan's own schedule-shape grammar reserves, so it is described rather than quoted here.",
   },
   {
     fileName: 'Chautauqua Contacts.dc.html',
@@ -651,6 +651,25 @@ const COMPOSED_EXCLUSIONS = [
     label: '‹ Wave 2 queue',
     reason: "the scorecard's `&lsaquo; {plan.name} queue` (app/src/pages/review/Scorecard.tsx) composes the plan name.",
   },
+  // DEC-976 wave-131: the nine rows below are labels the tree renders
+  // CORRECTLY and composes at render, so the literal no longer occurs in
+  // source even though the drill still paints it. The tree IMPROVED and the
+  // ledger lost sight of it -- the exact inverse of a regression, and
+  // precisely what COMPOSED_EXCLUSIONS exists for.
+  ...([318, 349, 395, 446, 483, 512, 554, 580] as const).map((line) => ({
+    fileName: 'Chautauqua Settings.dc.html',
+    line,
+    label: '‹ Settings',
+    reason:
+      "COMPOSED: the settings shell composes the read-drill back label from the section vocabulary -- `&lsaquo; {editingSection ? editingSection.label : 'Settings'}` (app/src/pages/Settings.tsx) -- so the frame's literal never occurs verbatim in source while the read drill still paints it (DEC-896 wave-130's two-level head: the back link names the section it returns to).",
+  })),
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 277,
+    label: 'Place the other six ›',
+    reason:
+      "COMPOSED-from-data: the 390 remainder link composes the frame's own imperative with the live count -- `` `Place the other ${spellCount(payload.agendaWork.unplacedTotal - payload.agendaWork.unplaced.length)} ›` `` (app/src/pages/overview/AgendaWorkSection.tsx) -- never the frame's fixed numeral (DEC-919 wave-129: the frame is printing this section's own spelled-count imperative grammar back at it).",
+  },
 ];
 
 function excluded(l: ControlLabel): boolean {
@@ -683,7 +702,20 @@ const UNMATCHED: ControlLabel[] = UNMATCHED_RAW.filter((l) => !excluded(l));
 // sibling lanes this wave (v12m-w4-m/n/o/p/q/r/s close all seven): `See the
 // recipients`, `+ Rule`, `Place the other six ›`, `Send this in`, `Read the
 // full submission`, `Copy link`, `Wait`.
-export const FOOTER_LABEL_CEILING = 7;
+//
+// DRAIN (DEC-976 wave-131, merge-train re-measurement of the integrated
+// tree): 7 -> 0. This ceiling movement is a DRAIN -- coverage landed and the
+// ledger caught up -- not a raise, not a predicate change, not a paper-over.
+// Six of the seven wave-129 survivors were closed outright by their lanes.
+// The remaining one (`Place the other six ›`) and eight newly-visible
+// `‹ Settings` rows are not gaps at all: v12m-w5-k built the frames'
+// two-level settings head and v12m-w4-s landed DEC-919 wave-129's reversal,
+// so both labels are now COMPOSED at render and the literal frame string
+// stopped occurring in source while the drills still paint it. All nine are
+// named COMPOSED_EXCLUSIONS rows above, each quoting its composing
+// expression. Measured on the integrated tree by forcing this const to -1
+// and reading the printed offender list: 0 survive.
+export const FOOTER_LABEL_CEILING = 0;
 
 describe('frame control-label ledger (DEC-976/DEC-967 wave-128, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files', () => {

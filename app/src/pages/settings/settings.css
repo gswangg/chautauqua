@@ -1270,7 +1270,21 @@
   display: none;
 }
 
-
+/* DEC-919 wave-130 amendment (Chautauqua Settings.dc.html:1333 `Their
+   password · shown once`, :1491 `New password · shown once`): the
+   context-keyed caption directly above the revealed one-time password. Its
+   FACE is .chq-settings-eyebrow, which the span also carries -- only the
+   block-ness and the gap above it are page-local, because .chq-token-reveal
+   is a plain block (unlike .chq-embeds-output-block's flex column, where the
+   same eyebrow span already reads as its own line). Declared here, at the
+   end of the base region and so after .chq-settings-eyebrow, because that
+   shared face's `margin: 0 0 8px` shorthand would otherwise cancel the gap;
+   re-typing the type ramp into a standalone rule instead would be DEC-613's
+   second copy of a vocabulary. */
+.chq-settings-people-password-eyebrow {
+  display: block;
+  margin-top: 8px;
+}
 
 
 /* task-w4-f/DEC-375/DEC-967: the four-drill phone body conformance sweep

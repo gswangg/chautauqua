@@ -143,9 +143,12 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
     expect(within(slideRow).queryByRole('button', { name: 'Replace' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add a resource' }));
-    fireEvent.change(screen.getAllByPlaceholderText('Title')[0]!, { target: { value: 'New page' } });
+    // DEC-650 wave-130: the add-resource dialog names its field `Name` (the
+    // placeholder that merely repeated the label is gone) and draws ONE
+    // primary, `Add it`, for both resource kinds.
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'New page' } });
     fireEvent.change(screen.getByPlaceholderText('Content'), { target: { value: 'Hello there' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add wiki page' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add it' }));
 
     await waitFor(() => {
       const postCalls = fetchMock.mock.calls.filter(

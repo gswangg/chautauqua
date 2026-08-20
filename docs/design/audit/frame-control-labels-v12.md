@@ -43,7 +43,7 @@ silently widening the exclusion.
 
 ## Surviving unmatched rows (real gaps), by frame
 
-These are the rows the test's `FOOTER_LABEL_CEILING` (currently `7`) grades.
+These are the rows the test's `FOOTER_LABEL_CEILING` (currently `0`) grades. The wave-129 measurement of `7` stood until DEC-976's wave-131 amendment: all seven of those survivors are now either closed outright by their lanes or recorded as COMPOSED rows, so the ceiling drained to the measured residue.
 Each is a literal frame label that is not present, boundary-anchored, in
 non-test app source, and is not covered by any exclusion table. All seven are
 scheduled to sibling lanes this wave (v12m-w4-m/n/o/p/q/r/s).
