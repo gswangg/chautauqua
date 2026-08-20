@@ -299,4 +299,4 @@ export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;
 // -- this constant's own draining lanes must lower it in the same commit
 // that fixes an offender, same DEC-989 protocol. RATCHET:
 // SSR_CLASSLESS_ANCHOR_CEILING=26
-export const SSR_CLASSLESS_ANCHOR_CEILING = 26;
+export const SSR_CLASSLESS_ANCHOR_CEILING = 13;

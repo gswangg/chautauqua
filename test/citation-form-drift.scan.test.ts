@@ -402,7 +402,7 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // neither figure survives their coexistence. RE-MEASURED against the fully
 // integrated tree, exactly as the two-sided ratchet's failure message
 // instructs.
-export const LINE_KEYED_CITATION_CEILING = 65;
+export const LINE_KEYED_CITATION_CEILING = 57;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

@@ -188,4 +188,4 @@
 // re-seeds where it widens in the repairing commit -- that is a repair, not
 // a raise (DEC-976 wave-138's own clause, restated wave-142).
 // RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=131
-export const FRAME_CAPTION_UNMATCHED_CEILING = 131;
+export const FRAME_CAPTION_UNMATCHED_CEILING = 130;
