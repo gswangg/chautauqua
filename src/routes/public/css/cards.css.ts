@@ -274,12 +274,15 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
       grid-column: 1 / -1;
     }
 
-    /* DEC-393/DEC-367 (w13-ee): .chq-pub-session-title (sessions.tsx
-       SessionCard) is the only control into session detail from a
-       programme card -- floored to the 44px tap target, min-height +
+    /* DEC-393/DEC-367 (w13-ee, re-affirmed v12m-w14-dd wave-139 REAL
+       FLOOR): .chq-pub-session-title (sessions.tsx SessionCard, the card's
+       title drill-in link, reviewer-measured 358x27) is the only route
+       from a programme card into session detail -- no sibling class, no
+       exemption -- so it is floored to the 44px tap target: min-height +
        centred flex + non-zero horizontal padding. .chq-pub-speaker-name
        (speakers.tsx, list AND grid views) gets the same treatment; both
-       appended additively, DEC-385 single-direction. */
+       appended additively at the true end of this sheet's one terminal
+       phone block, DEC-385 single-direction. */
     .chq-pub-session-title {
       min-height: 44px;
       display: flex;
@@ -291,6 +294,25 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
       display: flex;
       align-items: center;
       padding: 0 4px;
+    }
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the headshot/fallback link
+       (speakers.tsx SpeakerHeadshotLink) -- no sibling class on the anchor
+       in either the list-row (64px fixed cell) or grid-tile (aspect-ratio
+       square) composition. The wrapped <img>/fallback already exceeds 44px
+       on both axes at every phone breakpoint, so a minimal 1px horizontal
+       padding (the smallest non-zero value) is used here rather than the
+       4px this sheet's other REAL FLOOR rules use, to avoid visibly
+       shrinking the headshot image against DEC-989's own 358px 390-width
+       budget for the list row. display:flex on this anchor only affects
+       its own child's layout (blockified, filling the fixed-width parent
+       cell exactly as before) -- it does not change the anchor's outer
+       size. */
+    .chq-pub-headshot-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 1px;
     }
   }
 `;

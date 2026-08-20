@@ -310,6 +310,13 @@ export const CHROME_CSS = `
       align-items: center;
       justify-content: center;
       padding: 0 8px;
+      /* v12m-w14-dd (DEC-367 wave-138 third evasion mode): every clause of
+         the ruling above is satisfied and this still measured 40px WIDE --
+         the base rule's width:40px survives into this block and border-box
+         makes the padding inert. width:auto lets the button size to its
+         padded content; min-width:44px is the floor's other dimension. */
+      width: auto;
+      min-width: 44px;
     }
     .chq-pub-select {
       min-height: 44px;
@@ -318,22 +325,30 @@ export const CHROME_CSS = `
       padding: 0 34px 0 10px;
     }
 
-    /* DEC-393/DEC-367 (w13-ee): the active-filter chip's remove control
-       (filters.tsx) and the two "Clear"/"Clear all" links beside it --
-       already inline-flex/centred (chip) or plain text (clear links) on
-       desktop -- floored to the 44px tap target additively. */
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the active-filter chip's
+       own remove link (filters.tsx) -- sole class on the element, no
+       sibling floors it. Appended at the true end of this sheet's one
+       terminal phone block, per DEC-385. */
     .chq-pub-activefilters-chip {
       min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 6px 13px;
     }
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the "Clear" all-filters
+       link (filters.tsx) -- sole class on the element. */
     .chq-pub-activefilters-clear {
       min-height: 44px;
-      display: inline-flex;
+      display: flex;
       align-items: center;
       padding: 0 4px;
     }
+    /* v12m-w14-dd (DEC-393 wave-139 REAL FLOOR): the track-highlight
+       select's own "Clear" link (agenda-controls.tsx) -- sole class on the
+       element. */
     .chq-pub-select-clear {
       min-height: 44px;
-      display: inline-flex;
+      display: flex;
       align-items: center;
       padding: 0 4px;
     }
