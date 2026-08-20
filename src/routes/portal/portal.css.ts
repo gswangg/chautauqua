@@ -545,6 +545,12 @@ export const PORTAL_CSS = `
     justify-content: space-between;
     gap: 12px;
   }
+  /* overflow-exempt: DEC-989 w6-h -- a truncated field counter states a
+     wrong remaining-character count (the printed total is sample data
+     that does not bind, DEC-650 wave-82 amendment); see the wave-90 note
+     above (:689-702) for the full rationale, restated here directly
+     above the rule so this scan's exemption receipt actually attaches to
+     it (a prose note elsewhere in the file does not). */
   .chq-field-counter { font-size: 12px; color: var(--chq-muted); white-space: nowrap; }
 
   /* Frame 10--05 (MAJOR): the comment textarea fell back to the browser's

@@ -1269,5 +1269,17 @@
     margin-left: 0;
     justify-content: flex-start;
   }
+
+  /* w6-h (DEC-989/DEC-385): 390 horizontal-overflow sweep, appended after
+     every existing rule in this file's one terminal @media (max-width:
+     700px) block. Four short muted nowrap captions/labels with no
+     overflow/text-overflow escape declared in their own rule -- let each
+     wrap at 390 rather than push its row past the frame. */
+  .chq-detail-section-action,
+  .chq-detail-session-details-caption,
+  .chq-submission-history-current,
+  .chq-answer-file-size {
+    white-space: normal;
+  }
 }
 
