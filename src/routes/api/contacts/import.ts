@@ -261,8 +261,11 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
     }
 
     if (dryRun) {
-      // DEC-663: never applyImportRows/pushContactsToEvent on a dry run.
-      const plan = await repo.planImportRows(c.var.db, orgId, rows);
+      // DEC-663: never applyImportRows/pushContactsToEvent on a dry run --
+      // the SAME disposition inputs (skipLines/mergeLines) the real run
+      // below takes, so a merge line previews as the update it will
+      // actually become, not a phantom create (w10-ii).
+      const plan = await repo.planImportRows(c.var.db, orgId, rows, { skipLines, mergeLines });
       return c.json(plan);
     }
 
