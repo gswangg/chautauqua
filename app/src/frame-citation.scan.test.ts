@@ -515,7 +515,7 @@ for (const file of TEST_TARGET_FILES) {
  * ceiling on debt, not a floor on coverage -- may only be LOWERED as
  * unreceipted claims get fixed, never raised to paper over a regression.
  * This task does not fix other lanes' test files to force it down. */
-const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 23;
+const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 15;
 
 describe('test-file DESKTOP-frame claims are receipted: quote + nearby expect() (DEC-808 wave-107, task w3-v)', () => {
   it('the test-file desktop-frame citation population is non-empty (guards against a silently-empty scan)', () => {

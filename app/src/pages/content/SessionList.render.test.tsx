@@ -1119,13 +1119,11 @@ describe('SessionList: no <td> ever carries display:flex (DEC-871)', () => {
   });
 });
 
-// w21-c (DEC-902 wave-21 amendment): the worklist table
-// (docs/design/Chautauqua Content.dc.html:81/85 --
-// 26px 1fr 168px 200px 152px auto, gap:18px) was still auto-layout with
-// zero widths after w18-d pinned only the files table. `.chq-content-table`
-// is a SHARED vocabulary class worn by both tables (w21 finding), so the
-// worklist's own pins hang off a worklist-only `chq-content-worklist-table`
-// class instead of the shared one.
+// w21-c (DEC-902 wave-21 amendment): the worklist table was still
+// auto-layout with zero widths after w18-d pinned only the files table.
+// `.chq-content-table` is a SHARED vocabulary class worn by both tables
+// (w21 finding), so the worklist's own pins hang off a worklist-only
+// `chq-content-worklist-table` class instead of the shared one.
 describe('SessionList: worklist table takes the frame six tracks under fixed layout (w21-c, DEC-902)', () => {
   it('carries the worklist class and one width-class hook per column on the loaded table', () => {
     render(
@@ -1216,6 +1214,8 @@ describe('SessionList: worklist table takes the frame six tracks under fixed lay
     expect(actionsMatch).not.toBeNull();
 
     expect(tableMatch![1]).toMatch(/table-layout:\s*fixed/);
+    // Frame: docs/design/Chautauqua Content.dc.html:81/85 --
+    // `26px 1fr 168px 200px 152px auto`, gap:18px.
     expect(selectMatch![1]).toMatch(/width:\s*26px/);
     expect(speakerMatch![1]).toMatch(/width:\s*168px/);
     expect(latestFileMatch![1]).toMatch(/width:\s*200px/);

@@ -1,10 +1,7 @@
 // DEC-896 amendment (wave 68): SettingsSaveButton is the ONE place either
 // edit-footer primary string lives -- "Save changes" at rest, "Saving…"
 // while pending -- matching the vendored frame's every drawn edit-view
-// footer (docs/design/Chautauqua Settings.dc.html:687, `background:#4E5C31;
-// color:#F7F9F0; border-radius:4px; min-height:46px; display:flex;
-// align-items:center; padding:0 20px; font-size:14px; font-weight:700`, 777).
-// Panels adopt
+// footer. Panels adopt
 // it instead of writing the label themselves; this test pins the two
 // states directly against the shared component so a call site can't drift
 // back to a bare "Save".
@@ -20,6 +17,10 @@ afterEach(() => {
 describe('SettingsSaveButton', () => {
   it('reads exactly "Save changes" and is enabled at rest', () => {
     render(<SettingsSaveButton pending={false} />);
+    // Frame: docs/design/Chautauqua Settings.dc.html:687 --
+    // `background:#4E5C31; color:#F7F9F0; border-radius:4px;
+    // min-height:46px; display:flex; align-items:center; padding:0 20px;
+    // font-size:14px; font-weight:700` on "Save changes".
     const button = screen.getByRole('button', { name: 'Save changes' });
     expect(button).toBeEnabled();
     expect(button).toHaveTextContent('Save changes');

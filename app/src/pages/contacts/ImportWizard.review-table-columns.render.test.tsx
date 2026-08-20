@@ -1,7 +1,7 @@
 // DEC-902 (task w23-b): the import review step-3 table (Line / Email /
 // Action / Skip this row) gets a real column allocation instead of browser
-// auto-layout. docs/design/Chautauqua Contacts.dc.html:690's update row is
-// `190px 1fr auto` -- Email is the frame's identity track (190px). Line has
+// auto-layout. Email is the frame's identity track (see the frame citation
+// below). Line has
 // no frame counterpart (the mock showed name-over-email; Line is real data
 // the mock lacked) so it hugs its content, as does the single-checkbox Skip
 // column. Action is the sole unwidthed remainder, matching
@@ -35,6 +35,8 @@ describe('contacts-panels.css import review table column allocation (DEC-902, ta
 
   it('declares the three widthed columns', () => {
     expect(desktop).toMatch(/\.chq-contacts-import-review-col-line\s*\{[^}]*width:\s*1px/);
+    // docs/design/Chautauqua Contacts.dc.html:690's update row grid is
+    // `190px 1fr auto` -- Email is the frame's identity track (190px).
     expect(desktop).toMatch(/\.chq-contacts-import-review-col-email\s*\{[^}]*width:\s*190px/);
     expect(desktop).toMatch(/\.chq-contacts-import-review-col-skip\s*\{[^}]*width:\s*1px/);
   });
