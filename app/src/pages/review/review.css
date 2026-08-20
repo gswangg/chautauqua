@@ -2779,4 +2779,15 @@
   .chq-review-criterion-options-count {
     white-space: normal;
   }
+
+  /* task-w10-o/DEC-393 amendment (DEVIATIONS.md:346-351 companion-gap
+     rider): .chq-review-plan-actions (:118-124) wraps three cancelled-
+     padding `.chq-link-button`/anchor siblings (PlanList.tsx's
+     Progress/Results/Edit row) -- the desktop 14px gap alone leaves each
+     anchor's expanded 44px hit box overlapping its neighbour's by 6px.
+     Declaring the drawn desktop gap plus 20px restores real separation
+     without moving any glyph. */
+  .chq-review-plan-actions {
+    gap: 34px;
+  }
 }
