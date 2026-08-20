@@ -324,6 +324,13 @@ const LEDGER: LedgerEntry[] = [
     reason: "the phone dock is a CSS-only repositioning of whichever button pair the title row already renders -- never a second copy of the buttons.",
     honored: { kind: "present", file: "app/src/pages/review/review.css", literal: ".chq-review-editor-title-actions {", testFile: "app/src/pages/review/review-admin-phone-frames.test.ts" },
   },
+  {
+    key: "sign-in-390-keeps-forgot-your-password-re-lined-dec-919-wave-114-amendment",
+    status: "honored",
+    reason:
+      "DEC-919 wave-114 amendment: a frame is the GEOMETRY authority, not a capability manifest -- the 390 sign-in cut drawing the primary alone does not license deleting the only password-reset entry point on phones. The link stays, re-lined: .chq-auth-submitrow goes column-reverse at phone width so the full-width primary sits first and the tertiary is centred beneath it.",
+    honored: { kind: "present", file: "src/routes/auth.css.ts", literal: "flex-direction: column-reverse;", testFile: "test/account-docs-phone-frames.test.ts" },
+  },
   // ---- ## 6. Deferred post-deadline -------------------------------------
   {
     key: "your-data-edit-view",
@@ -389,9 +396,11 @@ const LEDGER: LedgerEntry[] = [
     honored: { kind: "present", file: "app/src/pages/settings/TracksRoomsPanel.tsx", literal: "confirmingDiscard", testFile: "app/src/pages/settings/TracksRoomsPanel-errors.render.test.tsx" },
   },
   {
-    key: "auth-input-fill-ffffff-frames-vs-palette-closure-ban-on-the-literal",
-    status: "gap",
-    reason: "needs a README palette ruling before any change -- recorded openly, no artifact to cite either way.",
+    key: "auth-input-fill-stays-chq-surface-faf8f2-no-change-ruled-dec-383-wave-114-amendment",
+    status: "honored",
+    reason:
+      "DEC-383 wave-114 amendment closed the last open adjudication: Chautauqua Account.dc.html draws #FFFFFF on the DESKTOP card's inputs but #FAF8F2 (= --chq-surface) on the same controls in its own 390 cuts, so the pack contradicts itself and no frame reading licenses the off-palette literal. RULED no change -- the app already ships --chq-surface, which is what the card paints.",
+    honored: { kind: "present", file: "src/routes/auth.css.ts", literal: "background: var(--chq-surface);", testFile: "test/auth-card-geometry.test.ts" },
   },
   {
     key: "settings-760-measure-09-00-rejected",
@@ -581,9 +590,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(5);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(6);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(17);
-    expect(derived.length).toBe(30);
+    expect(derived.length).toBe(31);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {
