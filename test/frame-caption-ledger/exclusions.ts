@@ -303,6 +303,26 @@ export const FIXTURE_EXCLUSIONS: Exclusion[] = [
     text: 'Dana Whitmore · Fieldnote Docs',
     reason: 'invented sample submitter identity used as mock card content, not a real UI caption. (fixture token: \'Dana Whitmore\')',
   },
+  // v12m-w18-c (wave-143): submission abstract fixture body text, the same
+  // "invented sample X used as mock body text" shape as this table's other
+  // rows -- app/src/pages/submissions/SubmissionDetailPage.tsx renders the
+  // live `detail.description` field verbatim (no truncation logic anywhere
+  // in this cluster's sources), but the frame's own sample abstract text is
+  // invented, not a literal string the app carries.
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 228,
+    text: "A 10-minute tour of turning a static docs site into one that answers questions with citations, stays honest when it doesn't know, and costs under $50 a month to run. Live demo, real failure cases, and a checklist you can apply to your own docs this week.",
+    reason:
+      "invented sample submission abstract used as mock body text for the desktop detail page's Abstract section (real field: `detail.description`, app/src/pages/submissions/SubmissionDetailPage.tsx), not a real UI caption. (fixture token: 'costs under $50 a month to run')",
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 367,
+    text: "A 10-minute tour of turning a static docs site into one that answers questions with citations, stays honest when it doesn't know, and costs under $50 a month to run.",
+    reason:
+      "the same invented sample abstract as this table's :228 row, here as the shorter 390-phone modal preview sample -- both render the same live `detail.description` field (app/src/pages/submissions/SubmissionDetailPage.tsx); no truncation logic exists anywhere in this cluster's sources, so the shorter frame sample is the pack's own illustrative choice, not a second real behaviour. (fixture token: 'costs under $50 a month to run')",
+  },
   {
     fileName: 'Chautauqua Comms.dc.html',
     line: 316,
@@ -344,6 +364,49 @@ export const FIXTURE_EXCLUSIONS: Exclusion[] = [
     text: 'It is embedded on notion.so',
     reason:
       "'notion.so' is the same fixture host name as Settings.dc.html:1049's saved-embed row cell, here drawn as the turn-off confirm modal's subtitle -- the identical host-tracking gap DEC-785 amendment (wave 63) and DEVIATIONS.md's '09--09' entry already record as unbuilt (no endpoint stores where an embed is pasted). app/src/pages/settings/SavedEmbedsPanel.tsx builds the modal's title and body verbatim but carries no subtitle, for the same reason: `body=\"The embed will render nothing wherever it is pasted, until you turn it back on. Nothing is deleted.\"`. (fixture token: 'notion.so')",
+  },
+  // v12m-w18-c (wave-143): the review scorecard's abstract, the same
+  // fixture shape as the two Submissions rows above -- app/src/pages/review/
+  // Scorecard.tsx renders the live `submission.description` field verbatim
+  // at both the desktop and 390-phone widths (one component, DEC-385), but
+  // the frame's own sample abstract text is invented, not a literal string
+  // the app carries.
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 211,
+    text: 'Code generation is easy; trusting it is hard. This session covers verification patterns for AI-generated code — property tests, mutation coverage, snapshot judges, and CI gates — with data from 18 months of running them on a 200-engineer codebase.',
+    reason:
+      "invented sample submission abstract used as mock body text for the scorecard's Abstract section (real field: `submission.description`, app/src/pages/review/Scorecard.tsx), not a real UI caption. (fixture token: 'Code generation is easy')",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 294,
+    text: 'Code generation is easy; trusting it is hard. This session covers verification patterns for AI-generated code — property tests, mutation coverage, snapshot judges, and CI gates — with data from 18 months of running them on a 200-engineer codebase.',
+    reason:
+      "the same invented sample abstract as this table's Review.dc.html :211 row, here as the 390-phone rendering of the same `submission.description` field (app/src/pages/review/Scorecard.tsx) -- one component, DEC-385. (fixture token: 'Code generation is easy')",
+  },
+  // v12m-w18-c (wave-143): the Content upload-rejected modal's why-these-
+  // formats hint and 'what was kept' band -- app/src/pages/content/
+  // UploadZone.tsx computes a real `survives` sentence ('The current file is
+  // unchanged. Nothing was replaced.' / 'Nothing was uploaded.') and passes
+  // the domain's real `uploadHintText(kind)` ('Allowed types: ...') into
+  // UploadRejectedModal, but neither matches the frame's own invented
+  // narrative wording -- the frame names a specific invented file version
+  // ('Slides v3') and an invented rationale sentence about zip archives that
+  // exists nowhere in src/domain/files.ts's real allowlist/hint copy.
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 449,
+    text: 'We take PDF, Keynote, PowerPoint and MP4 so reviewers and the AV team can open it without unpacking anything. A zip could hold anything.',
+    reason:
+      "invented sample rationale sentence for the upload-rejected modal's why-these-formats band (real hint text: `uploadHintText(kind)`, src/domain/files.ts, which composes a mechanical 'Allowed types: ...' allowlist sentence, not this narrative), not a real UI caption. (fixture token: 'A zip could hold anything')",
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 453,
+    text: 'Slides v3 is still the current file. Nothing was replaced.',
+    reason:
+      "invented sample file version name ('Slides v3') used as mock body text for the upload-rejected modal's 'What was kept' band (real `survives` text: 'The current file is unchanged. Nothing was replaced.', app/src/pages/content/UploadZone.tsx), not a real UI caption. (fixture token: 'Slides v3')",
   },
 ];
 
@@ -658,6 +721,169 @@ export const COMPOSED_EXCLUSIONS: Exclusion[] = [
     text: 'One call for papers is open. Two programmes are published.',
     reason:
       "the same root.tsx heroSummary(sections) composing expression and the same `<p>{heroSummary(sections)}</p>` render site as line 41's entry above -- this is the 390-phone frame drawing the identical full-state hero, not a second sentence.",
+  },
+  // v12m-w18-c (wave-143): Review + Submissions + Content caption residue
+  // (DEC-976), fourteen COMPOSED rows.
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 57,
+    text: '3 plans · 1 with evaluations in',
+    reason:
+      "app/src/pages/review/PlanList.tsx composes the hub summary count clause `countOf(plans.length, 'plan')` and appends ` · ${withEvaluationsCount} with evaluations in` when progress has resolved, from the plan list's own live length and completed-progress count.",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 102,
+    text: 'Sent to 5 reviewers · 1 skipped, reminded within the hour',
+    reason:
+      "PARTIAL/loose (same shape as TaskView.tsx's remindSkipVocabulary substitution above): app/src/pages/review/ProgressPanel.tsx's formatReminderResult composes `Sent: ${result.sent}.` and `Skipped: ${result.skipped}.` from the plan's own live remind-outcome counts (the CLOSED sent/skipped/remaining ReminderResult vocabulary, DEC-238); the frame's words are a narrative gloss over the same sent/skipped vocabulary (sent-to-N, N-skipped), not a second copy of it.",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 204,
+    text: 'DFC-021 · talk, 30 min · advanced',
+    reason:
+      "app/src/pages/review/Scorecard.tsx composes the scorecard meta line from `submission.format != null ? sessionFormatLabel(submission.format) : null` and `submission.audienceLevel != null ? audienceLevelLabel(submission.audienceLevel) : null`, joined with submission.ref via `.join(' · ')`, from the submission's own live ref/format/audienceLevel fields.",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 249,
+    text: 'Averaged by weight · not editable. A plain average of 5, 4, 4 would be 4.33.',
+    reason:
+      "app/src/pages/review/Scorecard.tsx composes the desktop overall caption from `Averaged by weight, not editable — a plain average of ${ratingCriteria` and `.join(', ')} would be ${formatScore(plainAverage(ratingCriteria.map((c) => scores[c.id] as number)))}` (falling back to 'Averaged by weight, not editable' with no scores) plus the appended overallDenominatorClause, from the plan's own live rating-criteria scores.",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 288,
+    text: 'DFC-021 · talk, 30 min · advanced',
+    reason:
+      "the same Scorecard.tsx meta-line composing expression as Chautauqua Review.dc.html:204's entry above -- this is the 390-phone rendering of the same one-component header (DEC-385).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 326,
+    text: 'A plain average of 5, 4, 4 would be 4.33',
+    reason:
+      "the same Scorecard.tsx overall-caption composing expression as Chautauqua Review.dc.html:249's entry above (`Averaged by weight, not editable — a plain average of ${ratingCriteria`) -- this is the 390-phone rendering of the same one-component overall caption, split across two <span> elements at this width instead of one paragraph (DEC-385).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 372,
+    text: 'AI Engineering deep pass · closes in 19 days',
+    reason:
+      "app/src/pages/review/ReviewerQueue.tsx composes the scoped-queue subtitle `[scope, roundName, closesLabel].filter((v): v is string => v !== null).join(' · ')` from the plan's own live scopeTrackName, round name (roundLabel), and closesInDaysLabel(envelope.closeDate, timezone).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 421,
+    text: 'AI Engineering deep pass · closes in 19 days',
+    reason:
+      "the same ReviewerQueue.tsx subtitle composing expression as Chautauqua Review.dc.html:372's entry above -- the same one-component scoped-queue head rendered at a different frame width (DEC-385).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 549,
+    text: '18 talks · 36 reviews needed at 2 each · 4 reviewers',
+    reason:
+      "app/src/pages/review/PlanEditor.tsx's distributeSummaryText composes `${countOf(talks, 'talk')} · ${countOf(reviewsNeeded, 'review')} needed at ${reviewsPerTalk} each · ${countOf(reviewers, 'reviewer')}` from the run's own live talk/review/reviewer counts (DEC-840/DEC-745).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 567,
+    text: '14 reviews stay unassigned — the cap is reached and nobody else covers AI Engineering',
+    reason:
+      "app/src/pages/review/PlanEditor.tsx's shortfallSummaries composes `${g.needed} ${noun} unassigned — ${constraint}.` where constraint is `the cap is reached and nobody else covers ${g.trackName}`, from the distribute run's own live shortfall groups (DEC-840).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 640,
+    text: '3 of about 7 · the two scored ones average by weight',
+    reason:
+      "PARTIAL: app/src/pages/review/PlanEditor.tsx draws the reader-facing count clause verbatim -- `{editingCriteria.length} of about {MAX_PLAN_CRITERIA}` -- from the draft's own live criteria length and MAX_PLAN_CRITERIA cap; the trailing clause the real control renders is 'more than that and reviewers rush the last ones' (the cap-notice's own rationale for the cap), not the frame's 'the two scored ones average by weight', which is the pack's own note about how Scorecard.tsx's overallDenominatorClause treats rating vs. Choice criteria (already excluded above, Chautauqua Review.dc.html:249/:326).",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 662,
+    text: 'Would assign 22 of 36 · you confirm before anything saves',
+    reason:
+      "app/src/pages/review/PlanEditor.tsx's distribute-confirm panel draws the same live totalAssigned count the frame's 'Would assign 22' opens with -- `Assign these ${distributePreview.totalAssigned}` -- and its own confirm caption `Nothing is saved until you confirm.` (DEC-786/DEC-572) is the app's wording of the frame's trailing clause; distributeSummaryText's `${countOf(reviewsNeeded, 'review')} needed at ${reviewsPerTalk} each` (already excluded at Chautauqua Review.dc.html:549) is the same reviews-needed denominator the frame's 'of 36' names.",
+  },
+  {
+    fileName: 'Chautauqua Review.dc.html',
+    line: 684,
+    text: 'Open · 7 of 18 reviews in',
+    reason:
+      'app/src/pages/review/PlanEditor.tsx composes `Open · {reviewsCompleted} of {reviewsAssigned} reviews in` (DEC-882) from the plan progress aggregate\'s own live completed/assigned counts.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 57,
+    text: '47 total · 12 awaiting triage',
+    reason:
+      "app/src/pages/submissions/SubmissionsTable.tsx composes the summary `{total} total` and appends ` · ${pendingTotal} awaiting triage` when a pending count is known, from the submission list's own live total/pending counts.",
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 328,
+    text: '2 submissions this year · spoke in 2026',
+    reason:
+      "app/src/pages/submissions/SubmissionDetailPage.tsx's speakerHistoryLine composes `${countOf(speaker.submissionsThisYear, 'submission')} this year` and `spoke in ${speaker.lastSpokeYear}`, joined with ' · ', from the speaker participant payload's own live submissionsThisYear/lastSpokeYear fields (DEC-900).",
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 472,
+    text: 'Closes 16 Aug · 47 received',
+    reason:
+      'app/src/pages/forms/FormsPage.tsx composes `Closes ${closesText} · ${receivedCountText} received` (phoneMetaText) from the CFP window\'s own live close date and received-submission total.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 592,
+    text: 'The call for papers opens on 1 February. Anything submitted after that appears here for triage.',
+    reason:
+      'app/src/pages/submissions/SubmissionsTable.tsx composes `The call for papers opens on ${formatDateOnly(formOpenDate)}. Anything submitted after that appears here for triage.` from the event\'s own live CFP open date.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 632,
+    text: '47 total · 0 awaiting triage',
+    reason:
+      "the same SubmissionsTable.tsx composing expression as Chautauqua Submissions.dc.html:57's entry above -- the triage-cleared state's own live total/pending counts (pendingTotal 0).",
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 643,
+    text: 'All 47 submissions have a decision. Twelve are still waiting on content, if you want the next thing.',
+    reason:
+      "PARTIAL: app/src/pages/submissions/SubmissionsTable.tsx draws the reader-facing clause verbatim -- `All ${allTotal} submissions have a decision.` -- from the submission list's own live unfiltered total; the trailing sentence ('Twelve are still waiting on content, if you want the next thing.') is the pack's own note about where the adjacent secondary action leads, matching the real `secondary={{ label: 'Go to content ›', to: '/content' }}` link rendered beside it, not a second sentence the panel renders.",
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 663,
+    text: '47 people have already answered this form',
+    reason:
+      "app/src/pages/forms/FormsPage.tsx composes `${answeredCount} people have already answered this form — their answers to this question are deleted too.` from the form's own live answered-submission count; the frame's row is this sentence's opening clause.",
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 119,
+    text: 'Priya Raman · DFC-014 · Tue 10:00, Room 2A',
+    reason:
+      "app/src/pages/content/DeliverableDetail.tsx renders the live speaker link beside `{firstSpeaker.name}`, followed by the trailer clause ` · ${subtitleTrailer}`, where subtitleTrailer is formatDetailTrailer's own composition, appending the day/time/room clause with publicRoomLabel(detail.slot.roomName) only when detail.slot is present (DEC-901), from the submission's own live ref/slot/room fields -- this is the width:1600px desktop rendering of the same subscreen as Chautauqua Content.dc.html:377's entry below (DEC-385).",
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 377,
+    text: 'Priya Raman · DFC-014',
+    reason:
+      "the same DeliverableDetail.tsx composing expression as Chautauqua Content.dc.html:119's entry above -- the 390-phone rendering of the same speaker-link-plus-trailer header for an unplaced session (formatDetailTrailer's `parts = [detail.ref]` with no slot clause appended, DEC-901).",
+  },
+  {
+    fileName: 'Chautauqua Content.dc.html',
+    line: 442,
+    text: 'Taming 40-Minute CI · slides',
+    reason:
+      "app/src/pages/content/UploadRejectedModal.tsx composes `${sessionTitle} · ${DELIVERABLE_LABELS[kind].toLowerCase()}` (the modal's subtitle prop) from the caller's own live sessionTitle and DELIVERABLE_LABELS['presentation'] = 'Slides' (app/src/pages/content/types.ts).",
   },
 ];
 
