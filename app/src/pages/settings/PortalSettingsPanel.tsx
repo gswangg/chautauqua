@@ -237,7 +237,7 @@ export function PortalSettingsPanel() {
       value: resourcesCap,
       rowClassName: 'chq-settings-row-full',
     },
-    { label: 'Access', value: 'Speakers claim their portal from a link in their acceptance email' },
+    { label: 'Access', value: 'Speakers claim their portal from a link in their acceptance email.' },
     {
       label: 'Open the portal',
       value: (

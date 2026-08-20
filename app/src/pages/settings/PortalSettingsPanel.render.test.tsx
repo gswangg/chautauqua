@@ -76,7 +76,7 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
     });
     expect(within(section).getByText('3 tasks · created when a submission is accepted')).toBeInTheDocument();
     expect(
-      within(section).getByText('Speakers claim their portal from a link in their acceptance email'),
+      within(section).getByText('Speakers claim their portal from a link in their acceptance email.'),
     ).toBeInTheDocument();
 
     // Speakers-can-edit pills: filled for the always-editable profile
