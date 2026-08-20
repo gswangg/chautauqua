@@ -105,6 +105,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { enumerateSourceFiles, labelIsMatched, normalizeSource } from './frame-source-corpus';
+
+export { labelIsMatched, normalizeSource };
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -361,91 +364,6 @@ function controlLabelsInFile(fileName: string): ControlLabel[] {
 const ALL_LABELS: ControlLabel[] = designFiles().flatMap(controlLabelsInFile);
 
 // -- Match side: every non-test .ts/.tsx/.css under app/src/** and src/** --
-
-function isSourceFile(name: string): boolean {
-  return name.endsWith('.ts') || name.endsWith('.tsx') || name.endsWith('.css');
-}
-
-const DECISIONS_DATA_DIR = join(SRC_ROOT, 'decisions-data') + '/';
-const DECISIONS_BARREL = join(SRC_ROOT, 'decisions.ts');
-
-/** True for the decision-registry's own prose (DEC-976 wave-129 amendment
- * (c)): src/decisions-data/**'s `DEC_NNN` constants and src/decisions.ts's
- * barrel are English sentences that quote frame labels verbatim, so a
- * ruling's own prose satisfying the ledger it rules on is DEC-967's "a
- * ledger a comment can satisfy is not a ledger", one level out. Skipped
- * from the match corpus so the registry can never grade itself. */
-function isDecisionRegistryFile(full: string): boolean {
-  return full.startsWith(DECISIONS_DATA_DIR) || full === DECISIONS_BARREL;
-}
-
-/** Every .ts/.tsx/.css file under `root`, skipping any path containing
- * `.test.` and the decision registry itself, enumerated via readdirSync
- * rather than named (DEC-808). */
-function enumerateSourceFiles(root: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
-    if (!entry.isFile() || !isSourceFile(entry.name)) continue;
-    const full = join(entry.parentPath, entry.name);
-    if (full.includes('.test.')) continue;
-    if (isDecisionRegistryFile(full)) continue;
-    out.push(full);
-  }
-  return out.sort();
-}
-
-const ENTITY_MAP: Record<string, string> = {
-  '&lsaquo;': '‹',
-  '&rsaquo;': '›',
-  '&middot;': '·',
-  '&nbsp;': ' ',
-  '&amp;': '&',
-  '&mdash;': '—',
-  '&ndash;': '–',
-  '&rsquo;': '’',
-  '&hellip;': '…',
-};
-
-/** Strips comments (block and line), decodes the frame-pack's HTML entities,
- * and collapses whitespace runs to a single space -- DEC-967 wave-128
- * clause 4. Exported so the synthetic non-vacuity controls exercise the
- * exact normalization the real match side uses. */
-export function normalizeSource(raw: string): string {
-  let s = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
-  for (const [entity, char] of Object.entries(ENTITY_MAP)) {
-    s = s.split(entity).join(char);
-  }
-  return s.replace(/\s+/g, ' ');
-}
-
-// Boundary character classes for labelIsMatched (DEC-976 wave-129 amendment
-// (a)): a needle may be preceded/followed by markup/quote/punctuation
-// delimiters or whitespace, but not by an arbitrary word character -- that
-// is what let `Wait` be "matched" by `Waitlist`, the exact divergence the
-// frame draws (Chautauqua Submissions.dc.html:391).
-// RIGHT_BOUNDARY admits `{` too: source renders `Running on{" "}` (JSX
-// whitespace-preserving expression container immediately after the literal
-// text), so a label followed only by `{` must still count as matched.
-const LEFT_BOUNDARY = `>"'\`{(,:`;
-const RIGHT_BOUNDARY = `<"'\`})(;,.!?{`;
-
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** True when `label` (whitespace-collapsed) occurs verbatim in some already-
- * normalized source blob, anchored so a short label is not "matched" by
- * merely being a substring of a longer word (DEC-976 wave-129 amendment
- * (a) -- `Wait` inside the app's `Waitlist` must NOT count). Exported so
- * the synthetic controls drive this exact function over a fabricated
- * population. */
-export function labelIsMatched(label: string, normalizedBlobs: string[]): boolean {
-  const needle = label.replace(/\s+/g, ' ').trim();
-  const pattern = new RegExp(
-    `(?:^|[${escapeRegExp(LEFT_BOUNDARY)}]|\\s)${escapeRegExp(needle)}(?:$|[${escapeRegExp(RIGHT_BOUNDARY)}]|\\s)`
-  );
-  return normalizedBlobs.some((blob) => pattern.test(blob));
-}
 
 const SOURCE_FILES = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSourceFiles(SRC_ROOT)];
 const NORMALIZED_SOURCE_BLOBS: string[] = SOURCE_FILES.map((f) => normalizeSource(readFileSync(f, 'utf-8')));
