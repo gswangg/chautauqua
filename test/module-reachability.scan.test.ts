@@ -256,6 +256,30 @@ const reachable = walkReachable(ENTRY_POINTS);
 // ---------------------------------------------------------------------------
 
 const ENTRY_OR_ALLOWED: Record<string, string> = {
+  "app/src/phone-overflow-scan/budget.ts":
+    "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
+    "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Derives the phone content budget; it is scan vocabulary, never SPA bundle code.",
+  "app/src/phone-overflow-scan/cascade.ts":
+    "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
+    "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Resolves which CSS rule wins at phone width; it is scan vocabulary, never SPA bundle code.",
+  "app/src/phone-overflow-scan/checks.ts":
+    "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
+    "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Holds the per-rule overflow predicates; it is scan vocabulary, never SPA bundle code.",
+  "app/src/phone-overflow-scan/cross-bundle.ts":
+    "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
+    "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Resolves cross-bundle receipt citations; it is scan vocabulary, never SPA bundle code.",
+  "app/src/phone-overflow-scan/population.ts":
+    "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
+    "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Enumerates the scanned CSS population; it is scan vocabulary, never SPA bundle code.",
+  "app/src/phone-overflow-scan/rules.ts":
+    "Scan-mechanics module for a custodian-split scan suite -- its only importer is " +
+    "app/src/phone-horizontal-overflow.scan.test.ts, and test-file imports don't confer reachability " +
+    "(DEC-518). Extracts CSS rules and media spans; it is scan vocabulary, never SPA bundle code.",
   "app/src/pages/agenda/types.ts":
     "Type-only module -- every consumer (DayGrid, SessionCard, ConflictChip, phoneSlots, PhoneAgenda, " +
     "UnscheduledTray, state.ts) imports it exclusively via `import type`, which erases at build time and confers " +

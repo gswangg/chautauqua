@@ -68,7 +68,7 @@
   phone-width (`max-width: 700px`) override,
   settings.css`text-align: left;`, and moved ONE consumer (CallForPapersPanel's
   tracks-empty hint) to a new class, `.chq-settings-note`
-  (app/src/pages/settings/CallForPapersPanel.tsx:565
+  (app/src/pages/settings/CallForPapersPanel.tsx:566
   `<p className="chq-settings-note">`). The desktop rule
   `.chq-settings-row-hint { ... text-align: right; }` still governs
   TrackEditRow.tsx:99 `{inUse ? <p className="chq-settings-row-hint">In use — retire it instead of removing</p> : null}`
