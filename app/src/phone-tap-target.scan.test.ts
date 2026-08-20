@@ -175,7 +175,25 @@ function findOffenders(): string[] {
 // forced the const to -1 and read the printed offender list, the fabricated
 // `(no CSS rule) — .chq-overview-row-actions-stacked` row is gone and no
 // other row moved. Lowered to the measured truth.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 57;
+// Re-measured 58 -> 53 by task w9-i (DEC-393 wave-120 receipt), measured by
+// running THIS file's own scan on this branch (ceiling forced to -1, offender
+// list read by eye, DEC-989 clause a): drained the five overview.css
+// row-action-anchor offenders named in the wave-120 receipt --
+// `.chq-overview-deadline-cell` (tap-floor-exempt: whole-cell `<Link>`, frame
+// forbids centring), `.chq-overview-toolbar-btn` (real floor: display:flex +
+// align-items:center + padding-inline added to its phone rule),
+// `.chq-overview-toolbar-btn-primary` (tap-floor-exempt: every markup site
+// also carries the base class above, which now floors it),
+// `.chq-overview-link-btn.chq-overview-link-btn-read` (real floor added to
+// its phone rule) and `.chq-overview-link-inline` (its existing DEC-393
+// wave-106 prose converted to the machine-readable `tap-floor-exempt:`
+// grammar, no declaration added). Lowered to the measured truth; this
+// ratchet may only fall.
+//
+// Megabatch (wave-120 Thunderdome): both lowerings above are independent and
+// were merged in one pass; the constant below is the re-measured combined
+// truth, not either branch's figure.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 52;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {

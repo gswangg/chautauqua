@@ -145,6 +145,15 @@
    var(--chq-on-brand) throughout (never repainted dark-on-dark). The
    colour transition is inherited from .chq-overview-toolbar-btn above,
    since every primary toolbar button also carries that base class. */
+/* tap-floor-exempt: DEC-393 wave-120 receipt (task w9-i): no selector-
+   specific phone rule is needed -- every markup site that carries this
+   class also carries `chq-overview-toolbar-btn` (Overview.tsx:314,
+   `className="chq-overview-toolbar-btn chq-overview-toolbar-btn-primary"`,
+   the header's only primary toolbar button), and that base class's own
+   phone rule (below, in the terminal `@media (max-width: 700px)` block)
+   already grows the anchor to a 44px, centred, padded floor. A second rule
+   here would duplicate the same declarations on the same rendered
+   element. */
 .chq-overview-toolbar-btn-primary {
   border: none;
   background: var(--chq-brand);
@@ -440,8 +449,9 @@
   }
 }
 
-/* DEC-393 wave-106: DESIGN-RULINGS.md:189's floor governs controls; a URL
-   inside a sentence is content, and flooring it would break the line box. */
+/* tap-floor-exempt: DEC-393 wave-106: DESIGN-RULINGS.md:189's floor governs
+   controls; a URL inside a sentence is content, and flooring it would break
+   the line box. */
 .chq-overview-link-inline {
   font-size: 13px;
   font-weight: 700;
@@ -483,6 +493,18 @@
     gap: 2px;
   }
 
+  /* tap-floor-exempt: DEC-393 wave-120 receipt (task w9-i): the phone rule
+     directly below already carries min-height:44px and the top-level rule
+     (overview.css:20-28) already carries a real horizontal padding
+     (11px 14px, first-child 0/border-left removed) -- the whole cell is the
+     tappable control (Overview.tsx's `<Link ... className=
+     "chq-overview-deadline-cell">`), so its hit box is the full cell, not
+     just its text. `align-items:center` is NOT added: the Overview 390
+     frame's deadline chip (docs/design/Chautauqua Overview.dc.html:198-200,
+     CHIP_NEAR/CHIP_REST at :744-745) is `display:flex; flex-direction:
+     column` with no `align-items` -- label stacks over value, left-aligned
+     -- so centring the cell's content would be a visual change the frozen
+     frame forbids. */
   .chq-overview-deadline-cell {
     flex-shrink: 0;
     min-height: 44px;
@@ -516,7 +538,10 @@
   .chq-overview-toolbar-btn {
     flex: 1;
     min-height: 44px;
+    display: flex;
+    align-items: center;
     justify-content: center;
+    padding-inline: 16px;
     border-radius: var(--chq-r-ctl-phone);
   }
 
@@ -610,6 +635,9 @@
     flex: 0 1 auto;
     width: auto;
     padding: 0 13px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
   /* -- end former 574 block -- */
 

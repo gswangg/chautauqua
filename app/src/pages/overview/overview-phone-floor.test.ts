@@ -251,3 +251,64 @@ describe('overview phone tap-floor + overflow fixes (task w8-g, DEC-393/DEC-989)
     expect(CSS).toContain('chq-overview-row-actions-stacked');
   });
 });
+
+// --- DEC-393 wave-120 receipt (task w9-i) --------------------------------
+//
+// Drains the five overview.css row-action-anchor offenders named by the
+// wave-120 planning task against `findAnchorFloorOffenders`
+// (app/src/phone-tap-target-scan/anchor-floor.ts). Each `it()` reads the
+// actual sheet text (never a docs/design read -- see
+// app/src/tautological-assertion.scan.test.ts for the shape this avoids).
+
+/** True if a `/* tap-floor-exempt: … *\/` comment sits immediately above a
+ * selector mentioning `token` anywhere in `css` -- mirrors
+ * phone-tap-target-scan/core.ts's `hasExemptionForToken`. */
+function hasExemption(css: string, token: string): boolean {
+  const re = new RegExp(
+    `\\/\\*\\s*tap-floor-exempt:[^*]*\\*\\/\\s*[^{}]*\\.${token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b[^{}]*\\{`,
+  );
+  return re.test(css);
+}
+
+describe('overview row-action-anchor tap-floor drain (task w9-i, DEC-393 wave-120 receipt)', () => {
+  it('`.chq-overview-deadline-cell` carries a named tap-floor-exempt comment (whole-cell Link, frame forbids centring)', () => {
+    expect(hasExemption(CSS, 'chq-overview-deadline-cell')).toBe(true);
+    // The 44px floor and real horizontal padding it cites both still exist.
+    expect(CSS).toMatch(/\.chq-overview-deadline-cell\s*\{[^}]*min-height:\s*44px/s);
+    expect(CSS).toMatch(/\.chq-overview-deadline-cell\s*\{[^}]*padding:\s*11px 14px/s);
+  });
+
+  it('`.chq-overview-toolbar-btn`\'s phone rule reaches the full anchor floor (min-height, flex-centre, non-zero horizontal padding)', () => {
+    const rule = narrowMediaRules(CSS, 700).find((r) => selectorMentions(r.selector, 'chq-overview-toolbar-btn'));
+    expect(rule).toBeDefined();
+    expect(rule!.body).toMatch(/min-height\s*:\s*44px/);
+    expect(rule!.body).toMatch(/display\s*:\s*flex/);
+    expect(rule!.body).toMatch(/align-items\s*:\s*center/);
+    expect(rule!.body).toMatch(/padding-inline\s*:\s*16px/);
+  });
+
+  it('`.chq-overview-toolbar-btn-primary` carries a named tap-floor-exempt comment (every site also carries the now-floored base class)', () => {
+    expect(hasExemption(CSS, 'chq-overview-toolbar-btn-primary')).toBe(true);
+    const overviewTsx = readFileSync(join(HERE, '..', 'Overview.tsx'), 'utf-8');
+    expect(overviewTsx).toMatch(/className="chq-overview-toolbar-btn chq-overview-toolbar-btn-primary"/);
+  });
+
+  it('`.chq-overview-link-btn.chq-overview-link-btn-read`\'s phone rule reaches the full anchor floor', () => {
+    const rule = narrowMediaRules(CSS, 700).find(
+      (r) => r.selector.trim() === '.chq-overview-link-btn.chq-overview-link-btn-read',
+    );
+    expect(rule).toBeDefined();
+    expect(rule!.body).toMatch(/min-height\s*:\s*44px/);
+    expect(rule!.body).toMatch(/display\s*:\s*flex/);
+    expect(rule!.body).toMatch(/align-items\s*:\s*center/);
+    // Its pre-existing horizontal padding is untouched.
+    expect(rule!.body).toMatch(/padding\s*:\s*0 13px/);
+  });
+
+  it('`.chq-overview-link-inline` carries a named tap-floor-exempt comment (URL-in-sentence, DEC-393 wave-106) and still declares no min-height', () => {
+    expect(hasExemption(CSS, 'chq-overview-link-inline')).toBe(true);
+    const topLevel = CSS.match(/\.chq-overview-link-inline\s*\{([^}]*)\}/);
+    expect(topLevel).toBeTruthy();
+    expect(topLevel![1]).not.toMatch(/min-height\s*:/);
+  });
+});
