@@ -433,12 +433,12 @@ for (const source of SOURCES) {
 
 const OFFENDERS = FACE_ROWS.filter((r) => r.painted);
 
-// This count may only be LOWERED as the drain lanes (v12m-w10-m/n, running
-// in parallel this wave) fix each offender's face-vs-idiom mismatch --
-// re-measured against THIS branch's tree, not copied from the task brief.
-// Measured 8 at authoring time: agenda.css x3 (.chq-agenda-head-actions
-// .chq-btn, .chq-breaks-add-actions .chq-btn, .chq-breaks-row-actions
-// .chq-btn), overview.css x3 (.chq-overview-row-actions .chq-overview-btn,
+// This count may only be LOWERED as the drain lanes fix each offender's
+// face-vs-idiom mismatch -- re-measured against THIS branch's tree, not
+// copied from the task brief. Measured 8 at authoring time: agenda.css x3
+// (.chq-agenda-head-actions .chq-btn, .chq-breaks-add-actions .chq-btn,
+// .chq-breaks-row-actions .chq-btn), overview.css x3
+// (.chq-overview-row-actions .chq-overview-btn,
 // .chq-overview-row-actions-inline .chq-overview-btn,
 // .chq-overview-row-actions-column .chq-overview-btn), contacts.css x1
 // (.chq-contacts-title-actions a, Export CSV), speakers.css x1
@@ -477,7 +477,42 @@ const OFFENDERS = FACE_ROWS.filter((r) => r.painted);
 // `.chq-contacts-title-actions a`) and both branch-measured 7 alone; the
 // integrated tree has both fixes, so the combined truth is 6. Re-measured
 // here on the merged tree per DEC-989 clause a. This ratchet may only fall.
-export const PAINTED_CANCELLED_PADDING_CEILING = 6;
+//
+// (.chq-speaker-detail-actions a, Email).
+//
+// DEC-989 (task w12-o, 2026-08-20): lowered 8 -> 3. agenda.css's
+// .chq-agenda-head-actions .chq-btn and .chq-breaks-add-actions .chq-btn,
+// and overview.css's three .chq-overview-row-actions(-inline/-column)
+// .chq-overview-btn selectors, are REMOVED from their shared
+// cancelled-padding rule's own selector list (not merely out-cascaded by a
+// later override) -- see agenda.css/overview.css. Left standing:
+// contacts.css and speakers.css (out of this task's scope, owned by other
+// lanes) plus agenda.css's .chq-breaks-row-actions .chq-btn, which this
+// scan's resolveTokenFace still reports painted because
+// `selectorMentionsToken`'s `\.chq-btn\b` also matches `.chq-btn-primary`/
+// `.chq-btn-secondary` (word-boundary fires at the hyphen, not at the end
+// of the class name) -- a false positive: the buttons this selector
+// actually reaches (BreaksPanel.tsx Edit/Remove) are .chq-btn-tertiary
+// (background:none; border:none), which app/src/pages/agenda/
+// agenda-phone-floor.test.ts's own task-w10-m pins already assert stays
+// on the shared cancelled-padding floor with NO override rule -- changing
+// that would contradict an existing, correct pin to satisfy a scan bug in
+// shared code (`app/src/phone-tap-target-scan/core.ts`'s
+// `selectorMentionsToken`, reused by anchor-floor.ts per DEC-613) that is
+// out of this task's file scope. Flagged for the planner/scribe, not
+// fixed here.
+//
+// Thunderdome megabatch (wave 123, THIS merge): lane w12-o drained five more
+// painted-face offenders (agenda.css .chq-agenda-head-actions .chq-btn and
+// .chq-breaks-add-actions .chq-btn; overview.css .chq-overview-row-actions,
+// -inline and -column .chq-overview-btn) by REMOVING each selector from its
+// shared cancelled-padding rule's own selector list, and branch-measured 3
+// against a pre-drain 8. main already stood at 6 after w12-p (speakers.css)
+// and w12-q (contacts.css) drained one each. The sets are disjoint, so the
+// integrated truth is re-measured here on the merged tree per DEC-989
+// clause a -- never copied from either branch's figure. This ratchet may
+// only fall.
+export const PAINTED_CANCELLED_PADDING_CEILING = 1;
 
 describe('cancelled-padding face lens (DEC-937 wave-121 amendment)', () => {
   it('found more than one CSS source to scan (vacuous-population tripwire, file side)', () => {

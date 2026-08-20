@@ -147,7 +147,7 @@ survives contact with state:
   silence about Publish schedule and Breaks removes geometry, not
   capability, and neither control has any other home on the phone
   surface. Both stay in the head's own full-width action row at the 44px
-  floor: `app/src/pages/agenda/agenda.css:1508-1516` floors every
+  floor: app/src/pages/agenda/agenda.css`.chq-agenda-head-actions .chq-btn,` (drift-proof citation, DEC-967 wave-115) floors
   `.chq-btn` there (Publish schedule), and the dedicated
   `.chq-agenda-head-actions .chq-link-button` rule appended at the end of
   the same phone block floors Breaks, which the shared `.chq-btn` rule

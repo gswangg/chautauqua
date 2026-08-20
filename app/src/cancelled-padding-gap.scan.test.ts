@@ -294,13 +294,34 @@ export function effectivePhoneGap(css: string, container: string): number | unde
  * target, so no sibling can ever overlap. Each entry's `markupLiteral` must appear verbatim in
  * its `componentPath` (checked below) and its `containerClass` must still be a member of the
  * derived population (checked below) -- a stale entry is deleted, never left standing. Empty
- * today: the tree's one conforming container passes on the numbers alone. */
+ * today: the tree's one conforming container passes on the numbers alone.
+ *
+ * DEC-937 wave-123 amendment (task w12-o): the agenda/overview painted-face drain (this task)
+ * REMOVES each painted selector from the shared cancelled-padding rule's own selector list
+ * (never merely out-cascades it with a later override), so .chq-breaks-add-actions,
+ * .chq-phone-footer-actions, .chq-overview-row-actions-inline and .chq-overview-row-actions-column
+ * all fall out of this scan's derived-container population automatically -- no exemption needed
+ * for any of them (see agenda.css/overview.css for the removal). .chq-agenda-head-actions is
+ * different: it is STILL a derived container, via a genuinely unpainted second member
+ * (.chq-agenda-head-actions .chq-link-button, the Breaks control -- correctly kept cancelled),
+ * not the removed .chq-btn one, so it gets a real entry below rather than vanishing. */
 export const SINGLE_TARGET_OK: Array<[containerClass: string, componentPath: string, markupLiteral: string, reason: string]> = [
   [
     '.chq-settings-tokens-table tbody td:last-child',
     'app/src/pages/settings/ApiTokensPanel.tsx',
     '<button type="button" className="chq-link-button" onClick={() => setPendingDelete(t)}>',
     'the last <td> in each row renders exactly one .chq-link-button (Revoke) -- no sibling cancelled-padding target can ever share the cell, so a `gap` on it (which would do nothing on a non-flex <td> anyway) is not the fix this container needs',
+  ],
+  [
+    '.chq-agenda-head-actions',
+    'app/src/pages/Agenda.tsx',
+    'chq-agenda-head-actions',
+    'three children -- Breaks (.chq-link-button, still cancelled, agenda.css ' +
+      '`.chq-agenda-head-actions .chq-link-button {`), Auto-schedule (.chq-btn-secondary, ' +
+      '`display:none` at phone, agenda.css `.chq-agenda-head-actions .chq-btn-secondary {`) and ' +
+      'Publish schedule (.chq-btn-primary, de-cancelled to its own 16px padding by the painted-face ' +
+      'fix, agenda.css `.chq-agenda-head-actions .chq-btn,`) -- only Breaks remains a live ' +
+      'cancelled-padding child at phone, so no sibling can ever overlap it.',
   ],
 ];
 
@@ -378,7 +399,30 @@ export function findOffenders(containers: ContainerRecord[], sources: Map<string
 // drains of disjoint offender sets merged in one pass; the constant below is
 // the re-measured truth of the integrated tree, not any single branch's
 // figure. This ratchet may only fall.
-export const CANCELLED_PADDING_GAP_CEILING = 5;
+//
+// DEC-989 (task w12-o, 2026-08-20): lowered 17 -> 12. Four containers
+// (.chq-breaks-add-actions, .chq-phone-footer-actions,
+// .chq-overview-row-actions-inline, .chq-overview-row-actions-column) fell
+// out of the population entirely once this task's painted-face fix
+// REMOVED the painted selectors from each shared cancelled-padding rule's
+// own selector list (rather than merely out-cascading them with a later
+// override, DEC-937 wave-123 amendment). A fifth, .chq-agenda-head-actions,
+// stays in the population (a genuinely unpainted second member, the Breaks
+// link) but is covered by a SINGLE_TARGET_OK entry above -- its only live
+// cancelled-padding child cannot collide with a sibling. Re-measured on
+// this branch's own tree, never copied from a prior wave's count.
+//
+// Thunderdome megabatch (wave 123, THIS merge): main stood at 5 after the
+// w12-n (COMMS), w12-p (SPEAKERS/TASK-VIEW/SETTINGS) and w12-q (CONTACTS)
+// drains; lane w12-o independently dropped four containers out of the
+// derived population (.chq-breaks-add-actions, .chq-phone-footer-actions,
+// .chq-overview-row-actions-inline, .chq-overview-row-actions-column) and
+// covered a fifth (.chq-agenda-head-actions) with the SINGLE_TARGET_OK
+// entry above, branch-measuring 12 against a pre-drain 17. The drained sets
+// are disjoint, so the constant below is the re-measured truth of the
+// INTEGRATED tree per DEC-989 clause a, not any single branch's figure.
+// This ratchet may only fall.
+export const CANCELLED_PADDING_GAP_CEILING = 0;
 
 describe('cancelled-padding companion-gap lens (DEC-393 wave-121 amendment, task w10-l)', () => {
   const sourceList = loadSources();

@@ -312,6 +312,15 @@
   grid-template-columns: 1fr;
 }
 
+/* tap-floor-exempt: composition -- this container's one genuine anchor
+   child, Read the abstract (`<Link className="chq-overview-link-btn
+   chq-overview-link-btn-read">`, Overview.tsx:422-427), is already floored
+   by its own dedicated bare-token rule (`.chq-overview-link-btn.chq-
+   overview-link-btn-read`) below, not by a rule scoped to this container --
+   its siblings (Accept/Decline/Waitlist) are all `<button
+   className="chq-overview-btn ...">`, no anchor of their own (DEC-393
+   wave-120 shape 3: a class that only ever appears in markup beside a
+   floored base). */
 /* DEC-735: split from the old shared `.chq-overview-row-actions-stacked` —
    this is §02's (and Public pages') ONE behaviour: an inline row of actions
    below a title/meta stack. */
@@ -328,6 +337,12 @@
   font-weight: 700;
 }
 
+/* tap-floor-exempt: composition -- this container's only child
+   (AgendaWorkSection.tsx:108-131, the conflict resolution control) is a
+   `<button className="chq-overview-link-btn">`, not an anchor -- outside
+   the row-action-anchor lens's population by construction (DEC-393
+   wave-120 shape 3: a container every one of whose children is a floored
+   control, not a hyperlink). */
 /* DEC-735: §04's ONE behaviour: a resolution button stacked above its
    caption, as its own grid cell (never combined with the inline-row rule
    above — that's the bug this class replaces). */
@@ -350,6 +365,14 @@
   color: var(--chq-ink);
 }
 
+/* tap-floor-exempt: composition -- this container's one genuine anchor
+   child, Open (`<Link className="chq-overview-link-btn">`, content
+   approval section, Overview.tsx:464-466), is already floored by the
+   bare-token `.chq-overview-link-btn` rule, not by a rule scoped to this
+   container -- its Overdue-tasks-section siblings (Remind/Mark complete)
+   are `<button className="chq-overview-link-btn" ...>`, no anchor of
+   their own (DEC-393 wave-120 shape 3: a class that only ever appears in
+   markup beside a floored base). */
 .chq-overview-row-actions {
   display: flex;
   gap: 14px;
@@ -661,17 +684,22 @@
      and .chq-overview-link-btn) on min-height:44px, display:flex and
      align-items:center -- same properties, same values. Rather than
      duplicate those three declarations in both places, they are collapsed:
-     THIS rule (below) is kept as their sole declarer (it also covers the
-     two selectors the former-464 block never touched --
-     .chq-overview-row-actions-column .chq-overview-btn and
-     .chq-overview-section-action, which need the full property set), and
-     the former-464 rules above have those same three declarations removed
-     with a comment pointing here. No property, selector or value is
-     dropped overall -- every declaration below is unchanged from this
-     block's original body. */
-  .chq-overview-row-actions .chq-overview-btn,
-  .chq-overview-row-actions-inline .chq-overview-btn,
-  .chq-overview-row-actions-column .chq-overview-btn,
+     THIS rule (below) is kept as their sole declarer, and the former-464
+     rules above have those same three declarations removed with a comment
+     pointing here.
+
+     Task w12-o (DEC-937 wave-121/123): the three `.chq-overview-btn`
+     compound selectors this rule originally also carried
+     (.chq-overview-row-actions .chq-overview-btn,
+     .chq-overview-row-actions-inline .chq-overview-btn,
+     .chq-overview-row-actions-column .chq-overview-btn) are REMOVED here,
+     not merely out-cascaded by a later override -- `.chq-overview-btn` is
+     PAINTED (border + background, overview.css:358 -- see the DEC-937
+     drain below) and cancelled-padding-face.scan matches by rule TEXT, so
+     an appended override that only wins the cascade still counted as a
+     painted-idiom member. `.chq-overview-link-btn` and
+     `.chq-overview-section-action` stay -- both borderless, the family
+     this idiom was built for. */
   .chq-overview-link-btn,
   .chq-overview-section-action {
     min-height: 44px;
@@ -702,21 +730,21 @@
     min-width: 0;
   }
 
-  /* DEC-937 DRAIN (task w10-n): .chq-overview-btn is PAINTED
-     (border: 1px solid var(--chq-border-strong); background:
+  /* DEC-937 DRAIN (task w10-n; task w12-o completes it): .chq-overview-btn
+     is PAINTED (border: 1px solid var(--chq-border-strong); background:
      var(--chq-surface-sunk); padding: 9px 16px -- overview.css:358) unlike
      the borderless .chq-overview-link-btn/.chq-overview-section-action
-     tiers the cancelled-padding rule above was written for. That rule's
-     padding-inline:10px/margin-inline:-10px narrows this tier's drawn face
-     by 12px (16px->10px each side) AND drags the whole bordered box 10px
-     past its layout edge on each side, overlapping neighbours. This later
-     same-specificity rule (append-only, DEC-385 -- the rule above is not
-     edited) restores the horizontal padding to the desktop value and
-     removes the bleed for the three .chq-overview-btn selectors only,
-     keeping just the tap-floor grow (min-height/display/align-items,
-     unchanged from the rule above). .chq-overview-link-btn and
-     .chq-overview-section-action are untouched here and keep the
-     cancelled-padding idiom from the rule above -- both are borderless. */
+     tiers the cancelled-padding rule above was written for -- cancelled
+     padding narrows this tier's drawn face by 12px (16px->10px each side)
+     AND drags the whole bordered box 10px past its layout edge on each
+     side, overlapping neighbours. task w10-n first shipped this as an
+     append-only override (DEC-385); task w12-o removed the three
+     `.chq-overview-btn` selectors from the rule above entirely instead,
+     so this rule is now their SOLE declarer -- their own inline padding
+     (16px) with no outward margin, so the drawn face stops at its
+     container edge. .chq-overview-link-btn and .chq-overview-section-action
+     are untouched and keep the cancelled-padding idiom above -- both are
+     borderless. */
   .chq-overview-row-actions .chq-overview-btn,
   .chq-overview-row-actions-inline .chq-overview-btn,
   .chq-overview-row-actions-column .chq-overview-btn {

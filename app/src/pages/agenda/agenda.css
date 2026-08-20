@@ -959,6 +959,12 @@
   line-height: 1.55;
 }
 
+/* tap-floor-exempt: composition -- both children are floored chq-btn
+   controls (BreaksPanel.tsx: Add the break / Done, both
+   `<button className="chq-btn ...">`, no anchor), outside the
+   row-action-anchor lens's population by construction and already floored
+   by the container-scoped painted-face rule (DEC-393 wave-120 shape 3: a
+   container every one of whose children is a floored chq-btn control). */
 .chq-breaks-add-actions {
   display: flex;
   align-items: center;
@@ -1071,6 +1077,16 @@
 /* underneath it, JS-mount (useIsPhone) or not. */
 /* ---------------------------------------------------------------------- */
 
+/* tap-floor-exempt: composition -- .chq-phone-footer-actions' only two
+   children are floored chq-btn controls (PhoneAgenda.tsx:305/310:
+   Unscheduled / Auto-schedule, both `<button className="chq-btn ...">`,
+   no anchor), outside the row-action-anchor lens's population by
+   construction and already floored by the container-scoped painted-face
+   rule (DEC-393 wave-120 shape 3: a container every one of whose children
+   is a floored chq-btn control). Scoped to just that one token even
+   though this comment sits above the whole desktop-hidden list below --
+   none of this list's other tokens end in `-actions`, so no other
+   population member can pick it up. */
 .chq-phone-agenda,
 .chq-phone-agenda-head,
 .chq-phone-agenda-head-top,
@@ -1505,10 +1521,7 @@
     flex-direction: column;
     gap: 8px;
   }
-  .chq-agenda-head-actions .chq-btn,
-  .chq-breaks-add-actions .chq-btn,
   .chq-breaks-row-actions .chq-btn,
-  .chq-phone-footer-actions .chq-phone-footer-btn,
   .chq-toolbar-link {
     min-height: 44px;
     display: flex;
@@ -1608,30 +1621,31 @@
 
   /* DEC-380 wave-116 amendment: Breaks (.chq-link-button.chq-section-action)
      shares the head's full-width action row with Publish schedule, but the
-     shared .chq-agenda-head-actions .chq-btn floor (:1508) matches only
+     .chq-agenda-head-actions .chq-btn floor (below) matches only
      .chq-btn-family controls -- .chq-link-button never gets it, so Breaks
      was rendering below the 44px tap floor. Appended here rather than
      folded into that selector list so no cited line number above it
      shifts (DEC-385: append, never edit in place above a citation). Same
-     floor shape as .chq-toolbar-link (:1512): the family is borderless,
-     so cancelled padding is safe. */
+     floor shape as .chq-toolbar-link: the family is borderless, so
+     cancelled padding is safe. */
   .chq-agenda-head-actions .chq-link-button {
     min-height: 44px;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     padding-inline: 10px;
     margin-inline: -10px;
   }
 
-  /* DEC-937 + DEC-393-amendment drain (task w10-m): the :1508 rule's
-     cancelled-padding shape (padding-inline:10px; margin-inline:-10px) is
-     correct for a BORDERLESS control (.chq-toolbar-link, the
-     .chq-link-button above) but wrong for a PAINTED one -- .chq-btn's own
-     face (background/border, styles.css:527-581) plus its native
-     `padding: 10px 16px` means the -10px outward margin pulls the drawn
-     box 10px past its container on both sides instead of merely widening
-     an invisible hit target. Of the four selectors at :1508-1511, three
-     resolve to a painted face:
+  /* DEC-937 + DEC-393-amendment drain (task w10-m; task w12-o completes
+     it): the :1508 rule's cancelled-padding shape (padding-inline:10px;
+     margin-inline:-10px) is correct for a BORDERLESS control
+     (.chq-toolbar-link, the .chq-link-button above) but wrong for a
+     PAINTED one -- .chq-btn's own face (background/border,
+     styles.css:527-581) plus its native `padding: 10px 16px` means the
+     -10px outward margin pulls the drawn box 10px past its container on
+     both sides instead of merely widening an invisible hit target. Of the
+     original four selectors that shared :1508's rule, three resolve to a
+     painted face:
        .chq-agenda-head-actions .chq-btn  -> Auto-schedule, chq-btn-secondary
          (Agenda.tsx head actions)
        .chq-breaks-add-actions .chq-btn   -> Add the break (primary) / Done
@@ -1639,17 +1653,19 @@
        .chq-phone-footer-actions .chq-phone-footer-btn -> the two dock
          buttons (PhoneAgenda.tsx:305/310), always .chq-btn-primary or
          .chq-btn-secondary, never borderless
-     .chq-breaks-row-actions .chq-btn is NOT painted -- BreaksPanel.tsx's
-     Edit/Remove controls in that row are .chq-btn-tertiary (styles.css:598,
-     background:none; border:none, its own -6px cancelled-padding idiom
-     already), so it stays on the shared :1508 floor unchanged; splitting it
-     out would be inventing a fix for a control that was never bleeding.
-     This rule restores each painted control's own inline padding
-     (.chq-btn's 16px) and removes the outward margin so the drawn face
-     stops at its container edge -- same specificity as :1508
-     (two-class-deep), later in source, so it wins per-property on
-     padding-inline/margin-inline while :1508's min-height/display/
-     align-items stay redundant-but-harmless underneath it. */
+     task w12-o REMOVED these three from :1508's selector list outright
+     (the cancelled-padding-face.scan lens matches by rule TEXT, so an
+     appended override that merely out-cascades the cancelled pair still
+     counted as a painted-idiom member; only deleting the pair from the
+     rule that declares it clears the scan). .chq-breaks-row-actions .chq-btn
+     is NOT painted -- BreaksPanel.tsx's Edit/Remove controls in that row
+     are .chq-btn-tertiary (styles.css:598, background:none; border:none,
+     its own -6px cancelled-padding idiom already), so it stays on the
+     shared :1508 floor unchanged; splitting it out would be inventing a
+     fix for a control that was never bleeding. This rule is now the SOLE
+     declarer of the three painted selectors' floor: their own inline
+     padding (.chq-btn's 16px) with no outward margin, so the drawn face
+     stops at its container edge. */
   .chq-agenda-head-actions .chq-btn,
   .chq-breaks-add-actions .chq-btn,
   .chq-phone-footer-actions .chq-phone-footer-btn {
