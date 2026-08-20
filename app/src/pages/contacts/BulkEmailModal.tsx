@@ -400,9 +400,12 @@ export function BulkEmailModal({ contactIds, eventId, onClose, recipientNames }:
               </p>
             );
           })()}
+          {/* docs/design/Chautauqua Contacts.dc.html:570 -- standing note,
+              verbatim. {first_name} and {company} here are merge-field NAMES
+              the organiser reads, literal caption text -- never JSX
+              interpolation, never resolved by the component. */}
           <p className="chq-meta chq-bulk-email-merge-footnote">
-            Sent one at a time · logged in Comms history · merge fields:{' '}
-            {BULK_EMAIL_MERGE_FIELDS.map((f) => `{${f}}`).join(', ')}
+            {'Sent one at a time · logged in Comms history · {first_name} and {company} resolve per contact'}
           </p>
         </>
       )}
