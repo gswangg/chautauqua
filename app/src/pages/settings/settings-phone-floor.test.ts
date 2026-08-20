@@ -225,19 +225,51 @@ describe('Settings cluster phone floor / overflow backlog (task w8-f)', () => {
       expect(/white-space\s*:\s*normal/.test(rule!.body) || hasEscapeShape(rule!.body)).toBe(true);
     });
 
-    const exemptCases = [
-      { selector: '.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-column' },
-      { selector: '.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-sample' },
-      { selector: '.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-arrow' },
+    // These three sessionboard-mapping columns were closed by EXEMPTION at
+    // wave 90: the argument was truncation readability (an import mapping is
+    // verified by reading the exact column name and sample), so the nowrap
+    // was licensed rather than escaped. Tasks w8-b and w8-a, integrated as
+    // one merge-train batch, retired that licence from both ends:
+    //
+    //   - w8-b observed that nowrap alone does not shrink these columns'
+    //     CONTENT WIDTH -- under `table-layout: fixed` the declared
+    //     180px/240px tracks overflow the 358px phone budget as soon as the
+    //     cell text is longer than its track -- and gave all three the real
+    //     `overflow: hidden; text-overflow: ellipsis` escape. The full value
+    //     stays reachable via the cell's title attribute and on desktop.
+    //   - w8-a made the 390-overflow scan's candidacy predicate cascade
+    //     aware, so it now reads that escape and stops flagging the rules.
+    //     An `overflow-exempt:` receipt over an unflagged rule is stale, and
+    //     DEC-989 requires such a comment be DELETED rather than re-pointed
+    //     or preserved by re-shaping the CSS around it.
+    //
+    // So the assertion inverts: these selectors are no longer exempt, they
+    // are escaped, and asserting the old comment would now demand a receipt
+    // the overflow scan's staleness half fails on. `min-width: 0` is NOT
+    // required here (unlike the flex-child escapeCases above) -- these are
+    // table cells under `table-layout: fixed`, where the fixed track, not a
+    // flex basis, is what bounds the box.
+    const formerlyExemptCases = [
+      '.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-column',
+      '.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-sample',
+      '.chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-arrow',
     ];
 
-    for (const { selector } of exemptCases) {
-      it(`${selector} carries an overflow-exempt comment directly above its phone-scoped rule`, () => {
+    for (const selector of formerlyExemptCases) {
+      it(`${selector} declares a real overflow escape at phone width (exemption retired, w8-b/w8-a)`, () => {
+        const rule = findRule(lastPhoneRules, selector);
+        expect(rule, `no phone-scoped rule found for "${selector}"`).toBeDefined();
+        expect(hasEscapeShape(rule!.body), `rule body did not escape overflow:\n${rule!.body}`).toBe(true);
+      });
+
+      it(`${selector} carries no stale overflow-exempt comment above its phone-scoped rule`, () => {
         const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const re = new RegExp(`\\/\\*\\s*overflow-exempt:[^*]*\\*\\/\\s*${escaped}\\s*\\{`);
-        expect(re.test(lastPhoneBlock.body), `expected an overflow-exempt comment immediately above ${selector}`).toBe(
-          true,
-        );
+        expect(
+          re.test(lastPhoneBlock.body),
+          `${selector} is escaped, not exempt -- a surviving overflow-exempt receipt here is stale and fails the ` +
+            `staleness half of app/src/phone-horizontal-overflow.scan.test.ts`,
+        ).toBe(false);
       });
     }
 
