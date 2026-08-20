@@ -225,7 +225,39 @@ function fakeDb(seed: {
         asCallCount += 1;
         return { __subqueryKind: asCallCount === 1 ? "eligible" : "skipped" };
       },
-      then: (resolve: (v: unknown[]) => void) => resolve(ctxLists.map(mergeCtx)),
+      // DEC-238 wave-133 amendment: when `grouped` is set but the chain ends
+      // without either `.limit()` (the eligible "chosenRows" query) or
+      // `.as()` (the eligible/skipped count subqueries), it's
+      // listRemindableContactIds' new skipped-roster query — grouped by
+      // contactId, filtered to contacts whose max(lastRemindedAt) is inside
+      // the dedupe window, same predicate `limit()`'s eligible branch above
+      // uses inverted.
+      then: (resolve: (v: unknown[]) => void) => {
+        if (grouped) {
+          const byContact = new Map<string, CtxEntry[][]>();
+          for (const ctxList of ctxLists) {
+            const cId = contactIdOf(ctxList);
+            const arr = byContact.get(cId) ?? [];
+            arr.push(ctxList);
+            byContact.set(cId, arr);
+          }
+          const skippedIds: string[] = [];
+          for (const [contactId, groupRows] of byContact) {
+            let maxRemindedAt: number | null = null;
+            for (const ctxList of groupRows) {
+              const t = lastRemindedAtOf(ctxList);
+              if (t !== null && (maxRemindedAt === null || t > maxRemindedAt)) maxRemindedAt = t;
+            }
+            if (maxRemindedAt !== null && maxRemindedAt > NOW.getTime() - MANUAL_DEDUPE_WINDOW_MS) {
+              skippedIds.push(contactId);
+            }
+          }
+          skippedIds.sort();
+          resolve(skippedIds.map((contactId) => ({ contactId })));
+          return;
+        }
+        resolve(ctxLists.map(mergeCtx));
+      },
     };
     return chain;
   }
