@@ -92,7 +92,7 @@ export function SpeakerDetailContent(props: {
           <ul>
             {speaker.socialLinks.map((link) => (
               <li>
-                <a href={link.url} rel="noopener noreferrer nofollow" target="_blank">
+                <a class="chq-pub-detail-social-link" href={link.url} rel="noopener noreferrer nofollow" target="_blank">
                   {link.label}
                 </a>
               </li>
@@ -106,7 +106,7 @@ export function SpeakerDetailContent(props: {
           const timeLabel = sessionTimeLabel(s.day, s.startMin, s.endMin);
           return (
             <li>
-              <a href={sessionDetailPath(event, s.id, from, base, carry)}>{s.title}</a>
+              <a class="chq-pub-detail-session-link" href={sessionDetailPath(event, s.id, from, base, carry)}>{s.title}</a>
               {timeLabel ? ` — ${timeLabel}` : ""}
               {s.room ? ` (${s.room})` : ""}
             </li>
@@ -155,7 +155,7 @@ export function SessionDetailContent(props: {
           {session.speakers.map((s, i) => (
             <>
               {i > 0 ? ", " : ""}
-              <a href={speakerDetailPath(event, s.contactId, from, base, carry)}>
+              <a class="chq-pub-detail-speaker-link" href={speakerDetailPath(event, s.contactId, from, base, carry)}>
                 {s.firstName} {s.lastName}
               </a>
             </>

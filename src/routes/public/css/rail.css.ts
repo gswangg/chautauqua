@@ -596,5 +596,66 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
       align-items: center;
       padding: 0 4px;
     }
+
+    /* v12m-w17-d (DEC-393 wave-142 fourth evasion mode -- classless SSR
+       anchor): the day-tabs/rooms-in-use/track-highlight rows share one
+       list-row anatomy across three markup sites (sessions.tsx's
+       DayIndexRailSection, agenda-rail.tsx's RoomsRailSection and
+       TrackHighlightRailSection) -- a bare, classless <a> as the row's
+       first grid cell, each a standalone row of its own, never a phrase
+       inside running prose. Reached by the ancestor token the row already
+       carries rather than a new class, per this task's own mechanics. */
+    .chq-pub-rail-day-row a {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    /* v12m-w17-d (DEC-393 wave-142): the agenda block's title drill-in link
+       (agenda-grid.tsx) -- sole class on the element's ancestor
+       (.chq-pub-agenda-block-title), a standalone card-title link, never
+       prose. The title wraps in full (DEC-768 above) so a wrapped
+       multi-line title simply grows the box past the 44px floor rather
+       than clipping. */
+    .chq-pub-agenda-block-title a {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    /* v12m-w17-d (DEC-393 wave-142): detail.tsx's three classless anchors,
+       graded by the markup they sit in (never by href or words). The
+       speaker's social links (one per <li>, no trailing text) and the
+       "Sessions" list row (link + trailing time/room text, same shape as
+       .chq-pub-rail-day-row above) are each standalone list-row links --
+       REAL FLOOR. The session detail header's speaker byline
+       (.chq-pub-detail-speaker-link) is a comma-joined name list inside
+       ONE running sentence in a <p> -- inline-in-prose, EXEMPT below. */
+    .chq-pub-detail-social-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    .chq-pub-detail-session-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+    /* tap-floor-exempt: v12m-w17-d (DEC-393 wave-142 fourth evasion mode) --
+       .chq-pub-detail-speaker-link only ever renders as one comma-joined
+       name inside the session detail header's one running sentence
+       (detail.tsx's speakers <p>); a 44px box around it would break the
+       line box it lives in, same reasoning as .chq-overview-link-inline's
+       wave-106 precedent. Restates the colour it already inherits from
+       theme.ts's global \`a { color: var(--chq-brand); }\` cascade
+       (src/views/theme.ts:210) so the exemption sits above a rule that
+       actually declares something (DEC-989(b)) rather than an empty body. */
+    .chq-pub-detail-speaker-link {
+      color: var(--chq-brand);
+    }
   }
 `;
