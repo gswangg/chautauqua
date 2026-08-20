@@ -423,9 +423,13 @@ describe("POST /api/v1/contacts with eventId (SPK-03 roster create, DEC-290)", (
     expect(res.status).toBe(404);
   });
 
-  // DEC-810: eventId without a sessionTitle is rejected before the contact
-  // is even created -- no invented 'Invited: <name>' title.
-  it("400s on eventId with no sessionTitle, and does not create the contact", async () => {
+  // DEC-909 wave-128 clause (a) reverses DEC-810's refusal: a roster add is a
+  // contact act, not a scheduling one, so eventId with no sessionTitle now
+  // SUCCEEDS. DEC-810's surviving half is the title itself -- an omitted title
+  // stays "", never an invented 'Invited: <name>' fallback. The full contract
+  // (blank title, matching title, unmatched title, over-cap) lives in
+  // test/contacts-roster-add-session-optional.test.ts.
+  it("201s on eventId with no sessionTitle, minting an empty-titled session (never an invented one)", async () => {
     const { db, state } = fakeDb([], [EVENT_ORG_A]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
@@ -438,10 +442,10 @@ describe("POST /api/v1/contacts with eventId (SPK-03 roster create, DEC-290)", (
       }),
     );
 
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(body.error.fields?.sessionTitle).toBeTruthy();
-    expect(state.contact).toHaveLength(0);
+    expect(res.status).toBe(201);
+    expect(state.contact).toHaveLength(1);
+    expect(state.submission).toHaveLength(1);
+    expect(state.submission[0].title).toBe("");
   });
 
   it("without eventId, behaves exactly as before (201, no roster push)", async () => {

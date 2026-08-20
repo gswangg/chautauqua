@@ -61,12 +61,12 @@
 //      printing the exact replacement line, so a stale ceiling cannot survive
 //      a wave that lands more label coverage.
 //
-//      RATCHET: FOOTER_LABEL_CEILING=6. Lanes w3-k/w3-l/w3-n are draining
-//      this same control-label population in parallel (composing the
-//      remaining literal strings, or adding the missing renders); the
-//      merge-train re-measures the INTEGRATED tree once every lane lands and
-//      raises (or confirms) the ceiling then, not mid-lane (DEC-989
-//      wave-123).
+//      RATCHET: FOOTER_LABEL_CEILING=4, re-measured on the integrated tree
+//      by the wave-128/129 merge train (was 6). Lanes draining this same
+//      control-label population (composing the remaining literal strings, or
+//      adding the missing renders) land mid-wave; the merge-train re-measures
+//      the INTEGRATED tree once every lane is in and moves the ceiling to the
+//      measured count then, not mid-lane (DEC-989 wave-123).
 //
 // This file names the app's uninstrumented control-label gap; it does not
 // close it -- that is scheduled work for the lanes above, not this ledger.
@@ -471,13 +471,13 @@ const UNMATCHED: ControlLabel[] = UNMATCHED_RAW.filter((l) => !excluded(l));
 
 // -- Ratchet -------------------------------------------------------------
 // Measured on this branch (v12m-w3-j) by forcing this const to -1 and
-// reading the printed offender list: 6 labels survive both normalization and
+// reading the printed offender list: 4 labels survive both normalization and
 // the two exclusion tables above -- real frame/app divergences, not fixture
-// noise or a composed-at-render label. Lanes w3-k/w3-l/w3-n drain this same
-// population in parallel; the merge train re-measures the integrated tree
-// and raises (never lowers) this ceiling once, as a merge-train act
-// (DEC-989 wave-123).
-export const FOOTER_LABEL_CEILING = 6;
+// noise or a composed-at-render label. Re-measured on the integrated tree by
+// the wave-128/129 merge train (DEC-989 wave-123): was 6; the TaskFormPage
+// submit-label lane (v12m-w4-m, TASK_FORM_SUBMIT_LABEL) drained two, so the
+// ceiling drops to the measured 4.
+export const FOOTER_LABEL_CEILING = 4;
 
 describe('frame control-label ledger (DEC-976/DEC-967 wave-128, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files', () => {

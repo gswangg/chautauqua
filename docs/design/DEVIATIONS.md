@@ -254,12 +254,18 @@ survives contact with state:
     - Portal form primary (cross-reference task w3-l, which docks this
       control): `docs/design/Chautauqua Public and Portal.dc.html:519`
       docks 'Send this in' as the hotel-form primary. `TaskFormPage`
-      (src/routes/portal/tasks/views.tsx`>Submit</button>`) adopts the
-      frame's docked BAND — geometry, placement, the second-submit idiom
-      — while keeping the app's own word for the action, matching the
-      submit control's label everywhere else a portal form is submitted.
-      Docking a control is a layout decision; renaming it is a vocabulary
-      decision, and this wave settles only the former.
+      adopts the frame's docked BAND — geometry, placement, the
+      second-submit idiom — and, as of task w4-m on this same wave, its
+      word as well: the two submit controls (dock and inline) both render
+      src/routes/portal/tasks/views.tsx`TASK_FORM_SUBMIT_LABEL`, one const
+      declared src/routes/portal/tasks/views.tsx`= "Send this in"`, in
+      place of the "Submit" literal each used to type separately.
+      This row therefore records NO divergence in copy —
+      it stays in this family because the shape is the family's shape:
+      one shared source, two call sites, the frame's per-instance literal
+      never re-typed at either. Docking a control is a layout decision and
+      naming it a vocabulary one; w3-l settled the former, w4-m the
+      latter, and they agree.
     - Cross-reference: `docs/design/Chautauqua Review.dc.html:666` ('Save
       the plan') is the fifth member of this same family, already blessed
       above under "Plan editor phone dock copy is the new-plan captioning,

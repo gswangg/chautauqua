@@ -1938,7 +1938,7 @@ describe('ComposeWizard states the submissions -> recipients relationship once (
     // Exactly one relationship line on the page.
     const lines = screen.getAllByText(/resolved to/);
     expect(lines.length).toBe(1);
-    expect(lines[0].textContent).toBe('1 submission resolved to 1 recipient');
+    expect(lines[0]!.textContent).toBe('1 submission resolved to 1 recipient');
   });
 
   it('multi-speaker case: 1 submission (lead + co-presenter) resolved to 2 recipients', async () => {
@@ -1952,7 +1952,7 @@ describe('ComposeWizard states the submissions -> recipients relationship once (
 
     const lines = screen.getAllByText(/resolved to/);
     expect(lines.length).toBe(1);
-    expect(lines[0].textContent).toBe('1 submission resolved to 2 recipients');
+    expect(lines[0]!.textContent).toBe('1 submission resolved to 2 recipients');
   });
 
   it('multi-submission equal-count case: 2 submissions resolved to 2 recipients', async () => {
@@ -1966,7 +1966,7 @@ describe('ComposeWizard states the submissions -> recipients relationship once (
 
     const lines = screen.getAllByText(/resolved to/);
     expect(lines.length).toBe(1);
-    expect(lines[0].textContent).toBe('2 submissions resolved to 2 recipients');
+    expect(lines[0]!.textContent).toBe('2 submissions resolved to 2 recipients');
   });
 
   it('never restates the recipient-cap sentence -- the relationship line and the cap line are distinct and both present', async () => {

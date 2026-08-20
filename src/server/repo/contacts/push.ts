@@ -2,7 +2,7 @@
 // repo/contacts.ts (contention decomposition, no behavior change). See
 // repo/contacts.ts for the module-level contract notes.
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { createSubmission } from "../submissions/create";
@@ -47,6 +47,13 @@ void DEC_542;
  * applies "when a title IS typed"; a blank/optional title always mints
  * (see attachOrCreateRosterSession below). Returns the submission id, or
  * undefined if no session in this event carries that exact title.
+ *
+ * DEC-558: nothing stops an event holding two sessions with the same title
+ * (clause (b) is new; every pre-existing duplicate is still there), so the
+ * candidate set is not a single row and `.limit(1)` needs a total order.
+ * Oldest-first, id as the tiebreak: the session that has carried the name
+ * longest is the one an organiser typing it is referencing, and the id
+ * makes the order total so the same add always resolves the same way.
  */
 export async function findSubmissionByExactTitle(
   db: Db,
@@ -57,6 +64,7 @@ export async function findSubmissionByExactTitle(
     .select({ id: schema.submission.id })
     .from(schema.submission)
     .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.title, title)))
+    .orderBy(asc(schema.submission.createdAt), asc(schema.submission.id))
     .limit(1);
   return rows[0]?.id;
 }
