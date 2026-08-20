@@ -24,7 +24,9 @@ export function ColumnPicker({ columns, visibleFieldIds, onToggle }: ColumnPicke
 
   return (
     <details className="chq-submissions-columnpicker">
-      <summary>{columnsSummary(columns, visibleFieldIds)}</summary>
+      <summary className="chq-submissions-columnpicker-summary">
+        {columnsSummary(columns, visibleFieldIds)}
+      </summary>
       <fieldset className="chq-submissions-columnpicker-panel">
         <legend>Columns</legend>
         <ul>

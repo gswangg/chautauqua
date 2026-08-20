@@ -89,7 +89,7 @@ export function PreviewPane({ item, attachIcs = false }: { item: RenderedRecipie
             srcDoc={item.html}
           />
           <details className="chq-comms-preview-plaintext-disclosure">
-            <summary>Plain text</summary>
+            <summary className="chq-comms-preview-plaintext-summary">Plain text</summary>
             {renderBody(item)}
           </details>
         </>

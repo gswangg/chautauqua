@@ -63,6 +63,13 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     margin: 28px 0 4px;
   }
   .chq-pub-sessions-day-heading:first-child { margin-top: 0; }
+  /* v12m-w19-d: moved off SessionDescription's inline style="display:inline"
+     (cards.tsx) onto this class -- app/src/inline-style-phone-override.
+     scan.test.ts grades inline style display props against phone
+     overrides, so a real class is the reachable form. Unchanged value:
+     the details element stays inline so "Show more"/the snippet flow with
+     the paragraph text around it rather than opening its own block. */
+  .chq-pub-desc-details { display: inline; }
   /* w4-k: the description snippet lives inside the summary alongside "Show
      more" so it doubles as the collapsed preview -- once the disclosure is
      opened the snippet must disappear or the full description prints
@@ -338,6 +345,23 @@ export const CARDS_PHONE_CSS = `
       align-items: center;
       justify-content: center;
       padding: 0 1px;
+    }
+
+    /* v12m-w19-d (DEC-393/DEC-613 vocabulary widening): SessionDescription's
+       "Show more" disclosure (cards.tsx) -- the only route into the full
+       session description text, a real tap target. The summary element is
+       now in the tap-target scans' tag vocabulary, so this bare
+       .chq-pub-desc-summary class token (added directly on the summary
+       element) carries the full floor grammar: min-height + centred flex
+       + non-zero horizontal padding. display:inline-flex (not flex) keeps
+       the control's intrinsic width rather than stretching it full-bleed
+       inside the surrounding paragraph text, matching this sheet's other
+       inline-flow controls. */
+    .chq-pub-desc-summary {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
     }
   }
 `;

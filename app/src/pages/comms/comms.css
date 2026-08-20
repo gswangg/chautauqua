@@ -1866,12 +1866,31 @@
   }
 
   /* The plain-text disclosure is a control, so it takes the floor too.
-     `display` is left alone deliberately -- flexing a <summary> drops the
-     native disclosure marker. */
-  .chq-comms-preview-plaintext-disclosure > summary {
+     v12m-w19-d (DEC-393/DEC-967 vocabulary widening): `<summary>` now
+     carries its own `.chq-comms-preview-plaintext-summary` class token so
+     the tap-target scans (which now include `summary` in their tag
+     vocabulary) can see this control directly, alongside the existing
+     descendant selector -- same rule, one extra selector, no declaration
+     changed. TRIED `display: flex` first per DESIGN-RULINGS' full floor
+     grammar (min-height + centred flex + non-zero horizontal padding);
+     this file's own prior note is right that it drops the native
+     disclosure marker (the marker only renders under `display: list-item`,
+     the `<summary>` UA default, and any other display value -- flex or
+     inline-flex alike -- suppresses it identically). Since the marker is
+     already lost either way, `display: inline-flex` is used instead of
+     `flex` so the control keeps its intrinsic (non-block) width rather
+     than stretching full-bleed, matching every other inline disclosure
+     affordance on this sheet (ColumnPicker's `.chq-submissions-columnpicker
+     > summary` uses the same inline-flex shape). `align-items: center`
+     completes the centred-flex clause; the existing `padding: 12px 4px`
+     already supplies non-zero horizontal padding. */
+  .chq-comms-preview-plaintext-disclosure > summary,
+  .chq-comms-preview-plaintext-summary {
     min-height: 44px;
     box-sizing: border-box;
     padding: 12px 4px;
+    display: inline-flex;
+    align-items: center;
   }
 
   /* The pre-flight refusal's per-recipient "Place on the agenda ›" ways
