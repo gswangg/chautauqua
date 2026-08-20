@@ -21,8 +21,8 @@ function wrapId(fieldId: string): string {
   return `chq-field-wrap-${fieldId}`;
 }
 
-function FieldControl(props: { field: FormFieldDef; value: unknown; error?: string }) {
-  const { field, value, error } = props;
+function FieldControl(props: { field: FormFieldDef; value: unknown; error?: string; fileReadOnly?: boolean }) {
+  const { field, value, error, fileReadOnly } = props;
   const name = fieldInputName(field.id);
   // DEC-124: the no-red invalid vocabulary, applied by class name (defined
   // once in src/routes/public/cfp.css.ts) plus a real aria-invalid attribute
@@ -114,6 +114,19 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
         />
       );
     case "file":
+      // DEC-041 (wave-117 amendment): a caller that declares file answers
+      // read-only (the portal edit form) gets a readout of the stored
+      // filename -- never a live <input type=file> whose bytes the handler
+      // deliberately drops. No `required`, no `accept`: there is nothing
+      // here for the browser to validate or upload. The public CFP submit
+      // form never passes fileReadOnly, so its live picker is unchanged.
+      if (fileReadOnly) {
+        return (
+          <p class="chq-portal-sub" id={name} data-field-id={field.id}>
+            {typeof value === "string" && value.length > 0 ? value : "No file uploaded"} (read-only)
+          </p>
+        );
+      }
       return (
         <input
           type="file"
@@ -137,8 +150,17 @@ function formatThousands(n: number): string {
 }
 
 /** One labeled field, wrapped in the div the visibility script toggles. */
-export function FormField(props: { field: FormFieldDef; value: unknown; error?: string; visible: boolean }) {
-  const { field, value, error, visible } = props;
+export function FormField(props: {
+  field: FormFieldDef;
+  value: unknown;
+  error?: string;
+  visible: boolean;
+  // DEC-041 (wave-117 amendment): true only for a kind:"file" field the
+  // caller declares read-only -- draws FieldControl's readout instead of a
+  // live picker. Ignored for every other field kind.
+  fileReadOnly?: boolean;
+}) {
+  const { field, value, error, visible, fileReadOnly } = props;
   // DEC-909 wave-111: the live character counter is a LONG-TEXT affordance
   // only -- the pack draws it exclusively on the Abstract field (long_text),
   // never on a short text field, date, or email. Seeded here with the
@@ -160,13 +182,14 @@ export function FormField(props: { field: FormFieldDef; value: unknown; error?: 
             </span>
           ) : null}
         </span>
-        <FieldControl field={field} value={value} error={error} />
+        <FieldControl field={field} value={value} error={error} fileReadOnly={fileReadOnly} />
       </label>
       {field.helpText ? <p class="help">{field.helpText}</p> : null}
       {/* CFP file fields always upload as kind:'handout' (src/routes/public/submit.tsx)
           — the hint must not advertise the recording-only video tier (its cap
-          is derived from VIDEO_MAX_BYTES, see src/domain/files.ts). */}
-      {field.kind === "file" ? <p class="help">{uploadHintText(CFP_FILE_FIELD_KIND)}</p> : null}
+          is derived from VIDEO_MAX_BYTES, see src/domain/files.ts). Not shown
+          for a read-only file readout -- there is no upload to hint about. */}
+      {field.kind === "file" && !fileReadOnly ? <p class="help">{uploadHintText(CFP_FILE_FIELD_KIND)}</p> : null}
       {error ? (
         // DEC-367: errors are distinguished by type (weight/marker), never
         // by colour -- no semantic red anywhere in the palette.
@@ -192,8 +215,14 @@ export function FormFieldsSection(props: {
   // instead of FieldControl's <select>) while every other field/caller
   // keeps this section's ordinary markup untouched.
   excludeIds?: string[];
+  // DEC-041 (wave-117 amendment): field ids (of kind:"file") the caller
+  // declares read-only -- the portal edit form passes every file field's id
+  // here so FieldControl draws a filename readout instead of a live picker
+  // whose bytes the handler deliberately drops. The public CFP submit form
+  // never sets this, so its live picker is unchanged.
+  readOnlyFileIds?: string[];
 }) {
-  const { fields, section, answers, errors, isVisible, excludeIds } = props;
+  const { fields, section, answers, errors, isVisible, excludeIds, readOnlyFileIds } = props;
   const sectionFields = fields
     .filter((f) => f.section === section && !excludeIds?.includes(f.id))
     .sort((a, b) => a.position - b.position);
@@ -205,6 +234,7 @@ export function FormFieldsSection(props: {
           value={answers[field.id]}
           error={errors?.[field.id]}
           visible={isVisible(field, answers)}
+          fileReadOnly={field.kind === "file" && (readOnlyFileIds?.includes(field.id) ?? false)}
         />
       ))}
     </>

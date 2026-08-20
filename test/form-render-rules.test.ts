@@ -132,6 +132,68 @@ describe("FieldControl data-required attribute (DEC-008/DEC-194)", () => {
   });
 });
 
+// DEC-041 (wave-117 amendment): FieldControl's read-only file rendition --
+// no <input type=file>, shows the stored filename -- selected ONLY by the
+// caller-passed fileReadOnly flag, never inferred. A negative control
+// (unflagged) guards the public CFP form's live picker stays unchanged.
+describe("FieldControl read-only file rendition (DEC-041)", () => {
+  const fileField: FormFieldDef = {
+    id: "deck",
+    section: "speaker",
+    kind: "file",
+    label: "Slide deck",
+    required: true,
+    position: 0,
+  };
+
+  it("renders no input[type=file] and shows the stored filename when fileReadOnly is set", () => {
+    const html = FormField({
+      field: fileField,
+      value: "uploads/deck-abc123.pdf",
+      visible: true,
+      fileReadOnly: true,
+    }).toString();
+    expect(html).not.toContain('type="file"');
+    expect(html).toContain("uploads/deck-abc123.pdf");
+    expect(html).toContain("read-only");
+  });
+
+  it("shows the no-file state when fileReadOnly is set and there is no stored answer", () => {
+    const html = FormField({
+      field: fileField,
+      value: undefined,
+      visible: true,
+      fileReadOnly: true,
+    }).toString();
+    expect(html).not.toContain('type="file"');
+    expect(html).toContain("No file uploaded");
+  });
+
+  it("negative control: without the flag, still renders the live picker unchanged (guards the public CFP form)", () => {
+    const html = FormField({
+      field: fileField,
+      value: "uploads/deck-abc123.pdf",
+      visible: true,
+    }).toString();
+    expect(html).toContain('type="file"');
+    expect(html).not.toContain("No file uploaded");
+  });
+
+  it("FormFieldsSection's readOnlyFileIds selects only the named field id", () => {
+    const otherFileField: FormFieldDef = { ...fileField, id: "handout", label: "Handout" };
+    const html = FormFieldsSection({
+      fields: [fileField, otherFileField],
+      section: "speaker",
+      answers: { deck: "uploads/deck.pdf", handout: "uploads/handout.pdf" },
+      isVisible: () => true,
+      readOnlyFileIds: ["deck"],
+    }).toString();
+    // deck is read-only -- handout keeps its live picker, so exactly one
+    // file input renders across the section.
+    expect((html.match(/type="file"/g) ?? []).length).toBe(1);
+  });
+});
+
 describe("RULE_MATCH_JS parity with ruleMatches (DEC-681)", () => {
   it("chqRuleMatches agrees with the server's ruleMatches on every shared case", () => {
     // eslint-disable-next-line @typescript-eslint/no-implied-eval

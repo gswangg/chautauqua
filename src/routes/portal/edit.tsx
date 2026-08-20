@@ -159,6 +159,11 @@ export function EditPage(props: {
   // DEC-532: one predicate built from the FULL field list (a session field
   // can gate a speaker field), shared by both sections below.
   const isVisible = makeVisibilityPredicate(data.fields, answers);
+  // DEC-041 (wave-117 amendment): every file field renders read-only here --
+  // extractAnswers never reads a file part from the body, so the picker
+  // must never be offered either. Passed to both FormFieldsSection calls
+  // below.
+  const readOnlyFileIds = data.fields.filter((f) => f.kind === "file").map((f) => f.id);
   return (
     <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
@@ -190,18 +195,17 @@ export function EditPage(props: {
           {formatEventDate(dayLabelEndInstant(data.form.closeDate, data.form.timezone), data.form.timezone)}
         </p>
       ) : null}
-      {/* DEC-040 amendment (wave 70): this form's FormFieldsSection calls
-          below render a real <input type="file"> for any kind='file' field
-          (form-render.tsx's FieldControl has no read-only variant) even
-          though extractAnswers above explicitly never reads a file input
-          from the body (DEC-041 read-only display) -- enctype is added
-          defensively so a future re-upload path here never silently repeats
-          the exact urlencoded-drops-files bug this wave fixed on the portal
-          task form. */}
+      {/* DEC-041 (wave-117 amendment): this form's FormFieldsSection calls
+          below now render kind='file' fields read-only (a filename readout,
+          no <input type=file>) via readOnlyFileIds, matching what
+          extractAnswers above has always done -- never reads a file part
+          from the body, always carries the stored answer over. enctype is
+          kept regardless: the participants POST at :447-454 shares this
+          form via `formenctype` and still needs it. */}
       <form id="chq-portal-edit-form" method="post" action={`/portal/submissions/${props.submissionId}/edit`} enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <div class="chq-section-label">Session</div>
-        <FormFieldsSection fields={data.fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
+        <FormFieldsSection fields={data.fields} section="session" answers={answers} errors={errors} isVisible={isVisible} readOnlyFileIds={readOnlyFileIds} />
         {tracksEditable ? (
           <fieldset class="chq-cfp-fieldset">
             <legend>Tracks</legend>
@@ -231,19 +235,13 @@ export function EditPage(props: {
           answers={answers}
           errors={errors}
           isVisible={isVisible}
+          readOnlyFileIds={readOnlyFileIds}
         />
         {data.fields
           .filter((f) => lockedFieldName(f.id) === "email")
           .map((f) => (
             <p class="chq-portal-sub">
               Email: {String(answers[f.id] ?? "")} (read-only)
-            </p>
-          ))}
-        {data.fields
-          .filter((f) => f.kind === "file")
-          .map((f) => (
-            <p class="chq-portal-sub">
-              {f.label}: {String(answers[f.id] ?? "No file uploaded")} (read-only)
             </p>
           ))}
       </form>
