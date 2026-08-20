@@ -232,8 +232,13 @@ describe('ContactsTable column allocation (w20-c, DEC-902)', () => {
     // width is literal and the content bled past the measure. The hack's
     // signature is now banned outright by test/fixed-table-column-hack.scan.
     // (`[^}]*` tolerates the explanatory comment inside the block.)
+    // The trailing `[^}]*` is what tolerates DEC-989 wave-111's added
+    // `overflow: hidden; text-overflow: ellipsis;` inside the SAME
+    // unconditional block: this assertion pins that the width and the
+    // nowrap are declared here, top level, not that they are the block's
+    // last two declarations.
     expect(desktopBlock).toMatch(
-      /\.chq-contacts-table \.chq-contacts-col-actions\s*\{[^}]*width:\s*96px;\s*white-space:\s*nowrap;\s*\}/,
+      /\.chq-contacts-table \.chq-contacts-col-actions\s*\{[^}]*width:\s*96px;\s*white-space:\s*nowrap;[^}]*\}/,
     );
 
     // No column class carries a width; Name and email is the sole remainder.

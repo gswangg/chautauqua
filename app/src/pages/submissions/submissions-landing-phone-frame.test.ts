@@ -197,6 +197,30 @@ describe('DEC-385: the submissions phone layer is single-direction', () => {
 
 const EVENT_ID = 'evt-submissions-phone-1';
 
+// One real row, never an empty list. DEC-678's B7 zero-row state drops the
+// whole filter toolbar (ViewTabs + FilterBarSearchSort + FilterBar) when the
+// worklist settles empty with no facet in flight -- pinned in its own right
+// by Submissions.render.test.tsx's "fresh: no facet in flight drops the
+// filter chrome". That is a ROW-COUNT branch, not the phone branch these two
+// assertions exist to rule out, so the fixture below has to put the page in
+// the state where the chrome is drawn at all; otherwise the assertion reads
+// the empty state and says nothing about phone. (It passed on an empty list
+// only until D21 moved this read onto useCachedList, whose module-level
+// cache makes the settled-empty state land on the first frame of the second
+// mount instead of a tick later -- the assertion was racing the read.)
+const FRAME_ROW = {
+  id: 'sub-phone-1',
+  ref: 'S-001',
+  title: 'Taming 40-Minute CI',
+  status: 'pending' as const,
+  contentStatus: 'pending' as const,
+  speakers: [],
+  trackIds: [],
+  submittedAt: 1_700_000_000_000,
+  createdAt: 1_700_000_000_000,
+  slot: null,
+};
+
 function baseRoutes(overrides: Record<string, unknown> = {}) {
   return {
     'GET /api/v1/me': {
@@ -208,7 +232,7 @@ function baseRoutes(overrides: Record<string, unknown> = {}) {
     },
     [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
     [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
-    [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+    [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([FRAME_ROW]),
     ...overrides,
   };
 }
