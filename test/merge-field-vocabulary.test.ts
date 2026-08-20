@@ -35,6 +35,7 @@ describe("merge-field vocabulary (DEC-660)", () => {
       feedbackComments: ["Great talk"],
       taskList: "No outstanding tasks.",
       dueDate: "No due date",
+      sessionTime: "Wed 12 May 09:00",
     });
     expect(new Set(COMPOSE_MERGE_FIELDS)).toEqual(new Set(Object.keys(vars)));
   });

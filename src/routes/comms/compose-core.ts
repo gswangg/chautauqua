@@ -21,7 +21,8 @@ import {
 } from "../../domain/compose";
 import { formatTaskLines, type ReminderAssignment } from "../../domain/reminders";
 import { listOutstandingForEvent } from "../../server/repo/tasks/reminders";
-import { formatCalendarDate } from "../../lib/event-time";
+import { formatCalendarDate, formatDayMedium } from "../../lib/event-time";
+import { clockHHMM } from "../../domain/clock";
 import { formatRef } from "../../domain/ids";
 import { DEC_122 } from "../../decisions";
 import { describeUnresolvedSelection } from "../../lib/refusal-copy"; // DEC-856
@@ -338,6 +339,15 @@ export async function buildRenderTargets(
     }, null);
     const dueDate = earliestDue !== null ? formatCalendarDate(earliestDue) : NO_DUE_DATE_TEXT;
 
+    // DEC-660 (wave 142): sessionTime rides the SAME icsScheduleMap read
+    // that already resolves `scheduled` below — no second query — and is
+    // formatted through the same event-local clock helper (formatDayMedium
+    // + clockHHMM) the compose recipient table's Slot column uses. `null`
+    // when the submission has no schedule_slot row, so buildMergeVars omits
+    // {session_time} entirely for an unscheduled recipient.
+    const slot = icsScheduleMap.get(recipient.submissionId);
+    const sessionTime = slot ? `${formatDayMedium(slot.day)} ${clockHHMM(slot.startMin)}` : null;
+
     const vars = buildMergeVars({
       speakerName: recipient.name,
       talkTitle: submission.title,
@@ -346,6 +356,7 @@ export async function buildRenderTargets(
       feedbackComments,
       taskList,
       dueDate,
+      sessionTime,
     });
     targets.push({
       contactId: recipient.contactId,

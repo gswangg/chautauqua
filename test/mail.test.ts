@@ -33,6 +33,7 @@ describe("renderTemplate", () => {
       "task_due_date",
       "task_list",
       "feedback",
+      "session_time",
     ]);
   });
 

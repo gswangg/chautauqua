@@ -95,6 +95,7 @@ describe("buildMergeVars", () => {
       feedbackComments: ["Loved it"],
       taskList: TASK_LIST,
       dueDate: DUE_DATE,
+      sessionTime: null,
     });
     expect(vars).toEqual({
       speaker_name: "Ada Lovelace",
@@ -107,6 +108,34 @@ describe("buildMergeVars", () => {
     });
   });
 
+  it("DEC-660 (wave 142): sets session_time when the recipient has a scheduled slot", () => {
+    const vars = buildMergeVars({
+      speakerName: "Ada Lovelace",
+      talkTitle: "On Engines",
+      eventName: "DevCon",
+      portalLink: "https://example.com/portal",
+      feedbackComments: null,
+      taskList: TASK_LIST,
+      dueDate: DUE_DATE,
+      sessionTime: "Wed 12 May 09:00",
+    });
+    expect(vars.session_time).toBe("Wed 12 May 09:00");
+  });
+
+  it("DEC-660 (wave 142): omits session_time entirely for an unscheduled recipient (never a blank string)", () => {
+    const vars = buildMergeVars({
+      speakerName: "Ada Lovelace",
+      talkTitle: "On Engines",
+      eventName: "DevCon",
+      portalLink: "https://example.com/portal",
+      feedbackComments: null,
+      taskList: TASK_LIST,
+      dueDate: DUE_DATE,
+      sessionTime: null,
+    });
+    expect("session_time" in vars).toBe(false);
+  });
+
   it("uses the stated no-feedback value when no comments are given but feedback WAS attached (empty array)", () => {
     const vars = buildMergeVars({
       speakerName: "Ada",
@@ -116,6 +145,7 @@ describe("buildMergeVars", () => {
       feedbackComments: [],
       taskList: TASK_LIST,
       dueDate: DUE_DATE,
+      sessionTime: null,
     });
     expect(vars.feedback).toBe(NO_FEEDBACK_TEXT);
   });
@@ -129,6 +159,7 @@ describe("buildMergeVars", () => {
       feedbackComments: null,
       taskList: TASK_LIST,
       dueDate: DUE_DATE,
+      sessionTime: null,
     });
     expect(vars).toEqual({
       speaker_name: "Ada",
@@ -244,6 +275,7 @@ describe("preflightRender", () => {
         feedbackComments: null,
         taskList: "- Submit slides — due Mon, 01 Mar 2027",
         dueDate: "Mon, 01 Mar 2027",
+        sessionTime: null,
       });
       const result = preflightRender(
         [target({ vars })],
@@ -264,6 +296,7 @@ describe("preflightRender", () => {
         feedbackComments: null,
         taskList: NO_TASKS_TEXT,
         dueDate: NO_DUE_DATE_TEXT,
+        sessionTime: null,
       });
       const result = preflightRender(
         [target({ vars })],
