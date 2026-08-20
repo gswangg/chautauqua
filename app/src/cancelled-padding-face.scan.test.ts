@@ -202,17 +202,39 @@ export function isPaintedFace(body: string): { painted: boolean; reason?: string
   return { painted: false };
 }
 
+/** True when `selector` (a single comma-branch, already trimmed) both
+ * mentions `.token` AND describes the RESTING face -- no `:` pseudo-class
+ * and no `[attr]` attribute selector anywhere in the branch. A branch like
+ * `.chq-btn:disabled` or `.chq-btn[aria-disabled='true']` describes a
+ * STATE, not the box a cancelled-padding rule's negative margin drags past
+ * its resting layout edge (DEC-937 wave v12m-w15-g finding). */
+function isRestingBranchForToken(branch: string, token: string): boolean {
+  if (!selectorMentionsToken(branch, token)) return false;
+  if (branch.includes(':')) return false;
+  if (branch.includes('[')) return false;
+  return true;
+}
+
 /** Resolves a class token's face by reading every top-level (non-@media)
  * rule mentioning it, first in `ownCss`, then in `stylesCss` -- reuses
  * anchor-floor.ts's own selectorMentionsToken/topLevelRulesWithExemption
- * walk rather than growing a second copy (DEC-613). */
+ * walk rather than growing a second copy (DEC-613). Each rule's selector is
+ * split on `,` and only RESTING-face branches (see
+ * `isRestingBranchForToken`) are allowed to contribute a face -- a rule
+ * whose only branch mentioning the token is a `:disabled`/`[aria-disabled]`
+ * state describes that state, not the resting box, and must not resolve a
+ * face for the token. */
 export function resolveTokenFace(
   token: string,
   ownCss: string,
   stylesCss: string,
 ): { painted: boolean; reason?: string } {
-  const ownRules = topLevelRulesWithExemption(ownCss).filter((r) => selectorMentionsToken(r.selector, token));
-  const styleRules = topLevelRulesWithExemption(stylesCss).filter((r) => selectorMentionsToken(r.selector, token));
+  const restingRulesFor = (css: string) =>
+    topLevelRulesWithExemption(css).filter((r) =>
+      r.selector.split(',').some((branch) => isRestingBranchForToken(branch.trim(), token)),
+    );
+  const ownRules = restingRulesFor(ownCss);
+  const styleRules = restingRulesFor(stylesCss);
   for (const r of [...ownRules, ...styleRules]) {
     const res = isPaintedFace(r.body);
     if (res.painted) return { painted: true, reason: `${res.reason} (selector \`${r.selector}\`)` };
@@ -512,7 +534,33 @@ const OFFENDERS = FACE_ROWS.filter((r) => r.painted);
 // integrated truth is re-measured here on the merged tree per DEC-989
 // clause a -- never copied from either branch's figure. This ratchet may
 // only fall.
-export const PAINTED_CANCELLED_PADDING_CEILING = 1;
+//
+// DEC-937 (wave v12m-w15-g, TWO predicate repairs, no stylesheet edits):
+// main stood RED at 2 offenders against this ceiling of 1, both false
+// positives from two defects in shared code. (1) `core.ts`'s
+// `selectorMentionsToken` used `\.token\b` -- `-` is a non-word character
+// so `\b` matches INSIDE a hyphenated class name, resolving
+// `.chq-breaks-row-actions .chq-btn` against `.chq-btn-primary`'s painted
+// face and `.chq-speakers-task-edit` against
+// `.chq-speakers-task-edit-panel`'s. Fixed with a `(?![\w-])` boundary.
+// This is exactly the bug the comment two paragraphs up already named and
+// deferred -- now fixed at its source. (2) `resolveTokenFace` here kept
+// every top-level rule mentioning the token including STATE branches
+// (`.chq-btn:disabled, .chq-btn[aria-disabled='true'] { background:
+// var(--chq-disabled-bg) }` describes a disabled STATE, not the resting
+// box a cancelled-padding rule's negative margin drags past its layout
+// edge) -- fixed by filtering each comma-branch to resting-face-only
+// (`isRestingBranchForToken`: mentions the token, no `:` pseudo, no
+// `[attr]`). Ground truth verified by hand: BreaksPanel.tsx renders
+// `.chq-breaks-row-actions`' children `className="chq-btn
+// chq-btn-tertiary"`, `.chq-btn-tertiary` is `background: none; border:
+// none`, `.chq-btn` itself is `border: none` with no background --
+// agenda.css's own comment immediately above the rule already stated the
+// row is NOT painted; the lens was contradicting the sheet. Re-measured by
+// forcing the const to -1 and reading the printed offender list: 0.
+// Lowered to the measured truth in this same commit (DEC-989 wave-123: the
+// draining lane lowers its own measured value).
+export const PAINTED_CANCELLED_PADDING_CEILING = 0;
 
 describe('cancelled-padding face lens (DEC-937 wave-121 amendment)', () => {
   it('found more than one CSS source to scan (vacuous-population tripwire, file side)', () => {
