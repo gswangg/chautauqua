@@ -334,6 +334,15 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
   a.chq-pub-day-pill-active:hover {
     color: var(--chq-on-brand);
   }
+  /* DEC-919: the 390 day strip's terminal "My schedule · N" pill
+     (agenda-controls.tsx DaySwitcher) is phone-only -- the 1600 desktop
+     frame never draws it (docs/design/Chautauqua Public and Portal.dc.html:132
+     "Agenda · 1600" has no such pill in its day-switcher row). Hidden by
+     default (wide-first); restored to flex only inside this sheet's
+     terminal <=700px block below (DEC-385 single-direction). */
+  .chq-pub-my-schedule-pill {
+    display: none;
+  }
 
   /* Itinerary (schedule surface, DEC-022 localStorage-driven -- class name
      ".chq-itinerary-toggle" itself is behavior-critical, read by inline JS
@@ -787,6 +796,15 @@ export const AGENDA_PHONE_CSS = `
        (DEC-989(b)), rather than an empty body. */
     .chq-pub-agenda-day-footer a {
       font-weight: 700;
+    }
+    /* tap-floor-exempt: composition -- .chq-pub-my-schedule-pill never
+       appears in markup without its companion .chq-pub-day-pill class
+       (agenda-controls.tsx's DaySwitcher renders class="chq-pub-day-pill
+       chq-pub-my-schedule-pill"), which already carries the 44px floor a
+       few lines above (min-height, centred flex, padding:0 15px). This
+       rule only ever flips display back on for the phone width; DEC-919. */
+    .chq-pub-my-schedule-pill {
+      display: flex;
     }
   }
 `;

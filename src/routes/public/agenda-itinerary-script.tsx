@@ -44,6 +44,12 @@ export function ItineraryScript(props: { eventSlug: string }) {
   function updateLink(ids){
     var count = document.getElementById('chq-ics-count');
     if (count) { count.textContent = String(ids.length); }
+    // DEC-919: the day strip's terminal "My schedule · N" pill
+    // (agenda-controls.tsx DaySwitcher) mirrors this same ids[] into its
+    // own count id -- never a second count derivation, same idiom as
+    // #chq-ics-count above.
+    var pillCount = document.getElementById('chq-my-schedule-pill-count');
+    if (pillCount) { pillCount.textContent = String(ids.length); }
     // DEC-576 (wave 110 amendment): the SSR phone dock mounts a SECOND
     // .ics anchor (id chq-ics-link-dock, agenda.tsx's AgendaContent/
     // ScheduleContent) beside the rail's own #chq-ics-link -- exactly one
