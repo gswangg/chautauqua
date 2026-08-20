@@ -494,6 +494,14 @@ export interface CampaignVerdict {
   // function -- see buildCampaignReport's SuiteEvidence parameter).
   // campaignDone must never be true without it.
   readonly suiteVerifiedAtSha: string | null;
+  // wave-138 (task w13-cc, DEC-069 repair): the SAME boolean the campaign
+  // verdict already required for `campaignDone` (suiteVerifiedAtSha !== null
+  // AND isAncestor(productSha, suiteVerifiedAtSha)) -- carried onto the
+  // verdict record itself so the pure renderer degrades every row (desktop,
+  // phone, tier-2) uniformly instead of re-deriving a weaker check from
+  // `suiteVerifiedAtSha === null` alone, which ignored the ancestry
+  // requirement and let an unrelated verified sha still print DONE.
+  readonly suiteVerified: boolean;
   readonly campaignDone: boolean;
 }
 
@@ -851,6 +859,7 @@ export function buildCampaignReport(
     phoneDone,
     tier2Done,
     suiteVerifiedAtSha,
+    suiteVerified,
     campaignDone: desktopDone && phoneDone && tier2Done && suiteVerified,
   };
 
@@ -889,15 +898,28 @@ export function formatCampaignReport(report: CampaignReport): string {
     "re-measure by running the owning test.";
 
   const v = report.verdict;
-  const tier2Line =
-    v.suiteVerifiedAtSha === null
-      ? "tier-2:  DECLARED ONLY -- NOT MEASURED"
-      : `tier-2:  ${v.tier2Done ? "all ceilings at 0 -- DONE" : "one or more ceilings above 0 -- NOT DONE"}`;
-  const verdictLines = [
+  // wave-138 (task w13-cc, DEC-069 repair): every row that depends on the
+  // fast-tier suite having been run green -- desktop and phone ledgers
+  // included, not just tier-2 -- degrades to DECLARED ONLY -- NOT MEASURED
+  // together, using the SAME `suiteVerified` boolean `campaignDone` already
+  // required (suiteVerifiedAtSha !== null AND isAncestor(productSha,
+  // suiteVerifiedAtSha)). Previously desktop/phone printed DONE
+  // unconditionally off desktopDone/phoneDone alone, so a suite that had
+  // never been run -- or had been verified at an unrelated sha -- still
+  // reported DONE on those two rows.
+  const tier2Line = !v.suiteVerified
+    ? "tier-2:  DECLARED ONLY -- NOT MEASURED"
+    : `tier-2:  ${v.tier2Done ? "all ceilings at 0 -- DONE" : "one or more ceilings above 0 -- NOT DONE"}`;
+  const desktopLine =
     `desktop: ${v.desktopClaimed} claimed + ${v.desktopDeferred} deviation-deferred ` +
-      `= ${v.desktopClaimed + v.desktopDeferred} / ${v.desktopPopulation} -- ` +
-      `${v.desktopDone ? "DONE" : "NOT DONE"}`,
-    `phone:   ${v.phoneClaimed} / ${v.phonePopulation} -- ${v.phoneDone ? "DONE" : "NOT DONE"}`,
+    `= ${v.desktopClaimed + v.desktopDeferred} / ${v.desktopPopulation} -- ` +
+    (v.suiteVerified ? (v.desktopDone ? "DONE" : "NOT DONE") : "DECLARED ONLY -- NOT MEASURED");
+  const phoneLine =
+    `phone:   ${v.phoneClaimed} / ${v.phonePopulation} -- ` +
+    (v.suiteVerified ? (v.phoneDone ? "DONE" : "NOT DONE") : "DECLARED ONLY -- NOT MEASURED");
+  const verdictLines = [
+    desktopLine,
+    phoneLine,
     tier2Line,
     `CAMPAIGN: ${v.campaignDone ? "DONE" : "NOT DONE"}`,
   ];

@@ -532,4 +532,53 @@ describe("formatCampaignReport", () => {
     expect(formatted).toMatch(/tier-2:\s+DECLARED ONLY -- NOT MEASURED/);
     expect(formatted).toMatch(/CAMPAIGN: NOT DONE/);
   });
+
+  // wave-138 (task w13-cc, DEC-069 repair): scripts/exit-predicate.ts:899-900
+  // printed `desktop: ... -- DONE` and `phone: ... -- DONE` unconditionally,
+  // ignoring suite-verification entirely -- only the tier-2 line and
+  // campaignDone degraded when the suite had never been run green. These
+  // pin the fix directly against the pure `formatCampaignReport` function,
+  // with no shelling out to the script.
+  it("prints DONE on no row (desktop, phone, or tier-2) when the suite was never verified", () => {
+    const report = buildCampaignReport(allGreenFixture(), {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: null,
+      isAncestor: () => true,
+    });
+    const formatted = formatCampaignReport(report);
+    // A bare "DONE" (not the "NOT DONE" that CAMPAIGN always prints while
+    // unverified, since campaignDone requires suiteVerified) must not
+    // appear anywhere in the rendering.
+    expect(formatted).not.toMatch(/(?<!NOT )\bDONE\b/);
+    expect(formatted).toMatch(/desktop:.*DECLARED ONLY -- NOT MEASURED/);
+    expect(formatted).toMatch(/phone: {3}.*DECLARED ONLY -- NOT MEASURED/);
+    expect(formatted).toMatch(/tier-2:\s+DECLARED ONLY -- NOT MEASURED/);
+  });
+
+  it("prints DONE on no row when the suite was verified at an sha that is not an ancestor of the product sha", () => {
+    const report = buildCampaignReport(allGreenFixture(), {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: "unrelated-sha",
+      isAncestor: () => false,
+    });
+    const formatted = formatCampaignReport(report);
+    expect(formatted).not.toMatch(/(?<!NOT )\bDONE\b/);
+    expect(formatted).toMatch(/desktop:.*DECLARED ONLY -- NOT MEASURED/);
+    expect(formatted).toMatch(/phone: {3}.*DECLARED ONLY -- NOT MEASURED/);
+  });
+
+  it("prints the desktop/phone/tier-2 rows exactly as before once the suite is verified against an ancestor sha", () => {
+    const report = buildCampaignReport(allGreenFixture(), VERIFIED_EVIDENCE);
+    const formatted = formatCampaignReport(report);
+    const v = report.verdict;
+    expect(v.suiteVerified).toBe(true);
+    expect(formatted).toMatch(
+      new RegExp(`desktop: .* -- ${v.desktopDone ? "DONE" : "NOT DONE"}`),
+    );
+    expect(formatted).toMatch(new RegExp(`phone: {3}.* -- ${v.phoneDone ? "DONE" : "NOT DONE"}`));
+    expect(formatted).toMatch(
+      new RegExp(`tier-2:\\s+${v.tier2Done ? "all ceilings at 0 -- DONE" : "one or more ceilings above 0 -- NOT DONE"}`),
+    );
+    expect(formatted).toMatch(new RegExp(`CAMPAIGN: ${v.campaignDone ? "DONE" : "NOT DONE"}`));
+  });
 });
