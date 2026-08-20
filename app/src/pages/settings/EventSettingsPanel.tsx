@@ -160,6 +160,17 @@ export function EventSettingsPanel() {
   // banner, and never resets/refetches the form -- the user's unsaved edits
   // in every other field survive the refusal untouched.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // DEC-124 amendment (wave 134): the bare conflict/409 branch below is the
+  // ONE refusal on this form with no `fields` map at all -- the server
+  // names no field, so the slug attribution is this component's own
+  // inference (see the comment at handleSave's catch), and it is also the
+  // ONLY refusal where the whole PATCH is rejected wholesale rather than
+  // per-field -- every other key in the payload was equally live and
+  // equally dropped. The frame (Chautauqua Settings.dc.html:1242-1244)
+  // draws a named panel for exactly this case; `totalLossRefusal` tracks
+  // it separately from `fieldErrors` so the panel and the field-level
+  // ErrorSummary anchor can both render for the same refusal.
+  const [totalLossRefusal, setTotalLossRefusal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [unscheduledNotice, setUnscheduledNotice] = useState<OutsideWindowNotice | null>(null);
@@ -211,6 +222,7 @@ export function EventSettingsPanel() {
     setSaving(true);
     setError(undefined);
     setFieldErrors({});
+    setTotalLossRefusal(false);
     try {
       const updated = await apiPatch<EventDetail>(`/events/${eventId}`, patch);
       const f = toForm(updated);
@@ -244,6 +256,7 @@ export function EventSettingsPanel() {
         setFieldErrors(mapped);
       } else if (err instanceof ApiError && err.code === 'conflict') {
         setFieldErrors({ slug: FIELD_ERROR_COPY.slug! });
+        setTotalLossRefusal(true);
       } else {
         setError(err instanceof ApiError ? err.message : 'Failed to save event settings');
       }
@@ -348,6 +361,19 @@ export function EventSettingsPanel() {
         editing={editing}
       >
         {form ? (
+        <>
+        {totalLossRefusal ? (
+          // DEC-124 amendment (wave 134): Chautauqua Settings.dc.html:1242-1244,
+          // rendered ABOVE the form -- names what was lost (nothing) so the
+          // field-level Slug error below never has to carry that on its own.
+          <div className="chq-settings-refusal-panel" role="alert">
+            <span className="chq-settings-refusal-panel-title">Nothing was saved</span>
+            <span className="chq-settings-refusal-panel-body">
+              The public URL you chose is already taken by another event in this org. Everything else on this page is
+              fine and is still here.
+            </span>
+          </div>
+        ) : null}
         <SettingsEditForm
           onSubmit={(e) => {
             e.preventDefault();
@@ -496,6 +522,7 @@ export function EventSettingsPanel() {
           </SettingsField>
           {saved ? <span role="status"> Saved.</span> : null}
         </SettingsEditForm>
+        </>
         ) : null}
       </SummarySection>
     </>

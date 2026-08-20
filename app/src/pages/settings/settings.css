@@ -163,10 +163,44 @@
    rendered styles. Add new layout containers to the :not() chain rather
    than widening this rule. */
 .chq-settings-panel form,
-.chq-settings-panel > div:not(.chq-settings-row):not(.chq-settings-section-head):not(.chq-settings-tracks-rooms-grid) {
+.chq-settings-panel
+  > div:not(.chq-settings-row):not(.chq-settings-section-head):not(.chq-settings-tracks-rooms-grid):not(
+    .chq-settings-refusal-panel
+  ) {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+/* DEC-124 amendment (wave 134): the total-loss refusal panel, drawn ABOVE
+   the form (Chautauqua Settings.dc.html:1242-1244) -- a bordered,
+   ink-left-edged block naming what was and wasn't lost when the ONE
+   whole-payload refusal on this form (bare conflict/409, no fields map)
+   fires. Excluded from the generic panel-child stack rule above so its own
+   tighter gap wins. */
+.chq-settings-refusal-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid var(--chq-ink);
+  border-left: 4px solid var(--chq-ink);
+  border-radius: 5px;
+  background: var(--chq-surface-sunk);
+  padding: 16px 20px;
+}
+
+.chq-settings-refusal-panel-title {
+  font-family: var(--chq-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-settings-refusal-panel-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--chq-ink-2);
+  max-width: 64ch;
 }
 
 .chq-settings-panel label {

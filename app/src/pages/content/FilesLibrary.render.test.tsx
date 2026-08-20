@@ -104,6 +104,11 @@ describe('FilesLibrary render smoke', () => {
     expect(await screen.findByText('slides.pdf')).toBeInTheDocument();
     expect(screen.getAllByText('Priya Raman', { exact: false }).length).toBeGreaterThan(0);
 
+    // DEC-124 amendment (wave 134): the search placeholder is the frame's
+    // own words verbatim (Chautauqua Content.dc.html:304), real ellipsis
+    // character, not the app's own paraphrase.
+    expect(screen.getByLabelText('Search files')).toHaveAttribute('placeholder', 'Search by file or session…');
+
     // No checkbox and no ZIP control render (wave 41 amendment).
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Download ZIP/ })).not.toBeInTheDocument();
