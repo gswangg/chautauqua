@@ -279,7 +279,14 @@ describe("previewRemindNow (SPEC §10 #3, DEC-441)", () => {
         taskId: r.taskId,
         taskTitle: r.taskTitle,
       }));
-      const expected = buildReminderMessage(eventName, assignments, portalLink);
+      const expected = buildReminderMessage(
+        eventName,
+        assignments,
+        portalLink,
+        row!.firstName,
+        NOW.getTime(),
+        row!.timezone,
+      );
       expect(draft.subject).toBe(expected.subject);
       expect(draft.text).toBe(expected.text);
     }

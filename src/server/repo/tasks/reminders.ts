@@ -28,6 +28,7 @@ import type { KVStore } from "../../../auth/claim";
 import { resolvePortalLinks } from "../portal-link";
 import { findAccountUserIds } from "../comms";
 import { ASSIGNED_LATE_GRACE_DAYS, effectiveAssignmentDueDayLabel } from "../../../domain/task-due";
+import { plural, spellCount } from "../../../domain/count-copy";
 import { ApiError } from "../../http";
 import { dayLabelEndInstant, zonedMinutesToUtc } from "../../../lib/timezone";
 import { formatCalendarDate } from "../../../lib/event-time";
@@ -353,17 +354,57 @@ function toReminderAssignment(r: OutstandingRow): ReminderAssignment {
  * subject, so renaming an event never orphans its own send history. */
 export const REMINDER_SUBJECT_PREFIX = "Action needed: outstanding tasks for ";
 
+/** DEC-441 (Chautauqua Speakers.dc.html:515-535, "What Marcus will read"):
+ * the reminder email's own CTA label -- shared by sendReminderEmails' `cta`
+ * passed to renderEmailHtml below and this scan-satisfying literal, so the
+ * two can never drift into two different button words. */
+export const REMINDER_CTA_LABEL = "Open your tasks";
+
 /** ONE builder for the reminder email body — used by both the real send
  * (sendReminderEmails) and the preview endpoint (previewRemindNow), so a
- * preview draft is always byte-identical to what a send would produce. */
+ * preview draft is always byte-identical to what a send would produce.
+ *
+ * DEC-441 (Chautauqua Speakers.dc.html:515-535, "What Marcus will read"):
+ * greeting, a nudge sentence composed from the open/overdue counts of
+ * `assignments` (via the shared spellCount/plural helpers, domain/count-
+ * copy.ts -- never a hand-spelled ternary), a "Still to do" label over the
+ * task lines, and an organiser/event signature. `now`/`timeZone` are the
+ * SAME inputs buildReminderTaskSummaries already takes below, reused here
+ * rather than re-derived a second time (DEC-613) -- dueDate on each
+ * ReminderAssignment is already the assignment's EFFECTIVE due day label
+ * (listOutstandingForEvent), so "overdue" is judged straight against
+ * dayLabelEndInstant, exactly as buildReminderTaskSummaries does.
+ *
+ * The portal link stays in this PLAIN-TEXT body (never moved into the HTML
+ * shell's cta-only paste line, src/mail/shell.ts:56-68) so a text-only mail
+ * client can still reach the portal.
+ *
+ * NOTE (narrowest-interpretation flag): the frame's signature names a
+ * person ("— Jordan Alvarez, DevFlow Conf"), but the tree has no organiser-
+ * identity field on an event to source a real name from -- signing "— The
+ * {event} team" is the narrowest data-honest reading of "organiser/event
+ * signature line" available today; wiring a real organiser name is a
+ * separate, later slice once that field exists. */
 export function buildReminderMessage(
   eventName: string,
   assignments: ReminderAssignment[],
   portalLink: string,
+  firstName: string,
+  now: number,
+  timeZone: string,
 ): { subject: string; text: string } {
-  const header = renderTemplate("You have outstanding tasks for {event_name}:", {
-    event_name: eventName,
-  });
+  const openCount = assignments.length;
+  const overdueCount = assignments.filter(
+    (a) => a.dueDate !== null && now > dayLabelEndInstant(a.dueDate, timeZone),
+  ).length;
+
+  const openClause = `${spellCount(openCount)} of your speaker ${plural(openCount, "task")} ${plural(openCount, "is", "are")} still open`;
+  const overdueClause =
+    overdueCount > 0
+      ? `, and ${spellCount(overdueCount)} ${plural(overdueCount, "is", "are")} past ${plural(overdueCount, "its", "their")} due date.`
+      : ".";
+  const nudge = `A quick nudge — ${openClause}${overdueClause}`;
+
   // DEC-564/DEC-792: shared task-line renderer — dueDate is a DEC-522
   // calendar day, not an instant, so no timezone is needed to render it
   // (wave-9 amendment: the dead eventTimezone parameter this comment used
@@ -371,8 +412,21 @@ export function buildReminderMessage(
   const taskLines = formatTaskLines(assignments);
   // DEC-559: append the portal link through the same renderTemplate
   // '{portal_link}' idiom the CFP confirmation email uses (submit.tsx).
-  const footer = renderTemplate("{portal_link}", { portal_link: portalLink });
-  const text = [header, ...taskLines, "", footer].join("\n");
+  const portalLine = renderTemplate("{portal_link}", { portal_link: portalLink });
+  const signature = renderTemplate("— The {event_name} team", { event_name: eventName });
+
+  const text = [
+    `Hi ${firstName},`,
+    "",
+    nudge,
+    "",
+    "Still to do",
+    ...taskLines,
+    "",
+    portalLine,
+    "",
+    signature,
+  ].join("\n");
   return { subject: `${REMINDER_SUBJECT_PREFIX}${eventName}`, text };
 }
 
@@ -516,7 +570,14 @@ async function sendReminderEmails(
   // toRelease below reconstruct exactly what the old sequential loop
   // produced.
   const results = await mapWithConcurrency(sendable, MAIL_FANOUT_CONCURRENCY, async ({ group, first, portalLink }) => {
-    const { subject, text: reminderText } = buildReminderMessage(eventName, group.assignments, portalLink);
+    const { subject, text: reminderText } = buildReminderMessage(
+      eventName,
+      group.assignments,
+      portalLink,
+      first.firstName,
+      now.getTime(),
+      first.timezone,
+    );
     await mailer.send({
       to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
       subject,
@@ -524,6 +585,7 @@ async function sendReminderEmails(
       html: renderEmailHtml(reminderText, {
         eventName,
         reason: `you have outstanding tasks for ${eventName}`,
+        cta: { label: REMINDER_CTA_LABEL, href: portalLink },
       }),
       eventId,
       contactId: group.contactId,
@@ -624,7 +686,14 @@ async function writeSkippedReminderLog(
     // skipped log.
     const portalLink = portalLinkMap.get(contactId) ?? "";
     const assignments = rows.map(toReminderAssignment);
-    const { subject, text } = buildReminderMessage(eventName, assignments, portalLink);
+    const { subject, text } = buildReminderMessage(
+      eventName,
+      assignments,
+      portalLink,
+      first.firstName,
+      sentAtMs,
+      first.timezone,
+    );
     await emailLogWriter.write({
       eventId,
       contactId,
@@ -841,7 +910,14 @@ export async function previewRemindNow(
     if (!first) continue;
     const portalLink = portalLinkMap.get(group.contactId);
     if (!portalLink) throw new Error(`no portal link resolved for contactId ${group.contactId}`);
-    const { subject, text } = buildReminderMessage(eventName, group.assignments, portalLink);
+    const { subject, text } = buildReminderMessage(
+      eventName,
+      group.assignments,
+      portalLink,
+      first.firstName,
+      now.getTime(),
+      first.timezone,
+    );
     drafts.push({
       contactId: group.contactId,
       email: first.email,

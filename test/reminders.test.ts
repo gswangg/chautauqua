@@ -170,6 +170,7 @@ describe("planManualReminders still overrides every window (DEC-319)", () => {
 describe("buildReminderMessage task line ordering (DEC-564)", () => {
   const eventName = "DevFlow Conf 2027";
   const portalLink = "https://events.example.com/portal";
+  const firstName = "Marcus";
 
   // Three assignments: one undated, two sharing a due date with different
   // titles. Declared order: dueDate asc (null last), then taskTitle asc,
@@ -179,8 +180,8 @@ describe("buildReminderMessage task line ordering (DEC-564)", () => {
   const dueEarlyB = assignment({ assignmentId: "a_early_b", taskTitle: "Alpha task", dueDate: NOW });
 
   it("renders task lines in the declared order regardless of input order", () => {
-    const forward = buildReminderMessage(eventName, [undated, dueEarlyA, dueEarlyB], portalLink);
-    const reversed = buildReminderMessage(eventName, [dueEarlyB, dueEarlyA, undated], portalLink);
+    const forward = buildReminderMessage(eventName, [undated, dueEarlyA, dueEarlyB], portalLink, firstName, NOW, TZ);
+    const reversed = buildReminderMessage(eventName, [dueEarlyB, dueEarlyA, undated], portalLink, firstName, NOW, TZ);
 
     expect(forward.text).toBe(reversed.text);
     expect(forward.subject).toBe(reversed.subject);
@@ -197,13 +198,39 @@ describe("buildReminderMessage task line ordering (DEC-564)", () => {
   it("does not mutate the caller's input array order", () => {
     const input = [undated, dueEarlyA, dueEarlyB];
     const before = input.map((a) => a.assignmentId);
-    buildReminderMessage(eventName, input, portalLink);
+    buildReminderMessage(eventName, input, portalLink, firstName, NOW, TZ);
     expect(input.map((a) => a.assignmentId)).toEqual(before);
   });
 
-  it("keeps the {portal_link} footer, subject, and signature unchanged by ordering", () => {
-    const forward = buildReminderMessage(eventName, [undated, dueEarlyA, dueEarlyB], portalLink);
+  it("keeps the subject, greeting, portal link, and signature unchanged by ordering", () => {
+    const forward = buildReminderMessage(eventName, [undated, dueEarlyA, dueEarlyB], portalLink, firstName, NOW, TZ);
     expect(forward.subject).toBe(`Action needed: outstanding tasks for ${eventName}`);
-    expect(forward.text.endsWith(portalLink)).toBe(true);
+    expect(forward.text.startsWith(`Hi ${firstName},`)).toBe(true);
+    expect(forward.text).toContain(portalLink);
+    expect(forward.text.endsWith(`— The ${eventName} team`)).toBe(true);
+  });
+
+  it("composes the nudge sentence from open/overdue counts via spellCount/plural", () => {
+    // dueEarlyA and dueEarlyB share dueDate === NOW; dayLabelEndInstant(NOW,
+    // TZ) is the end of NOW's calendar day, which is >= NOW, so neither is
+    // overdue AT exactly NOW -- only undated + two not-yet-overdue tasks are
+    // open, none overdue.
+    const allOpenNoneOverdue = buildReminderMessage(
+      eventName,
+      [undated, dueEarlyA, dueEarlyB],
+      portalLink,
+      firstName,
+      NOW,
+      TZ,
+    );
+    expect(allOpenNoneOverdue.text).toContain("A quick nudge — three of your speaker tasks are still open.");
+
+    // One overdue assignment (due well in the past) alongside one still-open
+    // undated assignment: two open total, one of them overdue.
+    const overdueOne = assignment({ assignmentId: "a_overdue", taskTitle: "Overdue task", dueDate: NOW - 10 * DAY });
+    const mixed = buildReminderMessage(eventName, [undated, overdueOne], portalLink, firstName, NOW, TZ);
+    expect(mixed.text).toContain(
+      "A quick nudge — two of your speaker tasks are still open, and one is past its due date.",
+    );
   });
 });
