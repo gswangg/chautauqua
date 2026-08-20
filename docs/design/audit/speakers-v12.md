@@ -65,7 +65,7 @@ this exact finding) exports `activeFacet(filters)`, a `Record<FacetKey,
 FacetDef>` exhaustiveness-checked against `GridFilterState`, giving each
 single active facet its own `reason`/`escapeLabel`/`clear`. The `q` facet's
 reason (`` `No speakers match "${typed}".` ``) echoes the typed search term,
-matching frame :442's person-name clause pattern. `OnboardingGrid.tsx:1026`
+matching frame :442's person-name clause pattern. `OnboardingGrid.tsx:1062`
 calls `activeFacet(filters)` and, when non-null, renders `EmptyState` with
 `reason={facet.reason(...)}` and `escape={{ label: facet.escapeLabel, ...
 }}` instead of the generic `narrowingDescription`/`'Clear filters'` pair —
@@ -106,8 +106,9 @@ letter-spacing) to match the frame verbatim; weight was already correct
   pills carry 800 (frame's `PEND`/`LATE` constants,
   `font-weight:800`) — the status pill is the heavier face, matching the
   frame. No inversion bug found.
-- **(b) shared 22px pill line**: `speakers.css:212-215`
-  (`td:not(:first-child) { vertical-align: top; padding-top: 46px; }`) still
+- **(b) shared 22px pill line**: `speakers.css:280-283`
+  (`.chq-speakers-grid td:not(:first-child) {`, then `vertical-align: top;
+  padding-top: 46px;`) still
   documents and holds the DEVIATIONS §2 top-align behavior; no divergence
   found against the current row geometry.
 - **(c) task-view.css track sets**: `:166`

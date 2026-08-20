@@ -50,8 +50,10 @@ block of its own, unlike its SPA-side sibling shape
 pattern).
 
 Note: `--chq-motion-color` is already re-bound to `0ms` globally by
-`src/views/theme.ts:705-711` (`THEME_CSS` is inlined ahead of
-`PUBLIC_CSS`/`CHROME_CSS` on every page per `shell.tsx`), so the token
+`src/views/theme.ts:682` (`--chq-motion-color: 0ms;`, inside that sheet's
+reduced-motion block), and `THEME_CSS` is inlined ahead of
+`PUBLIC_CSS`/`CHROME_CSS` on every page per `shell.tsx`
+(`src/views/theme.ts:741` — `__html: THEME_CSS`), so the token
 itself was never literally unreduced in the shipped page. The widened
 scan still requires each transitioning module to carry its own re-bind
 (the rule applied per-module, matching the home.css.ts precedent) rather

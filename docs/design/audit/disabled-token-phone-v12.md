@@ -32,7 +32,7 @@ This is unchanged by the wave-100 amendment below — the checkbox/radio
 `:disabled` rules the base (non-phone) scan was missing are both top-level
 declarations (`app/src/styles.css:2114` sits after its enclosing
 `@media (max-width: 700px)` block already closed at line ~2000; `src/views/theme.ts:368`
-carries no enclosing `@media` at all), so neither one ever entered the
+carries no enclosing media query at all), so neither one ever entered the
 phone-block population above. The phone-block result was, and remains,
 exactly one hit.
 

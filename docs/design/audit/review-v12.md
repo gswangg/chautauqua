@@ -7,15 +7,15 @@ Numbered findings the task window could not resolve within scope.
 > stops reproducing it is rewritten as RESOLVED with a file:line citation of
 > where the behaviour now lives (DEC-976 wave-106).
 
-## 1. RESOLVED (wave 106, app/src/pages/review/Scorecard.tsx:481, app/src/styles.css:2262, app/src/App.tsx:417) — Neither reviewer-scorecard 390 frame draws a tab bar
+## 1. RESOLVED (wave 106, app/src/pages/review/Scorecard.tsx:481, app/src/styles.css:2302, app/src/App.tsx:474) — Neither reviewer-scorecard 390 frame draws a tab bar
 
 `docs/design/Chautauqua Review.dc.html:280-350` ("Reviewer scorecard ·
 /review/plans/:id/submissions/:id") and `:934-1138` ("Scorecard · a
 criterion unscored") both draw the phone device box edge-to-edge with no
 tab bar row. Re-derived against main: the shell-level decision this
 finding correctly deferred has since been made. `App.tsx`'s `PhoneTabBar`
-mounts unconditionally in the shell (`App.tsx:417`), but
-`styles.css:2255-2262` gives the shell a general attribute contract — any
+mounts unconditionally in the shell (`App.tsx:474` — `<PhoneTabBar />`), but
+`styles.css:2302` gives the shell a general attribute contract — any
 page root that sets `data-chq-phone-dock` suppresses the tab bar via
 `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar { display: none }`.
 `Scorecard.tsx:481` opts the reviewer scorecard's page root into that

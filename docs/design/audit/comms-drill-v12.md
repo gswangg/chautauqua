@@ -34,7 +34,7 @@
   (`.chq-comms-editor-actions`, line 361) now also carries
   `.chq-phone-dock`, per DEC-621's wave-98 amendment comment at line
   353-361 ("mount, never re-declare"). The dock/tab-bar exclusivity
-  concern is resolved by the same attribute contract `styles.css:2294`
+  concern is resolved by the same attribute contract `styles.css:2302`
   (`.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`) uses elsewhere.
   Closed.
 - **RESOLVED (wave 106, app/src/pages/comms/TemplatesTab.tsx:203,227)** —

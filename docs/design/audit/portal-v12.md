@@ -132,7 +132,7 @@ via a new `.chq-portal-hero-drill` modifier class, added to those two
 same latent mismatch and are out of this task's file grant:
 `src/routes/portal/index.tsx:471` ("Your session", back-linked — see
 finding 2), `src/routes/portal/index.tsx:537` ("Your submissions",
-back-linked), and `src/routes/portal/tasks/views.tsx:421`/`:492` ("Your
+back-linked), and `src/routes/portal/tasks/views.tsx:473` and :553 ("Your
 tasks" / "Resources", both back-linked but neither is one of this task's
 three named frames). `src/routes/portal/index.tsx:326` (the portal
 dashboard's own "N things to do" H1) is the one genuine cluster-landing

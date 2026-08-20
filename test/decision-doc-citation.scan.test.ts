@@ -425,7 +425,16 @@ const WIDENED_VIOLATIONS: Violation[] = WIDENED_SOURCE_CLASSES.flatMap(({ entrie
 // DIRECTION 1 only, not this ceiling's DIRECTION-1-plus-DIRECTION-2
 // violation count). May only be LOWERED as the four new classes' drift
 // gets fixed, never raised to paper over a regression.
-export const WIDENED_UNRESOLVED_CITATION_CEILING = 20;
+// Lowered 20 -> 0 by the merge train on 2026-08-19 (megabatch gate), forced
+// by the two-sided companion below. The measured count had first RISEN to 29
+// -- above the ceiling -- so the repair was the citations, never the
+// constant: all 29 widened-population rows in docs/design/audit/*.md were
+// re-pointed at the lines that actually carry their quoted receipts (or, for
+// the rows where the scan was reading a neighbouring pointer in a prose list
+// as the receipt, the prose was reflowed so each citation carries its own).
+// Re-measured 0 by running this scan on the integrated tree, per DEC-989
+// clause a.
+export const WIDENED_UNRESOLVED_CITATION_CEILING = 0;
 
 describe("widened citation scan: campaign authority documents (DEC-967 wave-107 doc-integrity lens)", () => {
   it.each(WIDENED_SOURCE_CLASSES)(

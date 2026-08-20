@@ -73,7 +73,7 @@ the citation's receipt, per the task's framing):
 `app/src/tautological-assertion.scan.test.ts`; its doc comment now states the
 true population (0) and what the ceiling means there: any newly-matching
 block is a regression, with no remaining allowance to spend. The
-`known-good: settings-phone-390.frames.test.ts:236 …` sentinel (which had
+`known-good:` sentinel naming settings-phone-390.frames.test.ts:236 (which had
 already gone red on main, re-pointed nowhere — DEC-967 wave 103: a
 live-offender sentinel is deleted when its population empties, never
 re-pointed at another live offender) is deleted; the existing synthetic
