@@ -521,6 +521,34 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
        pill sizes to padding on desktop, per docs/design/README.md
        §Controls. */
     .${ACCENT_BOUND_CLASSES[1]} { min-height: 44px; }
+    /* DEC-393/DEC-367 (w13-ee): the rule above targets ACCENT_BOUND_CLASSES[1]
+       ("chq-pub-day-pill") via a template-literal interpolation --
+       phone-tap-target-ssr.scan.test.ts's own extractor strips template
+       interpolations out of a CSS-in-TS literal before reading selectors
+       (extractCssTsLiteral), so it can never see this token floored
+       through the interpolated form, and reports it "no owning rule at
+       all" even though the pill is fully floored (min-height:44px here,
+       plus the base rule's display:flex/align-items:center/
+       justify-content:center/padding:0 8px at :295-301). This restates
+       the SAME already-declared values under the LITERAL class name,
+       byte-identical, so the scan's population sees what the pill already
+       renders -- not a second, divergent floor. */
+    .chq-pub-day-pill {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+    }
+    /* tap-floor-exempt: composition -- .chq-pub-day-pill-active never
+       appears in markup without its companion .chq-pub-day-pill class
+       (agenda-controls.tsx's DaySwitcher renders class={isActive ?
+       "chq-pub-day-pill chq-pub-day-pill-active" : "chq-pub-day-pill"}),
+       which restates the 44px floor above under the literal selector the
+       scan can see; this rule only ever adds a fill colour on top. */
+    .chq-pub-day-pill-active {
+      background: var(--chq-ink);
+    }
     /* docs/design/Chautauqua Public and Portal.dc.html:395
        \`<span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; margin-top:2px">{{ s.action }}</span>\`
        -- the phone list's per-row action is a bordered button (border,
@@ -686,6 +714,19 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
        "Tue 12" segment -- the fill alone reads as the border colour). */
     .chq-pub-day-pill-active {
       border-color: var(--chq-ink);
+    }
+
+    /* DEC-393/DEC-367 (w13-ee): the phone list's per-row title is the
+       list item's one control into session detail (AgendaItemList's
+       markup) -- floored to the 44px tap target, min-height + centred
+       flex + non-zero horizontal padding, same shape as
+       .chq-pub-schedule-row-title in rail.css.ts. Appended additively,
+       DEC-385 single-direction. */
+    .chq-pub-agenda-list-title {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
     }
   }
 `;

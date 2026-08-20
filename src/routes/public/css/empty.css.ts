@@ -67,4 +67,18 @@ export const EMPTY_CSS = `
     font-size: 13px;
     display: inline-block;
   }
+
+  /* DEC-393/DEC-367 (w13-ee): this sheet's first-ever phone block --
+     .chq-pub-empty-escape is the filtered zero-state's one navigable
+     control (the link back to the surface's bare path), floored to the
+     44px tap target additively. DEC-385 single-direction: desktop is
+     untouched. */
+  @media (max-width: 700px) {
+    .chq-pub-empty-escape {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+  }
 `;
