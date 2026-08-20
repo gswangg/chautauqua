@@ -154,3 +154,18 @@ shared class and files the register delta here for whoever owns
 `modal-frame.css`, rather than forking a page-local heading style. The
 delta is recorded as a register fact, not as a claim on anyone's
 calendar (DEC-518).
+
+**Finding 5 — whether the shell header stands down for the whole
+Contacts cluster during a 390 drill is a SHELL decision, outside any
+page document's file scope (DEC-964, DEC-893).** `PipelineBoard.tsx` and
+`DuplicatesView.tsx` now carry `.chq-phone-head`/`.chq-phone-head-drill`
+for their 390 drill heads. Per DEC-964 the stand-down of the outer shell
+chrome is decided by the shell, not page-locally: the only current setter
+of `data-chq-phone-head` is `Scorecard.tsx:531`, and no Contacts root
+sets it. `ContactsApp.tsx`'s own landing head
+(`.chq-contacts-title-row` / `.chq-contacts-tabstrip-row`) IS stood down
+via a markup gate (`!(isPhone && panel !== 'directory')`) so it does not
+double up above a drill's own head band; the outer app shell chrome
+above `.chq-page` for Contacts is a separate register surface. Recorded
+here as a register fact about where the decision lives, not as a claim
+on anyone's calendar (DEC-518).

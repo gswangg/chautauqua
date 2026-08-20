@@ -24,6 +24,8 @@ import { DuplicateRow } from './DuplicateRow';
 import { EmptyState } from '../../components/EmptyState';
 import type { DuplicateGroup } from './types';
 import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
+import { countOf } from '../../lib/plural';
+import { useIsPhone } from '../../lib/useIsPhone';
 import './contacts-panels.css';
 
 interface Props {
@@ -38,13 +40,18 @@ interface Props {
   // the pair to drop from THIS session's list, read once on mount exactly
   // like initialNotice.
   initialDismissPairIds?: string[] | null;
+  // DEC-964: the 390 drill's own back control -- Duplicates has no head of
+  // its own on desktop, so this only fires from the phone-only drill head
+  // below, mirroring PipelineBoard's backToDirectory.
+  onBack?: () => void;
 }
 
 function pairKey(contactIds: string[]): string {
   return [...contactIds].sort().join(',');
 }
 
-export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds }: Props) {
+export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds, onBack }: Props) {
+  const isPhone = useIsPhone();
   const [groups, setGroups] = useState<DuplicateGroup[]>([]);
   // DEC-711 amendment (wave 40): the envelope's own TRUE total (never
   // groups.length, which is only whatever pages have been loaded so far) --
@@ -146,6 +153,22 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
 
   return (
     <div className="chq-contacts-duplicates">
+      {/* v12 has no 390 frame of its own for Duplicates (DEC-964) -- this
+          head is derived from the "Pipeline · 390" frame's drill head
+          (docs/design/Chautauqua Contacts.dc.html:448-451: "‹ Contacts",
+          the H1, the 13px count line), never invented and never scaled up
+          from the desktop artifact. Gated on useIsPhone() (false wherever
+          matchMedia is absent, incl. jsdom) so desktop and
+          DuplicatesView.render.test.tsx are untouched. */}
+      {isPhone && (
+        <div className="chq-phone-head chq-phone-head-drill">
+          <button type="button" className="chq-link-button chq-phone-back" onClick={onBack}>
+            &lsaquo; Contacts
+          </button>
+          <h1 className="chq-page-title">Duplicates</h1>
+          <span className="chq-summary">{countOf(statedTotal, 'possible duplicate')}</span>
+        </div>
+      )}
       <h2 className="chq-section-label">
         <span>Possible duplicates</span> <span className="chq-contacts-pipeline-caption">· {statedTotal}</span>
       </h2>
