@@ -660,4 +660,16 @@
     min-width: 0;
   }
   /* -- end former 602 (terminal) block -- */
+
+  /* w8-d (DEC-989/DEC-385): fixed control words -- the top-level rules'
+     white-space:nowrap (:120, :421) carry no escape of their own, and the
+     scan's blind predicate never sees either because both selectors
+     already have a phone rule above (:516, :548). Truncate rather than
+     overflow the 358px budget. */
+  .chq-overview-toolbar-btn,
+  .chq-overview-link-btn {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
 }

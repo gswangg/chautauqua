@@ -888,6 +888,17 @@
     padding: 0 4px;
   }
 
+  /* w8-d (DEC-989/DEC-385): fixed control words ('Previous'/'Next') --
+     the top-level rule's white-space:nowrap (:88-90) carries no escape,
+     and the scan's blind predicate never sees it because this selector
+     already has a phone rule (above). Truncate rather than overflow. */
+  .chq-detail-position-prev,
+  .chq-detail-position-next {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* DEC-393 wave-87 amendment: 'Delete this submission' is a bare <Link>
      (no .chq-btn) -- the row-action-anchor floor evasion. */
   .chq-detail-delete-link {
@@ -1202,6 +1213,14 @@
     align-items: center;
     min-height: 44px;
     padding: 0 8px;
+    /* w8-d (DEC-989/DEC-385): fixed control word ("Delete this
+       submission") -- the top-level rule's white-space:nowrap (:838)
+       carries no escape of its own, and the scan's blind predicate never
+       sees it because this selector already has a phone rule (this one).
+       Truncate rather than let it push the row past the 358px budget. */
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* v12m-w1-h: head band to frame. docs/design/Chautauqua
@@ -1280,6 +1299,24 @@
   .chq-submission-history-current,
   .chq-answer-file-size {
     white-space: normal;
+  }
+
+  /* w8-d (DEC-989/DEC-385): the base rule (:631-632) sets
+     grid-template-columns: 1fr 150px 210px auto -- 150px + 210px fixed
+     tracks + 18px gap = 378px against the 358px budget. The blind
+     predicate's phone-selector-parts check treats this selector as
+     already covered (the display:block card-reflow rule above at :1035
+     names it too, among others), but that rule's selector
+     (`.chq-detail-page .chq-participants-table ... tr`, ONE type token
+     after the two classes) is LOWER specificity than this file's own
+     `thead tr`/`tbody tr` pair (TWO type tokens) -- the higher-specificity
+     grid rule wins the cascade regardless of media source order, so the
+     table never actually reflowed to block at 390. Appended at the exact
+     same selector so this rule's later source position breaks the tie at
+     equal specificity. */
+  .chq-detail-page .chq-participants-table thead tr,
+  .chq-detail-page .chq-participants-table tbody tr {
+    display: block;
   }
 }
 

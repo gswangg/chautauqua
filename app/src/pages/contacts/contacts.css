@@ -943,6 +943,13 @@
     width: 100%;
     min-height: 48px;
     padding: 0 16px;
+    /* w8-d (DEC-989/DEC-385): fixed control word ('Delete this contact')
+       -- the top-level rule's white-space:nowrap (:591-593) carries no
+       escape, and the scan's blind predicate never sees it because this
+       selector already has a phone rule (this one). Truncate rather than
+       overflow the 358px budget. */
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Modal frame "New contact" at 390: the two-up First/Last and
