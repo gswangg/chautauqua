@@ -309,6 +309,12 @@ describe("buildCampaignReport", () => {
     // scripts/exit-predicate.ts's CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES
     // and in this file's baseFixture/allGreenFixture in the same commit, but
     // the row-count pin here was not bumped with them: 25 -> 26.
+    // wave-143 (task w18-g, DEC-069/DEC-967 post-train instrument re-green):
+    // wave-17-c wired SSR_CLASSLESS_ANCHOR_CEILING into both
+    // CAMPAIGN_CONSTANT_NAMES and TIER2_CEILING_NAMES without touching this
+    // assertion -- re-derived by running buildCampaignReport over
+    // baseFixture() at HEAD (26 rows), not by self-comparing report.rows'
+    // own length: 25 -> 26.
     expect(report.rows).toHaveLength(26);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
