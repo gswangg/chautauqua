@@ -17,6 +17,9 @@
   (source-order win, DEC-385). The SCAN WIDENING also landed:
   app/src/phone-block-visibility.test.ts:304 now tests
   `/phone/.test(token)` rather than a `chq-phone-*` prefix only.
+  CLOSED (wave 115): app/src/pages/review/review.css:2039 `.chq-review-criteria-count-phone {`
+  CLOSED (wave 115): app/src/pages/review/review.css:2043 `.chq-review-reviewers-count-phone {`
+  CLOSED (wave 115): app/src/phone-block-visibility.test.ts:304 `if (token && /phone/.test(token))`
 
 ## Speakers-cluster edge MAJORs
 - Filtered-empty state keeps table footer chrome (legend + disabled pager)
@@ -30,6 +33,7 @@
 ## Pre-campaign admin MAJORs
 - Plan criteria column heads off by one track ("Type" missing; WEIGHT over
   Type column) — 1d2d9bdb.
+  CLOSED (wave 115): app/src/pages/review/PlanEditor.tsx:1701 `reviewers · optional</span><span>Type</span><span>Weight</span>`
 - .chq-detail-footer shrink-wraps; "Delete this session" centres at x=739
   in a left-ragged layout.
 - .chq-settings-row-hint inherits text-align:right; tracks/rooms refusal
