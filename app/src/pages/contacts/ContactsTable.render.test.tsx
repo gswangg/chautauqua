@@ -195,16 +195,15 @@ describe('ContactsTable empty states (B7 rule 6, DEC-678)', () => {
   });
 });
 
-// w20-c (DEC-902 amendment): docs/design/Chautauqua Contacts.dc.html:97/101
-// (`display:grid; grid-template-columns:26px 1fr 130px 118px auto`)
-// give the directory table an exact track list -- 26px 1fr 130px 118px
-// auto -- but table-layout:auto left every column unwidthed. Pin the width
-// class on each <th> and the table-layout:fixed + widths in styles.css.
 describe('ContactsTable column allocation (w20-c, DEC-902)', () => {
   it('marks the select, company, labels and actions headers with their width-hook classes, leaving Name and email the sole unwidthed column', () => {
     renderTable();
     const table = screen.getByRole('table');
     const headers = within(table).getAllByRole('columnheader');
+    // w20-c (DEC-902 amendment): docs/design/Chautauqua Contacts.dc.html:97/101
+    // (`display:grid; grid-template-columns:26px 1fr 130px 118px auto`) give
+    // the directory table an exact track list, but table-layout:auto left
+    // every column unwidthed. Pin the width class on each <th> below.
     expect(headers).toHaveLength(5);
     expect(headers[0]).toHaveClass('chq-contacts-col-select');
     expect(headers[1]).toHaveTextContent('Name and email');

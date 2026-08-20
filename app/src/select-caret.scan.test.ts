@@ -1,9 +1,10 @@
 // DEC-993 (wave-19 amendment, DESIGN-RULINGS B8): "the ▾ on a select-like
 // control always sits at the right edge of the control in muted ink
 // (#565A4B), never as the last glyph of the label" -- the frames render it
-// as its own element every time (docs/design/Chautauqua Speakers.dc.html:
-// 68-70 and :91; app/src/components/EventSwitcher.tsx's
-// .chq-eventswitcher-caret is the reference shape this scan enforces).
+// as its own element every time; app/src/components/EventSwitcher.tsx's
+// .chq-eventswitcher-caret is the reference shape this scan enforces (the
+// exact frame citation for that grammar sits beside the loop's own
+// expect() below, next to the assertion it receipts).
 // This is a source-scan (mirroring app/src/phone-block-visibility.test.ts):
 // every *.tsx under app/src/** AND src/** is read as text (DEC-808
 // wave-99 amendment -- B8 governs the whole product, and Hono's SSR JSX
@@ -196,6 +197,11 @@ describe('select-caret scan (DEC-993 wave-19 amendment, DESIGN-RULINGS B8)', () 
         if (!consumed.has(idx)) {
           const line = content.slice(0, idx).split('\n').length;
           const key = `${rel}:${line}`;
+          // DEC-993 (DESIGN-RULINGS B8): docs/design/Chautauqua
+          // Speakers.dc.html: 68-70 gives the caret its own element, e.g.
+          // `<span style="color:#565A4B; padding-left:6px">▾</span>` (and
+          // :91 repeats the same shape) -- the assertion below enforces
+          // exactly that split.
           expect(
             DISCLOSURE_TOGGLE_OK_KEYS.has(key),
             `${key}: bare ▾ is not inside a className="*-caret" element and is not ` +

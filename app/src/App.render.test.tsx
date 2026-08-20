@@ -276,10 +276,6 @@ describe('Desktop header single row + identity (DEC-576/369)', () => {
     expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
   });
 
-  // DEC-369: the two design sources differ deliberately -- organizer chrome
-  // reads "JORDAN A." (initials form), reviewer chrome reads the full
-  // surname, "SAM WHITFIELD" (docs/design/Chautauqua Review.dc.html:152,313
-  // `</div>`).
   it('renders the reviewer full name, not the organizer initials form', async () => {
     mockApi({
       'GET /api/v1/me': {
@@ -295,6 +291,10 @@ describe('Desktop header single row + identity (DEC-576/369)', () => {
     render(<App />);
 
     const header = await screen.findByRole('banner');
+    // DEC-369: the two design sources differ deliberately -- organizer
+    // chrome reads "JORDAN A." (initials form), reviewer chrome reads the
+    // full surname, "SAM WHITFIELD" (docs/design/Chautauqua
+    // Review.dc.html:152,313 `</div>`).
     await waitFor(() => {
       expect(within(header).getByText('SAM WHITFIELD', { exact: false })).toBeInTheDocument();
     });

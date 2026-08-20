@@ -129,14 +129,15 @@ describe('RecentSends', () => {
     expect(screen.getByText('0 sent · 3 failed')).toBeInTheDocument();
   });
 
-  // DEC-238 (wave-8 amendment, sha efb77e4a): the frame's own grammar
-  // (docs/design/Chautauqua Comms.dc.html:827-832, `return rows.map(([when,
-  // subject, sent, skipped, failed, template]) => {`) is 'N sent · N skipped
-  // · N failed', each clause appended only when non-zero, in that order.
   it("appends '· N skipped' only when a skip exists, before any failed clause", () => {
     render(
       <RecentSends eventId={EVENT_ID} batchesLoaded batches={[batch({ statusCounts: { sent: 4, skipped: 2 } })]} templatesById={{}} />,
     );
+    // DEC-238 (wave-8 amendment, sha efb77e4a): the frame's own grammar
+    // (docs/design/Chautauqua Comms.dc.html:827-832, `return rows.map(([when,
+    // subject, sent, skipped, failed, template]) => {`) is 'N sent · N
+    // skipped · N failed', each clause appended only when non-zero, in that
+    // order.
     expect(screen.getByText('4 sent · 2 skipped')).toBeInTheDocument();
     expect(screen.queryByText(/failed/)).not.toBeInTheDocument();
   });
