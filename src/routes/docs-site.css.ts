@@ -421,6 +421,70 @@ export const DOCS_SITE_CSS = `
       align-items: center;
       padding: 0 4px;
     }
+
+    /* DEC-393/DEC-367 (wave-138 sweep, task w13-ff): bare-anchor 44px floor
+       for the remaining unfloored SSR docs tokens. Every rule below is
+       additive inside this ALREADY-PRESENT terminal phone block -- no new
+       block, desktop untouched (DEC-385). */
+
+    /* .chq-docs-brandrow's own align-items:baseline (base rule, line 49)
+       exists to reconcile the wordmark's optical nudge with .chq-docs-suffix
+       per DESIGN-RULINGS.md's wordmark note; switching to centred alignment
+       is phone-only here so the wordmark link itself can take a real flex
+       floor without fighting a baseline-computed box. The -3px top nudge on
+       the run is untouched. */
+    .chq-docs-brandrow { align-items: center; }
+    .chq-docs-wordmark {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 4px;
+      margin: 0 -4px;
+    }
+
+    /* Article title -- a bare anchor alone on its own line inside
+       .chq-docs-article-row / .chq-docs-article-head (three DOM sites,
+       docs-site.tsx). */
+    .chq-docs-article-title {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      margin: 0 -4px;
+    }
+    /* The leaving-row composition (.chq-docs-article-title
+       .chq-docs-leaving-row-link on the same <a>, docs-site.tsx:352) already
+       inherits the floor above through the cascade (only "display" competes,
+       and the more-specific desktop compound rule at line 211 wins that one
+       property with inline-flex, which is still centred flex) -- this rule
+       exists so the LEAVING-ROW-LINK TOKEN ITSELF carries a declared floor,
+       not just the co-composed title token (DEC-393: a shared token scanned
+       independently needs its own declaration). */
+    .chq-docs-leaving-row-link { min-height: 44px; }
+
+    /* Sticky side-nav links -- .chq-docs-nav-group is a flex column, one
+       link per row (docs-site.tsx:279-280). Desktop's own 11px left inset
+       (line 96) already reads as non-zero horizontal padding, but the
+       phone-only rule restates the full padding pair rather than leaning on
+       that partial value, matching DESIGN-RULINGS:189's "an undeclared
+       height is the second evasion mode" caution. */
+    .chq-docs-nav-link {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 8px 11px;
+    }
+    .chq-docs-nav-link-active { min-height: 44px; }
+
+    /* Where-next row -- the left "where" column of a 150px/1fr grid
+       (docs-site.tsx:313), a bare anchor alone in its own cell. */
+    .chq-docs-where-next-where {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      margin: 0 -4px;
+    }
   }
 `;
 

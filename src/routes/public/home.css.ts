@@ -130,6 +130,14 @@ export const HOME_CSS = `
   /* Inline flow, not inline-flex: a flex link takes its baseline from the
      SVG's bottom edge, floating the whole "mark + name" above the sentence's
      baseline. In inline flow the mark's vertical-align nudge works. */
+  /* tap-floor-exempt: this bare selector's only DOM use is the "Running on
+     [octocat] Chautauqua" credit link, an anchor embedded mid-sentence in
+     .chq-home-footer-text's running prose (root.tsx's Footer) -- not a
+     standalone tap target, and turning it into a flex block would break the
+     vertical-align mark nudge documented immediately above. The one
+     standalone composition of this token, .chq-home-footer-link-end ("API
+     docs"), already carries its own 44px floor in the phone block below
+     (DEC-393/DEC-367 wave-138 sweep, task w13-ff). */
   .chq-home-footer-link { font-weight: 700; color: var(--chq-brand); white-space: nowrap; text-decoration: none; }
   .chq-home-footer-link-end { margin-left: auto; font-size: 12px; }
   /* FINDING (v12 mobile campaign w2, not fixed in this lane): the
@@ -230,8 +238,14 @@ export const HOME_CSS = `
     .chq-home-dates { font-family: inherit; font-size: 13px; font-weight: 400; color: var(--chq-muted); }
     .chq-home-venue { font-size: 13px; }
     /* :134 \`font-size:20px; font-weight:600; letter-spacing:-0.025em;
-       line-height:1.2\` -- the open-cfp row's name. */
-    .chq-home-name { font-size: 20px; }
+       line-height:1.2\` -- the open-cfp row's name. DEC-393/DEC-367
+       (wave-138 sweep, task w13-ff): the row title is a bare anchor sitting
+       alone on its own line inside .chq-home-info's flex column (both
+       OpenCfpRow and PublishedRow share this class) -- min-height:44px plus
+       centred flex plus horizontal padding is the floor DESIGN-RULINGS:189
+       names, added here rather than relying on the row's own padding since
+       an undeclared height is the ruling's second evasion mode. */
+    .chq-home-name { font-size: 20px; min-height: 44px; display: flex; align-items: center; padding: 0 4px; margin: 0 -4px; }
     /* The base-scope \`.chq-home-row-published .chq-home-name\` override
        (21px, line 114 above) outranks the bare .chq-home-name rule just
        above on specificity alone, so the published row's own name needs its
@@ -300,8 +314,10 @@ export const HOME_CSS = `
     }
     .chq-home-archive-dates { grid-column: 1 / -1; order: -1; }
     /* :162 \`font-size:16px; font-weight:600; letter-spacing:-0.02em\` --
-       desktop is 17px. */
-    .chq-home-archive-name { font-size: 16px; }
+       desktop is 17px. DEC-393/DEC-367 (wave-138 sweep, task w13-ff): same
+       floor treatment as the bare .chq-home-name above -- alone on its own
+       line inside .chq-home-archive-info's flex column. */
+    .chq-home-archive-name { font-size: 16px; min-height: 44px; display: flex; align-items: center; padding: 0 4px; margin: 0 -4px; }
     /* :163 \`font-size:12px; color:#565A4B\` -- the shared .chq-home-meta
        class is 13px at base scope (used by every row family); the archive
        row's own meta line narrows to the frame's 12px here. */
