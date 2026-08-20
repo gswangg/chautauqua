@@ -38,6 +38,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
       bio: null,
       socialLinks: [],
     },
+    headshotFile: null,
     participation: {
       participantId: 'p-1',
       submissionId: 'sub-1',

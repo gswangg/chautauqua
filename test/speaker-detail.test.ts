@@ -147,9 +147,15 @@ function assignmentRow(assignmentId: string, taskId: string, opts: Partial<Recor
     fileName: null,
     fileSizeBytes: null,
     fileVersionNo: null,
+    // DEC-930 (amendment, wave 115): every Files row names its uploader and
+    // its timestamp, so the join now carries both off schema.file.
+    fileUploadedAt: null,
+    fileUploadedByContactId: null,
     ...opts,
   };
 }
+
+const UPLOADED_AT = Date.UTC(2026, 3, 8, 14, 5);
 
 describe("DEC-930 getSpeakerDetail", () => {
   it("returns the exact payload shape for a roster contact with a session and a task", async () => {
@@ -158,7 +164,16 @@ describe("DEC-930 getSpeakerDetail", () => {
       event: [eventRow()],
       participant: [participantRow("sub-1", 14)],
       scheduleSlot: [{ submissionId: "sub-1", day: "2026-06-01", startMin: 540, endMin: 600, roomName: "Ballroom A" }],
-      taskAssignment: [assignmentRow("assign-1", "task-1", { fileId: "file-1", fileName: "slides.pdf", fileSizeBytes: 1024, fileVersionNo: 2 })],
+      taskAssignment: [
+        assignmentRow("assign-1", "task-1", {
+          fileId: "file-1",
+          fileName: "slides.pdf",
+          fileSizeBytes: 1024,
+          fileVersionNo: 2,
+          fileUploadedAt: new Date(UPLOADED_AT),
+          fileUploadedByContactId: CONTACT_ID,
+        }),
+      ],
     });
 
     const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
@@ -179,6 +194,9 @@ describe("DEC-930 getSpeakerDetail", () => {
         bio: null,
         socialLinks: [],
       },
+      // DEC-930 (amendment, wave 115): no headshot on this contact, so no
+      // file row is read for one and the Files section has nothing to add.
+      headshotFile: null,
       participation: {
         participantId: "p-sub-1",
         submissionId: "sub-1",
@@ -209,7 +227,17 @@ describe("DEC-930 getSpeakerDetail", () => {
           dueDate: null,
           status: "pending",
           completedAt: null,
-          file: { id: "file-1", filename: "slides.pdf", sizeBytes: 1024, versionNo: 2 },
+          file: {
+            id: "file-1",
+            filename: "slides.pdf",
+            sizeBytes: 1024,
+            versionNo: 2,
+            // DEC-930 (amendment, wave 115): the speaker uploaded it, so the
+            // uploader resolves from the contact row already in hand -- no
+            // extra query is issued for the speaker themselves.
+            uploadedAt: UPLOADED_AT,
+            uploaderName: "Ada Lovelace",
+          },
           // Design pack v12: the detail's Remind link states this speaker's
           // reminder history for THIS task. null = never reminded, which is
           // the only reminder fact the schema records per assignment (there

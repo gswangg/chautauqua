@@ -1202,10 +1202,6 @@ button.chq-speakers-status-overdue:hover {
   border: 1px solid var(--chq-rule);
 }
 
-.chq-speaker-detail-headshot-download {
-  font-size: 11px;
-}
-
 .chq-speaker-detail-titles {
   display: flex;
   flex-direction: column;
@@ -1373,6 +1369,25 @@ button.chq-speakers-status-overdue:hover {
   font-family: var(--chq-font-display);
   font-size: 14px;
   font-weight: 700;
+}
+
+/* DEC-930 (amendment, wave 115): the frame's name cell (docs/design/
+   Chautauqua Speakers.dc.html:393) gains an uploader/timestamp subline
+   beneath the filename -- the same file-cell-with-subline anatomy the admin
+   Files library already uses -- so the row keeps the frame's FOUR cells
+   (DEC-982: a shared row grid is a contract on cell count) while stating who
+   put the file there and when. */
+.chq-speaker-detail-file-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.chq-speaker-detail-file-who {
+  font-size: 12px;
+  color: var(--chq-muted);
 }
 
 .chq-speaker-detail-task-remind {

@@ -35,6 +35,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
       bio: null,
       socialLinks: [],
     },
+    headshotFile: null,
     participation: {
       participantId: 'p-1',
       submissionId: 'sub-1',
@@ -65,7 +66,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
         dueDate: Date.UTC(2026, 0, 15),
         status: 'complete',
         completedAt: 1700000000000,
-        file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2 },
+        file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2, uploadedAt: Date.UTC(2026, 0, 14, 9, 30), uploaderName: 'Grace Hopper' },
         lastRemindedAt: null,
         overdue: false,
       },
@@ -312,7 +313,11 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(identity?.querySelector('.chq-speaker-detail-headshot-placeholder')).toBeInTheDocument();
   });
 
-  it('a present headshot renders an image plus a tertiary Download link carrying the download attribute', async () => {
+  // DEC-930 (amendment, wave 115): the identity block is a PORTRAIT. The
+  // download moved into the Files section, where it arrives with the
+  // filename, uploader and timestamp the bare link never carried -- the
+  // eval defect filed in all five runs.
+  it('a present headshot renders the portrait alone — no bare Download beside the avatar', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
         contact: { ...baseDetail().contact, headshotFileId: 'file-hs-1' },
@@ -325,10 +330,75 @@ describe('SpeakerDetailPage render smoke', () => {
     const identity = document.querySelector('.chq-speaker-detail-identity');
     const img = identity?.querySelector('img.chq-speaker-detail-headshot');
     expect(img).toHaveAttribute('src', '/headshots/file-hs-1');
+    expect(identity?.querySelector('.chq-speaker-detail-headshot-download')).not.toBeInTheDocument();
+  });
 
-    const downloadLink = identity?.querySelector('.chq-speaker-detail-headshot-download');
-    expect(downloadLink).toHaveAttribute('href', '/headshots/file-hs-1');
-    expect(downloadLink).toHaveAttribute('download');
+  // DEC-930 (amendment, wave 115): THE eval regression — a portal-uploaded
+  // headshot is a file object and the record's Files table listed none of
+  // it (no filename, no uploader, no timestamp), while task uploads did.
+  it('lists the current headshot in Files as a full row: filename, uploader, timestamp and a /headshots/ Download', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        contact: { ...baseDetail().contact, headshotFileId: 'file-hs-1' },
+        headshotFile: {
+          id: 'file-hs-1',
+          filename: 'ada-lovelace-headshot.jpg',
+          sizeBytes: 51200,
+          versionNo: 1,
+          uploadedAt: Date.UTC(2026, 3, 8, 14, 5),
+          uploaderName: 'Ada Lovelace',
+        },
+      }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const table = screen.getByRole('table', { name: 'Files' });
+    const row = [...table.querySelectorAll('.chq-speaker-detail-files-row')].find((r) =>
+      r.textContent?.includes('ada-lovelace-headshot.jpg'),
+    );
+    expect(row).toBeDefined();
+    // Uploaded-by and when, in the same subline the admin Files library uses.
+    expect(row?.querySelector('.chq-speaker-detail-file-who')?.textContent).toContain('Ada Lovelace');
+    expect(row?.querySelector('.chq-speaker-detail-file-who')?.textContent).toContain('8 Apr');
+    // Downloads through the gated headshot route, not /files/:id.
+    expect(row?.querySelector('a.chq-speakers-file-link')).toHaveAttribute('href', '/headshots/file-hs-1');
+    // The task upload keeps its own /files/:id link and gains the same subline.
+    const taskRow = [...table.querySelectorAll('.chq-speaker-detail-files-row')].find((r) =>
+      r.textContent?.includes('slides-final.pdf'),
+    );
+    expect(taskRow?.querySelector('a.chq-speakers-file-link')).toHaveAttribute('href', '/files/file-1');
+    expect(taskRow?.querySelector('.chq-speaker-detail-file-who')?.textContent).toContain('Grace Hopper');
+    // Files · N counts the headshot too.
+    expect(screen.getByText('Files · 2')).toBeInTheDocument();
+  });
+
+  it('renders an honest dash, never a guessed name, when a file row records no uploader', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        contact: { ...baseDetail().contact, headshotFileId: null },
+        tasks: [
+          {
+            ...baseDetail().tasks[0]!,
+            file: {
+              id: 'file-1',
+              filename: 'slides-final.pdf',
+              sizeBytes: 2048,
+              versionNo: 2,
+              uploadedAt: Date.UTC(2026, 0, 14, 9, 30),
+              uploaderName: null,
+            },
+          },
+        ],
+      }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const who = document.querySelector('.chq-speaker-detail-file-who');
+    expect(who?.textContent).toMatch(/^—/);
   });
 
   // DEC-678 (w55-c): sessions/tasks/files/other-events zero-row states
@@ -434,7 +504,7 @@ describe('SpeakerDetailPage render smoke', () => {
             dueDate: Date.UTC(2026, 0, 15),
             status: 'complete',
             completedAt: 1700000000000,
-            file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2 },
+            file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2, uploadedAt: Date.UTC(2026, 0, 14, 9, 30), uploaderName: 'Grace Hopper' },
             lastRemindedAt: null,
             overdue: false,
           },
@@ -505,7 +575,8 @@ describe('SpeakerDetailPage render smoke', () => {
   // capability as the roster grid.
   it('each session row carries its own menu, and a selection patches only that row', async () => {
     const twoSessions = {
-      participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'accepted' as const },
+      headshotFile: null,
+    participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'accepted' as const },
       participationRollup: {
         status: 'accepted' as const,
         bySubmission: [
@@ -568,7 +639,8 @@ describe('SpeakerDetailPage render smoke', () => {
   it('DEC-936 (final form): an agreeing speaker shows the shared status only in the session row, never in the header', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
-        participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'declined' },
+        headshotFile: null,
+    participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'declined' },
         participationRollup: {
           status: 'declined',
           bySubmission: [{ participantId: 'p-1', submissionId: 'sub-1', ref: 'S-001', inviteStatus: 'declined' }],
@@ -817,7 +889,8 @@ describe('SpeakerDetailPage: ParticipationMenu "Send portal invite" (eval regres
   it('POSTs the portal-invites endpoint and re-reads the speaker detail', async () => {
     const notInvited = baseDetail({
       contact: { ...baseDetail().contact, hasAccount: false },
-      participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'none' },
+      headshotFile: null,
+    participation: { participantId: 'p-1', submissionId: 'sub-1', inviteStatus: 'none' },
       participationRollup: {
         status: 'none',
         bySubmission: [{ participantId: 'p-1', submissionId: 'sub-1', ref: 'S-001', inviteStatus: 'none' }],

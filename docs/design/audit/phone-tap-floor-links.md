@@ -12,7 +12,11 @@ brief): walked `app/src/**/*.tsx` excluding `*.test.tsx`, collected every
 then resolved each token against every `app/src/**/*.css` `max-width` block.
 That walk found **47** distinct tokens (the brief's own measurement said 31;
 re-derive per DEC-808/DEC-393 rather than trust either number going
-forward).
+forward). **46** as of DEC-930's wave-115 amendment:
+`chq-speaker-detail-headshot-download` was DELETED from the tree — the bare
+Download beside the speaker's avatar became a full Files row carrying
+filename/uploader/timestamp — and a population row for a class no markup
+uses is exactly the dead entry this inventory exists to prevent.
 
 Verdicts:
 
@@ -69,9 +73,8 @@ sheets below. Everything else is unsatisfied residue for wave 7 to schedule.
 | `chq-row-title` | ROOMY | app/src/styles.css | **Unsatisfied** | Base class for table-cell title links (composed with page-local `-name-link`/`-task-title` classes below); no phone rule in styles.css (v12m-w6-a's file). |
 | `chq-section-action` | ROOMY | app/src/styles.css / review.css | **Unsatisfied** | Section-header "All N ›" link pattern shared across pages; base rule (styles.css:560) has no phone floor. |
 | `chq-settings-inline-action` | INLINE | app/src/pages/settings/settings.css | n/a | Trails an inline `" · "` separator on the same text line as the resource name (`ResourcesPanel.tsx:228-231`: `{' · '}` immediately before `<a className="chq-settings-inline-action"`, repeated at :291-294). |
-| `chq-speaker-detail-back` | ROOMY | app/src/pages/speakers/speakers.css | **Unsatisfied** (off-limits, v12m-w2-c/w5-h own this file) | Back link "‹ Speakers" composed with `chq-link-button` (`SpeakerDetailPage.tsx:438`); no phone rule found. |
-| `chq-speaker-detail-headshot-download` | ROOMY | app/src/pages/speakers/speakers.css | Satisfied (off-limits) | Co-occurs `chq-btn chq-btn-tertiary` (`SpeakerDetailPage.tsx:444` — `chq-btn chq-btn-tertiary chq-speaker-detail-headshot-download`). |
-| `chq-speakers-file-link` | ROOMY | app/src/pages/speakers/speakers.css | **Unsatisfied** (off-limits) | Only interactive element in its own table cell (`SpeakerDetailPage.tsx:673`: `className="chq-speakers-file-link"`; also `ResponseModal.tsx:60`); row has other non-link cells, is not itself the target; no phone rule found. |
+| `chq-speaker-detail-back` | ROOMY | app/src/pages/speakers/speakers.css | **Unsatisfied** (off-limits, v12m-w2-c/w5-h own this file) | Back link "‹ Speakers" composed with `chq-link-button` (`SpeakerDetailPage.tsx:470`); no phone rule found. |
+| `chq-speakers-file-link` | ROOMY | app/src/pages/speakers/speakers.css | **Unsatisfied** (off-limits) | Only interactive element in its own table cell (`SpeakerDetailPage.tsx:700`: `className="chq-speakers-file-link"`; also `ResponseModal.tsx:60`); row has other non-link cells, is not itself the target; no phone rule found. |
 | `chq-speakers-import-link` | ROOMY | app/src/pages/speakers/speakers.css | **Unsatisfied** (off-limits) | Composes with `chq-link-button`, standalone import CTA (`RosterPanel.tsx:256`); no phone rule found. |
 | `chq-speakers-name-link` | ROOMY | app/src/pages/speakers/speakers.css | **Unsatisfied** (off-limits) | Name cell's Link is explicitly the row's only navigation target per the code's own DEC-930 comment (app/src/pages/speakers/OnboardingGrid.tsx`DEC-930: the grid's name cell is the link` — drift-proof citation, DEC-967 wave-115) — the `<tr>` itself is not clickable, so the link must carry its own floor; no phone rule found. |
 | `chq-speakers-task-title` | ROOMY | app/src/pages/speakers/speakers.css | **Unsatisfied** (off-limits) | Same shape as `chq-speakers-name-link`, task table (`OnboardingGrid.tsx:929`); no phone rule found. |
