@@ -746,7 +746,7 @@
    every chip except the one carrying -primary. */
 .chq-track-chip {
   border: 1px solid var(--chq-border);
-  border-radius: 999px;
+  border-radius: 99px;
   padding: 5px 13px;
   font-size: 13px;
   font-weight: 500;

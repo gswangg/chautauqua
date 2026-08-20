@@ -978,7 +978,6 @@
 .chq-contacts-import-preview-cell-skip {
   color: var(--chq-muted);
   font-weight: 600;
-  font-style: italic;
 }
 
 /* tap-floor-exempt: DuplicateRow.tsx renders only a `chq-btn`-classed

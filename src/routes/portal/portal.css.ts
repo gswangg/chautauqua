@@ -718,7 +718,7 @@ ${ERROR_STATES_CSS}
 }
 .chq-portal-not-shown-chip {
   border: 1px solid var(--chq-border);
-  border-radius: 999px;
+  border-radius: 99px;
   padding: 4px 12px;
   font-size: 13px;
   color: var(--chq-muted);

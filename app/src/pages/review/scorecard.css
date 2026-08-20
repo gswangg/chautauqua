@@ -61,7 +61,7 @@
 .chq-review-anonymized-notice {
   margin: 4px 0 0;
   font-size: 13px;
-  font-style: italic;
+  font-weight: 600;
   color: var(--chq-muted);
 }
 
