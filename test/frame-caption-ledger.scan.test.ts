@@ -716,6 +716,22 @@ const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       'PARTIAL (shape ii): app/src/pages/review/ProgressPanel.tsx:256 draws the reader-facing clause verbatim (`Laggards is everyone with anything outstanding · not-started is the subset who have scored nothing.`); the trailing sentence is the pack\'s own implementer note for DEC-760\'s hidden-when-zero rule, already honoured at ProgressPanel.tsx:237 (`{notStarted.length > 0 && (<button>...</button>)}` -- the second link is conditionally NOT RENDERED, i.e. hidden, never `disabled`), and ProgressPanel.tsx:246-251\'s own comment names this exact citation.',
   },
+  // v12m-w12-gg (wave-136): two further COMPOSED captions whose divergence is
+  // an interpolated half, carried in by the thunderdome megabatch.
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 569,
+    text: 'The server rejected it — someone else may have edited this speaker while you were here. The cell has been put back to Overdue.',
+    reason:
+      'app/src/pages/speakers/OnboardingGrid.tsx:224-228 composes `cellFailureBody(restoredStatus)` as "The server rejected it ... The cell has been put back to `${restoredStatus}`."; restoredStatus is the pre-flip status word (Complete / Overdue / Pending) read from the snapshot taken just before the optimistic flip.',
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 697,
+    text: 'A reminder names only this task · skips anyone emailed in the last hour · the due date moves for everyone, from the header',
+    reason:
+      "app/src/pages/speakers/TaskView.tsx:493 composes `A reminder names only this task · ${REMIND_SKIP_RULE} · the due date moves for everyone, from the header`, interpolating REMIND_SKIP_RULE. The frame's word 'emailed' is superseded by the shared vocabulary's word 'reminded' (REMIND_SKIP_RULE = 'skips anyone reminded in the last hour', app/src/pages/speakers/remindSkipVocabulary.ts:8), per the DEVIATIONS.md §3 ruling 'Reminder skip-window wording stays \"reminded\", not \"emailed\"' (docs/design/DEVIATIONS.md:309-316) — the app's word stands, the frame's word is superseded.",
+  },
 ];
 
 function isExcluded(c: Caption, table: Exclusion[]): boolean {
