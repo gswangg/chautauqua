@@ -312,6 +312,11 @@ const ENTRY_OR_ALLOWED: Record<string, string> = {
     "Shared phone-block CSS scanning vocabulary (comment-stripping, brace-depth block extraction, rule lookup) " +
     "imported only by *.render.test.tsx CSS pins -- test-file imports don't confer reachability (DEC-518), " +
     "same shape as mockApi.ts above (field guide DEC-613).",
+  "app/src/pages/settings/PeopleRolesPanel.test-helpers.tsx":
+    "Shared fixtures (SELF/OTHER, mockPeople, renderPanel, the console.error guard) imported only by the five " +
+    "PeopleRolesPanel.*.render.test.tsx spec files -- test-file imports don't confer reachability (DEC-518). " +
+    "Split out of a single 855-line PeopleRolesPanel.render.test.tsx (custodian decomposition, wave v12m-w12), " +
+    "so it is test-only code, never SPA bundle code; same shape as mockApi.ts above.",
   "app/src/phone-tap-target-scan/core.ts":
     "Scanning primitives (CSS/TSX file population, declared-height parsing, flex-centre and exemption-comment " +
     "readers) imported only by app/src/phone-tap-target.scan.test.ts and its wave-v12m-w12 siblings " +
