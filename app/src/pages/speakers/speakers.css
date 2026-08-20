@@ -1478,12 +1478,14 @@ button.chq-speakers-status-overdue:hover {
    own column. Scoped under the rail rather than a second empty-state
    component, so B7's fresh/filtered contract stays enforced by EmptyState
    construction. The register now matches the frame's own two-line list
-   (docs/design/Chautauqua Speakers.dc.html:414-424): the top room drops
-   entirely, `what` reads the frame's `font-size:14px; font-weight:600`
-   (:418) and `reason` -- unused today (EmptyState's `reason` is
+   at docs/design/Chautauqua Speakers.dc.html:418 `font-size:14px;
+   font-weight:600` -- the top room drops entirely and the what-line reads
+   that register. The reason line -- unused today (EmptyState's reason is
    'filtered'-only and this call site is 'fresh', DEC-678(b)) -- is pre-set
-   to the frame's 13px muted second line (:419) so a future filtered/reason
-   use of this rail lands in register without a second repair. */
+   to the frame's muted second line at
+   docs/design/Chautauqua Speakers.dc.html:419 `font-size:13px;
+   color:#565A4B`, so a future filtered/reason use of this rail lands in
+   register without a second repair. */
 .chq-speaker-detail-rail .chq-empty-block-fresh {
   padding-top: 0;
 }

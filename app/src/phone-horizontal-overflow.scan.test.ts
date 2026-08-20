@@ -585,7 +585,21 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // doc and not arrived at by taking either branch's side. Neither branch
 // could have written this number: w8-a repaired the candidacy predicate and
 // w8-b fixed settings.css offenders, and only the two together produce 26.
-export const OVERFLOW_OFFENDERS_CEILING = 26;
+//
+// 26 -> 7, set by the merge train integrating w8-e + w8-d + w8-c + w8-f +
+// w8-h + w8-g as one batch, per DEC-989 wave-9 and DEC-385's clause that no
+// worker lane edits this constant and "the merge train re-measures each ONCE
+// per batch". 7 was MEASURED by forcing this constant to -1 and running the
+// scan against the fully merged tree (`npx vitest run
+// app/src/phone-horizontal-overflow.scan.test.ts`), not read from an audit
+// doc and not arrived at by taking any branch's side: w8-e drained the SSR
+// public surface, w8-d and w8-c drained the blind-predicate offenders the
+// repaired candidacy gate exposed, and only all of them together produce 7.
+// The 7 survivors are listed in docs/design/audit/overflow-390-v12.md; two
+// of them (`.chq-review-criteria-eyebrow`, `.chq-reviewer-plan-head-row`)
+// are `display: none` at 390 and were examined and deliberately left by
+// w8-c, which is why this ceiling is 7 rather than 5.
+export const OVERFLOW_OFFENDERS_CEILING = 7;
 
 describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('found more than one CSS file to scan (vacuous-population tripwire, file side)', () => {

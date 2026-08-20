@@ -114,7 +114,7 @@ flag `band-label`'s 700 against `muted`'s 600. Whether `band-label` and
 owning lane, not a density-pairing defect this scan's population covers.
 
 `.chq-content-status-band` is re-targeted inside `@media (max-width:700px)`
-(content.css:1365) to `min-height: 0`, but `band` classifies ROOMY (not
+(app/src/pages/content/content.css`min-height: 0`, but `band` classifies ROOMY (not
 dense), so Check 2 does not apply to it.
 
 ### chq-review-plan-status — cluster: review (`review.css`) — owner: review lane
