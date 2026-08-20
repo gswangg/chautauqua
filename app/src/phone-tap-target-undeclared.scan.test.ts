@@ -87,7 +87,16 @@ const TSX_FILES = allTsxFiles(HERE);
 // correct outcome when the instrument itself was blind (DEC-367 wave-120
 // precedent) -- this is not a regression, it is the population becoming
 // visible for the first time under a predicate that can actually see it.
-export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 27;
+//
+// Thunderdome megabatch (wave 125, DEC-989 clause a): re-measured 27 -> 3 on
+// the INTEGRATED tree. Waves 13/14 drained this lens from several disjoint
+// sheets at once (w13-m review.css/submissions.css, w13-l styles.css,
+// w13-n forms.css/contacts.css/contacts-panels.css, w13-o agenda.css/
+// overview.css/speakers.css/event-switcher.css, w13-p review.css's
+// .chq-review-queue-footer-showall, w13-k/w14-h cfp.css.ts, w13-i
+// settings.css), so no single branch's figure is the truth here. This
+// ratchet may only fall.
+export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 3;
 
 describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)', () => {
   it('derives a non-empty population over the real tree (vacuous-population tripwire)', () => {

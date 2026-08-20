@@ -232,9 +232,9 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
        it there would move every other page's measure, not just this
        one's. */
     /* Thunderdome megabatch (wave 125): SUPERSEDED IN PART. w13-k cancelled
-       the INNER gutter (this rule, `padding-left/right: 0`) to clear the
+       the INNER gutter (this rule, padding-left/right: 0) to clear the
        double-gutter; w14-h's DEC-683 wave-125 amendment instead cancels the
-       OUTER one (`main.chq-measure:has(.chq-cfp-body)`, below) and requires
+       OUTER one (main.chq-measure:has(.chq-cfp-body), below) and requires
        the body to KEEP its own 16px so the header (a full-bleed sibling of
        <main>, DEC-986) and the reading column share one gutter owner. Both
        fixes in one tree would zero BOTH gutters and full-bleed the column to

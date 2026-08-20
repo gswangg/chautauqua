@@ -155,10 +155,10 @@ function ProfilePage(props: {
   // draws a Save primary through PortalLayout's dock slot, same call shape
   // as edit.tsx's editDock (:178-188) and index.tsx's session-detail dock
   // (:496-503) -- a single control referencing the form by id since the
-  // dock renders inside <footer>, outside this <form>. The frame also
-  // draws a bordered Cancel here, but this page has no referent for one
-  // (no "leave without saving" destination distinct from the header/footer
-  // sign-out and back-link already on screen) -- DEVIATIONS.md records the
+  // dock renders inside <footer>, outside the profile form element. The
+  // frame also draws a bordered Cancel here, but this page has no referent
+  // for one (no "leave without saving" destination distinct from the
+  // header/footer sign-out and back-link on screen) -- DEVIATIONS.md records the
   // omission per DEC-576's own "never manufactured just to fill the band"
   // rule (shared.tsx:163).
   const profileDock = (

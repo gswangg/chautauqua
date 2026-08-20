@@ -291,7 +291,10 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // after 15 lanes landed in one pass -- concurrent lanes drained the same
 // population, so the combined truth is lower than any single branch saw.
 // 160 -> 151. Lowering is a merge-train act (DEC-989).
-export const LINE_KEYED_CITATION_CEILING = 151;
+// Thunderdome megabatch (wave 125): lowered 151 -> 144, the merge-train
+// re-measurement this two-sided ratchet's own failure text asks for, taken
+// on the fully integrated tree.
+export const LINE_KEYED_CITATION_CEILING = 144;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {

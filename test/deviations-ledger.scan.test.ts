@@ -441,6 +441,18 @@ const LEDGER: LedgerEntry[] = [
     honored: { kind: "present", file: "app/src/styles.css", literal: ".chq-link-button {", testFile: "app/src/focus-treatment.scan.test.ts" },
   },
   {
+    key: "portal-your-profile-dock-has-no-cancel-dec-154-wave-125-dec-576-wave-110-wave-119",
+    status: "honored",
+    reason:
+      "DEC-154 wave-125 / DEC-576 wave-110-119: the 390 frame draws a bordered Cancel beside the docked Save on Your profile, but the page has no leave-without-saving destination distinct from the sign-out and the back-link already on screen -- DEC-576 forbids manufacturing a second control just to fill the band, so the dock carries only the primary Save profile.",
+    honored: {
+      kind: "present",
+      file: "src/routes/portal/profile.tsx",
+      literal: "const profileDock = (",
+      testFile: "test/portal-phone-frames.test.ts",
+    },
+  },
+  {
     key: "contacts-pipeline-keeps-its-landed-head-action-no-phone-dock-is-minted-dec-576-wave-120-124",
     status: "honored",
     reason:
@@ -616,9 +628,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(9);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(10);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(17);
-    expect(derived.length).toBe(34);
+    expect(derived.length).toBe(35);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

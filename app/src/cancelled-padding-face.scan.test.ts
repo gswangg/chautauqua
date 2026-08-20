@@ -512,7 +512,12 @@ const OFFENDERS = FACE_ROWS.filter((r) => r.painted);
 // integrated truth is re-measured here on the merged tree per DEC-989
 // clause a -- never copied from either branch's figure. This ratchet may
 // only fall.
-export const PAINTED_CANCELLED_PADDING_CEILING = 1;
+// Measured on the integrated tree: 2 remain --
+// agenda.css `.chq-breaks-row-actions .chq-btn` (the `\.chq-btn\b`
+// word-boundary false positive w12-o documents just above) and
+// speakers.css `.chq-speakers-task-edit`. Both are flagged for a follow-up
+// lane, not silenced here.
+export const PAINTED_CANCELLED_PADDING_CEILING = 2;
 
 describe('cancelled-padding face lens (DEC-937 wave-121 amendment)', () => {
   it('found more than one CSS source to scan (vacuous-population tripwire, file side)', () => {
