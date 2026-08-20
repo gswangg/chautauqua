@@ -10,11 +10,30 @@
    (form-render.tsx:278 singular querySelector leaves radios 2..N required
    inside display:none). DEC-986's ruling prescribes reportValidity() +
    querySelectorAll — implement it for real.
+   RESOLVED (DEC-986): cfp-steps-script.tsx's Next handler now walks the
+   outgoing step's controls and calls `reportValidity()` on the first
+   invalid one before it will call `setStep('2')` (cfp-steps-script.tsx:91
+   `setStep('2');`, guarded by the invalid-control check starting at
+   cfp-steps-script.tsx:67); form-render.tsx:284 now uses
+   `wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]')`, not a
+   singular querySelector, so every radio in the group gets its required
+   state applied, not just the first.
 2. Admin agenda 390 renders nothing (Agenda.dc.html:123): agenda.css
    :1074-1104 display:none leak-guard for 24 .chq-phone-* classes; the 700px
    block restores only 14 — missing: -slot-time, -slot-card-title,
    -slot-card-meta, -slot-clash, -slot-free-label, -slot-free-length,
    -room-chip, -sheet, -footer-armed-title, -footer-armed-ref.
+   RESOLVED: agenda.css:1118's terminal `@media (max-width: 700px)` block
+   now restores all 24 classes named in the agenda.css:1074-1104 leak-guard
+   list, including the ten named missing here, each a top-level rule inside
+   the terminal block: agenda.css:1294 `.chq-phone-slot-time {`;
+   agenda.css:1318 `.chq-phone-slot-card-meta {`; agenda.css:1326
+   `.chq-phone-slot-card-title {`; agenda.css:1340 `.chq-phone-slot-clash {`;
+   agenda.css:1389 `.chq-phone-slot-free-label {`; agenda.css:1396
+   `.chq-phone-slot-free-length {`; agenda.css:1257
+   `.chq-phone-room-chip {`; agenda.css:1497 `.chq-phone-sheet {`;
+   agenda.css:1453 `.chq-phone-footer-armed-title {`; agenda.css:1464
+   `.chq-phone-footer-armed-ref {`.
 
 ## HIGH
 - Reviewer scorecard +31px overflow (chq-user-identity nowrap in a header

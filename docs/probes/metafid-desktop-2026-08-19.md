@@ -2,13 +2,21 @@
 # Verdict: v12 speakers CORE frame-complete; edges + one live regression.
 
 ## Campaign regression (fix first)
-- PlanEditor.tsx:1565/:2170 mount chq-review-criteria-count-phone /
+- PlanEditor.tsx:1565/:2171 mount chq-review-criteria-count-phone /
   chq-review-reviewers-count-phone whose only rules are inside the 700px
-  block (review.css:2328/:2475) — bare numerals paint on desktop and shove
+  block (review.css:2362/:2509) — bare numerals paint on desktop and shove
   the section-head eyebrow to mid-page (space-between third child).
   From 75ade503 (v12m-w5-b). Needs desktop-scope hiding + SCAN WIDENING:
   leak scans match chq-phone-* prefix only; widen predicate to /phone/
   anywhere + require a desktop hiding rule.
+  RESOLVED (v12m-w5-k, DEC-919 wave-109 amendment): review.css now
+  declares `.chq-review-criteria-count-phone { display: none; }` and
+  `.chq-review-reviewers-count-phone { display: none; }` top-level at
+  review.css:2039/:2043, before the terminal 700px block, so both are
+  hidden at desktop widths and only re-shown by the later phone rule
+  (source-order win, DEC-385). The SCAN WIDENING also landed:
+  app/src/phone-block-visibility.test.ts:304 now tests
+  `/phone/.test(token)` rather than a `chq-phone-*` prefix only.
 
 ## Speakers-cluster edge MAJORs
 - Filtered-empty state keeps table footer chrome (legend + disabled pager)
