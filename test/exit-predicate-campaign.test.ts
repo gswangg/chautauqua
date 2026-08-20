@@ -114,6 +114,12 @@ function baseFixture(): CampaignFile[] {
       path: "app/src/phone-tap-target-undeclared.scan.test.ts",
       content: "export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 7;",
     },
+    // wave-121 (task w10-k): DEC-937's painted-face half of the
+    // cancelled-padding lens.
+    {
+      path: "app/src/cancelled-padding-face.scan.test.ts",
+      content: "export const PAINTED_CANCELLED_PADDING_CEILING = 8;",
+    },
   ];
 }
 
@@ -156,11 +162,12 @@ describe("findConstantDeclarations", () => {
 describe("buildCampaignReport", () => {
   it("builds all 10 rows and a correct verdict from the fixture corpus", () => {
     const report = buildCampaignReport(baseFixture());
-    // UNDECLARED_HEIGHT_OFFENDERS_CEILING is graded (CAMPAIGN_CONSTANT_NAMES)
-    // but not yet a Tier-2 row (TIER2_CEILING_NAMES) -- wave-120 (task w9-l)
-    // adds the instrument only; wiring it into the done/row count is a
-    // separate act. Row count is unchanged at 18.
-    expect(report.rows).toHaveLength(18);
+    // Megabatch wave-120/121: two instruments landed together.
+    // UNDECLARED_HEIGHT_OFFENDERS_CEILING (task w9-l, DEC-367 PREDICATE REPAIR)
+    // is GRADED (CAMPAIGN_CONSTANT_NAMES) but is not a Tier-2 row, so it adds
+    // no row. PAINTED_CANCELLED_PADDING_CEILING (DEC-937) is in
+    // TIER2_CEILING_NAMES, so it does: 18 -> 19.
+    expect(report.rows).toHaveLength(19);
 
     const desktop = report.rows.find((r) => r.label === "desktop CLAIMED_FLOOR");
     expect(desktop).toMatchObject({ current: 30, target: 38, remaining: 8 });
@@ -219,6 +226,9 @@ describe("buildCampaignReport", () => {
             "const UNRECEIPTED_CLAIM_CEILING = 0;",
           ].join("\n"),
         };
+      }
+      if (f.path === "app/src/cancelled-padding-face.scan.test.ts") {
+        return { ...f, content: "export const PAINTED_CANCELLED_PADDING_CEILING = 0;" };
       }
       return f;
     });

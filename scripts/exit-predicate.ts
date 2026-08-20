@@ -524,6 +524,7 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // height/min-height before ever testing it against the floor -- this
   // constant grades the population that blind spot has always hidden.
   "UNDECLARED_HEIGHT_OFFENDERS_CEILING",
+  "PAINTED_CANCELLED_PADDING_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -544,6 +545,7 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   "FRAME_RECEIPT_OFFENDER_CEILING",
   "UNRESOLVED_CITATION_CEILING",
   "WIDENED_UNRESOLVED_CITATION_CEILING",
+  "PAINTED_CANCELLED_PADDING_CEILING",
 ];
 
 /**
