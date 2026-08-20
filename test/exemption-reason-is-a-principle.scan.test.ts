@@ -66,7 +66,11 @@ const SCHEDULE_PATTERNS: { label: string; re: RegExp }[] = [
   { label: 'sibling/parallel task-branch-lane', re: /\b(sibling|parallel)\s+(task|branch|lane)\b/i },
   { label: 'in flight', re: /\bin flight\b/i },
   { label: 'until X lands', re: /\buntil\b[^.]{0,60}\blands?\b/i },
-  { label: 'being converted', re: /\bbeing converted\b/i },
+  // DEC-518 (wave-120 amendment): widened from "being converted" alone --
+  // portal-v12.md's "is being built by v12m-w15-b" is the identical
+  // passive-progressive shape with a different verb, and a second
+  // parallel regex for the same shape would be the DEC-613 trap.
+  { label: 'being converted/built', re: /\bbeing (?:converted|built|rewritten|redone)\b/i },
   { label: 'not yet reviewed', re: /\bnot yet reviewed?\b/i },
   // Negative lookahead for a following "->" excludes a workflow-state
   // enumeration (e.g. "unreviewed -> approve/maybe/deny is the minimum
@@ -84,7 +88,7 @@ const SCHEDULE_PATTERNS: { label: string; re: RegExp }[] = [
   { label: 'for now', re: /\bfor now\b/i },
   { label: 'temporarily', re: /\btemporarily\b/i },
   { label: 'we have not looked', re: /\bwe have not looked\b/i },
-  { label: 'once X lands', re: /\bonce\b[^.]{0,60}\blands?\b/i },
+  { label: 'once X lands', re: /\bonce\b[^.]{0,60}\b(?:lands?|exists?)\b/i },
   // DEC-099 (wave-118 amendment): the same defect with the branch token
   // filed off -- a reason that describes work happening RIGHT NOW on some
   // other lane, or promised for a future one, is a schedule wearing prose
@@ -298,6 +302,137 @@ function findDeviationsOffenders(): string[] {
   return offenders;
 }
 
+// DEC-518 (wave-120): the identical defect DEVIATIONS.md carried (wave 118)
+// sits one directory over, entirely unscanned -- docs/design/audit/**
+// records fidelity-audit findings, and the SAME shape ("this stays open
+// because branch X owns it / is doing it / will land it") recurs there in
+// both markdown-table gap rows and freeform prose, e.g.
+// phone-tap-floor-links.md:76's `**Unsatisfied** (off-limits,
+// v12m-w2-c/w5-h own this file)` and portal-v12.md's "is being built by
+// v12m-w15-b" (verified live at main d75ba0df, wave-120 task brief).
+//
+// UNLIKE DEVIATIONS.md, this directory is NOT scoped to two headings whose
+// very presence means "this is a deferral" -- it is thousands of lines of
+// narrative audit prose, most of which legitimately narrates past work
+// ("fixed in this wave (v12m-w2-c)", "measured this wave") using the exact
+// same vocabulary a real deferral would use. Gating on SCHEDULE_PATTERNS
+// alone (as DEVIATIONS.md's bullet-level check does) floods this
+// population with false positives from ordinary wave narration. So the
+// audit-dir scan requires BOTH: (1) an unattributed lane token
+// (`lineHasUnattributedLaneToken`, reused verbatim, not reinvented, per
+// DEC-613) somewhere in the paragraph/row, AND (2) that same
+// paragraph/row also names an actual GAP -- either a markdown table
+// STATUS cell that literally reads Unsatisfied/Deferred/Open/Not
+// fixed/Out of scope, or prose using the task's own gap vocabulary
+// (pending / off-limits / out of scope / not fixed / deferred /
+// scheduled for / left open) or a narrower subset of SCHEDULE_PATTERNS
+// that isn't legitimately used in past-tense narration here (excludes
+// "this wave" / "unmerged" / "for now" / "temporarily", each of which
+// this directory uses constantly to describe FIXED work, e.g. "fixed in
+// this wave (v12m-w2-c)" -- gating on those here would make every
+// completed fix in the directory a false offender).
+const AUDIT_DIR = join(REPO_ROOT, 'docs', 'design', 'audit');
+
+// The task's own gap vocabulary for a status cell or a deferral clause.
+// "left open" is the one addition beyond the task brief's literal list --
+// it is the same "a gap stays open" shape written as a participial phrase
+// (contacts-v12.md's original "left OPEN, and left for task `v12m-w2-c`"),
+// not a new vocabulary, so it stays in this single list per DEC-613 rather
+// than spawning a second one.
+const AUDIT_GAP_WORD_RE = /\b(pending|off-limits|out of scope|not fixed|deferred|scheduled for|left open)\b/i;
+const AUDIT_GAP_STATUS_CELL_RE = /\b(Unsatisfied|Deferred|Open|Not fixed|Out of scope)\b/;
+
+// Labels excluded from the SCHEDULE_PATTERNS half of the audit-dir gate --
+// see the block comment above for why: these four fire constantly on
+// legitimate past-tense narration in this narrative document type ("fixed
+// in this wave", "No unmerged v12m-* branch touches this file") and would
+// make every completed fix a false offender if used to gate here. They
+// remain fully active for the code-`reason:` scan above and for
+// DEVIATIONS.md, where every governed string is a live disable/deferral
+// reason rather than a paragraph of mixed past/present narration.
+const AUDIT_SCHEDULE_EXCLUDE = new Set(['this wave', 'unmerged', 'for now', 'temporarily']);
+
+function auditScheduleHit(text: string) {
+  return SCHEDULE_PATTERNS.find((p) => !AUDIT_SCHEDULE_EXCLUDE.has(p.label) && p.re.test(text));
+}
+
+function walkMarkdownFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) {
+      out.push(...walkMarkdownFiles(full));
+    } else if (name.endsWith('.md')) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+/** Walks every docs/design/audit/**\/*.md file and returns offenders
+ * against two predicates:
+ *
+ * (a) a markdown TABLE ROW whose status cell names a gap (Unsatisfied /
+ *     Deferred / Open / Not fixed / Out of scope) and whose raw line
+ *     carries an unattributed lane token or an audit-scoped SCHEDULE_
+ *     PATTERNS hit.
+ *
+ * (b) a PROSE paragraph (blank-line-delimited, headings and table rows
+ *     excluded) whose joined text carries the gap vocabulary or an
+ *     audit-scoped schedule hit, in which case every RAW LINE of that
+ *     paragraph carrying an unattributed lane token is an offender --
+ *     mirroring findDeviationsOffenders' bullet-join shape exactly (per
+ *     DEC-613, not a second mechanism), with the paragraph standing in
+ *     for the bullet. */
+function findAuditDirOffenders(): string[] {
+  const offenders: string[] = [];
+  for (const file of walkMarkdownFiles(AUDIT_DIR)) {
+    const relPath = relative(REPO_ROOT, file);
+    const raw = readFileSync(file, 'utf8');
+    const lines = raw.split('\n');
+
+    // (a) table rows
+    lines.forEach((line, i) => {
+      if (!/^\s*\|/.test(line)) return;
+      const cells = line.split('|');
+      if (!cells.some((c) => AUDIT_GAP_STATUS_CELL_RE.test(c))) return;
+      if (lineHasUnattributedLaneToken(line) || auditScheduleHit(line)) {
+        offenders.push(`${relPath}:${i + 1}: [table] gap status row with lane token/schedule hit: "${line.trim()}"`);
+      }
+    });
+
+    // (b) prose paragraphs
+    let paraLines: string[] = [];
+    let paraLineNos: number[] = [];
+    const flushParagraph = () => {
+      if (!paraLines.length) return;
+      const joined = paraLines.join(' ').replace(/\s+/g, ' ').trim();
+      const gate = AUDIT_GAP_WORD_RE.test(joined) || auditScheduleHit(joined);
+      if (gate) {
+        paraLines.forEach((line, idx) => {
+          if (lineHasUnattributedLaneToken(line)) {
+            offenders.push(
+              `${relPath}:${paraLineNos[idx]}: [prose] gap paragraph, lane token with no same-line DEC citation: "${line.trim()}"`,
+            );
+          }
+        });
+      }
+      paraLines = [];
+      paraLineNos = [];
+    };
+    lines.forEach((line, i) => {
+      if (/^\s*\|/.test(line) || /^#/.test(line) || line.trim() === '') {
+        flushParagraph();
+        return;
+      }
+      paraLines.push(line);
+      paraLineNos.push(i + 1);
+    });
+    flushParagraph();
+  }
+  return offenders;
+}
+
 describe('DEC-099 (waves 76/4, widened wave 5): an exemption reason may never be schedule-shaped', () => {
   it('no reason string under test/ or app/src/ names a branch or reads as schedule-shaped', () => {
     const offenders = findOffenders([join(REPO_ROOT, 'test'), join(REPO_ROOT, 'app', 'src')]);
@@ -490,5 +625,98 @@ describe('DEC-099 (waves 76/4, widened wave 5): an exemption reason may never be
   it('DEVIATIONS.md deferral sections (## 5, ## 6) carry no schedule-shaped or unattributed-lane-token bullet', () => {
     const offenders = findDeviationsOffenders();
     expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+
+  // DEC-518 (wave-120): the identical defect, widened to docs/design/audit/**.
+  // Drained in this same commit (DEC-991) -- no ceiling constant.
+  it('docs/design/audit/**/*.md carries no gap-status table row or gap-prose paragraph with a lane token or schedule hit', () => {
+    const offenders = findAuditDirOffenders();
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+
+  // [control] AUTHORSHIP stays legal: a `# ... (v12m-w2-e)` heading is
+  // never inspected at all (headings are excluded from paragraph grouping
+  // before the gate is ever evaluated), and control-font-population-v12.md's
+  // owner-column table has no gap-status cell (its header is "Owning branch
+  // (one of, at run time)", not Unsatisfied/Deferred/...), so the whole
+  // table is out of population by construction, not by an allowlist.
+  it('[control] an authorship heading under docs/design/audit/** stays legal', () => {
+    const fixture = [
+      '# A frame receipt must assert about the tree, not about the frame (v12m-w2-e)',
+      '',
+      '## Closure (v12m-w3-m, wave 103)',
+      '',
+      'Some prose with no gap vocabulary and no table row at all.',
+      '',
+    ].join('\n');
+    const lines = fixture.split('\n');
+    // Headings are dropped by the same `/^#/` exclusion findAuditDirOffenders
+    // uses -- verify directly rather than re-deriving the whole scan.
+    expect(lines.filter((l) => /^#/.test(l)).every((l) => lineHasUnattributedLaneToken(l))).toBe(true);
+    // ...and confirm the real file's owner-column table has no gap-status
+    // cell for any of its lane-token rows (so it never reaches the gate).
+    const controlFontPath = join(AUDIT_DIR, 'control-font-population-v12.md');
+    const ownerRows = readFileSync(controlFontPath, 'utf8')
+      .split('\n')
+      .filter((l) => /^\s*\|/.test(l) && BRANCH_NAME_RE.test(l));
+    expect(ownerRows.length).toBeGreaterThan(0);
+    expect(ownerRows.every((l) => !AUDIT_GAP_STATUS_CELL_RE.test(l))).toBe(true);
+  });
+
+  // [control] a gap-status table row carrying a lane token IS caught.
+  it('[control] a synthetic gap-status table row with an off-limits lane token is caught', () => {
+    const fixture =
+      '| `chq-example-back` | ROOMY | app/src/pages/example/example.css | **Unsatisfied** (off-limits, v12m-w5-b owns this file) | Back link; no phone rule found. |';
+    const cells = fixture.split('|');
+    expect(cells.some((c) => AUDIT_GAP_STATUS_CELL_RE.test(c))).toBe(true);
+    expect(lineHasUnattributedLaneToken(fixture)).toBe(true);
+  });
+
+  // [control] a gap-status table row with no lane token and no schedule hit
+  // stays legal (e.g. the real "Satisfied" rows, or an "Unsatisfied" row
+  // with no branch attribution at all).
+  it('[control] a gap-status table row naming no lane and no schedule phrase stays legal', () => {
+    const fixture =
+      '| `chq-example-back` | ROOMY | app/src/pages/example/example.css | **Unsatisfied** | Back link; no phone rule found. |';
+    expect(lineHasUnattributedLaneToken(fixture)).toBe(false);
+    expect(auditScheduleHit(fixture)).toBeUndefined();
+  });
+
+  // [control] the exact real shapes fixed this wave, reproduced as
+  // synthetic fixtures (the live file no longer contains them) --
+  // verifies findAuditDirOffenders' prose half catches both the
+  // "off-limits, <lane>" table shape and the "is being built by <lane>"
+  // prose shape from before this wave's rewrite.
+  it('[control] the original phone-tap-floor-links.md:76 shape is caught (synthetic, pre-fix)', () => {
+    const fixture =
+      '| `chq-speaker-detail-back` | ROOMY | app/src/pages/speakers/speakers.css | **Unsatisfied** (off-limits, v12m-w2-c/w5-h own this file) | Back link found. |';
+    const cells = fixture.split('|');
+    expect(cells.some((c) => AUDIT_GAP_STATUS_CELL_RE.test(c)) && lineHasUnattributedLaneToken(fixture)).toBe(true);
+  });
+
+  it('[control] the original portal-v12.md:66 shape is caught (synthetic, pre-fix)', () => {
+    // Two raw lines, matching the real (pre-fix) file's wrap: the DEC
+    // citation sits on the first line, the bare lane token on the second
+    // -- so the per-line carve-out (scoped to the RAW line, not the whole
+    // paragraph) must not let the DEC-967 citation excuse the token one
+    // line down.
+    const rawLines = [
+      '**Amendment (DEC-967 wave-106):** this finding is no longer open. The',
+      'profile half is being built by `v12m-w15-b`, routing the Save/Cancel pair',
+    ];
+    const joined = rawLines.join(' ').replace(/\s+/g, ' ').trim();
+    expect(AUDIT_GAP_WORD_RE.test(joined) || auditScheduleHit(joined)).toBeTruthy();
+    expect(lineHasUnattributedLaneToken(rawLines[0] as string)).toBe(false);
+    expect(lineHasUnattributedLaneToken(rawLines[1] as string)).toBe(true);
+  });
+
+  // [control] "fixed in this wave (v12m-w2-c)" -- ordinary past-tense
+  // narration this directory uses constantly -- must NOT gate the scan,
+  // even though it carries a lane token, because "this wave" is excluded
+  // from the audit-scoped schedule check and no gap vocabulary is present.
+  it('[control] past-tense "fixed in this wave (<lane>)" narration does not gate the audit scan', () => {
+    const paragraph = 'Owner: fixed in this wave (v12m-w2-c). No unmerged `v12m-*` branch touches this file.';
+    expect(AUDIT_GAP_WORD_RE.test(paragraph)).toBe(false);
+    expect(auditScheduleHit(paragraph)).toBeUndefined();
   });
 });

@@ -9,11 +9,15 @@
 > still splits the frame's one line across `.chq-contacts-merge-rule-box-rule`
 > (line 348) and `.chq-contacts-merge-impact` (line 350), naming the kept
 > record by `{keepContact.firstName} {keepContact.lastName}` rather than
-> the frame's generic "the record you keep" — left OPEN, and left for task
-> `v12m-w2-c`, which owns landing this in the same batch; not pre-closed
-> here. Findings 1 and 2 (the match-columns/phone-pager findings, distinct
+> the frame's generic "the record you keep." `MergePage.tsx` is outside
+> this document's own file-ownership boundary (`app/src/pages/contacts/**`
+> only: `ImportWizard.tsx`, `contacts-panels.css`,
+> `contacts-phone-frames.test.ts`, and the `ImportWizard.*.render.test.tsx`
+> files) so reconciling it is unfiled work, not a claim on any branch.
+>
+> Findings 1 and 2 (the match-columns/phone-pager findings, distinct
 > from the "Finding 3" above) are RESOLVED as of the DEC-663 wave-108
-> amendment (task `v12m-w4-m`) — see that section below for receipts.
+> amendment — see that section below for receipts.
 
 Findings surfaced building the "Import CSV · 390" one-column-per-screen
 pager against `docs/design/Chautauqua Contacts.dc.html:483` ('Import CSV ·
@@ -116,18 +120,21 @@ button logic) and `contacts-panels.css` (`.chq-contacts-import-dedupe`'s
 phone-hidden rule); new coverage in
 `ImportWizard.phoneColumns.render.test.tsx`.
 
-**Finding 3 — filed by v12m-w1-c, not fixed (out of that task's file
-scope).** `docs/design/Chautauqua Contacts.dc.html:535` ("Merge · 390")
-draws the consequence block as ONE line: `Labels combine, notes are
-appended · 3 submissions and 1 task move to the record you keep`.
-`MergePage.tsx`'s `.chq-contacts-merge-rule-box` (around line 330) splits
-this across TWO `<p>` elements (`.chq-contacts-merge-rule-box-rule` for
-the combine rule, `.chq-contacts-merge-impact` for the submissions/tasks
-line) and names the kept record by first/last name
-(`{keepContact.firstName} {keepContact.lastName}`) instead of the
-frame's generic "the record you keep." Reconciling this touches the
-component's core data-flow (the impact paragraph currently needs
-`keepContact` for its name interpolation and is conditionally rendered
-only when `impact` has loaded) and is a copy/structure decision, not a
-one-line fix -- left for a future wave rather than expanding v1-c's
-scope beyond its four assigned divergences.
+**Finding 3 — `MergePage.tsx`, outside this document's file scope
+(`app/src/pages/contacts/**` only: `ImportWizard.tsx`,
+`contacts-panels.css`, `contacts-phone-frames.test.ts`, and the
+`ImportWizard.*.render.test.tsx` files).** `docs/design/Chautauqua
+Contacts.dc.html:535` ("Merge · 390") draws the consequence block as ONE
+line: `Labels combine, notes are appended · 3 submissions and 1 task move
+to the record you keep`. `MergePage.tsx`'s `.chq-contacts-merge-rule-box`
+(around line 330) splits this across TWO `<p>` elements
+(`.chq-contacts-merge-rule-box-rule` for the combine rule,
+`.chq-contacts-merge-impact` for the submissions/tasks line) and names
+the kept record by first/last name (`{keepContact.firstName}
+{keepContact.lastName}`) instead of the frame's generic "the record you
+keep." Reconciling this touches the component's core data-flow (the
+impact paragraph currently needs `keepContact` for its name interpolation
+and is conditionally rendered only when `impact` has loaded) and is a
+copy/structure decision, not a one-line fix -- unfiled work, since
+`MergePage.tsx` sits outside `app/src/pages/contacts/ImportWizard.tsx`'s
+four assigned divergences.
