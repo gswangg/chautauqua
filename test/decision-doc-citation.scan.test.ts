@@ -425,7 +425,7 @@ const WIDENED_VIOLATIONS: Violation[] = WIDENED_SOURCE_CLASSES.flatMap(({ entrie
 // DIRECTION 1 only, not this ceiling's DIRECTION-1-plus-DIRECTION-2
 // violation count). May only be LOWERED as the four new classes' drift
 // gets fixed, never raised to paper over a regression.
-export const WIDENED_UNRESOLVED_CITATION_CEILING = 42;
+export const WIDENED_UNRESOLVED_CITATION_CEILING = 20;
 
 describe("widened citation scan: campaign authority documents (DEC-967 wave-107 doc-integrity lens)", () => {
   it.each(WIDENED_SOURCE_CLASSES)(
