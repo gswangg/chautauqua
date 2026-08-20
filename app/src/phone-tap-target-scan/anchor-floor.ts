@@ -32,6 +32,7 @@ import {
   horizontalPaddingNonZero,
   narrowMediaRules,
   selectorMentionsToken,
+  stripComments,
   stripTsxComments,
   topLevelRulesWithExemption,
 } from './core.js';
@@ -67,12 +68,16 @@ export function allBareAnchorTokens(tsxFiles: string[]): Set<string> {
 
 /** Population (b): every `chq-…` class token DEFINED anywhere in the CSS
  * tree whose own name matches a row-action container shape -- derived from
- * the CSS itself, never a hand-listed pair. */
+ * the CSS itself, never a hand-listed pair. Comments are stripped first
+ * (DEC-989 wave-120): a CSS comment recording that a class was retired
+ * (e.g. a note that `.chq-foo-row-actions` was split from an old shared
+ * class) is not a declaration and must not seed a fabricated offender for a
+ * class with no rule and no markup anywhere. */
 export function rowActionContainerTokens(cssFiles: string[]): Set<string> {
   const out = new Set<string>();
   const re = /\.(chq-[a-z0-9-]+)/g;
   for (const path of cssFiles) {
-    const raw = readFileSync(path, 'utf-8');
+    const raw = stripComments(readFileSync(path, 'utf-8'));
     let m: RegExpExecArray | null;
     while ((m = re.exec(raw)) !== null) {
       const token = m[1] ?? '';
