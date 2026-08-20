@@ -443,8 +443,12 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     .chq-pub-surface-title { font-size: 26px; }
     /* DEC-367 (wave 50 amendment): the phone tap floor -- the Save/Saved
        pill above sizes to padding on desktop, per docs/design/README.md
-       §Controls. */
-    .chq-pub-save { min-height: 44px; }
+       §Controls.
+       w8-e (DEC-989(b)/DEC-385): .chq-pub-save is white-space:nowrap at
+       base scope with no escape (fixed "Save"/"Saved" labels) -- the
+       overflow/text-overflow pair is appended into this SAME already-
+       present phone rule alongside the pre-existing 44px floor. */
+    .chq-pub-save { min-height: 44px; overflow: hidden; text-overflow: ellipsis; }
     .chq-pub-agenda-layout { grid-template-columns: 1fr; gap: 20px; }
     .chq-pub-schedule-layout { grid-template-columns: 1fr; gap: 20px; }
     .chq-pub-schedule-row { grid-template-columns: 1fr auto; }
@@ -465,6 +469,8 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
       align-items: center;
       justify-content: center;
       padding: 0 16px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     /* task-w3-y (DEC-745, wave-107 amendment): DEC-385 single-direction --
        the fresh-empty "Last year" two-column grid collapses to a single
@@ -482,6 +488,8 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
       align-items: center;
       justify-content: center;
       padding: 0 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     /* task w7-e (SSR_UNFLOORED_TOKENS_CEILING): .chq-itinerary-toggle is
        the visually-hidden (1x1, opacity:0, position:absolute) checkbox

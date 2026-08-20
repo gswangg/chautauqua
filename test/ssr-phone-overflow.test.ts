@@ -19,6 +19,10 @@ const CARDS_CSS = readFileSync(
 const HOME_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "home.css.ts"), "utf8");
 const CFP_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "cfp.css.ts"), "utf8");
 const PORTAL_CSS = readFileSync(join(__dirname, "..", "src", "routes", "portal", "portal.css.ts"), "utf8");
+const RAIL_CSS = readFileSync(
+  join(__dirname, "..", "src", "routes", "public", "css", "rail.css.ts"),
+  "utf8",
+);
 
 /** Extracts the exported template-literal string body: from the first
  * backtick after `export const <NAME> = ` to the matching closing backtick
@@ -58,6 +62,56 @@ function extract700Blocks(src: string): { body: string; start: number; end: numb
     searchFrom = i + 1;
   }
   return blocks;
+}
+
+/** Extracts every top-level `selector-list { ... }` rule inside a block body
+ * that itself carries no nested `@media` (i.e. a phone block's own body).
+ * Matching braces are tracked by depth so a rule containing no further `{`
+ * (true for every rule in these sheets -- no nested at-rules inside a phone
+ * block) resolves correctly; the selector list is split on top-level commas
+ * so `.a, .b { ... }` is found under either `.a` or `.b`. */
+function extractRules(src: string): { selectors: string[]; body: string }[] {
+  const rules: { selectors: string[]; body: string }[] = [];
+  let cursor = 0;
+  for (;;) {
+    const openBrace = src.indexOf("{", cursor);
+    if (openBrace === -1) break;
+    // Strip block comments from the selector text -- a rule's selector list
+    // is frequently preceded by a /* ... */ comment with no comma between
+    // the comment and the selector, so without this the "selector" the
+    // split-on-comma below sees is "comment text\n    .the-real-selector"
+    // rather than the bare class.
+    const selectorText = src
+      .slice(cursor, openBrace)
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .trim();
+    let depth = 0;
+    let i = openBrace;
+    for (; i < src.length; i++) {
+      if (src[i] === "{") depth++;
+      else if (src[i] === "}") {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    rules.push({
+      selectors: selectorText.split(",").map((s) => s.trim()),
+      body: src.slice(openBrace + 1, i),
+    });
+    cursor = i + 1;
+  }
+  return rules;
+}
+
+/** Finds the LAST rule (source order) whose selector list contains `selector`
+ * as an exact member, and returns its declaration body. Throws if none does
+ * -- a selector this test targets must actually have a phone-scoped rule. */
+function lastRuleFor(blockBody: string, selector: string): string {
+  const rules = extractRules(blockBody).filter((r) => r.selectors.includes(selector));
+  if (rules.length === 0) {
+    throw new Error(`no phone-scoped rule with selector ${selector} found`);
+  }
+  return at(rules, -1).body;
 }
 
 /** Fail-loud accessor -- an out-of-range index is a broken test fixture,
@@ -127,6 +181,67 @@ describe("home.css.ts: .chq-home-footer-link gets a three-property overflow esca
   it("the phone block (carrying the appended escape) is the LAST top-level construct in the module", () => {
     const only = at(blocks, 0);
     const trailing = body.slice(only.end + 1).trim();
+    expect(trailing).toBe("");
+  });
+});
+
+describe("home.css.ts: the four .chq-home-action-* nowrap offenders escape (w8-e, DEC-989/DEC-385)", () => {
+  // DEC-989(b): fixed-word attendee controls get the ellipsis escape, not a
+  // re-wrap -- .chq-home-action-primary/-secondary/-quiet/-tertiary each
+  // already carried a phone-scoped rule (HOME_CSS is pinned to exactly one
+  // @media (max-width: 700px) block by test/public-home-phone.test.ts), so
+  // the fix is appended inside that SAME existing rule for each selector,
+  // never a new block, desktop untouched.
+  const body = templateBody(HOME_CSS);
+  const blocks = extract700Blocks(body);
+
+  it("declares exactly one phone block", () => {
+    expect(blocks.length).toBe(1);
+  });
+
+  it.each([
+    ".chq-home-action-primary",
+    ".chq-home-action-secondary",
+    ".chq-home-action-quiet",
+    ".chq-home-action-tertiary",
+  ])("%s's phone rule gets overflow:hidden + text-overflow:ellipsis", (selector) => {
+    const only = at(blocks, 0);
+    const rule = lastRuleFor(only.body, selector);
+    expect(rule).toMatch(/overflow:\s*hidden\s*;/);
+    expect(rule).toMatch(/text-overflow:\s*ellipsis\s*;/);
+  });
+
+  it("the phone block is still the LAST top-level construct in the module (nothing reordered)", () => {
+    const only = at(blocks, 0);
+    const trailing = body.slice(only.end + 1).trim();
+    expect(trailing).toBe("");
+  });
+});
+
+describe("rail.css.ts: .chq-pub-save/.chq-pub-schedule-remove/.chq-pub-lastyear-link escape (w8-e)", () => {
+  // Same DEC-989(b)/DEC-385 shape as the home.css.ts block above, applied to
+  // rail.css.ts's own single terminal @media (max-width: 700px) block
+  // (phone-terminal-block.scan.test.ts pins exactly one there too).
+  const body = templateBody(RAIL_CSS);
+  const blocks = extract700Blocks(body);
+
+  it("declares exactly one phone block", () => {
+    expect(blocks.length).toBe(1);
+  });
+
+  it.each([".chq-pub-save", ".chq-pub-schedule-remove", ".chq-pub-lastyear-link"])(
+    "%s's phone rule gets overflow:hidden + text-overflow:ellipsis",
+    (selector) => {
+      const last = at(blocks, -1);
+      const rule = lastRuleFor(last.body, selector);
+      expect(rule).toMatch(/overflow:\s*hidden\s*;/);
+      expect(rule).toMatch(/text-overflow:\s*ellipsis\s*;/);
+    },
+  );
+
+  it("the phone block is still the LAST top-level construct in the module (nothing reordered)", () => {
+    const last = at(blocks, -1);
+    const trailing = body.slice(last.end + 1).trim();
     expect(trailing).toBe("");
   });
 });
