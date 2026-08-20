@@ -107,6 +107,13 @@ function baseFixture(): CampaignFile[] {
         "export const WIDENED_UNRESOLVED_CITATION_CEILING = 0;",
       ].join("\n"),
     },
+    // wave-120 (task w9-l, DEC-367 PREDICATE REPAIR): the undeclared-height
+    // tap-target lens, added so this fixture stays a faithful shape of the
+    // real corpus.
+    {
+      path: "app/src/phone-tap-target-undeclared.scan.test.ts",
+      content: "export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 7;",
+    },
   ];
 }
 
@@ -149,6 +156,10 @@ describe("findConstantDeclarations", () => {
 describe("buildCampaignReport", () => {
   it("builds all 10 rows and a correct verdict from the fixture corpus", () => {
     const report = buildCampaignReport(baseFixture());
+    // UNDECLARED_HEIGHT_OFFENDERS_CEILING is graded (CAMPAIGN_CONSTANT_NAMES)
+    // but not yet a Tier-2 row (TIER2_CEILING_NAMES) -- wave-120 (task w9-l)
+    // adds the instrument only; wiring it into the done/row count is a
+    // separate act. Row count is unchanged at 18.
     expect(report.rows).toHaveLength(18);
 
     const desktop = report.rows.find((r) => r.label === "desktop CLAIMED_FLOOR");
