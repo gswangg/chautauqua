@@ -105,7 +105,6 @@ const COMMS_PHONE_BLOCK = lastPhoneBlock(COMMS_CSS);
 const TAP_FLOOR_BORDERLESS_SELECTORS = [
   '.chq-comms-editor-actions > .chq-link-button',
   '.chq-comms-send-report-all-history',
-  '.chq-comms-send-detail > .chq-link-button',
   '.chq-comms-recent-sends .chq-section-head .chq-link-button',
   '.chq-comms-blocked-list li .chq-link-button',
 ];
@@ -123,6 +122,15 @@ const TAP_FLOOR_BORDERED_SELECTORS = [
   '.chq-comms-send-report-footer-actions > .chq-btn',
   '.chq-comms-template-actions > .chq-btn',
 ];
+
+// .chq-comms-send-detail is `display: contents` (never a flex/grid box)
+// with exactly one .chq-link-button child, so it has no sibling to
+// protect a gap against -- the companion-gap lens flagged it as a
+// gap=NONE offender (DEC-937 wave-w12-n, task v12m-w12-n) and the
+// cancelled-padding pair was removed here instead of widening a gap on a
+// non-flex box. Floor sizing (min-height/flex-center) is unaffected and
+// pinned separately below.
+const SEND_DETAIL_TOGGLE_SELECTOR = '.chq-comms-send-detail > .chq-link-button';
 
 const OVERFLOW_SELECTORS = [
   '.chq-comms-compose-col-slot',
@@ -146,6 +154,11 @@ describe('Comms phone tap-floor + overflow fixes (DEC-393 wave-90 amendment, tas
       expectFloorDeclarations(body, selector, false);
     },
   );
+
+  it(`${SEND_DETAIL_TOGGLE_SELECTOR} reaches the 44px floor with centred flex and NO cancelled padding (display:contents container, single-target, no adjacency -- DEC-937 wave-w12-n)`, () => {
+    const body = ruleBodyFor(COMMS_PHONE_BLOCK, SEND_DETAIL_TOGGLE_SELECTOR);
+    expectFloorDeclarations(body, SEND_DETAIL_TOGGLE_SELECTOR, false);
+  });
 
   it.each(OVERFLOW_SELECTORS)('%s gets the hidden/ellipsis/min-width:0 escape at phone width', (selector) => {
     const body = ruleBodyFor(COMMS_PHONE_BLOCK, selector);

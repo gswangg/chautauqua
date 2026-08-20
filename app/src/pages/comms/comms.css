@@ -223,6 +223,11 @@
    Clear) is right-flushed, not mid-row -- .chq-bulkbar-actions itself is
    the shared class (styles.css); this page-scoped override only changes
    its position inside the compose wizard's own bar. */
+/* tap-floor-exempt: ComposeWizard.tsx select-step bulk bar -- both
+   children of .chq-bulkbar-actions here are <button type="button"
+   className="chq-btn chq-btn-tertiary"> (Select all N / Clear), no
+   anchor or Link child, so the row-action-anchor lens does not apply
+   (DEC-393 wave-w12-n). */
 .chq-compose-wizard .chq-bulkbar-actions {
   margin-left: auto;
   gap: 12px;
@@ -240,6 +245,11 @@
   color: var(--chq-muted);
 }
 
+/* tap-floor-exempt: ComposeWizard.tsx template-step footer -- both
+   children of .chq-comms-template-actions are <button type="button"
+   className="chq-btn ..."> (Back / Next: preview), no anchor or Link
+   child, so the row-action-anchor lens does not apply (DEC-393
+   wave-w12-n). */
 .chq-comms-template-actions {
   display: flex;
   gap: 9px;
@@ -607,6 +617,12 @@
   margin-left: 10px;
 }
 
+/* tap-floor-exempt: ComposeWizard.tsx preview-step and sent-step footers
+   -- both instances of .chq-comms-preview-actions in this file wrap only
+   <button type="button" className="chq-btn ..."> pairs (Next: send /
+   Back to the template, and the send-button / Back to the preview
+   pair), no anchor or Link child, so the row-action-anchor lens does not
+   apply (DEC-393 wave-w12-n). */
 .chq-comms-preview-actions {
   margin-top: 16px;
   display: flex;
@@ -2189,6 +2205,19 @@
     flex: 1 1 0;
   }
 
+  /* DEC-393 wave-w12-n: the Export CSV child is an <a class="chq-btn
+     chq-btn-secondary chq-comms-history-export">, and .chq-btn's own
+     display:inline-flex does not satisfy the literal display:flex the
+     row-action-anchor lens requires, so the anchor is reached directly
+     here. Same 16px chq-btn already pads with -- this only reasserts it
+     under a selector the lens can see, no visual change. */
+  .chq-comms-history-head-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+  }
+
   /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
      consolidation) -- no property collision with the tap-floor set.
      DEC-383 wave-109 amendment: .chq-btn is bordered, cancelled padding
@@ -2208,6 +2237,16 @@
     align-items: center;
   }
 
+  /* DEC-393 wave-w12-n: the "Place it first" child is a <Link to="/agenda"
+     className="chq-btn chq-btn-primary">, rendered DOM anchor -- same
+     inline-flex gap as the history-head export link above. */
+  .chq-comms-refusal-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+  }
+
   /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
      consolidation) -- no property collision with the tap-floor set.
      DEC-383 wave-109 amendment: .chq-btn is bordered, cancelled padding
@@ -2217,6 +2256,15 @@
     display: flex;
     align-items: center;
     flex: 1 1 0;
+  }
+
+  /* DEC-393 wave-w12-n: the Cancel child is a <Link to="/comms"
+     className="chq-btn chq-btn-secondary">, rendered DOM anchor. */
+  .chq-comms-select-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
   }
 
   /* white-space:normal merged in from the former earlier declaration of
@@ -2245,6 +2293,15 @@
     flex: 1 1 0;
   }
 
+  /* DEC-393 wave-w12-n: the "Back to Comms" child is a <Link to="/comms"
+     className="chq-btn chq-btn-primary">, rendered DOM anchor. */
+  .chq-comms-send-report-footer-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+  }
+
   /* flex:1 1 0 merged in from the former grouped rule (DEC-385 wave-102
      consolidation) -- no property collision with the tap-floor set.
      DEC-383 wave-109 amendment: .chq-btn is bordered, cancelled padding
@@ -2262,12 +2319,19 @@
      already shadowed by this rule and are not carried forward. Split out
      of the grouped rule below since recent-sends/blocked-list have no
      such unique properties. */
+  /* DEC-393/DEC-937 wave-w12-n: cancelled padding-inline/margin-inline
+     removed here. .chq-comms-send-detail is `display: contents` (line
+     ~866) -- it is not a flex/grid box and never lays out this button
+     beside a sibling cancelled-padding subject (it has exactly one
+     .chq-link-button child, the row's own toggle), so the companion-gap
+     rider (DEVIATIONS.md "Focus/hover ring GEOMETRY on bare-text
+     controls: cancelled inline padding.") does not apply -- there is no
+     adjacency for a gap to protect. min-height/flex-center alone still
+     meets the 44px floor. */
   .chq-comms-send-detail > .chq-link-button {
     min-height: 44px;
     display: flex;
     align-items: center;
-    padding-inline: 10px;
-    margin-inline: -10px;
     justify-self: auto;
     align-self: flex-start;
   }
@@ -2328,5 +2392,39 @@
     background: none;
     border: none;
     cursor: pointer;
+  }
+
+  /* DEC-393/DEC-937 wave-w12-n (companion-gap): .chq-comms-editor-actions
+     carries a chq-link-button member cancelling 10px of padding-inline
+     with an equal negative margin-inline (rule above, `.chq-comms-
+     editor-actions > .chq-link-button`). DEVIATIONS.md "Focus/hover ring
+     GEOMETRY on bare-text controls: cancelled inline padding." requires
+     the row's own separation to add that cancelled padding back so the
+     rendered gap the frame draws does not close -- desktop's own 9px
+     (top level, this file) plus 2*10px (both sides of the cancelled
+     pair) = 29px. */
+  .chq-comms-editor-actions {
+    gap: 29px;
+  }
+
+  /* DEC-393/DEC-937 wave-w12-n (companion-gap): .chq-comms-blocked-list
+     li's own text node sits beside a chq-link-button member that
+     cancels 10px of padding-inline (rule group below,
+     `.chq-comms-recent-sends .chq-section-head .chq-link-button,
+     .chq-comms-blocked-list li .chq-link-button`). Desktop's own 8px
+     (top level, this file) plus 2*10px = 28px. */
+  .chq-comms-blocked-list li {
+    gap: 28px;
+  }
+
+  /* DEC-393/DEC-937 wave-w12-n (companion-gap): the shared
+     .chq-section-head (styles.css) is a real flex row
+     (justify-content:space-between, own gap:20px) -- this page-scoped
+     compound selector restates it here with an explicit rule the
+     companion-gap lens can see, so the "All history" chq-link-button
+     member's cancelled 10px padding-inline never closes the row's own
+     20px minimum: 20px + 2*10px = 40px. */
+  .chq-comms-recent-sends .chq-section-head {
+    gap: 40px;
   }
 }

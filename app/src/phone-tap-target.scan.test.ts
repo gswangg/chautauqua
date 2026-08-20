@@ -199,7 +199,14 @@ function findOffenders(): string[] {
 // independent drains of disjoint offender sets, merged in one pass; the constant
 // below is the re-measured combined truth of the merged tree, not any single
 // branch's figure. This ratchet may only fall.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 47;
+// DEC-989 (wave-123 amendment): lowered 47 -> 40 by task v12m-w12-n,
+// COMMS cluster tier-2 sweep -- the 7 comms.css row-action-anchor
+// offenders (chq-bulkbar-actions, chq-comms-history-head-actions,
+// chq-comms-preview-actions, chq-comms-refusal-actions,
+// chq-comms-select-actions, chq-comms-send-report-footer-actions,
+// chq-comms-template-actions) are floored or exempted. Re-measured
+// 2026-08-20.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 40;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {
