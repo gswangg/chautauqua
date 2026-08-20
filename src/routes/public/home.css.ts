@@ -30,7 +30,11 @@ const HOME_CHROME_GUTTER = "padding-inline: 44px;";
 const HOME_BODY_MEASURE = "max-width: 820px; width: 100%; margin-inline: auto; padding-inline: 44px;";
 
 export const HOME_CSS = `
-  .chq-home-shell { display: flex; flex-direction: column; }
+  /* User-filed (2026-08-20): on a short hub the footer floated mid-page
+     with dead paper below. Sticky-footer: the shell fills the viewport and
+     the body absorbs the slack, so the footer sits at the viewport bottom
+     on short pages and behaves normally once content is taller. */
+  .chq-home-shell { display: flex; flex-direction: column; min-height: 100vh; }
   .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding-block: 15px; ${HOME_CHROME_GUTTER} display: flex; align-items: center; gap: 20px; }
   /* Design pack v12 (the wordmark optical nudge) -- docs/design/Chautauqua
      Home.dc.html:34 \`font-family:'Familjen Grotesk', sans-serif;
@@ -43,7 +47,7 @@ export const HOME_CSS = `
   .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; position: relative; top: -2.5px; }
   .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; text-decoration: none; }
 
-  .chq-home-body { padding-block: 36px 40px; ${HOME_BODY_MEASURE} display: flex; flex-direction: column; gap: 34px; }
+  .chq-home-body { padding-block: 36px 40px; ${HOME_BODY_MEASURE} display: flex; flex-direction: column; gap: 34px; flex: 1 0 auto; }
   .chq-home-hero { display: flex; flex-direction: column; gap: 10px; }
   .chq-home-hero h1 { margin: 0; font-family: var(--chq-font-display); font-size: 44px; font-weight: 700; letter-spacing: -0.042em; line-height: 1.2; }
   .chq-home-hero p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--chq-ink-2); max-width: 54ch; }
