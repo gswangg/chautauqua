@@ -224,6 +224,9 @@ describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and P
     // padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px`
     // -- hidden at top level (a real hide, ahead of the terminal media block)
     expect(withoutMedia).toMatch(/\.chq-portal-edit-dock\s*\{[^}]*display:\s*none;/);
+    // docs/design/Chautauqua Public and Portal.dc.html:667
+    // `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF;
+    // padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px`
     // revealed with the frame's column geometry only inside the phone block
     expect(phoneBlock).toMatch(/\.chq-portal-edit-dock\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/);
     // the shared .chq-portal-dock descendant rules already give any nested
@@ -240,6 +243,9 @@ describe('"Portal · Edit your session" 390 (docs/design/Chautauqua Public and P
     const saveIdx = html.indexOf("Save changes", buttonsIdx);
     const cancelIdx = html.indexOf(">Cancel<", saveIdx);
     const noteIdx = html.lastIndexOf("Title and abstract show on the public pages");
+    // docs/design/Chautauqua Public and Portal.dc.html:669 `Save changes`:
+    // Save leads the row, Cancel follows (:670), the consequence note sits
+    // below the pair (:672).
     expect(dockIdx).toBeGreaterThan(-1);
     expect(buttonsIdx).toBeGreaterThan(dockIdx);
     expect(saveIdx).toBeGreaterThan(buttonsIdx);
