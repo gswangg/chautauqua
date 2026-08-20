@@ -43,7 +43,7 @@
 ## Pre-campaign admin MAJORs
 - Plan criteria column heads off by one track ("Type" missing; WEIGHT over
   Type column) — 1d2d9bdb.
-  CLOSED (wave 115): app/src/pages/review/PlanEditor.tsx:1724 `reviewers · optional</span><span>Type</span><span>Weight</span>`
+  CLOSED (wave 115): app/src/pages/review/PlanEditor.tsx`reviewers · optional</span><span>Type</span><span>Weight</span>`
 - .chq-detail-footer shrink-wraps; "Delete this session" centres at x=739
   in a left-ragged layout.
   NOT-A-FRAME-DIVERGENCE (wave 120): the string "Delete this session" does
@@ -60,17 +60,19 @@
 - .chq-settings-row-hint inherits text-align:right; tracks/rooms refusal
   captions float mid-page.
 
-## Still live at wave 120
-- `.chq-settings-row-hint`'s base desktop rule (app/src/pages/settings/settings.css:1142
-  `.chq-settings-row-hint {`, through settings.css:1146 `text-align: right;`)
-  is unchanged by the merged `v12m-w8-b` fix at settings.css:1607-1613 — that
-  commit (diffed against its merge-base 885bceb8, tip 98fefd31) only added a
-  phone-width (`max-width: 700px`) override,
-  settings.css`text-align: left;`, and moved ONE consumer (CallForPapersPanel's
-  tracks-empty hint) to a new class, `.chq-settings-note`
+## Resolved since wave 120
+- `.chq-settings-row-hint`'s base rule, app/src/pages/settings/settings.css`.chq-settings-row-hint {`,
+  no longer carries a `text-align` at all: task-w7-d/DEC-896's later amendment
+  (see docs/design/audit/overflow-390-v12.md) ruled that the hint's right
+  edge and wrap behaviour come from `.chq-settings-row`'s
+  `grid-template-columns` auto TRACK, not from aligning the hint span's
+  text, and removed the `text-align: right;` declaration this row originally
+  flagged. That ruling supersedes the `v12m-w8-b` phone-width fix this row
+  used to describe (settings.css`text-align: left;`, and the ONE consumer
+  moved to `.chq-settings-note`
   (app/src/pages/settings/CallForPapersPanel.tsx:566
-  `<p className="chq-settings-note">`). The desktop rule
-  `.chq-settings-row-hint { ... text-align: right; }` still governs
+  `<p className="chq-settings-note">`)) — the desktop rule this row flagged no
+  longer exists to still govern
   TrackEditRow.tsx:99 `{inUse ? <p className="chq-settings-row-hint">In use — retire it instead of removing</p> : null}`
   and RoomEditRow.tsx:96 `{inUse ? <p className="chq-settings-row-hint">Has scheduled sessions — cannot be removed</p> : null}`,
   both rendered inside .chq-settings-edit-row's 3-column grid (defined at

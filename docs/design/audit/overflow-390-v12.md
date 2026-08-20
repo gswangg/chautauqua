@@ -27,13 +27,17 @@ The candidacy test that produced every prior count in this document's history
 top-level rule was excluded from the population the instant ANY phone-scoped
 rule in the same file named the same selector token, on ANY property --
 whether or not that override ever touched the flagged declaration.
-`app/src/pages/settings/settings.css:1142`'s `.chq-settings-row-hint {` rule
-declares nowrap at `app/src/pages/settings/settings.css:1147`
-(`white-space: nowrap;`) with no overflow escape in the same rule, yet was
-never checked: a wholly unrelated terminal phone rule for the same selector
-token declared only `align-self: flex-end` -- that phone rule has since been
-repaired (DEC-728 wave-125/N6) and its own comment records the swap:
-app/src/pages/settings/settings.css`was align-self:flex-end, which put the`.
+app/src/pages/settings/settings.css`.chq-settings-row-hint {` (task-w7-d/DEC-896
+amendment) once declared nowrap with no overflow escape in the same rule, yet
+was never checked: a wholly unrelated terminal phone rule for the same
+selector token declared only `align-self: flex-end` -- that phone rule has
+since been repaired (DEC-728 wave-125/N6) and its own comment records the
+swap: app/src/pages/settings/settings.css`was align-self:flex-end, which put the`.
+DEC-896's own later ruling then removed the nowrap declaration itself: the
+hint's right edge and wrap behaviour now come from `.chq-settings-row`'s
+`grid-template-columns` auto TRACK, not from a text-align/nowrap pair on the
+hint span, so `.chq-settings-row-hint` no longer declares `white-space` at
+all (app/src/pages/settings/settings.css`font-size: 12px;`).
 
 (Merge-train note: task w8-b landed in the same batch as this predicate
 repair and gave that phone rule a real escape --
