@@ -21,9 +21,10 @@ import { eventDatesLine, validAccent } from "./shell";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { EventRow, FormRow, TrackRow } from "../../server/repo/submit";
 import { parseEventBranding, type EventBranding } from "../../domain/event-branding";
-import { DEC_322 } from "../../decisions";
+import { DEC_322, DEC_380 } from "../../decisions";
 
 void DEC_322;
+void DEC_380;
 
 // w5-c (frame 10--14 copy batch): the bio field's caption is a display-only
 // override applied to the locked bio FormFieldDef at render time -- the
@@ -812,11 +813,20 @@ export function ConfirmationPage(props: {
             // depend on origin inference. Only the emailed copy (built with
             // resolveBaseUrl below) is absolute.
             <>
-              <p>
-                <a class="chq-btn chq-btn-primary" href={props.claimPath}>
-                  Create a password
-                </a>
-              </p>
+              {/* DEC-380 (wave-134 amendment): Public and Portal.dc.html:1085-1088
+                  draws the primary inside a named, bordered block -- a heading
+                  and a body line above the button, not a bare "Create a
+                  password" -- so the claim-state offer is a distinct block
+                  from the confirmation copy above it. */}
+              <div class="chq-cfp-confirm-password">
+                <span class="chq-cfp-confirm-password-heading">Set a password now</span>
+                <p class="chq-cfp-confirm-password-body">Then you can track this talk without waiting for the email.</p>
+                <p>
+                  <a class="chq-btn chq-btn-primary" href={props.claimPath}>
+                    Create a password
+                  </a>
+                </p>
+              </div>
               <p>
                 Already have a password? <a href="/login">Log in &rsaquo;</a>
               </p>

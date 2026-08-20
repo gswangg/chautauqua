@@ -255,6 +255,16 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
        across all three Submitted frames (:1077/:1127/:1150 are byte-
        identical) -- one rule, not three. */
     .chq-cfp-confirm h1 { font-size: 27px; line-height: 1.08; }
+    /* DEC-380 (wave-134 amendment): :1085-1088's password offer is a named,
+       bordered block -- a display heading and a body line above the
+       existing primary -- not a bare button. No desktop frame draws this
+       screen at all (only the three :1077/:1127/:1150 390 frames exist for
+       "Submitted"), so per DEC-385 single-direction responsive the new
+       geometry lives here in the phone register only; outside this block
+       the wrapper and its text sit unstyled, leaving desktop pins green. */
+    .chq-cfp-confirm-password { display: flex; flex-direction: column; gap: 9px; }
+    .chq-cfp-confirm-password-heading { font-family: var(--chq-font-display); font-size: 17px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.3; }
+    .chq-cfp-confirm-password-body { font-size: 14px; line-height: 1.6; color: var(--chq-ink-2); }
     .chq-cfp-track-format-row,
     .chq-cfp-you-grid.chq-cfp-fields { grid-template-columns: 1fr; }
     /* DEC-367 (wave 50 amendment): the phone tap floor -- the Audience-level
