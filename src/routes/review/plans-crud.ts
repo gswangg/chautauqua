@@ -13,7 +13,7 @@ import { overCapFieldMessage } from "../../domain/cap-copy";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_460, DEC_461, DEC_624, DEC_676, DEC_709 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_460, DEC_461, DEC_624, DEC_676, DEC_709, DEC_929 } from "../../decisions";
 import { criteriaForRound, MAX_PLAN_ROUNDS } from "../../domain/evaluation";
 import { countOf } from "../../domain/count-copy";
 import { clampPage, listPerPage } from "../../lib/pagination";
@@ -44,6 +44,7 @@ void DEC_461; // optional repo page param + sibling count fn + deterministic ORD
 void DEC_624; // PATCH /plans/:id: anonymity ratchet guard below
 void DEC_676; // GET /plans/:id: evaluationCountsByRound surfaces DEC-213's freeze reason below
 void DEC_709; // POST /plans/:id/waves: locked criteria carry forward into a new editable round below
+void DEC_929; // DELETE /plans/:id: server-side plan-delete freeze (ruling A9) below
 
 reviewPlansCrudRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -247,8 +248,19 @@ reviewPlansCrudRoutes.get("/api/v1/plans/:id/delete-preview", requireOrganizer, 
   return c.json({ planId: plan.id, name: plan.name, counts });
 });
 
+// DEC-929: DESIGN-RULINGS A9's delete freeze, enforced server-side -- a
+// bearer-token organizer is CSRF-exempt, so the SPA's disabled affordance
+// alone (app/src/pages/review/PlanEditor.tsx) is not a rule. Same predicate
+// as DEC-123's criteria freeze above (repo.planHasEvaluations), never a
+// second count query.
 reviewPlansCrudRoutes.delete("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
+  if (await repo.planHasEvaluations(c.var.db, plan.id)) {
+    throw new ApiError(
+      "conflict",
+      "This plan has recorded evaluations and cannot be deleted -- start a new wave instead",
+    );
+  }
   await repo.deletePlan(c.var.db, plan.id);
   return c.body(null, 204);
 });
