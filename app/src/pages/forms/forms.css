@@ -345,6 +345,11 @@
    negative-margin trick modal-frame.css's .chq-modal-head uses against the
    base .chq-modal 20px/26px padding) rather than inheriting the plain-paper
    body. */
+/* tap-floor-exempt: every member of this footer row (Delete, Cancel, Save)
+   is a <button>, never an <a>/<Link> -- there is no bare anchor here for
+   DEC-393's row-action-anchor floor to reach, and each button's own tap
+   area is the OTHER scan's population (findOffenders above), not this
+   one's. */
 .chq-forms-field-modal .chq-modal-actions {
   justify-content: space-between;
   margin: 2px -26px -20px;
@@ -353,6 +358,8 @@
   border-top: 1px solid var(--chq-rule);
 }
 
+/* tap-floor-exempt: Cancel and Save both render as <button>, never an
+   <a>/<Link> -- same reasoning as .chq-modal-actions directly above. */
 .chq-forms-field-modal-actions-right {
   display: flex;
   align-items: center;
@@ -698,5 +705,39 @@
   .chq-forms-phone-footer .chq-btn-secondary {
     padding: 0 16px;
     flex: 0 1 auto;
+  }
+
+  /* Tap-floor (task w8-h, DEC-393): `.chq-forms-back` is the header's own
+     bare `<Link>` (no `chq-btn`) -- the row-action-anchor evasion shape --
+     so it is grown directly: min-height PLUS centred flex PLUS horizontal
+     padding, never padding alone. */
+  .chq-forms-back {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-right: 12px;
+  }
+
+  /* `.chq-forms-field-actions` (FieldList's Edit/Delete pair) wraps a real
+     `<Link>` (viewLink) alongside a `<button>` -- the anchor, not the
+     container, gets the floor (DEC-393: "the floor is reached by the
+     anchor, not its container"). */
+  .chq-forms-field-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 8px;
+  }
+
+  /* `.chq-forms-header-actions` carries a real `<a>` (Preview, target=_blank)
+     alongside the Save button; the whole band is display:none at this width
+     (actions move into .chq-forms-phone-footer instead) but the anchor
+     still gets a conforming rule rather than an unfloored one left dormant
+     inside a `display:none` ancestor. */
+  .chq-forms-header-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 12px;
   }
 }
