@@ -1104,6 +1104,17 @@
   display: none;
 }
 
+/* ---------------------------------------------------------------------- */
+/* Tier-2 tap-floor + overflow fixes (task w8-g; DEC-393/DEC-989 wave-90   */
+/* amendment). Appended at the TRUE END of the file -- never edit or      */
+/* reorder the blocks above, source order alone decides (DEC-385).        */
+/*                                                                        */
+/* Tap-floor (DEC-393): "the floor is reached by the anchor, not its      */
+/* container" -- each fix below lands on the tappable anchor INSIDE the   */
+/* offending container, never on the container itself. .chq-toolbar-link  */
+/* is itself the anchor (a react-router <Link>, app/src/pages/Agenda.tsx) */
+/* so it is grown directly rather than via a descendant selector.         */
+/* ---------------------------------------------------------------------- */
 @media (max-width: 700px) {
   .chq-phone-agenda {
     display: flex;
@@ -1494,20 +1505,6 @@
     flex-direction: column;
     gap: 8px;
   }
-}
-
-/* ---------------------------------------------------------------------- */
-/* Tier-2 tap-floor + overflow fixes (task w8-g; DEC-393/DEC-989 wave-90   */
-/* amendment). Appended at the TRUE END of the file -- never edit or      */
-/* reorder the blocks above, source order alone decides (DEC-385).        */
-/*                                                                        */
-/* Tap-floor (DEC-393): "the floor is reached by the anchor, not its      */
-/* container" -- each fix below lands on the tappable anchor INSIDE the   */
-/* offending container, never on the container itself. .chq-toolbar-link  */
-/* is itself the anchor (a react-router <Link>, app/src/pages/Agenda.tsx) */
-/* so it is grown directly rather than via a descendant selector.         */
-/* ---------------------------------------------------------------------- */
-@media (max-width: 700px) {
   .chq-agenda-head-actions .chq-btn,
   .chq-breaks-add-actions .chq-btn,
   .chq-breaks-row-actions .chq-btn,
