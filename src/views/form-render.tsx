@@ -312,7 +312,31 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
       // required inside a display:none wrap, where the browser aborts
       // submission on a control it cannot focus or annotate.
       wrap.querySelectorAll('[data-field-id="' + r.fieldId + '"]').forEach(function(input){
-        input.required = visible && input.dataset.required === 'true';
+        var want = visible && input.dataset.required === 'true';
+        // DEC-986 (wave 138/139): a control the wizard (CfpStepsScript) has
+        // hidden inside a display:none section must not be re-armed here --
+        // two scripts arming one 'required' flag must agree on a single
+        // owner. Walk up to document.body checking computed display; if the
+        // control is currently hidden, force required=false and, when the
+        // wizard has stashed the pre-hide value on
+        // data-chq-cfp-required-orig, overwrite that stash with the CURRENT
+        // conditional truth so the wizard's later restore uses fresh state
+        // instead of its DOMContentLoaded snapshot. The stash attribute is
+        // the one handoff channel between the two scripts.
+        var isHidden = false;
+        var el = input.parentElement;
+        while (el && el !== document.body) {
+          if (window.getComputedStyle(el).display === 'none') { isHidden = true; break; }
+          el = el.parentElement;
+        }
+        if (isHidden) {
+          input.required = false;
+          if (input.hasAttribute('data-chq-cfp-required-orig')) {
+            input.setAttribute('data-chq-cfp-required-orig', want ? '1' : '0');
+          }
+        } else {
+          input.required = want;
+        }
       });
     });
   }
