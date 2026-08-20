@@ -16,7 +16,7 @@ import { parseSubmissionAnswerValue } from "../../../forms/answer-json";
 
 // DEC-346 amendment (wave 57): the ceiling listPlanFilteredSubmissions'
 // matched-submissions scan refuses past -- mirrors MAX_FILE_LIBRARY_SCAN
-// (src/server/repo/files-library.ts:39). A pathological-data guard set well
+// (src/server/repo/files-library-scope.ts). A pathological-data guard set well
 // above SPEC's 2,000-submission scale target, not a functional limit. The
 // query `.limit(MAX_PLAN_SUBMISSION_SCAN + 1)`s and throws rather than
 // silently truncating a plan's submission set once it crosses this.
@@ -841,8 +841,8 @@ export async function listTrackNamesForSubmissions(db: Db, submissionIds: string
 }
 
 /** DEC-857: batched session_format-role answer lookup for the reviewer
- * queue -- ONE query per chunkIds batch (mirrors loadDurationMinBySubmission,
- * src/server/repo/agenda.ts:316-330), keyed to the caller's own submission id
+ * queue -- ONE query per chunkIds batch (mirrors loadDurationMinBySubmission
+ * in src/server/repo/agenda/rows.ts), keyed to the caller's own submission id
  * set. The stored answer LABEL is returned verbatim (it already carries its
  * own "(N min)" suffix) -- never re-parsed or reformatted here. Null when a
  * submission has no format answer. */

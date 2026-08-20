@@ -4,7 +4,8 @@
 // agent, human judge) out mid-run. issueSession deletes only the row
 // matching the token presented on the request (plus any already-expired
 // rows for the user) before minting. presentedTokenHash is derived from the
-// request's chq_session cookie (src/routes/auth.tsx:384-387) — client
+// request's chq_session cookie (written by buildSessionCookie in
+// src/auth/cookies.ts) — client
 // input, not something the server can trust to name only the caller's own
 // row. Wave-22: the presented-hash delete is scoped by BOTH userId and
 // tokenHash, not tokenHash alone — a login as user A that happens to carry

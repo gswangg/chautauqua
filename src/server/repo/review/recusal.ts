@@ -29,8 +29,8 @@ function toRecusalRecord(row: typeof schema.reviewRecusal.$inferSelect): Recusal
 
 /** Creates a recusal, or leaves the existing row unchanged if one already
  * exists for this (plan, submission, user) -- DEC-552: one atomic INSERT ...
- * ON CONFLICT DO NOTHING against the uniqueIndex at src/db/schema.ts:376,
- * never a hasRecusal probe before the write. `created` tells the caller
+ * ON CONFLICT DO NOTHING against `review_recusal_plan_submission_user_idx`
+ * in src/db/schema/review.ts, never a hasRecusal probe before the write. `created` tells the caller
  * whether this call's insert won the race (201) or a prior row already
  * existed (200). */
 export async function createRecusal(

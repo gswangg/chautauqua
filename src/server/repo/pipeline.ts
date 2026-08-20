@@ -251,8 +251,8 @@ export async function listPipelineForOrg(db: Db, orgId: string, page: { limit: n
 
 /** Enrolls a contact into the org pipeline at `stage`, appending a 'move'
  * activity from null -> stage. DEC-552: the pipeline_entry insert is atomic
- * against the (orgId, contactId) uniqueIndex (src/db/schema.ts:669) — on
- * conflict it throws the same 'invalid' ApiError the caller used to raise
+ * against the (orgId, contactId) uniqueIndex (`pipeline_entry_org_id_contact_id_idx`
+ * in src/db/schema/crm.ts) — on conflict it throws the same 'invalid' ApiError the caller used to raise
  * from a pre-check, before ever writing the pipeline_activity row. Callers
  * no longer need to pre-check for an existing entry. */
 export async function enrollContact(
