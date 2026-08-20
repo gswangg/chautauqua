@@ -292,6 +292,29 @@ survives contact with state:
   the figure from, so building the literal would fabricate a number this
   component cannot verify. The landed copy stays count-free: `Tell your
   accepted speakers` (`app/src/pages/comms/RecentSends.tsx:356-362`).
+- **Co-presenter add row keeps its no-email truth over the frame's caption
+  (DEC-909 wave-134, task w9-dd)** — `docs/design/Chautauqua
+  Submissions.dc.html:298` draws the caption "A new co-presenter is emailed
+  a portal link · the lead presenter is not changed". The app keeps
+  `SubmissionDetailPage.tsx:1855`'s truthful line ("Adding a co-presenter
+  here sends no email — sending a portal invite is a separate, explicit
+  action. The lead presenter is not changed.") because
+  `src/routes/api/submissions.ts:6` states, and a source-scan test
+  enforces, that the submissions routes never import a mailer: adding a
+  participant cannot send anything, and the portal invite is a separate
+  explicit act (see the DEC-604 wave-70 amendment recorded in the
+  component's own comment). The frame's second clause ("the lead presenter
+  is not changed") already matches the app; only the first clause is
+  superseded.
+- **Reminder skip-window wording stays "reminded", not "emailed" (DEC-909
+  wave-134, task w9-dd)** — `docs/design/Chautauqua Speakers.dc.html:697`
+  draws the caption "skips anyone emailed in the last hour". The shared
+  vocabulary at `app/src/pages/speakers/remindSkipVocabulary.ts:8` says
+  "skips anyone reminded in the last hour", which is the true predicate:
+  the dedupe gate is `task_assignment.last_reminded_at`
+  (`src/server/repo/tasks/reminders.ts:214`), not any generic email send.
+  The app's word stands across all 11 consumers of the shared vocabulary
+  module; the frame's word is superseded.
 
 ## 4. Voice
 
