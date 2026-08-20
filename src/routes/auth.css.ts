@@ -678,4 +678,19 @@ ${BARE_PAGE_CSS}
     .chq-auth-stack .chq-auth-fields {
       gap: 14px;
     }
+
+    /* DEC-393 wave-142 (task w17-e): "Submit a talk ›" / "Browse the
+       sessions ›" (LoginPage) and "Log in ›" (the expired-claim bare page)
+       are standalone nav links inside .chq-auth-footer-links, not a
+       sentence phrase -- DEC-393's real-floor grammar (min-height, centred
+       flex, non-zero horizontal padding). The existing
+       .chq-auth-footer-links a rule above already carries the 44px
+       min-height and an inline-flex/align-items:center pair; this second
+       rule for the same selector only adds the missing horizontal padding
+       (DEC-385 append-only -- the original declaration is left unedited).
+       Appended as the LAST rule of this sheet's one terminal
+       @media (max-width: 700px) block. */
+    .chq-auth-footer-links a {
+      padding-inline: 8px;
+    }
   }`;
