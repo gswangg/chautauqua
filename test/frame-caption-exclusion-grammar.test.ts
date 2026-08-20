@@ -33,6 +33,11 @@
 //   (3) every FIXTURE row's `reason` names a token that actually occurs in
 //       that row's own `text` -- a FIXTURE claim about a caption containing
 //       no fixture token is a mis-file.
+//   (5) every UNBACKED row's `reason` (task w17-g, DEC-976 wave-142's fifth
+//       exclusion class) quotes, verbatim, a line occurring in
+//       docs/design/DEVIATIONS.md -- an UNBACKED row asserts a ruled
+//       non-build, and this clause proves the assertion cites the ruling
+//       rather than merely restating it.
 //   (4) every COMPOSED row that quotes a backtick composing expression has
 //       at least one such expression occurring verbatim (comments stripped,
 //       whitespace collapsed) in the non-test source corpus, enumerated via
@@ -66,6 +71,7 @@ import {
   FIXTURE_EXCLUSIONS,
   normalizeCaption,
   stripComments,
+  UNBACKED_EXCLUSIONS,
 } from './frame-caption-ledger.scan.test';
 import { isDecisionRegistryFile } from './frame-source-corpus';
 
@@ -199,21 +205,50 @@ const STRIPPED_COLLAPSED_SOURCE_BLOBS: string[] = SOURCE_FILES.map((f) =>
   collapseWhitespace(stripComments(readFileSync(f, 'utf-8')))
 );
 
-// -- Guards over the four real tables -----------------------------------------
+// -- Clause 5: UNBACKED reasons self-grade against DEVIATIONS.md -------------
+
+/** Every double-quoted span inside a reason string -- candidate quotes of a
+ * DEVIATIONS.md line. Mirrors backtickSpans' shape but over double quotes,
+ * because an UNBACKED row's DEVIATIONS.md quote and its source-comment quote
+ * use different quoting styles by convention (the former double-quoted
+ * prose, the latter a backtick-quoted code comment) so this clause only
+ * grades the former. */
+export function doubleQuotedSpans(reason: string): string[] {
+  return [...reason.matchAll(/"([^"]+)"/g)].map((m) => m[1]!);
+}
+
+/** True when at least one of `spans` occurs verbatim (whitespace collapsed)
+ * inside `deviationsBlob` -- the same shape as clause 4's
+ * anyComposingSpanMatches, over DEVIATIONS.md instead of the source corpus.
+ * Exported so the non-vacuity fixture drives this exact function over a
+ * fabricated DEVIATIONS.md blob, never the live file. */
+export function anyDeviationsSpanMatches(spans: string[], deviationsBlob: string): boolean {
+  return spans.some((span) => {
+    const needle = collapseWhitespace(span);
+    return needle.length > 0 && deviationsBlob.includes(needle);
+  });
+}
+
+const DEVIATIONS_PATH = join(REPO_ROOT, 'docs', 'design', 'DEVIATIONS.md');
+const DEVIATIONS_BLOB = collapseWhitespace(readFileSync(DEVIATIONS_PATH, 'utf-8'));
+
+// -- Guards over the five real tables -----------------------------------------
 
 const ALL_TABLES: { name: string; rows: Exclusion[] }[] = [
   { name: 'EXPLAINER', rows: EXPLAINER_EXCLUSIONS },
   { name: 'FIXTURE', rows: FIXTURE_EXCLUSIONS },
   { name: 'EXEMPLAR_ARTICLE', rows: EXEMPLAR_ARTICLE_EXCLUSIONS },
   { name: 'COMPOSED', rows: COMPOSED_EXCLUSIONS },
+  { name: 'UNBACKED', rows: UNBACKED_EXCLUSIONS },
 ];
 
 describe('caption exclusion grammar (DEC-976 wave-140, self-grading over the tables themselves)', () => {
-  it('non-vacuity: population is non-trivial across all four tables', () => {
+  it('non-vacuity: population is non-trivial across all five tables', () => {
     expect(EXPLAINER_EXCLUSIONS.length).toBeGreaterThan(10);
     expect(FIXTURE_EXCLUSIONS.length).toBeGreaterThan(10);
     expect(EXEMPLAR_ARTICLE_EXCLUSIONS.length).toBeGreaterThan(2);
     expect(COMPOSED_EXCLUSIONS.length).toBeGreaterThan(10);
+    expect(UNBACKED_EXCLUSIONS.length).toBeGreaterThan(0);
     expect(REGISTRY_FILES.length).toBeGreaterThan(10);
     expect(SOURCE_FILES.length).toBeGreaterThanOrEqual(100);
   });
@@ -343,6 +378,49 @@ describe('caption exclusion grammar (DEC-976 wave-140, self-grading over the tab
         `${offenders.length} COMPOSED row(s) quote a composing expression that resolves nowhere (comments stripped) ` +
           `in the non-test source corpus:\n` +
           offenders.map(({ row, spans }) => `${row.fileName}:${row.line} -- spans: ${JSON.stringify(spans)}`).join('\n')
+      ).toEqual([]);
+    });
+  });
+
+  describe('clause 5: every UNBACKED reason quotes a line occurring verbatim in DEVIATIONS.md', () => {
+    it('non-vacuity (synthetic): a reason quoting an absent line is caught; one quoting a line present in a fabricated deviations blob passes', () => {
+      const presentLine = 'no retention column backs this synthetic control, building it alone would declare a setting nothing reads';
+      const absentLine = 'this synthetic line was never written into any deviations file anywhere';
+      const fabricatedDeviationsBlob = collapseWhitespace(
+        [
+          '## 1. Ruled omissions',
+          '',
+          `- **Synthetic control** -- NOT built. DEC-000: ${presentLine}.`,
+        ].join('\n')
+      );
+
+      const caught: Exclusion = {
+        fileName: 'Chautauqua Zzy.dc.html',
+        line: 1,
+        text: 'irrelevant to this clause',
+        reason: `DEVIATIONS.md rules this a non-build, quoting: "${absentLine}"`,
+      };
+      const clean: Exclusion = {
+        fileName: 'Chautauqua Zzy.dc.html',
+        line: 1,
+        text: 'irrelevant to this clause',
+        reason: `DEVIATIONS.md rules this a non-build, quoting verbatim: "${presentLine}"`,
+      };
+
+      expect(anyDeviationsSpanMatches(doubleQuotedSpans(caught.reason), fabricatedDeviationsBlob)).toBe(false);
+      expect(anyDeviationsSpanMatches(doubleQuotedSpans(clean.reason), fabricatedDeviationsBlob)).toBe(true);
+    });
+
+    it('every UNBACKED row quotes a line occurring verbatim in the real DEVIATIONS.md', () => {
+      const offenders = UNBACKED_EXCLUSIONS.filter(
+        (r) => !anyDeviationsSpanMatches(doubleQuotedSpans(r.reason), DEVIATIONS_BLOB)
+      );
+      expect(
+        offenders,
+        `${offenders.length} UNBACKED row(s) have a reason that quotes no line occurring verbatim in ` +
+          `docs/design/DEVIATIONS.md -- an UNBACKED exclusion must cite the ruling that blessed the non-build, ` +
+          `not merely assert one:\n` +
+          offenders.map((o) => `${o.fileName}:${o.line} -- reason: "${o.reason}"`).join('\n')
       ).toEqual([]);
     });
   });

@@ -14,6 +14,16 @@ states, and would dissolve if the frames adopted them.
   reference may appear in implementation or docs. The control implies an
   undesigned subsystem (archived-state visibility, un-archive path, public
   lifecycle). Mandate commit 90dcbf73.
+- **Settings "Keeping and deleting" retention block
+  (`docs/design/Chautauqua Settings.dc.html:1161-1180`)** — NOT built. The
+  frame draws a `Keep declined submissions for [24 months]` select, a
+  `Keep uploaded files after the event ends` checkbox, and a `Let speakers
+  delete their own contact record` checkbox, captioned "After that the
+  abstract and reviews are deleted; the contact stays" (:1175). DEC-032:
+  no retention column, no endpoint, and no deletion job backs any of the
+  three controls — building them alone would declare a setting nothing
+  reads. `app/src/pages/settings/ExportsPanel.tsx`'s own header comment
+  already records the same non-build.
 - **`docs/design/Chautauqua Speakers.dc.html:549` ("Speakers · a write
   failed")** — its status pills are hand-styled in the frame's PRE-inversion
   vocabulary (the old fill-for-overdue/outline-for-complete reading v12
