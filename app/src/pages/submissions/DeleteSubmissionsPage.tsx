@@ -248,6 +248,7 @@ export function DeleteSubmissionsPage() {
                 placeholder={DELETE_ARM_PHRASE}
                 disabled={busy}
                 autoComplete="off"
+                maxLength={DELETE_ARM_PHRASE.length}
               />
             </div>
             <div className="chq-submissions-delete-footer-actions">

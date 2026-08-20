@@ -1112,5 +1112,18 @@
     min-height: 44px;
     padding: 0 8px;
   }
+
+  /* w12-ee (DEC-393/DEC-989): row-action-anchor floor offender --
+     .chq-submissions-delete-footer-actions had no phone rule at all. Its
+     two children (DeleteSubmissionsPage.tsx) are both plain `.chq-btn`
+     buttons (Delete primary, Cancel secondary) -- never an anchor. */
+  /* tap-floor-exempt: every child is a plain button, no anchor exists here to floor */
+  .chq-submissions-delete-footer-actions button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+  }
 }
 
