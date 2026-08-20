@@ -60,7 +60,9 @@
 - SCAN POPULATION: widen phone-tap-target.scan + the 390-overflow scan roots
   from app/src to include src/routes/** (public/portal/docs/auth were never
   scanned; most §5 floor misses would have been caught).
-  CLOSED (wave 115): app/src/phone-tap-target.scan.test.ts:454 `for (const family of ['src/routes/public/', 'src/routes/portal/', 'src/routes/docs-site.css.ts', 'src/routes/auth.css.ts']) {`
+  CLOSED (wave 115): app/src/phone-tap-target.scan.test.ts`for (const family of ['src/routes/public/', 'src/routes/portal/', 'src/routes/docs-site.css.ts', 'src/routes/auth.css.ts']) {`
+  (drift-proof citation, DEC-967 wave-115 -- the loop now sits at
+  line 454, having drifted from the line originally cited here).
   CLOSED (wave 115): test/ssr-phone-overflow.test.ts:19 `const HOME_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "home.css.ts"), "utf8");`
 
 ## MEDIUM (see probe evidence for full list)
@@ -74,7 +76,9 @@
   Partially re-derived: the /login card's fields-to-submit gap is 22px
   (src/routes/auth.css.ts:79 `gap: 22px;`, on `.chq-auth-card`, its direct
   parent) and overview's wrapped section-header keeps its base 20px flex
-  gap (app/src/pages/overview/overview.css:187 `gap: 20px;`) — neither
+  gap (app/src/pages/overview/overview.css`gap: 20px;`
+  (drift-proof citation, DEC-967 wave-115 -- this declaration now sits at
+  line 187, having drifted from the line originally cited here)) — neither
   reproduces a literal 0px/negative gap as measured. The focus-ring and
   portal session edit↔label clauses were not independently reproducible
   from the tree by static read (no focus-visible rule exists for
