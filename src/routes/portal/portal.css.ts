@@ -342,6 +342,36 @@ export const PORTAL_CSS = `
   .chq-portal-shell > .chq-measure {
     max-width: var(--chq-portal-measure);
   }
+
+  /* DEC-808 wave-117 (w6-d): the growing-child half of the sticky-footer
+     idiom below. Kept as its OWN rule block (same selector, second
+     declaration) rather than folded into the max-width rule immediately
+     above -- test/portal-phone-fit.test.ts pins that exact rule's body to
+     the single max-width declaration ("does not move a single desktop
+     pixel"), and two separate blocks sharing a selector are ordinary,
+     valid CSS that cascades the same as one merged block would. */
+  .chq-portal-shell > .chq-measure {
+    flex: 1 0 auto;
+  }
+
+  /* DEC-808 wave-117 (w6-d): sticky-footer idiom, swept from the public
+     home hub (src/routes/public/home.css.ts .chq-home-shell/.chq-home-body)
+     to the portal SSR shell. On a short portal page (few tasks, no dock)
+     the footer previously floated mid-viewport with dead paper below --
+     same defect class as the home hub had. The shell fills the viewport
+     and its growing child (.chq-measure, flex:1 0 auto above) absorbs the
+     slack, so the footer sits at the viewport bottom on short pages and
+     behaves normally once content is taller. This is a top-level
+     (all-widths) rule, not a narrow override, so DEC-385's
+     narrow-overrides-wide-via-max-width-only shape does not apply here --
+     the phone media block below still owns min-height:100dvh/flex-column
+     for .chq-portal-shell as its own (harmless, redundant at that width)
+     declaration; kept intact and unreordered per that block's own note. */
+  .chq-portal-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
   /* DEC-367 amendment (wave 57): moved to the phone media block
      at the tail of this module -- phone-only tap floor. */
 
@@ -780,8 +810,13 @@ ${ERROR_STATES_CSS}
     /* w13-e: portal frame is the phone app shell -- header/main/footer
        become a fixed three-region column so .chq-measure is the only
        scroll surface (docs/design "Chautauqua Public and Portal.dc.html"
-       lines 414-467 / 563-591). No top-level rule for .chq-portal-shell
-       itself -- desktop stays exactly as it was. */
+       lines 414-467 / 563-591). DEC-808 wave-117 (w6-d) amendment: a
+       top-level .chq-portal-shell rule now exists (display:flex;
+       flex-direction:column; min-height:100vh, above) for the sticky-footer
+       sweep -- this override only needs to swap the unit to the dynamic
+       viewport height for phone chrome; display/flex-direction repeat the
+       top-level values on purpose (cheap, harmless, and this block stays
+       append-only per DEC-385/DEC-967 w103 rather than being folded up). */
     .chq-portal-shell {
       min-height: 100dvh;
       display: flex;
