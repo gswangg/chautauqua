@@ -405,7 +405,7 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // 65 this constant carried. Set to the measured truth; see the companion
 // "never below the ceiling without lowering it" test below for the other
 // half of the ratchet this file's own test name always claimed to have.
-export const OVERFLOW_OFFENDERS_CEILING = 24;
+export const OVERFLOW_OFFENDERS_CEILING = 20;
 
 describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('found more than one CSS file to scan (vacuous-population tripwire, file side)', () => {

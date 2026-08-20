@@ -284,7 +284,10 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* DEC-369 amendment (wave 72): Sign out rejoins the header identity as a
@@ -470,7 +473,10 @@ a:hover {
   font-size: 13px;
   font-weight: 700;
   color: var(--chq-brand);
+  min-width: 0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chq-row-title {
@@ -1425,6 +1431,8 @@ select,
      table-layout:fixed — content overflowed the table by ~19px. */
   width: 96px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* User-filed (gate-9): the shared middle alignment centers single-line

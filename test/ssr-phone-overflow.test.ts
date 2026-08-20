@@ -131,30 +131,36 @@ describe("home.css.ts: .chq-home-footer-link gets a three-property overflow esca
   });
 });
 
-describe("cfp.css.ts: .chq-field-counter is overflow-exempt, not truncated", () => {
+describe("cfp.css.ts: .chq-field-counter escapes with ellipsis (DEC-989 wave-111 amendment)", () => {
+  // w7-f (DEC-989 wave-111 amendment): the wave-90 exemption comment this
+  // block used to pin never actually sat directly above the
+  // .chq-field-counter rule it described (it was appended at the true end
+  // of the module, after the rule it meant to exempt), so
+  // phone-horizontal-overflow.scan.test.ts's EXEMPT_COMMENT_RE -- which
+  // requires the marker directly precede the rule's `{` -- never honoured
+  // it and the rule stayed a live, uncounted-as-exempt offender under the
+  // OVERFLOW_OFFENDERS_CEILING ratchet. Fixed per the scan's own repair
+  // shape instead: white-space: nowrap kept (no mid-phrase wrap), plus
+  // overflow: hidden; text-overflow: ellipsis added in the same rule. This
+  // block now pins that shape rather than the old (never-functional)
+  // exemption. portal.css.ts's own .chq-field-counter is a different sheet
+  // owned by a different lane and keeps its wave-90 exemption unchanged --
+  // see the next describe block.
   const body = templateBody(CFP_CSS);
 
-  it("carries a named overflow-exempt comment rather than an ellipsis escape", () => {
-    expect(body).toMatch(/overflow-exempt:\s*a counter truncated states a wrong count/);
+  it("does not carry the superseded wave-90 exemption comment", () => {
+    expect(body).not.toMatch(/overflow-exempt:\s*a counter truncated states a wrong count/);
   });
 
-  it("does not add overflow:hidden/text-overflow to .chq-field-counter (a truncated count would lie)", () => {
+  it("adds overflow:hidden/text-overflow/min-width:0 to .chq-field-counter alongside white-space:nowrap", () => {
     const idx = body.indexOf(".chq-field-counter {");
     expect(idx).toBeGreaterThan(-1);
     const close = body.indexOf("}", idx);
     const rule = body.slice(idx, close + 1);
-    expect(rule).not.toMatch(/text-overflow/);
     expect(rule).toMatch(/white-space:\s*nowrap/);
-  });
-
-  it("appends the exemption note as the LAST top-level construct in the module", () => {
-    const marker = "overflow-exempt: a counter truncated states a wrong count";
-    const markerIdx = body.indexOf(marker);
-    expect(markerIdx).toBeGreaterThan(-1);
-    const commentEnd = body.indexOf("*/", markerIdx);
-    expect(commentEnd).toBeGreaterThan(-1);
-    const trailing = body.slice(commentEnd + 2).trim();
-    expect(trailing).toBe("");
+    expect(rule).toMatch(/overflow:\s*hidden/);
+    expect(rule).toMatch(/text-overflow:\s*ellipsis/);
+    expect(rule).toMatch(/min-width:\s*0/);
   });
 });
 
