@@ -62,7 +62,7 @@ interface OutstandingRowShape {
 // objects passed to .having(). findAccountUserIds' plain
 // select().from(table).where() path (no groupBy) still resolves to
 // `accountRows`, unchanged.
-function computeEligibleAndSkipped(rows: OutstandingRowShape[]): { eligible: string[]; skipped: number } {
+function computeEligibleAndSkipped(rows: OutstandingRowShape[]): { eligible: string[]; skippedIds: string[] } {
   const byContact = new Map<string, OutstandingRowShape[]>();
   for (const r of rows) {
     if (r.status !== "pending") continue;
@@ -70,7 +70,7 @@ function computeEligibleAndSkipped(rows: OutstandingRowShape[]): { eligible: str
     arr.push(r);
     byContact.set(r.contactId, arr);
   }
-  let skipped = 0;
+  const skippedIds: string[] = [];
   const eligible: string[] = [];
   for (const [contactId, assignments] of byContact) {
     let maxRemindedAt: number | null = null;
@@ -80,13 +80,14 @@ function computeEligibleAndSkipped(rows: OutstandingRowShape[]): { eligible: str
       if (maxRemindedAt === null || t > maxRemindedAt) maxRemindedAt = t;
     }
     if (maxRemindedAt !== null && maxRemindedAt > NOW.getTime() - MANUAL_DEDUPE_WINDOW_MS) {
-      skipped += 1;
+      skippedIds.push(contactId);
     } else {
       eligible.push(contactId);
     }
   }
   eligible.sort();
-  return { eligible, skipped };
+  skippedIds.sort();
+  return { eligible, skippedIds };
 }
 
 type SubqueryMarker = { __subqueryKind: "eligible" | "skipped" };
@@ -123,8 +124,8 @@ function fakeDb(
       then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
         try {
           if (state.subquery) {
-            const { eligible, skipped } = computeEligibleAndSkipped(rows);
-            const count = state.subquery.__subqueryKind === "eligible" ? eligible.length : skipped;
+            const { eligible, skippedIds } = computeEligibleAndSkipped(rows);
+            const count = state.subquery.__subqueryKind === "eligible" ? eligible.length : skippedIds.length;
             resolve([{ count }]);
             return;
           }
@@ -135,6 +136,16 @@ function fakeDb(
           }
           if (state.outstandingLimited) {
             resolve(rows);
+            return;
+          }
+          // DEC-238 wave-133 amendment: the skipped-roster query
+          // (groupBy/having/orderBy, no .limit(), no .as() wrapper) —
+          // distinguished from findAccountUserIds' plain select() below by
+          // `state.grouped`, which only a listRemindableContactIds query
+          // ever sets.
+          if (state.grouped) {
+            const { skippedIds } = computeEligibleAndSkipped(rows);
+            resolve(skippedIds.map((contactId) => ({ contactId })));
             return;
           }
           // findAccountUserIds' plain select().from(user).where() path.
