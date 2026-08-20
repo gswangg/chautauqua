@@ -119,29 +119,50 @@ function taskStatusLabel(status: SpeakerDetailTaskStatus, overdue: boolean): str
   return TASK_STATUS_LABELS[status];
 }
 
-// Design pack v12: the row's Remind link carries its own reminder history
-// ("Remind · never sent" / "Remind · sent once" / "Remind · 3rd time" in the
-// frame) rather than repeating "Remind this task" six times down a column
-// where the verb is already obvious from the section caption.
-//
-// HONEST DEGRADATION: the frame's ordinal ("3rd time") needs a per-assignment
-// SEND COUNT, and no such column exists -- task_assignment records only
-// `last_reminded_at`, and email_log records a contact and a sent_at but never
-// a task, so no count is derivable for a given task. Rather than fabricate a
-// tally or invent a column for one caption, the link states the fact the
-// schema actually holds: never sent, or the date of the last send. The frame's
-// shape (verb · history, right-flushed in its own fixed track) is preserved.
-export function taskRemindLabel(lastRemindedAt: number | null): string {
-  if (lastRemindedAt === null) return 'Remind · never sent';
-  return `Remind · last ${formatDateOnly(lastRemindedAt)}`;
+// Design pack v12 (wave 118 amendment): the row's Remind link carries its
+// own reminder ORDINAL ("Remind · never sent" / "Remind · sent once" /
+// "Remind · 3rd time" in the frame), server-derived from email_log via the
+// ONE shared reader (task-view.ts's countRemindSends windowing rule, spent
+// here through SpeakerDetailTask.remindCount) rather than a fabricated
+// tally -- see repo/tasks/speaker-detail.ts.
+function ordinalSuffix(n: number): string {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return 'th';
+  switch (n % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
+}
+
+export function taskRemindLabel(remindCount: number): string {
+  if (remindCount === 0) return 'Remind · never sent';
+  if (remindCount === 1) return 'Remind · sent once';
+  return `Remind · ${remindCount}${ordinalSuffix(remindCount)} time`;
 }
 
 /** The most recent reminder this speaker received about ANY of their tasks,
- * or null if they have never been reminded -- the person-level counterpart of
- * taskRemindLabel above, read from the same one column. */
+ * or null if they have never been reminded -- the header caption's "last
+ * 4 Aug" half; the N× half is detail.counts.remindCount, the person-level
+ * total the server derives from the same email_log reader. */
 export function lastRemindedAcross(tasks: readonly SpeakerDetailTask[]): number | null {
   const sent = tasks.map((t) => t.lastRemindedAt).filter((v): v is number => v !== null);
   return sent.length === 0 ? null : Math.max(...sent);
+}
+
+// Design pack v12 (wave 118 amendment): the Tasks section's 2nd cell carries
+// TENSE -- "Was due 1 Apr" once the date has passed, "Due 10 Apr" while it
+// hasn't -- judged purely against the due date, never against the task's
+// own status (a complete task can still read "Due 25 Apr" per the frame).
+export function taskDueCaption(dueDate: number | null): string {
+  if (dueDate === null) return formatDateOnly(dueDate);
+  const verb = dueDate < Date.now() ? 'Was due' : 'Due';
+  return `${verb} ${formatDateOnly(dueDate)}`;
 }
 
 // DEC-930 wave-19 amendment: the Files row-grid's 52px lead track is a
@@ -309,6 +330,9 @@ export function SpeakerDetailPage() {
       counts: {
         outstandingRequired: tasks.filter((t) => t.status !== 'complete' && t.required).length,
         overdue: tasks.filter((t) => t.status !== 'complete' && t.overdue).length,
+        // Toggling status doesn't touch email_log -- this optimistic patch
+        // carries the server's last remindCount through unchanged.
+        remindCount: detail.counts.remindCount,
       },
     });
     setError(null);
@@ -523,15 +547,14 @@ export function SpeakerDetailPage() {
                   Remind {firstNameOf(detail.contact.name)}
                 </button>
               )}
-              {/* Design pack v12 adds a reminder-history caption beside the
-                  two 46px controls, so "Remind" is pressed against what has
-                  already been sent rather than in the dark. The frame reads
-                  "Reminded 3× · last 4 Aug"; the × count is not derivable
-                  (see taskRemindLabel), so this states the last send only and
-                  is absent entirely when nothing has ever been sent. */}
-              {lastRemindedAcross(detail.tasks) !== null && (
+              {/* Design pack v12 (wave 118 amendment) adds a reminder-history
+                  caption beside the two 46px controls, so "Remind" is
+                  pressed against what has already been sent rather than in
+                  the dark: "Reminded 3× · last 4 Aug", absent entirely when
+                  nothing has ever been sent. */}
+              {detail.counts.remindCount > 0 && (
                 <span className="chq-speaker-detail-remind-history">
-                  Last reminded {formatDateOnly(lastRemindedAcross(detail.tasks))}
+                  Reminded {detail.counts.remindCount}&times; &middot; last {formatDateOnly(lastRemindedAcross(detail.tasks))}
                 </span>
               )}
             </div>
@@ -627,7 +650,7 @@ export function SpeakerDetailPage() {
                           {task.title}
                           {task.required && <span className="chq-speaker-detail-required"> Required</span>}
                         </span>
-                        <span role="cell">{formatDateOnly(task.dueDate)}</span>
+                        <span role="cell">{taskDueCaption(task.dueDate)}</span>
                         <span role="cell">
                           <button
                             type="button"
@@ -652,7 +675,7 @@ export function SpeakerDetailPage() {
                               className="chq-link-button chq-speaker-detail-task-remind"
                               onClick={openRemindReview}
                             >
-                              {taskRemindLabel(task.lastRemindedAt)}
+                              {taskRemindLabel(task.remindCount)}
                             </button>
                           </span>
                         ) : (

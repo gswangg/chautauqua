@@ -68,6 +68,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
         completedAt: 1700000000000,
         file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2, uploadedAt: Date.UTC(2026, 0, 14, 9, 30), uploaderName: 'Grace Hopper' },
         lastRemindedAt: null,
+        remindCount: 0,
         overdue: false,
       },
       {
@@ -81,10 +82,11 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
         completedAt: null,
         file: null,
         lastRemindedAt: null,
+        remindCount: 0,
         overdue: false,
       },
     ],
-    counts: { outstandingRequired: 1, overdue: 0 },
+    counts: { outstandingRequired: 1, overdue: 0, remindCount: 0 },
     otherEvents: [{ eventId: 'evt-2025', name: 'DevFlow 2025', participation: 'Submitted, declined' }],
     otherEventsCount: 1,
     ...overrides,
@@ -506,10 +508,11 @@ describe('SpeakerDetailPage render smoke', () => {
             completedAt: 1700000000000,
             file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2, uploadedAt: Date.UTC(2026, 0, 14, 9, 30), uploaderName: 'Grace Hopper' },
             lastRemindedAt: null,
+            remindCount: 0,
             overdue: false,
           },
         ],
-        counts: { outstandingRequired: 0, overdue: 0 },
+        counts: { outstandingRequired: 0, overdue: 0, remindCount: 0 },
       }),
     });
 
@@ -672,12 +675,83 @@ describe('SpeakerDetailPage render smoke', () => {
     // Only the pending row's link renders -- the completed row's does not.
     // DEC-930 wave-24 amendment: the row's cell role lives on a wrapper
     // <span>, so this per-row control keeps its implicit button role.
-    // v12: the row's Remind link carries its own reminder history. There is
-    // no per-assignment SEND COUNT in the schema (task_assignment holds only
-    // last_reminded_at; email_log holds a contact and a sent_at but never a
-    // task), so the frame's "sent once"/"3rd time" ordinals degrade honestly
-    // to never-sent / last-sent rather than a fabricated tally.
+    // v12 (wave 118 amendment): the row's Remind link carries a server-
+    // derived ordinal (SpeakerDetailTask.remindCount); baseDetail()'s pending
+    // task has never been reminded (remindCount: 0).
     expect(screen.getAllByRole('button', { name: 'Remind · never sent' })).toHaveLength(1);
+  });
+
+  // Design pack v12 (wave 118 amendment): the frame's three Remind ordinal
+  // arms, the due-date tense, and the header's "Reminded N× · last <date>"
+  // caption -- all sourced from the ONE email_log reader
+  // (task-view.ts's countRemindSends windowing rule).
+  describe('reminder captions (wave 118)', () => {
+    it('pins the three Remind ordinal arms: never sent, sent once, Nth time', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+          tasks: [
+            { ...baseDetail().tasks[1]!, assignmentId: 'as-never', title: 'Never reminded', remindCount: 0 },
+            { ...baseDetail().tasks[1]!, assignmentId: 'as-once', title: 'Reminded once', remindCount: 1 },
+            { ...baseDetail().tasks[1]!, assignmentId: 'as-thrice', title: 'Reminded thrice', remindCount: 3 },
+          ],
+          counts: { outstandingRequired: 3, overdue: 0, remindCount: 4 },
+        }),
+      });
+
+      renderPage();
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+      expect(screen.getByRole('button', { name: 'Remind · never sent' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Remind · sent once' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Remind · 3rd time' })).toBeInTheDocument();
+    });
+
+    it('draws the due caption with tense from the date, never from status -- "Due" for a future date even on a complete task', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+          tasks: [
+            // Fixed, unambiguously PAST date -- never touches "now".
+            { ...baseDetail().tasks[1]!, assignmentId: 'as-past', title: 'Past due, still pending', dueDate: Date.UTC(2020, 3, 1), status: 'pending' },
+            // Fixed, unambiguously FUTURE date, on an already-complete task --
+            // row 5 of the frame: `Due 25 Apr` on a COMPLETE task, so tense
+            // never flips off a status.
+            { ...baseDetail().tasks[1]!, assignmentId: 'as-future-complete', title: 'Future due, already complete', dueDate: Date.UTC(2099, 8, 25), status: 'complete', completedAt: 1700000000000 },
+          ],
+          counts: { outstandingRequired: 1, overdue: 0, remindCount: 0 },
+        }),
+      });
+
+      renderPage();
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+      expect(screen.getByText('Was due 1 Apr 2020')).toBeInTheDocument();
+      expect(screen.getByText('Due 25 Sep 2099')).toBeInTheDocument();
+    });
+
+    it('draws the header "Reminded N× · last <date>" caption, absent entirely when nothing was ever sent', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+          tasks: [{ ...baseDetail().tasks[1]!, lastRemindedAt: Date.UTC(2026, 7, 4), remindCount: 2 }],
+          counts: { outstandingRequired: 1, overdue: 0, remindCount: 3 },
+        }),
+      });
+
+      renderPage();
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+      expect(document.querySelector('.chq-speaker-detail-remind-history')).toHaveTextContent('Reminded 3× · last 4 Aug 2026');
+    });
+
+    it('renders no reminder-history caption when nothing was ever sent', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
+      });
+
+      renderPage();
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+      expect(document.querySelector('.chq-speaker-detail-remind-history')).not.toBeInTheDocument();
+    });
   });
 
   // DEC-738 amendment (wave 75): the portal-written bio and social links
@@ -746,6 +820,7 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
       completedAt: t.status === 'complete' ? 1700000000000 : null,
       file: null,
       lastRemindedAt: null,
+      remindCount: 0,
       overdue: t.overdue,
     }));
   }
@@ -754,7 +829,7 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
         tasks: shuffledTasks(),
-        counts: { outstandingRequired: 1, overdue: 1 },
+        counts: { outstandingRequired: 1, overdue: 1, remindCount: 0 },
       }),
     });
     renderPage();
@@ -790,7 +865,7 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
           { ...tasks[1]!, assignmentId: 'as-undated', title: 'Undated pending', dueDate: null },
           ...tasks,
         ],
-        counts: { outstandingRequired: 1, overdue: 1 },
+        counts: { outstandingRequired: 1, overdue: 1, remindCount: 0 },
       }),
     });
     renderPage();
@@ -865,7 +940,7 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
         tasks: shuffledTasks(),
-        counts: { outstandingRequired: 1, overdue: 1 },
+        counts: { outstandingRequired: 1, overdue: 1, remindCount: 0 },
       }),
       'PATCH /api/v1/task-assignments/as-f': { ok: true },
     });

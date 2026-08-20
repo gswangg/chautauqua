@@ -24,6 +24,7 @@ function fakeDb(seed: {
   taskAssignment?: unknown[];
   task?: unknown[];
   file?: unknown[];
+  emailLog?: unknown[];
 }) {
   const state = {
     contact: [...(seed.contact ?? [])] as any[],
@@ -36,6 +37,12 @@ function fakeDb(seed: {
     taskAssignment: [...(seed.taskAssignment ?? [])] as any[],
     task: [...(seed.task ?? [])] as any[],
     file: [...(seed.file ?? [])] as any[],
+    // Design pack v12 (wave 118 amendment): getSpeakerDetail now issues one
+    // plain select+where over email_log (fetchReminderSendInstants,
+    // task-view.ts) -- no join, no groupBy, so this double's existing
+    // no-op WHERE/JOIN convention (seed exactly the rows the real WHERE
+    // would leave) applies unchanged.
+    emailLog: [...(seed.emailLog ?? [])] as any[],
   };
   const touchedTables: unknown[] = [];
 
@@ -50,6 +57,7 @@ function fakeDb(seed: {
     if (table === schema.taskAssignment) return state.taskAssignment;
     if (table === schema.task) return state.task;
     if (table === schema.file) return state.file;
+    if (table === schema.emailLog) return state.emailLog;
     return undefined;
   }
 
@@ -151,8 +159,19 @@ function assignmentRow(assignmentId: string, taskId: string, opts: Partial<Recor
     // its timestamp, so the join now carries both off schema.file.
     fileUploadedAt: null,
     fileUploadedByContactId: null,
+    // Design pack v12 (wave 118 amendment): the per-task remindCount is
+    // windowed by [createdAt, completedAt) -- a real Date, since the row
+    // this stands in for is a genuine timestamp_ms column.
+    createdAt: new Date(0),
     ...opts,
   };
+}
+
+function emailLogRow(sentAt: number) {
+  // Design pack v12 (wave 118 amendment): fetchReminderSendInstants selects
+  // only sentAt (task-view.ts) -- a real Date, matching the real
+  // timestamp_ms column's returned type.
+  return { sentAt: new Date(sentAt) };
 }
 
 const UPLOADED_AT = Date.UTC(2026, 3, 8, 14, 5);
@@ -248,6 +267,9 @@ describe("DEC-930 getSpeakerDetail", () => {
           // fakeDb's no-op WHERE makes that query return every seeded
           // assignment, so the flag and the count of 1 are the same fact.
           overdue: true,
+          // Design pack v12 (wave 118 amendment): no email_log rows seeded,
+          // so never reminded.
+          remindCount: 0,
         },
       ],
       // The fakeDb's WHERE/JOIN no-op means the overdue query (which is
@@ -257,7 +279,7 @@ describe("DEC-930 getSpeakerDetail", () => {
       // real predicate is exercised by test/onboarding-late-participant.test.ts
       // and the D1-equivalent grid tests. This test only asserts the shape
       // and that `overdue` is wired from that query's row count.
-      counts: { outstandingRequired: 1, overdue: 1 },
+      counts: { outstandingRequired: 1, overdue: 1, remindCount: 0 },
       otherEvents: [],
       otherEventsCount: 0,
     });
@@ -278,6 +300,51 @@ describe("DEC-930 getSpeakerDetail", () => {
     const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
     expect(detail!.tasks.filter((t) => t.overdue)).toHaveLength(detail!.counts.overdue);
     expect(detail!.tasks.map((t) => t.assignmentId)).toEqual(["assign-1", "assign-2"]);
+  });
+
+  // Design pack v12 (wave 118 amendment): the per-task remindCount is
+  // windowed by [createdAt, completedAt); the header's person-level
+  // counts.remindCount is the raw count of qualifying sends, unwindowed --
+  // one email naming two outstanding tasks must not double-count.
+  it("wave 118: derives remindCount per task (windowed) and person-level (unwindowed, un-summed)", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 14)],
+      taskAssignment: [
+        assignmentRow("assign-1", "task-1", { createdAt: new Date(Date.UTC(2026, 0, 1)), completedAt: null }),
+        assignmentRow("assign-2", "task-2", { createdAt: new Date(Date.UTC(2026, 0, 1)), completedAt: null }),
+      ],
+      emailLog: [
+        // Both sends land inside both assignments' still-open windows --
+        // one email named both outstanding tasks.
+        emailLogRow(Date.UTC(2026, 1, 1)),
+        emailLogRow(Date.UTC(2026, 1, 15)),
+      ],
+    });
+
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail!.tasks.find((t) => t.assignmentId === "assign-1")!.remindCount).toBe(2);
+    expect(detail!.tasks.find((t) => t.assignmentId === "assign-2")!.remindCount).toBe(2);
+    // Person-level total is 2 (the two real sends), never 4 (2 tasks x 2
+    // sends) -- summing the per-task counts would double-count one email.
+    expect(detail!.counts.remindCount).toBe(2);
+  });
+
+  it("wave 118: a send before an assignment's createdAt window doesn't count toward that task", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 14)],
+      taskAssignment: [assignmentRow("assign-1", "task-1", { createdAt: new Date(Date.UTC(2026, 5, 1)), completedAt: null })],
+      emailLog: [emailLogRow(Date.UTC(2026, 0, 1))], // before the assignment existed
+    });
+
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail!.tasks[0]!.remindCount).toBe(0);
+    // But the person-level total still counts it -- it's a real send on
+    // this event to this contact, unwindowed.
+    expect(detail!.counts.remindCount).toBe(1);
   });
 
   it("reads headshotFileId straight off contact.headshot_file_id (DEC-773 amendment, w32-e)", async () => {

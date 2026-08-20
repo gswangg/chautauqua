@@ -50,7 +50,7 @@ function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDeta
     },
     sessions: [],
     tasks: [],
-    counts: { outstandingRequired: 0, overdue: 0 },
+    counts: { outstandingRequired: 0, overdue: 0, remindCount: 0 },
     otherEvents: [],
     otherEventsCount: 0,
     ...overrides,

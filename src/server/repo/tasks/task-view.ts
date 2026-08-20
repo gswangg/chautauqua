@@ -117,6 +117,39 @@ async function countRemindSends(db: Db, taskId: string, eventId: string): Promis
   return byContact;
 }
 
+/** DEC-930 wave-118: the raw material for the speaker-detail page's reminder
+ * captions -- every "sent" instant of a reminder email (REMINDER_SUBJECT_PREFIX
+ * match) this ONE contact received on this event, across every task they
+ * hold. ONE query, no join (the per-task windowing that turns these instants
+ * into a count lives in remindSendsInWindow below), so a lane that only has
+ * a contactId and a list of assignment windows in hand -- exactly
+ * getSpeakerDetail's shape -- can derive the same per-task/per-person counts
+ * countRemindSends above derives for the ONE-task/many-contacts shape,
+ * without a second copy of the matching rule. */
+export async function fetchReminderSendInstants(db: Db, eventId: string, contactId: string): Promise<number[]> {
+  const rows = await db
+    .select({ sentAt: schema.emailLog.sentAt })
+    .from(schema.emailLog)
+    .where(
+      and(
+        eq(schema.emailLog.eventId, eventId),
+        eq(schema.emailLog.contactId, contactId),
+        eq(schema.emailLog.status, "sent"),
+        like(schema.emailLog.subject, `${REMINDER_SUBJECT_PREFIX}%`),
+      ),
+    );
+  return rows.map((r) => r.sentAt.getTime());
+}
+
+/** How many of `sendInstants` (fetchReminderSendInstants above) fall inside
+ * ONE task assignment's active window -- the same
+ * >=createdAt / <completedAt (or still open) rule countRemindSends applies
+ * in SQL, expressed once here so a JS-side per-task count can never disagree
+ * with the SQL-side per-contact count. */
+export function remindSendsInWindow(sendInstants: readonly number[], createdAt: number, completedAt: number | null): number {
+  return sendInstants.filter((t) => t >= createdAt && (completedAt === null || t < completedAt)).length;
+}
+
 /** Builds the design-pack-v12 task view for ONE task, in a bounded number
  * of queries independent of how many speakers hold it: (i) the task joined
  * to its owning event (title/due/required/kind/formId + org timezone);

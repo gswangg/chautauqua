@@ -123,11 +123,15 @@ export interface SpeakerDetailTask {
   status: SpeakerDetailTaskStatus;
   completedAt: number | null;
   // Design pack v12: the reminder-history qualifier the row's Remind link
-  // reads. null means never reminded. There is NO per-assignment send count
-  // in the schema (email_log carries a contact and a sent_at, never a task),
-  // so the frame's "sent once"/"3rd time" copy degrades honestly to a last-
-  // send date rather than a fabricated tally.
+  // reads. null means never reminded.
   lastRemindedAt: number | null;
+  // Design pack v12 (wave 118 amendment): the frame's ordinal ("Remind ·
+  // never sent" / "sent once" / "Nth time") -- how many reminder emails
+  // fell inside THIS assignment's active window, derived server-side from
+  // email_log (repo/tasks/speaker-detail.ts, sharing task-view.ts's
+  // countRemindSends windowing rule). Never fabricated: a reminder email
+  // names every outstanding task it was sent for.
+  remindCount: number;
   file: SpeakerDetailFile | null;
   // User-filed (speaker detail, Elliot Ekström): lateness per ROW, not only
   // as a header count. Server-derived from the same DEC-801 predicate result
@@ -140,6 +144,12 @@ export interface SpeakerDetailTask {
 export interface SpeakerDetailCounts {
   outstandingRequired: number;
   overdue: number;
+  // Design pack v12 (wave 118 amendment): the header's "Reminded N× · last
+  // <date>" caption's N -- every reminder email this contact received on
+  // this event across every task, counted once each (not a sum of the
+  // per-task remindCount above, which would double-count a single send that
+  // named several tasks).
+  remindCount: number;
 }
 
 export interface SpeakerDetailResponse {
