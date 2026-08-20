@@ -308,12 +308,20 @@ describe('AgendaWorkSection (DEC-652)', () => {
     expect(overflow).toHaveClass('chq-overview-overflow');
     const unplacedRow = screen.getByText('Docs That Answer Back').closest('.chq-overview-row-agenda')!;
     expect(unplacedRow.compareDocumentPosition(overflow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // DEC-919 wave-128 (task w3-k): the SAME fact also renders as a phone
+    // link, sibling to the desktop div, carrying the frame's ' ›' mark and
+    // pointing at the same /agenda route the row-level "Place it" link uses.
+    // CSS (not markup) decides which is visible at a given width.
+    const overflowLink = screen.getByRole('link', { name: '3 more unplaced · 2 more conflicts ›' });
+    expect(overflowLink).toHaveClass('chq-overview-overflow-link');
+    expect(overflowLink).toHaveAttribute('href', '/agenda');
   });
 
-  it('renders no overflow line when the rendered rows already cover the totals', () => {
+  it('renders no overflow line (either shape) when the rendered rows already cover the totals', () => {
     mockApi({});
     render(<Harness payload={basePayload()} refetch={vi.fn()} />);
     expect(document.querySelector('.chq-overview-overflow')).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-overview-overflow-link')).not.toBeInTheDocument();
   });
 
   // DEC-370: agendaWork.conflicts[].roomName is nullable on the wire (the

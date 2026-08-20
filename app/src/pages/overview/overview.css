@@ -225,6 +225,15 @@
   padding: 9px 0 0;
 }
 
+/* DEC-919 wave-128 (task w3-k): phone-only twin of .chq-overview-overflow
+   above -- desktop draws the remainder as plain text (Chautauqua
+   Overview.dc.html:164), 390 draws it as a real link
+   (Chautauqua Overview.dc.html:277). Hidden at top level, revealed inside
+   the terminal @media (max-width:700px) block below (AgendaWorkSection.tsx). */
+.chq-overview-overflow-link {
+  display: none;
+}
+
 .chq-overview-row {
   display: grid;
   gap: 20px;
@@ -790,5 +799,33 @@
     align-items: center;
     padding-inline: 16px;
     margin-inline: 0;
+  }
+
+  /* DEC-919 wave-128 (task w3-k): Overview §04's unplaced remainder is a
+     link at 390, Chautauqua Overview.dc.html:277
+     `font-size:13px; font-weight:700; min-height:44px; display:flex;
+     align-items:center` ("Place the other six ›"), and plain text at 1600,
+     :164 `padding:13px 0 0; font-size:13px; color:#565A4B`. Desktop is
+     frozen (a `<div>` cannot become a link in a media query), so the two-
+     node idiom applies (DEC-919 wave-101 shape 1, as
+     app/src/pages/submissions/detail.css's .chq-detail-back-full/-short
+     pair): the existing plain-text div hides here, the phone-only Link
+     (AgendaWorkSection.tsx, rendered immediately below the div) reveals. */
+  /* phone-hidden: desktop twin of a phone-only sibling (DEC-919 wave-101
+     shape 1) -- the SAME remainder fact is .chq-overview-overflow-link,
+     rendered by app/src/pages/overview/AgendaWorkSection.tsx and shown
+     immediately below in this same block. */
+  .chq-overview-overflow {
+    display: none;
+  }
+
+  .chq-overview-overflow-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 4px;
+    margin-inline: -4px;
+    font-size: 13px;
+    font-weight: 700;
   }
 }
