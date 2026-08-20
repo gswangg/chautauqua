@@ -103,7 +103,7 @@ export const CFP_CSS = `
   /* Required fields carry no marker; optional fields append this span --
      same weight/case as the label it trails, not a separate legend. */
   .chq-field-optional { font-weight: 800; text-transform: none; }
-  .chq-field-counter { font-size: 12px; color: var(--chq-muted); white-space: nowrap; }
+  .chq-field-counter { font-size: 12px; color: var(--chq-muted); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chq-cfp-fields .help { font-size: 12px; color: var(--chq-muted); margin: 0; }
 
   .chq-cfp-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--chq-rule); padding-top: 22px; }
@@ -297,16 +297,17 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
     [data-chq-cfp-step="2"] .chq-cfp-step-next { display: none; }
   }
 
-  /* w8-h (DEC-989 wave-90 amendment): 390-overflow sweep judgement call for
-     .chq-field-counter (declared above, white-space:nowrap, no escape).
-     overflow-exempt: a counter truncated states a wrong count -- ellipsis-
-     ing "412 / 1,200" mid-digit would silently lie about how much room is
-     left, which is worse than the rare wrap this class never actually hits
-     at the 44-char label + short-number content it renders. The counter's
-     printed total is sample data in the frames and does not bind (DEC-650
-     wave-82 amendment), so no width budget is asserted against it either.
-     See decisions/DEC-367.md's wave-90 amendment for the general rule.
-     Appended at the true end of this module, after every top-level rule
-     and after the existing phone block above (never edited/reordered),
-     per DEC-385 single-direction responsive. */
+  /* w7-f (DEC-989 wave-111 amendment): the wave-90 note above this line
+     used to argue .chq-field-counter should stay exempt from the
+     overflow-offenders scan (ellipsis mid-digit would misstate the
+     count). That comment never actually sat directly above the rule it
+     described, so it exempted nothing and the rule stayed a live
+     offender under the ratchet. Fixed instead per the scan's own repair
+     shape: overflow:hidden;text-overflow:ellipsis added to the rule
+     itself (declared above) alongside the pre-existing white-space:
+     nowrap, so the counter still never wraps mid-phrase and only
+     visually truncates in the rare case this class already didn't
+     expect to hit. Appended at the true end of this module, after every
+     top-level rule and after the existing phone block above (never
+     edited/reordered), per DEC-385 single-direction responsive. */
 `;
