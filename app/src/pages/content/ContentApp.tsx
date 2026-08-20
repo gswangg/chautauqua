@@ -412,7 +412,7 @@ export function ContentApp() {
                 type="button"
                 className="chq-link-button chq-content-phone-selecting-done"
                 onClick={() => {
-                  // w5-ae (DEC-919/DEC-825): Done is the phone home for the
+                  // w5-ae (DEC-752/DEC-825): Done is the phone home for the
                   // desktop dock's Clear verb (chq-btn-tertiary, hidden at
                   // 390 -- content.css's `.chq-content-worklist-selecting
                   // .chq-bulkbar-actions .chq-btn-tertiary`). Frame :247's

@@ -324,50 +324,44 @@ const UNRECEIPTED = INTERACTIVE_PHONE_DISPLAY_NONE_RULES.filter((r) => r.receipt
 // counted.
 //
 // UNOWNED WORK ITEMS (named per the field-guide rule: read a ratchet's
-// closing sentence as a work item, not as prose). Re-measured wave-106
-// (task v12m-w2-b) after settings-lists.css's two desktop-twin hides
-// gained their DEC-919 receipt: the six remaining unreceipted interactive
-// rules are, each, a capability with no phone home -- none is exempted
-// here because none is either a proven dead-end navigation control or a
-// verified re-lined replacement. The forms.css pair cited by an earlier
-// wave's count is gone (field-row action and add-question control now
-// have phone renderers); a new offender, `.chq-detail-back-full`, has
-// appeared in its place:
+// closing sentence as a work item, not as prose). Re-measured wave-116
+// (merge train, batch w5-ad/ae/af/ag) against the post-merge tree: ONE
+// unreceipted interactive rule remains, and it is a capability with no
+// phone home -- not exempted here, because it is neither a proven
+// dead-end navigation control nor a verified re-lined replacement:
 //   * `[data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"]`
 //     (cfp.css.ts:254) -- step 1 renders no submit control of any kind at
 //     390; a receipt becomes legal only once a verified re-lined submit
 //     control exists on the phone surface (cited by file:line) or a
 //     verified navigation dead-end rules it out entirely.
-//   * `.chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-tertiary`
-//     (content.css) -- the bulk-selection secondary action disappears at
-//     390 with no phone equivalent found.
-//   * `.chq-overview-btn-waitlist` (overview.css) -- the waitlist action
-//     has no phone equivalent found.
+// CLOSED THIS BATCH (each by a real phone-width affordance or a verified
+// re-lining, never by receipting on assumption):
 //   * `.chq-review-criterion-row > .chq-forms-field-drag` (review.css) --
-//     a drag handle is a legal disabled-token use, not a legal
-//     display:none use; this rule removes the reorder capability outright
-//     at 390 rather than disabling it in place.
-//   * `.chq-detail-back-full` (submissions/detail.css) -- a back-navigation
-//     control drops out at 390 with no verified phone equivalent found
-//     (not receipted on assumption -- a genuine dead-end must be verified
-//     before it earns a `phone-hidden:` reason).
-//   * `.chq-auth-stack .chq-auth-tertiary` (auth.css) -- the tertiary auth
-//     action drops out at 390 with no phone equivalent found. The ruling
-//     has since landed: a geometry frame that omits a control removes
-//     geometry, not navigation, so the legal repair is to RE-LINE the
-//     tertiary action at the 44px floor on the phone surface -- a receipt
-//     claiming a navigation dead-end here would be false. This row stays
-//     unreceipted until that re-lining lands and is cited by file:line.
-// A future wave closes each by giving its cluster a phone-width
+//     RE-LINED by w5-ad at the 44px floor, matching forms.css's phone rule
+//     for the identical class (app/src/pages/review/review.css:2403), so
+//     the one drag class no longer carries two phone verdicts (DEC-745).
+//   * `.chq-detail-back-full` (submissions/detail.css) -- receipted by
+//     w5-ad as a desktop twin: the SAME back link's phone label is
+//     .chq-detail-back-short (app/src/pages/submissions/detail.css:1219).
+//   * `.chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-tertiary`
+//     (content.css) -- receipted by w5-ae: Clear's capability has a phone
+//     home in the selecting meta row's Done control, which now clears the
+//     tick set before exiting Select mode (content.css:1660).
+//   * `.chq-overview-btn-waitlist` (overview.css) -- receipted by w5-ae as
+//     RE-LINED, not removed: the same accept_queue transition is reachable
+//     at 390 through the Submissions bulk-action bar (overview.css:591).
+//   * `.chq-auth-stack .chq-auth-tertiary` (auth.css) -- closed by an
+//     earlier wave's re-lining at the 44px floor.
+// A future wave closes the last row by giving its cluster a phone-width
 // affordance, or by writing a receipt once a genuine re-lined replacement
 // or navigation dead-end is verified -- never by receipting on assumption.
-// Re-measured 2026-08-19 (wave 106, task v12m-w2-b) against this branch's
-// tree: truth is 6, down from the stale ceiling of 10 this file shipped
-// with. Tightening this constant is a merge-train act performed once per
-// batch (re-measure the whole tree, not a worker's mid-lane snapshot) --
+// Re-measured 2026-08-20 (wave 116 merge train) against the post-merge
+// tree: truth is 1, down from the stale ceiling of 5 this file carried in.
+// Tightening this constant is a merge-train act performed once per batch
+// (re-measure the whole tree, not a worker's mid-lane snapshot) --
 // the ratchet remains one-sided from HERE: receipt or remove to lower it,
 // never raise it again to accommodate a new unreceipted rule.
-export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 5;
+export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 1;
 
 describe('DEC-919 phone capability-removal probe', () => {
   it('finds more than one sheet (vacuous-population tripwire, sheet side)', () => {

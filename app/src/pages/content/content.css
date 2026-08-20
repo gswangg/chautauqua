@@ -1661,8 +1661,10 @@
      phone home -- ContentApp.tsx's "selecting" meta row Done control
      (chq-content-phone-selecting-done) now clears selectedIds before it
      exits Select mode (w5-ae), matching this comment's "Done -> Select
-     again" claim, which the dock's own frame draws with no Clear control
-     at all (docs/design/Chautauqua Content.dc.html:247-284). */
+     again" claim. The frame's selecting head row draws exactly three
+     controls -- "2 selected", "All 5" and Done -- and no Clear control
+     anywhere in the mode, so Done is the only tick-set exit the frame
+     offers (docs/design/Chautauqua Content.dc.html:257 `Done`). */
   .chq-content-worklist-selecting .chq-bulkbar-actions .chq-btn-tertiary {
     display: none;
   }
