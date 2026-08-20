@@ -53,14 +53,14 @@
   Comms, More-active on Settings) — App.tsx:135 is fixed; dot belongs ABOVE
   the label on ALL items (inactive #BAB6A6), App.tsx:317 renders active-only
   and below.
-  RESOLVED (DEC-381 wave-109 amendment): App.tsx:358 now renders a
-  `chq-dot` span with `aria-hidden="true"` immediately before
+  RESOLVED (DEC-381 wave-109 amendment): App.tsx`chq-dot` now renders a
+  span with `aria-hidden="true"` immediately before
   `{section.label}` at App.tsx:359, for every tab, not just the active one
   (comment at App.tsx:350-357, "the frame's row draws the dot BEFORE the
   label, every tab (not just the active one)"); the More button carries
   the matching before-label dot at App.tsx:375.
-  CLOSED (wave 115): app/src/App.tsx:146 `const PHONE_TAB_FIXED_PATHS = ['/overview', '/submissions', '/speakers'] as const;`
-  CLOSED (wave 115): app/src/App.tsx:358 `isActive ? ' is-on' : ''`
+  CLOSED (wave 115): app/src/App.tsx`const PHONE_TAB_FIXED_PATHS = ['/overview', '/submissions', '/speakers'] as const;`
+  CLOSED (wave 115): app/src/App.tsx`isActive ? ' is-on' : ''`
 - Comms Templates/History unreachable on phone without a localStorage draft:
   phoneEntered ignores ?tab=; landing has zero nav without a draft.
   CLOSED (wave 115, drift-proof citation DEC-967 wave-115 shape -- this
@@ -75,13 +75,13 @@
   Edit vs live 2x2 secondaries with Save primary; save-scope line misplaced.
 - Import CSV phone wizard (frame :487 one-column-per-screen + Next/Skip
   dock) not built; desktop modal overflows at 390.
-  CLOSED (wave 115): app/src/pages/contacts/ImportWizard.phoneColumns.render.test.tsx:1 `v12m-w2-b: the phone-only "one column per screen" pager added for the`
+  CLOSED (wave 115): app/src/pages/contacts/ImportWizard.phoneColumns.render.test.tsx`v12m-w2-b: the phone-only "one column per screen" pager added for the`
 - Settings read/edit split leaves five of nine frames never rendering as
   drawn; Your data drops masked tokens/Revoke/New token in read mode; edit
   mode inverts title/back-link order.
   CLOSED (wave 118, "Your data drops masked tokens/Revoke/New token in read
   mode" clause only — the frame-count and title/back-link clauses are
-  unverified and remain open): app/src/pages/settings/ApiTokensPanel.tsx:205 `{creating ? 'Creating…' : 'New token'}`
+  unverified and remain open): app/src/pages/settings/ApiTokensPanel.tsx`{creating ? 'Creating…' : 'New token'}`
 - Submissions head: three filter strips (VIEW 753px + status 759px both
   clipped) where frame :137 draws search + three chips.
 - Saved embeds: frame's Turn off + Get code pair became four flush buttons;
