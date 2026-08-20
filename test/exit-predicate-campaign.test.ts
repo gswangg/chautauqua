@@ -161,6 +161,15 @@ function baseFixture(): CampaignFile[] {
       path: "test/frame-caption-ledger.scan.test.ts",
       content: "export const FRAME_CAPTION_UNMATCHED_CEILING = 6;",
     },
+    // wave-136 (task w11-aa, DEC-967 doc-integrity lens widened to CODE
+    // comments): added on the same terms -- arbitrary value, faithful shape.
+    // Registered in CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES by the same
+    // lane; without a fixture row here every buildCampaignReport case throws
+    // resolveSingle's "no declaration was found" error.
+    {
+      path: "test/code-comment-citation.scan.test.ts",
+      content: "export const CODE_COMMENT_CITATION_CEILING = 9;",
+    },
   ];
 }
 
@@ -230,6 +239,9 @@ function allGreenFixture(): CampaignFile[] {
     }
     if (f.path === "test/frame-caption-ledger.scan.test.ts") {
       return { ...f, content: "export const FRAME_CAPTION_UNMATCHED_CEILING = 0;" };
+    }
+    if (f.path === "test/code-comment-citation.scan.test.ts") {
+      return { ...f, content: "export const CODE_COMMENT_CITATION_CEILING = 0;" };
     }
     return f;
   });

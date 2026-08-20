@@ -1001,7 +1001,11 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // COMPOSED exclusions, which are also in this batch and push the count down
 // again. The integrated figure is whatever the two-sided ratchet below prints
 // on breach; it is re-seeded to that measurement, never guessed.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 31;
+// Thunderdome megabatch re-measurement on the integrated tree: 17. Lower
+// than w14-bb's 31 because w10-gg's 12 COMPOSED exclusions and w12-ff's
+// builds are also in this batch; higher than w10-gg's 10 because the
+// decision-registry corpus repair un-laundered rows both lanes had hidden.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 17;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {

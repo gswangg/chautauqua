@@ -220,7 +220,12 @@ export const ANCHOR_FLOOR_OFFENDERS_CEILING = 0;
 // WIDENING lane; two sibling lanes this wave (v12m-w14-dd, v12m-w14-ee)
 // drain the 28 with CSS receipts and touch no constant. RATCHET:
 // SSR_UNFLOORED_TOKENS_CEILING=28.
-export const SSR_UNFLOORED_TOKENS_CEILING = 28;
+// Thunderdome megabatch re-measurement: the two sibling drain lanes
+// (v12m-w13-ee, v12m-w13-ff) landed in this same batch and floored every
+// one of the 28 tokens w14-cc's widening lane had exposed. Re-measured on
+// the integrated tree: 0 offenders. Lowered per DEC-989 wave-123's
+// protocol -- the merge train writes the combined truth.
+export const SSR_UNFLOORED_TOKENS_CEILING = 0;
 
 // task w7-e (DEC-367/DEC-385) lowered this from 14 to 3, measured after
 // repair by forcing the ceiling to -1 and reading the printed offender
