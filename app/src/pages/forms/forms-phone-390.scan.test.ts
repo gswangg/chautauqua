@@ -138,3 +138,48 @@ describe('phone dock: filled "Save the form" over bordered "Preview" (frame docs
     expect(ruleIn(PHONE, '.chq-forms-phone-footer .chq-btn')).not.toMatch(/flex:\s*1/);
   });
 });
+
+// DEC-919 amendment (task w11-o): the frame goes straight from the head
+// band to the field rows and draws no three-cell strip -- the frame
+// removes GEOMETRY, not CAPABILITY, so the Opens/Closes/Received strip
+// stacks to one column instead of disappearing.
+describe('Opens/Closes/Received strip stacks to one column at 390 (frame docs/design/Chautauqua Submissions.dc.html:468 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`, "CFP form · 390")', () => {
+  it('.chq-forms-strip drops from 3 desktop columns to 1 stacked column', () => {
+    const strip = ruleIn(PHONE, '.chq-forms-strip');
+    expect(strip).toMatch(/grid-template-columns:\s*1fr/);
+  });
+
+  it('.chq-forms-strip-cell trades its desktop left divider for a top divider, first cell excepted, gutter re-cut for the full 358px value width', () => {
+    const cell = ruleIn(PHONE, '.chq-forms-strip-cell');
+    expect(cell).toMatch(/border-left:\s*none/);
+    expect(cell).toMatch(/border-top:\s*1px solid var\(--chq-rule\)/);
+    const firstCell = ruleIn(PHONE, '.chq-forms-strip-cell:first-child');
+    expect(firstCell).toMatch(/border-top:\s*none/);
+  });
+
+  it('.chq-forms-strip-datefield reaches the 44px floor via centred flex + real horizontal padding, never cancelled padding (DEC-937/DEC-383: this control paints a border on hover/focus)', () => {
+    const datefield = ruleIn(PHONE, '.chq-forms-strip-datefield');
+    expect(datefield).toMatch(/min-height:\s*44px/);
+    expect(datefield).toMatch(/display:\s*flex/);
+    expect(datefield).toMatch(/align-items:\s*center/);
+    expect(datefield).toMatch(/padding:\s*0 4px/);
+    // Not the cancelled-padding idiom: no negative margin-inline paired
+    // with this padding anywhere in the phone layer's datefield rule.
+    expect(datefield).not.toMatch(/margin/);
+  });
+
+  it('desktop strip stays byte-identical: 3 columns, the border-left divider, and the 22px value face are untouched outside the phone block', () => {
+    // Non-global match returns the FIRST occurrence in source order; the
+    // desktop (unconditional) rule is declared long before the appended
+    // phone block, so this is the desktop rule, not the phone override.
+    const desktopStrip = CSS.match(/\.chq-forms-strip\s*\{([^}]*)\}/);
+    expect(desktopStrip).not.toBeNull();
+    expect(desktopStrip![1]).toMatch(/grid-template-columns:\s*repeat\(3,\s*1fr\)/);
+    const desktopCellMatch = CSS_RAW.match(/\.chq-forms-strip-cell\s*\{([^}]*)\}/);
+    expect(desktopCellMatch).not.toBeNull();
+    expect(desktopCellMatch![1]).toMatch(/border-left:\s*1px solid var\(--chq-rule\)/);
+    const desktopValueMatch = CSS_RAW.match(/\.chq-forms-strip-value\s*\{([^}]*)\}/);
+    expect(desktopValueMatch).not.toBeNull();
+    expect(desktopValueMatch![1]).toMatch(/font-size:\s*22px/);
+  });
+});
