@@ -1,5 +1,5 @@
-// DEC-576/DEC-154 (wave-110 amendments): the portal's phone dock band --
-// the "Your tasks" 390 frame's :492-495 band and the "Your session"
+// DEC-576/DEC-154 (wave-110 amendments): the portal's dock band -- drawn
+// from the "Your tasks" 390 frame's :492-495 band and the "Your session"
 // frame's :586-589 band, each cited by path+line, quoted and receipted at
 // the geometry it()s below, where an assertion can stand beside the claim
 // (a file-header citation can carry no expect(, DEC-976 wave-87) -- holds
@@ -8,9 +8,14 @@
 // at 390.
 //
 // Two halves, mirroring test/portal-phone-frames.test.ts's idiom for the
-// CSS half (jsdom applies no @media, so the phone-only geometry and the
-// footer sign-out hide are pinned as a CSS TEXT scan) and the existing
-// portal render-test idiom (vi.mock + app.request) for the DOM half.
+// CSS half (jsdom applies no @media, so the layer a declaration lives in
+// and the footer sign-out hide are pinned as a CSS TEXT scan) and the
+// existing portal render-test idiom (vi.mock + app.request) for the DOM
+// half.
+//
+// The band is NOT phone-only -- shared.tsx:233 mounts it at every width --
+// so the CSS half reads BOTH layers: base for the row layout, the terminal
+// phone block for the 390 frame's full-measure overrides.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -43,7 +48,13 @@ function phoneLayer(css: string): string {
   return out.join("\n");
 }
 
-function phoneRuleAll(layer: string, selector: string): string {
+/** Every declaration block in `layer` whose selector list contains
+ * `selector`, joined. Layer-neutral: the desktop slice below is flat (no
+ * nested at-rule survives before the terminal phone block), so the same
+ * scanner reads either layer. Throws when the layer declares the selector
+ * nowhere -- which is itself assertable, and is how the "this override is
+ * phone-only" half of the dock pin is stated. */
+function ruleAll(layer: string, selector: string): string {
   const bodies: string[] = [];
   const rule = /([^{}]+)\{([^{}]*)\}/g;
   let m: RegExpExecArray | null;
@@ -54,7 +65,7 @@ function phoneRuleAll(layer: string, selector: string): string {
       .filter(Boolean);
     if (selectors.includes(selector)) bodies.push(m[2]!);
   }
-  if (bodies.length === 0) throw new Error(`no phone rule for ${selector}`);
+  if (bodies.length === 0) throw new Error(`no rule for ${selector}`);
   return bodies.join("\n");
 }
 
@@ -68,11 +79,11 @@ function desktopLayer(css: string): string {
 }
 const DESKTOP = desktopLayer(CLEAN);
 
-describe("v12 phone dock band (390) — .chq-portal-dock geometry", () => {
+describe("v12 dock band — .chq-portal-dock geometry, split across both layers", () => {
   // docs/design/Chautauqua Public and Portal.dc.html:493/:587
   // `<span style="flex:1; ... min-height:48px; ...">Mark the release signed</span>`
   it("the primary is flex:1 and reaches the 48px floor", () => {
-    const primary = phoneRuleAll(PHONE, ".chq-portal-dock .chq-btn-primary");
+    const primary = ruleAll(PHONE, ".chq-portal-dock .chq-btn-primary");
     expect(primary).toMatch(/flex:\s*1/);
     expect(primary).toMatch(/min-height:\s*48px/);
   });
@@ -80,18 +91,46 @@ describe("v12 phone dock band (390) — .chq-portal-dock geometry", () => {
   // docs/design/Chautauqua Public and Portal.dc.html:494/:588
   // `<span style="border:1px solid #BAB6A6; ... min-height:48px; ...">Later</span>`
   it("the secondary reaches the 48px floor (border is the shared .chq-btn-secondary token, untouched here)", () => {
-    const secondary = phoneRuleAll(PHONE, ".chq-portal-dock .chq-btn-secondary");
+    const secondary = ruleAll(PHONE, ".chq-portal-dock .chq-btn-secondary");
     expect(secondary).toMatch(/min-height:\s*48px/);
   });
 
-  it("is declared only inside the terminal phone media block, never in the desktop layer", () => {
-    expect(DESKTOP).not.toMatch(/\.chq-portal-dock/);
+  // This pin used to read `expect(DESKTOP).not.toMatch(/\.chq-portal-dock/)`,
+  // encoding "the band is phone-only". That assumption WAS the user-filed
+  // Cut-2 bug: the band is not phone-only. The render evidence is
+  // src/routes/portal/shared.tsx:233 --
+  //   `{props.dock ? <div class="chq-portal-dock">{props.dock as any}</div> : null}`
+  // -- mounted inside PortalLayout's shared <footer class="chq-portal-footer">
+  // for EVERY /portal/* page, gated on a page handing down a dock slot and
+  // never on a viewport width. jsdom applies no @media, so with the flex/gap
+  // living only in the 700px block the desktop band fell back to a plain
+  // block box: the two .chq-btn anchors flush-joined with no gap and the
+  // tertiary Sign out crammed directly beneath them.
+  //
+  // So the pin now names WHICH declarations belong to WHICH layer.
+  it("declares the row layout in the BASE layer — the band draws at every width", () => {
+    const base = ruleAll(DESKTOP, ".chq-portal-dock");
+    expect(base).toMatch(/display:\s*flex/);
+    expect(base).toMatch(/align-items:\s*center/);
+    // a real gap between the primary and the secondary, and real clearance
+    // between the band and the footer's Sign out below it
+    expect(base).toMatch(/gap:\s*[1-9]\d*px/);
+    expect(base).toMatch(/margin-bottom:\s*[1-9]\d*px/);
+  });
+
+  it("keeps the 390 frame's full-measure overrides in the terminal phone block only", () => {
+    // the 48px touch floors and the flex:1 full-bleed primary are the phone
+    // frame's own measure; the desktop layer must not carry them
+    expect(() => ruleAll(DESKTOP, ".chq-portal-dock .chq-btn-primary")).toThrow(/no rule/);
+    expect(() => ruleAll(DESKTOP, ".chq-portal-dock .chq-btn-secondary")).toThrow(/no rule/);
+    // and the phone block still tightens the base gap to the frame's 8px
+    expect(ruleAll(PHONE, ".chq-portal-dock")).toMatch(/gap:\s*8px/);
   });
 });
 
 describe("DEC-154: the footer's duplicate Sign out is stood down at 390 only", () => {
   it("phone layer hides .chq-portal-footer .chq-portal-signout", () => {
-    const hidden = phoneRuleAll(PHONE, ".chq-portal-shell > .chq-portal-footer .chq-portal-signout");
+    const hidden = ruleAll(PHONE, ".chq-portal-shell > .chq-portal-footer .chq-portal-signout");
     expect(hidden).toMatch(/display:\s*none/);
   });
 

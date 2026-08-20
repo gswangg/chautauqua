@@ -1006,8 +1006,10 @@ ${ERROR_STATES_CSS}
   }
   /* DEC-154: the header identity cluster (:199 shared.tsx) already carries
      Sign out at 390 -- the footer's copy is the duplicate DEC-154 names,
-     stood down here only; desktop (where the dock does not draw) keeps
-     both exactly as before. */
+     stood down here only; desktop keeps both exactly as before. (The dock
+     itself DOES draw at desktop -- shared.tsx:233 mounts it on width-
+     independent terms -- so its row layout lives in the base layer above;
+     only these full-measure overrides are phone-only.) */
   .chq-portal-shell > .chq-portal-footer .chq-portal-signout {
     display: none;
   }
