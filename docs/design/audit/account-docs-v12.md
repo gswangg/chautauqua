@@ -36,6 +36,15 @@ password?', re-lined" bullet there for the full ruling and its grounds. No
 further code change is needed; the shipped treatment described above
 already implements it.
 
+**Correction, wave 116 (v12m-w5-aa, DEC-919/DEC-967)**: "no further code
+change is needed" was false. A `.chq-auth-stack .chq-auth-tertiary {
+display: none; }` rule (`src/routes/auth.css.ts`, added wave-101, after
+this finding was filed) out-specified the re-line and erased the link from
+the 390 screen — the exact frame this finding names. The hide rule is
+deleted this wave; the re-line described above now actually reaches
+/login. See `docs/design/audit/tap-floor-v12.md`'s wave-116 correction for
+the counted-offender side of this same defect.
+
 ## The auth input fill (#FFFFFF) — DEVIATIONS §6, untouched
 
 Frame lines 130/134/161/165/169 (docs/design/Chautauqua Account.dc.html)

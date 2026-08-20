@@ -62,6 +62,43 @@ describe('"Sign in · 390" phone geometry (docs/design/Chautauqua Account.dc.htm
     expect(combined).toMatch(/\.chq-auth-footer\s*\{[^}]*border-top-color:\s*var\(--chq-hairline\);[^}]*padding-top:\s*18px;/);
     expect(combined).toMatch(/\.chq-auth-footer-links a\s*\{[^}]*font-size:\s*15px;/);
   });
+
+  // DEC-919 wave-116: the blessed deviation (DEVIATIONS.md:119-134) rules
+  // /login KEEPS "Forgot your password?" at 390, re-lined beneath the
+  // full-width Sign in button -- not hidden. Wave-101's
+  // .chq-auth-stack-scoped `display: none` on .chq-auth-tertiary
+  // out-specified the re-line and removed the link from the phone screen;
+  // that rule is deleted. Pin the cascade so it cannot return under any
+  // other selector, at any max-width, ever again.
+  it("no selector naming .chq-auth-tertiary declares display:none inside any max-width media block, and the phone rule floors it at 44px", () => {
+    const ALL_MAX_WIDTH_MARKER = /@media\s*\(max-width:\s*\d+px\)/g;
+    const mediaBlockContents: string[] = [];
+    let markerMatch: RegExpExecArray | null;
+    while ((markerMatch = ALL_MAX_WIDTH_MARKER.exec(AUTH_CSS_TS)) !== null) {
+      const openBrace = AUTH_CSS_TS.indexOf("{", markerMatch.index);
+      let depth = 0;
+      let i = openBrace;
+      for (; i < AUTH_CSS_TS.length; i++) {
+        if (AUTH_CSS_TS[i] === "{") depth++;
+        else if (AUTH_CSS_TS[i] === "}") {
+          depth--;
+          if (depth === 0) break;
+        }
+      }
+      mediaBlockContents.push(AUTH_CSS_TS.slice(openBrace + 1, i));
+    }
+    expect(mediaBlockContents.length).toBeGreaterThan(0);
+    const allMaxWidthCss = mediaBlockContents.join("\n");
+    // No rule whose selector names .chq-auth-tertiary (scoped or bare) may
+    // pair that selector with display:none anywhere in a max-width block.
+    for (const ruleMatch of allMaxWidthCss.matchAll(/([^{}]*\.chq-auth-tertiary[^{}]*)\{([^}]*)\}/g)) {
+      const [, selector, body] = ruleMatch;
+      expect(body, `selector "${(selector ?? "").trim()}" must not hide .chq-auth-tertiary`).not.toMatch(
+        /display:\s*none/,
+      );
+    }
+    expect(combined).toMatch(/\.chq-auth-tertiary\s*\{[^}]*min-height:\s*44px/);
+  });
 });
 
 describe('"Docs · an article · 390" phone geometry (docs/design/Chautauqua Docs.dc.html:166 `<div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">`)', () => {

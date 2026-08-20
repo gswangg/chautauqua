@@ -23,6 +23,19 @@ assumption"); a future wave that either re-scopes the re-lined
 gets a design ruling to drop the /login Forgot link's phone hide test
 pin, can close this row.
 
+**Correction, wave 116 (v12m-w5-aa, DEC-919/DEC-967).** The above reasoning
+is superseded. `docs/design/DEVIATIONS.md:119-134` rules that /login's
+"Forgot your password?" link is KEPT on the 390 frame, re-lined beneath
+the full-width Sign in button, not dropped. The `.chq-auth-stack
+.chq-auth-tertiary { display: none; }` rule this row counted was never a
+legal reading of that ruling — it made the blessed deviation false in the
+tree by out-specifying the re-line and erasing the link from the phone
+screen. The rule (and `test/account-signin-phone.test.ts:117`'s pin
+asserting it) are both removed on this wave; `.chq-auth-tertiary`'s
+unscoped, re-lined rule (`src/routes/auth.css.ts` phone block,
+`min-height: 44px`) now governs /login same as every other auth page.
+This row no longer exists; do not re-open it.
+
 Measured by `app/src/phone-tap-target.scan.test.ts`'s row-action-anchor scan (DEC-393 wave-87 amendment) on this branch. Each row names a CSS selector that mentions a bare-anchor or row-action-container token (DESIGN-RULINGS.md:189's evasion) with no conforming `@media (max-width: 700px)` rule (`min-height:>=44px` + `display:flex` + `align-items:center` + non-zero horizontal padding, all three, reaching the anchor) and no `tap-floor-exempt` comment. Every row here lives OUTSIDE this task's scope (`app/src/components/*.css`, `app/src/pages/submissions/*.css`) and is left for its owning cluster/wave to fix or exempt.
 
 **Refreshed wave 108 (v12m-w4-o, DEC-808 amendment).** Measurement method:

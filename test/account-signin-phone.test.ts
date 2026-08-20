@@ -67,9 +67,10 @@ describe("GET /login — 390 frame markup survives (DEC-385)", () => {
     expect(html).toContain('name="email"');
     expect(html).toContain('name="password"');
     expect(html).toContain(">Sign in<");
-    // The 390 frame draws no Forgot link at all -- it is hidden via CSS at
-    // phone width (auth.css.ts's .chq-auth-stack .chq-auth-tertiary rule),
-    // not removed from the markup, so the desktop card keeps it.
+    // DEC-919 wave-116: the blessed deviation keeps "Forgot your
+    // password?" on /login at 390, re-lined beneath the full-width Sign in
+    // button (auth.css.ts's unscoped .chq-auth-tertiary re-line, no
+    // .chq-auth-stack-scoped hide). Both markup and phone CSS carry it.
     expect(html).toContain('href="/forgot"');
     expect(html).toContain("Forgot your password?");
   });
@@ -112,10 +113,15 @@ describe("Sign in / Change password 390 CSS source-scan (DEC-385)", () => {
   const blocks = extract700Blocks(AUTH_CSS_TS);
   const joined = blocks.join("\n");
 
-  it("docs/design/Chautauqua Account.dc.html:121 `width:390px; height:844px` -- the Sign-in phone rules (wordmark, inputs, hidden Forgot link, full-width button, stacked footer) live inside a 700px block", () => {
+  it("docs/design/Chautauqua Account.dc.html:121 `width:390px; height:844px` -- the Sign-in phone rules (wordmark, inputs, re-lined Forgot link, full-width button, stacked footer) live inside a 700px block", () => {
     expect(joined).toMatch(/\.chq-auth-stack \.chq-auth-wordmark\s*\{[^}]*font-size:\s*26px/);
     expect(joined).toMatch(/\.chq-auth-stack \.chq-auth-card input\[type=email\][\s\S]*?min-height:\s*50px/);
-    expect(joined).toMatch(/\.chq-auth-stack \.chq-auth-tertiary\s*\{[^}]*display:\s*none/);
+    // DEC-919 wave-116: no .chq-auth-stack-scoped rule may hide
+    // .chq-auth-tertiary -- /login's Forgot link stays live, re-lined by
+    // the unscoped .chq-auth-tertiary rule shared with every other auth
+    // page's tertiary link.
+    expect(joined).not.toMatch(/\.chq-auth-stack \.chq-auth-tertiary\s*\{[^}]*display:\s*none/);
+    expect(joined).toMatch(/\.chq-auth-tertiary\s*\{[^}]*min-height:\s*44px/);
     expect(joined).toMatch(/\.chq-auth-stack \.chq-auth-card button\[type=submit\]\s*\{[^}]*width:\s*100%/);
     expect(joined).toMatch(/\.chq-auth-footer \.chq-auth-footer-links\s*\{[^}]*flex-direction:\s*column/);
   });

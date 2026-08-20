@@ -404,19 +404,6 @@ ${BARE_PAGE_CSS}
       border-radius: 6px;
       font-size: 16px;
     }
-    /* DEC-919 wave-101: this hide is NOT eligible for a phone-hidden
-       receipt (none of the three legal shapes -- desktop twin of a
-       phone-only sibling, drag handle, bare navigational glyph -- apply)
-       and is deliberately left counted rather than receipted on
-       assumption. The 390 frame draws no "Forgot your password?" link at
-       all inside the Email/Password stack -- just Email, Password, a
-       full-width Sign in -- and this scoped selector (.chq-auth-stack
-       .chq-auth-tertiary) out-specifies the unscoped .chq-auth-tertiary
-       re-lined rule below, so /login's Forgot link stays hidden while
-       every OTHER auth page's tertiary link (Back to sign in, etc.) gets
-       the re-lined treatment. Filed in
-       docs/design/audit/tap-floor-v12.md (task w2-t). */
-    .chq-auth-stack .chq-auth-tertiary { display: none; }
     /* :136 \`background:#4E5C31; ... border-radius:6px; min-height:50px;
        ... justify-content:center; font-size:15px; font-weight:700">Sign
        in\` -- full-width, centred, one size down from the desktop card's
