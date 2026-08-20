@@ -480,8 +480,8 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
      overlay -- these two classes are its agenda/schedule twins, kept
      separate (not shared) because their min-height differs (46px agenda /
      48px my-schedule, docs/design/Chautauqua Public and Portal.dc.html:
-     400-403 \`flex-shrink:0; border-top:1px solid #1B1D17;
-     background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px\`
+     400-403 \`<div style="flex-shrink:0; border-top:1px solid #1B1D17;
+     background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">\`
      / 884-887), the same "identical color/weight, separate dense/
      roomy selector" shape .chq-pub-agenda-layout/.chq-pub-schedule-layout
      already use a few lines above (rail.css.ts) for their own near-

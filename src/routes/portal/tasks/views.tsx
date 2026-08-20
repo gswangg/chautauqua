@@ -375,9 +375,9 @@ export function TaskFormPage(props: {
 }
 
 // DEC-576/DEC-967 (wave-110 amendments): docs/design/Chautauqua Public and
-// Portal.dc.html:492-495 `flex-shrink:0; border-top:1px solid #1B1D17;
-// background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
-// draws a fixed dock under "Your tasks" holding
+// Portal.dc.html:492-495 `<div style="flex-shrink:0; border-top:1px solid
+// #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex;
+// gap:8px">` draws a fixed dock under "Your tasks" holding
 // "Mark the release signed" (primary) + "Later" (secondary). The portal
 // task model is complete-or-not only — there is no snooze/defer verb
 // behind "Later" anywhere in src/routes/portal/**.tsx, so DEC-967's
