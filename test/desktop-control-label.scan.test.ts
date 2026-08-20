@@ -86,13 +86,14 @@
 //      26 unmatched by any app source file. After the two exclusion tables
 //      below (3 FIXTURE + 22 COMPOSED, several of which resolve as BLESSED
 //      rather than freshly-composed on inspection -- see their own
-//      entries), one real divergence survives: Chautauqua
-//      Speakers.dc.html:529 "Open your tasks", the reminder email's OWN
-//      preview CTA (a `<span>` inside the mocked email body a reminder
-//      modal renders, not a live app control -- the reminder email itself
-//      is generated server-side HTML that appears nowhere in this repo's
-//      TS/TSX/CSS corpus). Left in the residue, named here, not fixed in
-//      this lane.
+//      entries), zero divergences survive: task w10-ff (DEC-441) closed the
+//      former last residue, Chautauqua Speakers.dc.html:529 "Open your
+//      tasks", by having sendReminderEmails pass `cta: { label:
+//      REMINDER_CTA_LABEL, href: portalLink }` to renderEmailHtml (src/
+//      server/repo/tasks/reminders.ts) -- the literal 'Open your tasks'
+//      REMINDER_CTA_LABEL constant now resolves this scan's corpus match
+//      directly, closing the gap by USING the mail shell's already-built
+//      cta affordance rather than inventing markup.
 //
 //   5. RATCHET, two-sided, mirroring every prior ledger in this campaign:
 //      DESKTOP_CONTROL_LABEL_CEILING is a single exported const, hand-
@@ -103,7 +104,9 @@
 //      above the ceiling; a companion `it` fails when it falls below,
 //      printing the exact replacement line.
 //
-//      RATCHET: DESKTOP_CONTROL_LABEL_CEILING=1.
+//      RATCHET: DESKTOP_CONTROL_LABEL_CEILING=0 (task w10-ff, DEC-441 --
+//      closed the ledger's last offender by wiring the reminder email's
+//      existing-but-unused CTA affordance, not by inventing new markup).
 //
 // This file names the app's uninstrumented non-390 control-label gap; it
 // does not close it.
@@ -564,17 +567,19 @@ function excluded(l: ControlLabel): boolean {
 const UNMATCHED: ControlLabel[] = UNMATCHED_RAW.filter((l) => !excluded(l));
 
 // -- Ratchet ------------------------------------------------------------
-// Measured on this branch (v12m-w6-b) by forcing this const to -1 and
-// reading the printed offender list: exactly one label survives both
-// normalization and the two exclusion tables above -- a real frame/app
-// divergence, not fixture noise or a composed-at-render label:
-// Chautauqua Speakers.dc.html:529 "Open your tasks" (the reminder-email
-// preview's own CTA span, which renders server-generated email HTML that
-// appears nowhere in this repo's TS/TSX/CSS source corpus). This is the
-// FIRST measurement of this population -- there is no prior ceiling to
-// compare against, so this is not a "raise" or a regression, it is the
-// instrument's initial reading.
-export const DESKTOP_CONTROL_LABEL_CEILING = 1;
+// Measured on this branch (task w10-ff, DEC-441) by forcing this const to
+// -1 and reading the printed offender list: zero labels survive both
+// normalization and the two exclusion tables above. Chautauqua
+// Speakers.dc.html:529 "Open your tasks" -- the sole prior offender
+// (v12m-w6-b's initial measurement, ceiling=1) -- now resolves: build-
+// ReminderMessage's reminder email is built to its frame (greeting, nudge,
+// 'Still to do', task lines, signature) and sendReminderEmails passes
+// `cta: { label: REMINDER_CTA_LABEL, href: portalLink }` to renderEmailHtml
+// (src/server/repo/tasks/reminders.ts), so the literal 'Open your tasks'
+// (REMINDER_CTA_LABEL) now appears in this repo's own TS source, satisfying
+// the corpus match. A DRAIN, not a raise: the ceiling falls to the measured
+// residue.
+export const DESKTOP_CONTROL_LABEL_CEILING = 0;
 
 describe('desktop (non-390) control-label ledger (DEC-919 wave-131, v12 mobile campaign)', () => {
   it('non-vacuity: population totals exactly 101 frames -- 75 at width:1600px, 26 modal frames', () => {

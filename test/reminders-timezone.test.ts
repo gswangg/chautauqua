@@ -160,11 +160,14 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
   return { db, updateCalls };
 }
 
-function fakeMailer(): { mailer: Mailer; sent: Array<{ to: { email: string }; subject: string; text: string }> } {
-  const sent: Array<{ to: { email: string }; subject: string; text: string }> = [];
+function fakeMailer(): {
+  mailer: Mailer;
+  sent: Array<{ to: { email: string }; subject: string; text: string; html: string }>;
+} {
+  const sent: Array<{ to: { email: string }; subject: string; text: string; html: string }> = [];
   const mailer: Mailer = {
     async send(m) {
-      sent.push({ to: m.to, subject: m.subject, text: m.text });
+      sent.push({ to: m.to, subject: m.subject, text: m.text, html: m.html });
     },
   };
   return { mailer, sent };
@@ -285,5 +288,43 @@ describe("reminder email due dates (DEC-522: formatCalendarDate per-task, no agg
     expect(result.sent).toBe(1);
     expect(sent).toHaveLength(1);
     expect(sent[0]?.text).toContain("- Speaker agreement — No due date");
+  });
+});
+
+// DEC-441 (Chautauqua Speakers.dc.html:515-535): the reminder email now
+// passes a `cta` to renderEmailHtml, so the HTML body carries both the CTA
+// button label and the shell's paste-URL fallback line -- closing the last
+// desktop control-label ledger offender by using the shell affordance
+// instead of inventing markup.
+describe("reminder email HTML carries the CTA button and its paste-URL fallback (DEC-441)", () => {
+  it("renders 'Open your tasks' and 'Or paste this into your browser: <portal link>'", async () => {
+    const rows: OutstandingRowShape[] = [
+      {
+        assignmentId: "assign_cta",
+        taskId: "task_cta",
+        taskTitle: "Upload headshot",
+        dueDate: new Date(Date.parse("2027-03-02T00:00:00Z")),
+        status: "pending",
+        lastRemindedAt: null,
+        contactId: "contact_1",
+        firstName: "Marcus",
+        lastName: "Chen",
+        email: "marcus@example.com",
+        eventId: "event_1",
+        eventName: "DevFlow Conf 2027",
+        timezone: "America/Los_Angeles",
+        assignmentCreatedAt: new Date(0),
+      },
+    ];
+    const { db } = fakeDb(rows);
+    const { mailer, sent } = fakeMailer();
+
+    const result = await remindNow(db, mailer, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
+
+    expect(result.sent).toBe(1);
+    expect(sent).toHaveLength(1);
+    const html = sent[0]?.html ?? "";
+    expect(html).toContain("Open your tasks");
+    expect(html).toMatch(/Or paste this into your browser: https:\/\/events\.example\.com\/claim\/[^"<]+/);
   });
 });
