@@ -175,7 +175,24 @@ export function findAnchorFloorOffenders(
         }
       }
       if (!narrowOwnedSomewhere) {
-        offenders.push(`(no CSS rule) — .${token}`);
+        // A container whose children are all `<button>`/`.chq-btn` can never
+        // produce a rule `selectorReachesAnchor` accepts, so `reaching` is
+        // always empty and `narrowOwnedSomewhere` never flips true -- that is
+        // a fact about the selector shape, not about whether the token is
+        // exempted. Before reporting the fabricated "(no CSS rule)" row,
+        // check EVERY file that mentions the token at all -- top-level or
+        // narrow, reaching or not -- for a `tap-floor-exempt` comment (DEC-967
+        // wave-123): a well-formed exemption must be honoured however the
+        // token's own selector shape defeats the anchor-reach test.
+        const exemptSomewhere = perFile.some(
+          ({ raw, topLevel, narrow }) =>
+            (topLevel.some((r) => selectorMentionsToken(r.selector, token)) ||
+              narrow.some((r) => selectorMentionsToken(r.selector, token))) &&
+            hasExemptionForToken(raw, token),
+        );
+        if (!exemptSomewhere) {
+          offenders.push(`(no CSS rule) — .${token}`);
+        }
       }
     }
   };
