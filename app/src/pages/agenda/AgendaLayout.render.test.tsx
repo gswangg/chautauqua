@@ -139,6 +139,25 @@ describe('unscheduled tray polish (w41)', () => {
     expect(hint?.textContent).toBe('Click a session, then click a time slot · click Unschedule (or drag back) to remove');
   });
 
+  it('closes with the frame\'s own drag caption (DEC-380 wave-133, pack :113)', () => {
+    const { container } = render(
+      <UnscheduledTray
+        sessions={[SESSION as never]}
+        tracks={[]}
+        conflicts={[]}
+        unplacedReasons={[]}
+        onDropUnschedule={() => {}}
+        armed={null}
+        onArm={() => {}}
+      />,
+    );
+    const dragHint = container.querySelector('.chq-unscheduled-tray-drag-hint');
+    expect(dragHint?.textContent).toBe('Drag to a slot · drag back to unschedule');
+    // Last child of the tray container -- matches the frame's own order.
+    const tray = container.querySelector('.chq-unscheduled-tray');
+    expect(tray?.lastElementChild).toBe(dragHint);
+  });
+
   it('tray card states its duration inline on the ref line as "REF · N min"', () => {
     const { container } = render(
       <UnscheduledTray

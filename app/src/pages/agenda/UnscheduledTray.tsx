@@ -108,6 +108,12 @@ export function UnscheduledTray({
       <p className="chq-unscheduled-tray-hint">
         Click a session, then click a time slot &middot; click Unschedule (or drag back) to remove
       </p>
+      {/* DEC-380 (wave-133): the frame's own closing caption (pack :113) --
+         the drag-native phrasing, distinct from the click/keyboard-path hint
+         above (DEC-570 accessible route). Desktop-only: the 390 agenda
+         surface is arm-then-tap (DEC-380 wave-116), never drag, so this line
+         has no phone twin. */}
+      <p className="chq-unscheduled-tray-drag-hint">Drag to a slot &middot; drag back to unschedule</p>
     </div>
   );
 }
