@@ -137,6 +137,14 @@ function fakeDb(
             resolve(rows);
             return;
           }
+          if (state.grouped) {
+            // DEC-238 (wave-134 amendment): listRemindableContactIds' new
+            // skippedContactIds roster query -- grouped/having/orderBy with
+            // no .limit(). This file's fixtures never set lastRemindedAt, so
+            // the real SQL would return zero skipped contacts too.
+            resolve([]);
+            return;
+          }
           // findAccountUserIds' plain select().from(user).where() path.
           resolve(accountRows);
         } catch (err) {

@@ -33,9 +33,11 @@ import { dayLabelEndInstant, zonedMinutesToUtc } from "../../../lib/timezone";
 import { formatCalendarDate } from "../../../lib/event-time";
 import { chaseableContactExists } from "./crud";
 import { MAIL_FANOUT_CONCURRENCY, mapWithConcurrency } from "../../../lib/fanout";
-import { DEC_441 } from "../../../decisions";
+import { d1EmailLogWriter } from "../../context";
+import { DEC_238, DEC_441 } from "../../../decisions";
 
 void DEC_441;
+void DEC_238;
 
 // DEC-319 wave-56 amendment: hard ceiling on the single-event outstanding
 // scan below — a per-event reminder pass should never be reading past this
@@ -188,7 +190,7 @@ export async function listRemindableContactIds(
   db: Db,
   eventId: string,
   opts: { taskIds?: string[]; contactIds?: string[]; now: number; dedupeWindowMs: number; max: number },
-): Promise<{ contactIds: string[]; skipped: number; remaining: number }> {
+): Promise<{ contactIds: string[]; skippedContactIds: string[]; skipped: number; remaining: number }> {
   // DEC-078: opts.taskIds/opts.contactIds arrive via parseBoundedIdArray
   // (max 1000), which exceeds D1's bound-parameter budget. Both filters are
   // WHERE-clause membership tests over the SAME grouped aggregate (per-
@@ -221,16 +223,12 @@ export async function listRemindableContactIds(
     .groupBy(schema.taskAssignment.contactId)
     .having(eligibleHaving)
     .as("eligible_reminder_contacts");
-  const skippedGroups = db
-    .select({ contactId: schema.taskAssignment.contactId })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-    .where(and(...conditions))
-    .groupBy(schema.taskAssignment.contactId)
-    .having(skippedHaving)
-    .as("skipped_reminder_contacts");
 
-  const [chosenRows, eligibleCountRows, skippedCountRows] = await Promise.all([
+  // DEC-238 (wave-134 amendment): a ROSTER, not a count -- so remindNow can
+  // write the email_log row per skipped contact its `skipped` count already
+  // promises (the count below is DERIVED from this list's length, never a
+  // second, independently-computed number that could disagree with it).
+  const [chosenRows, eligibleCountRows, skippedRows] = await Promise.all([
     db
       .select({ contactId: schema.taskAssignment.contactId })
       .from(schema.taskAssignment)
@@ -241,14 +239,21 @@ export async function listRemindableContactIds(
       .orderBy(asc(schema.taskAssignment.contactId))
       .limit(opts.max),
     db.select({ count: sql<number>`count(*)` }).from(eligibleGroups),
-    db.select({ count: sql<number>`count(*)` }).from(skippedGroups),
+    db
+      .select({ contactId: schema.taskAssignment.contactId })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+      .where(and(...conditions))
+      .groupBy(schema.taskAssignment.contactId)
+      .having(skippedHaving)
+      .orderBy(asc(schema.taskAssignment.contactId)),
   ]);
 
   const eligibleTotal = Number(eligibleCountRows[0]?.count ?? 0);
-  const skipped = Number(skippedCountRows[0]?.count ?? 0);
+  const skippedContactIds = skippedRows.map((r) => r.contactId);
   const remaining = Math.max(eligibleTotal - opts.max, 0);
 
-  return { contactIds: chosenRows.map((r) => r.contactId), skipped, remaining };
+  return { contactIds: chosenRows.map((r) => r.contactId), skippedContactIds, skipped: skippedContactIds.length, remaining };
 }
 
 /** DEC-078 chunked fallback for listRemindableContactIds when taskIds/
@@ -261,7 +266,7 @@ async function listRemindableContactIdsFiltered(
   db: Db,
   eventId: string,
   opts: { taskIds?: string[]; contactIds?: string[]; now: number; dedupeWindowMs: number; max: number },
-): Promise<{ contactIds: string[]; skipped: number; remaining: number }> {
+): Promise<{ contactIds: string[]; skippedContactIds: string[]; skipped: number; remaining: number }> {
   const rows: { contactId: string; lastRemindedAt: Date | null }[] = [];
   outer: for (const taskIdChunk of idChunksOrUndefined(opts.taskIds)) {
     for (const contactIdChunk of idChunksOrUndefined(opts.contactIds)) {
@@ -310,17 +315,18 @@ async function listRemindableContactIdsFiltered(
   }
 
   const eligibleContactIds: string[] = [];
-  let skipped = 0;
+  const skippedContactIds: string[] = [];
   for (const [contactId, lastRemindedAt] of maxLastRemindedByContact) {
     if (lastRemindedAt === null || lastRemindedAt <= cutoff) eligibleContactIds.push(contactId);
-    else skipped++;
+    else skippedContactIds.push(contactId);
   }
   eligibleContactIds.sort();
+  skippedContactIds.sort();
   const eligibleTotal = eligibleContactIds.length;
   const chosen = eligibleContactIds.slice(0, opts.max);
   const remaining = Math.max(eligibleTotal - opts.max, 0);
 
-  return { contactIds: chosen, skipped, remaining };
+  return { contactIds: chosen, skippedContactIds, skipped: skippedContactIds.length, remaining };
 }
 
 function toReminderAssignment(r: OutstandingRow): ReminderAssignment {
@@ -552,6 +558,101 @@ async function sendReminderEmails(
   return { sent, failed };
 }
 
+/** DEC-238 (wave-134 amendment): the FOURTH and last send path to write the
+ * comms-history rows its `skipped` count already promises — mirrors
+ * send.ts:256-300's write (SAME single insert owner, d1EmailLogWriter,
+ * status 'skipped', provider 'none', bodyHtml '', no claim token minted for
+ * a skipped recipient) rather than a second insert site for schema.emailLog.
+ * Called from remindNow right after `chosen` is computed, BEFORE any of its
+ * early returns — a dedupe-skipped contact owes this row regardless of
+ * whether anyone else in the batch was actually eligible to send to.
+ * `previewRemindNow` never calls this (it stays a pure read). Skipped
+ * contacts are never minted a claim token (mintClaimTokens=false); the
+ * stored body is the un-substituted reminder text built the same way
+ * buildReminderMessage builds a real send's body, over that contact's own
+ * outstanding assignments — where none can be found (an invariant that
+ * shouldn't hold given skippedContactIds is derived from the same pending-
+ * assignment query listOutstandingForEvent reads), the row still lands with
+ * the reminder subject and an empty body, because a history that omits the
+ * skip is the defect this invariant exists to prevent. */
+async function writeSkippedReminderLogRows(
+  db: Db,
+  eventId: string,
+  taskIds: string[] | undefined,
+  skippedContactIds: string[],
+  now: Date,
+  kv: KVStore,
+  origin: string,
+): Promise<void> {
+  if (skippedContactIds.length === 0) return;
+
+  const outstanding = await listOutstandingForEvent(db, eventId, taskIds, skippedContactIds);
+  const outstandingByContact = new Map<string, OutstandingRow[]>();
+  for (const r of outstanding) {
+    const arr = outstandingByContact.get(r.contactId) ?? [];
+    arr.push(r);
+    outstandingByContact.set(r.contactId, arr);
+  }
+  const eventName = outstanding[0]?.eventName ?? "";
+
+  const contactRows = await db
+    .select({
+      id: schema.contact.id,
+      firstName: schema.contact.firstName,
+      lastName: schema.contact.lastName,
+      email: schema.contact.email,
+    })
+    .from(schema.contact)
+    .where(inArray(schema.contact.id, skippedContactIds));
+  const contactById = new Map(contactRows.map((c) => [c.id, c]));
+
+  // DEC-530/DEC-397: batched account+portal-link resolution, mintClaimTokens
+  // false — never touches KV for a userless contact (resolves to the fixed
+  // PREVIEW_CLAIM_TOKEN placeholder), exactly like previewRemindNow.
+  const accountMap = await findAccountUserIds(
+    db,
+    skippedContactIds.map((contactId) => ({ contactId, email: contactById.get(contactId)?.email ?? "" })),
+  );
+  const portalLinkMap = await resolvePortalLinks(
+    kv,
+    skippedContactIds.map((contactId) => ({ contactId, userId: accountMap.get(contactId) ?? null })),
+    eventId,
+    origin,
+    false,
+  );
+
+  const emailLogWriter = d1EmailLogWriter(db);
+  const batchId = newId();
+  const sentAtMs = now.getTime();
+  for (const contactId of skippedContactIds) {
+    const contact = contactById.get(contactId);
+    const rows = outstandingByContact.get(contactId) ?? [];
+    const assignments = rows.map(toReminderAssignment);
+    const portalLink = portalLinkMap.get(contactId) ?? "";
+    const { subject, text } =
+      assignments.length > 0
+        ? buildReminderMessage(eventName, assignments, portalLink)
+        : { subject: `${REMINDER_SUBJECT_PREFIX}${eventName}`, text: "" };
+    await emailLogWriter.write({
+      eventId,
+      contactId,
+      batchId,
+      toEmail: contact?.email ?? "",
+      toName: contact ? `${contact.firstName} ${contact.lastName}`.trim() : "",
+      subject,
+      bodyText: text,
+      // No HTML render exists for a skipped recipient -- their message never
+      // reached the shell-rendering step (renderEmailHtml runs only inside
+      // sendReminderEmails' fan-out loop, over CLAIMED groups, never over a
+      // dedupe-skipped contact).
+      bodyHtml: "",
+      provider: "none",
+      status: "skipped",
+      sentAt: sentAtMs,
+    });
+  }
+}
+
 /** Bulk "remind now" — an explicit organizer action, so it reminds every
  * outstanding assignment regardless of the due-window/dedupe gate, but is
  * still capped and de-duped per DEC-319 (planManualReminders) so a huge
@@ -574,6 +675,10 @@ export async function remindNow(
     dedupeWindowMs: MANUAL_DEDUPE_WINDOW_MS,
     max: MAX_REMINDER_BATCH,
   });
+  // DEC-238 (wave-134 amendment): written BEFORE any early return below — a
+  // contact skipped by the dedupe gate owes its comms-history row whether or
+  // not this call goes on to send anything to anyone else.
+  await writeSkippedReminderLogRows(db, eventId, taskIds, chosen.skippedContactIds, now, kv, origin);
   if (chosen.contactIds.length === 0) {
     return { sent: 0, failed: [], skipped: chosen.skipped, remaining: chosen.remaining };
   }

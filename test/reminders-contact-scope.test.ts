@@ -225,7 +225,17 @@ function fakeDb(seed: {
         asCallCount += 1;
         return { __subqueryKind: asCallCount === 1 ? "eligible" : "skipped" };
       },
-      then: (resolve: (v: unknown[]) => void) => resolve(ctxLists.map(mergeCtx)),
+      then: (resolve: (v: unknown[]) => void) => {
+        if (grouped) {
+          // DEC-238 (wave-134 amendment): listRemindableContactIds' new
+          // skippedContactIds roster query -- groupBy/having/orderBy with no
+          // .limit(). This file's fixtures never set lastRemindedAt, so the
+          // real SQL would return zero skipped contacts too.
+          resolve([]);
+          return;
+        }
+        resolve(ctxLists.map(mergeCtx));
+      },
     };
     return chain;
   }
