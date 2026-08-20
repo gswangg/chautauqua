@@ -623,6 +623,11 @@ const WIDENED_EXHIBIT_HEALED: Violation[] = WIDENED_PARTITIONED.flatMap((p) => p
 // as the receipt, the prose was reflowed so each citation carries its own).
 // Re-measured 0 by running this scan on the integrated tree, per DEC-989
 // clause a.
+// Lowered 0 -> 0 (wave-141, task w16-aa): drained the audit-doc citation
+// catalogue (docs/design/audit/code-comment-citation-v12.md, which carried
+// every one of the prior 44 widened-population offenders -- see that
+// file's "Wave-141 repair pass" section). Re-measured 0 by forcing this
+// constant to -1 and reading the printed offender list.
 export const WIDENED_UNRESOLVED_CITATION_CEILING = 0;
 
 describe("widened citation scan: campaign authority documents (DEC-967 wave-107 doc-integrity lens)", () => {

@@ -380,7 +380,29 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // scribe's wave-142 DEC-967 amendment exhibits, and an EXHIBIT! coordinate
 // leaves this scan's population outright (a dead anchor has no live file to
 // convert a citation into).
-export const LINE_KEYED_CITATION_CEILING = 99;
+// Wave-141 (task w16-aa, DEC-967/DEC-808): 107 -> 65 on that lane's own
+// base. Drained
+// docs/design/audit/code-comment-citation-v12.md, the single file that
+// (per this task's own citation) carried 42 of the 107 offenders (its
+// "Wave-141 repair pass" section converts every one to the drift-proof
+// bare-path shape or an EXHIBIT!-sigilled dead anchor). This is a real
+// LOWERING below main's pre-raise 82, not merely below the erroneous 107
+// -- the commit that raised 82 -> 107 without widening the predicate did
+// so on a lower-only ratchet with no predicate change, which this task's
+// own instructions called out as the exact violation five prior merge
+// trains committed and five prior waves un-did. Re-measured by forcing
+// this constant to -1 and reading the printed offender list; the
+// remaining 65 are all outside this task's scope (src/decisions-data/**,
+// owned by task w16-cc; the other docs/design/audit/*.md files and
+// docs/probes/*.md, untouched by this task's citation).
+// Merge-train act (thunderdome megabatch, wave-16/17 backlog of 15): the
+// wave-16 batch's 99 and w16-aa's 65 were measured against DIFFERENT bases
+// and drained DIFFERENT corpora (w16-cc/dd the registry and code-comment
+// populations, w16-aa the code-comment-citation-v12.md audit doc), so
+// neither figure survives their coexistence. RE-MEASURED against the fully
+// integrated tree, exactly as the two-sided ratchet's failure message
+// instructs.
+export const LINE_KEYED_CITATION_CEILING = 65;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
