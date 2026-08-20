@@ -48,6 +48,19 @@ export function peekCachedRead<T>(path: string): T | undefined {
   return value;
 }
 
+// DEC_700 (wave-144 amendment): a cached read carries the invalidation
+// epoch it started under. clearReadCache() empties the cache synchronously,
+// but a read already in flight when it fires is not empty -- it is a
+// Promise that resolves LATER, and its .then would otherwise write
+// pre-invalidation data into the cache AFTER the clear, undoing it. This
+// monotonic counter is bumped by every cache-emptying act (clearReadCache
+// and the test-only resetApiCacheForTests) so apiGetCached/apiListCached
+// can compare the epoch they started under against the epoch at resolution
+// time and skip the write when it has moved on. The in-flight request's
+// OWN caller still gets its answer either way -- only the cache write is
+// dropped, never the returned value.
+let cacheEpoch = 0;
+
 // DEC_700: the mutation bump IS the cache's invalidation clock. Wired once,
 // here, by subscription — every present and future mutating helper that
 // calls bumpMutationVersion() (request()'s non-GET branch, apiUpload)
@@ -55,6 +68,7 @@ export function peekCachedRead<T>(path: string): T | undefined {
 // bumpMutationVersion() itself.
 function clearReadCache(): void {
   readCache.clear();
+  cacheEpoch += 1;
 }
 subscribeToMutationVersion(clearReadCache);
 
@@ -62,6 +76,7 @@ subscribeToMutationVersion(clearReadCache);
  * from production code (mirrors useCurrentEvent.ts's resetEventsCacheForTests). */
 export function resetApiCacheForTests(): void {
   readCache.clear();
+  cacheEpoch += 1;
 }
 
 export type ApiErrorCode = 'unauthorized' | 'forbidden' | 'not_found' | 'invalid' | 'conflict' | 'internal';
@@ -203,14 +218,25 @@ export function apiList<T>(path: string): Promise<ListEnvelope<T>> {
 // payload into the cache on success only — an ApiError throws before the
 // cache write runs, so a failed read never poisons the cache.
 export async function apiGetCached<T>(path: string): Promise<T> {
+  const epochAtStart = cacheEpoch;
   const result = await request<T>(path, { method: 'GET' });
-  cacheSet(cacheKey(path), result);
+  // DEC_700: only write into the cache if no clear happened while this
+  // request was in flight. The caller still gets `result` regardless --
+  // this skip drops only the (now-stale) cache write, never the response.
+  if (cacheEpoch === epochAtStart) {
+    cacheSet(cacheKey(path), result);
+  }
   return result;
 }
 
 export async function apiListCached<T>(path: string): Promise<ListEnvelope<T>> {
+  const epochAtStart = cacheEpoch;
   const result = await request<ListEnvelope<T>>(path, { method: 'GET' });
-  cacheSet(cacheKey(path), result);
+  // DEC_700: see apiGetCached -- same epoch guard, same non-swallowing
+  // guarantee that the caller's own result is never dropped.
+  if (cacheEpoch === epochAtStart) {
+    cacheSet(cacheKey(path), result);
+  }
   return result;
 }
 
