@@ -366,10 +366,12 @@ describe("DEC-873: real-tree scan over the FULL src/ evaluation read-door surfac
     const repoRoot = resolve(__dirname, "..");
     const realContent = readFileSync(resolve(repoRoot, "src/server/repo/comms.ts"), "utf8");
     expect(realContent).toContain("submittedEvaluationCondition()"); // sanity: the fix is present
-    const reverted = realContent.replace(
-      /submittedEvaluationCondition\(\),\n(\s*)\),\n(\s*)\)\n(\s*)\.orderBy\(asc\(schema\.evaluation\.createdAt\)/,
-      "),\n$2)\n$3.orderBy(asc(schema.evaluation.createdAt)",
-    );
+    // Delete the predicate's own line wherever it sits in the and(...) list.
+    // The earlier shape-pinned regex ("...then `)` `)` `.orderBy(`") broke the
+    // moment DEC-271's wave-110 anti-join added `isNull(schema.reviewRecusal.id)`
+    // AFTER the predicate: a simulated revert must not depend on which
+    // sibling conditions happen to follow it inside the same and().
+    const reverted = realContent.replace(/^[ \t]*submittedEvaluationCondition\(\),\n/m, "");
     expect(reverted).not.toEqual(realContent); // sanity: the replace actually matched
     const violations = findEvaluationReadDoorViolations([{ path: "src/server/repo/comms.ts", content: reverted }], EXEMPTIONS);
     expect(violations.length).toBeGreaterThan(0);

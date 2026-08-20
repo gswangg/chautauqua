@@ -1147,6 +1147,26 @@
   display: none;
 }
 
+/* DEC-919 wave-109 amendment: the two controls DEC-621's wave-109 landing
+   amendment mounts unconditionally in the Recent sends head band
+   (Comms.tsx) are phone-only, so like every other phone-named class they
+   declare their hiding at TOP level and are re-lined inside the terminal
+   700px block below -- an unconditionally mounted phone class whose only
+   rule lives inside a media query is visible at desktop widths. */
+/* tap-floor-exempt: DEC-393 wave-87's population (b) admits this token on
+   its `-actions` NAME alone, but the band reaches no bare anchor: its only
+   children are the two `chq-comms-phone-recent-head-link` buttons, which
+   the primary tap-floor scan already governs and which declare
+   min-height:44px, flex centring and 10px of horizontal padding in the
+   phone block below. There is no text-width anchor hit box here to floor. */
+.chq-comms-phone-recent-head-actions {
+  display: none;
+}
+
+.chq-comms-phone-recent-head-link {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .chq-comms-review,
   .chq-comms-templates {

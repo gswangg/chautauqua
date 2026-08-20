@@ -37,6 +37,10 @@ function makeSelectChain(rows: unknown[], onWhere?: (cond: unknown) => unknown[]
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
+    // DEC-271 (wave-110): the feedback read anti-joins review_recusal via
+    // leftJoin + isNull; a pure builder step for this fake, whose rows
+    // already stand for the post-anti-join set.
+    leftJoin: () => chain,
     where: (cond: unknown) => {
       const filtered = onWhere?.(cond);
       return filtered ? makeSelectChain(filtered) : chain;

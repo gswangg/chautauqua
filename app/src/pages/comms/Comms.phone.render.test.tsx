@@ -164,9 +164,14 @@ describe('CommsPage: phone landing (DEC-621 amendment, v12 landing)', () => {
     );
     expect(row.querySelector('.chq-comms-phone-recent-template')).not.toBeNull();
 
-    // No draft card: CommsPage has no draft source to hand PhoneDraftCard
-    // (see PhoneDraftCard's doc comment) -- absent, not an empty card.
-    expect(landing!.querySelector('.chq-comms-phone-draft-card')).toBeNull();
+    // DEC-621 wave-109 amendment clause (b): with no stored draft this slot
+    // carries the EQUIVALENT entry into Compose rather than nothing -- "the
+    // landing always carries a route into the three tabs". The wave-87
+    // reading (absent, not an empty card) is superseded: an absent card is
+    // exactly the dead end the amendment names.
+    const emptyDraftCard = landing!.querySelector('.chq-comms-phone-draft-card');
+    expect(emptyDraftCard).not.toBeNull();
+    expect(emptyDraftCard!.querySelector('.chq-comms-phone-draft-read')?.textContent).toBe('Compose');
 
     // Regular head+tab content is present too (always rendered; CSS -- not
     // JS -- decides which one is visible at a given width).
@@ -197,10 +202,28 @@ describe('CommsPage: phone landing (DEC-621 amendment, v12 landing)', () => {
   });
 });
 
-describe('PhoneDraftCard (DEC-621 wave-87 amendment): renders only when a draft exists', () => {
-  it('renders nothing when draft is null', () => {
-    const { container } = render(<PhoneDraftCard draft={null} onReadDraft={() => {}} />);
-    expect(container).toBeEmptyDOMElement();
+describe('PhoneDraftCard (DEC-621 wave-109 amendment): the draft slot is an entrance in both states', () => {
+  it('renders the empty-state entrance card, not nothing, when draft is null', () => {
+    // Supersedes the wave-87 "renders nothing" pin. DEC-621 wave-109 clause
+    // (b): "when none does, that same slot carries the equivalent entry",
+    // with the label taken from the tab strip's own vocabulary and the
+    // frame's card geometry reused (same two classes, so no new CSS).
+    const onReadDraft = vi.fn();
+    const { container } = render(<PhoneDraftCard draft={null} onReadDraft={onReadDraft} />);
+    const card = container.querySelector('.chq-comms-phone-draft-card');
+    expect(card).not.toBeNull();
+
+    const button = screen.getByRole('button', { name: 'Compose' });
+    expect(button).toHaveClass('chq-comms-phone-draft-read');
+    fireEvent.click(button);
+    expect(onReadDraft).toHaveBeenCalledOnce();
+
+    // It is an ENTRANCE, not a fabricated draft: none of the draft-state
+    // lines (eyebrow, subject, recipient count, honesty steer) are invented.
+    expect(card!.querySelector('.chq-comms-phone-draft-eyebrow')).toBeNull();
+    expect(card!.querySelector('.chq-comms-phone-draft-subject')).toBeNull();
+    expect(card!.querySelector('.chq-comms-phone-draft-meta')).toBeNull();
+    expect(card!.querySelector('.chq-comms-phone-draft-honesty')).toBeNull();
   });
 
   it("renders the frame's card shape when a draft is supplied, recipient count alone (no fabricated provenance)", () => {
@@ -258,7 +281,7 @@ describe('CommsPage phone landing: the draft card is wired to a real localStorag
     expect(within(card as HTMLElement).getByText('23 recipients')).toBeInTheDocument();
   });
 
-  it('renders no card, and does not throw, when no record is stored', async () => {
+  it('renders the empty-state entrance card, and does not throw, when no record is stored', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -273,7 +296,14 @@ describe('CommsPage phone landing: the draft card is wired to a real localStorag
     await screen.findByRole('heading', { name: 'Comms' });
 
     const landing = document.querySelector<HTMLElement>('.chq-comms-phone-landing')!;
-    expect(landing.querySelector('.chq-comms-phone-draft-card')).toBeNull();
+    // DEC-621 wave-109 clause (b): no stored record still yields the slot's
+    // equivalent Compose entry -- and, crucially, none of the draft-state
+    // content, so nothing is fabricated from a record that does not exist.
+    const card = landing.querySelector('.chq-comms-phone-draft-card');
+    expect(card).not.toBeNull();
+    expect(card!.querySelector('.chq-comms-phone-draft-read')?.textContent).toBe('Compose');
+    expect(card!.querySelector('.chq-comms-phone-draft-subject')).toBeNull();
+    expect(card!.querySelector('.chq-comms-phone-draft-meta')).toBeNull();
   });
 });
 

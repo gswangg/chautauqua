@@ -316,7 +316,13 @@ describe("DEC-930 getSpeakerDetail", () => {
     });
     const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
     expect(detail?.otherEventsCount).toBe(1);
-    expect(detail?.otherEvents).toEqual([{ eventId: "event-2020", name: "DevFlow 2020" }]);
+    // DEC-829 (wave-110 amendment): the rail row now carries a second line,
+    // `participation`, derived from the SAME grouped submission row. These
+    // fixture rows carry no submissionStatus, i.e. no decided outcome, so
+    // the amendment's "rather than inventing a line for an undecided
+    // outcome" clause makes it null -- the dedup itself is what this it()
+    // pins, and it still collapses two rows to one.
+    expect(detail?.otherEvents).toEqual([{ eventId: "event-2020", name: "DevFlow 2020", participation: null }]);
   });
 
   it("returns a null scheduled slot and null file for a session/task without one", async () => {

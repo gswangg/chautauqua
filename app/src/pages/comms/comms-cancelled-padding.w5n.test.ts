@@ -51,12 +51,22 @@ function parseRules(mediaBody: string): { selector: string; body: string }[] {
 // .chq-link-button, .chq-btn-tertiary, dense/roomy status chips, and the
 // .chq-comms-send-report-all-history text link (verified borderless by its
 // rendered tier: chq-brand text colour, no background/border declared).
-function isBorderlessSubject(selector: string): boolean {
+// A fifth admissible form, added because the name list alone is stale the
+// moment a lane ships a NEW borderless quiet action (w5-q's
+// .chq-comms-phone-recent-head-link is exactly that): a rule that declares
+// its own `border: none` paints no box by construction, which is the
+// ruling's actual test. The four families above are named because they
+// inherit borderlessness from a top-level rule and so declare nothing here.
+// Bordered subjects (.chq-btn, .chq-pill) still fail: none of them declares
+// `border: none` in the phone block, which the bordered-offender pins below
+// independently hold.
+function isBorderlessSubject(selector: string, body: string): boolean {
   return (
     /\.chq-link-button\b/.test(selector) ||
     /\.chq-btn-tertiary\b/.test(selector) ||
     /chq-status-chip/.test(selector) ||
-    /\.chq-comms-send-report-all-history\b/.test(selector)
+    /\.chq-comms-send-report-all-history\b/.test(selector) ||
+    /border:\s*none\b/.test(body)
   );
 }
 
@@ -70,7 +80,7 @@ describe('comms.css cancelled-padding idiom scoped to borderless controls (DEC-3
     const negativeMarginRules = rules.filter((r) => /margin-inline:\s*-\d/.test(r.body));
     expect(negativeMarginRules.length).toBeGreaterThan(0);
     for (const rule of negativeMarginRules) {
-      expect(isBorderlessSubject(rule.selector)).toBe(true);
+      expect(isBorderlessSubject(rule.selector, rule.body)).toBe(true);
     }
   });
 

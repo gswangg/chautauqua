@@ -23,6 +23,11 @@ function makeChain(rows: unknown[], orderByLog?: unknown[][]) {
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
+    // DEC-271 (wave-110): listFeedbackCommentsForSubmissions now anti-joins
+    // review_recusal, so the chain must answer .leftJoin like the real
+    // drizzle builder does -- it is a pure builder step here, the fake's
+    // row set already stands for "after the anti-join".
+    leftJoin: () => chain,
     where: () => chain,
     orderBy: (...args: unknown[]) => {
       orderByLog?.push(args);

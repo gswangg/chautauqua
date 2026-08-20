@@ -347,6 +347,10 @@ function makeCappedFakeDb(rowCount: number, makeRow: (i: number) => Record<strin
       calls.push(call);
       const chain = {
         from: () => chain,
+        // DEC-271 (wave-110): listEvaluationScoresForPlan anti-joins
+        // review_recusal (leftJoin + isNull) before .where -- a pure builder
+        // step for this fake, whose rows stand for the post-anti-join set.
+        leftJoin: () => chain,
         where: () => chain,
         orderBy: (..._args: unknown[]) => {
           call.orderByCalled = true;
