@@ -331,6 +331,13 @@ const LEDGER: LedgerEntry[] = [
       "DEC-919 wave-114 amendment: a frame is the GEOMETRY authority, not a capability manifest -- the 390 sign-in cut drawing the primary alone does not license deleting the only password-reset entry point on phones. The link stays, re-lined: .chq-auth-submitrow goes column-reverse at phone width so the full-width primary sits first and the tertiary is centred beneath it.",
     honored: { kind: "present", file: "src/routes/auth.css.ts", literal: "flex-direction: column-reverse;", testFile: "test/account-docs-phone-frames.test.ts" },
   },
+  {
+    key: "agenda-390-phone-dock-stays-exactly-the-two-frame-controls-publish-schedule-and-breaks-live-in-the-heads-action-row-dec-380-wave-116-amendment",
+    status: "honored",
+    reason:
+      "DEC-380 wave-116 amendment, closing the mandate's open design question: the frame's 390 dock draws exactly Unscheduled + Auto-schedule, unchanged. Publish schedule and Breaks stay in the head's own full-width action row -- a frame is the geometry authority, not a capability manifest, and neither control has any other home on the phone surface. Both reach the 44px floor: the shared .chq-btn rule floors Publish schedule, and a dedicated .chq-link-button rule (appended, not edited in place) floors Breaks.",
+    honored: { kind: "present", file: "app/src/pages/agenda/agenda.css", literal: ".chq-agenda-head-actions .chq-link-button {", testFile: "app/src/pages/agenda/PhoneAgenda.dock-membership.render.test.tsx" },
+  },
   // ---- ## 6. Deferred post-deadline -------------------------------------
   {
     key: "your-data-edit-view",
@@ -590,9 +597,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(6);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(7);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(17);
-    expect(derived.length).toBe(31);
+    expect(derived.length).toBe(32);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

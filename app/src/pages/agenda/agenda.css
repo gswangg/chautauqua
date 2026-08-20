@@ -1605,4 +1605,21 @@
   .chq-agenda-armed-bar {
     display: none;
   }
+
+  /* DEC-380 wave-116 amendment: Breaks (.chq-link-button.chq-section-action)
+     shares the head's full-width action row with Publish schedule, but the
+     shared .chq-agenda-head-actions .chq-btn floor (:1508) matches only
+     .chq-btn-family controls -- .chq-link-button never gets it, so Breaks
+     was rendering below the 44px tap floor. Appended here rather than
+     folded into that selector list so no cited line number above it
+     shifts (DEC-385: append, never edit in place above a citation). Same
+     floor shape as .chq-toolbar-link (:1512): the family is borderless,
+     so cancelled padding is safe. */
+  .chq-agenda-head-actions .chq-link-button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 10px;
+    margin-inline: -10px;
+  }
 }

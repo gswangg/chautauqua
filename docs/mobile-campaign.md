@@ -144,11 +144,12 @@ ruling: does Done-discard also drop an unsaved add draft + its refusal?
   are DEC-010 waves 66/71, DEC-557 clause (f), DEC-377, SPEC J9 (DEC-302 is
   npm audit advisories).
 
-## Deferred design question (agenda 390, ruled interim by meta)
-Publish schedule survives as the head's full-width action row (DEC-919
-remedy). Whether it belongs in the phone dock instead is a frame deviation
-needing a proper ruling later — the frame's dock draws only
-Unscheduled + Auto-schedule.
+## RULED (DEC-380 wave-116): agenda 390 dock membership
+The open question above is closed. See DEVIATIONS.md §3 ("Agenda 390 phone
+dock stays exactly the two frame controls; Publish schedule and Breaks live
+in the head's action row (DEC-380 wave-116 amendment)"): the dock stays the
+frame's, unchanged (Unscheduled + Auto-schedule only); Publish schedule and
+Breaks stay in the head's full-width action row at the 44px floor.
 
 ## Worker discipline (meta-observed, 2026-08-19)
 - Commit d3f6bf0c staged with `git add -A`, sweeping 23 files from four
