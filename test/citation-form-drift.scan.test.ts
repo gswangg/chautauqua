@@ -375,8 +375,12 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // DEC-367/DEC-681/DEC-909/DEC-919/DEC-976/DEC-986's line-keyed registry
 // citations to the drift-proof bare-path shape and w16-dd did the same for
 // the code-comment population, so the drop is earned conversions, not a
-// shrinking corpus. Re-measured, never guessed.
-export const LINE_KEYED_CITATION_CEILING = 100;
+// shrinking corpus. Re-measured, never guessed. Final figure 99, not 100:
+// the same merge-train pass sigilled the four path:NNN coordinates the
+// scribe's wave-142 DEC-967 amendment exhibits, and an EXHIBIT! coordinate
+// leaves this scan's population outright (a dead anchor has no live file to
+// convert a citation into).
+export const LINE_KEYED_CITATION_CEILING = 99;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
