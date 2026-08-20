@@ -113,6 +113,22 @@
   white-space: nowrap;
 }
 
+/* DEC-937 wave-129 amendment: docs/design/Chautauqua Contacts.dc.html:192
+   (`border:1px dashed #A9AE94; border-radius:4px; min-height:44px;
+   display:flex; align-items:center; padding:0 13px; font-size:13px;
+   font-weight:700; color:#4E5C31`) draws the 390 head's rule strip
+   terminating in its OWN dashed "+ Rule" chip, not the desktop panel's
+   plain-text "Add a rule" -- both controls render unconditionally
+   (DEC-919: the capability renders twice in the DOM, once on screen) and
+   CSS alone decides which one is on screen. The phone chip is hidden here
+   by default so it never doubles up with the desktop button above 700px;
+   the desktop button's own hide rule (and the chip's visible/floored
+   rule) live in the terminal phone block below, per DEC-385 (narrow
+   overrides wide only). */
+.chq-contacts-filter-add-chip {
+  display: none;
+}
+
 /* Search + segment control at the RIGHT end of the tab row. */
 .chq-contacts-tab-filters {
   display: flex;
@@ -1138,5 +1154,53 @@
     display: block;
     padding-inline: 0;
     margin-inline: 0;
+  }
+
+  /* DEC-937 wave-129 amendment (task w4-r): the rule strip's add
+     affordance swaps identity at 390 -- the desktop "Add a rule" tertiary
+     link hides, and the frame's own terminal dashed "+ Rule" chip
+     (Chautauqua Contacts.dc.html:192: `border:1px dashed #A9AE94;
+     border-radius:4px; min-height:44px; padding:0 13px; font-size:13px;
+     font-weight:700; color:#4E5C31`) takes over. #A9AE94 has no palette
+     token of its own (app/src/palette.scan.test.ts's closed allowlist) and
+     is the same dashed-border-on-neutral idiom the codebase already keys
+     to var(--chq-border) elsewhere (settings-drill-rows.css's "Add a
+     track"/"Add a room" controls, forms.css's "Add a question"), so it is
+     resolved to that nearest token here too rather than excused with a
+     new literal. #4E5C31 matches var(--chq-brand) exactly. The 44px floor
+     is min-height PLUS centred flex PLUS real horizontal padding (padding
+     alone does not reach the floor, DESIGN-RULINGS.md:189) -- this is a
+     PAINTED face (a dashed border), so it keeps its own inline padding
+     rather than the cancelled-padding idiom DEC-937's wave-121 amendment
+     reserves for unpainted quiet-action controls. Disabled state (at
+     MAX_SEGMENT_RULES) is the ruling's "inert control" -- one of the
+     token's two legal uses. */
+  /* phone-hidden: re-lined at 390 as .chq-contacts-filter-add-chip below,
+     the frame's own terminal dashed "+ Rule" chip -- same addRule handler,
+     same disabled-at-cap state, only the control's identity swaps. */
+  .chq-contacts-filter-add-full {
+    display: none;
+  }
+
+  .chq-contacts-filter-add-chip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-height: 44px;
+    padding-inline: 13px;
+    border: 1px dashed var(--chq-border);
+    border-radius: var(--chq-r-ctl);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-brand);
+    background: transparent;
+  }
+
+  .chq-contacts-filter-add-chip:disabled,
+  .chq-contacts-filter-add-chip[aria-disabled='true'] {
+    color: var(--chq-disabled);
+    border-color: var(--chq-disabled-bg);
   }
 }

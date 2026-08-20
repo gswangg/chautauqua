@@ -19,9 +19,10 @@ import { activeRules } from './segments';
 import type { SegmentRule } from './types';
 import { SEGMENT_STANDARD_FIELDS } from '../../../../src/domain/contacts';
 import { MAX_SEGMENT_RULES } from '../../lib/domain-caps';
-import { DEC_868 } from '../../../../src/decisions';
+import { DEC_868, DEC_937 } from '../../../../src/decisions';
 
 void DEC_868;
+void DEC_937;
 
 export const FILTER_RULE_FIELDS: string[] = [...SEGMENT_STANDARD_FIELDS];
 
@@ -144,13 +145,32 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
         );
       })}
 
+      {/* DEC-937 wave-129: docs/design/Chautauqua Contacts.dc.html:188-192
+          draws the 390 head's rule strip terminating in its OWN dashed
+          "+ Rule" chip, not the desktop panel's plain-text "Add a rule" --
+          a shared idiom (this tertiary button) is still scoped by the
+          frame that draws it. Both controls render unconditionally (the
+          capability renders twice in the DOM, once on screen, DEC-919's
+          established shape); contacts.css's terminal max-width:700px
+          block is the ONLY place that decides which one is visible, so
+          exactly one copy is ever on screen at a given width. Same
+          addRule handler, same MAX_SEGMENT_RULES-disabled state -- only
+          the control's identity and copy swap per width. */}
       <button
         type="button"
-        className="chq-btn chq-btn-tertiary"
+        className="chq-btn chq-btn-tertiary chq-contacts-filter-add-full"
         onClick={addRule}
         disabled={rules.length >= MAX_SEGMENT_RULES}
       >
         Add a rule
+      </button>
+      <button
+        type="button"
+        className="chq-contacts-filter-add-chip"
+        onClick={addRule}
+        disabled={rules.length >= MAX_SEGMENT_RULES}
+      >
+        + Rule
       </button>
       {rules.length >= MAX_SEGMENT_RULES && (
         <span className="chq-meta chq-contacts-filter-rules-cap">
