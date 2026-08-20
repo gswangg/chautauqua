@@ -227,7 +227,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
               : 'chq-input chq-content-files-search-input'
           }
           aria-label="Search files"
-          placeholder="Search filename, session, or speaker"
+          placeholder="Search by file or session…"
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
