@@ -960,5 +960,37 @@ ${ERROR_STATES_CSS}
   .chq-portal-shell > .chq-portal-footer .chq-portal-signout {
     display: none;
   }
+
+  /* DEC-393 wave-115 (task w4-ae): drains the last one-sided ratchet in
+     SSR_UNFLOORED_TOKENS_CEILING -- these three never declared a >=44px
+     floor at any width. Real min-height + centred flex + real horizontal
+     padding, not the cancelled-padding idiom (that idiom is borderless-only
+     per DEC-383 wave-109, and .chq-portal-copresenter-email-flagged paints
+     a border-left). Appended inside this sheet's last (only) terminal
+     @media (max-width: 700px) block, after every existing rule, per
+     DEC-385 append-only. */
+  .chq-portal-header-signout-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+  }
+  /* Still floored though DEVIATIONS/DESIGN-RULINGS render it disabled on
+     /portal/preview ("Resource rows render with Download disabled") -- a
+     disabled control's box is still on the screen (DEC-393). */
+  .chq-portal-preview-download {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+  }
+  .chq-portal-copresenter-email-flagged {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
 }
 `;
