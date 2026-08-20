@@ -142,7 +142,17 @@ export function stripComments(src: string): string {
   return out;
 }
 
-const ENTITY_MAP: Record<string, string> = {
+/** Decode table for every HTML entity the app corpus is measured (task
+ * w11-ff) to actually write across app/src/** + src/** (excluding the
+ * decision registry and .test. files, same population enumerateSourceFiles
+ * yields for every ledger that imports this module). DEC-967 sighting #14:
+ * a decode hole can only ever INVENT a control-label/caption offender, never
+ * hide one, because the frame pack itself writes only &amp;/&lt;/&gt; --
+ * every other entity below comes from the APP side, the side
+ * normalizeSource() decodes. Exported (rather than kept module-private) so
+ * test/entity-decode-coverage.scan.test.ts can grade this exact table
+ * instead of holding a second copy of it (DEC-613). */
+export const ENTITY_MAP: Record<string, string> = {
   '&lsaquo;': '‹',
   '&rsaquo;': '›',
   '&middot;': '·',
@@ -151,7 +161,20 @@ const ENTITY_MAP: Record<string, string> = {
   '&mdash;': '—',
   '&ndash;': '–',
   '&rsquo;': '’',
+  '&rdquo;': '”',
+  '&lsquo;': '‘',
+  '&ldquo;': '“',
   '&hellip;': '…',
+  '&apos;': "'",
+  '&quot;': '"',
+  '&times;': '×',
+  '&gt;': '>',
+  '&lt;': '<',
+  '&#39;': "'",
+  '&rarr;': '→',
+  '&larr;': '←',
+  '&#9650;': '▲',
+  '&#8599;': '↗',
 };
 
 /** Strips comments (block and line, string/template-aware), decodes the

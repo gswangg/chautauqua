@@ -70,6 +70,38 @@ describe('frame-source-corpus: normalizeSource', () => {
     expect(normalized).toContain('Zzy Synthetic Spaced');
     expect(normalized).not.toMatch(/ {2,}/);
   });
+
+  // Synthetic cases for the w11-ff decode-table completion (DEC-808): one
+  // fixture per entity added to ENTITY_MAP, never a live product count
+  // (test/frame-source-corpus.test.ts's own charter, header comment above).
+  it('decodes &apos; and &#39; to a straight apostrophe', () => {
+    expect(normalizeSource('const zzy = "Zzy&apos;s Synthetic";')).toContain("Zzy's Synthetic");
+    expect(normalizeSource('const zzy = "Zzy&#39;s Synthetic";')).toContain("Zzy's Synthetic");
+  });
+
+  it('decodes &quot; to a straight double quote', () => {
+    expect(normalizeSource('const zzy = "&quot;Zzy Synthetic&quot;";')).toContain('"Zzy Synthetic"');
+  });
+
+  it('decodes &times; to the multiplication sign', () => {
+    expect(normalizeSource('const zzy = "3 &times; Zzy Synthetic";')).toContain('3 × Zzy Synthetic');
+  });
+
+  it('decodes &gt; and &lt; to angle brackets', () => {
+    expect(normalizeSource('const zzy = "Zzy &gt; Synthetic &lt; Tail";')).toContain('Zzy > Synthetic < Tail');
+  });
+
+  it('decodes &rarr; and &larr; to arrows', () => {
+    expect(normalizeSource('const zzy = "Zzy &rarr; Synthetic &larr; Tail";')).toContain('Zzy → Synthetic ← Tail');
+  });
+
+  it('decodes numeric entities &#9650; and &#8599; to their glyphs', () => {
+    expect(normalizeSource('const zzy = "&#9650; Zzy Synthetic &#8599;";')).toContain('▲ Zzy Synthetic ↗');
+  });
+
+  it('decodes &rdquo;, &lsquo;, and &ldquo; to their curly-quote glyphs', () => {
+    expect(normalizeSource('const zzy = "&ldquo;Zzy&rdquo; &lsquo;Synthetic&rsquo;";')).toContain('“Zzy” ‘Synthetic’');
+  });
 });
 
 describe('frame-source-corpus: labelIsMatched (word-boundary anchored)', () => {
