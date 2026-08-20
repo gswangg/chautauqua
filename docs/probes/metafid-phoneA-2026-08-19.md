@@ -19,7 +19,7 @@
    .chq-comms-preview-actions, .chq-comms-refusal-actions,
    .chq-comms-select-actions) carry the same "bordered, cancelled padding
    dropped" note at comms.css:2178/:2189/:2198/:2208. settings.css's Saved
-   embeds/Public-pages rows carry the equivalent fix (settings.css:2154-2163
+   embeds/Public-pages rows carry the equivalent fix (settings.css:2168-2177
    comment block, same amendment).
    CLOSED (wave 115): app/src/pages/comms/comms.css`.chq-comms-head-actions > .chq-pill {`
 2. .chq-settings-section-action (settings.css:210) is 15px tall with no
@@ -28,7 +28,7 @@
    RESOLVED (DEC-393 wave-109 amendment): settings.css now declares
    `.chq-settings-section-action {` with `min-height: 44px;` and the
    cancelled-padding idiom (legal here — it is borderless), per the comment
-   at settings.css:2187 ("Fix 1 (DEC-393 wave-109 amendment):
+   at settings.css:2201 ("Fix 1 (DEC-393 wave-109 amendment):
    .chq-settings-section-action (settings.css:210 -- ...) is the ONLY
    control that opens edit mode... DESIGN-RULINGS' density standard puts a
    real target in the ROOMY register").

@@ -116,7 +116,7 @@ geometry"; flagging rather than guessing at scope)
 ### w1-e frame-citation repair note (DEC-976 amendment wave 98)
 
 - **`.chq-settings-summary-row` padding vs. People and roles frame rows**
-  (`app/src/pages/settings/settings.css:1863-1867`): the pre-existing
+  (`app/src/pages/settings/settings.css:1877-1881`): the pre-existing
   comment cited both the Your data drill (`:393-441`) and the People and
   roles drill (`:552-575`) for one shared "`padding:15px 0; border-bottom:
   1px solid #E1DDCE`" quote, backing a rule that declares `padding: 14px

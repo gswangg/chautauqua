@@ -2424,7 +2424,7 @@
      THIS usage: both call sites (TracksRoomsPanel.tsx:230,
      TrackEditRow.tsx:62) are a single cycling button per row, never a
      picker grid of adjacent swatches, so growing it here reflows nothing.
-     Page-scoped hook already existed at settings.css:1455
+     Page-scoped hook already existed at settings.css:1469
      (`.chq-settings-panel li .chq-color-swatch { align-self:flex-start }`)
      -- this adds the floor itself, appended here per DEC-385. */
   .chq-settings-panel li .chq-color-swatch {

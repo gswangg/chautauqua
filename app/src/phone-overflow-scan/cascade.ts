@@ -7,7 +7,7 @@
 // the same selector token, whether or not that override touched the
 // flagged property (settings.css:1142 `.chq-settings-row-hint`'s top-level
 // `white-space: nowrap` was never checked because a wholly unrelated
-// terminal phone rule at settings.css:1586 happened to declare only
+// terminal phone rule at settings.css:1600 happened to declare only
 // `align-self: flex-end` for the same selector). The repair: every
 // top-level rule is ALWAYS a candidate, but it is checked against its
 // EFFECTIVE declaration map -- its own top-level declarations, overridden

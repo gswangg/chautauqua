@@ -19,7 +19,7 @@
 
 ## WAVE B — tokens + localized layouts
 - Tap-floor tokens still under 44 (mechanical; sibling pattern at
-  settings.css:2073): .chq-submissions-clone 14px · .chq-check 18px ·
+  settings.css:2087): .chq-submissions-clone 14px · .chq-check 18px ·
   .chq-forms-strip-label 16px · .chq-forms-strip-datefield 28.4px (also
   clipped: sw108>cw93) · contacts name links 25.6px · content file links
   24px · .chq-color-swatch 22px · portal add-resource 34px ·

@@ -209,7 +209,7 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // ANY property, whether or not that override ever touched the flagged
 // declaration. settings.css:1142's `.chq-settings-row-hint { white-space:
 // nowrap; text-align: right; }` was never checked because a wholly
-// unrelated terminal phone rule at settings.css:1586 declared only
+// unrelated terminal phone rule at settings.css:1600 declared only
 // `align-self: flex-end` for the same selector -- a false "fixed" reading
 // with a real, unclipped nowrap sitting behind it. The repair: every
 // top-level rule is now ALWAYS a candidate, but checked against its

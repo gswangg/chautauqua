@@ -63,7 +63,7 @@
 ## Still live at wave 120
 - `.chq-settings-row-hint`'s base desktop rule (app/src/pages/settings/settings.css:1142
   `.chq-settings-row-hint {`, through settings.css:1146 `text-align: right;`)
-  is unchanged by the merged `v12m-w8-b` fix at settings.css:1593-1599 — that
+  is unchanged by the merged `v12m-w8-b` fix at settings.css:1607-1613 — that
   commit (diffed against its merge-base 885bceb8, tip 98fefd31) only added a
   phone-width (`max-width: 700px`) override,
   settings.css`text-align: left;`, and moved ONE consumer (CallForPapersPanel's
