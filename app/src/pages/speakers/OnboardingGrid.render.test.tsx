@@ -1694,10 +1694,12 @@ describe('OnboardingGrid: DEC-265 rolled-back cell write announces itself', () =
     // word (task-1 has no dueDate, so the pre-flip 'pending' cell was never
     // overdue and restores to 'Pending').
     expect(screen.getByText("Grace Hopper's Sign speaker agreement task did not change")).toBeInTheDocument();
+    // DEC-856: the cause clause carries the SERVER's own wording ('boom',
+    // this mock's 500 message) rather than the generic
+    // someone-else-may-have-edited guess -- the generic clause is only for a
+    // throw that carries no server wording at all.
     expect(
-      screen.getByText(
-        'The server rejected it — someone else may have edited this speaker while you were here. The cell has been put back to Pending.',
-      ),
+      screen.getByText('The server rejected it — boom. The cell has been put back to Pending.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload the grid' })).toBeInTheDocument();

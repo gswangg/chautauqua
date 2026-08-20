@@ -311,9 +311,15 @@ describe('SettingsPage render smoke', () => {
       expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
     });
     expect(within(eventSection).queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
-    // DEC-728 amendment (wave 15): the action never disappears while
-    // editing -- it relabels to 'Back' so the drill always has a way out.
-    expect(within(eventSection).getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    // DEC-728 amendment (wave 132) SUPERSEDES the wave-15 'Back' relabel:
+    // the B10 edit frames draw exactly ONE back control, '‹ <Section>' above
+    // the H1, and no panel-level head or second exit. The panel's own 'Back'
+    // was the redundant second control filed against DESIGN-RULINGS:247, so
+    // the section renders no action at all while editing...
+    expect(within(eventSection).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+    // ...and the drill's one way out is the page-level control, which names
+    // the section it returns to rather than saying 'Back'.
+    expect(screen.getByRole('button', { name: '‹ Event' })).toBeInTheDocument();
   });
 
   // DEC-896: the rail follows the reader. An explicit click is

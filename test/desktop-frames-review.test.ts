@@ -80,11 +80,10 @@ describe("desktop frame claims: Review cluster (docs/design/Chautauqua Review.dc
     // Frame :706 `<span style="font-size:13px; color:#3F4237; line-height:1.55">Wording, weights and the scale are fixed for the rest of this wave. To score differently, open a new wave — the reviews already in stay attached to this one.</span>`
     // -- the locked-criteria reason band, with its Start-a-new-wave escape hatch.
     const src = readSrc("app/src/pages/review/PlanEditor.tsx");
-    // DEC-882 (v12m-w9-gg): the frame draws this card in TWO registers --
-    // a bold headline span (:705) and a muted reason span (:706) -- so the
-    // claim pins both literals rather than the pre-split collapsed
-    // one-paragraph string that silently dropped the headline sentence.
     expect(src).toContain("Changing these would rescore work already done");
+    // DEC-882 (v12m-w9-gg) split this card into the frame's TWO registers --
+    // headline span (:705), reason span (:706) -- so the claim pins both
+    // literals, not the pre-split collapsed string that dropped the headline.
     expect(src).toContain(
       "Wording, weights and the scale are fixed for the rest of this wave. To score differently,",
     );

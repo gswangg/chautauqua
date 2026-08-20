@@ -221,11 +221,19 @@ function cellFailureTitle(speakerName: string, taskTitle: string): string {
 // pre-flip cell right now (Complete / Overdue / Pending) -- read from the
 // snapshot taken just before the optimistic flip, never re-derived from a
 // second fetch.
-function cellFailureBody(restoredStatus: string): string {
-  return (
-    `The server rejected it — someone else may have edited this speaker while you were here. ` +
-    `The cell has been put back to ${restoredStatus}.`
-  );
+//
+// The CAUSE clause is the second variable in this sentence, exactly as the
+// status word is the first. DEC-856: a bound ApiError carries the server's
+// own wording and is never collapsed to the generic
+// someone-else-may-have-edited guess -- and this register is where wave-134
+// itself says that detail lives ("the server-fault detail lives in the
+// muted body register below, not the title"). The frame's own text is the
+// no-detail case: when the throw carries no server wording (a transport
+// failure, a non-ApiError), the generic clause is the honest one, because
+// then nobody knows what the server thought.
+function cellFailureBody(restoredStatus: string, serverDetail: string | null): string {
+  const cause = serverDetail ?? 'someone else may have edited this speaker while you were here';
+  return `The server rejected it — ${cause}. The cell has been put back to ${restoredStatus}.`;
 }
 
 // DEC-265 wave-134 amendment: the same (status, overdue) -> word mapping
@@ -639,7 +647,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
       setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
-    } catch {
+    } catch (err) {
       // DEC-265 wave-110 amendment: rewrite only the failed assignment's
       // cell back to its pre-flip status -- a whole-grid snapshot would
       // clobber every concurrent success that landed while this request
@@ -672,7 +680,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       setPendingFailure({
         assignmentId,
         message: cellFailureTitle(speakerName, taskTitle),
-        body: cellFailureBody(restoredStatusWord(previousCell, task, now, grid.timezone)),
+        body: cellFailureBody(restoredStatusWord(previousCell, task, now, grid.timezone), serverRefusalDetail(err)),
         retry: () => {
           void applyCellStatus(assignmentId, desired, speakerName, taskTitle);
         },
