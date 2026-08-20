@@ -231,6 +231,12 @@ const EXEMPTIONS: Exemption[] = [
     reason:
       "DEC-941 (wave-58 amendment) irreversible-weight type-to-confirm echo, compared client-side against confirmPhrase only -- never sent to the server, so no capping route reaches it",
   },
+  {
+    file: 'pages/submissions/DeleteSubmissionsPage.tsx',
+    control: 'chq-submissions-delete-arm-input',
+    reason:
+      "DEC-941 (wave-134 amendment) the same irreversible-weight type-to-confirm echo as ConfirmDialog's, drawn in this page's own footer instead of a stacked dialog (DEC-886) and compared client-side by the ONE shared comparator (confirmPhraseMatches) -- never sent to the server, so no capping route reaches it",
+  },
 ];
 
 function isExempt(file: string, control: string): boolean {

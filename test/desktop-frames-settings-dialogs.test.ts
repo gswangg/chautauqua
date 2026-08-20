@@ -132,7 +132,15 @@ describe('desktop frame claims: Settings cluster, dialog half (v12m-w5-b)', () =
     expect(dialogSrc).toContain(
       "throw new Error(\"ConfirmDialog: weight='irreversible' requires a non-empty confirmPhrase\")",
     );
-    expect(dialogSrc).toContain('typed.trim().toLowerCase() === (confirmPhrase as string).trim().toLowerCase()');
+    expect(dialogSrc).toContain("import { confirmPhraseMatches } from '../lib/confirmPhrase'");
+    expect(dialogSrc).toContain('confirmPhraseMatches(typed, confirmPhrase as string)');
+    // DEC-941 wave-134: the trim + case-insensitive compare is the ONE
+    // shared comparator (ConfirmDialog's typed gate and
+    // DeleteSubmissionsPage's footer arming both call it), so the claim
+    // follows the helper rather than pinning an inlined copy.
+    expect(read('lib/confirmPhrase.ts')).toContain(
+      'typed.trim().toLowerCase() === phrase.trim().toLowerCase()',
+    );
     const callerSrc = read('pages/settings/ResourcesPanel.tsx');
     expect(callerSrc).toContain('weight="irreversible"');
     expect(callerSrc).toContain('confirmPhrase={pendingDelete.title}');

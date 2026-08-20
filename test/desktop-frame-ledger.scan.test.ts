@@ -427,7 +427,23 @@ const EXPECTED_DEVIATION_CITATIONS = [
 // overview-home, portal, review, settings, settings-dialogs). 100 of 102
 // desktop frames now carry a real claim. Raised to the measured truth; this
 // floor may only rise.
-export const CLAIMED_FLOOR = 102;
+//
+// CORRECTION (thunderdome medic, post-megabatch). The merge train at
+// f684bcd2 raised this 100 -> 102 with no coverage behind it and no note
+// added above -- it read "100 of 102 desktop frames" and wrote the
+// population size into the floor. 102 is not merely unmet, it is
+// UNREACHABLE by construction: the two frames it demands
+// ("Chautauqua Settings.dc.html" :1111 "Settings · editing your data" and
+// :1507 "Import from Sessionboard") are exactly the two the DEVIATIONS §6
+// deviation-deferred exclusion removes from the claimable population --
+// EXPECTED_DEVIATION_CITATIONS names the identical pair -- so CLAIMS can
+// never exceed 100, and the goal test below (CLAIMS + EXCLUDED >=
+// CLAIMED_FLOOR + EXPECTED_DEVIATION_DEFERRED) demanded 104 out of a
+// 102-frame pack. Restored to 100, the last figure that was actually
+// MEASURED. That is not a ratchet lowering: 102 was never achieved and
+// could not be, and at 100 the two tests now read as the campaign's real
+// desktop exit -- 100 claimed + 2 deferred = the whole 102-frame pack.
+export const CLAIMED_FLOOR = 100;
 
 describe('desktop-frame claim ledger (DEC-976 wave-99 amendment, v12 mobile campaign)', () => {
   it('enumerates exactly 161 font-size:19px label spans across 13 files (vacuous-grammar guard)', () => {

@@ -605,6 +605,12 @@
   color: var(--chq-muted);
 }
 
+/* tap-floor-exempt: every member of this footer row (the destructive
+   primary and Cancel) is a <button className="chq-btn ...">, never an
+   <a>/<Link> -- DeleteSubmissionsPage.tsx renders both -- so there is no
+   bare anchor here for DEC-393's row-action-anchor floor to reach. Each
+   button's own tap area is the base sub-44px scan's population
+   (phone-tap-target.scan.test.ts), not this one's. */
 .chq-submissions-delete-footer-actions {
   display: flex;
   gap: 8px;

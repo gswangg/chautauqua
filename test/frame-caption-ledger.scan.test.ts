@@ -817,7 +817,11 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // integrated tree -- the union of all four exclusion tables plus the widened
 // ENTITY_MAP subtracts far more than any single lane could see from its own
 // base (54/53/59). A LOWERING from main's 70, as the ratchet requires.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 24;
+// Merge-train act (thunderdome medic, post-megabatch): the 24 above was
+// still 2 above what the integrated tree actually measures -- 22. The
+// two-sided ratchet caught the gap, as designed; lowered to the measured
+// figure so the ceiling cannot license stagnation.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 22;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {

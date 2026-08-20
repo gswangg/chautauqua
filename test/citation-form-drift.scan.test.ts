@@ -47,6 +47,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { EXHIBIT_SIGIL, exhibitSigilStart } from "./citation-exhibit";
 
 const ROOT = resolve(__dirname, "..");
 
@@ -245,6 +246,16 @@ function findLineKeyedOffenders(doc: string, content: string): Offender[] {
     const rawPath = m[1]!;
     const line = m[3] ? `${m[2]}-${m[3]}` : m[2]!;
     const end = m.index + m[0].length;
+    // An EXHIBIT (test/citation-exhibit.ts) is not a reference at all -- it
+    // is the SUBJECT of its sentence, a dead coordinate a ruling quotes
+    // BECAUSE it no longer resolves. This scan's population is references
+    // that should be converted to the drift-proof bare-path shape; there is
+    // nothing to convert an exhibit TO (dropping its line number would
+    // destroy the very thing being exhibited), so it is not counted here.
+    // Same shared grammar the resolution scan grades inverted, imported,
+    // never re-derived (DEC-613).
+    const sigilStart = exhibitSigilStart(content, m.index);
+    if (sigilStart !== -1) continue;
     const ownClosingBacktickFollows = content[m.index - 1] === "`" && content[end] === "`";
     const quote = quoteAfter(content, end, ownClosingBacktickFollows);
     if (!quote || quote.length === 0) continue; // no receipt quote -> not this scan's concern
@@ -320,7 +331,17 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // integrated tree at 83. Both contributing lanes measured against their own
 // pre-merge base (main 92, v12m-w10-aa 80); 83 is the true count once every
 // lane's citations coexist, and is still a LOWERING from main's 92.
-export const LINE_KEYED_CITATION_CEILING = 83;
+// Merge-train act (thunderdome medic, post-megabatch): the 83 above was
+// REASONED from the two lanes' pre-merge bases, not run against the
+// integrated tree, which this file's own protocol requires -- measured, it
+// was 85. Re-measured properly at 80 after three real reductions in the
+// same change: docs/probes/metafid-desktop-2026-08-19.md's OnboardingGrid
+// citation converted to the drift-proof bare-path shape (it had drifted for
+// the fourth wave running), and DEC-967.md's catalogue of DEAD anchors
+// marked with the shared EXHIBIT_SIGIL -- an exhibit is the subject of its
+// sentence, not a reference, so it leaves this population entirely (see
+// findLineKeyedOffenders and test/citation-exhibit.ts).
+export const LINE_KEYED_CITATION_CEILING = 80;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
@@ -383,6 +404,20 @@ describe("citation-form-drift scan: line-keyed citations into app/src, src, test
     expect(CITATION_RE.test(fixture)).toBe(false);
     const found = findLineKeyedOffenders("fixture.md", fixture);
     expect(found).toHaveLength(0);
+  });
+
+  it(`negative control: does NOT fire on a coordinate marked with the shared ${EXHIBIT_SIGIL} sigil`, () => {
+    const fixture = `Measured DEAD: ${EXHIBIT_SIGIL}scripts/exit-predicate.ts:17 \`const HEADER_RE = /.../\`.`;
+    expect(findLineKeyedOffenders("fixture.md", fixture)).toHaveLength(0);
+  });
+
+  it("positive control: the sigil carve-out binds to ONE coordinate, not the rest of the paragraph", () => {
+    const fixture =
+      `Measured DEAD: ${EXHIBIT_SIGIL}scripts/exit-predicate.ts:17 \`const HEADER_RE = /.../\`. The live one is ` +
+      "scripts/exit-predicate.ts:18 which reads `const OTHER_RE = /.../`.";
+    const found = findLineKeyedOffenders("fixture.md", fixture);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ line: "18" });
   });
 
   it("negative control: does NOT fire on a docs/design/*.dc.html frame citation (structural carve-out)", () => {

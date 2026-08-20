@@ -26,7 +26,7 @@
 ## Speakers-cluster edge MAJORs
 - Filtered-empty state keeps table footer chrome (legend + disabled pager)
   beneath the empty block (frame Speakers.dc.html:442-483).
-  CLOSED (wave 118): app/src/pages/speakers/OnboardingGrid.tsx:1365 `{!gridRead.loading && grid && visibleRows.length > 0 && (`
+  CLOSED (wave 118): app/src/pages/speakers/OnboardingGrid.tsx `{!gridRead.loading && grid && visibleRows.length > 0 && (`
 - Speaker-detail rail uses full-page empty block (24px headline in a 320px
   rail; frame :414-424 draws a 14px/13px two-line list).
   CLOSED (wave 120, DEC-829 wave-110 amendment; re-derived by task w9-n and
