@@ -1747,11 +1747,14 @@
      .chq-settings-rail/.chq-settings-content display via
      [data-drilled]; this just adds the title register swap that block
      never had. */
-  /* Only the plain read-drill state (not editing) needs the swap -- while
-     editing, the original h1 already carries the section label (Settings.
-     tsx's `pageTitle`), so `.chq-settings-drill-title` isn't rendered at
-     all there (avoids a second, identically-named h1 in the DOM). */
-  .chq-settings-page:has(.chq-settings-layout[data-drilled='true'][data-editing='false']) > .chq-page-title {
+  /* DEC-393/DESIGN-RULINGS:247 amendment (w13-i): both drill states swap
+     now -- the top-level h1 sits BEFORE .chq-settings-layout (before the
+     `‹ back` control), so the frame's "back above the H1" order is only
+     reachable by hiding this h1 at phone whenever EITHER drill state is
+     active (read-drill or edit-drill) and letting Settings.tsx's
+     `phoneDrillTitle` twin (`.chq-settings-drill-title`, now rendered for
+     both cases -- see Settings.tsx) paint after the back control instead. */
+  .chq-settings-page:has(.chq-settings-layout[data-drilled='true']) > .chq-page-title {
     display: none;
   }
 
@@ -2333,5 +2336,72 @@
 
   .chq-settings-edit-row-actions {
     gap: 34px;
+  }
+
+  /* task-w13-i/DEC-976 (N6 LOW): a read-drilled row's hint (`.chq-settings-
+     row-hint`, e.g. EventSettingsPanel's Slug -> 'Used in every public
+     URL') visually reads as RIGHT-aligned at phone because the mid-file
+     rule at :1593 sets `align-self:flex-end` on it inside the already
+     flex-direction:column `.chq-settings-row` -- the hint block itself
+     hugs the row's right edge even though its own text-align is left, so
+     the sentence starts partway across the row instead of flush under the
+     label above it. Every drawn 390 field hint in the frame reads flush
+     left instead (docs/design/Chautauqua Settings.dc.html:329 CFP's
+     edit-view field hint `<span style="font-size:12px;
+     color:#565A4B">{{ f.note }}</span>` with no alignment/offset styling
+     at all, and :459's "In 6 days" closes hint in the same read-drilled
+     vocabulary) -- matching what the edit view's own `.chq-settings-
+     field-hint` (no text-align override, so it inherits the column's
+     flex-start) already does correctly. Appended here (after :1593 in
+     source order, inside the same terminal block) so it wins the cascade
+     without touching that mid-file rule's own citations. */
+  .chq-settings-row-hint {
+    align-self: flex-start;
+  }
+
+  /* task-w13-i/DEC-393 (44px floor, round-2 wave B): three offenders in
+     this cluster read undeclared/under-floor height at phone.
+     DESIGN-RULINGS:189 -- min-height:44px PLUS centred flex PLUS
+     horizontal padding, never padding alone and never a bare min-height. */
+
+  /* Portal 'Add resource' (probe: 34px, settings.css:1029's base rule has
+     only vertical 9px padding + border, no declared height). */
+  .chq-settings-portal-add-resource {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 14px;
+  }
+
+  /* Tracks & rooms colour-cycle swatch (probe: 22px, base rule
+     app/src/styles.css:1776 `width:22px; height:22px` is the deliberate
+     desktop density -- its own tap-floor-exempt note there is stale for
+     THIS usage: both call sites (TracksRoomsPanel.tsx:230,
+     TrackEditRow.tsx:62) are a single cycling button per row, never a
+     picker grid of adjacent swatches, so growing it here reflows nothing.
+     Page-scoped hook already existed at settings.css:1455
+     (`.chq-settings-panel li .chq-color-swatch { align-self:flex-start }`)
+     -- this adds the floor itself, appended here per DEC-385. */
+  .chq-settings-panel li .chq-color-swatch {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 10px;
+  }
+
+  /* `.chq-swatch-cycle` is the sibling selector the undeclared-height scan
+     reports on its own (it always co-occurs with `.chq-color-swatch` on
+     the same two buttons above, but the scan reads rules per-selector) --
+     restated verbatim so its own rule body also declares the floor. */
+  .chq-swatch-cycle {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 10px;
   }
 }

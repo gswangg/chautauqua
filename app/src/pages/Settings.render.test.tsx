@@ -459,7 +459,14 @@ describe('SettingsPage render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1, name: 'Call for papers' })).toBeInTheDocument();
+      // DEC-393/DESIGN-RULINGS:247 amendment (w13-i): the edit-drill view
+      // now carries TWO 'Call for papers' h1 nodes -- the desktop-visible
+      // one (before .chq-settings-layout) and the phone-only twin
+      // (.chq-settings-drill-title, after the '‹ back' control) that lets
+      // back paint above the H1 at phone. CSS keeps exactly one visible
+      // per viewport; jsdom's default (unnarrowed) viewport surfaces both,
+      // so this asserts the pair rather than a single match.
+      expect(screen.getAllByRole('heading', { level: 1, name: 'Call for papers' })).toHaveLength(2);
     });
     expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).not.toBeInTheDocument();
 
@@ -473,6 +480,12 @@ describe('SettingsPage render smoke', () => {
 
     const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
     expect(layout).toHaveAttribute('data-editing', 'true');
+
+    // Back must precede the phone-only H1 twin in DOM/paint order
+    // (DESIGN-RULINGS:247 "‹ back above the H1").
+    const backButton = document.querySelector('.chq-settings-back') as HTMLElement;
+    const drillTitle = document.querySelector('.chq-settings-drill-title') as HTMLElement;
+    expect(backButton.compareDocumentPosition(drillTitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   // w3-a: the rail's SECTIONS key for Tracks and rooms must match
@@ -491,7 +504,8 @@ describe('SettingsPage render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1, name: 'Tracks and rooms' })).toBeInTheDocument();
+      // DEC-393 (w13-i): same phone-twin duplicate as the CFP case above.
+      expect(screen.getAllByRole('heading', { level: 1, name: 'Tracks and rooms' })).toHaveLength(2);
     });
     expect(screen.queryByRole('heading', { level: 1, name: 'Settings' })).not.toBeInTheDocument();
 
@@ -514,7 +528,8 @@ describe('SettingsPage render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1, name: 'Call for papers' })).toBeInTheDocument();
+      // DEC-393 (w13-i): same phone-twin duplicate as above.
+      expect(screen.getAllByRole('heading', { level: 1, name: 'Call for papers' })).toHaveLength(2);
     });
 
     fireEvent.click(screen.getByRole('button', { name: '‹ Settings' }));
