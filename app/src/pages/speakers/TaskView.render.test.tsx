@@ -9,7 +9,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { TaskView } from './TaskView';
 import { mockApi } from '../../test-utils/mockApi';
 import type { TaskViewResponse, TaskViewRow, TaskViewTask } from './taskRoster';
@@ -98,6 +98,37 @@ async function mountLoaded(routes: Record<string, unknown> = {}) {
 
 function switchToWaiting() {
   fireEvent.click(screen.getByRole('button', { name: /Still waiting/ }));
+}
+
+const TASK_ID_B = 'task-flights';
+
+function taskBPayload(): TaskViewResponse {
+  const base = payload();
+  return { ...base, task: { ...base.task, id: TASK_ID_B, title: 'Flights form' } };
+}
+
+// A sibling to `renderPage` that also mounts a route-less button navigating
+// to task B -- lets a test drive a `:taskId` change through React Router's
+// own navigation (the same instance-reuse the route param triggers in the
+// app) instead of unmounting and remounting TaskView.
+function NavToTaskB() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(`/speakers/tasks/${TASK_ID_B}`)}>
+      go to task B
+    </button>
+  );
+}
+
+function renderPageWithNav() {
+  return render(
+    <MemoryRouter initialEntries={[`/speakers/tasks/${TASK_ID}`]}>
+      <NavToTaskB />
+      <Routes>
+        <Route path="/speakers/tasks/:taskId" element={<TaskView />} />
+      </Routes>
+    </MemoryRouter>,
+  );
 }
 
 afterEach(() => {
@@ -404,5 +435,71 @@ describe('the answered row action follows the task kind, never the row', () => {
       expect(String(patch![0])).toBe('/api/v1/task-assignments/as-ct-priya');
       expect(JSON.parse(String((patch![1] as RequestInit).body))).toEqual({ status: 'pending' });
     });
+  });
+});
+
+// DEC-678 wave-118 amendment: a route-param change is a new page, but
+// React Router reuses this exact TaskView instance across two different
+// `:taskId` values -- these two cover the defects that reuse creates.
+describe('DEC-678 wave-118: a :taskId change resets and does not race', () => {
+  it('rerouting from task A to task B clears a selection made in A', async () => {
+    mockApi({
+      [`GET /api/v1/tasks/${TASK_ID}/roster`]: payload(),
+      [`GET /api/v1/tasks/${TASK_ID_B}/roster`]: taskBPayload(),
+    });
+    renderPageWithNav();
+    await screen.findByRole('heading', { name: 'Hotel stay form' });
+
+    switchToWaiting();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Ruth Adeyemi' }));
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'go to task B' }));
+    await screen.findByRole('heading', { name: 'Flights form' });
+
+    // The bulk bar is back to idle -- no ticked rows carried over from A --
+    // and the tab is back to the first-visit "answered" tab too.
+    expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument();
+    expect(screen.getByText('Tick rows to mark complete, reopen, or export.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Answered · 2' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('an in-flight roster for task A resolving after the route moved to task B does not paint A\'s rows', async () => {
+    mockApi({
+      [`GET /api/v1/tasks/${TASK_ID_B}/roster`]: taskBPayload(),
+    });
+    // mockApi resolves handlers synchronously, which can't model task A's
+    // roster still being in flight when the route moves -- stub fetch
+    // directly for task A's request, keeping the mockApi-stubbed fetch as
+    // the fallback for every other route (task B's roster above).
+    let resolveA: (value: Response) => void = () => {};
+    const mockedFetch = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes(`/tasks/${TASK_ID}/roster`)) {
+          return new Promise<Response>((resolve) => {
+            resolveA = resolve;
+          });
+        }
+        return mockedFetch(input, init);
+      }),
+    );
+
+    renderPageWithNav();
+
+    // Task A's roster is still in flight -- navigate to B before it lands.
+    fireEvent.click(screen.getByRole('button', { name: 'go to task B' }));
+    await screen.findByRole('heading', { name: 'Flights form' });
+
+    // Task A's slow response finally arrives. Without the staleness guard
+    // this repaints the page with task A's title and rows.
+    resolveA(new Response(JSON.stringify(payload()), { status: 200, headers: { 'content-type': 'application/json' } }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Flights form' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('heading', { name: 'Hotel stay form' })).not.toBeInTheDocument();
   });
 });

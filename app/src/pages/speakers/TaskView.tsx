@@ -130,22 +130,63 @@ export function TaskView() {
 
   const now = Date.now();
 
-  const load = useCallback(async () => {
-    if (!taskId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      setView(await apiGet<TaskViewResponse>(`/tasks/${taskId}/roster`));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load this task');
-    } finally {
-      setLoading(false);
-    }
-  }, [taskId]);
+  // DEC-678 wave-118 amendment: `load` also re-fetches after every mutation
+  // (setStatusForSelected, saveDueDate, reopenFromResponse), not only on
+  // mount, so it cannot own a single closure-scoped `cancelled` boolean the
+  // way Comms.tsx's one-shot effect does. `isLive` lets the ONE caller that
+  // needs the guard -- the mount effect below, which re-runs across a
+  // `:taskId` route change React Router reuses this instance for -- supply
+  // it; every other caller (a button handler on the page that is already
+  // showing the current task) gets the always-true default, unchanged from
+  // before.
+  const load = useCallback(
+    async (isLive: () => boolean = () => true) => {
+      if (!taskId) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await apiGet<TaskViewResponse>(`/tasks/${taskId}/roster`);
+        if (isLive()) setView(res);
+      } catch (err) {
+        if (isLive()) setError(err instanceof ApiError ? err.message : 'Failed to load this task');
+      } finally {
+        if (isLive()) setLoading(false);
+      }
+    },
+    [taskId],
+  );
 
   useEffect(() => {
-    void load();
+    let cancelled = false;
+    void load(() => !cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
+
+  // DEC-678 wave-118 amendment: a route-param change is a new page. Reset
+  // everything that means "state the organiser built up while looking at
+  // THIS task" back to first-visit values on every `:taskId` change --
+  // the bulk selection, the active tab, the in-flight remind-review flow,
+  // and the open response viewer. Left alone: the due-date dialog fields
+  // (movingDue/dueDraft/savingDue), the "not needed" confirm
+  // (pendingNotNeeded), the toast, and the busy/loading flags -- every one
+  // of those is a short-lived overlay flag that is already false/null on
+  // any render where the organiser isn't mid-interaction with it, and none
+  // of them carries a value whose MEANING is scoped to the old task.
+  useEffect(() => {
+    setSelected([]);
+    setTab('answered');
+    setRemindScope(null);
+    setRemindDrafts(null);
+    setRemindPreviewError(null);
+    setRemindSkipped(0);
+    setRemindRemaining(0);
+    setOpenRow(null);
+    setResponseDetail(null);
+    setResponseError(null);
+    setError(null);
+  }, [taskId]);
 
   const rows = useMemo(() => view?.rows ?? [], [view]);
   const answeredRows = useMemo(() => rows.filter(isAnswered), [rows]);
