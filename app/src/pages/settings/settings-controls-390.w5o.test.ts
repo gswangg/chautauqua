@@ -179,6 +179,17 @@ describe('Fix 2 (DEC-383 wave-109 amendment): every negative-margin-inline rule 
     // its own top-level rule, so it legally keeps the cancelled-padding
     // pair (DEC-393 wave-109 amendment).
     '.chq-settings-section-action',
+    // w19-b/DEC-576: the shared edit-view footer dock band. Its only
+    // border is a single `border-top` (both the desktop rule at
+    // settings.css:995 and this phone override) -- the amendment's
+    // "a bordered box needs a real gap" targets a bordered PILL/control
+    // whose left/right edges would get visibly clipped by a horizontal
+    // cancel-margin; a top-only border on a full-bleed band has no such
+    // edge to clip and is EXPECTED to reach the viewport edge (that's the
+    // dock's whole visual point). Mirrors the already-shipped
+    // `.chq-phone-dock` idiom (app/src/styles.css:2546-2557), which cancels
+    // `.chq-main`'s identical 16px phone padding the same way.
+    '.chq-settings-edit-footer',
   ]);
 
   function isBorderlessSubject(selector: string): boolean {
