@@ -2066,4 +2066,42 @@ button.chq-speakers-status-overdue:hover {
     padding-inline: 10px;
     margin-inline: -10px;
   }
+
+  /* v12m-w10-jj (DEC-393 wave-135 element-qualification): the shared 44px
+     anchor floor above (:1898-1912) lists `.chq-speakers-pager-actions a`,
+     but OnboardingGrid.tsx:1370-1386 renders Previous/Next as `<button
+     type="button" className="chq-btn chq-btn-secondary">` -- the `a`
+     selector matches nothing, so DEC-393's own named failure mode
+     (a rule naming `a` does not floor a `<button>`) leaves these two
+     buttons unfloored. The dead `a` selector is left where it stands
+     (:1904) rather than broadened to `button`: the surrounding comment at
+     :1961-1968 already verifies it as a dead branch alongside three
+     siblings, and inheriting that shared rule's cancelled padding
+     (padding-inline:10px / margin-inline:-10px) would be wrong here --
+     DEC-937's painted-face ruling (`.chq-speaker-detail-actions a` above,
+     :1974-1980) reserves the cancelled idiom for borderless controls, and
+     .chq-btn paints a border/background, so the outward margin would bleed
+     the drawn box past the row edge. This dedicated element-qualified rule
+     floors the real control instead, with the button's own native
+     horizontal padding and no cancelled margin. `.chq-speakers-pager`
+     gains flex-wrap so the actions can drop to their own line instead of
+     being squeezed against the summary/legend/caption text (three text
+     siblings on the same row, :1083); the declared 29px action gap
+     (:2006-2008) is untouched -- relief comes from wrapping, not from
+     shrinking a DECLARED gap. white-space:nowrap protects "Previous"/
+     "Next" from wrapping letter-by-letter inside the 44px-tall box before
+     the row itself wraps (DESIGN-RULINGS.md`The 44px floor, and how it
+     gets evaded.`). */
+  .chq-speakers-pager {
+    flex-wrap: wrap;
+  }
+
+  .chq-speakers-pager-actions button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    padding-inline: 16px;
+  }
 }

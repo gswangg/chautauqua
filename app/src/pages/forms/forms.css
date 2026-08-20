@@ -800,4 +800,24 @@
     padding-inline: 4px;
     margin-inline: -4px;
   }
+
+  /* v12m-w10-jj (DEC-393 wave-135 element-qualification): the shared
+     `.chq-forms-fields-footer .chq-btn` rule (:420-422, desktop-only
+     `margin-left: auto`) has no phone override, and the shared `.chq-btn`
+     token (styles.css) floors height only -- FormsPage.tsx:436-438 renders
+     `<button className="chq-btn chq-btn-tertiary">{...'Copied!' : 'Copy'}
+     </button>` inside `.chq-forms-fields-footer`, and it measures 40x44 at
+     390: the height leg of the floor is met, the width leg is not, because
+     the shared token was never given a width floor for the narrow-density
+     side of DESIGN-RULINGS.md`The 44px floor, and how it gets evaded.`'s
+     dense/roomy pair. This rule floors the width directly, with centred
+     flex and horizontal padding, and holds for both button labels since it
+     targets the element, not either label string. */
+  .chq-forms-fields-footer .chq-btn {
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 12px;
+  }
 }
