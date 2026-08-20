@@ -562,7 +562,7 @@ export function CallForPapersPanel() {
                 Open the form builder ›
               </Link>
             </div>
-            <p className="chq-settings-row-hint">
+            <p className="chq-settings-note">
               Adding, reordering and removing questions happens in the builder — this page owns the window and the
               wording around the form.
             </p>
