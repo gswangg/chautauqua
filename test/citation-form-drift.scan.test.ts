@@ -334,19 +334,34 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // integrated tree at 83. Both contributing lanes measured against their own
 // pre-merge base (main 92, v12m-w10-aa 80); 83 is the true count once every
 // lane's citations coexist, and is still a LOWERING from main's 92.
-// Wave 138 (task w13-aa, DEC-967 EXHIBIT grammar): before this task's own
+// Wave 138 (task w13-aa, DEC-967 EXHIBIT grammar): before that task's own
 // change, main had drifted this population to 86 (three more line-keyed
-// citations landed elsewhere since the 83 ceiling was set -- above the
-// ceiling, not this task's to fix). This task additionally excludes
-// EXHIBIT!-sigilled citations from OFFENDERS outright (they are dead
-// anchors with no live file/line to search a quote in -- see
+// citations landed elsewhere since the 83 ceiling was set). That task
+// additionally excludes EXHIBIT!-sigilled citations from OFFENDERS outright
+// (they are dead anchors with no live file/line to search a quote in -- see
 // findLineKeyedOffenders's own comment): four of the population's
 // line-keyed, backtick-quoted citations are src/decisions-data/DEC-967.md's
 // own wave-136/wave-137 catalogue entries (the src/db/schema.ts,
 // src/server/repo/agenda.ts, src/routes/auth.tsx and
 // src/server/repo/files-library.ts / ExportsPanel.tsx coordinates, each
-// now sigilled by this task's step 4), dropping the measured count 86 -> 82.
-// RATCHET: LINE_KEYED_CITATION_CEILING=82 (was 83; exhibits excluded)
+// sigilled there), dropping the measured count 86 -> 82.
+// Wave v12m-w14-jj (drift drain): converted the nine line-keyed citations
+// living in docs/probes/metafid-phoneB-ssr-2026-08-19.md to the drift-proof
+// bare-path shape, quoting a stable identifier (`setStep(`,
+// `reportValidity()`, `data-field-id`, `resolvedTextCap`) rather than a
+// whole statement for the two citations into
+// src/routes/public/cfp-steps-script.tsx and src/views/form-render.tsx,
+// since v12m-w14-ff and v12m-w14-gg edited those files the same wave -- a
+// bare-path citation only needs its quote to still resolve verbatim
+// ANYWHERE in the file, so an identifier survives a statement-level edit a
+// whole-line quote would not.
+// Merge-train act (thunderdome megabatch, wave-138/139 backlog of 14): the
+// ceiling is RE-MEASURED against the integrated tree here -- every lane's
+// conversions and every lane's newly-landed docs coexist for the first
+// time, so neither lane's own pre-merge figure (main 82, v12m-w14-jj 113)
+// is the truth. Lowering the ceiling to the integrated measurement is a
+// merge-train act, exactly as the two-sided ratchet's own failure message
+// instructs.
 export const LINE_KEYED_CITATION_CEILING = 82;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
