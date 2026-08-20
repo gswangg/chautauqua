@@ -1303,6 +1303,13 @@
 @media (max-width: 700px) {
   .chq-settings-layout {
     display: block;
+    /* DEC-989/DEC-385 (w8-b): display:block above already drops the
+       desktop grid, but the scan's cascade-aware candidacy still reads
+       the declared grid-template-columns as a phone-width fixed track
+       (196px + 820px + two 34px gaps = 1050px vs the 358px budget) --
+       re-declare it inside the same budget rather than leave a
+       phone-context declaration that never fits 390. */
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .chq-settings-rail {
@@ -1585,6 +1592,11 @@
 
   .chq-settings-row-hint {
     align-self: flex-end;
+    /* DEC-989/DEC-385 (w8-b): the row is already flex-direction:column
+       above, so a right-aligned nowrap sentence reads as a ragged
+       off-frame block at 390 instead of wrapping in place. */
+    white-space: normal;
+    text-align: left;
   }
 
 /* task-w3-f/DEC-032 (wave-85 amendment): phone geometry for the Call for
@@ -2119,20 +2131,40 @@
      uncaught. The arrow is a bare glyph separator between them; there is
      nothing in it to read, truncated or not. Re-declared (not silently
      inherited) so the exemption sits directly above the rule it exempts,
-     per this scan's own idiom. */
+     per this scan's own idiom.
+
+     DEC-989/DEC-385 (w8-b) amendment: nowrap alone does not shrink these
+     columns' CONTENT WIDTH, and the "exempt" framing above was about
+     readability, not layout -- under table-layout:fixed the declared
+     180px/240px column widths (:530/:535) still overflow the 358px
+     phone budget once the cell text is longer than the track. The
+     exemption for TRUNCATION READABILITY stands (below, hence the
+     surviving overflow-exempt comment: an import mapping is still
+     verified against the visible, non-truncated portion first), but the
+     three columns now also get the standard overflow: hidden;
+     text-overflow: ellipsis escape so the row itself never breaks the
+     390 frame -- the full untruncated value remains available via the
+     cell's title attribute and on desktop, where 358px is not the
+     constraint. */
   /* overflow-exempt: an import mapping is verified by reading the exact column name and sample */
   .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-column {
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* overflow-exempt: an import mapping is verified by reading the exact column name and sample */
   .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-sample {
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* overflow-exempt: a bare glyph separator has nothing to read, truncated or not */
   .chq-settings-sessionboard-mapping .chq-settings-sessionboard-mapping-col-arrow {
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* .chq-settings-room-edit-row's desktop grid (minmax(0,1fr) 110px 150px
