@@ -1318,5 +1318,25 @@
   .chq-detail-page .chq-participants-table tbody tr {
     display: block;
   }
+
+  /* DEC-385 amendment (w11-r): the two fixed desktop track lists this
+     file declares (:99-106 layout columns, :631-637 participants-table
+     row columns) both overflow 358px at 390 and neither gets its
+     `grid-template-columns` itself redeclared anywhere inside THIS
+     terminal phone block -- the 900px collapse at :108-112 doesn't count
+     (the scan only credits an override inside a <=700px block), and the
+     row-display:block rule directly above only ever touched `display`,
+     leaving the fixed-track declaration itself unresolved even though
+     display:block already makes it inert in the browser. Appended last so
+     both win their selectors' equal-specificity ties; desktop (:99-106,
+     :631-637) is untouched. */
+  .chq-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chq-detail-page .chq-participants-table thead tr,
+  .chq-detail-page .chq-participants-table tbody tr {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
