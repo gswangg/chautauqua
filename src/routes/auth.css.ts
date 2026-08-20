@@ -14,7 +14,7 @@
 // value-free module constant, never interpolated with request/user data.
 
 import { DEC_367, DEC_373, DEC_374, DEC_944, DEC_945, DEC_124, DEC_385 } from "../decisions";
-import { ERROR_STATES_CSS } from "../views/error-states.css";
+import { ERROR_STATES_CSS, ERROR_STATES_PHONE_CSS } from "../views/error-states.css";
 import { BARE_PAGE_CSS } from "../views/bare-page.css";
 
 void DEC_367;
@@ -678,4 +678,5 @@ ${BARE_PAGE_CSS}
     .chq-auth-stack .chq-auth-fields {
       gap: 14px;
     }
-  }`;
+  }
+${ERROR_STATES_PHONE_CSS}`;

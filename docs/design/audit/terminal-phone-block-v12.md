@@ -100,3 +100,40 @@ no selector/property/value changed.
 `src/**/*.css.ts` or rooting at `src/routes` (field guide w96) — it is
 loaded by every SSR surface and carries part of the shared 44px tap-floor
 rule, so a fix here has the widest blast radius of any row in this table.
+
+## Amendment (task w16-bb, DEC-385 wave-141): the scan now grades COMPOSED output, and finds two more rows
+
+Task w16-bb fixed the actual wave-141 regression: `src/views/error-states.css.ts`
+had grown an `@media (max-width: 700px)` block directly inside `ERROR_STATES_CSS`,
+which is composed by `src/routes/auth.css.ts`, `src/routes/portal/portal.css.ts`
+and `src/routes/public/cfp.css.ts` — landing that phone block BEFORE each host's
+own terminal block in the composed string, even though each host's own file
+text still showed exactly one terminal block (this scan graded only file text,
+so it stayed green through the regression). Fixed by splitting the phone rule
+into its own export, `ERROR_STATES_PHONE_CSS`, composed immediately after each
+host's own terminal block (ascending source order, nothing reordered/reworded).
+`src/routes/auth.css.ts` and `src/routes/public/cfp.css.ts` are now fully
+conformant, on COMPOSED output, not just file text.
+
+To catch this class of bug going forward, `test/phone-terminal-block.scan.test.ts`
+was widened (same task) to resolve every module's `${NAME}` composition
+interpolations against the named import's own resolved literal, recursively,
+and grade that composed string instead of each file's raw on-disk text. This
+is strictly MORE population than before (nothing stopped being graded), and it
+immediately surfaced two more non-conformant sheets that were invisible to the
+old file-text-only check — both pre-existing, both unrelated to
+`ERROR_STATES_CSS`, both out of scope for task w16-bb:
+
+| Sheet | Cluster | Measured (composed) |
+|---|---|---|
+| `src/routes/portal/portal.css.ts` | speaker portal (SSR) | composes `EMPTY_CSS` mid-file (around line 703), well before its own terminal `@media (max-width: 700px)` block — `EMPTY_CSS`'s single phone block is therefore non-terminal in the composed output, even though `portal.css.ts`'s OWN file text has always shown exactly one (terminal) block. `EMPTY_CSS`'s phone rules can be shadowed by any of `portal.css.ts`'s own desktop rules declared between the composition point and its terminal block. |
+| `src/routes/public/public.css.ts` | public shell (SSR) | composes `CHROME_CSS`/`CARDS_CSS`/`AGENDA_CSS`/`RAIL_CSS`/`EMPTY_CSS`; several of those sub-modules carry their own phone blocks that land ahead of `public.css.ts`'s own terminal block once composition is resolved, the same shape as the portal row above. |
+
+Neither row is fixed here. Fixing them means re-ordering where each host
+composes its phone-bearing sub-modules (the same `ERROR_STATES_PHONE_CSS`
+pattern this task used) — real work, sized for its own task, not folded into
+w16-bb's narrow ERROR_STATES_CSS scope. `test/phone-terminal-block.scan.test.ts`'s
+final aggregate assertion is expected to stay RED until these two rows (and
+whatever the same widened check finds elsewhere as this table is re-audited)
+are fixed — that redness is the honest replacement for a check that could not
+see this entire class of bug at all.
