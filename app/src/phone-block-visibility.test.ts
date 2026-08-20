@@ -71,7 +71,17 @@ function stripMedia(css: string): string {
  * selector has no top-level rule at all. */
 function topLevelRuleBodies(withoutMediaCss: string, selector: string): string[] {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g');
+  // w8-g: a selector is also a subject when it is a non-last member of a
+  // comma-separated selector list (e.g. `.chq-a, .chq-b, .chq-c { ... }`) --
+  // the original `${escaped}\s*\{` only matched the LAST member before the
+  // brace, so `.chq-a` and `.chq-b` above were silently uncredited (33 false
+  // offenders, verified against speakers.css:1600-1604). Accept an optional
+  // comma-separated remainder (no `{`/`}` inside it, so a descendant
+  // selector like `.chq-a .chq-b { ... }` still does NOT credit `.chq-a`:
+  // there is no comma, so the remainder alternative can't match, and the
+  // plain `\{` alternative requires the brace to immediately follow with
+  // only whitespace).
+  const re = new RegExp(`${escaped}\\s*(?:,[^{}]*)?\\{([^}]*)\\}`, 'g');
   const bodies: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(withoutMediaCss))) {
@@ -316,13 +326,18 @@ const MARKUP_OFFENDERS = [...MARKUP_PHONE_CLASSES]
   .filter((selector) => !hasTopLevelDisplayNone(selector))
   .sort();
 
-// Measured on this branch's tree (v12m-w5-k) after fixing the two
-// PlanEditor spans that motivated this amendment: see field-guide/commit
-// message for the count. This ratchet may only fall; raising it back up to
-// accommodate a new unconditionally-mounted, unhidden phone class is not a
-// valid fix -- fix the class instead, or (if it is genuinely rendered at
-// both widths) exempt it via NOT_PHONE_ONLY above with a reason.
-export const MARKUP_PHONE_UNHIDDEN_CEILING = 71;
+// Measured on this branch's tree (v12m-w8-g) after (1) fixing
+// topLevelRuleBodies' comma-group blind spot (a selector was only credited
+// when it was the LAST member before the brace -- 33 of the prior 73 were
+// false offenders, e.g. speakers.css:1600-1604's three-selector group) and
+// (2) top-level-hiding review.css's four genuine offenders
+// (.chq-review-phone-dock/-dock-note/-signout,
+// .chq-review-criterion-no-weight-phone). This ratchet may only fall;
+// raising it back up to accommodate a new unconditionally-mounted, unhidden
+// phone class is not a valid fix -- fix the class instead, or (if it is
+// genuinely rendered at both widths) exempt it via NOT_PHONE_ONLY above with
+// a reason.
+export const MARKUP_PHONE_UNHIDDEN_CEILING = 36;
 
 describe('markup-mounted phone classes must be top-level display:none (DEC-919 wave-109 amendment)', () => {
   it('found a sane population of phone-named classes in TSX markup (vacuous-population tripwire)', () => {
@@ -350,6 +365,16 @@ describe('markup-mounted phone classes must be top-level display:none (DEC-919 w
 
   it('a synthetic class with NO top-level rule (the closed escape hatch) is NOT recognised as hidden (negative control)', () => {
     expect(hasTopLevelDisplayNone('.chq-synthetic-phone-control-unhidden')).toBe(false);
+  });
+
+  it('a synthetic class that is a non-last member of a comma-separated selector group is recognised as hidden (positive control, w8-g)', () => {
+    const syntheticCss =
+      '.chq-synthetic-phone-control-group-a,\n.chq-synthetic-phone-control-group-b,\n.chq-synthetic-phone-control-group-c { display: none; }';
+    const bodies = topLevelRuleBodies(
+      stripMedia(syntheticCss),
+      '.chq-synthetic-phone-control-group-a',
+    );
+    expect(/display:\s*none\s*(;|$)/.test(bodies.join('\n'))).toBe(true);
   });
 
   it('markup-mounted phone classes without a top-level display:none never exceed the ceiling (two-sided ratchet: may only fall)', () => {

@@ -2044,6 +2044,20 @@
   display: none;
 }
 
+/* v12m-w8-g, DEC-919 idiom (matching speakers.css:1595-1604's shape): these
+   four selectors each have a rule ONLY inside this file's terminal
+   `@media (max-width: 700px)` block below and no top-level rule at all, so
+   at desktop widths the browser paints them with their inline-level default
+   instead of hidden. A top-level `display:none` group here, before the
+   terminal block, hides them by default; the terminal block's own display
+   values for the same selectors still win at <=700px via source order. */
+.chq-review-phone-dock,
+.chq-review-phone-dock-note,
+.chq-review-phone-signout,
+.chq-review-criterion-no-weight-phone {
+  display: none;
+}
+
 /* v12m-w7-b, DEC-385 wave-7 amendment: source order, not specificity, decides
    between a phone `@media` block and a later top-level rule on the same
    selector -- a phone override placed BEFORE a wider top-level re-declaration
