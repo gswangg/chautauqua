@@ -122,7 +122,7 @@ describe('PeopleRolesPanel invite dialog', () => {
 
     expect(
       screen.getByText(
-        'a reviewer sees only the plans they are assigned to · an organiser sees everything, including this page',
+        'A reviewer sees only the plans they are assigned to · an organiser sees everything, including this page',
       ),
     ).toBeInTheDocument();
   });

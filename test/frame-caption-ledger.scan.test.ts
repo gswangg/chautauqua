@@ -469,6 +469,20 @@ const FIXTURE_EXCLUSIONS: Exclusion[] = [
     reason:
       "a sample value of the portal settings' welcomeMessage field (app/src/pages/settings/PortalSettingsPanel.tsx), rendered as mock preview content -- fixture DATA, not absent product copy.",
   },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1049,
+    text: 'On · in use on devflowconf.com',
+    reason:
+      "'devflowconf.com' is a fixture host name for the saved-embed row's second grid cell ({{ e.used }} at Settings.dc.html:155) -- DEC-785 amendment (wave 63, app/src/pages/settings/SavedEmbedsPanel.tsx:20-31) records that no endpoint stores where an embed is pasted on the open web (grep src/server/repo/embeds.ts turns up no referrer/host tracking), so the column is deliberately left out rather than invented; DEVIATIONS.md's 'Unbuilt features' list names the same gap as 'saved-embed \"in use on\" host column -- no backing data' (09--09).",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1400,
+    text: 'It is embedded on notion.so',
+    reason:
+      "'notion.so' is the same fixture host name as Settings.dc.html:1049's saved-embed row cell, here drawn as the turn-off confirm modal's subtitle -- the identical host-tracking gap DEC-785 amendment (wave 63) and DEVIATIONS.md's '09--09' entry already record as unbuilt (no endpoint stores where an embed is pasted). app/src/pages/settings/SavedEmbedsPanel.tsx:356-358 builds the modal's title and body verbatim but carries no subtitle, for the same reason.",
+  },
 ];
 
 /** (c) EXEMPLAR ARTICLE -- the Docs frame's own sample article, 'Triaging
@@ -733,6 +747,20 @@ const COMPOSED_EXCLUSIONS: Exclusion[] = [
     text: 'A reminder names only this task · skips anyone emailed in the last hour · the due date moves for everyone, from the header',
     reason:
       "app/src/pages/speakers/TaskView.tsx:493 composes `A reminder names only this task · ${REMIND_SKIP_RULE} · the due date moves for everyone, from the header`, interpolating REMIND_SKIP_RULE. The frame's word 'emailed' is superseded by the shared vocabulary's word 'reminded' (REMIND_SKIP_RULE = 'skips anyone reminded in the last hour', app/src/pages/speakers/remindSkipVocabulary.ts:8), per the DEVIATIONS.md §3 ruling 'Reminder skip-window wording stays \"reminded\", not \"emailed\"' (docs/design/DEVIATIONS.md:309-316) — the app's word stands, the frame's word is superseded.",
+  },
+  {
+    fileName: 'Chautauqua Home.dc.html',
+    line: 41,
+    text: 'One call for papers is open. Two programmes are published.',
+    reason:
+      "src/routes/root.tsx:262-269's heroSummary(sections) composes the full-state hero sentence from the hub's own live counts -- pluralClause(sections.openCfp.length, 'call for papers', 'calls for papers', 'is open', 'are open') and pluralClause(sections.published.length, 'programme', 'programmes', 'is published', 'are published'), each capitalized and joined with a space -- rendered at root.tsx:330 (`<p>{heroSummary(sections)}</p>`) inside the state===\"full\" hero, the 900-desktop frame's own state.",
+  },
+  {
+    fileName: 'Chautauqua Home.dc.html',
+    line: 125,
+    text: 'One call for papers is open. Two programmes are published.',
+    reason:
+      "the same root.tsx:262-269 heroSummary(sections) composing expression and the same root.tsx:330 render site as line 41's entry above -- this is the 390-phone frame drawing the identical full-state hero, not a second sentence.",
   },
 ];
 
@@ -1001,7 +1029,36 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // COMPOSED exclusions, which are also in this batch and push the count down
 // again. The integrated figure is whatever the two-sided ratchet below prints
 // on breach; it is re-seeded to that measurement, never guessed.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 31;
+// v12m-w15-dd (task w15-dd, DEC-976/DEC-380/DEC-989 wave-140): base
+// (main da3f1441) already carried the isDecisionRegistryFile predicate and
+// several sibling lanes' exclusions -- forcing -1 against this branch's
+// unmodified tree measured 17, well below the stale 31 (DEC-989: a stale
+// ceiling above the live measurement licenses stagnation regardless of which
+// lane last touched it). Scoped to the Settings/Home rows only: :1305 (the
+// invite dialog's role-pill hint) was a sentence-case mismatch, not an
+// absence -- PeopleRolesPanel.tsx:633 read 'a reviewer...' where the frame
+// and DEC-650's own citation read 'A reviewer...', fixed to match verbatim
+// (BUILD, one word's case). :1049 and :1400 share one host-tracking gap
+// DEC-785's wave-63 amendment and DEVIATIONS.md's '09--09' entry already
+// name as unbuilt (no endpoint stores where an embed is pasted) -- filed
+// FIXTURE. Home :41/:125 are the hub's full-state hero sentence, already
+// composed live from real counts by root.tsx's heroSummary() -- filed
+// COMPOSED, one row per frame line per its own composing expression.
+// Settings :1175 (the retention block's 'After that the abstract and
+// reviews are deleted...' hint) stays UNMATCHED, not excluded: it is the
+// SAME 'Keeping and deleting' block DEVIATIONS.md's 'Unbuilt features' list
+// already names (Chautauqua Settings.dc.html:1111, 'Settings · editing your
+// data') and ExportsPanel.tsx:15-18 already declines to build for the same
+// reason DEC-032 gives ('no column, no endpoint, no rubric backs it') --
+// this task's own instructions assumed a live retention row exists to carry
+// the hint verbatim, but no such row is built anywhere in
+// app/src/pages/settings/**, and fabricating a non-functional dropdown to
+// carry static prose would misrepresent a real setting the app cannot
+// enforce. Left in the residue for a future lane with the backing data
+// model, per DEC-380 ("a frame's drawing does not create a data model").
+// 17 - 5 closed (1 build + 2 fixture + 2 composed) = 12, forced -1 and
+// read directly off this branch's own offender list, never guessed.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 12;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {

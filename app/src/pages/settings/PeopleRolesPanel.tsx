@@ -630,7 +630,7 @@ export function PeopleRolesPanel() {
               </button>
             </div>
             <div className="chq-form-row-help">
-              a reviewer sees only the plans they are assigned to &middot; an organiser sees everything, including
+              A reviewer sees only the plans they are assigned to &middot; an organiser sees everything, including
               this page
             </div>
             {fieldErrors.role ? (
