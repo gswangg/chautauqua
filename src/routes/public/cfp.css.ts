@@ -295,6 +295,19 @@ ${ERROR_STATES_CSS}${BARE_PAGE_CSS}
     /* phone-hidden: navigation control with nothing to reach -- step 2 is
        the last step of the wizard, there is no next step (DEC-919). */
     [data-chq-cfp-step="2"] .chq-cfp-step-next { display: none; }
+
+    /* w6-c (DEC-986 wave-117): cfp-steps-script.tsx:21-22 returns before
+       wiring any handler when the re-rendered form carries
+       .chq-field-error or [role=alert], leaving data-chq-cfp-step at its
+       markup default "all" -- every field is already shown on that
+       render, so the two-step wizard chrome has no steps left to move
+       between. */
+    /* phone-hidden: navigation control with nothing to reach -- with
+       data-chq-cfp-step="all" every field renders at once, so there is no
+       step to advance to or return from (DEC-919). */
+    [data-chq-cfp-step="all"] .chq-cfp-steps,
+    [data-chq-cfp-step="all"] .chq-cfp-step-next,
+    [data-chq-cfp-step="all"] .chq-cfp-step-back { display: none; }
   }
 
   /* w7-f (DEC-989 wave-111 amendment): the wave-90 note above this line
