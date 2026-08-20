@@ -16,7 +16,7 @@
 //      holding that data does not blank or flash to a loading state -- it
 //      keeps rendering its rows and refetches silently over them.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { useCachedGet, useCachedList } from './useCachedRead';
 import { apiPost, peekCachedRead, resetApiCacheForTests } from './api';
 import { mockApi, listEnvelope } from '../test-utils/mockApi';
@@ -107,30 +107,59 @@ describe('useCachedRead honesty (DEC_518)', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('a successful mutation drops the cache entry while a mounted hook holding that data refetches over its rows without blanking', async () => {
+  it('a successful mutation drops the cache entry while a mounted hook holding that data refetches over its rows without ever rendering a blank/loading frame (DEC_700 amendment, wave 121)', async () => {
+    // A hand-rolled fetch stub, not mockApi: the post-mutation background
+    // GET must resolve on a LATER turn of the event loop than the code that
+    // triggers it, never inside the caller's own microtask batch. If it
+    // resolved synchronously, React would coalesce the effect's re-seed (if
+    // any survived) and the refetch's landing setData into one render, and
+    // the very frame this test exists to forbid would never be observable.
     let getCall = 0;
-    mockApi({
-      'GET /api/v1/contacts/a1': () => {
+    let resolveDeferredGet: (() => void) | null = null;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const path = rawUrl.startsWith('http') ? new URL(rawUrl).pathname : rawUrl.split('?')[0];
+      const method = (init?.method ?? 'GET').toUpperCase();
+      const jsonResponse = (body: unknown) =>
+        new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+
+      if (method === 'GET' && path === '/api/v1/contacts/a1') {
         getCall += 1;
-        // Second GET (the post-mutation refetch) returns an updated name --
-        // proves the mount actually refetched, not just re-read stale state.
-        if (getCall === 1) return { id: 'a1', name: 'Ada' };
-        return { id: 'a1', name: 'Ada Updated' };
-      },
+        if (getCall === 1) return jsonResponse({ id: 'a1', name: 'Ada' });
+        // Second GET (the post-mutation background refetch) -- park it
+        // until the test explicitly releases it below.
+        await new Promise<void>((resolve) => {
+          resolveDeferredGet = resolve;
+        });
+        return jsonResponse({ id: 'a1', name: 'Ada Updated' });
+      }
       // A REAL registered mutation route (POST /api/v1/contacts), not a
       // synthetic one: test/spa-mock-route-contract.scan.test.ts resolves
       // every mockApi key in the suite against the live route table, and a
       // made-up path would read there as the SPA believing in an unbuilt
-      // endpoint. The point of this key is only that the mutation lands on
-      // a DIFFERENT path than the cached read below, which /contacts is.
-      'POST /api/v1/contacts': { ok: true },
+      // endpoint. The point of this route is only that the mutation lands
+      // on a DIFFERENT path than the cached read above, which /contacts is.
+      if (method === 'POST' && path === '/api/v1/contacts') return jsonResponse({ ok: true });
+      throw new Error(`mock: no route registered for "${method} ${path}"`);
     });
+    vi.stubGlobal('fetch', fetchMock);
 
-    const { result } = renderHook(() => useCachedGet<Row>('/contacts/a1', 'Failed to load contact'));
+    // Records data/loading from inside the hook's own render, so a frame
+    // that React coalesces away from `result.current` can't hide from this
+    // test the way it hid from the old synchronous-assertion version.
+    const frames: string[] = [];
+    const { result } = renderHook(() => {
+      const r = useCachedGet<Row>('/contacts/a1', 'Failed to load contact');
+      frames.push(`data=${r.data === undefined ? 'undefined' : r.data.name} loading=${r.loading}`);
+      return r;
+    });
     await waitFor(() => {
       expect(result.current.data).toEqual({ id: 'a1', name: 'Ada' });
     });
     expect(peekCachedRead<Row>('/contacts/a1')).toEqual({ id: 'a1', name: 'Ada' });
+
+    // Only frames from the mutation onward are under test.
+    frames.length = 0;
 
     // A successful mutation bumps the shared mutation version (DEC-700),
     // which api.ts's subscription uses to clear the whole read cache.
@@ -139,15 +168,33 @@ describe('useCachedRead honesty (DEC_518)', () => {
     // The cache entry is gone immediately...
     expect(peekCachedRead<Row>('/contacts/a1')).toBeUndefined();
     // ...but the still-mounted hook never blanks its rows or flips back to
-    // loading -- useCachedReadInternal's mutation-version effect calls
-    // read() again without first clearing `data`.
+    // loading -- useCachedReadInternal's mutation-version effect issues a
+    // background re-read without first re-seeding `data` from the (now
+    // empty) cache.
     expect(result.current.data).toEqual({ id: 'a1', name: 'Ada' });
     expect(result.current.loading).toBe(false);
+
+    // Release the deferred GET and flush across the real turn of the event
+    // loop it resolves on.
+    expect(resolveDeferredGet).not.toBeNull();
+    await act(async () => {
+      resolveDeferredGet!();
+      await Promise.resolve();
+    });
 
     await waitFor(() => {
       expect(result.current.data).toEqual({ id: 'a1', name: 'Ada Updated' });
     });
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
+
+    // No frame recorded from the mutation onward carries a blank payload or
+    // a flip back to loading -- the property the old synchronous assertion
+    // could not actually observe.
+    expect(frames.length).toBeGreaterThan(0);
+    for (const frame of frames) {
+      expect(frame).not.toContain('loading=true');
+      expect(frame).not.toContain('data=undefined');
+    }
   });
 });

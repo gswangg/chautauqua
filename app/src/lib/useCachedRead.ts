@@ -31,6 +31,13 @@ function useCachedReadInternal<T>(
   const pathRef = useRef<string | null>(path);
   const generationRef = useRef(0);
 
+  // DEC_700 amendment (wave 121): tracks the path the last effect run saw, so
+  // a mutationVersion-only bump (same path) can be told apart from a real
+  // path change. Only a real path change re-seeds from the cache; a bump-only
+  // run goes straight to runRead and leaves the on-screen data alone until
+  // the fresh payload lands, so a cached read never blanks mid-mutation.
+  const prevEffectPathRef = useRef<string | null>(path);
+
   const runRead = useCallback(
     async (p: string, generation: number) => {
       try {
@@ -56,13 +63,24 @@ function useCachedReadInternal<T>(
     generationRef.current += 1;
     const generation = generationRef.current;
     if (path === null) {
+      prevEffectPathRef.current = null;
       setData(undefined);
       setError(null);
       return;
     }
     // Seed synchronously from the cache before issuing the re-read, so a
     // path change that already has a cached payload paints immediately.
-    setData(peekCachedRead<T>(path));
+    // DEC_700 amendment (wave 121): only do this seed on an actual path
+    // change. A bump-only run (mutationVersion changed, path did not) must
+    // NOT re-seed from the cache — api.ts's clearReadCache mutation
+    // subscriber runs before this effect on every successful write, so the
+    // cache is already empty here and re-seeding would blank a still-valid
+    // on-screen payload and flip loading back to true for the round trip.
+    const pathChanged = prevEffectPathRef.current !== path;
+    prevEffectPathRef.current = path;
+    if (pathChanged) {
+      setData(peekCachedRead<T>(path));
+    }
     void runRead(path, generation);
     return () => {
       // Bump on unmount and on every dep change so an in-flight resolve for
