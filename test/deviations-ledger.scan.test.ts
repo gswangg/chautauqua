@@ -480,14 +480,7 @@ const LEDGER: LedgerEntry[] = [
     key: "plan-editor-new-plan-footer-save-as-draft-open-the-plan-names-an-unrepresentable-state-dec-380-wave-130-amendment",
     status: "gap",
     reason:
-      "DEC-380 wave-130 amendment: the new-plan footer's caption names a save-without-opening state the schema has no column for -- a plan's openness is derived from openDate alone and isPlanOpen(openDate=null, closeDate=null, ...) reads an unset open date as open NOW, so the caption would be false if built. Recorded openly; the title row keeps its existing Cancel / Create the plan pair.",
-  },
-  {
-    key: "comms-fresh-empty-state-stays-count-free-dec-380-wave-130-amendment",
-    status: "honored",
-    reason:
-      "DEC-380 wave-130 amendment: RecentSends is fed only batches/templatesById/rhythm and has no decided-submission count to draw from, so the frame's count-bearing caption is not built -- the landed empty-state copy stays count-free.",
-    honored: { kind: "present", file: "app/src/pages/comms/RecentSends.tsx", literal: "Tell your accepted speakers", testFile: "app/src/pages/comms/RecentSends.render.test.tsx" },
+      "DEC-380 wave-130 amendment, reconfirmed wave-140: the new-plan footer's caption names a save-without-opening state the schema has no column for -- a plan's openness is derived from openDate alone and isPlanOpen(openDate=null, closeDate=null, ...) reads an unset open date as open NOW, so the caption would be false if built. Re-tested against the narrowed rule at wave-140: evaluation_plan (src/db/schema/review.ts) still carries no draft/status column -- SCHEMA LACKS THE COLUMN. Recorded openly; the title row keeps its existing Cancel / Create the plan pair.",
   },
   {
     key: "contacts-pipeline-keeps-its-landed-head-action-no-phone-dock-is-minted-dec-576-wave-120-124",
@@ -505,14 +498,14 @@ const LEDGER: LedgerEntry[] = [
     key: "portal-resource-modal-kind-pair-file-link-docs-design-chautauqua-settings-dc-html-1463-1464",
     status: "honored",
     reason:
-      "DEC-380 wave-130 amendment: this product's second resource kind is a wiki page with stored markdown, not a link, so there is no link-kind referent to build. The chips stay File / Wiki page.",
+      "DEC-380 wave-130 amendment, reconfirmed wave-140: this product's second resource kind is a wiki page with stored markdown, not a link, so there is no link-kind referent to build. Re-tested against the narrowed rule at wave-140: the content schema's kind column (src/db/schema/content.ts) still admits only 'file'/'wiki' -- THE PRODUCT HAS NO SUCH OBJECT. The chips stay File / Wiki page.",
     honored: { kind: "present", file: "app/src/pages/settings/ResourcesPanel.tsx", literal: "resource.kind === 'file' ? 'File' : 'Wiki page'", testFile: "app/src/pages/settings/ResourcesPanel.render.test.tsx" },
   },
   {
     key: "cfp-not-yet-open-browse-last-years-sessions-docs-design-chautauqua-public-and-portal-dc-html-1543",
     status: "honored",
     reason:
-      "DEC-380 wave-130 amendment: no previous-edition model exists anywhere in the domain, so there is nothing a 'last year' link could point at. The link keeps its landed destination and label, this event's own published sessions.",
+      "DEC-380 wave-130 amendment. Re-tested against the narrowed rule at wave-140: the original 'no previous-edition model exists anywhere in the domain' claim does NOT survive -- getPriorPublicEvent (src/server/repo/public/event.ts) is a previous-edition model, landed under DEC-745's wave-107 amendment (before wave-130 was even written) and already wired to the public sessions fresh-empty page's 'Last year' aside. The CFP not-yet-open page itself has never been wired to it, which is a real, narrower gap out of this task's file ownership (src/routes/public/submit-views.tsx) -- flagged as a still-owed build, not re-affirmed as a permanent deviation. The link keeps its landed destination and label unchanged pending that build.",
     honored: { kind: "present", file: "src/routes/public/submit-views.tsx", literal: "/e/${props.event.slug}/sessions", testFile: "test/cfp-phone-frames.test.ts" },
   },
 ];
@@ -679,9 +672,9 @@ describe("deviations-ledger.scan (DEC-967 wave-100 amendment)", () => {
     for (const d of derived) bySection.set(d.heading, (bySection.get(d.heading) ?? 0) + 1);
     expect(bySection.get("## 1. Ruled omissions")).toBe(2);
     expect(bySection.get("## 2. State-layer additions (frames draw no row/selection states)")).toBe(6);
-    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(14);
+    expect(bySection.get("## 3. Interpretations where the frames underspecify")).toBe(13);
     expect(bySection.get("## 6. Deferred post-deadline (USER RULING 2026-08-16, G13 sweep)")).toBe(19);
-    expect(derived.length).toBe(41);
+    expect(derived.length).toBe(40);
   });
 
   it("deliberately excludes '## 5. Pending adjudication' and '## v12 frame errata' -- neither heading is in INCLUDED_HEADINGS, and no derived key originates from either section", () => {

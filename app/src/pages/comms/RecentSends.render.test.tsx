@@ -86,6 +86,53 @@ describe('RecentSends', () => {
     expect(document.querySelector('.chq-comms-recent-sends-subtitle')).not.toBeInTheDocument();
   });
 
+  // DEC-380 wave-140 (re-adjudication of the wave-130 amendment's clause
+  // (d)): Chautauqua Comms.dc.html:574-578's count-bearing sentence is built
+  // once Comms.tsx hands down a known `decidedUntoldCount`.
+  it('renders the frame\'s count-bearing fresh copy when decidedUntoldCount is known', () => {
+    render(
+      <MemoryRouter>
+        <RecentSends eventId={EVENT_ID} batchesLoaded batches={[]} templatesById={{}} decidedUntoldCount={23} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('You have not emailed anyone yet')).toBeInTheDocument();
+    expect(
+      screen.getByText('23 submissions have a decision and nobody has been told. Every send is logged here afterwards.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tell the 23 accepted speakers' })).toHaveAttribute(
+      'href',
+      '/comms?tab=compose',
+    );
+    expect(screen.queryByText('Tell your accepted speakers')).not.toBeInTheDocument();
+  });
+
+  // Singular grammar: the frame only draws the plural example, but the
+  // sentence must not read "1 submissions have".
+  it('uses singular grammar when decidedUntoldCount is exactly 1', () => {
+    render(
+      <MemoryRouter>
+        <RecentSends eventId={EVENT_ID} batchesLoaded batches={[]} templatesById={{}} decidedUntoldCount={1} />
+      </MemoryRouter>,
+    );
+    expect(
+      screen.getByText('1 submission has a decision and nobody has been told. Every send is logged here afterwards.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tell the 1 accepted speakers' })).toBeInTheDocument();
+  });
+
+  // A count that failed to load (still null) must never fall back to a
+  // spelled or hard-coded number -- the static, pre-count copy stands.
+  it('keeps the static count-free copy when decidedUntoldCount is not known', () => {
+    render(
+      <MemoryRouter>
+        <RecentSends eventId={EVENT_ID} batchesLoaded batches={[]} templatesById={{}} decidedUntoldCount={null} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('Every send is logged here afterwards.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tell your accepted speakers' })).toBeInTheDocument();
+    expect(screen.queryByText(/submissions? have a decision/)).not.toBeInTheDocument();
+  });
+
   // DEC-678 (wave-36): an empty state is only reachable from a SETTLED load.
   // The compose mount renders this component with batches=[] on every first
   // paint, before GET .../email-log?groupBy=batch has come back.
