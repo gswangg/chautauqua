@@ -326,6 +326,58 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     // Unsaved edits survive the refusal: no refetch, no reset.
     expect(screen.getByLabelText('Name')).toHaveValue('Edited Name');
     expect(screen.getByLabelText('Slug')).toHaveValue('taken-slug');
+
+    // A field-scoped 409 (a real fields map) is NOT the whole-payload
+    // refusal -- no total-loss panel here.
+    expect(screen.queryByText('Nothing was saved')).not.toBeInTheDocument();
+  });
+
+  // DEC-124 amendment (wave 134): the bare conflict/409 (no fields map at
+  // all) is the ONE refusal on this form where the server rejects the
+  // whole PATCH, not just the slug key -- Chautauqua Settings.dc.html:1242-1244
+  // draws a named panel above the form for exactly this case.
+  it('a bare conflict/409 with no fields map renders the total-loss panel above the form, alongside the Slug field error', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+      [`PATCH /api/v1/events/${EVENT_ID}`]: {
+        status: 409,
+        body: errorEnvelope('conflict', 'slug already in use'),
+      },
+    });
+    renderPanel();
+
+    const nameInput = await screen.findByLabelText('Name');
+    fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
+    const slugInput = screen.getByLabelText('Slug');
+    fireEvent.change(slugInput, { target: { value: 'taken-slug' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    const panel = await screen.findByText('Nothing was saved');
+    expect(
+      screen.getByText(
+        'The public URL you chose is already taken by another event in this org. Everything else on this page is fine and is still here.',
+      ),
+    ).toBeInTheDocument();
+    expect(panel.closest('.chq-settings-refusal-panel')).not.toBeNull();
+
+    // The panel renders ABOVE the form: it precedes the Name field in
+    // document order.
+    // eslint-disable-next-line no-bitwise
+    expect(
+      panel.closest('.chq-settings-refusal-panel')!.compareDocumentPosition(nameInput) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    // The field-level Slug error and its ErrorSummary anchor still render
+    // alongside the panel -- the panel names what was lost, the field
+    // error still marks the offending control.
+    const fieldError = await screen.findByText('That slug is already taken by another event in this org.');
+    expect(fieldError.closest('.chq-settings-field')).toBe(slugInput.closest('.chq-settings-field'));
+    expect(slugInput).toHaveClass('chq-field-invalid');
+
+    // Unsaved edits still survive.
+    expect(screen.getByLabelText('Name')).toHaveValue('Edited Name');
   });
 
   it('a generic 500 still renders the page banner, with no field-level error on Slug', async () => {
