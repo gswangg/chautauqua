@@ -166,20 +166,76 @@ export function normalizeCaption(raw: string): string {
   return s.replace(/\s+/g, ' ').trim();
 }
 
+// -- Digit-skeleton normalization (DEC-976 wave-142/w17-f) --------------
+//
+// The population side (./population.ts) no longer discards captions that
+// contain a digit -- retiring that discriminator surfaced every
+// count-bearing consequence caption in the pack ("23 submissions have a
+// decision and nobody has been told"), most of which the app composes from
+// a live count rather than spelling out literally. A plain verbatim
+// substring match (the pass above) can never find those: the frame spells
+// a real number, the source spells a template expression. digitSkeleton
+// collapses every run of digits -- and every digit RANGE such as `12-14` or
+// `12–14`, matched and replaced as ONE unit so a range never yields two
+// sentinels where the frame/source pair would only agree on one -- to a
+// single sentinel token, on both sides of the comparison.
+const DIGIT_SKELETON_TOKEN = '#';
+const DIGIT_OR_RANGE_RE = /\d+(?:\s*[-–—]\s*\d+)?/g;
+
+/** Collapses every run of digits, and every digit range (`12-14`, `12–14`)
+ * matched as a single unit, to one sentinel token. Exported so the
+ * non-vacuity synthetic fixture in the test suite can drive this exact
+ * function over a fabricated pair, never a live product count. */
+export function digitSkeleton(s: string): string {
+  return s.replace(DIGIT_OR_RANGE_RE, DIGIT_SKELETON_TOKEN);
+}
+
+// `${...}` template interpolations and single-brace `{...}` merge
+// placeholders exist only on the SOURCE side (a frame caption is always
+// literal text, never a template literal) -- collapsed to the SAME
+// sentinel `digitSkeleton` uses, so a composed
+// `` `${count} submissions have a decision...` `` skeletonizes to the exact
+// same string as the frame's literal `23 submissions have a decision...`.
+// `${...}` is collapsed first (its own braces would otherwise be caught,
+// and mis-tokenized, by the plain single-brace pass below).
+function collapseSourcePlaceholders(s: string): string {
+  return s.replace(/\$\{[^}]*\}/g, DIGIT_SKELETON_TOKEN).replace(/\{[^}]*\}/g, DIGIT_SKELETON_TOKEN);
+}
+
+function sourceDigitSkeleton(s: string): string {
+  return digitSkeleton(collapseSourcePlaceholders(s));
+}
+
 /** True when `text` (normalized) occurs verbatim as a substring of some
- * already-normalized source blob. Plain substring, not boundary-anchored:
- * every population member here is >= 20 chars (the population's own length
- * discriminator), so an accidental in-word collision is not a realistic
- * risk the way it is for a short control label. */
-export function captionIsMatched(text: string, normalizedBlobs: string[]): boolean {
+ * already-normalized source blob, OR -- a second pass, run only after the
+ * first finds nothing, never in place of it -- when its digit-skeleton form
+ * occurs as a substring of some source blob's own digit-skeleton form (with
+ * `${...}`/`{...}` placeholders additionally collapsed on the source side).
+ * Plain substring, not boundary-anchored: every population member here is
+ * >= 20 chars (the population's own length discriminator), so an accidental
+ * in-word collision is not a realistic risk the way it is for a short
+ * control label. `skeletonBlobs`, when supplied, must be
+ * `normalizedBlobs.map(sourceDigitSkeleton)` precomputed once by the
+ * caller (UNMATCHED below does this so the campaign-sized scan does not
+ * re-skeletonize every source blob for every one of the ~380 captions); when
+ * omitted (every direct/synthetic test call) it is computed on the fly. */
+export function captionIsMatched(
+  text: string,
+  normalizedBlobs: string[],
+  skeletonBlobs?: string[]
+): boolean {
   const needle = normalizeCaption(text);
   if (needle.length === 0) return false;
-  return normalizedBlobs.some((blob) => blob.includes(needle));
+  if (normalizedBlobs.some((blob) => blob.includes(needle))) return true;
+  const skeletonNeedle = digitSkeleton(needle);
+  const blobsForSkeleton = skeletonBlobs ?? normalizedBlobs.map(sourceDigitSkeleton);
+  return blobsForSkeleton.some((blob) => blob.includes(skeletonNeedle));
 }
 
 export const SOURCE_FILES = [...enumerateSourceFiles(APP_SRC_ROOT), ...enumerateSourceFiles(SRC_ROOT)];
 export const NORMALIZED_SOURCE_BLOBS: string[] = SOURCE_FILES.map((f) => normalizeCaption(readFileSync(f, 'utf-8')));
+const SKELETON_SOURCE_BLOBS: string[] = NORMALIZED_SOURCE_BLOBS.map(sourceDigitSkeleton);
 
 export const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
-  (c) => !captionIsMatched(c.text, NORMALIZED_SOURCE_BLOBS)
+  (c) => !captionIsMatched(c.text, NORMALIZED_SOURCE_BLOBS, SKELETON_SOURCE_BLOBS)
 );

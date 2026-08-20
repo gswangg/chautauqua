@@ -115,6 +115,7 @@ import {
   SOURCE_FILES,
   UNMATCHED,
   captionIsMatched,
+  digitSkeleton,
   enumerateSourceFiles,
   normalizeCaption,
   stripComments,
@@ -127,7 +128,15 @@ import { ALL_CAPTIONS, captionsInText, designFiles } from './frame-caption-ledge
 // exclusion tables read by test/frame-caption-exclusion-grammar.test.ts,
 // FRAME_CAPTION_UNMATCHED_CEILING) keeps resolving from this path unchanged.
 export type { Caption } from './frame-caption-ledger/population';
-export { designFiles, captionsInText, enumerateSourceFiles, stripComments, normalizeCaption, captionIsMatched };
+export {
+  designFiles,
+  captionsInText,
+  enumerateSourceFiles,
+  stripComments,
+  normalizeCaption,
+  captionIsMatched,
+  digitSkeleton,
+};
 export {
   COMPOSED_EXCLUSIONS,
   EXEMPLAR_ARTICLE_EXCLUSIONS,
@@ -148,9 +157,13 @@ describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaig
     expect(SOURCE_FILES.length).toBeGreaterThanOrEqual(100);
   });
 
-  it('enumerates exactly 233 population-qualifying captions across 13 files (vacuous-population tripwire)', () => {
+  it('enumerates exactly 378 population-qualifying captions across 13 files (vacuous-population tripwire)', () => {
+    // DEC-976 wave-142/w17-f: was 233 with the digit discriminator live;
+    // retiring it (see ./frame-caption-ledger/population.ts's module
+    // comment) widened the population by 145 to 378 -- measured directly
+    // against this branch's tree, never guessed.
     expect(designFiles().length).toBe(13);
-    expect(ALL_CAPTIONS.length).toBe(233);
+    expect(ALL_CAPTIONS.length).toBe(378);
   });
 
   it('non-vacuity: synthetic positive/negative controls over a fabricated single-file population, never a live product count', () => {
@@ -158,7 +171,8 @@ describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaig
       '<div style="display:flex; flex-direction:column">',
       '  <p style="margin:0; font-size:16px; color:#3F4237">Zzy Synthetic Caption present in the corpus below and long enough to qualify.</p>',
       '  <span style="font-size:13px; color:#565A4B">Zzy Synthetic Caption absent from the corpus below and long enough to qualify.</span>',
-      // Excluded by the digit discriminator: never enters the population.
+      // DEC-976 wave-142/w17-f: the digit discriminator is retired -- a
+      // caption with a digit now DOES enter the population.
       '  <span style="font-size:13px; color:#565A4B">Zzy Synthetic Caption with a digit 7 in it, long enough otherwise.</span>',
       // Excluded by text-transform:uppercase: an eyebrow chip, not prose.
       '  <span style="font-size:13px; color:#565A4B; text-transform:uppercase">Zzy Synthetic Eyebrow Chip Not Counted At All Here</span>',
@@ -175,7 +189,7 @@ describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaig
     expect(extractedTexts).toContain(
       'Zzy Synthetic Caption absent from the corpus below and long enough to qualify.'
     );
-    expect(extractedTexts.some((t) => t.includes('with a digit'))).toBe(false);
+    expect(extractedTexts.some((t) => t.includes('with a digit'))).toBe(true);
     expect(extractedTexts.some((t) => t.includes('Eyebrow Chip'))).toBe(false);
     expect(extractedTexts.some((t) => t.includes('Nested Markup'))).toBe(false);
 
@@ -206,6 +220,44 @@ describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaig
         normalized
       )
     ).toBe(false);
+  });
+
+  it('digit-skeleton second pass (DEC-976 wave-142/w17-f): a composed count matches, a composed WORDING change does not, over a fabricated pair', () => {
+    // Positive control: the frame spells a literal count; the source
+    // composes the same sentence from a template expression with a
+    // DIFFERENT number. digitSkeleton must collapse both to the same form.
+    const frameCaption =
+      'Zzy Synthetic Fixture 23 submissions have a decision and nobody has been told.';
+    const composedSource =
+      'const msg = `Zzy Synthetic Fixture ${count} submissions have a decision and nobody has been told.`;';
+    const skeletonBlob = digitSkeleton(
+      composedSource.replace(/\$\{[^}]*\}/g, '#').replace(/\{[^}]*\}/g, '#')
+    );
+    // Drive the real exported matcher end to end (never a live product
+    // count -- this pair is fabricated). The verbatim first pass sees an
+    // empty normalizedBlobs list, so a true result here can only come from
+    // the digit-skeleton second pass.
+    expect(captionIsMatched(frameCaption, [], [skeletonBlob])).toBe(true);
+
+    // Also exercise a digit RANGE, collapsed as one unit on both sides (the
+    // frame writes a literal "12-14"; the source composes the same range as
+    // one interpolated expression).
+    const rangeFrameCaption = 'Zzy Synthetic Fixture rows 12-14 need a second reviewer before they close.';
+    const rangeComposedSource =
+      'const msg = `Zzy Synthetic Fixture rows ${range} need a second reviewer before they close.`;';
+    const rangeSkeletonBlob = digitSkeleton(
+      rangeComposedSource.replace(/\$\{[^}]*\}/g, '#').replace(/\{[^}]*\}/g, '#')
+    );
+    expect(captionIsMatched(rangeFrameCaption, [], [rangeSkeletonBlob])).toBe(true);
+
+    // Negative control: the WORDS differ, not just the number -- the
+    // skeleton pass must not paper over an actual copy mismatch.
+    const mismatchedSource =
+      'const msg = `Zzy Synthetic Fixture ${count} submissions are still awaiting review.`;';
+    const mismatchedSkeletonBlob = digitSkeleton(
+      mismatchedSource.replace(/\$\{[^}]*\}/g, '#').replace(/\{[^}]*\}/g, '#')
+    );
+    expect(captionIsMatched(frameCaption, [], [mismatchedSkeletonBlob])).toBe(false);
   });
 
   it('EXPLAINER exclusions each resolve to their cited file:line:text in the current pack', () => {
