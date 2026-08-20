@@ -5,16 +5,8 @@
 // a Keep both control — the rail's `dense` prop only tightens spacing/type,
 // it never drops a fact the tab shows.
 import { Link } from 'react-router-dom';
-import type { DuplicateGroup, DuplicateReason } from './types';
-
-// DEC-800: the reason a group was surfaced, as a plain-text caption -- never
-// a colour-only signal. Moved verbatim from DuplicatesView.tsx so both
-// mounts read the same captions.
-export const REASON_CAPTIONS: Record<DuplicateReason, string> = {
-  email: 'Same email',
-  name_and_company: 'Same name and company',
-  name: 'Same name, different company',
-};
+import type { DuplicateGroup } from './types';
+import { duplicatePairReason } from './duplicatePairReason';
 
 interface Props {
   group: DuplicateGroup;
@@ -40,7 +32,7 @@ export function DuplicateRow({ group, onKeepBoth, dense = false }: Props) {
       <li className="chq-contacts-rail-duplicate-row">
         <span className="chq-contacts-rail-duplicate-names">{denseNamesLine(group)}</span>
         <span className="chq-contacts-rail-duplicate-reason chq-contacts-pipeline-caption">
-          {REASON_CAPTIONS[group.reason]}
+          {duplicatePairReason(group.reason, group.contacts)}
         </span>
         <div className="chq-contacts-rail-duplicate-actions">
           <Link className="chq-link-button" to={mergeHref}>
@@ -58,7 +50,7 @@ export function DuplicateRow({ group, onKeepBoth, dense = false }: Props) {
     <li className="chq-contacts-duplicate-group">
       <span className="chq-contacts-duplicate-names">{fullNamesLine(group)}</span>
       <span className="chq-contacts-duplicate-reason chq-contacts-pipeline-caption">
-        {REASON_CAPTIONS[group.reason]}
+        {duplicatePairReason(group.reason, group.contacts)}
       </span>
       <div className="chq-contacts-import-actions">
         <Link className="chq-btn chq-btn-primary" to={mergeHref}>

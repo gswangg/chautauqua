@@ -135,9 +135,14 @@ describe('DuplicatesView render (DEC-684: merge moved to its own page)', () => {
       expect(screen.getByText(/Jane Doe/)).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Same email')).toBeInTheDocument();
+    // DEC-380: DuplicateRow now renders duplicatePairReason(group.reason,
+    // group.contacts) -- the frame's own vocabulary (Chautauqua
+    // Contacts.dc.html:159) -- in place of the old fixed REASON_CAPTIONS
+    // map; GROUP and NAME_ONLY_GROUP each have both sides carrying a
+    // company, so neither adds the "one has no company" clause.
+    expect(screen.getByText('Same email domain')).toBeInTheDocument();
     expect(screen.getByText('Same name and company')).toBeInTheDocument();
-    expect(screen.getByText('Same name, different company')).toBeInTheDocument();
+    expect(screen.getByText('Same last name')).toBeInTheDocument();
   });
 
   it('shows the one-shot merge notice passed in via initialNotice, without re-fetching a merge dialog', async () => {
