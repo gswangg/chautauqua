@@ -386,6 +386,20 @@ describe('SubmissionDetailPage render: Reviews section + decision rail', () => {
     expect(declineBtn).toHaveClass('chq-btn-secondary');
     expect(waitlistBtn).toHaveClass('chq-btn-secondary');
     expect(screen.queryByRole('button', { name: 'Pending' })).not.toBeInTheDocument();
+
+    // DEC-878 (wave 129 amendment): the 390 dock's third verb is the
+    // frame's short form ('Wait') -- a sibling span using the SAME idiom
+    // as the back link (.chq-detail-back-full/.chq-detail-back-short), not
+    // a DECISION_ACTION_LABELS edit. Both spans are in the DOM at every
+    // width (CSS toggles which is visible); the accessible name stays
+    // 'Waitlist' via an explicit aria-label, never shortening to 'Wait'.
+    expect(waitlistBtn).toHaveAttribute('aria-label', 'Waitlist');
+    expect(waitlistBtn.querySelector('.chq-detail-back-full')).toHaveTextContent('Waitlist');
+    expect(waitlistBtn.querySelector('.chq-detail-back-short')).toHaveTextContent('Wait');
+    // Accept/Decline are never shortened -- only the frame's third control
+    // (dc.html:391) draws a short form.
+    expect(acceptBtn.querySelector('.chq-detail-back-short')).toBeNull();
+    expect(declineBtn.querySelector('.chq-detail-back-short')).toBeNull();
     // No native <select> for status any more (the Participants section's
     // own role <select>, DEC-784, is unrelated and legitimately present
     // elsewhere on the page).
