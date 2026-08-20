@@ -92,8 +92,20 @@ describe('Scorecard recusal control (DEC-271/DEC-939 bare checkbox)', () => {
     expect(checkbox).toBeInstanceOf(HTMLInputElement);
     expect((checkbox as HTMLInputElement).type).toBe('checkbox');
     expect(screen.getAllByText(RECUSE_LABEL).length).toBeGreaterThan(0);
-    // The superseded "conflict of interest" phrasing is gone from the control.
-    expect(screen.queryByText(/conflict of interest/i)).not.toBeInTheDocument();
+    // DEC-889 (wave-20 amendment): the "conflict of interest" phrasing is
+    // retired only from the DESKTOP-visible copy of the label -- the
+    // control's accessible name (asserted above via getByRole) stays this
+    // exact desktop wording at every width. A phone-only second copy
+    // carrying "conflict of interest" now exists in the DOM (hidden via
+    // the native `hidden` attribute, revealed only inside scorecard.css's
+    // max-width:700px block), so this assertion is scoped to the
+    // desktop-visible span rather than the whole document.
+    expect(document.querySelector('.chq-review-recusal-label-desktop')?.textContent).toBe(RECUSE_LABEL);
+    expect(document.querySelector('.chq-review-recusal-label-desktop')).not.toHaveAttribute('hidden');
+    expect(document.querySelector('.chq-review-recusal-label-phone')).toHaveAttribute('hidden');
+    expect(document.querySelector('.chq-review-recusal-label-phone')?.textContent).toBe(
+      'Recuse me — conflict of interest',
+    );
     // frame 03--01: the ref left the h1 for the meta line beneath it.
     expect(document.querySelector('.chq-review-scorecard-meta')?.textContent).toContain('S-020');
     // DEC-939 (bare recusal amendment): no separate Declare button, no

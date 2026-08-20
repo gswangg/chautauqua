@@ -380,4 +380,39 @@
   .chq-review-scorecard-reading:has(.chq-review-answers-checkbox:checked) .chq-review-answers {
     display: block;
   }
+
+  /* DEC-889 (wave-20 amendment), frame :966-970 ("a criterion unscored"):
+     the Overall value prints `Not yet` at 14px/600/#565A4B rather than
+     the desktop em dash. Scorecard.tsx renders this span with the native
+     `hidden` attribute (a real hide at top level, ahead of this block,
+     that the accname algorithm honours with no stylesheet applied) only
+     while overallScore is null -- reveal it here, and hide the desktop
+     span only when this phone span is actually present, so a scored
+     Overall (no second copy rendered) still shows the desktop span
+     unchanged at this width. The 34px scored-value register
+     (.chq-review-overall-value at rest) is untouched. */
+  .chq-review-overall-value-phone {
+    display: inline;
+    font-size: 14px;
+    font-weight: 600;
+    color: #565A4B;
+  }
+
+  .chq-review-overall-line:has(.chq-review-overall-value-phone) .chq-review-overall-value {
+    display: none;
+  }
+
+  /* DEC-889 (wave-20 amendment): the recusal checkbox's label swaps to
+     the 390 frame's wording (Review.dc.html:336) -- the desktop copy
+     (Scorecard.tsx's `.chq-review-recusal-label-desktop`, unchanged,
+     :259's wording) is hidden here and the phone copy (native `hidden`
+     attribute at top level, same idiom as the Overall value above) is
+     revealed. */
+  .chq-review-recusal-label-desktop {
+    display: none;
+  }
+
+  .chq-review-recusal-label-phone {
+    display: inline;
+  }
 }
