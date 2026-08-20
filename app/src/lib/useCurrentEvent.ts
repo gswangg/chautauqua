@@ -42,17 +42,20 @@
 //      announce the switch (target name only, no Back link) instead of
 //      passing silently.
 //
-// DEC-728 wave-138 amendment (USER RULING D19, part 3): a per-instance read
-// of localStorage inside the effect is unreliable -- when a page mounts
-// more than one useCurrentEvent() consumer (e.g. PhoneTabBar alongside
-// EventSwitcher), whichever instance's effect commits first overwrites
-// storage with fromUrl before a later instance's effect ever reads the
-// pre-overwrite value, so priorStoredId comes back null and the banner
-// never renders. Every instance must agree on the ONE true pre-overwrite
-// value regardless of mount order, so it is captured lazily into a
-// module-level cache on first read (below) rather than re-read per
-// instance -- "once per document", mirroring loadEventsOnce()'s same
-// per-page-load cache discipline and its resetEventsCacheForTests() seam.
+// DEC-728 wave-138 amendment (USER RULING D19, part 3): the banner was
+// unreachable by mount order. A per-instance read of localStorage inside the
+// effect is unreliable -- in the real app PhoneTabBar -> useNavExceptions ->
+// useCurrentEvent runs on the FIRST commit and immediately overwrites
+// localStorage with fromUrl, while EventSwitchBanner's own useCurrentEvent
+// instance only first renders after useMe()'s async /me round trip -- by
+// then fromStorage === fromUrl and priorStoredId can never be computed, so
+// the banner never renders. A hook that both reads a prior value and writes
+// over it must capture the prior ONCE per document, not once per instance:
+// the first instance to render freezes the true pre-overwrite (fromUrl,
+// fromStorage) pair in the module-level documentInitialContext() below, and
+// every later instance on the same page reads that frozen pair instead of
+// window directly -- "once per document", mirroring loadEventsOnce()'s same
+// per-page-load cache discipline and its reset-for-tests seam.
 import { useEffect, useState } from 'react';
 import { apiList, ApiError } from './api';
 import { reconcileStoredEventId } from '../components/eventSwitcherState';
@@ -81,6 +84,24 @@ export interface EventListItem {
 
 let eventsPromise: Promise<EventListItem[]> | null = null;
 
+// DEC-728 wave-138: captured once per document (one real page load / one
+// browser full-navigation), not once per hook instance -- so whichever
+// component mounts first (PhoneTabBar's useNavExceptions, typically) freezes
+// the true pre-overwrite (fromUrl, fromStorage) pair before its own write
+// effect below can erase the distinction that every later instance
+// (EventSwitchBanner, gated behind useMe()) needs to compute priorStoredId.
+let initialContext: { fromUrl: string | null; fromStorage: string | null } | null = null;
+
+function documentInitialContext(): { fromUrl: string | null; fromStorage: string | null } {
+  if (!initialContext) {
+    initialContext = {
+      fromUrl: new URLSearchParams(window.location.search).get('eventId'),
+      fromStorage: window.localStorage.getItem(STORAGE_KEY),
+    };
+  }
+  return initialContext;
+}
+
 /** Fetches GET /api/v1/events at most once per page load, sharing the
  * in-flight (or settled) promise across every caller — the hook's own
  * reconcile pass and EventSwitcher's listing both go through this. */
@@ -97,6 +118,7 @@ export function loadEventsOnce(): Promise<EventListItem[]> {
  * `afterEach` to keep tests isolated. Never called from production code. */
 export function resetEventsCacheForTests(): void {
   eventsPromise = null;
+  initialContext = null;
 }
 
 const UNREAD = Symbol('unread');
@@ -125,8 +147,7 @@ export function resetInitialStoredIdForTests(): void {
 }
 
 export function useCurrentEvent(): UseCurrentEventResult {
-  const fromUrl = new URLSearchParams(window.location.search).get('eventId');
-  const fromStorage = window.localStorage.getItem(STORAGE_KEY);
+  const { fromUrl, fromStorage } = documentInitialContext();
   const idInPlay = fromUrl ?? fromStorage ?? null;
 
   const [eventId, setEventId] = useState<string | null>(idInPlay);
