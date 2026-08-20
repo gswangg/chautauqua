@@ -198,7 +198,29 @@ export const ANCHOR_FLOOR_OFFENDERS_CEILING = 0;
  * companion every other ratchet in this file carries (the
  * "never falls below" test just below the history comment).
  */
-export const SSR_UNFLOORED_TOKENS_CEILING = 0;
+// Re-measured wave-139 (task w14-cc, DEC-393 + DEC-976 wave-138; DEC-613 +
+// DEC-989 wave-139): `tapTargetTagTokens`'s shared `if (tag === 'a' &&
+// !tokens.includes('chq-btn')) continue;` was honest on the SPA (`.chq-btn`
+// is the control primitive that carries the floor) and BLIND on SSR (no
+// such primitive -- a bare `<a>` IS the control; `ssr.ts`'s own header
+// already cited `a.chq-docs-wordmark` at 112.6x28 as a live probe
+// measurement it could not see). Repaired as a PARAMETER on the one shared
+// extractor (`anchorNeedsBtnToken`, default `true`, unchanged for every SPA
+// call site) rather than a fork or a widened shared default -- widening the
+// default would drag four SPA ratchets (base tap-target, undeclared-height,
+// anchor-floor, this file's SSR sub-floor sibling above) into a population
+// where the SPA carve-out is correct. `allSsrTapTargetTokens` is the ONLY
+// caller passing `{ anchorNeedsBtnToken: false }`.
+//
+// Forced this constant to -1 and read the printed offender list on this
+// branch: population 25 -> 75, unfloored 0 -> 28 (docs-site.css.ts 6,
+// portal.css.ts 3, agenda.css.ts 3, chrome.css.ts 3, home.css.ts 3, rail.css.ts
+// 4, cards.css.ts 2, empty.css.ts 1, error-states.css.ts 1, plus 2 tokens
+// with `(no CSS rule)` at all). Set to the measured truth, 28 -- this is the
+// WIDENING lane; two sibling lanes this wave (v12m-w14-dd, v12m-w14-ee)
+// drain the 28 with CSS receipts and touch no constant. RATCHET:
+// SSR_UNFLOORED_TOKENS_CEILING=28.
+export const SSR_UNFLOORED_TOKENS_CEILING = 28;
 
 // task w7-e (DEC-367/DEC-385) lowered this from 14 to 3, measured after
 // repair by forcing the ceiling to -1 and reading the printed offender

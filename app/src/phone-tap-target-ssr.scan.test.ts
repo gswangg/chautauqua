@@ -118,6 +118,13 @@ describe('phone tap-target floor scan — SSR routes (public/portal/docs/auth)',
     const tokens = allSsrTapTargetTokens(SSR_TSX_FILES);
     expect(tokens.size).toBeGreaterThan(20);
     expect(tokens.has('chq-auth-demo-btn')).toBe(true);
+    // Widened wave-139 (DEC-393 + DEC-976 wave-138; DEC-613 + DEC-989
+    // wave-139): a bare `<a>` is now admitted as a control on the SSR
+    // surfaces, so the population jumps considerably once anchors without
+    // a `chq-btn` token count. `chq-pub-session-title` is a token three
+    // independent reviewers measured sub-floor at 390.
+    expect(tokens.size).toBeGreaterThan(60);
+    expect(tokens.has('chq-pub-session-title')).toBe(true);
   });
 
   it('stays at or under the SSR unfloored-token ceiling, and never raises it silently', () => {

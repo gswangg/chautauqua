@@ -63,7 +63,20 @@ export const SPA_CLASS_ATTR_RE = /className\s*=\s*(\{[^}]*\}|"[^"]*")/;
  * views are shared with the SPA. */
 export const SSR_CLASS_ATTR_RE = /\bclass(?:Name)?\s*=\s*(\{[^}]*\}|"[^"]*")/;
 
-export function tapTargetTagTokens(src: string, classAttrRe: RegExp = SPA_CLASS_ATTR_RE): string[] {
+/** `anchorNeedsBtnToken` (default `true`) is a PARAMETER, not a fork and not
+ * a widened shared default (DEC-613 wave-139): on the SPA, `.chq-btn` is the
+ * control primitive that carries the floor, so a bare `<a>` with no
+ * `chq-btn` token is decoration, correctly dropped. On the SSR surfaces
+ * there is no such primitive -- a bare `<a>` IS the control (DEC-393 +
+ * DEC-976 wave-138) -- so `ssr.ts`'s `allSsrTapTargetTokens` is the ONLY
+ * caller that passes `{ anchorNeedsBtnToken: false }`. Every SPA call site
+ * keeps today's behaviour byte-for-byte by relying on the default. */
+export function tapTargetTagTokens(
+  src: string,
+  classAttrRe: RegExp = SPA_CLASS_ATTR_RE,
+  opts: { anchorNeedsBtnToken?: boolean } = {},
+): string[] {
+  const anchorNeedsBtnToken = opts.anchorNeedsBtnToken ?? true;
   const out = new Set<string>();
   const tagRe = /<(input|select|button|a)\b([^>]*)>/g;
   let m: RegExpExecArray | null;
@@ -74,7 +87,7 @@ export function tapTargetTagTokens(src: string, classAttrRe: RegExp = SPA_CLASS_
     if (!classMatch) continue;
     const classText = classMatch[1] ?? '';
     const tokens = [...classText.matchAll(/chq-[a-z0-9-]+/g)].map((t) => t[0]);
-    if (tag === 'a' && !tokens.includes('chq-btn')) continue;
+    if (tag === 'a' && anchorNeedsBtnToken && !tokens.includes('chq-btn')) continue;
     for (const t of tokens) out.add(t);
   }
   return [...out];
