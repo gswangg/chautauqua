@@ -19,8 +19,17 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { confirmPhraseMatches } from '../../lib/confirmPhrase';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { DEC_941 } from '../../../../src/decisions';
 import './submissions.css';
+
+void DEC_941; // bulk session delete is armed by a typed phrase on its own page, reusing ConfirmDialog's match semantics
+
+// DEC-941 (wave 134 amendment): the phrase an organiser types to arm this
+// page's own delete -- drawn from the page's own H1 ("Delete sessions"),
+// lowercased, so the label can read and be typed as one plain sentence.
+const DELETE_ARM_PHRASE = 'delete sessions';
 
 interface DeletePlanCounts {
   files: number;
@@ -101,6 +110,7 @@ export function DeleteSubmissionsPage() {
   const [busy, setBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletedCount, setDeletedCount] = useState<number | null>(null);
+  const [armPhrase, setArmPhrase] = useState('');
 
   useEffect(() => {
     if (ids.length === 0 || !eventId) return;
@@ -159,6 +169,7 @@ export function DeleteSubmissionsPage() {
   }
 
   const deleteCount = eligible.length;
+  const isArmed = confirmPhraseMatches(armPhrase, DELETE_ARM_PHRASE);
 
   return (
     <div className="chq-page chq-submissions-delete-page chq-measure">
@@ -217,24 +228,46 @@ export function DeleteSubmissionsPage() {
             {/* DEC-886 (wave 2 amendment): this page already names what goes
                 and what it refuses BEFORE anything is pressed -- a stacked
                 ConfirmDialog restated the same decision a second time and
-                demoted the page's own prose. The primary deletes directly;
-                `busy` still disables it mid-request. */}
-            <button
-              type="button"
-              className="chq-btn chq-btn-primary"
-              disabled={busy || deleteCount === 0}
-              onClick={doDelete}
-            >
-              Delete {countPhrase(deleteCount, 'session', 'sessions')}
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              disabled={busy}
-              onClick={() => navigate('/submissions')}
-            >
-              Cancel
-            </button>
+                demoted the page's own prose. DEC-941 (wave 134 amendment):
+                that answers WHERE the confirmation lives, not WHETHER the
+                act is armed -- an irreversible delete still needs a typed
+                phrase, so the footer itself carries the arming field
+                ConfirmDialog's own irreversible weight would otherwise draw,
+                reusing its exact match semantics (confirmPhraseMatches:
+                trim + case-insensitive) rather than inventing a second rule. */}
+            <div className="chq-submissions-delete-arm-row">
+              <label className="chq-submissions-delete-arm-label" htmlFor="chq-submissions-delete-arm-input">
+                {`Type "${DELETE_ARM_PHRASE}" to confirm`}
+              </label>
+              <input
+                id="chq-submissions-delete-arm-input"
+                className="chq-input"
+                type="text"
+                value={armPhrase}
+                onChange={(e) => setArmPhrase(e.target.value)}
+                placeholder={DELETE_ARM_PHRASE}
+                disabled={busy}
+                autoComplete="off"
+              />
+            </div>
+            <div className="chq-submissions-delete-footer-actions">
+              <button
+                type="button"
+                className="chq-btn chq-btn-primary"
+                disabled={busy || deleteCount === 0 || !isArmed}
+                onClick={doDelete}
+              >
+                Delete {countPhrase(deleteCount, 'session', 'sessions')}
+              </button>
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                disabled={busy}
+                onClick={() => navigate('/submissions')}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </>
       )}

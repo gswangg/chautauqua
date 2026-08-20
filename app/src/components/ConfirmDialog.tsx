@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { ModalFrame } from './ModalFrame';
+import { confirmPhraseMatches } from '../lib/confirmPhrase';
 import './confirm-dialog.css';
 
 interface ConfirmDialogProps {
@@ -17,12 +18,18 @@ interface ConfirmDialogProps {
   // default) is one sentence + Cancel + primary, no typing. 'irreversible'
   // additionally requires typing `confirmPhrase` to unlock the primary --
   // reserved for deletes that cannot be undone: a portal resource, an
-  // event, a contact merge (DESIGN-RULINGS.md:342-349). The SPA's
-  // irreversible population today is exactly two callers --
-  // ResourcesPanel.tsx (portal resource delete) and MergePage.tsx (contact
-  // merge). The ruling's third named site, EVENT DELETE, has NO control in
-  // the SPA: no `apiDelete` against `/events/:id` exists anywhere under
-  // app/src. That absence is recorded here, not designed for.
+  // event, a contact merge (DESIGN-RULINGS.md:342-349). DEC-941 (wave-134
+  // amendment): the irreversible population is a WEIGHT -- satisfiable by
+  // this dialog's own typed-phrase gate OR by a page arming the same act
+  // in its own footer, when a stacked dialog would only restate prose the
+  // page already printed (DEC-886). This component's own callers today are
+  // ResourcesPanel.tsx (portal resource delete) and FormsPage.tsx (form
+  // field delete, x2) and MergePage.tsx (contact merge); bulk session
+  // delete arms via DeleteSubmissionsPage.tsx's own footer field instead,
+  // reusing this component's match semantics (confirmPhraseMatches) without
+  // rendering it. The ruling's third named site, EVENT DELETE, has NO
+  // control in the SPA: no `apiDelete` against `/events/:id` exists
+  // anywhere under app/src. That absence is recorded here, not designed for.
   weight?: 'reversible' | 'irreversible';
   confirmPhrase?: string;
   onConfirm: () => void;
@@ -54,8 +61,7 @@ export function ConfirmDialog({
   }
 
   const phraseMatches =
-    weight !== 'irreversible' ||
-    typed.trim().toLowerCase() === (confirmPhrase as string).trim().toLowerCase();
+    weight !== 'irreversible' || confirmPhraseMatches(typed, confirmPhrase as string);
 
   return (
     <ModalFrame

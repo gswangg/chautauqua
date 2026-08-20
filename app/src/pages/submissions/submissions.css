@@ -584,6 +584,29 @@
 
 .chq-submissions-delete-footer {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* DEC-941 (wave 134 amendment): the typed-phrase arming field for bulk
+   session delete, drawn onto the page's own footer rather than a stacked
+   ConfirmDialog (DEC-886). Mirrors ConfirmDialog's own
+   .chq-confirm-typed-row/-label geometry so the same control reads
+   identically whether it's arming inside a dialog or on this page. */
+.chq-submissions-delete-arm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 320px;
+}
+
+.chq-submissions-delete-arm-label {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-submissions-delete-footer-actions {
+  display: flex;
   gap: 8px;
 }
 

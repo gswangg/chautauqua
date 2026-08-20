@@ -183,6 +183,13 @@ describe('DeleteSubmissionsPage', () => {
     });
 
     const deleteBtn = screen.getByRole('button', { name: 'Delete 1 session' });
+    // DEC-941 (wave 134 amendment): the primary is armed by a typed phrase
+    // in the page's own footer, not a stacked ConfirmDialog.
+    expect(deleteBtn).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Type "delete sessions" to confirm'), {
+      target: { value: 'delete sessions' },
+    });
+    expect(deleteBtn).not.toBeDisabled();
     fireEvent.click(deleteBtn);
 
     // No stacked confirmation dialog restating the decision a second time.
@@ -195,5 +202,53 @@ describe('DeleteSubmissionsPage', () => {
       );
       expect(deleteCalls).toHaveLength(1);
     });
+  });
+
+  // DEC-941 (wave 134 amendment): bulk session delete is armed by a typed
+  // phrase in the page's own footer, reusing ConfirmDialog's own
+  // trim + case-insensitive match semantics (confirmPhraseMatches).
+  it('arms the primary only on a matching typed phrase, trimmed and case-insensitive, and never blocks Cancel', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions/delete-plan`]: {
+        eligible: [
+          {
+            submissionId: 'sub-1',
+            ref: 'S-001',
+            title: 'A Talk About Testing',
+            counts: {
+              files: 0,
+              comments: 0,
+              participants: 0,
+              answers: 0,
+              tracks: 0,
+              recusals: 0,
+              revisions: 0,
+              taskResponses: 0,
+            },
+            scheduled: false,
+          },
+        ],
+        refused: [],
+      },
+    });
+
+    renderPage(['sub-1']);
+
+    await waitFor(() => {
+      expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
+    });
+
+    const deleteBtn = screen.getByRole('button', { name: 'Delete 1 session' });
+    const armInput = screen.getByLabelText('Type "delete sessions" to confirm');
+    expect(deleteBtn).toBeDisabled();
+
+    fireEvent.change(armInput, { target: { value: 'wrong phrase' } });
+    expect(deleteBtn).toBeDisabled();
+
+    fireEvent.change(armInput, { target: { value: '  Delete Sessions  ' } });
+    expect(deleteBtn).not.toBeDisabled();
+
+    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
+    expect(cancelBtn).not.toBeDisabled();
   });
 });
