@@ -1888,4 +1888,19 @@
      surviving rule above, alongside the overflow-exempt comment -- a
      second, standalone copy of the same property used to live here;
      collapsed rather than repeated (w7-c, DEC-385 wave-111). */
+
+  /* w13-g (DEC-576, metafid-round2 WAVE A): CommentThread.tsx now mounts
+     the frame's own `.chq-phone-dock` footer (Ask for changes / Send
+     note only, docs/design/Chautauqua Content.dc.html "Session ·
+     deliverable · 390":278-280) alongside this inline composer row --
+     same submit(true)/submit(false) handlers, not a second send path.
+     The inline row above (already floored at 48px, see the phone rule a
+     few hundred lines up) is now redundant chrome at this width -- the
+     frame draws ONE action pair, in the docked footer, never two. Hidden
+     here rather than in place, so the pre-existing 48px floor rule this
+     block still carries for `.chq-content-comment-actions .chq-btn`
+     keeps citing real CSS text (DEC-385 append-only). */
+  .chq-content-comment-actions {
+    display: none;
+  }
 }

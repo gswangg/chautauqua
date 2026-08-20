@@ -7,6 +7,7 @@ import { paginationSummary } from '../../lib/pagination-summary';
 import { publicRoomLabel } from '../../lib/room-label';
 import { clockHHMM } from '../../lib/clock';
 import { countOf, plural } from '../../lib/plural';
+import { useIsPhone } from '../../lib/useIsPhone';
 
 // w5-i (DEC-020 amendment quoted mock text, eval-findings.md STILL-PRESENT
 // residue): the Latest file column names EVERY kind that has files ("Slides
@@ -145,6 +146,93 @@ export function SessionList({
     onSelectionChange(next);
   }
 
+  // w13-g (DEC-576, metafid-round2 WAVE A finding N1): content.css's
+  // `.chq-content-worklist-selecting .chq-bulkbar` rule is
+  // `position:sticky; bottom:0` -- pinning against `.chq-main`'s scroll,
+  // the ONE scroller (DEC-576 wave-83). That only pins correctly when the
+  // bar is the LAST flex child of `.chq-content-worklist`: mounted ahead
+  // of the (up to 3139px-tall) table it was DOM child 1 of ~6, above,
+  // never below, the content it should float over -- the probe's own
+  // fix (moving it to be the last child) measured the sticky offset
+  // landing at 788 instead of failing to pin at all. DESKTOP IS FROZEN
+  // (this bar is a plain, non-sticky band there, `content.css` only makes
+  // it sticky inside `.chq-content-worklist-selecting` under the
+  // `max-width:700px` block) so the reorder is gated on useIsPhone AND
+  // phoneSelectMode -- an unconditional markup move would put a desktop
+  // pin (bulkbarIndex < tableIndex, SessionList.render.test.tsx) in the
+  // wrong place. Same `useIsPhone` split Agenda.tsx:426 uses.
+  const isPhone = useIsPhone();
+  const dockBulkbarLast = isPhone && phoneSelectMode;
+
+  // DEC-825 amendment (wave 25, ruling A1): ONE primary for bulk
+  // approval, scoped to the ticked rows only — no page-wide "Approve N
+  // ready" competitor. Desktop keeps it directly below the chipstrip,
+  // above the table it acts on. Approving is a status change, never an
+  // email (house invariant), hence the consequence line rather than any
+  // "notify" language.
+  // User-filed: always mounted — idle keeps the space so selecting never
+  // shifts the worklist. USER RULING 2026-08-16: idle is a real quiet
+  // state now — one muted hint line (.chq-bulkbar-hint, same height as
+  // the armed bar) instead of an invisible band, kept in the
+  // accessibility tree (no aria-hidden: the hint is real content). When
+  // Re-uploaded rows are on the page, the hint carries the one-gesture
+  // "Select them" quick-select that replaced the retired pre-tick.
+  const bulkbar = (
+    <div
+      className={selectedIds.size > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}
+      role="toolbar"
+      aria-label="Bulk content actions"
+    >
+      {selectedIds.size === 0 ? (
+        <span className="chq-bulkbar-hint">
+          {reuploadedIds.length > 0 ? (
+            <>
+              {countOf(reuploadedIds.length, 're-upload')} {plural(reuploadedIds.length, 'is', 'are')} waiting for
+              re-review —{' '}
+              <button
+                type="button"
+                className="chq-bulkbar-hint-action"
+                onClick={() => onSelectionChange(new Set(reuploadedIds))}
+              >
+                Select them
+              </button>
+            </>
+          ) : (
+            'Tick rows to approve in bulk.'
+          )}
+        </span>
+      ) : (
+        <>
+        <span className="chq-bulkbar-count">{selectedIds.size} selected</span>
+        <span className="chq-bulkbar-note">Approving sends nothing · the speaker sees it in their portal</span>
+        <div className="chq-bulkbar-actions">
+          {/* G13 lane-D fix (05-content--00, DESIGN-RULINGS A1: "One verb,
+              one scope: the bar owns Approve") — the DEC-720 'Request
+              changes'/'Pending' bulk verbs are removed; the frame draws
+              [Approve N] + Clear only. The deliberate note+email path stays
+              the per-submission content-note composer. */}
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary"
+            disabled={bulkPending}
+            onClick={() => onBulkContentStatus('approved')}
+          >
+            Approve {selectedIds.size}
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-tertiary"
+            disabled={bulkPending}
+            onClick={() => onSelectionChange(new Set())}
+          >
+            Clear
+          </button>
+        </div>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div
       className={
@@ -171,73 +259,11 @@ export function SessionList({
         ))}
       </div>
 
-      {/* DEC-825 amendment (wave 25, ruling A1): ONE primary for bulk
-          approval, scoped to the ticked rows only — no page-wide "Approve N
-          ready" competitor. Sits below the chipstrip, directly above the
-          table it acts on. Approving is a status change, never an email
-          (house invariant), hence the consequence line rather than any
-          "notify" language. */}
-      {/* User-filed: always mounted — idle keeps the space so selecting
-          never shifts the worklist. USER RULING 2026-08-16: idle is a real
-          quiet state now — one muted hint line (.chq-bulkbar-hint, same
-          height as the armed bar) instead of an invisible band, kept in
-          the accessibility tree (no aria-hidden: the hint is real
-          content). When Re-uploaded rows are on the page, the hint carries
-          the one-gesture "Select them" quick-select that replaced the
-          retired pre-tick. */}
-      <div
-        className={selectedIds.size > 0 ? 'chq-bulkbar' : 'chq-bulkbar chq-bulkbar-idle'}
-        role="toolbar"
-        aria-label="Bulk content actions"
-      >
-        {selectedIds.size === 0 ? (
-          <span className="chq-bulkbar-hint">
-            {reuploadedIds.length > 0 ? (
-              <>
-                {countOf(reuploadedIds.length, 're-upload')} {plural(reuploadedIds.length, 'is', 'are')} waiting for
-                re-review —{' '}
-                <button
-                  type="button"
-                  className="chq-bulkbar-hint-action"
-                  onClick={() => onSelectionChange(new Set(reuploadedIds))}
-                >
-                  Select them
-                </button>
-              </>
-            ) : (
-              'Tick rows to approve in bulk.'
-            )}
-          </span>
-        ) : (
-          <>
-          <span className="chq-bulkbar-count">{selectedIds.size} selected</span>
-          <span className="chq-bulkbar-note">Approving sends nothing · the speaker sees it in their portal</span>
-          <div className="chq-bulkbar-actions">
-            {/* G13 lane-D fix (05-content--00, DESIGN-RULINGS A1: "One verb,
-                one scope: the bar owns Approve") — the DEC-720 'Request
-                changes'/'Pending' bulk verbs are removed; the frame draws
-                [Approve N] + Clear only. The deliberate note+email path stays
-                the per-submission content-note composer. */}
-            <button
-              type="button"
-              className="chq-btn chq-btn-primary"
-              disabled={bulkPending}
-              onClick={() => onBulkContentStatus('approved')}
-            >
-              Approve {selectedIds.size}
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-tertiary"
-              disabled={bulkPending}
-              onClick={() => onSelectionChange(new Set())}
-            >
-              Clear
-            </button>
-          </div>
-          </>
-        )}
-      </div>
+      {/* w13-g: on desktop (and phone rest-mode), the bar renders here,
+          directly below the chipstrip, exactly as before -- see
+          dockBulkbarLast above the return for why phone select-mode moves
+          it to the end instead. */}
+      {!dockBulkbarLast && bulkbar}
 
       {/* v4 mock IA (docs/design/Chautauqua Content.dc.html, DEC-692): five
           columns — Session, Speaker, Latest file, Status, actions. 'Ask for
@@ -444,6 +470,14 @@ export function SessionList({
           </button>
         </div>
       )}
+
+      {/* w13-g (DEC-576, metafid-round2 N1): phone select-mode's docked bar
+          needs to be the LAST child of this flex column for its
+          `position:sticky; bottom:0` rule (content.css) to actually pin --
+          see dockBulkbarLast above. Rendered after the pager too, not just
+          the table, since the pager is also a sibling inside this same
+          scrolling container. */}
+      {dockBulkbarLast && bulkbar}
     </div>
   );
 }

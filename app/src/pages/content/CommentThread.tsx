@@ -133,6 +133,50 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
           {error}
         </div>
       )}
+      {/* w13-g (DEC-576, metafid-round2 WAVE A): the frame's own footer
+          dock (docs/design/Chautauqua Content.dc.html, "Session ·
+          deliverable · 390": `flex-shrink:0; border-top:1px solid
+          #1B1D17; background:#EFEBDF; padding:12px 16px 16px;
+          display:flex; flex-direction:column; gap:8px` -> filled "Ask for
+          changes" + bordered "Send note only", plus the same caption
+          line) -- the SHELL CONTRACT verbatim (`.chq-phone-dock` +
+          data-chq-phone-dock, styles.css / phone-dock-declares.scan.
+          test.ts), never a fifth copy of the dock vocabulary. Both
+          controls are the composer's OWN submit(true)/submit(false) above
+          -- one action, two entry points (the inline row stays for
+          desktop; content.css is expected to hide ONE of the two pairs at
+          <=700px, filed as a content.css follow-up since this task's
+          scope is the component/shell CONTRACT, not that stylesheet
+          pass), never a second send path or a second draft. Mounted only
+          while this composer -- and therefore CommentThread -- is
+          mounted, matching DeliverableDetail's own activeLatest gate. */}
+      <div className="chq-phone-dock" data-chq-phone-dock>
+        {/* aria-label disambiguates this docked copy from the inline
+            composer row's identically-labelled button above (same idiom
+            MergePage.tsx's phone primary uses) -- CSS is the ONLY thing
+            that ever hides one of the two at a given width; both stay in
+            the accessibility tree at once, so an unqualified accessible
+            name here would leave every "Ask for changes"/"Send note
+            only" query ambiguous. */}
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          aria-label="Ask for changes (phone dock)"
+          disabled={pending || draft.trim().length === 0}
+          onClick={() => void submit(true)}
+        >
+          Ask for changes
+        </button>
+        <button
+          type="button"
+          className="chq-btn chq-btn-secondary"
+          aria-label="Send note only (phone dock)"
+          disabled={pending || draft.trim().length === 0}
+          onClick={() => void submit(false)}
+        >
+          Send note only
+        </button>
+      </div>
       {summary && summary.failed.length > 0 && (
         <div className="chq-error" role="alert">
           <p>Sent to {countOf(summary.sent, 'recipient')}; failed for:</p>

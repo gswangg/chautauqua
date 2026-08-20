@@ -17,7 +17,22 @@ import { WORKLIST_TABS, type WorklistTab } from './worklist';
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
+
+// Follows the matchMedia-stub idiom ContactDrawer.phoneRead.render.test.tsx
+// uses to force useIsPhone's split in jsdom (which implements no
+// matchMedia at all) -- unstubbed in afterEach above so every other test
+// in this file keeps exercising the desktop tree by default.
+class FakeMediaQueryList {
+  matches = true;
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+function stubPhoneMatchMedia() {
+  vi.stubGlobal('matchMedia', () => new FakeMediaQueryList());
+}
 
 // DEC-825: chips render '· N' only once their own count has resolved — most
 // of this file's tests aren't exercising the chip strip, so every count is
@@ -922,7 +937,7 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
     expect(screen.queryByRole('button', { name: /^Approve \d+ ready$/ })).not.toBeInTheDocument();
   });
 
-  it('renders the bulk bar between the chipstrip and the table', () => {
+  it('desktop: renders the bulk bar between the chipstrip and the table', () => {
     const { container } = render(
       <StatefulSessionList
         items={[reuploadedItem, notReviewedA, notReviewedB]}
@@ -952,6 +967,51 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
     expect(chipstripIndex).toBeGreaterThanOrEqual(0);
     expect(bulkbarIndex).toBeGreaterThan(chipstripIndex);
     expect(tableIndex).toBeGreaterThan(bulkbarIndex);
+  });
+
+  // w13-g (DEC-576, metafid-round2 WAVE A finding N1): phone select-mode's
+  // sticky dock only pins when it is the LAST flex child of
+  // .chq-content-worklist (content.css's `.chq-content-worklist-selecting
+  // .chq-bulkbar { position: sticky; bottom: 0 }` pins against .chq-main,
+  // not a container whose own box ends above a ~3139px table). Pins the
+  // NEW position: bulkbar after both the table AND the pager, the two
+  // other in-flow children of this same scrolling container. Desktop
+  // (the test above, unstubbed matchMedia) keeps the original order.
+  it('phone select mode: renders the bulk bar as the LAST child, after the table and pager', () => {
+    stubPhoneMatchMedia();
+    const { container } = render(
+      <StatefulSessionList
+        items={[reuploadedItem, notReviewedA, notReviewedB]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={3}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+        onBulkContentStatus={noop}
+        bulkPending={false}
+        phoneSelectMode
+      />,
+    );
+
+    const worklist = container.querySelector('.chq-content-worklist');
+    expect(worklist).not.toBeNull();
+    const children = Array.from(worklist!.children);
+    const chipstripIndex = children.findIndex((el) => el.classList.contains('chq-chipstrip'));
+    const tableIndex = children.findIndex((el) => el.tagName === 'TABLE');
+    const pagerIndex = children.findIndex((el) => el.classList.contains('chq-content-pager'));
+    const bulkbarIndex = children.findIndex((el) => el.classList.contains('chq-bulkbar'));
+    expect(chipstripIndex).toBeGreaterThanOrEqual(0);
+    expect(tableIndex).toBeGreaterThan(chipstripIndex);
+    expect(pagerIndex).toBeGreaterThan(tableIndex);
+    expect(bulkbarIndex).toBe(children.length - 1);
+    expect(bulkbarIndex).toBeGreaterThan(pagerIndex);
   });
 
   // USER RULING 2026-08-16: selection must assert user intent — nothing is

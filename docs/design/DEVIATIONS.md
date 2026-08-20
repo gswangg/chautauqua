@@ -161,6 +161,29 @@ survives contact with state:
   not draw at all, so its shape is our interpretation: it takes the frame
   footer's own floor — min-height:48px, padding:0 16px — one control per line,
   and its capability is reached through the dock's own `Edit` control.
+- **Contacts Pipeline keeps its landed head action; no phone dock is minted
+  (DEC-576 wave-120/124)** — `Pipeline · 390`
+  (`docs/design/Chautauqua Contacts.dc.html:472-475`) draws `Add someone`
+  at flex:1 and `Filter` beside it. The app has the first; it has no
+  second, and "Filter" names precisely the affordance the frame itself
+  draws DIRECTLY ABOVE the list on the same screen — the five-stage
+  horizontal scroller at :451-458, landed as
+  `.chq-contacts-pipeline-phone-stages`. Minting a dock control that opens
+  nothing to satisfy a drawing would INVENT capability, the exact inverse
+  of DEC-380 wave-116's finding that a frame's silence removes geometry and
+  not capability, and just as wrong; and relocating the single remaining
+  action buys a dock whose only member already clears the frame's floor
+  where it stands
+  (`app/src/pages/contacts/contacts-panels.css`'s
+  `.chq-contacts-pipeline-head > .chq-btn {` rule declares width 100%,
+  min-height 48px and padding 0 16px). RULED: Merge adopts its dock;
+  Pipeline does not, its one action keeps the landed full-width 48px head
+  placement, and that is recorded as a blessed deviation rather than left
+  as an untracked gap. The general rule this sets, for the drills that
+  follow: adopt the band when the frame's membership is satisfiable from
+  controls the surface already owns; where a drawn control has no
+  referent, keep the app's placement, state which same-screen affordance
+  discharges it, and record it — never a control that is only a shape.
 
 ## 4. Voice
 
