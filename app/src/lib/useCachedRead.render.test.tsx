@@ -109,6 +109,82 @@ describe('useCachedGet / useCachedList', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('DEC_518 wave-117: a refetch() whose key changes before it resolves never lands its stale payload or an error', async () => {
+    // mockApi's route handler result is never awaited (it JSON.stringifies
+    // it synchronously), so a genuinely held-open response needs a hand-
+    // rolled fetch stub rather than mockApi's function-handler form.
+    let resolveRefetch!: (value: Response) => void;
+    const refetchResponsePromise = new Promise<Response>((resolve) => {
+      resolveRefetch = resolve;
+    });
+    let contactsA1Calls = 0;
+    const jsonResponse = (body: unknown) =>
+      new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const path = rawUrl.startsWith('http') ? new URL(rawUrl).pathname : rawUrl.split('?')[0];
+      if (path === '/api/v1/contacts/a1') {
+        contactsA1Calls += 1;
+        if (contactsA1Calls === 1) return jsonResponse({ id: 'a1', name: 'Ada' });
+        return refetchResponsePromise;
+      }
+      if (path === '/api/v1/contacts/a2') return jsonResponse({ id: 'a2', name: 'Bea' });
+      throw new Error(`unhandled route ${path}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result, rerender } = renderHook(({ path }: { path: string }) => useCachedGet<Row>(path, 'Failed to load contact'), {
+      initialProps: { path: '/contacts/a1' },
+    });
+    await waitFor(() => {
+      expect(result.current.data).toEqual({ id: 'a1', name: 'Ada' });
+    });
+
+    // Issue the refetch (held open), then change the key before it resolves.
+    const refetching = result.current.refetch();
+    rerender({ path: '/contacts/a2' });
+    await waitFor(() => {
+      expect(result.current.data).toEqual({ id: 'a2', name: 'Bea' });
+    });
+
+    resolveRefetch(jsonResponse({ id: 'a1', name: 'STALE' }));
+    await refetching;
+    // A real macrotask flush, not just a couple of microtask ticks -- the
+    // stale runRead's setData/setError call (if unguarded) lands a tick
+    // later than refetching's own promise settles, via Response.json()'s
+    // own microtask chain, so a bare `await Promise.resolve()` twice is not
+    // enough to observe it landing.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // The stale a1 refetch must never overwrite the a2 view, and must never
+    // raise an error on a view it no longer belongs to.
+    expect(result.current.data).toEqual({ id: 'a2', name: 'Bea' });
+    expect(result.current.error).toBeNull();
+  });
+
+  it('DEC_518 wave-117: a refetch() that resolves while the key is unchanged still replaces the payload and clears the error (the guard is not over-tight)', async () => {
+    let call = 0;
+    mockApi({
+      'GET /api/v1/contacts/a1': () => {
+        call += 1;
+        if (call === 1) return { id: 'a1', name: 'Ada' };
+        return { id: 'a1', name: 'Ada Updated' };
+      },
+    });
+
+    const { result } = renderHook(() => useCachedGet<Row>('/contacts/a1', 'Failed to load contact'));
+    await waitFor(() => {
+      expect(result.current.data).toEqual({ id: 'a1', name: 'Ada' });
+    });
+
+    await result.current.refetch();
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual({ id: 'a1', name: 'Ada Updated' });
+    });
+    expect(result.current.error).toBeNull();
+  });
+
   it('path === null is fully inert -- no request, immediately settled empty', () => {
     const fetchMock = mockApi({});
 

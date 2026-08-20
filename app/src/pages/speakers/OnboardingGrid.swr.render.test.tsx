@@ -167,4 +167,87 @@ describe('OnboardingGrid SWR adoption (v12m-w4-t-r1-c)', () => {
     // correct row stays on screen rather than the page going blank.
     expect(screen.getAllByText('Ada Lovelace').length > 0).toBe(true);
   });
+
+  it('DEC_518 wave-117: a filter change while a post-mutation refetch is still in flight never lets the old key\'s payload land -- the grid shows only the new filter\'s rows', async () => {
+    const OVERDUE_GRID: OnboardingGridResponse = {
+      ...GRID,
+      rows: [
+        {
+          contact: {
+            id: 'ct2',
+            name: 'Grace Overdue',
+            email: 'grace@example.com',
+            company: 'Acme',
+            hasAccount: true,
+            participations: [{ participantId: 'p-ct2', submissionId: 'sub-ct2', ref: 'SES-002', title: 'Talk', inviteStatus: 'accepted' }],
+          },
+          cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, fileName: null, assignedAt: 0 }],
+        },
+      ],
+      counts: { speakers: 1, outstandingRequired: 1, overdue: 1, outstandingContacts: 1 },
+    };
+    // Distinguishable from GRID -- if this ever lands after the filter click
+    // it proves the old key's stale payload reached the new-filter view.
+    const STALE_RELOAD_GRID: OnboardingGridResponse = {
+      ...GRID,
+      rows: [{ ...GRID.rows[0]!, contact: { ...GRID.rows[0]!.contact, name: 'STALE Ada' } }],
+    };
+
+    let onboardingCalls = 0;
+    let resolveStaleReload!: (value: Response) => void;
+    const staleReloadPromise = new Promise<Response>((resolve) => {
+      resolveStaleReload = resolve;
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const url = new URL(rawUrl, 'http://localhost');
+      const method = (init?.method ?? 'GET').toUpperCase();
+      const key = `${method} ${url.pathname}`;
+      const jsonResponse = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+
+      if (key === `GET /api/v1/events/${EVENT_ID}/onboarding`) {
+        onboardingCalls += 1;
+        if (onboardingCalls === 1) return jsonResponse(GRID); // cold mount
+        if (onboardingCalls === 2) return staleReloadPromise; // post-mutation reload, held open
+        return jsonResponse(OVERDUE_GRID); // the filter change's own fetch
+      }
+      if (key === `GET /api/v1/events/${EVENT_ID}/forms`) return jsonResponse({ forms: [] });
+      if (key === 'PATCH /api/v1/task-assignments/as1') {
+        return jsonResponse({ error: { code: 'internal', message: 'boom' } }, 500);
+      }
+      throw new Error(`unhandled route ${key}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderGrid();
+    await waitFor(() => expect(screen.getAllByText('Ada Lovelace').length > 0).toBe(true));
+
+    // Provoke the rolled-back-write banner, then reload -- this issues the
+    // post-mutation refetch() at the OLD (default-filters) key, held open by
+    // staleReloadPromise above.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' })[0]!);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Reload the grid' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Reload the grid' }));
+
+    // While that reload is still in flight, change the filter -- a new
+    // gridPath, its own fetch (onboardingCalls === 3, OVERDUE_GRID).
+    fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
+    await waitFor(() => expect(screen.getAllByText('Grace Overdue').length > 0).toBe(true));
+    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
+    expect(screen.queryByText('STALE Ada')).not.toBeInTheDocument();
+
+    // Now let the stale reload resolve -- the fix's generation/path guard
+    // must discard it; the overdue-filtered grid must stay exactly as is.
+    resolveStaleReload(
+      new Response(JSON.stringify(STALE_RELOAD_GRID), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+    // A real macrotask flush -- an unguarded stale setData lands a tick
+    // after Response.json()'s own microtask chain, past a couple of bare
+    // `await Promise.resolve()` ticks.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByText('STALE Ada')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Grace Overdue').length > 0).toBe(true);
+  });
 });

@@ -2,7 +2,7 @@
 // this instead of a raw useEffect + apiGet/apiList pair to get a cached
 // payload on screen on the first frame and automatic re-reads whenever
 // mutationSignal's version bumps (DEC_700).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiGetCached, apiListCached, ApiError, peekCachedRead, type ListEnvelope } from './api';
 import { useMutationVersion } from './mutationSignal';
 import { DEC_518, DEC_678 } from '../../../src/decisions';
@@ -25,15 +25,24 @@ function useCachedReadInternal<T>(
   const [data, setData] = useState<T | undefined>(() => (path === null ? undefined : peekCachedRead<T>(path)));
   const [error, setError] = useState<string | null>(null);
 
+  // DEC_518: a resolve only lands if it is still the current (path,
+  // generation) pair — the single cancellation rule for both the path-driven
+  // effect below and an explicit re-fetch call that outlives a path change.
+  const pathRef = useRef<string | null>(path);
+  const generationRef = useRef(0);
+
   const runRead = useCallback(
-    async (p: string) => {
+    async (p: string, generation: number) => {
       try {
         // DEC_518: on resolve REPLACE the payload wholesale and clear the
-        // error — never merge with what was already on screen.
+        // error — never merge with what was already on screen — but only
+        // if nothing has moved the key on since this read was issued.
         const fresh = await read(p);
+        if (generation !== generationRef.current || p !== pathRef.current) return;
         setData(fresh);
         setError(null);
       } catch (err) {
+        if (generation !== generationRef.current || p !== pathRef.current) return;
         // DEC_518: on reject, leave data untouched (stale rows stay on
         // screen) and surface the failure via error.
         setError(err instanceof ApiError ? err.message : failureMessage);
@@ -43,6 +52,9 @@ function useCachedReadInternal<T>(
   );
 
   useEffect(() => {
+    pathRef.current = path;
+    generationRef.current += 1;
+    const generation = generationRef.current;
     if (path === null) {
       setData(undefined);
       setError(null);
@@ -51,27 +63,18 @@ function useCachedReadInternal<T>(
     // Seed synchronously from the cache before issuing the re-read, so a
     // path change that already has a cached payload paints immediately.
     setData(peekCachedRead<T>(path));
-    let cancelled = false;
-    (async () => {
-      try {
-        const fresh = await read(path);
-        if (cancelled) return;
-        setData(fresh);
-        setError(null);
-      } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : failureMessage);
-      }
-    })();
+    void runRead(path, generation);
     return () => {
-      cancelled = true;
+      // Bump on unmount and on every dep change so an in-flight resolve for
+      // the outgoing (path, generation) pair is discarded by runRead's guard.
+      generationRef.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, mutationVersion]);
 
   const refetch = useCallback(async () => {
     if (path === null) return;
-    await runRead(path);
+    await runRead(path, generationRef.current);
   }, [path, runRead]);
 
   // DEC_678: loading means "nothing to render", never "a request is in
