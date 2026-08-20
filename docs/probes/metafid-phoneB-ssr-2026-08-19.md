@@ -25,17 +25,17 @@
    block restores only 14 — missing: -slot-time, -slot-card-title,
    -slot-card-meta, -slot-clash, -slot-free-label, -slot-free-length,
    -room-chip, -sheet, -footer-armed-title, -footer-armed-ref.
-   RESOLVED: agenda.css:1118's terminal `@media (max-width: 700px)` block
+   RESOLVED: agenda.css's terminal `@media (max-width: 700px)` block
    now restores all 24 classes named in the agenda.css:1074-1104 leak-guard
    list, including the ten named missing here, each a top-level rule inside
-   the terminal block: agenda.css:1294 `.chq-phone-slot-time {`;
-   agenda.css:1318 `.chq-phone-slot-card-meta {`; agenda.css:1326
-   `.chq-phone-slot-card-title {`; agenda.css:1340 `.chq-phone-slot-clash {`;
-   agenda.css:1389 `.chq-phone-slot-free-label {`; agenda.css:1396
-   `.chq-phone-slot-free-length {`; agenda.css:1257
-   `.chq-phone-room-chip {`; agenda.css:1497 `.chq-phone-sheet {`;
-   agenda.css:1453 `.chq-phone-footer-armed-title {`; agenda.css:1464
-   `.chq-phone-footer-armed-ref {`.
+   the terminal block (drift-proof citations, DEC-967 wave-115):
+   agenda.css`.chq-phone-slot-time {`;
+   agenda.css`.chq-phone-slot-card-meta {`;
+   agenda.css`.chq-phone-slot-card-title {`; agenda.css`.chq-phone-slot-clash {`;
+   agenda.css`.chq-phone-slot-free-label {`;
+   agenda.css`.chq-phone-slot-free-length {`;
+   agenda.css`.chq-phone-room-chip {`; agenda.css`.chq-phone-sheet {`;
+   agenda.css`.chq-phone-footer-armed-title {`; agenda.css`.chq-phone-footer-armed-ref {`.
 
 ## HIGH
 - Reviewer scorecard +31px overflow (chq-user-identity nowrap in a header

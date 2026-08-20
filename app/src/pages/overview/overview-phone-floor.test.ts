@@ -198,13 +198,13 @@ describe('overview phone tap-floor + overflow fixes (task w8-g, DEC-393/DEC-989)
     expect(fixBlockIsLastConstruct(badCss, FIX_BLOCK_MARKER)).toBe(false);
   });
 
-  it.each([
-    'chq-overview-row-actions .chq-overview-btn',
-    'chq-overview-row-actions-inline .chq-overview-btn',
-    'chq-overview-row-actions-column .chq-overview-btn',
-  ])('reaches the 44px tap-floor on the anchor inside %s', (compound) => {
-    expect(hasFloorShapeForSelector(CSS, compound)).toBe(true);
-  });
+  // task w12-o (DEC-937 wave-121/123): the three `.chq-overview-btn`
+  // compounds formerly asserted here are PAINTED (border + background,
+  // overview.css:358) and were moved off this borderless cancelled-padding
+  // shape entirely (removed from the shared rule's own selector list, not
+  // merely out-cascaded) -- they now reach the floor with their own 16px
+  // padding and no negative margin, asserted below in the "DEC-937 DRAIN"
+  // describe block instead.
 
   it.each(['chq-overview-link-btn', 'chq-overview-section-action'])(
     'grows %s directly (it is itself the tappable control, not a container)',
@@ -313,25 +313,36 @@ describe('overview row-action-anchor tap-floor drain (task w9-i, DEC-393 wave-12
   });
 });
 
-// DEC-937 DRAIN (task w10-n): .chq-overview-btn is PAINTED
-// (border/background/padding: 9px 16px, overview.css:358), unlike the
-// borderless .chq-overview-link-btn/.chq-overview-section-action tiers the
-// wave-90 cancelled-padding rule above was written for -- that rule's
+// DEC-937 DRAIN (task w10-n; task w12-o completes it): .chq-overview-btn is
+// PAINTED (border/background/padding: 9px 16px, overview.css:358), unlike
+// the borderless .chq-overview-link-btn/.chq-overview-section-action tiers
+// the wave-90 cancelled-padding rule above was written for -- that rule's
 // padding-inline:10px/margin-inline:-10px narrows the drawn face and bleeds
-// the bordered box past its layout edge. A later same-specificity rule
-// (appended, DEC-385 -- the wave-90 rule is never edited) restores the
-// painted tier's horizontal padding and drops the bleed. These assertions
-// resolve the CASCADE (last-declared-value-wins for a given property, same
-// specificity, same selector) across every rule for each selector in the
-// terminal phone block, rather than trusting a single rule's body in
-// isolation -- a stale/duplicate declaration earlier in the block must not
-// hide a still-live regression.
+// the bordered box past its layout edge. task w10-n first shipped this as
+// an appended same-specificity override (DEC-385); task w12-o instead
+// removed the three `.chq-overview-btn` selectors from the wave-90 rule's
+// own selector list, so the drain rule below is now their SOLE declarer
+// (cancelled-padding-face.scan matches by rule text, so an out-cascaded
+// but still-present cancelled pair still counted as a painted-idiom
+// member). These assertions resolve the CASCADE (last-declared-value-wins
+// for a given property, same specificity, same selector) across every rule
+// for each selector in the terminal phone block, rather than trusting a
+// single rule's body in isolation -- a stale/duplicate declaration earlier
+// in the block must not hide a still-live regression.
 describe('DEC-937 DRAIN (task w10-n): painted .chq-overview-btn de-cancelled, borderless tiers untouched', () => {
   const PAINTED_COMPOUND_SELECTORS = [
     'chq-overview-row-actions .chq-overview-btn',
     'chq-overview-row-actions-inline .chq-overview-btn',
     'chq-overview-row-actions-column .chq-overview-btn',
   ];
+
+  /** True if `body` still carries the cancelled-padding idiom itself
+   * (padding-inline:Npx paired with margin-inline:-Npx for the same N). */
+  function cancelledPaddingPair(body: string): boolean {
+    const pi = body.match(/padding-inline\s*:\s*(\d+)px/);
+    const mi = body.match(/margin-inline\s*:\s*-(\d+)px/);
+    return !!pi && !!mi && pi[1] === mi[1];
+  }
 
   /** The value of the LAST declaration of `prop` across every rule (in
    * source order) inside the phone block(s) whose selector list contains
@@ -352,14 +363,21 @@ describe('DEC-937 DRAIN (task w10-n): painted .chq-overview-btn de-cancelled, bo
     return value;
   }
 
-  it.each(PAINTED_COMPOUND_SELECTORS)('%s: at least two rules declare it (the wave-90 cancelled-padding rule plus this drain\'s override)', (compound) => {
+  it.each(PAINTED_COMPOUND_SELECTORS)('%s: at least one rule declares it, and none of them is the wave-90 cancelled-padding rule (task w12-o removed it from that rule\'s own selector list)', (compound) => {
     const rules = narrowMediaRules(CSS, 700).filter((r) =>
       r.selector
         .split(',')
         .map((s) => s.trim())
         .includes(`.${compound}`),
     );
-    expect(rules.length).toBeGreaterThanOrEqual(2);
+    expect(rules.length).toBeGreaterThanOrEqual(1);
+    // None of the matching rules is the wave-90 cancelled-padding rule
+    // itself -- that rule's body still pairs padding-inline:10px with
+    // margin-inline:-10px, and no rule matching this painted compound may
+    // carry that pair any more.
+    for (const rule of rules) {
+      expect(cancelledPaddingPair(rule.body)).toBe(false);
+    }
   });
 
   it.each(PAINTED_COMPOUND_SELECTORS)('%s: cascade-resolved min-height is 44px', (compound) => {

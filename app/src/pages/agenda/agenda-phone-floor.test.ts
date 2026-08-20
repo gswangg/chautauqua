@@ -179,13 +179,18 @@ describe('agenda phone tap-floor + overflow fixes (task w8-g, DEC-393/DEC-989)',
     expect(fixBlockIsLastConstruct(badCss, FIX_BLOCK_MARKER)).toBe(false);
   });
 
-  it.each([
-    'chq-agenda-head-actions .chq-btn',
-    'chq-breaks-add-actions .chq-btn',
-    'chq-breaks-row-actions .chq-btn',
-    'chq-phone-footer-actions .chq-phone-footer-btn',
-  ])('reaches the 44px tap-floor on the anchor inside %s', (compound) => {
-    expect(hasFloorShapeForSelector(CSS, compound)).toBe(true);
+  // task w12-o (DEC-937 wave-121/123): three of the original four compounds
+  // here -- .chq-agenda-head-actions .chq-btn, .chq-breaks-add-actions
+  // .chq-btn, .chq-phone-footer-actions .chq-phone-footer-btn -- are
+  // PAINTED (.chq-btn-primary/-secondary) and were moved off this
+  // borderless cancelled-padding shape entirely (removed from the shared
+  // rule's own selector list, not merely out-cascaded); they now reach the
+  // floor with their own 16px padding and no negative margin, asserted
+  // below in the "agenda phone painted-anchor drain" describe block.
+  // .chq-breaks-row-actions .chq-btn stays here -- it is genuinely
+  // borderless (.chq-btn-tertiary, see that describe block's own pin).
+  it('reaches the 44px tap-floor on the anchor inside chq-breaks-row-actions .chq-btn', () => {
+    expect(hasFloorShapeForSelector(CSS, 'chq-breaks-row-actions .chq-btn')).toBe(true);
   });
 
   it('grows .chq-toolbar-link directly (it is itself the anchor, not a container)', () => {
