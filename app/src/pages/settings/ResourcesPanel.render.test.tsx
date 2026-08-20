@@ -156,14 +156,14 @@ describe('ResourcesPanel file upload discloses caps up front (w63-c)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
     fireEvent.click(await screen.findByRole('button', { name: 'File' }));
 
-    const fileTitleInput = screen.getByPlaceholderText('Title');
+    const fileTitleInput = screen.getByLabelText('Name');
     fireEvent.change(fileTitleInput, { target: { value: 'My Slides' } });
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const badFile = new File(['x'], 'malware.exe', { type: 'application/octet-stream' });
     fireEvent.change(fileInput, { target: { files: [badFile] } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Upload file' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add it' }));
 
     const alert = await screen.findByRole('alert');
     for (const ext of allowedUploadExtensions('handout')) {
@@ -171,7 +171,7 @@ describe('ResourcesPanel file upload discloses caps up front (w63-c)', () => {
     }
     expect(alert.textContent).toContain('Title is kept');
 
-    expect((screen.getByPlaceholderText('Title') as HTMLInputElement).value).toBe('My Slides');
+    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('My Slides');
 
     expect(
       fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST'),
@@ -208,19 +208,20 @@ describe('ResourcesPanel Add-a-resource modal (DEC-047 wave-64 amendment)', () =
     // Wiki page selected by default: content textarea present, no file input.
     expect(document.querySelector('textarea')).not.toBeNull();
     expect(document.querySelector('input[type="file"]')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Add wiki page' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Upload file' })).not.toBeInTheDocument();
+    // Chautauqua Settings.dc.html:1469 -- ONE primary label, 'Add it', in
+    // both kinds; it never relabels under the pointer.
+    expect(screen.getByRole('button', { name: 'Add it' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'File' }));
 
-    // File selected: file input present, no content textarea.
+    // File selected: file input present, no content textarea. The primary
+    // still reads 'Add it'.
     expect(document.querySelector('input[type="file"]')).not.toBeNull();
     expect(document.querySelector('textarea')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Upload file' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add wiki page' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add it' })).toBeInTheDocument();
 
-    // Only one Title input in the DOM at any time.
-    expect(screen.getAllByPlaceholderText('Title')).toHaveLength(1);
+    // Only one Name input in the DOM at any time.
+    expect(screen.getAllByLabelText('Name')).toHaveLength(1);
   });
 
   it('submitting the wiki kind POSTs to the resources endpoint and closes the modal', async () => {
@@ -233,9 +234,9 @@ describe('ResourcesPanel Add-a-resource modal (DEC-047 wave-64 amendment)', () =
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
 
-    fireEvent.change(screen.getByPlaceholderText('Title'), { target: { value: 'Speaker FAQ' } });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Speaker FAQ' } });
     fireEvent.change(document.querySelector('textarea')!, { target: { value: 'Some content' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add wiki page' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add it' }));
 
     await waitFor(() => {
       const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
@@ -259,12 +260,12 @@ describe('ResourcesPanel Add-a-resource modal (DEC-047 wave-64 amendment)', () =
     fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
     fireEvent.click(screen.getByRole('button', { name: 'File' }));
 
-    fireEvent.change(screen.getByPlaceholderText('Title'), { target: { value: 'Handout.pdf' } });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Handout.pdf' } });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const goodFile = new File(['x'], 'handout.pdf', { type: 'application/pdf' });
     fireEvent.change(fileInput, { target: { files: [goodFile] } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Upload file' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add it' }));
 
     await waitFor(() => {
       const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
@@ -273,6 +274,49 @@ describe('ResourcesPanel Add-a-resource modal (DEC-047 wave-64 amendment)', () =
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('ResourcesPanel Add-a-resource modal matches the frame (DEC-650 wave-130 amendment)', () => {
+  it('reads "Add it" on the primary in both kinds, never relabelling the verb (Chautauqua Settings.dc.html:1469)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    expect(screen.getByRole('button', { name: 'Add it' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'File' }));
+    expect(screen.getByRole('button', { name: 'Add it' })).toBeInTheDocument();
+  });
+
+  it('labels the name field "Name" with the frame hint, no placeholder repeating the label (:1455, :1457)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    const nameInput = screen.getByLabelText('Name');
+    expect(nameInput).toBeInTheDocument();
+    expect(nameInput).not.toHaveAttribute('placeholder', 'Title');
+    expect(screen.getByText('What speakers see in the list')).toBeInTheDocument();
+  });
+
+  it('titles the modal "Add a resource" (:1448)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: 'Add a resource' })).toBeInTheDocument();
   });
 });
 
