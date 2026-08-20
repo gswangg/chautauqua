@@ -37,6 +37,7 @@ function makeSelectChain(rows: unknown[], onWhere?: (cond: unknown) => unknown[]
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
+    leftJoin: () => chain,
     where: (cond: unknown) => {
       const filtered = onWhere?.(cond);
       return filtered ? makeSelectChain(filtered) : chain;

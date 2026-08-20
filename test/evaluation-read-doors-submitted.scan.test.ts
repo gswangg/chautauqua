@@ -366,10 +366,11 @@ describe("DEC-873: real-tree scan over the FULL src/ evaluation read-door surfac
     const repoRoot = resolve(__dirname, "..");
     const realContent = readFileSync(resolve(repoRoot, "src/server/repo/comms.ts"), "utf8");
     expect(realContent).toContain("submittedEvaluationCondition()"); // sanity: the fix is present
-    const reverted = realContent.replace(
-      /submittedEvaluationCondition\(\),\n(\s*)\),\n(\s*)\)\n(\s*)\.orderBy\(asc\(schema\.evaluation\.createdAt\)/,
-      "),\n$2)\n$3.orderBy(asc(schema.evaluation.createdAt)",
-    );
+    // Anchored on the call text itself (not on a fixed indentation run) so
+    // that a future reshuffle of the surrounding WHERE clause still deletes
+    // exactly the `submittedEvaluationCondition()` line and still yields a
+    // synthetic file the scan flags, rather than silently no-op'ing.
+    const reverted = realContent.replace(/[ \t]*submittedEvaluationCondition\(\),\n/, "");
     expect(reverted).not.toEqual(realContent); // sanity: the replace actually matched
     const violations = findEvaluationReadDoorViolations([{ path: "src/server/repo/comms.ts", content: reverted }], EXEMPTIONS);
     expect(violations.length).toBeGreaterThan(0);

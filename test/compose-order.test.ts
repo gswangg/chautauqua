@@ -23,6 +23,7 @@ function makeChain(rows: unknown[], orderByLog?: unknown[][]) {
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
+    leftJoin: () => chain,
     where: () => chain,
     orderBy: (...args: unknown[]) => {
       orderByLog?.push(args);

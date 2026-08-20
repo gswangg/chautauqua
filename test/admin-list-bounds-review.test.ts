@@ -347,6 +347,7 @@ function makeCappedFakeDb(rowCount: number, makeRow: (i: number) => Record<strin
       calls.push(call);
       const chain = {
         from: () => chain,
+        leftJoin: () => chain,
         where: () => chain,
         orderBy: (..._args: unknown[]) => {
           call.orderByCalled = true;
