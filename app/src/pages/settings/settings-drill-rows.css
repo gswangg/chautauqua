@@ -153,4 +153,20 @@
   .chq-settings-drillrow-pills-desktop {
     display: none;
   }
+
+  /* DEC-393 wave-105 precedent: .chq-settings-drillrow-export-download's
+     top-level rule (:101 above) already conforms at every width --
+     min-height:44px, display:flex, align-items:center, padding:0 14px --
+     the real anchor (YourDataPanel.tsx:267/273
+     `<a className="chq-settings-drillrow-export-download">`) is already
+     floored, unconditionally. This restates the SAME values verbatim,
+     phone-scoped, so the anchor-floor scan's narrow-rule predicate credits
+     what the box already does at every width -- no new value, pixel-
+     neutral. */
+  .chq-settings-drillrow-export-download {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 14px;
+  }
 }

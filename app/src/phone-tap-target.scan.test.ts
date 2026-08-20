@@ -190,9 +190,15 @@ function findOffenders(): string[] {
 // grammar, no declaration added). Lowered to the measured truth; this
 // ratchet may only fall.
 //
-// Megabatch (wave-120 Thunderdome): both lowerings above are independent and
-// were merged in one pass; the constant below is the re-measured combined
-// truth, not either branch's figure.
+// Re-measured 58 -> 53 wave 120 (v12m-w9-j, DEC-393 wave-120 three-receipt
+// ruling): drained the five owned offenders (speakers.css .chq-row-title/
+// .chq-speakers-phone-head-actions, task-view.css .chq-taskview-open,
+// settings-drill-rows.css/settings.css) plus the (no CSS rule) 6th row.
+//
+// Megabatch (wave-120 Thunderdome): the w9-k, w9-i and w9-j lowerings above are
+// independent drains of disjoint offender sets, merged in one pass; the constant
+// below is the re-measured combined truth of the merged tree, not any single
+// branch's figure. This ratchet may only fall.
 export const ANCHOR_FLOOR_OFFENDERS_CEILING = 52;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {

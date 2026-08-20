@@ -422,6 +422,31 @@ describe('v12m-w2-c: Speakers phone frames + DEC-368', () => {
   });
 });
 
+// DEC-393 wave-120 three-receipt ruling (v12m-w9-j): the five row-action-
+// anchor tap-floor offenders this lane owned (phone-tap-target.scan.test.ts's
+// ANCHOR_FLOOR_OFFENDERS_CEILING).
+describe('v12m-w9-j: DEC-393 wave-120 tap-floor receipts (speakers.css)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  it('.chq-row-title takes shape 3: exempted, composed from the styles.css shared base -- never a duplicate floor', () => {
+    expect(css).toMatch(
+      /tap-floor-exempt:[^*]*\.chq-row-title[^*]*\*\/\s*\.chq-speakers-grid \.chq-speakers-name-link\.chq-row-title\s*\{/,
+    );
+  });
+
+  it('.chq-speakers-phone-head-actions takes shape 3: exempted, both children are floored chq-btn controls', () => {
+    expect(css).toMatch(
+      /tap-floor-exempt:[^*]*chq-btn[^*]*\*\/\s*\.chq-speakers-phone-head-actions\s*\{/,
+    );
+  });
+
+  it('.chq-speakers-card-actions takes shape 3: exempted, both children are floored chq-btn controls (stays (no CSS rule), a real finding left standing)', () => {
+    expect(css).toMatch(
+      /tap-floor-exempt:[^*]*chq-btn[^*]*\*\/\s*\.chq-speakers-card-actions\s*\{/,
+    );
+  });
+});
+
 // User-filed (v12 review), ring geometry + hover convention. Extends the
 // dense-chip pins above rather than replacing them: the cancelled padding
 // they already assert is what gave the ring a box to round, and these hold

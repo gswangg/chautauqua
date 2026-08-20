@@ -316,3 +316,39 @@ describe('Settings cluster phone floor / overflow backlog (task w8-f)', () => {
     });
   });
 });
+
+// DEC-393 wave-120 three-receipt ruling (v12m-w9-j): the two settings-cluster
+// row-action-anchor tap-floor offenders this lane owned
+// (phone-tap-target.scan.test.ts's ANCHOR_FLOOR_OFFENDERS_CEILING).
+describe('v12m-w9-j: DEC-393 wave-120 tap-floor receipts', () => {
+  it('.chq-settings-tokens-col-actions takes shape 3: exempted, a <th>-only column class whose real anchor is already floored positionally', () => {
+    expect(CSS).toMatch(
+      /tap-floor-exempt:[^*]*th-only[^*]*\*\/\s*\.chq-settings-tokens-table \.chq-settings-tokens-col-actions\s*\{/,
+    );
+    // The positional rule the exemption cites really exists and really
+    // floors the real anchor.
+    const positional = CSS.match(
+      /\.chq-settings-tokens-table tbody td:last-child \.chq-link-button\s*\{([^}]*)\}/,
+    );
+    expect(positional, 'the positional Revoke-anchor rule the exemption cites must exist').not.toBeNull();
+    expect(hasFloorShape(positional![1]!)).toBe(true);
+  });
+
+  it('.chq-settings-drillrow-export-download takes shape 1: a pixel-neutral phone-scoped restatement of its always-on top-level box', () => {
+    const drillRowsCss = stripComments(readFileSync(join(HERE, 'settings-drill-rows.css'), 'utf-8'));
+    const mediaStart = drillRowsCss.indexOf('@media');
+    expect(mediaStart).toBeGreaterThan(0);
+    const beforeMedia = drillRowsCss.slice(0, mediaStart);
+    const afterMedia = drillRowsCss.slice(mediaStart);
+
+    // Top-level rule already conforms at every width (this is why the
+    // phone rule below is a verbatim restatement, not a new value).
+    const topLevel = beforeMedia.match(/\.chq-settings-drillrow-export-download\s*\{([^}]*)\}/);
+    expect(topLevel, 'expected a top-level rule').not.toBeNull();
+    expect(hasFloorShape(topLevel![1]!)).toBe(true);
+
+    const phoneRule = afterMedia.match(/\.chq-settings-drillrow-export-download\s*\{([^}]*)\}/);
+    expect(phoneRule, 'expected a phone-scoped restatement').not.toBeNull();
+    expect(hasFloorShape(phoneRule![1]!)).toBe(true);
+  });
+});
