@@ -27,11 +27,11 @@
 
 import { DEC_367, DEC_373, DEC_374, DEC_838, DEC_851 } from "../../decisions";
 import { ACCENT_BOUND_CLASSES } from "./css/accent-classes";
-import { CHROME_CSS } from "./css/chrome.css";
-import { CARDS_CSS } from "./css/cards.css";
-import { AGENDA_CSS } from "./css/agenda.css";
-import { RAIL_CSS } from "./css/rail.css";
-import { EMPTY_CSS } from "./css/empty.css";
+import { CHROME_CSS, CHROME_PHONE_CSS } from "./css/chrome.css";
+import { CARDS_CSS, CARDS_PHONE_CSS } from "./css/cards.css";
+import { AGENDA_CSS, AGENDA_PHONE_CSS } from "./css/agenda.css";
+import { RAIL_CSS, RAIL_PHONE_CSS } from "./css/rail.css";
+import { EMPTY_CSS, EMPTY_PHONE_CSS } from "./css/empty.css";
 
 void DEC_367;
 void DEC_373;
@@ -41,4 +41,13 @@ void DEC_851;
 
 export { ACCENT_BOUND_CLASSES };
 
-export const PUBLIC_CSS = `${CHROME_CSS}${CARDS_CSS}${AGENDA_CSS}${RAIL_CSS}${EMPTY_CSS}`;
+// DEC-385 wave-143: the five composed modules contribute their DESKTOP
+// halves first, in the same order they always had, and their phone halves
+// after -- also in that same ascending order. Before this split each
+// module's own max-width:700px block sat mid-sheet, so (for example)
+// CHROME's phone rules were followed by CARDS/AGENDA/RAIL desktop rules and
+// lost every equal-specificity tie to them. Nothing here is reordered
+// relative to its peers and no declaration is reworded: desktop output is
+// byte-identical, and the phone blocks now form the ONE contiguous trailing
+// region test/phone-terminal-block.scan.test.ts grades.
+export const PUBLIC_CSS = `${CHROME_CSS}${CARDS_CSS}${AGENDA_CSS}${RAIL_CSS}${EMPTY_CSS}${CHROME_PHONE_CSS}${CARDS_PHONE_CSS}${AGENDA_PHONE_CSS}${RAIL_PHONE_CSS}${EMPTY_PHONE_CSS}`;

@@ -8,6 +8,9 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEC_367, DEC_989 } from "../src/decisions";
+// The runtime (fully composed) sheet, for the DEC-385 wave-143 pin below --
+// every other assertion in this file is deliberately a source-text read.
+import { PORTAL_CSS as COMPOSED_PORTAL_CSS } from "../src/routes/portal/portal.css";
 
 void DEC_367;
 void DEC_989;
@@ -25,10 +28,12 @@ const RAIL_CSS = readFileSync(
 );
 
 /** Extracts the exported template-literal string body: from the first
- * backtick after `export const <NAME> = ` to the matching closing backtick
- * that terminates the template literal (the LAST backtick in the file, since
- * every one of these four modules exports exactly one top-level template
- * literal). */
+ * backtick after `export const <NAME> = ` to the LAST backtick in the file.
+ * DEC-385 wave-143 split cards.css.ts and rail.css.ts into a `<NAME>_CSS` +
+ * `<NAME>_PHONE_CSS` pair, so those two files now hold two literals and this
+ * span covers both -- which is what these assertions want, since the phone
+ * half is still the tail of the same sheet and the intervening `export
+ * const ...` text matches no selector any assertion here looks for. */
 function templateBody(src: string): string {
   const firstBacktick = src.indexOf("`");
   const lastBacktick = src.lastIndexOf("`");
@@ -302,9 +307,19 @@ describe("portal.css.ts: .chq-portal-done-when escapes, .chq-field-counter is ex
     expect(rule).not.toMatch(/text-overflow/);
   });
 
-  it("appends the new phone block as the LAST top-level construct in the module", () => {
-    const last = at(blocks, -1);
-    const trailing = body.slice(last.end + 1).trim();
+  // DEC-385 wave-143: this pin is graded on the COMPOSED export, not on the
+  // file's trailing bytes. portal.css.ts's own literal ends with
+  // `${ERROR_STATES_PHONE_CSS}` -- a composed PHONE constant, which is part
+  // of the sheet's trailing phone region rather than something after it, so
+  // a source-text read of the last `}` reports a false violation. Reading
+  // the runtime string asks the real question: once every interpolation is
+  // resolved, is the last top-level construct a phone block with nothing
+  // following it?
+  it("appends the new phone block as the LAST top-level construct of the COMPOSED sheet", () => {
+    const composedBlocks = extract700Blocks(COMPOSED_PORTAL_CSS);
+    expect(composedBlocks.length).toBeGreaterThan(0);
+    const last = at(composedBlocks, -1);
+    const trailing = COMPOSED_PORTAL_CSS.slice(last.end + 1).trim();
     expect(trailing).toBe("");
   });
 });

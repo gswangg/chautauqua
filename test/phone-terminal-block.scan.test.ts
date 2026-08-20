@@ -540,15 +540,24 @@ describe("one derived terminal-phone-block contract (DEC-385 amendment wave 98)"
     }
   });
 
-  it("portal.css.ts: the ERROR_STATES_CSS/ERROR_STATES_PHONE_CSS split (task w16-bb) landed correctly -- its LAST two phone blocks (its own terminal block, then ERROR_STATES_PHONE_CSS's, composed immediately after) are contiguous with nothing trailing. portal.css.ts is NOT fully conformant overall (see next test / docs/design/audit/terminal-phone-block-v12.md): it separately composes EMPTY_CSS mid-file (line ~703, pre-existing, unrelated to ERROR_STATES_CSS, out of this task's scope), which this widened scan newly surfaces as a non-terminal phone block landing BEFORE portal's own terminal block -- that pre-existing gap, not this task's split, is why the sheet's OVERALL violation check (next test) still flags it", () => {
+  // DEC-385 wave-143: this pin used to assert the sheet was still in breach
+  // -- trailingText NOT null, matching /\.chq-field-error/ -- because
+  // EMPTY_CSS carried its own mid-file phone block and w16-bb had scoped
+  // only the ERROR_STATES_CSS split. Splitting EMPTY_PHONE_CSS out the same
+  // way closed that gap, so the pin now asserts the conformant shape rather
+  // than the defect: a sentinel that asserts a live defect makes fixing that
+  // defect illegal (field guide w103, DEC-967 wave-143).
+  it("portal.css.ts is conformant on its COMPOSED output: all three phone blocks (EMPTY_PHONE_CSS's, its own terminal block, then ERROR_STATES_PHONE_CSS's) form one contiguous trailing region with nothing after them", () => {
     const portal = RESULTS.find((r) => r.relPath === "src/routes/portal/portal.css.ts");
     expect(portal).toBeDefined();
-    expect(portal!.phoneBlocks.length).toBe(3); // EMPTY_CSS's (mid-file, pre-existing gap) + portal's own terminal + ERROR_STATES_PHONE_CSS's
-    const [own, phoneCss] = portal!.phoneBlocks.slice(1);
+    // EMPTY_PHONE_CSS's (composed first, ascending source order) + portal's
+    // own terminal block + ERROR_STATES_PHONE_CSS's, all three contiguous.
+    expect(portal!.phoneBlocks.length).toBe(3);
+    const [emptyPhone, own, phoneCss] = portal!.phoneBlocks;
+    expect(emptyPhone).toBeDefined();
     expect(own).toBeDefined();
     expect(phoneCss).toBeDefined();
-    expect(portal!.trailingText).not.toBeNull(); // the EMPTY_CSS gap, not this task's work, trips the sheet overall
-    expect(portal!.trailingText).toMatch(/\.chq-field-error/); // the flagged gap is ERROR_STATES_CSS's base rule following EMPTY_CSS's early block, not anything after this task's appended ERROR_STATES_PHONE_CSS block
+    expect(portal!.trailingText).toBeNull();
   });
 
   it("composed-blindness regression proof: a fabricated host that composes a fabricated module carrying a phone block, with a non-phone rule sitting AFTER the composed import, is invisible to a raw-file-text scan but caught once composition is resolved", () => {

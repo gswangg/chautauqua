@@ -489,6 +489,19 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
   .chq-pub-agenda-dock,
   .chq-pub-schedule-dock { display: none; }
 
+`;
+
+/* DEC-385 wave-143: this module is COMPOSED into other sheets, so a
+   max-width:700px block sitting inside its own body lands MID-sheet in
+   every host and is silently outranked by whatever desktop rule the next
+   composed module contributes after it (equal specificity resolves by
+   source order). The block below -- with its own documentation comment --
+   is this module's phone half, split out VERBATIM (nothing reordered,
+   nothing reworded), so each host can concatenate it into its ONE
+   contiguous trailing phone region in ascending source order. AGENDA_CSS
+   keeps every non-phone rule, so desktop output is byte-identical. This
+   is the same split w16-bb already applied to ERROR_STATES_CSS. */
+export const AGENDA_PHONE_CSS = `
   /* DEC-385 wave-102 amendment: this sheet's two ≤700px blocks
      (single phone switch shared by every stylesheet -- header/main
      gutters, session-row stacking, itinerary controls, the phone-list

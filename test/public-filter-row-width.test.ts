@@ -5,7 +5,14 @@
 // in the <=700px media block (never unconditionally).
 
 import { describe, expect, it } from "vitest";
-import { CHROME_CSS } from "../src/routes/public/css/chrome.css";
+import { CHROME_CSS as CHROME_DESKTOP_CSS, CHROME_PHONE_CSS } from "../src/routes/public/css/chrome.css";
+
+// DEC-385 wave-143: each of these modules now exports its CSS as a
+// desktop/phone PAIR so hosts can concatenate the phone halves into one
+// contiguous trailing region. This file's assertions are about the
+// module's FULL contribution to the sheet, which is the pair joined in
+// that same order -- exactly the bytes the single export used to hold.
+const CHROME_CSS = `${CHROME_DESKTOP_CSS}${CHROME_PHONE_CSS}`;
 
 function declaredWidth(css: string, className: string): number {
   const re = new RegExp(`\\.${className}\\s*\\{([^}]*)\\}`);

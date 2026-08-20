@@ -7,7 +7,11 @@
 // `<style dangerouslySetInnerHTML={{ __html: PROGRAMME_CSS }} />`, exactly
 // like shell.tsx's BaseStyles inlines PUBLIC_CSS.
 
-import { EMPTY_CSS } from "./css/empty.css";
+// DEC-385 wave-143: EMPTY_CSS's phone half is now a separate export
+// (EMPTY_PHONE_CSS); composing both back to back here reproduces this
+// sheet's previous bytes exactly -- the block was already terminal in this
+// host, so nothing moves.
+import { EMPTY_CSS, EMPTY_PHONE_CSS } from "./css/empty.css";
 
 export const PROGRAMME_CSS = `
   .chq-prog-main {
@@ -103,5 +107,5 @@ export const PROGRAMME_CSS = `
       display: none;
     }
   }
-${EMPTY_CSS}
+${EMPTY_CSS}${EMPTY_PHONE_CSS}
 `;

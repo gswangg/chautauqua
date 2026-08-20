@@ -15,7 +15,14 @@ import { Hono } from "hono";
 import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
-import { AGENDA_CSS } from "../src/routes/public/css/agenda.css";
+import { AGENDA_CSS as AGENDA_DESKTOP_CSS, AGENDA_PHONE_CSS } from "../src/routes/public/css/agenda.css";
+
+// DEC-385 wave-143: each of these modules now exports its CSS as a
+// desktop/phone PAIR so hosts can concatenate the phone halves into one
+// contiguous trailing region. This file's assertions are about the
+// module's FULL contribution to the sheet, which is the pair joined in
+// that same order -- exactly the bytes the single export used to hold.
+const AGENDA_CSS = `${AGENDA_DESKTOP_CSS}${AGENDA_PHONE_CSS}`;
 
 const EVENT_ROW = {
   id: "ev1",

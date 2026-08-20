@@ -256,6 +256,19 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
      of claiming a fixed 280px column that can't fit. Appended at the true
      end of this module, after every top-level rule, per DEC-385
      single-direction responsive. */
+`;
+
+/* DEC-385 wave-143: this module is COMPOSED into other sheets, so a
+   max-width:700px block sitting inside its own body lands MID-sheet in
+   every host and is silently outranked by whatever desktop rule the next
+   composed module contributes after it (equal specificity resolves by
+   source order). The block below -- with its own documentation comment --
+   is this module's phone half, split out VERBATIM (nothing reordered,
+   nothing reworded), so each host can concatenate it into its ONE
+   contiguous trailing phone region in ascending source order. CARDS_CSS
+   keeps every non-phone rule, so desktop output is byte-identical. This
+   is the same split w16-bb already applied to ERROR_STATES_CSS. */
+export const CARDS_PHONE_CSS = `
   /* DEC-385 wave-102 amendment: this sheet's earlier ≤700px block (DEC-367
      wave-50, the List | Grid toggle's phone tap floor) is consolidated
      HERE, in ascending source order, ahead of the w8-h overflow-sweep

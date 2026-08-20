@@ -278,6 +278,19 @@ export const CHROME_CSS = `
     }
   }
 
+`;
+
+/* DEC-385 wave-143: this module is COMPOSED into other sheets, so a
+   max-width:700px block sitting inside its own body lands MID-sheet in
+   every host and is silently outranked by whatever desktop rule the next
+   composed module contributes after it (equal specificity resolves by
+   source order). The block below -- with its own documentation comment --
+   is this module's phone half, split out VERBATIM (nothing reordered,
+   nothing reworded), so each host can concatenate it into its ONE
+   contiguous trailing phone region in ascending source order. CHROME_CSS
+   keeps every non-phone rule, so desktop output is byte-identical. This
+   is the same split w16-bb already applied to ERROR_STATES_CSS. */
+export const CHROME_PHONE_CSS = `
   /* DEC-385/DEC-393 (task w7-e): the ONE terminal phone block for this
      sheet -- relocated verbatim from its old, non-terminal position right
      after .chq-pub-filter-row's desktop rule (docs/design/audit/

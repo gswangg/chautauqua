@@ -411,6 +411,19 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     text-decoration: none;
   }
 
+`;
+
+/* DEC-385 wave-143: this module is COMPOSED into other sheets, so a
+   max-width:700px block sitting inside its own body lands MID-sheet in
+   every host and is silently outranked by whatever desktop rule the next
+   composed module contributes after it (equal specificity resolves by
+   source order). The block below -- with its own documentation comment --
+   is this module's phone half, split out VERBATIM (nothing reordered,
+   nothing reworded), so each host can concatenate it into its ONE
+   contiguous trailing phone region in ascending source order. RAIL_CSS
+   keeps every non-phone rule, so desktop output is byte-identical. This
+   is the same split w16-bb already applied to ERROR_STATES_CSS. */
+export const RAIL_PHONE_CSS = `
   /* DEC-385 (w85 amendment, superseded in shape by wave-102 below): this
      fragment's phone declarations are consolidated into ONE block at the
      true end of the file -- previously .chq-pub-surface-title's 26px

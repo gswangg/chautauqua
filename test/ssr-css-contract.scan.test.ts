@@ -137,9 +137,15 @@ function resolveArrayLiteral(raw: string, filePath: string, ident: string): stri
  */
 function extractCssText(filePath: string): string {
   const raw = readFileSync(filePath, "utf-8");
-  const cssMatch = raw.match(/export const \w+_CSS = `([\s\S]*?)`;/);
-  if (!cssMatch) throw new Error(`no exported *_CSS template literal found in ${filePath}`);
-  const css = cssMatch[1] ?? "";
+  // DEC-385 wave-143: a module may now export its CSS as a desktop/phone
+  // PAIR (`X_CSS` + `X_PHONE_CSS`) so hosts can concatenate the phone halves
+  // into one contiguous trailing region. Reading only the FIRST *_CSS export
+  // would make every selector in the phone half invisible to this contract
+  // and report it as a class with no rule. Every *_CSS literal in the file
+  // counts, in declaration order.
+  const cssMatches = [...raw.matchAll(/export const \w+_CSS = `([\s\S]*?)`;/g)];
+  if (cssMatches.length === 0) throw new Error(`no exported *_CSS template literal found in ${filePath}`);
+  const css = cssMatches.map((m) => m[1] ?? "").join("\n");
   return css.replace(/\$\{(\w+)(?:\[(\d+)\])?\}/g, (full, ident: string, idxStr?: string) => {
     if (idxStr !== undefined) {
       const items = resolveArrayLiteral(raw, filePath, ident);

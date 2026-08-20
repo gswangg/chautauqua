@@ -265,8 +265,10 @@ describe("DEC-576 (wave 110 amendment): the SSR phone dock band", () => {
     // The 44px floor (DESIGN-RULINGS): both children reach >=44px via the
     // sheet's own authored min-height, checked against the CSS source
     // rather than jsdom (no stylesheet is applied here).
-    const { AGENDA_CSS } = await import("../src/routes/public/css/agenda.css");
-    const phoneBlock = AGENDA_CSS.slice(AGENDA_CSS.lastIndexOf("@media (max-width: 700px)"));
+    // DEC-385 wave-143: agenda.css.ts exports a desktop/phone PAIR now, so
+    // the dock's phone floors live in AGENDA_PHONE_CSS, not in AGENDA_CSS.
+    const { AGENDA_PHONE_CSS } = await import("../src/routes/public/css/agenda.css");
+    const phoneBlock = AGENDA_PHONE_CSS.slice(AGENDA_PHONE_CSS.lastIndexOf("@media (max-width: 700px)"));
     const icsHeight = Number(phoneBlock.match(/\.chq-pub-agenda-dock-ics\s*\{[^}]*min-height:\s*(\d+)px/)?.[1]);
     const crossHeight = Number(phoneBlock.match(/\.chq-pub-agenda-dock-cross\s*\{[^}]*min-height:\s*(\d+)px/)?.[1]);
     expect(icsHeight).toBeGreaterThanOrEqual(44);
