@@ -119,10 +119,34 @@ describe('phone tap-target floor scan — SSR classless-anchor population', () =
     expect(sites.some((s) => s.tokens.includes('chq-pub-rail-day-row'))).toBe(true);
   });
 
-  it('reports a live measured offender the field guide names (chq-section, portal/index.tsx)', () => {
-    const src = stripTsxComments(readFileSync(join(ROUTES_ROOT, 'portal', 'index.tsx'), 'utf-8'));
-    const sites = classlessAnchorSites(src);
-    expect(sites.filter((s) => s.tokens.includes('chq-section')).length).toBeGreaterThanOrEqual(2);
+  // Wave v12m-w18-e (DEC-967 sighting): the test this replaces named a
+  // PRODUCT offender ("chq-section, portal/index.tsx") that w17-e's own
+  // drain fixed (both anchors there now carry
+  // class="chq-portal-standalone-link", so they no longer contribute a
+  // classless-anchor site at all) -- the scan made fixing its own named
+  // finding illegal, the exact trap this decision names. Non-vacuity is
+  // proved here over an INLINE SYNTHETIC FIXTURE the test owns, never a
+  // product count and never a coordinate in another file.
+  it('reports an offender for a classless anchor keyed on a token with no reaching phone floor (non-vacuity control, synthetic fixture, DEC-967)', async () => {
+    const { mkdtempSync, rmSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const dir = mkdtempSync(join(tmpdir(), 'w18e-nonvacuity-'));
+    try {
+      const tsxPath = join(dir, 'fixture.tsx');
+      writeFileSync(
+        tsxPath,
+        'export const X = () => <section class="chq-w18e-fixture-section"><p><a href="/x">View all things</a></p></section>;',
+      );
+      const sites = classlessAnchorSites(
+        stripTsxComments(readFileSync(tsxPath, 'utf-8')),
+      );
+      expect(sites).toHaveLength(1);
+      expect(sites[0]!.tokens).toEqual(['chq-w18e-fixture-section']);
+      const offenders = findSsrClasslessAnchorOffenders([tsxPath], [], dir);
+      expect(offenders).toEqual(['fixture.tsx:1 — .chq-w18e-fixture-section']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('stays at or under the SSR classless-anchor ceiling, and never raises it silently', () => {

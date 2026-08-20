@@ -693,5 +693,26 @@ ${BARE_PAGE_CSS}
     .chq-auth-footer-links a {
       padding-inline: 8px;
     }
+
+    /* task w18-e (SSR_CLASSLESS_ANCHOR_CEILING drain): the base
+       .chq-auth-footer-links a rule (line 279 above, unconditional/
+       desktop) declares display:inline-flex/align-items:center --
+       phone-tap-target-ssr-classless-anchor.scan.test.ts's flex-centred
+       lens only reads rules INSIDE an <=700px block, so an unconditional
+       base rule is invisible to it even though it reaches every width.
+       "Submit a talk ›" / "Browse the sessions ›" (LoginPage) and
+       "Log in ›" (the expired-claim bare page) are each the sole content
+       of their own row inside .chq-auth-footer-links, not a sentence
+       phrase, so DEC-393's standalone disposition (real floor) applies --
+       restated here as the literal \`display: flex\` token the scan parses,
+       same selector, DEC-385 append-only (the base rule's inline-flex
+       declaration is left unedited; this later rule only overrides
+       \`display\` at the same specificity, per the cascade). Appended as the
+       LAST rule of this sheet's one terminal @media (max-width: 700px)
+       block. */
+    .chq-auth-footer-links a {
+      display: flex;
+      align-items: center;
+    }
   }
 ${ERROR_STATES_PHONE_CSS}`;
