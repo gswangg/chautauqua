@@ -2346,7 +2346,7 @@
      hugs the row's right edge even though its own text-align is left, so
      the sentence starts partway across the row instead of flush under the
      label above it. Every drawn 390 field hint in the frame reads flush
-     left instead (docs/design/Chautauqua Settings.dc.html:329 CFP's
+     left instead (docs/design/Chautauqua Settings.dc.html:328 CFP's
      edit-view field hint `<span style="font-size:12px;
      color:#565A4B">{{ f.note }}</span>` with no alignment/offset styling
      at all, and :459's "In 6 days" closes hint in the same read-drilled

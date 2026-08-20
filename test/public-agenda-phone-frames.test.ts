@@ -267,8 +267,6 @@ describe("v12 phone frame 'Public agenda' (390) — day switcher + card action",
     expect(phone).toMatch(/border-radius:\s*0/);
   });
 
-  // docs/design/Chautauqua Public and Portal.dc.html:379
-  // `<span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">Wed 13</span>`
   it("phone: each day pill becomes its own shrink-proof, bordered, pill-radius segment (no shared hairline border-right)", () => {
     // findLastRule, not findRule: agenda.css.ts also carries an OLDER
     // phone-scoped `.${DAY_PILL} { min-height: 44px; }` floor rule earlier
@@ -276,6 +274,8 @@ describe("v12 phone frame 'Public agenda' (390) — day switcher + card action",
     // specificity, so the DEC-989 rule appended below it is the one whose
     // properties actually resolve at phone width.
     const phone = findLastRule(PHONE.agenda, DAY_PILL);
+    // docs/design/Chautauqua Public and Portal.dc.html:379
+    // `<span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 15px; font-size:13px; font-weight:500">Wed 13</span>`
     expect(phone).toMatch(/flex:\s*0 0 auto/);
     expect(phone).toMatch(/border-right:\s*none/);
     expect(phone).toMatch(/border:\s*1px solid var\(--chq-border\)/);

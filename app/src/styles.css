@@ -2808,12 +2808,11 @@ select:focus-visible,
      three and the centred group re-centres around a taller total height --
      the label's baseline moves ~6.5px off the other four tabs' baseline.
      Both 390 frames that draw the tab bar (docs/design/Chautauqua
-     Settings.dc.html:299-301, docs/design/Chautauqua
-     Submissions.dc.html:173-180, byte-identical --
+     Settings.dc.html:301, docs/design/Chautauqua
+     Submissions.dc.html:175, byte-identical --
      `<div style="flex:1; min-height:44px; display:flex;
      flex-direction:column; align-items:center; justify-content:center;
-     gap:5px"><span style="{{ t.dot }}"></span><span
-     style="{{ t.text }}">{{ t.label }}</span></div>`) draw exactly TWO
+     gap:5px">`) draw exactly TWO
      children per tab, dot then label -- the badge is app state layered on
      top with no frame member of its own, so it must never become a third
      flex item. DEC-919: re-lined out of flow (position:absolute, given a
