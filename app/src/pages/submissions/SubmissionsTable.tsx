@@ -480,16 +480,18 @@ export function SubmissionsTable() {
           <thead>
             <tr>
               <th className="chq-submissions-col-select">
-                <input
-                  type="checkbox"
-                  className="chq-check"
-                  aria-label="Select all on page"
-                  checked={isPageFullySelected(selection, pageIds)}
-                  ref={(el) => {
-                    if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
-                  }}
-                  onChange={() => setSelection((s) => selectionReducer(s, { type: 'TOGGLE_PAGE', pageIds }))}
-                />
+                <label className="chq-check-cell">
+                  <input
+                    type="checkbox"
+                    className="chq-check"
+                    aria-label="Select all on page"
+                    checked={isPageFullySelected(selection, pageIds)}
+                    ref={(el) => {
+                      if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
+                    }}
+                    onChange={() => setSelection((s) => selectionReducer(s, { type: 'TOGGLE_PAGE', pageIds }))}
+                  />
+                </label>
               </th>
               <th className="chq-submissions-col-ref">Ref</th>
               <th className="chq-submissions-col-title">Title</th>
@@ -518,13 +520,17 @@ export function SubmissionsTable() {
               displayItems.map((item) => (
                 <tr key={item.id}>
                   <td>
-                    <input
-                      type="checkbox"
-                      className="chq-check"
-                      aria-label={`Select ${item.ref}`}
-                      checked={selection.selectedIds.has(item.id)}
-                      onChange={() => setSelection((s) => selectionReducer(s, { type: 'TOGGLE_ROW', id: item.id }))}
-                    />
+                    <label className="chq-check-cell">
+                      <input
+                        type="checkbox"
+                        className="chq-check"
+                        aria-label={`Select ${item.ref}`}
+                        checked={selection.selectedIds.has(item.id)}
+                        onChange={() =>
+                          setSelection((s) => selectionReducer(s, { type: 'TOGGLE_ROW', id: item.id }))
+                        }
+                      />
+                    </label>
                   </td>
                   <td className="chq-submissions-table-ref">{item.ref}</td>
                   <td>
