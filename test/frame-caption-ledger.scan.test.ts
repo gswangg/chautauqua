@@ -110,6 +110,7 @@ import {
   EXPLAINER_EXCLUSIONS,
   FIXTURE_EXCLUSIONS,
   SUPERSEDED_EXCLUSIONS,
+  UNBACKED_EXCLUSIONS,
 } from './frame-caption-ledger/exclusions';
 import {
   SOURCE_FILES,
@@ -143,6 +144,7 @@ export {
   EXPLAINER_EXCLUSIONS,
   FIXTURE_EXCLUSIONS,
   SUPERSEDED_EXCLUSIONS,
+  UNBACKED_EXCLUSIONS,
 };
 export { FRAME_CAPTION_UNMATCHED_CEILING };
 
@@ -317,6 +319,13 @@ describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaig
 
   it('SUPERSEDED exclusions each resolve to their cited file:line:text in the current pack', () => {
     for (const e of SUPERSEDED_EXCLUSIONS) {
+      const hit = ALL_CAPTIONS.find((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
+      expect(hit, `${e.fileName}:${e.line} no longer resolves to the cited text in the pack`).toBeDefined();
+    }
+  });
+
+  it('UNBACKED exclusions each resolve to their cited file:line:text in the current pack', () => {
+    for (const e of UNBACKED_EXCLUSIONS) {
       const hit = ALL_CAPTIONS.find((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
       expect(hit, `${e.fileName}:${e.line} no longer resolves to the cited text in the pack`).toBeDefined();
     }

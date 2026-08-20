@@ -10,8 +10,11 @@
 // keeping it apart from the extraction grammar and match machinery is the
 // whole point of the split (fewer touched files sharing this one's own
 // merge surface, not zero).
+import { DEC_032 } from '../../src/decisions';
 import type { Caption } from './population';
 import { ALL_CAPTIONS } from './population';
+
+void DEC_032; // task w17-g: the Settings retention block's non-build (UNBACKED_EXCLUSIONS below) is a DEC-032 disposition, recorded in DEVIATIONS.md §1
 
 export interface Exclusion {
   fileName: string;
@@ -679,6 +682,27 @@ export const SUPERSEDED_EXCLUSIONS: Exclusion[] = [
   },
 ];
 
+/** (f) UNBACKED -- DEC-976 wave-142's fifth exclusion class (task w17-g). A
+ * caption here draws a control DEVIATIONS.md §1 has already ruled a
+ * deliberate non-build: no column, no endpoint, and no job backs it, so
+ * building the control just to carry the caption would declare a setting
+ * nothing reads. This class is deliberately SELF-GRADING (DEC-967 wave-140's
+ * "a ledger a comment can satisfy is not a ledger" applies here too): every
+ * row's `reason` must quote a line occurring verbatim in DEVIATIONS.md
+ * (test/frame-caption-exclusion-grammar.test.ts's clause 5 checks this
+ * mechanically, never by eye) and cite its backing source file as a BARE
+ * path plus a verbatim backtick quote of that file's own non-build comment
+ * -- never a `path:NNN` coordinate (clause 2 grades this table too). */
+export const UNBACKED_EXCLUSIONS: Exclusion[] = [
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1175,
+    text: 'After that the abstract and reviews are deleted; the contact stays',
+    reason:
+      "DEVIATIONS.md §1 rules the frame's 'Keeping and deleting' block (docs/design/Chautauqua Settings.dc.html:1161-1180) a deliberate non-build, quoting verbatim: \"no retention column, no endpoint, and no deletion job backs any of the three controls — building them alone would declare a setting nothing reads.\" app/src/pages/settings/ExportsPanel.tsx already records the same non-build in its own header comment: `Deliberately does NOT build the frame's 'Keeping and deleting' retention block (docs/design/Chautauqua Settings.dc.html: 1161-1180) -- no column, no endpoint, no rubric backs it; recorded as a deliberate non-build on DEC-032.`",
+  },
+];
+
 export function isExcluded(c: Caption, table: Exclusion[]): boolean {
   return table.some((e) => e.fileName === c.fileName && e.line === c.line && e.text === c.text);
 }
@@ -689,6 +713,7 @@ export const CAPTIONS_AFTER_EXCLUSION: Caption[] = ALL_CAPTIONS.filter(
     !isExcluded(c, FIXTURE_EXCLUSIONS) &&
     !isExcluded(c, EXEMPLAR_ARTICLE_EXCLUSIONS) &&
     !isExcluded(c, COMPOSED_EXCLUSIONS) &&
-    !isExcluded(c, SUPERSEDED_EXCLUSIONS)
+    !isExcluded(c, SUPERSEDED_EXCLUSIONS) &&
+    !isExcluded(c, UNBACKED_EXCLUSIONS)
 );
 
