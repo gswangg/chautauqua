@@ -324,7 +324,9 @@ export function AgendaContent(props: {
       {/* DEC-576 (wave 110 amendment): the SSR phone dock -- the frame's
           filled Download .ics + bordered Speakers band at the foot of the
           390 agenda (docs/design/Chautauqua Public and Portal.dc.html:
-          399-402). Model: src/routes/auth.css.ts:449-478 -- an in-flow
+          400-403 `flex-shrink:0; border-top:1px solid #1B1D17;
+          background:#EFEBDF; padding:12px 16px 16px; display:flex;
+          gap:8px`). Model: src/routes/auth.css.ts:449-478 -- an in-flow
           footer band at the true end of the page's content, not a fixed/
           sticky overlay; agenda.css.ts hides it above 700px with a
           top-level .chq-pub-agenda-dock rule and reveals it in that
@@ -502,7 +504,9 @@ export function ScheduleContent(props: {
       {/* DEC-576 (wave 110 amendment): the SSR phone dock -- filled
           Download .ics + bordered All sessions band at the foot of the
           390 my-schedule frame (docs/design/Chautauqua Public and
-          Portal.dc.html:885-888). Same in-flow-band model as
+          Portal.dc.html:884-887 `flex-shrink:0; border-top:1px solid
+          #1B1D17; background:#EFEBDF; padding:12px 16px 16px;
+          display:flex; gap:8px`). Same in-flow-band model as
           AgendaContent's dock above (src/routes/auth.css.ts:449-478).
           Renders regardless of embed, matching ScheduleRail's own
           un-gated render just above (unlike /agenda, /schedule's rail is

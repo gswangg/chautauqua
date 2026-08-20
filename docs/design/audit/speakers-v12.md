@@ -58,14 +58,14 @@ write-failure banner (`notSaved` reuses the `overdue` modifier, never a new
 one) -- this is correct as shipped. NO STATUS CODE CHANGED: this entry
 records the ruling, it is not a re-skin.
 
-## 2. RESOLVED (wave 106, app/src/pages/speakers/narrowing.ts:1-60, app/src/pages/speakers/OnboardingGrid.tsx:975-990) — "Speakers · search found nothing" (:442) filtered empty state names the excluding facet; the shared EmptyState component does not
+## 2. RESOLVED (wave 106, app/src/pages/speakers/narrowing.ts:1-60, app/src/pages/speakers/OnboardingGrid.tsx:1020-1041) — "Speakers · search found nothing" (:442) filtered empty state names the excluding facet; the shared EmptyState component does not
 
 Re-derived against main: `narrowing.ts` (new module, header comment cites
 this exact finding) exports `activeFacet(filters)`, a `Record<FacetKey,
 FacetDef>` exhaustiveness-checked against `GridFilterState`, giving each
 single active facet its own `reason`/`escapeLabel`/`clear`. The `q` facet's
 reason (`` `No speakers match "${typed}".` ``) echoes the typed search term,
-matching frame :442's person-name clause pattern. `OnboardingGrid.tsx:975`
+matching frame :442's person-name clause pattern. `OnboardingGrid.tsx:1026`
 calls `activeFacet(filters)` and, when non-null, renders `EmptyState` with
 `reason={facet.reason(...)}` and `escape={{ label: facet.escapeLabel, ...
 }}` instead of the generic `narrowingDescription`/`'Clear filters'` pair —

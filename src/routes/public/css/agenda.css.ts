@@ -480,7 +480,9 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
      overlay -- these two classes are its agenda/schedule twins, kept
      separate (not shared) because their min-height differs (46px agenda /
      48px my-schedule, docs/design/Chautauqua Public and Portal.dc.html:
-     399-402 / 885-888), the same "identical color/weight, separate dense/
+     400-403 \`flex-shrink:0; border-top:1px solid #1B1D17;
+     background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px\`
+     / 884-887), the same "identical color/weight, separate dense/
      roomy selector" shape .chq-pub-agenda-layout/.chq-pub-schedule-layout
      already use a few lines above (rail.css.ts) for their own near-
      identical pair. */
@@ -563,8 +565,8 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
 
     /* DEC-576 (wave 110 amendment): the SSR phone dock -- narrow overrides
        the WIDE display:none above with the frame's own band geometry
-       (docs/design/Chautauqua Public and Portal.dc.html:399-402 public
-       agenda / :885-888 my-schedule): \`flex-shrink:0; border-top:1px
+       (docs/design/Chautauqua Public and Portal.dc.html:400-403 public
+       agenda / :884-887 my-schedule): \`flex-shrink:0; border-top:1px
        solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px;
        display:flex; gap:8px\`, identical on both frames. Model: src/routes
        /auth.css.ts:449-478's .chq-auth-actions. */

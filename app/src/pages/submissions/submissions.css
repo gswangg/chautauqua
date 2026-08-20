@@ -929,7 +929,8 @@
   /* v12m-w6-d (DEC-919 wave-110 amendment) -- supersedes the w6-f/w7-e
      interpretation above (and reverses its "nothing is deleted at phone
      width" reading for this screen specifically, per that amendment's own
-     text). docs/design/Chautauqua Submissions.dc.html:137-152 draws the
+     text). docs/design/Chautauqua Submissions.dc.html:137-152
+     `width:390px; height:844px` draws the
      390 head as: wordmark row, title row, ONE 44px search box on its own
      line, then ONE `display:flex; gap:7px; overflow-x:auto` strip of
      exactly three 44px chips ('Needs triage' filled / 'Accepted' / 'All

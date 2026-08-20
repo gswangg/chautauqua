@@ -936,7 +936,8 @@ ${ERROR_STATES_CSS}
   }
 
   /* DEC-576/DEC-154 (wave-110 amendments): docs/design/Chautauqua Public
-     and Portal.dc.html:492-495 ("Your tasks") and :586-589 ("Your
+     and Portal.dc.html:492-495 \`display:flex; gap:8px\` ("Your tasks")
+     and :586-589 ("Your
      session") -- the dock's own children only; the band's border-top/
      background/padding is already the .chq-portal-shell > .chq-portal-footer
      rule above (:789-794), unchanged. */

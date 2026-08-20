@@ -104,16 +104,15 @@ describe("frame docs/design's \"Chautauqua Submissions\" frame ('Submissions' 39
     expect(PHONE).toMatch(/\.chq-submissions-filterbar-divider[,\s{][\s\S]{0,200}display:\s*none/);
   });
 
-  // docs/design/Chautauqua Submissions.dc.html:148
-  // `display:flex; gap:7px; overflow-x:auto`
   // DEC-919 wave-92/102: three status pills only -- ColumnPicker hidden.
   // DEC-919 wave-110 amendment (task v12m-w6-d) supersedes this file's own
-  // wave-6/7 ruling above for THIS one claim: docs/design/Chautauqua
-  // Submissions.dc.html:148-151 draws exactly three chips ('Needs triage' /
-  // 'Accepted' / 'All 47') and no track control -- both are now stood down
-  // (receipted, app/src/phone-capability-removal.scan.test.ts), narrower
-  // than the full six-status/track-select strip this file previously
-  // asserted. The ColumnPicker hide stands unchanged.
+  // wave-6/7 ruling above for THIS one claim: the frame's chip strip draws
+  // exactly three chips ('Needs triage' / 'Accepted' / 'All 47') and no
+  // track control -- both are now stood down (receipted,
+  // app/src/phone-capability-removal.scan.test.ts), narrower than the full
+  // six-status/track-select strip this file previously asserted. The
+  // ColumnPicker hide stands unchanged.
+  // docs/design/Chautauqua Submissions.dc.html:148-151 `display:flex; gap:7px; overflow-x:auto`
   it('the status chip strip is narrowed to pending/accepted and the track select is hidden; the ColumnPicker is hidden', () => {
     expect(PHONE).toMatch(/\.chq-submissions-filterbar,[\s\S]{0,200}overflow-x:\s*auto/);
     expect(PHONE).toMatch(/\.chq-submissions-filterbar \.chq-status-pills\s*\{[^}]*gap:\s*7px/);

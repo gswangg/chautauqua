@@ -1,8 +1,11 @@
-// DEC-576/DEC-154 (wave-110 amendments): the portal's phone dock band
-// (docs/design/Chautauqua Public and Portal.dc.html:492-495 "Your tasks",
-// :586-589 "Your session") holds a page's own primary [+ secondary]
-// action inside PortalLayout's shared .chq-portal-footer, and the header/
-// footer no longer both carry Sign out at 390.
+// DEC-576/DEC-154 (wave-110 amendments): the portal's phone dock band --
+// the "Your tasks" 390 frame's :492-495 band and the "Your session"
+// frame's :586-589 band, each cited by path+line, quoted and receipted at
+// the geometry it()s below, where an assertion can stand beside the claim
+// (a file-header citation can carry no expect(, DEC-976 wave-87) -- holds
+// a page's own primary [+ secondary] action inside PortalLayout's shared
+// .chq-portal-footer, and the header/footer no longer both carry Sign out
+// at 390.
 //
 // Two halves, mirroring test/portal-phone-frames.test.ts's idiom for the
 // CSS half (jsdom applies no @media, so the phone-only geometry and the

@@ -1,6 +1,8 @@
 // DEC-576 (wave 110 amendment): my-schedule gets the docked action band its
-// 390 frame draws (docs/design/Chautauqua Public and Portal.dc.html:
-// 885-888) -- filled Download .ics + bordered All sessions, both re-siting
+// 390 frame draws (the "My schedule" frame's :884-887 band -- cited by
+// path+line, quoted and receipted at the mount it() below, since a
+// file-header citation can carry no expect(, DEC-976 wave-87)
+// -- filled Download .ics + bordered All sessions, both re-siting
 // capability the page already has (the SAME /schedule.ics route
 // ScheduleRail's #chq-ics-link targets, and the SAME /sessions route the
 // header's "Browse all sessions" link already targets). Mirrors the
