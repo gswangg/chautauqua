@@ -45,7 +45,15 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = dirname(HERE); // test/ -> repo root
 const SELF = fileURLToPath(import.meta.url);
 
-const BRANCH_NAME_RE = /task-w\d+-[a-z]/;
+// DEC-099 (wave-118 amendment): the rule is about SHAPE, not a fixed
+// vocabulary of prefixes -- the campaign's branch naming moved from
+// `task-wN-x` to `v12m-wN-x` partway through and the old regex went blind
+// to every lane in the new naming for the whole campaign. Both prefixes
+// share one shape (a lane-and-wave token followed by a lowercase suffix,
+// which may itself be more than one letter -- `v12m-w5-aa`, `v12m-w4-ag`)
+// and the alternation is written so a THIRD prefix can be added the same
+// way without inventing a new regex shape.
+const BRANCH_NAME_RE = /\b(?:task|v12m)-w\d+-[a-z]+\b/;
 
 // DEC-099 (wave-5 amendment, sha ee8ceffa): an exemption reason may not be
 // SCHEDULE-SHAPED, not just branch-shaped -- the same parking ticket keeps
@@ -77,6 +85,14 @@ const SCHEDULE_PATTERNS: { label: string; re: RegExp }[] = [
   { label: 'temporarily', re: /\btemporarily\b/i },
   { label: 'we have not looked', re: /\bwe have not looked\b/i },
   { label: 'once X lands', re: /\bonce\b[^.]{0,60}\blands?\b/i },
+  // DEC-099 (wave-118 amendment): the same defect with the branch token
+  // filed off -- a reason that describes work happening RIGHT NOW on some
+  // other lane, or promised for a future one, is a schedule wearing prose
+  // instead of a branch name. "is/are doing/building/converting" covers
+  // the progressive (work in flight elsewhere); "will build/land/fix"
+  // covers the promise (work not yet done, deferred to a future act).
+  { label: 'progressive work-in-flight (is/are doing/building/converting)', re: /\b(?:is|are)\s+(?:doing|building|converting)\b/i },
+  { label: 'future work commitment (will build/land/fix)', re: /\bwill\s+(?:build|land|fix)\b/i },
 ];
 
 function isScheduleShaped(value: string): boolean {
@@ -194,6 +210,91 @@ function findOffenders(roots: string[]): string[] {
       }
     }
   }
+  return offenders;
+}
+
+// DEC-099 (wave-118 amendment): docs/design/DEVIATIONS.md is a reason
+// document -- every top-level bullet under "## 5. Pending adjudication"
+// and "## 6. Deferred post-deadline" IS a deferral reason by construction
+// (that is what those two headings mean), and it sat entirely outside this
+// scan's population (test files only) while it is the tree's
+// highest-precedence deviation document. Widened here rather than in a
+// second scan, per DEC-613 ("a second copy of a citation/exemption
+// vocabulary is a trap with a delay fuse").
+const DEVIATIONS_PATH = join(REPO_ROOT, 'docs', 'design', 'DEVIATIONS.md');
+
+// A landed ruling's authorship (`DEC-650 (planner ruling, v12m-w2-c)`) is a
+// fact about the past, not a promise about the future -- it is the ONE
+// place a lane token is legal in this document. The carve-out is scoped to
+// the RAW SOURCE LINE the lane token appears on (not the whole bullet):
+// DEVIATIONS.md's own "Portal task-list dock" bullet cites DEC-967 at its
+// last line while the bare "v12m-w15-b is\n  doing exactly that" token sits
+// three lines earlier with no DEC citation anywhere near it -- if the
+// carve-out looked at the whole bullet instead of the line, that bullet
+// would go legal by riding on an unrelated citation at its tail.
+const DEC_CITE_RE = /\bDEC-\d{3}\b/;
+
+function lineHasUnattributedLaneToken(line: string): boolean {
+  return BRANCH_NAME_RE.test(line) && !DEC_CITE_RE.test(line);
+}
+
+/** Splits DEVIATIONS.md into top-level (`## N. ...`) sections, then within
+ * sections 5 and 6 only, groups consecutive lines into top-level bullets
+ * (a line starting `- ` plus its indented continuation lines) -- the same
+ * "joined text up to the next top-level bullet/heading" shape
+ * test/deviations-ledger.scan.test.ts's header documents using, reused
+ * rather than reinvented. Returns offenders against BOTH predicates: a
+ * bullet whose JOINED text (line-wraps collapsed) reads as schedule-shaped
+ * prose, and a raw source LINE carrying an unattributed lane token. */
+function findDeviationsOffenders(): string[] {
+  const raw = readFileSync(DEVIATIONS_PATH, 'utf8');
+  const relPath = relative(REPO_ROOT, DEVIATIONS_PATH);
+  const lines = raw.split('\n');
+  const offenders: string[] = [];
+
+  let inTargetSection = false;
+  let bullet: { text: string[]; lineNos: number[] } | null = null;
+
+  const flushBullet = () => {
+    if (!bullet) return;
+    const b = bullet;
+    const joined = b.text.join(' ').replace(/\s+/g, ' ').trim();
+    const scheduleHit = SCHEDULE_PATTERNS.find((p) => p.re.test(joined));
+    if (scheduleHit) {
+      offenders.push(
+        `${relPath}:${b.lineNos[0]}: schedule-shaped deferral bullet (${scheduleHit.label}): "${joined}"`,
+      );
+    }
+    b.text.forEach((line, i) => {
+      if (lineHasUnattributedLaneToken(line)) {
+        offenders.push(`${relPath}:${b.lineNos[i]}: lane token with no same-line DEC citation: "${line.trim()}"`);
+      }
+    });
+    bullet = null;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] as string;
+    const lineNo = i + 1;
+    const headingMatch = /^##\s+(\d+)\./.exec(line);
+    if (headingMatch) {
+      flushBullet();
+      const num = headingMatch[1];
+      inTargetSection = num === '5' || num === '6';
+      continue;
+    }
+    if (!inTargetSection) continue;
+    if (/^- /.test(line)) {
+      flushBullet();
+      bullet = { text: [line], lineNos: [lineNo] };
+    } else if (bullet && /^\s+\S/.test(line)) {
+      bullet.text.push(line);
+      bullet.lineNos.push(lineNo);
+    } else {
+      flushBullet();
+    }
+  }
+  flushBullet();
   return offenders;
 }
 
@@ -332,5 +433,62 @@ describe('DEC-099 (waves 76/4, widened wave 5): an exemption reason may never be
     const enclosing = enclosingObjectLiteral(fixture, (m as RegExpExecArray).index);
     expect(VERDICT_OWED_RE.test(enclosing)).toBe(false);
     expect(isScheduleShaped((m as RegExpExecArray)[2] as string)).toBe(true);
+  });
+
+  // DEC-099 (wave-118 amendment): widened branch pattern, negative controls
+  // in both directions.
+  it('[negative control, v12m naming] a synthetic v12m-wN-x reason is caught', () => {
+    expect(isScheduleShaped('owned by v12m-w15-b; ledger row filed')).toBe(true);
+  });
+
+  it('[negative control, task naming still caught] a synthetic task-wN-x reason is still caught', () => {
+    expect(isScheduleShaped('owned by task-w53-e; ledger row filed')).toBe(true);
+  });
+
+  it('[negative control, progressive work-in-flight] a synthetic "is doing" reason is caught', () => {
+    expect(isScheduleShaped('a sibling lane is doing exactly that for the profile page')).toBe(true);
+  });
+
+  it('[negative control, progressive work-in-flight] a synthetic "is building" reason is caught', () => {
+    expect(isScheduleShaped('the new parser is building against the same schema')).toBe(true);
+  });
+
+  it('[negative control, future commitment] a synthetic "will land" reason is caught', () => {
+    expect(isScheduleShaped('exempt; will land the real fix in a follow-up')).toBe(true);
+  });
+
+  // DEC-099 (wave-118 amendment): the DEVIATIONS.md carve-out predicate,
+  // in both directions -- a lane token co-cited with a landed DEC ruling on
+  // the SAME raw line is legal (a fact about the past); a bare lane token
+  // with no DEC citation on that line is not (a promise about the future).
+  it('[negative control] a lane token co-cited with a landed DEC ruling on the same line is legal', () => {
+    expect(
+      lineHasUnattributedLaneToken('  replaced). DEC-650 (planner ruling, v12m-w2-c): this frame is STALE and the'),
+    ).toBe(false);
+  });
+
+  it('[negative control] a bare lane token with no same-line DEC citation is illegal', () => {
+    expect(lineHasUnattributedLaneToken('  be built for whatever primary the page already renders — v12m-w15-b is')).toBe(
+      true,
+    );
+  });
+
+  // DEC-099 (wave-118 amendment): verify the two named real lines from the
+  // task directly -- DEVIATIONS.md:20 (DEC-650 authorship) must stay legal
+  // under the carve-out predicate; DEVIATIONS.md:267 must not (before the
+  // wave-118 fix, it carried the bare "v12m-w15-b is" token with no
+  // same-line DEC citation -- reproduced above as a synthetic control since
+  // the fix below removes the offending clause from the live file).
+  it('[control] DEVIATIONS.md:20 (DEC-650 authorship) stays legal under the carve-out predicate', () => {
+    const lines = readFileSync(DEVIATIONS_PATH, 'utf8').split('\n');
+    expect(lineHasUnattributedLaneToken(lines[19] as string)).toBe(false);
+  });
+
+  // DEC-099 (wave-118 amendment): the widened population itself -- every
+  // deferral bullet under DEVIATIONS.md sections 5 and 6 is scanned, and
+  // must carry no schedule-shaped prose and no unattributed lane token.
+  it('DEVIATIONS.md deferral sections (## 5, ## 6) carry no schedule-shaped or unattributed-lane-token bullet', () => {
+    const offenders = findDeviationsOffenders();
+    expect(offenders, offenders.join('\n')).toEqual([]);
   });
 });
