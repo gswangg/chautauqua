@@ -144,8 +144,13 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(sessionLink).toHaveAttribute('href', '/submissions/sub-1');
 
     // Counts printed on the page agree with the payload's own arrays.
-    expect(screen.getByText('Sessions · 1')).toBeInTheDocument();
-    expect(screen.getByText('Tasks · 2 · 1 outstanding · 0 overdue')).toBeInTheDocument();
+    // docs/design/Chautauqua Speakers.dc.html:362 draws `Sessions · 1
+    // accepted` -- the accepted aggregate, not the raw session count.
+    expect(screen.getByText('Sessions · 1 accepted')).toBeInTheDocument();
+    // docs/design/Chautauqua Speakers.dc.html:373 draws `Tasks · 2
+    // outstanding` -- the single outstanding aggregate; the overdue figure
+    // moved to the rows (see task.overdue below) rather than this line.
+    expect(screen.getByText('Tasks · 1 outstanding')).toBeInTheDocument();
 
     // DEC-930 wave-22 amendment: the row grids under Sessions/Tasks/Files
     // carry table semantics -- role=table wrapper, one role=row per record.
@@ -389,8 +394,27 @@ describe('SpeakerDetailPage render smoke', () => {
 
     const items = document.querySelectorAll('.chq-speaker-detail-other-events-list li');
     expect(items).toHaveLength(5);
-    // The count line still reports the true total, not the capped list length.
-    expect(screen.getByText('Across your events · 7')).toBeInTheDocument();
+    // docs/design/Chautauqua Speakers.dc.html:414 draws `Across your
+    // events` with no count -- otherEventsCount still gates the cap above
+    // (Math.min(OTHER_EVENTS_LIMIT, otherEventsCount)), it just no longer
+    // prints on this line.
+    expect(screen.getByText('Across your events')).toBeInTheDocument();
+  });
+
+  it('caps otherEvents at the server-reported total when that total is below the display limit', async () => {
+    const two = [
+      { eventId: 'evt-a', name: 'Conf A', participation: 'Submitted, declined' },
+      { eventId: 'evt-b', name: 'Conf B', participation: 'Spoke · Talk' },
+    ];
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({ otherEvents: two, otherEventsCount: 2 }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const items = document.querySelectorAll('.chq-speaker-detail-other-events-list li');
+    expect(items).toHaveLength(2);
   });
 
   // DEC-829 amendment (w61-e): a Remind control only where something on
@@ -714,8 +738,12 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
     // The SAME chip class family the onboarding grid's cells use -- never a
     // second overdue vocabulary invented for this page.
     expect(marked[0]).toHaveClass('chq-speakers-status');
+    // docs/design/Chautauqua Speakers.dc.html:373 draws `Tasks · 2
+    // outstanding` -- the single outstanding aggregate; overdue moved to
+    // the rows above, and keeps a real reader via the section's aria-label.
     // Header count and the marked rows agree.
-    expect(screen.getByText('Tasks · 6 · 1 outstanding · 1 overdue')).toBeInTheDocument();
+    expect(screen.getByText('Tasks · 1 outstanding')).toBeInTheDocument();
+    expect(screen.getByLabelText('Tasks, 1 outstanding, 1 overdue')).toBeInTheDocument();
     // The other pending row still reads as a plain pending chip.
     expect(document.querySelectorAll('.chq-speaker-detail-tasks-row .chq-speakers-status-pending')).toHaveLength(2);
     // The overdue row stays a live status control (click-to-change intact),
@@ -772,7 +800,8 @@ describe('SpeakerDetailPage tasks section: order, overdue mark, column shape', (
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle Upload your slide deck for Ada Lovelace, overdue' }));
 
-    await waitFor(() => expect(screen.getByText('Tasks · 6 · 0 outstanding · 0 overdue')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Tasks · 0 outstanding')).toBeInTheDocument());
+    expect(screen.getByLabelText('Tasks, 0 outstanding, 0 overdue')).toBeInTheDocument();
     expect(document.querySelectorAll('.chq-speaker-detail-tasks-row .chq-speakers-status-overdue')).toHaveLength(0);
   });
 });
