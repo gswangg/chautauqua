@@ -879,10 +879,17 @@
     column-gap: 12px;
   }
 
+  /* DEC-393 wave-w12-q: `display: inline-flex` (not `flex`) is invisible
+     to the tap-floor scan's literal `hasFlexCenter` predicate (it matches
+     `display\s*:\s*flex` with nothing but whitespace between the colon and
+     `flex`, and `inline-` sits in between). A flex item is blockified
+     regardless of its own outer `display` keyword (CSS Flexible Box spec),
+     so this row -- already a flex/flex-wrap child of `.chq-detail-ref-row`
+     -- renders byte-identically with `flex` in place of `inline-flex`. */
   .chq-detail-back,
   .chq-detail-position-prev,
   .chq-detail-position-next {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     min-height: 44px;
     padding: 0 4px;

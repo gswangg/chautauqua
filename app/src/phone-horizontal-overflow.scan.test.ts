@@ -599,7 +599,19 @@ export const CROSS_BUNDLE_CITATION_CEILING = 0;
 // of them (`.chq-review-criteria-eyebrow`, `.chq-reviewer-plan-head-row`)
 // are `display: none` at 390 and were examined and deliberately left by
 // w8-c, which is why this ceiling is 7 rather than 5.
-export const OVERFLOW_OFFENDERS_CEILING = 7;
+//
+// Re-measured 7 -> 6 (task v12m-w12-q, DEC-989, wave 123 CONTACTS + MODAL +
+// SUBMISSION-DETAIL tier-2 sweep): contacts-panels.css
+// `.chq-contacts-pipeline-columns` declared `min-width: 1000px` against the
+// 358px budget -- the desktop five-column board this rule sizes is hidden
+// at 390 (`display: none` in the same phone rule), and the Pipeline 390
+// frame (`docs/design/Chautauqua Contacts.dc.html`) draws no five-column
+// strip at this width at all -- ONE stage at a time via a separate
+// `.chq-contacts-pipeline-phone-stages`/`-phone-list` markup pair, already
+// sized to budget. Dropped the stale min-width in the same phone rule
+// (`min-width: 0`) rather than adding `overflow-x` to hide it. Ceiling
+// lowered to the measured truth; this ratchet may only fall.
+export const OVERFLOW_OFFENDERS_CEILING = 6;
 
 describe('phone horizontal overflow at 390 (DEC-989)', () => {
   it('found more than one CSS file to scan (vacuous-population tripwire, file side)', () => {

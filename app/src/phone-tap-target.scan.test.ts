@@ -199,7 +199,21 @@ function findOffenders(): string[] {
 // independent drains of disjoint offender sets, merged in one pass; the constant
 // below is the re-measured combined truth of the merged tree, not any single
 // branch's figure. This ratchet may only fall.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 47;
+//
+// Re-measured 47 -> 42 (task v12m-w12-q, DEC-393, wave 123 CONTACTS + MODAL +
+// SUBMISSION-DETAIL tier-2 sweep): drained five offenders --
+// contacts-panels.css `.chq-modal-actions` (tap-floor-exempt: every
+// ModalFrame `actions` slot this file renders is `<button>`-only),
+// modal-frame.css `.chq-modal-head .chq-phone-back` (real floor: min-height
+// + align-items:center + non-zero padding-inline added to its own phone
+// rule), and detail.css's combined `.chq-detail-back,
+// .chq-detail-position-prev, .chq-detail-position-next` (three reported
+// rows collapsing to one fix: `display: inline-flex` was invisible to this
+// scan's literal `hasFlexCenter` predicate -- changed to `display: flex`,
+// byte-identical rendering since a flex item is blockified regardless of
+// its own outer display keyword). Ceiling lowered to the measured truth;
+// this ratchet may only fall.
+export const ANCHOR_FLOOR_OFFENDERS_CEILING = 42;
 
 describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
   it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {

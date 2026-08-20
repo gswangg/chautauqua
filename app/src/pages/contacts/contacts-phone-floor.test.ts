@@ -194,16 +194,18 @@ describe("contacts.css / contacts-panels.css phone floor + overflow (DEC-393 / D
   });
 });
 
-// DEC-937 DRAIN (task w10-n): `.chq-contacts-title-actions a` resolves to
-// exactly one control -- the Export CSV `<a className="chq-btn
-// chq-btn-secondary">` (ContactsApp.tsx) -- PAINTED via .chq-btn (padding:
-// 10px 16px) + .chq-btn-secondary (border + background). The wave-90
-// cancelled-padding rule above (contacts.css, `.chq-contacts-title-actions
-// a, .chq-contacts-rail-duplicate-actions a { padding-inline: 10px;
-// margin-inline: -10px; ... }`) narrows that face and bleeds the bordered
-// box past its layout edge. A later same-specificity rule (appended,
-// DEC-385 -- the rule above is never edited) restores the horizontal
-// padding and drops the bleed for the painted selector only;
+// DEC-937 (task v12m-w12-q, supersedes the w10-n DRAIN): `.chq-contacts-
+// title-actions a` resolves to exactly one control -- the Export CSV `<a
+// className="chq-btn chq-btn-secondary">` (ContactsApp.tsx) -- PAINTED via
+// .chq-btn (padding: 10px 16px) + .chq-btn-secondary (border + background).
+// The cancelled-padding idiom narrows that face and bleeds the bordered box
+// past its layout edge, so PAINTED_CANCELLED_PADDING_CEILING's fix removes
+// `.chq-contacts-title-actions a` from the shared wave-90 cancelled-padding
+// rule ENTIRELY (rather than the w10-n DRAIN's two-rule override shape) --
+// it now gets its own single rule with no padding-inline/margin-inline
+// cancellation at all, restating the face's own desktop `padding-inline:
+// 16px` verbatim (not cancelled) so the anchor-floor scan still has a
+// non-zero horizontal padding declaration to read.
 // `.chq-contacts-rail-duplicate-actions a` (`.chq-link-button`, borderless)
 // keeps the cancelled-padding idiom untouched. These assertions resolve the
 // CASCADE (last-declared-value-wins for a given property, same selector,
@@ -235,9 +237,9 @@ describe("DEC-937 DRAIN (task w10-n): painted `.chq-contacts-title-actions a` de
     return value;
   }
 
-  it(".chq-contacts-title-actions a: at least two rules declare it (the wave-90 cancelled-padding rule plus this drain's override)", () => {
+  it(".chq-contacts-title-actions a: exactly one rule declares it now (DEC-937: no longer combined with the wave-90 cancelled-padding rule)", () => {
     const bodies = rulesForSelector(CONTACTS_PHONE_BLOCK, ".chq-contacts-title-actions a");
-    expect(bodies.length).toBeGreaterThanOrEqual(2);
+    expect(bodies.length).toBe(1);
   });
 
   it(".chq-contacts-title-actions a: cascade-resolved min-height is 44px", () => {
@@ -245,11 +247,9 @@ describe("DEC-937 DRAIN (task w10-n): painted `.chq-contacts-title-actions a` de
     expect(cascadeValue(bodies, "min-height")).toBe("44px");
   });
 
-  it(".chq-contacts-title-actions a: cascade-resolved margin-inline is not negative", () => {
+  it(".chq-contacts-title-actions a: margin-inline is never declared (no cancelled-padding pair at all, not merely a non-negative override)", () => {
     const bodies = rulesForSelector(CONTACTS_PHONE_BLOCK, ".chq-contacts-title-actions a");
-    const value = cascadeValue(bodies, "margin-inline");
-    expect(value).toBeDefined();
-    expect(value!.startsWith("-")).toBe(false);
+    expect(cascadeValue(bodies, "margin-inline")).toBeUndefined();
   });
 
   it(".chq-contacts-rail-duplicate-actions a (borderless) keeps its cascade-resolved margin-inline at -10px, untouched by the drain", () => {

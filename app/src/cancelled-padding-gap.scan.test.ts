@@ -326,7 +326,16 @@ export function findOffenders(containers: ContainerRecord[], sources: Map<string
 // left stale above the measured truth. Seeded at THIS branch's own
 // measurement -- 23 containers derived, 22 offenders, exactly one
 // (`.chq-contacts-rail-duplicate-actions`, gap 24 >= 2*10) conforms.
-export const CANCELLED_PADDING_GAP_CEILING = 17;
+// Re-measured 17 -> 16 (task v12m-w12-q, DEC-393, wave 123 CONTACTS + MODAL
+// + SUBMISSION-DETAIL tier-2 sweep): contacts.css's `.chq-contacts-title-
+// actions` container (desktop gap 9px) carried exactly one cancelled-
+// padding member (Export CSV, `.chq-contacts-title-actions a`) -- now that
+// that selector no longer declares the cancelled-padding pair at all
+// (DEC-937, PART 1 painted-face fix), this container has ZERO
+// cancelled-padding members and drops out of the derived population
+// entirely (its 9px gap is correct and left unwidened). Ceiling lowered to
+// the measured truth; this ratchet may only fall.
+export const CANCELLED_PADDING_GAP_CEILING = 16;
 
 describe('cancelled-padding companion-gap lens (DEC-393 wave-121 amendment, task w10-l)', () => {
   const sourceList = loadSources();

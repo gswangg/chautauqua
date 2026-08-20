@@ -974,7 +974,17 @@
    it. `.chq-contacts-title-actions`'s Export CSV link and
    `.chq-contacts-rail-duplicate-actions`'s Merge link are both that shape.
    Grow the anchor, absorb the padding with an equal negative inline
-   margin so the row's layout does not shift. */
+   margin so the row's layout does not shift.
+
+   DEC-937 wave-w12-q: Export CSV (ContactsApp.tsx:385) renders `<a
+   className="chq-btn chq-btn-secondary">` -- a PAINTED face (border +
+   background). The cancelled-padding idiom narrows a painted box's own
+   inline padding and bleeds it past its layout edge (DESIGN-RULINGS.md
+   `The 44px floor, and how it gets evaded`), so `.chq-contacts-title-
+   actions a` no longer carries the pair -- see its own rule below, which
+   floors the tap target while keeping the face's desktop 16px padding
+   untouched. Only the borderless `.chq-contacts-rail-duplicate-actions a`
+   (Merge, `.chq-link-button`) keeps the cancelled-padding grow. */
 
   /* -- from the former DEC-989 overflow-ellipsis closeout block (former lines 963-1038) -- */
 
@@ -987,7 +997,6 @@
    to shrink below its own content and the ellipsis never fires. The base
    (desktop) `white-space: nowrap` rules are untouched. */
 
-  .chq-contacts-title-actions a,
   .chq-contacts-rail-duplicate-actions a {
     min-height: 44px;
     display: flex;
@@ -1071,34 +1080,32 @@
     color: var(--chq-muted);
   }
 
-  /* DEC-937 DRAIN (task w10-n): `.chq-contacts-title-actions a` resolves
-     to exactly one control -- the Export CSV `<a className="chq-btn
-     chq-btn-secondary">` (ContactsApp.tsx:386-391), PAINTED via .chq-btn
-     (styles.css:527, padding: 10px 16px) + .chq-btn-secondary
-     (styles.css:565, border: 1px solid var(--chq-border-strong);
-     background: var(--chq-surface-sunk)). The combined selector's
-     cancelled-padding rule above (:986-993) narrows that face by 12px and
-     bleeds the bordered box 10px past its layout edge each side, same
-     defect as overview's .chq-overview-btn. `.chq-contacts-rail-duplicate-
-     actions a` is `.chq-link-button` (DuplicateRow.tsx) -- borderless --
-     and is intentionally left off this selector list, keeping the rule
-     above as its sole cancelled-padding declarer. This later
-     same-specificity rule restores Export CSV's horizontal padding to its
-     desktop value and drops the bleed, keeping only the tap-floor grow. */
+  /* DEC-937 wave-w12-q (task PART 1, supersedes the w10-n DRAIN rule): the
+     Export CSV `<a className="chq-btn chq-btn-secondary">`
+     (ContactsApp.tsx:385) is a PAINTED face -- .chq-btn-secondary
+     (styles.css) declares its own border + background and .chq-btn its own
+     16px inline padding. The cancelled-padding idiom is never declared for
+     this selector at all now (see the anchor-floor comment above, and the
+     rule this selector was removed from), so there is nothing left to
+     narrow or bleed -- this rule only adds the tap floor, restating the
+     face's own desktop `padding: 10px 16px` (styles.css .chq-btn) inline
+     value verbatim (not cancelled by any margin-inline) so the anchor-
+     floor scan's horizontal-padding check has a rule to read inside this
+     media block, and the drawn box never moves. */
   .chq-contacts-title-actions a {
     min-height: 44px;
     display: flex;
     align-items: center;
     padding-inline: 16px;
-    margin-inline: 0;
   }
 
   /* DEC-393 amendment companion gap: `.chq-contacts-title-actions`
      (desktop gap 9px, contacts.css:31) held one cancelled-padding `a`
-     (Export CSV, de-cancelled above) alongside two `<button>` siblings
-     that the cancelled-padding rule never matched (Import CSV / New
-     contact -- contacts.css:986 selects `a` only) -- 0 cancelled-padding
-     siblings remain, so no widening. `.chq-contacts-rail-duplicate-
-     actions` already carries the widened 24px gap (contacts.css:229-232,
-     the sole conforming container in the tree) and is left unchanged. */
+     (Export CSV) alongside two `<button>` siblings the cancelled-padding
+     rule never matched (Import CSV / New contact) -- with Export CSV's
+     cancelled-padding pair removed entirely (DEC-937 wave-w12-q), this
+     container carries ZERO cancelled-padding members and drops out of the
+     companion-gap population; its 9px desktop gap is left unwidened.
+     `.chq-contacts-rail-duplicate-actions` already carries the widened
+     24px gap (contacts.css:229-232) and is left unchanged. */
 }

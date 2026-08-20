@@ -447,7 +447,16 @@ const OFFENDERS = FACE_ROWS.filter((r) => r.painted);
 // expanded to per-selector granularity (agenda's .chq-btn and overview's
 // .chq-overview-btn are each shared across 3 container selectors in the
 // SAME rule).
-export const PAINTED_CANCELLED_PADDING_CEILING = 8;
+// Re-measured 8 -> 7 (task v12m-w12-q, DEC-937, wave 123 CONTACTS + MODAL +
+// SUBMISSION-DETAIL tier-2 sweep): contacts.css's `.chq-contacts-title-
+// actions a` (Export CSV, `<a className="chq-btn chq-btn-secondary">`)
+// no longer carries the cancelled-padding pair at all -- it was split out
+// of the shared `.chq-contacts-title-actions a, .chq-contacts-rail-
+// duplicate-actions a` rule (which keeps the pair for the borderless Merge
+// link only) into its own dedicated tap-floor rule with no padding-inline/
+// margin-inline cancellation. Ceiling lowered to the measured truth; this
+// ratchet may only fall.
+export const PAINTED_CANCELLED_PADDING_CEILING = 7;
 
 describe('cancelled-padding face lens (DEC-937 wave-121 amendment)', () => {
   it('found more than one CSS source to scan (vacuous-population tripwire, file side)', () => {

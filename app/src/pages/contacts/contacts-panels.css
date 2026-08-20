@@ -286,6 +286,15 @@
 /* w4-c: the no-email footnote sits below the button row -- wrap the
    actions row and give the footnote the full line so it doesn't crowd the
    buttons onto one line. */
+/* tap-floor-exempt: every ModalFrame `actions` slot rendered by this file
+   (AddToEventModal.tsx, BulkEmailModal.tsx, NewContactModal.tsx,
+   ImportWizard.tsx, PipelineBoard.tsx's four dialogs) is a list of
+   `<button className="chq-btn ...">` elements only -- never a bare
+   `<a>`/`<Link>` -- so this file's own top-level `.chq-modal-actions`
+   declaration never reaches an anchor. The real bare-anchor case
+   (modal-frame.css's `.chq-modal-actions a:not(.chq-btn)`) already floors
+   it for every ModalFrame caller in the app; this exemption only says this
+   FILE's own reach obligation is vacuous, not that the token is unfloored. */
 .chq-contacts-pipeline-enroll-modal .chq-modal-actions {
   flex-wrap: wrap;
 }
@@ -1241,8 +1250,22 @@
 
 @media (max-width: 700px) {
   /* -- from the former "Pipeline · 390" block ------------------------- */
+  /* DEC-989 wave-w12-q: the Pipeline 390 frame draws ONE stage at a time,
+     picked from the `.chq-pill` strip below (PipelineBoard.tsx:374-380) --
+     `.chq-contacts-pipeline-phone-stages`/`.chq-contacts-pipeline-phone-
+     list` are the frame's own phone markup, entirely separate from this
+     five-column desktop board, which is hidden here. The desktop
+     `min-width: 1000px` (contacts-panels.css:67) is still a phone-scoped
+     candidate under the horizontal-overflow scan's cascade-aware check
+     (effective body merges top-level + phone declarations regardless of
+     `display`), so it is dropped here too rather than left to overflow a
+     hidden, never-scrolled box -- the frame draws no five-column strip at
+     this width at all, so there is no "single visible stage" width to size
+     to; the single-stage view is the separate phone-list markup below,
+     already sized to the 358px budget. */
   .chq-contacts-pipeline-columns {
     display: none;
+    min-width: 0;
   }
 
   /* Frame: the header stacks and its one action goes full width -- the
