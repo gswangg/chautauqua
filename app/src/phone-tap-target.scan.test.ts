@@ -32,10 +32,27 @@
 // The scanning primitives live in ./phone-tap-target-scan/{core,anchor-
 // floor,ssr}.ts (custodian decomposition, wave v12m-w8: this file had grown
 // into a repeated merge-conflict hotspot at 882 lines). This file keeps
-// every population wiring, ceiling constant, and `describe`/`it` block --
-// NO behavior change, only where the code that does it lives.
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+// only the base sub-44px SPA scan's population wiring and `describe`/`it`
+// block -- NO behavior change, only where the code that does it lives.
+//
+// Custodian decomposition wave v12m-w12: this file had grown into a repeat
+// merge-conflict hotspot again (570 lines, four conflicts across w12-k and
+// w12-l alone) precisely because three independent lenses -- this base
+// scan, the row-action-anchor lens, and the SSR widening -- shared one
+// file, so any two lanes lowering DIFFERENT ceilings collided on the same
+// lines. Split into three sibling files, each owning one lens and one (or
+// two) ceiling constant:
+//   - ./phone-tap-target-anchor-floor.scan.test.ts (row-action-anchor,
+//     ANCHOR_FLOOR_OFFENDERS_CEILING)
+//   - ./phone-tap-target-ssr.scan.test.ts (SSR routes,
+//     SSR_TAP_FLOOR_OFFENDERS_CEILING, SSR_UNFLOORED_TOKENS_CEILING)
+// Every ceiling constant's full amendment history now lives in
+// ./phone-tap-target-scan/ceilings.ts, imported by whichever sibling test
+// file checks it, and re-exported below for any caller still importing
+// from this file's original path. NO behavior change: every assertion,
+// control, and population in this file is byte-for-byte what used to be
+// here.
+import { readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -43,33 +60,24 @@ import {
   allCssFiles,
   allTsxFiles,
   declaredHeightPx,
-  hasFlexCenter,
-  hasMinHeightFloor,
-  horizontalPaddingNonZero,
   narrowMediaRules,
   selectorDeclaresBareClass,
-  selectorMentionsToken,
-  SSR_CLASS_ATTR_RE,
   stripTsxComments,
   TAP_FLOOR_PX,
   tapTargetTagTokens,
   topLevelRulesWithExemption,
 } from './phone-tap-target-scan/core.js';
 import {
-  allBareAnchorTokens,
-  bareAnchorTokens,
-  findAnchorFloorOffenders,
-  rowActionContainerTokens,
-  selectorReachesAnchor,
-} from './phone-tap-target-scan/anchor-floor.js';
-import {
-  allSsrTapTargetTokens,
-  extractCssTsLiteral,
-  findSsrOffenders,
-  findSsrUnflooredTokens,
-  ssrCssModuleFiles,
-  ssrTsxFiles,
-} from './phone-tap-target-scan/ssr.js';
+  ANCHOR_FLOOR_OFFENDERS_CEILING,
+  SSR_TAP_FLOOR_OFFENDERS_CEILING,
+  SSR_UNFLOORED_TOKENS_CEILING,
+} from './phone-tap-target-scan/ceilings.js';
+
+// Re-exported for compatibility with any caller importing the ceiling
+// constants from this file's original path (none exists in the tree today
+// -- verified by grep before the split -- but the constants moved, not
+// disappeared).
+export { ANCHOR_FLOOR_OFFENDERS_CEILING, SSR_TAP_FLOOR_OFFENDERS_CEILING, SSR_UNFLOORED_TOKENS_CEILING };
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // app/src
 const REPO_ROOT = join(HERE, '..', '..');
@@ -115,236 +123,6 @@ function findOffenders(): string[] {
   }
   return offenders;
 }
-
-// Measured directly on this branch (`npx vitest run
-// app/src/phone-tap-target.scan.test.ts`) after fixing every offender that
-// lives in a file this lane owns (`app/src/components/*.css`,
-// `app/src/pages/submissions/*.css`); every remaining offender is filed in
-// `docs/design/audit/tap-floor-v12.md` for its owning cluster/wave. This
-// number may only be LOWERED by a future wave closing more of the audit
-// file's rows -- never raised to accommodate a new offender.
-//
-// Re-measured wave 108 (v12m-w4-o, DEC-808 amendment) by forcing this const
-// to -1 and reading the printed offender list: truth is 64, not the stale
-// 92 this constant carried. Set to the measured truth; see the companion
-// "never below the ceiling without lowering it" test below for the other
-// half of the ratchet this file's own test name always claimed to have.
-//
-// Re-measured wave 8 task w8-h: `checkToken`'s `(no CSS rule)` branch only
-// ever checked TOP-LEVEL rules, so a phone-only token whose rule correctly
-// lives inside the <=700px block and nowhere else was misreported as
-// undeclared -- verified false for `.chq-review-plan-action-link`
-// (review.css), `.chq-settings-public-pages-view-action` (settings.css)
-// and `.chq-overview-link-btn-read` (overview.css), all of which have real
-// narrow-media rules. Added a narrow-media fallback with the SAME
-// predicate/reach/exemption logic; forcing the const to -1 afterwards reads
-// 65 -> 64 (one of the three drops out fully floored, the other two become
-// real per-file rows). Two container tokens
-// (`.chq-comms-phone-recent-head-actions`, `.chq-speakers-card-actions`)
-// genuinely stay `(no CSS rule)`: each has a real rule body and a narrow
-// rule, but it never reaches an anchor (DEC-393: "the floor is reached by
-// the anchor, not its container") -- a real finding, dispositioned by
-// v12m-w9-e and v12m-w9-j respectively. `.chq-overview-row-actions-stacked`
-// was NOT a real finding: `rowActionContainerTokens` read raw CSS text
-// without stripping comments, so overview.css:306's comment recording that
-// DEC-735 RETIRED the class (never a live rule, never live markup --
-// `overview-phone-floor.test.ts` pins both) was misread as a declaration.
-// Fixed wave-120 task w9-k (DEC-989): comments are stripped before deriving
-// the container population, and the offender count is measured, not carried
-// forward with the fabrication baked in. Then fixed the five real offenders
-// this lane owns in `app/src/pages/forms/forms.css` (`.chq-forms-back`,
-// `.chq-forms-field-actions`, `.chq-forms-field-modal-actions-right`,
-// `.chq-forms-header-actions`, `.chq-modal-actions`) inside the file's
-// single terminal `@media (max-width: 700px)` block: `.chq-forms-back` and
-// the two anchor-bearing containers (`.chq-forms-field-actions`,
-// `.chq-forms-header-actions`) got a conforming min-height/flex-centre/
-// padding rule on the anchor itself; `.chq-forms-field-modal-actions-right`
-// and forms.css's own `.chq-modal-actions` scope wrap Cancel/Save/Delete
-// -- all `<button>`, never an `<a>`/`<Link>` -- so they carry a
-// `tap-floor-exempt` comment instead of a rule that could never reach an
-// anchor. Re-measured truth after both fixes: 59.
-//
-// Re-measured 59 -> 58 by the merge train on 2026-08-19 (megabatch gate) by
-// running this file's own scan: one more anchor-bearing row action picked up
-// a conforming phone rule in the wave-111 tap-floor/overflow batch. Lowered
-// to the measured truth; this ratchet may only fall.
-//
-// Re-measured 58 -> 57 wave-120 task w9-k (DEC-989): `rowActionContainerTokens`
-// no longer misreads a CSS comment (overview.css:306, a DEC-735 retirement
-// note for `.chq-overview-row-actions-stacked`) as a class declaration --
-// forced the const to -1 and read the printed offender list, the fabricated
-// `(no CSS rule) — .chq-overview-row-actions-stacked` row is gone and no
-// other row moved. Lowered to the measured truth.
-// Re-measured 58 -> 53 by task w9-i (DEC-393 wave-120 receipt), measured by
-// running THIS file's own scan on this branch (ceiling forced to -1, offender
-// list read by eye, DEC-989 clause a): drained the five overview.css
-// row-action-anchor offenders named in the wave-120 receipt --
-// `.chq-overview-deadline-cell` (tap-floor-exempt: whole-cell `<Link>`, frame
-// forbids centring), `.chq-overview-toolbar-btn` (real floor: display:flex +
-// align-items:center + padding-inline added to its phone rule),
-// `.chq-overview-toolbar-btn-primary` (tap-floor-exempt: every markup site
-// also carries the base class above, which now floors it),
-// `.chq-overview-link-btn.chq-overview-link-btn-read` (real floor added to
-// its phone rule) and `.chq-overview-link-inline` (its existing DEC-393
-// wave-106 prose converted to the machine-readable `tap-floor-exempt:`
-// grammar, no declaration added). Lowered to the measured truth; this
-// ratchet may only fall.
-//
-// Re-measured 58 -> 53 wave 120 (v12m-w9-j, DEC-393 wave-120 three-receipt
-// ruling): drained the five owned offenders (speakers.css .chq-row-title/
-// .chq-speakers-phone-head-actions, task-view.css .chq-taskview-open,
-// settings-drill-rows.css/settings.css) plus the (no CSS rule) 6th row.
-//
-// Megabatch (wave-120 Thunderdome): the w9-k, w9-i and w9-j lowerings above are
-// independent drains of disjoint offender sets, merged in one pass; the constant
-// below is the re-measured combined truth of the merged tree, not any single
-// branch's figure. This ratchet may only fall.
-// 2026-08-20 (v12m-w12-m, DEC-989 lane-owned lowering): CONTENT cluster
-// tier-2 sweep cleared its 9 owned rows (content.css) -- 47 -> 38, re-
-// measured on this branch alone. Concurrent lanes touch the same integer;
-// the merge train re-measures the integrated tree.
-//
-// Re-measured 2026-08-20 (task w12-k): drained all ten offenders this wave's
-// task assigned in app/src/styles.css (the shell sheet) -- five containers
-// (.chq-bulkbar-actions, .chq-contacts-col-actions,
-// .chq-contacts-drawer-actions, .chq-embeds-output-actions,
-// .chq-modal-actions) cleared with a `tap-floor-exempt` comment (every
-// child is a plain button, never an anchor), and five given a real phone
-// floor (.chq-empty-actions a, .chq-link-button, .chq-section-action,
-// .chq-row-title, a.chq-pill/a.chq-rail-link per DEC-576's element-
-// qualified ruling). 47 -> 37 on this branch alone; other lanes' offenders
-// (comms.css, content.css, review.css, scorecard.css,
-// contacts-panels.css, settings.css, speakers.css, submissions/detail.css,
-// modal-frame.css) are untouched here -- DEC-989: this is the worker's own
-// drain, the merge train re-measures the combined truth.
-//
-// 2026-08-20 (task w12-l, DEC-393/DEC-989/DEC-576): drained review.css's 12
-// offenders and scorecard.css's 1 -- 9 button-only `*-actions` containers
-// exempted (PlanEditor.tsx/ResultsTable.tsx/Scorecard.tsx render only
-// chq-btn children), .chq-pill exempted per DEC-576 composition (the
-// element-qualified `a.chq-pill` floor lives in app/src/styles.css, review
-// renders .chq-pill only as button/span), and 3 real bare-anchor rules
-// (.chq-review-add-link x2, .chq-review-plan-action-link,
-// .chq-review-section-head-actions .chq-link-button) strengthened from
-// `display: inline-flex` to `display: flex` (the predicate requires the
-// exact literal). One new floor added for .chq-review-queue-title's Link
-// form and .chq-review-results-head-actions' Download-CSV/See-all links,
-// which had no phone rule at all. 47 -> 34, re-measured on this branch;
-// lowered from the wave-120 megabatch value by exactly 13.
-export const ANCHOR_FLOOR_OFFENDERS_CEILING = 15;
-
-describe('row-action-anchor tap-target floor scan (DEC-393 wave-87 amendment)', () => {
-  it('derives a non-empty population and includes a known-good token (vacuous-population tripwire)', () => {
-    const anchorTokens = allBareAnchorTokens(TSX_FILES);
-    const containerTokens = rowActionContainerTokens(CSS_FILES);
-    expect(anchorTokens.size).toBeGreaterThan(0);
-    expect(containerTokens.size).toBeGreaterThan(0);
-    // `chq-overview-link-btn` is a real bare `<a>`/`<Link>` class with no
-    // `chq-btn` (Overview.tsx) -- a regex that silently matched nothing
-    // could not have found it.
-    expect(anchorTokens.has('chq-overview-link-btn')).toBe(true);
-    // `chq-breaks-row-actions` is a real row-action container class defined
-    // in agenda.css.
-    expect(containerTokens.has('chq-breaks-row-actions')).toBe(true);
-  });
-
-  it('flags a synthetic bare anchor with only padding declared (positive control: padding alone does not reach the floor)', () => {
-    const tsx = `export const X = () => <a className="chq-x-fake-anchor" href="/x">Go</a>;`;
-    const css = `
-      @media (max-width: 700px) {
-        .chq-x-fake-anchor { padding: 0 16px; }
-      }
-    `;
-    const tokens = bareAnchorTokens(stripTsxComments(tsx));
-    expect(tokens).toEqual(['chq-x-fake-anchor']);
-    const narrow = narrowMediaRules(css, 700);
-    const rule = narrow.find((r) => selectorMentionsToken(r.selector, 'chq-x-fake-anchor'))!;
-    expect(hasMinHeightFloor(rule.body)).toBe(false);
-    expect(horizontalPaddingNonZero(rule.body)).toBe(true);
-  });
-
-  it('does not flag a synthetic bare anchor declaring all three phone properties (negative control)', () => {
-    const css = `
-      @media (max-width: 700px) {
-        .chq-x-fake-anchor-2 {
-          min-height: 44px;
-          display: flex;
-          align-items: center;
-          padding: 0 16px;
-        }
-      }
-    `;
-    const rule = narrowMediaRules(css, 700).find((r) =>
-      selectorMentionsToken(r.selector, 'chq-x-fake-anchor-2'),
-    )!;
-    expect(hasMinHeightFloor(rule.body)).toBe(true);
-    expect(hasFlexCenter(rule.body)).toBe(true);
-    expect(horizontalPaddingNonZero(rule.body)).toBe(true);
-  });
-
-  it('does not flag a row-action container reaching its anchor via a descendant selector (negative control)', () => {
-    const css = `
-      @media (max-width: 700px) {
-        .chq-x-fake-row-actions a {
-          min-height: 44px;
-          display: flex;
-          align-items: center;
-          padding: 0 16px;
-        }
-      }
-    `;
-    const narrow = narrowMediaRules(css, 700);
-    const rule = narrow.find((r) => selectorMentionsToken(r.selector, 'chq-x-fake-row-actions'))!;
-    expect(selectorReachesAnchor(rule.selector, new Set())).toBe(true);
-  });
-
-  it('does not admit a row-action container token whose only mention is inside a CSS comment (positive control: DEC-989 wave-120)', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'anchor-floor-comment-'));
-    const path = join(dir, 'fixture.css');
-    writeFileSync(
-      path,
-      '/* DEC-735: split from the old shared `.chq-x-fake-row-actions` -- retired, no rule, no markup left. */\n',
-    );
-    try {
-      expect(rowActionContainerTokens([path]).has('chq-x-fake-row-actions')).toBe(false);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('admits a row-action container token declared in a real rule body (negative control: DEC-989 wave-120)', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'anchor-floor-rule-'));
-    const path = join(dir, 'fixture.css');
-    writeFileSync(path, '.chq-x-fake-row-actions { display: flex; }\n');
-    try {
-      expect(rowActionContainerTokens([path]).has('chq-x-fake-row-actions')).toBe(true);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('stays at or under the offender ceiling (one-sided ratchet: may only fall)', () => {
-    const offenders = findAnchorFloorOffenders(CSS_FILES, TSX_FILES, REPO_ROOT);
-    expect(
-      offenders.length,
-      `row-action-anchor tap-target floor offenders (${offenders.length}, ceiling ${ANCHOR_FLOOR_OFFENDERS_CEILING}):\n${offenders.join('\n')}`,
-    ).toBeLessThanOrEqual(ANCHOR_FLOOR_OFFENDERS_CEILING);
-  });
-
-  it(`never falls below the offender ceiling (${ANCHOR_FLOOR_OFFENDERS_CEILING}) without the ceiling being lowered to match (a stale ceiling licenses stagnation)`, () => {
-    const offenders = findAnchorFloorOffenders(CSS_FILES, TSX_FILES, REPO_ROOT);
-    if (offenders.length < ANCHOR_FLOOR_OFFENDERS_CEILING) {
-      throw new Error(
-        `row-action-anchor tap-target floor offenders (${offenders.length}) fell below the ` +
-          `ANCHOR_FLOOR_OFFENDERS_CEILING of ${ANCHOR_FLOOR_OFFENDERS_CEILING}. This is the ratchet ` +
-          `working: offenders got fixed. Lower the ceiling in the same commit (a merge-train act, ` +
-          `never a worker's edit mid-lane) by replacing the line:\n` +
-          `  export const ANCHOR_FLOOR_OFFENDERS_CEILING = ${offenders.length};`,
-      );
-    }
-    expect(offenders.length).toBeGreaterThanOrEqual(ANCHOR_FLOOR_OFFENDERS_CEILING);
-  });
-});
 
 describe('phone tap-target floor scan (DEC-253 amendment, DEC-367)', () => {
   it('found more than one CSS file and one TSX file to scan (vacuous-scan tripwire)', () => {
@@ -400,171 +178,5 @@ describe('phone tap-target floor scan (DEC-253 amendment, DEC-367)', () => {
       offenders,
       `sub-44px tap targets with no phone-width override and no tap-floor-exempt comment:\n${offenders.join('\n')}`,
     ).toEqual([]);
-  });
-});
-
-// --- SSR population widening (mandate item 5) ---------------------------
-//
-// Everything above scans app/src ONLY: the SPA bundle's *.css sheets and
-// its React *.tsx views. The SSR half of the product -- src/routes/public
-// (the CFP, the public event site), src/routes/portal, src/routes/docs-site,
-// src/routes/auth -- ships its own Hono JSX views and its own CSS-in-TS
-// stylesheets. See phone-tap-target-scan/ssr.ts for the full population
-// rationale, the ratchet's one-sided-by-design rationale, and the known
-// composed-modifier noise named in its ceiling comment.
-
-const SSR_ROOT = join(REPO_ROOT, 'src');
-const SSR_CSS_MODULES = ssrCssModuleFiles(SSR_ROOT);
-const SSR_TSX_FILES = ssrTsxFiles(SSR_ROOT);
-
-/**
- * Seeded at the count measured when this population was first scanned
- * (mandate item 5). Was ONE-SIDED (may only be LOWERED, never raised) --
- * see the history below the constant for why, and task w4-ae (DEC-393
- * wave-115) for why that no longer holds: the last 3 offenders got a real
- * floor, measured truth is 0, and this ceiling now has the same two-sided
- * companion every other ratchet in this file carries (the
- * "never falls below" test just below the history comment).
- */
-export const SSR_UNFLOORED_TOKENS_CEILING = 0;
-
-// task w7-e (DEC-367/DEC-385) lowered this from 14 to 3, measured after
-// repair by forcing the ceiling to -1 and reading the printed offender
-// list. Retired with named `tap-floor-exempt:` comments (the three
-// modifiers a per-token text scan can't follow through composition):
-// `.chq-visually-hidden` (src/routes/public/css/chrome.css.ts,
-// screen-reader-only utility, never a tap target),
-// `.chq-btn-secondary`/`.chq-btn-tertiary` (src/views/theme.ts) and
-// `.chq-field-invalid` (src/views/error-states.css.ts). Given a real
-// >=44px phone-width floor (additive, inside each sheet's terminal
-// `@media (max-width: 700px)` block): `.chq-auth-demo-btn`
-// (src/routes/auth.css.ts, live-probed at 269.8x17), `.chq-docs-search-
-// input` (src/routes/docs-site.css.ts), `.chq-pub-search-submit`,
-// `.chq-pub-search`, `.chq-pub-select`, `.chq-pub-select-active` (all
-// src/routes/public/css/chrome.css.ts) and `.chq-itinerary-toggle`
-// (src/routes/public/css/rail.css.ts -- floored on the visually-hidden
-// checkbox itself with `pointer-events:none`, since the real tap surface
-// is, and stays, the wrapping `.chq-pub-save`/`.chq-pub-itinerary-row`
-// label already floored on this same phone block).
-//
-// The 3 remaining are `.chq-portal-copresenter-email-flagged`,
-// `.chq-portal-header-signout-btn`, `.chq-portal-preview-download` --
-// all declared in src/routes/portal/portal.css.ts.
-//
-// Merge note (thunderdome megabatch): the custodian decomposition branch
-// (v12m-custodian-w8-1) predates w7-e's lowering and carried the stale 14.
-// Restored to 3 here -- the decomposition is explicitly NO behavior
-// change, and this ceiling may only ever be LOWERED.
-//
-// Task w4-ae (DEC-393 wave-115) drained the remaining 3: all get a real
-// `min-height: 44px` + centred flex + non-zero horizontal padding inside
-// portal.css.ts's terminal `@media (max-width: 700px)` block (append-only,
-// after every existing rule -- DEC-385), none using the cancelled-padding
-// idiom since `.chq-portal-copresenter-email-flagged` paints a
-// `border-left` and that idiom is borderless-only (DEC-383 wave-109).
-// Re-measured by forcing the const to -1 and reading the printed offender
-// list: truth is 0, confirmed empty by eye (DEC-989 clause a) before
-// writing the 0 above. This was the tree's last one-sided ratchet
-// (DEC-518) -- given its two-sided companion below to match every other
-// ceiling in this file.
-
-/** Seeded at the count measured when this population was first scanned
- * (mandate item 5). ONE-SIDED: may only be LOWERED, never raised. There is
- * deliberately no companion "ceiling is not stale" test -- the engine work
- * that would drive this to zero is not this change's job, and a two-sided
- * ratchet would force it to be. */
-export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;
-
-describe('phone tap-target floor scan — SSR routes (public/portal/docs/auth)', () => {
-  it('derives a non-empty SSR population from both halves (vacuous-scan tripwire)', () => {
-    expect(SSR_CSS_MODULES.length).toBeGreaterThan(5);
-    expect(SSR_TSX_FILES.length).toBeGreaterThan(5);
-    // The four route families the mandate names must each be represented,
-    // asserted by path rather than count so a silently-emptied population
-    // cannot pass by staying "non-empty" on one family alone.
-    const labels = SSR_CSS_MODULES.map((p) => relative(REPO_ROOT, p));
-    for (const family of ['src/routes/public/', 'src/routes/portal/', 'src/routes/docs-site.css.ts', 'src/routes/auth.css.ts']) {
-      expect(labels.some((l) => l.startsWith(family) || l === family), `no SSR stylesheet under ${family}`).toBe(true);
-    }
-  });
-
-  it('reads Hono JSX `class=` where the SPA extractor reads `className=` (positive control)', () => {
-    const ssr = `export const X = () => <button class="chq-pub-search-submit">Search</button>;`;
-    // The SPA-shaped extractor is blind to it -- which is exactly why the
-    // SSR half went unscanned for so long.
-    expect(tapTargetTagTokens(ssr)).toEqual([]);
-    expect(tapTargetTagTokens(ssr, SSR_CLASS_ATTR_RE)).toContain('chq-pub-search-submit');
-  });
-
-  it('extracts rules out of a CSS-in-TS template literal, interpolations stripped (positive control)', () => {
-    const mod = 'export const FAKE_CSS = `.chq-x-ssr-btn { min-height: 26px; }\n${OTHER_CSS}\n`;';
-    const css = extractCssTsLiteral(mod);
-    expect(css).toContain('.chq-x-ssr-btn');
-    expect(css).not.toContain('OTHER_CSS');
-    const rule = topLevelRulesWithExemption(css).find((r) =>
-      selectorDeclaresBareClass(r.selector, 'chq-x-ssr-btn'),
-    )!;
-    expect(declaredHeightPx(rule.body)).toBe(26);
-  });
-
-  it('honours the same <=700px override and tap-floor-exempt escapes as the SPA scan (negative controls)', () => {
-    const overridden = 'export const FAKE_CSS = `.chq-x-ssr-btn { min-height: 26px; }\n@media (max-width: 700px) { .chq-x-ssr-btn { min-height: 44px; } }`;';
-    const css = extractCssTsLiteral(overridden);
-    expect(
-      narrowMediaRules(css, 700).some(
-        (r) => selectorDeclaresBareClass(r.selector, 'chq-x-ssr-btn') && (declaredHeightPx(r.body) ?? 0) >= TAP_FLOOR_PX,
-      ),
-    ).toBe(true);
-
-    const exempted = extractCssTsLiteral(
-      'export const FAKE_CSS = `/* tap-floor-exempt: decorative */\n.chq-x-ssr-chip { min-height: 20px; }`;',
-    );
-    expect(
-      topLevelRulesWithExemption(exempted).find((r) => selectorDeclaresBareClass(r.selector, 'chq-x-ssr-chip'))!.exempt,
-    ).toBe(true);
-  });
-
-  it('stays at or under the SSR declared-sub-floor ceiling, and never raises it silently', () => {
-    const tokens = allSsrTapTargetTokens(SSR_TSX_FILES);
-    const offenders = findSsrOffenders(SSR_CSS_MODULES, tokens, REPO_ROOT);
-    expect(
-      offenders.length,
-      `SSR sub-44px tap targets with no phone-width override and no tap-floor-exempt comment ` +
-        `(${offenders.length}, ceiling ${SSR_TAP_FLOOR_OFFENDERS_CEILING} -- may only be LOWERED):\n${offenders.join('\n')}`,
-    ).toBeLessThanOrEqual(SSR_TAP_FLOOR_OFFENDERS_CEILING);
-  });
-
-  it('the unfloored-token population is non-empty and includes a token the live probe measured sub-floor (tripwire)', () => {
-    // A scan that silently stopped matching would report zero and look
-    // like progress. Pin it to a token the meta-fidelity probe measured at
-    // 390 with its own eyes, so "clean" can never mean "blind".
-    const tokens = allSsrTapTargetTokens(SSR_TSX_FILES);
-    expect(tokens.size).toBeGreaterThan(20);
-    expect(tokens.has('chq-auth-demo-btn')).toBe(true);
-  });
-
-  it('stays at or under the SSR unfloored-token ceiling, and never raises it silently', () => {
-    const tokens = allSsrTapTargetTokens(SSR_TSX_FILES);
-    const offenders = findSsrUnflooredTokens(SSR_CSS_MODULES, tokens, REPO_ROOT);
-    expect(
-      offenders.length,
-      `SSR tap targets whose CSS never declares a >=44px floor at any width ` +
-        `(${offenders.length}, ceiling ${SSR_UNFLOORED_TOKENS_CEILING} -- may only be LOWERED):\n${offenders.join('\n')}`,
-    ).toBeLessThanOrEqual(SSR_UNFLOORED_TOKENS_CEILING);
-  });
-
-  it(`never falls below the SSR unfloored-token ceiling (${SSR_UNFLOORED_TOKENS_CEILING}) without the ceiling being lowered to match (a stale ceiling licenses stagnation)`, () => {
-    const tokens = allSsrTapTargetTokens(SSR_TSX_FILES);
-    const offenders = findSsrUnflooredTokens(SSR_CSS_MODULES, tokens, REPO_ROOT);
-    if (offenders.length < SSR_UNFLOORED_TOKENS_CEILING) {
-      throw new Error(
-        `SSR tap targets whose CSS never declares a >=44px floor at any width (${offenders.length}) fell ` +
-          `below the SSR_UNFLOORED_TOKENS_CEILING of ${SSR_UNFLOORED_TOKENS_CEILING}. This is the ratchet ` +
-          `working: offenders got fixed. Lower the ceiling in the same commit (a merge-train act, never a ` +
-          `worker's edit mid-lane) by replacing the line:\n` +
-          `  export const SSR_UNFLOORED_TOKENS_CEILING = ${offenders.length};`,
-      );
-    }
-    expect(offenders.length).toBeGreaterThanOrEqual(SSR_UNFLOORED_TOKENS_CEILING);
   });
 });
