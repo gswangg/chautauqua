@@ -155,7 +155,7 @@ describe('Speaker portal drill (docs/design/Chautauqua Settings.dc.html:510 \'Se
     expect(frameLine(542)).toBe(
       '<div style="padding:15px 0 0; font-size:13px; color:#565A4B; line-height:1.5">Speakers claim their portal from a link in their acceptance email.</div></div>',
     );
-    expect(PORTAL_TSX).toContain('Speakers claim their portal from a link in their acceptance email');
+    expect(PORTAL_TSX).toContain('Speakers claim their portal from a link in their acceptance email.');
   });
 });
 

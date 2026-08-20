@@ -87,6 +87,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { DEC_380, DEC_976 } from '../src/decisions';
+
+void DEC_976; // wave-135: the exclusion taxonomy grows a fourth named class, COMPOSED, with exactly three legal reason shapes (see COMPOSED_EXCLUSIONS below)
+void DEC_380; // wave-135: a caption absent only by a full stop (or an un-rendered reason line) is a BUILD, never an exclusion-table entry
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // test/
 const REPO_ROOT = join(HERE, '..');
@@ -289,12 +293,135 @@ const FIXTURE_EXCLUSIONS: Exclusion[] = [
   },
 ];
 
+/** (c) COMPOSED -- DEC-976 wave-135's fourth exclusion class. A caption
+ * here IS product copy the app draws (unlike EXPLAINER/FIXTURE above), but
+ * it never appears in source as one static substring the way a plain label
+ * does, so this ledger's plain-substring MATCH can never find it. Each
+ * entry's `reason` names, in a full sentence, exactly one of three legal
+ * shapes -- and (DEC-099) always names a MECHANISM, never a schedule or a
+ * branch/wave name:
+ *
+ *   (i) COMPOSED-from-data -- the frame's exact words are assembled at
+ *       render time from live record data (a name, a count, a label, a
+ *       saved-view's own filter state, ...). The reason quotes the
+ *       composing expression VERBATIM with its file:line coordinate, so the
+ *       exclusion is itself a citation a future reader can re-grep.
+ *   (ii) PARTIAL -- the app draws the reader-facing clause of the caption
+ *        (a real substring match, findable by eye in the source), and the
+ *        remaining residue is the PACK'S OWN NOTE about how the control
+ *        that clause names actually behaves -- not copy the screen renders
+ *        at all. The reason cites the file:line where that behaviour is
+ *        implemented, so the "residue is just an annotation" claim is
+ *        itself checkable.
+ *   (iii) BLESSED/DEFERRED -- the caption draws a feature or rework the
+ *         build does not carry, and DEVIATIONS.md §6 (or a DEC ruling) has
+ *         already settled that as scope, not a defect. The reason quotes
+ *         the deferring bullet's own words. DEVIATIONS.md is never edited
+ *         by an entry here -- this table only cites it.
+ *
+ * Every entry below is shape (i) or (iii); each entry's composing
+ * expression (or deferring bullet) was verified to exist on the branch that
+ * wrote it -- the fifteen candidates named for this lane, four could not be
+ * verified against source as it stands today and are not entered here:
+ * Chautauqua Speakers.dc.html:479 (no facet composes a person's name from
+ * the roster -- narrowing.ts's own header comment says so: "the frame's
+ * person-name clause ... comes from the SEARCH term the organiser typed,
+ * never a name synthesised from the roster"), Chautauqua Comms.dc.html:769
+ * (no `session_time` merge field or matching warning sentence exists
+ * anywhere in app/src or src today), and Chautauqua Settings.dc.html:1175
+ * and :1400 (DEVIATIONS.md §6 carries no bullet deferring either row yet --
+ * per this lane's own instructions, an in-flight sibling wave may add them
+ * later). Each is left in the graded, unexcluded population until its own
+ * citation exists to write down. */
+const COMPOSED_EXCLUSIONS: Exclusion[] = [
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 614,
+    text: 'Settings · Call for papers',
+    reason:
+      "app/src/pages/Settings.tsx:351 composes the fixed 'Settings' word with the live section label as `&lsaquo; {editingSection ? editingSection.label : 'Settings'}`; editingSection.label is 'Call for papers' for the cfp section (SECTIONS[1].label, Settings.tsx:82).",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 795,
+    text: 'Settings · Tracks and rooms',
+    reason:
+      "the same Settings.tsx:351 composing expression; editingSection.label is 'Tracks and rooms' for the tracks-rooms section (SECTIONS[2].label, Settings.tsx:90).",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 876,
+    text: 'Settings · Speaker portal',
+    reason:
+      "the same Settings.tsx:351 composing expression; editingSection.label is 'Speaker portal' for the portal section (SECTIONS[4].label, Settings.tsx:106).",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 957,
+    text: 'Settings · People and roles',
+    reason:
+      "the same Settings.tsx:351 composing expression; editingSection.label is 'People and roles' for the people section (SECTIONS[6].label, Settings.tsx:124).",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1028,
+    text: 'Settings · Public pages · AI track sessions',
+    reason:
+      "the same Settings.tsx:351 composing expression supplies 'Settings · Public pages' (editingSection.label 'Public pages', SECTIONS[3].label, Settings.tsx:98); the trailing embed name is the live `{embed.name}` at app/src/pages/settings/SavedEmbedsPanel.tsx:239.",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 1118,
+    text: 'Settings · Your data',
+    reason:
+      "the same Settings.tsx:351 composing expression; editingSection.label is 'Your data' for the your-data section (SECTIONS[5].label, Settings.tsx:116).",
+  },
+  {
+    fileName: 'Chautauqua Settings.dc.html',
+    line: 669,
+    text: 'Three tracks, five formats, no account needed. We email you a portal link, and you can edit until the form closes.',
+    reason:
+      "src/routes/public/submit-views.tsx:464-470 composes the lede's opening clause from the event's own live track/format counts -- `const trackCount = tracks.length;` / `const formatCount = (formatField?.options ?? []).length;` feeding `ledeParts`, joined into `introLede` at :470 -- the DEC-986 organiser-authored form.description overrides the tail sentence, so only the counted opening clause is this mechanism's own words.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 326,
+    text: 'Speakers · Priya Raman',
+    reason:
+      "app/src/pages/speakers/SpeakerDetailPage.tsx:495-497 draws the fixed '‹ Speakers' back link beside `<h1 className=\"chq-page-title\">{detail.contact.name}</h1>`, the live contact's name.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 530,
+    text: 'Or paste this into your browser: chautauqua.cc/portal/tasks',
+    reason:
+      'src/mail/shell.ts:65 composes `Or paste this into your browser: ${escapeHtml(opts.cta.href)}` from the mail CTA’s live href.',
+  },
+  {
+    fileName: 'Chautauqua Submissions.dc.html',
+    line: 538,
+    text: 'Pending · AI Engineering · newest first',
+    reason:
+      "app/src/pages/submissions/ViewTabs.tsx's summarizeFilters (DEC-750, :105-116) composes the save-view subtitle from the current status/search/track/sort filter state, joined with `parts.join(' · ')` at :116.",
+  },
+  {
+    fileName: 'Chautauqua Comms.dc.html',
+    line: 267,
+    text: 'Six available · dropped in at the cursor',
+    reason:
+      'app/src/pages/comms/InsertFieldMenu.tsx:44 composes `{fields.length} available &middot; dropped in at the cursor` from the live merge-field count.',
+  },
+];
+
 function isExcluded(c: Caption, table: Exclusion[]): boolean {
   return table.some((e) => e.fileName === c.fileName && e.line === c.line && e.text === c.text);
 }
 
 const CAPTIONS_AFTER_EXCLUSION: Caption[] = ALL_CAPTIONS.filter(
-  (c) => !isExcluded(c, EXPLAINER_EXCLUSIONS) && !isExcluded(c, FIXTURE_EXCLUSIONS)
+  (c) =>
+    !isExcluded(c, EXPLAINER_EXCLUSIONS) &&
+    !isExcluded(c, FIXTURE_EXCLUSIONS) &&
+    !isExcluded(c, COMPOSED_EXCLUSIONS)
 );
 
 // -- Match side: every non-test .ts/.tsx/.css/.md under app/src/** and src/**
@@ -447,15 +574,20 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 );
 
 // -- Ratchet -------------------------------------------------------------
-// Measured on this branch (v12m-w8-a) by forcing this const to -1 and
-// reading the printed offender list: population 233 muted-prose captions
-// across 13 frame files (>= 20 chars, no digit, no `@`, not
-// text-transform:uppercase), 18 excluded (12 EXPLAINER, 6 FIXTURE), 215
-// graded, 89 unmatched by any normalized app/src or src source file. This is
-// a fresh instrument -- may only be RAISED as a merge-train act if a future
-// predicate widening surfaces more real divergences, and should be LOWERED
-// as sibling lanes close real caption/consequence gaps.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 89;
+// Re-measured on this branch (v12m-w10-ee, DEC-976 wave-135) by forcing this
+// const to -1 and reading the printed offender list: population 233
+// muted-prose captions across 13 frame files (>= 20 chars, no digit, no
+// `@`, not text-transform:uppercase), 29 excluded (12 EXPLAINER, 6 FIXTURE,
+// 11 COMPOSED), 204 graded, 59 unmatched by any normalized app/src or src
+// source file. The COMPOSED table adds 11 of the 15 rows named for this
+// lane; the other 4 (Speakers.dc.html:479, Comms.dc.html:769,
+// Settings.dc.html:1175, :1400) could not be verified against source as it
+// stands today and stay in the graded, unexcluded population -- see the
+// COMPOSED_EXCLUSIONS doc comment above. May only be RAISED as a
+// merge-train act if a future predicate widening surfaces more real
+// divergences, and should be LOWERED as sibling lanes close real
+// caption/consequence gaps.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 59;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
@@ -534,6 +666,13 @@ describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaig
 
   it('FIXTURE exclusions each resolve to their cited file:line:text in the current pack', () => {
     for (const e of FIXTURE_EXCLUSIONS) {
+      const hit = ALL_CAPTIONS.find((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
+      expect(hit, `${e.fileName}:${e.line} no longer resolves to the cited text in the pack`).toBeDefined();
+    }
+  });
+
+  it('COMPOSED exclusions each resolve to their cited file:line:text in the current pack', () => {
+    for (const e of COMPOSED_EXCLUSIONS) {
       const hit = ALL_CAPTIONS.find((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
       expect(hit, `${e.fileName}:${e.line} no longer resolves to the cited text in the pack`).toBeDefined();
     }
