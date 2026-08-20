@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { DEC_380 } from '../../../src/decisions'; // compile-checked provenance marker for the fresh-head state line below (DEC-380 wave-133)
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { useIsPhone } from '../lib/useIsPhone';
 import { PageSkeleton } from '../components/PageSkeleton';
@@ -35,6 +36,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const TAB_IDS = TABS.map((t) => t.id);
+void DEC_380; // compile-checked provenance marker only, see import above
 
 function isTab(value: string | null): value is Tab {
   return value !== null && (TAB_IDS as string[]).includes(value);
@@ -267,8 +269,29 @@ export function CommsPage() {
               {/* DEC-905: states the send rhythm -- a count windowed on the
                   wall-clock (never a sum over a page of batches) plus the most
                   recent send's date, taken from the same all-time batch list
-                  Recent Sends renders. */}
-              {rhythm && <p className="chq-comms-head-subtitle">{formatSendRhythm(rhythm)}</p>}
+                  Recent Sends renders.
+
+                  DEC-380 wave-133 (task w8-i): the frame's fresh (never-sent)
+                  head state (docs/design/Chautauqua Comms.dc.html:571) reads
+                  "No sends on this event" beside the H1 instead of the
+                  rhythm sentence -- "fresh" means never sent AT ALL, not
+                  merely quiet this week, so the check is BOTH signals the
+                  rhythm figures already carry: the all-time batch list
+                  (recentBatches, the SAME list Recent Sends renders) is
+                  empty AND the seven-day sent/failed totals are both zero.
+                  Either signal alone under-fires (a batch list can lag its
+                  own totals in a fixture; a quiet week with real history
+                  still has past batches). Reuses .chq-comms-head-subtitle
+                  (identical position/size/colour, DEC-976: no new class
+                  token needed for a state line that only ever swaps text
+                  with the rhythm sentence it replaces). */}
+              {rhythm && (
+                recentBatches.length === 0 && rhythm.sentLast7Days === 0 && rhythm.failedLast7Days === 0 ? (
+                  <span className="chq-comms-head-subtitle">No sends on this event</span>
+                ) : (
+                  <p className="chq-comms-head-subtitle">{formatSendRhythm(rhythm)}</p>
+                )
+              )}
             </div>
             <div className="chq-comms-head-actions" role="tablist">
               {/* w4-g (DEC-890 amendment): Templates is its own page (a
