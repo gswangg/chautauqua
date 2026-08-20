@@ -1139,12 +1139,16 @@
   gap: 8px;
 }
 
+/* task-w7-d/DEC-896: the frame's own note span (Chautauqua Settings.dc.html:72)
+   declares no text-align and no white-space -- the read view's right edge
+   and its collapse-when-absent both come from `.chq-settings-row`'s
+   `grid-template-columns: 170px 1fr auto` auto TRACK, not from aligning
+   this span's text. The hint is prose: it wraps in place inside that
+   track like any other block, never forced onto one line. */
 .chq-settings-row-hint {
   font-size: 12px;
   color: var(--chq-ink-2);
   margin: 0;
-  text-align: right;
-  white-space: nowrap;
 }
 
 /* w5-e/DEC-691 amendment: the undeletable self row's actions read quieter
@@ -1592,19 +1596,13 @@
 
   .chq-settings-row-hint {
     /* w14-m/DEC-728 wave-125/N6: was align-self:flex-end, which put the
-       read view's hint on the right (still reading right-ish even with
-       text-align:left below) while the edit view's bare <p> usage
+       read view's hint on the right while the edit view's bare <p> usage
        (CallForPapersPanel.tsx:588, no flex ancestor) fell through to
-       text-align:left alone -- two different sides for the same object.
+       block flow alone -- two different sides for the same object.
        The frame left-aligns the hint in both views; flex-start makes the
        read view's flex-column box match the edit view's block flow
        instead of fighting it. */
     align-self: flex-start;
-    /* DEC-989/DEC-385 (w8-b): the row is already flex-direction:column
-       above, so a right-aligned nowrap sentence reads as a ragged
-       off-frame block at 390 instead of wrapping in place. */
-    white-space: normal;
-    text-align: left;
   }
 
 /* task-w3-f/DEC-032 (wave-85 amendment): phone geometry for the Call for

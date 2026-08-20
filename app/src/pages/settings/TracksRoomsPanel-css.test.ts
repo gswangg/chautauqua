@@ -62,8 +62,12 @@ describe('DEC-781: .chq-settings-row is ONE grid row, not a column stack', () =>
     expect(rowBody).toMatch(/grid-template-columns:\s*170px 1fr auto/);
   });
 
-  it('the meta (hint) column right-flushes its content so it collapses to nothing when absent', () => {
+  it('the right flush and the collapse-when-absent both come from the row\'s auto TRACK, not from aligning the hint text (task-w7-d/DEC-896: the frame\'s own note span, Chautauqua Settings.dc.html:72, declares neither text-align nor white-space)', () => {
+    const rowBody = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-row');
+    expect(rowBody).toMatch(/grid-template-columns:\s*170px 1fr auto/);
+
     const hintBody = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-row-hint');
-    expect(hintBody).toMatch(/text-align:\s*right/);
+    expect(hintBody).not.toMatch(/text-align/);
+    expect(hintBody).not.toMatch(/white-space/);
   });
 });
