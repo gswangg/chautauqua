@@ -1947,16 +1947,16 @@ select,
    the palette scan reads). */
 /* tap-floor-exempt: the 18px box is the control's VISUAL, unchanged from
    the browser-drawn size it replaces -- enlarging it to 44px is a
-   system-wide redesign of every table and form checkbox in the product
-   (header select-all cells, row selection, field-modal option lists). The
-   phone tap floor is met by padding on a WRAPPER around the box, not by
-   inflating the box itself: form checkboxes already sit inside
-   .chq-checkbox-label (FieldModal.tsx:248), which the phone block floors
-   at :2435; the table-cell select-all/row-selection checkboxes
-   (ContactsTable.tsx:99-115/134-146, SubmissionsTable.tsx:482-491/518-527)
-   are wrapped in .chq-check-cell (DEC-393 w124), floored the same way
-   below. Every `.chq-check` reaches the 44px floor through some wrapper --
-   none through the bare 18px box. */
+   system-wide redesign of every checkbox/radio in the product (field-modal
+   option lists, settings toggles, review criteria). The phone tap floor is
+   met by the LABEL wrapping the box, not by inflating the box: every
+   option-list/toggle site already renders its .chq-check inside its own
+   `<label>`, and the population that had no such label -- a bare table-
+   cell checkbox sitting directly in a `<td>`/`<th>` (ContactsTable.tsx,
+   SubmissionsTable.tsx, ComposeWizard.tsx, SessionList.tsx) -- is now
+   wrapped in a `.chq-check-hit` label that carries the floor instead. This
+   is true, and checked: check-hit-receipt.scan.test.ts (DEC-393 wave-124
+   amendment). */
 input[type='checkbox'],
 input[type='radio'],
 .chq-check {
@@ -1974,13 +1974,12 @@ input[type='radio'],
   cursor: pointer;
 }
 
-/* The table-cell wrapper for a bare .chq-check with no visible label text
-   (ContactsTable.tsx select-all/row cells, SubmissionsTable.tsx same) --
-   inline-flex/centered so the 18px box sits exactly where the bare input
-   sat before wrapping, on both densities. The phone-only min-height/
-   padding floor is appended in the terminal block (DEC-385 single-
-   direction responsive). */
-.chq-check-cell {
+/* .chq-check-hit wraps a table-cell .chq-check with no floor-reaching
+   label around it. Layout-neutral at top level -- no padding, no size --
+   so desktop is byte-identical to the bare input it replaces; the floor
+   itself lives only in the one terminal @media (max-width: 700px) block
+   below (DEC-385). */
+.chq-check-hit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2788,17 +2787,22 @@ select:focus-visible,
     padding-inline: 11px 0;
   }
 
-  /* DEC-393 w13-l: .chq-check-cell wraps the bare .chq-check inputs that
-     have no label text (ContactsTable.tsx select-all/row cells,
-     SubmissionsTable.tsx same) -- the exemption above legitimately keeps
-     the 18px VISUAL unchanged, but the tappable region was the 18px box
-     itself with no wrapper reaching the floor. DESIGN-RULINGS:189's full
-     triple on the wrapper, never the box: min-height, centred flex
-     (already inline-flex/centered at the base rule above), horizontal
-     padding. */
-  .chq-check-cell {
+  /* .chq-check-hit is the label wrapper added around every table-cell
+     .chq-check (ContactsTable.tsx, SubmissionsTable.tsx, ComposeWizard.tsx,
+     SessionList.tsx select-all/row-select controls -- DEC-393 wave-124
+     amendment, receipt check-hit-receipt.scan.test.ts; supersedes w13-l's
+     narrower wrapper, which covered only two of the four files).
+     Physical padding/margin shorthand, not padding-inline/margin-inline
+     (styles.css:2706-2719 records why): this control has no sibling gap to
+     widen, so an inline-axis pair here would mint a bare cancelled-padding-
+     GAP population member with nothing to cancel against. Padding is
+     absorbed by an equal, opposite-sign margin so the 18px painted box
+     (Chautauqua Speakers.dc.html:642) never shifts. */
+  .chq-check-hit {
     min-height: 44px;
-    padding-inline: 13px;
+    min-width: 44px;
+    padding: 13px;
+    margin: -13px;
   }
 
   /* N5 LOW (round-2 probe): App.tsx:381's live-exceptions badge

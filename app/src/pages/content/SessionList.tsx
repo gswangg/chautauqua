@@ -275,16 +275,18 @@ export function SessionList({
           <thead>
             <tr>
               <th className="chq-content-worklist-col-select">
-                <input
-                  className="chq-check"
-                  type="checkbox"
-                  aria-label="Select all on page"
-                  checked={allSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = !allSelected && someSelected;
-                  }}
-                  onChange={togglePage}
-                />
+                <label className="chq-check-hit">
+                  <input
+                    className="chq-check"
+                    type="checkbox"
+                    aria-label="Select all on page"
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = !allSelected && someSelected;
+                    }}
+                    onChange={togglePage}
+                  />
+                </label>
               </th>
               <th>Session</th>
               <th className="chq-content-worklist-col-speaker">Speaker</th>
@@ -342,16 +344,18 @@ export function SessionList({
                   set (Session · Speaker · Latest file · Status · actions) —
                   bulk selection is added TO that IA, it does not replace it. */}
               <th className="chq-content-worklist-col-select">
-                <input
-                  className="chq-check"
-                  type="checkbox"
-                  aria-label="Select all on page"
-                  checked={allSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = !allSelected && someSelected;
-                  }}
-                  onChange={togglePage}
-                />
+                <label className="chq-check-hit">
+                  <input
+                    className="chq-check"
+                    type="checkbox"
+                    aria-label="Select all on page"
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = !allSelected && someSelected;
+                    }}
+                    onChange={togglePage}
+                  />
+                </label>
               </th>
               <th>Session</th>
               <th className="chq-content-worklist-col-speaker">Speaker</th>
@@ -368,13 +372,15 @@ export function SessionList({
                   {/* DEC-825 amendment: row selection cell — stops propagation
                       so ticking a box never opens the submission. */}
                   <td onClick={(e) => e.stopPropagation()}>
-                    <input
-                      className="chq-check"
-                      type="checkbox"
-                      aria-label={`Select ${item.title}`}
-                      checked={selectedIds.has(item.id)}
-                      onChange={() => toggleRow(item.id)}
-                    />
+                    <label className="chq-check-hit">
+                      <input
+                        className="chq-check"
+                        type="checkbox"
+                        aria-label={`Select ${item.title}`}
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleRow(item.id)}
+                      />
+                    </label>
                   </td>
                   <td>
                     <div className="chq-content-row-session">

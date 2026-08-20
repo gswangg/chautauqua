@@ -480,7 +480,7 @@ export function SubmissionsTable() {
           <thead>
             <tr>
               <th className="chq-submissions-col-select">
-                <label className="chq-check-cell">
+                <label className="chq-check-hit">
                   <input
                     type="checkbox"
                     className="chq-check"
@@ -520,15 +520,13 @@ export function SubmissionsTable() {
               displayItems.map((item) => (
                 <tr key={item.id}>
                   <td>
-                    <label className="chq-check-cell">
+                    <label className="chq-check-hit">
                       <input
                         type="checkbox"
                         className="chq-check"
                         aria-label={`Select ${item.ref}`}
                         checked={selection.selectedIds.has(item.id)}
-                        onChange={() =>
-                          setSelection((s) => selectionReducer(s, { type: 'TOGGLE_ROW', id: item.id }))
-                        }
+                        onChange={() => setSelection((s) => selectionReducer(s, { type: 'TOGGLE_ROW', id: item.id }))}
                       />
                     </label>
                   </td>

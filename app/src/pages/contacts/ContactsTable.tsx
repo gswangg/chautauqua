@@ -96,7 +96,7 @@ export function ContactsTable({
           <thead>
             <tr>
               <th className="chq-contacts-col-select">
-                <label className="chq-check-cell">
+                <label className="chq-check-hit">
                   <input
                     className="chq-check"
                     type="checkbox"
@@ -132,15 +132,13 @@ export function ContactsTable({
               items.map((c) => (
                 <tr key={c.id} className="chq-contacts-row">
                   <td>
-                    <label className="chq-check-cell">
+                    <label className="chq-check-hit">
                       <input
                         className="chq-check"
                         type="checkbox"
                         aria-label={`Select ${c.firstName} ${c.lastName}`}
                         checked={selection.selectedIds.has(c.id)}
-                        onChange={() =>
-                          onSelectionChange(selectionReducer(selection, { type: 'TOGGLE_ROW', id: c.id }))
-                        }
+                        onChange={() => onSelectionChange(selectionReducer(selection, { type: 'TOGGLE_ROW', id: c.id }))}
                       />
                     </label>
                   </td>
