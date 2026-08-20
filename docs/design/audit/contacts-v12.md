@@ -131,3 +131,17 @@ component's core data-flow (the impact paragraph currently needs
 only when `impact` has loaded) and is a copy/structure decision, not a
 one-line fix -- left for a future wave rather than expanding v1-c's
 scope beyond its four assigned divergences.
+
+**Finding 4 — filed by v12m-w9-o-r1-c, not fixed (shell decision, out of
+a page task's file scope).** `PipelineBoard.tsx` and `DuplicatesView.tsx`
+now carry `.chq-phone-head`/`.chq-phone-head-drill` for their 390 drill
+heads (DEC-964/DEC-893), but per that same DEC-964 whether the shell
+header stands down for the whole Contacts cluster while a drill is
+showing is a shell decision, not a page-local one — the only current
+setter of `data-chq-phone-head` is `Scorecard.tsx:531`, and no Contacts
+root sets it. `ContactsApp.tsx`'s own landing head (`.chq-contacts-title-row`
+/ `.chq-contacts-tabstrip-row`) is stood down via a markup gate
+(`!(isPhone && panel !== 'directory')`) so it does not double up above a
+drill's own head band, but the outer app shell chrome (if any renders
+above `.chq-page` for Contacts) is untouched by this task. Left for the
+shell owner to decide and fix.

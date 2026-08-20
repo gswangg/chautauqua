@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { useCachedList } from '../../lib/useCachedRead';
+import { useIsPhone } from '../../lib/useIsPhone';
 import { loadEventsOnce, useCurrentEvent } from '../../lib/useCurrentEvent';
 import { countOf } from '../../lib/plural';
 import { BulkEmailModal } from './BulkEmailModal';
@@ -80,6 +81,7 @@ export function ContactsApp() {
   const navigate = useNavigate();
   const navState = location.state as NavState | null;
   const [searchParams, setSearchParams] = useSearchParams();
+  const isPhone = useIsPhone();
 
   // DEC-710: tab selection is URL state (?tab=), never component state —
   // 'directory' (the default) carries no tab param.
@@ -373,28 +375,36 @@ export function ContactsApp() {
 
   return (
     <div className="chq-page chq-contacts-page chq-measure-table">
-      <div className="chq-contacts-title-row">
-        <h1 className="chq-page-title">Contacts</h1>
-        {summary && <span className="chq-summary">{summary}</span>}
-        {/* DEC-711 amendment (wave 4): the action cluster orders Import /
-            Export / New. */}
-        <div className="chq-contacts-title-actions">
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={openImport}>
-            Import CSV
-          </button>
-          {eventId && (
-            <a
-              className="chq-btn chq-btn-secondary"
-              href={contactsExportHref(eventId, { q, segmentId, rules })}
-            >
-              Export CSV
-            </a>
-          )}
-          <button type="button" className="chq-btn chq-btn-primary" onClick={() => setShowNewContact(true)}>
-            New contact
-          </button>
+      {/* DEC-964: Pipeline and Duplicates are one-screen-at-a-time phone
+          drills with their OWN head band (their .chq-phone-head-drill),
+          not this landing head -- stand this head down whenever a phone
+          drill is showing so its band doesn't double up above the
+          drill's own. Markup-only gate, no CSS added: desktop (isPhone
+          false) renders this byte-identically regardless of panel. */}
+      {!(isPhone && panel !== 'directory') && (
+        <div className="chq-contacts-title-row">
+          <h1 className="chq-page-title">Contacts</h1>
+          {summary && <span className="chq-summary">{summary}</span>}
+          {/* DEC-711 amendment (wave 4): the action cluster orders Import /
+              Export / New. */}
+          <div className="chq-contacts-title-actions">
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={openImport}>
+              Import CSV
+            </button>
+            {eventId && (
+              <a
+                className="chq-btn chq-btn-secondary"
+                href={contactsExportHref(eventId, { q, segmentId, rules })}
+              >
+                Export CSV
+              </a>
+            )}
+            <button type="button" className="chq-btn chq-btn-primary" onClick={() => setShowNewContact(true)}>
+              New contact
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {(error || directory.error) && (
         <div className="chq-error" role="alert">
@@ -405,6 +415,7 @@ export function ContactsApp() {
       {/* DEC-710: tab chips carry counts; search + the segment control sit
           at the RIGHT end of this same row (margin-left:auto), replacing
           the search-only toolbar row that used to sit above it. */}
+      {!(isPhone && panel !== 'directory') && (
       <div className="chq-toolbar chq-contacts-tabstrip-row">
         <div className="chq-chipstrip" role="tablist" aria-label="Contacts view">
           {(Object.keys(PANEL_LABELS) as Panel[]).map((key) => {
@@ -469,6 +480,7 @@ export function ContactsApp() {
           </div>
         )}
       </div>
+      )}
 
       {panel === 'directory' && (
         <div className="chq-contacts-directory-grid">
@@ -533,7 +545,12 @@ export function ContactsApp() {
       )}
 
       {panel === 'duplicates' && (
-        <DuplicatesView onMerged={reload} initialNotice={navState?.notice} initialDismissPairIds={navState?.dismissPairIds} />
+        <DuplicatesView
+          onMerged={reload}
+          initialNotice={navState?.notice}
+          initialDismissPairIds={navState?.dismissPairIds}
+          onBack={() => setPanel('directory')}
+        />
       )}
 
       {panel === 'segments' && (

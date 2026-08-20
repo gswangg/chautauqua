@@ -256,11 +256,17 @@ export function PipelineBoard() {
 
   return (
     <div className="chq-contacts-pipeline">
-      <div className="chq-contacts-pipeline-head">
+      {/* v12 phone frame "Pipeline · 390" (docs/design/Chautauqua
+          Contacts.dc.html:447-451): the drill head is the shell's own
+          .chq-phone-head/-head-drill vocabulary (styles.css:2461, :2480),
+          composed onto this page-local head rather than replacing it --
+          the page-local classes stay so the existing render tests keep
+          reading them unchanged. */}
+      <div className="chq-contacts-pipeline-head chq-phone-head chq-phone-head-drill">
         <div className="chq-contacts-pipeline-head-titles">
           <button
             type="button"
-            className="chq-btn chq-btn-tertiary chq-contacts-pipeline-back"
+            className="chq-btn chq-btn-tertiary chq-contacts-pipeline-back chq-phone-back"
             onClick={backToDirectory}
           >
             &lsaquo; Contacts
