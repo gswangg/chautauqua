@@ -1785,4 +1785,33 @@
   .chq-contacts-import:has([data-chq-phone-dock]) .chq-modal-actions {
     display: none;
   }
+
+  /* v12m-w9-o (DEC-964/893): frame "Merge · 390"
+     (docs/design/Chautauqua Contacts.dc.html:536
+     `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`)
+     draws the footer as a ROW -- brand primary at flex:1 beside the
+     bordered secondary -- not the stacked column the earlier phone block
+     (:1350 above) gives it. The -16px margin-inline cancels .chq-main's
+     16px phone gutter, same as .chq-phone-head/-dock do above; this page
+     does NOT compose the shell's `.chq-phone-dock` class (styles.css:393
+     sets it `display:none` at top level) -- MergePage.tsx instead sets
+     `data-chq-phone-dock` directly on its .chq-page root for the
+     styles.css:2302 `.chq-main:has([data-chq-phone-dock]) ~ .chq-tabbar`
+     contract. */
+  .chq-contacts-merge-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-inline: -16px;
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--chq-ink);
+    background: var(--chq-surface-sunk);
+  }
+
+  .chq-contacts-merge-footer .chq-btn-primary {
+    flex: 1;
+  }
 }

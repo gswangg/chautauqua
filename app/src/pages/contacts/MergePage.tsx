@@ -215,14 +215,18 @@ export function MergePage() {
   // terminal phone block hides at <=700px, so desktop stays byte-unchanged
   // ("‹ Contacts · Duplicates").
   const backLink = (
-    <Link to="/contacts" state={{ panel: 'duplicates' }} className="chq-contacts-merge-back">
+    <Link
+      to="/contacts"
+      state={{ panel: 'duplicates' }}
+      className="chq-contacts-merge-back chq-phone-back"
+    >
       &lsaquo; <span className="chq-contacts-merge-back-prefix">Contacts &middot; </span>Duplicates
     </Link>
   );
 
   if (ids.length < 2) {
     return (
-      <div className="chq-page chq-measure chq-contacts-merge-page">
+      <div className="chq-page chq-measure chq-contacts-merge-page" data-chq-phone-dock>
         <div className="chq-contacts-merge-topbar">{backLink}</div>
         <p className="chq-empty">Pick two or more duplicate records from the Duplicates tab.</p>
       </div>
@@ -230,13 +234,13 @@ export function MergePage() {
   }
 
   return (
-    <div className="chq-page chq-measure chq-contacts-merge-page">
+    <div className="chq-page chq-measure chq-contacts-merge-page" data-chq-phone-dock>
       {/* Item 10 (frame 08-contacts--05): one full-width title band --
           back link + H1 far left, '<N> of <M> pairs' right-flushed on the
           SAME row -- closed by a single 1px ink rule, replacing the
           separate left-aligned pair-count paragraph that used to sit
           further down the page. */}
-      <div className="chq-contacts-merge-titleband">
+      <div className="chq-contacts-merge-titleband chq-phone-head chq-phone-head-drill">
         <div className="chq-contacts-merge-titleband-left">
           {backLink}
           <h1 className="chq-page-title">Merge two records</h1>

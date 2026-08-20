@@ -111,12 +111,24 @@ describe('v12 phone frame "Merge · 390" (docs/design/Chautauqua Contacts.dc.htm
   // docs/design/Chautauqua Contacts.dc.html:524 `<a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center">‹ Duplicates</a>`
   it('back link: ONE anchor, the "Contacts · " prefix is its own span, hidden only at <=700px', () => {
     expect(TSX).toMatch(
-      /<Link[^>]*className="chq-contacts-merge-back"[^>]*>\s*&lsaquo;\s*<span className="chq-contacts-merge-back-prefix">Contacts &middot; <\/span>Duplicates\s*<\/Link>/,
+      /<Link[^>]*className="chq-contacts-merge-back(?:\s+\S+)*"[^>]*>\s*&lsaquo;\s*<span className="chq-contacts-merge-back-prefix">Contacts &middot; <\/span>Duplicates\s*<\/Link>/,
     );
     // Never a second Link/anchor for the phone case -- ONE <Link>, reused
     // for both the loaded and empty-state branches via the `backLink` const.
     expect(TSX.match(/<Link\b/g)?.length).toBe(1);
     expect(phoneRule(CSS, '.chq-contacts-merge-back-prefix')).toMatch(/display:\s*none/);
+  });
+
+  // docs/design/Chautauqua Contacts.dc.html:524
+  // `font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center`
+  it('back link composes the shell drill-back vocabulary', () => {
+    expect(TSX).toMatch(/className="chq-contacts-merge-back chq-phone-back"/);
+  });
+
+  // docs/design/Chautauqua Contacts.dc.html:523
+  // `border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:7px`
+  it('titleband composes the shell drill-head vocabulary', () => {
+    expect(TSX).toMatch(/className="chq-contacts-merge-titleband chq-phone-head chq-phone-head-drill"/);
   });
 
   // docs/design/Chautauqua Contacts.dc.html:526 `<span style="font-size:13px; color:#565A4B">1 of 6 pairs · Marcus Okafor</span>`
@@ -164,6 +176,18 @@ describe('v12 phone frame "Merge · 390" (docs/design/Chautauqua Contacts.dc.htm
     // Phone swap: name hides, generic shows.
     expect(phoneRule(CSS, '.chq-contacts-merge-impact-name')).toMatch(/display:\s*none/);
     expect(phoneRule(CSS, '.chq-contacts-merge-impact-generic')).toMatch(/display:\s*inline/);
+  });
+
+  // docs/design/Chautauqua Contacts.dc.html:536
+  // `flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px`
+  it('footer dock: sticky bottom band, row direction, pinned by data-chq-phone-dock on the page root', () => {
+    const phone = phoneRule(CSS, '.chq-contacts-merge-footer');
+    expect(phone).toMatch(/position:\s*sticky/);
+    expect(phone).toMatch(/bottom:\s*0/);
+    expect(phone).toMatch(/border-top/);
+    expect(phone).toMatch(/padding:\s*12px 16px 16px/);
+    expect(phone).toMatch(/gap:\s*8px/);
+    expect(TSX).toMatch(/data-chq-phone-dock/);
   });
 
   it('DEC-385: every rule above lives only inside a max-width media query, never a min-width one', () => {
