@@ -813,7 +813,11 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // Re-measured against this tree. May only be RAISED as a merge-train act if a
 // future predicate widening surfaces more real divergences, and should be
 // LOWERED as sibling lanes close real caption/consequence gaps.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 53;
+// Merge-train act (thunderdome megabatch): measured at 24 against the
+// integrated tree -- the union of all four exclusion tables plus the widened
+// ENTITY_MAP subtracts far more than any single lane could see from its own
+// base (54/53/59). A LOWERING from main's 70, as the ratchet requires.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 24;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {

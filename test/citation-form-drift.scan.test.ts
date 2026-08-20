@@ -316,7 +316,11 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // it`) in the same change, taking the measured count to 93 -- lowered 91 ->
 // 93 to match, per the two-sided ratchet (never lowered below what was
 // actually measured).
-export const LINE_KEYED_CITATION_CEILING = 80;
+// Merge-train act (thunderdome megabatch, w9+w10): re-measured against the
+// integrated tree at 83. Both contributing lanes measured against their own
+// pre-merge base (main 92, v12m-w10-aa 80); 83 is the true count once every
+// lane's citations coexist, and is still a LOWERING from main's 92.
+export const LINE_KEYED_CITATION_CEILING = 83;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
