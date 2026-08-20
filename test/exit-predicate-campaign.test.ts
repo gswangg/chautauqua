@@ -530,7 +530,26 @@ describe("formatCampaignReport", () => {
     });
     const formatted = formatCampaignReport(report);
     expect(formatted).toMatch(/tier-2:\s+DECLARED ONLY -- NOT MEASURED/);
-    expect(formatted).toMatch(/CAMPAIGN: NOT DONE/);
+    expect(formatted).toMatch(/CAMPAIGN: DECLARED ONLY -- NOT MEASURED/);
+  });
+
+  it("prints desktop and phone as DECLARED ONLY -- NOT MEASURED, with no DONE anywhere, when suiteVerifiedAtSha is null (DEC-069 w14-aa)", () => {
+    const report = buildCampaignReport(allGreenFixture(), {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: null,
+      isAncestor: () => true,
+    });
+    const formatted = formatCampaignReport(report);
+    expect(formatted).toMatch(/desktop:\s+DECLARED ONLY -- NOT MEASURED/);
+    expect(formatted).toMatch(/phone:\s+DECLARED ONLY -- NOT MEASURED/);
+    expect(formatted).not.toMatch(/\bDONE\b/);
+  });
+
+  it("still prints desktop and phone counts and DONE when suiteVerifiedAtSha is verified (DEC-069 w14-aa)", () => {
+    const report = buildCampaignReport(allGreenFixture(), VERIFIED_EVIDENCE);
+    const formatted = formatCampaignReport(report);
+    expect(formatted).toMatch(/desktop:\s+\d+ claimed \+ \d+ deviation-deferred = \d+ \/ \d+ -- DONE/);
+    expect(formatted).toMatch(/phone:\s+\d+ \/ \d+ -- DONE/);
   });
 
   // wave-137 (task w12-hh, DEC-069 amendment): the desktop/phone rows used

@@ -942,12 +942,19 @@ export function formatCampaignReport(report: CampaignReport): string {
   const tier2Line = suiteVerified
     ? `tier-2:  ${v.tier2Done ? "all ceilings at 0 -- DONE" : "one or more ceilings above 0 -- NOT DONE"}`
     : "tier-2:  DECLARED ONLY -- NOT MEASURED";
-  const verdictLines = [
-    desktopLine,
-    phoneLine,
-    tier2Line,
-    `CAMPAIGN: ${v.campaignDone ? "DONE" : "NOT DONE"}`,
-  ];
+  // w14-aa (wave-139): the CAMPAIGN row carried the bare word DONE as a
+  // substring of "NOT DONE" even with no evidence at all, so it degrades too.
+  // Its guard is deliberately the WEAKER `suiteVerifiedAtSha === null` rather
+  // than `suiteVerified`: with a STALE verified sha (non-null but not an
+  // ancestor) `campaignDone` is already false, so "CAMPAIGN: NOT DONE" is a
+  // true statement, not an unmeasured claim -- whereas the three ledger rows
+  // above would be asserting counts they cannot back, which is why they use
+  // the ancestry-aware `suiteVerified`.
+  const campaignLine =
+    v.suiteVerifiedAtSha === null
+      ? "CAMPAIGN: DECLARED ONLY -- NOT MEASURED"
+      : `CAMPAIGN: ${v.campaignDone ? "DONE" : "NOT DONE"}`;
+  const verdictLines = [desktopLine, phoneLine, tier2Line, campaignLine];
 
   return `${table}\n${legend}\n\n${verdictLines.join("\n")}`;
 }
