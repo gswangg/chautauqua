@@ -430,6 +430,20 @@ const FIXTURE_EXCLUSIONS: Exclusion[] = [
     reason: 'invented sample speaker affiliation/account-status used as mock card content, not a real UI caption.',
   },
   {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 479,
+    text: 'Marcus Okafor is on the roster, but nothing of his is overdue. Clearing “Overdue only” finds him.',
+    reason:
+      "invented sample speaker identity 'Marcus Okafor' named in a two-facet (search + Overdue only) empty-state sentence. app/src/pages/speakers/narrowing.ts's own header comment (:10-13) already rules this shape out: 'The frame's person-name clause ... comes from the SEARCH term the organiser typed, never a name synthesised from the roster -- so a reason with a name in it renders only for the q facet, and echoes the typed string verbatim.' activeFacet() (narrowing.ts:92-94) returns null whenever two or more facets are active, so OnboardingGrid.tsx falls back to the generic multi-facet sentence and 'Clear filters' escape (:1134-1152) -- no facet composes a specific roster member's name the way this caption's real prose ('is on the roster, but nothing of his is overdue. Clearing \"Overdue only\" finds him.') would need. This is a genuine, previously-identified feature gap (a per-person multi-facet empty state), not yet built; the fixture name is what makes the row unmatched today.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 531,
+    text: '— Jordan Alvarez, DevFlow Conf',
+    reason:
+      "invented sample organiser signature name 'Jordan Alvarez' inside the 'What {name} will read' reminder-email preview. src/server/repo/tasks/reminders.ts:382-387 (buildReminderMessage's own doc comment) already names this exact gap: 'the frame's signature names a person (\"— Jordan Alvarez, DevFlow Conf\"), but the tree has no organiser-identity field on an event to source a real name from -- signing \"— The {event} team\" is the narrowest data-honest reading', implemented at :416 as `renderTemplate(\"— The {event_name} team\", { event_name: eventName })`. The invented person name is fixture data the app cannot honestly reproduce without a field that does not exist; the app's own signature line is real, built product copy, just not this one.",
+  },
+  {
     fileName: 'Chautauqua Submissions.dc.html',
     line: 326,
     text: 'Fieldnote Docs · Documentation Lead',
@@ -734,6 +748,24 @@ const COMPOSED_EXCLUSIONS: Exclusion[] = [
     reason:
       "app/src/pages/speakers/TaskView.tsx:493 composes `A reminder names only this task · ${REMIND_SKIP_RULE} · the due date moves for everyone, from the header`, interpolating REMIND_SKIP_RULE. The frame's word 'emailed' is superseded by the shared vocabulary's word 'reminded' (REMIND_SKIP_RULE = 'skips anyone reminded in the last hour', app/src/pages/speakers/remindSkipVocabulary.ts:8), per the DEVIATIONS.md §3 ruling 'Reminder skip-window wording stays \"reminded\", not \"emailed\"' (docs/design/DEVIATIONS.md:309-316) — the app's word stands, the frame's word is superseded.",
   },
+  // v12m-w15-cc (wave-140): two further COMPOSED captions, disposed per
+  // DEC-976 wave-140's own instruction that real product prose around a
+  // fixture-shaped caption is graded as COMPOSED, not excluded wholesale as
+  // FIXTURE.
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 419,
+    text: 'Spoke · Build Caches in Anger',
+    reason:
+      "src/server/repo/tasks/speaker-detail.ts:538 composes `participation = \\`Spoke · ${r.submissionTitle}\\`` for an other-event row whose submission was accepted, rendered at app/src/pages/speakers/SpeakerDetailPage.tsx:778 (`<span className=\"chq-speaker-detail-other-event-participation\">{e.participation}</span>`); 'Build Caches in Anger' is the frame's own invented sample submission title, not a literal string the app carries anywhere.",
+  },
+  {
+    fileName: 'Chautauqua Speakers.dc.html',
+    line: 524,
+    text: 'A quick nudge — two of your speaker tasks are still open, and one is past its due date.',
+    reason:
+      'src/server/repo/tasks/reminders.ts:401-406 composes `const nudge = \\`A quick nudge — ${openClause}${overdueClause}\\`` from the live assignment counts (spellCount/plural, domain/count-copy.ts) -- the frame\'s exact words are this expression\'s output for a 2-open/1-overdue recipient (spellCount(2)="two", plural(2,"task")="tasks", plural(2,"is","are")="are", spellCount(1)="one"), rendered into the preview card at RemindPreviewModal.tsx:138 (`<pre className="chq-speakers-remind-draft-text">{first.text}</pre>`).',
+  },
 ];
 
 /** (e) SUPERSEDED -- a caption the app deliberately renders the OPPOSITE of,
@@ -996,12 +1028,17 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 // in the fix-me direction ONLY, never hide a real offender (DEC-976
 // wave-138: a corpus repair re-seeds in the repairing commit and that is a
 // repair, not a raise).
-// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=31
-// Thunderdome megabatch: 31 is w14-bb's figure, measured WITHOUT w10-gg's 12
-// COMPOSED exclusions, which are also in this batch and push the count down
-// again. The integrated figure is whatever the two-sided ratchet below prints
-// on breach; it is re-seeded to that measurement, never guessed.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 31;
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=13
+// v12m-w15-cc (wave-140): 31 (this branch's base, w14-bb's integrated
+// figure) forced to -1 and hand-measured: 17 offenders, four of them in
+// Chautauqua Speakers.dc.html (:419, :479, :524, :531) -- this lane's own
+// scope. Disposed :419 and :524 as COMPOSED (both already built --
+// speaker-detail.ts:538's `Spoke · ${r.submissionTitle}` and
+// reminders.ts:401-406's nudge-sentence composer) and :479 and :531 as
+// FIXTURE (both name an invented identity a real gap or a real,
+// differently-worded build already covers -- see each entry's reason).
+// 13 remain, none in the Speakers file. Lowered from 31 to 13.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 13;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
