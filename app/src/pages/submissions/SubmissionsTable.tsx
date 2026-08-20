@@ -29,6 +29,8 @@ import {
 } from './types';
 import { applyViewConfig, type SavedViewConfig } from './views';
 import { ViewTabs } from './ViewTabs';
+import { DEC_265 } from '../../../../src/decisions';
+void DEC_265;
 
 /** DEC-243: render track NAMES, not the raw count of trackIds. */
 function trackNames(trackIds: string[], tracks: Track[]): string {
@@ -161,11 +163,22 @@ export function SubmissionsTable() {
 
   // D21: `items` is now a cache-derived value with no local setter, so the
   // row/bulk triage actions' optimistic flip (and loud rollback-on-failure)
-  // are re-expressed as a thin display-only overlay keyed by id, cleared as
-  // soon as either the write settles (success) or fails (letting the
-  // cache-derived row show again, which for a single-row failure IS the old
-  // setItems(previous) rollback since nothing on the server actually
-  // changed).
+  // are re-expressed as a thin display-only overlay keyed by id.
+  //
+  // DEC-265 amendment (wave 126): an overlay entry is released by SERVER
+  // TRUTH -- once the cache-derived `items` row already carries the written
+  // status -- never by the write's own promise resolving. `apiPost`
+  // resolving only means the request completed; the SWR refetch it triggers
+  // (mutationVersion bump) is asynchronous and DEC_700 (wave 121)
+  // deliberately leaves `submissions.data` untouched until that refetch
+  // lands, so deleting the overlay entry on the promise's resolve raced
+  // ahead of the cache and showed the pre-write status for one round trip --
+  // a successful write that visibly reverted, indistinguishable from a
+  // failed one. The success handlers below now leave the overlay entry
+  // standing; the reconciliation effect just past `items` releases it once
+  // `items` itself agrees. The failure paths are unchanged: they delete
+  // immediately, which for a single id IS the rollback (nothing changed on
+  // the server).
   const [statusOverrides, setStatusOverrides] = useState<Map<string, SubmissionStatus>>(new Map());
   const displayItems = useMemo(
     () =>
@@ -174,6 +187,33 @@ export function SubmissionsTable() {
         : items.map((item) => (statusOverrides.has(item.id) ? { ...item, status: statusOverrides.get(item.id)! } : item)),
     [items, statusOverrides],
   );
+
+  // DEC-265 amendment (wave 126): release each overlay entry only once the
+  // cache-derived row for that id already carries the overridden status --
+  // never on the write's own resolution. Keyed on `submissions.data` (not
+  // `items`, which is a fresh `[]` literal on every render while data is
+  // undefined) so this only re-runs when the cache payload itself changes.
+  // The id-scoped comparison (delete only an id whose CURRENT map value
+  // matches items) means a second write to the same row, started while the
+  // first write's refetch is still in flight, is never dropped: that second
+  // write re-sets the map entry to its own newer status, and this effect
+  // will not release it until a LATER `items` update carries that newer
+  // value in turn.
+  useEffect(() => {
+    setStatusOverrides((prev) => {
+      if (prev.size === 0) return prev;
+      let next: Map<string, SubmissionStatus> | null = null;
+      for (const [id, status] of prev) {
+        const row = items.find((item) => item.id === id);
+        if (row && row.status === status) {
+          if (next === null) next = new Map(prev);
+          next.delete(id);
+        }
+      }
+      return next ?? prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submissions.data]);
 
   // Second, independent parallel fetch for the head summary's "N awaiting
   // triage" figure -- a count of status='pending' regardless of the current
@@ -266,11 +306,10 @@ export function SubmissionsTable() {
         completed += 1;
       }
       setSelection((s) => selectionReducer(s, { type: 'CLEAR' }));
-      setStatusOverrides((prev) => {
-        const next = new Map(prev);
-        for (const id of ids) next.delete(id);
-        return next;
-      });
+      // DEC-265 amendment (wave 126): the overlay entries for `ids` are left
+      // standing on success -- the reconciliation effect above releases each
+      // one once `items` itself carries the written status, never on this
+      // promise resolving.
     } catch (err) {
       setStatusOverrides((prev) => {
         const next = new Map(prev);
@@ -300,11 +339,10 @@ export function SubmissionsTable() {
     setStatusOverrides((prev) => new Map(prev).set(id, status));
     try {
       await apiPost<{ updated: number }>(`/events/${eventId}/submissions/status`, { ids: [id], status });
-      setStatusOverrides((prev) => {
-        const next = new Map(prev);
-        next.delete(id);
-        return next;
-      });
+      // DEC-265 amendment (wave 126): the overlay entry for `id` is left
+      // standing on success -- the reconciliation effect above releases it
+      // once `items` itself carries the written status, never on this
+      // promise resolving.
     } catch (err) {
       // Nothing changed on the server -- dropping the overlay entry lets
       // the cache-derived row show again, which for a single id IS the old
