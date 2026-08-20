@@ -10,13 +10,16 @@ import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { makeFileStore, putThenRecord } from "../../server/context";
 import { assertSpeakerContactId, getPortalData } from "../../server/repo/portal";
-import { DEC_067, DEC_084, DEC_894 } from "../../decisions";
+import { DEC_067, DEC_084, DEC_894, DEC_154, DEC_576, DEC_385 } from "../../decisions";
 import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../lib/image-dims";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
 import { overBudgetBy } from "../../domain/count-copy";
 void DEC_067; // DEC-067: /headshots/:fileId gate — see headshotServeRoutes below.
 void DEC_084; // DEC-084: server-side PNG/JPEG dimension gate on headshot upload — see below.
 void DEC_894; // DEC-894: the dimension gate covers webp too — see below.
+void DEC_154; // DEC-154 (wave 125): profile adopts the ONE SSR dock band — see profileDock below.
+void DEC_576; // DEC-576 (wave-110/119): the dock is PortalLayout's real footer element, one copy at any width.
+void DEC_385; // DEC-385: the phone override lives in portal.css.ts's terminal max-width block only.
 import {
   completeProfileTaskForContact,
   getContactProfile,
@@ -147,8 +150,22 @@ function ProfilePage(props: {
   speakerName: string;
 }) {
   const { profile } = props;
+  // DEC-576 (wave-110/wave-119) + DEC-154 wave-125: the 390 frame's pinned
+  // action band (docs/design/Chautauqua Public and Portal.dc.html:544-547)
+  // draws a Save primary through PortalLayout's dock slot, same call shape
+  // as edit.tsx's editDock (:178-188) and index.tsx's session-detail dock
+  // (:496-503) -- a single control referencing the form by id since the
+  // dock renders inside <footer>, outside this <form>. The frame also
+  // draws a bordered Cancel here, but this page has no referent for one
+  // (no "leave without saving" destination distinct from the header/footer
+  // sign-out and back-link already on screen) -- DEVIATIONS.md records the
+  // omission per DEC-576's own "never manufactured just to fill the band"
+  // rule (shared.tsx:163).
+  const profileDock = (
+    <button type="submit" form="chq-portal-profile-form" class="chq-btn chq-btn-primary">Save profile</button>
+  );
   return (
-    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName} dock={profileDock}>
       <PortalBackLink to="/portal" />
       <h1 class="chq-portal-hero">My Profile</h1>
       {props.error ? <p role="alert">{props.error}</p> : null}
@@ -159,7 +176,7 @@ function ProfilePage(props: {
           bio and then picks a new photo must not lose either. The headshot
           <input> lives inside this same multipart form; POST /portal/profile
           saves both fields and photo (if provided) in a single act. */}
-      <form method="post" action="/portal/profile" enctype="multipart/form-data">
+      <form method="post" action="/portal/profile" id="chq-portal-profile-form" enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
 
         <section aria-label="Headshot" class="chq-section chq-portal-profile-head">
@@ -238,8 +255,15 @@ function ProfilePage(props: {
             <label class="chq-portal-field-label" for="website">Website</label>
             <input class="chq-input" type="text" id="website" name="website" value={profile.socialLinks.website} maxLength={MAX_TEXT_LENGTH} />
           </div>
-          <div class="chq-portal-actions">
-            <button type="submit" class="chq-btn chq-btn-primary">Save profile</button>
+          {/* Wrapped in the generic .chq-portal-actions-footer (edit.tsx's
+              same selector, portal.css.ts:608/900) so the terminal phone
+              block's existing `display:none` rule stands this copy down at
+              390 -- exactly one Save control visible at any width, the
+              other being profileDock's docked copy above. */}
+          <div class="chq-portal-actions-footer">
+            <div class="chq-portal-actions">
+              <button type="submit" class="chq-btn chq-btn-primary">Save profile</button>
+            </div>
           </div>
         </section>
       </form>

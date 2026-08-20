@@ -654,4 +654,27 @@ ${BARE_PAGE_CSS}
       align-items: center;
       padding: 0 4px;
     }
+
+    /* N2 (live-measured at 390, round-1 "not reproducible" refuted): the
+       earlier \`.chq-auth-fields { gap: 0; }\` rule above (this same block,
+       written for /account/password's edge-to-edge Change-password ·
+       390 frame, dc.html:153-174) carries no ancestor scope, so it also
+       zeroes the gap inside /login's OWN .chq-auth-fields form -- the
+       Sign in · 390 frame (dc.html:121-138) draws that group (Email
+       label+box, Password label+box, Sign in button) as one
+       \`gap:14px\` flex column, not 0. Zero gap collapsed BOTH reported
+       defects at once: the Password field and Sign in button touch with
+       no gap, and the LAYOUT gives the focus ring on Email (2px ring at
+       2px offset, DESIGN-RULINGS:187 -- never shrunk, never replaced by
+       hover) no room, so on load it overlaps the Password label by
+       exactly the 4px the ring extends past the input's box. Scoped to
+       \`.chq-auth-stack\` -- the wrapper only LoginPage renders
+       (auth-views.tsx:82) -- so /account/password's own intentional
+       zero-gap band (its own gap comes from .chq-auth-fieldstack's
+       padding:16/gap:16 above) is untouched; later in this same terminal
+       block, so it wins the cascade at equal specificity per DEC-385
+       append-only. */
+    .chq-auth-stack .chq-auth-fields {
+      gap: 14px;
+    }
   }`;
