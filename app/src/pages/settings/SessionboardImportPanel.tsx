@@ -274,7 +274,8 @@ export function SessionboardImportPanel() {
           </fieldset>
 
           <p className="chq-settings-sessionboard-readonly-note">
-            Sessionboard is read-only to us — importing never writes anything back.
+            Nothing has been written yet. Sessionboard is read-only to us — importing never changes anything on
+            their side.
           </p>
 
           <p className="chq-settings-sessionboard-size-hint">

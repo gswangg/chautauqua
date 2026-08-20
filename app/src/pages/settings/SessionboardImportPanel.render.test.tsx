@@ -57,10 +57,12 @@ describe('SessionboardImportPanel', () => {
     expect(within(steps).getByText('Done')).toBeInTheDocument();
   });
 
-  it('states that Sessionboard is read-only to us, next to the entity picker', () => {
+  it('states that nothing has been written yet and Sessionboard is read-only to us, next to the entity picker', () => {
     render(<SessionboardImportPanel />);
     expect(
-      screen.getByText('Sessionboard is read-only to us — importing never writes anything back.'),
+      screen.getByText(
+        'Nothing has been written yet. Sessionboard is read-only to us — importing never changes anything on their side.',
+      ),
     ).toBeInTheDocument();
   });
 
