@@ -41,6 +41,13 @@
 - Reviewer scorecard +31px overflow (chq-user-identity nowrap in a header
   the frame deletes on this screen — Review.dc.html:276 draws no shell
   header; fix per frame).
+  CLOSED (wave 120): app/src/styles.css:2251 `.chq-header-identity .chq-user-identity {`
+  CLOSED (wave 120): app/src/styles.css:2273 `.chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout])) .chq-header-identity .chq-user-identity {`
+  (a reviewer's shell has no tab bar so styles.css:2251 hides the header
+  identity's user block outright, avoiding the nowrap overflow; :2273's
+  drill-in exception re-shows exactly one Sign out, per
+  app/src/pages/review/Scorecard.tsx:525 and the pin at
+  app/src/pages/review/scorecard-phone-frames.test.ts:182.)
 - Docs site 390 header collapses to vertical text (search takes 260px;
   overflow-wrap:anywhere lets wordmark shrink to 23px wide). Docs.dc.html:162.
   CLOSED (wave 115): src/routes/docs-site.css.ts:229 `.chq-docs-header { padding: 14px 16px; gap: 12px; flex-wrap: wrap; }`
@@ -59,9 +66,20 @@
 ## MEDIUM (see probe evidence for full list)
 - 44px floor misses across public/portal (+ app/src stragglers incl.
   .chq-review-queue-footer-showall 52x30 button).
+  Moved to Still Live below — the app/src straggler named in the finding
+  is confirmed unfixed.
 - Zero/negative control gaps: /login password↔button 0px + focus ring
   through the PASSWORD label on load; overview + speakers row pairs overlap
   (-6px); portal session edit↔label 0px.
+  Partially re-derived: the /login card's fields-to-submit gap is 22px
+  (src/routes/auth.css.ts:79 `gap: 22px;`, on `.chq-auth-card`, its direct
+  parent) and overview's wrapped section-header keeps its base 20px flex
+  gap (app/src/pages/overview/overview.css:178 `gap: 20px;`) — neither
+  reproduces a literal 0px/negative gap as measured. The focus-ring and
+  portal session edit↔label clauses were not independently reproducible
+  from the tree by static read (no focus-visible rule exists for
+  `.chq-auth-card input[type=password]` either way) — moved to Still Live
+  below rather than closed on an absence of contrary evidence.
 - CFP content column 290px vs 358 budget; counters on every field incl.
   dates/emails (frames: ABSTRACT only);
   CLOSED (wave 118, "counters on every field incl. dates/emails" clause
@@ -73,3 +91,28 @@
   box; OVERDUE filled chip vs frame's weighted text at 390; portal edit
   scope (frame :597 scopes to title/abstract, live ships full CFP);
   scorecard copy drift (Read-full absent, recuse wording, "—" vs "Not yet").
+
+## Still live at wave 120
+- 44px floor misses across public/portal: `.chq-review-queue-footer-showall`
+  (app/src/pages/review/review.css:650
+  `.chq-review-queue-footer-showall {`, through review.css:654 `padding: 0;`)
+  declares no `min-height`/`height` at any width and has no phone-scoped
+  override anywhere in the file — the sweep's `findOffenders` helper skips
+  any control with `height === undefined`, which is why this real
+  `<button>` (14x-wave-120 field guide: "36 such tokens across 14 sheets")
+  reads 0 in every ratchet. Violates the mandate's own 44px-floor rule
+  (DEC-393), applied to a directly analogous link-button elsewhere in the
+  same campaign at app/src/pages/settings/settings.css:2073
+  `.chq-settings-edit-row-actions .chq-link-button {` -- the sibling
+  pattern this control never received.
+- Zero/negative control gaps, the two clauses not reproducible from a
+  static read: /login's focus ring on the PASSWORD field on load (no
+  `focus-visible` rule targets `.chq-auth-card input[type=password]` in
+  src/routes/auth.css.ts at all, positive or negative, so nothing in the
+  tree confirms or denies the frame divergence) and portal's session
+  edit↔label 0px gap (no rule pairing a session-edit label directly to its
+  control gap was found -- the nearest candidate,
+  src/routes/portal/portal.css.ts:582 `.chq-portal-session-label {`, styles
+  a section label's own internal layout, not a label-to-control pairing).
+  Left live rather than guessed closed — DEC-967 forbids receipting a fix
+  that was not read.
