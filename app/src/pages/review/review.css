@@ -1722,6 +1722,12 @@
   cursor: pointer;
 }
 
+/* tap-floor-exempt: Scorecard.tsx:826-830 wraps this bare radio <input>
+   in a <label htmlFor> (.chq-review-choice-option above, already floored
+   to min-height:44px + centred flex + horizontal padding) -- the label
+   is the click/tap anchor a native radio's `for`/`htmlFor` association
+   targets, not the small radio glyph itself (DEC-393 wave-124: a
+   markup-fact reason, not a schedule note). */
 .chq-review-choice-input {
   cursor: pointer;
   flex: none;
@@ -2850,4 +2856,42 @@
     min-height: 44px;
     padding: 0 14px;
   }
+
+  /* w13-m (DEC-989/DESIGN-RULINGS:189): remaining undeclared-height
+     offenders measured on this file. Full floor (min-height + centred
+     flex + horizontal padding) on each real interactive control; desktop
+     is untouched, these exist only inside this terminal phone block
+     (DEC-385). */
+
+  /* .chq-review-editor-title-input (:1589-1608): the plan-name field on
+     /admin/review/plans/*, an <input>, not a button -- the floor still
+     applies to text inputs per DESIGN-RULINGS:189. Desktop's own
+     `padding: 2px 6px` reads as a 27px display face with no min-height. */
+  .chq-review-editor-title-input {
+    min-height: 44px;
+    padding: 0 6px;
+  }
+
+  .chq-review-sort-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 8px;
+  }
+
+  .chq-review-queue-row-undo {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+  }
+
+  .chq-review-editor-footer-delete {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 6px;
+  }
+
 }

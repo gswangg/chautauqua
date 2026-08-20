@@ -1050,5 +1050,38 @@
     flex-shrink: 0;
     padding: 0 13px;
   }
+
+  /* w13-m (DEC-989/DESIGN-RULINGS:189): four undeclared-height offenders
+     measured on this file -- each is a real <button> (never a bare anchor),
+     so the full floor applies: min-height PLUS centred flex PLUS horizontal
+     padding, not padding alone. Desktop is untouched; these only exist
+     inside this terminal phone block (DEC-385). */
+  .chq-submissions-clone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 8px;
+  }
+
+  .chq-submissions-viewtab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 13px;
+  }
+
+  .chq-submissions-viewtabs-save {
+    min-height: 44px;
+  }
+
+  .chq-submissions-viewtabs-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 8px;
+  }
 }
 
