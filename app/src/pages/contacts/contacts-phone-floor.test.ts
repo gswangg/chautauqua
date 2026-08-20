@@ -193,3 +193,84 @@ describe("contacts.css / contacts-panels.css phone floor + overflow (DEC-393 / D
     });
   });
 });
+
+// DEC-937 DRAIN (task w10-n): `.chq-contacts-title-actions a` resolves to
+// exactly one control -- the Export CSV `<a className="chq-btn
+// chq-btn-secondary">` (ContactsApp.tsx) -- PAINTED via .chq-btn (padding:
+// 10px 16px) + .chq-btn-secondary (border + background). The wave-90
+// cancelled-padding rule above (contacts.css, `.chq-contacts-title-actions
+// a, .chq-contacts-rail-duplicate-actions a { padding-inline: 10px;
+// margin-inline: -10px; ... }`) narrows that face and bleeds the bordered
+// box past its layout edge. A later same-specificity rule (appended,
+// DEC-385 -- the rule above is never edited) restores the horizontal
+// padding and drops the bleed for the painted selector only;
+// `.chq-contacts-rail-duplicate-actions a` (`.chq-link-button`, borderless)
+// keeps the cancelled-padding idiom untouched. These assertions resolve the
+// CASCADE (last-declared-value-wins for a given property, same selector,
+// same specificity) across every rule in the terminal phone block.
+describe("DEC-937 DRAIN (task w10-n): painted `.chq-contacts-title-actions a` de-cancelled, borderless rail link untouched", () => {
+  function stripComments(text: string): string {
+    return text.replace(/\/\*[\s\S]*?\*\//g, "");
+  }
+
+  function rulesForSelector(block: string, target: string): string[] {
+    const clean = stripComments(block);
+    const re = /([^{}]+)\{([^{}]*)\}/g;
+    const bodies: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(clean)) !== null) {
+      const selectorList = (m[1] ?? "").split(",").map((s) => s.trim());
+      if (selectorList.includes(target)) bodies.push(m[2] ?? "");
+    }
+    return bodies;
+  }
+
+  function cascadeValue(bodies: string[], prop: string): string | undefined {
+    let value: string | undefined;
+    const re = new RegExp(`${prop}\\s*:\\s*([^;]+);`);
+    for (const body of bodies) {
+      const m = body.match(re);
+      if (m?.[1] !== undefined) value = m[1].trim();
+    }
+    return value;
+  }
+
+  it(".chq-contacts-title-actions a: at least two rules declare it (the wave-90 cancelled-padding rule plus this drain's override)", () => {
+    const bodies = rulesForSelector(CONTACTS_PHONE_BLOCK, ".chq-contacts-title-actions a");
+    expect(bodies.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it(".chq-contacts-title-actions a: cascade-resolved min-height is 44px", () => {
+    const bodies = rulesForSelector(CONTACTS_PHONE_BLOCK, ".chq-contacts-title-actions a");
+    expect(cascadeValue(bodies, "min-height")).toBe("44px");
+  });
+
+  it(".chq-contacts-title-actions a: cascade-resolved margin-inline is not negative", () => {
+    const bodies = rulesForSelector(CONTACTS_PHONE_BLOCK, ".chq-contacts-title-actions a");
+    const value = cascadeValue(bodies, "margin-inline");
+    expect(value).toBeDefined();
+    expect(value!.startsWith("-")).toBe(false);
+  });
+
+  it(".chq-contacts-rail-duplicate-actions a (borderless) keeps its cascade-resolved margin-inline at -10px, untouched by the drain", () => {
+    const bodies = rulesForSelector(CONTACTS_PHONE_BLOCK, ".chq-contacts-rail-duplicate-actions a");
+    expect(cascadeValue(bodies, "margin-inline")).toBe("-10px");
+  });
+
+  it(".chq-contacts-title-actions: no phone gap override (Export CSV was its only cancelled-padding child; Import CSV / New contact are <button>s the wave-90 rule never selects)", () => {
+    const bodies = rulesForSelector(CONTACTS_PHONE_BLOCK, ".chq-contacts-title-actions");
+    expect(cascadeValue(bodies, "gap")).toBeUndefined();
+  });
+
+  it("falsifiability control: a synthetic single-rule selector with only the wave-90 shape is correctly read as still negative (the drain rule must exist to flip this)", () => {
+    const badBlock = `
+      .chq-x-fake a {
+        min-height: 44px;
+        padding-inline: 10px;
+        margin-inline: -10px;
+      }
+    `;
+    const bodies = rulesForSelector(badBlock, ".chq-x-fake a");
+    expect(cascadeValue(bodies, "margin-inline")).toBe("-10px");
+  });
+});

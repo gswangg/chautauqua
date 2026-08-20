@@ -189,12 +189,15 @@ describe('DEC-393 wave-7 technique: grow the anchor, absorb the padding', () => 
     assertFloor(last.body);
   });
 
-  it('the Export CSV link in .chq-contacts-title-actions sits at the 44px floor', () => {
+  it('the Export CSV link in .chq-contacts-title-actions sits at the 44px floor (DEC-937 DRAIN, task w10-n: PAINTED -- .chq-btn.chq-btn-secondary -- so the wave-7 cancel-padding/negative-margin technique no longer applies; the anchor is grown by min-height alone, its own border/background/padding stay intact)', () => {
     const occurrences = ruleOccurrences(CONTACTS_CSS, '.chq-contacts-title-actions a');
-    expect(occurrences.length).toBeGreaterThanOrEqual(1);
+    expect(occurrences.length).toBeGreaterThanOrEqual(2);
     const last = occurrences[occurrences.length - 1]!;
     expect(isInsidePhoneBlock(CONTACTS_CSS, last.index)).toBe(true);
-    assertFloor(last.body);
+    expect(last.body).toMatch(/min-height:\s*44px/);
+    expect(last.body).toMatch(/display:\s*flex/);
+    expect(last.body).toMatch(/align-items:\s*center/);
+    expect(last.body).not.toMatch(/margin-inline:\s*-/);
   });
 
   it('the Merge link in .chq-contacts-rail-duplicate-actions sits at the 44px floor', () => {
