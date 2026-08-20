@@ -37,15 +37,18 @@ function render(field: FormFieldDef, value: unknown): string {
 }
 
 describe("form-render caps (DEC-124 amendment)", () => {
-  it("renders maxlength=200 and a 0 / 200 counter for a text field with maximum 200", () => {
+  it("renders maxlength=200 for a text field with maximum 200, but no counter (DEC-909 wave-111: long-text only)", () => {
     const html = render(textField, "");
     expect(html).toContain('maxlength="200"');
-    expect(html).toContain("0 / 200");
+    expect(html).not.toContain("chq-field-counter");
+    expect(html).not.toContain("0 / 200");
   });
 
-  it("renders maxlength equal to MAX_LONG_TEXT_LENGTH for a long_text with no maximum", () => {
+  it("renders maxlength equal to MAX_LONG_TEXT_LENGTH and a 0 / <cap> counter for a long_text with no maximum", () => {
     const html = render(longTextField, "");
     expect(html).toContain(`maxlength="${MAX_LONG_TEXT_LENGTH}"`);
+    expect(html).toContain("chq-field-counter");
+    expect(html).toContain(`0 / ${MAX_LONG_TEXT_LENGTH.toLocaleString("en-US")}`);
   });
 
   for (const field of [textField, longTextField]) {

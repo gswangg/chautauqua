@@ -9,10 +9,12 @@ import { MAX_LONG_TEXT_LENGTH } from "../src/forms/validate";
 import { allowedUploadExtensions, CFP_FILE_FIELD_KIND } from "../src/domain/files";
 
 describe("form-render field grammar (DEC-909)", () => {
-  // w1-a (DEC-124 amendment): the counter was widened from long_text-only
-  // to text+long_text so a text field's cap (e.g. the locked title's
-  // MAX_TEXT_LENGTH/maximum) is visible before submit, not just on refusal.
-  it("a required short-text field carries no marker but does carry a counter", () => {
+  // w7-j (DEC-909 wave-111 amendment): the counter was narrowed back to
+  // long_text-only -- the pack draws it exactly three times, all on the
+  // Abstract field (long_text), never on a short text field. A short-text
+  // field keeps its `maxlength`/validation cap (untouched) but carries no
+  // counter affordance.
+  it("a required short-text field carries no marker and no counter", () => {
     const field: FormFieldDef = {
       id: "title",
       section: "session",
@@ -24,10 +26,10 @@ describe("form-render field grammar (DEC-909)", () => {
     const html = FormField({ field, value: "My talk", visible: true }).toString();
     expect(html).not.toContain(" *");
     expect(html).not.toContain("chq-field-optional");
-    expect(html).toContain("chq-field-counter");
+    expect(html).not.toContain("chq-field-counter");
   });
 
-  it("an optional short-text field appends ' · optional' and still carries a counter", () => {
+  it("an optional short-text field appends ' · optional' but carries no counter", () => {
     const field: FormFieldDef = {
       id: "notes",
       section: "session",
@@ -39,7 +41,7 @@ describe("form-render field grammar (DEC-909)", () => {
     const html = FormField({ field, value: undefined, visible: true }).toString();
     expect(html).toContain("chq-field-optional");
     expect(html).toContain(" · optional");
-    expect(html).toContain("chq-field-counter");
+    expect(html).not.toContain("chq-field-counter");
   });
 
   it("a long-text field renders a live counter with the formatted default max and initial count", () => {
@@ -57,6 +59,24 @@ describe("form-render field grammar (DEC-909)", () => {
     expect(html).toContain(`412 / ${MAX_LONG_TEXT_LENGTH.toLocaleString("en-US")}`);
     expect(html).not.toContain(" *");
     expect(html).not.toContain("chq-field-optional");
+  });
+
+  // DEC-909 wave-111: the pack draws the counter exactly three times in its
+  // whole extent, all `412 / 1,200` on the Abstract field --
+  // `docs/design/Chautauqua Public and Portal.dc.html:1037` (CFP · 390).
+  it("prints the frame's exact counter literal ('412 / 1,200') for a 412-char abstract against a 1,200 cap (frame :1037)", () => {
+    const field: FormFieldDef = {
+      id: "abstract-frame-1037",
+      section: "session",
+      kind: "long_text",
+      label: "Abstract",
+      required: true,
+      position: 3,
+      maximum: 1200,
+    };
+    const value = "x".repeat(412);
+    const html = FormField({ field, value, visible: true }).toString();
+    expect(html).toContain("412 / 1,200");
   });
 
   it("a long-text field with its own maximum uses that maximum, thousands-separated", () => {
