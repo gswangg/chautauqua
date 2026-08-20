@@ -290,6 +290,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // hydrated ids applies the template but stays on step 1 (there is nothing
   // to compose FOR yet); a non-empty selection (from ?ids=, regardless of
   // whether ?template= is also present) opens straight at step 2.
+  // DEC-846 wave-116 (main's only red): a late /templates read must not
+  // clobber words the organiser already typed in Subject/Body while
+  // waiting for it. Pristineness is tracked from the composer's own edit
+  // paths (the Subject/Body onChange handlers below), never by comparing
+  // strings -- an edit that happens to reproduce the template's own text
+  // is still an edit. templateId/templateName remain provenance-only (see
+  // the DEC-846 comment at composeBody above) and are recorded regardless
+  // of pristineness: they never change what's shown or sent, only what a
+  // send is attributed to.
+  const composerEditedRef = useRef(false);
   const appliedTemplateParam = useRef(false);
   useEffect(() => {
     if (appliedTemplateParam.current || templates.length === 0) return;
@@ -298,9 +308,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     const found = templates.find((t) => t.id === wanted);
     if (!found) return;
     appliedTemplateParam.current = true;
+    if (!composerEditedRef.current) {
+      setSubject(found.subject);
+      setBodyText(found.bodyText);
+    }
     setTemplateName(found.name);
-    setSubject(found.subject);
-    setBodyText(found.bodyText);
     setTemplateId(found.id);
   }, [templates]);
 
@@ -1177,7 +1189,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </select>
           </FormRow>
           <FormRow label="Subject" htmlFor="compose-subject">
-            <input id="compose-subject" className="chq-input" maxLength={MAX_TEXT_LENGTH} value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <input
+              id="compose-subject"
+              className="chq-input"
+              maxLength={MAX_TEXT_LENGTH}
+              value={subject}
+              onChange={(e) => {
+                composerEditedRef.current = true;
+                setSubject(e.target.value);
+              }}
+            />
           </FormRow>
           <FormRow label="Body" htmlFor="compose-body">
             <textarea
@@ -1187,7 +1208,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               ref={bodyRef}
               maxLength={MAX_RICH_TEXT_LENGTH}
               value={bodyText}
-              onChange={(e) => setBodyText(e.target.value)}
+              onChange={(e) => {
+                composerEditedRef.current = true;
+                setBodyText(e.target.value);
+              }}
             />
           </FormRow>
           <div className="chq-comms-template-body-merge-chips">
