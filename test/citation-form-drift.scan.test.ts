@@ -302,7 +302,12 @@ const OFFENDERS: Offender[] = ALL_DOCS.flatMap((d) => findLineKeyedOffenders(d.d
 // line-keyed citations left the population in the same change that made them
 // true. Re-measured by running this scan on the integrated tree (DEC-989
 // clause a); the two-sided companion below is what forced the constant down.
-export const LINE_KEYED_CITATION_CEILING = 92;
+// Wave 128/129 (merge train): lowered 92 -> 91. DEC-808's wave-128 amendment
+// cited the hard-coded PublicSearchBox placeholder by line; task w3-q deleted
+// that default outright, so the citation was rewritten to state the landed
+// state in the drift-proof bare-path shape -- one more line-keyed citation out
+// of the population, by exactly the conversion this file prescribes.
+export const LINE_KEYED_CITATION_CEILING = 91;
 
 describe("citation-form-drift scan: line-keyed citations into app/src, src, test, scripts, migrations (DEC-967 amendment, task w11-t)", () => {
   it("vacuous-population tripwire: the population is non-empty and contains a known member", () => {
