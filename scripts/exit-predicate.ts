@@ -486,7 +486,32 @@ export interface CampaignVerdict {
   readonly phonePopulation: number;
   readonly phoneDone: boolean;
   readonly tier2Done: boolean;
+  // wave-132 (task w7-e, instrument integrity repair): the ceiling table
+  // is parsed out of DECLARED constants, never a live measurement -- see
+  // formatCampaignReport's DECLARED column and legend line. This field
+  // records the sha (if any) at which the fast-tier suite was last run
+  // green, as supplied by the caller (never discovered by this pure
+  // function -- see buildCampaignReport's SuiteEvidence parameter).
+  // campaignDone must never be true without it.
+  readonly suiteVerifiedAtSha: string | null;
   readonly campaignDone: boolean;
+}
+
+/**
+ * Evidence that the fast-tier suite (`npm run test:fast`) has been run
+ * green at a given sha, supplied by the caller -- this module performs no
+ * process spawning and discovers nothing about test results on its own
+ * (wave-132, task w7-e). `isAncestor` is the SAME predicate shape
+ * `gradePredicate` takes for its five DEC-069 slots (see that function's
+ * doc comment): "is `ancestorSha` an ancestor of (or equal to)
+ * `descendantSha`?". `campaignDone` requires `suiteVerifiedAtSha !== null`
+ * AND `isAncestor(productSha, suiteVerifiedAtSha)` -- i.e. the verified
+ * tree already contains every change in the product sha being graded.
+ */
+export interface SuiteEvidence {
+  readonly productSha: string;
+  readonly suiteVerifiedAtSha: string | null;
+  readonly isAncestor: (ancestorSha: string, descendantSha: string) => boolean;
 }
 
 export interface CampaignReport {
@@ -717,7 +742,10 @@ function ceilingRow(matches: readonly ConstantMatch[], name: string): RatchetRow
  * Any other count, or a CLAIMED_FLOOR not co-located with either population
  * constant, throws rather than guessing which ledger it belongs to.
  */
-export function buildCampaignReport(files: readonly CampaignFile[]): CampaignReport {
+export function buildCampaignReport(
+  files: readonly CampaignFile[],
+  suiteEvidence: SuiteEvidence,
+): CampaignReport {
   assertCampaignPopulationTotal(findCampaignCeilingCandidates(files));
   assertEveryGradedCeilingIsGated(CAMPAIGN_CONSTANT_NAMES, TIER2_CEILING_NAMES, OUT_OF_CAMPAIGN_SCOPE);
 
@@ -790,6 +818,10 @@ export function buildCampaignReport(files: readonly CampaignFile[]): CampaignRep
   const phoneDone = phoneClaimed.value >= expectedTotal.value;
   const tier2Done = tier2Rows.every((row) => row.current === 0);
 
+  const { productSha, suiteVerifiedAtSha, isAncestor } = suiteEvidence;
+  const suiteVerified =
+    suiteVerifiedAtSha !== null && isAncestor(productSha, suiteVerifiedAtSha);
+
   const verdict: CampaignVerdict = {
     desktopClaimed: desktopClaimed.value,
     desktopDeferred: deviationDeferred.value,
@@ -799,14 +831,24 @@ export function buildCampaignReport(files: readonly CampaignFile[]): CampaignRep
     phonePopulation: expectedTotal.value,
     phoneDone,
     tier2Done,
-    campaignDone: desktopDone && phoneDone && tier2Done,
+    suiteVerifiedAtSha,
+    campaignDone: desktopDone && phoneDone && tier2Done && suiteVerified,
   };
 
   return { rows, verdict };
 }
 
+/**
+ * wave-132 (task w7-e, instrument integrity repair): the ceiling table's
+ * third column used to be labeled CURRENT, inviting the misreading that it
+ * is a live measurement. It is not -- `ceilingRow`/`buildCampaignReport`
+ * only ever parse the `[export ]const <NAME> = <integer>;` declaration text
+ * out of the owning scan file; nothing here re-runs that scan. Renamed to
+ * DECLARED, with a legend line spelling out the distinction, so a reader
+ * cannot mistake a stale-but-green-looking declaration for a fresh run.
+ */
 export function formatCampaignReport(report: CampaignReport): string {
-  const header = ["ROW", "FILE", "CURRENT", "TARGET", "REMAINING"];
+  const header = ["ROW", "FILE", "DECLARED", "TARGET", "REMAINING"];
   const lines: string[][] = [header];
   for (const row of report.rows) {
     lines.push([
@@ -823,28 +865,55 @@ export function formatCampaignReport(report: CampaignReport): string {
   const table = lines
     .map((line) => line.map((cell, col) => cell.padEnd(widths[col] as number)).join("  "))
     .join("\n");
+  const legend =
+    "DECLARED is what the constant SAYS, never what the tree measures -- " +
+    "re-measure by running the owning test.";
 
   const v = report.verdict;
+  const tier2Line =
+    v.suiteVerifiedAtSha === null
+      ? "tier-2:  DECLARED ONLY -- NOT MEASURED"
+      : `tier-2:  ${v.tier2Done ? "all ceilings at 0 -- DONE" : "one or more ceilings above 0 -- NOT DONE"}`;
   const verdictLines = [
     `desktop: ${v.desktopClaimed} claimed + ${v.desktopDeferred} deviation-deferred ` +
       `= ${v.desktopClaimed + v.desktopDeferred} / ${v.desktopPopulation} -- ` +
       `${v.desktopDone ? "DONE" : "NOT DONE"}`,
     `phone:   ${v.phoneClaimed} / ${v.phonePopulation} -- ${v.phoneDone ? "DONE" : "NOT DONE"}`,
-    `tier-2:  ${v.tier2Done ? "all ceilings at 0 -- DONE" : "one or more ceilings above 0 -- NOT DONE"}`,
+    tier2Line,
     `CAMPAIGN: ${v.campaignDone ? "DONE" : "NOT DONE"}`,
   ];
 
-  return `${table}\n\n${verdictLines.join("\n")}`;
+  return `${table}\n${legend}\n\n${verdictLines.join("\n")}`;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const flagIdx = process.argv.indexOf("--product-sha");
   if (flagIdx === -1 || !process.argv[flagIdx + 1]) {
     throw new Error(
-      "exit-predicate: usage: npx tsx scripts/exit-predicate.ts --product-sha <sha>",
+      "exit-predicate: usage: npx tsx scripts/exit-predicate.ts --product-sha <sha> " +
+        "[--suite-verified-sha <sha>]",
     );
   }
   const productSha = process.argv[flagIdx + 1] as string;
+
+  // wave-132 (task w7-e, instrument integrity repair): evidence that the
+  // fast-tier suite has been run green, supplied on the command line --
+  // never discovered by this process (no child_process spawn of vitest
+  // lives here). Absent, campaignDone can never be true (see
+  // buildCampaignReport's suiteEvidence requirement) and the summary says
+  // so explicitly below.
+  const suiteFlagIdx = process.argv.indexOf("--suite-verified-sha");
+  let suiteVerifiedAtSha: string | null = null;
+  if (suiteFlagIdx !== -1) {
+    const val = process.argv[suiteFlagIdx + 1];
+    if (!val) {
+      throw new Error(
+        "exit-predicate: usage: npx tsx scripts/exit-predicate.ts --product-sha <sha> " +
+          "[--suite-verified-sha <sha>]",
+      );
+    }
+    suiteVerifiedAtSha = val;
+  }
 
   const REPO_ROOT = join(import.meta.dirname, "..");
   const LOG_FILE = join(REPO_ROOT, "docs", "verification-log.md");
@@ -886,7 +955,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     path,
     content: readFileSync(join(REPO_ROOT, path), "utf8"),
   }));
-  const campaignReport = buildCampaignReport(campaignFiles);
+  const campaignReport = buildCampaignReport(campaignFiles, {
+    productSha,
+    suiteVerifiedAtSha,
+    isAncestor,
+  });
   console.log(formatCampaignReport(campaignReport));
 
   if (!allPass || !campaignReport.verdict.campaignDone) {
@@ -897,6 +970,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     if (!campaignReport.verdict.campaignDone) {
       console.error("exit-predicate: v12 mobile campaign is not yet DONE (see rows above).");
+    }
+    if (suiteVerifiedAtSha === null) {
+      console.error(
+        "exit-predicate: no --suite-verified-sha given -- the fast-tier suite has not been " +
+          "verified against this tree. Run `npm run test:fast`, then re-run this script with " +
+          "--suite-verified-sha <sha the suite passed at>.",
+      );
     }
     process.exit(1);
   }

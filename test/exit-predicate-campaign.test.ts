@@ -18,8 +18,21 @@ import {
   type CampaignFile,
   findCampaignCeilingCandidates,
   findConstantDeclarations,
+  formatCampaignReport,
   OUT_OF_CAMPAIGN_SCOPE,
+  type SuiteEvidence,
 } from "../scripts/exit-predicate";
+
+// wave-132 (task w7-e, instrument integrity repair): buildCampaignReport now
+// requires suite evidence as an explicit input (never discovered by the
+// function itself). Tests that don't care about the suite-verification
+// behaviour use this fixed "always verified" evidence so their pre-existing
+// assertions about desktop/phone/tier2 stay unaffected.
+const VERIFIED_EVIDENCE: SuiteEvidence = {
+  productSha: "product-sha",
+  suiteVerifiedAtSha: "suite-sha",
+  isAncestor: () => true,
+};
 
 /**
  * A synthetic corpus shaped like the real one: two "ledger" files each
@@ -137,6 +150,71 @@ function baseFixture(): CampaignFile[] {
   ];
 }
 
+/**
+ * `baseFixture()` with every floor at its target and every ceiling at 0 --
+ * i.e. a corpus that is desktop-done, phone-done and tier2-done. Used by
+ * the suite-verification tests (wave-132, task w7-e) so those tests can
+ * isolate the effect of `suiteEvidence` from the ceiling/floor conditions.
+ */
+function allGreenFixture(): CampaignFile[] {
+  return baseFixture().map((f) => {
+    if (f.path === "test/desktop-frame-ledger.scan.test.ts") {
+      return {
+        ...f,
+        content: f.content.replace(
+          "export const CLAIMED_FLOOR = 30;",
+          "export const CLAIMED_FLOOR = 38;",
+        ),
+      };
+    }
+    if (f.path === "app/src/control-font.scan.test.ts") return { ...f, content: "export const CEILING = 0;" };
+    if (f.path === "app/src/phone-tap-target.scan.test.ts") {
+      return {
+        ...f,
+        content: [
+          "export const ANCHOR_FLOOR_OFFENDERS_CEILING = 0;",
+          "export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;",
+          "export const SSR_UNFLOORED_TOKENS_CEILING = 0;",
+        ].join("\n"),
+      };
+    }
+    if (f.path === "app/src/phone-horizontal-overflow.scan.test.ts") {
+      return {
+        ...f,
+        content: [
+          "export const CROSS_BUNDLE_CITATION_CEILING = 0;",
+          "export const OVERFLOW_OFFENDERS_CEILING = 0;",
+        ].join("\n"),
+      };
+    }
+    if (f.path === "app/src/phone-capability-removal.scan.test.ts") {
+      return { ...f, content: "export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 0;" };
+    }
+    if (f.path === "app/src/frame-citation.scan.test.ts") {
+      return {
+        ...f,
+        content: [
+          "const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;",
+          "const UNRECEIPTED_CLAIM_CEILING = 0;",
+        ].join("\n"),
+      };
+    }
+    if (f.path === "app/src/cancelled-padding-face.scan.test.ts") {
+      return { ...f, content: "export const PAINTED_CANCELLED_PADDING_CEILING = 0;" };
+    }
+    if (f.path === "app/src/cancelled-padding-gap.scan.test.ts") {
+      return { ...f, content: "export const CANCELLED_PADDING_GAP_CEILING = 0;" };
+    }
+    if (f.path === "app/src/phone-tap-target-undeclared.scan.test.ts") {
+      return { ...f, content: "export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 0;" };
+    }
+    if (f.path === "test/frame-control-label.scan.test.ts") {
+      return { ...f, content: "export const FOOTER_LABEL_CEILING = 0;" };
+    }
+    return f;
+  });
+}
+
 describe("findConstantDeclarations", () => {
   it("resolves every campaign constant name from the fixture corpus (positive control)", () => {
     const matches = findConstantDeclarations(baseFixture(), new Set(CAMPAIGN_CONSTANT_NAMES));
@@ -175,7 +253,7 @@ describe("findConstantDeclarations", () => {
 
 describe("buildCampaignReport", () => {
   it("builds all 10 rows and a correct verdict from the fixture corpus", () => {
-    const report = buildCampaignReport(baseFixture());
+    const report = buildCampaignReport(baseFixture(), VERIFIED_EVIDENCE);
     // Megabatch wave-120/121: three instruments landed together.
     // PAINTED_CANCELLED_PADDING_CEILING (DEC-937) and
     // CANCELLED_PADDING_GAP_CEILING (DEC-393 amendment) are both in
@@ -206,64 +284,43 @@ describe("buildCampaignReport", () => {
   });
 
   it("reports campaignDone true only once every floor meets its target and every ceiling is 0", () => {
-    const files = baseFixture().map((f) => {
-      if (f.path === "test/desktop-frame-ledger.scan.test.ts") {
-        return {
-          ...f,
-          content: f.content.replace(
-            "export const CLAIMED_FLOOR = 30;",
-            "export const CLAIMED_FLOOR = 38;",
-          ),
-        };
-      }
-      if (f.path === "app/src/control-font.scan.test.ts") return { ...f, content: "export const CEILING = 0;" };
-      if (f.path === "app/src/phone-tap-target.scan.test.ts") {
-        return {
-          ...f,
-          content: [
-            "export const ANCHOR_FLOOR_OFFENDERS_CEILING = 0;",
-            "export const SSR_TAP_FLOOR_OFFENDERS_CEILING = 0;",
-            "export const SSR_UNFLOORED_TOKENS_CEILING = 0;",
-          ].join("\n"),
-        };
-      }
-      if (f.path === "app/src/phone-horizontal-overflow.scan.test.ts") {
-        return {
-          ...f,
-          content: [
-            "export const CROSS_BUNDLE_CITATION_CEILING = 0;",
-            "export const OVERFLOW_OFFENDERS_CEILING = 0;",
-          ].join("\n"),
-        };
-      }
-      if (f.path === "app/src/phone-capability-removal.scan.test.ts") {
-        return { ...f, content: "export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 0;" };
-      }
-      if (f.path === "app/src/frame-citation.scan.test.ts") {
-        return {
-          ...f,
-          content: [
-            "const DESKTOP_UNRECEIPTED_CLAIM_CEILING = 0;",
-            "const UNRECEIPTED_CLAIM_CEILING = 0;",
-          ].join("\n"),
-        };
-      }
-      if (f.path === "app/src/cancelled-padding-face.scan.test.ts") {
-        return { ...f, content: "export const PAINTED_CANCELLED_PADDING_CEILING = 0;" };
-      }
-      if (f.path === "app/src/cancelled-padding-gap.scan.test.ts") {
-        return { ...f, content: "export const CANCELLED_PADDING_GAP_CEILING = 0;" };
-      }
-      if (f.path === "app/src/phone-tap-target-undeclared.scan.test.ts") {
-        return { ...f, content: "export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 0;" };
-      }
-      if (f.path === "test/frame-control-label.scan.test.ts") {
-        return { ...f, content: "export const FOOTER_LABEL_CEILING = 0;" };
-      }
-      return f;
-    });
-    const report = buildCampaignReport(files);
+    const files = allGreenFixture();
+    const report = buildCampaignReport(files, VERIFIED_EVIDENCE);
     expect(report.verdict.campaignDone).toBe(true);
+  });
+
+  it("with every ceiling 0 and every floor met but suiteVerifiedAtSha null, campaignDone is false (DEC-069 w7-e)", () => {
+    const files = allGreenFixture();
+    const report = buildCampaignReport(files, {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: null,
+      isAncestor: () => true,
+    });
+    expect(report.verdict.tier2Done).toBe(true);
+    expect(report.verdict.desktopDone).toBe(true);
+    expect(report.verdict.phoneDone).toBe(true);
+    expect(report.verdict.suiteVerifiedAtSha).toBeNull();
+    expect(report.verdict.campaignDone).toBe(false);
+  });
+
+  it("with every ceiling 0 and every floor met and a suite sha the product sha is an ancestor of, campaignDone is true", () => {
+    const files = allGreenFixture();
+    const report = buildCampaignReport(files, {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: "suite-sha",
+      isAncestor: (ancestor, descendant) => ancestor === "product-sha" && descendant === "suite-sha",
+    });
+    expect(report.verdict.campaignDone).toBe(true);
+  });
+
+  it("with every ceiling 0 and every floor met but the suite sha is NOT a descendant of the product sha, campaignDone is false", () => {
+    const files = allGreenFixture();
+    const report = buildCampaignReport(files, {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: "stale-suite-sha",
+      isAncestor: () => false, // the suite-verified sha does not contain the product sha's changes
+    });
+    expect(report.verdict.campaignDone).toBe(false);
   });
 
   it("throws when a required constant is renamed out of existence (positive control)", () => {
@@ -272,7 +329,7 @@ describe("buildCampaignReport", () => {
         ? { ...f, content: "export const CEILING_RENAMED = 5;" }
         : f,
     );
-    expect(() => buildCampaignReport(files)).toThrow(/no declaration of CEILING/);
+    expect(() => buildCampaignReport(files, VERIFIED_EVIDENCE)).toThrow(/no declaration of CEILING/);
   });
 
   it("throws when CLAIMED_FLOOR is declared a third time (topology changed)", () => {
@@ -283,12 +340,12 @@ describe("buildCampaignReport", () => {
         content: "export const CLAIMED_FLOOR = 1;",
       },
     ];
-    expect(() => buildCampaignReport(files)).toThrow(/expected exactly 2 declarations of CLAIMED_FLOOR/);
+    expect(() => buildCampaignReport(files, VERIFIED_EVIDENCE)).toThrow(/expected exactly 2 declarations of CLAIMED_FLOOR/);
   });
 
   it("throws when CLAIMED_FLOOR is declared only once", () => {
     const files = baseFixture().filter((f) => f.path !== "test/phone-frame-ledger.scan.test.ts");
-    expect(() => buildCampaignReport(files)).toThrow(/expected exactly 2 declarations of CLAIMED_FLOOR/);
+    expect(() => buildCampaignReport(files, VERIFIED_EVIDENCE)).toThrow(/expected exactly 2 declarations of CLAIMED_FLOOR/);
   });
 
   it("throws when a CLAIMED_FLOOR is not co-located with either population constant", () => {
@@ -297,7 +354,7 @@ describe("buildCampaignReport", () => {
         ? { ...f, content: "export const CLAIMED_FLOOR = 20;" } // EXPECTED_TOTAL dropped
         : f,
     );
-    expect(() => buildCampaignReport(files)).toThrow(/no declaration of EXPECTED_TOTAL/);
+    expect(() => buildCampaignReport(files, VERIFIED_EVIDENCE)).toThrow(/no declaration of EXPECTED_TOTAL/);
   });
 
   it("throws when the corpus declares a ratchet constant nobody graded (population made total, DEC-069 wave-118)", () => {
@@ -308,7 +365,7 @@ describe("buildCampaignReport", () => {
         content: "export const NEW_LANE_OFFENDERS_CEILING = 3;",
       },
     ];
-    expect(() => buildCampaignReport(files)).toThrow(/NEW_LANE_OFFENDERS_CEILING/);
+    expect(() => buildCampaignReport(files, VERIFIED_EVIDENCE)).toThrow(/NEW_LANE_OFFENDERS_CEILING/);
   });
 });
 
@@ -427,4 +484,28 @@ describe("assertEveryGradedCeilingIsGated", () => {
     expect(() => assertEveryGradedCeilingIsGated(graded, [], {})).not.toThrow();
   });
 
+});
+
+// wave-132 (task w7-e, instrument integrity repair): the ceiling table's
+// header column must never read CURRENT again -- that word invited the
+// misreading that `ceilingRow`'s value is a live measurement rather than a
+// parsed-out declaration.
+describe("formatCampaignReport", () => {
+  it("labels the ceiling table's third column DECLARED, never CURRENT", () => {
+    const report = buildCampaignReport(baseFixture(), VERIFIED_EVIDENCE);
+    const formatted = formatCampaignReport(report);
+    expect(formatted).toMatch(/\bDECLARED\b/);
+    expect(formatted).not.toMatch(/\bCURRENT\b/);
+  });
+
+  it("prints the tier-2 line as DECLARED ONLY -- NOT MEASURED when suiteVerifiedAtSha is null", () => {
+    const report = buildCampaignReport(allGreenFixture(), {
+      productSha: "product-sha",
+      suiteVerifiedAtSha: null,
+      isAncestor: () => true,
+    });
+    const formatted = formatCampaignReport(report);
+    expect(formatted).toMatch(/tier-2:\s+DECLARED ONLY -- NOT MEASURED/);
+    expect(formatted).toMatch(/CAMPAIGN: NOT DONE/);
+  });
 });
