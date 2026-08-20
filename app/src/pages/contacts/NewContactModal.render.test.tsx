@@ -150,15 +150,15 @@ describe('NewContactModal frame 08--16 anatomy (DEC-597 wave 8 amendment)', () =
     expect(helpText?.textContent).toMatch(/matched and merged/);
   });
 
-  // Receipt: docs/design/Chautauqua Contacts.dc.html:834 draws
-  // `<span ...>Must be unique — it is how contacts are matched and
-  // merged</span>` as the email field's caption. The app's help text must
-  // contain that frame string verbatim, including the em dash.
-  it('email help contains the frame caption verbatim (docs/design/Chautauqua Contacts.dc.html:834)', () => {
+  it('email help contains the frame caption verbatim', () => {
     mockApi({});
     renderModal();
     const emailInput = screen.getByLabelText('Email');
     const helpText = emailInput.closest('.chq-form-row')?.querySelector('.chq-form-row-help');
+    // Receipt: docs/design/Chautauqua Contacts.dc.html:834 draws
+    // `<span ...>Must be unique — it is how contacts are matched and
+    // merged</span>` as the email field's caption. The app's help text must
+    // contain that frame string verbatim, including the em dash.
     expect(helpText?.textContent).toContain(
       'Must be unique — it is how contacts are matched and merged',
     );
