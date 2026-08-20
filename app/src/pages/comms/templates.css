@@ -103,15 +103,19 @@
 /* DEC-385 single-direction: everything below is a max-width override, so  */
 /* the 1600 "Templates" subscreen is untouched.                            */
 /*                                                                        */
-/* One thing the frame draws that this build deliberately does NOT copy,   */
-/* because a recorded ruling already settled it the other way:             */
+/* One thing the frame draws that this build does NOT turn into a second   */
+/* CONTROL, because a recorded ruling already settled that the other way:  */
 /*                                                                        */
-/*  1. The frame's per-row `Open` button. w18-e (DEC-890 amendment) ruled  */
+/*  1. The frame's per-row `Open` chip. w18-e (DEC-890 amendment) ruled    */
 /*     that the row carries no verbs -- the NAME is the row's one control  */
-/*     -- so a phone-only second control pointing at the same action would */
-/*     put two tap targets on one row for one act. Instead the name TAKES  */
-/*     the frame's Open geometry: the 44px floor with real horizontal      */
-/*     padding, at the frame's own 16px display face.                      */
+/*     -- so a phone-only second FOCUSABLE control pointing at the same    */
+/*     action would put two tap targets on one row for one act. The name   */
+/*     still TAKES the frame's Open geometry -- the 44px floor with real   */
+/*     horizontal padding, at the frame's own 16px display face -- and     */
+/*     DEC-937's wave-111 amendment (comms.css) additionally renders the   */
+/*     chip itself as inert decoration (`.chq-comms-template-open`,        */
+/*     aria-hidden, no handler, no role) so the row still reads as the     */
+/*     frame draws it without adding a second thing to tap.                */
 /*                                                                        */
 /* Two items previously held here (wave 7's deferral, per                  */
 /* docs/design/audit/comms-drill-v12.md's "Held for a later wave" section) */
@@ -173,10 +177,13 @@
   }
 
   /* Frame row: name (16px display 600) over the purpose+subject line,
-     with the last-used state as an uppercase micro-label beneath. The
-     `Name: ` / `Last used: ` prefixes stay -- comms.css's
-     td[data-label]::before rule is pinned by TemplatesTable.columns.test
-     .ts (DEC-937) as the phone card's only honest label source. */
+     with the last-used state as an uppercase micro-label beneath, all
+     three unprefixed. DEC-937 wave-111 amendment (comms.css) suppresses
+     the generic `td[data-label]::before` caption for both the Name and
+     Last-used cells on this table -- the generic rule itself is still
+     pinned by TemplatesTable.columns.test.ts as the phone card's default
+     label source for every table that DOES draw a caption; this table no
+     longer does. */
   .chq-comms-template-name {
     display: flex;
     align-items: center;

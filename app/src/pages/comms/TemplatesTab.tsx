@@ -261,12 +261,20 @@ export function TemplatesTab({ eventId, onBack }: { eventId: string; onBack?: ()
                         of its own -- the NAME is the row's one control,
                         selecting the template into the editor where Delete,
                         Duplicate and "Use in a send" live. Purpose copy +
-                        subject stay demoted secondary meta. */}
+                        subject stay demoted secondary meta. The phone-only
+                        "Open" span below (DEC-937 wave-111 amendment) is
+                        the frame's chip rendered as inert decoration --
+                        aria-hidden, no handler, no role -- so the row still
+                        has exactly one control; it just visually echoes the
+                        frame's affordance rather than adding a second one. */}
                     <td data-label="Name">
                       <button type="button" className="chq-link-button chq-comms-template-name" onClick={() => startEdit(t)}>
                         {t.name}
                       </button>
                       <div className="chq-comms-template-detail">{derivePurpose(t)} &middot; {t.subject}</div>
+                      <span className="chq-comms-template-open" aria-hidden="true">
+                        Open
+                      </span>
                     </td>
                     <td data-label="Last used" className="chq-comms-templates-col-last-used">
                       <span className="chq-comms-template-last-used">
