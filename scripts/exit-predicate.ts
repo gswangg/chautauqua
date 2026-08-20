@@ -528,6 +528,11 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // wave-121 (task w10-l): cancelled-padding companion-gap lens
   // (DEC-393 amendment, DEVIATIONS.md:346-351 rider instrument).
   "CANCELLED_PADDING_GAP_CEILING",
+  // wave-128 (task w3-j, DEC-976/DEC-967): frame control-label ledger --
+  // grades whether the app's own source contains, verbatim, the words each
+  // v12 phone frame's footer/anchor controls draw (test/frame-control-label
+  // .scan.test.ts).
+  "FOOTER_LABEL_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -562,6 +567,10 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   // graded but never printed and never gated DONE -- a declared knob
   // with no reader (DEC-851).
   "UNDECLARED_HEIGHT_OFFENDERS_CEILING",
+  // wave-128 (task w3-j): frame control-label ledger, wired into TIER2 in
+  // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
+  // never a declared-but-unread knob (DEC-851/DEC-988).
+  "FOOTER_LABEL_CEILING",
 ];
 
 /**
