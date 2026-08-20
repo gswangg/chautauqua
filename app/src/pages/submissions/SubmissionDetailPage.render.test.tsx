@@ -1427,6 +1427,12 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
         'Adding a co-presenter here sends no email — sending a portal invite is a separate, explicit action. The lead presenter is not changed.',
       ),
     ).toBeInTheDocument();
+
+    // DEC-380 (wave 137 amendment): Chautauqua Submissions.dc.html:298's
+    // consequence line, verbatim, beside the add row.
+    expect(
+      screen.getByText('A new co-presenter is emailed a portal link · the lead presenter is not changed'),
+    ).toBeInTheDocument();
   });
 
   // DEC-908 (findings wave 5 amendment): Session details reads as a

@@ -35,11 +35,12 @@ import {
 // wins -- this page no longer keeps a private, disagreeing copy.
 import { INVITE_STATUS_LABELS } from '../../../../src/domain/invite-status';
 // DEC-761: code that depends on a decision must reference its constant.
-import { DEC_678, DEC_733, DEC_761, DEC_784, DEC_900, DEC_958, DEC_998 } from '../../../../src/decisions';
+import { DEC_380, DEC_678, DEC_733, DEC_761, DEC_784, DEC_900, DEC_958, DEC_998 } from '../../../../src/decisions';
 // DEC-784/DEC-604: role is picked from the SAME imported vocabulary
 // AddToEventModal.tsx uses -- never a hand-written list.
 import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
 
+void DEC_380;
 void DEC_678;
 void DEC_733;
 void DEC_761;
@@ -1823,6 +1824,13 @@ export function SubmissionDetailPage() {
                 >
                   Search
                 </button>
+                {/* DEC-380 (wave 137 amendment): Chautauqua Submissions.dc.html:298
+                    draws this beside the add row -- a consequence of
+                    pressing Add that nothing else in this immediate extent
+                    states. Rendered verbatim, frame's own middot. */}
+                <p className="chq-detail-copresenter-consequence">
+                  A new co-presenter is emailed a portal link &middot; the lead presenter is not changed
+                </p>
                 {coPresenterResults.length > 0 && (
                   <ul className="chq-co-presenter-results">
                     {coPresenterResults.map((contact) => (
