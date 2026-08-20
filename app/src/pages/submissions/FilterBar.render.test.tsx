@@ -32,6 +32,7 @@ describe('FilterBar phone-hiding hooks (DEC-919)', () => {
         tracks={[]}
         columns={[]}
         visibleFieldIds={new Set()}
+        allTotal={null}
         onChange={vi.fn()}
         onToggleColumn={vi.fn()}
       />,
@@ -50,6 +51,7 @@ describe('FilterBar phone-hiding hooks (DEC-919)', () => {
         tracks={[]}
         columns={[]}
         visibleFieldIds={new Set()}
+        allTotal={null}
         onChange={vi.fn()}
         onToggleColumn={vi.fn()}
       />,

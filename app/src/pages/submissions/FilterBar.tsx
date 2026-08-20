@@ -51,6 +51,12 @@ interface FilterBarProps {
   tracks: Track[];
   columns: ColumnDef[];
   visibleFieldIds: ReadonlySet<string>;
+  // Unfiltered event total (DEC-936 amendment, task w11-p) -- fetched once
+  // by SubmissionsTable at perPage=1 (SubmissionsTable.tsx:189-191) and
+  // passed down here, never re-fetched or derived from the filtered page.
+  // null means the fetch failed; the "All" chip must never fabricate a
+  // count in that case (DEC-180).
+  allTotal: number | null;
   onChange: (next: SubmissionsFilterState) => void;
   onToggleColumn: (fieldId: string) => void;
 }
@@ -58,7 +64,7 @@ interface FilterBarProps {
 /** Row 2 of the mock (docs/design/Chautauqua Submissions.dc.html:75-83): a
  * STATUS caption + status pills + a hairline divider + the track select + the
  * column picker on the same row. */
-export function FilterBar({ filters, tracks, columns, visibleFieldIds, onChange, onToggleColumn }: FilterBarProps) {
+export function FilterBar({ filters, tracks, columns, visibleFieldIds, allTotal, onChange, onToggleColumn }: FilterBarProps) {
   function toggleStatus(status: SubmissionStatus) {
     const has = filters.status.includes(status);
     const nextStatus = has ? filters.status.filter((s) => s !== status) : [...filters.status, status];
@@ -85,6 +91,20 @@ export function FilterBar({ filters, tracks, columns, visibleFieldIds, onChange,
             {STATUS_LABELS[status]}
           </button>
         ))}
+
+        {/* Frame's third chip (docs/design/Chautauqua Submissions.dc.html:150
+         * -- 'All 47'), DEC-936 amendment (task w11-p). Its own class token,
+         * never a fake data-status literal -- SUBMISSION_STATUSES is the
+         * wire vocabulary and a second copy of it is a trap (DEC-613). This
+         * is the one control that clears the status facet entirely. */}
+        <button
+          type="button"
+          className={filters.status.length === 0 ? 'chq-pill chq-submissions-status-all is-active' : 'chq-pill chq-submissions-status-all'}
+          aria-pressed={filters.status.length === 0}
+          onClick={() => onChange({ ...filters, status: [], page: 1 })}
+        >
+          {allTotal !== null ? `All ${allTotal}` : 'All'}
+        </button>
       </div>
 
       <span className="chq-submissions-filterbar-divider" aria-hidden="true" />

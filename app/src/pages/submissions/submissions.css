@@ -131,6 +131,16 @@
   display: none;
 }
 
+/* w11-p (DEC-936 amendment): the frame's third 390 status chip ('All 47',
+   docs/design/Chautauqua Submissions.dc.html:150). Desktop is frozen and
+   its own frame (:75-83) draws no such chip, so this is display:none by
+   default -- the sole top-level declaration -- and only switched on inside
+   the terminal phone media query below (DEC-576 wave-101 phone-scaffold
+   shape; DEC-919 a hidden control with no offset is still on the screen). */
+.chq-submissions-status-all {
+  display: none;
+}
+
 .chq-submissions-columnpicker-panel {
   position: absolute;
   z-index: 5;
@@ -1021,6 +1031,24 @@
      content budget), never a literal px figure over budget. */
   .chq-submissions-save-view-modal {
     width: calc(100vw - 32px);
+  }
+
+  /* w11-p (DEC-936 amendment): the frame's third 390 status chip
+     ('All 47', :150-151) -- desktop is frozen and its own frame (:75-83)
+     draws no such chip, so the new class is `display: none` at the one
+     top-level declaration above and is revealed here only, inside this
+     terminal @media block (DEC-576 wave-101 phone-scaffold shape; DEC-919
+     a hidden control with no offset is still on the screen). Geometry is
+     the frame's literals verbatim: 44px floor, radius 99px, no shrink,
+     0/13px padding. */
+  .chq-submissions-status-all {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    border-radius: 99px;
+    flex-shrink: 0;
+    padding: 0 13px;
   }
 }
 
