@@ -3,146 +3,16 @@
 # admin FAIL (critical), Docs FAIL, Overview FAIL, Speakers FAIL, Review
 # PARTIAL, Account PARTIAL→PASS, Home PARTIAL. Tier 0.
 
-## CRITICAL (meta fix lane dispatched — engine must not duplicate)
-1. Phone-CFP step-1 dead end (Public and Portal.dc.html:1014): step 1
-   advances unvalidated (cfp-steps-script.tsx:33 setStep('2') unguarded);
-   step-2 submit silently no-ops on hidden invalid step-1 controls
-   (form-render.tsx:278 singular querySelector leaves radios 2..N required
-   inside display:none). DEC-986's ruling prescribes reportValidity() +
-   querySelectorAll — implement it for real.
-   RESOLVED (DEC-986): cfp-steps-script.tsx's Next handler now walks the
-   outgoing step's controls and calls `reportValidity()` on the first
-   invalid one before it will call `setStep('2')` (src/routes/public/cfp-steps-script.tsx
-   `setStep(`, guarded by the invalid-control check a few lines
-   earlier in the same function's walk); form-render.tsx's radio-group required-state
-   pass now uses `data-field-id`, not a singular querySelector, so every
-   radio in the group gets its required state applied, not just the first
-   (drift-proof citations, DEC-967 wave-115 -- both statements have drifted
-   from the lines originally cited here, and quote a stable identifier
-   rather than the full call so the citation survives concurrent edits to
-   these two files).
-   CLOSED (wave 115): src/routes/public/cfp-steps-script.tsx `reportValidity()`
-   CLOSED (wave 115): src/views/form-render.tsx `data-field-id`
-2. Admin agenda 390 renders nothing (Agenda.dc.html:123): agenda.css
-   :1074-1104 display:none leak-guard for 24 .chq-phone-* classes; the 700px
-   block restores only 14 — missing: -slot-time, -slot-card-title,
-   -slot-card-meta, -slot-clash, -slot-free-label, -slot-free-length,
-   -room-chip, -sheet, -footer-armed-title, -footer-armed-ref.
-   RESOLVED: agenda.css's terminal `@media (max-width: 700px)` block
-   now restores all 24 classes named in the agenda.css:1074-1104 leak-guard
-   list, including the ten named missing here, each a top-level rule inside
-   the terminal block (drift-proof citations, DEC-967 wave-115):
-   agenda.css`.chq-phone-slot-time {`;
-   agenda.css`.chq-phone-slot-card-meta {`;
-   agenda.css`.chq-phone-slot-card-title {`; agenda.css`.chq-phone-slot-clash {`;
-   agenda.css`.chq-phone-slot-free-label {`;
-   agenda.css`.chq-phone-slot-free-length {`;
-   agenda.css`.chq-phone-room-chip {`; agenda.css`.chq-phone-sheet {`;
-   agenda.css`.chq-phone-footer-armed-title {`; agenda.css`.chq-phone-footer-armed-ref {`.
+(Structure-custodian split, wave v12m-w16: this file had drawn four merge
+conflicts as a contention hotspot, so its body was decomposed by severity
+into four sibling files, each independently editable. No content was
+changed, only relocated — every row below still lives verbatim in its new
+home. This index file, and every row's original path/quote, remains
+resolvable; nothing that cited a row's content by drift-proof bare-path +
+quote is affected, since the quoted receipts live in source files, not in
+this probe doc itself.)
 
-## HIGH
-- Reviewer scorecard +31px overflow (chq-user-identity nowrap in a header
-  the frame deletes on this screen — Review.dc.html:276 draws no shell
-  header; fix per frame).
-  CLOSED (wave 120): app/src/styles.css`.chq-header-identity .chq-user-identity {`
-  CLOSED (wave 120): app/src/styles.css`.chq-shell:not(:has(.chq-tabbar)):not(:has([data-chq-phone-signout])) .chq-header-identity .chq-user-identity {`
-  (drift-proof citations, DEC-967 wave-115 shape -- both declarations have
-  drifted from the line numbers originally cited here) (a reviewer's shell
-  has no tab bar so the first rule hides the header identity's user block
-  outright, avoiding the nowrap overflow; the second, `:not()`-qualified
-  drill-in exception re-shows exactly one Sign out, per
-  app/src/pages/review/Scorecard.tsx:525 and the pin at
-  app/src/pages/review/scorecard-phone-frames.test.ts:182.)
-- Docs site 390 header collapses to vertical text (search takes 260px;
-  overflow-wrap:anywhere lets wordmark shrink to 23px wide). Docs.dc.html:162.
-  CLOSED (wave 115): src/routes/docs-site.css.ts`.chq-docs-header { padding: 14px 16px; gap: 12px; flex-wrap: wrap; }`
-- Docked action bars absent where frames draw them: public agenda,
-  my-schedule, portal tasks/hotel-form/session/edit, CFP wizard.
-  /account/password is the model implementation — reuse its pattern.
-  CLOSED (wave 118, "portal tasks/hotel-form/session/edit" clause only —
-  the public agenda/my-schedule and CFP wizard docks are unverified and
-  remain open): src/routes/portal/shared.tsx `{props.dock ? <div class="chq-portal-dock">{props.dock as any}</div> : null}`
-  (drift-proof citation, DEC-967 wave-115).
-  CLOSED (re-verified wave-140/w15-ff): the CFP wizard clause is now also
-  closed — `src/routes/public/cfp.css.ts`'s task-w13-k terminal phone
-  block comment states `.chq-cfp-actions` IS the frame's sticky dock band
-  ("the dock IS the sticky band, no `data-chq-phone-dock` declaration
-  needed. Every control..."), reusing the same SSR phone-dock footer band
-  every other SSR phone dock shares (DEC-576 wave-110 amendment cited in
-  the same comment). The public agenda/my-schedule docks clause was NOT
-  re-verified this wave (no `data-chq-phone-dock`/dock prop found under
-  `src/routes/public/agenda*` by grep) and stays open.
-- SCAN POPULATION: widen phone-tap-target.scan + the 390-overflow scan roots
-  from app/src to include src/routes/** (public/portal/docs/auth were never
-  scanned; most §5 floor misses would have been caught).
-  CLOSED (wave 115): app/src/phone-tap-target-ssr.scan.test.ts`for (const family of ['src/routes/public/', 'src/routes/portal/', 'src/routes/docs-site.css.ts', 'src/routes/auth.css.ts']) {`
-  (drift-proof citation, DEC-967 wave-115 -- moved to its own file in the
-  wave-v12m-w12 custodian decomposition of phone-tap-target.scan.test.ts).
-  CLOSED (wave 115): test/ssr-phone-overflow.test.ts `const HOME_CSS = readFileSync(join(__dirname, "..", "src", "routes", "public", "home.css.ts"), "utf8");`
-  (drift-proof citation, DEC-967 wave-115).
-
-## MEDIUM (see probe evidence for full list)
-- 44px floor misses across public/portal (+ app/src stragglers incl.
-  .chq-review-queue-footer-showall 52x30 button).
-  Moved to Still Live below — the app/src straggler named in the finding
-  is confirmed unfixed.
-- Zero/negative control gaps: /login password↔button 0px + focus ring
-  through the PASSWORD label on load; overview + speakers row pairs overlap
-  (-6px); portal session edit↔label 0px.
-  Partially re-derived: the /login card's fields-to-submit gap is 22px
-  (src/routes/auth.css.ts `gap: 22px;`, on `.chq-auth-card`, its direct
-  parent) and overview's wrapped section-header keeps its base 20px flex
-  gap (app/src/pages/overview/overview.css`gap: 20px;`
-  (drift-proof citation, DEC-967 wave-115 -- this declaration now sits at
-  line 187, having drifted from the line originally cited here)) — neither
-  reproduces a literal 0px/negative gap as measured. The focus-ring and
-  portal session edit↔label clauses were not independently reproducible
-  from the tree by static read (no focus-visible rule exists for
-  `.chq-auth-card input[type=password]` either way) — moved to Still Live
-  below rather than closed on an absence of contrary evidence.
-- CFP content column 290px vs 358 budget; counters on every field incl.
-  dates/emails (frames: ABSTRACT only);
-  CLOSED (wave 118, "counters on every field incl. dates/emails" clause
-  only): src/views/form-render.tsx `resolvedTextCap`
-  (drift-proof citation, DEC-967 wave-115 -- quotes the imported identifier
-  the counter-cap computation calls, not the whole statement, so the
-  citation survives concurrent edits to this file).
-  CLOSED (re-verified wave-140/w15-ff, task-w13-k, same evidence as
-  round-2 WAVE B "CFP column 290px vs 358 budget"): the column-budget
-  clause is now also closed —
-  `src/routes/public/cfp.css.ts`'s terminal phone block declares
-  `main.chq-measure:has(.chq-cfp-body) { padding-inline: 0; }` so the
-  outer `<main class="chq-measure">`'s padding no longer stacks with
-  `.chq-cfp-body`'s own 16px left/right (single gutter owner, per the
-  rule's own comment).
-  portal footer 93px ink stub +
-  duplicate Sign out; overview remind-all breaks gutters; tab-bar dot
-  flow/baseline defects (dot above label, all five items, per frames);
-  pub-empty-what 36px > page H1; speakers Remind-outstanding wraps in 107px
-  box; OVERDUE filled chip vs frame's weighted text at 390; portal edit
-  scope (frame :597 scopes to title/abstract, live ships full CFP);
-  scorecard copy drift (Read-full absent, recuse wording, "—" vs "Not yet").
-
-## RESOLVED since wave 120 (re-derived wave v12m-w15-i)
-- 44px floor misses across public/portal: `.chq-review-queue-footer-showall`
-  (app/src/pages/review/review.css`.chq-review-queue-footer-showall {`, the
-  base rule, still declares no `min-height`/`height`) is now floored inside
-  the file's terminal phone block: app/src/pages/review/review.css`min-height: 44px;`
-  sits directly under a re-declared showall rule there, alongside a
-  `display: flex; align-items: center; justify-content: center;` centring
-  triple and `padding: 0 14px;` -- the full 44px-floor triple this row
-  originally found missing. Fixed per
-  the analogous link-button pattern this row cited at
-  app/src/pages/settings/settings.css
-  `.chq-settings-edit-row-actions .chq-link-button {`.
-- Zero/negative control gaps, the two clauses not reproducible from a
-  static read: /login's focus ring on the PASSWORD field on load (no
-  `focus-visible` rule targets `.chq-auth-card input[type=password]` in
-  src/routes/auth.css.ts at all, positive or negative, so nothing in the
-  tree confirms or denies the frame divergence) and portal's session
-  edit↔label 0px gap (no rule pairing a session-edit label directly to its
-  control gap was found -- the nearest candidate,
-  src/routes/portal/portal.css.ts `.chq-portal-session-label {`, styles
-  a section label's own internal layout, not a label-to-control pairing).
-  Left live rather than guessed closed — DEC-967 forbids receipting a fix
-  that was not read.
+- CRITICAL: docs/probes/metafid-phoneB-ssr-2026-08-19-critical.md
+- HIGH: docs/probes/metafid-phoneB-ssr-2026-08-19-high.md
+- MEDIUM: docs/probes/metafid-phoneB-ssr-2026-08-19-medium.md
+- RESOLVED since wave 120: docs/probes/metafid-phoneB-ssr-2026-08-19-resolved.md
