@@ -96,6 +96,15 @@ const TSX_FILES = allTsxFiles(HERE);
 // .chq-review-queue-footer-showall, w13-k/w14-h cfp.css.ts, w13-i
 // settings.css), so no single branch's figure is the truth here. This
 // ratchet may only fall.
+//
+// v12m-w14-l (wave 125, shell lane) folded in by the same megabatch:
+// styles.css's `.chq-nav-link` now floors inside the terminal @media block
+// (DEC-393), dropping it from this population; `.chq-bulkbar-hint-action`
+// was never counted here (an ordinary explanatory comment above its rule
+// tripped the pre-repair exempt flag) and now carries a genuine named
+// `tap-floor-exempt:` comment regardless. That branch measured 15 -> 14
+// against the OLD blind predicate; the figure that governs is this file's
+// repaired-predicate measurement on the integrated tree.
 export const UNDECLARED_HEIGHT_OFFENDERS_CEILING = 3;
 
 describe('undeclared-height tap-target lens (DEC-367 wave-120 PREDICATE REPAIR)', () => {

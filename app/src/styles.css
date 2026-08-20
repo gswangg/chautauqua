@@ -2805,30 +2805,65 @@ select:focus-visible,
     margin: -13px;
   }
 
-  /* N5 LOW (round-2 probe): App.tsx:381's live-exceptions badge
-     (`.chq-badge-dot`) is a THIRD flex child of `.chq-tabbar .chq-nav-link`
-     (flex-direction:column, gap:5px) beneath the dot and the "More" label,
-     so on a live-badge render the item stack grows from two children to
-     three and the centred group re-centres around a taller total height --
-     the label's baseline moves ~6.5px off the other four tabs' baseline.
-     Both 390 frames that draw the tab bar (docs/design/Chautauqua
-     Settings.dc.html:299-301, docs/design/Chautauqua
-     Submissions.dc.html:173-180, byte-identical --
-     `<div style="flex:1; min-height:44px; display:flex;
-     flex-direction:column; align-items:center; justify-content:center;
-     gap:5px"><span style="{{ t.dot }}"></span><span
-     style="{{ t.text }}">{{ t.label }}</span></div>`) draw exactly TWO
-     children per tab, dot then label -- the badge is app state layered on
-     top with no frame member of its own, so it must never become a third
-     flex item. DEC-919: re-lined out of flow (position:absolute, given a
-     real offset), never removed and never display:none. */
-  .chq-tabbar .chq-nav-link {
+  /* DEC-393/DEC-989 wave-125 (task w14-l, shell lane): .chq-nav-link
+     (undeclared-height offender -- the top-level rule at :353 declares no
+     height/min-height). `.chq-tabbar .chq-nav-link` above (:2328) is a
+     COMPOUND selector, so it only reaches the phone tab bar's own row --
+     the same bare token also renders as the plain <a> App.tsx's NavLinks
+     produces inside the More sheet's .chq-modal (App.tsx moreSections) and
+     as the <button> that opens that sheet (App.tsx:365-382), where nothing
+     floors it. A bare-class narrow rule reaches both bare uses; the tab
+     bar's compound selector stays MORE specific so its own
+     flex:1/flex-direction:column/padding:0 geometry is untouched. Desktop
+     is untouched too -- .chq-nav (the only desktop host of this token) is
+     display:none in this same block. */
+  .chq-nav-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+  }
+
+  /* tap-floor-exempt: .chq-bulkbar-hint-action (undeclared-height
+     offender, DEC-393/DEC-989 wave-125 task w14-l) is an inline text link
+     riding inside the idle bar's one running sentence
+     (pages/content/SessionList.tsx:196-206, "... re-review — Select
+     them"), deliberately inheriting the hint line's 13px line box so the
+     idle bar keeps the EXACT height the armed bar's buttons set --
+     :1169-1174's own comment above .chq-bulkbar-hint, "zero layout shift
+     when selection arms the bar", a guarded invariant (test/design-
+     system.test.ts). Growing this one word to a 44px block would break
+     that guarded invariant and drop a tap target into the middle of a
+     sentence, which DESIGN-RULINGS:189's floor was never meant to reach --
+     the same content-vs-control call DEC-393 wave-106 made for a prose
+     URL. Restates the top-level rule's own colour (:1191) unchanged, for
+     narrow-rule parity only; nothing about the box changes. */
+  .chq-bulkbar-hint-action {
+    color: var(--chq-brand);
+  }
+
+  /* DEC-919/DEC-385 (task w14-l, round-2 N5): the phone tab bar's five
+     items share `.chq-tabbar .chq-nav-link { flex-direction: column; gap:
+     5px }` (:2328) -- a dot span, then the label span, stacked. More's
+     live-exceptions badge (:2350's .chq-badge-dot, painted only when
+     `anyBadgeLive`) is a SECOND dot appended after the label
+     (App.tsx:375-381), so on the one item where it renders the column
+     gains a third row and every label below it sits 6.5px lower than its
+     four siblings' baseline -- the frame draws five labels on one line.
+     The badge must stay reachable (DEC-919: an off-screen control is
+     still on the screen), so it moves OUT of the column's flow instead of
+     toggling display: absolutely positioned against the <button>, which
+     DEC-381's own dot-before-label markup makes a valid `position:
+     relative` host already implied by being a flex item -- declared here,
+     scoped to the one item that ever carries the badge, so the other four
+     tabs (plain <a> NavLinks, never a <button>) are untouched. */
+  .chq-tabbar button.chq-nav-link {
     position: relative;
   }
 
   .chq-tabbar .chq-nav-link .chq-badge-dot {
     position: absolute;
-    top: 9px;
-    left: calc(50% + 4px);
+    top: 6px;
+    right: 6px;
   }
 }
