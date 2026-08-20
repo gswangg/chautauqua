@@ -268,7 +268,7 @@ function DocsBlockView(props: { block: DocsBlock }) {
 function DocsNav(props: { activeSlug: string }) {
   const groups = docsNavGroups();
   return (
-    <nav class="chq-docs-nav" aria-label="Docs sections">
+    <nav id="chq-docs-nav" class="chq-docs-nav" aria-label="Docs sections">
       {groups.map((group) => (
         <div class="chq-docs-nav-group">
           <span class="chq-docs-nav-group-label">{group.label}</span>
@@ -484,9 +484,30 @@ function DocsArticlePage(props: { article: DocsArticle }) {
           <div class="chq-docs-article-frame">
             <DocsNav activeSlug={article.slug} />
             <main class="chq-docs-article-body">
-              <a class="chq-docs-phone-back" href="/docs">
-                &lsaquo; Docs
-              </a>
+              {/* DEC-990 wave-128: the 390 header band (Chautauqua
+                  Docs.dc.html:167-169) draws '‹ Docs' AND 'Contents' side
+                  by side. Contents is a checkbox+label disclosure (same
+                  sr-only-checkbox idiom as .chq-itinerary-toggle,
+                  src/routes/public/css/rail.css.ts) that re-lines the
+                  EXISTING nav element (id chq-docs-nav, class
+                  chq-docs-nav) DocsNav renders above -- no second nav, no
+                  second copy of the article vocabulary (DEC-613). Native
+                  checkbox semantics make it keyboard-operable (Tab +
+                  Space) with no JS and no framework. */}
+              <div class="chq-docs-phone-toolbar">
+                <a class="chq-docs-phone-back" href="/docs">
+                  &lsaquo; Docs
+                </a>
+                <input
+                  type="checkbox"
+                  id={`chq-docs-contents-${article.slug}`}
+                  class="chq-docs-contents-checkbox"
+                  aria-controls="chq-docs-nav"
+                />
+                <label class="chq-docs-contents-toggle" for={`chq-docs-contents-${article.slug}`}>
+                  Contents
+                </label>
+              </div>
               <div class="chq-docs-article-head">
                 <span class="chq-docs-article-eyebrow">{meta.label}</span>
                 <h1>{article.title}</h1>

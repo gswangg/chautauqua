@@ -31,6 +31,7 @@ import { DOCS_SITE_CSS } from "../src/routes/docs-site.css";
 import type { AppEnv } from "../src/server/env";
 
 const REPO_ROOT = join(__dirname, "..");
+const DOCS_SITE_TSX = readFileSync(join(REPO_ROOT, "src/routes/docs-site.tsx"), "utf-8");
 
 // Mirrors test/docs-site.test.ts's buildApp — docsSiteRoutes is a Hono
 // sub-app (DEC-012) that only resolves once mounted, and the search-hits
@@ -57,12 +58,24 @@ describe("GET /docs/:slug — phone article markup (docs/design/Chautauqua Docs.
     const res = await buildApp().request(`/docs/${withFigure.slug}`); expect(res.status).toBe(200);
     const html = await res.text();
 
-    // Head: the '‹ Docs' back link the phone chrome shows in place of the
-    // desktop sticky nav (nav itself stays in the markup, hidden by CSS —
-    // DEC-385 is CSS-only, never a server-side branch on viewport).
+    // Head: the '‹ Docs' back link the phone chrome shows alongside a
+    // 'Contents' disclosure (DEC-990 wave-128) -- both sit in one toolbar
+    // row, the nav itself stays in the markup with its own id, hidden (and
+    // re-lined) by CSS — DEC-385 is CSS-only, never a server-side branch
+    // on viewport.
+    expect(html).toContain('class="chq-docs-phone-toolbar"');
     expect(html).toContain('class="chq-docs-phone-back" href="/docs"');
     expect(html).toContain("‹ Docs");
-    expect(html).toContain('class="chq-docs-nav"');
+    expect(html).toContain('id="chq-docs-nav" class="chq-docs-nav"');
+
+    // The Contents disclosure: a native checkbox+label pair (no JS) whose
+    // checkbox id matches its label's for=, and whose aria-controls points
+    // at the SAME nav DocsNav already renders — no second nav (DEC-613).
+    const checkboxMatch = html.match(/<input type="checkbox" id="(chq-docs-contents-[^"]+)" class="chq-docs-contents-checkbox" aria-controls="chq-docs-nav"/);
+    expect(checkboxMatch).not.toBeNull();
+    const checkboxId = checkboxMatch![1]!;
+    expect(html).toContain(`class="chq-docs-contents-toggle" for="${checkboxId}"`);
+    expect(html).toContain("Contents");
 
     // Body: the figure that must bleed edge to edge at 390.
     expect(html).toContain('class="chq-docs-figure"');
@@ -198,6 +211,60 @@ describe("docs-site.css.ts phone block (DEC-385, source-scan)", () => {
     // The prose rule itself is still owned by theme.ts (DEC-404), never
     // restated here — this block only opts chrome out of it.
     expect(THEME_TS).toMatch(/body\s*\{\s*overflow-wrap:\s*anywhere;\s*\}/);
+  });
+
+  it("the 'Contents' disclosure clears the 44px floor, is right-flushed, phone-only, and re-lines the SAME nav rather than replacing it (docs/design/Chautauqua Docs.dc.html:167-169)", () => {
+    const block = extract700Blocks(DOCS_SITE_CSS)[0]!;
+
+    // Top-level: the toolbar and its two new controls are off-screen by
+    // default (DEC-385 — narrow overrides wide via max-width only).
+    expect(DOCS_SITE_CSS).toMatch(/\.chq-docs-phone-toolbar\s*\{\s*display:\s*none;\s*\}/);
+    expect(DOCS_SITE_CSS).toMatch(/\.chq-docs-contents-checkbox\s*\{\s*display:\s*none;\s*\}/);
+    expect(DOCS_SITE_CSS).toMatch(/\.chq-docs-contents-toggle\s*\{\s*display:\s*none;\s*\}/);
+    // Those top-level rules live BEFORE the (single) @media block.
+    const mediaIdx = DOCS_SITE_CSS.indexOf("@media (max-width: 700px)");
+    expect(DOCS_SITE_CSS.indexOf(".chq-docs-phone-toolbar")).toBeLessThan(mediaIdx);
+
+    // Inside the phone block: the toolbar is a flex row pairing the back
+    // link with the disclosure.
+    expect(block).toMatch(/\.chq-docs-phone-toolbar\s*\{[^}]*display:\s*flex/);
+    expect(block).toMatch(/\.chq-docs-phone-toolbar\s*\{[^}]*align-items:\s*center/);
+
+    // The Contents label carries the frame's exact geometry: 44px floor,
+    // centred flex, a real non-zero horizontal inset, right-flushed via
+    // margin-left: auto, and the frame's 13px/700 type.
+    const toggle = block.match(/\.chq-docs-contents-toggle\s*\{([^}]*)\}/);
+    expect(toggle).not.toBeNull();
+    const toggleBody = toggle![1]!;
+    expect(toggleBody).toMatch(/display:\s*flex/);
+    expect(toggleBody).toMatch(/align-items:\s*center/);
+    expect(toggleBody).toMatch(/min-height:\s*44px/);
+    expect(toggleBody).toMatch(/margin-left:\s*auto/);
+    expect(toggleBody).toMatch(/padding-inline:\s*[1-9][0-9]*px/);
+    expect(toggleBody).toMatch(/font-size:\s*13px/);
+    expect(toggleBody).toMatch(/font-weight:\s*700/);
+
+    // The checkbox itself never authors a sub-44px min-height and stays
+    // reachable (visually-hidden, not display:none) once inside the phone
+    // block — same sr-only technique as .chq-itinerary-toggle.
+    const checkbox = block.match(/\.chq-docs-contents-checkbox\s*\{([^}]*)\}/);
+    expect(checkbox).not.toBeNull();
+    expect(checkbox![1]!).not.toMatch(/min-height/);
+    expect(checkbox![1]!).toMatch(/position:\s*absolute/);
+
+    // The disclosure: nav starts hidden, and a LATER, more specific rule
+    // re-lines the SAME .chq-docs-nav (never a second nav element) the
+    // instant the checkbox is checked -- DEC-919, not an exit to /docs.
+    const navHiddenIdx = block.search(/\.chq-docs-nav\s*\{\s*display:\s*none;\s*\}/);
+    expect(navHiddenIdx).toBeGreaterThan(-1);
+    const disclosureIdx = block.search(/\.chq-docs-article-frame:has\(\.chq-docs-contents-checkbox:checked\)\s*\.chq-docs-nav\s*\{\s*display:\s*flex;\s*\}/);
+    expect(disclosureIdx).toBeGreaterThan(-1);
+    expect(disclosureIdx).toBeGreaterThan(navHiddenIdx);
+
+    // No second copy of the nav vocabulary (DEC-613): exactly one <nav>
+    // element in the whole route module -- the disclosure re-lines it,
+    // it doesn't duplicate it.
+    expect((DOCS_SITE_TSX.match(/<nav\b/g) ?? []).length).toBe(1);
   });
 
   it("the article H1 is the frame's own 28px literal (docs/design/Chautauqua Docs.dc.html:175 `font-size:28px; font-weight:700; letter-spacing:-0.04em; line-height:1.08`), never the SPA shell's 25px drill-in token", () => {
