@@ -132,4 +132,47 @@ describe("task-view.css phone tap floor (DEC-393 wave-7 amendment)", () => {
     expect(baseRule).not.toBeNull();
     expect(baseRule![1]).not.toMatch(/min-height/);
   });
+
+  it("floors .chq-taskview-actions .chq-btn (the real anchor -- .chq-taskview-actions a matches nothing) with no cancelled padding", () => {
+    const matches = [...TASK_VIEW_PHONE_BLOCK.matchAll(/\.chq-taskview-actions \.chq-btn\s*\{([^}]*)\}/g)];
+    expect(matches.length, "expected an appended .chq-taskview-actions .chq-btn rule").toBeGreaterThan(0);
+    const body = matches[matches.length - 1]![1];
+    expect(body).toMatch(/min-height:\s*44px/);
+    expect(body).toMatch(/display:\s*inline-flex/);
+    expect(body).toMatch(/align-items:\s*center/);
+    expect(body).not.toMatch(/margin-inline:\s*-/);
+    expect(body).not.toMatch(/padding-inline:/);
+  });
+});
+
+// DEC-937 + DEC-393-amendment drain (task w10-m): the cancelled-padding shape
+// (padding-inline positive / margin-inline equal-and-opposite negative) is
+// safe only for a BORDERLESS anchor -- a painted one (a .chq-btn face) bleeds
+// its drawn box past its container edge via the outward margin. These pins
+// assert the LAST (i.e. winning, same-specificity/later-source) declaration
+// body for each painted selector carries the 44px floor with NO cancelled
+// padding, restoring the anchor's own inline padding instead.
+describe("v12m-w10-m: painted anchors get the floor without cancelled padding", () => {
+  function lastRuleBody(block: string, selectorPattern: RegExp): string {
+    const matches = [...block.matchAll(selectorPattern)];
+    expect(matches.length, `expected at least one match for ${selectorPattern}`).toBeGreaterThan(0);
+    const body = matches[matches.length - 1]![1];
+    assert(body !== undefined);
+    return body;
+  }
+
+  it(".chq-speaker-detail-actions a (the Email <a class=\"chq-btn chq-btn-secondary\"> link) carries min-height:44px and no negative margin-inline", () => {
+    const body = lastRuleBody(SPEAKERS_PHONE_BLOCK, /\.chq-speaker-detail-actions a\s*\{([^}]*)\}/g);
+    expect(body).toMatch(/min-height:\s*44px/);
+    expect(body).toMatch(/display:\s*flex/);
+    expect(body).toMatch(/align-items:\s*center/);
+    expect(body).not.toMatch(/margin-inline:\s*-/);
+  });
+
+  it("falsifiability control: a synthetic block whose only rule keeps the cancelled margin fails the pin", () => {
+    const badBlock = ".chq-speaker-detail-actions a { min-height: 44px; margin-inline: -10px; }";
+    const matches = [...badBlock.matchAll(/\.chq-speaker-detail-actions a\s*\{([^}]*)\}/g)];
+    const body = matches[matches.length - 1]![1];
+    expect(body).toMatch(/margin-inline:\s*-/);
+  });
 });

@@ -1622,4 +1622,54 @@
     padding-inline: 10px;
     margin-inline: -10px;
   }
+
+  /* DEC-937 + DEC-393-amendment drain (task w10-m): the :1508 rule's
+     cancelled-padding shape (padding-inline:10px; margin-inline:-10px) is
+     correct for a BORDERLESS control (.chq-toolbar-link, the
+     .chq-link-button above) but wrong for a PAINTED one -- .chq-btn's own
+     face (background/border, styles.css:527-581) plus its native
+     `padding: 10px 16px` means the -10px outward margin pulls the drawn
+     box 10px past its container on both sides instead of merely widening
+     an invisible hit target. Of the four selectors at :1508-1511, three
+     resolve to a painted face:
+       .chq-agenda-head-actions .chq-btn  -> Auto-schedule, chq-btn-secondary
+         (Agenda.tsx head actions)
+       .chq-breaks-add-actions .chq-btn   -> Add the break (primary) / Done
+         (secondary) (BreaksPanel.tsx)
+       .chq-phone-footer-actions .chq-phone-footer-btn -> the two dock
+         buttons (PhoneAgenda.tsx:305/310), always .chq-btn-primary or
+         .chq-btn-secondary, never borderless
+     .chq-breaks-row-actions .chq-btn is NOT painted -- BreaksPanel.tsx's
+     Edit/Remove controls in that row are .chq-btn-tertiary (styles.css:598,
+     background:none; border:none, its own -6px cancelled-padding idiom
+     already), so it stays on the shared :1508 floor unchanged; splitting it
+     out would be inventing a fix for a control that was never bleeding.
+     This rule restores each painted control's own inline padding
+     (.chq-btn's 16px) and removes the outward margin so the drawn face
+     stops at its container edge -- same specificity as :1508
+     (two-class-deep), later in source, so it wins per-property on
+     padding-inline/margin-inline while :1508's min-height/display/
+     align-items stay redundant-but-harmless underneath it. */
+  .chq-agenda-head-actions .chq-btn,
+  .chq-breaks-add-actions .chq-btn,
+  .chq-phone-footer-actions .chq-phone-footer-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+    margin-inline: 0;
+  }
+
+  /* Companion gap (DEC-393 amendment): .chq-breaks-row-actions still holds
+     TWO cancelled-padding siblings (Edit, Remove -- both chq-btn-tertiary,
+     unchanged above), so its drawn 8px desktop gap (:922) needs the +20px
+     companion widening. .chq-agenda-head-actions and .chq-breaks-add-actions
+     are NOT touched here: each held its cancelled-padding sibling(s) only
+     via the .chq-btn selector just de-cancelled above, so after that fix
+     neither container holds two or more remaining cancelled-padding
+     children -- a container whose children were just de-cancelled needs no
+     widening. */
+  .chq-breaks-row-actions {
+    gap: 28px;
+  }
 }

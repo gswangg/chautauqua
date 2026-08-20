@@ -1863,4 +1863,36 @@ button.chq-speakers-status-overdue:hover {
     width: 100%;
     min-width: 0;
   }
+
+  /* DEC-937 + DEC-393-amendment drain (task w10-m): the ten-selector
+     cancelled-padding rule above (:1823-1834) is correct for a borderless
+     link but wrong for a PAINTED one -- .chq-speaker-detail-actions a is
+     the Email control, `<a className="chq-btn chq-btn-secondary"
+     href={mailto:...}>` (SpeakerDetailPage.tsx), a genuinely painted face
+     (styles.css:565 background:var(--chq-surface-sunk);
+     border:1px solid var(--chq-border-strong)). Its -10px outward margin
+     pulls the drawn box past its container edge the same way agenda.css's
+     painted four did. Split out and restored to its own inline padding
+     (.chq-btn's native 16px, styles.css:527) with no outward margin.
+
+     Every OTHER "... a" selector in that rule was verified against its
+     container's real markup and matches NOTHING -- these containers render
+     only <button className="chq-btn ..."> (never <a>), so the "a" branch
+     of each is a dead selector already, not a bleeding one:
+       .chq-speakers-head-actions a             (OnboardingGrid.tsx:952-964)
+       .chq-speakers-pager-actions a             (OnboardingGrid.tsx:1370+)
+       .chq-speaker-detail-logistics-actions a   (SpeakerDetailPage.tsx:818+)
+       .chq-speakers-write-failure-actions a     (OnboardingGrid.tsx:1012+)
+     Left untouched at :1823-1834 rather than given a floor here -- there is
+     no anchor there to floor. No container above holds two or more
+     remaining cancelled-padding siblings after this split (each container
+     had at most the one now-de-cancelled anchor, or none), so no companion
+     gap widening applies. */
+  .chq-speaker-detail-actions a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-inline: 16px;
+    margin-inline: 0;
+  }
 }
