@@ -233,4 +233,21 @@ describe("DEC-170 (wave 54): comment READ opens to an in-scope reviewer; WRITE s
     });
     expect(res.status).toBe(403);
   });
+
+  // `src/server/repo/files-authz.ts`'s canAccessFile docstring and
+  // `src/routes/files.ts`'s authzFileWrite docstring both describe this same
+  // read/write split (DEC-170 wave-54 amendment) — this receipt pins the
+  // OBSERVABLE gate those two docstrings claim, in one test, so the two
+  // prose descriptions can never drift from the routes again without a red.
+  it("an in-scope reviewer's comment GET and POST land on opposite sides of the read/write split the docstrings describe", async () => {
+    const app = await buildApiApp({ userId: ASSIGNED_REVIEWER, role: "reviewer", orgId: ORG_A });
+    const getRes = await app.request(`/api/v1/files/${inScopeFileScope.fileId}/comments`);
+    expect(getRes.status).toBe(200);
+    const postRes = await app.request(`/api/v1/files/${inScopeFileScope.fileId}/comments`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ body: "hello" }),
+    });
+    expect(postRes.status).toBe(403);
+  });
 });
