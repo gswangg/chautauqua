@@ -26,6 +26,11 @@ import { planTrackScope } from './PlanList';
 // Advanced -> 'advanced') -- never a second label grammar defined in this
 // component.
 import { sessionFormatLabel, audienceLevelLabel } from '../../../../src/lib/session-vocabulary';
+// DEC-678 (wave-118 amendment): a route-param change is a NEW PAGE --
+// param-scoped state never survives it, and an in-flight read for the old
+// param never paints.
+import { DEC_678 } from '../../../../src/decisions';
+void DEC_678;
 // DEC-939/DEC-845 (wave 40 amendment): the scorecard header's 'N of N done'
 // counter reads the SAME reader the reviewer queue's own progress caption is
 // built from -- never a second count derived in this component.
@@ -180,13 +185,33 @@ export function Scorecard() {
 
   useEffect(() => {
     if (!planId || !submissionId) return;
+    let cancelled = false;
     setLoading(true);
     setError(null);
+    // DEC-678 (wave-118 amendment): a route-param change is a NEW PAGE --
+    // every one of these four is scoped to the OLD submission and must not
+    // survive the navigation, or it re-attaches under the new one:
+    //   - attempted: gates the incomplete-criteria notice; left true it
+    //     fires on the new submission's first paint, contradicting this
+    //     file's own "a reviewer shouldn't see it before trying once".
+    //   - saved: a "Saved" affordance for a card nobody saved here.
+    //   - serverFieldErrors: keyed by criterion id, and criteria are shared
+    //     plan-wide, so A's per-criterion refusals would re-attach to B's
+    //     matching criterion ids.
+    //   - recusalConfirmed: the conflict-of-interest checkbox would arrive
+    //     pre-checked on a submission the reviewer never confirmed.
+    // `ringArmed` is deliberately left alone: it tracks whether THIS
+    // session has used the keyboard, not anything scoped to a submission.
+    setAttempted(false);
+    setSaved(false);
+    setServerFieldErrors({});
+    setRecusalConfirmed(false);
     Promise.all([
       apiList<EvaluationPlan>('/review/plans').then((res) => res.items.find((p) => p.id === planId) ?? null),
       apiGet<ReviewerSubmissionDetail>(`/review/submissions/${submissionId}?planId=${planId}`),
     ])
       .then(([planRes, subRes]) => {
+        if (cancelled) return;
         setPlan(planRes);
         setSubmission(subRes);
         // DEC-147: the server already resolved criteria for the plan's
@@ -215,8 +240,15 @@ export function Scorecard() {
         const firstRating = criteria.find((c) => c.kind === 'rating');
         setFocusedId(firstRating?.id ?? criteria[0]?.id ?? null);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submission'))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : 'Failed to load submission');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [planId, submissionId]);
 
   useEffect(() => {
