@@ -362,6 +362,7 @@ a.chq-speakers-task-title:hover {
    per-column Edit used) -- there is one of these on the page now, and it
    opens a real editor. */
 .chq-speakers-task-edit {
+  font-family: inherit;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: normal;
@@ -819,6 +820,7 @@ button.chq-speakers-status-overdue:hover {
 }
 
 .chq-participation-menu-item {
+  font-family: inherit;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -844,6 +846,7 @@ button.chq-speakers-status-overdue:hover {
    left padding so the label doesn't shift (wave-19: padding widened from
    8px to 20px, the given-back amount stays 3px). */
 .chq-participation-menu-item.is-current {
+  font-family: inherit;
   font-weight: 700;
   background: var(--chq-surface-sunk);
   border-left: 3px solid var(--chq-brand);
@@ -876,6 +879,7 @@ button.chq-speakers-status-overdue:hover {
 }
 
 .chq-participation-menu-action {
+  font-family: inherit;
   border-top: 1px solid var(--chq-hairline);
   margin-top: 2px;
   padding-top: 8px;
@@ -921,6 +925,7 @@ button.chq-speakers-status-overdue:hover {
    of the family: the padding stays, so the ring and hit box keep their
    breathing room, and the negative margin puts the glyph back in column. */
 .chq-speakers-remind-one {
+  font-family: inherit;
   margin-top: 4px;
   margin-inline: -8px;
   padding: 2px 8px;
@@ -934,6 +939,7 @@ button.chq-speakers-status-overdue:hover {
    cancelled paddings (4 + 8 + 8) keeps the two controls' boxes exactly 4px
    apart, as they were before either cancelled. */
 .chq-speakers-invite-one {
+  font-family: inherit;
   margin-top: 4px;
   margin-left: 20px;
   margin-right: -8px;
@@ -1391,6 +1397,7 @@ button.chq-speakers-status-overdue:hover {
 }
 
 .chq-speaker-detail-task-remind {
+  font-family: inherit;
   font-size: 12px;
   white-space: nowrap;
 }
