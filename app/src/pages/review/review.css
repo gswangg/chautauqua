@@ -318,6 +318,11 @@
   color: var(--chq-muted);
 }
 
+/* tap-floor-exempt: a real <button> (ResultsTable.tsx:68) but its <thead>
+   parent is display:none at 390 (review.css's terminal @media (max-width:
+   700px) block, .chq-review-results-table thead { display: none }) -- the
+   entire header row, sort control included, is off-screen at phone width,
+   not merely de-emphasised (DEC-919). */
 .chq-review-sort-button {
   background: none;
   border: none;
@@ -2908,5 +2913,26 @@
     justify-content: center;
     min-height: 44px;
     padding: 0 14px;
+  }
+
+  /* .chq-forms-field-drag (:984): DEC-745's wave-116 amendment already
+     rules this class is a real keyboard-operable reorder button in this
+     file (PlanEditor.tsx:1808-1822 ArrowUp/ArrowDown), not decorative
+     chrome, and floors the .chq-review-criterion-row compound context
+     (:2457-2465) rather than exempting it -- "one control, one verdict".
+     PlanEditor.tsx:1946-1949 renders the SAME class as an option row's
+     drag/keyboard-reorder button inside .chq-review-criterion-option-row
+     (no compound override reaches it), which would otherwise be a second,
+     contradictory verdict for the identical class. Restating the base
+     selector's floor here (identical shape to forms.css's phone rule for
+     the same class) makes every context consistent instead of carving
+     out an exemption DEC-745 already rejected for this class. */
+  .chq-forms-field-drag {
+    min-height: 44px;
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
   }
 }
