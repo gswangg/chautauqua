@@ -367,7 +367,7 @@ const UNRECEIPTED = INTERACTIVE_PHONE_DISPLAY_NONE_RULES.filter((r) => r.receipt
 // batch (re-measure the whole tree, not a worker's mid-lane snapshot) --
 // the ratchet remains one-sided from HERE: receipt or remove to lower it,
 // never raise it again to accommodate a new unreceipted rule.
-export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 6;
+export const PHONE_HIDDEN_UNRECEIPTED_CEILING = 5;
 
 describe('DEC-919 phone capability-removal probe', () => {
   it('finds more than one sheet (vacuous-population tripwire, sheet side)', () => {

@@ -19,20 +19,20 @@
    .chq-comms-preview-actions, .chq-comms-refusal-actions,
    .chq-comms-select-actions) carry the same "bordered, cancelled padding
    dropped" note at comms.css:2178/:2189/:2198/:2208. settings.css's Saved
-   embeds/Public-pages rows carry the equivalent fix (settings.css:2151-2160
+   embeds/Public-pages rows carry the equivalent fix (settings.css:2154-2163
    comment block, same amendment).
    CLOSED (wave 115): app/src/pages/comms/comms.css:2168 `.chq-comms-head-actions > .chq-pill {`
 2. .chq-settings-section-action (settings.css:210) is 15px tall with no
    phone floor — it is the ONLY route into edit mode on all nine Settings
    panels. ROOMY per DESIGN-RULINGS:189.
-   RESOLVED (DEC-393 wave-109 amendment): settings.css:2161 now declares
+   RESOLVED (DEC-393 wave-109 amendment): settings.css:2164 now declares
    `.chq-settings-section-action {` with `min-height: 44px;` and the
    cancelled-padding idiom (legal here — it is borderless), per the comment
-   at settings.css:2151 ("Fix 1 (DEC-393 wave-109 amendment):
+   at settings.css:2154 ("Fix 1 (DEC-393 wave-109 amendment):
    .chq-settings-section-action (settings.css:210 -- ...) is the ONLY
    control that opens edit mode... DESIGN-RULINGS' density standard puts a
    real target in the ROOMY register").
-   CLOSED (wave 115): app/src/pages/settings/settings.css:2161 `.chq-settings-section-action {`
+   CLOSED (wave 115): app/src/pages/settings/settings.css:2164 `.chq-settings-section-action {`
 
 ## S1 breaks (reach/read)
 - Settings People-edit: main overflows 390 by 240px; Person column 0px wide;

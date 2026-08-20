@@ -4,7 +4,7 @@
 ## Campaign regression (fix first)
 - PlanEditor.tsx:1565/:2171 mount chq-review-criteria-count-phone /
   chq-review-reviewers-count-phone whose only rules are inside the 700px
-  block (review.css:2362/:2509) — bare numerals paint on desktop and shove
+  block (review.css:2367/:2514) — bare numerals paint on desktop and shove
   the section-head eyebrow to mid-page (space-between third child).
   From 75ade503 (v12m-w5-b). Needs desktop-scope hiding + SCAN WIDENING:
   leak scans match chq-phone-* prefix only; widen predicate to /phone/
@@ -12,13 +12,13 @@
   RESOLVED (v12m-w5-k, DEC-919 wave-109 amendment): review.css now
   declares `.chq-review-criteria-count-phone { display: none; }` and
   `.chq-review-reviewers-count-phone { display: none; }` top-level at
-  review.css:2039/:2043, before the terminal 700px block, so both are
+  review.css:2044/:2048, before the terminal 700px block, so both are
   hidden at desktop widths and only re-shown by the later phone rule
   (source-order win, DEC-385). The SCAN WIDENING also landed:
   app/src/phone-block-visibility.test.ts:304 now tests
   `/phone/.test(token)` rather than a `chq-phone-*` prefix only.
-  CLOSED (wave 115): app/src/pages/review/review.css:2039 `.chq-review-criteria-count-phone {`
-  CLOSED (wave 115): app/src/pages/review/review.css:2043 `.chq-review-reviewers-count-phone {`
+  CLOSED (wave 115): app/src/pages/review/review.css:2044 `.chq-review-criteria-count-phone {`
+  CLOSED (wave 115): app/src/pages/review/review.css:2048 `.chq-review-reviewers-count-phone {`
   CLOSED (wave 115): app/src/phone-block-visibility.test.ts:304 `if (token && /phone/.test(token))`
 
 ## Speakers-cluster edge MAJORs
