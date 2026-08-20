@@ -322,6 +322,18 @@ describe("cfp-steps-script — Next validates step 1 before advancing (DEC-986)"
     // jsdom implements constraint validation but not scrollIntoView; stub it
     // so setStep's final line does not throw inside the click handler.
     dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+    // DEC-385 wave-139: the wizard now gates on matchMedia('(max-width:
+    // 700px)'), the same query the stylesheet declares. These tests exercise
+    // the engaged (phone) wizard, so stub a phone-width match.
+    dom.window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof dom.window.matchMedia;
     const document = dom.window.document;
     // The script arms itself on DOMContentLoaded, which jsdom dispatches
     // asynchronously once it finishes parsing -- wait for it before asserting.
@@ -401,6 +413,17 @@ describe("cfp-steps-script — a step transition un-requires what it hides (DEC-
       { url: "https://example.test/submit/test-conf", runScripts: "dangerously" },
     );
     dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+    // DEC-385 wave-139: gate on matchMedia -- stub a phone-width match so
+    // these clause-1 tests keep exercising the engaged wizard.
+    dom.window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof dom.window.matchMedia;
     const document = dom.window.document;
     if (document.readyState === "loading") {
       await new Promise<void>((resolve) => document.addEventListener("DOMContentLoaded", () => resolve()));
