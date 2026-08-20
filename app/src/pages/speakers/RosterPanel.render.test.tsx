@@ -82,10 +82,43 @@ describe('RosterPanel', () => {
         lastName: 'Lovelace',
         email: 'ada@example.com',
         eventId: EVENT_ID,
-        // DEC-810: the server requires a session title with eventId; the
-        // form must send it or every add fails with a 400.
+        // DEC-909 wave-128 clause (a): sessionTitle is optional, but a typed
+        // one is still posted verbatim -- the server does the exact-match-
+        // or-mint decision (clause b), not this form.
         sessionTitle: 'Analytical Engines at Scale',
       }),
+    );
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  // DEC-909 wave-128 clause (a): a roster add is a contact act, not a
+  // scheduling one -- the session title field carries no `required`
+  // attribute and the field renderer states its own optionality (DEC-909's
+  // one grammar), and an add with the field left blank still succeeds,
+  // posting sessionTitle as "".
+  it('adds a speaker with no session title typed: the field is optional and the add still succeeds', async () => {
+    apiPostMock.mockResolvedValueOnce({ id: 'ct-new' });
+    const onChanged = vi.fn();
+    const onClose = vi.fn();
+
+    renderPanel({ mode: 'add', onClose, onChanged });
+
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Lovelace' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
+    // Session title left untouched -- and it renders the shared "· optional"
+    // suffix, not an asterisk or a second grammar.
+    const sessionTitleField = screen.getByLabelText(/Session title/);
+    expect(sessionTitleField).not.toBeRequired();
+    expect(screen.getByText('Session title').closest('label')).toHaveTextContent('Session title · optional');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
+    expect(apiPostMock).toHaveBeenCalledWith(
+      '/contacts',
+      expect.objectContaining({ eventId: EVENT_ID, sessionTitle: '' }),
     );
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
     expect(onClose).toHaveBeenCalled();

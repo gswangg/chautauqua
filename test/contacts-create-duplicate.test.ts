@@ -97,10 +97,14 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
     }),
     insert: (table: unknown) => ({
       values: (vals: unknown) => {
+        // DEC-542: chunkRowsForInsert-based writers (insertActiveParticipants)
+        // call .values() with an ARRAY of rows, not a single row object --
+        // mirrors test/contacts-roster-import.test.ts's fakeDb fix.
+        const rowList = Array.isArray(vals) ? (vals as Record<string, unknown>[]) : [vals as Record<string, unknown>];
         const write = async () => {
           inserts.push({ table, vals });
           const arr = stateArrayFor(table);
-          if (arr) arr.push({ ...(vals as object) });
+          if (arr) for (const row of rowList) arr.push({ ...row });
         };
         return {
           then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),

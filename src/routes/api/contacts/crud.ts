@@ -33,6 +33,7 @@ import {
   DEC_765,
   DEC_810,
   DEC_894,
+  DEC_909,
   DEC_979,
 } from "../../../decisions";
 void DEC_755; // DEC-755 amendment (wave 43): POST /contacts is find-or-REFUSE, never mint-a-duplicate.
@@ -62,10 +63,17 @@ void DEC_764;
 // the owned contact row (never re-resolved by email) to pushContactToEvent
 // (DEC-765).
 void DEC_765;
-// Compile-checked dependency marker: POST /contacts below rejects a
-// missing/blank `sessionTitle` when `eventId` is present, before creating
-// the contact's roster push -- no 'Invited: <name>' fallback (DEC-810).
+// Compile-checked dependency marker: POST /contacts below never invents a
+// `sessionTitle` -- an omitted/blank one stays "" rather than falling back
+// to something like 'Invited: <name>' (DEC-810, DEC-909 wave-128 clause a
+// makes the field itself optional).
 void DEC_810;
+// Compile-checked dependency marker: POST /contacts below treats
+// `sessionTitle` as optional, and routes a typed one through
+// attachOrCreateRosterSession, which references an exact-title match
+// against this event's existing sessions instead of minting a duplicate
+// (DEC-909 wave-128 clauses a+b).
+void DEC_909;
 
 export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
   contactsRoutes.get("/contacts", async (c) => {
@@ -137,11 +145,16 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
 
     // DEC-290: an optional eventId puts the newly-created contact directly on
     // the event roster, riding the existing add-to-event push (no new route).
-    // DEC-810: pushing onto an event creates a real, named session, so an
-    // eventId requires a session title -- rejected loudly rather than
-    // falling back to an invented 'Invited: <name>' title. This is a
-    // distinct field from `title` (the contact's own job title, validated
-    // above), named `sessionTitle` so the two never collide.
+    // DEC-909 wave-128 amendment (supersedes the old DEC-810-only rule): a
+    // roster add is a contact act, not a scheduling one, so the session
+    // title is OPTIONAL here -- an eventId with no sessionTitle mints an
+    // empty-titled session rather than being rejected. This is a distinct
+    // field from `title` (the contact's own job title, validated above),
+    // named `sessionTitle` so the two never collide. The server still never
+    // INVENTS a title (an omitted one stays empty, never a fallback like
+    // 'Invited: <name>'), and per DEC-909 clause (b) it now also never
+    // DUPLICATES one -- see attachOrCreateRosterSession below, which matches
+    // a typed title against this event's existing sessions before minting.
     let eventId: string | undefined;
     let sessionTitle: string | undefined;
     if (body.eventId !== undefined) {
@@ -151,15 +164,13 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       const event = await getEventForOrg(c.var.db, body.eventId, orgId);
       if (!event) throw new ApiError("not_found", "Event not found");
       eventId = event.id;
-      if (typeof body.sessionTitle !== "string" || body.sessionTitle.trim() === "") {
-        throw new ApiError("invalid", "Validation failed", {
-          sessionTitle: "required to name the session this contact is added to the event with",
-        });
+      if (body.sessionTitle !== undefined && typeof body.sessionTitle !== "string") {
+        throw new ApiError("invalid", "Validation failed", { sessionTitle: "must be a string" });
       }
-      if (body.sessionTitle.length > MAX_NAME_LENGTH) {
+      if (typeof body.sessionTitle === "string" && body.sessionTitle.length > MAX_NAME_LENGTH) {
         throw new ApiError("invalid", "Validation failed", { sessionTitle: overCapFieldMessage(body.sessionTitle.length, MAX_NAME_LENGTH) }); // DEC-417
       }
-      sessionTitle = body.sessionTitle.trim();
+      sessionTitle = typeof body.sessionTitle === "string" ? body.sessionTitle.trim() : "";
     }
 
     // DEC-755 amendment (wave 43): contact identity within an org is
@@ -193,8 +204,8 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     if (eventId !== undefined) {
       const alreadyOnRoster = await listAcceptedContactIds(c.var.db, eventId);
       if (!alreadyOnRoster.includes(created.id)) {
-        if (sessionTitle === undefined) throw new Error("sessionTitle required when eventId is set (checked above)");
-        await repo.pushContactToEvent(c.var.db, eventId, orgId, created, sessionTitle);
+        if (sessionTitle === undefined) throw new Error("sessionTitle resolved to undefined when eventId is set (checked above)");
+        await repo.attachOrCreateRosterSession(c.var.db, eventId, orgId, created, sessionTitle);
       }
     }
 

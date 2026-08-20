@@ -91,4 +91,9 @@ export {
 export { findContactsForOrg } from "./contacts/bulk";
 export { findAccountUserId, findAccountUserIds } from "./comms";
 
-export { pushContactToEvent, pushContactsToEvent } from "./contacts/push";
+export {
+  pushContactToEvent,
+  pushContactsToEvent,
+  attachOrCreateRosterSession,
+  findSubmissionByExactTitle,
+} from "./contacts/push";

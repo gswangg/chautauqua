@@ -45,12 +45,17 @@ function fillAddForm() {
 }
 
 describe('RosterPanel add-speaker refusal shapes (DEC-505)', () => {
-  it("crud.ts:154's session-title-required 400 names the sessionTitle control, not a generic sentence", async () => {
+  // DEC-909 wave-128 clause (a): sessionTitle is optional on a roster add,
+  // so crud.ts no longer emits a 'required' refusal for it -- the field's
+  // only remaining server-side refusal is the shared over-cap message
+  // (crud.ts's MAX_NAME_LENGTH check, same grammar overCapFieldMessage
+  // gives every other capped field).
+  it("crud.ts's over-cap sessionTitle 400 names the sessionTitle control, not a generic sentence", async () => {
     mockBase({
       'POST /api/v1/contacts': {
         status: 400,
         body: errorEnvelope('invalid', 'Validation failed', {
-          sessionTitle: 'required to name the session this contact is added to the event with',
+          sessionTitle: '201 characters — 1 over the 200 limit',
         }),
       },
     });
@@ -62,9 +67,7 @@ describe('RosterPanel add-speaker refusal shapes (DEC-505)', () => {
     fillAddForm();
     fireEvent.click(screen.getByRole('button', { name: 'Add speaker' }));
 
-    expect(
-      await screen.findByText('required to name the session this contact is added to the event with'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('201 characters — 1 over the 200 limit')).toBeInTheDocument();
   });
 
   it("crud.ts:176's duplicate-email 409 names the existing contact, not a generic sentence", async () => {
