@@ -2188,7 +2188,7 @@ describe('criterion-row weight cell and add-criteria alignment', () => {
 
 // DEC-124 amendment (w30-d): the plan editor's rejected-save error shape --
 // summary at the top, one anchor per problem, the empty-criteria collection
-// card offering the way out (docs/design/Chautauqua Review.dc.html:788-831).
+// card offering the way out.
 describe('rejected save (DEC-124 amendment)', () => {
   it('renders the two-problem summary with working anchors, and "Add the three defaults" clears the empty-criteria card', async () => {
     mockApi({
@@ -2215,6 +2215,10 @@ describe('rejected save (DEC-124 amendment)', () => {
 
     fireEvent.click(saveButton);
 
+    // Frame: docs/design/Chautauqua Review.dc.html:888-889 --
+    // `Two things need fixing before this plan can open` /
+    // `A plan with no criteria has nothing for reviewers to score, and the
+    // window has to run forwards.`
     expect(await screen.findByText('Two things need fixing before this plan can open')).toBeInTheDocument();
     // G13 lane-D fix (03-review--11): the criteria/window kept sentence is
     // drawn only when BOTH those errors fired — here the two problems are

@@ -302,15 +302,14 @@ describe('design pack v12 task view: "One task, every speaker" / "One task · st
 // Per-kind row action (the answered tab).
 //
 // The v12 frame only ever seeds a FORM task, so its hard-coded
-// `{{ a.action }}` = 'Open' (docs/design/Chautauqua Speakers.dc.html:654,
-// `</div>`, :825-832) describes the form case alone. Offering it on every row shipped
-// a dead end: DEC-291's GET /task-assignments/:id/response reads a form
-// response and 4xxs on anything else, so a file or acknowledgement task's
-// "Open" could only ever raise a modal saying the task is not a form task.
-// These pins fix the action per KIND -- form opens the response, a file
-// task's row hands over the FILE (the frame's own file idiom, :395
-// `Download`, and the speaker detail's Files list), an acknowledgement has
-// no artefact and gets no action at all.
+// `{{ a.action }}` = 'Open' describes the form case alone. Offering it on
+// every row shipped a dead end: DEC-291's GET /task-assignments/:id/response
+// reads a form response and 4xxs on anything else, so a file or
+// acknowledgement task's "Open" could only ever raise a modal saying the
+// task is not a form task. These pins fix the action per KIND -- form opens
+// the response, a file task's row hands over the FILE (the frame's own file
+// idiom, and the speaker detail's Files list), an acknowledgement has no
+// artefact and gets no action at all.
 // ---------------------------------------------------------------------
 describe('the answered row action follows the task kind, never the row', () => {
   const FILE_ROWS: TaskViewRow[] = [
@@ -347,6 +346,8 @@ describe('the answered row action follows the task kind, never the row', () => {
     await mountKind('form', ANSWERED);
 
     const table = screen.getByRole('table', { name: 'Answers' });
+    // Frame: docs/design/Chautauqua Speakers.dc.html:826 --
+    // `action: 'Open'` (the seeded FORM task's answered-row action).
     expect(within(table).getAllByRole('button', { name: 'Open' })).toHaveLength(2);
     expect(within(table).queryByRole('link', { name: /Download/ })).not.toBeInTheDocument();
   });
@@ -362,6 +363,8 @@ describe('the answered row action follows the task kind, never the row', () => {
     // uses (SpeakerDetailPage.tsx) -- never the SPA router, never a
     // per-row fetch to learn the id: fileId/fileName already ride in the
     // roster payload.
+    // Frame: docs/design/Chautauqua Speakers.dc.html:395 -- `Download`
+    // (the file idiom's row action).
     expect(download).toHaveAttribute('href', '/files/file-deck-1');
     expect(download).toHaveAttribute('target', '_blank');
     expect(download).toHaveAttribute('rel', 'noreferrer');

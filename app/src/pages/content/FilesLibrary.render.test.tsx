@@ -148,21 +148,19 @@ describe('FilesLibrary render smoke', () => {
     });
     await screen.findByText('slides.pdf');
 
-    // Frame: docs/design/Chautauqua Content.dc.html:311 --
-    // `display:grid; grid-template-columns:1fr 190px 108px 92px auto; gap:16px`.
     // File carries no width class (takes the 1fr remainder); the other
     // three are pinned classes styled in content.css.
     const table = screen.getByRole('table');
     const sessionHeader = within(table).getAllByRole('columnheader')[1]!;
     const versionHeader = within(table).getAllByRole('columnheader')[2]!;
     const sizeHeader = within(table).getAllByRole('columnheader')[3]!;
+    // Frame: docs/design/Chautauqua Content.dc.html:311 --
+    // `display:grid; grid-template-columns:1fr 190px 108px 92px auto; gap:16px`.
     expect(sessionHeader).toHaveClass('chq-content-files-col-session');
     expect(versionHeader).toHaveClass('chq-content-files-col-version');
     expect(sizeHeader).toHaveClass('chq-content-files-col-size');
   });
 
-  // Frame: docs/design/Chautauqua Content.dc.html:311 --
-  // `display:grid; grid-template-columns:1fr 190px 108px 92px auto; gap:16px`.
   // File takes the 1fr remainder (no width class); Session/Version/Size are pinned.
   it('pins the four Files table column-width literals to the frame (w4-c, DEC-902)', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
@@ -172,6 +170,8 @@ describe('FilesLibrary render smoke', () => {
     expect(sessionMatch).not.toBeNull();
     expect(versionMatch).not.toBeNull();
     expect(sizeMatch).not.toBeNull();
+    // Frame: docs/design/Chautauqua Content.dc.html:311 --
+    // `display:grid; grid-template-columns:1fr 190px 108px 92px auto; gap:16px`.
     expect(sessionMatch![1]).toMatch(/width:\s*190px/);
     expect(versionMatch![1]).toMatch(/width:\s*108px/);
     expect(sizeMatch![1]).toMatch(/width:\s*92px/);

@@ -226,7 +226,7 @@ describe('SpeakerDetailPage render smoke', () => {
   // User-filed (screenshot of /admin/speakers/<id>): "the row of chips and
   // buttons also looks inconsistent here", then USER RULING (final form):
   // the actions row is exactly the two chq-btn controls the frame draws at
-  // one 46px height (docs/design/Chautauqua Speakers.dc.html:346-347); the
+  // one 46px height; the
   // state changer is the roster's chip (DEC-730 family) inside each
   // Sessions row. The height rule in speakers.css is keyed on
   // `row > .chq-btn`, so it silently stops applying if this shape drifts.
@@ -246,6 +246,8 @@ describe('SpeakerDetailPage render smoke', () => {
     // 46px box) is unchanged by v12; what v12 adds beside them is a caption,
     // not a third control, so the .chq-btn count is still the assertion that
     // matters.
+    // Frame: docs/design/Chautauqua Speakers.dc.html:352-353 --
+    // `min-height:46px` on both the "Email Priya" and "Remind Priya" spans.
     expect(actions?.querySelectorAll(':scope > .chq-btn')).toHaveLength(2);
     const buttons = [...(actions?.querySelectorAll(':scope > .chq-btn') ?? [])];
     expect(buttons[0]).toHaveClass('chq-btn', 'chq-btn-secondary');
