@@ -61,7 +61,13 @@
 //      characters as literal HTML entities (needs entity-decode) -- skipping
 //      either invents unmatched rows in the fix-me direction (measured
 //      directly: dropping entity-decode alone raised this branch's
-//      UNMATCHED count). A caption is MATCHED when the normalized corpus
+//      UNMATCHED count). A hole in this entity table can only ever INVENT
+//      offenders (a real match rendered as `&apos;`/`&rsquo;`/`&lsquo;` on
+//      the source side fails to decode and so fails to match a pack line
+//      that spells the same apostrophe literally), never HIDE one -- the
+//      table can make the ledger too pessimistic, never too optimistic --
+//      which is exactly why a hole this shape survives review instead of
+//      being caught by the ceiling going too low. A caption is MATCHED when the normalized corpus
 //      contains the normalized text (plain substring test, not
 //      boundary-anchored -- unlike the control-label ledger's short button
 //      words, every population member here is >= 20 chars, so an accidental
@@ -244,6 +250,76 @@ const EXPLAINER_EXCLUSIONS: Exclusion[] = [
     text: 'The button is the progress indicator and the only thing disabled — no spinner, no overlay, no fake percentage. The button never says "Sent!"; the result panel reports.',
     reason: "the Overview frame's own interaction-states annotation panel, not product copy.",
   },
+  {
+    fileName: 'Chautauqua Home.dc.html',
+    line: 365,
+    text: 'Within a group: soonest deadline first, then soonest event. Past events run newest first.',
+    reason:
+      "the same 'Rules you can't see on the page' hub-ordering annotation panel as the already-listed :364/:399 rows, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Home.dc.html',
+    line: 379,
+    text: "Each of these describes how well an event is going, not what a visitor can do about it. A thin CFP or a stalled review wave is the organiser's business.",
+    reason:
+      "the same 'Rules you can't see on the page' hub-ordering annotation panel as the already-listed :364/:399 rows, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Home.dc.html',
+    line: 398,
+    text: 'The org\'s, not the product\'s — matching the public event pages, which lead with the event name. One org per deployment, so the hub is simply "our events" and needs no org switcher.',
+    reason:
+      "the same 'Rules you can't see on the page' hub-ordering annotation panel as the already-listed :364/:399 rows, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 423,
+    text: 'Four rooms today. Add a fifth and the grid takes the width rather than compressing the four it has.',
+    reason:
+      "the Overview frame's own widths annotation panel, the same panel as the already-listed :407 row, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 524,
+    text: "A disabled button has no hover at all · a button inside a hovering row keeps its own hover, the row tint sits behind it",
+    reason:
+      "the Overview frame's own interaction-states annotation panel, the same panel as the already-listed :568/:626 rows, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 551,
+    text: "Expanded — the band repeats the table's own tracks, so each score lands under Score",
+    reason:
+      "the Overview frame's own interaction-states annotation panel, the same panel as the already-listed :568/:626 rows, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 654,
+    text: 'No rotation, no scale, no shadow — the user is reading the card to decide where it goes. Every drag has a keyboard equivalent; an occupied target still accepts the drop and flags the clash.',
+    reason:
+      "the Overview frame's own interaction-states annotation panel, the same panel as the already-listed :568/:626 rows, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 679,
+    text: 'An optimistic write must be instant in both directions — fading the change and the rollback alike makes them indistinguishable.',
+    reason:
+      "the Overview frame's own interaction-states annotation panel, the same panel as the already-listed :568/:626 rows, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 703,
+    text: 'The chrome a page can draw without data — header, title, toolbar — is drawn immediately. Only the rows wait, and they wait as blocks at the row height they will become, so nothing jumps when the data lands.',
+    reason:
+      "the Overview frame's own interaction-states annotation panel, the same panel as the already-listed :568/:626 rows, not product copy.",
+  },
+  {
+    fileName: 'Chautauqua Overview.dc.html',
+    line: 726,
+    text: 'Six rows, always — a skeleton that guesses the real count lies twice: once while loading, once when the number differs.',
+    reason:
+      "the Overview frame's own interaction-states annotation panel, the same panel as the already-listed :568/:626 rows, not product copy.",
+  },
 ];
 
 /** (b) FIXTURE -- invented sample identities and sample body text used as
@@ -289,12 +365,60 @@ const FIXTURE_EXCLUSIONS: Exclusion[] = [
   },
 ];
 
+/** (c) EXEMPLAR ARTICLE -- the Docs frame's own sample article, 'Triaging
+ * submissions', a demonstration of the nine-block vocabulary the Docs frame
+ * defines (DEC-099: a principle, not a branch or a schedule -- this is what
+ * these five lines ARE). src/routes/docs-content ships nine real articles
+ * under DOCS_ARTICLES and none carries this slug or IA, so no screen owes
+ * these words. Each entry asserted below to still resolve to its cited
+ * file:line:text in the current pack. */
+const EXEMPLAR_ARTICLE_EXCLUSIONS: Exclusion[] = [
+  {
+    fileName: 'Chautauqua Docs.dc.html',
+    line: 61,
+    text: 'Deciding which talks make the programme. Accepting or declining never emails anyone — that is a separate, deliberate act in Comms.',
+    reason:
+      "the pack's sample article 'Triaging submissions', a demonstration of the nine-block vocabulary the Docs frame defines -- src/routes/docs-content's DOCS_ARTICLES ships nine real articles, none with this slug or IA, so no screen owes these words.",
+  },
+  {
+    fileName: 'Chautauqua Docs.dc.html',
+    line: 69,
+    text: 'A status change is silent. Speakers learn their outcome when you send from Comms, which is why the two are separate screens.',
+    reason:
+      "the pack's sample article 'Triaging submissions', a demonstration of the nine-block vocabulary the Docs frame defines -- src/routes/docs-content's DOCS_ARTICLES ships nine real articles, none with this slug or IA, so no screen owes these words.",
+  },
+  {
+    fileName: 'Chautauqua Docs.dc.html',
+    line: 82,
+    text: 'Open a submission to read the abstract, the form answers and every review it has collected. Accept and Decline sit in the right rail beside them, so the decision is next to the evidence.',
+    reason:
+      "the pack's sample article 'Triaging submissions', a demonstration of the nine-block vocabulary the Docs frame defines -- src/routes/docs-content's DOCS_ARTICLES ships nine real articles, none with this slug or IA, so no screen owes these words.",
+  },
+  {
+    fileName: 'Chautauqua Docs.dc.html',
+    line: 92,
+    text: 'screenshot · /admin/submissions/:id · decision rail in frame',
+    reason:
+      "the same sample article's screenshot-placeholder line -- a demonstration of the nine-block vocabulary, not a real screen's copy.",
+  },
+  {
+    fileName: 'Chautauqua Docs.dc.html',
+    line: 176,
+    text: 'Deciding which talks make the programme. Accepting never emails anyone — that is a separate act in Comms.',
+    reason:
+      "the pack's sample article 'Triaging submissions', a demonstration of the nine-block vocabulary the Docs frame defines -- src/routes/docs-content's DOCS_ARTICLES ships nine real articles, none with this slug or IA, so no screen owes these words.",
+  },
+];
+
 function isExcluded(c: Caption, table: Exclusion[]): boolean {
   return table.some((e) => e.fileName === c.fileName && e.line === c.line && e.text === c.text);
 }
 
 const CAPTIONS_AFTER_EXCLUSION: Caption[] = ALL_CAPTIONS.filter(
-  (c) => !isExcluded(c, EXPLAINER_EXCLUSIONS) && !isExcluded(c, FIXTURE_EXCLUSIONS)
+  (c) =>
+    !isExcluded(c, EXPLAINER_EXCLUSIONS) &&
+    !isExcluded(c, FIXTURE_EXCLUSIONS) &&
+    !isExcluded(c, EXEMPLAR_ARTICLE_EXCLUSIONS)
 );
 
 // -- Match side: every non-test .ts/.tsx/.css/.md under app/src/** and src/**
@@ -415,6 +539,9 @@ const ENTITY_MAP: Record<string, string> = {
   '&rdquo;': '”',
   '&lt;': '<',
   '&gt;': '>',
+  '&apos;': "'",
+  '&rsquo;': '’',
+  '&lsquo;': '‘',
 };
 
 /** Strips comments (string/template-aware), decodes this ledger's wide HTML
@@ -447,15 +574,22 @@ const UNMATCHED: Caption[] = CAPTIONS_AFTER_EXCLUSION.filter(
 );
 
 // -- Ratchet -------------------------------------------------------------
-// Measured on this branch (v12m-w8-a) by forcing this const to -1 and
+// Re-measured on this branch (v12m-w10-cc) by forcing this const to -1 and
 // reading the printed offender list: population 233 muted-prose captions
 // across 13 frame files (>= 20 chars, no digit, no `@`, not
-// text-transform:uppercase), 18 excluded (12 EXPLAINER, 6 FIXTURE), 215
-// graded, 89 unmatched by any normalized app/src or src source file. This is
-// a fresh instrument -- may only be RAISED as a merge-train act if a future
-// predicate widening surfaces more real divergences, and should be LOWERED
-// as sibling lanes close real caption/consequence gaps.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 89;
+// text-transform:uppercase), 33 excluded (22 EXPLAINER -- 12 original + 10
+// added this lane for the Home hub-ordering and Overview widths/
+// interaction-states annotation panels -- 6 FIXTURE, 5 EXEMPLAR ARTICLE, the
+// new third table for the Docs frame's 'Triaging submissions' sample
+// article), 200 graded, 53 unmatched by any normalized app/src or src source
+// file. Down from the prior branch's 89 because this lane also closed the
+// &apos;/&rsquo;/&lsquo; entity-table gap that had been inventing two false
+// offenders (BreaksPanel.tsx / EmbedsPanel.tsx's `day&apos;s` /
+// `embed&apos;s` now decode and match) and excluded 15 explainer/exemplar
+// rows that were never product copy. May only be RAISED as a merge-train act
+// if a future predicate widening surfaces more real divergences, and should
+// be LOWERED as sibling lanes close real caption/consequence gaps.
+export const FRAME_CAPTION_UNMATCHED_CEILING = 53;
 
 describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaign)', () => {
   it('non-vacuity: population is large and spans many frames and many source files (vacuous-grammar guard)', () => {
@@ -534,6 +668,13 @@ describe('frame caption/consequence ledger (DEC-976 wave-133, v12 mobile campaig
 
   it('FIXTURE exclusions each resolve to their cited file:line:text in the current pack', () => {
     for (const e of FIXTURE_EXCLUSIONS) {
+      const hit = ALL_CAPTIONS.find((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
+      expect(hit, `${e.fileName}:${e.line} no longer resolves to the cited text in the pack`).toBeDefined();
+    }
+  });
+
+  it('EXEMPLAR ARTICLE exclusions each resolve to their cited file:line:text in the current pack', () => {
+    for (const e of EXEMPLAR_ARTICLE_EXCLUSIONS) {
       const hit = ALL_CAPTIONS.find((c) => c.fileName === e.fileName && c.line === e.line && c.text === e.text);
       expect(hit, `${e.fileName}:${e.line} no longer resolves to the cited text in the pack`).toBeDefined();
     }
