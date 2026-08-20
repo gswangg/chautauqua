@@ -15,7 +15,10 @@
 // -- Ratchet -------------------------------------------------------------
 // Three lanes measured this ratchet independently against the same
 // 233-caption / 13-frame-file population (>= 20 chars, no digit, no `@`, not
-// text-transform:uppercase), each excluding a DIFFERENT slice:
+// text-transform:uppercase) as it stood before v12m-w17-f (wave-142); see
+// that task's own history entry below for the digit-discriminator retirement
+// that widened the population to 378. Each of the three lanes below excluded
+// a DIFFERENT slice of the pre-widening population:
 //   - v12m-w10-dd: +17 FIXTURE rows                          -> 54 unmatched
 //   - v12m-w10-cc: +&apos;/&rsquo;/&lsquo; in ENTITY_MAP (retiring the
 //     BreaksPanel/EmbedsPanel `day&apos;s`/`embed&apos;s` false offenders),
@@ -171,4 +174,18 @@
 // lane owns, so it stays UNMATCHED per this file's own note above (the
 // "could not be verified" list, wave-135). 17 - 1 (the :159 build) = 16,
 // re-measured below.
-export const FRAME_CAPTION_UNMATCHED_CEILING = 2;
+// v12m-w17-f (wave-142, DEC-976): the digit discriminator in
+// ./population.ts's captionsInText is RETIRED this task -- a caption with a
+// digit no longer leaves the population, and ./match.ts's captionIsMatched
+// gained a digit-skeleton SECOND pass (run only after its existing verbatim
+// pass finds nothing) so a composed count/range still matches its frame.
+// This is an INSTRUMENT widening, not a classification pass: the 233-caption
+// population widens to whatever the pack's real digit-bearing count is, the
+// ceiling is re-seeded to what the widened, still-unclassified population
+// measures, and classifying each newly surfaced row (COMPOSED/FIXTURE/
+// EXPLAINER/genuinely unbuilt) is explicitly out of this task's scope, left
+// for a future lane. Forced to -1 and read back: 131 unmatched. A widening
+// re-seeds where it widens in the repairing commit -- that is a repair, not
+// a raise (DEC-976 wave-138's own clause, restated wave-142).
+// RATCHET: FRAME_CAPTION_UNMATCHED_CEILING=131
+export const FRAME_CAPTION_UNMATCHED_CEILING = 131;

@@ -5,9 +5,31 @@
 // Extracts every population-qualifying muted-prose caption from
 // docs/design/*.dc.html. See test/frame-caption-ledger.scan.test.ts's own
 // header for the full grammar rationale (muted colours, uppercase/eyebrow
-// exclusion, `{{`/digit/`@` discriminators, >= 20 chars). This module owns
+// exclusion, `{{`/`@` discriminators, >= 20 chars). This module owns
 // only the EXTRACTION grammar; exclusion tables live in ./exclusions.ts and
 // the match/ratchet machinery lives in ./match.ts and ./ceiling.ts.
+//
+// DEC-976 wave-142/w17-f: the digit discriminator (`if (/\d/.test(trimmed))
+// continue;`) is RETIRED. Measured against the pack at main 0e3ece58, it hid
+// 147 of 380 population-qualifying captions -- every count-bearing
+// consequence caption in the pack ("23 submissions have a decision and
+// nobody has been told", "3 of 23 have no slot yet -- those get no invite").
+// A digit no longer removes a caption from the population; instead
+// ./match.ts's captionIsMatched runs a SECOND, digit-skeleton-normalized
+// pass (digits and digit ranges collapsed to one sentinel on both sides, and
+// `${...}`/`{...}` merge placeholders collapsed to the same sentinel on the
+// source side) after its existing verbatim pass, so a composed
+// `${count} submissions have a decision...` matches the frame's literal
+// `23 submissions have a decision...` without the population ever hiding the
+// caption from view.
+//
+// The `@` discriminator STAYS this wave, and stays a DISCRIMINATOR ON THE
+// POPULATION (DEC-180), never a hand-listed exclusion: measured, it drops
+// exactly 8 captions, every one a fixture email identity the pack invents
+// for a mock row (e.g. "sbek-speaker@example.com", "priya@example.com") --
+// not product copy a real screen renders. That population is distinct from
+// the digit one and is deliberately left for a separate widening, not
+// folded into this task's scope.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -59,7 +81,6 @@ export function captionsInText(text: string): { line: number; text: string }[] {
     if (rawText.includes('{{')) continue;
     const trimmed = rawText.trim();
     if (trimmed.length < 20) continue;
-    if (/\d/.test(trimmed)) continue;
     if (trimmed.includes('@')) continue;
     const line = text.slice(0, m.index).split('\n').length;
     out.push({ line, text: trimmed });
