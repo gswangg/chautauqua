@@ -23,7 +23,9 @@ import { fileURLToPath } from 'node:url';
 import type { ComponentProps } from 'react';
 import { PhoneAgenda } from './PhoneAgenda';
 import type { AgendaConflict, AgendaRoom, PlacedAgendaSession, UnscheduledAgendaSession } from './types';
-import { DEC_576, DEC_380 } from '../../../../src/decisions'; // compile-checked: DEC_576 pins wave-114, DEC_380 pins wave-116 (this file also owns the wave-116 amendment closing the dock-vs-Breaks question)
+import { DEC_576, DEC_380 } from '../../../../src/decisions'; // compile-checked provenance markers only (DEC-976 wave-126: the scribe overwrites these one-line constants for OTHER rulings every wave, so the registry-text assertions below read the durable .md amendments directly, never DEC_576/DEC_380's current string)
+void DEC_576;
+void DEC_380;
 
 afterEach(() => {
   cleanup();
@@ -37,6 +39,14 @@ const REPO_ROOT = join(HERE, '..', '..', '..', '..');
 // can read them without a second, drifting readFileSync pair.
 const agendaSource = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'Agenda.tsx'), 'utf-8');
 const agendaCss = readFileSync(join(REPO_ROOT, 'app', 'src', 'pages', 'agenda', 'agenda.css'), 'utf-8');
+
+// DEC-976 wave-126: the DEC_576 / DEC_380 constants in src/decisions.ts are
+// mutable one-liners the scribe overwrites for whichever ruling is newest
+// each wave -- pinning this file's ruling against them broke for a reason
+// that had nothing to do with the agenda dock. The durable homes are the
+// append-only .md amendments; read those directly instead.
+const dec576Md = readFileSync(join(REPO_ROOT, 'src', 'decisions-data', 'DEC-576.md'), 'utf-8');
+const dec380Md = readFileSync(join(REPO_ROOT, 'src', 'decisions-data', 'DEC-380.md'), 'utf-8');
 
 const ROOMS: AgendaRoom[] = [{ id: 'r1', name: 'Room A' }];
 const DAY = '2026-08-15';
@@ -82,9 +92,12 @@ function baseProps(overrides: Partial<ComponentProps<typeof PhoneAgenda>> = {}) 
 }
 
 describe('DEC-576 wave-114: phone agenda dock membership is pinned at exactly two controls', () => {
-  it('the DEC_576 constant (src/decisions.ts, compile-checked) states the ruling this file pins', () => {
-    expect(DEC_576).toMatch(/Publish schedule stays in the agenda head/);
-    expect(DEC_576).toMatch(/never enters the two-control dock/);
+  it("src/decisions-data/DEC-576.md's wave-114 amendment (the durable, append-only home for this ruling) states Publish schedule stays out of the dock", () => {
+    const amendmentStart = dec576Md.indexOf('## Amendment (wave 114)');
+    expect(amendmentStart).toBeGreaterThan(-1);
+    const amendment = dec576Md.slice(amendmentStart);
+    expect(amendment).toMatch(/RULED: Publish schedule stays OUT/);
+    expect(amendment).toMatch(/a dock the frame draws closed/);
   });
 
   it('renders EXACTLY two interactive controls inside .chq-phone-footer-actions: Unscheduled (with its count) and Auto-schedule', () => {
@@ -196,9 +209,14 @@ describe('DEC-576 wave-114: Publish schedule stays reachable on phone -- "not in
 });
 
 describe('DEC-380 wave-116: agenda 390 open design question is RULED -- dock stays the frame\'s two controls, Breaks and Publish schedule stay in the head row at the 44px floor', () => {
-  it('the DEC_380 constant (src/decisions.ts, compile-checked) states the ruling this file pins', () => {
-    expect(DEC_380).toMatch(/the dock stays exactly Unscheduled \+ Auto-schedule/);
-    expect(DEC_380).toMatch(/Publish schedule and Breaks live in the head's full-width action row/);
+  it("src/decisions-data/DEC-380.md's wave-116 amendment (the durable, append-only home for this ruling) states the dock stays exactly the two frame controls", () => {
+    const amendmentStart = dec380Md.indexOf('## Amendment (wave 116)');
+    expect(amendmentStart).toBeGreaterThan(-1);
+    const nextAmendmentStart = dec380Md.indexOf('## Amendment (wave 120)');
+    expect(nextAmendmentStart).toBeGreaterThan(amendmentStart);
+    const amendment = dec380Md.slice(amendmentStart, nextAmendmentStart);
+    expect(amendment).toMatch(/the dock stays exactly Unscheduled \+ Auto-schedule/);
+    expect(amendment).toMatch(/Publish schedule and Breaks live in the head's full-width action row/);
   });
 
   it('the dock has no control whose accessible name or text matches /breaks/i either -- same population as the /publish/i check above', () => {
