@@ -154,11 +154,16 @@ export async function getFileScope(db: Db, fileId: string): Promise<FileScope | 
 /** Pure authz check for GET /files/:fileId and the comment endpoints, per
  * DEC-020: organizers may access any file in their org; speakers only when
  * they're a participant on the file's submission or the uploader — no IDOR.
- * DEC-020 doesn't name reviewers for this surface; per DEC-170 (supersedes
- * DEC-066), reviewers may download submission files (GET /files/:fileId
- * only, never the comment endpoints) iff the file's submission is in scope
- * for one of their non-anonymized plan assignments — callers pass that
- * precomputed boolean in `opts`, never defaulting to true. */
+ * DEC-020 doesn't name reviewers for this surface; per DEC-170's wave-54
+ * amendment (supersedes DEC-066), an in-scope reviewer's read grant covers
+ * BOTH GET /files/:fileId and GET the comment thread — this predicate is the
+ * one place `src/routes/files.ts`'s authzFileRead calls for either surface,
+ * passing the caller's precomputed `reviewerInScope`, never defaulting it to
+ * true. This is a READ-only grant: it never implies a write. Reviewer POSTs
+ * (comments, uploads) are refused outright at authzFileWrite/
+ * authzSubmissionWrite before this predicate is even consulted — see
+ * `src/routes/files.ts`'s authzFileWrite docstring for that half of the
+ * contract. */
 export function canAccessFile(
   auth: { role: string; orgId: string; contactId?: string },
   scope: { orgId: string; uploadedByContactId: string | null; readParticipantContactIds: readonly string[] },

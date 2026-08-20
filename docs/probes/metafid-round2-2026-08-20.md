@@ -80,20 +80,27 @@
   ("round-2 WAVE B row \"contacts name links") next to its fix. Left OPEN
   rather than CLOSED: this wave did not re-run the pixel scan to confirm
   the computed height at 390, only that a floor rule now targets each
-  token — a genuine re-measure is still owed.
+  token — the owed re-measure is now the width-dimension `scripts/render-sweep-lib.ts`
+  instrument lane v12m-w19-f is building this wave (the existing sweep
+  records `minControlHeight` only), not a hand re-run.
 - N2 MED: /login password↔button 0px gap AND email focus-ring overlaps the
   PASSWORD label by 4px on load (R1's "not reproducible" REFUTED — live
   measured). Add the gap.
-  PARTIALLY CLOSED (re-verified wave-140/w15-ff, matches
+  CLOSED (re-verified wave-19/w19-h, matches
   metafid-phoneB-ssr-2026-08-19.md's "RESOLVED since wave 120" entry): the
-  gap clause is closed — `src/routes/auth.css.ts`'s `.chq-auth-card`
+  gap clause was already closed — `src/routes/auth.css.ts`'s `.chq-auth-card`
   declares `gap: 22px;`, its direct parent, so password↔button no longer
-  measures 0px. The focus-ring clause stays OPEN: no `focus-visible` rule
-  targets `.chq-auth-card input[type=password]` in `src/routes/auth.css.ts`
-  at all (grepped, zero matches, positive or negative), so nothing in the
-  tree confirms or denies the 4px label-overlap this row measured live —
-  left open per DEC-967 rather than guessed closed on an absence of
-  contrary evidence.
+  measures 0px. The focus-ring clause is now also closed on content-anchored
+  evidence, not an absence: `src/routes/auth.css.ts`'s terminal phone block
+  carries a `.chq-auth-stack .chq-auth-fields { gap: 14px; }` rule under a
+  comment naming this exact row ("N2 (live-measured at 390, round-1 \"not
+  reproducible\" refuted)") and stating that the earlier zero-gap rule
+  "collapsed BOTH reported defects at once" — the Password↔button gap and
+  the ring's 4px overlap onto the Password label both trace to the same
+  zeroed `.chq-auth-fields` gap, and the `gap: 14px` restore (later in the
+  same terminal block, so it wins the cascade per DEC-385 append-only)
+  clears both: the ring's 4px reach now lands inside the restored 14px
+  gap band instead of on the Password label.
 - N3 MED: all 7 Settings edit panels invert back/title order
   (DESIGN-RULINGS:247: back above H1). JSX reorder x7.
   CLOSED (re-verified wave-140/w15-ff, w14-m/DEC-728 wave-125): the seven
