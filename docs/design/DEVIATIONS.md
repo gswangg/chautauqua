@@ -283,15 +283,11 @@ survives contact with state:
   This is the mirror of DEC-380 wave-116's "a frame's silence removes
   geometry, not capability": a frame's DRAWING does not create a data model
   either, and a control minted only to satisfy a shape is the same error
-  inverted (DEC-576 wave-110).
-- **Comms fresh empty state stays count-free (DEC-380 wave-130 amendment)**
-  — `docs/design/Chautauqua Comms.dc.html:577-578` draws `Tell the 23
-  accepted speakers` over the caption "23 submissions have a decision and
-  nobody has been told". `RecentSends` is fed only `batches` /
-  `templatesById` / `rhythm` and carries no decided-submission count to draw
-  the figure from, so building the literal would fabricate a number this
-  component cannot verify. The landed copy stays count-free: `Tell your
-  accepted speakers` (`app/src/pages/comms/RecentSends.tsx:356-362`).
+  inverted (DEC-576 wave-110). Re-tested at wave-140 against the narrowed
+  rule ("a caption naming data the SCHEMA lacks" — DEC-380 wave-133/135/137
+  amendments): `evaluation_plan` (`src/db/schema/review.ts`) still carries
+  only `openDate`/`closeDate`, no draft/status column of any kind — the
+  clause that keeps this deferred is SCHEMA LACKS THE COLUMN, unchanged.
 - **Co-presenter add row keeps its no-email truth over the frame's caption
   (DEC-909 wave-134, task w9-dd; corrected and confirmed by DEC-380
   wave-139)** — `docs/design/Chautauqua
@@ -527,10 +523,31 @@ instead of re-flagging.
   Settings.dc.html:1463-1464`) — this product's second resource kind is a
   wiki page with stored markdown, not a link; there is no link kind to
   build. The chips stay `File` / `Wiki page`
-  (`app/src/pages/settings/ResourcesPanel.tsx`). DEC-380 wave-130 amendment.
+  (`app/src/pages/settings/ResourcesPanel.tsx`). DEC-380 wave-130 amendment,
+  reconfirmed wave-140: the resource-content schema's `kind` column
+  (`src/db/schema/content.ts`) is still populated only by `'file'` and
+  `'wiki'` — the clause that keeps this deferred is THE PRODUCT HAS NO SUCH
+  OBJECT, unchanged.
 - CFP not-yet-open `Browse last year's sessions ›`
-  (`docs/design/Chautauqua Public and Portal.dc.html:1543`) — no
-  previous-edition model exists anywhere in the domain, so there is nothing
-  a "last year" link could point at. The link keeps its landed destination
-  and label, this event's published sessions at `/e/:slug/sessions`
-  (`src/routes/public/submit-views.tsx:139`). DEC-380 wave-130 amendment.
+  (`docs/design/Chautauqua Public and Portal.dc.html:1543`) — the link
+  keeps its landed destination and label, this event's published sessions
+  at `/e/:slug/sessions` (`src/routes/public/submit-views.tsx:139`).
+  DEC-380 wave-130 amendment. Re-tested at wave-140 against the narrowed
+  rule and the original reasoning does NOT survive as written: a
+  previous-edition model now exists in the domain — `getPriorPublicEvent`
+  (`src/server/repo/public/event.ts:79`, same-org, most recent event whose
+  `endDate` is strictly before this event's `startDate`) was landed under
+  DEC-745's wave-107 amendment, before wave-130's "no previous-edition
+  model exists anywhere in the domain" claim was even written, and is
+  already wired to a "Last year" aside on the public sessions fresh-empty
+  page (`src/routes/public/sessions.tsx:397-410`). The claim this bullet
+  rested on was false the day it was recorded. What DOES still hold: this
+  specific surface — the CFP not-yet-open page
+  (`src/routes/public/submit-views.tsx`'s `NotYetOpenPage`) — has never been
+  wired to that repo function, so today it is a real gap, just not the gap
+  originally named. This task's file ownership does not include
+  `src/routes/public/submit-views.tsx`, so the wiring is not done here;
+  recorded as a STILL-OWED BUILD for a future task, not as a permanent
+  deviation — flagged, not resolved, per this decision's own wave-137 note
+  that a worker task does not extend its scope to fix a finding it turns up
+  outside its owned files.

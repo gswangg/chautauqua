@@ -250,6 +250,15 @@ export interface RecentSendsProps {
    * head. Only the History tab's frame draws these heads (frame
    * :634-636); the Compose mount is unchanged (default false). */
   columnHeads?: boolean;
+  /** DEC-380 wave-140 (re-adjudication of the wave-130 amendment's clause
+   * (d)): the fresh (never-sent) empty state's decided-but-untold accepted-
+   * submission count, built once by Comms.tsx on its own "fresh" branch --
+   * this component never fetches it and never re-derives "fresh" itself
+   * (that stays batchesLoaded/rows.length-driven, unchanged). `null` (or
+   * omitted) means the count is not yet known (or this mount was not given
+   * one) and the empty state renders its static, count-free copy rather
+   * than fabricating a number. */
+  decidedUntoldCount?: number | null;
 }
 
 export function RecentSends({
@@ -262,6 +271,7 @@ export function RecentSends({
   batchesLoaded,
   rhythm,
   columnHeads = false,
+  decidedUntoldCount = null,
 }: RecentSendsProps) {
   const [expanded, setExpanded] = useState<string | null>(expandBatchKey ?? null);
   const [recipients, setRecipients] = useState<Record<string, RecipientsState>>({});
@@ -343,21 +353,33 @@ export function RecentSends({
         </div>
       )}
 
-      {/* Frame 07-comms--07 + ruling B7: a fresh (never-sent) empty state
-          gets a real primary action, not a bare "No emails sent yet."
-          apology. RecentSends is fed only batches/templatesById/rhythm --
-          it has no decision-count data of its own, so the reason clause
-          stays static (no fabricated "N submissions" figure) rather than
-          inventing a number this component cannot verify. The primary
-          links into Compose, which already defaults step 1's status filter
-          to Accepted alone (DEC-967), so "accepted speakers" is the real
-          audience that lands, not just a label. */}
+      {/* Frame 07-comms--07 (Chautauqua Comms.dc.html:574-578) + ruling B7:
+          a fresh (never-sent) empty state gets a real primary action, not a
+          bare "No emails sent yet." apology. DEC-380 wave-140
+          (re-adjudicating the wave-130 amendment's clause (d)): the
+          frame's count-bearing sentence -- "N submissions have a decision
+          and nobody has been told" / "Tell the N accepted speakers" -- IS
+          built once Comms.tsx's fresh-branch fetch resolves
+          `decidedUntoldCount`; this component still never fetches or
+          derives the count itself, and while it is unknown (null) the
+          empty state keeps its prior static, count-free copy rather than
+          fabricating a number. The primary links into Compose, which
+          already defaults step 1's status filter to Accepted alone
+          (DEC-967), so "accepted speakers" is the real audience that
+          lands, not just a label. */}
       {batchesLoaded && rows.length === 0 && (
         <EmptyState
           variant="fresh"
           what="You have not emailed anyone yet"
-          reason="Every send is logged here afterwards."
-          action={{ label: 'Tell your accepted speakers', to: '/comms?tab=compose' }}
+          reason={
+            decidedUntoldCount !== null
+              ? `${decidedUntoldCount} submission${decidedUntoldCount === 1 ? '' : 's'} ${decidedUntoldCount === 1 ? 'has' : 'have'} a decision and nobody has been told. Every send is logged here afterwards.`
+              : 'Every send is logged here afterwards.'
+          }
+          action={{
+            label: decidedUntoldCount !== null ? `Tell the ${decidedUntoldCount} accepted speakers` : 'Tell your accepted speakers',
+            to: '/comms?tab=compose',
+          }}
           secondary={{ label: 'Read the templates ›', to: '/comms?tab=templates' }}
         />
       )}

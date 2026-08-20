@@ -15,6 +15,8 @@ import { readComposeDraft, type ComposeDraft } from './comms/composeDraft';
 import { formatSendRhythm, formatPhoneSendRhythm } from './comms/sendRhythm';
 import { formatDateTime } from '../lib/dates';
 import type { EmailBatchRow, EmailLogRow, EmailTemplate } from './comms/types';
+import { buildSubmissionsQuery } from './submissions/filters';
+import { DEFAULT_FILTER_STATE, type SubmissionListItem } from './submissions/types';
 import './comms/comms.css';
 
 // DEC-905: the send rhythm the head states — "N sent in the last 7 days" —
@@ -190,6 +192,48 @@ export function CommsPage() {
     };
   }, [eventId]);
 
+  // DEC-380 wave-140 (re-adjudication of the wave-130 amendment's clause
+  // (d)): "fresh" (never sent AT ALL) is the SAME two-signal check the head
+  // subtitle below already computes -- the all-time batch list is empty AND
+  // both seven-day totals are zero. Reused here, never a second definition
+  // of "fresh" (DEC-613), so this fetch and the head subtitle can never
+  // disagree about which branch the page is on.
+  const isFreshEmpty = sentLast7DaysLoaded && batchesLoaded && recentBatches.length === 0 && sentLast7Days === 0 && failedLast7Days === 0;
+
+  // DEC-380 wave-140: the fresh empty state's "N submissions have a decision
+  // and nobody has been told" needs the accepted-submission count. Decisions
+  // live on submissions and the product already serves them --
+  // /events/:id/submissions?status=accepted&perPage=1's envelope `total` is
+  // the same DEC-013 count-by-request idiom ComposeWizard's own per-status
+  // pill counts already use, never a client-side sum. Fetched ONLY on the
+  // fresh branch (a non-fresh event has no use for this number, and "fresh"
+  // itself already means zero emails have gone out, so every accepted
+  // submission is untold by construction -- no separate "told" tracking
+  // needed). A count that fails to load stays null and the caller below
+  // renders the static (pre-count) copy rather than fabricating a number.
+  const [decidedUntoldCount, setDecidedUntoldCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!eventId || !isFreshEmpty) {
+      setDecidedUntoldCount(null);
+      return;
+    }
+    let cancelled = false;
+    const qs = buildSubmissionsQuery({ ...DEFAULT_FILTER_STATE, status: ['accepted'], perPage: 1 });
+    apiList<SubmissionListItem>(`/events/${eventId}/submissions${qs}`)
+      .then((res) => {
+        if (!cancelled) setDecidedUntoldCount(res.total);
+      })
+      .catch(() => {
+        // A failed count read leaves the fresh empty state on its static
+        // (pre-count) copy -- never a permanent error banner over what is,
+        // underneath, still a correctly-rendered empty state.
+        if (!cancelled) setDecidedUntoldCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, isFreshEmpty, mutationVersion]);
+
   // DEC-751 amendment (w15-d): "All history" on the compose mount's Recent
   // Sends switches to the History tab -- the per-row "Open" no longer hands
   // off here (it drills in place on both mounts now), so this always clears
@@ -284,9 +328,13 @@ export function CommsPage() {
                   still has past batches). Reuses .chq-comms-head-subtitle
                   (identical position/size/colour, DEC-976: no new class
                   token needed for a state line that only ever swaps text
-                  with the rhythm sentence it replaces). */}
+                  with the rhythm sentence it replaces). DEC-380 wave-140:
+                  `isFreshEmpty` above is this exact same two-signal check,
+                  reused (not re-derived) so this line and the fresh empty
+                  state's decided-untold fetch can never disagree about
+                  which branch the page is on. */}
               {rhythm && (
-                recentBatches.length === 0 && rhythm.sentLast7Days === 0 && rhythm.failedLast7Days === 0 ? (
+                isFreshEmpty ? (
                   <span className="chq-comms-head-subtitle">No sends on this event</span>
                 ) : (
                   <p className="chq-comms-head-subtitle">{formatSendRhythm(rhythm)}</p>
@@ -327,6 +375,7 @@ export function CommsPage() {
               onSeeAll={goToHistory}
               templatesById={templatesById}
               rhythm={rhythm}
+              decidedUntoldCount={decidedUntoldCount}
             />
           </>
         )}
