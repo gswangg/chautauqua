@@ -591,6 +591,13 @@ export const CAMPAIGN_CONSTANT_NAMES: readonly string[] = [
   // backtick quote immediately follows, matches it verbatim near the cited
   // line (test/code-comment-citation.scan.test.ts).
   "CODE_COMMENT_CITATION_CEILING",
+  // wave-144/w19-c (task w19-c, DEC-976): phone dock MEMBERSHIP ledger --
+  // grades whether some single non-test source file both declares a docked
+  // band's geometry and renders every one of that band's drawn labels,
+  // catching the gap FOOTER_LABEL_CEILING's match-anywhere-in-corpus test
+  // cannot (a dock split across a CSS declaration and a separate renderer
+  // that never spells all of its copy). test/phone-dock-ledger.scan.test.ts.
+  "PHONE_DOCK_UNCLAIMED_CEILING",
 ];
 
 /** Tier-2 ceiling constant names: campaign is done only once every one reads 0. */
@@ -643,6 +650,10 @@ const TIER2_CEILING_NAMES: readonly string[] = [
   // the same commit that declared it in CAMPAIGN_CONSTANT_NAMES above --
   // never a declared-but-unread knob (DEC-851/DEC-988).
   "CODE_COMMENT_CITATION_CEILING",
+  // wave-144/w19-c (task w19-c): phone dock membership ledger, wired into
+  // TIER2 in the same commit that declared it in CAMPAIGN_CONSTANT_NAMES
+  // above -- never a declared-but-unread knob (DEC-851/DEC-988).
+  "PHONE_DOCK_UNCLAIMED_CEILING",
 ];
 
 /**

@@ -171,6 +171,12 @@ function baseFixture(): CampaignFile[] {
       path: "test/code-comment-citation.scan.test.ts",
       content: "export const CODE_COMMENT_CITATION_CEILING = 9;",
     },
+    // wave-144/w19-c (task w19-c, DEC-976): phone dock membership ledger,
+    // added on the same terms -- arbitrary value, faithful shape.
+    {
+      path: "test/phone-dock-ledger.scan.test.ts",
+      content: "export const PHONE_DOCK_UNCLAIMED_CEILING = 3;",
+    },
   ];
 }
 
@@ -245,6 +251,9 @@ function allGreenFixture(): CampaignFile[] {
     if (f.path === "test/code-comment-citation.scan.test.ts") {
       return { ...f, content: "export const CODE_COMMENT_CITATION_CEILING = 0;" };
     }
+    if (f.path === "test/phone-dock-ledger.scan.test.ts") {
+      return { ...f, content: "export const PHONE_DOCK_UNCLAIMED_CEILING = 0;" };
+    }
     return f;
   });
 }
@@ -315,7 +324,11 @@ describe("buildCampaignReport", () => {
     // assertion -- re-derived by running buildCampaignReport over
     // baseFixture() at HEAD (26 rows), not by self-comparing report.rows'
     // own length: 25 -> 26.
-    expect(report.rows).toHaveLength(26);
+    // wave-144/w19-c (task w19-c, DEC-976): PHONE_DOCK_UNCLAIMED_CEILING
+    // (the phone dock membership ledger) landed in
+    // scripts/exit-predicate.ts's CAMPAIGN_CONSTANT_NAMES/TIER2_CEILING_NAMES
+    // and in this file's baseFixture/allGreenFixture in the same commit: 26 -> 27.
+    expect(report.rows).toHaveLength(27);
 
     const undeclaredHeight = report.rows.find((r) => r.label === "UNDECLARED_HEIGHT_OFFENDERS_CEILING");
     expect(undeclaredHeight).toMatchObject({ current: 7, target: 0, remaining: 7 });
