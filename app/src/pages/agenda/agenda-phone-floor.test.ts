@@ -237,3 +237,57 @@ describe('agenda phone tap-floor + overflow fixes (task w8-g, DEC-393/DEC-989)',
     expect(hasFloorShapeForSelector(badCss, 'chq-x-fake-actions .chq-btn')).toBe(false);
   });
 });
+
+// DEC-937 + DEC-393-amendment drain (task w10-m): the :1508 rule's cancelled
+// padding (padding-inline:10px; margin-inline:-10px) is safe for a
+// borderless control but bleeds a PAINTED one (.chq-btn's own face) 10px
+// past its container. Three of the four :1508 selectors resolve to a
+// painted .chq-btn-primary/-secondary face and get a later, same-specificity
+// override rule restoring the anchor's own inline padding; the fourth
+// (.chq-breaks-row-actions .chq-btn, .chq-btn-tertiary -- borderless) is
+// correctly left alone. These pins assert the LAST (winning) declaration
+// body for each painted selector carries the floor with NO negative
+// margin-inline, and that the still-borderless breaks-row-actions pair gets
+// its companion gap widening.
+describe('agenda phone painted-anchor drain (task w10-m, DEC-937/DEC-393-amendment)', () => {
+  // Finds the winning (last, i.e. highest source-order at equal specificity)
+  // declaration body for `selector` when it may appear as any entry in a
+  // comma-separated selector list, not only immediately before `{`.
+  function lastRuleBody(css: string, selector: string): string {
+    const stripped = stripComments(css);
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(?:^|[{,}])\\s*${escaped}\\s*(?=[,{])[\\s\\S]*?\\{([^}]*)\\}`, 'g');
+    const matches = [...stripped.matchAll(re)];
+    expect(matches.length, `expected at least one match for ${selector}`).toBeGreaterThan(0);
+    const body = matches[matches.length - 1]![1];
+    return body ?? '';
+  }
+
+  it.each([
+    '.chq-agenda-head-actions .chq-btn',
+    '.chq-breaks-add-actions .chq-btn',
+    '.chq-phone-footer-actions .chq-phone-footer-btn',
+  ])('the winning declaration for %s carries min-height:44px and no negative margin-inline', (selector) => {
+    const body = lastRuleBody(CSS, selector);
+    expect(body).toMatch(/min-height:\s*44px/);
+    expect(body).toMatch(/display:\s*flex/);
+    expect(body).toMatch(/align-items:\s*center/);
+    expect(body).not.toMatch(/margin-inline:\s*-/);
+  });
+
+  it('.chq-breaks-row-actions .chq-btn (chq-btn-tertiary, borderless) is left on the shared cancelled-padding floor -- no override rule added', () => {
+    const matches = [...CSS.matchAll(/\.chq-breaks-row-actions \.chq-btn\s*\{([^}]*)\}/g)];
+    expect(matches.length).toBe(0);
+  });
+
+  it('widens .chq-breaks-row-actions' + "'" + ' companion gap by +20px over its 8px desktop gap (it still holds two cancelled-padding siblings)', () => {
+    const body = lastRuleBody(CSS, '.chq-breaks-row-actions');
+    expect(body).toMatch(/gap:\s*28px/);
+  });
+
+  it('falsifiability control: a synthetic override that still carries a negative margin-inline fails the pin', () => {
+    const badCss = `.chq-agenda-head-actions .chq-btn { min-height: 44px; display: flex; align-items: center; margin-inline: -10px; }`;
+    const body = lastRuleBody(badCss, '.chq-agenda-head-actions .chq-btn');
+    expect(body).toMatch(/margin-inline:\s*-/);
+  });
+});
