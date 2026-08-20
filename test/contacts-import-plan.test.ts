@@ -260,6 +260,69 @@ describe("POST /api/v1/contacts/import dryRun=true (DEC-663 plan)", () => {
     expect(body.rows[0]?.overwrites).toEqual([{ field: "bio", from: "Original bio.", to: "New bio text." }]);
   });
 
+  // DEC-936 (wave 128): resolveImportUpsert's update branch merges a
+  // non-blank incoming custom column onto the stored customFieldsJson map
+  // the exact same way it replaces a flat field -- that write must be
+  // disclosed in `overwrites` too, as `custom.<key>`, not silently applied.
+  it("reports a custom-field overwrite with from/to when the incoming custom column would replace a stored non-blank value", async () => {
+    const { db } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+    await seedContact(db, {
+      id: "ct_custom",
+      firstName: "Katherine",
+      lastName: "Johnson",
+      email: "katherine@example.com",
+      customFieldsJson: JSON.stringify({ department: "Flight Dynamics" }),
+    });
+
+    const csvText = "Email,Department\nkatherine@example.com,Trajectory Analysis\n";
+    const mapping = { Email: "email", Department: "custom.department" };
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ csvText, mapping, dryRun: true }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      rows: { action: string; overwrites?: { field: string; from: string; to: string }[] }[];
+    };
+    expect(body.rows[0]?.action).toBe("update");
+    expect(body.rows[0]?.overwrites).toEqual([
+      { field: "custom.department", from: "Flight Dynamics", to: "Trajectory Analysis" },
+    ]);
+  });
+
+  // DEC-936: a custom column mapped onto a key the stored contact never had
+  // is new data, not an overwrite -- describeImportOverwrites must stay
+  // silent (a blank/absent stored value is not something the merge destroys).
+  it("does not report a custom-field overwrite when the stored contact has no value for that key", async () => {
+    const { db } = makeFakeContactDb();
+    const app = appWithDbAndAuth(db, ORGANIZER);
+    await seedContact(db, {
+      id: "ct_custom_new",
+      firstName: "Dorothy",
+      lastName: "Vaughan",
+      email: "dorothy@example.com",
+      customFieldsJson: null,
+    });
+
+    const csvText = "Email,Department\ndorothy@example.com,Programming\n";
+    const mapping = { Email: "email", Department: "custom.department" };
+
+    const res = await app.request("/api/v1/contacts/import", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ csvText, mapping, dryRun: true }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      rows: { action: string; overwrites?: { field: string; from: string; to: string }[] }[];
+    };
+    expect(body.rows[0]?.action).toBe("update");
+    expect(body.rows[0]?.overwrites ?? []).toEqual([]);
+  });
+
   it("dryRun writes nothing -- the contact table is byte-identical afterward", async () => {
     const { db, rows } = makeFakeContactDb();
     const app = appWithDbAndAuth(db, ORGANIZER);
