@@ -724,6 +724,24 @@ export const THEME_CSS = `
     .chq-nav a {
       min-height: 44px;
     }
+    /* DEC-393 wave-w17-i (shell lane): .chq-nav a's base rule at :577 is
+       \`padding: 4px 0\` -- zero horizontal -- so the bare min-height above
+       leaves the hit box only as wide as its label, the same width evasion
+       w13-ee/w13-ff fixed for .chq-pub-search-submit/.chq-portal-footer-
+       profile. Appended as a SECOND rule for the same selector rather than
+       edited in place: the min-height line above is cited verbatim
+       elsewhere, and DEC-385 forbids reordering this terminal block --
+       every other group here already gets its horizontal padding from its
+       own base rule (text inputs/.chq-input family/date/select: 0.6rem+;
+       file input's ::file-selector-button: 1rem; button/.chq-btn: 1rem),
+       so only this one group needs the padding restated on phone. Desktop
+       is untouched -- this rule lives inside the same
+       @media (max-width: 700px) block as every rule above it. */
+    .chq-nav a {
+      display: flex;
+      align-items: center;
+      padding-inline: 12px;
+    }
   }
 `;
 
