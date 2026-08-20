@@ -265,9 +265,10 @@
      answer does not survive a 360px viewport. (originally @700px block at
      line 255) */
   /* DEC-393: .chq-taskview-open is a real row-action anchor
-     (TaskView.tsx:646 `<a href={`/files/${action.fileId}`}
-     className="chq-taskview-open">Download</a>`, no chq-btn) -- takes the
-     full min-height + centred flex + horizontal padding floor. The other
+     (TaskView.tsx, the file-action branch's `<a href={`/files/${action.
+     fileId}`} className="chq-taskview-open">Download</a>`, no chq-btn) --
+     takes the full min-height + centred flex + horizontal padding floor.
+     The other
      two selectors in this comma list (.chq-taskview-tab, .chq-taskview-
      clear) are real `<button>`s only, never `<a>`/`<Link>`, so the same
      declaration widening their box by 10px is additive-only, not a second
