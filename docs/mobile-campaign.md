@@ -160,3 +160,20 @@ Unscheduled + Auto-schedule.
   stash@{1} "merge-train: planner decision docs" is stranded and needs its
   owner to apply or drop it. Workers: never stash on shared main — commit or
   leave the tree alone.
+
+## Speaker-management score floor (priority — filed 2026-08-20)
+Three recurring/new minors keep the area in the high-80s:
+1. HEADSHOT METADATA (filed in ALL FIVE eval runs — highest-yield fix in
+   the rubric): a portal-uploaded headshot must appear in the record's
+   Files table with filename/uploader/timestamp like any other file object,
+   not only as an avatar + bare Download link.
+2. CSV-merge email overwrite (root-cause needed): merging an imported row
+   into an existing contact replaced the contact's org-wide email with the
+   imported value — decide/enforce merge field precedence (probably keep
+   existing unless organizer picks the imported side; the merge tool's
+   pick-a-side idiom exists).
+3. Portal dashboard banner shows ONE ambiguous slot for a two-session
+   speaker ("you speak Thu 13 May, 09:30 · Main Stage") — enumerate both or
+   say "2 sessions".
+Also: sweep other short SSR pages for the mid-page-footer defect just fixed
+on the home hub (home.css.ts sticky-footer pattern).
