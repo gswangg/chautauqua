@@ -29,14 +29,22 @@ desktop-anatomy split without removing functionality. Flagged here per this
 task's design-gap instruction rather than escalated, since the narrow
 interpretation is defensible and low-risk to revise later.
 
-## The auth input fill (#FFFFFF) — DEVIATIONS §5, untouched
+**RESOLVED-BY-RULING (DEC-919 wave-114 amendment)**: the link stays,
+re-lined, per the ruling recorded in DEVIATIONS.md §3 ("Interpretations
+where the frames underspecify") — see the "Sign-in 390 keeps 'Forgot your
+password?', re-lined" bullet there for the full ruling and its grounds. No
+further code change is needed; the shipped treatment described above
+already implements it.
+
+## The auth input fill (#FFFFFF) — DEVIATIONS §6, untouched
 
 Frame lines 130/134/161/165/169 (docs/design/Chautauqua Account.dc.html)
 sample the phone card's email/password inputs at `background:#FAF8F2`
 (`--chq-surface`), which already matches `.chq-auth-card input[...]`'s
 existing fill — no `#FFFFFF` literal appears on either 390 frame this task
-touched, so DEVIATIONS §5's open adjudication (desktop's own input fill vs
-the palette-closure ban) is out of scope here and was left exactly as-is,
+touched, so DEVIATIONS §6's recorded verdict (desktop's own input fill vs
+the palette-closure ban — RULED: the app keeps `--chq-surface`, no change,
+DEC-383 wave-114 amendment) is out of scope here and was left exactly as-is,
 per the task's explicit instruction not to touch it.
 
 ## Docs · an article · 390 — header stays the desktop brandrow, no "Contents" affordance

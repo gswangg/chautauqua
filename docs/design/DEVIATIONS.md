@@ -116,6 +116,21 @@ survives contact with state:
   is read as the new-plan state's captioning (matching the title row's own
   "Cancel"/"Create the plan" pair for `isNew`), not as a mandate to add
   Cancel to the existing-plan pair. DEC-745 wave-98 amendment.
+- **Sign-in 390 keeps "Forgot your password?", re-lined (DEC-919 wave-114
+  amendment)** — `docs/design/Chautauqua Account.dc.html:118` ("Sign in ·
+  390") draws the submit row (:127-136) with the primary Sign in action
+  alone, full width, and carries no reset link anywhere in the card. Filed
+  as an open design gap in `docs/design/audit/account-docs-v12.md` and
+  never ruled on until now. RULED: the link stays. A frame is the geometry
+  authority, not a capability manifest — reading an omitted control as a
+  mandate to delete the only password-reset entry point on phones would
+  strand every phone user who forgot their password. This is DEC-919's
+  "re-line, never remove" applied at a phone width, and the shipped
+  treatment already implements it: `.chq-auth-submitrow` sets
+  `flex-direction: column-reverse`, so the full-width primary sits first
+  and the tertiary link (`Forgot your password?`) is centred beneath it at
+  the 44px floor. See `docs/design/audit/account-docs-v12.md` for the
+  resolved finding.
 
 ## 4. Voice
 
@@ -257,8 +272,20 @@ instead of re-flagging.
 - Tracks-and-rooms save model: per-row dirty-reveal BLESSED (G13 srv1
   adjudication); frame 09--12's page-footer model filed as post-deadline
   rework. The Done control now confirms before discarding dirty rows.
-- Auth input fill #FFFFFF (frames) vs palette-closure ban on the literal —
-  needs a README palette ruling before any change.
+- Auth input fill stays `--chq-surface` (`#FAF8F2`); no change. RULED
+  (DEC-383 wave-114 amendment): `docs/design/Chautauqua Account.dc.html`
+  draws `background:#FFFFFF` on the desktop card's inputs at :195, :248,
+  :253, :310, :314, while the same file's 390 cuts sample the identical
+  controls at `background:#FAF8F2` (:130, :134, :161, :165, :169) — already
+  `--chq-surface`, already what the app ships. Grounds, in order: (1) the
+  pack contradicts itself on one control in one file, so no single frame
+  reading licenses the literal; (2) `#FFFFFF` is not a palette member and
+  DEC-383's colour-literal closure allows exactly one allowlisted
+  exception, which this is not; (3) the campaign freezes desktop, where a
+  desktop-affecting change is legal only when a v12 desktop frame DEMANDS
+  it, and a demand cannot be read off a contradiction. No code changed;
+  the frame should be redrawn with a single consistent input fill in a
+  future design pass, the same way §1's stale-speakers-pills entry is.
 - Settings 760 measure (09--00) rejected: collides with the app-wide 820
   measure token (DEC-744/DEC-808).
 - Speakers status vocabulary under write-failure (DEC-730, wave-90
