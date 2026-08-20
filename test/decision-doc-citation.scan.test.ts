@@ -176,6 +176,106 @@ function normalise(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
+// ---------------------------------------------------------------------------
+// ADDITIVE drift-proof citation shape (DEC-967 wave-115, task w4-ab). This
+// file has now had its OnboardingGrid.tsx citations repointed four
+// consecutive waves running as the cited construct's line number kept
+// moving underneath it -- a structural fix, not another repoint. A citation
+// written as a BARE path (no ":line") IMMEDIATELY followed by a backtick
+// quote resolves if that quote appears verbatim ANYWHERE in the cited file,
+// rather than pinned to one line. This is strictly ADDITIVE: CITATION_RE
+// and quoteAfter above are byte-for-byte unchanged, and a bare path with no
+// immediately-following quote is not a citation at all (no new loophole --
+// a pointer with no receipt still asserts nothing, same rule as DIRECTION 1
+// for the strict shape).
+// ---------------------------------------------------------------------------
+
+// The negative lookbehind before the capturing group is load-bearing: these
+// decision/audit docs are full of prose that ends in a real extension but
+// is NOT a path (a `*.css.ts` filename glob, a bare `.ts` mentioned as an
+// extension) or a path that is ITSELF wrapped in its own markdown code span
+// (`` `app/src/styles.css` ``, a markdown-table cell). \b alone lets both
+// slip through -- "." and "*" are non-word so \b still fires at the "c" of
+// "css.ts" inside "*.css.ts", and a path's own opening backtick is not a
+// word character either. Excluding [\w./*`-] immediately before the match
+// start rules out both: a genuine drift-proof citation is bare prose text
+// (no backtick, no glob-wildcard prefix, no adjoining word/path character)
+// immediately before the path.
+const BARE_PATH_RE =
+  /(?<![\w./*`-])((?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.(?:tsx|css|ts|md))(?<!\.dc\.html)/g;
+
+interface DriftProofCitation {
+  doc: string;
+  rawPath: string;
+  quote: string;
+  matchText: string;
+}
+
+/** Finds bare-path drift-proof citations in `content`. Reuses quoteAfter
+ * (unchanged) with gapWindow=1 to enforce "immediately" -- zero characters
+ * of prose between the path and the opening backtick -- rather than a
+ * hand-rolled duplicate of quoteAfter's own-closing-backtick skip logic
+ * (DEC-613: one implementation). A path immediately followed by ":<digit>"
+ * is a STRICT path:line citation already matched by CITATION_RE above; it
+ * is skipped here so the two shapes never double-count the same text. */
+function findDriftProofCitations(doc: string, content: string): DriftProofCitation[] {
+  const out: DriftProofCitation[] = [];
+  BARE_PATH_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = BARE_PATH_RE.exec(content))) {
+    const end = m.index + m[0].length;
+    if (/^:\d/.test(content.slice(end, end + 2))) continue;
+    // A path can sit at the TAIL of an already-open code span whose prefix
+    // isn't excluded by the lookbehind above ("`npx vitest run\napp/src/
+    // foo.ts`" -- "run " precedes the path, not a path character, and
+    // these hand-wrapped paragraphs let a span's own text cross a line
+    // break -- so the lookbehind doesn't catch it). There the backtick
+    // immediately after the path is that SPAN'S OWN CLOSING backtick, not
+    // a receipt quote's opener -- treating it as one would pair the
+    // citation with whatever unrelated backtick text comes next in the
+    // paragraph. Detect this by backtick PARITY from the start of the
+    // document: an odd count of backticks before the match means a span is
+    // already open, so skip.
+    const backticksBefore = (content.slice(0, m.index).match(/`/g) ?? []).length;
+    if (backticksBefore % 2 === 1) continue;
+    const quote = quoteAfter(content, end, false, 1);
+    if (!quote || quote.length === 0) continue; // no immediately-following quote -> not a citation
+    out.push({ doc, rawPath: m[1]!, quote, matchText: `${m[0]}\`${quote}\`` });
+  }
+  return out;
+}
+
+/** DIRECTION check for a drift-proof citation: resolves the path, then
+ * requires the quote to appear verbatim ANYWHERE in the cited file's raw
+ * content (not one fixed line -- that is the whole point of this shape). */
+function checkDriftProofCitations(
+  doc: string,
+  content: string,
+  repoRoot: string,
+  allFiles: Set<string>,
+  basenameMap: Map<string, string[]>,
+): Violation[] {
+  const violations: Violation[] = [];
+  for (const c of findDriftProofCitations(doc, content)) {
+    const resolved = resolvePath(c.rawPath, repoRoot, allFiles, basenameMap);
+    if (!resolved.ok) {
+      violations.push({
+        message: `${c.doc}: "${c.matchText}" does not resolve -- ${resolved.reason}`,
+      });
+      continue;
+    }
+    const targetContent = readFileSync(join(repoRoot, resolved.relPath!), "utf-8");
+    if (!targetContent.includes(c.quote)) {
+      violations.push({
+        message:
+          `${c.doc}: drift-proof quote \`${c.quote}\` following "${c.rawPath}" does not appear ` +
+          `verbatim anywhere in ${resolved.relPath}`,
+      });
+    }
+  }
+  return violations;
+}
+
 /** Every file in the repo (excluding node_modules/.git/dist-like build
  * output), enumerated once via readdirSync recursion -- basis for
  * resolving a bare-basename citation (e.g. "profile.tsx:153",
@@ -276,6 +376,7 @@ function checkCitations(doc: string, content: string): Violation[] {
       });
     }
   }
+  violations.push(...checkDriftProofCitations(doc, content, ROOT, ALL_REL_FILES, BASENAME_MAP));
   return violations;
 }
 
@@ -545,6 +646,7 @@ describe("negative controls", () => {
         violations.push({ message: `quote \`${quote}\` does not match line ${c.firstLine}` });
       }
     }
+    violations.push(...checkDriftProofCitations("fixture.md", content, tmpRoot, allRelFiles, basenameMap));
     return violations;
   }
 
@@ -565,6 +667,31 @@ describe("negative controls", () => {
     const violations = checkFixture(doc);
     expect(violations.length).toBe(1);
     expect(violations[0]!.message).toMatch(/does not match line 3/);
+  });
+
+  // Positive control (DEC-967 wave-115): a drift-proof citation -- bare
+  // path, no ":line", immediately followed by a backtick quote -- resolves
+  // when the quote appears verbatim anywhere in the cited file, even
+  // though no line number is given at all.
+  it("a drift-proof citation (bare path immediately followed by a backtick quote) whose quote is present anywhere in the file passes", () => {
+    const doc = "The rule now lives at fixture-cited.ts`export const FIXTURE_TOKEN = 42;` and nowhere else.";
+    expect(checkFixture(doc)).toEqual([]);
+  });
+
+  it("a drift-proof citation whose quote is absent from the cited file is flagged", () => {
+    const doc = "The rule now lives at fixture-cited.ts`export const NOT_REALLY_THERE = 1;` and nowhere else.";
+    const violations = checkFixture(doc);
+    expect(violations.length).toBe(1);
+    expect(violations[0]!.message).toMatch(/does not appear verbatim anywhere/);
+  });
+
+  // Negative control: a bare path with NO immediately-following backtick
+  // quote is not a citation at all -- it must contribute nothing to the
+  // population (no new loophole: a pointer with no receipt still asserts
+  // nothing, same rule as the strict shape's DIRECTION 1).
+  it("a bare path with no following quote is not a citation and contributes no violation", () => {
+    const doc = "See fixture-cited.ts for the full implementation.";
+    expect(checkFixture(doc)).toEqual([]);
   });
 
   // Cleanup is a hook, not a test: it must run even when a control above

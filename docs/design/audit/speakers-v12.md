@@ -65,8 +65,8 @@ this exact finding) exports `activeFacet(filters)`, a `Record<FacetKey,
 FacetDef>` exhaustiveness-checked against `GridFilterState`, giving each
 single active facet its own `reason`/`escapeLabel`/`clear`. The `q` facet's
 reason (`` `No speakers match "${typed}".` ``) echoes the typed search term,
-matching frame :442's person-name clause pattern. `OnboardingGrid.tsx:1062`
-calls `activeFacet(filters)` and, when non-null, renders `EmptyState` with
+matching frame :442's person-name clause pattern. app/src/pages/speakers/OnboardingGrid.tsx`activeFacet(filters)` (drift-proof citation, DEC-967 wave-115: pinning the construct's text rather than a line number survives it moving again)
+calls it and, when non-null, renders `EmptyState` with
 `reason={facet.reason(...)}` and `escape={{ label: facet.escapeLabel, ...
 }}` instead of the generic `narrowingDescription`/`'Clear filters'` pair —
 the generic fallback is kept only for zero or two-plus active facets, where
